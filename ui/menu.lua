@@ -26,6 +26,7 @@ local DEFAULTS = {
     buttonHeight = 60,
     spacing = 24,
     startY = nil,           -- nil = vertically centered
+    centerX = nil,          -- nil = horizontally centered on the window
     axisThreshold = 0.5,    -- analog stick deflection needed to register a move
 }
 
@@ -38,6 +39,7 @@ function Menu.new(items, opts)
     self.buttonHeight = opts.buttonHeight or DEFAULTS.buttonHeight
     self.spacing = opts.spacing or DEFAULTS.spacing
     self.startY = opts.startY
+    self.centerX = opts.centerX
     self.font = opts.font or love.graphics.newFont(24)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false  -- edge detection so a held stick moves one step
@@ -51,9 +53,10 @@ function Menu:layout()
     local count = #self.items
     local totalH = count * self.buttonHeight + (count - 1) * self.spacing
     local startY = self.startY or (screenH / 2 - totalH / 2)
+    local centerX = self.centerX or (screenW / 2)
 
     for i, item in ipairs(self.items) do
-        item.x = screenW / 2 - self.buttonWidth / 2
+        item.x = centerX - self.buttonWidth / 2
         item.y = startY + (i - 1) * (self.buttonHeight + self.spacing)
         item.w = self.buttonWidth
         item.h = self.buttonHeight

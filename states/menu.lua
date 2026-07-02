@@ -9,7 +9,7 @@ local widget = Menu.new({
     {
         label = "Start Game",
         action = function()
-            State.switch(require("states.game"))
+            State.switch(require("states.hub"))
         end,
     },
     {
