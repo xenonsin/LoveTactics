@@ -7,5 +7,5 @@ return {
         defense = 7, magicDefense = 5,
         movement = 4, -- number of spaces this character can move
     },
-    startingItems = { "healing_potion" }, -- item ids
+    startingItems = { "healing_potion", "torch" }, -- item ids
 }

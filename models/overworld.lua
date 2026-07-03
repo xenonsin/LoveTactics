@@ -20,7 +20,7 @@
 --   local grid = Overworld.generate({ cols = 41, rows = 29, seed = 123,
 --       encounterCount = 8, keyCount = 1, objective = { name = "Warlord" } })
 
-local Tileset = require("data.tilesets.overworld")
+local Tileset = require("models.tileset")
 local Biome = require("models.biome")
 
 local Overworld = {}
@@ -28,9 +28,10 @@ Overworld.__index = Overworld
 
 local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
 
--- Walkability is owned by the tileset so the model and renderer never disagree.
-local function typeWalkable(tile)
-    local def = Tileset.tiles[tile]
+-- Walkability is owned by the grid's (biome) tileset so the model and renderer
+-- never disagree. Resolved once in generate() into self.tilesetDef.
+function Overworld:typeWalkable(tile)
+    local def = self.tilesetDef.tiles[tile]
     return def ~= nil and def.walkable == true
 end
 
@@ -63,6 +64,8 @@ function Overworld.generate(params)
     -- walls between them are (spacing - 1) tiles thick.
     self.biome = params.biome
     local biomeDef = Biome.get(params.biome)
+    self.tilesetId = biomeDef.tileset      -- which data/tilesets/<id> draws this map
+    self.tilesetDef = Tileset.get(self.tilesetId) -- merged types + this biome's art
     self.spacing = params.spacing or biomeDef.spacing or 4
     self.originX = 0
     self.originY = 0
@@ -247,7 +250,7 @@ function Overworld:pathNeighbors(x, y)
     for _, d in ipairs(DIRS) do
         local nx, ny = x + d[1], y + d[2]
         local c = self.cells[ny] and self.cells[ny][nx]
-        if c and typeWalkable(c.tile) then res[#res + 1] = c end
+        if c and self:typeWalkable(c.tile) then res[#res + 1] = c end
     end
     return res
 end
@@ -278,7 +281,7 @@ function Overworld:computeStart()
     for y = 1, self.rows do
         for x = 1, self.cols do
             local c = self.cells[y][x]
-            if typeWalkable(c.tile) then
+            if self:typeWalkable(c.tile) then
                 local d = (x - cx) * (x - cx) + (y - cy) * (y - cy)
                 if not bestd or d < bestd then bestd = d; best = c end
             end
@@ -303,7 +306,7 @@ function Overworld:placeObjectiveAndGates(params)
         for x = 1, self.cols do
             local c = self.cells[y][x]
             local d = dist[cellKey(c)]
-            if typeWalkable(c.tile) and d then
+            if self:typeWalkable(c.tile) and d then
                 if not objd or d > objd then objd = d; objective = c end
                 if c ~= start and #self:pathNeighbors(x, y) == 1 then
                     if not deadd or d > deadd then deadd = d; deadObj = c end
@@ -351,7 +354,7 @@ function Overworld:placeKeys(dist, firstGateDist)
         for x = 1, self.cols do
             local c = self.cells[y][x]
             local d = dist[cellKey(c)]
-            if typeWalkable(c.tile) and d and d < firstGateDist
+            if self:typeWalkable(c.tile) and d and d < firstGateDist
                 and not c.gate and not c.encounter
                 and not (self.start.x == x and self.start.y == y) then
                 candidates[#candidates + 1] = c
@@ -399,7 +402,7 @@ function Overworld:placeEncounters(params)
     for y = 1, self.rows do
         for x = 1, self.cols do
             local c = self.cells[y][x]
-            if typeWalkable(c.tile) and not c.encounter and not c.gate and not c.key
+            if self:typeWalkable(c.tile) and not c.encounter and not c.gate and not c.key
                 and not (self.start.x == x and self.start.y == y) then
                 cands[#cands + 1] = c
             end
@@ -462,6 +465,29 @@ function Overworld:get(x, y)
     return self.cells[y] and self.cells[y][x]
 end
 
+-- Whether tile (x, y) is within vision `radius` of (cx, cy). Circular (Euclidean)
+-- with a small bias so the lit area reads as a soft disc rather than a hard square.
+-- Shared by reveal (which tiles get discovered) and the renderer's fog (which are
+-- currently lit) so the two can never disagree.
+function Overworld:inVision(cx, cy, x, y, radius)
+    local dx, dy = x - cx, y - cy
+    return dx * dx + dy * dy <= radius * radius + radius
+end
+
+-- Fog of war: mark every cell within vision `radius` of (cx, cy) as discovered.
+-- Discovery is permanent for the run (the grid is rebuilt fresh each quest); the
+-- renderer recomputes which discovered tiles are *currently* in vision each frame.
+function Overworld:reveal(cx, cy, radius)
+    for y = cy - radius, cy + radius do
+        for x = cx - radius, cx + radius do
+            if self:inVision(cx, cy, x, y, radius) then
+                local c = self:get(x, y)
+                if c then c.seen = true end
+            end
+        end
+    end
+end
+
 function Overworld:startCell() return self:get(self.start.x, self.start.y) end
 function Overworld:objectiveCell() return self:get(self.objective.x, self.objective.y) end
 
@@ -470,7 +496,7 @@ function Overworld:objectiveCell() return self:get(self.objective.x, self.object
 function Overworld:isWalkable(x, y, keysHeld)
     local c = self:get(x, y)
     if not c then return false end
-    if not typeWalkable(c.tile) then return false end
+    if not self:typeWalkable(c.tile) then return false end
     if c.gate and not (keysHeld and keysHeld[c.gate.keyId]) then return false end
     return true
 end

@@ -84,6 +84,33 @@ return {
         end,
     },
     {
+        name = "torch item carries its configurable visionRadius through instantiation",
+        fn = function()
+            local torch = Item.instantiate("torch")
+            assert(torch.visionRadius == Item.defs.torch.visionRadius,
+                "torch instance should carry the blueprint's visionRadius")
+            local sword = Item.instantiate("iron_sword")
+            assert(sword.visionRadius == nil, "a non-torch item has no visionRadius")
+        end,
+    },
+    {
+        name = "party vision radius is driven by a torch-carrying member",
+        fn = function()
+            local p = Player.new()
+            -- The archer starts with a torch, so the party sees at the torch's radius.
+            assert(Player.visionRadius(p) == Item.defs.torch.visionRadius,
+                "party with a torch should see at the torch's radius")
+
+            -- With no torch anywhere, the party falls back to the base radius.
+            for _, char in ipairs(p.party) do char.inventory = {} end
+            assert(Player.visionRadius(p) == Player.BASE_VISION,
+                "torchless party should see at BASE_VISION")
+
+            -- A nil player (dev/test launch) also yields the base radius.
+            assert(Player.visionRadius(nil) == Player.BASE_VISION, "nil player -> base vision")
+        end,
+    },
+    {
         name = "registry auto-discovers item def files by filename",
         fn = function()
             assert(Item.defs.healing_potion, "healing_potion missing")

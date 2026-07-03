@@ -8,7 +8,7 @@ local Biome = {}
 
 Biome.defs = Registry.load("data/biomes", "data.biomes")
 
-local DEFAULT = { name = "Forest", spacing = 4, rivers = 1 }
+local DEFAULT = { name = "Forest", tileset = "forest", spacing = 4, rivers = 1 }
 
 -- Return the biome def for `id`, falling back to forest / a safe default so an
 -- unknown or missing biome never breaks generation.

@@ -4,10 +4,10 @@
 
 local Overworld = require("models.overworld")
 local Quest = require("models.quest")
-local Tileset = require("data.tilesets.overworld")
+local Tileset = require("models.tileset")
 
 local function typeWalkable(tile)
-    local def = Tileset.tiles[tile]
+    local def = Tileset.get().tiles[tile]
     return def ~= nil and def.walkable == true
 end
 
@@ -60,6 +60,29 @@ return {
             assert(forest.spacing == 4, "forest spacing should be 4, got " .. forest.spacing)
             assert(castle.spacing == 2, "castle spacing should be 2, got " .. castle.spacing)
             assert(castle.spacing < forest.spacing, "castle should be tighter than forest")
+        end,
+    },
+    {
+        name = "each biome resolves its own tileset (art differs, walkability shared)",
+        fn = function()
+            local forest = Overworld.generate({ cols = 41, rows = 29, seed = 7, biome = "forest" })
+            local castle = Overworld.generate({ cols = 41, rows = 29, seed = 7, biome = "castle" })
+            assert(forest.tilesetId == "forest", "forest should use the forest tileset")
+            assert(castle.tilesetId == "castle", "castle should use the castle tileset")
+
+            local ft, ct = Tileset.get(forest.tilesetId), Tileset.get(castle.tilesetId)
+            assert(ft.image ~= ct.image, "biomes should point at different tileset images")
+            -- Distinct art: at least the path colour should differ between biomes.
+            assert(ft.tiles.path.color[1] ~= ct.tiles.path.color[1]
+                or ft.tiles.path.color[3] ~= ct.tiles.path.color[3],
+                "forest and castle path colours should differ")
+            -- Walkability is universal, not per-biome.
+            for tile in pairs(Tileset.TYPES) do
+                assert(ft.tiles[tile].walkable == ct.tiles[tile].walkable,
+                    "walkability of '" .. tile .. "' must match across biomes")
+            end
+            assert(ft.tiles.path.walkable and not ft.tiles.water.walkable,
+                "path walkable, water blocked, in every tileset")
         end,
     },
     {
@@ -244,6 +267,26 @@ return {
             -- objective is placed separately, then up to `encounterCount` more.
             assert(nonObjective <= 5, "too many encounters: " .. nonObjective)
             assert(grid:startCell().encounter == nil, "encounter placed on start tile")
+        end,
+    },
+    {
+        name = "reveal lights a circular disc of cells (fog of war)",
+        fn = function()
+            local grid = gen()
+            local cx, cy = 15, 11 -- an interior cell so the radius stays in bounds
+            assert(grid:get(cx, cy).seen == nil, "cell starts undiscovered")
+            grid:reveal(cx, cy, 2)
+            -- Centre and the cardinal edges of the disc are discovered.
+            assert(grid:get(cx, cy).seen == true, "centre should be seen")
+            assert(grid:get(cx + 2, cy).seen == true, "east edge should be seen")
+            assert(grid:get(cx - 2, cy).seen == true, "west edge should be seen")
+            assert(grid:get(cx, cy + 2).seen == true, "south edge should be seen")
+            assert(grid:get(cx, cy - 2).seen == true, "north edge should be seen")
+            -- The far corners of the bounding square fall outside the disc (circular,
+            -- not square), and anything past the radius stays hidden.
+            assert(grid:get(cx + 2, cy + 2).seen == nil, "diagonal corner is outside the disc")
+            assert(grid:get(cx + 3, cy).seen == nil, "cell past the radius stays hidden")
+            assert(grid:get(cx, cy + 3).seen == nil, "cell past the radius stays hidden")
         end,
     },
     {

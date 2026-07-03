@@ -18,6 +18,7 @@ function Item.instantiate(id)
         name = def.name,
         description = def.description,
         sprite = Sprite.load(def.sprite),
+        visionRadius = def.visionRadius, -- overworld vision boost (e.g. torch); nil for most items
     }
 end
 

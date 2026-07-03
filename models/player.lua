@@ -12,6 +12,26 @@ Player.defaults = require("data.player")
 -- only this many can be deployed at once.
 Player.MAX_PARTY = 3
 
+-- Base overworld fog-of-war vision radius (tiles seen around the player). A party
+-- member carrying an item with a larger visionRadius (e.g. a torch) raises it.
+Player.BASE_VISION = 2
+
+-- Effective overworld vision radius for a player's active party: BASE_VISION raised
+-- by the largest visionRadius of any item any party member is carrying. Kept here so
+-- the "does the party have a torch" logic lives in one place; the item's field is the
+-- single source of truth. A nil player (dev/test) returns the base.
+function Player.visionRadius(player)
+    local r = Player.BASE_VISION
+    if player and player.party then
+        for _, char in ipairs(player.party) do
+            for _, item in ipairs(char.inventory or {}) do
+                if item.visionRadius and item.visionRadius > r then r = item.visionRadius end
+            end
+        end
+    end
+    return r
+end
+
 -- Add a roster member to the active party, enforcing the party cap.
 -- Returns true on success, false if the party is already full.
 function Player.addToParty(player, char)

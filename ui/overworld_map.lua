@@ -15,7 +15,7 @@
 
 local Scale = require("scale")
 local Sprite = require("models.sprite")
-local Tileset = require("data.tilesets.overworld")
+local Tileset = require("models.tileset")
 
 local OverworldMap = {}
 OverworldMap.__index = OverworldMap
@@ -31,27 +31,36 @@ function OverworldMap.new(grid, opts)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
 
+    -- Fog-of-war vision radius (tiles seen around the player). Defaults to 2; the
+    -- game state passes the party's effective radius (raised by a torch, etc.).
+    self.visionRadius = opts.visionRadius or 2
+
     local start = grid:startCell()
     self.px, self.py = start.x, start.y
     self.keysHeld = {} -- keyId -> true
 
+    -- The tileset (sheet + fallback colours) is chosen by the grid's biome.
+    self.tilesetDef = Tileset.get(grid.tilesetId)
+
     self:buildTiles()
+    self.grid:reveal(self.px, self.py, self.visionRadius) -- discover the spawn area
     self:updateCamera()
     return self
 end
 
 -- Build the tileset quads + SpriteBatch, or record that we must fall back to rects.
 function OverworldMap:buildTiles()
-    local img = Sprite.load(Tileset.image)
+    local tsDef = self.tilesetDef
+    local img = Sprite.load(tsDef.image)
     if type(img) ~= "userdata" then
         self.tileset = nil -- colored-rect fallback
         return
     end
     self.tileset = img
-    local ts = Tileset.tileSize
+    local ts = tsDef.tileSize
     local columns = math.max(1, math.floor(img:getWidth() / ts))
     local quads = {}
-    for tile, def in pairs(Tileset.tiles) do
+    for tile, def in pairs(tsDef.tiles) do
         local i = def.index - 1
         quads[tile] = love.graphics.newQuad((i % columns) * ts, math.floor(i / columns) * ts,
             ts, ts, img:getDimensions())
@@ -96,6 +105,7 @@ function OverworldMap:step(dx, dy)
     local nx, ny = self.px + dx, self.py + dy
     if self.grid:isWalkable(nx, ny, self.keysHeld) then
         self.px, self.py = nx, ny
+        self.grid:reveal(self.px, self.py, self.visionRadius) -- lift the fog around the new tile
         self:updateCamera()
         self:arrive()
     end
@@ -161,7 +171,7 @@ function OverworldMap:draw()
         for y = 1, self.grid.rows do
             for x = 1, self.grid.cols do
                 local c = self.grid:get(x, y)
-                local def = Tileset.tiles[c.tile]
+                local def = self.tilesetDef.tiles[c.tile]
                 local col = def and def.color or { 0.05, 0.05, 0.06 }
                 local wx, wy = self.grid:cellToPixel(x, y)
                 love.graphics.setColor(col[1], col[2], col[3])
@@ -171,9 +181,33 @@ function OverworldMap:draw()
     end
 
     self:drawMarkers()
+    self:drawFog() -- covers undiscovered tiles + their markers; player stays on top
     self:drawPlayer()
 
     love.graphics.pop()
+end
+
+-- Fog of war overlay (drawn after markers so it hides markers on hidden tiles).
+-- Three tiers: undiscovered tiles are near-opaque black; discovered tiles outside
+-- the current (circular) vision radius are dimmed; tiles within vision are left
+-- untouched. Uses the grid's shared inVision test so it matches what reveal lit.
+function OverworldMap:drawFog()
+    local s = self.grid.size
+    local r = self.visionRadius
+    for y = 1, self.grid.rows do
+        for x = 1, self.grid.cols do
+            local c = self.grid:get(x, y)
+            local wx, wy = self.grid:cellToPixel(x, y)
+            if not c.seen then
+                love.graphics.setColor(0.02, 0.02, 0.03, 0.98)
+                love.graphics.rectangle("fill", wx, wy, s, s)
+            elseif not self.grid:inVision(self.px, self.py, x, y, r) then
+                love.graphics.setColor(0.02, 0.02, 0.03, 0.5)
+                love.graphics.rectangle("fill", wx, wy, s, s)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1)
 end
 
 function OverworldMap:drawMarkers()

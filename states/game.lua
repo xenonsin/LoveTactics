@@ -11,6 +11,7 @@ local State = require("states")
 local Scale = require("scale")
 local Overworld = require("models.overworld")
 local OverworldMap = require("ui.overworld_map")
+local Player = require("models.player")
 local EncounterPanel = require("ui.panels.encounter")
 local EncounterModel = require("models.encounter")
 
@@ -28,7 +29,7 @@ local function backContains(x, y)
 end
 
 -- prestige defaults to 1 when a quest is launched without it (e.g. dev/test).
-function game.enter(self, quest, prestige)
+function game.enter(self, quest, prestige, player)
     game.quest = quest
     game.prestige = prestige or 1
     local mp = quest and quest.map or {}
@@ -60,6 +61,8 @@ function game.enter(self, quest, prestige)
     game.complete = false
     game.map = OverworldMap.new(game.grid, {
         onEncounter = function(cell) game:openEncounter(cell) end,
+        -- Fog-of-war radius from the active party (a torch-carrier widens it).
+        visionRadius = Player.visionRadius(player),
     })
 end
 

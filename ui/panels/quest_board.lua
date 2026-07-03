@@ -29,6 +29,7 @@ function QuestBoard.new(opts)
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
 
     self.prestige = opts.prestige or 1
+    self.player = opts.player -- carried into the game state so the overworld sees the party
     self.quests = Quest.available(self.prestige)
 
     -- Build the quest list. Selecting a quest starts it: the game state generates
@@ -39,7 +40,7 @@ function QuestBoard.new(opts)
         items[#items + 1] = {
             label = quest.name,
             action = function()
-                State.switch(require("states.game"), quest, self.prestige)
+                State.switch(require("states.game"), quest, self.prestige, self.player)
             end,
         }
     end

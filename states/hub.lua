@@ -30,6 +30,7 @@ local function openPanel(building)
     activePanel = PanelModule.new({
         title = building.name,
         prestige = hub.player and hub.player.prestige or 1,
+        player = hub.player, -- forwarded so a launched quest knows the active party
         onClose = function() activePanel = nil end,
     })
 end
