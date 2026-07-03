@@ -24,7 +24,14 @@ local KIND_TEXT = {
     combat = "A hostile blocks the trail. Stand and fight.",
     elite = "A fearsome foe lurks here. Great risk, great reward.",
     town = "A safe waystation. Rest and resupply.",
+    treasure = "An unguarded cache sits here. Claim what's inside.",
     objective = "Your quarry awaits. Defeat it to complete the quest.",
+}
+
+-- Verb shown on the resolve button for non-combat encounters.
+local RESOLVE_LABEL = {
+    town = "Enter",
+    treasure = "Open",
 }
 
 function Encounter.new(opts)
@@ -48,7 +55,7 @@ function Encounter.new(opts)
         h = 42,
         hovered = false,
     }
-    self.resolveLabel = self.encounter.kind == "town" and "Enter" or "Fight"
+    self.resolveLabel = RESOLVE_LABEL[self.encounter.kind] or "Fight"
     return self
 end
 

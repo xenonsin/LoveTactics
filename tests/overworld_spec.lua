@@ -164,6 +164,31 @@ return {
         end,
     },
     {
+        name = "a fill buffer frames the map without shrinking the play area",
+        fn = function()
+            -- The grid is inflated by 2*margin so the trail region keeps the
+            -- requested cols/rows; the margin is pure padding around it.
+            local C, R = 31, 21
+            local grid = Overworld.generate({
+                cols = C, rows = R, seed = 42, biome = "forest", keyCount = 1,
+            })
+            local m = grid.margin
+            assert(m and m > 0, "expected a positive margin")
+            assert(grid.cols == C + 2 * m, "grid width should be play cols + 2*margin")
+            assert(grid.rows == R + 2 * m, "grid height should be play rows + 2*margin")
+
+            -- No walkable tile (path/bridge) may land in the buffer ring.
+            for y = 1, grid.rows do
+                for x = 1, grid.cols do
+                    if x <= m or x > grid.cols - m or y <= m or y > grid.rows - m then
+                        assert(not typeWalkable(grid:get(x, y).tile),
+                            "walkable tile in buffer ring at " .. x .. "," .. y)
+                    end
+                end
+            end
+        end,
+    },
+    {
         name = "same seed reproduces an identical map",
         fn = function()
             local a = gen({ seed = 777 })
@@ -267,6 +292,43 @@ return {
             -- objective is placed separately, then up to `encounterCount` more.
             assert(nonObjective <= 5, "too many encounters: " .. nonObjective)
             assert(grid:startCell().encounter == nil, "encounter placed on start tile")
+        end,
+    },
+    {
+        name = "encounters are biased onto dead-end tiles",
+        fn = function()
+            -- A degree-1 walkable tile (excluding the objective) is a dead-end.
+            -- Aggregate over seeds: encounters should land on dead-ends far more
+            -- often than a uniform sprinkle would (the dead-end share of tiles).
+            local encOnDead, encTotal, deadCands, allCands = 0, 0, 0, 0
+            for seed = 1, 25 do
+                local grid = Overworld.generate({
+                    cols = 41, rows = 29, seed = seed, biome = "forest",
+                    encounterCount = { min = 6, max = 9 }, keyCount = 1,
+                    encounters = { { kind = "combat", weight = 1 } },
+                    objective = { name = "Boss" },
+                })
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local c = grid:get(x, y)
+                        if typeWalkable(c.tile)
+                            and (c.encounter == nil or c.encounter.kind ~= "objective") then
+                            local isDead = #grid:pathNeighbors(x, y) == 1
+                            allCands = allCands + 1
+                            if isDead then deadCands = deadCands + 1 end
+                            if c.encounter then
+                                encTotal = encTotal + 1
+                                if isDead then encOnDead = encOnDead + 1 end
+                            end
+                        end
+                    end
+                end
+            end
+            local baseline = deadCands / allCands       -- uniform dead-end share
+            local hitRate = encOnDead / encTotal        -- of encounters, share on dead-ends
+            assert(hitRate > baseline * 1.5,
+                "encounters not biased to dead-ends: hitRate=" .. hitRate
+                .. " baseline=" .. baseline)
         end,
     },
     {

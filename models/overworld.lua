@@ -56,14 +56,21 @@ end
 function Overworld.generate(params)
     params = params or {}
     local self = setmetatable({}, Overworld)
-    self.cols = params.cols or 41
-    self.rows = params.rows or 29
     self.size = params.tileSize or 32 -- logical pixels per cell (for cell<->pixel)
     -- The biome (forest is loose, castle is tight) drives maze spacing and river
     -- count; explicit params still win. Corridors stay 1 tile wide while the
     -- walls between them are (spacing - 1) tiles thick.
     self.biome = params.biome
     local biomeDef = Biome.get(params.biome)
+    -- A ring of `margin` fill tiles frames the whole map so trails never hug the
+    -- edge. It is padding *around* the requested play area (the quest's cols/rows),
+    -- not carved out of it: we inflate the grid by 2*margin and offset the node
+    -- lattice inward by the same amount, so the trail network keeps its full size.
+    self.margin = params.margin or biomeDef.margin or 3
+    local playCols = params.cols or 41
+    local playRows = params.rows or 29
+    self.cols = playCols + 2 * self.margin
+    self.rows = playRows + 2 * self.margin
     self.tilesetId = biomeDef.tileset      -- which data/tilesets/<id> draws this map
     self.tilesetDef = Tileset.get(self.tilesetId) -- merged types + this biome's art
     self.spacing = params.spacing or biomeDef.spacing or 4
@@ -97,9 +104,15 @@ function Overworld:inBounds(x, y)
     return x >= 1 and y >= 1 and x <= self.cols and y <= self.rows
 end
 
+-- Maze nodes sit on a lattice inset from the map edge by `margin` and spaced
+-- `spacing` apart, so no corridor endpoint (and thus no path) ever lands in the
+-- buffer ring.
 local function isNode(self, x, y)
-    return self:inBounds(x, y)
-        and (x - 1) % self.spacing == 0 and (y - 1) % self.spacing == 0
+    local m = self.margin
+    return x >= 1 + m and y >= 1 + m
+        and x <= self.cols - m and y <= self.rows - m
+        and (x - (1 + m)) % self.spacing == 0
+        and (y - (1 + m)) % self.spacing == 0
 end
 
 -- Carve a 1-tile-wide corridor between two nodes `spacing` apart. Only the line
@@ -121,7 +134,7 @@ function Overworld:carveMaze()
     local S = self.spacing
     local dirs = { { S, 0 }, { -S, 0 }, { 0, S }, { 0, -S } }
     local visited = {}
-    local sx, sy = 1, 1
+    local sx, sy = 1 + self.margin, 1 + self.margin
     self.cells[sy][sx].tile = "path"
     visited[cellKey(self.cells[sy][sx])] = true
 
@@ -154,8 +167,8 @@ end
 function Overworld:braid(prob)
     local S = self.spacing
     local dirs = { { S, 0 }, { -S, 0 }, { 0, S }, { 0, -S } }
-    for y = 1, self.rows, S do
-        for x = 1, self.cols, S do
+    for y = 1 + self.margin, self.rows - self.margin, S do
+        for x = 1 + self.margin, self.cols - self.margin, S do
             local c = self.cells[y] and self.cells[y][x]
             if c and c.tile == "path" then
                 local open, walls = 0, {}
@@ -413,6 +426,21 @@ function Overworld:placeEncounters(params)
         local j = self.rng:random(i)
         cands[i], cands[j] = cands[j], cands[i]
     end
+
+    -- Bias toward dead-ends: a corridor that terminates in nothing feels like a
+    -- wasted trip, so encounters prefer degree-1 tiles. Stable-partition the
+    -- shuffled candidates (dead-ends first, order otherwise preserved) so the
+    -- picks below fill dead-ends first while still honouring the spacing rule.
+    local deadEnds, rest = {}, {}
+    for _, c in ipairs(cands) do
+        if #self:pathNeighbors(c.x, c.y) == 1 then
+            deadEnds[#deadEnds + 1] = c
+        else
+            rest[#rest + 1] = c
+        end
+    end
+    cands = deadEnds
+    for _, c in ipairs(rest) do cands[#cands + 1] = c end
 
     local placed = {}
     local next_ = 1

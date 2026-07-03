@@ -1,8 +1,8 @@
 -- Scrolling overworld renderer + input, driven by a models/overworld.lua grid.
--- Like ui/building_map.lua it supports mouse + keyboard + gamepad; here the input
--- moves a player token one tile at a time along the trail network, and the camera
--- follows. Stepping onto an encounter tile fires opts.onEncounter(cell); keys are
--- picked up automatically and unlock their matching gate.
+-- Like ui/building_map.lua it supports mouse + keyboard + gamepad; the input moves
+-- a player token along the trail network (hold a direction to keep walking; single
+-- taps move one tile) and the camera follows. Stepping onto an encounter tile fires
+-- opts.onEncounter(cell); keys are picked up automatically and unlock their gate.
 --
 -- Tiles are drawn from a tileset spritesheet (quads + SpriteBatch). If the art is
 -- missing (Sprite.load returned a path string), it falls back to colored rects per
@@ -22,6 +22,12 @@ OverworldMap.__index = OverworldMap
 
 local DEFAULTS = { axisThreshold = 0.5 }
 
+-- Hold-to-move: after the first step, wait `MOVE_INITIAL` before auto-repeating,
+-- then step every `MOVE_REPEAT` seconds while the direction stays held. The pause
+-- keeps single taps to one tile; the fast repeat makes long trails quick to walk.
+local MOVE_INITIAL = 0.28
+local MOVE_REPEAT = 0.08
+
 function OverworldMap.new(grid, opts)
     opts = opts or {}
     local self = setmetatable({}, OverworldMap)
@@ -29,7 +35,8 @@ function OverworldMap.new(grid, opts)
     self.onEncounter = opts.onEncounter
     self.font = opts.font or love.graphics.newFont(16)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
-    self.axisActive = false
+    self.heldDir = nil   -- { dx, dy } of the direction currently held (any input)
+    self.moveTimer = 0   -- seconds until the next auto-repeat step
 
     -- Fog-of-war vision radius (tiles seen around the player). Defaults to 2; the
     -- game state passes the party's effective radius (raised by a torch, etc.).
@@ -101,17 +108,20 @@ end
 -- Movement
 -- ---------------------------------------------------------------------------
 
+-- Move one tile if the target is walkable. Returns true when the step landed and
+-- movement may continue, false when blocked (wall/gate) or when arriving opened an
+-- encounter panel -- so a held direction stops instead of walking through it.
 function OverworldMap:step(dx, dy)
     local nx, ny = self.px + dx, self.py + dy
-    if self.grid:isWalkable(nx, ny, self.keysHeld) then
-        self.px, self.py = nx, ny
-        self.grid:reveal(self.px, self.py, self.visionRadius) -- lift the fog around the new tile
-        self:updateCamera()
-        self:arrive()
-    end
+    if not self.grid:isWalkable(nx, ny, self.keysHeld) then return false end
+    self.px, self.py = nx, ny
+    self.grid:reveal(self.px, self.py, self.visionRadius) -- lift the fog around the new tile
+    self:updateCamera()
+    return not self:arrive()
 end
 
--- React to landing on a tile: pick up keys, trigger encounters.
+-- React to landing on a tile: pick up keys, trigger encounters. Returns true when
+-- it opened an encounter panel, so the caller can halt any in-progress hold-to-move.
 function OverworldMap:arrive()
     local c = self.grid:get(self.px, self.py)
     if c.key and not self.keysHeld[c.key.keyId] then
@@ -120,35 +130,67 @@ function OverworldMap:arrive()
     end
     if c.encounter and not c.cleared and self.onEncounter then
         self.onEncounter(c)
+        return true
     end
+    return false
 end
 
 -- ---------------------------------------------------------------------------
 -- Update / draw
 -- ---------------------------------------------------------------------------
 
-function OverworldMap:update(dt)
-    -- Left analog stick steps the player, edge-detected so a held stick moves one
-    -- tile per push.
-    local dx, dy = 0, 0
-    for _, joystick in ipairs(love.joystick.getJoysticks()) do
-        if joystick:isGamepad() then
-            local ax = joystick:getGamepadAxis("leftx")
-            local ay = joystick:getGamepadAxis("lefty")
-            if ax <= -self.axisThreshold then dx = -1
-            elseif ax >= self.axisThreshold then dx = 1 end
-            if ay <= -self.axisThreshold then dy = -1
-            elseif ay >= self.axisThreshold then dy = 1 end
+-- The single-axis direction currently held on any input source -- keyboard,
+-- gamepad d-pad, or the left analog stick -- resolved to one axis (no diagonals on
+-- the 4-neighbour grid; horizontal wins). Returns 0, 0 when nothing is held.
+function OverworldMap:heldDirection()
+    if love.keyboard and love.keyboard.isDown then
+        if love.keyboard.isDown("left", "a") then return -1, 0
+        elseif love.keyboard.isDown("right", "d") then return 1, 0
+        elseif love.keyboard.isDown("up", "w") then return 0, -1
+        elseif love.keyboard.isDown("down", "s") then return 0, 1 end
+    end
+    if love.joystick then
+        for _, joy in ipairs(love.joystick.getJoysticks()) do
+            if joy:isGamepad() then
+                if joy:isGamepadDown("dpleft") then return -1, 0
+                elseif joy:isGamepadDown("dpright") then return 1, 0
+                elseif joy:isGamepadDown("dpup") then return 0, -1
+                elseif joy:isGamepadDown("dpdown") then return 0, 1 end
+                local ax, ay = joy:getGamepadAxis("leftx"), joy:getGamepadAxis("lefty")
+                if ax <= -self.axisThreshold then return -1, 0
+                elseif ax >= self.axisThreshold then return 1, 0
+                elseif ay <= -self.axisThreshold then return 0, -1
+                elseif ay >= self.axisThreshold then return 0, 1 end
+            end
         end
     end
-    if dx ~= 0 or dy ~= 0 then
-        if not self.axisActive then
-            -- Prefer a single-axis step (no diagonal moves on a 4-neighbour grid).
-            if dx ~= 0 then self:step(dx, 0) else self:step(0, dy) end
-        end
-        self.axisActive = true
+    return 0, 0
+end
+
+-- Hold a direction (keyboard, d-pad, or stick) to keep moving: the first frame it
+-- is held steps immediately, then it auto-repeats after MOVE_INITIAL, MOVE_REPEAT
+-- apart. Changing direction re-arms the pause so a quick tap is a single tile.
+function OverworldMap:update(dt)
+    local dx, dy = self:heldDirection()
+    if dx == 0 and dy == 0 then
+        self.heldDir = nil
+        return
+    end
+    if not self.heldDir or self.heldDir[1] ~= dx or self.heldDir[2] ~= dy then
+        self.heldDir = { dx, dy }
+        self.moveTimer = MOVE_INITIAL
+        self:step(dx, dy)
     else
-        self.axisActive = false
+        self.moveTimer = self.moveTimer - dt
+        while self.moveTimer <= 0 do
+            self.moveTimer = self.moveTimer + MOVE_REPEAT
+            if not self:step(dx, dy) then
+                -- Blocked by a wall or an encounter just opened: end the burst and
+                -- wait the full initial delay before trying to move again.
+                self.moveTimer = MOVE_INITIAL
+                break
+            end
+        end
     end
 end
 
@@ -156,6 +198,7 @@ local function markerColor(kind)
     if kind == "objective" then return 0.95, 0.75, 0.20 end
     if kind == "elite" then return 0.95, 0.55, 0.15 end
     if kind == "town" then return 0.85, 0.85, 0.90 end
+    if kind == "treasure" then return 0.35, 0.80, 0.55 end
     return 0.85, 0.25, 0.25 -- combat
 end
 
@@ -261,19 +304,12 @@ end
 -- Input
 -- ---------------------------------------------------------------------------
 
-function OverworldMap:keypressed(key)
-    if key == "left" or key == "a" then self:step(-1, 0)
-    elseif key == "right" or key == "d" then self:step(1, 0)
-    elseif key == "up" or key == "w" then self:step(0, -1)
-    elseif key == "down" or key == "s" then self:step(0, 1) end
-end
+-- Movement for the keyboard, gamepad d-pad, and analog stick is all polled in
+-- :update (hold-to-move), so the discrete press events are intentionally no-ops
+-- here; stepping again would double-move and fight the auto-repeat.
+function OverworldMap:keypressed(_) end
 
-function OverworldMap:gamepadpressed(_, button)
-    if button == "dpleft" then self:step(-1, 0)
-    elseif button == "dpright" then self:step(1, 0)
-    elseif button == "dpup" then self:step(0, -1)
-    elseif button == "dpdown" then self:step(0, 1) end
-end
+function OverworldMap:gamepadpressed(_, _) end
 
 -- Mouse-only movement: click an orthogonally adjacent walkable tile to step onto
 -- it (keeps the whole overworld playable with the mouse alone).
