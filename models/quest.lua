@@ -22,6 +22,7 @@ function Quest.available(prestige)
                 difficulty = def.difficulty,
                 rewardGold = def.rewardGold,
                 requiredPrestige = def.requiredPrestige or 1,
+                map = def.map, -- overworld generation params; see models/overworld.lua
             }
         end
     end

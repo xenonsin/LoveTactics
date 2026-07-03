@@ -1,5 +1,6 @@
 local State = require("states")
 local Menu = require("ui.menu")
+local Scale = require("scale")
 
 local menu = {}
 
@@ -25,9 +26,12 @@ function menu.update(dt)
 end
 
 function menu.draw()
-    local screenW = love.graphics.getWidth()
+    local screenW = Scale.WIDTH
 
-    love.graphics.setBackgroundColor(0.10, 0.11, 0.15)
+    -- Fill the logical area explicitly: letterbox bars are cleared to black, so
+    -- setBackgroundColor (which paints the whole real window) can't be used here.
+    love.graphics.setColor(0.10, 0.11, 0.15)
+    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
     love.graphics.setFont(titleFont)
     love.graphics.setColor(0.95, 0.85, 0.55)

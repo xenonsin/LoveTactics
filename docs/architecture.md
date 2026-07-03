@@ -5,7 +5,8 @@ the source directly. Code is organized into layers, loaded via `require()`.
 
 ```
 main.lua              entry point; forwards LÖVE callbacks; headless test entry
-conf.lua              window config (800x600); disables the window in test mode
+conf.lua              window config (1280x720, resizable); disables window in test mode
+scale.lua             virtual-resolution letterbox scaling (1280x720 logical space)
 states/               screens (menu, hub, game) + the state manager (init.lua)
 ui/                   reusable input widgets (menu, building_map) ...
 ui/panels/            ... and modal pop-up panels (quest_board, placeholder)
@@ -29,8 +30,10 @@ end
 A **state is just a table** that may define any LÖVE callback (`enter`, `update`, `draw`,
 `keypressed`, `keyreleased`, `mousepressed`, `mousereleased`, `mousemoved`, `wheelmoved`,
 `textinput`, `gamepadpressed`, `gamepadreleased`, `gamepadaxis`). `main.lua` declares each
-`love.<callback>` once and forwards it to `State.current` if that state defines it. States are
-loaded on demand — there is no pre-registration:
+`love.<callback>` once and forwards it to `State.current` if that state defines it. Two kinds of
+wrapping happen there: `draw` is bracketed by `scale.lua`'s letterbox transform, and the mouse
+callbacks have their coordinates converted from real-window to logical space (`Scale.toGame`) so
+states always work in the 1280x720 design space. States are loaded on demand — no pre-registration:
 
 ```lua
 State.switch(require("states.hub"))

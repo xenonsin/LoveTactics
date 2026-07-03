@@ -12,7 +12,36 @@ return {
             local p = Player.new()
             assert(p.gold == 0, "gold should be 0")
             assert(p.prestige == 1, "prestige should be 1")
-            assert(#p.party == 1, "party should have 1 member")
+            assert(#p.roster == 3, "roster should have 3 members")
+            assert(#p.party == 3, "party should have 3 members")
+        end,
+    },
+    {
+        name = "party members reference the same roster instances",
+        fn = function()
+            local p = Player.new()
+            assert(p.party[1] == p.roster[1], "party[1] should be the roster[1] instance")
+        end,
+    },
+    {
+        name = "party is capped at Player.MAX_PARTY",
+        fn = function()
+            local p = Player.new()
+            assert(#p.party == Player.MAX_PARTY, "party should start full at the cap")
+            local extra = Character.instantiate("knight")
+            assert(Player.addToParty(p, extra) == false, "adding past the cap must be rejected")
+            assert(#p.party == Player.MAX_PARTY, "party must not grow past the cap")
+        end,
+    },
+    {
+        name = "removeFromParty frees a slot without touching the roster",
+        fn = function()
+            local p = Player.new()
+            local member = p.party[1]
+            assert(Player.removeFromParty(p, member), "member should be removed")
+            assert(#p.party == Player.MAX_PARTY - 1, "party should have one fewer member")
+            assert(#p.roster == 3, "roster is unchanged by party removal")
+            assert(Player.addToParty(p, member), "a freed slot accepts a new member")
         end,
     },
     {

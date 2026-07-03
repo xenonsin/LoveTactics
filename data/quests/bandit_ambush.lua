@@ -6,4 +6,12 @@ return {
     difficulty = "Easy",
     rewardGold = 50,
     requiredPrestige = 1,
+    -- Overworld map generated when the quest starts (see models/overworld.lua).
+    map = {
+        biome = "forest",
+        cols = 31, rows = 21,
+        encounters = { min = 4, max = 6 }, -- rivers come from the biome
+        objective = { name = "Bandit Chief" },
+        keyCount = 0,
+    },
 }

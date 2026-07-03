@@ -40,6 +40,11 @@ The codebase is organized into layers loaded via `require()`. See
 
 - **`main.lua`** — entry point. Forwards every LÖVE callback to the current state and
   handles the headless test entry (`. test`).
+- **`scale.lua`** — virtual-resolution scaling. The whole game is authored in a fixed
+  **1280×720 logical space** and letterbox-scaled to the real (resizable) window; `main.lua`
+  wraps `draw` in the transform and converts mouse coords back to logical space. Draw and
+  position everything in 1280×720 coordinates — use `Scale.WIDTH`/`Scale.HEIGHT`, not
+  `love.graphics.getWidth/Height`. F11 toggles fullscreen.
 - **`states/`** — screens as plain tables with optional LÖVE callbacks (`enter`, `update`,
   `draw`, `keypressed`, `mousepressed`, `gamepadpressed`, …). `states/init.lua` is the
   minimal manager: `State.switch(state, ...)` sets the current state and calls its `enter`.
@@ -58,7 +63,7 @@ The codebase is organized into layers loaded via `require()`. See
 ### Hub city & pop-up panels
 
 `states/hub.lua` is the town screen. Buildings are data-defined clickable hotspots
-(`data/buildings/*.lua`, positioned in the 800×600 window space) rendered by the
+(`data/buildings/*.lua`, positioned in the 1280×720 logical space) rendered by the
 `ui/building_map.lua` widget. Clicking a building opens a **modal pop-up panel** — an
 overlay owned by the hub state (not a separate state), so the city stays visible behind it.
 The hub tracks `activePanel` and routes input to it while open. Each building names a panel

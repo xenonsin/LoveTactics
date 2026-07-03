@@ -18,6 +18,8 @@
 --   menu:keypressed(key)
 --   menu:gamepadpressed(joystick, button)
 
+local Scale = require("scale")
+
 local Menu = {}
 Menu.__index = Menu
 
@@ -48,8 +50,8 @@ end
 
 -- Recompute button rectangles, centered horizontally.
 function Menu:layout()
-    local screenW = love.graphics.getWidth()
-    local screenH = love.graphics.getHeight()
+    local screenW = Scale.WIDTH
+    local screenH = Scale.HEIGHT
     local count = #self.items
     local totalH = count * self.buttonHeight + (count - 1) * self.spacing
     local startY = self.startY or (screenH / 2 - totalH / 2)

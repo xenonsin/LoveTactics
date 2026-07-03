@@ -1,5 +1,8 @@
 return {
     gold = 0,
     prestige = 1,
-    startingParty = { "knight" }, -- character ids
+    -- Every character the player owns (unlimited size).
+    startingRoster = { "knight", "mage", "archer" }, -- character ids
+    -- The active party: a subset of the roster, capped at Player.MAX_PARTY.
+    startingParty = { "knight", "mage", "archer" }, -- character ids
 }

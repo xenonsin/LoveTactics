@@ -9,11 +9,12 @@ local State = require("states")
 local Menu = require("ui.menu")
 local Quest = require("models.quest")
 local CloseButton = require("ui.close_button")
+local Scale = require("scale")
 
 local QuestBoard = {}
 QuestBoard.__index = QuestBoard
 
--- Panel box geometry, centered in the 800x600 window.
+-- Panel box geometry, centered in the 1280x720 logical space.
 local BOX_W, BOX_H = 640, 400
 
 function QuestBoard.new(opts)
@@ -24,20 +25,21 @@ function QuestBoard.new(opts)
     self.headFont = love.graphics.newFont(20)
     self.bodyFont = love.graphics.newFont(16)
 
-    local screenW = love.graphics.getWidth()
-    local screenH = love.graphics.getHeight()
-    self.boxX = screenW / 2 - BOX_W / 2
-    self.boxY = screenH / 2 - BOX_H / 2
+    self.boxX = Scale.WIDTH / 2 - BOX_W / 2
+    self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
 
-    self.quests = Quest.available(opts.prestige or 1)
+    self.prestige = opts.prestige or 1
+    self.quests = Quest.available(self.prestige)
 
-    -- Build the quest list. Selecting a quest starts it (placeholder game state).
+    -- Build the quest list. Selecting a quest starts it: the game state generates
+    -- the overworld map from the quest's `map` params, using the player's prestige
+    -- to pick dynamic encounters (see states/game.lua, models/encounter.lua).
     local items = {}
     for _, quest in ipairs(self.quests) do
         items[#items + 1] = {
             label = quest.name,
             action = function()
-                State.switch(require("states.game"))
+                State.switch(require("states.game"), quest, self.prestige)
             end,
         }
     end
@@ -66,12 +68,9 @@ function QuestBoard:update(dt)
 end
 
 function QuestBoard:draw()
-    local screenW = love.graphics.getWidth()
-    local screenH = love.graphics.getHeight()
-
     -- Dim the city behind the panel.
     love.graphics.setColor(0, 0, 0, 0.6)
-    love.graphics.rectangle("fill", 0, 0, screenW, screenH)
+    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
     -- Panel frame.
     love.graphics.setColor(0.12, 0.13, 0.18)

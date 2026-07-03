@@ -1,7 +1,14 @@
 function love.conf(t)
     t.window.title = "LoveTactics"
-    t.window.width = 800
-    t.window.height = 600
+    -- Real window size. The game is authored in a fixed 1280x720 logical space
+    -- (see scale.lua) and letterbox-scaled to whatever size the window is, so
+    -- this is just the initial size -- the window is freely resizable and scales
+    -- cleanly up to 1920x1080 and beyond. 1280x720 is a 1:1 start (no scaling).
+    t.window.width = 1280
+    t.window.height = 720
+    t.window.resizable = true
+    t.window.minwidth = 640
+    t.window.minheight = 360
 
     -- Run headless (no window) when launched for the test suite: `lovec . test`
     if arg and arg[#arg] == "test" then

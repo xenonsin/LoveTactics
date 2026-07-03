@@ -9,6 +9,7 @@
 --   panel:gamepadpressed(joystick, button)
 
 local CloseButton = require("ui.close_button")
+local Scale = require("scale")
 
 local Placeholder = {}
 Placeholder.__index = Placeholder
@@ -23,10 +24,8 @@ function Placeholder.new(opts)
     self.titleFont = love.graphics.newFont(32)
     self.bodyFont = love.graphics.newFont(18)
 
-    local screenW = love.graphics.getWidth()
-    local screenH = love.graphics.getHeight()
-    self.boxX = screenW / 2 - BOX_W / 2
-    self.boxY = screenH / 2 - BOX_H / 2
+    self.boxX = Scale.WIDTH / 2 - BOX_W / 2
+    self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
     return self
 end
@@ -38,12 +37,9 @@ end
 function Placeholder:update(dt) end
 
 function Placeholder:draw()
-    local screenW = love.graphics.getWidth()
-    local screenH = love.graphics.getHeight()
-
     -- Dim the city behind the panel.
     love.graphics.setColor(0, 0, 0, 0.6)
-    love.graphics.rectangle("fill", 0, 0, screenW, screenH)
+    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
     love.graphics.setColor(0.12, 0.13, 0.18)
     love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)

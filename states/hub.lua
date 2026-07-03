@@ -9,6 +9,7 @@ local Player = require("models.player")
 local Building = require("models.building")
 local Sprite = require("models.sprite")
 local BuildingMap = require("ui.building_map")
+local Scale = require("scale")
 
 local hub = {}
 
@@ -51,16 +52,18 @@ function hub.update(dt)
 end
 
 function hub.draw()
-    local screenW = love.graphics.getWidth()
-    local screenH = love.graphics.getHeight()
+    local screenW = Scale.WIDTH
+    local screenH = Scale.HEIGHT
 
-    -- Background: draw the image if it loaded, else a solid fallback.
+    -- Background: draw the image scaled to the logical area if it loaded, else a
+    -- solid fallback rect (bars are cleared to black, so no setBackgroundColor).
     if type(background) == "userdata" then
         love.graphics.setColor(1, 1, 1)
         love.graphics.draw(background, 0, 0,
             0, screenW / background:getWidth(), screenH / background:getHeight())
     else
-        love.graphics.setBackgroundColor(0.09, 0.08, 0.11)
+        love.graphics.setColor(0.09, 0.08, 0.11)
+        love.graphics.rectangle("fill", 0, 0, screenW, screenH)
     end
 
     love.graphics.setFont(titleFont)

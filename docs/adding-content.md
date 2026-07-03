@@ -29,15 +29,16 @@ Create `data/buildings/<id>.lua`:
 return {
     name = "Guild Hall",
     order = 5,             -- sort + keyboard/gamepad nav order
-    x = 620, y = 200, w = 150, h = 100,  -- clickable hotspot in the 800x600 window
+    x = 980, y = 200, w = 200, h = 130,  -- clickable hotspot in the 1280x720 logical space
     panel = nil,           -- module name under ui/panels/, or nil for the placeholder
     unlockPrestige = 3,    -- locked (dimmed, non-clickable) until prestige >= 3
 }
 ```
 
 This is how **the city grows over time**: give new buildings a higher `unlockPrestige` and they
-appear locked, then unlock as the player earns prestige. Positions are in raw 800×600 window
-coordinates (see `conf.lua`); place them over the corresponding spot on `assets/hub/city.png`.
+appear locked, then unlock as the player earns prestige. Positions are in the 1280×720 logical
+coordinate space (see `scale.lua`), which is letterbox-scaled to the real window; place them
+over the corresponding spot on `assets/hub/city.png`.
 
 ## Add a pop-up panel for a building
 
