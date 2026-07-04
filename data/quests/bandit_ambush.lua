@@ -11,7 +11,17 @@ return {
         biome = "forest",
         cols = 31, rows = 21,
         encounters = { min = 4, max = 6 }, -- rivers come from the biome
-        objective = { name = "Bandit Chief" },
+        -- The objective encounter's battle: its enemy roster (composition) and win
+        -- condition (win). `win.type` defaults to "killAll" if omitted.
+        objective = {
+            name = "Bandit Chief",
+            composition = function(ctx)
+                local list = { "bandit_chief" }
+                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "bandit" end
+                return list
+            end,
+            win = { type = "assassinate", target = "bandit_chief" },
+        },
         keyCount = 0,
     },
 }

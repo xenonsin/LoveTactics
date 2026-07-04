@@ -32,6 +32,7 @@ end
 function game.enter(self, quest, prestige, player)
     game.quest = quest
     game.prestige = prestige or 1
+    game.player = player -- kept so combat encounters can deploy the active party
     local mp = quest and quest.map or {}
 
     -- Dynamic encounter selection: build the eligible weighted pool for this
@@ -66,16 +67,41 @@ function game.enter(self, quest, prestige, player)
     })
 end
 
+-- Engaging an encounter. Combat kinds (combat / elite / objective) drop into the
+-- battle arena; the non-combat kinds (town / treasure) keep the simple modal.
 function game:openEncounter(cell)
+    local kind = cell.encounter.kind
+    if kind == "combat" or kind == "elite" or kind == "objective" then
+        local mp = game.quest and game.quest.map or {}
+        State.switch(require("states.battle"), {
+            encounter = cell.encounter,
+            biome = mp.biome,
+            quest = game.quest,
+            prestige = game.prestige,
+            party = game.player and game.player.party or {},
+            -- Victory resumes THIS overworld (no regenerate); the objective completes
+            -- the quest instead. See the file header on why enter is skipped here.
+            onWin = function()
+                cell.cleared = true
+                game.activePanel = nil
+                if kind == "objective" then
+                    game.complete = true
+                    State.switch(require("states.hub"))
+                else
+                    State.current = game
+                end
+            end,
+            -- A total party wipe (or forfeit) fails the quest: back to the hub.
+            onLoss = function() State.switch(require("states.hub")) end,
+        })
+        return
+    end
+
     game.activePanel = EncounterPanel.new({
         encounter = cell.encounter,
         onResolve = function()
             cell.cleared = true
             game.activePanel = nil
-            if cell.encounter.kind == "objective" then
-                game.complete = true
-                State.switch(require("states.hub"))
-            end
         end,
         onClose = function() game.activePanel = nil end,
     })

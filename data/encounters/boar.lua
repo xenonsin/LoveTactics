@@ -7,4 +7,12 @@ return {
     kind = "combat",
     weight = 3,
     minPrestige = 1,
+    -- Enemy roster for the battle arena, scaled by prestige. Returns a flat list of
+    -- data/characters ids (models/arena.lua binds them onto enemy spawn tiles).
+    composition = function(ctx)
+        local n = 2 + math.floor((ctx.prestige or 1) / 2)
+        local list = {}
+        for i = 1, n do list[i] = "boar" end
+        return list
+    end,
 }

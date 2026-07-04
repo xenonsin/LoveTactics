@@ -41,8 +41,9 @@ State.switch(require("states.hub"))
 
 There is no built-in `leave` hook; do any teardown before calling `State.switch`.
 
-Screen flow: **menu → hub → (Quest Board → game)**. `states/game.lua` is currently a
-placeholder that a started quest transitions into.
+Screen flow: **menu → hub → (Quest Board → game → battle)**. `states/game.lua` is the
+overworld a started quest transitions into; engaging a combat encounter there switches to
+`states/battle.lua` (see *Combat: battle arenas* below).
 
 ## Three-input UI (project standard)
 
@@ -96,6 +97,42 @@ before drawing.
 runner loads these modules with no window; touching graphics at load time would break it.
 (Widgets and states may use `love.graphics` freely — they are only required when switched to,
 which never happens in test mode.)
+
+## Combat: battle arenas
+
+Engaging a combat encounter on the overworld (`states/game.lua` → `game:openEncounter`, for
+the `combat` / `elite` / `objective` kinds) drops into an **8×8 battle arena**; the non-combat
+kinds (`town` / `treasure`) keep the simple `ui/panels/encounter.lua` modal. The arena follows
+the same three-layer split as the overworld:
+
+- **`models/arena.lua`** — pure logic (only `love.math`, headless-safe). An arena is built from
+  a *layout* (tile types + party/enemy spawn positions). Procedural generation and every curated
+  file in `data/arenas/` tagged for the biome share one random pool, so a curated map and a fresh
+  procedural map are both live outcomes each battle (`Arena.pickLayout`).
+  `Arena.build(ctx, spec)` resolves the enemy roster from the encounter's
+  `composition(ctx)`, binds party + enemy ids onto the layout's spawns, and returns
+  `{ cols, rows, tiles[y][x]={type,moveCost,walkable}, party, enemies, objective, … }`.
+  `Arena.TILE_PROPS` is the (intentionally small, extensible) tile palette — `ground`, `rough`
+  (move penalty), `obstacle` (blocked). `Arena.serialize`/`Arena.save` write an arena back out
+  as a curated `data/arenas/<id>.lua` for hand-editing (dev-only; see below).
+- **`ui/battle_map.lua`** — renderer + three-input widget. Draws the grid flavoured by the
+  quest's biome tileset (each arena tile type maps to an overworld tileset type for art, with a
+  colored-rect fallback), overlays party/enemy tokens, and tracks a cursor.
+- **`states/battle.lua`** — wires them together and owns the transitions. Victory resumes the
+  *same* overworld (the tile is marked cleared; the objective completes the quest to the hub);
+  a total party wipe or forfeit fails the quest back to the hub. These are supplied as
+  `onWin`/`onLoss` closures from `game:openEncounter`, so `states/game.lua` owns the flow.
+
+**Enemy composition** is authored per encounter as `composition = function(ctx)` (mirroring the
+existing dynamic `weight`), returning a list of `data/characters/` ids that **scales with
+`ctx.prestige`** — more foes, tougher rosters at higher renown. Enemies reuse the party-character
+schema (`Character.instantiate`). The objective tile reads its roster + win condition from the
+quest's `map.objective` (`composition` + `win = { type, target }`).
+
+> **Deferred:** the turn-based mechanics (turn order, movement/attack resolution, real objective
+> evaluation, AI, rewards) are a later task. For now `states/battle.lua` exposes DEBUG keys —
+> `K` win, `L` lose, `F5` save arena — standing in for the win/lose evaluation the turn system
+> will provide. The `onWin`/`onLoss` seam means that lands without changing the transitions.
 
 ## Tests
 

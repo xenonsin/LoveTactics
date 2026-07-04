@@ -6,4 +6,10 @@ return {
     weight = 2,
     minPrestige = 1,
     condition = function(ctx) return ctx.biome ~= "castle" end,
+    -- A lone beast, joined by a second at high prestige.
+    composition = function(ctx)
+        local list = { "stag_beast" }
+        if (ctx.prestige or 1) >= 4 then list[#list + 1] = "stag_beast" end
+        return list
+    end,
 }
