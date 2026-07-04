@@ -93,6 +93,7 @@ function Overworld.generate(params)
     local riverSpec = params.riverCount
     if riverSpec == nil then riverSpec = biomeDef.rivers end
     self:placeRivers(resolveCount(riverSpec, self.rng))
+    self:thinBridges() -- guarantee every bridge is exactly one tile
     self:decorate()
     self:placeObjectiveAndGates(params)
     self:placeEncounters(params)
@@ -113,6 +114,19 @@ local function isNode(self, x, y)
         and x <= self.cols - m and y <= self.rows - m
         and (x - (1 + m)) % self.spacing == 0
         and (y - (1 + m)) % self.spacing == 0
+end
+
+-- Per-axis form of `isNode`: is this column / row one of the trail lattice lines?
+-- Rivers use these to stay in the forest bands *between* corridors so they never
+-- run alongside a road (which would fuse a long multi-tile bridge).
+function Overworld:isNodeCol(x)
+    local m = self.margin
+    return x >= 1 + m and x <= self.cols - m and (x - (1 + m)) % self.spacing == 0
+end
+
+function Overworld:isNodeRow(y)
+    local m = self.margin
+    return y >= 1 + m and y <= self.rows - m and (y - (1 + m)) % self.spacing == 0
 end
 
 -- Carve a 1-tile-wide corridor between two nodes `spacing` apart. Only the line
@@ -193,39 +207,78 @@ function Overworld:braid(prob)
     end
 end
 
--- One continuous river laid across the whole map (edge to edge), gently
--- meandering. Each vertical/horizontal step also marks the corner tile so the
--- water stays orthogonally connected (no diagonal gaps). A river tile over a
--- path becomes a walkable bridge so trail connectivity is preserved; over
--- anything else it blocks.
+-- Pick a river's constant coordinate (row for a horizontal river, col for a
+-- vertical one) inside a *forest band* — never on a trail lattice line — so the
+-- river runs between corridors and only ever crosses them head-on. `size` is the
+-- axis length (rows/cols); `lineOnGrid` tests whether a coordinate is a node line.
+function Overworld:bandCoord(size, lineOnGrid)
+    local m = self.margin
+    if self.spacing > 1 then
+        local span = size - 2 * m                 -- play length along this axis
+        local nodes = math.max(0, math.floor((span - 1) / self.spacing)) -- node cells - 1
+        local base = (1 + m) + self.spacing * self.rng:random(0, nodes)
+        local off = self.rng:random(1, self.spacing - 1)
+        local c = math.min(base + off, size - 1)
+        if not self[lineOnGrid](self, c) then return c end
+    end
+    -- Fallback (tight biomes / degenerate spacing): any interior coordinate.
+    return self.rng:random(2, size - 1)
+end
+
+-- Lay `count` rivers, each running edge-to-edge along one axis (chosen at random).
 function Overworld:placeRivers(count)
     for _ = 1, count do
-        if self.rng:random() < 0.5 then
-            local y = self.rng:random(3, self.rows - 2)
-            for x = 1, self.cols do
-                self:markRiver(x, y)
-                if self.rng:random() < 0.25 then
-                    local ny = y + (self.rng:random() < 0.5 and -1 or 1)
-                    if ny >= 2 and ny <= self.rows - 1 then
-                        self:markRiver(x, ny) -- corner fill keeps the water connected
-                        y = ny
-                    end
-                end
-            end
-        else
-            local x = self.rng:random(3, self.cols - 2)
-            for y = 1, self.rows do
-                self:markRiver(x, y)
-                if self.rng:random() < 0.25 then
-                    local nx = x + (self.rng:random() < 0.5 and -1 or 1)
-                    if nx >= 2 and nx <= self.cols - 1 then
-                        self:markRiver(nx, y) -- corner fill keeps the water connected
-                        x = nx
-                    end
-                end
-            end
-        end
+        self:walkRiver(self.rng:random() < 0.5)
     end
+end
+
+-- Walk one meandering river across the map. `horiz` = true runs it left->right
+-- (drifting vertically); false runs it top->bottom (drifting horizontally). The
+-- river keeps a persistent drift heading so it curves and wanders across the whole
+-- map instead of tracing a straight line, while two rules keep the crossings clean:
+--   * it never *dwells* on a trail lattice line (the moment it lands on one it
+--     steps off), so it can only cross a road head-on, never run alongside it;
+--   * it never drifts while sitting on a corridor tile, so a crossing stays a
+--     single perpendicular tile.
+-- `thinBridges` is the final backstop enforcing the exactly-one-tile guarantee.
+function Overworld:walkRiver(horiz)
+    local mainLen = horiz and self.cols or self.rows
+    local crossMax = horiz and self.rows or self.cols
+    local nodeLine = horiz and "isNodeRow" or "isNodeCol"
+    local cross = self:bandCoord(crossMax, nodeLine) -- start off a trail line
+    local dir = self.rng:random() < 0.5 and -1 or 1  -- persistent drift heading
+
+    local function mark(main, c)
+        if horiz then self:markRiver(main, c) else self:markRiver(c, main) end
+    end
+    local function onTrail(main, c)
+        if horiz then return self:onTrailTile(main, c) else return self:onTrailTile(c, main) end
+    end
+    -- Step the drift to `cross + dir`, reflecting off the map edge, and lay the
+    -- corner tile so the water stays orthogonally connected.
+    local function drift(main)
+        local nc = cross + dir
+        if nc < 2 or nc > crossMax - 1 then dir = -dir; nc = cross + dir end
+        if nc >= 2 and nc <= crossMax - 1 then mark(main, nc); cross = nc end
+    end
+
+    for main = 1, mainLen do
+        mark(main, cross)
+        if self[nodeLine](self, cross) then
+            drift(main) -- never run along a road: leave the trail line immediately
+        elseif not onTrail(main, cross) then
+            if self.rng:random() < 0.14 then dir = -dir end -- long, smooth arcs
+            if self.rng:random() < 0.4 then drift(main) end
+        end
+        -- (on a corridor tile but not a node line = a head-on crossing: hold course
+        --  so it stays a single bridge tile.)
+    end
+end
+
+-- Whether (x, y) is currently a walkable trail (path or an already-placed bridge).
+function Overworld:onTrailTile(x, y)
+    local c = self.cells[y] and self.cells[y][x]
+    return c ~= nil and (c.tile == "path" or c.tile == "bridge")
 end
 
 function Overworld:markRiver(x, y)
@@ -237,6 +290,38 @@ function Overworld:markRiver(x, y)
         c.bridge = true
     else
         c.tile = "water"
+    end
+end
+
+-- Enforce the "every bridge is exactly one tile" rule. Routing avoids the common
+-- causes (rivers alongside roads, meander-doubling on a crossing), but two rivers
+-- could still cross the same corridor a tile apart. For each orthogonally-connected
+-- run of bridge tiles, keep the first and revert the rest to plain trail: still
+-- walkable (road connectivity holds) and no longer a river tile (so the
+-- "no river left as a path" invariant still holds).
+function Overworld:thinBridges()
+    local visited = {}
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local c = self.cells[y][x]
+            if c.tile == "bridge" and not visited[cellKey(c)] then
+                visited[cellKey(c)] = true
+                local q, qi = { c }, 1
+                while qi <= #q do
+                    local cur = q[qi]; qi = qi + 1
+                    for _, d in ipairs(DIRS) do
+                        local n = self.cells[cur.y + d[2]] and self.cells[cur.y + d[2]][cur.x + d[1]]
+                        if n and n.tile == "bridge" and not visited[cellKey(n)] then
+                            visited[cellKey(n)] = true
+                            n.tile = "path" -- demote the extra crossing tile back to trail
+                            n.bridge = nil
+                            n.river = nil
+                            q[#q + 1] = n
+                        end
+                    end
+                end
+            end
+        end
     end
 end
 

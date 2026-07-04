@@ -277,6 +277,34 @@ return {
         end,
     },
     {
+        name = "every bridge is exactly one tile (no two bridges are adjacent)",
+        fn = function()
+            local anyBridge = false
+            for seed = 1, 30 do
+                local grid = Overworld.generate({
+                    cols = 41, rows = 29, seed = seed, biome = "forest",
+                    riverCount = 3, keyCount = 1, objective = { name = "Boss" },
+                })
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        if grid:get(x, y).tile == "bridge" then
+                            anyBridge = true
+                            -- No orthogonal neighbour may also be a bridge, or the
+                            -- bridge would span more than a single tile.
+                            for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+                                local n = grid:get(x + d[1], y + d[2])
+                                assert(not (n and n.tile == "bridge"),
+                                    "seed " .. seed .. ": bridge run >1 tile at "
+                                    .. x .. "," .. y)
+                            end
+                        end
+                    end
+                end
+            end
+            assert(anyBridge, "expected rivers to still cross roads (some bridges)")
+        end,
+    },
+    {
         name = "encounter count respects the cap and skips the start tile",
         fn = function()
             local grid = gen({ encounterCount = 5 })
