@@ -8,4 +8,5 @@ return {
         defense = 8, magicDefense = 14,
         movement = 4,
     },
+    startingItems = { "flame_gem" },
 }

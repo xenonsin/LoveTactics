@@ -9,4 +9,5 @@ return {
         defense = 6, magicDefense = 3,
         movement = 5,
     },
+    startingItems = { "fangs" },
 }

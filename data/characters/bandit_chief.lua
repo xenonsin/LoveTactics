@@ -8,4 +8,5 @@ return {
         defense = 12, magicDefense = 6,
         movement = 3,
     },
+    startingItems = { "iron_sword" },
 }

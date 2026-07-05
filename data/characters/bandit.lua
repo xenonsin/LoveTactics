@@ -10,4 +10,5 @@ return {
         defense = 6, magicDefense = 3,
         movement = 3, -- number of spaces this character can move
     },
+    startingItems = { "iron_sword" },
 }

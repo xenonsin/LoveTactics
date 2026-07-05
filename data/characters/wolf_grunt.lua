@@ -8,4 +8,5 @@ return {
         defense = 3, magicDefense = 2,
         movement = 5, -- fast, low health
     },
+    startingItems = { "fangs" },
 }
