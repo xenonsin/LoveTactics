@@ -24,7 +24,10 @@ local PANEL_W = 320
 CombatPanel.WIDTH = PANEL_W -- so states can reserve the same right-side margin
 local ENTRY_H = 58
 local ENTRY_GAP = 6
-local SLOT = 56
+-- Item slots are rectangular (wider than tall) and kept compact so the turn-order
+-- strip above them gets the bulk of the panel height.
+local SLOT_W = 96
+local SLOT_H = 58
 local SLOT_GAP = 6
 local COLS, ROWS = 3, 3
 
@@ -34,6 +37,12 @@ local RESOURCES = {
     { key = "mana",    color = { 0.35, 0.55, 0.95 } },
     { key = "stamina", color = { 0.90, 0.75, 0.30 } },
 }
+
+-- Cost badge tint per resource stat (falls back to a neutral grey for anything else).
+local RES_COLOR = {}
+for _, r in ipairs(RESOURCES) do RES_COLOR[r.key] = r.color end
+local COST_FALLBACK = { 0.75, 0.75, 0.80 }
+local SPEED_COLOR = { 0.95, 0.85, 0.55 } -- gold, matching the timeline/initiative accent
 
 function CombatPanel.new(combat, opts)
     opts = opts or {}
@@ -46,13 +55,14 @@ function CombatPanel.new(combat, opts)
     self.headFont = love.graphics.newFont(16)
     self.nameFont = love.graphics.newFont(14)
     self.smallFont = love.graphics.newFont(12)
+    self.slotFont = love.graphics.newFont(11)  -- item name inside a grid slot
 
     self.x = Scale.WIDTH - PANEL_W
     self.w = PANEL_W
 
     -- Item grid: 3x3, centred horizontally, anchored to the bottom.
-    self.gridW = COLS * SLOT + (COLS - 1) * SLOT_GAP
-    self.gridH = ROWS * SLOT + (ROWS - 1) * SLOT_GAP
+    self.gridW = COLS * SLOT_W + (COLS - 1) * SLOT_GAP
+    self.gridH = ROWS * SLOT_H + (ROWS - 1) * SLOT_GAP
     self.gridX = self.x + math.floor((PANEL_W - self.gridW) / 2)
     self.gridY = Scale.HEIGHT - self.gridH - 16
     -- Turn strip lives above the item grid.
@@ -78,8 +88,8 @@ end
 function CombatPanel:slotRect(index)
     local col = (index - 1) % COLS
     local row = math.floor((index - 1) / COLS)
-    return self.gridX + col * (SLOT + SLOT_GAP),
-        self.gridY + row * (SLOT + SLOT_GAP), SLOT, SLOT
+    return self.gridX + col * (SLOT_W + SLOT_GAP),
+        self.gridY + row * (SLOT_H + SLOT_GAP), SLOT_W, SLOT_H
 end
 
 function CombatPanel:slotIndexAt(px, py)
@@ -232,6 +242,43 @@ function CombatPanel:drawEntry(entry, ey)
     end
 end
 
+-- Small hourglass glyph (two triangles) for the speed badge, drawn in the given box.
+function CombatPanel:drawHourglass(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    love.graphics.polygon("fill", x, y, x + w, y, x + w / 2, y + h / 2)
+    love.graphics.polygon("fill", x + w / 2, y + h / 2, x, y + h, x + w, y + h)
+end
+
+-- A cost/speed corner badge: a dark pill with an icon and a number. `align` is "left"
+-- (top-left cost) or "right" (top-right speed); `iconKind` is "dot" or "hourglass".
+function CombatPanel:drawBadge(sx, sy, sw, corner, iconKind, amount, color, a)
+    love.graphics.setFont(self.smallFont)
+    local label = tostring(amount)
+    local tw = self.smallFont:getWidth(label)
+    local iconW, gap, padX = 9, 3, 5
+    local bw = padX + iconW + gap + tw + padX
+    local bh = 18
+    local pad = 3
+    local bx = (corner == "right") and (sx + sw - pad - bw) or (sx + pad)
+    local by = sy + pad
+
+    love.graphics.setColor(0.06, 0.07, 0.10, 0.82 * (a or 1))
+    love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
+
+    local ix = bx + padX
+    local iy = by + (bh - 10) / 2
+    if iconKind == "hourglass" then
+        self:drawHourglass(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+    else -- resource "dot": a filled diamond reads cleaner than a circle at this size
+        local cx, cy, rr = ix + iconW / 2, iy + 5, 5
+        love.graphics.setColor(color[1], color[2], color[3], a or 1)
+        love.graphics.polygon("fill", cx, cy - rr, cx + rr, cy, cx, cy + rr, cx - rr, cy)
+    end
+
+    love.graphics.setColor(0.96, 0.96, 0.98, a or 1)
+    love.graphics.print(label, ix + iconW + gap, by + 3)
+end
+
 function CombatPanel:drawItemGrid()
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(0.7, 0.72, 0.8)
@@ -239,6 +286,7 @@ function CombatPanel:drawItemGrid()
 
     local isPartyTurn = self.view.isPartyTurn
     local items = self.view.items or {}
+    local NAME_H = 16
     for i = 1, COLS * ROWS do
         local sx, sy, sw, sh = self:slotRect(i)
         local item = items[i]
@@ -250,24 +298,59 @@ function CombatPanel:drawItemGrid()
         love.graphics.rectangle("fill", sx, sy, sw, sh, 5, 5)
 
         if item then
+            local dim = (not usable) and 0.45 or 1
+            local ab = item.activeAbility
+
+            -- Icon fills the slot; the badges and name overlay its corners/bottom.
             local sprite = item.sprite
-            local dim = (not usable) and 0.4 or 1
+            local icx, icy = sx + sw / 2, sy + sh / 2
             if type(sprite) == "userdata" then
                 love.graphics.setColor(dim, dim, dim)
                 local iw, ih = sprite:getDimensions()
                 local scale = math.min((sw - 8) / iw, (sh - 8) / ih)
-                love.graphics.draw(sprite, sx + sw / 2, sy + sh / 2, 0, scale, scale,
-                    iw / 2, ih / 2)
+                love.graphics.draw(sprite, icx, icy, 0, scale, scale, iw / 2, ih / 2)
             else
-                love.graphics.setColor(0.6 * dim, 0.6 * dim, 0.65 * dim)
-                love.graphics.rectangle("fill", sx + 6, sy + 6, sw - 12, sh - 12, 4, 4)
+                -- Art missing: a rounded placeholder with the item's initial.
+                local ph = sh - 10
+                love.graphics.setColor(0.55 * dim, 0.55 * dim, 0.60 * dim)
+                love.graphics.rectangle("fill", icx - ph / 2, sy + 5, ph, ph, 5, 5)
+                love.graphics.setFont(self.headFont)
                 love.graphics.setColor(dim, dim, dim)
-                love.graphics.printf((item.name or "?"):sub(1, 1), sx, sy + sh / 2 - 8, sw, "center")
+                love.graphics.printf((item.name or "?"):sub(1, 1), icx - ph / 2, icy - 12, ph, "center")
+            end
+
+            -- Name band overlaid along the bottom, single line scaled to fit.
+            love.graphics.setColor(0, 0, 0, 0.6 * dim)
+            love.graphics.rectangle("fill", sx + 1, sy + sh - NAME_H, sw - 2, NAME_H - 1, 0, 0, 5, 5)
+            love.graphics.setFont(self.slotFont)
+            local name = item.name or "?"
+            local nw = self.slotFont:getWidth(name)
+            local sc = math.min(1, (sw - 8) / nw)
+            local nh = self.slotFont:getHeight() * sc
+            love.graphics.setColor(0.94 * dim + 0.05, 0.94 * dim + 0.05, 0.96 * dim + 0.05)
+            love.graphics.print(name, sx + sw / 2 - (nw * sc) / 2,
+                sy + sh - NAME_H + (NAME_H - nh) / 2, 0, sc, sc)
+
+            -- Cost (top-left) + speed (top-right), overlaid for ability items only.
+            if ab then
+                if ab.cost then
+                    local c = RES_COLOR[ab.cost.stat] or COST_FALLBACK
+                    self:drawBadge(sx, sy, sw, "left", "dot", ab.cost.amount, c, dim)
+                end
+                if ab.speed then
+                    self:drawBadge(sx, sy, sw, "right", "hourglass", ab.speed, SPEED_COLOR, dim)
+                end
             end
         end
 
-        -- Border: armed/selected (green), hovered (gold), usable (blue), else idle.
-        if armed then love.graphics.setColor(0.35, 0.85, 0.40)
+        -- Border: armed strike (red) / armed support (green), hovered (gold),
+        -- usable (blue), else idle.
+        if armed then
+            if item.activeAbility and item.activeAbility.target == "enemy" then
+                love.graphics.setColor(0.85, 0.35, 0.35) -- attack armed
+            else
+                love.graphics.setColor(0.35, 0.85, 0.40) -- support armed
+            end
         elseif usable and self.hoverIndex == i then love.graphics.setColor(0.95, 0.85, 0.55)
         elseif usable then love.graphics.setColor(0.4, 0.6, 0.85)
         else love.graphics.setColor(0.35, 0.37, 0.45) end
