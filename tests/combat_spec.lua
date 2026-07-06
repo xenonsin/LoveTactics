@@ -219,4 +219,70 @@ return {
             assert(Combat.evaluate(hunt) == "win", "target dead -> win even with foes left")
         end,
     },
+    {
+        name = "previewOrder reorders only the named unit without mutating state",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("knight", 4, 7) },      -- initiative 2.5
+                { unit("wolf_grunt", 4, 2) })  -- initiative 2
+            local knight, wolf = c.units[1], c.units[2]
+
+            -- Live order: wolf (2) before knight (2.5).
+            assert(Combat.turnOrder(c)[1] == wolf, "wolf acts first live")
+
+            -- Preview the wolf acting (time 2 -> 5): knight should jump ahead.
+            local preview = Combat.previewOrder(c, wolf, wolf.time + 3)
+            assert(preview[1] == knight, "preview puts knight (2.5) ahead of wolf (5)")
+            assert(preview[2] == wolf, "wolf now trails in the preview")
+
+            -- Nothing was mutated: live times and order are unchanged.
+            assert(wolf.time == 2, "previewOrder must not mutate unit.time")
+            assert(Combat.turnOrder(c)[1] == wolf, "live order unchanged after preview")
+        end,
+    },
+    {
+        name = "previewTimeline keeps the actor's real slot and adds a ghost at its new time",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("knight", 4, 7) },      -- initiative 2.5
+                { unit("wolf_grunt", 4, 2) })  -- initiative 2
+            local knight, wolf = c.units[1], c.units[2]
+
+            local entries = Combat.previewTimeline(c, wolf, wolf.time + 3) -- wolf 2 -> ghost 5
+            assert(#entries == 3, "two units + one ghost = 3 entries, got " .. #entries)
+
+            -- The real wolf keeps the soonest slot; the ghost trails at time 5.
+            assert(entries[1].unit == wolf and not entries[1].preview, "real wolf stays first")
+            assert(entries[2].unit == knight, "knight (2.5) sits between")
+            assert(entries[3].unit == wolf and entries[3].preview, "wolf ghost lands last")
+
+            local ghosts = 0
+            for _, e in ipairs(entries) do if e.preview then ghosts = ghosts + 1 end end
+            assert(ghosts == 1, "exactly one preview ghost")
+            assert(wolf.time == 2, "previewTimeline must not mutate unit.time")
+        end,
+    },
+    {
+        name = "planEnemyAction attacks in range, else steps toward the nearest party unit",
+        fn = function()
+            -- Bandit adjacent to the knight: it should attack (iron_sword range 1).
+            local adj = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, { unit("bandit", 4, 5) })
+            local act = Combat.planEnemyAction(adj, adj.units[2])
+            assert(act.kind == "item", "adjacent bandit attacks, got " .. tostring(act.kind))
+            assert(act.tx == 4 and act.ty == 4, "targets the knight's tile")
+
+            -- Bandit far away: it should move, closing the gap toward the knight.
+            local far = Combat.new(arena(8, 8), { unit("knight", 4, 8) }, { unit("bandit", 4, 1) })
+            local bandit = far.units[2]
+            local move = Combat.planEnemyAction(far, bandit)
+            assert(move.kind == "move", "far bandit moves, got " .. tostring(move.kind))
+            local before = math.abs(bandit.x - 4) + math.abs(bandit.y - 8)
+            local after = math.abs(move.x - 4) + math.abs(move.y - 8)
+            assert(after < before, "the chosen move gets strictly closer to the knight")
+
+            -- No party units left: pass.
+            local none = Combat.new(arena(8, 8), {}, { unit("bandit", 1, 1) })
+            assert(Combat.planEnemyAction(none, none.units[1]).kind == "pass", "no targets -> pass")
+        end,
+    },
 }

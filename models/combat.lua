@@ -153,18 +153,56 @@ function Combat.aliveCount(combat, side)
     return n
 end
 
--- Living units ordered by turn: lowest time first, then the deterministic tie-break.
-function Combat.turnOrder(combat)
+-- Order living units by turn using `timeOf(unit)` for each unit's timeline position:
+-- lowest time first, then the deterministic tie-break (party before enemy, then index).
+-- `timeOf` lets previewOrder substitute a hypothetical time for one unit without mutating.
+local function orderBy(combat, timeOf)
     local order = {}
     for _, u in ipairs(combat.units) do
         if u.alive then order[#order + 1] = u end
     end
     table.sort(order, function(a, b)
-        if a.time ~= b.time then return a.time < b.time end
+        local ta, tb = timeOf(a), timeOf(b)
+        if ta ~= tb then return ta < tb end
         if a.side ~= b.side then return SIDE_RANK[a.side] < SIDE_RANK[b.side] end
         return a.index < b.index
     end)
     return order
+end
+
+-- Living units ordered by turn: lowest time first, then the deterministic tie-break.
+function Combat.turnOrder(combat)
+    return orderBy(combat, function(u) return u.time end)
+end
+
+-- Turn order computed as if `unit.time == newTime`, without mutating any unit. Drives the
+-- UI's hover preview: newTime is `unit.time + steps` for a move or `unit.time + speed` for
+-- an item action.
+function Combat.previewOrder(combat, unit, newTime)
+    return orderBy(combat, function(u)
+        if u == unit then return newTime end
+        return u.time
+    end)
+end
+
+-- Like the live turn order, but with an extra GHOST copy of `unit` inserted where it would
+-- land if it acted (newTime). The actor keeps its real slot AND gains a preview slot, so the
+-- UI can show "you are here now / you would move to here". Returns a list of
+-- { unit, preview } entries in turn order (soonest first); the real entry sorts before the
+-- ghost on a tie so the live one stays lower in a bottom-anchored strip.
+function Combat.previewTimeline(combat, unit, newTime)
+    local entries = {}
+    for _, u in ipairs(combat.units) do
+        if u.alive then entries[#entries + 1] = { unit = u, preview = false, time = u.time } end
+    end
+    entries[#entries + 1] = { unit = unit, preview = true, time = newTime }
+    table.sort(entries, function(a, b)
+        if a.time ~= b.time then return a.time < b.time end
+        if a.unit == b.unit then return not a.preview end -- real before its own ghost
+        if a.unit.side ~= b.unit.side then return SIDE_RANK[a.unit.side] < SIDE_RANK[b.unit.side] end
+        return a.unit.index < b.unit.index
+    end)
+    return entries
 end
 
 function Combat.currentUnit(combat)
@@ -382,6 +420,53 @@ function Combat.useItem(combat, unit, item, tx, ty)
     end
 
     return true, result
+end
+
+-- ---------------------------------------------------------------------------
+-- Enemy AI
+-- ---------------------------------------------------------------------------
+
+-- Simple enemy plan: attack the nearest party unit if any ability item can reach one right
+-- now, otherwise step toward the nearest party unit, otherwise pass. Returns a plain action
+-- descriptor the battle state executes via moveUnit / useItem:
+--   { kind = "item", item, tx, ty } | { kind = "move", x, y } | { kind = "pass" }
+-- Pure (no love, no mutation) so it stays headless-testable.
+function Combat.planEnemyAction(combat, unit)
+    -- Nearest living party unit (the target we path toward / attack).
+    local target, bestDist
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.side ~= unit.side then
+            local d = manhattan(unit.x, unit.y, u.x, u.y)
+            if not bestDist or d < bestDist then target, bestDist = u, d end
+        end
+    end
+    if not target then return { kind = "pass" } end
+
+    -- Attack if any ability item can hit a party unit now (prefer the nearest such target).
+    for _, item in ipairs(Combat.abilityItems(unit.char)) do
+        local hit, hitDist
+        for _, t in ipairs(Combat.abilityTargets(combat, unit, item)) do
+            if t.side ~= unit.side then
+                local d = manhattan(unit.x, unit.y, t.x, t.y)
+                if not hitDist or d < hitDist then hit, hitDist = t, d end
+            end
+        end
+        if hit then return { kind = "item", item = item, tx = hit.x, ty = hit.y } end
+    end
+
+    -- Otherwise step to the reachable tile that gets closest to the target (ties -> fewer
+    -- steps). Only move if it strictly closes the gap, to avoid pacing in place.
+    local dest
+    for _, node in pairs(Combat.reachable(combat, unit)) do
+        local d = manhattan(node.x, node.y, target.x, target.y)
+        if not dest or d < dest.dist or (d == dest.dist and node.steps < dest.steps) then
+            dest = { x = node.x, y = node.y, dist = d, steps = node.steps }
+        end
+    end
+    if dest and dest.dist < bestDist then
+        return { kind = "move", x = dest.x, y = dest.y }
+    end
+    return { kind = "pass" }
 end
 
 -- ---------------------------------------------------------------------------

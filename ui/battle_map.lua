@@ -1,15 +1,19 @@
--- Battle arena renderer + input, driven by a models/arena.lua arena. Like
--- ui/overworld_map.lua it supports mouse + keyboard + gamepad. The whole 8x8 grid
--- fits on screen (no camera); a tile cursor can be moved with any input source.
+-- Battle arena renderer + input, driven by a models/arena.lua arena and a live
+-- models/combat.lua instance. Like ui/overworld_map.lua it supports mouse + keyboard +
+-- gamepad. The whole 8x8 grid fits on screen (no camera); a tile cursor can be moved with
+-- any input source, and the owning state (states/battle.lua) interprets confirm presses.
 --
 -- Tiles are flavoured by the quest's biome: each arena tile type maps to an overworld
 -- tileset type (ground->path, rough->grass, obstacle->rock) so the biome's art/colours
 -- carry through. If the tileset art is missing, it falls back to colored rects.
 --
--- Turn/movement logic is deferred to the combat system; for now this widget renders
--- the map and units and tracks a cursor, so the three-input scaffolding is in place.
+-- Units are drawn from the combat model (live positions / HP / alive), each with an on-tile
+-- HP bar and its turn-order number. The state feeds per-frame overlays (blue reachable move
+-- tiles, red ability-range tiles) via setOverlays, and the arena is centred in the space
+-- left of the right-side combat panel via opts.rightMargin.
 --
---   local map = BattleMap.new(arena, { units = { { x, y, side, name, sprite }, ... } })
+--   local map = BattleMap.new(arena, { combat = combat, rightMargin = 320 })
+--   map:setOverlays({ move = { {x,y}, ... }, range = { {x,y}, ... } })
 --   map:update(dt); map:draw()
 --   map:mousemoved(x, y); map:mousepressed(x, y, button)
 --   map:keypressed(key); map:gamepadpressed(joystick, button)
@@ -18,6 +22,7 @@ local Scale = require("scale")
 local Sprite = require("models.sprite")
 local Tileset = require("models.tileset")
 local Biome = require("models.biome")
+local Combat = require("models.combat")
 
 local BattleMap = {}
 BattleMap.__index = BattleMap
@@ -32,17 +37,22 @@ function BattleMap.new(arena, opts)
     opts = opts or {}
     local self = setmetatable({}, BattleMap)
     self.arena = arena
-    self.units = opts.units or {}
+    self.combat = opts.combat
+    self.rightMargin = opts.rightMargin or 0
     self.font = opts.font or love.graphics.newFont(14)
+    self.numberFont = opts.numberFont or love.graphics.newFont(12)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
+    self.overlays = { move = {}, range = {} }
 
     self.size = arena.tileSize
-    self.originX = math.floor((Scale.WIDTH - arena.cols * self.size) / 2)
+    -- Centre the board in the space left of the combat panel (rightMargin), not the whole
+    -- window, so the panel never covers it.
+    self.originX = math.floor((Scale.WIDTH - self.rightMargin - arena.cols * self.size) / 2)
     self.originY = math.floor((Scale.HEIGHT - arena.rows * self.size) / 2)
 
-    -- Cursor starts on the first party unit (or the grid centre).
-    local first = self.units[1]
+    -- Cursor starts on the first living party unit (or the grid centre).
+    local first = self:firstPartyUnit()
     self.cursor = {
         x = (first and first.x) or math.floor(arena.cols / 2),
         y = (first and first.y) or math.floor(arena.rows / 2),
@@ -51,6 +61,20 @@ function BattleMap.new(arena, opts)
     self.tilesetDef = Tileset.get(Biome.get(arena.biome).tileset)
     self:buildTiles()
     return self
+end
+
+function BattleMap:firstPartyUnit()
+    if not self.combat then return nil end
+    for _, u in ipairs(self.combat.units) do
+        if u.alive and u.side == "party" then return u end
+    end
+    return nil
+end
+
+-- Supply the per-frame highlight sets, each a list of { x, y } cells:
+--   move  -> reachable tiles (blue)      range -> armed ability range (red)
+function BattleMap:setOverlays(overlays)
+    self.overlays = overlays or { move = {}, range = {} }
 end
 
 -- Build the tileset quads + SpriteBatch for the mapped art types, or record that we
@@ -87,6 +111,7 @@ function BattleMap:pixelToCell(px, py)
 end
 
 function BattleMap:update(dt)
+    self.time = (self.time or 0) + dt -- drives the current-unit highlight pulse
     -- Poll the analog stick for cursor movement (edge-detected so a held stick moves
     -- one cell per push, matching ui/menu.lua).
     if not love.joystick then return end
@@ -119,7 +144,10 @@ end
 
 function BattleMap:draw()
     self:drawTiles()
+    self:drawOverlays()
     self:drawUnits()
+    self:drawHighlights()
+    self:drawUnitInfo() -- HP bars + turn numbers sit above the highlight fills
     self:drawCursor()
     love.graphics.setColor(1, 1, 1)
 end
@@ -155,30 +183,123 @@ function BattleMap:drawTiles()
     end
 end
 
-function BattleMap:drawUnits()
+-- Translucent highlight fills for reachable move tiles (blue) and armed ability range
+-- (red), drawn under the units so tokens stay legible on top.
+function BattleMap:drawOverlays()
     local s = self.size
-    love.graphics.setFont(self.font)
-    for _, u in ipairs(self.units) do
-        local wx, wy = self:cellToPixel(u.x, u.y)
-        local isParty = u.side == "party"
-        if type(u.sprite) == "userdata" then
-            love.graphics.setColor(1, 1, 1)
-            local sw, sh = u.sprite:getDimensions()
-            local scale = math.min((s - 8) / sw, (s - 8) / sh)
-            love.graphics.draw(u.sprite, wx + s / 2, wy + s / 2, 0, scale, scale,
-                sw / 2, sh / 2)
-        else
-            -- Token fallback: colored disc with the unit's initial.
-            if isParty then love.graphics.setColor(0.35, 0.65, 0.95)
-            else love.graphics.setColor(0.90, 0.35, 0.30) end
-            love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.32)
-            love.graphics.setColor(1, 1, 1)
-            love.graphics.printf((u.name or "?"):sub(1, 1), wx, wy + s / 2 - 8, s, "center")
+    local function paint(cells, r, g, b)
+        for _, c in ipairs(cells or {}) do
+            local wx, wy = self:cellToPixel(c.x, c.y)
+            love.graphics.setColor(r, g, b, 0.32)
+            love.graphics.rectangle("fill", wx + 1, wy + 1, s - 2, s - 2)
+            love.graphics.setColor(r, g, b, 0.85)
+            love.graphics.rectangle("line", wx + 1, wy + 1, s - 2, s - 2)
         end
-        -- Side ring.
-        if isParty then love.graphics.setColor(0.4, 0.7, 1, 0.9)
-        else love.graphics.setColor(1, 0.45, 0.4, 0.9) end
+    end
+    paint(self.overlays.move, 0.30, 0.60, 1.00)
+    -- Support abilities (heals / buffs) reach in green; offensive ones in red.
+    if self.overlays.rangeSupport then
+        paint(self.overlays.range, 0.35, 0.85, 0.40)
+    else
+        paint(self.overlays.range, 1.00, 0.32, 0.30)
+    end
+end
+
+-- Unit bodies: sprite/token + side ring. HP bars and turn numbers are a separate pass
+-- (drawUnitInfo) drawn AFTER the highlights so those readouts stay legible on top.
+function BattleMap:drawUnits()
+    if not self.combat then return end
+    local s = self.size
+    for _, u in ipairs(self.combat.units) do
+        if u.alive then
+            local wx, wy = self:cellToPixel(u.x, u.y)
+            local isParty = u.side == "party"
+            local sprite = u.char.sprite
+            if type(sprite) == "userdata" then
+                love.graphics.setColor(1, 1, 1)
+                local sw, sh = sprite:getDimensions()
+                local scale = math.min((s - 8) / sw, (s - 8) / sh)
+                love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale,
+                    sw / 2, sh / 2)
+            else
+                -- Token fallback: colored disc with the unit's initial.
+                if isParty then love.graphics.setColor(0.35, 0.65, 0.95)
+                else love.graphics.setColor(0.90, 0.35, 0.30) end
+                love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.32)
+                love.graphics.setFont(self.font)
+                love.graphics.setColor(1, 1, 1)
+                love.graphics.printf((u.char.name or "?"):sub(1, 1), wx, wy + s / 2 - 8, s, "center")
+            end
+            -- Side ring.
+            if isParty then love.graphics.setColor(0.4, 0.7, 1, 0.9)
+            else love.graphics.setColor(1, 0.45, 0.4, 0.9) end
+            love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+        end
+    end
+end
+
+-- HP bars + turn-order numbers, drawn last (above highlights) so they're never tinted.
+function BattleMap:drawUnitInfo()
+    if not self.combat then return end
+    local orderIndex = {}
+    for i, u in ipairs(Combat.turnOrder(self.combat)) do orderIndex[u] = i end
+    for _, u in ipairs(self.combat.units) do
+        if u.alive then
+            local wx, wy = self:cellToPixel(u.x, u.y)
+            self:drawHpBar(u, wx, wy)
+            self:drawTurnNumber(orderIndex[u], wx, wy)
+        end
+    end
+end
+
+-- Thin HP bar along the bottom of the unit's tile (green -> red as HP drops).
+function BattleMap:drawHpBar(u, wx, wy)
+    local s = self.size
+    local hp = u.char.stats.health
+    local ratio = 0
+    if hp and hp.max and hp.max > 0 then ratio = math.max(0, math.min(1, hp.current / hp.max)) end
+    local bx, by, bw, bh = wx + 4, wy + s - 8, s - 8, 5
+    love.graphics.setColor(0, 0, 0, 0.6)
+    love.graphics.rectangle("fill", bx - 1, by - 1, bw + 2, bh + 2, 2, 2)
+    -- Hue: green when full, red when empty.
+    love.graphics.setColor(1 - ratio, 0.2 + 0.6 * ratio, 0.15, 0.95)
+    love.graphics.rectangle("fill", bx, by, bw * ratio, bh, 2, 2)
+end
+
+-- Turn-order number in the tile's top-left, with a dark backing for legibility.
+function BattleMap:drawTurnNumber(n, wx, wy)
+    if not n then return end
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle("fill", wx + 1, wy + 1, 16, 15, 3, 3)
+    love.graphics.setFont(self.numberFont)
+    love.graphics.setColor(0.98, 0.95, 0.7)
+    love.graphics.printf(tostring(n), wx + 1, wy + 1, 16, "center")
+end
+
+-- Emphasise the acting unit (pulsing gold ring, always) and the unit the timeline is
+-- hovering (steady cyan ring). Colours are distinct so the two never read as the same thing.
+function BattleMap:drawHighlights()
+    local s = self.size
+    local hover = self.overlays.hover
+    if hover then
+        local wx, wy = self:cellToPixel(hover.x, hover.y)
+        love.graphics.setColor(0.75, 0.95, 1.0, 0.16)
+        love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+        love.graphics.setColor(0.75, 0.95, 1.0, 0.95)
+        love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+        love.graphics.setLineWidth(1)
+    end
+    local current = self.overlays.current
+    if current then
+        local wx, wy = self:cellToPixel(current.x, current.y)
+        local pulse = 0.65 + 0.35 * math.sin((self.time or 0) * 4)
+        love.graphics.setColor(0.98, 0.82, 0.35, 0.13)
+        love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 5, 5)
+        love.graphics.setColor(0.98, 0.82, 0.35, pulse)
+        love.graphics.setLineWidth(3)
+        love.graphics.rectangle("line", wx + 3, wy + 3, s - 6, s - 6, 5, 5)
+        love.graphics.setLineWidth(1)
     end
 end
 
@@ -192,7 +313,7 @@ function BattleMap:drawCursor()
 end
 
 -- ---------------------------------------------------------------------------
--- Input
+-- Input  (cursor movement only; the state interprets confirm presses)
 -- ---------------------------------------------------------------------------
 
 function BattleMap:keypressed(key)
@@ -209,16 +330,20 @@ function BattleMap:gamepadpressed(_, button)
     elseif button == "dpdown" then self:moveCursor(0, 1) end
 end
 
+-- Returns true if (x, y) fell on a grid cell (cursor moved), so the state can tell a
+-- battlefield click from a click elsewhere.
 function BattleMap:mousemoved(x, y)
     local cx, cy = self:pixelToCell(x, y)
     if cx >= 1 and cx <= self.arena.cols and cy >= 1 and cy <= self.arena.rows then
         self.cursor.x, self.cursor.y = cx, cy
+        return true
     end
+    return false
 end
 
 function BattleMap:mousepressed(x, y, button)
-    if button ~= 1 then return end
-    self:mousemoved(x, y)
+    if button ~= 1 then return false end
+    return self:mousemoved(x, y)
 end
 
 return BattleMap
