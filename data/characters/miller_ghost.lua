@@ -7,6 +7,7 @@ return {
         damage = 8, magicDamage = 22,
         defense = 8, magicDefense = 14,
         movement = 4,
+        speed = 4,
     },
     startingItems = { "flame_gem" },
 }

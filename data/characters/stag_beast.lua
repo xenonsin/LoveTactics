@@ -7,6 +7,7 @@ return {
         damage = 10, magicDamage = 12,
         defense = 7, magicDefense = 9,
         movement = 4,
+        speed = 5,
     },
     startingItems = { "fangs" },
 }

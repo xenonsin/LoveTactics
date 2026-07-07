@@ -123,21 +123,31 @@ function CombatPanel:draw()
 end
 
 -- The on-screen rect of each visible turn-strip entry, shared by draw + hover hit-testing.
+-- Each entry carries its turn-order number (`num`): 1 = acting now, matching the board token
+-- (ui/battle_map.lua) so the player can tie a strip row to a unit at a glance. Preview ghosts
+-- don't consume a number (they're a hypothetical slot, not a live position), so the numbers
+-- stay aligned with the board's live turn order.
 function CombatPanel:entryLayout()
     local out = {}
     local entries = self.view.order or {}
+    local turnNo = 0
     for i, entry in ipairs(entries) do
         local bottom = self.stripBottom - (i - 1) * (ENTRY_H + ENTRY_GAP)
         local top = bottom - ENTRY_H
         if top < self.stripTop then break end -- ran out of room
-        out[#out + 1] = { entry = entry, x = self.x + 8, y = top, w = self.w - 16, h = ENTRY_H }
+        local num
+        if not entry.preview then
+            turnNo = turnNo + 1
+            num = turnNo
+        end
+        out[#out + 1] = { entry = entry, num = num, x = self.x + 8, y = top, w = self.w - 16, h = ENTRY_H }
     end
     return out
 end
 
 function CombatPanel:drawTurnStrip()
     for _, e in ipairs(self:entryLayout()) do
-        self:drawEntry(e.entry, e.y)
+        self:drawEntry(e.entry, e.y, e.num)
     end
 end
 
@@ -162,7 +172,7 @@ function CombatPanel:dashedRect(x, y, w, h)
     end
 end
 
-function CombatPanel:drawEntry(entry, ey)
+function CombatPanel:drawEntry(entry, ey, num)
     local unit = entry.unit
     local isPreview = entry.preview
     local isCurrent = (unit == self.view.current) and not isPreview
@@ -187,11 +197,11 @@ function CombatPanel:drawEntry(entry, ey)
         love.graphics.rectangle("line", ex, ey, ew, ENTRY_H, 6, 6)
     end
 
-    -- Debug: the entry's timeline value (initiative), including the preview ghost's new time.
-    if self.view.showTime and entry.time then
+    -- Debug: the entry's initiative (0 = acting now), including the preview ghost's new value.
+    if self.view.showInitiative and entry.initiative then
         love.graphics.setFont(self.smallFont)
         love.graphics.setColor(0.98, 0.9, 0.6, 0.95)
-        love.graphics.printf(string.format("%.1f", entry.time), ex, ey + 3, ew - 6, "right")
+        love.graphics.printf(string.format("%.1f", entry.initiative), ex, ey + 3, ew - 6, "right")
     end
 
     -- Portrait square on the left.
@@ -210,6 +220,16 @@ function CombatPanel:drawEntry(entry, ey)
         love.graphics.setFont(self.headFont)
         love.graphics.setColor(1, 1, 1, a)
         love.graphics.printf((unit.char.name or "?"):sub(1, 1), px, py + ps / 2 - 10, ps, "center")
+    end
+
+    -- Turn-order number badge in the portrait's top-left corner, mirroring the board token
+    -- (ui/battle_map.lua drawTurnNumber) so the same #N points at the same unit on both.
+    if num then
+        love.graphics.setColor(0, 0, 0, 0.72)
+        love.graphics.rectangle("fill", px, py, 18, 16, 3, 3)
+        love.graphics.setFont(self.smallFont)
+        love.graphics.setColor(0.98, 0.95, 0.7)
+        love.graphics.printf(tostring(num), px, py + 1, 18, "center")
     end
 
     local rx = px + ps + 8

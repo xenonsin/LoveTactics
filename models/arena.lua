@@ -32,7 +32,9 @@ Arena.TILE_SIZE = 64 -- logical pixels per cell (8*64 = 512, centered in 1280x72
 -- renderer still pulls *art* from the biome's tileset.
 Arena.TILE_PROPS = {
     ground   = { moveCost = 1, walkable = true },  -- open field
-    rough    = { moveCost = 2, walkable = true },  -- movement penalty
+    forest   = { moveCost = 2, walkable = true },  -- slow to cross (~2 tiles of reach)
+    mountain = { moveCost = 3, walkable = true },  -- steep; a single step for most units
+    rough    = { moveCost = 2, walkable = true },  -- legacy penalty tile (curated arenas)
     obstacle = { moveCost = math.huge, walkable = false }, -- blocks the tile
 }
 
@@ -88,8 +90,8 @@ local function placeUnits(rowList, count, cols, occupied)
     return spawns
 end
 
--- Procedurally generate a layout: all `ground`, with a few `rough`/`obstacle` tiles
--- scattered across the middle rows (never on a spawn tile). Deterministic off
+-- Procedurally generate a layout: all `ground`, with a few `forest`/`mountain`/`obstacle`
+-- tiles scattered across the middle rows (never on a spawn tile). Deterministic off
 -- `params.seed`. `params.party` / `params.enemies` are unit *counts*.
 function Arena.generateLayout(params)
     params = params or {}
@@ -119,7 +121,8 @@ function Arena.generateLayout(params)
             end
         end
     end
-    scatter("rough", rng:random(2, 5))
+    scatter("forest", rng:random(2, 5))
+    scatter("mountain", rng:random(1, 3))
     scatter("obstacle", rng:random(1, 3))
 
     return {

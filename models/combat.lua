@@ -3,17 +3,29 @@
 -- The battle state (states/battle.lua) and its renderer drive this module; all rules
 -- live here.
 --
--- Combat runs on a *timeline*. Each unit has a `time` (its position on the timeline);
--- the living unit with the LOWEST time acts next. A unit's starting time is its
--- initiative = the average `speed` of its ability items (items with an activeAbility).
--- Taking an action pushes the actor back down the timeline: a move costs the number of
--- tiles stepped, an item action costs its ability's `speed`. Lower time = acts sooner,
--- so light/fast kit acts more often.
+-- Combat runs on an *initiative countdown*. Each unit has an `initiative` >= 0; the living
+-- unit with the LOWEST initiative acts next, and the unit whose turn it is always sits at 0.
+-- A unit's starting initiative is the average `speed` of its ability items (items with an
+-- activeAbility) MINUS its `speed` stat, so faster kit and a higher speed stat both act
+-- sooner; the whole field is then rebased so the fastest unit is at 0. Ties (equal
+-- initiative) are broken by `speed` (higher acts first).
+--
+-- A *turn* spans an optional move (once) plus one terminating action. `Combat.startTurn`
+-- opens the current unit's turn; `Combat.moveUnit` repositions it WITHOUT ending the turn
+-- (it just records the terrain-weighted move cost); then either `Combat.useItem` or
+-- `Combat.wait` ends the turn. Ending a turn sets the actor's initiative to its cost and then
+-- REBASES: subtract the new minimum initiative from every unit, so the next unit drops to 0.
+--   * item action -> initiative = moveCost + ability.speed
+--   * wait (delay) -> initiative = max(moveCost, nextUnit.initiative + 1): land one tick after
+--     the next unit in line, but never before the move you took is paid for.
+-- `moveCost` is the Dijkstra path cost (rough terrain costs more), so difficult ground both
+-- shortens reach and costs more time. `combat.clock` accumulates the elapsed initiative (the
+-- amount subtracted each rebase) so the `survive N turns` objective still works.
 --
 --   local combat = Combat.new(arena, partyUnits, enemyUnits)  -- units: { { char, x, y }, ... }
---   local unit = Combat.currentUnit(combat)                   -- whose turn it is
---   Combat.moveUnit(combat, unit, x, y)                       -- or:
---   Combat.useItem(combat, unit, item, targetX, targetY)
+--   local unit = Combat.startTurn(combat)                     -- open the current unit's turn
+--   Combat.moveUnit(combat, unit, x, y)                       -- optional; doesn't end the turn
+--   Combat.useItem(combat, unit, item, targetX, targetY)      -- or Combat.wait(combat, unit)
 --   local result = Combat.evaluate(combat)                    -- "win" | "loss" | nil
 --
 -- Item abilities carry an `effect(fx)` FUNCTION (see data/items/*.lua). useItem builds an
@@ -23,10 +35,15 @@
 
 local Combat = {}
 
--- Initiative fallback for a unit that carries no ability item at all.
+-- Ability-speed fallback for a unit that carries no ability item at all.
 Combat.DEFAULT_SPEED = 5
 
--- Deterministic tie-break when two units share a time: party before enemy, then order.
+-- Fallback wait cost when there is no other living unit to delay past (the battle is
+-- effectively already decided, but this keeps the clock advancing).
+Combat.WAIT_COST = Combat.DEFAULT_SPEED
+
+-- Deterministic tie-break when two units share an initiative AND a speed: party before
+-- enemy, then spawn order. (Speed is the primary tie-break; see orderBy.)
 local SIDE_RANK = { party = 0, enemy = 1 }
 
 -- ---------------------------------------------------------------------------
@@ -56,15 +73,28 @@ function Combat.abilityItems(char)
     return list
 end
 
--- Initiative = average speed of the character's ability items (DEFAULT_SPEED if none).
+-- The character's `speed` stat (0 if unset), used as the primary tie-break and folded into
+-- the starting initiative.
+function Combat.speed(char)
+    return (char.stats and char.stats.speed) or 0
+end
+
+-- Starting initiative = the average speed of the character's ability items (DEFAULT_SPEED if
+-- it has none) MINUS its `speed` stat, so a higher speed stat acts sooner. Lower acts sooner;
+-- Combat.new rebases the field (which may go negative here) so the fastest unit begins at 0.
 function Combat.initiative(char)
     local items = Combat.abilityItems(char)
-    if #items == 0 then return Combat.DEFAULT_SPEED end
-    local sum = 0
-    for _, item in ipairs(items) do
-        sum = sum + (item.activeAbility.speed or Combat.DEFAULT_SPEED)
+    local avg
+    if #items == 0 then
+        avg = Combat.DEFAULT_SPEED
+    else
+        local sum = 0
+        for _, item in ipairs(items) do
+            sum = sum + (item.activeAbility.speed or Combat.DEFAULT_SPEED)
+        end
+        avg = sum / #items
     end
-    return sum / #items
+    return avg - Combat.speed(char)
 end
 
 -- Effective flat stat for a unit: the character's base plus aggregated item bonuses
@@ -102,8 +132,9 @@ function Combat.new(arena, partyUnits, enemyUnits)
         arena = arena,
         objective = (arena and arena.objective) or { type = "killAll" },
         units = {},
-        clock = 0,      -- highest time any unit has reached (drives `survive`)
+        clock = 0,      -- accumulated elapsed initiative (drives `survive`)
         turnCount = 0,  -- number of actions taken
+        turn = nil,     -- the in-progress turn: { unit, moved, moveCost } (see startTurn)
     }
 
     local function addSide(list, side)
@@ -111,7 +142,8 @@ function Combat.new(arena, partyUnits, enemyUnits)
             local unit = {
                 char = u.char, side = side,
                 x = u.x, y = u.y,
-                time = Combat.initiative(u.char),
+                initiative = Combat.initiative(u.char),
+                speed = Combat.speed(u.char), -- primary tie-break
                 alive = true,
             }
             unit.index = #combat.units + 1
@@ -121,8 +153,26 @@ function Combat.new(arena, partyUnits, enemyUnits)
     addSide(partyUnits, "party")
     addSide(enemyUnits, "enemy")
 
+    -- Rebase so the fastest unit starts at initiative 0 (the current-actor convention). The
+    -- initial offset isn't elapsed battle time, so reset the clock to 0 afterwards.
+    Combat.rebase(combat)
+    combat.clock = 0
     Combat.applyPassives(combat)
     return combat
+end
+
+-- Subtract the lowest living initiative from every living unit so the next actor sits at 0,
+-- and add that amount to the elapsed clock. Called at construction and after each turn ends.
+function Combat.rebase(combat)
+    local minInit
+    for _, u in ipairs(combat.units) do
+        if u.alive and (not minInit or u.initiative < minInit) then minInit = u.initiative end
+    end
+    if not minInit then return end
+    for _, u in ipairs(combat.units) do
+        if u.alive then u.initiative = u.initiative - minInit end
+    end
+    combat.clock = combat.clock + minInit
 end
 
 -- ---------------------------------------------------------------------------
@@ -153,35 +203,36 @@ function Combat.aliveCount(combat, side)
     return n
 end
 
--- Order living units by turn using `timeOf(unit)` for each unit's timeline position:
--- lowest time first, then the deterministic tie-break (party before enemy, then index).
--- `timeOf` lets previewOrder substitute a hypothetical time for one unit without mutating.
-local function orderBy(combat, timeOf)
+-- Order living units by turn using `initOf(unit)` for each unit's initiative: lowest first,
+-- then higher `speed` (the faster unit wins a tie), then the deterministic tie-break (party
+-- before enemy, then index). `initOf` lets previewOrder substitute a hypothetical initiative
+-- for one unit without mutating.
+local function orderBy(combat, initOf)
     local order = {}
     for _, u in ipairs(combat.units) do
         if u.alive then order[#order + 1] = u end
     end
     table.sort(order, function(a, b)
-        local ta, tb = timeOf(a), timeOf(b)
-        if ta ~= tb then return ta < tb end
+        local ia, ib = initOf(a), initOf(b)
+        if ia ~= ib then return ia < ib end
+        if a.speed ~= b.speed then return a.speed > b.speed end
         if a.side ~= b.side then return SIDE_RANK[a.side] < SIDE_RANK[b.side] end
         return a.index < b.index
     end)
     return order
 end
 
--- Living units ordered by turn: lowest time first, then the deterministic tie-break.
+-- Living units ordered by turn: lowest initiative first, then the deterministic tie-break.
 function Combat.turnOrder(combat)
-    return orderBy(combat, function(u) return u.time end)
+    return orderBy(combat, function(u) return u.initiative end)
 end
 
--- Turn order computed as if `unit.time == newTime`, without mutating any unit. Drives the
--- UI's hover preview: newTime is `unit.time + steps` for a move or `unit.time + speed` for
--- an item action.
-function Combat.previewOrder(combat, unit, newTime)
+-- Turn order computed as if `unit.initiative == newInit`, without mutating any unit. Drives
+-- the UI's hover preview: newInit is `moveCost` for a move or `moveCost + speed` for an item.
+function Combat.previewOrder(combat, unit, newInit)
     return orderBy(combat, function(u)
-        if u == unit then return newTime end
-        return u.time
+        if u == unit then return newInit end
+        return u.initiative
     end)
 end
 
@@ -190,15 +241,20 @@ end
 -- UI can show "you are here now / you would move to here". Returns a list of
 -- { unit, preview } entries in turn order (soonest first); the real entry sorts before the
 -- ghost on a tie so the live one stays lower in a bottom-anchored strip.
-function Combat.previewTimeline(combat, unit, newTime)
+function Combat.previewTimeline(combat, unit, newInit)
     local entries = {}
     for _, u in ipairs(combat.units) do
-        if u.alive then entries[#entries + 1] = { unit = u, preview = false, time = u.time } end
+        if u.alive then entries[#entries + 1] = { unit = u, preview = false, initiative = u.initiative } end
     end
-    entries[#entries + 1] = { unit = unit, preview = true, time = newTime }
+    entries[#entries + 1] = { unit = unit, preview = true, initiative = newInit }
+    -- Order by initiative, matching Combat.turnOrder's tie-breaks so the strip agrees with the
+    -- board's turn numbers; a preview ghost sorts AFTER real entries at an exact tie. Every
+    -- branch is guarded so comparing an entry with itself returns false (a valid weak order --
+    -- an unguarded `return not a.preview` here would assert x < x and corrupt table.sort).
     table.sort(entries, function(a, b)
-        if a.time ~= b.time then return a.time < b.time end
-        if a.unit == b.unit then return not a.preview end -- real before its own ghost
+        if a.initiative ~= b.initiative then return a.initiative < b.initiative end
+        if a.preview ~= b.preview then return b.preview end -- real before ghost at a tie
+        if a.unit.speed ~= b.unit.speed then return a.unit.speed > b.unit.speed end
         if a.unit.side ~= b.unit.side then return SIDE_RANK[a.unit.side] < SIDE_RANK[b.unit.side] end
         return a.unit.index < b.unit.index
     end)
@@ -207,6 +263,64 @@ end
 
 function Combat.currentUnit(combat)
     return Combat.turnOrder(combat)[1]
+end
+
+-- Open the current unit's turn: a fresh { unit, moved, moveCost } record the move/action
+-- calls read and end. Returns the unit whose turn it is (nil if none are left alive).
+function Combat.startTurn(combat)
+    local unit = Combat.currentUnit(combat)
+    combat.turn = unit and { unit = unit, moved = false, moveCost = 0 } or nil
+    return unit
+end
+
+-- Has the active unit already spent its (once-per-turn) move?
+function Combat.hasMoved(combat)
+    return combat.turn ~= nil and combat.turn.moved
+end
+
+-- The next living unit to act (the one a wait would delay past), or nil if `unit` is the last
+-- one standing. `unit` sits at initiative 0 during its turn, so this is the second in order.
+local function nextUnit(combat, unit)
+    for _, u in ipairs(Combat.turnOrder(combat)) do
+        if u ~= unit then return u end
+    end
+    return nil
+end
+
+-- End the active unit's turn: set its initiative to (moveCost spent this turn) + the action
+-- cost, then rebase so the next unit drops to 0. Shared by useItem and passing.
+local function endTurn(combat, unit, actionCost)
+    local moveCost = (combat.turn and combat.turn.unit == unit and combat.turn.moveCost) or 0
+    unit.initiative = unit.initiative + moveCost + actionCost
+    combat.turnCount = combat.turnCount + 1
+    combat.turn = nil
+    Combat.rebase(combat)
+end
+
+-- Wait (delay): the acting unit sits at initiative 0, so end the turn by setting its
+-- initiative to (next unit's initiative + 1) -- act one tick after them -- but never below the
+-- move cost it spent this turn, so a move is still paid. Rebasing then drops the next unit to
+-- 0 and the waiter lands just behind it. Falls back to moveCost + WAIT_COST when no other unit
+-- is alive. The player's deliberate "delay my turn" action.
+function Combat.wait(combat, unit)
+    if not unit.alive then return false, "dead" end
+    local moveCost = (combat.turn and combat.turn.unit == unit and combat.turn.moveCost) or 0
+    local nxt = nextUnit(combat, unit)
+    unit.initiative = nxt and math.max(moveCost, nxt.initiative + 1) or (moveCost + Combat.WAIT_COST)
+    combat.turnCount = combat.turnCount + 1
+    combat.turn = nil
+    Combat.rebase(combat)
+    return true
+end
+
+-- Pass: end the turn without acting, paying the normal timeline cost (this turn's move cost,
+-- or WAIT_COST if the unit also stayed put so it can never stall). Unlike wait it does NOT
+-- delay past the next unit -- used by enemy AI and the auto-pass so terrain still slows them.
+function Combat.pass(combat, unit)
+    if not unit.alive then return false, "dead" end
+    local moved = combat.turn ~= nil and combat.turn.unit == unit and combat.turn.moved
+    endTurn(combat, unit, moved and 0 or Combat.WAIT_COST)
+    return true
 end
 
 -- ---------------------------------------------------------------------------
@@ -218,8 +332,9 @@ local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
 -- Tiles a unit can reach this turn: a Dijkstra over the arena weighted by tile
 -- `moveCost`, budget = the unit's `movement`, blocked by non-walkable tiles and cells
 -- occupied by other units. Returns `{ [key]= { x, y, cost, steps } }`, keyed by "x,y".
--- `cost` spends the movement budget (rough terrain costs more); `steps` is the tile count
--- of that path and is the TIME the move costs (the "1 time per tile" rule).
+-- `cost` is the terrain-weighted path cost: it spends the movement budget AND is the
+-- initiative the move costs at end-of-turn (so rough terrain is slower to cross in both
+-- reach and time). `steps` is the raw tile count, used only by the enemy AI's pathing.
 function Combat.reachable(combat, unit)
     local arena = combat.arena
     local budget = flatStat(unit, "movement")
@@ -264,17 +379,20 @@ function Combat.reachable(combat, unit)
     return best
 end
 
--- Move a unit to (x, y) if reachable this turn; advances its timeline by the path length.
+-- Move a unit to (x, y) if reachable this turn. A unit may move once per turn and moving
+-- does NOT end the turn: it just repositions and records the terrain-weighted path cost
+-- (node.cost), which endTurn later folds into the timeline (move cost + action cost).
 function Combat.moveUnit(combat, unit, x, y)
     if not unit.alive then return false, "dead" end
+    if not combat.turn or combat.turn.unit ~= unit then return false, "not this unit's turn" end
+    if combat.turn.moved then return false, "already moved" end
     local node = Combat.reachable(combat, unit)[key(x, y)]
     if not node then return false, "unreachable" end
 
     unit.x, unit.y = x, y
-    unit.time = unit.time + node.steps
-    combat.turnCount = combat.turnCount + 1
-    combat.clock = math.max(combat.clock, unit.time)
-    return true, node.steps
+    combat.turn.moved = true
+    combat.turn.moveCost = node.cost
+    return true, node.cost
 end
 
 -- ---------------------------------------------------------------------------
@@ -409,9 +527,8 @@ function Combat.useItem(combat, unit, item, tx, ty)
     }
     if ab.effect then ab.effect(fx) end
 
-    unit.time = unit.time + (ab.speed or Combat.DEFAULT_SPEED)
-    combat.turnCount = combat.turnCount + 1
-    combat.clock = math.max(combat.clock, unit.time)
+    -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed.
+    endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
 
     if ab.consumesItem then
         for i, it in ipairs(unit.char.inventory) do
@@ -426,13 +543,15 @@ end
 -- Enemy AI
 -- ---------------------------------------------------------------------------
 
--- Simple enemy plan: attack the nearest party unit if any ability item can reach one right
--- now, otherwise step toward the nearest party unit, otherwise pass. Returns a plain action
--- descriptor the battle state executes via moveUnit / useItem:
---   { kind = "item", item, tx, ty } | { kind = "move", x, y } | { kind = "pass" }
--- Pure (no love, no mutation) so it stays headless-testable.
+-- Enemy plan for a whole turn (move once, then act). Returns a descriptor the battle state
+-- executes as an optional move followed by an item use or a wait:
+--   { move = { x, y } | nil, item = <item>, tx, ty }   -- attack (optionally after moving)
+--   { move = { x, y } }                                -- reposition only
+--   { wait = true }                                    -- nothing useful to do
+-- Priority: attack from the current tile > move to a tile that lets an ability hit a party
+-- unit > step toward the nearest foe > wait. Pure (no love, no mutation) so it stays testable.
 function Combat.planEnemyAction(combat, unit)
-    -- Nearest living party unit (the target we path toward / attack).
+    -- Nearest living party unit (the foe we path toward / attack).
     local target, bestDist
     for _, u in ipairs(combat.units) do
         if u.alive and u.side ~= unit.side then
@@ -440,10 +559,20 @@ function Combat.planEnemyAction(combat, unit)
             if not bestDist or d < bestDist then target, bestDist = u, d end
         end
     end
-    if not target then return { kind = "pass" } end
+    if not target then return { wait = true } end
 
-    -- Attack if any ability item can hit a party unit now (prefer the nearest such target).
+    -- Only consider abilities the unit can currently pay for (else the plan would waste the
+    -- turn on an item useItem rejects).
+    local items = {}
     for _, item in ipairs(Combat.abilityItems(unit.char)) do
+        local ab = item.activeAbility
+        if not ab.cost or resourceValue(unit.char, ab.cost.stat) >= ab.cost.amount then
+            items[#items + 1] = item
+        end
+    end
+
+    -- 1. Attack from where we stand, if any ability already reaches a foe (nearest target).
+    for _, item in ipairs(items) do
         local hit, hitDist
         for _, t in ipairs(Combat.abilityTargets(combat, unit, item)) do
             if t.side ~= unit.side then
@@ -451,22 +580,46 @@ function Combat.planEnemyAction(combat, unit)
                 if not hitDist or d < hitDist then hit, hitDist = t, d end
             end
         end
-        if hit then return { kind = "item", item = item, tx = hit.x, ty = hit.y } end
+        if hit then return { item = item, tx = hit.x, ty = hit.y } end
     end
 
-    -- Otherwise step to the reachable tile that gets closest to the target (ties -> fewer
+    -- 2. Move to a reachable tile from which an ability can hit a foe. Prefer the fewest
+    -- steps, then the nearest foe from that tile.
+    local reachable = Combat.reachable(combat, unit)
+    local best
+    for _, node in pairs(reachable) do
+        for _, item in ipairs(items) do
+            local range = (item.activeAbility and item.activeAbility.range) or 1
+            for _, p in ipairs(combat.units) do
+                if p.alive and p.side ~= unit.side
+                    and manhattan(node.x, node.y, p.x, p.y) <= range then
+                    local d = manhattan(node.x, node.y, p.x, p.y)
+                    if not best or node.steps < best.steps
+                        or (node.steps == best.steps and d < best.dist) then
+                        best = { x = node.x, y = node.y, item = item, tx = p.x, ty = p.y,
+                                 steps = node.steps, dist = d }
+                    end
+                end
+            end
+        end
+    end
+    if best then
+        return { move = { x = best.x, y = best.y }, item = best.item, tx = best.tx, ty = best.ty }
+    end
+
+    -- 3. No attack possible: step to the reachable tile closest to the target (ties -> fewer
     -- steps). Only move if it strictly closes the gap, to avoid pacing in place.
     local dest
-    for _, node in pairs(Combat.reachable(combat, unit)) do
+    for _, node in pairs(reachable) do
         local d = manhattan(node.x, node.y, target.x, target.y)
         if not dest or d < dest.dist or (d == dest.dist and node.steps < dest.steps) then
             dest = { x = node.x, y = node.y, dist = d, steps = node.steps }
         end
     end
     if dest and dest.dist < bestDist then
-        return { kind = "move", x = dest.x, y = dest.y }
+        return { move = { x = dest.x, y = dest.y } }
     end
-    return { kind = "pass" }
+    return { wait = true }
 end
 
 -- ---------------------------------------------------------------------------

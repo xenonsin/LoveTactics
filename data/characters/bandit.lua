@@ -9,6 +9,7 @@ return {
         damage = 12, magicDamage = 0,         -- flat stats
         defense = 6, magicDefense = 3,
         movement = 3, -- number of spaces this character can move
+        speed = 4,
     },
     startingItems = { "iron_sword" },
 }

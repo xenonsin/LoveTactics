@@ -7,6 +7,7 @@ return {
         damage = 22, magicDamage = 0,
         defense = 12, magicDefense = 6,
         movement = 3,
+        speed = 4,
     },
     startingItems = { "iron_sword" },
 }

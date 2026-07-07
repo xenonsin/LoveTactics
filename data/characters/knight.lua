@@ -6,6 +6,7 @@ return {
         damage = 14, magicDamage = 4,          -- flat stats
         defense = 10, magicDefense = 6,
         movement = 3, -- number of spaces this character can move
+        speed = 3,    -- initiative tie-break; folded into starting initiative
     },
     startingItems = { "iron_sword", "healing_potion" }, -- item ids
 }

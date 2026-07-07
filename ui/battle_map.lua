@@ -4,8 +4,9 @@
 -- any input source, and the owning state (states/battle.lua) interprets confirm presses.
 --
 -- Tiles are flavoured by the quest's biome: each arena tile type maps to an overworld
--- tileset type (ground->path, rough->grass, obstacle->rock) so the biome's art/colours
--- carry through. If the tileset art is missing, it falls back to colored rects.
+-- tileset type (ground->path, forest->forest, mountain/obstacle->rock, rough->grass) so the
+-- biome's art/colours carry through. If the tileset art is missing, it falls back to colored
+-- rects. Costly terrain also gets a translucent wash so its slowness reads at a glance.
 --
 -- Units are drawn from the combat model (live positions / HP / alive), each with an on-tile
 -- HP bar and its turn-order number. The state feeds per-frame overlays (blue reachable move
@@ -29,7 +30,18 @@ BattleMap.__index = BattleMap
 
 -- Arena tile type -> overworld tileset type, so each biome's art/colours flavour the
 -- arena ground.
-local ART = { ground = "path", rough = "grass", obstacle = "rock" }
+local ART = {
+    ground = "path", forest = "forest", mountain = "rock",
+    rough = "grass", obstacle = "rock",
+}
+
+-- Translucent wash over costly terrain (drawn on walkable tiles) so a tile's move penalty
+-- reads at a glance: leafy green for forest, cold grey for mountain, brown for legacy rough.
+local TERRAIN_TINT = {
+    forest   = { 0.10, 0.35, 0.12, 0.28 },
+    mountain = { 0.30, 0.30, 0.34, 0.35 },
+    rough    = { 0.20, 0.15, 0.05, 0.25 },
+}
 
 local DEFAULTS = { axisThreshold = 0.5 }
 
@@ -168,13 +180,17 @@ function BattleMap:drawTiles()
                 love.graphics.setColor(col[1], col[2], col[3])
                 love.graphics.rectangle("fill", wx, wy, s, s)
             end
-            -- Impassable tiles get a darkening overlay so blocked cells read clearly.
+            -- Impassable tiles get a darkening overlay so blocked cells read clearly;
+            -- walkable-but-costly terrain gets its per-type wash.
             if not cell.walkable then
                 love.graphics.setColor(0, 0, 0, 0.45)
                 love.graphics.rectangle("fill", wx, wy, s, s)
-            elseif cell.type == "rough" then
-                love.graphics.setColor(0.2, 0.15, 0.05, 0.25)
-                love.graphics.rectangle("fill", wx, wy, s, s)
+            else
+                local tint = TERRAIN_TINT[cell.type]
+                if tint then
+                    love.graphics.setColor(tint[1], tint[2], tint[3], tint[4])
+                    love.graphics.rectangle("fill", wx, wy, s, s)
+                end
             end
             -- Grid line.
             love.graphics.setColor(0, 0, 0, 0.25)

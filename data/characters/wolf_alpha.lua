@@ -8,6 +8,7 @@ return {
         damage = 16, magicDamage = 0,
         defense = 6, magicDefense = 3,
         movement = 5,
+        speed = 6, -- fastest in the pack
     },
     startingItems = { "fangs" },
 }

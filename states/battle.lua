@@ -30,12 +30,13 @@ local hudFont = love.graphics.newFont(16)
 local PANEL_W = CombatPanel.WIDTH
 local AI_DELAY = 0.35 -- seconds between enemy actions, so each move is watchable
 
--- Clickable "Forfeit" button so a mouse-only player can bail out (counts as a loss).
+-- Clickable "Forfeit" button so a mouse-only player can bail out (counts as a loss), plus a
+-- "Wait" button so a mouse-only player can end a turn without acting (a delay).
 local forfeitButton = { x = 16, y = 16, w = 130, h = 36 }
+local waitButton = { x = 16, y = 60, w = 130, h = 36 }
 
-local function forfeitContains(x, y)
-    return x >= forfeitButton.x and x <= forfeitButton.x + forfeitButton.w
-        and y >= forfeitButton.y and y <= forfeitButton.y + forfeitButton.h
+local function pointIn(btn, x, y)
+    return x >= btn.x and x <= btn.x + btn.w and y >= btn.y and y <= btn.y + btn.h
 end
 
 -- Human-readable objective line for the HUD.
@@ -112,7 +113,7 @@ end
 -- Start the current unit's turn: MOVE mode + reachable set for a party unit, or an AI
 -- delay for an enemy.
 local function beginTurn()
-    local current = Combat.currentUnit(battle.combat)
+    local current = Combat.startTurn(battle.combat)
     battle.current = current
     battle.mode = "move"
     battle.armedItem = nil
@@ -173,39 +174,44 @@ local function cycleAbilityItem()
     if idx + 1 > #items then cancelArm() else armItem(items[idx + 1]) end
 end
 
--- Confirm on the cursor cell: move there, or use the armed item on it.
+-- Confirm on the cursor cell: move there (does NOT end the turn -- the unit can still act or
+-- wait), or use the armed item on it (ends the turn).
 local function confirm()
     local current = battle.current
     if battle.over or not current or current.side ~= "party" then return end
     local cx, cy = battle.map.cursor.x, battle.map.cursor.y
     if battle.mode == "move" then
         if battle.reachable[cx .. "," .. cy] then
-            if Combat.moveUnit(battle.combat, current, cx, cy) then advanceTurn() end
+            if Combat.moveUnit(battle.combat, current, cx, cy) then
+                -- Move spent: clear the reachable set (only one move per turn) and stay in
+                -- this turn so the player can arm an item or wait. The per-frame refreshView
+                -- in battle.update picks up the new state.
+                battle.reachable, battle.moveCells = {}, {}
+            end
         end
     elseif battle.mode == "armed" and battle.armedItem then
         if Combat.useItem(battle.combat, current, battle.armedItem, cx, cy) then advanceTurn() end
     end
 end
 
--- A unit that can neither reach nor hit anyone still advances the timeline so combat
--- never stalls.
-local function passTurn(unit)
-    unit.time = unit.time + Combat.DEFAULT_SPEED
-    battle.combat.turnCount = battle.combat.turnCount + 1
-    battle.combat.clock = math.max(battle.combat.clock, unit.time)
+-- End the current party unit's turn without acting -- a delay, so it acts just after the
+-- next unit in line (Combat.wait). Available whether or not it moved.
+local function waitTurn()
+    local current = battle.current
+    if battle.over or not current or current.side ~= "party" then return end
+    if Combat.wait(battle.combat, current) then advanceTurn() end
 end
 
 local function executeEnemyAction()
     local current = battle.current
     if not current or current.side ~= "enemy" then return end
     local act = Combat.planEnemyAction(battle.combat, current)
-    if act.kind == "move" then
-        Combat.moveUnit(battle.combat, current, act.x, act.y)
-    elseif act.kind == "item" then
-        Combat.useItem(battle.combat, current, act.item, act.tx, act.ty)
-    else
-        passTurn(current)
-    end
+    if act.move then Combat.moveUnit(battle.combat, current, act.move.x, act.move.y) end
+    local acted = false
+    if act.item then acted = Combat.useItem(battle.combat, current, act.item, act.tx, act.ty) end
+    -- Reposition-only, nothing to do, or an item use that unexpectedly failed: pass so the
+    -- turn always ends (paying the real move cost) and never soft-locks on this unit.
+    if not acted then Combat.pass(battle.combat, current) end
     advanceTurn()
 end
 
@@ -215,27 +221,36 @@ local function refreshView()
     if not current then return end
     local isParty = current.side == "party" and not battle.over
 
-    -- Preview how the pending action would reorder the timeline.
-    local newTime
+    -- Preview the projected initiative the pending action would give the actor. The actor
+    -- sits at initiative 0; a move already taken this turn is folded in via the pending move
+    -- cost, and a wait previews the delay slot (next unit's initiative + 1).
+    local newInit
     if isParty then
-        if battle.hoverItem and battle.hoverItem.activeAbility then
-            newTime = current.time + (battle.hoverItem.activeAbility.speed or 0)
+        local pendingMove = (battle.combat.turn and battle.combat.turn.moveCost) or 0
+        if battle.hoverWait then
+            local nxt
+            for _, u in ipairs(Combat.turnOrder(battle.combat)) do
+                if u ~= current then nxt = u.initiative break end
+            end
+            newInit = nxt and math.max(pendingMove, nxt + 1) or (pendingMove + Combat.WAIT_COST)
+        elseif battle.hoverItem and battle.hoverItem.activeAbility then
+            newInit = pendingMove + (battle.hoverItem.activeAbility.speed or 0)
         elseif battle.mode == "armed" and battle.armedItem then
-            newTime = current.time + (battle.armedItem.activeAbility.speed or 0)
+            newInit = pendingMove + (battle.armedItem.activeAbility.speed or 0)
         elseif battle.mode == "move" then
             local node = battle.reachable and battle.reachable[battle.map.cursor.x .. "," .. battle.map.cursor.y]
-            if node then newTime = current.time + node.steps end
+            if node then newInit = node.cost end
         end
     end
     -- Timeline entries for the panel: the live order, plus a ghost of the actor at its
-    -- projected slot while a move/item is being previewed.
+    -- projected slot while a move/item/wait is being previewed.
     local entries
-    if newTime then
-        entries = Combat.previewTimeline(battle.combat, current, newTime)
+    if newInit then
+        entries = Combat.previewTimeline(battle.combat, current, newInit)
     else
         entries = {}
         for _, u in ipairs(Combat.turnOrder(battle.combat)) do
-            entries[#entries + 1] = { unit = u, preview = false, time = u.time }
+            entries[#entries + 1] = { unit = u, preview = false, initiative = u.initiative }
         end
     end
 
@@ -243,7 +258,7 @@ local function refreshView()
         order = entries, current = current, isPartyTurn = isParty,
         items = (current.side == "party") and current.char.inventory or {},
         armedItem = battle.armedItem,
-        showTime = battle.showInitiative,
+        showInitiative = battle.showInitiative,
     })
 
     -- Board highlights: the acting unit always, plus whichever unit the timeline is hovering.
@@ -337,6 +352,16 @@ function battle.drawHud()
     love.graphics.printf("Forfeit", forfeitButton.x, forfeitButton.y + forfeitButton.h / 2 - 8,
         forfeitButton.w, "center")
 
+    -- Wait / End Turn button, active only on a party unit's turn.
+    local canWait = battle.current and battle.current.side == "party" and not battle.over
+    if canWait then love.graphics.setColor(0.18, 0.22, 0.30) else love.graphics.setColor(0.14, 0.15, 0.18) end
+    love.graphics.rectangle("fill", waitButton.x, waitButton.y, waitButton.w, waitButton.h, 6, 6)
+    if canWait then love.graphics.setColor(0.5, 0.65, 0.85) else love.graphics.setColor(0.3, 0.32, 0.38) end
+    love.graphics.rectangle("line", waitButton.x, waitButton.y, waitButton.w, waitButton.h, 6, 6)
+    if canWait then love.graphics.setColor(0.9, 0.94, 1) else love.graphics.setColor(0.5, 0.52, 0.58) end
+    love.graphics.setFont(hudFont)
+    love.graphics.printf("Wait", waitButton.x, waitButton.y + waitButton.h / 2 - 8, waitButton.w, "center")
+
     -- Encounter name + objective, centred over the battlefield region.
     love.graphics.setFont(titleFont)
     love.graphics.setColor(0.95, 0.85, 0.55)
@@ -352,8 +377,10 @@ function battle.drawHud()
         if battle.mode == "armed" then
             local verb = battle.armedSupport and "Click an ally to support" or "Click a target to strike"
             hint = verb .. "  ·  click the item / Esc to cancel"
+        elseif Combat.hasMoved(battle.combat) then
+            hint = "Click an item to attack  ·  Wait to hold this turn"
         else
-            hint = "Click a blue tile to move  ·  click an item to attack"
+            hint = "Click a blue tile to move  ·  click an item to attack  ·  Wait to delay"
         end
     else
         hint = "Enemy acting..."
@@ -375,6 +402,8 @@ function battle.keypressed(key)
     if battle.over then return end
     if key == "return" or key == "kpenter" or key == "space" then
         confirm()
+    elseif key == "tab" then
+        waitTurn()
     elseif key == "escape" then
         if battle.mode == "armed" then cancelArm() else lose() end
     elseif key:match("^[1-9]$") then
@@ -388,6 +417,8 @@ function battle.gamepadpressed(joystick, button)
     if battle.over then return end
     if button == "a" or button == "start" then
         confirm()
+    elseif button == "x" then
+        waitTurn()
     elseif button == "b" then
         if battle.mode == "armed" then cancelArm() else lose() end
     elseif button == "back" then
@@ -400,13 +431,20 @@ function battle.gamepadpressed(joystick, button)
 end
 
 function battle.mousemoved(x, y, dx, dy)
+    -- Hovering the Wait button previews the delay slot on the timeline.
+    battle.hoverWait = pointIn(waitButton, x, y)
+        and battle.current and battle.current.side == "party" and not battle.over or false
     if battle.panel:mousemoved(x, y) then return end
     battle.map:mousemoved(x, y)
 end
 
 function battle.mousepressed(x, y, button)
-    if button == 1 and forfeitContains(x, y) then
+    if button == 1 and pointIn(forfeitButton, x, y) then
         lose()
+        return
+    end
+    if button == 1 and pointIn(waitButton, x, y) then
+        waitTurn()
         return
     end
     if battle.panel:mousepressed(x, y, button) then return end
