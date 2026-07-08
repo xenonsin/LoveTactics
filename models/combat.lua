@@ -236,6 +236,13 @@ function Combat.abilityRange(combat, unit, ab, x, y)
     return base + (Combat.fieldBonus(combat, x or unit.x, y or unit.y).range or 0)
 end
 
+-- Minimum range of ability `ab`: a fixed "dead zone" a target must be at least this far away to be
+-- hit (a bow can't fire point-blank). Defaults to 0 (no restriction). Unlike Combat.abilityRange
+-- this gets NO tile field bonus -- a vantage point extends max reach, it doesn't shrink the dead zone.
+function Combat.abilityMinRange(ab)
+    return (ab and ab.minRange) or 0
+end
+
 -- Cells an area-of-effect ability centred on (tx, ty) covers, clamped to the arena. An ability's
 -- optional `aoe = { radius = r, shape = "square"|"diamond" }` defines the blast footprint:
 --   * "square" (default) -- every cell within Chebyshev distance r, i.e. the (2r+1)^2 block
@@ -591,8 +598,9 @@ end
 -- passes its live set so a unit that has already moved only threatens from where it now stands.
 -- `requiresSight` (the default weapon's `ab.requiresSight`) drops any target cell a stand tile has
 -- no clear line to, so a bow's red reach stops at terrain cover.
-function Combat.attackReach(combat, unit, range, reachable, requiresSight)
+function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRange)
     range = range or 1
+    minRange = minRange or 0
     reachable = reachable or Combat.reachable(combat, unit)
 
     -- Stand tiles: the origin (cost 0) plus every reachable move tile.
@@ -606,7 +614,8 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight)
         local r = range + (Combat.fieldBonus(combat, s.x, s.y).range or 0)
         for dx = -r, r do
             for dy = -r, r do
-                if math.abs(dx) + math.abs(dy) <= r then
+                local d = math.abs(dx) + math.abs(dy)
+                if d <= r and d >= minRange then
                     local x, y = s.x + dx, s.y + dy
                     -- Impassable tiles (solid obstacles, which also fully block sight) can never
                     -- hold a target, so they're never part of the reach -- no red highlight, and
@@ -894,8 +903,10 @@ function Combat.abilityTargets(combat, unit, item)
     if not ab then return {} end
     local out = {}
     local range = Combat.abilityRange(combat, unit, ab)
+    local minRange = Combat.abilityMinRange(ab)
     for _, other in ipairs(combat.units) do
-        if other.alive and manhattan(unit.x, unit.y, other.x, other.y) <= range then
+        local d = manhattan(unit.x, unit.y, other.x, other.y)
+        if other.alive and d <= range and d >= minRange then
             local valid = false
             if ab.target == "enemy" then valid = other.side ~= unit.side
             elseif ab.target == "ally" then valid = other.side == unit.side -- includes self
@@ -963,8 +974,12 @@ function Combat.useItem(combat, unit, item, tx, ty)
     if not ab then return false, "no ability" end
     if Combat.isDepleted(item) then return false, "out of stock" end
 
-    if manhattan(unit.x, unit.y, tx, ty) > Combat.abilityRange(combat, unit, ab) then
+    local dist = manhattan(unit.x, unit.y, tx, ty)
+    if dist > Combat.abilityRange(combat, unit, ab) then
         return false, "out of range"
+    end
+    if dist < Combat.abilityMinRange(ab) then
+        return false, "too close"
     end
     if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, tx, ty) then
         return false, "no line of sight"
@@ -1064,8 +1079,12 @@ function Combat.strikeTrap(combat, unit, weapon, x, y)
     if not Trap.visibleTo(combat, trap, unit.side) then return false, "hidden" end
     local ab = weapon and weapon.activeAbility
     if not ab then return false, "no ability" end
-    if manhattan(unit.x, unit.y, x, y) > Combat.abilityRange(combat, unit, ab) then
+    local dist = manhattan(unit.x, unit.y, x, y)
+    if dist > Combat.abilityRange(combat, unit, ab) then
         return false, "out of range"
+    end
+    if dist < Combat.abilityMinRange(ab) then
+        return false, "too close"
     end
     if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, x, y) then
         return false, "no line of sight"
@@ -1141,9 +1160,11 @@ function Combat.planEnemyAction(combat, unit)
         for _, item in ipairs(items) do
             local ab = item.activeAbility
             local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
+            local minRange = Combat.abilityMinRange(ab)
             for _, p in ipairs(combat.units) do
                 if p.alive and p.side ~= unit.side
                     and manhattan(node.x, node.y, p.x, p.y) <= range
+                    and manhattan(node.x, node.y, p.x, p.y) >= minRange
                     and (not (ab and ab.requiresSight)
                          or Combat.hasLineOfSight(combat, node.x, node.y, p.x, p.y)) then
                     local d = manhattan(node.x, node.y, p.x, p.y)

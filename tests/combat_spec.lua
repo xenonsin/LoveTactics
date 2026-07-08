@@ -571,4 +571,60 @@ return {
             assert(ar["4,4"] and ar["4,4"].moveCost == 0, "origin is in reach at no move cost")
         end,
     },
+    {
+        name = "a minRange weapon (bow) can't target adjacent tiles but can hit within its band",
+        fn = function()
+            -- Archer with a bow (range 3, minRange 2) at (4,4); enemies at distance 1, 2, and 3.
+            local c = Combat.new(arena(8, 8),
+                { unit("archer", 4, 4) },
+                { unit("bandit", 5, 4), unit("bandit", 6, 4), unit("bandit", 7, 4) })
+            local archer = c.units[1]
+            local adj, mid, far = c.units[2], c.units[3], c.units[4]
+            local bow = Item.instantiate("bow")
+
+            -- The confirm gate rejects a point-blank shot before spending any cost.
+            local stam0 = archer.char.stats.stamina.current
+            local ok, reason = Combat.useItem(c, archer, bow, adj.x, adj.y)
+            assert(not ok and reason == "too close", "adjacent target is inside the dead zone")
+            assert(archer.char.stats.stamina.current == stam0, "a rejected shot costs nothing")
+
+            -- The valid-target set excludes the adjacent foe but includes the 2- and 3-tile foes.
+            local targets = Combat.abilityTargets(c, archer, bow)
+            local hit = {}
+            for _, t in ipairs(targets) do hit[t] = true end
+            assert(not hit[adj], "the adjacent enemy is not targetable")
+            assert(hit[mid] and hit[far], "the 2- and 3-tile enemies are targetable")
+
+            -- A shot at the 2-tile foe lands.
+            openTurn(c, archer)
+            local ok2 = Combat.useItem(c, archer, bow, mid.x, mid.y)
+            assert(ok2, "a shot at range 2 (inside the band) lands")
+        end,
+    },
+    {
+        name = "a melee weapon still strikes adjacent (no minRange regression)",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("knight", 4, 4) }, { unit("bandit", 5, 4) })
+            local knight, bandit = c.units[1], c.units[2]
+            local sword = Item.instantiate("iron_sword") -- range 1, no minRange
+            openTurn(c, knight)
+            local ok = Combat.useItem(c, knight, sword, bandit.x, bandit.y)
+            assert(ok, "a range-1 weapon with no minRange still hits an adjacent foe")
+        end,
+    },
+    {
+        name = "attackReach with a minRange excludes the adjacent ring",
+        fn = function()
+            -- From the origin only (empty reachable set), a range-3 / minRange-2 weapon threatens
+            -- the 2- and 3-tile band but not the adjacent ring.
+            local c = Combat.new(arena(8, 8), { unit("archer", 4, 4) }, {})
+            local archer = c.units[1]
+            local ar = Combat.attackReach(c, archer, 3, {}, false, 2)
+            assert(ar["5,4"] == nil, "the adjacent tile is inside the dead zone")
+            assert(ar["4,4"] == nil, "the origin (distance 0) is inside the dead zone")
+            assert(ar["6,4"], "a 2-tile target is threatened")
+            assert(ar["7,4"], "a 3-tile target is threatened")
+        end,
+    },
 }

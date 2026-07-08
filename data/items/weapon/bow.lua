@@ -1,6 +1,6 @@
 return {
     name = "Bow",
-    description = "Fires an arrow at a foe up to three tiles away.",
+    description = "Fires an arrow at a foe two to three tiles away -- too far for point-blank shots.",
     sprite = "assets/items/bow.png",
     type = "weapon",
     tags = { "bow", "pierce", "physical" },
@@ -8,6 +8,7 @@ return {
         name = "Shoot",
         target = "enemy",
         range = 3,
+        minRange = 2, -- a bow can't fire at adjacent tiles: no point-blank shots
         requiresSight = true, -- an arrow needs a clear line: terrain cover blocks the shot
         speed = 2, -- lighter/faster than the sword
         cost = { stat = "stamina", amount = 6 },

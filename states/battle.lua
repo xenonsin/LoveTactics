@@ -132,11 +132,13 @@ local function computeRange(unit, item)
         return
     end
     local range = Combat.abilityRange(battle.combat, unit, ab)
+    local minRange = Combat.abilityMinRange(ab)
     local requiresSight = ab and ab.requiresSight
     local cells = {}
     for dx = -range, range do
         for dy = -range, range do
-            if math.abs(dx) + math.abs(dy) <= range then
+            local d = math.abs(dx) + math.abs(dy)
+            if d <= range and d >= minRange then
                 local x, y = unit.x + dx, unit.y + dy
                 if x >= 1 and x <= battle.arena.cols and y >= 1 and y <= battle.arena.rows
                     and battle.arena.tiles[y][x].walkable
@@ -190,7 +192,7 @@ local function computeThreat(unit)
     local ab = weapon and weapon.activeAbility
     local range = (ab and ab.range) or 1
     battle.attackReach = Combat.attackReach(battle.combat, unit, range, battle.reachable,
-        ab and ab.requiresSight)
+        ab and ab.requiresSight, Combat.abilityMinRange(ab))
 
     local moveKeys = {}
     for _, c in ipairs(battle.moveCells) do moveKeys[c.x .. "," .. c.y] = true end

@@ -129,7 +129,12 @@ local function buildBlocks(item, actor)
             blocks[#blocks + 1] = { kind = "stat", label = "Target",
                 value = TARGET_LABEL[ab.target] or titleCase(ab.target) }
         end
-        blocks[#blocks + 1] = { kind = "stat", label = "Range", value = tostring(ab.range or 1) }
+        local rangeText = tostring(ab.range or 1)
+        if ab.minRange and ab.minRange > 1 then
+            -- A weapon with a dead zone shows the band it can hit (e.g. "2-3") rather than just the max.
+            rangeText = ab.minRange .. "-" .. (ab.range or 1)
+        end
+        blocks[#blocks + 1] = { kind = "stat", label = "Range", value = rangeText }
         if ab.speed then
             blocks[#blocks + 1] = { kind = "stat", label = "Speed", value = tostring(ab.speed) }
         end
