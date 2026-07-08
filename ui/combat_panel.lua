@@ -16,6 +16,7 @@
 --   panel:draw(); panel:mousemoved(x, y); panel:mousepressed(x, y, button)
 
 local Scale = require("scale")
+local Combat = require("models.combat")
 
 local CombatPanel = {}
 CombatPanel.__index = CombatPanel
@@ -43,6 +44,36 @@ local RES_COLOR = {}
 for _, r in ipairs(RESOURCES) do RES_COLOR[r.key] = r.color end
 local COST_FALLBACK = { 0.75, 0.75, 0.80 }
 local SPEED_COLOR = { 0.95, 0.85, 0.55 } -- gold, matching the timeline/initiative accent
+local WARN_COLOR = { 0.95, 0.40, 0.38 }  -- red cost badge on an ability the actor can't afford
+
+-- Draw a resource bar with an optional preview `delta` (an aimed action's projected change): the
+-- "after" fill in the pool colour, then the lost slice in red (delta < 0, brighter when lethal) or
+-- the gained slice in green (delta > 0) beside it. Mirrors ui/tile_tooltip.lua's bar so the banner
+-- preview reads the same as the tooltip. No delta = a plain fill.
+local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal)
+    delta = delta or 0
+    local ratio = (max > 0) and math.max(0, math.min(1, cur / max)) or 0
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.rectangle("fill", x, y, w, h, 2, 2)
+    if delta ~= 0 and max > 0 then
+        local afterRatio = math.max(0, math.min(1, (cur + delta) / max))
+        if delta < 0 then
+            love.graphics.setColor(color[1], color[2], color[3], 0.95)
+            love.graphics.rectangle("fill", x, y, w * afterRatio, h, 2, 2)
+            local loseCol = lethal and { 1.0, 0.30, 0.28 } or { 0.90, 0.35, 0.30 }
+            love.graphics.setColor(loseCol[1], loseCol[2], loseCol[3], 0.9)
+            love.graphics.rectangle("fill", x + w * afterRatio, y, w * (ratio - afterRatio), h, 2, 2)
+        else
+            love.graphics.setColor(color[1], color[2], color[3], 0.95)
+            love.graphics.rectangle("fill", x, y, w * ratio, h, 2, 2)
+            love.graphics.setColor(0.55, 0.92, 0.58, 0.9)
+            love.graphics.rectangle("fill", x + w * ratio, y, w * (afterRatio - ratio), h, 2, 2)
+        end
+    else
+        love.graphics.setColor(color[1], color[2], color[3], 0.95)
+        love.graphics.rectangle("fill", x, y, w * ratio, h, 2, 2)
+    end
+end
 
 function CombatPanel.new(combat, opts)
     opts = opts or {}
@@ -100,18 +131,27 @@ function CombatPanel:slotIndexAt(px, py)
     return nil
 end
 
+-- Can the current actor pay `item`'s ability cost right now? True for passive/costless items and
+-- when there is no current actor. Drives the grayed-out "can't afford" slot state.
+function CombatPanel:canAfford(item)
+    local ab = item and item.activeAbility
+    local cur = self.view.current
+    if not ab or not cur then return true end
+    return Combat.canAfford(cur.char, ab)
+end
+
 -- ---------------------------------------------------------------------------
 -- Draw
 -- ---------------------------------------------------------------------------
 
 function CombatPanel:draw()
-    -- Panel background.
-    love.graphics.setColor(0.10, 0.11, 0.15, 0.96)
+    -- Panel background. Softened (lower opacity, a dim 1px divider) so it frames the board
+    -- without walling it in -- mirrors states/battle.lua drawLeftColumn.
+    love.graphics.setColor(0.10, 0.11, 0.15, 0.86)
     love.graphics.rectangle("fill", self.x, 0, self.w, Scale.HEIGHT)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.setLineWidth(2)
-    love.graphics.line(self.x, 0, self.x, Scale.HEIGHT)
+    love.graphics.setColor(0.30, 0.33, 0.42)
     love.graphics.setLineWidth(1)
+    love.graphics.line(self.x, 0, self.x, Scale.HEIGHT)
 
     love.graphics.setFont(self.headFont)
     love.graphics.setColor(0.95, 0.85, 0.55)
@@ -131,6 +171,8 @@ function CombatPanel:entryLayout()
     local out = {}
     local entries = self.view.order or {}
     local turnNo = 0
+    -- Bottom-pinned: the soonest entry sits at stripBottom (just above the item grid) and the
+    -- strip grows upward, so the current actor is always adjacent to its items.
     for i, entry in ipairs(entries) do
         local bottom = self.stripBottom - (i - 1) * (ENTRY_H + ENTRY_GAP)
         local top = bottom - ENTRY_H
@@ -170,6 +212,23 @@ function CombatPanel:dashedRect(x, y, w, h)
         love.graphics.line(x + w, yy, x + w, yy + seg)
         yy = yy + dash + gap
     end
+end
+
+-- Rects of the active status badges on `unit`'s turn-strip entry (entry left/width ex/ew, row
+-- top ey). Shared by drawEntry + statusAt so a badge's tooltip lands exactly where it's drawn.
+-- Anchored right and laid out right-to-left, leaving room at the far edge for the initiative num.
+function CombatPanel:statusBadgeRects(unit, ex, ew, ey)
+    local statuses = unit.statuses
+    if not statuses or #statuses == 0 then return {} end
+    local bw, bh, gap = 16, 14, 3
+    local out = {}
+    local x = ex + ew - 40
+    for i = #statuses, 1, -1 do
+        x = x - bw
+        out[#out + 1] = { st = statuses[i], x = x, y = ey + 4, w = bw, h = bh }
+        x = x - gap
+    end
+    return out
 end
 
 function CombatPanel:drawEntry(entry, ey, num)
@@ -248,15 +307,37 @@ function CombatPanel:drawEntry(entry, ey, num)
     love.graphics.setColor(0.92, 0.92, 0.95)
     love.graphics.print(unit.char.name or "?", rx, ey + 4)
 
+    -- Active status badges on the name row, anchored right (leaving room at the far edge for the
+    -- optional initiative debug number), so a stunned/rooted unit reads on the strip too.
+    for _, r in ipairs(self:statusBadgeRects(unit, ex, ew, ey)) do
+        local col = (r.st.def and r.st.def.color) or { 0.82, 0.82, 0.88 }
+        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 3, 3)
+        love.graphics.setColor(col[1], col[2], col[3], 0.95)
+        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 3, 3)
+        love.graphics.setFont(self.smallFont)
+        love.graphics.setColor(col[1], col[2], col[3], 1)
+        love.graphics.printf((r.st.def and r.st.def.abbr) or (r.st.name or "?"):sub(1, 1),
+            r.x, r.y, r.w, "center")
+    end
+
+    -- Aimed-action preview for this unit (damage/heal on its HP, resource cost on the actor's pool),
+    -- projected onto the bars so a strike/heal/cast reads on the turn order just like the tooltip.
+    local pv = self.view.preview and self.view.preview[unit]
     local by = ey + 22
     for _, res in ipairs(RESOURCES) do
         local stat = unit.char.stats[res.key]
         if type(stat) == "table" and (stat.max or 0) > 0 then
-            local ratio = math.max(0, math.min(1, stat.current / stat.max))
-            love.graphics.setColor(0, 0, 0, 0.5)
-            love.graphics.rectangle("fill", rx, by, rw, 7, 2, 2)
-            love.graphics.setColor(res.color[1], res.color[2], res.color[3])
-            love.graphics.rectangle("fill", rx, by, rw * ratio, 7, 2, 2)
+            local delta, lethal = 0, false
+            if pv then
+                if res.key == "health" then
+                    delta = (pv.heal or 0) - (pv.damage or 0)
+                    lethal = pv.lethal
+                elseif pv.cost and pv.cost.stat == res.key then
+                    delta = -(pv.cost.amount or 0)
+                end
+            end
+            drawResourceBar(rx, by, rw, 7, stat.current, stat.max, res.color, delta, lethal)
             by = by + 10
         end
     end
@@ -311,7 +392,13 @@ function CombatPanel:drawItemGrid()
         local sx, sy, sw, sh = self:slotRect(i)
         local item = items[i]
         local armed = item and item == self.view.armedItem
-        local usable = item and item.activeAbility ~= nil and isPartyTurn
+        -- An ability the actor can't pay for is treated like an unusable slot: grayed out, with
+        -- its cost badge flipped red (below) to point at the reason. `unaffordable` gates that red
+        -- cue so it only fires on a party turn (off-turn slots dim for a different reason).
+        local affordable = self:canAfford(item)
+        local depleted = item ~= nil and Combat.isDepleted(item)
+        local usable = item and item.activeAbility ~= nil and isPartyTurn and affordable and not depleted
+        local unaffordable = item and item.activeAbility ~= nil and isPartyTurn and not affordable
 
         -- Slot plate.
         love.graphics.setColor(0.16, 0.17, 0.22, isPartyTurn and 1 or 0.5)
@@ -351,11 +438,31 @@ function CombatPanel:drawItemGrid()
             love.graphics.print(name, sx + sw / 2 - (nw * sc) / 2,
                 sy + sh - NAME_H + (NAME_H - nh) / 2, 0, sc, sc)
 
+            -- Stack count ("xN") for a stackable consumable, in a pill just above the name band so
+            -- it clears the top-corner cost/speed badges. Shown for any real stack (>1) and for a
+            -- spent one (x0, tinted red) so an empty-but-kept slot reads as out of stock.
+            local qty = item.quantity or 1
+            if qty ~= 1 then
+                love.graphics.setFont(self.smallFont)
+                local label = "x" .. qty
+                local tw = self.smallFont:getWidth(label)
+                local bw, bh = tw + 8, 15
+                local bx, by = sx + sw - 3 - bw, sy + sh - NAME_H - bh - 1
+                love.graphics.setColor(0.06, 0.07, 0.10, 0.85 * dim)
+                love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
+                if qty <= 0 then love.graphics.setColor(WARN_COLOR[1], WARN_COLOR[2], WARN_COLOR[3], 1)
+                else love.graphics.setColor(0.96, 0.96, 0.98, dim) end
+                love.graphics.print(label, bx + 4, by + 1)
+            end
+
             -- Cost (top-left) + speed (top-right), overlaid for ability items only.
             if ab then
                 if ab.cost then
-                    local c = RES_COLOR[ab.cost.stat] or COST_FALLBACK
-                    self:drawBadge(sx, sy, sw, "left", "dot", ab.cost.amount, c, dim)
+                    -- Cost badge: normally tinted by resource and dimmed with the slot; when the
+                    -- actor can't afford it, flip to red and draw at full alpha so it reads as the
+                    -- reason the slot is grayed out.
+                    local c = unaffordable and WARN_COLOR or (RES_COLOR[ab.cost.stat] or COST_FALLBACK)
+                    self:drawBadge(sx, sy, sw, "left", "dot", ab.cost.amount, c, unaffordable and 1 or dim)
                 end
                 if ab.speed then
                     self:drawBadge(sx, sy, sw, "right", "hourglass", ab.speed, SPEED_COLOR, dim)
@@ -366,10 +473,10 @@ function CombatPanel:drawItemGrid()
         -- Border: armed strike (red) / armed support (green), hovered (gold),
         -- usable (blue), else idle.
         if armed then
-            if item.activeAbility and item.activeAbility.target == "enemy" then
-                love.graphics.setColor(0.85, 0.35, 0.35) -- attack armed
+            if Combat.isSupportAbility(item.activeAbility) then
+                love.graphics.setColor(0.35, 0.85, 0.40) -- support armed (heal / buff)
             else
-                love.graphics.setColor(0.35, 0.85, 0.40) -- support armed
+                love.graphics.setColor(0.85, 0.35, 0.35) -- offensive armed (strike / trap)
             end
         elseif usable and self.hoverIndex == i then love.graphics.setColor(0.95, 0.85, 0.55)
         elseif usable then love.graphics.setColor(0.4, 0.6, 0.85)
@@ -384,12 +491,39 @@ end
 -- Input  (mouse; keyboard/gamepad item arming is handled by the battle state)
 -- ---------------------------------------------------------------------------
 
--- Returns the ability item under a usable, hovered slot (else nil).
+-- Returns the ability item under a usable, hovered slot (else nil). An ability the actor can't
+-- afford is not "usable" here, so hovering it won't preview the timeline and clicking won't arm it
+-- -- matching its grayed-out slot (the hover item tooltip via itemAt still explains why).
 function CombatPanel:usableItemAt(px, py)
     if not self.view.isPartyTurn then return nil end
     local i = self:slotIndexAt(px, py)
     local item = i and (self.view.items or {})[i]
-    if item and item.activeAbility then return item, i end
+    if item and item.activeAbility and self:canAfford(item) and not Combat.isDepleted(item) then
+        return item, i
+    end
+    return nil
+end
+
+-- The inventory item under the cursor (any slot, regardless of usability / whose turn it is),
+-- or nil. Drives the hover item tooltip, which details passive items and off-turn slots too --
+-- unlike usableItemAt, which gates on a party turn + an active ability for arm/preview.
+function CombatPanel:itemAt(px, py)
+    local i = self:slotIndexAt(px, py)
+    return i and (self.view.items or {})[i] or nil
+end
+
+-- The status instance whose turn-strip badge is under (px, py), or nil (drives the shared
+-- status tooltip). Skips preview ghosts, which don't draw badges.
+function CombatPanel:statusAt(px, py)
+    for _, e in ipairs(self:entryLayout()) do
+        if not e.entry.preview then
+            for _, r in ipairs(self:statusBadgeRects(e.entry.unit, e.x, e.w, e.y)) do
+                if px >= r.x and px <= r.x + r.w and py >= r.y and py <= r.y + r.h then
+                    return r.st
+                end
+            end
+        end
+    end
     return nil
 end
 

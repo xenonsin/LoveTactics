@@ -3,9 +3,10 @@
 -- incoming damage whose source carries a matching tag (e.g. a "slash" attack).
 return {
     name = "Leather Armor",
-    description = "Light protection against slashing blows.",
+    description = "Boiled hide that turns aside a glancing blade. Medium armor: -1 movement.",
     sprite = "assets/items/leather.png",
     type = "armor",
-    bonus = { defense = 4 },
+    -- Medium tier: modest bulk, one square slower.
+    bonus = { defense = 4, movement = -1 },
     resist = { slash = 3, physical = 2 },
 }

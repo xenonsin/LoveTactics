@@ -32,11 +32,26 @@
 -- `fx` context with bound helpers (fx.damage / fx.heal / fx.unitsNear) so a data file
 -- composes effects without requiring this module. All the damage/heal math lives in the
 -- helpers (Combat.dealDamage / Combat.applyHeal).
+--
+-- Status effects (models/status.lua) and traps (models/trap.lua) hook into this module: statuses
+-- tick down inside rebase, gate/charge movement, and fire on turn start/end; traps live in
+-- combat.traps, trigger as a unit paths over them (Combat.moveUnit), and can be struck down
+-- (Combat.strikeTrap). Both are required here; NEITHER requires this module at load time (they
+-- pull combat helpers through a lazy require), so there is no require cycle.
+
+local Status = require("models.status")
+local Trap = require("models.trap")
 
 local Combat = {}
 
 -- Ability-speed fallback for a unit that carries no ability item at all.
 Combat.DEFAULT_SPEED = 5
+
+-- Line-of-sight block threshold: a line is obstructed once the summed `sightCost` of the tiles
+-- it crosses (endpoints excluded) REACHES this. Soft cover (forest, sightCost 1) only lowers a
+-- line, so two stacked tiles block; mountain (2) / obstacle (huge) block on their own. See
+-- Arena.TILE_PROPS and Combat.hasLineOfSight.
+Combat.SIGHT_BLOCK = 2
 
 -- Fallback wait cost when there is no other living unit to delay past (the battle is
 -- effectively already decided, but this keeps the clock advancing).
@@ -63,6 +78,74 @@ local function hasTag(tags, want)
     return false
 end
 
+-- ---------------------------------------------------------------------------
+-- Combat log
+-- ---------------------------------------------------------------------------
+
+-- Newest-last rolling log of battlefield events, shown by the toggleable combat-log panel
+-- (ui/combat_log.lua). Pure data (a { kind, text, turn } list on combat.log), so it stays
+-- headless-safe: the model records events here and the UI colours them by `kind`. Status and
+-- trap modules reach this through their lazy require of this module, so trap triggers and
+-- status ticks land in the same stream in the order they happen.
+Combat.LOG_CAP = 300 -- keep the tail; drop the oldest beyond this so it can't grow unbounded
+
+function Combat.logEvent(combat, kind, text)
+    if not text then return end
+    local log = combat.log
+    if not log then log = {}; combat.log = log end
+    log[#log + 1] = { kind = kind or "system", text = text, turn = combat.turnCount or 0 }
+    if #log > Combat.LOG_CAP then table.remove(log, 1) end
+end
+
+-- The display name of a unit for log lines (falls back to a generic label).
+local function unitName(unit)
+    return (unit and unit.char and unit.char.name) or "Unit"
+end
+
+-- Walk the tiles a straight line crosses from (x0,y0) to (x1,y1) inclusive (Bresenham),
+-- calling visit(x, y) for each. A diagonal step threads the corner -- it jumps straight to the
+-- next diagonal cell without visiting either side tile -- so a lone blocker at a corner never
+-- seals a line. Used only by hasLineOfSight.
+local function traceLine(x0, y0, x1, y1, visit)
+    local dx = math.abs(x1 - x0)
+    local dy = math.abs(y1 - y0)
+    local sx = x0 < x1 and 1 or -1
+    local sy = y0 < y1 and 1 or -1
+    local err = dx - dy
+    local x, y = x0, y0
+    while true do
+        visit(x, y)
+        if x == x1 and y == y1 then break end
+        local e2 = 2 * err
+        if e2 > -dy then err = err - dy; x = x + sx end
+        if e2 < dx then err = err + dx; y = y + sy end
+    end
+end
+
+-- Is there a clear line of sight between (x0,y0) and (x1,y1)? True when the summed `sightCost`
+-- of the tiles the line crosses -- EXCLUDING the two endpoints, so a unit always sees its own
+-- tile and its target's even on cover -- stays below Combat.SIGHT_BLOCK. Off-map cells count as
+-- transparent (they can't sit between two in-bounds tiles anyway). Endpoints are canonicalised
+-- so A->B and B->A always agree. Ability targeting (Combat.useItem / abilityTargets), the
+-- threat-reach highlight, and the enemy AI all gate ranged (`ab.requiresSight`) actions on this.
+function Combat.hasLineOfSight(combat, x0, y0, x1, y1)
+    if x0 == x1 and y0 == y1 then return true end
+    -- Canonical endpoint order (smaller x, then smaller y first) so the trace is symmetric.
+    if x1 < x0 or (x1 == x0 and y1 < y0) then
+        x0, y0, x1, y1 = x1, y1, x0, y0
+    end
+    local tiles = combat.arena and combat.arena.tiles
+    if not tiles then return true end
+    local total = 0
+    traceLine(x0, y0, x1, y1, function(x, y)
+        if (x == x0 and y == y0) or (x == x1 and y == y1) then return end
+        local row = tiles[y]
+        local cell = row and row[x]
+        total = total + ((cell and cell.sightCost) or 0)
+    end)
+    return total < Combat.SIGHT_BLOCK
+end
+
 -- Items in a character's inventory that define an active ability (the ones that feed
 -- initiative and can be used as an action).
 function Combat.abilityItems(char)
@@ -71,6 +154,18 @@ function Combat.abilityItems(char)
         if item.activeAbility then list[#list + 1] = item end
     end
     return list
+end
+
+-- The unit's "default attack" weapon: the first inventory item of `type == "weapon"` that
+-- carries an ability, in inventory (row-major grid) order -- so a lower slot wins. Falls back
+-- to the character's hidden unarmed weapon (models/character.lua attaches `char.unarmed`) when
+-- it carries no weapon. Drives the default-attack (threat) range highlight and the click-to-
+-- attack basic strike. May be nil only for a hand-built char with neither.
+function Combat.defaultWeapon(char)
+    for _, item in ipairs(char.inventory or {}) do
+        if item.type == "weapon" and item.activeAbility then return item end
+    end
+    return char.unarmed
 end
 
 -- The character's `speed` stat (0 if unset), used as the primary tie-break and folded into
@@ -86,7 +181,9 @@ function Combat.initiative(char)
     local items = Combat.abilityItems(char)
     local avg
     if #items == 0 then
-        avg = Combat.DEFAULT_SPEED
+        -- No ability items: fall back to the hidden unarmed weapon's speed (which is itself
+        -- DEFAULT_SPEED), so a bare unit's timing matches its always-available basic attack.
+        avg = (char.unarmed and char.unarmed.activeAbility.speed) or Combat.DEFAULT_SPEED
     else
         local sum = 0
         for _, item in ipairs(items) do
@@ -102,6 +199,81 @@ end
 local function flatStat(unit, name)
     local base = unit.char.stats[name] or 0
     return base + ((unit.bonus and unit.bonus[name]) or 0)
+end
+
+-- The unit's effective movement budget (base + item bonus). Public so status hooks (root's
+-- "pay as if you moved max spaces") can read it without duplicating the passive folding.
+function Combat.moveBudget(unit)
+    return flatStat(unit, "movement")
+end
+
+-- Positional ("field") bonuses a unit gains from WHERE it stands, as an aggregated bag of flat
+-- modifiers, e.g. { range = 1 }. Sources: the terrain tile it occupies (Arena tile `bonus`,
+-- carried onto the runtime cell) and any placed field objects on that tile (combat.fieldObjects,
+-- each { x, y, bonus = {...} } -- e.g. a future vantage totem). Unlike item bonuses (unit.bonus,
+-- fixed for the battle) these move with the unit, so they're computed on demand. Deliberately
+-- generic: a new buff source only has to contribute here.
+function Combat.fieldBonus(combat, x, y)
+    local out = {}
+    local function add(mods)
+        for k, v in pairs(mods or {}) do out[k] = (out[k] or 0) + v end
+    end
+    local tiles = combat.arena and combat.arena.tiles
+    local cell = tiles and tiles[y] and tiles[y][x]
+    if cell then add(cell.bonus) end
+    for _, obj in ipairs(combat.fieldObjects or {}) do
+        if obj.alive ~= false and obj.x == x and obj.y == y then add(obj.bonus) end
+    end
+    return out
+end
+
+-- Effective range of ability `ab` for `unit` acting from tile (x, y) -- the ability's base range
+-- plus any `range` field bonus that tile grants (high ground, a vantage object). Defaults to the
+-- unit's current tile. The single source of truth for reach, so a positional buff extends
+-- targeting, the threat/range highlights, and the enemy AI's planning alike.
+function Combat.abilityRange(combat, unit, ab, x, y)
+    local base = (ab and ab.range) or 1
+    return base + (Combat.fieldBonus(combat, x or unit.x, y or unit.y).range or 0)
+end
+
+-- Cells an area-of-effect ability centred on (tx, ty) covers, clamped to the arena. An ability's
+-- optional `aoe = { radius = r, shape = "square"|"diamond" }` defines the blast footprint:
+--   * "square" (default) -- every cell within Chebyshev distance r, i.e. the (2r+1)^2 block
+--                           "including the corners" (a fireball's boxy burst).
+--   * "diamond"          -- every cell within Manhattan distance r (a pointed burst, no corners).
+-- With no `aoe` (or radius 0) the footprint is just the target cell, so a single-target ability
+-- and an AoE one share one path. The single source of truth for BOTH what a cast hits (fx.aoeUnits)
+-- and the red/green footprint highlight the battle state previews, so the two can never disagree.
+function Combat.aoeCells(combat, ab, tx, ty)
+    local aoe = ab and ab.aoe
+    local r = (aoe and aoe.radius) or 0
+    local diamond = aoe and aoe.shape == "diamond"
+    local cols = (combat.arena and combat.arena.cols) or 0
+    local rows = (combat.arena and combat.arena.rows) or 0
+    local cells = {}
+    for dx = -r, r do
+        for dy = -r, r do
+            if not diamond or (math.abs(dx) + math.abs(dy) <= r) then
+                local x, y = tx + dx, ty + dy
+                if x >= 1 and x <= cols and y >= 1 and y <= rows then
+                    cells[#cells + 1] = { x = x, y = y }
+                end
+            end
+        end
+    end
+    return cells
+end
+
+-- Living units standing on an ability's AoE footprint centred on (tx, ty) -- everyone a cast would
+-- sweep, friend or foe. Reached through `fx.aoeUnits` so a data-file effect just iterates and hits;
+-- a single-target ability (no `aoe`) yields only the occupant of the target cell, if any.
+function Combat.aoeUnits(combat, ab, tx, ty)
+    local out = {}
+    for _, c in ipairs(Combat.aoeCells(combat, ab, tx, ty)) do
+        local u = Combat.unitAt(combat, c.x, c.y)
+        if u then out[#out + 1] = u end
+    end
+    return out
 end
 
 -- ---------------------------------------------------------------------------
@@ -135,6 +307,7 @@ function Combat.new(arena, partyUnits, enemyUnits)
         clock = 0,      -- accumulated elapsed initiative (drives `survive`)
         turnCount = 0,  -- number of actions taken
         turn = nil,     -- the in-progress turn: { unit, moved, moveCost } (see startTurn)
+        log = {},       -- rolling event log for the combat-log panel (Combat.logEvent)
     }
 
     local function addSide(list, side)
@@ -158,6 +331,18 @@ function Combat.new(arena, partyUnits, enemyUnits)
     Combat.rebase(combat)
     combat.clock = 0
     Combat.applyPassives(combat)
+
+    -- Authored traps: arena.traps is a list of { id, x, y, side } (side defaults to "enemy",
+    -- i.e. hidden from the player until detected). In-combat placement adds more via fx.placeTrap.
+    combat.traps = {}
+    for _, t in ipairs((arena and arena.traps) or {}) do
+        Trap.place(combat, t.x, t.y, t.id, t.side or "enemy")
+    end
+
+    -- Authored traps are placed above WITHOUT logging (they're hidden until detected); the log
+    -- opens on a clean "battle begins" line so the panel isn't empty on the first frame.
+    Combat.logEvent(combat, "system", "The battle begins.")
+
     return combat
 end
 
@@ -173,6 +358,8 @@ function Combat.rebase(combat)
         if u.alive then u.initiative = u.initiative - minInit end
     end
     combat.clock = combat.clock + minInit
+    -- The subtracted amount IS the ticks that just elapsed: count status durations down by it.
+    Status.tick(combat, minInit)
 end
 
 -- ---------------------------------------------------------------------------
@@ -270,6 +457,7 @@ end
 function Combat.startTurn(combat)
     local unit = Combat.currentUnit(combat)
     combat.turn = unit and { unit = unit, moved = false, moveCost = 0 } or nil
+    if unit then Status.onTurnStart(combat, unit) end
     return unit
 end
 
@@ -291,6 +479,9 @@ end
 -- cost, then rebase so the next unit drops to 0. Shared by useItem and passing.
 local function endTurn(combat, unit, actionCost)
     local moveCost = (combat.turn and combat.turn.unit == unit and combat.turn.moveCost) or 0
+    -- A status may charge a move cost even if the unit stayed put (root: as if it moved max).
+    moveCost = math.max(moveCost, Status.forcedMoveCost(combat, unit))
+    Status.onTurnEnd(combat, unit)
     unit.initiative = unit.initiative + moveCost + actionCost
     combat.turnCount = combat.turnCount + 1
     combat.turn = nil
@@ -305,10 +496,13 @@ end
 function Combat.wait(combat, unit)
     if not unit.alive then return false, "dead" end
     local moveCost = (combat.turn and combat.turn.unit == unit and combat.turn.moveCost) or 0
+    moveCost = math.max(moveCost, Status.forcedMoveCost(combat, unit))
+    Status.onTurnEnd(combat, unit)
     local nxt = nextUnit(combat, unit)
     unit.initiative = nxt and math.max(moveCost, nxt.initiative + 1) or (moveCost + Combat.WAIT_COST)
     combat.turnCount = combat.turnCount + 1
     combat.turn = nil
+    Combat.logEvent(combat, "wait", string.format("%s waits.", unitName(unit)))
     Combat.rebase(combat)
     return true
 end
@@ -319,6 +513,11 @@ end
 function Combat.pass(combat, unit)
     if not unit.alive then return false, "dead" end
     local moved = combat.turn ~= nil and combat.turn.unit == unit and combat.turn.moved
+    -- A move-only reposition already logged the move; only log the idle case so a unit with
+    -- nothing to do still leaves a trace (and the enemy AI's "no useful action" reads on the log).
+    if not moved then
+        Combat.logEvent(combat, "wait", string.format("%s holds position.", unitName(unit)))
+    end
     endTurn(combat, unit, moved and 0 or Combat.WAIT_COST)
     return true
 end
@@ -364,7 +563,8 @@ function Combat.reachable(combat, unit)
                             local nk = key(nx, ny)
                             local existing = best[nk]
                             if not existing or ncost < existing.cost then
-                                local node = { x = nx, y = ny, cost = ncost, steps = cur.steps + 1 }
+                                local node = { x = nx, y = ny, cost = ncost, steps = cur.steps + 1,
+                                               fromKey = key(cur.x, cur.y) }
                                 best[nk] = node
                                 frontier[#frontier + 1] = node
                             end
@@ -379,6 +579,54 @@ function Combat.reachable(combat, unit)
     return best
 end
 
+-- Every cell a unit could strike THIS turn with a `range`-reach weapon: for the origin tile
+-- and each tile it can move to, the Manhattan diamond of radius `range`, clamped to the arena.
+-- Returns `{ [key] = { x, y, fromX, fromY, moveCost } }`, where from/moveCost is the CHEAPEST
+-- move tile to stand on to hit that cell (the origin, at moveCost 0, when already in reach).
+-- One structure serves both the red default-attack (threat) highlight -- its keys, minus the
+-- move set, are the "beyond movement" band -- and click-to-attack (move to `from`, then strike).
+-- `range` is the weapon's BASE range; each stand tile's `range` field bonus (high ground, a
+-- vantage object) extends the reach from that tile, matching what Combat.useItem allows once the
+-- unit stands there. `reachable` defaults to Combat.reachable(combat, unit); the battle state
+-- passes its live set so a unit that has already moved only threatens from where it now stands.
+-- `requiresSight` (the default weapon's `ab.requiresSight`) drops any target cell a stand tile has
+-- no clear line to, so a bow's red reach stops at terrain cover.
+function Combat.attackReach(combat, unit, range, reachable, requiresSight)
+    range = range or 1
+    reachable = reachable or Combat.reachable(combat, unit)
+
+    -- Stand tiles: the origin (cost 0) plus every reachable move tile.
+    local stands = { { x = unit.x, y = unit.y, cost = 0 } }
+    for _, node in pairs(reachable) do
+        stands[#stands + 1] = { x = node.x, y = node.y, cost = node.cost }
+    end
+
+    local out = {}
+    for _, s in ipairs(stands) do
+        local r = range + (Combat.fieldBonus(combat, s.x, s.y).range or 0)
+        for dx = -r, r do
+            for dy = -r, r do
+                if math.abs(dx) + math.abs(dy) <= r then
+                    local x, y = s.x + dx, s.y + dy
+                    -- Impassable tiles (solid obstacles, which also fully block sight) can never
+                    -- hold a target, so they're never part of the reach -- no red highlight, and
+                    -- click-to-attack can't fire into a wall.
+                    if x >= 1 and x <= combat.arena.cols and y >= 1 and y <= combat.arena.rows
+                        and combat.arena.tiles[y][x].walkable
+                        and (not requiresSight or Combat.hasLineOfSight(combat, s.x, s.y, x, y)) then
+                        local k = key(x, y)
+                        local e = out[k]
+                        if not e or s.cost < e.moveCost then
+                            out[k] = { x = x, y = y, fromX = s.x, fromY = s.y, moveCost = s.cost }
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return out
+end
+
 -- Move a unit to (x, y) if reachable this turn. A unit may move once per turn and moving
 -- does NOT end the turn: it just repositions and records the terrain-weighted path cost
 -- (node.cost), which endTurn later folds into the timeline (move cost + action cost).
@@ -386,12 +634,33 @@ function Combat.moveUnit(combat, unit, x, y)
     if not unit.alive then return false, "dead" end
     if not combat.turn or combat.turn.unit ~= unit then return false, "not this unit's turn" end
     if combat.turn.moved then return false, "already moved" end
-    local node = Combat.reachable(combat, unit)[key(x, y)]
+    if Status.blocksMove(unit) then return false, "rooted" end
+    local reachable = Combat.reachable(combat, unit)
+    local node = reachable[key(x, y)]
     if not node then return false, "unreachable" end
+
+    -- Reconstruct the path (destination back to the first step; origin was cleared from the
+    -- reachable set) so a trap on ANY tile entered triggers -- not just the landing tile.
+    local path = {}
+    local n = node
+    while n do
+        path[#path + 1] = n
+        n = n.fromKey and reachable[n.fromKey] or nil
+    end
 
     unit.x, unit.y = x, y
     combat.turn.moved = true
     combat.turn.moveCost = node.cost
+    Combat.logEvent(combat, "move", string.format("%s moves to (%d, %d).", unitName(unit), x, y))
+
+    -- Walk the path origin-first, triggering each opposing trap in traversal order. A trap that
+    -- kills (or roots-then-kills via a later trap) the mover stops further triggers.
+    for i = #path, 1, -1 do
+        if not unit.alive then break end
+        local trap = Trap.at(combat, path[i].x, path[i].y)
+        if trap then Trap.trigger(combat, trap, unit) end
+    end
+
     return true, node.cost
 end
 
@@ -418,37 +687,205 @@ end
 -- magicDamage/magicDefense (else damage/defense); armor `resist` for each matching tag is
 -- subtracted. Damage floors at 1. Drops the target to `alive = false` at 0 HP. Returns
 -- the amount dealt. Reached through `fx.damage` inside an ability effect.
-function Combat.dealDamage(combat, user, target, item, opts)
-    opts = opts or {}
-    local tags = collectTags(item, opts)
+-- Apply `base` pre-mitigation damage to `target`: subtract the matching defense stat (magical
+-- tags route to magicDefense) and any tag `resist`, floor at 1, and drop the target to dead at
+-- 0 HP. Returns the amount dealt. The shared core for stat-scaled item damage
+-- (Combat.dealDamage) AND flat sources with no attacker (traps, status effects).
+-- `source` is an optional display label for the log (e.g. a trap or status name); when nil the
+-- damage line stands alone (an item attack, where the preceding "attacks with" line already
+-- names the attacker). A lethal hit appends a "defeated" line so the log reads the kill.
+-- Pure post-mitigation damage that `base` pre-mitigation damage would deal to `target`: subtract
+-- the matching defense stat (magical tags route to magicDefense) and any tag `resist`, floored at
+-- 1. No mutation or logging -- shared by Combat.dealFlatDamage (which then applies it) and the
+-- damage-preview tooltip (Combat.computeDamage / Combat.previewAbility).
+function Combat.mitigatedDamage(target, base, tags)
+    tags = tags or {}
     local magical = hasTag(tags, "magical")
-    local atkStat = magical and "magicDamage" or "damage"
     local defStat = magical and "magicDefense" or "defense"
-
-    local base = flatStat(user, atkStat) * (opts.power or 1.0)
     local defense = flatStat(target, defStat)
     local resist = 0
     for _, t in ipairs(tags) do
         resist = resist + ((target.resist and target.resist[t]) or 0)
     end
+    return math.max(1, math.floor(base - defense - resist + 0.5))
+end
 
-    local dmg = math.max(1, math.floor(base - defense - resist + 0.5))
+function Combat.dealFlatDamage(combat, target, base, tags, source)
+    local dmg = Combat.mitigatedDamage(target, base, tags)
     local hp = target.char.stats.health
     hp.current = hp.current - dmg
+    if source then
+        Combat.logEvent(combat, "damage",
+            string.format("%s takes %d damage from %s.", unitName(target), dmg, source))
+    else
+        Combat.logEvent(combat, "damage", string.format("%s takes %d damage.", unitName(target), dmg))
+    end
     if hp.current <= 0 then
         hp.current = 0
         target.alive = false
+        Combat.logEvent(combat, "death", string.format("%s is defeated!", unitName(target)))
     end
     return dmg
 end
 
+function Combat.dealDamage(combat, user, target, item, opts)
+    opts = opts or {}
+    local tags = collectTags(item, opts)
+    local magical = hasTag(tags, "magical")
+    local atkStat = magical and "magicDamage" or "damage"
+    local ab = item and item.activeAbility
+    -- Additive: the ability's Power plus the attacker's attack stat (opts.power overrides the
+    -- declared Power for a one-off hit). Mitigation then subtracts the target's defense + resists.
+    local power = opts.power or (ab and ab.power) or 0
+    local base = power + flatStat(user, atkStat)
+    return Combat.dealFlatDamage(combat, target, base, tags)
+end
+
+-- Pure: the post-mitigation damage `user` striking `target` with `item` (and `opts`, e.g.
+-- { power = 0.5 }) WOULD deal, computed exactly like Combat.dealDamage but without touching HP or
+-- the log. Drives the target-hover damage preview so its number always matches the real hit.
+function Combat.computeDamage(combat, user, target, item, opts)
+    opts = opts or {}
+    local tags = collectTags(item, opts)
+    local magical = hasTag(tags, "magical")
+    local atkStat = magical and "magicDamage" or "damage"
+    local ab = item and item.activeAbility
+    local power = opts.power or (ab and ab.power) or 0
+    local base = power + flatStat(user, atkStat)
+    return Combat.mitigatedDamage(target, base, tags)
+end
+
+-- Pure: the damage `unit` striking a trap with `weapon` would deal -- the weapon's attack stat
+-- (magical weapons route through magicDamage), floored at 1. Traps carry no defense, so this is
+-- the raw stat. Mirrors the math inside Combat.strikeTrap so the strike-trap hover preview matches.
+function Combat.computeTrapDamage(unit, weapon)
+    local tags = collectTags(weapon, {})
+    local atkStat = hasTag(tags, "magical") and "magicDamage" or "damage"
+    local ab = weapon and weapon.activeAbility
+    local power = (ab and ab.power) or 0
+    return math.max(1, math.floor(power + flatStat(unit, atkStat) + 0.5))
+end
+
 -- Restore health to `target`, capped at its max. Returns the amount actually healed.
 -- Reached through `fx.heal` inside an ability effect.
-function Combat.applyHeal(_, target, amount)
+function Combat.applyHeal(combat, target, amount)
     local hp = target.char.stats.health
     local before = hp.current
     hp.current = math.min(hp.max, hp.current + (amount or 0))
-    return hp.current - before
+    local healed = hp.current - before
+    if healed > 0 then
+        Combat.logEvent(combat, "heal", string.format("%s is healed for %d.", unitName(target), healed))
+    end
+    return healed
+end
+
+-- Dry-run `item`'s ability aimed at cell (tx, ty) WITHOUT mutating combat: replay the very same
+-- effect(fx) a real cast would run, but with helpers that only COMPUTE their outcome -- damage
+-- after mitigation, the clamped heal, the status a hit would apply -- and record it per affected
+-- unit. Because it replays the real effect it handles AoE / multi-hit / self-effects correctly.
+-- Returns { entries = { [unit] = { unit, damage, heal, lethal, statuses = { { id, def, opts } } } },
+-- order = {entries...} } (order is affected-unit order), or nil for an ability with no effect.
+-- The effect is pcall-guarded so a data-file quirk in a dry run can never crash the tooltip.
+function Combat.previewAbility(combat, unit, item, tx, ty)
+    local ab = item and item.activeAbility
+    if not ab then return nil end
+    local target = Combat.unitAt(combat, tx, ty)
+    local entries, order = {}, {}
+    local function entryFor(tgt)
+        local e = entries[tgt]
+        if not e then
+            e = { unit = tgt, damage = 0, heal = 0, statuses = {} }
+            entries[tgt] = e
+            order[#order + 1] = e
+        end
+        return e
+    end
+    local fx = {
+        user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
+        power = ab.power, -- the ability's balance scalar; effects derive heal/status magnitude from it
+        unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
+        unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
+        aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty) end,
+        damage = function(tgt, opts)
+            if not tgt then return 0 end
+            local d = Combat.computeDamage(combat, unit, tgt, item, opts)
+            local e = entryFor(tgt)
+            e.damage = e.damage + d
+            return d
+        end,
+        heal = function(tgt, amount)
+            if not tgt then return 0 end
+            local hp = tgt.char.stats.health
+            local healed = math.min(hp.max, hp.current + (amount or 0)) - hp.current
+            entryFor(tgt).heal = entryFor(tgt).heal + healed
+            return healed
+        end,
+        applyStatus = function(tgt, id, opts)
+            if not tgt then return nil end
+            local e = entryFor(tgt)
+            e.statuses[#e.statuses + 1] = { id = id, def = Status.defs[id], opts = opts }
+            return nil
+        end,
+        -- Placing a trap mutates combat, so a dry run must not; report nothing.
+        placeTrap = function() return nil end,
+    }
+    if ab.effect then pcall(ab.effect, fx) end
+    -- A damage total >= the target's current HP would drop it: flag the lethal blow.
+    for _, e in ipairs(order) do
+        local hp = e.unit.char and e.unit.char.stats and e.unit.char.stats.health
+        e.lethal = e.damage > 0 and hp ~= nil and e.damage >= (hp.current or 0)
+    end
+    return { entries = entries, order = order }
+end
+
+-- A zero-defense, full-HP stand-in target. Feeding it to the effect's damage/heal helpers yields
+-- the RAW (pre-armor) output an ability deals -- no real target needed -- and its huge health means
+-- a dry-run heal reports the full amount and nothing reads as lethal. Used by Combat.abilityOutput.
+local function dummyTarget()
+    return {
+        char = { name = "target", stats = {
+            health = { max = 1e9, current = 1e9 },
+            defense = 0, magicDefense = 0,
+        } },
+        bonus = {}, resist = {}, alive = true, side = "enemy",
+    }
+end
+
+-- Pure: the raw output `unit` would get from `item`'s ability, with NO board target -- for the
+-- inventory-hover tooltip, which has an actor but nothing aimed. Replays the real effect against a
+-- zero-defense stand-in (so `damage` is the pre-armor Power + attack stat) and captures the
+-- `fx.power`-derived heal and status too, so it stays correct for AoE / multi-hit / heal / buff
+-- abilities alike. Returns { damage, heal, statuses = { { id, def, opts } }, multi } (multi flags an
+-- AoE ability, whose number is per target) or nil for an item with no active-ability effect. The
+-- effect is pcall-guarded so a data-file quirk can never crash the tooltip.
+function Combat.abilityOutput(unit, item)
+    local ab = item and item.activeAbility
+    if not ab or not ab.effect then return nil end
+    local dummy = dummyTarget()
+    local out = { damage = 0, heal = 0, statuses = {}, multi = ab.aoe ~= nil }
+    local fx = {
+        user = unit, target = dummy, item = item, combat = nil, tx = 0, ty = 0,
+        power = ab.power,
+        unitAt = function() return nil end,
+        unitsNear = function() return { dummy } end,
+        aoeUnits = function() return { dummy } end,
+        damage = function(tgt, opts)
+            local d = Combat.computeDamage(nil, unit, tgt or dummy, item, opts)
+            out.damage = out.damage + d
+            return d
+        end,
+        heal = function(_, amount)
+            out.heal = out.heal + (amount or 0)
+            return amount or 0
+        end,
+        applyStatus = function(_, id, opts)
+            out.statuses[#out.statuses + 1] = { id = id, def = Status.defs[id], opts = opts }
+            return nil
+        end,
+        placeTrap = function() return nil end,
+    }
+    pcall(ab.effect, fx)
+    return out
 end
 
 -- Living units a unit may target with `item`'s ability, by range + target kind.
@@ -456,16 +893,29 @@ function Combat.abilityTargets(combat, unit, item)
     local ab = item.activeAbility
     if not ab then return {} end
     local out = {}
+    local range = Combat.abilityRange(combat, unit, ab)
     for _, other in ipairs(combat.units) do
-        if other.alive and manhattan(unit.x, unit.y, other.x, other.y) <= (ab.range or 1) then
+        if other.alive and manhattan(unit.x, unit.y, other.x, other.y) <= range then
             local valid = false
             if ab.target == "enemy" then valid = other.side ~= unit.side
             elseif ab.target == "ally" then valid = other.side == unit.side -- includes self
             elseif ab.target == "self" then valid = other == unit end
+            -- A sight-gated ability can't reach a target it has no clear line to (terrain cover).
+            if valid and ab.requiresSight
+                and not Combat.hasLineOfSight(combat, unit.x, unit.y, other.x, other.y) then
+                valid = false
+            end
             if valid then out[#out + 1] = other end
         end
     end
     return out
+end
+
+-- Does this ability read as friendly (green preview) rather than hostile (red)? Only ally/self
+-- targets are supportive; enemy strikes and tile-targeted trap placements are hostile, so they
+-- highlight red like any offensive reach.
+function Combat.isSupportAbility(ab)
+    return ab ~= nil and (ab.target == "ally" or ab.target == "self")
 end
 
 local function resourceValue(char, stat)
@@ -480,6 +930,29 @@ local function spendResource(char, stat, amount)
     else char.stats[stat] = (res or 0) - amount end
 end
 
+-- Current value of a resource stat on `char` (a {max,current} table reads `current`; a plain
+-- number reads itself; missing reads 0). Public so the UI can show "have N" without duplicating
+-- the {max,current}-vs-number handling.
+function Combat.resource(char, stat)
+    return resourceValue(char, stat)
+end
+
+-- Can `char` currently pay ability `ab`'s resource cost? True when the ability has no cost. The
+-- affordability gate the UI grays a slot on, mirroring the check inside Combat.useItem.
+function Combat.canAfford(char, ab)
+    if not ab or not ab.cost then return true end
+    return resourceValue(char, ab.cost.stat) >= ab.cost.amount
+end
+
+-- Is this a consuming item whose stack is spent (quantity 0)? A depleted consumable KEEPS its
+-- inventory slot but can't be activated until it's restocked (Character.addItem merges a new
+-- stack back into the empty slot). The shared gate for the grayed-out "out of stock" slot,
+-- mirrored inside Combat.useItem so a keyboard/gamepad use can't fire on an empty stack either.
+function Combat.isDepleted(item)
+    local ab = item and item.activeAbility
+    return ab ~= nil and ab.consumesItem and (item.quantity or 1) <= 0
+end
+
 -- Perform an item action: validate range + target kind + resource cost, spend the cost,
 -- run the ability's effect(fx), push the actor back by the ability speed, and consume the
 -- item if it's a consumable. Returns (true, result) or (false, reason). `result` is
@@ -488,9 +961,22 @@ function Combat.useItem(combat, unit, item, tx, ty)
     if not unit.alive then return false, "dead" end
     local ab = item.activeAbility
     if not ab then return false, "no ability" end
+    if Combat.isDepleted(item) then return false, "out of stock" end
 
-    if manhattan(unit.x, unit.y, tx, ty) > (ab.range or 1) then
+    if manhattan(unit.x, unit.y, tx, ty) > Combat.abilityRange(combat, unit, ab) then
         return false, "out of range"
+    end
+    if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, tx, ty) then
+        return false, "no line of sight"
+    end
+    -- Tile-target casts (e.g. summoning a trap) land ON the chosen cell, so it must be an empty,
+    -- occupiable tile -- never a solid obstacle, never a tile a unit already stands on. Reject
+    -- before any cost is spent.
+    if ab.target == "tile" then
+        local row = combat.arena and combat.arena.tiles and combat.arena.tiles[ty]
+        local cell = row and row[tx]
+        if not (cell and cell.walkable) then return false, "blocked tile" end
+        if Combat.unitAt(combat, tx, ty) then return false, "occupied tile" end
     end
 
     local target = Combat.unitAt(combat, tx, ty)
@@ -510,8 +996,11 @@ function Combat.useItem(combat, unit, item, tx, ty)
     local result = { damageDealt = 0, healed = 0 }
     local fx = {
         user = unit, target = target, item = item, combat = combat,
+        tx = tx, ty = ty, -- the targeted cell, for tile-targeted abilities (e.g. placing a trap)
+        power = ab.power, -- the ability's balance scalar; effects derive heal/status magnitude from it
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
+        aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty) end,
         damage = function(tgt, opts)
             if not tgt then return 0 end
             local d = Combat.dealDamage(combat, unit, tgt, item, opts)
@@ -524,19 +1013,75 @@ function Combat.useItem(combat, unit, item, tx, ty)
             result.healed = result.healed + h
             return h
         end,
+        -- Apply a status effect (models/status.lua) to a unit.
+        applyStatus = function(tgt, id, opts)
+            if not tgt then return nil end
+            return Status.apply(combat, tgt, id, opts)
+        end,
+        -- Summon a trap on a tile, owned by the acting unit's side (fx.item's placer). Only a
+        -- party placement is logged with its location -- an enemy trap stays hidden until it is
+        -- detected or triggers, so surfacing its tile here would leak the detect-traps mechanic.
+        placeTrap = function(px, py, id, opts)
+            local trap = Trap.place(combat, px, py, id, unit.side, opts)
+            if trap and unit.side == "party" then
+                Combat.logEvent(combat, "trap",
+                    string.format("%s places %s at (%d, %d).", unitName(unit), trap.name or "a trap", px, py))
+            end
+            return trap
+        end,
     }
+
+    -- Log the action itself before its effect runs, so the cast heads the sub-events it spawns
+    -- (damage / heal / status / trap lines). Offensive casts read "attacks with", the rest "uses".
+    local verb = (ab.target == "enemy") and "attacks with" or "uses"
+    Combat.logEvent(combat, "action",
+        string.format("%s %s %s.", unitName(unit), verb, item.name or "an item"))
+
     if ab.effect then ab.effect(fx) end
 
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed.
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
 
+    -- Consume one use: decrement the stack (a bundle of consumables), floored at 0. The spent
+    -- slot STAYS in the inventory as an empty stack -- Combat.isDepleted then blocks activation
+    -- until it's restocked (Character.addItem merges a fresh stack back in). Non-stacked items
+    -- carry quantity 1, so this leaves an empty, greyed-out slot after their single use.
     if ab.consumesItem then
-        for i, it in ipairs(unit.char.inventory) do
-            if it == item then table.remove(unit.char.inventory, i); break end
-        end
+        item.quantity = math.max(0, (item.quantity or 1) - 1)
     end
 
     return true, result
+end
+
+-- Strike a REVEALED trap at (x, y) with `weapon`: the trap analogue of attacking a unit, so a
+-- unit that can see an enemy trap can destroy it. Validates range + that the trap is visible to
+-- the actor's side + affordability, spends the weapon's cost, damages the trap by the weapon's
+-- attack stat, and ends the turn. Returns (true, { trap }) or (false, reason).
+function Combat.strikeTrap(combat, unit, weapon, x, y)
+    if not unit.alive then return false, "dead" end
+    local trap = Trap.at(combat, x, y)
+    if not trap then return false, "no trap" end
+    if not Trap.visibleTo(combat, trap, unit.side) then return false, "hidden" end
+    local ab = weapon and weapon.activeAbility
+    if not ab then return false, "no ability" end
+    if manhattan(unit.x, unit.y, x, y) > Combat.abilityRange(combat, unit, ab) then
+        return false, "out of range"
+    end
+    if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, x, y) then
+        return false, "no line of sight"
+    end
+    if ab.cost and resourceValue(unit.char, ab.cost.stat) < ab.cost.amount then
+        return false, "insufficient " .. ab.cost.stat
+    end
+    if ab.cost then spendResource(unit.char, ab.cost.stat, ab.cost.amount) end
+
+    -- Damage the trap by the weapon's attack stat (magical weapons use magicDamage). Traps have
+    -- no defense, so this is the raw stat, floored.
+    Combat.logEvent(combat, "trap", string.format("%s strikes %s.", unitName(unit), trap.name or "a trap"))
+    Trap.damage(combat, trap, Combat.computeTrapDamage(unit, weapon))
+
+    endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
+    return true, { trap = trap }
 end
 
 -- ---------------------------------------------------------------------------
@@ -566,10 +1111,15 @@ function Combat.planEnemyAction(combat, unit)
     local items = {}
     for _, item in ipairs(Combat.abilityItems(unit.char)) do
         local ab = item.activeAbility
-        if not ab.cost or resourceValue(unit.char, ab.cost.stat) >= ab.cost.amount then
+        if (not ab.cost or resourceValue(unit.char, ab.cost.stat) >= ab.cost.amount)
+            and not Combat.isDepleted(item) then
             items[#items + 1] = item
         end
     end
+    -- Always-available basic attack: append the hidden unarmed weapon last (it is free, so it
+    -- can't be filtered out above). A unit with an affordable weapon still prefers it -- the
+    -- weapon sorts first here -- but one that can't pay for any ability can still punch.
+    if unit.char.unarmed then items[#items + 1] = unit.char.unarmed end
 
     -- 1. Attack from where we stand, if any ability already reaches a foe (nearest target).
     for _, item in ipairs(items) do
@@ -589,10 +1139,13 @@ function Combat.planEnemyAction(combat, unit)
     local best
     for _, node in pairs(reachable) do
         for _, item in ipairs(items) do
-            local range = (item.activeAbility and item.activeAbility.range) or 1
+            local ab = item.activeAbility
+            local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
             for _, p in ipairs(combat.units) do
                 if p.alive and p.side ~= unit.side
-                    and manhattan(node.x, node.y, p.x, p.y) <= range then
+                    and manhattan(node.x, node.y, p.x, p.y) <= range
+                    and (not (ab and ab.requiresSight)
+                         or Combat.hasLineOfSight(combat, node.x, node.y, p.x, p.y)) then
                     local d = manhattan(node.x, node.y, p.x, p.y)
                     if not best or node.steps < best.steps
                         or (node.steps == best.steps and d < best.dist) then

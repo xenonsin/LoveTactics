@@ -10,8 +10,9 @@ return {
         range = 1,
         speed = 2,
         consumesItem = true, -- removed from inventory after use
+        power = 30, -- the amount restored; Power is the balance knob for the heal too
         effect = function(fx)
-            fx.heal(fx.target, 30) -- flat restore via the shared heal helper
+            fx.heal(fx.target, fx.power) -- restore Power HP via the shared heal helper
         end,
     },
 }

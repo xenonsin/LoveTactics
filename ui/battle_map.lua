@@ -51,17 +51,25 @@ function BattleMap.new(arena, opts)
     self.arena = arena
     self.combat = opts.combat
     self.rightMargin = opts.rightMargin or 0
+    self.leftMargin = opts.leftMargin or 0
     self.font = opts.font or love.graphics.newFont(14)
     self.numberFont = opts.numberFont or love.graphics.newFont(12)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
-    self.overlays = { move = {}, range = {} }
+    self.overlays = { move = {}, range = {}, threat = {}, traps = {} }
 
-    self.size = arena.tileSize
-    -- Centre the board in the space left of the combat panel (rightMargin), not the whole
-    -- window, so the panel never covers it.
-    self.originX = math.floor((Scale.WIDTH - self.rightMargin - arena.cols * self.size) / 2)
-    self.originY = math.floor((Scale.HEIGHT - arena.rows * self.size) / 2)
+    -- On-screen tile size. Defaults to the arena's logical tileSize but can be overridden so the
+    -- board renders a little smaller than its data size, opening breathing room around it. All
+    -- geometry (cell<->pixel, overlays, units, traps, hit-testing) derives from self.size, so they
+    -- scale together.
+    self.size = opts.tileSize or arena.tileSize
+    -- Centre the board in the space *between* the two side columns (leftMargin, rightMargin),
+    -- not the whole window, so neither the panel nor the left tooltip column covers it.
+    self.originX = self.leftMargin +
+        math.floor((Scale.WIDTH - self.leftMargin - self.rightMargin - arena.cols * self.size) / 2)
+    -- Anchor the board's top when a topMargin is given (so shrinking the board frees room BELOW
+    -- it for the combat-log strip), otherwise centre it vertically.
+    self.originY = opts.topMargin or math.floor((Scale.HEIGHT - arena.rows * self.size) / 2)
 
     -- Cursor starts on the first living party unit (or the grid centre).
     local first = self:firstPartyUnit()
@@ -84,9 +92,12 @@ function BattleMap:firstPartyUnit()
 end
 
 -- Supply the per-frame highlight sets, each a list of { x, y } cells:
---   move  -> reachable tiles (blue)      range -> armed ability range (red)
+--   move   -> reachable tiles (blue)          range  -> armed ability range (red/green)
+--   aoe    -> an armed AoE ability's blast footprint around the aimed cell (bright red/green)
+--   threat -> default-attack reach (red), the band beyond `move` shown during MOVE mode
+--   traps  -> runtime trap objects the viewer can see (own + detected), drawn under the units
 function BattleMap:setOverlays(overlays)
-    self.overlays = overlays or { move = {}, range = {} }
+    self.overlays = overlays or { move = {}, range = {}, threat = {}, traps = {} }
 end
 
 -- Build the tileset quads + SpriteBatch for the mapped art types, or record that we
@@ -120,6 +131,16 @@ end
 function BattleMap:pixelToCell(px, py)
     return math.floor((px - self.originX) / self.size) + 1,
         math.floor((py - self.originY) / self.size) + 1
+end
+
+-- The grid cell (x, y) under a pixel, or nil if the pixel is off the board. Lets the battle
+-- state drive a hover tooltip (ui/tile_tooltip.lua) for the tile the mouse is over.
+function BattleMap:cellAt(px, py)
+    local cx, cy = self:pixelToCell(px, py)
+    if cx >= 1 and cx <= self.arena.cols and cy >= 1 and cy <= self.arena.rows then
+        return cx, cy
+    end
+    return nil
 end
 
 function BattleMap:update(dt)
@@ -157,11 +178,55 @@ end
 function BattleMap:draw()
     self:drawTiles()
     self:drawOverlays()
+    self:drawTraps() -- revealed traps sit above the ground/overlays, under the units
     self:drawUnits()
     self:drawHighlights()
-    self:drawUnitInfo() -- HP bars + turn numbers sit above the highlight fills
+    self:drawUnitInfo() -- HP bars + turn numbers + status badges sit above the highlight fills
     self:drawCursor()
     love.graphics.setColor(1, 1, 1)
+end
+
+-- Revealed traps (self.overlays.traps): each a runtime trap { x, y, side, sprite, health,
+-- maxHealth }. Drawn as the trap's icon or a hazard-diamond marker (tinted by owner side), with
+-- a thin HP bar once it has been damaged. Per-side visibility is decided by the state; this
+-- widget only draws what it was handed.
+function BattleMap:drawTraps()
+    local s = self.size
+    for _, t in ipairs(self.overlays.traps or {}) do
+        if t.alive then
+            local wx, wy = self:cellToPixel(t.x, t.y)
+            local cx, cy = wx + s / 2, wy + s / 2
+            local r, g, b = 0.90, 0.40, 0.35 -- enemy traps read red...
+            if t.side == "party" then r, g, b = 0.40, 0.70, 0.95 end -- ...party traps blue
+            local sprite = t.sprite
+            if type(sprite) == "userdata" then
+                love.graphics.setColor(1, 1, 1)
+                local sw, sh = sprite:getDimensions()
+                local scale = math.min((s - 16) / sw, (s - 16) / sh)
+                love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
+            else
+                local rad = s * 0.22
+                love.graphics.setColor(r, g, b, 0.85)
+                love.graphics.polygon("fill", cx, cy - rad, cx + rad, cy, cx, cy + rad, cx - rad, cy)
+                love.graphics.setColor(0, 0, 0, 0.7)
+                love.graphics.setLineWidth(2)
+                love.graphics.polygon("line", cx, cy - rad, cx + rad, cy, cx, cy + rad, cx - rad, cy)
+                love.graphics.setLineWidth(1)
+                love.graphics.setFont(self.numberFont)
+                love.graphics.setColor(0.05, 0.05, 0.07)
+                love.graphics.printf("!", wx, cy - 8, s, "center")
+            end
+            -- Damaged trap: a thin amber HP bar along the tile bottom.
+            if t.health and t.maxHealth and t.health < t.maxHealth then
+                local ratio = math.max(0, math.min(1, t.health / t.maxHealth))
+                local bx, by, bw, bh = wx + 8, wy + s - 12, s - 16, 4
+                love.graphics.setColor(0, 0, 0, 0.6)
+                love.graphics.rectangle("fill", bx - 1, by - 1, bw + 2, bh + 2, 2, 2)
+                love.graphics.setColor(0.9, 0.7, 0.3, 0.95)
+                love.graphics.rectangle("fill", bx, by, bw * ratio, bh, 2, 2)
+            end
+        end
+    end
 end
 
 function BattleMap:drawTiles()
@@ -199,25 +264,73 @@ function BattleMap:drawTiles()
     end
 end
 
--- Translucent highlight fills for reachable move tiles (blue) and armed ability range
--- (red), drawn under the units so tokens stay legible on top.
+-- Highlight sets for reachable move tiles (blue) and armed ability range (red/green), drawn under
+-- the units so tokens stay legible on top. Each set is painted as a soft low-alpha wash with a
+-- single outline traced around the region's OUTER boundary only -- so a large set reads as one
+-- shape instead of a grid of loudly-boxed cells. A dark backing stroke under the coloured edge
+-- keeps it legible over same-hue terrain (the red reach over reddish ground).
 function BattleMap:drawOverlays()
     local s = self.size
     local function paint(cells, r, g, b)
-        for _, c in ipairs(cells or {}) do
+        cells = cells or {}
+        -- Soft fill.
+        love.graphics.setColor(r, g, b, 0.26)
+        for _, c in ipairs(cells) do
             local wx, wy = self:cellToPixel(c.x, c.y)
-            love.graphics.setColor(r, g, b, 0.32)
             love.graphics.rectangle("fill", wx + 1, wy + 1, s - 2, s - 2)
-            love.graphics.setColor(r, g, b, 0.85)
-            love.graphics.rectangle("line", wx + 1, wy + 1, s - 2, s - 2)
         end
+        -- Collect only the boundary edges: a cell edge is drawn when the neighbour across it is
+        -- NOT in the set. Interior edges (between two members) are skipped.
+        local inSet = {}
+        for _, c in ipairs(cells) do inSet[c.x .. "," .. c.y] = true end
+        local segs = {}
+        for _, c in ipairs(cells) do
+            local wx, wy = self:cellToPixel(c.x, c.y)
+            local x1, y1, x2, y2 = wx + 1, wy + 1, wx + s - 1, wy + s - 1
+            if not inSet[c.x .. "," .. (c.y - 1)] then segs[#segs + 1] = { x1, y1, x2, y1 } end
+            if not inSet[c.x .. "," .. (c.y + 1)] then segs[#segs + 1] = { x1, y2, x2, y2 } end
+            if not inSet[(c.x - 1) .. "," .. c.y] then segs[#segs + 1] = { x1, y1, x1, y2 } end
+            if not inSet[(c.x + 1) .. "," .. c.y] then segs[#segs + 1] = { x2, y1, x2, y2 } end
+        end
+        -- Dark backing pass, then the coloured boundary on top.
+        love.graphics.setColor(0, 0, 0, 0.40)
+        love.graphics.setLineWidth(2.5)
+        for _, g2 in ipairs(segs) do love.graphics.line(g2[1], g2[2], g2[3], g2[4]) end
+        love.graphics.setColor(r, g, b, 0.85)
+        love.graphics.setLineWidth(1.5)
+        for _, g2 in ipairs(segs) do love.graphics.line(g2[1], g2[2], g2[3], g2[4]) end
+        love.graphics.setLineWidth(1)
     end
+    -- Default-attack (threat) reach in red, under the blue move band. Its cells are the tiles
+    -- beyond movement the unit could still strike, so it never overlaps the move set.
+    paint(self.overlays.threat, 1.00, 0.32, 0.30)
     paint(self.overlays.move, 0.30, 0.60, 1.00)
     -- Support abilities (heals / buffs) reach in green; offensive ones in red.
     if self.overlays.rangeSupport then
         paint(self.overlays.range, 0.35, 0.85, 0.40)
     else
         paint(self.overlays.range, 1.00, 0.32, 0.30)
+    end
+
+    -- Area-of-effect footprint: the cells an armed AoE ability would hit if fired at the aimed
+    -- cell, drawn OVER (and brighter than) the range wash so the blast reads at a glance -- green
+    -- for a friendly area cast, red for a hostile one. Cells can extend past the range set (a blast
+    -- that clips tiles you couldn't aim at directly), so it paints its own fill + a bold border.
+    if self.overlays.aoe then
+        local r, g, b = 1.00, 0.42, 0.30
+        if self.overlays.aoeSupport then r, g, b = 0.40, 0.90, 0.45 end
+        for _, c in ipairs(self.overlays.aoe) do
+            local wx, wy = self:cellToPixel(c.x, c.y)
+            love.graphics.setColor(r, g, b, 0.40)
+            love.graphics.rectangle("fill", wx + 1, wy + 1, s - 2, s - 2)
+            love.graphics.setColor(0, 0, 0, 0.5)
+            love.graphics.setLineWidth(3)
+            love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4)
+            love.graphics.setColor(r, g, b, 1.0)
+            love.graphics.setLineWidth(2)
+            love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4)
+        end
+        love.graphics.setLineWidth(1)
     end
 end
 
@@ -264,8 +377,63 @@ function BattleMap:drawUnitInfo()
             local wx, wy = self:cellToPixel(u.x, u.y)
             self:drawHpBar(u, wx, wy)
             self:drawTurnNumber(orderIndex[u], wx, wy)
+            self:drawStatusBadges(u, wx, wy)
         end
     end
+end
+
+-- The on-screen rect of each active status badge on unit `u` (whose tile top-left is wx, wy):
+-- a right-justified row along the tile's bottom, just above the HP bar. Shared by the badge
+-- draw and the hover hit-test (statusAt) so a tooltip lands exactly on the badge pointed at.
+function BattleMap:statusBadgeRects(u, wx, wy)
+    local list = u.statuses
+    if not list or #list == 0 then return {} end
+    local s = self.size
+    local bw, bh, gap = 15, 12, 2
+    local totalW = #list * bw + (#list - 1) * gap
+    local startX = wx + s - totalW - 4
+    -- The HP bar's black backing tops out at wy + s - 9; sit the badges a couple px above it.
+    local by = wy + s - 11 - bh
+    local rects = {}
+    for i, st in ipairs(list) do
+        rects[i] = { st = st, x = startX + (i - 1) * (bw + gap), y = by, w = bw, h = bh }
+    end
+    return rects
+end
+
+-- Active status effects as small badges right-justified along the tile's bottom, sitting just
+-- above the HP bar. Each badge shows the status def's `abbr` in its `color`, so a stunned/rooted
+-- unit reads at a glance. Reads unit.statuses (runtime data), never love.graphics at require-time.
+function BattleMap:drawStatusBadges(u, wx, wy)
+    for _, r in ipairs(self:statusBadgeRects(u, wx, wy)) do
+        local st = r.st
+        local col = (st.def and st.def.color) or { 0.82, 0.82, 0.88 }
+        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 3, 3)
+        love.graphics.setColor(col[1], col[2], col[3], 0.95)
+        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 3, 3)
+        love.graphics.setFont(self.numberFont)
+        love.graphics.setColor(col[1], col[2], col[3], 1)
+        local label = (st.def and st.def.abbr) or (st.name or "?"):sub(1, 1)
+        love.graphics.printf(label, r.x, r.y, r.w, "center")
+    end
+end
+
+-- The status instance whose badge is under (px, py), or nil. Walks living units' badge rects
+-- so the battle state can show a shared tooltip (ui/status_tooltip.lua) for the hovered status.
+function BattleMap:statusAt(px, py)
+    if not self.combat then return nil end
+    for _, u in ipairs(self.combat.units) do
+        if u.alive then
+            local wx, wy = self:cellToPixel(u.x, u.y)
+            for _, r in ipairs(self:statusBadgeRects(u, wx, wy)) do
+                if px >= r.x and px <= r.x + r.w and py >= r.y and py <= r.y + r.h then
+                    return r.st
+                end
+            end
+        end
+    end
+    return nil
 end
 
 -- Thin HP bar along the bottom of the unit's tile (green -> red as HP drops).

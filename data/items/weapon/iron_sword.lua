@@ -10,8 +10,9 @@ return {
         range = 1, -- adjacent only (Manhattan distance)
         speed = 3, -- time cost: feeds initiative + pushes the actor back
         cost = { stat = "stamina", amount = 8 },
+        power = 6, -- damage = power + the wielder's Damage stat, minus the target's Defense
         effect = function(fx)
-            fx.damage(fx.target, { power = 1.0 }) -- tags default to the item's tags
+            fx.damage(fx.target) -- power + attack stat; tags default to the item's tags
         end,
     },
 }

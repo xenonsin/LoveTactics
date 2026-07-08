@@ -109,8 +109,8 @@ return {
 
             local ok, res = Combat.useItem(c, knight, sword, 3, 4)
             assert(ok, "adjacent attack should succeed")
-            assert(res.damageDealt == 8, "14 dmg - 6 def = 8, got " .. res.damageDealt)
-            assert(bandit.char.stats.health.current == hp0 - 8, "target lost 8 HP")
+            assert(res.damageDealt == 14, "sword power 6 + 14 dmg - 6 def = 14, got " .. res.damageDealt)
+            assert(bandit.char.stats.health.current == hp0 - 14, "target lost 14 HP")
             assert(knight.char.stats.stamina.current == stam0 - 8, "stamina cost spent")
             assert(c.clock == clock0 + 3, "the turn cost the ability speed 3")
 
@@ -134,7 +134,7 @@ return {
         end,
     },
     {
-        name = "a consumable is removed from inventory after use, and heals its target",
+        name = "a spent consumable keeps its (now empty) slot and can't be reused",
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("mage", 3, 3), unit("knight", 3, 4) }, {})
@@ -148,16 +148,23 @@ return {
             assert(ok, "healing an ally should succeed")
             assert(res.healed == 30, "flat 30 heal, got " .. res.healed)
             assert(knight.char.stats.health.current == 80, "ally healed 50 -> 80")
-            assert(#mage.char.inventory == invBefore - 1, "consumable removed from inventory")
+            -- The single-use potion is now spent (quantity 0) but its slot is KEPT.
+            assert(#mage.char.inventory == invBefore, "empty stack keeps its inventory slot")
+            assert(potion.quantity == 0, "stack is spent")
+            assert(Combat.isDepleted(potion), "a spent consumable reads as depleted")
+            -- A depleted stack refuses another use until it's restocked.
+            c.turn = { unit = mage, moved = false, moveCost = 0 }
+            local ok2, why = Combat.useItem(c, mage, potion, 3, 4)
+            assert(not ok2 and why == "out of stock", "spent stack can't be used again")
         end,
     },
     {
         name = "dealDamage floors at 1 and applyHeal caps at max",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("warlord", 1, 2) })
-            local sword = Item.instantiate("iron_sword")
-            -- Mage damage 5 (physical) vs warlord defense 16 -> would be negative, floored to 1.
-            local d = Combat.dealDamage(c, c.units[1], c.units[2], sword, { power = 1.0 })
+            local sword = Item.instantiate("iron_sword") -- power 6
+            -- Sword power 6 + mage damage 5 (physical) - warlord defense 16 -> negative, floored to 1.
+            local d = Combat.dealDamage(c, c.units[1], c.units[2], sword, {})
             assert(d == 1, "damage floors at 1, got " .. d)
 
             local knight = Character.instantiate("knight")
@@ -172,9 +179,9 @@ return {
         fn = function()
             -- Magical attack scales off magicDamage/magicDefense.
             local mc = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 1, 2) })
-            local gem = Item.instantiate("flame_gem") -- tags { fire, magical }
+            local gem = Item.instantiate("ability_fireball") -- tags { fire, magical }, power 8
             local dm = Combat.dealDamage(mc, mc.units[1], mc.units[2], gem, {})
-            assert(dm == 15, "18 magicDmg - 3 magicDef = 15, got " .. dm)
+            assert(dm == 23, "fireball power 8 + 18 magicDmg - 3 magicDef = 23, got " .. dm)
 
             -- Leather armor: +4 defense and tag resist { slash = 3, physical = 2 }. A slash
             -- weapon is mitigated more than a same-power pierce weapon, isolating the tag match.
@@ -185,17 +192,17 @@ return {
             local sword = Item.instantiate("iron_sword") -- tags { sword, slash, physical }
             local bow = Item.instantiate("bow")          -- tags { bow, pierce, physical }
 
-            local dSlash = Combat.dealDamage(ac, attacker, defender, sword, {})
+            local dSlash = Combat.dealDamage(ac, attacker, defender, sword, {}) -- sword power 6
             defender.char.stats.health.current = defender.char.stats.health.max -- reset for a clean 2nd hit
-            local dPierce = Combat.dealDamage(ac, attacker, defender, bow, {})
-            assert(dSlash == 13, "28 - (6+4) def - (3 slash + 2 physical) = 13, got " .. dSlash)
-            assert(dPierce == 16, "28 - (6+4) def - (2 physical only) = 16, got " .. dPierce)
+            local dPierce = Combat.dealDamage(ac, attacker, defender, bow, {})  -- bow power 5
+            assert(dSlash == 19, "6 + 28 - (6+4) def - (3 slash + 2 physical) = 19, got " .. dSlash)
+            assert(dPierce == 21, "5 + 28 - (6+4) def - (2 physical only) = 21, got " .. dPierce)
             assert(dSlash < dPierce, "slash-resisting armor mitigates the sword more than the bow")
 
-            -- No armor: full stat-vs-defense with no mitigation.
+            -- No armor: full power + stat, minus defense, no tag mitigation.
             local uc = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
             local du = Combat.dealDamage(uc, uc.units[1], uc.units[2], uc.units[1].char.inventory[1], {})
-            assert(du == 8, "un-resisted attack does full 14 - 6 = 8, got " .. du)
+            assert(du == 14, "un-resisted attack does full 6 + 14 - 6 = 14, got " .. du)
         end,
     },
     {
@@ -204,9 +211,9 @@ return {
             local wand = {
                 name = "Draining Wand", tags = { "arcane", "magical" },
                 activeAbility = {
-                    name = "Drain", target = "enemy", range = 3, speed = 3,
+                    name = "Drain", target = "enemy", range = 3, speed = 3, power = 5,
                     effect = function(fx)
-                        local dealt = fx.damage(fx.target, { power = 1.0 })
+                        local dealt = fx.damage(fx.target) -- power + magicDamage - magicDefense
                         fx.heal(fx.user, dealt) -- lifesteal the amount dealt
                     end,
                 },
@@ -216,9 +223,40 @@ return {
             mage.char.stats.health.current = 40
             local ok, res = Combat.useItem(c, mage, wand, 2, 3)
             assert(ok, "ranged drain should succeed")
-            assert(res.damageDealt == 15, "18 magicDmg - 3 magicDef = 15")
-            assert(res.healed == 15, "lifesteal heals the amount dealt")
-            assert(mage.char.stats.health.current == 55, "40 + 15 = 55")
+            assert(res.damageDealt == 20, "wand power 5 + 18 magicDmg - 3 magicDef = 20")
+            assert(res.healed == 20, "lifesteal heals the amount dealt")
+            assert(mage.char.stats.health.current == 60, "40 + 20 = 60")
+        end,
+    },
+    {
+        name = "abilityOutput previews raw damage/heal/status with no board target",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1), unit("mage", 2, 1) }, {})
+            local knight, mage = c.units[1], c.units[2]
+
+            -- Iron Sword: power 6 + knight damage 14 = 20 (the stand-in has no defense).
+            local swOut = Combat.abilityOutput(knight, knight.char.inventory[1])
+            assert(swOut.damage == 20, "sword preview = 6 + 14 = 20, got " .. swOut.damage)
+            assert(swOut.heal == 0 and not swOut.multi, "a single strike: no heal, not AoE")
+
+            -- Fireball: magical, power 8 + mage magicDamage 18 = 26 per target; AoE flag set.
+            local fbOut = Combat.abilityOutput(mage, Item.instantiate("ability_fireball"))
+            assert(fbOut.damage == 26, "fireball preview = 8 + 18 = 26, got " .. fbOut.damage)
+            assert(fbOut.multi, "fireball is an AoE ability (its number is per target)")
+
+            -- Healing Potion: heal scales with Power (30); no damage.
+            local hpOut = Combat.abilityOutput(mage, Item.instantiate("healing_potion"))
+            assert(hpOut.heal == 30 and hpOut.damage == 0, "potion previews a 30 heal")
+
+            -- Jolt: light magical hit (4 + 18 = 22) PLUS a stun whose magnitude scales with Power.
+            local jOut = Combat.abilityOutput(mage, Item.instantiate("ability_jolt"))
+            assert(jOut.damage == 22, "jolt preview = 4 + 18 = 22, got " .. jOut.damage)
+            assert(#jOut.statuses == 1 and jOut.statuses[1].id == "stun", "jolt applies stun")
+            assert(jOut.statuses[1].opts.magnitude == 4, "stun magnitude scales with Power (4)")
+
+            -- A passive item (no active ability) previews nothing.
+            assert(Combat.abilityOutput(knight, Item.instantiate("leather_armor")) == nil,
+                "a passive item has no ability output")
         end,
     },
     {
@@ -381,7 +419,8 @@ return {
     {
         name = "terrain enter-cost limits reach and raises move time",
         fn = function()
-            -- 5x1 corridor: ground, forest(2), ground, ground, ground; archer has movement 4.
+            -- 5x1 corridor: ground, forest(2), ground, ground, ground; archer has movement 4,
+            -- less 1 for its leather armor = an effective budget of 3.
             local row = {
                 { type = "ground",   moveCost = 1, walkable = true },
                 { type = "forest",   moveCost = 2, walkable = true },
@@ -395,12 +434,12 @@ return {
             Combat.startTurn(c)
 
             local r = Combat.reachable(c, u)
-            assert(r["4,1"] and r["4,1"].cost == 4, "path through the forest costs 4 of the budget")
-            assert(r["5,1"] == nil, "the forest cost puts the far end out of a movement-4 reach")
+            assert(r["3,1"] and r["3,1"].cost == 3, "path through the forest costs 3 of the budget")
+            assert(r["4,1"] == nil, "the forest cost puts x=4 out of a movement-3 reach")
 
-            assert(Combat.moveUnit(c, u, 4, 1), "move across the forest to x=4")
-            Combat.pass(c, u) -- sole unit rebases back to 0; the cost 4 shows on the clock
-            assert(c.clock == 4, "move time is the terrain-weighted cost 4, not the 3 tiles")
+            assert(Combat.moveUnit(c, u, 3, 1), "move across the forest to x=3")
+            Combat.pass(c, u) -- sole unit rebases back to 0; the cost 3 shows on the clock
+            assert(c.clock == 3, "move time is the terrain-weighted cost 3, not the 2 tiles")
         end,
     },
     {
@@ -451,6 +490,85 @@ return {
             Combat.wait(c2, a2)
             -- wait: max(moveCost 1, k2 10 + 1) = 11; rebase by min(11, 10) = 10.
             assert(k2.initiative == 0 and a2.initiative == 1, "delay dominates: one tick after k2")
+        end,
+    },
+    {
+        name = "every character carries a hidden unarmed weapon, overridable by blueprint",
+        fn = function()
+            -- Default: the generic unarmed item, kept OUT of inventory (never in the 9 slots).
+            local knight = Character.instantiate("knight")
+            assert(knight.unarmed and knight.unarmed.id == "unarmed", "default unarmed attached")
+            for _, it in ipairs(knight.inventory) do
+                assert(it.id ~= "unarmed", "unarmed must never sit in inventory")
+            end
+
+            -- A blueprint can name its own unarmed weapon (e.g. a beast's natural bite).
+            Character.defs.test_beast = {
+                name = "Test Beast", sprite = "assets/none.png",
+                stats = { health = 10, speed = 0 }, unarmed = "fangs",
+            }
+            local beast = Character.instantiate("test_beast")
+            assert(beast.unarmed.id == "fangs", "blueprint unarmed override honoured")
+            Character.defs.test_beast = nil -- don't leak the fixture to other specs
+        end,
+    },
+    {
+        name = "defaultWeapon picks the first inventory weapon, else the unarmed fallback",
+        fn = function()
+            -- Knight: iron_sword is the first (and only) weapon -> it is the default attack.
+            local knight = Character.instantiate("knight")
+            assert(Combat.defaultWeapon(knight).name == "Iron Sword", "first weapon wins")
+
+            -- No weapon in inventory -> the hidden unarmed weapon.
+            knight.inventory = {}
+            assert(Combat.defaultWeapon(knight) == knight.unarmed, "empty inventory -> unarmed")
+
+            -- Non-weapon ability items do NOT count as the default weapon.
+            local mage = Character.instantiate("mage")
+            mage.inventory = { Item.instantiate("ability_fireball") } -- type "ability", not "weapon"
+            assert(Combat.defaultWeapon(mage) == mage.unarmed, "an ability item isn't a default weapon")
+        end,
+    },
+    {
+        name = "a weaponless unit can still strike with its unarmed weapon (low power, free)",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("warlord", 3, 3) }, { unit("bandit", 3, 4) })
+            local warlord, bandit = c.units[1], c.units[2]
+            warlord.char.inventory = {} -- strip its sword: unarmed is the only attack left
+            warlord.initiative, bandit.initiative = 0, 100 -- bandit far so the cost shows elapsed
+            local fist = Combat.defaultWeapon(warlord.char)
+            assert(fist == warlord.char.unarmed, "no weapon -> unarmed is the default attack")
+
+            local stam0 = warlord.char.stats.stamina.current
+            local clock0 = c.clock
+            local ok, res = Combat.useItem(c, warlord, fist, 3, 4)
+            assert(ok, "adjacent unarmed strike lands")
+            -- unarmed power 2 + 28 damage - 6 defense = 24 (a sword, power 6, would do 28).
+            assert(res.damageDealt == 24, "low-power hit: 2 + 28 - 6 = 24, got " .. res.damageDealt)
+            assert(warlord.char.stats.stamina.current == stam0, "unarmed costs no stamina")
+            assert(c.clock == clock0 + 5, "the turn costs the unarmed speed (5)")
+        end,
+    },
+    {
+        name = "attackReach covers the band one step beyond movement (drives the threat overlay)",
+        fn = function()
+            -- Knight (movement 3) alone: it can walk to (4,7) (cost 3) and, with a range-1
+            -- weapon, threaten (4,8) -- a tile it cannot itself stand on this turn.
+            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, {})
+            local knight = c.units[1]
+            local reach = Combat.reachable(c, knight)
+            local ar = Combat.attackReach(c, knight, 1, reach)
+
+            assert(reach["4,8"] == nil, "the far tile is beyond a movement-3 reach")
+            local cell = ar["4,8"]
+            assert(cell, "but it IS within attack reach (threat band)")
+            local d = math.abs(cell.fromX - 4) + math.abs(cell.fromY - 8)
+            assert(d <= 1, "the recorded stand tile is within weapon range of the target")
+            assert(cell.fromX == knight.x and cell.fromY == knight.y
+                or reach[cell.fromX .. "," .. cell.fromY], "stand tile is the origin or reachable")
+
+            -- The unit's own tile is reachable-adjacent, so it is in reach at cost 0.
+            assert(ar["4,4"] and ar["4,4"].moveCost == 0, "origin is in reach at no move cost")
         end,
     },
 }

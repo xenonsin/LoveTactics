@@ -27,15 +27,24 @@ Arena.ROWS = 8
 Arena.TILE_SIZE = 64 -- logical pixels per cell (8*64 = 512, centered in 1280x720)
 
 -- Arena tile palette. Deliberately small; "special properties" (hazards, cover,
--- bonuses) are fleshed out with the turn system. `moveCost` and `walkable` are all a
--- map layer needs today. Distinct from models/tileset.lua's overworld TYPES, but the
--- renderer still pulls *art* from the biome's tileset.
+-- bonuses) are fleshed out with the turn system. Distinct from models/tileset.lua's
+-- overworld TYPES, but the renderer still pulls *art* from the biome's tileset.
+--   * moveCost  -- terrain-weighted enter cost (Dijkstra reach + timeline; see models/combat.lua)
+--   * walkable  -- may a unit occupy the tile at all
+--   * sightCost -- how much this tile obstructs a line of sight that passes THROUGH it. Combat
+--     sums it over the tiles between shooter and target; a line is blocked once the sum reaches
+--     Combat.SIGHT_BLOCK. 0 = transparent, forest (1) is soft cover that only LOWERS sight (two
+--     stacked block), mountain/obstacle carry enough to block a shot on their own.
+--   * bonus     -- optional positional modifiers granted to a unit STANDING on the tile, e.g.
+--     { range = 1 } for high ground. Combat aggregates these (with any placed field objects) via
+--     Combat.fieldBonus; a generic bag so future tiles/objects can grant other buffs the same way.
 Arena.TILE_PROPS = {
-    ground   = { moveCost = 1, walkable = true },  -- open field
-    forest   = { moveCost = 2, walkable = true },  -- slow to cross (~2 tiles of reach)
-    mountain = { moveCost = 3, walkable = true },  -- steep; a single step for most units
-    rough    = { moveCost = 2, walkable = true },  -- legacy penalty tile (curated arenas)
-    obstacle = { moveCost = math.huge, walkable = false }, -- blocks the tile
+    ground   = { moveCost = 1, walkable = true,  sightCost = 0 },  -- open field
+    forest   = { moveCost = 2, walkable = true,  sightCost = 1 },  -- slow to cross; soft cover
+    -- Steep high ground: blocks the view behind it, but a unit atop it sees + strikes one tile further.
+    mountain = { moveCost = 3, walkable = true,  sightCost = 2, bonus = { range = 1 } },
+    rough    = { moveCost = 2, walkable = true,  sightCost = 0 },  -- legacy penalty tile (curated arenas)
+    obstacle = { moveCost = math.huge, walkable = false, sightCost = math.huge }, -- solid: blocks tile + sight
 }
 
 -- Default objective when an encounter/quest doesn't specify one.
@@ -141,6 +150,7 @@ local function hydrateLayout(def)
         tiles = def.tiles,
         partySpawns = def.partySpawns or {},
         enemySpawns = def.enemySpawns or {},
+        traps = def.traps or {}, -- authored traps: { { id, x, y, side }, ... }
         biome = def.biome,
     }
 end
@@ -182,7 +192,8 @@ local function hydrateTiles(layout)
         for x = 1, layout.cols do
             local t = (layout.tiles[y] and layout.tiles[y][x]) or "ground"
             local p = Arena.TILE_PROPS[t] or Arena.TILE_PROPS.ground
-            tiles[y][x] = { type = t, moveCost = p.moveCost, walkable = p.walkable }
+            tiles[y][x] = { type = t, moveCost = p.moveCost, walkable = p.walkable,
+                            sightCost = p.sightCost or 0, bonus = p.bonus }
         end
     end
     return tiles
@@ -215,6 +226,7 @@ function Arena.build(ctx, spec)
         tiles = hydrateTiles(layout),
         party = bindUnits(partyIds, layout.partySpawns),
         enemies = bindUnits(enemyIds, layout.enemySpawns),
+        traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
         objective = normalizeObjective(spec.objective),
         seed = layout.seed,
     }
@@ -250,6 +262,16 @@ function Arena.serialize(arena)
     end
     spawnBlock("partySpawns", arena.party)
     spawnBlock("enemySpawns", arena.enemies)
+
+    -- Authored traps, if any: { id, x, y, side }. Omitted entirely when the arena has none.
+    if arena.traps and #arena.traps > 0 then
+        out[#out + 1] = "    traps = {\n"
+        for _, t in ipairs(arena.traps) do
+            out[#out + 1] = string.format("        { id = %q, x = %d, y = %d, side = %q },\n",
+                t.id, t.x, t.y, t.side or "enemy")
+        end
+        out[#out + 1] = "    },\n"
+    end
 
     out[#out + 1] = "}\n"
     return table.concat(out)

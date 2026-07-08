@@ -139,16 +139,129 @@ return {
     biome = "forest",              -- used to match this arena to a quest's biome
     tiles = {                      -- 8 rows x 8 cols of Arena.TILE_PROPS types
         { "ground", "ground", "ground", "ground", "ground", "ground", "ground", "ground" },
-        -- ... "rough" = move penalty, "obstacle" = blocked ...
+        -- "forest"/"rough" = move penalty, "obstacle" = blocked. Terrain also shapes LINE OF
+        -- SIGHT (each type carries a `sightCost`): "obstacle"/"mountain" block a ranged shot,
+        -- "forest" is soft cover that only lowers it (two stacked tiles block). See below.
     },
     partySpawns = { { x = 2, y = 8 }, { x = 4, y = 8 }, { x = 6, y = 8 } },
     enemySpawns = { { x = 2, y = 1 }, { x = 4, y = 1 }, { x = 6, y = 1 } },
+    traps = {                      -- optional authored traps (hidden from the player until detected)
+        { id = "spike_trap", x = 3, y = 4, side = "enemy" },
+    },
 }
 ```
 
 The fastest way to author one: in a battle press **F5** (dev-only debug save) to serialize the
-current arena to `data/arenas/<biome>_<timestamp>.lua`, then rename and hand-edit it. See
-`data/arenas/forest_01.lua`.
+current arena to `data/arenas/<biome>_<timestamp>.lua`, then rename and hand-edit it (F5 also
+writes back any authored `traps`). See `data/arenas/forest_01.lua`.
+
+### Line of sight & terrain cover
+
+Every arena tile carries a `sightCost` (set per type in `Arena.TILE_PROPS`, alongside `moveCost`
+and `walkable`). When a **sight-requiring** ability fires, `models/combat.lua` sums the `sightCost`
+of the tiles the straight line crosses (endpoints excluded); the line is blocked once the sum
+reaches `Combat.SIGHT_BLOCK` (2). So `obstacle`/`mountain` block a shot on their own, while
+`forest` (1) is **soft cover** that only lowers the line — a lone copse is see-through, but two
+stacked tiles screen the lane. Cover shapes both the board and how the enemy AI positions.
+
+Make an ability respect cover by adding `requiresSight = true` to its `activeAbility` — do this for
+ranged attacks (see `data/items/weapon/bow.lua`, `data/items/ability/ability_fireball.lua`,
+`ability_jolt.lua`). It gates targeting (`Combat.useItem` / `abilityTargets`), the red threat
+highlight, and enemy planning; the armed-range overlay then stops at cover so the player sees the
+clear line. Adjacent (range-1) melee has no tile between attacker and target, so it never needs it.
+
+### Positional buffs (high ground & field objects)
+
+A tile can also grant a **positional bonus** to whatever unit stands on it, via an optional `bonus`
+bag in its `Arena.TILE_PROPS` entry — `mountain` uses `bonus = { range = 1 }` so high ground
+extends a unit's reach by a tile. `Combat.fieldBonus(combat, x, y)` aggregates these, and
+`Combat.abilityRange` folds the `range` bonus into every reach measurement (targeting, the threat/
+range highlights, enemy planning), so a unit atop high ground both threatens and can strike one
+tile farther, and the overlay shows it.
+
+The mechanism is deliberately generic so **placed objects** (a future vantage totem, a shrine) can
+grant the same buffs: `fieldBonus` also folds in `combat.fieldObjects`, a list of
+`{ x, y, bonus = { range = 1 } }`. Drop objects into that list and any `bonus` key they carry
+stacks with the terrain — no other wiring needed. See `tests/field_bonus_spec.lua`.
+
+## Add a status effect
+
+Status effects are timed effects on a combat unit, measured in **ticks** (the initiative
+`models/combat.lua` subtracts each turn — the amount folded into `combat.clock`). Drop a
+blueprint into `data/status/<id>.lua` with any of the hooks `models/status.lua` calls:
+
+```lua
+return {
+    name = "Poison",
+    abbr = "Ps",                   -- 2-char badge label
+    color = { 0.5, 0.85, 0.4 },    -- badge tint (board + turn strip)
+    duration = 6,                  -- ticks before it expires
+    magnitude = 4,                 -- effect strength (meaning is up to the hooks)
+    -- Hooks receive ctx = { combat, unit, status, magnitude, moveBudget } + bound helpers
+    -- (damage / applyStatus / unitsNear). Any subset is optional:
+    onApply     = function(ctx) end,   -- when first applied / re-applied (stun bumps initiative)
+    onExpire    = function(ctx) end,   -- at 0 remaining ticks
+    onTurnStart = function(ctx) ctx.damage(ctx.unit, ctx.magnitude, { "poison" }) end,
+    onTurnEnd   = function(ctx) end,
+    -- blocksMove = true,               -- the unit cannot move this turn (root)
+    -- turnEndMoveCost = function(ctx) return ctx.moveBudget end, -- pay full move cost anyway
+}
+```
+
+Apply one from an ability or trap effect via `fx.applyStatus(target, "poison", { duration = 8 })`
+(re-applying refreshes the duration; one instance per id). See `data/status/stun.lua` and
+`data/status/root.lua`.
+
+## Add a trap
+
+Traps are tile objects owned by a side, hidden from opponents until a unit carrying a
+`"detect traps"`-tagged item is within its `detectRadius`. A unit that paths **over** an opposing
+trap triggers it; a revealed trap can be attacked down. Drop a blueprint into
+`data/traps/<id>.lua`:
+
+```lua
+return {
+    name = "Spike Trap",
+    sprite = "assets/traps/spike_trap.png",
+    health = 6,                           -- HP a revealed trap soaks before breaking
+    tags = { "trap", "pierce", "physical" },
+    damage = 18,
+    -- ctx = { combat, trap, victim } + bound helpers (damage / applyStatus / unitsNear):
+    onTrigger = function(ctx) ctx.damage(ctx.victim, ctx.trap.def.damage, ctx.trap.tags) end,
+    -- onDestroy = function(ctx) end,     -- when damaged to 0 HP
+    -- consumedOnTrigger = false,          -- default true: spent after one trigger; false = persistent
+}
+```
+
+Get traps onto the field two ways: **authored** on an arena's `traps` list (above), or
+**summoned** in-battle by an ability that targets a tile — give the ability `target = "tile"`
+(any in-range cell) and call `fx.placeTrap(fx.tx, fx.ty, "spike_trap")` in its effect. A unit
+reveals enemy traps by carrying a detector item (`tags = { "detect traps" }`, `detectRadius = 2`).
+See `data/traps/spike_trap.lua`, `data/traps/snare_trap.lua`, `data/items/ability/ability_spike_trap.lua`, and
+`data/items/utility/trap_sense.lua`.
+
+## Stackable consumables
+
+Only **consumable** items stack: a bundle of the same consumable shares a single inventory slot
+with a running `quantity` (its "limited number of uses"), while every other type stays
+one-per-slot. Adding a duplicate consumable (`Character.addItem`) merges it into the existing
+stack up to a per-slot cap — `Item.DEFAULT_MAX_STACK` (9), overridable per blueprint with a
+`maxStack` field — and only the overflow claims a new slot. A consuming use
+(`activeAbility.consumesItem`) decrements the stack, floored at 0. So a character carries
+multiple health potions by listing the id more than once in `startingItems` (or via
+`Item.instantiate(id, quantity)`):
+
+```lua
+startingItems = { "healing_potion", "healing_potion", "healing_potion" }, -- one slot, x3
+```
+
+A spent stack **keeps its (now empty) slot** rather than vanishing: `Combat.isDepleted(item)`
+reports quantity 0 and gates activation (`Combat.useItem` refuses, the slot greys out with an
+`x0` badge, and it can't be armed) until it's restocked — `Character.addItem` merges a fresh
+stack back into the empty slot to re-enable it. The item grid draws an `xN` badge on a stack and
+the hover tooltip shows its remaining `Quantity`. See `models/item.lua`
+(`Item.isStackable` / `Item.maxStack`), `models/combat.lua` (`Combat.isDepleted`), and
+`tests/stacking_spec.lua`.
 
 ## Tests
 

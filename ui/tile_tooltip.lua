@@ -1,0 +1,380 @@
+-- Shared hover tooltip for a battlefield tile: a dark panel showing the tile's terrain type,
+-- its movement / line-of-sight / positional modifiers, and — when something stands on it — the
+-- occupant's details. A unit shows its side, resource pools (HP / mana / stamina bars) and combat
+-- stats; a revealed trap shows its owner and remaining health. Positioned near the mouse and
+-- clamped on-screen, mirroring ui/item_tooltip.lua and ui/status_tooltip.lua.
+--
+--   TileTooltip.draw(info, mx, my, maxRight)
+--     info = { cell = <arena tile>, bonus = <fieldBonus bag>, unit = <combat unit|nil>,
+--              trap = <revealed trap|nil> }
+--
+-- Content is assembled once into an ordered list of blocks that is both measured and drawn, so the
+-- computed box height can never drift from what's rendered. No love.graphics at require-time.
+
+local Scale = require("scale")
+
+local TileTooltip = {}
+
+local titleFont, bodyFont, smallFont
+local function fonts()
+    titleFont = titleFont or love.graphics.newFont(15)
+    bodyFont = bodyFont or love.graphics.newFont(12)
+    smallFont = smallFont or love.graphics.newFont(11)
+    return titleFont, bodyFont, smallFont
+end
+
+-- Display metadata per arena tile type (models/arena.lua TILE_PROPS keys). `name` is the
+-- human-readable terrain name; `desc` is a short flavour/mechanics line.
+local TILE_INFO = {
+    ground   = { name = "Open Ground", desc = "Flat, open field. No movement penalty." },
+    forest   = { name = "Forest",      desc = "Slow to cross. Soft cover that hampers line of sight." },
+    mountain = { name = "High Ground", desc = "Steep and slow, but grants extra reach and blocks the view behind it." },
+    rough    = { name = "Rough Terrain", desc = "Broken ground that slows movement." },
+    obstacle = { name = "Obstacle",    desc = "Solid terrain. Blocks movement and line of sight." },
+}
+
+-- Accent per terrain type (title + border tint).
+local TILE_COLOR = {
+    ground   = { 0.80, 0.78, 0.62 },
+    forest   = { 0.55, 0.80, 0.55 },
+    mountain = { 0.72, 0.74, 0.82 },
+    rough    = { 0.80, 0.66, 0.45 },
+    obstacle = { 0.62, 0.62, 0.68 },
+}
+local DEFAULT_COLOR = { 0.86, 0.87, 0.92 }
+
+local PARTY_COLOR = { 0.45, 0.72, 0.98 }
+local ENEMY_COLOR = { 0.95, 0.48, 0.42 }
+
+local MUTED = { 0.62, 0.65, 0.72 }
+local VALUE = { 0.90, 0.91, 0.95 }
+local DESC = { 0.80, 0.82, 0.88 }
+
+-- Resource pools shown as labeled bars, in draw order.
+local RESOURCES = {
+    { stat = "health",  label = "HP", color = { 0.42, 0.80, 0.42 } },
+    { stat = "mana",    label = "MP", color = { 0.45, 0.62, 0.95 } },
+    { stat = "stamina", label = "SP", color = { 0.92, 0.78, 0.35 } },
+}
+
+-- Flat combat stats shown as label/value rows, in draw order.
+local STAT_ROWS = {
+    { stat = "damage",       label = "Damage" },
+    { stat = "magicDamage",  label = "Magic Dmg" },
+    { stat = "defense",      label = "Defense" },
+    { stat = "magicDefense", label = "Magic Def" },
+    { stat = "movement",     label = "Movement" },
+    { stat = "speed",        label = "Speed" },
+}
+
+local function titleCase(s)
+    return (tostring(s):gsub("^%l", string.upper))
+end
+
+-- Round a status duration to 1 decimal, dropping a trailing ".0" so whole turns read as "3"
+-- (matches ui/status_tooltip.lua).
+local function fmtDuration(n)
+    local rounded = math.floor((tonumber(n) or 0) * 10 + 0.5) / 10
+    return (rounded % 1 == 0) and tostring(math.floor(rounded)) or string.format("%.1f", rounded)
+end
+
+-- Describe a sight cost (how much a tile obstructs a shot passing through it) in words.
+local function coverText(sightCost)
+    sightCost = sightCost or 0
+    if sightCost == math.huge then return "Blocks sight" end
+    if sightCost >= 2 then return "Blocks sight" end
+    if sightCost == 1 then return "Soft cover" end
+    return "Clear"
+end
+
+-- The accent (title/border) colour for the hovered tile: the occupant drives it when present
+-- (it's the priority), else the terrain type.
+local function accentFor(info)
+    local unit = info.unit
+    if unit and unit.char then
+        return unit.side == "party" and PARTY_COLOR or ENEMY_COLOR
+    end
+    if info.trap then
+        return info.trap.side == "party" and PARTY_COLOR or ENEMY_COLOR
+    end
+    return TILE_COLOR[(info.cell or {}).type] or DEFAULT_COLOR
+end
+
+-- Append the terrain section (type name, flavour, movement / line-of-sight / positional
+-- modifiers). `asHead` demotes the name from a top-level title to a section heading, used when a
+-- unit/trap owns the title above it.
+local function appendTerrain(blocks, info, asHead)
+    local cell = info.cell or { type = "ground" }
+    local meta = TILE_INFO[cell.type] or { name = titleCase(cell.type or "Tile"), desc = "" }
+    local col = TILE_COLOR[cell.type] or DEFAULT_COLOR
+
+    blocks[#blocks + 1] = { kind = asHead and "head" or "title", text = meta.name, color = col }
+    if meta.desc and meta.desc ~= "" then
+        blocks[#blocks + 1] = { kind = "desc", text = meta.desc }
+    end
+
+    if cell.walkable == false then
+        blocks[#blocks + 1] = { kind = "stat", label = "Movement", value = "Impassable",
+            valueColor = ENEMY_COLOR }
+    else
+        local mc = cell.moveCost or 1
+        blocks[#blocks + 1] = { kind = "stat", label = "Move cost", value = tostring(mc),
+            valueColor = mc > 1 and { 0.92, 0.72, 0.42 } or VALUE }
+    end
+    blocks[#blocks + 1] = { kind = "stat", label = "Line of sight", value = coverText(cell.sightCost) }
+
+    -- Positional bonuses granted for standing here (terrain + any field object), aggregated by
+    -- combat into a flat bag, e.g. { range = 1 }.
+    for _, stat in ipairs({ "range", "damage", "magicDamage", "defense", "magicDefense", "movement" }) do
+        local amount = info.bonus and info.bonus[stat]
+        if amount and amount ~= 0 then
+            blocks[#blocks + 1] = { kind = "stat", label = titleCase(stat) .. " bonus",
+                value = (amount > 0 and "+" or "") .. tostring(amount),
+                valueColor = amount > 0 and { 0.55, 0.85, 0.55 } or ENEMY_COLOR }
+        end
+    end
+end
+
+-- Append a unit occupant's readout: name (as the title), side, resource pools, and combat stats.
+-- `preview` (optional, a Combat.previewAbility entry for this unit) makes the HP bar show the
+-- damage/heal an aimed ability would do: a red "to be lost" segment (or green "to be gained"), with
+-- the numeric label reading "cur -> after / max".
+local function appendUnit(blocks, unit, preview)
+    local char = unit.char
+    local sideCol = unit.side == "party" and PARTY_COLOR or ENEMY_COLOR
+    blocks[#blocks + 1] = { kind = "title", text = (char.name or "Unit"), color = sideCol }
+    blocks[#blocks + 1] = { kind = "stat", label = "Side",
+        value = unit.side == "party" and "Ally" or "Enemy", valueColor = sideCol }
+
+    -- Net change to the health pool the aimed ability would cause (damage negative, heal positive).
+    local hpDelta = 0
+    if preview then hpDelta = (preview.heal or 0) - (preview.damage or 0) end
+
+    for _, r in ipairs(RESOURCES) do
+        local res = char.stats and char.stats[r.stat]
+        -- Only pools the unit actually has (max > 0); a beast with no mana skips the MP bar.
+        if type(res) == "table" and (res.max or 0) > 0 then
+            local block = { kind = "bar", label = r.label,
+                cur = res.current or 0, max = res.max, color = r.color }
+            if r.stat == "health" and hpDelta ~= 0 then
+                block.delta = hpDelta
+                block.lethal = preview and preview.lethal
+            end
+            blocks[#blocks + 1] = block
+        end
+    end
+
+    for _, row in ipairs(STAT_ROWS) do
+        local base = char.stats and char.stats[row.stat]
+        if type(base) == "number" then
+            local bonus = (unit.bonus and unit.bonus[row.stat]) or 0
+            local value = tostring(base + bonus)
+            if bonus ~= 0 then value = value .. " (" .. (bonus > 0 and "+" or "") .. bonus .. ")" end
+            blocks[#blocks + 1] = { kind = "stat", label = row.label, value = value }
+        end
+    end
+
+    -- Active status effects: each shown as its name (in the status's colour) with the remaining
+    -- duration on the right, so a stunned/rooted unit's condition reads in full here.
+    local statuses = unit.statuses
+    if statuses and #statuses > 0 then
+        blocks[#blocks + 1] = { kind = "sep" }
+        blocks[#blocks + 1] = { kind = "head", text = "Status Effects", color = { 0.85, 0.86, 0.92 } }
+        for _, st in ipairs(statuses) do
+            local def = st.def or {}
+            blocks[#blocks + 1] = { kind = "status",
+                name = def.name or st.name or "Status",
+                color = def.color or { 0.82, 0.82, 0.88 },
+                remaining = st.remaining }
+        end
+    end
+end
+
+-- Build the ordered content blocks for the hovered tile. The occupant is the priority: when a
+-- unit or trap stands on the tile it leads (its name is the title, its stats first), and the
+-- terrain is demoted to a section below. An empty tile shows the terrain alone. Block kinds:
+--   title { text, color }              -- headline (occupant name, or terrain when empty)
+--   desc  { text }                     -- terrain flavour/mechanics
+--   sep   {}                           -- divider + gap
+--   head  { text, color }              -- section heading (demoted terrain name)
+--   stat  { label, value, valueColor } -- label (left) + value (right)
+--   bar   { label, cur, max, color }   -- resource pool bar
+local function buildBlocks(info)
+    local blocks = {}
+    local unit = info.unit
+    if unit and unit.char then
+        appendUnit(blocks, unit, info.preview)
+        -- Terrain is only appended for a battlefield tile hover (info.cell present); a turn-order
+        -- strip hover passes just the unit, so it shows the character alone.
+        if info.cell then
+            blocks[#blocks + 1] = { kind = "sep" }
+            appendTerrain(blocks, info, true)
+        end
+    elseif info.trap then
+        local trap = info.trap
+        local sideCol = trap.side == "party" and PARTY_COLOR or ENEMY_COLOR
+        blocks[#blocks + 1] = { kind = "title", text = (trap.name or "Trap"), color = sideCol }
+        blocks[#blocks + 1] = { kind = "stat", label = "Owner",
+            value = trap.side == "party" and "Ally" or "Enemy", valueColor = sideCol }
+        if trap.health and trap.maxHealth then
+            local block = { kind = "bar", label = "HP", cur = trap.health,
+                max = trap.maxHealth, color = { 0.90, 0.70, 0.30 } }
+            -- A pending trap strike previews the HP it would knock off (info.preview.damage).
+            if info.preview and (info.preview.damage or 0) > 0 then
+                block.delta = -info.preview.damage
+                block.lethal = info.preview.lethal
+            end
+            blocks[#blocks + 1] = block
+        end
+        if info.cell then
+            blocks[#blocks + 1] = { kind = "sep" }
+            appendTerrain(blocks, info, true)
+        end
+    else
+        appendTerrain(blocks, info, false)
+    end
+    return blocks
+end
+
+-- Draw the tooltip for the hovered tile `info` anchored near (mx, my). `maxRight` caps the box's
+-- right edge so it never slides under the combat panel (defaults to the screen width). When
+-- `opts.dock` is set the box is parked in the bottom-left gutter instead of following the cursor,
+-- so it never covers the board highlights (the blast footprint) the player is reading. No-op when
+-- there is no tile to describe.
+function TileTooltip.draw(info, mx, my, maxRight, opts)
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap) then return end
+    local title, body, small = fonts()
+    local pad, w = 9, (opts and opts.width) or 210
+    local innerW = w - pad * 2
+    maxRight = maxRight or Scale.WIDTH
+
+    local blocks = buildBlocks(info)
+    local titleH, bodyH = title:getHeight(), body:getHeight()
+    local barH = 6 -- pool bar thickness
+
+    -- Measure: sum each block's height (wrapping desc against innerW, cached for the draw pass).
+    local h = pad
+    for _, b in ipairs(blocks) do
+        if b.kind == "title" then h = h + titleH + 3
+        elseif b.kind == "desc" then
+            local _, lines = body:getWrap(b.text, innerW)
+            b.lines = math.max(1, #lines)
+            h = h + b.lines * bodyH + 2
+        elseif b.kind == "sep" then h = h + 8
+        elseif b.kind == "head" then h = h + bodyH + 3
+        elseif b.kind == "bar" then h = h + bodyH + barH + 4
+        else h = h + bodyH + 1 end -- stat
+    end
+    h = h + pad
+
+    -- Position near the cursor; flip left and clamp so the box stays within [4, maxRight].
+    local bx = mx + 14
+    local maxX = maxRight - w - 4
+    if bx > maxX then bx = mx - w - 14 end
+    bx = math.max(4, math.min(bx, maxX))
+    local by = math.max(4, math.min(my + 16, Scale.HEIGHT - h - 4))
+
+    -- Docked mode parks the box at a fixed spot (bottom-aligned) instead of following the cursor, so
+    -- it never sits over the board highlights the player is reading. `opts.dockX` sets the left edge
+    -- (the caller places it inside the left column); `opts.dockBottom` is the Y the box bottom aligns
+    -- to (defaults to the screen bottom) so the caller can stack several docked boxes; `opts.dockTop`
+    -- floors the top so a tall box can't ride up over the buttons above it.
+    if opts and opts.dock then
+        bx = opts.dockX or 8
+        local bottomY = opts.dockBottom or (Scale.HEIGHT - 8)
+        by = math.max(opts.dockTop or 4, bottomY - h)
+    end
+
+    local accent = accentFor(info)
+    love.graphics.setColor(0.08, 0.09, 0.12, 0.96)
+    love.graphics.rectangle("fill", bx, by, w, h, 6, 6)
+    love.graphics.setColor(accent[1], accent[2], accent[3], 0.9)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("line", bx, by, w, h, 6, 6)
+
+    local ty = by + pad
+    for _, b in ipairs(blocks) do
+        if b.kind == "title" then
+            love.graphics.setFont(title)
+            love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
+            love.graphics.print(b.text, bx + pad, ty)
+            ty = ty + titleH + 3
+        elseif b.kind == "desc" then
+            love.graphics.setFont(body)
+            love.graphics.setColor(DESC[1], DESC[2], DESC[3], 1)
+            love.graphics.printf(b.text, bx + pad, ty, innerW, "left")
+            ty = ty + b.lines * bodyH + 2
+        elseif b.kind == "sep" then
+            love.graphics.setColor(0.30, 0.33, 0.40, 0.8)
+            love.graphics.line(bx + pad, ty + 4, bx + w - pad, ty + 4)
+            ty = ty + 8
+        elseif b.kind == "head" then
+            love.graphics.setFont(body)
+            love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
+            love.graphics.print(b.text, bx + pad, ty)
+            ty = ty + bodyH + 3
+        elseif b.kind == "bar" then
+            love.graphics.setFont(small)
+            love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
+            love.graphics.print(b.label, bx + pad, ty)
+            -- Value text: plain "cur / max", or "cur -> after / max" when a preview delta applies.
+            local curN = math.floor(b.cur + 0.5)
+            local valueText = curN .. " / " .. b.max
+            if b.delta then
+                local after = math.max(0, math.min(b.max, b.cur + b.delta))
+                valueText = curN .. " -> " .. math.floor(after + 0.5) .. " / " .. b.max
+            end
+            love.graphics.setColor(VALUE[1], VALUE[2], VALUE[3], 1)
+            love.graphics.printf(valueText, bx + pad, ty, innerW, "right")
+            local barY = ty + bodyH
+            local ratio = (b.max > 0) and math.max(0, math.min(1, b.cur / b.max)) or 0
+            love.graphics.setColor(0, 0, 0, 0.5)
+            love.graphics.rectangle("fill", bx + pad, barY, innerW, barH, 2, 2)
+            if b.delta and b.max > 0 then
+                -- Show the change as a second segment: the "after" fill in the pool colour, then the
+                -- lost slice in red (damage) or the gained slice in green (heal) beside it.
+                local afterVal = math.max(0, math.min(b.max, b.cur + b.delta))
+                local afterRatio = math.max(0, math.min(1, afterVal / b.max))
+                if b.delta < 0 then
+                    local loseCol = b.lethal and { 1.0, 0.30, 0.28 } or { 0.90, 0.35, 0.30 }
+                    love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
+                    love.graphics.rectangle("fill", bx + pad, barY, innerW * afterRatio, barH, 2, 2)
+                    love.graphics.setColor(loseCol[1], loseCol[2], loseCol[3], 0.9)
+                    love.graphics.rectangle("fill", bx + pad + innerW * afterRatio, barY,
+                        innerW * (ratio - afterRatio), barH, 2, 2)
+                else
+                    love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
+                    love.graphics.rectangle("fill", bx + pad, barY, innerW * ratio, barH, 2, 2)
+                    love.graphics.setColor(0.55, 0.92, 0.58, 0.9)
+                    love.graphics.rectangle("fill", bx + pad + innerW * ratio, barY,
+                        innerW * (afterRatio - ratio), barH, 2, 2)
+                end
+            else
+                love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
+                love.graphics.rectangle("fill", bx + pad, barY, innerW * ratio, barH, 2, 2)
+            end
+            ty = ty + bodyH + barH + 4
+        elseif b.kind == "status" then -- status name (in its colour) left, remaining duration right
+            love.graphics.setFont(body)
+            love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
+            love.graphics.print(b.name, bx + pad, ty)
+            love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
+            love.graphics.printf(fmtDuration(b.remaining), bx + pad, ty, innerW, "right")
+            ty = ty + bodyH + 1
+        else -- stat: label left, value right
+            love.graphics.setFont(body)
+            love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
+            love.graphics.print(b.label, bx + pad, ty)
+            local vc = b.valueColor or VALUE
+            love.graphics.setColor(vc[1], vc[2], vc[3], 1)
+            love.graphics.printf(b.value, bx + pad, ty, innerW, "right")
+            ty = ty + bodyH + 1
+        end
+    end
+
+    love.graphics.setColor(1, 1, 1)
+    -- Report the drawn box so the caller can anchor a companion panel (the action preview) to it.
+    return { x = bx, y = by, w = w, h = h }
+end
+
+return TileTooltip

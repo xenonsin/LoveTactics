@@ -9,5 +9,5 @@ return {
         movement = 4,
         speed = 4,
     },
-    startingItems = { "flame_gem" },
+    startingItems = { "ability_fireball" },
 }
