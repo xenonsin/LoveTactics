@@ -445,9 +445,28 @@ function BattleMap:drawHpBar(u, wx, wy)
     local bx, by, bw, bh = wx + 4, wy + s - 8, s - 8, 5
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", bx - 1, by - 1, bw + 2, bh + 2, 2, 2)
-    -- Hue: green when full, red when empty.
-    love.graphics.setColor(1 - ratio, 0.2 + 0.6 * ratio, 0.15, 0.95)
-    love.graphics.rectangle("fill", bx, by, bw * ratio, bh, 2, 2)
+
+    -- Aimed-action preview: project the hovered cast's damage/heal onto this unit's HP bar so the
+    -- incoming hit reads on the board too (mirrors the turn strip's drawResourceBar). No preview =
+    -- a plain fill. Hue: green when full, red when empty.
+    local pv = self.overlays.hpPreview and self.overlays.hpPreview[u]
+    local delta = pv and ((pv.heal or 0) - (pv.damage or 0)) or 0
+    if delta ~= 0 and hp and hp.max and hp.max > 0 then
+        local afterRatio = math.max(0, math.min(1, (hp.current + delta) / hp.max))
+        love.graphics.setColor(1 - ratio, 0.2 + 0.6 * ratio, 0.15, 0.95)
+        love.graphics.rectangle("fill", bx, by, bw * math.min(ratio, afterRatio), bh, 2, 2)
+        if delta < 0 then -- red slice for the HP about to be lost (brighter on a lethal blow)
+            if pv.lethal then love.graphics.setColor(1.0, 0.30, 0.28, 0.9)
+            else love.graphics.setColor(0.90, 0.35, 0.30, 0.9) end
+            love.graphics.rectangle("fill", bx + bw * afterRatio, by, bw * (ratio - afterRatio), bh, 2, 2)
+        else -- green slice for the HP about to be gained
+            love.graphics.setColor(0.55, 0.92, 0.58, 0.9)
+            love.graphics.rectangle("fill", bx + bw * ratio, by, bw * (afterRatio - ratio), bh, 2, 2)
+        end
+    else
+        love.graphics.setColor(1 - ratio, 0.2 + 0.6 * ratio, 0.15, 0.95)
+        love.graphics.rectangle("fill", bx, by, bw * ratio, bh, 2, 2)
+    end
 end
 
 -- Turn-order number in the tile's top-left, with a dark backing for legibility.

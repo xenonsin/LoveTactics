@@ -368,6 +368,7 @@ local function actionPreviewFor(cx, cy)
             item = item, actor = current, target = unit, support = battle.armedSupport,
             entry = preview and unit and preview.entries[unit] or nil,
             entries = preview and preview.entries or nil, -- every affected unit (AoE), for banner preview
+            order = preview and preview.order or nil, -- ordered affected units, for the AoE summary
         }
     end
 
@@ -380,7 +381,8 @@ local function actionPreviewFor(cx, cy)
                 local preview = Combat.previewAbility(battle.combat, current, weapon, cx, cy)
                 return { kind = "attack", item = weapon, actor = current, target = unit,
                          support = false, entry = preview and preview.entries[unit] or nil,
-                         entries = preview and preview.entries or nil }
+                         entries = preview and preview.entries or nil,
+                         order = preview and preview.order or nil }
             end
             return nil
         end
@@ -552,6 +554,7 @@ local function refreshView()
         preview = bannerPreview,
     })
 
+    overlays.hpPreview = bannerPreview -- per-unit incoming damage/heal, for on-board HP bars
     battle.map:setOverlays(overlays)
 end
 

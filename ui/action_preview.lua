@@ -128,6 +128,27 @@ local function buildBlocks(action)
         return blocks
     end
 
+    -- An AoE cast that catches more than one unit: don't imply a single target. Summarise the blast
+    -- as a foe/ally split (per-unit damage already reads on the turn strip + on-board HP bars), with
+    -- the ally count tinted as a friendly-fire warning. Kept to <=2 rows so the panel stays compact.
+    local order = action.order
+    if order and #order > 1 then
+        local foes, allies = 0, 0
+        local actorSide = action.actor and action.actor.side
+        for _, e in ipairs(order) do
+            if e.unit and e.unit.side == actorSide then allies = allies + 1 else foes = foes + 1 end
+        end
+        blocks[#blocks + 1] = { kind = "sub", text = "Area hit — " .. #order .. " in blast" }
+        blocks[#blocks + 1] = { kind = "sep" }
+        blocks[#blocks + 1] = { kind = "stat", label = "Enemies", value = tostring(foes) }
+        if allies > 0 then
+            blocks[#blocks + 1] = { kind = "stat", label = "Allies",
+                value = tostring(allies), valueColor = DAMAGE }
+        end
+        appendCost(blocks, ab)
+        return blocks
+    end
+
     -- Otherwise a unit/self cast (attack / heal / buff): the effect on the hovered unit.
     local entry = action.entry
     blocks[#blocks + 1] = { kind = "sub",
