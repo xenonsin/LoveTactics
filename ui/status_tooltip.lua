@@ -36,10 +36,13 @@ function StatusTooltip.draw(status, mx, my, maxRight)
     local innerW = w - pad * 2
     maxRight = maxRight or Scale.WIDTH
     local descLines = desc and select(2, body:getWrap(desc, innerW)) or {}
+    -- A self-expiring status (e.g. Defending "until next turn") carries a meaningless countdown,
+    -- so it opts out of the duration line -- its description already conveys the timing.
+    local showDuration = not def.hideDuration
     -- Height: title + description lines + duration line, plus padding and small section gaps.
     local h = pad + title:getHeight() + 4
         + (#descLines > 0 and (#descLines * lineH + 4) or 0)
-        + lineH + pad
+        + (showDuration and lineH or 0) + pad
 
     -- Position near the cursor; flip left and clamp so the box stays within [4, maxRight].
     local bx = mx + 14
@@ -67,8 +70,10 @@ function StatusTooltip.draw(status, mx, my, maxRight)
         ty = ty + #descLines * lineH + 4
     end
 
-    love.graphics.setColor(0.65, 0.68, 0.75, 1)
-    love.graphics.print("Duration: " .. fmtDuration(status.remaining), bx + pad, ty)
+    if showDuration then
+        love.graphics.setColor(0.65, 0.68, 0.75, 1)
+        love.graphics.print("Duration: " .. fmtDuration(status.remaining), bx + pad, ty)
+    end
     love.graphics.setColor(1, 1, 1)
 end
 

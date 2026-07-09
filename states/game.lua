@@ -14,6 +14,7 @@ local OverworldMap = require("ui.overworld_map")
 local Player = require("models.player")
 local EncounterPanel = require("ui.panels.encounter")
 local EncounterModel = require("models.encounter")
+local Loadout = require("ui.panels.loadout")
 
 local game = {}
 
@@ -22,10 +23,23 @@ local hudFont = love.graphics.newFont(16)
 
 -- Clickable "Back" button so a mouse-only player can leave to the hub.
 local backButton = { x = 16, y = 16, w = 110, h = 36 }
+-- Clickable "Items" button: opens the Loadout panel to arrange party items on the overworld.
+local itemsButton = { x = 138, y = 16, w = 110, h = 36 }
+
+local function rectContains(r, x, y)
+    return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
+end
 
 local function backContains(x, y)
-    return x >= backButton.x and x <= backButton.x + backButton.w
-        and y >= backButton.y and y <= backButton.y + backButton.h
+    return rectContains(backButton, x, y)
+end
+
+-- Open the loadout panel over the overworld (same modal slot as the encounter panel).
+local function openLoadout()
+    game.activePanel = Loadout.new({
+        player = game.player,
+        onClose = function() game.activePanel = nil end,
+    })
 end
 
 -- prestige defaults to 1 when a quest is launched without it (e.g. dev/test).
@@ -143,6 +157,16 @@ function game.drawHud()
     love.graphics.printf("Back", backButton.x, backButton.y + backButton.h / 2 - 8,
         backButton.w, "center")
 
+    -- Items button.
+    love.graphics.setColor(0.20, 0.23, 0.32)
+    love.graphics.rectangle("fill", itemsButton.x, itemsButton.y, itemsButton.w, itemsButton.h, 6, 6)
+    love.graphics.setColor(0.5, 0.55, 0.7)
+    love.graphics.rectangle("line", itemsButton.x, itemsButton.y, itemsButton.w, itemsButton.h, 6, 6)
+    love.graphics.setColor(0.95, 0.95, 0.95)
+    love.graphics.setFont(hudFont)
+    love.graphics.printf("Items", itemsButton.x, itemsButton.y + itemsButton.h / 2 - 8,
+        itemsButton.w, "center")
+
     -- Quest name + objective hint.
     love.graphics.setFont(titleFont)
     love.graphics.setColor(0.95, 0.85, 0.55)
@@ -160,7 +184,7 @@ function game.drawHud()
 
     love.graphics.setFont(hudFont)
     love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf("Move: WASD / Arrows / D-pad / click adjacent tile      Esc: hub",
+    love.graphics.printf("Move: WASD / Arrows / D-pad / click adjacent tile      I: items      Esc: hub",
         0, Scale.HEIGHT - 30, Scale.WIDTH, "center")
     love.graphics.setColor(1, 1, 1)
 end
@@ -178,6 +202,8 @@ function game.mousepressed(x, y, button)
         game.activePanel:mousepressed(x, y, button)
     elseif button == 1 and backContains(x, y) then
         toHub()
+    elseif button == 1 and rectContains(itemsButton, x, y) then
+        openLoadout()
     else
         game.map:mousepressed(x, y, button)
     end
@@ -188,6 +214,8 @@ function game.keypressed(key)
         game.activePanel:keypressed(key)
     elseif key == "escape" then
         toHub()
+    elseif key == "i" then
+        openLoadout()
     else
         game.map:keypressed(key)
     end
@@ -198,6 +226,8 @@ function game.gamepadpressed(joystick, button)
         game.activePanel:gamepadpressed(joystick, button)
     elseif button == "back" then
         toHub()
+    elseif button == "y" then
+        openLoadout()
     else
         game.map:gamepadpressed(joystick, button)
     end

@@ -41,11 +41,19 @@
 
 local Status = require("models.status")
 local Trap = require("models.trap")
+local Character = require("models.character")
 
 local Combat = {}
 
 -- Ability-speed fallback for a unit that carries no ability item at all.
 Combat.DEFAULT_SPEED = 5
+
+-- Initiative cost of the Focus / Defend wait-behaviors (see Combat.focus / Combat.defend) when
+-- the granting item doesn't specify its own. Deliberately larger than a plain wait's near-zero
+-- delay -- these actions trade a big chunk of the timeline for mana / a defense buff. Focus costs
+-- the most: recovering mana for free should give up a real turn's worth of tempo.
+Combat.FOCUS_SPEED = 10
+Combat.DEFEND_SPEED = 5
 
 -- Line-of-sight block threshold: a line is obstructed once the summed `sightCost` of the tiles
 -- it crosses (endpoints excluded) REACHES this. Soft cover (forest, sightCost 1) only lowers a
@@ -150,7 +158,7 @@ end
 -- initiative and can be used as an action).
 function Combat.abilityItems(char)
     local list = {}
-    for _, item in ipairs(char.inventory or {}) do
+    for _, item in ipairs(Character.eachItem(char)) do
         if item.activeAbility then list[#list + 1] = item end
     end
     return list
@@ -162,7 +170,7 @@ end
 -- it carries no weapon. Drives the default-attack (threat) range highlight and the click-to-
 -- attack basic strike. May be nil only for a hand-built char with neither.
 function Combat.defaultWeapon(char)
-    for _, item in ipairs(char.inventory or {}) do
+    for _, item in ipairs(Character.eachItem(char)) do
         if item.type == "weapon" and item.activeAbility then return item end
     end
     return char.unarmed
@@ -195,10 +203,11 @@ function Combat.initiative(char)
 end
 
 -- Effective flat stat for a unit: the character's base plus aggregated item bonuses
--- (armor). Resource stats ({max,current}) are never read through here.
+-- (armor) plus any active status modifier (e.g. Defending's temporary +defense). Resource
+-- stats ({max,current}) are never read through here.
 local function flatStat(unit, name)
     local base = unit.char.stats[name] or 0
-    return base + ((unit.bonus and unit.bonus[name]) or 0)
+    return base + ((unit.bonus and unit.bonus[name]) or 0) + Status.statBonus(unit, name)
 end
 
 -- The unit's effective movement budget (base + item bonus). Public so status hooks (root's
@@ -293,7 +302,7 @@ end
 function Combat.applyPassives(combat)
     for _, unit in ipairs(combat.units) do
         unit.bonus, unit.resist = {}, {}
-        for _, item in ipairs(unit.char.inventory or {}) do
+        for _, item in ipairs(Character.eachItem(unit.char)) do
             for stat, amount in pairs(item.bonus or {}) do
                 unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
             end
@@ -328,6 +337,13 @@ function Combat.new(arena, partyUnits, enemyUnits)
             }
             unit.index = #combat.units + 1
             combat.units[unit.index] = unit
+            -- Between-battle policy: stamina refills to max each battle (it's the renewable
+            -- resource), while mana persists on the reused party instance (spent mana stays
+            -- spent). Enemies are freshly instantiated, so this is a harmless no-op for them.
+            if side == "party" then
+                local st = unit.char.stats.stamina
+                if type(st) == "table" then st.current = st.max end
+            end
         end
     end
     addSide(partyUnits, "party")
@@ -365,8 +381,22 @@ function Combat.rebase(combat)
         if u.alive then u.initiative = u.initiative - minInit end
     end
     combat.clock = combat.clock + minInit
-    -- The subtracted amount IS the ticks that just elapsed: count status durations down by it.
+    -- The subtracted amount IS the ticks that just elapsed: count status durations down by it,
+    -- and regenerate stamina by the same elapsed time.
     Status.tick(combat, minInit)
+    Combat.regenerate(combat, minInit)
+end
+
+-- Passive stamina recovery: each living unit regains its staminaRegen rate per elapsed tick,
+-- clamped to max. Mana deliberately does NOT regenerate. Called from rebase with the ticks that
+-- just elapsed (the same amount fed to Status.tick), so recovery scales with time on the clock.
+function Combat.regenerate(combat, elapsed)
+    if not elapsed or elapsed <= 0 then return end
+    for _, u in ipairs(combat.units) do
+        if u.alive then
+            Combat.restoreResource(u.char, "stamina", flatStat(u, "staminaRegen") * elapsed)
+        end
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -511,6 +541,42 @@ function Combat.wait(combat, unit)
     combat.turn = nil
     Combat.logEvent(combat, "wait", string.format("%s waits.", unitName(unit)))
     Combat.rebase(combat)
+    return true
+end
+
+-- How this unit's "Wait" behaves, resolved from the first inventory item that declares a
+-- `waitBehavior` table { kind = "focus"|"defend", ... }. Defaults to a plain delay. A unit is
+-- expected to carry at most one such item; if it somehow carries several, first-in-inventory
+-- wins. Drives both the battle UI's action-button label and which of wait/focus/defend runs.
+function Combat.waitBehavior(unit)
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        if item.waitBehavior then return item.waitBehavior end
+    end
+    return { kind = "delay" }
+end
+
+-- Focus: end the turn without attacking, restoring mana instead. Costs more of the timeline than
+-- a plain wait (behavior.speed, or Combat.FOCUS_SPEED). The mana-recovery half of the wait swap
+-- granted by a focus item (data/items/utility/focus_stone.lua).
+function Combat.focus(combat, unit)
+    if not unit.alive then return false, "dead" end
+    local behavior = Combat.waitBehavior(unit)
+    local restored = Combat.restoreResource(unit.char, "mana", behavior.mana or 0)
+    Combat.logEvent(combat, "focus",
+        string.format("%s focuses (+%d mana).", unitName(unit), restored))
+    endTurn(combat, unit, behavior.speed or Combat.FOCUS_SPEED)
+    return true
+end
+
+-- Defend: end the turn without attacking, gaining the Defending status (a temporary +defense that
+-- lasts until this unit's next turn). Costs behavior.speed of the timeline (or Combat.DEFEND_SPEED).
+-- The wait swap granted by a shield item (data/items/armor/buckler.lua).
+function Combat.defend(combat, unit)
+    if not unit.alive then return false, "dead" end
+    local behavior = Combat.waitBehavior(unit)
+    Status.apply(combat, unit, "defending")
+    Combat.logEvent(combat, "defend", string.format("%s takes a defensive stance.", unitName(unit)))
+    endTurn(combat, unit, behavior.speed or Combat.DEFEND_SPEED)
     return true
 end
 
@@ -692,6 +758,110 @@ local function collectTags(item, opts)
     return tags
 end
 
+-- ---------------------------------------------------------------------------
+-- Inventory adjacency (3x3 grid). Items can grant to (aura), require, or scale off the items
+-- sitting adjacent to them in the grid -- diagonals included. The grid math lives in
+-- models/character.lua; these read the current arrangement of a character's inventory.
+-- ---------------------------------------------------------------------------
+
+-- Does `item` match an adjacency predicate `{ type=?, tag=? }`? Each field is optional (an absent
+-- field is a wildcard); a predicate with neither field matches any item.
+function Combat.matchesAdjacency(item, pred)
+    if not (item and pred) then return false end
+    if pred.type and item.type ~= pred.type then return false end
+    if pred.tag and not hasTag(item.tags, pred.tag) then return false end
+    return true
+end
+
+-- Does an aura block `a` (declared on a neighbor item) apply to the cast `item`? The item's type
+-- must be listed in `a.appliesTo`, and it must carry none of `a.exceptTags`.
+function Combat.auraApplies(a, item)
+    if not (a and item) then return false end
+    local ok = false
+    for _, t in ipairs(a.appliesTo or {}) do
+        if t == item.type then ok = true break end
+    end
+    if not ok then return false end
+    for _, t in ipairs(a.exceptTags or {}) do
+        if hasTag(item.tags, t) then return false end
+    end
+    return true
+end
+
+-- Aggregate the adjacency auras affecting a cast of `item` from `char`'s grid: the extra tags to
+-- fold into the attack, and the statuses to inflict on a damaged target. Returns (tags, statuses).
+local function adjacencyAura(char, item)
+    local tags, statuses = {}, {}
+    local idx = char and Character.slotIndex(char, item)
+    if idx then
+        for _, nb in ipairs(Character.adjacentItems(char, idx)) do
+            if nb.aura and Combat.auraApplies(nb.aura, item) then
+                for _, t in ipairs(nb.aura.grantTags or {}) do tags[#tags + 1] = t end
+                if nb.aura.status then statuses[#statuses + 1] = nb.aura.status end
+            end
+        end
+    end
+    return tags, statuses
+end
+
+-- Return `opts` with `auraTags` appended to its tag list, without mutating the caller's table
+-- (a fresh copy only when there is something to add). Used to fold aura-granted tags into every
+-- damage call an aura-augmented cast makes.
+local function withAuraTags(opts, auraTags)
+    if not auraTags or #auraTags == 0 then return opts end
+    local merged = {}
+    if opts then for k, v in pairs(opts) do merged[k] = v end end
+    local tags = {}
+    for _, t in ipairs(merged.tags or {}) do tags[#tags + 1] = t end
+    for _, t in ipairs(auraTags) do tags[#tags + 1] = t end
+    merged.tags = tags
+    return merged
+end
+
+-- Is `item`'s adjacency requirement satisfied in `char`'s grid? True when the ability declares no
+-- `requiresAdjacent`, or when at least one adjacent item matches it.
+function Combat.adjacencyMet(char, item)
+    local ab = item and item.activeAbility
+    local req = ab and ab.requiresAdjacent
+    if not req then return true end
+    local idx = char and Character.slotIndex(char, item)
+    if not idx then return false end
+    for _, nb in ipairs(Character.adjacentItems(char, idx)) do
+        if Combat.matchesAdjacency(nb, req) then return true end
+    end
+    return false
+end
+
+-- The active adjacency relationships in `char`'s grid, for UI connector lines. Returns a list of
+-- { from, to, kind } where from/to are 1-based cell indices and `kind` is one of:
+--   "aura"        -- the item at `from` has an aura that applies to the item at `to`,
+--   "boost"       -- the ability at `from` scales off the matching item at `to`,
+--   "requirement" -- the ability at `from`'s requiresAdjacent is met by the item at `to`.
+function Combat.adjacencyLinks(char)
+    local links = {}
+    for i = 1, Character.MAX_INVENTORY do
+        local item = char.inventory[i]
+        if item then
+            local ab = item.activeAbility
+            for _, j in ipairs(Character.adjacentIndices(i)) do
+                local nb = char.inventory[j]
+                if nb then
+                    if item.aura and Combat.auraApplies(item.aura, nb) then
+                        links[#links + 1] = { from = i, to = j, kind = "aura" }
+                    end
+                    if ab and ab.adjacencyScaling and Combat.matchesAdjacency(nb, ab.adjacencyScaling) then
+                        links[#links + 1] = { from = i, to = j, kind = "boost" }
+                    end
+                    if ab and ab.requiresAdjacent and Combat.matchesAdjacency(nb, ab.requiresAdjacent) then
+                        links[#links + 1] = { from = i, to = j, kind = "requirement" }
+                    end
+                end
+            end
+        end
+    end
+    return links
+end
+
 -- Apply tag-driven damage from `user` to `target`. The `magical` tag routes scaling to
 -- magicDamage/magicDefense (else damage/defense); armor `resist` for each matching tag is
 -- subtracted. Damage floors at 1. Drops the target to `alive = false` at 0 HP. Returns
@@ -809,17 +979,37 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         end
         return e
     end
+    local auraTags, auraStatuses = adjacencyAura(unit.char, item)
     local fx = {
         user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
         power = ab.power, -- the ability's balance scalar; effects derive heal/status magnitude from it
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty) end,
+        adjacentItems = function()
+            local idx = Character.slotIndex(unit.char, item)
+            return idx and Character.adjacentItems(unit.char, idx) or {}
+        end,
+        adjacentMatching = function(pred)
+            local idx = Character.slotIndex(unit.char, item)
+            local n = 0
+            if idx then
+                for _, it in ipairs(Character.adjacentItems(unit.char, idx)) do
+                    if Combat.matchesAdjacency(it, pred) then n = n + 1 end
+                end
+            end
+            return n
+        end,
         damage = function(tgt, opts)
             if not tgt then return 0 end
-            local d = Combat.computeDamage(combat, unit, tgt, item, opts)
+            local d = Combat.computeDamage(combat, unit, tgt, item, withAuraTags(opts, auraTags))
             local e = entryFor(tgt)
             e.damage = e.damage + d
+            if d > 0 then
+                for _, st in ipairs(auraStatuses) do
+                    e.statuses[#e.statuses + 1] = { id = st.id, def = Status.defs[st.id], opts = st.opts }
+                end
+            end
             return d
         end,
         heal = function(tgt, amount)
@@ -834,6 +1024,13 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
             local e = entryFor(tgt)
             e.statuses[#e.statuses + 1] = { id = id, def = Status.defs[id], opts = opts }
             return nil
+        end,
+        -- A dry run must not mutate resources; report the clamped gain without applying it.
+        restore = function(tgt, stat, amount)
+            if not tgt or not amount or amount <= 0 then return 0 end
+            local res = tgt.char.stats[stat]
+            if type(res) == "table" then return math.min(res.max, res.current + amount) - res.current end
+            return amount
         end,
         -- Placing a trap mutates combat, so a dry run must not; report nothing.
         placeTrap = function() return nil end,
@@ -891,6 +1088,7 @@ function Combat.abilityOutput(unit, item)
             out.statuses[#out.statuses + 1] = { id = id, def = Status.defs[id], opts = opts }
             return nil
         end,
+        restore = function(_, _, amount) return amount or 0 end,
         placeTrap = function() return nil end,
     }
     pcall(ab.effect, fx)
@@ -948,6 +1146,21 @@ function Combat.resource(char, stat)
     return resourceValue(char, stat)
 end
 
+-- Restore a resource stat toward its max -- the inverse of spendResource. A {max,current} table
+-- clamps at max; a plain-number stat just adds. Returns the amount actually restored (0 if it was
+-- already full or `amount` is non-positive). Shared by stamina regen, Focus, and on-hit mana gain.
+function Combat.restoreResource(char, stat, amount)
+    if not amount or amount <= 0 then return 0 end
+    local res = char.stats[stat]
+    if type(res) == "table" then
+        local before = res.current
+        res.current = math.min(res.max, res.current + amount)
+        return res.current - before
+    end
+    char.stats[stat] = (res or 0) + amount
+    return amount
+end
+
 -- Can `char` currently pay ability `ab`'s resource cost? True when the ability has no cost. The
 -- affordability gate the UI grays a slot on, mirroring the check inside Combat.useItem.
 function Combat.canAfford(char, ab)
@@ -973,6 +1186,10 @@ function Combat.useItem(combat, unit, item, tx, ty)
     local ab = item.activeAbility
     if not ab then return false, "no ability" end
     if Combat.isDepleted(item) then return false, "out of stock" end
+    if not Combat.adjacencyMet(unit.char, item) then
+        local req = ab.requiresAdjacent
+        return false, "requires adjacent " .. (req.tag or req.type or "item")
+    end
 
     local dist = manhattan(unit.x, unit.y, tx, ty)
     if dist > Combat.abilityRange(combat, unit, ab) then
@@ -1008,6 +1225,9 @@ function Combat.useItem(combat, unit, item, tx, ty)
 
     -- Effect context: bound helpers let a data-file effect compose damage/heal/AoE
     -- without touching this module. Results are accumulated for the caller/UI.
+    -- Adjacency auras from neighboring items (e.g. a Fire Stone next to this weapon) fold extra
+    -- tags into every hit and inflict their status on any target this cast damages.
+    local auraTags, auraStatuses = adjacencyAura(unit.char, item)
     local result = { damageDealt = 0, healed = 0 }
     local fx = {
         user = unit, target = target, item = item, combat = combat,
@@ -1016,10 +1236,32 @@ function Combat.useItem(combat, unit, item, tx, ty)
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty) end,
+        -- Items adjacent to this one in the caster's 3x3 grid (diagonals included).
+        adjacentItems = function()
+            local idx = Character.slotIndex(unit.char, item)
+            return idx and Character.adjacentItems(unit.char, idx) or {}
+        end,
+        -- Count of adjacent items matching a `{ type=?, tag=? }` predicate (e.g. Omnislash scaling
+        -- off adjacent weapons).
+        adjacentMatching = function(pred)
+            local idx = Character.slotIndex(unit.char, item)
+            local n = 0
+            if idx then
+                for _, it in ipairs(Character.adjacentItems(unit.char, idx)) do
+                    if Combat.matchesAdjacency(it, pred) then n = n + 1 end
+                end
+            end
+            return n
+        end,
         damage = function(tgt, opts)
             if not tgt then return 0 end
-            local d = Combat.dealDamage(combat, unit, tgt, item, opts)
+            local d = Combat.dealDamage(combat, unit, tgt, item, withAuraTags(opts, auraTags))
             result.damageDealt = result.damageDealt + d
+            if d > 0 then
+                for _, st in ipairs(auraStatuses) do
+                    Status.apply(combat, tgt, st.id, st.opts)
+                end
+            end
             return d
         end,
         heal = function(tgt, amount)
@@ -1027,6 +1269,11 @@ function Combat.useItem(combat, unit, item, tx, ty)
             local h = Combat.applyHeal(combat, tgt, amount)
             result.healed = result.healed + h
             return h
+        end,
+        -- Restore a resource (e.g. the parasitic staff refunding mana to fx.user on hit).
+        restore = function(tgt, stat, amount)
+            if not tgt then return 0 end
+            return Combat.restoreResource(tgt.char, stat, amount)
         end,
         -- Apply a status effect (models/status.lua) to a unit.
         applyStatus = function(tgt, id, opts)

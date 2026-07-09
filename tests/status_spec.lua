@@ -45,8 +45,9 @@ return {
     {
         name = "root blocks movement and charges the full move cost at end of turn",
         fn = function()
-            -- Knight (movement 3, iron_sword speed 3) rooted, bandit parked far so the cost shows
-            -- as elapsed clock. It cannot move, but can still attack -- and pays the full move cost.
+            -- Knight (chainmail drops movement to 2, iron_sword speed 3) rooted, bandit parked far so
+            -- the cost shows as elapsed clock. It cannot move, but can still attack -- and pays the
+            -- full move cost.
             local c = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 4) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, bandit.initiative = 0, 100
@@ -57,8 +58,8 @@ return {
 
             local clock0 = c.clock
             assert(Combat.useItem(c, knight, knight.char.inventory[1], 3, 4), "it can still strike adjacent")
-            -- endTurn folds max(actual move 0, forced movement 3) + ability speed 3 = 6.
-            assert(c.clock == clock0 + 6, "rooted turn costs full move (3) + ability speed (3), got "
+            -- endTurn folds max(actual move 0, forced movement 2) + ability speed 3 = 5.
+            assert(c.clock == clock0 + 5, "rooted turn costs full move (2) + ability speed (3), got "
                 .. (c.clock - clock0))
         end,
     },
@@ -121,6 +122,23 @@ return {
             assert(elapsed == 3, "the knight's turn advanced the clock by 3")
             assert(Status.get(bandit, "root").remaining == 6 - elapsed,
                 "the bandit's root counted down by the elapsed ticks")
+        end,
+    },
+    {
+        name = "Burn deals fire damage at each turn start and wears off after its duration",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local bandit = c.units[2]
+            bandit.char.stats.defense = 0 -- isolate the tick from defense mitigation
+            local hp0 = bandit.char.stats.health.current
+            Status.apply(c, bandit, "burn") -- duration 3, magnitude 4
+            assert(Status.get(bandit, "burn").remaining == 3, "burn starts at duration 3")
+
+            Status.onTurnStart(c, bandit)
+            assert(bandit.char.stats.health.current == hp0 - 4, "a burn tick deals 4 fire damage")
+
+            Status.tick(c, 3)
+            assert(not Status.has(bandit, "burn"), "burn wears off after its duration")
         end,
     },
 }

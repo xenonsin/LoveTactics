@@ -257,6 +257,10 @@ local function armItem(item)
     -- way a click already can't.
     if not Combat.canAfford(current.char, item.activeAbility) then return end
     if Combat.isDepleted(item) then return end
+    -- An ability that needs a specific neighbor (e.g. Rain of Arrows requires an adjacent bow)
+    -- stays disarmed until that neighbor is in place -- the slot is grayed and useItem would
+    -- reject it anyway, so keep number-key / gamepad arming from silently failing on confirm.
+    if not Combat.adjacencyMet(current.char, item) then return end
     battle.armedItem = item
     battle.mode = "armed"
     -- Friendly abilities (heal / buff) highlight green; offensive strikes and trap placements red.
@@ -433,12 +437,17 @@ local function confirm()
     end
 end
 
--- End the current party unit's turn without acting -- a delay, so it acts just after the
--- next unit in line (Combat.wait). Available whether or not it moved.
+-- End the current party unit's turn without acting. The default is a delay (Combat.wait), but an
+-- item may swap this into Focus (restore mana) or Defend (a defensive stance) -- see
+-- Combat.waitBehavior. Available whether or not the unit moved.
 local function waitTurn()
     local current = battle.current
     if battle.over or not current or current.side ~= "party" then return end
-    if Combat.wait(battle.combat, current) then advanceTurn() end
+    local kind = Combat.waitBehavior(current).kind
+    local action = (kind == "focus" and Combat.focus)
+        or (kind == "defend" and Combat.defend)
+        or Combat.wait
+    if action(battle.combat, current) then advanceTurn() end
 end
 
 local function executeEnemyAction()
@@ -551,6 +560,7 @@ local function refreshView()
     battle.panel:setView({
         order = entries, current = current, isPartyTurn = isParty,
         items = (current.side == "party") and current.char.inventory or {},
+        itemOwner = (current.side == "party") and current.char or nil, -- for adjacency link lines
         armedItem = battle.armedItem,
         showInitiative = battle.showInitiative,
         preview = bannerPreview,
@@ -760,7 +770,13 @@ function battle.drawHud()
     love.graphics.rectangle("line", waitButton.x, waitButton.y, waitButton.w, waitButton.h, 6, 6)
     if canWait then love.graphics.setColor(0.9, 0.94, 1) else love.graphics.setColor(0.5, 0.52, 0.58) end
     love.graphics.setFont(hudFont)
-    love.graphics.printf("Wait", waitButton.x, waitButton.y + waitButton.h / 2 - 8, waitButton.w, "center")
+    -- Label reflects the acting unit's wait behavior (item-swapped Focus / Defend, else Wait).
+    local waitLabel = "Wait"
+    if battle.current then
+        local kind = Combat.waitBehavior(battle.current).kind
+        waitLabel = (kind == "focus" and "Focus") or (kind == "defend" and "Defend") or "Wait"
+    end
+    love.graphics.printf(waitLabel, waitButton.x, waitButton.y + waitButton.h / 2 - 8, waitButton.w, "center")
 
     -- Combat-log toggle: brighter when the panel is open so its state reads at a glance.
     local logOn = battle.log and battle.log.visible

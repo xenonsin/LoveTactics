@@ -4,6 +4,7 @@
 local Player = require("models.player")
 local Character = require("models.character")
 local Item = require("models.item")
+local Status = require("models.status")
 
 return {
     {
@@ -12,8 +13,8 @@ return {
             local p = Player.new()
             assert(p.gold == 0, "gold should be 0")
             assert(p.prestige == 1, "prestige should be 1")
-            assert(#p.roster == 3, "roster should have 3 members")
-            assert(#p.party == 3, "party should have 3 members")
+            assert(#p.roster == 4, "roster should have 4 members")
+            assert(#p.party == 4, "party should have 4 members")
         end,
     },
     {
@@ -40,7 +41,7 @@ return {
             local member = p.party[1]
             assert(Player.removeFromParty(p, member), "member should be removed")
             assert(#p.party == Player.MAX_PARTY - 1, "party should have one fewer member")
-            assert(#p.roster == 3, "roster is unchanged by party removal")
+            assert(#p.roster == 4, "roster is unchanged by party removal")
             assert(Player.addToParty(p, member), "a freed slot accepts a new member")
         end,
     },
@@ -67,7 +68,7 @@ return {
         name = "starting inventory built from def item ids",
         fn = function()
             local c = Character.instantiate("knight")
-            assert(#c.inventory == 2, "expected 2 starting items, got " .. #c.inventory)
+            assert(#c.inventory == 3, "expected 3 starting items, got " .. #c.inventory)
             assert(c.inventory[1].name == "Iron Sword", "first item")
         end,
     },
@@ -81,6 +82,33 @@ return {
             assert(#c.inventory == 9, "should be full at 9")
             assert(Character.addItem(c, Item.instantiate("iron_sword")) == false, "10th add rejected")
             assert(#c.inventory == 9, "must not grow past cap")
+        end,
+    },
+    {
+        name = "adjacency content (Burn status + the three items) loads via the registries",
+        fn = function()
+            assert(Status.defs.burn, "burn status missing")
+            assert(Item.defs.ability_omnislash, "omnislash missing")
+            assert(Item.defs.fire_stone, "fire_stone missing")
+            assert(Item.defs.ability_rain_of_arrows, "rain_of_arrows missing")
+            -- The aura block (a top-level item field) survives instantiation.
+            local stone = Item.instantiate("fire_stone")
+            assert(stone.aura and stone.aura.grantTags[1] == "fire", "fire_stone carries its aura")
+            -- Ability-level adjacency fields (inside activeAbility) survive too.
+            local rain = Item.instantiate("ability_rain_of_arrows")
+            assert(rain.activeAbility.requiresAdjacent.tag == "bow", "rain of arrows keeps requiresAdjacent")
+        end,
+    },
+    {
+        name = "addItem fills the first empty grid cell and leaves later gaps intact",
+        fn = function()
+            local c = Character.instantiate("knight") -- 3 dense starting items in slots 1..3
+            c.inventory[2] = nil -- open a gap in the middle
+            assert(Character.itemCount(c) == 2, "two items remain after clearing slot 2")
+            assert(Character.firstEmptySlot(c) == 2, "slot 2 is the first empty cell")
+            Character.addItem(c, Item.instantiate("bow"))
+            assert(c.inventory[2] and c.inventory[2].name == "Bow", "the new item fills the gap at slot 2")
+            assert(c.inventory[3], "the item beyond the gap is untouched")
         end,
     },
     {

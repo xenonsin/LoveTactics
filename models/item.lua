@@ -51,8 +51,10 @@ function Item.instantiate(id, quantity)
         type = def.type,                       -- weapon | armor | consumable | ability | utility
         tags = deepCopy(def.tags),             -- descriptive tags: scaling + armor mitigation
         activeAbility = deepCopy(def.activeAbility), -- { name, target, range, speed, cost, effect }
+        aura = deepCopy(def.aura),             -- adjacency: grants tags/statuses to neighboring casts
         bonus = deepCopy(def.bonus),           -- armor: flat stat bonuses folded in at setup
         resist = deepCopy(def.resist),         -- armor: tag -> flat damage reduction
+        waitBehavior = deepCopy(def.waitBehavior), -- swaps this holder's Wait -> Focus / Defend
         visionRadius = def.visionRadius,       -- overworld vision boost (e.g. torch); nil for most
         detectRadius = def.detectRadius,       -- combat: reveals traps within this radius (detectors)
         maxStack = def.maxStack,               -- stackable (consumable) items: per-slot cap override

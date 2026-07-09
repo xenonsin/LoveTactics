@@ -10,7 +10,7 @@ Player.defaults = require("data.player")
 
 -- Hard cap on the active party. The roster (owned characters) is unbounded;
 -- only this many can be deployed at once.
-Player.MAX_PARTY = 3
+Player.MAX_PARTY = 4
 
 -- Base overworld fog-of-war vision radius (tiles seen around the player). A party
 -- member carrying an item with a larger visionRadius (e.g. a torch) raises it.

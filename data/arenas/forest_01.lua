@@ -22,6 +22,7 @@ return {
     },
     partySpawns = {
         { x = 2, y = 8 }, { x = 4, y = 8 }, { x = 6, y = 8 },
+        { x = 4, y = 7 }, -- 4th slot: one step forward of the back line (party cap is 4)
     },
     enemySpawns = {
         { x = 2, y = 1 }, { x = 4, y = 1 }, { x = 6, y = 1 },

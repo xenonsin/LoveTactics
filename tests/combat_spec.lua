@@ -100,6 +100,7 @@ return {
             local c = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 4) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, bandit.initiative = 0, 100 -- keep bandit far so the cost shows as elapsed
+            knight.char.stats.staminaRegen = 0 -- isolate the spend from tick-proportional regen
             local sword = knight.char.inventory[1]
             assert(sword.name == "Iron Sword", "knight's first item is the sword")
 
@@ -552,17 +553,17 @@ return {
     {
         name = "attackReach covers the band one step beyond movement (drives the threat overlay)",
         fn = function()
-            -- Knight (movement 3) alone: it can walk to (4,7) (cost 3) and, with a range-1
-            -- weapon, threaten (4,8) -- a tile it cannot itself stand on this turn.
+            -- Knight (chainmail drops movement to 2) alone: it can walk to (4,6) (cost 2) and,
+            -- with a range-1 weapon, threaten (4,7) -- a tile it cannot itself stand on this turn.
             local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, {})
             local knight = c.units[1]
             local reach = Combat.reachable(c, knight)
             local ar = Combat.attackReach(c, knight, 1, reach)
 
-            assert(reach["4,8"] == nil, "the far tile is beyond a movement-3 reach")
-            local cell = ar["4,8"]
+            assert(reach["4,7"] == nil, "the far tile is beyond a movement-2 reach")
+            local cell = ar["4,7"]
             assert(cell, "but it IS within attack reach (threat band)")
-            local d = math.abs(cell.fromX - 4) + math.abs(cell.fromY - 8)
+            local d = math.abs(cell.fromX - 4) + math.abs(cell.fromY - 7)
             assert(d <= 1, "the recorded stand tile is within weapon range of the target")
             assert(cell.fromX == knight.x and cell.fromY == knight.y
                 or reach[cell.fromX .. "," .. cell.fromY], "stand tile is the origin or reachable")

@@ -43,6 +43,8 @@ local function ctxFor(combat, unit, status)
             return Status.apply(combat, tgt, id, opts)
         end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
+        -- End this status now (e.g. Defending self-expiring at the owner's next turn start).
+        expire = function() Status.remove(unit, status.id) end,
     }
 end
 
@@ -70,6 +72,27 @@ end
 
 function Status.has(unit, id)
     return Status.get(unit, id) ~= nil
+end
+
+-- Remove status `id` from `unit` (no-op if absent). Used by a self-expiring hook (Defending ends
+-- at the owner's next turn) -- the countdown in Status.tick remains the general expiry path.
+function Status.remove(unit, id)
+    local list = unit.statuses
+    if not list then return end
+    for i = #list, 1, -1 do
+        if list[i].id == id then table.remove(list, i) end
+    end
+end
+
+-- Sum the flat `statBonus[name]` contributed by every active status on `unit` (0 if none). Lets a
+-- buff/debuff status modify a flat stat; folded into combat's flatStat (e.g. Defending's +defense).
+function Status.statBonus(unit, name)
+    local total = 0
+    for _, s in ipairs(unit.statuses or {}) do
+        local bonus = s.def.statBonus
+        if bonus and bonus[name] then total = total + bonus[name] end
+    end
+    return total
 end
 
 -- Apply status `id` to `unit`. One instance per id: re-applying refreshes the remaining

@@ -485,6 +485,35 @@ function CombatPanel:drawItemGrid()
         love.graphics.rectangle("line", sx, sy, sw, sh, 5, 5)
         love.graphics.setLineWidth(1)
     end
+
+    -- Adjacency connector lines over the current unit's grid, so item-to-item bonuses (a Fire
+    -- Stone's aura, Omnislash scaling off adjacent weapons, Rain of Arrows' bow requirement) read
+    -- at a glance -- tinted by relationship kind to match the loadout legend.
+    self:drawAdjacencyLinks()
+end
+
+-- Line tint per adjacency relationship kind (see Combat.adjacencyLinks / ui/inventory_grid.lua).
+local LINK_COLOR = {
+    aura        = { 0.95, 0.55, 0.28 },
+    boost       = { 0.55, 0.78, 1.00 },
+    requirement = { 0.70, 0.88, 0.45 },
+}
+
+function CombatPanel:drawAdjacencyLinks()
+    local char = self.view.itemOwner
+    if not char then return end
+    love.graphics.setLineWidth(2)
+    for _, link in ipairs(Combat.adjacencyLinks(char)) do
+        local c = LINK_COLOR[link.kind] or { 0.8, 0.8, 0.8 }
+        local ax, ay, aw, ah = self:slotRect(link.from)
+        local bx, by, bw, bh = self:slotRect(link.to)
+        love.graphics.setColor(c[1], c[2], c[3], 0.85)
+        love.graphics.line(ax + aw / 2, ay + ah / 2, bx + bw / 2, by + bh / 2)
+        love.graphics.circle("fill", ax + aw / 2, ay + ah / 2, 3)
+        love.graphics.circle("fill", bx + bw / 2, by + bh / 2, 3)
+    end
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- ---------------------------------------------------------------------------

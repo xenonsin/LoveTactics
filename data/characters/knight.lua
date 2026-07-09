@@ -3,10 +3,13 @@ return {
     sprite = "assets/chars/knight.png",
     stats = {
         health = 100, mana = 20, stamina = 60, -- resource stats
+        staminaRegen = 2, -- stamina recovered per elapsed tick (a flat stat, not a resource)
         damage = 14, magicDamage = 4,          -- flat stats
         defense = 10, magicDefense = 6,
         movement = 3, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
-    startingItems = { "iron_sword", "healing_potion" }, -- item ids
+    -- Frontline tank: sword for the melee strike, chainmail for solid all-round steel
+    -- (only -1 movement so it still keeps pace), and a potion to self-mend under fire.
+    startingItems = { "iron_sword", "chainmail", "healing_potion" }, -- item ids
 }
