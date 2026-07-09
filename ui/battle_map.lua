@@ -25,6 +25,7 @@ local Tileset = require("models.tileset")
 local Biome = require("models.biome")
 local Combat = require("models.combat")
 local Status = require("models.status")
+local StatusBadge = require("ui.status_badge")
 
 local BattleMap = {}
 BattleMap.__index = BattleMap
@@ -426,7 +427,7 @@ function BattleMap:statusBadgeRects(u, wx, wy)
     local list = u.statuses
     if not list or #list == 0 then return {} end
     local s = self.size
-    local bw, bh, gap = 15, 12, 2
+    local bw, bh, gap = 18, 12, 2
     local totalW = #list * bw + (#list - 1) * gap
     local startX = wx + s - totalW - 4
     -- The HP bar's black backing tops out at wy + s - 9; sit the badges a couple px above it.
@@ -443,16 +444,7 @@ end
 -- unit reads at a glance. Reads unit.statuses (runtime data), never love.graphics at require-time.
 function BattleMap:drawStatusBadges(u, wx, wy)
     for _, r in ipairs(self:statusBadgeRects(u, wx, wy)) do
-        local st = r.st
-        local col = (st.def and st.def.color) or { 0.82, 0.82, 0.88 }
-        love.graphics.setColor(0, 0, 0, 0.7)
-        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 3, 3)
-        love.graphics.setColor(col[1], col[2], col[3], 0.95)
-        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 3, 3)
-        love.graphics.setFont(self.numberFont)
-        love.graphics.setColor(col[1], col[2], col[3], 1)
-        local label = (st.def and st.def.abbr) or (st.name or "?"):sub(1, 1)
-        love.graphics.printf(label, r.x, r.y, r.w, "center")
+        StatusBadge.draw(r.st, r.x, r.y, r.w, r.h)
     end
 end
 

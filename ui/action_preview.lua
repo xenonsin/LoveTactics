@@ -2,12 +2,13 @@
 -- (an armed item, or the default weapon whose red threat reach is shown) at a valid target in
 -- range, this small panel sits to the LEFT of that character's tooltip and spells out the action
 -- being used against it -- ability name, the damage/heal it would do (the same numbers the target's
--- resource bars preview), any status it would apply, and its resource cost. The battle state
--- (states/battle.lua) computes the outcome via Combat.previewAbility and draws this last, so it
+-- resource bars preview), any status it would apply, and everything the cast would spend. The battle
+-- state (states/battle.lua) computes the outcome via Combat.previewAbility and draws this last, so it
 -- floats above the board and the panel. No love.graphics at require-time.
 --
 --   ActionPreview.draw(action, charBox, maxRight)
---     action  = { item, actor, target, support, entry = <Combat.previewAbility entry|nil> }
+--     action  = { item, actor, target, support, entry = <Combat.previewAbility entry|nil>,
+--                 spend = <Combat.abilitySpend list|nil> }
 --     charBox = { x, y, w, h } the character tooltip's on-screen rect (this anchors to its left)
 --
 -- Content is assembled once into an ordered list of blocks that is both measured and drawn, so the
@@ -68,16 +69,31 @@ local function titleFor(action)
     return (ab and ab.name) or (action.item and action.item.name) or "Action"
 end
 
--- Append the ability's timeline + resource cost rows, shared by every cast (attack / ability / place).
-local function appendCost(blocks, ab)
+-- Append what the cast takes, shared by every cast (attack / ability / place / trap strike): the
+-- initiative it costs, then each pool it draws from (`action.spend`, from Combat.abilitySpend --
+-- already priced against the actor, so Haste's halved cost and a summon's reservation both read
+-- their true amounts), then the item stack a consumable burns. A reservation earns a note, because
+-- unlike a cost the pool it takes does not come back until the summon it sustains falls.
+local function appendSpend(blocks, action, ab)
     if ab.speed then
         blocks[#blocks + 1] = { kind = "stat", label = "Time cost",
             value = tostring(ab.speed), valueColor = TIME }
     end
-    if ab.cost then
-        blocks[#blocks + 1] = { kind = "stat", label = "Cost",
-            value = ab.cost.amount .. " " .. titleCase(ab.cost.stat),
-            valueColor = RES_COLOR[ab.cost.stat] or VALUE }
+    local reserved = false
+    for _, s in ipairs(action.spend or {}) do
+        blocks[#blocks + 1] = { kind = "stat",
+            label = (s.kind == "reserve") and "Reserves" or "Cost",
+            value = s.amount .. " " .. titleCase(s.stat),
+            valueColor = RES_COLOR[s.stat] or VALUE }
+        reserved = reserved or s.kind == "reserve"
+    end
+    if reserved then
+        blocks[#blocks + 1] = { kind = "note", text = "Locked until the summon falls", color = MUTED }
+    end
+    if ab.consumesItem then
+        local left = math.max(0, (action.item and action.item.quantity or 1) - 1)
+        blocks[#blocks + 1] = { kind = "stat", label = "Consumes",
+            value = "1 (" .. left .. " left)", valueColor = VALUE }
     end
 end
 
@@ -114,17 +130,18 @@ local function buildBlocks(action)
             blocks[#blocks + 1] = { kind = "stat", label = "Damage",
                 value = "-" .. tostring(action.trapDamage or 0), valueColor = DAMAGE }
         end
-        appendCost(blocks, (action.item and action.item.activeAbility) or {})
+        appendSpend(blocks, action, (action.item and action.item.activeAbility) or {})
         return blocks
     end
 
     local ab = (action.item and action.item.activeAbility) or {}
 
-    -- Place a trap on an empty tile (a tile-target cast): no unit target / no damage preview.
+    -- Place something on an empty tile (a tile-target cast -- a trap, a summoned creature): no unit
+    -- target / no damage preview, so the spend rows are the whole story.
     if action.kind == "place" then
         blocks[#blocks + 1] = { kind = "sub", text = "onto this tile" }
         blocks[#blocks + 1] = { kind = "sep" }
-        appendCost(blocks, ab)
+        appendSpend(blocks, action, ab)
         return blocks
     end
 
@@ -145,7 +162,7 @@ local function buildBlocks(action)
             blocks[#blocks + 1] = { kind = "stat", label = "Allies",
                 value = tostring(allies), valueColor = DAMAGE }
         end
-        appendCost(blocks, ab)
+        appendSpend(blocks, action, ab)
         return blocks
     end
 
@@ -177,7 +194,7 @@ local function buildBlocks(action)
         blocks[#blocks + 1] = { kind = "note", text = "No direct effect", color = MUTED }
     end
 
-    appendCost(blocks, ab)
+    appendSpend(blocks, action, ab)
     return blocks
 end
 
@@ -233,9 +250,12 @@ function ActionPreview.draw(action, charBox, maxRight, opts)
     local ty = by + pad
     for _, b in ipairs(blocks) do
         if b.kind == "title" then
+            -- Squeezed to the panel width rather than spilling past its border: a tile cast titles
+            -- itself "Place <ability>", and an ability name is free to be long.
             love.graphics.setFont(title)
             love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
-            love.graphics.print(b.text, bx + pad, ty)
+            local sc = math.min(1, innerW / title:getWidth(b.text))
+            love.graphics.print(b.text, bx + pad, ty + (titleH - titleH * sc) / 2, 0, sc, sc)
             ty = ty + titleH + 3
         elseif b.kind == "sub" then
             love.graphics.setFont(small)

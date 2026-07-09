@@ -176,6 +176,34 @@ return {
         end,
     },
     {
+        name = "Haste halves the initiative a walk charges, but not how far the walk can go",
+        fn = function()
+            -- Archer (movement 4, less 1 for its leather armor = 3) walks three tiles of open
+            -- ground: a raw path cost of 3, which endTurn folds in as elapsed clock.
+            local function walkCost(hasted)
+                local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
+                local archer = c.units[1]
+                if hasted then Status.apply(c, archer, "hasted") end
+                openTurn(c, archer)
+                local reach = Combat.reachable(c, archer)
+                local ok, cost = Combat.moveUnit(c, archer, 1, 4)
+                assert(ok, "the 3-tile move succeeds")
+                return cost, reach
+            end
+
+            local plain, plainReach = walkCost(false)
+            local quick, quickReach = walkCost(true)
+            assert(plain == 3, "an unhasted 3-tile walk charges 3 initiative, got " .. plain)
+            assert(quick == 2, "a hasted one charges half (3 * 0.5, rounded), got " .. quick)
+
+            -- Reach is untouched: Haste buys time, not distance.
+            local function count(t) local n = 0 for _ in pairs(t) do n = n + 1 end return n end
+            assert(count(plainReach) == count(quickReach),
+                "Haste must not widen the reachable set (" .. count(plainReach)
+                .. " vs " .. count(quickReach) .. ")")
+        end,
+    },
+    {
         name = "a cost multiplier never discounts a reservation",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })

@@ -1,6 +1,6 @@
 -- Bind a fire elemental to the field. The mage's counterpart to Summon Wolf: the same reservation
--- bargain (a quarter of maximum mana, locked away for as long as the elemental stands), placed at
--- arm's length rather than adjacent, and scaling its magicDamage rather than its bite.
+-- bargain (a quarter of maximum mana, spent on the cast and locked away for as long as the elemental
+-- stands), placed at arm's length rather than adjacent, and scaling its magicDamage rather than its bite.
 -- See data/items/ability/ability_summon_wolf.lua for how `reserve` and `scaling` work.
 return {
     name = "Summon Fire Elemental",

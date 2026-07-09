@@ -7,7 +7,8 @@
 -- Follows the project's three-input standard, and is fully mouse-only playable: click a source
 -- cell then a destination cell (mouse), or drive a cursor with arrows/D-pad + confirm
 -- (keyboard/gamepad). Escape/B cancels a pickup (the host panel routes those). Adjacency connector
--- lines (Combat.adjacencyLinks) are drawn over the grid so item-to-item bonuses read at a glance.
+-- wires (ui/adjacency_links.lua) run behind the cards so item-to-item bonuses read at a glance
+-- without covering an icon or a name.
 --
 --   local grid = InventoryGrid.new({ x = , y = , char = char })
 --   grid:setChar(char)
@@ -15,7 +16,7 @@
 --   grid:keypressed(key); grid:gamepadpressed(joystick, button); grid:cancelPickup()
 
 local Character = require("models.character")
-local Combat = require("models.combat")
+local AdjacencyLinks = require("ui.adjacency_links")
 
 local InventoryGrid = {}
 InventoryGrid.__index = InventoryGrid
@@ -23,13 +24,6 @@ InventoryGrid.__index = InventoryGrid
 local SLOT = 92
 local GAP = 12
 local COLS, ROWS = Character.COLS, Character.ROWS
-
--- Connector-line tint per adjacency relationship kind (see Combat.adjacencyLinks).
-InventoryGrid.LINK_COLOR = {
-    aura        = { 0.95, 0.55, 0.28 }, -- ember orange (an aura infusing a neighbor)
-    boost       = { 0.55, 0.78, 1.00 }, -- steel blue (an ability scaling off a neighbor)
-    requirement = { 0.70, 0.88, 0.45 }, -- green (a requirement satisfied by a neighbor)
-}
 
 function InventoryGrid.new(opts)
     opts = opts or {}
@@ -57,11 +51,6 @@ function InventoryGrid:slotRect(index)
     local col = (index - 1) % COLS
     local row = math.floor((index - 1) / COLS)
     return self.x + col * (SLOT + GAP), self.y + row * (SLOT + GAP), SLOT, SLOT
-end
-
-function InventoryGrid:slotCenter(index)
-    local sx, sy, sw, sh = self:slotRect(index)
-    return sx + sw / 2, sy + sh / 2
 end
 
 function InventoryGrid:indexAt(px, py)
@@ -106,12 +95,18 @@ function InventoryGrid:draw()
     if not self.char then return end
     local inv = self.char.inventory
 
-    -- Cell plates + items.
+    -- Cell plates, then the adjacency wires across them -- both under the items, so a wire reads
+    -- over the plate without ever covering an icon or a name band.
+    love.graphics.setColor(0.16, 0.17, 0.22)
     for i = 1, COLS * ROWS do
         local sx, sy, sw, sh = self:slotRect(i)
-        love.graphics.setColor(0.16, 0.17, 0.22)
         love.graphics.rectangle("fill", sx, sy, sw, sh, 6, 6)
+    end
+    AdjacencyLinks.draw(self.char, function(i) return self:slotRect(i) end, { width = 3 })
 
+    -- Items.
+    for i = 1, COLS * ROWS do
+        local sx, sy, sw, sh = self:slotRect(i)
         local item = inv[i]
         if item then
             local lifted = (self.picked == i)
@@ -143,19 +138,6 @@ function InventoryGrid:draw()
             love.graphics.print(name, sx + sw / 2 - (nw * sc) / 2, sy + sh - 15, 0, sc, sc)
         end
     end
-
-    -- Adjacency connector lines, over the plates so relationships read at a glance.
-    love.graphics.setLineWidth(3)
-    for _, link in ipairs(Combat.adjacencyLinks(self.char)) do
-        local c = InventoryGrid.LINK_COLOR[link.kind] or { 0.8, 0.8, 0.8 }
-        local ax, ay = self:slotCenter(link.from)
-        local bx, by = self:slotCenter(link.to)
-        love.graphics.setColor(c[1], c[2], c[3], 0.85)
-        love.graphics.line(ax, ay, bx, by)
-        love.graphics.circle("fill", ax, ay, 4)
-        love.graphics.circle("fill", bx, by, 4)
-    end
-    love.graphics.setLineWidth(1)
 
     -- Selection overlays: hover (mouse), the keyboard/gamepad cursor, and the picked-up cell.
     if self.hover then

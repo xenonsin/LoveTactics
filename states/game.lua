@@ -212,6 +212,17 @@ function game.mousepressed(x, y, button)
     end
 end
 
+-- Only panels that scroll or drag define these; the overworld map handles neither.
+function game.mousereleased(x, y, button)
+    local panel = game.activePanel
+    if panel and panel.mousereleased then panel:mousereleased(x, y, button) end
+end
+
+function game.wheelmoved(dx, dy)
+    local panel = game.activePanel
+    if panel and panel.wheelmoved then panel:wheelmoved(dx, dy) end
+end
+
 function game.keypressed(key)
     if game.activePanel then
         game.activePanel:keypressed(key)

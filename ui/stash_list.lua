@@ -4,15 +4,17 @@
 --
 -- Like the grid it is a PICK-THEN-PLACE surface -- activating a row picks that item up; the host
 -- panel then places it into a grid cell. It never moves items itself, so the two widgets can't
--- disagree about who owns what: the panel performs every transfer.
+-- disagree about who owns what: the panel performs every transfer. Dragging a row onto the grid is
+-- the same transfer by another route, and is likewise driven by the panel (ui/panels/loadout.lua).
 --
 -- Follows the project's three-input standard and is fully mouse-only playable: click a row, or
--- click the scroll arrows (no wheel required); or drive the cursor with arrows/D-pad + confirm,
--- which scrolls the view to follow.
+-- click the scroll arrows (the wheel is a shortcut, never the only way); or drive the cursor with
+-- arrows/D-pad + confirm, which scrolls the view to follow.
 --
 --   local stash = StashList.new({ x = , y = , w = , h = , stash = player.stash })
 --   stash:setStash(list)
 --   stash:draw(); stash:mousemoved(x, y); stash:mousepressed(x, y, button)
+--   stash:wheelmoved(dy); stash:contains(x, y)
 --   stash:keypressed(key); stash:gamepadpressed(joystick, button); stash:cancelPickup()
 
 local StashList = {}
@@ -21,6 +23,10 @@ StashList.__index = StashList
 local ROW_H = 40
 local ROW_GAP = 4
 local ARROW_H = 22 -- clickable scroll arrows above and below the rows
+
+-- Rows moved per wheel notch. The view is only a handful of rows tall, so the usual three-line
+-- scroll would throw away most of a page per click.
+local SCROLL_ROWS = 2
 
 -- Row tint per item type, matching ui/item_tooltip.lua's accent colours.
 local TYPE_COLOR = {
@@ -81,6 +87,17 @@ end
 
 function StashList:scroll(delta)
     self.offset = math.max(0, math.min(self:maxOffset(), self.offset + delta))
+end
+
+-- Wheel notches, as LÖVE reports them: dy > 0 is a push away from the user, which walks the view
+-- back up toward earlier rows. The host panel decides whether the pointer is over us first.
+function StashList:wheelmoved(dy)
+    self:scroll(-dy * SCROLL_ROWS)
+end
+
+-- Whole-widget hit test, arrows included -- the host uses it as a drop target for a dragged item.
+function StashList:contains(x, y)
+    return x >= self.x and x <= self.x + self.w and y >= self.y and y <= self.y + self.h
 end
 
 -- Keep the cursor row on screen after it moves.

@@ -114,6 +114,39 @@ return {
         end,
     },
     {
+        name = "itemBlockReason names why an ability can't be activated (the gate the UI grays on)",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 5) })
+            local k = c.units[1]
+            equip(k.char, { [5] = "ability_rain_of_arrows" })
+            k.char.stats.stamina.current = 99
+            openTurn(c, k)
+            local rain = k.char.inventory[5]
+
+            -- Affordable, in stock, but the bow it requires isn't beside it: blocked on adjacency,
+            -- and the reason is the one useItem reports so the slot and the cast can't disagree.
+            local blocked = Combat.itemBlockReason(k, rain)
+            assert(blocked, "rain of arrows is blocked with no adjacent bow")
+            assert(blocked.kind == "adjacency", "the missing bow blocks it, got " .. tostring(blocked.kind))
+            assert(blocked.reason == select(2, Combat.useItem(c, k, rain, 3, 5)),
+                "the block reason is what useItem refuses the cast with")
+            assert(blocked.text:find("adjacent bow"), "the player-facing text names the bow: " .. blocked.text)
+
+            -- Bow in place, so only the cost can stop it. An empty pool blocks it on cost instead,
+            -- naming the resource that fell short.
+            k.char.inventory[4] = Item.instantiate("bow")
+            assert(Combat.itemBlockReason(k, rain) == nil, "an adjacent bow unblocks the volley")
+            k.char.stats.stamina.current = 0
+            local broke = Combat.itemBlockReason(k, rain)
+            assert(broke and broke.kind == "cost" and broke.stat == "stamina",
+                "an empty pool blocks it on cost")
+
+            -- A passive item is inert, not blocked -- it never grays out.
+            assert(Combat.itemBlockReason(k, Item.instantiate("leather_armor")) == nil,
+                "a passive item reports no block reason")
+        end,
+    },
+    {
         name = "a Fire Stone infuses an adjacent weapon: it gains the fire tag and inflicts Burn",
         fn = function()
             -- Augmented: sword adjacent to the Fire Stone. The target has fire resist 3, so the

@@ -104,6 +104,50 @@ return {
         end,
     },
     {
+        name = "a sanctuary blesses only its caster's side; a foe standing in it gains nothing",
+        fn = function()
+            -- The priest consecrates its own tile: the 3x3 blast also covers the bandit at (3,4).
+            local c = Combat.new(arena(8, 8), { unit("priest", 3, 3) }, { unit("bandit", 3, 4) })
+            local priest, bandit = c.units[1], c.units[2]
+            local sanctuary = findItem(priest.char, "ability_sanctuary")
+            assert(sanctuary, "the priest carries Sanctuary")
+            openTurn(c, priest)
+
+            assert(Combat.useItem(c, priest, sanctuary, 3, 3), "Sanctuary lands on the priest's own tile")
+            assert(Hazard.at(c, 3, 4, "hazard_heal"), "hallowed ground covers the bandit's tile too")
+            assert(Status.has(priest, "regen"), "the caster is blessed by its own sanctuary")
+            assert(not Status.has(bandit, "regen"), "the foe standing in it gains no Regeneration")
+        end,
+    },
+    {
+        name = "an enemy walking onto the party's sanctuary is not healed, but onto its own it is",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 4, 1) })
+            local bandit = c.units[2]
+            Hazard.place(c, 4, 3, "hazard_heal", { side = "party" })
+            Hazard.place(c, 4, 5, "hazard_heal", { side = "enemy" })
+            openTurn(c, bandit)
+
+            assert(Combat.moveUnit(c, bandit, 4, 3), "the bandit walks onto the party's sanctuary")
+            assert(not Status.has(bandit, "regen"), "the party's hallowed ground does not mend a foe")
+
+            openTurn(c, bandit)
+            assert(Combat.moveUnit(c, bandit, 4, 5), "the bandit walks onto its own sanctuary")
+            assert(Status.has(bandit, "regen"), "its own hallowed ground mends it")
+        end,
+    },
+    {
+        name = "an unowned (arena-authored) sanctuary blesses whoever stands in it",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, { unit("bandit", 5, 5) })
+            local knight, bandit = c.units[1], c.units[2]
+            Hazard.place(c, 4, 4, "hazard_heal") -- no side: hallowed ground that was always there
+            Hazard.place(c, 5, 5, "hazard_heal")
+            assert(Status.has(knight, "regen") and Status.has(bandit, "regen"),
+                "with no owner to take a side, it mends both")
+        end,
+    },
+    {
         name = "Wet makes a lightning hit deal more damage (and the preview shares the same math)",
         fn = function()
             -- Mage's Jolt (tags lightning+magical) against a knight, before and after soaking it.
@@ -180,6 +224,36 @@ return {
             assert(Hazard.tileBias(c, 2, 2) > 0, "sanctuary is friendly (seek)")
             assert(Hazard.tileBias(c, 3, 3) == 0, "rain is neutral")
             assert(Hazard.tileBias(c, 8, 8) == 0, "a clear tile has no bias")
+        end,
+    },
+    {
+        name = "tileBias only rewards a sanctuary's owning side, but fire burns whoever stands in it",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            Hazard.place(c, 2, 2, "hazard_heal", { side = "party" })
+            Hazard.place(c, 4, 4, "hazard_fire", { side = "party" })
+            assert(Hazard.tileBias(c, 2, 2, "party") > 0, "the party seeks its own sanctuary")
+            assert(Hazard.tileBias(c, 2, 2, "enemy") == 0, "the enemy has no reason to stand in it")
+            assert(Hazard.tileBias(c, 4, 4, "party") < 0, "fire repels even the side that lit it")
+        end,
+    },
+    {
+        name = "offered two sanctuaries, the enemy AI advances onto its own and ignores the party's",
+        fn = function()
+            -- The two closest advance tiles (5,4) and (4,5) tie on distance, so ownership decides:
+            -- only the enemy's own hallowed ground scores a bias, so it must take that tile.
+            local enemyChar = Character.instantiate("bandit")
+            enemyChar.inventory = {}
+            local c = Combat.new(arena(8, 8), { unit("knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
+            local enemy = c.units[2]
+            enemy.char.stats.movement = 1
+            Hazard.place(c, 4, 5, "hazard_heal", { side = "party" })
+            Hazard.place(c, 5, 4, "hazard_heal", { side = "enemy" })
+
+            local plan = Combat.planEnemyAction(c, enemy)
+            assert(plan.move, "the enemy plans to advance")
+            assert(plan.move.x == 5 and plan.move.y == 4,
+                string.format("it steps onto its own sanctuary, got (%d,%d)", plan.move.x, plan.move.y))
         end,
     },
     {

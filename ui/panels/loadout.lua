@@ -9,15 +9,22 @@
 -- about who holds what. Picking up in one clears any pickup in the other -- only one item is ever
 -- in hand.
 --
+-- DRAG AND DROP rides on top of that same pickup rather than replacing it: a press that picks an
+-- item up also arms a drag, and only a release that moved the mouse resolves it. A press and release
+-- in place therefore still leaves the item in hand for a second click, so both idioms work without
+-- either widget knowing which one the player used.
+--
 -- Follows the modal-panel conventions of ui/panels/quest_board.lua (dim backdrop, centered box,
--- ui/close_button.lua) and the three-input standard: mouse (click cells / rows / arrows / X),
--- keyboard (arrows + Enter to move items, Tab to switch side, Q/E to switch character, Esc to
--- close), gamepad (D-pad + A, Y to switch side, shoulder buttons to switch character, B to close).
+-- ui/close_button.lua) and the three-input standard: mouse (click cells / rows / arrows / X, drag
+-- items between the grid and the stash, wheel to scroll the stash), keyboard (arrows + Enter to move
+-- items, Tab to switch side, Q/E to switch character, Esc to close), gamepad (D-pad + A, Y to switch
+-- side, shoulder buttons to switch character, B to close).
 --
 --   local panel = Loadout.new({ player = player, onClose = fn })
 
 local InventoryGrid = require("ui.inventory_grid")
 local StashList = require("ui.stash_list")
+local AdjacencyLinks = require("ui.adjacency_links")
 local CloseButton = require("ui.close_button")
 local Character = require("models.character")
 local Player = require("models.player")
@@ -29,7 +36,12 @@ Loadout.__index = Loadout
 local BOX_W, BOX_H = 800, 560
 local STASH_W = 300
 
--- Legend rows: adjacency link kind -> human label (colors come from InventoryGrid.LINK_COLOR).
+-- Pixels the mouse must travel before a press becomes a drag rather than a click. Below it a
+-- release is a plain click and the pickup stays in hand (pick-then-place).
+local DRAG_THRESHOLD = 5
+local GHOST = 48 -- size of the item icon that follows the cursor mid-drag
+
+-- Legend rows: adjacency link kind -> human label (colors come from AdjacencyLinks.COLOR).
 local LEGEND = {
     { kind = "aura",        label = "Aura (grants to neighbor)" },
     { kind = "boost",       label = "Scales off neighbor" },
@@ -55,6 +67,7 @@ function Loadout.new(opts)
     self.chars = (self.player and self.player.roster) or (self.player and self.player.party) or {}
     self.charIndex = 1
     self.focus = "grid" -- which surface the keyboard/gamepad cursor drives
+    self.drag = nil     -- in-flight drag: { from = "grid"|"stash", index, x, y, startX, startY, active }
 
     local gridW = InventoryGrid.new({}).gridW
     local contentY = self.boxY + 130
@@ -93,6 +106,7 @@ function Loadout:switchChar(delta)
     self.charIndex = (self.charIndex - 1 + delta) % #self.chars + 1
     self.grid:setChar(self:currentChar())
     self.stash:cancelPickup()
+    self:cancelDrag()
 end
 
 -- Move the keyboard/gamepad cursor between the two surfaces, dropping whatever is in hand: an
@@ -102,6 +116,13 @@ function Loadout:setFocus(which)
     self.stash.focused = (which == "stash")
     self.grid:cancelPickup()
     self.stash:cancelPickup()
+    self:cancelDrag()
+end
+
+-- Forget an in-flight drag without touching the pickup it was carrying: a drag is only ever a way
+-- to aim a pickup that already happened, so cancelling one leaves the item wherever it was.
+function Loadout:cancelDrag()
+    self.drag = nil
 end
 
 function Loadout:toggleFocus()
@@ -157,6 +178,51 @@ function Loadout:activateStash(row)
         self:stowFromGrid(self.grid.picked)
     else
         self.stash:activate(row)
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Dragging. A drag never moves an item on its own -- it ends by calling the same transfers a click
+-- would, so there is still exactly one code path per direction.
+-- ---------------------------------------------------------------------------
+
+-- Arm a drag on the item a press just picked up. Only a press that CREATED a pickup is draggable:
+-- a press that placed or swapped an item already finished its transfer.
+function Loadout:beginDrag(from, index, x, y)
+    self.drag = { from = from, index = index, x = x, y = y, startX = x, startY = y, active = false }
+end
+
+-- The item a drag is carrying, read live from wherever it still lives (a drag doesn't remove it).
+function Loadout:dragItem()
+    local drag = self.drag
+    if not drag then return nil end
+    if drag.from == "stash" then
+        return self.player and self.player.stash and self.player.stash[drag.index]
+    end
+    local char = self:currentChar()
+    return char and char.inventory[drag.index]
+end
+
+-- Resolve a drag at the release point. Anywhere that isn't a valid destination puts the item back,
+-- so a drag into empty space is a cancel rather than a loss.
+function Loadout:dropDrag(x, y)
+    local drag = self.drag
+    self.drag = nil
+    if not (drag and drag.active) then return end -- a click, not a drag: the pickup stays in hand
+
+    local cell = self.grid:indexAt(x, y)
+    if drag.from == "stash" then
+        if cell then
+            self:placeIntoGrid(drag.index, cell)
+        else
+            self.stash:cancelPickup()
+        end
+    elseif cell then
+        self.grid:activate(cell) -- onto another cell: swap (onto its own cell: a no-op release)
+    elseif self.stash:contains(x, y) then
+        self:stowFromGrid(drag.index)
+    else
+        self.grid:cancelPickup()
     end
 end
 
@@ -220,7 +286,7 @@ function Loadout:draw()
     love.graphics.setFont(self.bodyFont)
     local lx = self.grid.x
     for _, row in ipairs(LEGEND) do
-        local c = InventoryGrid.LINK_COLOR[row.kind]
+        local c = AdjacencyLinks.COLOR[row.kind]
         love.graphics.setColor(c[1], c[2], c[3])
         love.graphics.setLineWidth(3)
         love.graphics.line(lx, ly + 8, lx + 26, ly + 8)
@@ -233,15 +299,47 @@ function Loadout:draw()
     -- Footer hint, naming the transfer the player has half-completed.
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(0.55, 0.6, 0.7)
-    local hint = "Click / Enter: pick up then place    Tab / Y: grid <-> stash    Q/E: character    Esc: close"
+    local hint = "Click or drag to move items    Wheel: scroll stash    Tab / Y: grid <-> stash    Q/E: character    Esc: close"
     if self.grid.picked then
-        hint = "Holding an item -- click a grid cell to move it, or the stash to store it."
+        hint = "Holding an item -- drop it on a grid cell to move it, or on the stash to store it."
     elseif self.stash.picked then
-        hint = "Holding a stashed item -- click a grid cell to equip it (a full cell swaps back)."
+        hint = "Holding a stashed item -- drop it on a grid cell to equip it (a full cell swaps back)."
     end
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
 
     self.closeButton:draw()
+    self:drawDrag()
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- The dragged item, drawn last so it rides over both surfaces and the panel frame.
+function Loadout:drawDrag()
+    local drag = self.drag
+    if not (drag and drag.active) then return end
+    local item = self:dragItem()
+    if not item then return end
+
+    local x, y = drag.x - GHOST / 2, drag.y - GHOST / 2
+    love.graphics.setColor(0, 0, 0, 0.4)
+    love.graphics.rectangle("fill", x + 3, y + 3, GHOST, GHOST, 6, 6)
+
+    local sprite = item.sprite
+    if type(sprite) == "userdata" then
+        love.graphics.setColor(1, 1, 1, 0.9)
+        local iw, ih = sprite:getDimensions()
+        local scale = math.min(GHOST / iw, GHOST / ih)
+        love.graphics.draw(sprite, drag.x, drag.y, 0, scale, scale, iw / 2, ih / 2)
+    else
+        love.graphics.setColor(0.5, 0.5, 0.56, 0.9)
+        love.graphics.rectangle("fill", x, y, GHOST, GHOST, 6, 6)
+        love.graphics.setFont(self.headFont)
+        love.graphics.setColor(1, 1, 1, 0.95)
+        love.graphics.printf((item.name or "?"):sub(1, 1), x, y + GHOST / 2 - 12, GHOST, "center")
+    end
+
+    love.graphics.setFont(self.smallFont)
+    love.graphics.setColor(0.95, 0.95, 0.97)
+    love.graphics.printf(item.name or "?", drag.x - 70, y + GHOST + 4, 140, "center")
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -249,6 +347,24 @@ function Loadout:mousemoved(x, y)
     self.closeButton:mousemoved(x, y)
     self.grid:mousemoved(x, y)
     self.stash:mousemoved(x, y)
+
+    local drag = self.drag
+    if drag then
+        drag.x, drag.y = x, y
+        if math.abs(x - drag.startX) > DRAG_THRESHOLD or math.abs(y - drag.startY) > DRAG_THRESHOLD then
+            drag.active = true
+        end
+    end
+end
+
+-- The stash scrolls under the wheel when the pointer is over it. Read the pointer live rather than
+-- from the last mousemoved, so the very first wheel notch after the panel opens already lands.
+function Loadout:wheelmoved(_, dy)
+    if dy == 0 then return end
+    local x, y = Scale.toGame(love.mouse.getPosition())
+    if not self.stash:contains(x, y) then return end
+    self.stash:wheelmoved(dy)
+    self.stash:mousemoved(x, y) -- rows moved under the cursor: re-hover
 end
 
 function Loadout:mousepressed(x, y, button)
@@ -260,12 +376,16 @@ function Loadout:mousepressed(x, y, button)
     if #self.chars > 1 and pointIn(self.prevArrow, x, y) then self:switchChar(-1) return end
     if #self.chars > 1 and pointIn(self.nextArrow, x, y) then self:switchChar(1) return end
 
+    -- A press that lifts an item (rather than placing the one already in hand) can be dragged.
+    local empty = not (self.grid.picked or self.stash.picked)
+
     local cell = self.grid:indexAt(x, y)
     if cell then
         self.focus = "grid"
         self.stash.focused = false
         self.grid.cursor = cell
         self:activateGrid(cell)
+        if empty and self.grid.picked == cell then self:beginDrag("grid", cell, x, y) end
         return
     end
 
@@ -276,6 +396,7 @@ function Loadout:mousepressed(x, y, button)
             self.focus = "stash"
             self.stash.focused = true
             self:activateStash(row)
+            if empty and self.stash.picked == row then self:beginDrag("stash", row, x, y) end
         end
         return
     end
@@ -285,8 +406,14 @@ function Loadout:mousepressed(x, y, button)
     end
 end
 
+function Loadout:mousereleased(x, y, button)
+    if button ~= 1 then return end
+    self:dropDrag(x, y)
+end
+
 function Loadout:keypressed(key)
     if key == "escape" then
+        self:cancelDrag()
         if not (self.grid:cancelPickup() or self.stash:cancelPickup()) then self:close() end
     elseif key == "tab" then
         self:toggleFocus()
@@ -306,6 +433,7 @@ end
 
 function Loadout:gamepadpressed(joystick, button)
     if button == "b" then
+        self:cancelDrag()
         if not (self.grid:cancelPickup() or self.stash:cancelPickup()) then self:close() end
     elseif button == "y" then
         self:toggleFocus()

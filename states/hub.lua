@@ -94,6 +94,15 @@ function hub.mousepressed(x, y, button)
     end
 end
 
+-- Only panels that scroll or drag define these; the city behind them has nothing to do with either.
+function hub.mousereleased(x, y, button)
+    if activePanel and activePanel.mousereleased then activePanel:mousereleased(x, y, button) end
+end
+
+function hub.wheelmoved(dx, dy)
+    if activePanel and activePanel.wheelmoved then activePanel:wheelmoved(dx, dy) end
+end
+
 function hub.keypressed(key)
     if activePanel then
         activePanel:keypressed(key)

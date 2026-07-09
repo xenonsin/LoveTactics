@@ -19,7 +19,9 @@
 --   * wait (delay) -> initiative = max(moveCost, nextUnit.initiative + 1): land one tick after
 --     the next unit in line, but never before the move you took is paid for.
 -- `moveCost` is the Dijkstra path cost (rough terrain costs more), so difficult ground both
--- shortens reach and costs more time. `combat.clock` accumulates the elapsed initiative (the
+-- shortens reach and costs more time, then scaled by the unit's status cost multiplier
+-- (Combat.moveInitiative -- Haste makes the walk cheaper in time, though not longer in reach).
+-- `combat.clock` accumulates the elapsed initiative (the
 -- amount subtracted each rebase) so the `survive N turns` objective still works.
 --
 --   local combat = Combat.new(arena, partyUnits, enemyUnits)  -- units: { { char, x, y }, ... }
@@ -777,42 +779,80 @@ local function enterTile(combat, unit, x, y, entered)
     if unit.alive and entered then Hazard.onEnter(combat, unit, x, y) end
 end
 
--- Move a unit to (x, y) if reachable this turn. A unit may move once per turn and moving
--- does NOT end the turn: it just repositions and records the terrain-weighted path cost
--- (node.cost), which endTurn later folds into the timeline (move cost + action cost).
-function Combat.moveUnit(combat, unit, x, y)
-    if not unit.alive then return false, "dead" end
-    if not combat.turn or combat.turn.unit ~= unit then return false, "not this unit's turn" end
-    if combat.turn.moved then return false, "already moved" end
-    if Status.blocksMove(unit) then return false, "rooted" end
+-- The initiative a walk of terrain-weighted `cost` actually charges `unit`: the raw path cost
+-- scaled by the unit's status cost multiplier, exactly as Combat.abilityCost prices a cast (Haste
+-- halves both -- a quickened unit is quicker on its feet as well as with its hands). Movement RANGE
+-- is deliberately untouched: Combat.reachable still spends the raw path cost against the movement
+-- budget, so a hasted unit walks exactly as far, it just comes back around the turn order sooner.
+function Combat.moveInitiative(unit, cost)
+    return math.floor((cost or 0) * Status.costMultiplier(unit) + 0.5)
+end
+
+-- The walk a unit would take to reach (x, y): `{ unit, path, cost }`, where `path` is the
+-- ORIGIN-FIRST list of `{ x, y }` tiles it steps through and `cost` the raw terrain-weighted path
+-- cost. Pure -- nothing is mutated -- so one legality gate serves both the instant Combat.moveUnit
+-- and the battle state's tile-at-a-time walk. Returns nil + a reason when the move is illegal.
+function Combat.planMove(combat, unit, x, y)
+    if not unit.alive then return nil, "dead" end
+    if not combat.turn or combat.turn.unit ~= unit then return nil, "not this unit's turn" end
+    if combat.turn.moved then return nil, "already moved" end
+    if Status.blocksMove(unit) then return nil, "rooted" end
     local reachable = Combat.reachable(combat, unit)
     local node = reachable[key(x, y)]
-    if not node then return false, "unreachable" end
+    if not node then return nil, "unreachable" end
 
-    -- Reconstruct the path (destination back to the first step; origin was cleared from the
-    -- reachable set) so a trap on ANY tile entered triggers -- not just the landing tile.
-    local path = {}
+    -- Walk the fromKey chain back from the destination -- it stops at the first step, the origin
+    -- having been cleared from the reachable set -- then reverse it and put the origin back on the
+    -- front, so `path` reads in the order the unit's feet take it.
+    local back = {}
     local n = node
     while n do
-        path[#path + 1] = n
+        back[#back + 1] = n
         n = n.fromKey and reachable[n.fromKey] or nil
     end
+    local path = { { x = unit.x, y = unit.y } }
+    for i = #back, 1, -1 do path[#path + 1] = { x = back[i].x, y = back[i].y } end
 
-    unit.x, unit.y = x, y
+    return { unit = unit, path = path, cost = node.cost }
+end
+
+-- Open a walk. The unit has now spent its one move for the turn and owes the move initiative at
+-- end of turn, but it has NOT left the origin: Combat.stepMove carries it, one tile per call.
+-- Returns the walk handle to feed back into stepMove. Moving never ends the turn -- the unit can
+-- still act or wait once it arrives.
+function Combat.beginMove(combat, plan)
+    local unit = plan.unit
+    local dest = plan.path[#plan.path]
     combat.turn.moved = true
-    combat.turn.moveCost = node.cost
-    Combat.logEvent(combat, "move", string.format("%s moves to (%d, %d).", unitName(unit), x, y))
+    combat.turn.moveCost = Combat.moveInitiative(unit, plan.cost)
+    Combat.logEvent(combat, "move",
+        string.format("%s moves to (%d, %d).", unitName(unit), dest.x, dest.y))
+    return { unit = unit, path = plan.path, index = 1 }
+end
 
-    -- Walk the path origin-first, triggering each opposing trap in traversal order. A trap that
-    -- kills (or roots-then-kills via a later trap) the mover stops further triggers. Any hazard on a
-    -- NEWLY entered tile (path[i] with i < #path -- the origin is #path, which the unit is leaving,
-    -- not entering) fires its on-entry effect too; a hazard affects either side.
-    for i = #path, 1, -1 do
-        if not unit.alive then break end
-        enterTile(combat, unit, path[i].x, path[i].y, i < #path)
-    end
+-- Carry the walk's unit onto the next tile of its path, setting off everything that tile holds:
+-- an opposing trap, and the on-entry effect of any hazard standing on it. Returns true while the
+-- walk has further to go, so a caller can drive it either flat-out (moveUnit) or a tile per
+-- animation beat (states/battle.lua). A unit killed en route -- a spike trap, a fire it walked
+-- into -- stops on the tile it fell on rather than sliding on to the destination.
+function Combat.stepMove(combat, walk)
+    if not walk.unit.alive or walk.index >= #walk.path then return false end
+    walk.index = walk.index + 1
+    local tile = walk.path[walk.index]
+    walk.unit.x, walk.unit.y = tile.x, tile.y
+    enterTile(combat, walk.unit, tile.x, tile.y, true)
+    return true
+end
 
-    return true, node.cost
+-- Move a unit to (x, y) if reachable this turn, all in one go. The headless equivalent of the
+-- battle state's watchable walk (planMove -> beginMove -> stepMove per tile): same legality gate,
+-- same traps sprung, same initiative owed. Returns ok plus the move initiative it charged.
+function Combat.moveUnit(combat, unit, x, y)
+    local plan, reason = Combat.planMove(combat, unit, x, y)
+    if not plan then return false, reason end
+    local walk = Combat.beginMove(combat, plan)
+    while Combat.stepMove(combat, walk) do end
+    return true, combat.turn.moveCost
 end
 
 -- ---------------------------------------------------------------------------
@@ -991,6 +1031,12 @@ local function withAuraTags(opts, auraTags)
     for _, t in ipairs(auraTags) do tags[#tags + 1] = t end
     merged.tags = tags
     return merged
+end
+
+-- An adjacency predicate as the player reads it: "adjacent bow", "adjacent weapon". Public so the
+-- slot badge and the tooltip name a requirement the same way.
+function Combat.adjacencyLabel(pred)
+    return "adjacent " .. ((pred and (pred.tag or pred.type)) or "item")
 end
 
 -- Is `item`'s adjacency requirement satisfied in `char`'s grid? True when the ability declares no
@@ -1425,8 +1471,12 @@ end
 -- Resource reservation
 --
 -- An ability may RESERVE part of a resource for as long as it stays active (a summon lives).
--- A reservation lowers the CEILING the resource's `current` may hold -- it never touches `max`,
--- so percentage-of-maximum modifiers (a future "regenerate 1% of maximum life") are unaffected.
+-- A reservation is BOTH a price and a lock: the amount is spent out of `current` on the spot (so
+-- the caster must actually hold it to cast), and the resource's CEILING drops by the same amount,
+-- so what was spent cannot be regenerated back until the reservation is released.
+--
+-- The ceiling is `max` less everything reserved; `max` itself is never touched, so
+-- percentage-of-maximum modifiers (a future "regenerate 1% of maximum life") are unaffected.
 -- Reserved health is therefore not a buffer: it is simply life you no longer have.
 --
 -- Reservations live on the CHARACTER (`char.reservations`), beside the {max,current} pools they
@@ -1455,23 +1505,31 @@ function Combat.unreservedMax(char, stat)
     return math.max(0, max - Combat.reservedAmount(char, stat))
 end
 
--- Can `char` set `amount` of `stat` aside right now? You must actually hold the resource to
--- commit it (no summoning on an empty pool), and reserving health can never be lethal.
-function Combat.canReserve(char, stat, amount)
-    local current = resourceValue(char, stat)
+-- Can `amount` of `stat` be set aside out of a pool currently holding `current`? The reservation is
+-- spent on the spot, so you must actually hold the resource to commit it (no summoning on an empty
+-- pool), and reserving health can never be lethal. Takes the amount rather than the character so
+-- costBlock can ask about the pool as it will stand *after* the ability's cost is paid.
+local function canReserveFrom(current, stat, amount)
     if stat == "health" then return current > amount end
     return current >= amount
 end
 
--- Reserve `amount` of `stat` on `char` for as long as `holder` (a unit) lives. Lowers the pool's
--- ceiling and clamps `current` down to it; returns the reservation entry.
+-- Can `char` set `amount` of `stat` aside right now?
+function Combat.canReserve(char, stat, amount)
+    return canReserveFrom(resourceValue(char, stat), stat, amount)
+end
+
+-- Reserve `amount` of `stat` on `char` for as long as `holder` (a unit) lives. Spends the amount out
+-- of `current` and drops the pool's ceiling by it, so the resource is gone and stays gone until the
+-- holder falls. Returns the reservation entry.
 function Combat.reserve(char, stat, amount, holder)
     char.reservations = char.reservations or {}
     local entry = { stat = stat, amount = amount, holder = holder }
     char.reservations[#char.reservations + 1] = entry
+    spendResource(char, stat, amount)
     local res = char.stats[stat]
     if type(res) == "table" then
-        res.current = math.min(res.current, Combat.unreservedMax(char, stat))
+        res.current = math.max(0, math.min(res.current, Combat.unreservedMax(char, stat)))
     end
     return entry
 end
@@ -1535,15 +1593,54 @@ function Combat.abilityCost(unit, ab)
     return { stat = ab.cost.stat, amount = math.floor(ab.cost.amount * mult + 0.5) }
 end
 
--- Can `unit` currently pay ability `ab`'s resource cost (and set aside its reservation)? True when
--- the ability demands neither. The affordability gate the UI grays a slot on, mirroring the checks
--- inside Combat.useItem.
-function Combat.canAfford(unit, ab)
+-- Everything a cast takes out of `unit`'s own pools, in the order Combat.useItem takes it: the
+-- ability's resource cost (Haste-scaled) and then the reservation it locks away for as long as its
+-- summon lives. Both come out of `current` on the spot, so summing them per stat gives the pool
+-- change a hovered cast would make. Empty for an ability that takes nothing.
+--   { { kind = "cost"|"reserve", stat = "mana", amount = 12 }, ... }
+-- The single source of truth for the spend the board hover previews: the action-preview panel's
+-- rows and the actor's turn-strip bars both read this, so a reservation can't be priced in one
+-- place and missing from the other.
+function Combat.abilitySpend(unit, ab)
+    local out = {}
     local cost = Combat.abilityCost(unit, ab)
-    if cost and resourceValue(unit.char, cost.stat) < cost.amount then return false end
+    if cost then out[#out + 1] = { kind = "cost", stat = cost.stat, amount = cost.amount } end
+    local reserve = Combat.abilityReserve(unit, ab)
+    if reserve then out[#out + 1] = { kind = "reserve", stat = reserve.stat, amount = reserve.amount } end
+    return out
+end
+
+-- The reason `unit` can't pay for `ab` -- a cost it can't spend or a reservation it can't commit --
+-- as an itemBlockReason entry, or nil when it can. Shared by Combat.canAfford (which only wants the
+-- yes/no) and Combat.itemBlockReason (which wants to say which pool fell short, and by how much).
+local function costBlock(unit, ab)
+    local cost = Combat.abilityCost(unit, ab)
+    if cost and resourceValue(unit.char, cost.stat) < cost.amount then
+        return { kind = "cost", stat = cost.stat, reason = "insufficient " .. cost.stat,
+            text = string.format("Not enough %s (have %d)", cost.stat,
+                math.floor(resourceValue(unit.char, cost.stat))) }
+    end
+    -- A reservation is spent like a cost and then locked away, so the caster must hold it now (and
+    -- reserving health can never be lethal). Combat.useItem pays the cost before the effect takes
+    -- the reservation, so when both draw the same pool the reservation only gets what the cost left.
     local res = Combat.abilityReserve(unit, ab)
-    if res and not Combat.canReserve(unit.char, res.stat, res.amount) then return false end
-    return true
+    if res then
+        local available = resourceValue(unit.char, res.stat)
+        if cost and cost.stat == res.stat then available = available - cost.amount end
+        if not canReserveFrom(available, res.stat, res.amount) then
+            return { kind = "reserve", stat = res.stat, reason = "insufficient " .. res.stat,
+                text = string.format("Not enough %s to reserve %d (have %d)", res.stat, res.amount,
+                    math.floor(available)) }
+        end
+    end
+    return nil
+end
+
+-- Can `unit` currently pay ability `ab`'s resource cost (and set aside its reservation)? True when
+-- the ability demands neither. Prefer Combat.itemBlockReason for a whole item: affordability is
+-- only one of the conditions that gate a cast.
+function Combat.canAfford(unit, ab)
+    return costBlock(unit, ab) == nil
 end
 
 -- Is this a consuming item whose stack is spent (quantity 0)? A depleted consumable KEEPS its
@@ -1553,6 +1650,37 @@ end
 function Combat.isDepleted(item)
     local ab = item and item.activeAbility
     return ab ~= nil and ab.consumesItem and (item.quantity or 1) <= 0
+end
+
+-- Why can't `unit` activate `item` right now? Covers every condition known BEFORE a target is
+-- picked: a spent stack, a cost or reservation it can't pay, an unmet grid adjacency (Rain of
+-- Arrows without its bow). Returns nil when the item is activatable -- and for a passive item,
+-- which is inert rather than blocked. A nil `unit` checks only the item-intrinsic conditions, so a
+-- tooltip with no actor still reports an empty stack.
+--
+-- The single source of truth for the grayed-out slot, the refused arm (mouse / key / gamepad), the
+-- tooltip's red note and the AI's item filter -- so a condition can never gate the cast in
+-- Combat.useItem while the UI still advertises the item as ready. Returns:
+--   { kind   = "depleted" | "cost" | "reserve" | "adjacency",
+--     stat   = the resource at fault (cost / reserve only),
+--     reason = terse, what useItem reports to its caller,
+--     text   = a sentence for the player }
+function Combat.itemBlockReason(unit, item)
+    local ab = item and item.activeAbility
+    if not ab then return nil end
+    if Combat.isDepleted(item) then
+        return { kind = "depleted", reason = "out of stock", text = "Out of stock -- restock to use" }
+    end
+    if not unit then return nil end
+
+    local cost = costBlock(unit, ab)
+    if cost then return cost end
+    if not Combat.adjacencyMet(unit.char, item) then
+        local label = Combat.adjacencyLabel(ab.requiresAdjacent)
+        return { kind = "adjacency", reason = "requires " .. label,
+            text = "Requires an " .. label .. " in the item grid" }
+    end
+    return nil
 end
 
 -- Lift one item from `victim`'s grid into `thief`'s. Items the blueprint marks `noSteal` (a
@@ -1605,11 +1733,10 @@ function Combat.useItem(combat, unit, item, tx, ty)
     if not unit.alive then return false, "dead" end
     local ab = item.activeAbility
     if not ab then return false, "no ability" end
-    if Combat.isDepleted(item) then return false, "out of stock" end
-    if not Combat.adjacencyMet(unit.char, item) then
-        local req = ab.requiresAdjacent
-        return false, "requires adjacent " .. (req.tag or req.type or "item")
-    end
+    -- Everything that gates the cast regardless of where it's aimed (spent stack, cost/reservation,
+    -- grid adjacency) -- the same check the grayed-out slot and the refused arm run.
+    local blocked = Combat.itemBlockReason(unit, item)
+    if blocked then return false, blocked.reason end
 
     local dist = manhattan(unit.x, unit.y, tx, ty)
     if dist > Combat.abilityRange(combat, unit, ab) then
@@ -1640,17 +1767,12 @@ function Combat.useItem(combat, unit, item, tx, ty)
         if ab.target == "self" and target ~= unit then return false, "invalid target" end
     end
 
+    -- Affordability was settled by itemBlockReason above (nothing has been spent since), so the
+    -- cast is committed from here: pay the cost. The reservation isn't taken until the effect
+    -- produces the summon that holds it (below).
     local cost = Combat.abilityCost(unit, ab)
-    if cost and resourceValue(unit.char, cost.stat) < cost.amount then
-        return false, "insufficient " .. cost.stat
-    end
-    -- A reservation is committed, not spent: the caster must hold the resource now (and reserving
-    -- health can never be lethal). Checked before anything is paid so a rejected cast is free.
-    local reserve = Combat.abilityReserve(unit, ab)
-    if reserve and not Combat.canReserve(unit.char, reserve.stat, reserve.amount) then
-        return false, "insufficient " .. reserve.stat
-    end
     if cost then spendResource(unit.char, cost.stat, cost.amount) end
+    local reserve = Combat.abilityReserve(unit, ab)
 
     -- Effect context: bound helpers let a data-file effect compose damage/heal/AoE
     -- without touching this module. Results are accumulated for the caller/UI.
@@ -1823,6 +1945,8 @@ function Combat.strikeTrap(combat, unit, weapon, x, y)
     if not Trap.visibleTo(combat, trap, unit.side) then return false, "hidden" end
     local ab = weapon and weapon.activeAbility
     if not ab then return false, "no ability" end
+    local blocked = Combat.itemBlockReason(unit, weapon)
+    if blocked then return false, blocked.reason end
     local dist = manhattan(unit.x, unit.y, x, y)
     if dist > Combat.abilityRange(combat, unit, ab) then
         return false, "out of range"
@@ -1834,9 +1958,6 @@ function Combat.strikeTrap(combat, unit, weapon, x, y)
         return false, "no line of sight"
     end
     local cost = Combat.abilityCost(unit, ab)
-    if cost and resourceValue(unit.char, cost.stat) < cost.amount then
-        return false, "insufficient " .. cost.stat
-    end
     if cost then spendResource(unit.char, cost.stat, cost.amount) end
 
     -- Damage the trap by the weapon's attack stat (magical weapons use magicDamage). Traps have
@@ -1876,11 +1997,12 @@ function Combat.planEnemyAction(combat, unit)
     end
     if not target then return { wait = true } end
 
-    -- Only consider abilities the unit can currently pay for (else the plan would waste the
-    -- turn on an item useItem rejects).
+    -- Only consider abilities the unit can actually activate right now -- affordable, in stock, and
+    -- with any adjacency requirement met (else the plan would waste the turn on an item useItem
+    -- rejects).
     local items = {}
     for _, item in ipairs(Combat.abilityItems(unit.char)) do
-        if Combat.canAfford(unit, item.activeAbility) and not Combat.isDepleted(item) then
+        if not Combat.itemBlockReason(unit, item) then
             items[#items + 1] = item
         end
     end
@@ -1904,11 +2026,12 @@ function Combat.planEnemyAction(combat, unit)
     -- 2. Move to a reachable tile from which an ability can hit a foe. Prefer the fewest steps, then
     -- (tie) the tile with the friendlier hazard footing -- so the AI won't end its turn in fire when
     -- an equally-quick safe tile hits the same foe -- then the nearest foe. Hazard.tileBias is 0 on a
-    -- hazard-free tile, so this reduces to the old steps/dist ordering when nothing is burning.
+    -- hazard-free tile, so this reduces to the old steps/dist ordering when nothing is burning; it is
+    -- scored from `unit.side` so a sanctuary the party consecrated holds no draw for the enemy.
     local reachable = Combat.reachable(combat, unit)
     local best
     for _, node in pairs(reachable) do
-        local nodeBias = Hazard.tileBias(combat, node.x, node.y)
+        local nodeBias = Hazard.tileBias(combat, node.x, node.y, unit.side)
         for _, item in ipairs(items) do
             local ab = item.activeAbility
             local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
@@ -1935,12 +2058,12 @@ function Combat.planEnemyAction(combat, unit)
     end
 
     -- 3. No attack possible: step to the reachable tile closest to the target, preferring (on a tie)
-    -- the friendlier hazard footing -- so a wounded unit steps onto a sanctuary and away from fire --
-    -- then fewer steps. Only move if it strictly closes the gap, to avoid pacing in place.
+    -- the friendlier hazard footing -- so a wounded unit steps onto its own sanctuary and away from
+    -- fire -- then fewer steps. Only move if it strictly closes the gap, to avoid pacing in place.
     local dest
     for _, node in pairs(reachable) do
         local d = manhattan(node.x, node.y, target.x, target.y)
-        local nodeBias = Hazard.tileBias(combat, node.x, node.y)
+        local nodeBias = Hazard.tileBias(combat, node.x, node.y, unit.side)
         if not dest or d < dest.dist
             or (d == dest.dist and nodeBias > dest.bias)
             or (d == dest.dist and nodeBias == dest.bias and node.steps < dest.steps) then

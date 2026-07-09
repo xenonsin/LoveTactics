@@ -46,7 +46,8 @@ local TARGET_LABEL = { enemy = "Enemy", ally = "Ally", self = "Self", tile = "Ti
 local MUTED = { 0.62, 0.65, 0.72 }
 local VALUE = { 0.90, 0.91, 0.95 }
 local DESC = { 0.80, 0.82, 0.88 }
-local WARN = { 0.95, 0.45, 0.42 } -- cost value + note when the actor can't afford the ability
+local WARN = { 0.95, 0.45, 0.42 } -- the row at fault + the note, when the ability can't be cast
+local MET = { 0.70, 0.88, 0.45 }  -- a satisfied requirement (matches the grid's connector line)
 local POWER = { 0.95, 0.72, 0.48 } -- ability Power row (the offensive balance stat)
 local HEAL = { 0.55, 0.90, 0.58 }  -- ability heal row
 local SUMMON = { 0.78, 0.62, 0.96 } -- ability "Summons" row (matches the ability item accent)
@@ -70,13 +71,16 @@ end
 --   sep    {}                           -- thin divider + gap between sections
 --   head   { text }                     -- ability name heading
 --   stat   { label, value, valueColor } -- label (left) + value (right)
---   note   { text }                     -- muted italic-ish aside (e.g. "Consumed on use")
+--   note   { text }                     -- muted wrapped aside (e.g. "Consumed on use")
 --   warn   { text }                     -- red wrapped line (e.g. "Not enough mana")
--- `actor` (optional) is the unit whose resources gate the ability cost: when it can't pay, the
--- Cost value renders red and a `warn` block spells out the shortfall.
+-- `actor` (optional) is the unit the ability is priced and gated against: whatever stops it from
+-- being cast right now (Combat.itemBlockReason) reddens the offending row and closes the ability
+-- section with a `warn` block spelling the reason out.
 local function buildBlocks(item, actor)
     local blocks = {}
     local typeCol = TYPE_COLOR[item.type] or DEFAULT_COLOR
+    -- The one reason this item can't be activated (nil when it can, or when it's passive).
+    local blocked = Combat.itemBlockReason(actor, item)
 
     blocks[#blocks + 1] = { kind = "title", text = item.name or "Item", color = typeCol }
     blocks[#blocks + 1] = { kind = "type", text = (item.type and item.type:upper()) or "ITEM", color = typeCol }
@@ -91,12 +95,11 @@ local function buildBlocks(item, actor)
     end
 
     -- A stackable consumable shows how many uses remain -- for a real stack (>1) and for a spent
-    -- one (0), where a red note explains the slot is kept but can't be used until restocked.
+    -- one (0, tinted red; the trailing warn explains the slot is kept but can't be used).
     local qty = item.quantity or 1
     if Combat.isDepleted(item) then
         blocks[#blocks + 1] = { kind = "sep" }
-        blocks[#blocks + 1] = { kind = "stat", label = "Quantity", value = "x0" }
-        blocks[#blocks + 1] = { kind = "warn", text = "Out of stock -- restock to use" }
+        blocks[#blocks + 1] = { kind = "stat", label = "Quantity", value = "x0", valueColor = WARN }
     elseif qty > 1 then
         blocks[#blocks + 1] = { kind = "sep" }
         blocks[#blocks + 1] = { kind = "stat", label = "Quantity", value = "x" .. qty }
@@ -160,29 +163,37 @@ local function buildBlocks(item, actor)
             -- Price the cast for THIS actor: a cost-reducing status (Haste) is already folded into
             -- Combat.abilityCost, so the tooltip quotes what will actually be paid.
             local cost = (actor and Combat.abilityCost(actor, ab)) or ab.cost
-            local afford = not actor or Combat.canAfford(actor, ab)
+            local short = blocked and blocked.kind == "cost"
             blocks[#blocks + 1] = { kind = "stat", label = "Cost",
                 value = cost.amount .. " " .. titleCase(cost.stat),
-                valueColor = afford and RES_COLOR[cost.stat] or WARN }
-            if not afford then
-                blocks[#blocks + 1] = { kind = "warn",
-                    text = "Not enough " .. cost.stat .. " (have "
-                        .. math.floor(Combat.resource(actor.char, cost.stat)) .. ")" }
-            end
+                valueColor = short and WARN or RES_COLOR[cost.stat] }
         end
-        -- A reservation isn't spent, it's committed: the share of the pool's MAXIMUM this ability
-        -- locks away for as long as what it summons survives.
+        -- A reservation is spent AND locked: the share of the pool's MAXIMUM this ability pays on the
+        -- cast and keeps locked away for as long as what it summons survives.
         if ab.reserve then
             local pct = math.floor((ab.reserve.percent or 0) * 100 + 0.5)
             local value = pct .. "% of max " .. ab.reserve.stat
             local reserve = actor and Combat.abilityReserve(actor, ab)
             if reserve then value = reserve.amount .. " " .. titleCase(reserve.stat) .. " (" .. pct .. "%)" end
             blocks[#blocks + 1] = { kind = "stat", label = "Reserves", value = value,
-                valueColor = RES_COLOR[ab.reserve.stat] or VALUE }
-            blocks[#blocks + 1] = { kind = "note", text = "Reserved until the summon falls" }
+                valueColor = (blocked and blocked.kind == "reserve" and WARN)
+                    or RES_COLOR[ab.reserve.stat] or VALUE }
+            blocks[#blocks + 1] = { kind = "note", text = "Spent on cast, unrecoverable until the summon falls" }
+        end
+        -- An adjacency requirement always shows, green once the grid satisfies it and red while it
+        -- doesn't -- the same green as the connector line the item grid draws to the neighbor.
+        if ab.requiresAdjacent then
+            local unmet = blocked and blocked.kind == "adjacency"
+            blocks[#blocks + 1] = { kind = "stat", label = "Requires",
+                value = titleCase(Combat.adjacencyLabel(ab.requiresAdjacent)),
+                valueColor = unmet and WARN or MET }
         end
         if ab.consumesItem then
             blocks[#blocks + 1] = { kind = "note", text = "Consumed on use" }
+        end
+        -- Why this can't be cast right now, closing the ability section it applies to.
+        if blocked then
+            blocks[#blocks + 1] = { kind = "warn", text = blocked.text }
         end
     end
 
@@ -239,9 +250,13 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
             local _, lines = body:getWrap(b.text, innerW)
             b.lines = math.max(1, #lines)
             h = h + b.lines * bodyH + 2
+        elseif b.kind == "note" then
+            local _, lines = body:getWrap(b.text, innerW)
+            b.lines = math.max(1, #lines)
+            h = h + b.lines * bodyH + 1
         elseif b.kind == "sep" then h = h + 8
         elseif b.kind == "head" then h = h + bodyH + 2
-        else h = h + bodyH + 1 end -- stat, note
+        else h = h + bodyH + 1 end -- stat
     end
     h = h + pad
 
@@ -288,8 +303,8 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
         elseif b.kind == "note" then
             love.graphics.setFont(body)
             love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
-            love.graphics.print(b.text, bx + pad, ty)
-            ty = ty + bodyH + 1
+            love.graphics.printf(b.text, bx + pad, ty, innerW, "left")
+            ty = ty + b.lines * bodyH + 1
         elseif b.kind == "warn" then
             love.graphics.setFont(body)
             love.graphics.setColor(WARN[1], WARN[2], WARN[3], 1)

@@ -6,6 +6,9 @@
 --
 -- Layout (per the design sketch): the turn-order strip fills the panel top-down but is
 -- BOTTOM-aligned so the current turn sits just above the item grid at the very bottom.
+-- A long order (summons, big encounters) overflows the strip, so it scrolls: `scroll` counts
+-- entries hidden off the bottom, i.e. how far toward later turns the window has walked. It
+-- re-anchors to the acting unit whenever the turn changes.
 --
 --   local panel = CombatPanel.new(combat, {
 --       onActivateItem = function(item, index) ... end,  -- slot clicked (arm / toggle)
@@ -14,9 +17,12 @@
 --   panel:setView({ order = {units}, current = unit, isPartyTurn = bool,
 --                   items = {inventory}, armedItem = item_or_nil })
 --   panel:draw(); panel:mousemoved(x, y); panel:mousepressed(x, y, button)
+--   panel:wheelmoved(dx, dy)  -- caller gates on panel:contains(mouseX, mouseY)
 
 local Scale = require("scale")
 local Combat = require("models.combat")
+local AdjacencyLinks = require("ui.adjacency_links")
+local StatusBadge = require("ui.status_badge")
 
 local CombatPanel = {}
 CombatPanel.__index = CombatPanel
@@ -31,6 +37,7 @@ local SLOT_W = 96
 local SLOT_H = 58
 local SLOT_GAP = 6
 local COLS, ROWS = 3, 3
+local SCROLL_STEP = 1 -- turn-strip entries per wheel notch (entries are tall; one reads best)
 
 -- Resource bars drawn per turn-strip entry, in order (skipped when a resource's max is 0).
 local RESOURCES = {
@@ -110,12 +117,16 @@ function CombatPanel.new(combat, opts)
     self.view = { order = {}, items = {}, isPartyTurn = false }
     self.hoverIndex = nil
     self.hoverUnit = nil
+    self.scroll = 0 -- turn-strip entries scrolled off the bottom (0 = the actor is at the bottom)
     return self
 end
 
--- Feed the per-frame render data (computed by the battle state).
+-- Feed the per-frame render data (computed by the battle state). A new actor re-anchors the
+-- turn strip to the bottom, so each turn opens showing whoever is acting now.
 function CombatPanel:setView(view)
-    self.view = view or { order = {}, items = {}, isPartyTurn = false }
+    view = view or { order = {}, items = {}, isPartyTurn = false }
+    if view.current ~= self.view.current then self.scroll = 0 end
+    self.view = view
 end
 
 function CombatPanel:contains(px, py)
@@ -138,14 +149,11 @@ function CombatPanel:slotIndexAt(px, py)
     return nil
 end
 
--- Can the current actor pay `item`'s ability cost (and set aside its reservation) right now? True
--- for passive/costless items and when there is no current actor. Drives the grayed-out
--- "can't afford" slot state.
-function CombatPanel:canAfford(item)
-    local ab = item and item.activeAbility
-    local cur = self.view.current
-    if not ab or not cur then return true end
-    return Combat.canAfford(cur, ab)
+-- Why the current actor can't activate `item` right now (an unpayable cost, a spent stack, a
+-- missing adjacent item), or nil when it can. Passive items report nil -- they're inert, not
+-- blocked. Drives the grayed-out slot, its red badge and the refused click.
+function CombatPanel:blockReason(item)
+    return Combat.itemBlockReason(self.view.current, item)
 end
 
 -- ---------------------------------------------------------------------------
@@ -170,27 +178,46 @@ function CombatPanel:draw()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- How many entries fit between stripTop and stripBottom, and how far the strip can scroll
+-- before the last entry sits at the bottom.
+function CombatPanel:visibleCount()
+    local span = self.stripBottom - self.stripTop - ENTRY_H
+    return math.max(1, math.floor(span / (ENTRY_H + ENTRY_GAP)) + 1)
+end
+
+function CombatPanel:maxScroll()
+    return math.max(0, #(self.view.order or {}) - self:visibleCount())
+end
+
 -- The on-screen rect of each visible turn-strip entry, shared by draw + hover hit-testing.
 -- Each entry carries its turn-order number (`num`): 1 = acting now, matching the board token
 -- (ui/battle_map.lua) so the player can tie a strip row to a unit at a glance. Preview ghosts
 -- don't consume a number (they're a hypothetical slot, not a live position), so the numbers
 -- stay aligned with the board's live turn order.
+--
+-- Only the `scroll`..`scroll + visibleCount` window is laid out, but numbering walks the whole
+-- order so a scrolled-to entry keeps the #N its board token shows.
 function CombatPanel:entryLayout()
     local out = {}
     local entries = self.view.order or {}
+    -- The order shrinks as units die and grows with summons/preview ghosts, so re-clamp here
+    -- rather than trusting the offset left by the last scroll input.
+    self.scroll = math.max(0, math.min(self.scroll, self:maxScroll()))
+    local last = math.min(#entries, self.scroll + self:visibleCount())
     local turnNo = 0
-    -- Bottom-pinned: the soonest entry sits at stripBottom (just above the item grid) and the
-    -- strip grows upward, so the current actor is always adjacent to its items.
+    -- Bottom-pinned: the first entry of the window sits at stripBottom (just above the item
+    -- grid) and the strip grows upward, so unscrolled the actor is always adjacent to its items.
     for i, entry in ipairs(entries) do
-        local bottom = self.stripBottom - (i - 1) * (ENTRY_H + ENTRY_GAP)
-        local top = bottom - ENTRY_H
-        if top < self.stripTop then break end -- ran out of room
+        if i > last then break end
         local num
         if not entry.preview then
             turnNo = turnNo + 1
             num = turnNo
         end
-        out[#out + 1] = { entry = entry, num = num, x = self.x + 8, y = top, w = self.w - 16, h = ENTRY_H }
+        if i > self.scroll then
+            local top = self.stripBottom - (i - self.scroll - 1) * (ENTRY_H + ENTRY_GAP) - ENTRY_H
+            out[#out + 1] = { entry = entry, num = num, x = self.x + 8, y = top, w = self.w - 16, h = ENTRY_H }
+        end
     end
     return out
 end
@@ -199,6 +226,27 @@ function CombatPanel:drawTurnStrip()
     for _, e in ipairs(self:entryLayout()) do
         self:drawEntry(e.entry, e.y, e.num)
     end
+    self:drawScrollBar()
+end
+
+-- A thin track + thumb down the strip's right edge, drawn only when the order overflows. It is
+-- the affordance that says "there are later turns up there" and shows where the window sits.
+function CombatPanel:drawScrollBar()
+    local max = self:maxScroll()
+    if max == 0 then return end
+    local total = #(self.view.order or {})
+    local bx, bw = self.x + self.w - 5, 3
+    local by, bh = self.stripTop, self.stripBottom - self.stripTop
+
+    love.graphics.setColor(0, 0, 0, 0.45)
+    love.graphics.rectangle("fill", bx, by, bw, bh, 2, 2)
+
+    -- The window covers visibleCount/total of the order; scroll 0 pins the thumb to the bottom,
+    -- because the strip counts upward from "now".
+    local thumbH = math.max(24, bh * (self:visibleCount() / total))
+    local t = self.scroll / max
+    love.graphics.setColor(0.95, 0.85, 0.55, 0.75)
+    love.graphics.rectangle("fill", bx, by + (1 - t) * (bh - thumbH), bw, thumbH, 2, 2)
 end
 
 -- A gold dashed rectangle border, used to mark preview (ghost) entries as hypothetical.
@@ -228,7 +276,7 @@ end
 function CombatPanel:statusBadgeRects(unit, ex, ew, ey)
     local statuses = unit.statuses
     if not statuses or #statuses == 0 then return {} end
-    local bw, bh, gap = 16, 14, 3
+    local bw, bh, gap = 18, 14, 3
     local out = {}
     local x = ex + ew - 40
     for i = #statuses, 1, -1 do
@@ -318,19 +366,13 @@ function CombatPanel:drawEntry(entry, ey, num)
     -- Active status badges on the name row, anchored right (leaving room at the far edge for the
     -- optional initiative debug number), so a stunned/rooted unit reads on the strip too.
     for _, r in ipairs(self:statusBadgeRects(unit, ex, ew, ey)) do
-        local col = (r.st.def and r.st.def.color) or { 0.82, 0.82, 0.88 }
-        love.graphics.setColor(0, 0, 0, 0.7)
-        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 3, 3)
-        love.graphics.setColor(col[1], col[2], col[3], 0.95)
-        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 3, 3)
-        love.graphics.setFont(self.smallFont)
-        love.graphics.setColor(col[1], col[2], col[3], 1)
-        love.graphics.printf((r.st.def and r.st.def.abbr) or (r.st.name or "?"):sub(1, 1),
-            r.x, r.y, r.w, "center")
+        StatusBadge.draw(r.st, r.x, r.y, r.w, r.h)
     end
 
-    -- Aimed-action preview for this unit (damage/heal on its HP, resource cost on the actor's pool),
-    -- projected onto the bars so a strike/heal/cast reads on the turn order just like the tooltip.
+    -- Aimed-action preview for this unit (damage/heal on its HP, the actor's whole spend on its
+    -- pools), projected onto the bars so a strike/heal/cast reads on the turn order just like the
+    -- tooltip. A pool can take both at once -- a health-cost strike on the caster, a summon that
+    -- reserves health -- so damage/heal and every spend row for the pool accumulate into one delta.
     local pv = self.view.preview and self.view.preview[unit]
     local by = ey + 22
     for _, res in ipairs(RESOURCES) do
@@ -341,8 +383,10 @@ function CombatPanel:drawEntry(entry, ey, num)
                 if res.key == "health" then
                     delta = (pv.heal or 0) - (pv.damage or 0)
                     lethal = pv.lethal
-                elseif pv.cost and pv.cost.stat == res.key then
-                    delta = -(pv.cost.amount or 0)
+                end
+                -- Cost and reservation both come out of `current` on the cast (Combat.abilitySpend).
+                for _, s in ipairs(pv.spend or {}) do
+                    if s.stat == res.key then delta = delta - (s.amount or 0) end
                 end
             end
             drawResourceBar(rx, by, rw, 7, stat.current, stat.max, res.color, delta, lethal,
@@ -359,9 +403,31 @@ function CombatPanel:drawHourglass(x, y, w, h, r, g, b, a)
     love.graphics.polygon("fill", x + w / 2, y + h / 2, x, y + h, x + w, y + h)
 end
 
--- A cost/speed corner badge: a dark pill with an icon and a number. `align` is "left"
--- (top-left cost) or "right" (top-right speed); `iconKind` is "dot" or "hourglass".
-function CombatPanel:drawBadge(sx, sy, sw, corner, iconKind, amount, color, a)
+-- Small padlock (shackle arc over a body) for the reserve badge: the resource this ability locks
+-- away, told apart from the plain cost dot because it never comes back on its own.
+function CombatPanel:drawLock(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local cx, bodyTop = x + w / 2, y + h * 0.42
+    love.graphics.setLineWidth(1.5)
+    love.graphics.arc("line", "open", cx, bodyTop, w * 0.28, math.pi, 2 * math.pi)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("fill", x + w * 0.1, bodyTop, w * 0.8, h - h * 0.42, 1, 1)
+end
+
+-- Two stubs with a gap between them: a "broken link" glyph marking an adjacency requirement the
+-- grid doesn't satisfy (a met one is drawn as a solid connector line over the grid instead).
+function CombatPanel:drawBrokenLink(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    love.graphics.setLineWidth(2)
+    love.graphics.line(x, y + h, x + w * 0.30, y + h * 0.58)
+    love.graphics.line(x + w * 0.70, y + h * 0.42, x + w, y)
+    love.graphics.setLineWidth(1)
+end
+
+-- A cost/speed corner badge: a dark pill with an icon and a label. `corner` is "left"
+-- (top-left costs) or "right" (top-right speed); `iconKind` is "dot", "hourglass", "lock" or
+-- "link". `row` stacks a badge under the previous one in the same corner (0 = top, the default).
+function CombatPanel:drawBadge(sx, sy, sw, corner, iconKind, amount, color, a, row)
     love.graphics.setFont(self.smallFont)
     local label = tostring(amount)
     local tw = self.smallFont:getWidth(label)
@@ -370,7 +436,7 @@ function CombatPanel:drawBadge(sx, sy, sw, corner, iconKind, amount, color, a)
     local bh = 18
     local pad = 3
     local bx = (corner == "right") and (sx + sw - pad - bw) or (sx + pad)
-    local by = sy + pad
+    local by = sy + pad + (row or 0) * (bh + 2)
 
     love.graphics.setColor(0.06, 0.07, 0.10, 0.82 * (a or 1))
     love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
@@ -379,6 +445,10 @@ function CombatPanel:drawBadge(sx, sy, sw, corner, iconKind, amount, color, a)
     local iy = by + (bh - 10) / 2
     if iconKind == "hourglass" then
         self:drawHourglass(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+    elseif iconKind == "lock" then
+        self:drawLock(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+    elseif iconKind == "link" then
+        self:drawBrokenLink(ix, iy, iconW, 10, color[1], color[2], color[3], a)
     else -- resource "dot": a filled diamond reads cleaner than a circle at this size
         local cx, cy, rr = ix + iconW / 2, iy + 5, 5
         love.graphics.setColor(color[1], color[2], color[3], a or 1)
@@ -397,21 +467,28 @@ function CombatPanel:drawItemGrid()
     local isPartyTurn = self.view.isPartyTurn
     local items = self.view.items or {}
     local NAME_H = 16
+
+    -- Slot plates, then the adjacency connectors across them (a Fire Stone's aura, Omnislash
+    -- scaling off adjacent weapons, Rain of Arrows' bow requirement), tinted by relationship kind
+    -- to match the loadout legend. Both go down before the item contents, so a wire reads over the
+    -- plate but never covers an icon, a badge or a name.
+    love.graphics.setColor(0.16, 0.17, 0.22, isPartyTurn and 1 or 0.5)
+    for i = 1, COLS * ROWS do
+        local sx, sy, sw, sh = self:slotRect(i)
+        love.graphics.rectangle("fill", sx, sy, sw, sh, 5, 5)
+    end
+    self:drawAdjacencyLinks()
+
     for i = 1, COLS * ROWS do
         local sx, sy, sw, sh = self:slotRect(i)
         local item = items[i]
         local armed = item and item == self.view.armedItem
-        -- An ability the actor can't pay for is treated like an unusable slot: grayed out, with
-        -- its cost badge flipped red (below) to point at the reason. `unaffordable` gates that red
-        -- cue so it only fires on a party turn (off-turn slots dim for a different reason).
-        local affordable = self:canAfford(item)
-        local depleted = item ~= nil and Combat.isDepleted(item)
-        local usable = item and item.activeAbility ~= nil and isPartyTurn and affordable and not depleted
-        local unaffordable = item and item.activeAbility ~= nil and isPartyTurn and not affordable
-
-        -- Slot plate.
-        love.graphics.setColor(0.16, 0.17, 0.22, isPartyTurn and 1 or 0.5)
-        love.graphics.rectangle("fill", sx, sy, sw, sh, 5, 5)
+        -- An ability the actor can't activate -- can't pay for, spent stack, missing the neighbor it
+        -- requires -- is grayed out, and the badge naming the reason (below) is drawn red at full
+        -- alpha to point at it. Only on a party turn: off-turn slots dim for a different reason, and
+        -- the hover tooltip spells the reason out either way.
+        local blocked = isPartyTurn and self:blockReason(item) or nil
+        local usable = item and item.activeAbility ~= nil and isPartyTurn and not blocked
 
         if item then
             local dim = (not usable) and 0.45 or 1
@@ -464,17 +541,39 @@ function CombatPanel:drawItemGrid()
                 love.graphics.print(label, bx + 4, by + 1)
             end
 
-            -- Cost (top-left) + speed (top-right), overlaid for ability items only.
+            -- What the cast takes (top-left, stacked downward) + speed (top-right), for ability
+            -- items only. A badge whose demand is the one blocking the cast flips to red at full
+            -- alpha, so it reads as the reason the slot is grayed out.
             if ab then
+                local row = 0
                 if ab.cost then
-                    -- Cost badge: normally tinted by resource and dimmed with the slot; when the
-                    -- actor can't afford it, flip to red and draw at full alpha so it reads as the
-                    -- reason the slot is grayed out.
-                    local c = unaffordable and WARN_COLOR or (RES_COLOR[ab.cost.stat] or COST_FALLBACK)
-                    self:drawBadge(sx, sy, sw, "left", "dot", ab.cost.amount, c, unaffordable and 1 or dim)
+                    local short = blocked and blocked.kind == "cost"
+                    local c = short and WARN_COLOR or (RES_COLOR[ab.cost.stat] or COST_FALLBACK)
+                    self:drawBadge(sx, sy, sw, "left", "dot", ab.cost.amount, c, short and 1 or dim, row)
+                    row = row + 1
+                end
+                -- A reservation is a cost too -- paid on the cast, then locked away for as long as
+                -- what it summons lives -- so it earns its own badge under the cost, a padlock
+                -- instead of the resource dot. Priced against the actor (a share of ITS maximum),
+                -- falling back to the raw percentage when there's nobody to price it for.
+                if ab.reserve then
+                    local short = blocked and blocked.kind == "reserve"
+                    local c = short and WARN_COLOR or (RES_COLOR[ab.reserve.stat] or COST_FALLBACK)
+                    local res = self.view.current and Combat.abilityReserve(self.view.current, ab)
+                    local label = res and res.amount
+                        or (math.floor((ab.reserve.percent or 0) * 100 + 0.5) .. "%")
+                    self:drawBadge(sx, sy, sw, "left", "lock", label, c, short and 1 or dim, row)
+                    row = row + 1
                 end
                 if ab.speed then
                     self:drawBadge(sx, sy, sw, "right", "hourglass", ab.speed, SPEED_COLOR, dim)
+                end
+                -- An unmet adjacency requirement (Rain of Arrows with no bow beside it) names the
+                -- missing neighbor in a red broken-link badge, tucked under the cost badges.
+                if blocked and blocked.kind == "adjacency" then
+                    local req = ab.requiresAdjacent
+                    self:drawBadge(sx, sy, sw, "left", "link", req.tag or req.type or "item",
+                        WARN_COLOR, 1, row)
                 end
             end
         end
@@ -494,35 +593,13 @@ function CombatPanel:drawItemGrid()
         love.graphics.rectangle("line", sx, sy, sw, sh, 5, 5)
         love.graphics.setLineWidth(1)
     end
-
-    -- Adjacency connector lines over the current unit's grid, so item-to-item bonuses (a Fire
-    -- Stone's aura, Omnislash scaling off adjacent weapons, Rain of Arrows' bow requirement) read
-    -- at a glance -- tinted by relationship kind to match the loadout legend.
-    self:drawAdjacencyLinks()
 end
 
--- Line tint per adjacency relationship kind (see Combat.adjacencyLinks / ui/inventory_grid.lua).
-local LINK_COLOR = {
-    aura        = { 0.95, 0.55, 0.28 },
-    boost       = { 0.55, 0.78, 1.00 },
-    requirement = { 0.70, 0.88, 0.45 },
-}
-
+-- The current unit's item-to-item relationships, as wires running behind its cards. Off turn the
+-- whole grid dims, so the wires dim with it.
 function CombatPanel:drawAdjacencyLinks()
-    local char = self.view.itemOwner
-    if not char then return end
-    love.graphics.setLineWidth(2)
-    for _, link in ipairs(Combat.adjacencyLinks(char)) do
-        local c = LINK_COLOR[link.kind] or { 0.8, 0.8, 0.8 }
-        local ax, ay, aw, ah = self:slotRect(link.from)
-        local bx, by, bw, bh = self:slotRect(link.to)
-        love.graphics.setColor(c[1], c[2], c[3], 0.85)
-        love.graphics.line(ax + aw / 2, ay + ah / 2, bx + bw / 2, by + bh / 2)
-        love.graphics.circle("fill", ax + aw / 2, ay + ah / 2, 3)
-        love.graphics.circle("fill", bx + bw / 2, by + bh / 2, 3)
-    end
-    love.graphics.setLineWidth(1)
-    love.graphics.setColor(1, 1, 1)
+    AdjacencyLinks.draw(self.view.itemOwner, function(i) return self:slotRect(i) end,
+        { width = 3, alpha = self.view.isPartyTurn and 1 or 0.4 })
 end
 
 -- ---------------------------------------------------------------------------
@@ -530,13 +607,13 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Returns the ability item under a usable, hovered slot (else nil). An ability the actor can't
--- afford is not "usable" here, so hovering it won't preview the timeline and clicking won't arm it
--- -- matching its grayed-out slot (the hover item tooltip via itemAt still explains why).
+-- activate right now is not "usable" here, so hovering it won't preview the timeline and clicking
+-- won't arm it -- matching its grayed-out slot (the hover item tooltip via itemAt still explains why).
 function CombatPanel:usableItemAt(px, py)
     if not self.view.isPartyTurn then return nil end
     local i = self:slotIndexAt(px, py)
     local item = i and (self.view.items or {})[i]
-    if item and item.activeAbility and self:canAfford(item) and not Combat.isDepleted(item) then
+    if item and item.activeAbility and not self:blockReason(item) then
         return item, i
     end
     return nil
@@ -604,6 +681,29 @@ function CombatPanel:mousepressed(x, y, button)
     if button ~= 1 or not self:contains(x, y) then return false end
     local item, i = self:usableItemAt(x, y)
     if item and self.onActivateItem then self.onActivateItem(item, i) end
+    return true
+end
+
+-- Walk the turn strip by `n` entries (positive = toward later turns), clamped.
+function CombatPanel:scrollBy(n)
+    self.scroll = math.max(0, math.min(self.scroll + n, self:maxScroll()))
+end
+
+-- One screenful toward later turns, wrapping back to the acting unit at the far end. The gamepad
+-- has a single spare button for the strip (the d-pad drives the board cursor), so it cycles
+-- instead of paging both ways.
+function CombatPanel:cyclePage()
+    local max = self:maxScroll()
+    if max == 0 then return end
+    self.scroll = (self.scroll >= max) and 0 or math.min(self.scroll + self:visibleCount(), max)
+end
+
+-- Mouse wheel: walk the turn strip (dy > 0 = wheel up = later turns, since the strip is pinned
+-- to "now" at the bottom and grows upward). The caller gates this on the cursor being over the
+-- panel. Returns true when it consumed the event.
+function CombatPanel:wheelmoved(_, dy)
+    if dy == 0 or self:maxScroll() == 0 then return false end
+    self:scrollBy(dy > 0 and SCROLL_STEP or -SCROLL_STEP)
     return true
 end
 

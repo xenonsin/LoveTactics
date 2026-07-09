@@ -116,7 +116,8 @@ return {
             assert(elemental and elemental.char.id == "fire_elemental", "the elemental is there")
             assert(Combat.reservedAmount(mage.char, "mana") == expected, "a quarter of max mana is committed")
             assert(mana.max == 80, "the maximum itself is untouched")
-            assert(Combat.unreservedMax(mage.char, "mana") == 80 - expected, "only the ceiling moved")
+            assert(Combat.unreservedMax(mage.char, "mana") == 80 - expected, "the ceiling drops by the reservation")
+            assert(mana.current == 80 - expected, "and the cast spent that mana outright")
         end,
     },
     {

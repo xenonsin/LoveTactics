@@ -44,6 +44,11 @@ local LEFT_W = 264
 local BOARD_TILE = 60 -- on-screen tile size (< the arena's logical 64), for breathing room
 local BOARD_TOP = 104 -- fixed board top (below the 3-line HUD); the freed bottom holds the log
 local AI_DELAY = 0.35 -- seconds between enemy actions, so each move is watchable
+-- Seconds a walking unit rests on every tile it steps onto, the destination included. A move is
+-- played out one tile at a time (see startWalk) rather than teleporting, so the route a unit takes
+-- is visible -- and so is what it walks into, since a trap springs or a hazard bites on the very
+-- beat the unit lands on that tile. Applies to both sides.
+local MOVE_STEP = 0.25
 
 -- Clickable "Forfeit" button so a mouse-only player can bail out (counts as a loss), plus a
 -- "Wait" button so a mouse-only player can end a turn without acting (a delay).
@@ -91,12 +96,14 @@ end
 
 local function win()
     battle.over = true
+    battle.walk = nil -- nobody finishes their stroll once the battle is decided
     Combat.logEvent(battle.combat, "system", "Victory!")
     if battle.onWin then battle.onWin() end
 end
 
 local function lose()
     battle.over = true
+    battle.walk = nil
     Combat.logEvent(battle.combat, "system", "Defeat.")
     if battle.onLoss then battle.onLoss() end
 end
@@ -243,6 +250,45 @@ local function advanceTurn()
     beginTurn()
 end
 
+-- ---------------------------------------------------------------------------
+-- Walking. A move is played out one tile at a time rather than teleporting, so the route a unit
+-- takes is legible -- and so is what it walks into, since the model springs each tile's trap and
+-- hazard on the very beat the unit lands there (Combat.stepMove). Both sides walk.
+-- ---------------------------------------------------------------------------
+
+-- Is a unit mid-walk? The board is mid-animation, so player input and the AI clock both hold.
+local function walking()
+    return battle.walk ~= nil
+end
+
+-- Send `unit` walking to (x, y), calling `onDone` once it comes to rest -- on the destination, or
+-- on the tile it died on. Returns false, having changed nothing, if the move is illegal. The move
+-- is spent the instant the walk starts: the blue reachable band and the red threat band both clear,
+-- so nothing on the board invites a second move while the unit is still on its feet.
+local function startWalk(unit, x, y, onDone)
+    local plan = Combat.planMove(battle.combat, unit, x, y)
+    if not plan then return false end
+    battle.walk = { handle = Combat.beginMove(battle.combat, plan), timer = 0, onDone = onDone }
+    battle.reachable, battle.moveCells = {}, {}
+    battle.threatCells, battle.attackReach = {}, {}
+    return true
+end
+
+-- One tile per MOVE_STEP seconds, then hand off to the walk's onDone. The first step lands at once
+-- (the unit is already standing on the origin); every step after rests on the tile it just entered,
+-- so a trap that fires or a hazard that bites is on screen long enough to see.
+local function updateWalk(dt)
+    local w = battle.walk
+    w.timer = w.timer - dt
+    if w.timer > 0 then return end
+    if Combat.stepMove(battle.combat, w.handle) then
+        w.timer = MOVE_STEP
+        return
+    end
+    battle.walk = nil
+    if w.onDone then w.onDone() end
+end
+
 local function cancelArm()
     battle.mode = "move"
     battle.armedItem = nil
@@ -251,18 +297,14 @@ end
 -- Arm an ability item (or toggle it off if already armed).
 local function armItem(item)
     local current = battle.current
-    if battle.over or not current or not Combat.isPlayerControlled(current) then return end
+    if battle.over or walking() or not current or not Combat.isPlayerControlled(current) then return end
     if not (item and item.activeAbility) then return end
     if battle.armedItem == item then cancelArm() return end
-    -- Can't afford it, or a consumable stack is spent: leave it disarmed (the slot is grayed out
-    -- and the tooltip says why), so a number-key / gamepad arm can't silently fail on confirm the
-    -- way a click already can't.
-    if not Combat.canAfford(current, item.activeAbility) then return end
-    if Combat.isDepleted(item) then return end
-    -- An ability that needs a specific neighbor (e.g. Rain of Arrows requires an adjacent bow)
-    -- stays disarmed until that neighbor is in place -- the slot is grayed and useItem would
-    -- reject it anyway, so keep number-key / gamepad arming from silently failing on confirm.
-    if not Combat.adjacencyMet(current.char, item) then return end
+    -- Anything that would make useItem reject the cast -- an unpayable cost, a spent stack, a
+    -- missing adjacent item (Rain of Arrows without its bow) -- leaves it disarmed. The slot is
+    -- grayed out and the tooltip says why, so a number-key / gamepad arm can't silently fail on
+    -- confirm the way a click already can't.
+    if Combat.itemBlockReason(current, item) then return end
     battle.armedItem = item
     battle.mode = "armed"
     -- Friendly abilities (heal / buff) highlight green; offensive strikes and trap placements red.
@@ -278,16 +320,21 @@ local function armSlot(n)
 end
 
 -- Gamepad Y cycles through the current unit's ability items (past the end -> back to move).
+-- Items that can't be activated right now are skipped rather than landed on -- armItem would
+-- refuse them, leaving Y with nothing to advance to.
 local function cycleAbilityItem()
     local current = battle.current
-    if battle.over or not current or not Combat.isPlayerControlled(current) then return end
+    if battle.over or walking() or not current or not Combat.isPlayerControlled(current) then return end
     local items = Combat.abilityItems(current.char)
     if #items == 0 then return end
     local idx = 0
     for i, it in ipairs(items) do
         if it == battle.armedItem then idx = i break end
     end
-    if idx + 1 > #items then cancelArm() else armItem(items[idx + 1]) end
+    for i = idx + 1, #items do
+        if not Combat.itemBlockReason(current, items[i]) then armItem(items[i]) return end
+    end
+    cancelArm()
 end
 
 -- Basic attack on the enemy at (tx, ty) with the current unit's default weapon: if the
@@ -299,15 +346,22 @@ local function tryDefaultAttack(unit, tx, ty)
     local entry = battle.attackReach and battle.attackReach[tx .. "," .. ty]
     local weapon = battle.defaultWeapon
     if not entry or not weapon then return end
-    -- Don't reposition for a strike we can't pay for: if the default weapon carries a cost the
-    -- unit can't afford, bail before moving (unarmed is free, so this only guards real weapons).
-    if not Combat.canAfford(unit, weapon.activeAbility) then return end
+    -- Don't reposition for a strike useItem would refuse: a cost the unit can't pay, an unmet grid
+    -- requirement. Bail before moving (unarmed is free and requires nothing, so this only guards
+    -- real weapons).
+    if Combat.itemBlockReason(unit, weapon) then return end
+    local function strike()
+        if Combat.useItem(battle.combat, unit, weapon, tx, ty) then advanceTurn() end
+    end
     if entry.fromX ~= unit.x or entry.fromY ~= unit.y then
         if Combat.hasMoved(battle.combat) then return end -- can't move twice in a turn
-        if not Combat.moveUnit(battle.combat, unit, entry.fromX, entry.fromY) then return end
-        battle.reachable, battle.moveCells = {}, {}
+        -- Walk into reach first, then strike from where the approach left off. A unit cut down on
+        -- the way in (a trap it stepped on) never gets to swing.
+        return startWalk(unit, entry.fromX, entry.fromY, function()
+            if unit.alive then strike() else advanceTurn() end
+        end)
     end
-    if Combat.useItem(battle.combat, unit, weapon, tx, ty) then advanceTurn() end
+    strike()
 end
 
 -- Strike a revealed enemy trap on (tx, ty) with the default weapon, folding an approach move
@@ -317,13 +371,17 @@ local function tryDamageTrap(unit, tx, ty)
     local entry = battle.attackReach and battle.attackReach[tx .. "," .. ty]
     local weapon = battle.defaultWeapon
     if not entry or not weapon then return end
-    if not Combat.canAfford(unit, weapon.activeAbility) then return end
+    if Combat.itemBlockReason(unit, weapon) then return end
+    local function strike()
+        if Combat.strikeTrap(battle.combat, unit, weapon, tx, ty) then advanceTurn() end
+    end
     if entry.fromX ~= unit.x or entry.fromY ~= unit.y then
         if Combat.hasMoved(battle.combat) then return end
-        if not Combat.moveUnit(battle.combat, unit, entry.fromX, entry.fromY) then return end
-        battle.reachable, battle.moveCells = {}, {}
+        return startWalk(unit, entry.fromX, entry.fromY, function()
+            if unit.alive then strike() else advanceTurn() end
+        end)
     end
-    if Combat.strikeTrap(battle.combat, unit, weapon, tx, ty) then advanceTurn() end
+    strike()
 end
 
 -- A revealed enemy trap on (x, y), or nil. `battle.trapCells` is the per-frame lookup of traps
@@ -341,13 +399,16 @@ end
 --   { kind = "strikeTrap", item, trap, trapDamage, trapLethal }  -- destroy a revealed enemy trap
 --   { kind = "move",       moveCost, steps }       -- step to a reachable tile
 --   { kind = "ability",    item, target, support, entry }  -- armed unit/self cast (heal/strike/...)
---   { kind = "place",      item }                  -- armed tile cast (summon a trap)
+--   { kind = "place",      item }                  -- armed tile cast (summon a trap / a creature)
 -- Returns nil when a click on this cell would do nothing (not the player's turn, out of reach, an
 -- invalid target), so the tooltip only appears on an actionable hover. `entry` is the dry-run effect
 -- on the target unit (Combat.previewAbility); `support` tints the panel green for a friendly cast.
+-- Every item-driven action also carries `spend` (Combat.abilitySpend): what the cast would take out
+-- of the actor's own pools -- the resource cost AND a summon's reservation -- which the preview
+-- panel lists and the actor's turn-strip bars project as a red loss slice.
 local function actionPreviewFor(cx, cy)
     local current = battle.current
-    if battle.over or not current or not Combat.isPlayerControlled(current) then return nil end
+    if battle.over or walking() or not current or not Combat.isPlayerControlled(current) then return nil end
     local unit = Combat.unitAt(battle.combat, cx, cy)
 
     if battle.mode == "armed" and battle.armedItem then
@@ -364,6 +425,7 @@ local function actionPreviewFor(cx, cy)
         return {
             kind = (item.activeAbility.target == "tile") and "place" or "ability",
             item = item, actor = current, target = unit, support = battle.armedSupport,
+            spend = Combat.abilitySpend(current, item.activeAbility),
             entry = preview and unit and preview.entries[unit] or nil,
             entries = preview and preview.entries or nil, -- every affected unit (AoE), for banner preview
             order = preview and preview.order or nil, -- ordered affected units, for the AoE summary
@@ -379,6 +441,7 @@ local function actionPreviewFor(cx, cy)
                 local preview = Combat.previewAbility(battle.combat, current, weapon, cx, cy)
                 return { kind = "attack", item = weapon, actor = current, target = unit,
                          support = false, entry = preview and preview.entries[unit] or nil,
+                         spend = Combat.abilitySpend(current, weapon.activeAbility),
                          entries = preview and preview.entries or nil,
                          order = preview and preview.order or nil }
             end
@@ -390,12 +453,15 @@ local function actionPreviewFor(cx, cy)
             local weapon = battle.defaultWeapon
             local dmg = weapon and Combat.computeTrapDamage(current, weapon) or 0
             return { kind = "strikeTrap", item = weapon, actor = current, trap = trap,
-                     support = false, trapDamage = dmg, trapLethal = dmg >= (trap.health or 0) }
+                     support = false, trapDamage = dmg, trapLethal = dmg >= (trap.health or 0),
+                     spend = weapon and Combat.abilitySpend(current, weapon.activeAbility) or nil }
         end
         -- An empty reachable tile -> move there.
         local node = battle.reachable and battle.reachable[cx .. "," .. cy]
         if node then
-            return { kind = "move", actor = current, moveCost = node.cost, steps = node.steps }
+            -- The initiative the walk charges, not the raw path cost: a hasted unit pays half.
+            return { kind = "move", actor = current, steps = node.steps,
+                     moveCost = Combat.moveInitiative(current, node.cost) }
         end
     end
 
@@ -407,7 +473,7 @@ end
 -- armed item on it (ends the turn).
 local function confirm()
     local current = battle.current
-    if battle.over or not current or not Combat.isPlayerControlled(current) then return end
+    if battle.over or walking() or not current or not Combat.isPlayerControlled(current) then return end
     local cx, cy = battle.map.cursor.x, battle.map.cursor.y
     if battle.mode == "move" then
         local target = Combat.unitAt(battle.combat, cx, cy)
@@ -416,13 +482,13 @@ local function confirm()
         elseif revealedEnemyTrapAt(current, cx, cy) then
             tryDamageTrap(current, cx, cy)
         elseif battle.reachable[cx .. "," .. cy] then
-            if Combat.moveUnit(battle.combat, current, cx, cy) then
-                -- Move spent: clear the reachable set (only one move per turn), recompute the
-                -- threat band from the new tile, and stay in this turn so the player can arm an
-                -- item or wait. The per-frame refreshView in battle.update picks up the state.
-                battle.reachable, battle.moveCells = {}, {}
-                computeThreat(current)
-            end
+            -- Walk there (startWalk already cleared the move band -- only one move per turn). Once
+            -- the unit arrives, recompute the threat band from the tile it actually stopped on and
+            -- stay in this turn so the player can still arm an item or wait. A unit that walked
+            -- into a lethal trap has no turn left to take.
+            startWalk(current, cx, cy, function()
+                if current.alive then computeThreat(current) else advanceTurn() end
+            end)
         end
     elseif battle.mode == "armed" and battle.armedItem then
         if Combat.useItem(battle.combat, current, battle.armedItem, cx, cy) then advanceTurn() end
@@ -434,7 +500,7 @@ end
 -- Combat.waitBehavior. Available whether or not the unit moved.
 local function waitTurn()
     local current = battle.current
-    if battle.over or not current or not Combat.isPlayerControlled(current) then return end
+    if battle.over or walking() or not current or not Combat.isPlayerControlled(current) then return end
     local kind = Combat.waitBehavior(current).kind
     local action = (kind == "focus" and Combat.focus)
         or (kind == "defend" and Combat.defend)
@@ -454,13 +520,18 @@ local function executeEnemyAction()
         return
     end
     local act = Combat.planEnemyAction(battle.combat, current)
-    if act.move then Combat.moveUnit(battle.combat, current, act.move.x, act.move.y) end
-    local acted = false
-    if act.item then acted = Combat.useItem(battle.combat, current, act.item, act.tx, act.ty) end
-    -- Reposition-only, nothing to do, or an item use that unexpectedly failed: pass so the
-    -- turn always ends (paying the real move cost) and never soft-locks on this unit.
-    if not acted then Combat.pass(battle.combat, current) end
-    advanceTurn()
+    -- The plan aims from the tile the unit walks to, so the action waits for the walk to finish.
+    local function act_()
+        if not current.alive then advanceTurn() return end -- cut down on the approach
+        local acted = false
+        if act.item then acted = Combat.useItem(battle.combat, current, act.item, act.tx, act.ty) end
+        -- Reposition-only, nothing to do, or an item use that unexpectedly failed: pass so the
+        -- turn always ends (paying the real move cost) and never soft-locks on this unit.
+        if not acted then Combat.pass(battle.combat, current) end
+        advanceTurn()
+    end
+    if act.move and startWalk(current, act.move.x, act.move.y, act_) then return end
+    act_()
 end
 
 -- Compute the turn-order preview + battlefield overlays and hand them to the widgets.
@@ -487,7 +558,7 @@ local function refreshView()
             newInit = pendingMove + (battle.armedItem.activeAbility.speed or 0)
         elseif battle.mode == "move" then
             local node = battle.reachable and battle.reachable[battle.map.cursor.x .. "," .. battle.map.cursor.y]
-            if node then newInit = node.cost end
+            if node then newInit = Combat.moveInitiative(current, node.cost) end
         end
     end
     -- Timeline entries for the panel: the live order, plus a ghost of the actor at its
@@ -539,8 +610,8 @@ local function refreshView()
 
     -- Preview resources lost / damage dealt on the turn-order banners: the action under the mouse
     -- (the same one the tile tooltip shows) projects its damage/heal onto every affected unit's
-    -- banner and its resource cost onto the actor's banner. Computed after the range/reach overlays
-    -- so actionPreviewFor sees the current valid-target sets.
+    -- banner and its whole spend -- cost plus a summon's reservation -- onto the actor's banner.
+    -- Computed after the range/reach overlays so actionPreviewFor sees the current valid-target sets.
     local bannerPreview
     if isParty and battle.mouseX then
         local cx, cy = battle.map:cellAt(battle.mouseX, battle.mouseY)
@@ -552,13 +623,19 @@ local function refreshView()
                     bannerPreview[tgt] = { damage = e.damage, heal = e.heal, lethal = e.lethal }
                 end
             end
-            local ab = action.item and action.item.activeAbility
-            if action.actor and ab and ab.cost then
+            if action.actor and action.spend and #action.spend > 0 then
                 local a = bannerPreview[action.actor] or {}
-                a.cost = { stat = ab.cost.stat, amount = ab.cost.amount }
+                a.spend = action.spend
                 bannerPreview[action.actor] = a
             end
         end
+    end
+    -- Hovering an ability SLOT (the cursor is on the panel, so there's no aimed board action) prices
+    -- the same spend onto the actor's bars, beside the range it already previews -- so what a cast
+    -- would take reads before committing to arm it, not only once it's aimed.
+    if isParty and not bannerPreview and hoverAbility then
+        local spend = Combat.abilitySpend(current, hoverAbility)
+        if #spend > 0 then bannerPreview = { [current] = { spend = spend } } end
     end
 
     battle.panel:setView({
@@ -637,7 +714,9 @@ end
 
 function battle.update(dt)
     battle.map:update(dt)
-    if not battle.over and battle.current and not Combat.isPlayerControlled(battle.current) then
+    if walking() then
+        updateWalk(dt) -- a walk holds the AI clock: whoever is on their feet finishes first
+    elseif not battle.over and battle.current and not Combat.isPlayerControlled(battle.current) then
         battle.aiTimer = (battle.aiTimer or 0) - dt
         if battle.aiTimer <= 0 then executeEnemyAction() end
     end
@@ -813,7 +892,11 @@ function battle.drawHud()
     if battle.current and Combat.isPlayerControlled(battle.current) and not battle.over then
         if battle.mode == "armed" then
             local verb
-            if battle.armedTile then verb = "Click a tile to place the trap"
+            -- A tile cast places something -- a trap, a summoned creature -- so name it rather than
+            -- calling everything a trap.
+            if battle.armedTile then
+                local ab = battle.armedItem and battle.armedItem.activeAbility
+                verb = "Click a tile to place " .. ((ab and ab.name) or "it")
             elseif battle.armedSupport then verb = "Click an ally to support"
             else verb = "Click a target to strike" end
             hint = verb .. "  ·  click the item / Esc to cancel"
@@ -847,6 +930,15 @@ function battle.keypressed(key)
         battle.log:toggle()
         return
     end
+    -- Scroll the turn-order strip toward later / earlier turns (read-only, so allowed once the
+    -- battle is over too).
+    if key == "pageup" then
+        battle.panel:scrollBy(1)
+        return
+    elseif key == "pagedown" then
+        battle.panel:scrollBy(-1)
+        return
+    end
     if battle.over then return end
     if key == "return" or key == "kpenter" or key == "space" then
         confirm()
@@ -864,6 +956,10 @@ end
 function battle.gamepadpressed(joystick, button)
     if button == "leftshoulder" then -- toggle the combat log (allowed even when the battle is over)
         battle.log:toggle()
+        return
+    end
+    if button == "rightshoulder" then -- page the turn-order strip, wrapping back to the actor
+        battle.panel:cyclePage()
         return
     end
     if battle.over then return end
@@ -885,13 +981,18 @@ end
 function battle.mousemoved(x, y, dx, dy)
     battle.mouseX, battle.mouseY = x, y -- drives the status tooltip (board + panel hit-tests)
     -- Hovering the Wait button previews the delay slot on the timeline.
-    battle.hoverWait = pointIn(waitButton, x, y)
-        and battle.current and Combat.isPlayerControlled(battle.current) and not battle.over or false
+    battle.hoverWait = pointIn(waitButton, x, y) and battle.current
+        and Combat.isPlayerControlled(battle.current) and not battle.over and not walking() or false
     if battle.panel:mousemoved(x, y) then return end
     battle.map:mousemoved(x, y)
 end
 
+-- The wheel goes to whatever the cursor is over: the turn-order strip on the right panel, else
+-- the combat log (which ignores it while closed).
 function battle.wheelmoved(dx, dy)
+    if battle.mouseX and battle.panel:contains(battle.mouseX, battle.mouseY) then
+        if battle.panel:wheelmoved(dx, dy) then return end
+    end
     battle.log:wheelmoved(dx, dy)
 end
 

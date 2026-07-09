@@ -2,14 +2,17 @@
 -- sanctuary. Kin to traps (models/trap.lua), but with the opposite temperament: a hazard CANNOT be
 -- destroyed, can be freely moved into / stood on by EITHER side, is ALWAYS visible, occupies many
 -- tiles (one runtime object per covered cell, like a trap is per-cell), and PERSISTS for a duration
--- that counts down on the shared initiative clock. When a unit ENTERS a hazard tile the effect fires
--- regardless of side; the effect is delivered as a status (Status.apply), which then lingers/ticks on
--- its own -- and, being one-instance-per-id, refreshes rather than stacks on re-entry. Pure logic (no
--- love.graphics beyond the tolerant Sprite loader), so it loads under the headless tests.
+-- that counts down on the shared initiative clock. When a unit ENTERS a hazard tile the effect fires;
+-- the effect is delivered as a status (Status.apply), which then lingers/ticks on its own -- and,
+-- being one-instance-per-id, refreshes rather than stacks on re-entry. Whether the effect respects
+-- sides is the def's own business: fire burns friend and foe alike, while a sanctuary blesses only
+-- its caster's side (see Hazard.allied / ctx.isAlly). Pure logic (no love.graphics beyond the
+-- tolerant Sprite loader), so it loads under the headless tests.
 --
 -- Blueprints live in data/hazards/<id>.lua and expose:
 --   * duration      -- ticks the hazard tile persists (default 1)
---   * disposition   -- "hostile" | "friendly" | "neutral": drives the enemy AI's avoid/seek (default neutral)
+--   * disposition   -- "hostile" | "friendly" | "neutral": drives the enemy AI's avoid/seek (default
+--                      neutral). A "friendly" hazard only draws the side that owns it.
 --   * tags          -- descriptive tags (e.g. { "fire" }); a cast whose tags meet a hazard's
 --                      dousedByTags removes it
 --   * dousedByTags  -- tags that dispel this hazard when a matching cast covers its tile (e.g. water -> fire)
@@ -20,8 +23,8 @@
 --   * onExpire(ctx) -- fired when the hazard's duration runs out
 --
 -- `ctx` carries { combat, hazard, unit } plus bound, headless-safe helpers (applyStatus / heal /
--- damage / unitsNear). Combat/Status are pulled through a LAZY require so this module never sits in a
--- load-time require cycle (combat.lua requires this module).
+-- damage / unitsNear / isAlly). Combat/Status are pulled through a LAZY require so this module never
+-- sits in a load-time require cycle (combat.lua requires this module).
 
 local Registry = require("models.registry")
 local Sprite = require("models.sprite")
@@ -43,6 +46,14 @@ local function hasTag(tags, want)
         if t == want then return true end
     end
     return false
+end
+
+-- Is `side` on the hazard's team? A hazard summoned by a cast carries its caster's side, so a
+-- Sanctuary the priest consecrates blesses the party and not the bandits standing in it. An
+-- arena-authored hazard may have no owner (hallowed ground that was simply always there) -- with no
+-- side to take, it counts everyone as an ally.
+function Hazard.allied(hazard, side)
+    return not hazard.side or not side or hazard.side == side
 end
 
 -- Build the effect context handed to a hazard def's hooks. Combat/Status are required lazily (at
@@ -67,6 +78,7 @@ local function ctxFor(combat, hazard, unit)
             return Combat.dealFlatDamage(combat, tgt, amount, tags, hazard.name or hazard.id)
         end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
+        isAlly = function(tgt) return tgt ~= nil and Hazard.allied(hazard, tgt.side) end,
     }
 end
 
@@ -217,16 +229,19 @@ function Hazard.douse(combat, cells, tags)
     return n
 end
 
--- Signed "how much does the AI want to stand here" score for tile (x, y): negative for hostile
--- hazards (fire), positive for friendly ones (a sanctuary), zero for neutral (rain). Pure, so the
--- enemy planner can fold it into destination scoring and tests can assert it directly.
-function Hazard.tileBias(combat, x, y)
+-- Signed "how much does a unit of `side` want to stand here" score for tile (x, y): negative for
+-- hostile hazards (fire burns whoever walks in), positive for friendly ones (a sanctuary), zero for
+-- neutral (rain). A friendly hazard only pulls the side that owns it -- the enemy gains nothing from
+-- the party's sanctuary, so it must not detour onto one. Omitting `side` scores the tile for a unit
+-- that every hazard counts as an ally. Pure, so the enemy planner can fold it into destination
+-- scoring and tests can assert it directly.
+function Hazard.tileBias(combat, x, y, side)
     local score = 0
     for _, h in ipairs(Hazard.allAt(combat, x, y)) do
         local disp = h.def.disposition
         if disp == "hostile" then
             score = score - Hazard.HOSTILE_BIAS
-        elseif disp == "friendly" then
+        elseif disp == "friendly" and Hazard.allied(h, side) then
             score = score + Hazard.FRIENDLY_BIAS
         end
     end

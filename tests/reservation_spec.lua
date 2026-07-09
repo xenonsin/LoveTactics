@@ -30,7 +30,7 @@ local function holder() return { alive = true } end
 
 return {
     {
-        name = "reserving lowers the ceiling and clamps current, but never touches max",
+        name = "reserving spends the resource and lowers the ceiling, but never touches max",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
             local mage = c.units[1]
@@ -42,11 +42,11 @@ return {
             assert(mana.max == max, "max is untouched by a reservation")
             assert(Combat.reservedAmount(mage.char, "mana") == 10, "the reservation is recorded")
             assert(Combat.unreservedMax(mage.char, "mana") == max - 10, "the ceiling drops by the reservation")
-            assert(mana.current == max - 10, "current is clamped down to the new ceiling")
+            assert(mana.current == max - 10, "and the 10 is spent out of current")
         end,
     },
     {
-        name = "a reservation below current only lowers the ceiling; it doesn't take what isn't there",
+        name = "a reservation is spent out of current even when the pool is far from full",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
             local mage = c.units[1]
@@ -54,8 +54,12 @@ return {
             mana.current = 12 -- spent most of the pool already
 
             Combat.reserve(mage.char, "mana", 10, holder())
-            assert(Combat.unreservedMax(mage.char, "mana") == mana.max - 10, "the ceiling still drops")
-            assert(mana.current == 12, "current sits below the ceiling, so nothing is taken")
+            assert(Combat.unreservedMax(mage.char, "mana") == mana.max - 10, "the ceiling drops")
+            assert(mana.current == 2, "and the 10 comes out of the 12 that was left")
+
+            -- The 10 it locked away can never be regenerated back while the wolf lives.
+            Combat.restoreResource(mage.char, "mana", 999)
+            assert(mana.current == mana.max - 10, "regen refills only the unreserved share")
         end,
     },
     {
@@ -193,6 +197,65 @@ return {
 
             mage.char.stats.mana.current = 1
             assert(not Combat.canAfford(mage, ab), "an empty pool has nothing to set aside")
+        end,
+    },
+    {
+        name = "an ability that both costs and reserves one pool must afford the two together",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local mage = c.units[1]
+            local mana = mage.char.stats.mana
+            local ab = { cost = { stat = "mana", amount = 12 }, reserve = { stat = "mana", percent = 0.25 } }
+            local reserve = math.floor(mana.max * 0.25)
+
+            -- useItem pays the cost first, so the reservation may only draw on what it leaves behind.
+            mana.current = 12 + reserve
+            assert(Combat.canAfford(mage, ab), "exactly enough for the cost and the reservation")
+
+            mana.current = 12 + reserve - 1
+            assert(not Combat.canAfford(mage, ab), "covering the cost alone is not enough")
+            assert(Combat.itemBlockReason(mage, { activeAbility = ab }).kind == "reserve",
+                "and it is the reservation that is named as short, not the cost")
+        end,
+    },
+    {
+        name = "abilitySpend lists both the cost and the reservation, priced against the actor",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local mage = c.units[1]
+            local max = mage.char.stats.mana.max
+            local ab = { cost = { stat = "mana", amount = 12 }, reserve = { stat = "mana", percent = 0.25 } }
+
+            local spend = Combat.abilitySpend(mage, ab)
+            assert(#spend == 2, "a cast that both costs and reserves takes two bites")
+            assert(spend[1].kind == "cost" and spend[1].amount == 12, "the cost is taken first")
+            assert(spend[2].kind == "reserve" and spend[2].amount == math.floor(max * 0.25),
+                "then the reservation, a share of maximum")
+
+            -- The hover preview must show the price the cast will actually charge, not the printed one.
+            Status.apply(c, mage, "hasted")
+            local hasted = Combat.abilitySpend(mage, ab)
+            assert(hasted[1].amount == 6, "the cost row follows the cost multiplier")
+            assert(hasted[2].amount == math.floor(max * 0.25), "the reservation row does not")
+        end,
+    },
+    {
+        name = "abilitySpend covers a summon that only reserves, and is empty for a free ability",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local mage = c.units[1]
+            local max = mage.char.stats.mana.max
+
+            -- Summon Fire Elemental has no `cost` at all -- its whole price is the reservation, so a
+            -- preview that only reads `cost` would show the player nothing being spent.
+            local summon = Item.instantiate("ability_summon_fire_elemental")
+            local spend = Combat.abilitySpend(mage, summon.activeAbility)
+            assert(#spend == 1 and spend[1].kind == "reserve", "the reservation is the only spend")
+            assert(spend[1].stat == "mana" and spend[1].amount == math.floor(max * 0.25),
+                "a quarter of maximum mana")
+
+            assert(#Combat.abilitySpend(mage, { speed = 4 }) == 0, "a free ability takes nothing")
+            assert(#Combat.abilitySpend(mage, nil) == 0, "and neither does no ability at all")
         end,
     },
 }

@@ -193,7 +193,7 @@ blueprint into `data/status/<id>.lua` with any of the hooks `models/status.lua` 
 ```lua
 return {
     name = "Poison",
-    abbr = "Ps",                   -- 2-char badge label
+    abbr = "Ps",                   -- short badge label (2-3 chars; longer is squeezed to fit)
     color = { 0.5, 0.85, 0.4 },    -- badge tint (board + turn strip)
     duration = 6,                  -- ticks before it expires
     magnitude = 4,                 -- effect strength (meaning is up to the hooks)
@@ -294,11 +294,18 @@ all, plus a fresh copy of its grid. Mark an item `noCopy = true` to keep it out 
 `data/items/ability/ability_summon_wolf.lua` and `ability_doppelganger.lua`.
 
 **Reservation.** `reserve = { stat, percent }` commits a share of the pool's *maximum* for as long
-as the summoned creature lives. It lowers the ceiling `current` may reach, never `max` — so
-reserving life genuinely leaves you with less life to lose, while `%-of-max` modifiers are
-unaffected. The cast is refused unless the caster actually holds the resource. When the summon dies
-— or its summoner does — the reservation is released. The bond runs the other way too: **a dead
-summoner's creatures vanish with it**, which is what lets `killAll` still resolve.
+as the summoned creature lives. A reservation is both a price and a lock: the amount is **spent out
+of `current` on the cast** — so the cast is refused unless the caster actually holds it — and the
+pool's *ceiling* drops by the same amount, so what was spent cannot be regenerated back while the
+creature stands. It never lowers `max`, so reserving life genuinely leaves you with less life to
+lose while `%-of-max` modifiers stay honest. An ability that both `cost`s and `reserve`s the same
+pool must afford the two together (the cost is paid first). When the summon dies — or its summoner
+does — the reservation is released, restoring the ceiling but **not** refunding what was spent. The
+bond runs the other way too: **a dead summoner's creatures vanish with it**, which is what lets
+`killAll` still resolve.
+
+A reservation is deliberately *not* scaled by a cost-reducing status: Haste halves `ab.cost`
+(`Combat.abilityCost`) but never `ab.reserve` (`Combat.abilityReserve`).
 
 ## Knockback and pull
 

@@ -2,9 +2,10 @@
 -- in-range cell to the effect as fx.tx / fx.ty), which fx.summon turns into a real unit: it joins
 -- the turn order, obeys the player, and carries the wolf blueprint's own fangs.
 --
--- The wolf isn't paid for, it is SUSTAINED: `reserve` locks a quarter of the summoner's maximum
--- mana away for as long as the wolf lives, and hands it straight back when it falls (or when the
--- summoner does). The lock lowers the ceiling the archer's mana may reach; it never touches the max.
+-- The wolf is paid for AND sustained: `reserve` spends a quarter of the summoner's maximum mana on
+-- the cast (so the archer must hold that much to call it at all) and keeps it locked away for as
+-- long as the wolf lives -- the lock lowers the ceiling the archer's mana may regenerate back to,
+-- never the max itself. The ceiling is restored when the wolf falls (or when the summoner does).
 --
 -- `power` scales the creature through `scaling`: each entry is added on top of the blueprint's base
 -- (health +2 per point, damage +0.5 per point), so a stronger caster fields a stronger wolf.

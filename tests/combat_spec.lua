@@ -95,6 +95,38 @@ return {
         end,
     },
     {
+        name = "planMove lays out an origin-first path that stepMove walks one tile per call",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("archer", 2, 2) }, {})
+            local u = c.units[1]
+            Combat.startTurn(c)
+
+            local plan = Combat.planMove(c, u, 2, 5)
+            assert(plan and plan.cost == 3, "a 3-tile walk is planned at cost 3")
+            assert(#plan.path == 4, "the path holds the origin plus one tile per step, got " .. #plan.path)
+            assert(plan.path[1].x == 2 and plan.path[1].y == 2, "path[1] is the tile the unit stands on")
+            assert(plan.path[4].x == 2 and plan.path[4].y == 5, "the last tile is the destination")
+            -- Every hop is a single cardinal step, so nothing is skipped over on the way.
+            for i = 2, #plan.path do
+                local a, b = plan.path[i - 1], plan.path[i]
+                assert(math.abs(a.x - b.x) + math.abs(a.y - b.y) == 1, "path tiles are adjacent")
+            end
+            assert(u.x == 2 and u.y == 2 and not Combat.hasMoved(c), "planning alone moves nothing")
+
+            local walk = Combat.beginMove(c, plan)
+            assert(Combat.hasMoved(c), "opening the walk spends the turn's one move")
+            assert(u.x == 2 and u.y == 2, "but the unit hasn't left the origin yet")
+
+            for i = 2, #plan.path do
+                assert(Combat.stepMove(c, walk), "a step remains")
+                assert(u.x == plan.path[i].x and u.y == plan.path[i].y,
+                    "the unit stands on path tile " .. i)
+            end
+            assert(Combat.stepMove(c, walk) == false, "the walk is over once the destination is reached")
+            assert(u.initiative == 0, "walking does not change initiative on its own")
+        end,
+    },
+    {
         name = "useItem attacks: range, resource cost, speed, and damage all apply",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 4) })

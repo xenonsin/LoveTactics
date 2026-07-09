@@ -48,6 +48,22 @@ return {
         end,
     },
     {
+        name = "a unit killed by a trap en route stops on the tile it fell on",
+        fn = function()
+            -- One hit point left: the spike trap at (1,3) finishes the archer halfway to (1,4).
+            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
+            Trap.place(c, 1, 3, "spike_trap", "enemy")
+            local archer = c.units[1]
+            archer.char.stats.health.current = 1
+            openTurn(c, archer)
+
+            assert(Combat.moveUnit(c, archer, 1, 4), "the move is legal (it is the walk that kills)")
+            assert(not archer.alive, "the trap killed the archer")
+            assert(archer.x == 1 and archer.y == 3,
+                "it lies on the trap, not at the destination (got " .. archer.x .. "," .. archer.y .. ")")
+        end,
+    },
+    {
         name = "a unit does not trigger its own side's trap",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
