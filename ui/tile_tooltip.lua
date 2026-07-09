@@ -190,6 +190,38 @@ local function appendUnit(blocks, unit, preview)
     end
 end
 
+-- Disposition -> badge tint for a hazard heading (no `color` on the hazard def itself).
+local HAZARD_COLOR = {
+    hostile  = { 0.95, 0.55, 0.35 }, -- fire orange
+    friendly = { 0.45, 0.85, 0.55 }, -- sanctuary green
+    neutral  = { 0.55, 0.72, 0.95 }, -- rain blue
+}
+
+-- Append the hazards on the tile (info.hazards): a heading then, per hazard, its name (tinted by
+-- disposition) with the remaining duration on the right, and a flavour line. Ordered to sit ABOVE
+-- the terrain section but BELOW any occupant, so a fire/sanctuary reads between the two.
+-- Returns true if it appended a hazard section (so the empty-tile caller knows to add a divider
+-- before the terrain that follows). A leading divider is added only when the box already has content
+-- above (an occupant); on an empty tile the hazard leads, so no leading divider.
+local function appendHazard(blocks, info)
+    local hazards = info.hazards
+    if not hazards or #hazards == 0 then return false end
+    if #blocks > 0 then blocks[#blocks + 1] = { kind = "sep" } end
+    blocks[#blocks + 1] = { kind = "head", text = #hazards > 1 and "Hazards" or "Hazard",
+        color = { 0.85, 0.86, 0.92 } }
+    for _, h in ipairs(hazards) do
+        local def = h.def or {}
+        blocks[#blocks + 1] = { kind = "status",
+            name = def.name or h.name or "Hazard",
+            color = HAZARD_COLOR[def.disposition] or HAZARD_COLOR.neutral,
+            remaining = h.remaining }
+        if def.description and def.description ~= "" then
+            blocks[#blocks + 1] = { kind = "desc", text = def.description }
+        end
+    end
+    return true
+end
+
 -- Build the ordered content blocks for the hovered tile. The occupant is the priority: when a
 -- unit or trap stands on the tile it leads (its name is the title, its stats first), and the
 -- terrain is demoted to a section below. An empty tile shows the terrain alone. Block kinds:
@@ -205,8 +237,10 @@ local function buildBlocks(info)
     if unit and unit.char then
         appendUnit(blocks, unit, info.preview)
         -- Terrain is only appended for a battlefield tile hover (info.cell present); a turn-order
-        -- strip hover passes just the unit, so it shows the character alone.
+        -- strip hover passes just the unit, so it shows the character alone. Hazards read between the
+        -- occupant and the terrain.
         if info.cell then
+            appendHazard(blocks, info)
             blocks[#blocks + 1] = { kind = "sep" }
             appendTerrain(blocks, info, true)
         end
@@ -227,10 +261,12 @@ local function buildBlocks(info)
             blocks[#blocks + 1] = block
         end
         if info.cell then
+            appendHazard(blocks, info)
             blocks[#blocks + 1] = { kind = "sep" }
             appendTerrain(blocks, info, true)
         end
     else
+        if appendHazard(blocks, info) then blocks[#blocks + 1] = { kind = "sep" } end
         appendTerrain(blocks, info, false)
     end
     return blocks

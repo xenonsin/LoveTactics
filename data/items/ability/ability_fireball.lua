@@ -21,6 +21,11 @@ return {
             for _, u in ipairs(fx.aoeUnits()) do
                 fx.damage(u)
             end
+            -- The blast leaves the ground ablaze: a Fire hazard on every scorched tile (the same
+            -- `aoe` footprint). It burns whoever enters, spreads into forest, and lingers a few turns.
+            for _, c in ipairs(fx.aoeCells()) do
+                fx.placeHazard(c.x, c.y, "hazard_fire")
+            end
         end,
     },
 }

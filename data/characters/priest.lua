@@ -15,6 +15,6 @@ return {
     -- hit -- the priest's two ways to refuel the non-regenerating mana pool.
     startingItems = {
         "ability_heal", "ability_jolt", "silk_robes", "healing_potion",
-        "focus_stone", "parasitic_staff",
+        "focus_stone", "parasitic_staff", "ability_sanctuary",
     }, -- item ids
 }

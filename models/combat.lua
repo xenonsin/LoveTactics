@@ -41,6 +41,7 @@
 
 local Status = require("models.status")
 local Trap = require("models.trap")
+local Hazard = require("models.hazard")
 local Character = require("models.character")
 
 local Combat = {}
@@ -362,6 +363,13 @@ function Combat.new(arena, partyUnits, enemyUnits)
         Trap.place(combat, t.x, t.y, t.id, t.side or "enemy")
     end
 
+    -- Hazards: persistent area effects (fire/rain/sanctuary). Authored via arena.hazards
+    -- ({ id, x, y }); in-combat placement adds more via fx.placeHazard. Always visible, per-cell.
+    combat.hazards = {}
+    for _, h in ipairs((arena and arena.hazards) or {}) do
+        Hazard.place(combat, h.x, h.y, h.id, { side = h.side, duration = h.duration })
+    end
+
     -- Authored traps are placed above WITHOUT logging (they're hidden until detected); the log
     -- opens on a clean "battle begins" line so the panel isn't empty on the first frame.
     Combat.logEvent(combat, "system", "The battle begins.")
@@ -382,8 +390,9 @@ function Combat.rebase(combat)
     end
     combat.clock = combat.clock + minInit
     -- The subtracted amount IS the ticks that just elapsed: count status durations down by it,
-    -- and regenerate stamina by the same elapsed time.
+    -- count hazard durations down (and let fire spread) by it, and regenerate stamina by the same time.
     Status.tick(combat, minInit)
+    Hazard.tick(combat, minInit)
     Combat.regenerate(combat, minInit)
 end
 
@@ -729,11 +738,14 @@ function Combat.moveUnit(combat, unit, x, y)
     Combat.logEvent(combat, "move", string.format("%s moves to (%d, %d).", unitName(unit), x, y))
 
     -- Walk the path origin-first, triggering each opposing trap in traversal order. A trap that
-    -- kills (or roots-then-kills via a later trap) the mover stops further triggers.
+    -- kills (or roots-then-kills via a later trap) the mover stops further triggers. Any hazard on a
+    -- NEWLY entered tile (path[i] with i < #path -- the origin is #path, which the unit is leaving,
+    -- not entering) fires its on-entry effect too; a hazard affects either side.
     for i = #path, 1, -1 do
         if not unit.alive then break end
         local trap = Trap.at(combat, path[i].x, path[i].y)
         if trap then Trap.trigger(combat, trap, unit) end
+        if unit.alive and i < #path then Hazard.onEnter(combat, unit, path[i].x, path[i].y) end
     end
 
     return true, node.cost
@@ -886,7 +898,10 @@ function Combat.mitigatedDamage(target, base, tags)
     for _, t in ipairs(tags) do
         resist = resist + ((target.resist and target.resist[t]) or 0)
     end
-    return math.max(1, math.floor(base - defense - resist + 0.5))
+    -- Status-driven vulnerabilities ADD damage for matching tags (e.g. Wet -> +lightning). Folded in
+    -- here, the shared damage core, so both real hits and the damage preview see the amplification.
+    local vuln = Status.vulnerability(target, tags)
+    return math.max(1, math.floor(base - defense - resist + vuln + 0.5))
 end
 
 function Combat.dealFlatDamage(combat, target, base, tags, source)
@@ -986,6 +1001,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty) end,
+        aoeCells = function() return Combat.aoeCells(combat, ab, tx, ty) end,
         adjacentItems = function()
             local idx = Character.slotIndex(unit.char, item)
             return idx and Character.adjacentItems(unit.char, idx) or {}
@@ -1032,8 +1048,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
             if type(res) == "table" then return math.min(res.max, res.current + amount) - res.current end
             return amount
         end,
-        -- Placing a trap mutates combat, so a dry run must not; report nothing.
+        -- Placing a trap/hazard mutates combat, so a dry run must not; report nothing.
         placeTrap = function() return nil end,
+        placeHazard = function() return nil end,
     }
     if ab.effect then pcall(ab.effect, fx) end
     -- A damage total >= the target's current HP would drop it: flag the lethal blow.
@@ -1075,6 +1092,7 @@ function Combat.abilityOutput(unit, item)
         unitAt = function() return nil end,
         unitsNear = function() return { dummy } end,
         aoeUnits = function() return { dummy } end,
+        aoeCells = function() return {} end,
         damage = function(tgt, opts)
             local d = Combat.computeDamage(nil, unit, tgt or dummy, item, opts)
             out.damage = out.damage + d
@@ -1090,6 +1108,7 @@ function Combat.abilityOutput(unit, item)
         end,
         restore = function(_, _, amount) return amount or 0 end,
         placeTrap = function() return nil end,
+        placeHazard = function() return nil end,
     }
     pcall(ab.effect, fx)
     return out
@@ -1120,11 +1139,11 @@ function Combat.abilityTargets(combat, unit, item)
     return out
 end
 
--- Does this ability read as friendly (green preview) rather than hostile (red)? Only ally/self
--- targets are supportive; enemy strikes and tile-targeted trap placements are hostile, so they
--- highlight red like any offensive reach.
+-- Does this ability read as friendly (green preview) rather than hostile (red)? Ally/self targets
+-- are supportive; enemy strikes and tile-targeted trap placements are hostile. A tile/area cast that
+-- lays down a friendly effect (a Sanctuary hazard) opts in explicitly with `support = true`.
 function Combat.isSupportAbility(ab)
-    return ab ~= nil and (ab.target == "ally" or ab.target == "self")
+    return ab ~= nil and (ab.target == "ally" or ab.target == "self" or ab.support == true)
 end
 
 local function resourceValue(char, stat)
@@ -1208,7 +1227,9 @@ function Combat.useItem(combat, unit, item, tx, ty)
         local row = combat.arena and combat.arena.tiles and combat.arena.tiles[ty]
         local cell = row and row[tx]
         if not (cell and cell.walkable) then return false, "blocked tile" end
-        if Combat.unitAt(combat, tx, ty) then return false, "occupied tile" end
+        -- An area cast (e.g. summoning a hazard you may stand in) can target an occupied tile; a
+        -- point placement (a trap) still refuses a tile a unit stands on.
+        if not ab.allowOccupied and Combat.unitAt(combat, tx, ty) then return false, "occupied tile" end
     end
 
     local target = Combat.unitAt(combat, tx, ty)
@@ -1236,6 +1257,9 @@ function Combat.useItem(combat, unit, item, tx, ty)
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty) end,
+        -- The cells this ability's AoE footprint covers (reads `ab.aoe`); an effect iterates them to
+        -- paint the ground -- e.g. Fireball dropping a fire hazard on every blasted tile.
+        aoeCells = function() return Combat.aoeCells(combat, ab, tx, ty) end,
         -- Items adjacent to this one in the caster's 3x3 grid (diagonals included).
         adjacentItems = function()
             local idx = Character.slotIndex(unit.char, item)
@@ -1291,6 +1315,14 @@ function Combat.useItem(combat, unit, item, tx, ty)
             end
             return trap
         end,
+        -- Summon a hazard (fire/rain/sanctuary) on a tile, tagged with the caster's side (for the
+        -- renderer's tint). Always visible; placeable on occupied ground; refreshes rather than
+        -- stacks an identical hazard already there.
+        placeHazard = function(px, py, id, opts)
+            opts = opts or {}
+            opts.side = opts.side or unit.side
+            return Hazard.place(combat, px, py, id, opts)
+        end,
     }
 
     -- Log the action itself before its effect runs, so the cast heads the sub-events it spawns
@@ -1300,6 +1332,15 @@ function Combat.useItem(combat, unit, item, tx, ty)
         string.format("%s %s %s.", unitName(unit), verb, item.name or "an item"))
 
     if ab.effect then ab.effect(fx) end
+
+    -- Water quenches fire: a cast carrying the "water" tag douses any dousable hazard across its
+    -- footprint (the AoE cells, or just the aimed cell). Runs after the effect so a water AoE that
+    -- also lays down rain clears the fire it fell on. Uses the full cast tag set (item + ability).
+    local castTags = collectTags(item, nil)
+    if hasTag(castTags, "water") then
+        local cells = ab.aoe and Combat.aoeCells(combat, ab, tx, ty) or { { x = tx, y = ty } }
+        Hazard.douse(combat, cells, castTags)
+    end
 
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed.
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
@@ -1399,11 +1440,14 @@ function Combat.planEnemyAction(combat, unit)
         if hit then return { item = item, tx = hit.x, ty = hit.y } end
     end
 
-    -- 2. Move to a reachable tile from which an ability can hit a foe. Prefer the fewest
-    -- steps, then the nearest foe from that tile.
+    -- 2. Move to a reachable tile from which an ability can hit a foe. Prefer the fewest steps, then
+    -- (tie) the tile with the friendlier hazard footing -- so the AI won't end its turn in fire when
+    -- an equally-quick safe tile hits the same foe -- then the nearest foe. Hazard.tileBias is 0 on a
+    -- hazard-free tile, so this reduces to the old steps/dist ordering when nothing is burning.
     local reachable = Combat.reachable(combat, unit)
     local best
     for _, node in pairs(reachable) do
+        local nodeBias = Hazard.tileBias(combat, node.x, node.y)
         for _, item in ipairs(items) do
             local ab = item.activeAbility
             local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
@@ -1416,9 +1460,10 @@ function Combat.planEnemyAction(combat, unit)
                          or Combat.hasLineOfSight(combat, node.x, node.y, p.x, p.y)) then
                     local d = manhattan(node.x, node.y, p.x, p.y)
                     if not best or node.steps < best.steps
-                        or (node.steps == best.steps and d < best.dist) then
+                        or (node.steps == best.steps and nodeBias > best.bias)
+                        or (node.steps == best.steps and nodeBias == best.bias and d < best.dist) then
                         best = { x = node.x, y = node.y, item = item, tx = p.x, ty = p.y,
-                                 steps = node.steps, dist = d }
+                                 steps = node.steps, dist = d, bias = nodeBias }
                     end
                 end
             end
@@ -1428,13 +1473,17 @@ function Combat.planEnemyAction(combat, unit)
         return { move = { x = best.x, y = best.y }, item = best.item, tx = best.tx, ty = best.ty }
     end
 
-    -- 3. No attack possible: step to the reachable tile closest to the target (ties -> fewer
-    -- steps). Only move if it strictly closes the gap, to avoid pacing in place.
+    -- 3. No attack possible: step to the reachable tile closest to the target, preferring (on a tie)
+    -- the friendlier hazard footing -- so a wounded unit steps onto a sanctuary and away from fire --
+    -- then fewer steps. Only move if it strictly closes the gap, to avoid pacing in place.
     local dest
     for _, node in pairs(reachable) do
         local d = manhattan(node.x, node.y, target.x, target.y)
-        if not dest or d < dest.dist or (d == dest.dist and node.steps < dest.steps) then
-            dest = { x = node.x, y = node.y, dist = d, steps = node.steps }
+        local nodeBias = Hazard.tileBias(combat, node.x, node.y)
+        if not dest or d < dest.dist
+            or (d == dest.dist and nodeBias > dest.bias)
+            or (d == dest.dist and nodeBias == dest.bias and node.steps < dest.steps) then
+            dest = { x = node.x, y = node.y, dist = d, steps = node.steps, bias = nodeBias }
         end
     end
     if dest and dest.dist < bestDist then

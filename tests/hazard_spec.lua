@@ -1,0 +1,249 @@
+-- Tests for the hazard system (models/hazard.lua) and its combat hooks: on-entry effect delivery via
+-- statuses (Burn/Wet/Regen), placement on occupied ground, duration refresh (no stacking), fire
+-- spread into burnable terrain, water dousing, Wet's lightning vulnerability, and the enemy AI's
+-- avoid-hostile / seek-friendly tile bias. Also the summoning abilities (Fireball leaving fire, Rain,
+-- Sanctuary). Pure logic, headless.
+
+local Character = require("models.character")
+local Item = require("models.item")
+local Combat = require("models.combat")
+local Hazard = require("models.hazard")
+local Status = require("models.status")
+
+-- A flat, all-walkable ground arena (mirrors tests/trap_spec.lua's fixture).
+local function arena(cols, rows)
+    local tiles = {}
+    for y = 1, rows do
+        tiles[y] = {}
+        for x = 1, cols do
+            tiles[y][x] = { type = "ground", moveCost = 1, walkable = true }
+        end
+    end
+    return { cols = cols, rows = rows, tiles = tiles, objective = { type = "killAll" } }
+end
+
+local function unit(charOrId, x, y)
+    local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
+    return { char = char, x = x, y = y }
+end
+
+local function openTurn(c, u)
+    c.turn = { unit = u, moved = false, moveCost = 0 }
+end
+
+local function countStatus(u, id)
+    local n = 0
+    for _, s in ipairs(u.statuses or {}) do if s.id == id then n = n + 1 end end
+    return n
+end
+
+local function findItem(char, id)
+    for _, it in ipairs(Character.eachItem(char)) do
+        if it.id == id then return it end
+    end
+    return nil
+end
+
+return {
+    {
+        name = "a hazard may be placed on an occupied tile but not on a wall; a repeat refreshes it",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, {})
+            -- Occupied tile: unlike a trap, a hazard is meant to be stood in.
+            assert(Hazard.place(c, 4, 4, "hazard_rain"), "a hazard can sit on an occupied tile")
+            c.arena.tiles[3][3].walkable = false
+            assert(Hazard.place(c, 3, 3, "hazard_rain") == nil, "a hazard refuses an impassable tile")
+
+            local first = Hazard.at(c, 6, 6, "hazard_fire")
+            assert(first == nil, "no fire yet at (6,6)")
+            local a = Hazard.place(c, 6, 6, "hazard_fire")
+            a.remaining = 1 -- run it low
+            local b = Hazard.place(c, 6, 6, "hazard_fire")
+            assert(a == b, "a repeat placement returns the same hazard, not a second one")
+            assert(a.remaining == (Hazard.defs.hazard_fire.duration or 1), "the duration refreshed, not stacked")
+        end,
+    },
+    {
+        name = "walking onto a fire hazard applies Burn, which then damages at the next turn start",
+        fn = function()
+            -- Archer (movement 4, less 1 for leather = 3) walks (1,1)->(1,4) across fire at (1,3).
+            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
+            Hazard.place(c, 1, 3, "hazard_fire")
+            local archer = c.units[1]
+            local hp0 = archer.char.stats.health.current
+            openTurn(c, archer)
+
+            assert(Combat.moveUnit(c, archer, 1, 4), "the move across the fire succeeds")
+            assert(Status.has(archer, "burn"), "entering the fire applied Burn")
+            assert(archer.char.stats.health.current == hp0, "Burn deals no damage on entry (it ticks at turn start)")
+
+            Combat.startTurn(c) -- opens the archer's next turn -> Burn's onTurnStart fires
+            assert(archer.char.stats.health.current < hp0, "Burn dealt fire damage at the turn start")
+        end,
+    },
+    {
+        name = "crossing several fire tiles refreshes Burn rather than stacking a second instance",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
+            Hazard.place(c, 1, 2, "hazard_fire")
+            Hazard.place(c, 1, 3, "hazard_fire")
+            local archer = c.units[1]
+            openTurn(c, archer)
+
+            assert(Combat.moveUnit(c, archer, 1, 4), "walk across both fire tiles")
+            assert(countStatus(archer, "burn") == 1, "only one Burn instance despite crossing two fire tiles")
+        end,
+    },
+    {
+        name = "a hazard summoned onto a unit affects it immediately (Fireball-on-foe path)",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, {})
+            local knight = c.units[1]
+            assert(Hazard.place(c, 4, 4, "hazard_heal"), "drop a sanctuary under the knight")
+            assert(Status.has(knight, "regen"), "standing where it was summoned granted Regeneration at once")
+        end,
+    },
+    {
+        name = "Wet makes a lightning hit deal more damage (and the preview shares the same math)",
+        fn = function()
+            -- Mage's Jolt (tags lightning+magical) against a knight, before and after soaking it.
+            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("knight", 1, 2) })
+            local mage, knight = c.units[1], c.units[2]
+            local jolt = findItem(mage.char, "ability_jolt")
+            assert(jolt, "the mage carries Jolt")
+
+            local before = Combat.computeDamage(c, mage, knight, jolt)
+            Status.apply(c, knight, "wet")
+            local after = Combat.computeDamage(c, mage, knight, jolt)
+            local bonus = Status.defs.wet.vulnerable.lightning
+            assert(after == before + bonus,
+                string.format("Wet adds %d lightning damage (%d -> %d)", bonus, before, after))
+        end,
+    },
+    {
+        name = "Regeneration restores health at the start of the afflicted unit's turn",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            local knight = c.units[1]
+            local hp = knight.char.stats.health
+            hp.current = hp.max - 20 -- wound it so a heal has room
+            Status.apply(c, knight, "regen")
+
+            local before = hp.current
+            Combat.startTurn(c) -- Regen's onTurnStart heals
+            assert(hp.current > before, "Regeneration mended health at the turn start")
+            assert(hp.current == before + Status.defs.regen.magnitude, "healed exactly its magnitude")
+        end,
+    },
+    {
+        name = "a water-tagged cast douses fire in its footprint (direct and via the Rain spell)",
+        fn = function()
+            -- Direct: Hazard.douse clears a dousable hazard on the given cells.
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            Hazard.place(c, 5, 5, "hazard_fire")
+            assert(Hazard.douse(c, { { x = 5, y = 5 } }, { "water" }) == 1, "water doused the fire")
+            assert(Hazard.at(c, 5, 5, "hazard_fire") == nil, "the fire is gone")
+
+            -- Via a cast: the mage's Rain (water-tagged AoE) both douses fire and lays down rain.
+            local c2 = Combat.new(arena(8, 8), { unit("mage", 3, 3) }, {})
+            local mage = c2.units[1]
+            local rain = findItem(mage.char, "ability_rain")
+            assert(rain, "the mage carries Rain")
+            Hazard.place(c2, 3, 3, "hazard_fire")
+            Hazard.place(c2, 3, 4, "hazard_fire")
+            openTurn(c2, mage)
+            assert(Combat.useItem(c2, mage, rain, 3, 3), "casting Rain on its own tile is allowed (allowOccupied)")
+            assert(Hazard.at(c2, 3, 3, "hazard_fire") == nil, "Rain doused the fire it fell on")
+            assert(Hazard.at(c2, 3, 3, "hazard_rain"), "Rain left a downpour behind")
+        end,
+    },
+    {
+        name = "fire spreads to an adjacent burnable tile on tick, but not onto plain ground",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            c.arena.tiles[2][3].burnable = true -- (3,2) is forest-like; (1,2) stays plain ground
+            Hazard.place(c, 2, 2, "hazard_fire")
+
+            Hazard.tick(c, 1) -- counts duration down, then spreads
+            assert(Hazard.at(c, 3, 2, "hazard_fire"), "fire crept into the adjacent burnable tile")
+            assert(Hazard.at(c, 1, 2, "hazard_fire") == nil, "fire did not spread onto plain ground")
+        end,
+    },
+    {
+        name = "tileBias reads negative under fire, positive under sanctuary, zero under rain",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            Hazard.place(c, 1, 1, "hazard_fire")
+            Hazard.place(c, 2, 2, "hazard_heal")
+            Hazard.place(c, 3, 3, "hazard_rain")
+            assert(Hazard.tileBias(c, 1, 1) < 0, "fire is hostile (avoid)")
+            assert(Hazard.tileBias(c, 2, 2) > 0, "sanctuary is friendly (seek)")
+            assert(Hazard.tileBias(c, 3, 3) == 0, "rain is neutral")
+            assert(Hazard.tileBias(c, 8, 8) == 0, "a clear tile has no bias")
+        end,
+    },
+    {
+        name = "the enemy AI steps to the safe tile when its two best advance tiles tie except for fire",
+        fn = function()
+            -- Movement-1 enemy at (4,4), foe at (7,7): the two closest advance tiles (5,4) and (4,5)
+            -- tie on distance, so the hazard bias decides. Fire on (5,4) -> it takes (4,5).
+            local enemyChar = Character.instantiate("bandit")
+            enemyChar.inventory = {} -- strip kit so only the range-1 unarmed remains (forces an advance)
+            local c = Combat.new(arena(8, 8), { unit("knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
+            local enemy = c.units[2]
+            enemy.char.stats.movement = 1
+            Hazard.place(c, 5, 4, "hazard_fire")
+
+            local plan = Combat.planEnemyAction(c, enemy)
+            assert(plan.move, "the enemy plans to advance")
+            assert(plan.move.x == 4 and plan.move.y == 5,
+                string.format("it avoids the fire tile, got (%d,%d)", plan.move.x, plan.move.y))
+        end,
+    },
+    {
+        name = "the enemy AI steps toward a sanctuary when its two best advance tiles otherwise tie",
+        fn = function()
+            local enemyChar = Character.instantiate("bandit")
+            enemyChar.inventory = {}
+            local c = Combat.new(arena(8, 8), { unit("knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
+            local enemy = c.units[2]
+            enemy.char.stats.movement = 1
+            Hazard.place(c, 5, 4, "hazard_heal")
+
+            local plan = Combat.planEnemyAction(c, enemy)
+            assert(plan.move, "the enemy plans to advance")
+            assert(plan.move.x == 5 and plan.move.y == 4,
+                string.format("it steps onto the sanctuary, got (%d,%d)", plan.move.x, plan.move.y))
+        end,
+    },
+    {
+        name = "casting Fireball leaves a Fire hazard across its blast (and still damages foes)",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("mage", 3, 1) }, { unit("bandit", 3, 3) })
+            local mage, bandit = c.units[1], c.units[2]
+            local fireball = findItem(mage.char, "ability_fireball")
+            assert(fireball, "the mage carries Fireball")
+            local hp0 = bandit.char.stats.health.current
+            openTurn(c, mage)
+
+            assert(Combat.useItem(c, mage, fireball, 3, 3), "Fireball lands on the bandit")
+            assert(bandit.char.stats.health.current < hp0, "the blast damaged the foe")
+            assert(Hazard.at(c, 3, 3, "hazard_fire"), "the blast centre is ablaze")
+            assert(Hazard.at(c, 2, 2, "hazard_fire") and Hazard.at(c, 4, 4, "hazard_fire"),
+                "fire covers the corners of the 3x3 blast")
+        end,
+    },
+    {
+        name = "hazard, status and ability blueprints all load headlessly",
+        fn = function()
+            for _, id in ipairs({ "hazard_fire", "hazard_rain", "hazard_heal" }) do
+                assert(Hazard.defs[id], "hazard def loaded: " .. id)
+            end
+            assert(Status.defs.wet and Status.defs.regen, "wet + regen statuses loaded")
+            for _, id in ipairs({ "ability_rain", "ability_sanctuary" }) do
+                local it = Item.instantiate(id)
+                assert(it and it.activeAbility, "ability loaded: " .. id)
+            end
+        end,
+    },
+}

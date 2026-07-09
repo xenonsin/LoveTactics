@@ -18,5 +18,6 @@ return {
     , "silk_robes"
     , "parasitic_staff"
     , "ability_fireball"
-    , "fire_stone" }, -- item ids
+    , "fire_stone"
+    , "ability_rain" }, -- item ids
 }

@@ -40,7 +40,7 @@ Arena.TILE_SIZE = 64 -- logical pixels per cell (8*64 = 512, centered in 1280x72
 --     Combat.fieldBonus; a generic bag so future tiles/objects can grant other buffs the same way.
 Arena.TILE_PROPS = {
     ground   = { moveCost = 1, walkable = true,  sightCost = 0 },  -- open field
-    forest   = { moveCost = 2, walkable = true,  sightCost = 1 },  -- slow to cross; soft cover
+    forest   = { moveCost = 2, walkable = true,  sightCost = 1, burnable = true }, -- slow to cross; soft cover; catches fire
     -- Steep high ground: blocks the view behind it, but a unit atop it sees + strikes one tile further.
     mountain = { moveCost = 3, walkable = true,  sightCost = 2, bonus = { range = 1 } },
     rough    = { moveCost = 2, walkable = true,  sightCost = 0 },  -- legacy penalty tile (curated arenas)
@@ -193,7 +193,7 @@ local function hydrateTiles(layout)
             local t = (layout.tiles[y] and layout.tiles[y][x]) or "ground"
             local p = Arena.TILE_PROPS[t] or Arena.TILE_PROPS.ground
             tiles[y][x] = { type = t, moveCost = p.moveCost, walkable = p.walkable,
-                            sightCost = p.sightCost or 0, bonus = p.bonus }
+                            sightCost = p.sightCost or 0, bonus = p.bonus, burnable = p.burnable }
         end
     end
     return tiles

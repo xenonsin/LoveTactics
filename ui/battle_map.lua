@@ -56,7 +56,7 @@ function BattleMap.new(arena, opts)
     self.numberFont = opts.numberFont or love.graphics.newFont(12)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
-    self.overlays = { move = {}, range = {}, threat = {}, traps = {} }
+    self.overlays = { move = {}, range = {}, threat = {}, traps = {}, hazards = {} }
 
     -- On-screen tile size. Defaults to the arena's logical tileSize but can be overridden so the
     -- board renders a little smaller than its data size, opening breathing room around it. All
@@ -97,7 +97,7 @@ end
 --   threat -> default-attack reach (red), the band beyond `move` shown during MOVE mode
 --   traps  -> runtime trap objects the viewer can see (own + detected), drawn under the units
 function BattleMap:setOverlays(overlays)
-    self.overlays = overlays or { move = {}, range = {}, threat = {}, traps = {} }
+    self.overlays = overlays or { move = {}, range = {}, threat = {}, traps = {}, hazards = {} }
 end
 
 -- Build the tileset quads + SpriteBatch for the mapped art types, or record that we
@@ -177,12 +177,45 @@ end
 
 function BattleMap:draw()
     self:drawTiles()
+    self:drawHazards() -- area effects wash the ground under the interaction highlights
     self:drawOverlays()
     self:drawTraps() -- revealed traps sit above the ground/overlays, under the units
     self:drawUnits()
     self:drawHighlights()
     self:drawUnitInfo() -- HP bars + turn numbers + status badges sit above the highlight fills
     self:drawCursor()
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- Hazards (self.overlays.hazards): persistent area effects, one runtime object per covered cell
+-- ({ x, y, sprite, def }). Always visible to both sides. Drawn as the hazard's sprite, or a
+-- translucent tile wash + border tinted by disposition (fire orange, sanctuary green, rain blue), so
+-- the footprint reads as a patch of ground. Sits under traps/units.
+function BattleMap:drawHazards()
+    local s = self.size
+    for _, h in ipairs(self.overlays.hazards or {}) do
+        if h.alive then
+            local wx, wy = self:cellToPixel(h.x, h.y)
+            local disp = h.def and h.def.disposition
+            local r, g, b = 0.55, 0.72, 0.95 -- neutral (rain) blue
+            if disp == "hostile" then r, g, b = 0.95, 0.45, 0.25 -- fire orange
+            elseif disp == "friendly" then r, g, b = 0.40, 0.85, 0.50 end -- sanctuary green
+            local sprite = h.sprite
+            if type(sprite) == "userdata" then
+                love.graphics.setColor(1, 1, 1)
+                local sw, sh = sprite:getDimensions()
+                local scale = math.min(s / sw, s / sh)
+                love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale, sw / 2, sh / 2)
+            else
+                love.graphics.setColor(r, g, b, 0.30)
+                love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+                love.graphics.setColor(r, g, b, 0.80)
+                love.graphics.setLineWidth(2)
+                love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+                love.graphics.setLineWidth(1)
+            end
+        end
+    end
     love.graphics.setColor(1, 1, 1)
 end
 

@@ -38,6 +38,10 @@ local function ctxFor(combat, unit, status)
             if not tgt then return 0 end
             return Combat.dealFlatDamage(combat, tgt, amount, tags, status.name or status.id)
         end,
+        heal = function(tgt, amount)
+            if not tgt then return 0 end
+            return Combat.applyHeal(combat, tgt, amount)
+        end,
         applyStatus = function(tgt, id, opts)
             if not tgt then return nil end
             return Status.apply(combat, tgt, id, opts)
@@ -91,6 +95,20 @@ function Status.statBonus(unit, name)
     for _, s in ipairs(unit.statuses or {}) do
         local bonus = s.def.statBonus
         if bonus and bonus[name] then total = total + bonus[name] end
+    end
+    return total
+end
+
+-- Extra pre-mitigation damage `unit` takes from a hit carrying `tags`, summed from every active
+-- status's `vulnerable = { tag = N }` bag (0 if none). Folded into Combat.mitigatedDamage so a
+-- vulnerability lands on both real hits and the damage preview alike (e.g. Wet -> +lightning damage).
+function Status.vulnerability(unit, tags)
+    local total = 0
+    for _, s in ipairs(unit.statuses or {}) do
+        local vuln = s.def.vulnerable
+        if vuln then
+            for _, t in ipairs(tags or {}) do total = total + (vuln[t] or 0) end
+        end
     end
     return total
 end

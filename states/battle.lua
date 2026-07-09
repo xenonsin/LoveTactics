@@ -26,6 +26,7 @@ local ActionPreview = require("ui.action_preview")
 local Character = require("models.character")
 local Combat = require("models.combat")
 local Trap = require("models.trap")
+local Hazard = require("models.hazard")
 local Status = require("models.status")
 local EncounterModel = require("models.encounter")
 
@@ -149,7 +150,7 @@ local function computeRange(unit, item)
                     -- still shows, so the reach reads even with no one standing in it).
                     local occ = Combat.unitAt(battle.combat, x, y)
                     local valid
-                    if target == "tile" then valid = occ == nil
+                    if target == "tile" then valid = occ == nil or ab.allowOccupied == true
                     elseif occ and target == "enemy" then valid = occ.side ~= unit.side
                     elseif occ and target == "ally" then valid = occ.side == unit.side
                     else valid = true end
@@ -533,6 +534,10 @@ local function refreshView()
     for _, t in ipairs(battle.revealedTraps) do battle.trapCells[t.x .. "," .. t.y] = t end
     overlays.traps = battle.revealedTraps
 
+    -- Hazards (fire/rain/sanctuary) are always visible to both sides, so the renderer draws the whole
+    -- live list -- no per-side visibility filter like traps have.
+    overlays.hazards = battle.combat.hazards
+
     -- Preview resources lost / damage dealt on the turn-order banners: the action under the mouse
     -- (the same one the tile tooltip shows) projects its damage/heal onto every affected unit's
     -- banner and its resource cost onto the actor's banner. Computed after the range/reach overlays
@@ -705,8 +710,11 @@ function battle.drawTileTooltip(mx, my)
     local W = LEFT_W - 32 -- full column width (16px margins each side)
     local dockTop, gap = 150, 8
 
-    -- Terrain box at the very bottom of the column.
-    local terrainBox = TileTooltip.draw({ cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy) },
+    -- Terrain box at the very bottom of the column. Any hazards on the tile ride along on the same
+    -- info so they read as a section directly above the terrain (and below the occupant box).
+    local terrainBox = TileTooltip.draw(
+        { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
+          hazards = Hazard.allAt(battle.combat, cx, cy) },
         mx, my, maxRight, { dock = true, dockX = 16, dockTop = dockTop, width = W })
     local topBox = terrainBox
 
