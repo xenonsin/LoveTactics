@@ -58,6 +58,9 @@ function Item.instantiate(id, quantity)
         visionRadius = def.visionRadius,       -- overworld vision boost (e.g. torch); nil for most
         detectRadius = def.detectRadius,       -- combat: reveals traps within this radius (detectors)
         maxStack = def.maxStack,               -- stackable (consumable) items: per-slot cap override
+        noSteal = def.noSteal,                 -- a pickpocket can never lift this (a beast's fangs)
+        stealPriority = def.stealPriority,     -- a pickpocket takes the highest first (decoy bait)
+        noCopy = def.noCopy,                   -- a summoned copy of the holder never carries this
     }
 
     -- Stack count: consumables carry a `quantity` (clamped to the item's cap); everything else is

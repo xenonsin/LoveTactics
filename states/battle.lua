@@ -212,8 +212,9 @@ local function computeThreat(unit)
     battle.threatCells = cells
 end
 
--- Start the current unit's turn: MOVE mode + reachable set for a party unit, or an AI
--- delay for an enemy.
+-- Start the current unit's turn: MOVE mode + reachable set for a unit the player commands, or an
+-- AI delay for anyone else (an enemy, or a summon fighting for them). Control -- not side -- picks
+-- the branch, so a player's summon takes an interactive turn and an inert decoy does not.
 local function beginTurn()
     local current = Combat.startTurn(battle.combat)
     battle.current = current
@@ -225,7 +226,7 @@ local function beginTurn()
     battle.threatCells = {}
     battle.attackReach = {}
     if not current then return end
-    if current.side == "party" then
+    if Combat.isPlayerControlled(current) then
         computeReachable(current)
         computeThreat(current)
         battle.map.cursor.x, battle.map.cursor.y = current.x, current.y
@@ -250,13 +251,13 @@ end
 -- Arm an ability item (or toggle it off if already armed).
 local function armItem(item)
     local current = battle.current
-    if battle.over or not current or current.side ~= "party" then return end
+    if battle.over or not current or not Combat.isPlayerControlled(current) then return end
     if not (item and item.activeAbility) then return end
     if battle.armedItem == item then cancelArm() return end
     -- Can't afford it, or a consumable stack is spent: leave it disarmed (the slot is grayed out
     -- and the tooltip says why), so a number-key / gamepad arm can't silently fail on confirm the
     -- way a click already can't.
-    if not Combat.canAfford(current.char, item.activeAbility) then return end
+    if not Combat.canAfford(current, item.activeAbility) then return end
     if Combat.isDepleted(item) then return end
     -- An ability that needs a specific neighbor (e.g. Rain of Arrows requires an adjacent bow)
     -- stays disarmed until that neighbor is in place -- the slot is grayed and useItem would
@@ -272,14 +273,14 @@ end
 
 local function armSlot(n)
     local current = battle.current
-    if not current or current.side ~= "party" then return end
+    if not current or not Combat.isPlayerControlled(current) then return end
     armItem(current.char.inventory[n])
 end
 
 -- Gamepad Y cycles through the current unit's ability items (past the end -> back to move).
 local function cycleAbilityItem()
     local current = battle.current
-    if battle.over or not current or current.side ~= "party" then return end
+    if battle.over or not current or not Combat.isPlayerControlled(current) then return end
     local items = Combat.abilityItems(current.char)
     if #items == 0 then return end
     local idx = 0
@@ -300,12 +301,7 @@ local function tryDefaultAttack(unit, tx, ty)
     if not entry or not weapon then return end
     -- Don't reposition for a strike we can't pay for: if the default weapon carries a cost the
     -- unit can't afford, bail before moving (unarmed is free, so this only guards real weapons).
-    local ab = weapon.activeAbility
-    if ab and ab.cost then
-        local res = unit.char.stats[ab.cost.stat]
-        local cur = (type(res) == "table" and res.current) or res or 0
-        if cur < ab.cost.amount then return end
-    end
+    if not Combat.canAfford(unit, weapon.activeAbility) then return end
     if entry.fromX ~= unit.x or entry.fromY ~= unit.y then
         if Combat.hasMoved(battle.combat) then return end -- can't move twice in a turn
         if not Combat.moveUnit(battle.combat, unit, entry.fromX, entry.fromY) then return end
@@ -321,12 +317,7 @@ local function tryDamageTrap(unit, tx, ty)
     local entry = battle.attackReach and battle.attackReach[tx .. "," .. ty]
     local weapon = battle.defaultWeapon
     if not entry or not weapon then return end
-    local ab = weapon.activeAbility
-    if ab and ab.cost then
-        local res = unit.char.stats[ab.cost.stat]
-        local cur = (type(res) == "table" and res.current) or res or 0
-        if cur < ab.cost.amount then return end
-    end
+    if not Combat.canAfford(unit, weapon.activeAbility) then return end
     if entry.fromX ~= unit.x or entry.fromY ~= unit.y then
         if Combat.hasMoved(battle.combat) then return end
         if not Combat.moveUnit(battle.combat, unit, entry.fromX, entry.fromY) then return end
@@ -356,7 +347,7 @@ end
 -- on the target unit (Combat.previewAbility); `support` tints the panel green for a friendly cast.
 local function actionPreviewFor(cx, cy)
     local current = battle.current
-    if battle.over or not current or current.side ~= "party" then return nil end
+    if battle.over or not current or not Combat.isPlayerControlled(current) then return nil end
     local unit = Combat.unitAt(battle.combat, cx, cy)
 
     if battle.mode == "armed" and battle.armedItem then
@@ -416,7 +407,7 @@ end
 -- armed item on it (ends the turn).
 local function confirm()
     local current = battle.current
-    if battle.over or not current or current.side ~= "party" then return end
+    if battle.over or not current or not Combat.isPlayerControlled(current) then return end
     local cx, cy = battle.map.cursor.x, battle.map.cursor.y
     if battle.mode == "move" then
         local target = Combat.unitAt(battle.combat, cx, cy)
@@ -443,7 +434,7 @@ end
 -- Combat.waitBehavior. Available whether or not the unit moved.
 local function waitTurn()
     local current = battle.current
-    if battle.over or not current or current.side ~= "party" then return end
+    if battle.over or not current or not Combat.isPlayerControlled(current) then return end
     local kind = Combat.waitBehavior(current).kind
     local action = (kind == "focus" and Combat.focus)
         or (kind == "defend" and Combat.defend)
@@ -451,9 +442,17 @@ local function waitTurn()
     if action(battle.combat, current) then advanceTurn() end
 end
 
+-- Resolve a turn the player doesn't drive: an AI unit plans and acts, while an inert one (a decoy,
+-- control "none") simply holds position -- it still occupies the turn order and burns a tick, so
+-- from the far side of the board it is indistinguishable from a real, cautious unit.
 local function executeEnemyAction()
     local current = battle.current
-    if not current or current.side ~= "enemy" then return end
+    if not current or Combat.isPlayerControlled(current) then return end
+    if current.control == "none" then
+        Combat.pass(battle.combat, current)
+        advanceTurn()
+        return
+    end
     local act = Combat.planEnemyAction(battle.combat, current)
     if act.move then Combat.moveUnit(battle.combat, current, act.move.x, act.move.y) end
     local acted = false
@@ -468,7 +467,7 @@ end
 local function refreshView()
     local current = battle.current
     if not current then return end
-    local isParty = current.side == "party" and not battle.over
+    local isParty = Combat.isPlayerControlled(current) and not battle.over
 
     -- Preview the projected initiative the pending action would give the actor. The actor
     -- sits at initiative 0; a move already taken this turn is folded in via the pending move
@@ -564,8 +563,8 @@ local function refreshView()
 
     battle.panel:setView({
         order = entries, current = current, isPartyTurn = isParty,
-        items = (current.side == "party") and current.char.inventory or {},
-        itemOwner = (current.side == "party") and current.char or nil, -- for adjacency link lines
+        items = Combat.isPlayerControlled(current) and current.char.inventory or {},
+        itemOwner = Combat.isPlayerControlled(current) and current.char or nil, -- for adjacency link lines
         armedItem = battle.armedItem,
         showInitiative = battle.showInitiative,
         preview = bannerPreview,
@@ -610,6 +609,9 @@ function battle.enter(self, opts)
     end
 
     battle.combat = Combat.new(battle.arena, battle.partyUnits, battle.enemyUnits)
+    -- The player's stash, by reference: Combat.steal appends here when a party thief's own 3x3 grid
+    -- has no room, so the item is the player's the moment it's lifted, win or lose.
+    battle.combat.stash = opts.stash
     battle.map = BattleMap.new(battle.arena,
         { combat = battle.combat, leftMargin = LEFT_W, rightMargin = PANEL_W,
           tileSize = BOARD_TILE, topMargin = BOARD_TOP })
@@ -635,7 +637,7 @@ end
 
 function battle.update(dt)
     battle.map:update(dt)
-    if not battle.over and battle.current and battle.current.side == "enemy" then
+    if not battle.over and battle.current and not Combat.isPlayerControlled(battle.current) then
         battle.aiTimer = (battle.aiTimer or 0) - dt
         if battle.aiTimer <= 0 then executeEnemyAction() end
     end
@@ -771,7 +773,7 @@ function battle.drawHud()
         forfeitButton.w, "center")
 
     -- Wait / End Turn button, active only on a party unit's turn.
-    local canWait = battle.current and battle.current.side == "party" and not battle.over
+    local canWait = battle.current and Combat.isPlayerControlled(battle.current) and not battle.over
     if canWait then love.graphics.setColor(0.18, 0.22, 0.30) else love.graphics.setColor(0.14, 0.15, 0.18) end
     love.graphics.rectangle("fill", waitButton.x, waitButton.y, waitButton.w, waitButton.h, 6, 6)
     if canWait then love.graphics.setColor(0.5, 0.65, 0.85) else love.graphics.setColor(0.3, 0.32, 0.38) end
@@ -808,7 +810,7 @@ function battle.drawHud()
 
     -- Contextual control hint.
     local hint
-    if battle.current and battle.current.side == "party" and not battle.over then
+    if battle.current and Combat.isPlayerControlled(battle.current) and not battle.over then
         if battle.mode == "armed" then
             local verb
             if battle.armedTile then verb = "Click a tile to place the trap"
@@ -884,7 +886,7 @@ function battle.mousemoved(x, y, dx, dy)
     battle.mouseX, battle.mouseY = x, y -- drives the status tooltip (board + panel hit-tests)
     -- Hovering the Wait button previews the delay slot on the timeline.
     battle.hoverWait = pointIn(waitButton, x, y)
-        and battle.current and battle.current.side == "party" and not battle.over or false
+        and battle.current and Combat.isPlayerControlled(battle.current) and not battle.over or false
     if battle.panel:mousemoved(x, y) then return end
     battle.map:mousemoved(x, y)
 end

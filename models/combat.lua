@@ -42,9 +42,15 @@
 local Status = require("models.status")
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
+local Summon = require("models.summon")
 local Character = require("models.character")
 
 local Combat = {}
+
+-- Random source, indirected so the headless tests can stub it (this module is pure Lua -- see the
+-- header: not even love.math -- and math.random's global state would make a spec order-dependent).
+-- Called as Combat.random(n) -> 1..n. Only Combat.steal uses it today.
+Combat.random = math.random
 
 -- Ability-speed fallback for a unit that carries no ability item at all.
 Combat.DEFAULT_SPEED = 5
@@ -98,12 +104,17 @@ end
 -- status ticks land in the same stream in the order they happen.
 Combat.LOG_CAP = 300 -- keep the tail; drop the oldest beyond this so it can't grow unbounded
 
+-- Returns the entry it appended, so a caller can hold onto a line it may later have to correct --
+-- the Decoy fakes a move here, and destroying the decoy rewrites that very entry (see killUnit).
+-- An entry that has since aged out past LOG_CAP is simply an orphan table: rewriting it is a no-op.
 function Combat.logEvent(combat, kind, text)
     if not text then return end
     local log = combat.log
     if not log then log = {}; combat.log = log end
-    log[#log + 1] = { kind = kind or "system", text = text, turn = combat.turnCount or 0 }
+    local entry = { kind = kind or "system", text = text, turn = combat.turnCount or 0 }
+    log[#log + 1] = entry
     if #log > Combat.LOG_CAP then table.remove(log, 1) end
+    return entry
 end
 
 -- The display name of a unit for log lines (falls back to a generic label).
@@ -297,21 +308,62 @@ end
 -- Construction
 -- ---------------------------------------------------------------------------
 
--- Fold passive armor into each unit: aggregate `item.bonus` (flat stat bonuses) and
--- `item.resist` (tag -> flat damage reduction) onto the unit WITHOUT mutating the shared
--- character instance, so a member's base stats never drift battle-to-battle.
-function Combat.applyPassives(combat)
-    for _, unit in ipairs(combat.units) do
-        unit.bonus, unit.resist = {}, {}
-        for _, item in ipairs(Character.eachItem(unit.char)) do
-            for stat, amount in pairs(item.bonus or {}) do
-                unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
-            end
-            for tag, amount in pairs(item.resist or {}) do
-                unit.resist[tag] = (unit.resist[tag] or 0) + amount
-            end
+-- Fold one unit's passive armor in: aggregate `item.bonus` (flat stat bonuses) and `item.resist`
+-- (tag -> flat damage reduction) onto the unit WITHOUT mutating the shared character instance, so
+-- a member's base stats never drift battle-to-battle. Split out so a unit that joins mid-battle
+-- (Combat.addUnit) gets the same treatment as one placed at setup.
+local function applyUnitPassives(unit)
+    unit.bonus, unit.resist = {}, {}
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        for stat, amount in pairs(item.bonus or {}) do
+            unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
+        end
+        for tag, amount in pairs(item.resist or {}) do
+            unit.resist[tag] = (unit.resist[tag] or 0) + amount
         end
     end
+end
+
+function Combat.applyPassives(combat)
+    for _, unit in ipairs(combat.units) do applyUnitPassives(unit) end
+end
+
+-- Who drives this unit's turn: "player" (the battle state hands it the cursor and the item grid),
+-- "ai" (Combat.planEnemyAction), or "none" (it holds position -- a decoy that must LOOK like a
+-- real unit in the turn order without ever acting). Set from the unit's side at setup, and
+-- inherited from the summoner for a summon, so an enemy-summoned wolf is AI-run for free.
+function Combat.isPlayerControlled(unit)
+    return unit ~= nil and unit.control == "player"
+end
+
+-- Add a unit to a battle already in progress (a summon). It joins combat.units, so every query
+-- (turnOrder, unitAt, aliveCount, the renderer, the AI) picks it up with no further wiring.
+--
+-- Its starting initiative is its natural one (Combat.initiative), clamped at 0: a fast creature
+-- acts soon and a slow one waits, but neither can cut ahead of the field's current baseline (the
+-- acting unit sits at 0). Deliberately does NOT rebase -- the actor whose ability spawned this
+-- unit is mid-turn at initiative 0, and rebasing under it would corrupt the timeline.
+--
+-- `opts`: control ("player"|"ai"|"none"; defaults from `side`), summoner (the unit sustaining it),
+-- fragile (any hit is lethal), summoned (marks it as not a "real" combatant -- see Combat.evaluate).
+function Combat.addUnit(combat, char, side, x, y, opts)
+    opts = opts or {}
+    local unit = {
+        char = char, side = side,
+        x = x, y = y,
+        initiative = math.max(0, Combat.initiative(char)),
+        speed = Combat.speed(char),
+        alive = true,
+        statuses = {},
+        control = opts.control or (side == "party" and "player" or "ai"),
+        summoner = opts.summoner,
+        fragile = opts.fragile,
+        summoned = opts.summoned,
+    }
+    unit.index = #combat.units + 1
+    combat.units[unit.index] = unit
+    applyUnitPassives(unit)
+    return unit
 end
 
 -- Build combat state. partyUnits/enemyUnits are lists of { char = <instance>, x, y }
@@ -335,13 +387,17 @@ function Combat.new(arena, partyUnits, enemyUnits)
                 initiative = Combat.initiative(u.char),
                 speed = Combat.speed(u.char), -- primary tie-break
                 alive = true,
+                control = (side == "party") and "player" or "ai",
             }
             unit.index = #combat.units + 1
             combat.units[unit.index] = unit
             -- Between-battle policy: stamina refills to max each battle (it's the renewable
             -- resource), while mana persists on the reused party instance (spent mana stays
             -- spent). Enemies are freshly instantiated, so this is a harmless no-op for them.
+            -- Reservations never outlive the battle that made them (their summons are gone), so
+            -- clear them BEFORE the refill or a stale one would cap stamina below its max.
             if side == "party" then
+                unit.char.reservations = nil
                 local st = unit.char.stats.stamina
                 if type(st) == "table" then st.current = st.max end
             end
@@ -711,6 +767,16 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRa
     return out
 end
 
+-- Everything a unit sets off by occupying (x, y): an opposing trap on the tile triggers, and --
+-- when the unit ENTERED the tile rather than started on it -- any hazard there fires its on-entry
+-- effect. Shared by a walk (Combat.moveUnit, per path tile) and by forced movement (knockback /
+-- pull), so being shoved across a spike trap is exactly as dangerous as walking over it.
+local function enterTile(combat, unit, x, y, entered)
+    local trap = Trap.at(combat, x, y)
+    if trap then Trap.trigger(combat, trap, unit) end
+    if unit.alive and entered then Hazard.onEnter(combat, unit, x, y) end
+end
+
 -- Move a unit to (x, y) if reachable this turn. A unit may move once per turn and moving
 -- does NOT end the turn: it just repositions and records the terrain-weighted path cost
 -- (node.cost), which endTurn later folds into the timeline (move cost + action cost).
@@ -743,12 +809,109 @@ function Combat.moveUnit(combat, unit, x, y)
     -- not entering) fires its on-entry effect too; a hazard affects either side.
     for i = #path, 1, -1 do
         if not unit.alive then break end
-        local trap = Trap.at(combat, path[i].x, path[i].y)
-        if trap then Trap.trigger(combat, trap, unit) end
-        if unit.alive and i < #path then Hazard.onEnter(combat, unit, path[i].x, path[i].y) end
+        enterTile(combat, unit, path[i].x, path[i].y, i < #path)
     end
 
     return true, node.cost
+end
+
+-- ---------------------------------------------------------------------------
+-- Forced movement (knockback / pull)
+--
+-- A unit shoved across the board isn't walking: it pays no move cost, doesn't spend its turn, and
+-- ignores its movement stat -- but it still sets off whatever it is dragged over (enterTile). A
+-- push stops dead against the first thing it can't pass through; a pull stops once it is adjacent.
+-- ---------------------------------------------------------------------------
+
+-- Flat damage everything involved in a collision takes when a shove is stopped short. The mace /
+-- Push ability override it with their Power (opts.power).
+Combat.COLLISION_DAMAGE = 4
+
+-- The cardinal step matching a delta, along the DOMINANT axis (a diagonal shove resolves to the
+-- axis it leans on; an exact diagonal breaks toward x). The grid is 4-directional, so forced
+-- movement is too.
+local function signDominant(dx, dy)
+    if math.abs(dx) >= math.abs(dy) then
+        if dx == 0 then return 0, 0 end
+        return (dx > 0) and 1 or -1, 0
+    end
+    return 0, (dy > 0) and 1 or -1
+end
+
+-- Can `unit` be shoved onto (x, y)? Returns ok, blocker -- where a nil blocker on a failed step
+-- means the way is barred by the map itself (an edge, or impassable terrain).
+local function canShoveInto(combat, x, y)
+    local row = combat.arena and combat.arena.tiles and combat.arena.tiles[y]
+    local cell = row and row[x]
+    if not (cell and cell.walkable) then return false, nil end
+    local blocker = Combat.unitAt(combat, x, y)
+    if blocker then return false, blocker end
+    return true, nil
+end
+
+-- Slide `unit` one tile by (dx, dy), triggering whatever it lands on. Returns false on a blocked
+-- tile without moving it.
+local function shoveStep(combat, unit, dx, dy)
+    local nx, ny = unit.x + dx, unit.y + dy
+    if not canShoveInto(combat, nx, ny) then return false end
+    unit.x, unit.y = nx, ny
+    enterTile(combat, unit, nx, ny, true)
+    return true
+end
+
+-- Knock `target` up to `distance` tiles directly away from `source`. The direction is fixed at the
+-- start (a straight line, however far it travels). A shove barred by the map edge, impassable
+-- terrain, or another unit stops there and hurts EVERYONE involved -- the target and, if there was
+-- one, whatever it slammed into. Returns (tilesMoved, collided).
+function Combat.knockback(combat, source, target, distance, opts)
+    opts = opts or {}
+    if not (target and target.alive) then return 0, false end
+    local power = opts.power or Combat.COLLISION_DAMAGE
+    local dx, dy = signDominant(target.x - source.x, target.y - source.y)
+    if dx == 0 and dy == 0 then return 0, false end
+
+    local moved = 0
+    for _ = 1, (distance or 1) do
+        local ok, blocker = canShoveInto(combat, target.x + dx, target.y + dy)
+        if not ok then
+            Combat.logEvent(combat, "damage",
+                string.format("%s slams into %s.", unitName(target),
+                    blocker and unitName(blocker) or "an obstacle"))
+            Combat.dealFlatDamage(combat, target, power, { "physical", "impact" }, "the impact")
+            if blocker and blocker.alive then
+                Combat.dealFlatDamage(combat, blocker, power, { "physical", "impact" }, "the impact")
+            end
+            return moved, true
+        end
+        shoveStep(combat, target, dx, dy)
+        moved = moved + 1
+        Combat.logEvent(combat, "move",
+            string.format("%s is knocked back to (%d, %d).", unitName(target), target.x, target.y))
+        -- A trap or hazard on the tile it was driven onto may have finished it; stop the slide.
+        if not target.alive then return moved, false end
+    end
+    return moved, false
+end
+
+-- Drag `target` toward `source` until it stands adjacent. Needs a clear line of sight (you can't
+-- hook what you can't see). The direction is re-aimed EVERY step -- a fixed one would march a
+-- diagonal target straight past the source along a single axis. Stops early on a blocked tile.
+-- Returns (true, tilesMoved) or (false, reason).
+function Combat.pull(combat, source, target)
+    if not (target and target.alive) then return false, "dead" end
+    if not Combat.hasLineOfSight(combat, source.x, source.y, target.x, target.y) then
+        return false, "no line of sight"
+    end
+    local moved = 0
+    while manhattan(source.x, source.y, target.x, target.y) > 1 do
+        local dx, dy = signDominant(source.x - target.x, source.y - target.y)
+        if not shoveStep(combat, target, dx, dy) then break end
+        moved = moved + 1
+        Combat.logEvent(combat, "move",
+            string.format("%s is pulled to (%d, %d).", unitName(target), target.x, target.y))
+        if not target.alive then break end
+    end
+    return true, moved
 end
 
 -- ---------------------------------------------------------------------------
@@ -904,6 +1067,64 @@ function Combat.mitigatedDamage(target, base, tags)
     return math.max(1, math.floor(base - defense - resist + vuln + 0.5))
 end
 
+-- A decoy that is gone stops being a lie. Its deployment wrote a fake "moves to (x, y)" line into
+-- the log (data/items/utility/decoy.lua) and kept a handle on it; rewrite that entry IN PLACE, so
+-- re-reading the log tells the truth about what really happened on that turn. A no-op for a decoy
+-- whose line has already aged out of the log, and for any unit that isn't a decoy.
+local function correctDecoyRecord(decoy)
+    local faked = decoy.decoyLogEntry
+    if not faked then return end
+    faked.kind = "status"
+    faked.text = string.format("%s never moved to (%d, %d) -- that was the decoy.",
+        unitName(decoy.decoyOf), decoy.x, decoy.y)
+    decoy.decoyLogEntry = nil
+end
+
+-- A decoy struck down: correct the record, and drag the caster it was hiding back into view. The
+-- concealment may have already lapsed on its own (Invisible ends at the caster's next turn), in
+-- which case there is nobody left to reveal.
+local function unmaskDecoy(combat, decoy)
+    local caster = decoy.decoyOf
+    Combat.logEvent(combat, "death", string.format("%s's decoy is destroyed.", unitName(caster)))
+    correctDecoyRecord(decoy)
+    if caster.alive and Status.has(caster, "invisible") then
+        Status.remove(caster, "invisible")
+        Combat.logEvent(combat, "status", string.format("%s is revealed!", unitName(caster)))
+    end
+end
+
+-- Everything that follows from a unit dropping: mark it dead, log the kill, and unwind whatever
+-- its existence was holding up. Called from the one place a unit can die (Combat.dealFlatDamage).
+--   * A destroyed decoy unmasks itself, and the caster it was hiding (see above).
+--   * A dead unit's summons vanish with it -- which is what keeps the objectives honest: kill the
+--     enemy summoner and its wolf goes too, so `killAll` can still resolve.
+--   * Reservations sustained by the dead unit are released, on whichever character holds them
+--     (a summon's death frees its summoner's mana); a dead caster drops its own.
+local function killUnit(combat, target)
+    target.alive = false
+
+    -- A decoy wears its caster's name, so "Archer is defeated!" would read as the real thing dying.
+    if target.decoyOf then
+        unmaskDecoy(combat, target)
+    else
+        Combat.logEvent(combat, "death", string.format("%s is defeated!", unitName(target)))
+    end
+
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.summoner == target then
+            u.alive = false
+            Combat.logEvent(combat, "death", string.format("%s vanishes.", unitName(u)))
+            -- A decoy dismissed alongside the caster it was covering for: nobody is left to reveal,
+            -- but the fake move it wrote is still sitting in the log. Set it straight.
+            correctDecoyRecord(u)
+            Combat.releaseHeldBy(combat, u)
+        end
+    end
+
+    Combat.releaseHeldBy(combat, target)
+    target.char.reservations = nil
+end
+
 function Combat.dealFlatDamage(combat, target, base, tags, source)
     local dmg = Combat.mitigatedDamage(target, base, tags)
     local hp = target.char.stats.health
@@ -914,10 +1135,11 @@ function Combat.dealFlatDamage(combat, target, base, tags, source)
     else
         Combat.logEvent(combat, "damage", string.format("%s takes %d damage.", unitName(target), dmg))
     end
-    if hp.current <= 0 then
+    -- A `fragile` unit (a doppelganger, a decoy) dies to ANY hit, however light. Damage floors at 1
+    -- in mitigatedDamage, so reaching here at all is fatal for one.
+    if hp.current <= 0 or target.fragile then
         hp.current = 0
-        target.alive = false
-        Combat.logEvent(combat, "death", string.format("%s is defeated!", unitName(target)))
+        killUnit(combat, target)
     end
     return dmg
 end
@@ -960,17 +1182,28 @@ function Combat.computeTrapDamage(unit, weapon)
     return math.max(1, math.floor(power + flatStat(unit, atkStat) + 0.5))
 end
 
--- Restore health to `target`, capped at its max. Returns the amount actually healed.
--- Reached through `fx.heal` inside an ability effect.
+-- Restore health to `target`, capped at its ceiling (its max less any reserved health -- reserved
+-- life can't be healed back into). Returns the amount actually healed. Reached through `fx.heal`
+-- inside an ability effect.
 function Combat.applyHeal(combat, target, amount)
     local hp = target.char.stats.health
     local before = hp.current
-    hp.current = math.min(hp.max, hp.current + (amount or 0))
-    local healed = hp.current - before
+    hp.current = math.min(Combat.unreservedMax(target.char, "health"), hp.current + (amount or 0))
+    local healed = math.max(0, hp.current - before)
     if healed > 0 then
         Combat.logEvent(combat, "heal", string.format("%s is healed for %d.", unitName(target), healed))
     end
     return healed
+end
+
+-- A throwaway unit handed back by a dry run's `summon`/`copy` so an effect that keeps using the
+-- creature it just called (buffing it, moving it) works on something rather than nil. Nothing
+-- reads it back out -- it exists only to keep the replayed effect from faulting.
+local function previewStandIn()
+    return {
+        char = { name = "Summon", stats = { health = { max = 1, current = 1 } }, inventory = {} },
+        x = 0, y = 0, alive = true, side = "party", initiative = 0, statuses = {},
+    }
 end
 
 -- Dry-run `item`'s ability aimed at cell (tx, ty) WITHOUT mutating combat: replay the very same
@@ -1031,7 +1264,10 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         heal = function(tgt, amount)
             if not tgt then return 0 end
             local hp = tgt.char.stats.health
-            local healed = math.min(hp.max, hp.current + (amount or 0)) - hp.current
+            -- Clamp at the same ceiling Combat.applyHeal uses (max less any reserved health), so a
+            -- previewed heal on a summoner never promises life the reservation has locked away.
+            local ceiling = Combat.unreservedMax(tgt.char, "health")
+            local healed = math.max(0, math.min(ceiling, hp.current + (amount or 0)) - hp.current)
             entryFor(tgt).heal = entryFor(tgt).heal + healed
             return healed
         end,
@@ -1041,16 +1277,30 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
             e.statuses[#e.statuses + 1] = { id = id, def = Status.defs[id], opts = opts }
             return nil
         end,
-        -- A dry run must not mutate resources; report the clamped gain without applying it.
+        -- A dry run must not mutate resources; report the clamped gain without applying it, against
+        -- the same ceiling Combat.restoreResource honours.
         restore = function(tgt, stat, amount)
             if not tgt or not amount or amount <= 0 then return 0 end
             local res = tgt.char.stats[stat]
-            if type(res) == "table" then return math.min(res.max, res.current + amount) - res.current end
+            if type(res) == "table" then
+                local ceiling = Combat.unreservedMax(tgt.char, stat)
+                return math.max(0, math.min(ceiling, res.current + amount) - res.current)
+            end
             return amount
         end,
-        -- Placing a trap/hazard mutates combat, so a dry run must not; report nothing.
+        -- Anything that mutates the battlefield -- placing a trap or hazard, summoning a unit,
+        -- shoving one, stealing an item, cutting an initiative -- is inert in a dry run. `summon`
+        -- and `copy` hand back a throwaway stand-in so an effect that goes on to use the returned
+        -- unit doesn't fault out of the pcall and blank the tooltip.
         placeTrap = function() return nil end,
         placeHazard = function() return nil end,
+        summon = function() return previewStandIn() end,
+        copy = function() return previewStandIn() end,
+        knockback = function() return 0, false end,
+        pull = function() return false end,
+        steal = function() return nil end,
+        hasten = function() return 0 end,
+        log = function() end,
     }
     if ab.effect then pcall(ab.effect, fx) end
     -- A damage total >= the target's current HP would drop it: flag the lethal blow.
@@ -1107,8 +1357,19 @@ function Combat.abilityOutput(unit, item)
             return nil
         end,
         restore = function(_, _, amount) return amount or 0 end,
+        adjacentItems = function() return {} end,
+        adjacentMatching = function() return 0 end,
         placeTrap = function() return nil end,
         placeHazard = function() return nil end,
+        -- Record WHAT the ability summons so the inventory tooltip can name it, without building
+        -- anything; the stand-in keeps a chained effect from faulting out of the pcall.
+        summon = function(charId) out.summon = charId; return previewStandIn() end,
+        copy = function() out.summon = "copy"; return previewStandIn() end,
+        knockback = function(_, distance) out.knockback = distance or 1; return 0, false end,
+        pull = function() out.pull = true; return false end,
+        steal = function() out.steal = true; return nil end,
+        hasten = function() return 0 end,
+        log = function() end,
     }
     pcall(ab.effect, fx)
     return out
@@ -1125,7 +1386,9 @@ function Combat.abilityTargets(combat, unit, item)
         local d = manhattan(unit.x, unit.y, other.x, other.y)
         if other.alive and d <= range and d >= minRange then
             local valid = false
-            if ab.target == "enemy" then valid = other.side ~= unit.side
+            -- An untargetable foe (Invisible) can't be picked; a friendly cast ignores the status,
+            -- so an ally can still heal or buff someone the enemy has lost sight of.
+            if ab.target == "enemy" then valid = other.side ~= unit.side and not Status.untargetable(other)
             elseif ab.target == "ally" then valid = other.side == unit.side -- includes self
             elseif ab.target == "self" then valid = other == unit end
             -- A sight-gated ability can't reach a target it has no clear line to (terrain cover).
@@ -1158,6 +1421,86 @@ local function spendResource(char, stat, amount)
     else char.stats[stat] = (res or 0) - amount end
 end
 
+-- ---------------------------------------------------------------------------
+-- Resource reservation
+--
+-- An ability may RESERVE part of a resource for as long as it stays active (a summon lives).
+-- A reservation lowers the CEILING the resource's `current` may hold -- it never touches `max`,
+-- so percentage-of-maximum modifiers (a future "regenerate 1% of maximum life") are unaffected.
+-- Reserved health is therefore not a buffer: it is simply life you no longer have.
+--
+-- Reservations live on the CHARACTER (`char.reservations`), beside the {max,current} pools they
+-- constrain, so the char-based resource helpers below need no unit. Each entry is
+-- { stat, amount, holder } where `holder` is the unit whose existence sustains it (the summon);
+-- when that unit dies the reservation is released (Combat.releaseHeldBy, called from the death
+-- path). Party characters persist between battles, so Combat.new clears them at setup.
+-- ---------------------------------------------------------------------------
+
+-- Total currently reserved from `stat` on `char`.
+function Combat.reservedAmount(char, stat)
+    local total = 0
+    for _, r in ipairs(char.reservations or {}) do
+        if r.stat == stat then total = total + r.amount end
+    end
+    return total
+end
+
+-- The ceiling `stat`'s `current` may reach: its max less everything reserved from it. `max`
+-- itself is never modified. A plain-number (non-pool) stat has no ceiling, so it reads as its
+-- own value. The single source of truth for "how full can this pool get" -- restoreResource and
+-- applyHeal both clamp here rather than at `res.max`.
+function Combat.unreservedMax(char, stat)
+    local res = char.stats[stat]
+    local max = (type(res) == "table") and res.max or (res or 0)
+    return math.max(0, max - Combat.reservedAmount(char, stat))
+end
+
+-- Can `char` set `amount` of `stat` aside right now? You must actually hold the resource to
+-- commit it (no summoning on an empty pool), and reserving health can never be lethal.
+function Combat.canReserve(char, stat, amount)
+    local current = resourceValue(char, stat)
+    if stat == "health" then return current > amount end
+    return current >= amount
+end
+
+-- Reserve `amount` of `stat` on `char` for as long as `holder` (a unit) lives. Lowers the pool's
+-- ceiling and clamps `current` down to it; returns the reservation entry.
+function Combat.reserve(char, stat, amount, holder)
+    char.reservations = char.reservations or {}
+    local entry = { stat = stat, amount = amount, holder = holder }
+    char.reservations[#char.reservations + 1] = entry
+    local res = char.stats[stat]
+    if type(res) == "table" then
+        res.current = math.min(res.current, Combat.unreservedMax(char, stat))
+    end
+    return entry
+end
+
+-- Release every reservation sustained by `holder`, across every character on the field. Called
+-- from the death path when a summon (or the caster that spawned it) falls. The freed ceiling
+-- does NOT refund `current` -- the resource was spent to commit, and comes back the usual way.
+function Combat.releaseHeldBy(combat, holder)
+    for _, u in ipairs(combat.units) do
+        local list = u.char.reservations
+        if list then
+            for i = #list, 1, -1 do
+                if list[i].holder == holder then table.remove(list, i) end
+            end
+        end
+    end
+end
+
+-- The reservation an ability would take: `ab.reserve = { stat, percent }` commits a share of the
+-- pool's MAXIMUM (not its current), so the commitment is the same whether the caster is full or
+-- nearly spent. Returns nil for an ability that reserves nothing.
+function Combat.abilityReserve(unit, ab)
+    local r = ab and ab.reserve
+    if not r then return nil end
+    local res = unit.char.stats[r.stat]
+    local max = (type(res) == "table") and res.max or (res or 0)
+    return { stat = r.stat, amount = math.floor(max * (r.percent or 0)) }
+end
+
 -- Current value of a resource stat on `char` (a {max,current} table reads `current`; a plain
 -- number reads itself; missing reads 0). Public so the UI can show "have N" without duplicating
 -- the {max,current}-vs-number handling.
@@ -1165,26 +1508,42 @@ function Combat.resource(char, stat)
     return resourceValue(char, stat)
 end
 
--- Restore a resource stat toward its max -- the inverse of spendResource. A {max,current} table
--- clamps at max; a plain-number stat just adds. Returns the amount actually restored (0 if it was
--- already full or `amount` is non-positive). Shared by stamina regen, Focus, and on-hit mana gain.
+-- Restore a resource stat toward its ceiling -- the inverse of spendResource. A {max,current}
+-- table clamps at Combat.unreservedMax (its max less anything reserved from it, so a reservation
+-- caps recovery too); a plain-number stat just adds. Returns the amount actually restored (0 if it
+-- was already full or `amount` is non-positive). Shared by stamina regen, Focus, and on-hit mana gain.
 function Combat.restoreResource(char, stat, amount)
     if not amount or amount <= 0 then return 0 end
     local res = char.stats[stat]
     if type(res) == "table" then
         local before = res.current
-        res.current = math.min(res.max, res.current + amount)
-        return res.current - before
+        res.current = math.min(Combat.unreservedMax(char, stat), res.current + amount)
+        return math.max(0, res.current - before)
     end
     char.stats[stat] = (res or 0) + amount
     return amount
 end
 
--- Can `char` currently pay ability `ab`'s resource cost? True when the ability has no cost. The
--- affordability gate the UI grays a slot on, mirroring the check inside Combat.useItem.
-function Combat.canAfford(char, ab)
-    if not ab or not ab.cost then return true end
-    return resourceValue(char, ab.cost.stat) >= ab.cost.amount
+-- What ability `ab` actually costs `unit` right now: its declared cost scaled by the unit's status
+-- cost multiplier (Haste halves it). Returns nil for a free ability. The single source of truth --
+-- useItem, strikeTrap, the AI, the affordability gray-out and the tooltip all price a cast here, so
+-- a cost-modifying status can never be visible in one place and missing in another. A RESERVATION
+-- (ab.reserve) is not a cost and is deliberately not scaled: see Combat.abilityReserve.
+function Combat.abilityCost(unit, ab)
+    if not ab or not ab.cost then return nil end
+    local mult = Status.costMultiplier(unit)
+    return { stat = ab.cost.stat, amount = math.floor(ab.cost.amount * mult + 0.5) }
+end
+
+-- Can `unit` currently pay ability `ab`'s resource cost (and set aside its reservation)? True when
+-- the ability demands neither. The affordability gate the UI grays a slot on, mirroring the checks
+-- inside Combat.useItem.
+function Combat.canAfford(unit, ab)
+    local cost = Combat.abilityCost(unit, ab)
+    if cost and resourceValue(unit.char, cost.stat) < cost.amount then return false end
+    local res = Combat.abilityReserve(unit, ab)
+    if res and not Combat.canReserve(unit.char, res.stat, res.amount) then return false end
+    return true
 end
 
 -- Is this a consuming item whose stack is spent (quantity 0)? A depleted consumable KEEPS its
@@ -1194,6 +1553,48 @@ end
 function Combat.isDepleted(item)
     local ab = item and item.activeAbility
     return ab ~= nil and ab.consumesItem and (item.quantity or 1) <= 0
+end
+
+-- Lift one item from `victim`'s grid into `thief`'s. Items the blueprint marks `noSteal` (a
+-- beast's fangs) can't be taken. Among the rest, the highest `stealPriority` wins -- that's how a
+-- Decoy makes itself the obvious thing to grab -- and ties are broken at random.
+--
+-- The item goes into the thief's own grid; if that grid is full, a party thief pockets it into the
+-- player's stash (combat.stash, wired to player.stash by the battle state -- unbounded), while an
+-- enemy thief with nowhere to put it simply destroys it. Returns the stolen item, or nil if the
+-- victim carried nothing worth taking.
+function Combat.steal(combat, thief, victim)
+    local best, pool = nil, {}
+    for i = 1, Character.MAX_INVENTORY do
+        local item = victim.char.inventory[i]
+        if item and not item.noSteal then
+            local priority = item.stealPriority or 0
+            if not best or priority > best then best, pool = priority, { item }
+            elseif priority == best then pool[#pool + 1] = item end
+        end
+    end
+    if #pool == 0 then
+        Combat.logEvent(combat, "action",
+            string.format("%s finds nothing to steal from %s.", unitName(thief), unitName(victim)))
+        return nil
+    end
+
+    local item = pool[Combat.random(#pool)]
+    Character.removeItem(victim.char, item)
+    Combat.logEvent(combat, "action", string.format("%s steals %s from %s.",
+        unitName(thief), item.name or "an item", unitName(victim)))
+
+    if not Character.addItem(thief.char, item) then
+        if thief.side == "party" and combat.stash then
+            combat.stash[#combat.stash + 1] = item
+            Combat.logEvent(combat, "system",
+                string.format("%s goes to the stash.", item.name or "The item"))
+        else
+            Combat.logEvent(combat, "system",
+                string.format("%s is lost.", item.name or "The item"))
+        end
+    end
+    return item
 end
 
 -- Perform an item action: validate range + target kind + resource cost, spend the cost,
@@ -1239,10 +1640,17 @@ function Combat.useItem(combat, unit, item, tx, ty)
         if ab.target == "self" and target ~= unit then return false, "invalid target" end
     end
 
-    if ab.cost and resourceValue(unit.char, ab.cost.stat) < ab.cost.amount then
-        return false, "insufficient " .. ab.cost.stat
+    local cost = Combat.abilityCost(unit, ab)
+    if cost and resourceValue(unit.char, cost.stat) < cost.amount then
+        return false, "insufficient " .. cost.stat
     end
-    if ab.cost then spendResource(unit.char, ab.cost.stat, ab.cost.amount) end
+    -- A reservation is committed, not spent: the caster must hold the resource now (and reserving
+    -- health can never be lethal). Checked before anything is paid so a rejected cast is free.
+    local reserve = Combat.abilityReserve(unit, ab)
+    if reserve and not Combat.canReserve(unit.char, reserve.stat, reserve.amount) then
+        return false, "insufficient " .. reserve.stat
+    end
+    if cost then spendResource(unit.char, cost.stat, cost.amount) end
 
     -- Effect context: bound helpers let a data-file effect compose damage/heal/AoE
     -- without touching this module. Results are accumulated for the caller/UI.
@@ -1323,13 +1731,61 @@ function Combat.useItem(combat, unit, item, tx, ty)
             opts.side = opts.side or unit.side
             return Hazard.place(combat, px, py, id, opts)
         end,
+        -- Summon a character onto the field, sustained by the caster (models/summon.lua). The
+        -- ability's reservation (ab.reserve) is bound to whatever comes back, so the committed
+        -- resource is freed the moment the creature falls.
+        summon = function(charId, px, py, opts)
+            local summoned = Summon.spawn(combat, unit, charId, px, py, opts)
+            if reserve and summoned then
+                Combat.reserve(unit.char, reserve.stat, reserve.amount, summoned)
+            end
+            return summoned
+        end,
+        -- Summon a duplicate of the caster (doppelganger / decoy).
+        copy = function(px, py, opts)
+            local copied = Summon.copy(combat, unit, px, py, opts)
+            if reserve and copied then
+                Combat.reserve(unit.char, reserve.stat, reserve.amount, copied)
+            end
+            return copied
+        end,
+        -- Shove a unit `distance` tiles straight away from the caster; a collision hurts everyone.
+        knockback = function(tgt, distance, opts)
+            if not tgt then return 0 end
+            return Combat.knockback(combat, unit, tgt, distance, opts)
+        end,
+        -- Drag a unit to a tile adjacent to the caster (needs line of sight).
+        pull = function(tgt)
+            if not tgt then return false end
+            return Combat.pull(combat, unit, tgt)
+        end,
+        -- Lift a random item off a unit (Combat.steal picks it; a Decoy volunteers itself).
+        steal = function(tgt)
+            if not tgt then return nil end
+            return Combat.steal(combat, unit, tgt)
+        end,
+        -- Rush a unit forward in the initiative order by cutting its current initiative. Mutating
+        -- initiative straight from an effect mirrors what Stun does from a status hook.
+        hasten = function(tgt, fraction)
+            if not tgt then return 0 end
+            tgt.initiative = tgt.initiative * (1 - (fraction or 0.5))
+            return tgt.initiative
+        end,
+        -- Write a line straight into the combat log, for an ability whose entry must not read as
+        -- what it actually is (a Decoy reports a move, not a cast -- see `ab.silent`). Hands back
+        -- the entry, so an effect can keep a handle on a line it may later have to correct.
+        log = function(kind, text) return Combat.logEvent(combat, kind, text) end,
     }
 
     -- Log the action itself before its effect runs, so the cast heads the sub-events it spawns
     -- (damage / heal / status / trap lines). Offensive casts read "attacks with", the rest "uses".
-    local verb = (ab.target == "enemy") and "attacks with" or "uses"
-    Combat.logEvent(combat, "action",
-        string.format("%s %s %s.", unitName(unit), verb, item.name or "an item"))
+    -- A `silent` ability skips this and narrates itself through fx.log, so the log can lie about
+    -- what just happened (the Decoy reports a move).
+    if not ab.silent then
+        local verb = (ab.target == "enemy") and "attacks with" or "uses"
+        Combat.logEvent(combat, "action",
+            string.format("%s %s %s.", unitName(unit), verb, item.name or "an item"))
+    end
 
     if ab.effect then ab.effect(fx) end
 
@@ -1377,10 +1833,11 @@ function Combat.strikeTrap(combat, unit, weapon, x, y)
     if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, x, y) then
         return false, "no line of sight"
     end
-    if ab.cost and resourceValue(unit.char, ab.cost.stat) < ab.cost.amount then
-        return false, "insufficient " .. ab.cost.stat
+    local cost = Combat.abilityCost(unit, ab)
+    if cost and resourceValue(unit.char, cost.stat) < cost.amount then
+        return false, "insufficient " .. cost.stat
     end
-    if ab.cost then spendResource(unit.char, ab.cost.stat, ab.cost.amount) end
+    if cost then spendResource(unit.char, cost.stat, cost.amount) end
 
     -- Damage the trap by the weapon's attack stat (magical weapons use magicDamage). Traps have
     -- no defense, so this is the raw stat, floored.
@@ -1403,10 +1860,16 @@ end
 -- Priority: attack from the current tile > move to a tile that lets an ability hit a party
 -- unit > step toward the nearest foe > wait. Pure (no love, no mutation) so it stays testable.
 function Combat.planEnemyAction(combat, unit)
+    -- Can this unit see `other` as a foe at all? An Invisible unit is off the AI's board entirely:
+    -- it isn't chased, attacked, or approached. (A decoy, however, is a perfectly ordinary foe.)
+    local function isFoe(other)
+        return other.alive and other.side ~= unit.side and not Status.untargetable(other)
+    end
+
     -- Nearest living party unit (the foe we path toward / attack).
     local target, bestDist
     for _, u in ipairs(combat.units) do
-        if u.alive and u.side ~= unit.side then
+        if isFoe(u) then
             local d = manhattan(unit.x, unit.y, u.x, u.y)
             if not bestDist or d < bestDist then target, bestDist = u, d end
         end
@@ -1417,9 +1880,7 @@ function Combat.planEnemyAction(combat, unit)
     -- turn on an item useItem rejects).
     local items = {}
     for _, item in ipairs(Combat.abilityItems(unit.char)) do
-        local ab = item.activeAbility
-        if (not ab.cost or resourceValue(unit.char, ab.cost.stat) >= ab.cost.amount)
-            and not Combat.isDepleted(item) then
+        if Combat.canAfford(unit, item.activeAbility) and not Combat.isDepleted(item) then
             items[#items + 1] = item
         end
     end
@@ -1453,7 +1914,7 @@ function Combat.planEnemyAction(combat, unit)
             local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
             local minRange = Combat.abilityMinRange(ab)
             for _, p in ipairs(combat.units) do
-                if p.alive and p.side ~= unit.side
+                if isFoe(p)
                     and manhattan(node.x, node.y, p.x, p.y) <= range
                     and manhattan(node.x, node.y, p.x, p.y) >= minRange
                     and (not (ab and ab.requiresSight)
@@ -1504,7 +1965,9 @@ function Combat.evaluate(combat)
     local obj = combat.objective or { type = "killAll" }
     if obj.type == "assassinate" then
         for _, u in ipairs(combat.units) do
-            if u.alive and u.side == "enemy" and u.char.id == obj.target then
+            -- A summoned duplicate shares its origin's `char.id`, so it would otherwise read as the
+            -- mark still standing. Only the real thing counts.
+            if u.alive and u.side == "enemy" and u.char.id == obj.target and not u.summoned then
                 return nil -- target still standing
             end
         end

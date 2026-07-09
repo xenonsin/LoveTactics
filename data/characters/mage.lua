@@ -13,11 +13,14 @@ return {
     -- The trap kit now lives on the archer; the mage keeps Jolt as its status-system spell.
     -- Fire Stone infuses adjacent weapons/abilities with fire + Burn; packed next to Fireball it
     -- makes the mage's spells set foes alight (see fire_stone.lua).
+    -- Summon Fire Elemental reserves a quarter of that deep mana pool for as long as the elemental
+    -- stands, so a summoning mage fights the rest of the battle on three-quarters of its magic.
     startingItems = { "healing_potion"
     , "ability_jolt"
     , "silk_robes"
     , "parasitic_staff"
     , "ability_fireball"
     , "fire_stone"
-    , "ability_rain" }, -- item ids
+    , "ability_rain"
+    , "ability_summon_fire_elemental" }, -- item ids
 }

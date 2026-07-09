@@ -12,6 +12,7 @@
 -- computed box height can never drift from what's rendered. No love.graphics at require-time.
 
 local Scale = require("scale")
+local Combat = require("models.combat")
 
 local TileTooltip = {}
 
@@ -154,8 +155,16 @@ local function appendUnit(blocks, unit, preview)
         local res = char.stats and char.stats[r.stat]
         -- Only pools the unit actually has (max > 0); a beast with no mana skips the MP bar.
         if type(res) == "table" and (res.max or 0) > 0 then
+            -- A reservation (sustaining a summon) lowers the ceiling `current` can reach without
+            -- touching `max`, so the bar reads against the ceiling while still drawing the locked
+            -- slice at its far end -- the pool you have, and the pool you've committed.
+            local reserved = Combat.reservedAmount(char, r.stat)
             local block = { kind = "bar", label = r.label,
-                cur = res.current or 0, max = res.max, color = r.color }
+                cur = res.current or 0, max = res.max - reserved, color = r.color }
+            if reserved > 0 then
+                block.reserved = reserved
+                block.fullMax = res.max
+            end
             if r.stat == "health" and hpDelta ~= 0 then
                 block.delta = hpDelta
                 block.lethal = preview and preview.lethal
@@ -354,23 +363,34 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
             love.graphics.print(b.label, bx + pad, ty)
             -- Value text: plain "cur / max", or "cur -> after / max" when a preview delta applies.
+            -- `b.max` is the ceiling (max less anything reserved); a reservation appends its size.
             local curN = math.floor(b.cur + 0.5)
             local valueText = curN .. " / " .. b.max
             if b.delta then
                 local after = math.max(0, math.min(b.max, b.cur + b.delta))
                 valueText = curN .. " -> " .. math.floor(after + 0.5) .. " / " .. b.max
             end
+            if b.reserved then valueText = valueText .. " (" .. b.reserved .. " res.)" end
             love.graphics.setColor(VALUE[1], VALUE[2], VALUE[3], 1)
             love.graphics.printf(valueText, bx + pad, ty, innerW, "right")
             local barY = ty + bodyH
-            local ratio = (b.max > 0) and math.max(0, math.min(1, b.cur / b.max)) or 0
+            -- The track spans the pool's TRUE maximum, so the reserved slice occupies real width at
+            -- its far end and the unreserved fill visibly shrinks by exactly what was committed.
+            local scale = b.fullMax or b.max
+            local ratio = (scale > 0) and math.max(0, math.min(1, b.cur / scale)) or 0
             love.graphics.setColor(0, 0, 0, 0.5)
             love.graphics.rectangle("fill", bx + pad, barY, innerW, barH, 2, 2)
-            if b.delta and b.max > 0 then
+            if b.reserved and scale > 0 then
+                -- The locked-away tail: the pool colour, dimmed and hatched by opacity alone.
+                local resW = innerW * (b.reserved / scale)
+                love.graphics.setColor(b.color[1] * 0.5, b.color[2] * 0.5, b.color[3] * 0.5, 0.7)
+                love.graphics.rectangle("fill", bx + pad + innerW - resW, barY, resW, barH, 2, 2)
+            end
+            if b.delta and scale > 0 then
                 -- Show the change as a second segment: the "after" fill in the pool colour, then the
                 -- lost slice in red (damage) or the gained slice in green (heal) beside it.
                 local afterVal = math.max(0, math.min(b.max, b.cur + b.delta))
-                local afterRatio = math.max(0, math.min(1, afterVal / b.max))
+                local afterRatio = math.max(0, math.min(1, afterVal / scale))
                 if b.delta < 0 then
                     local loseCol = b.lethal and { 1.0, 0.30, 0.28 } or { 0.90, 0.35, 0.30 }
                     love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)

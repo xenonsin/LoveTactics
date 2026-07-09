@@ -129,10 +129,44 @@ existing dynamic `weight`), returning a list of `data/characters/` ids that **sc
 schema (`Character.instantiate`). The objective tile reads its roster + win condition from the
 quest's `map.objective` (`composition` + `win = { type, target }`).
 
-> **Deferred:** the turn-based mechanics (turn order, movement/attack resolution, real objective
-> evaluation, AI, rewards) are a later task. For now `states/battle.lua` exposes DEBUG keys —
-> `K` win, `L` lose, `F5` save arena — standing in for the win/lose evaluation the turn system
-> will provide. The `onWin`/`onLoss` seam means that lands without changing the transitions.
+### Combat subsystems
+
+`models/combat.lua` owns the rules; four sibling modules layer on top of it. Each is required by
+`combat.lua` at load time and reaches *back* into it through a **lazy require inside its
+functions**, so the dependency stays one-way and no require cycle forms. Follow that shape when
+adding a fifth.
+
+| Module | Lives in | What it adds |
+|---|---|---|
+| `models/status.lua` | `unit.statuses` | timed effects; tick down inside `Combat.rebase` |
+| `models/trap.lua` | `combat.traps` | hidden tile objects, triggered by pathing over them |
+| `models/hazard.lua` | `combat.hazards` | persistent per-cell area effects (fire, rain, sanctuary) |
+| `models/summon.lua` | `combat.units` | characters placed on the field mid-battle |
+
+**Who drives a unit** is `unit.control` — `"player"`, `"ai"`, or `"none"` (a decoy: it holds a
+slot in the turn order and burns a tick, but never acts). `states/battle.lua` branches on
+`Combat.isPlayerControlled(unit)`, *not* on `unit.side`, so a player's summon takes an interactive
+turn and an enemy's is AI-run with no extra wiring.
+
+**Reservation** (`Combat.reserve`) commits part of a resource for as long as a summon lives. It
+lowers the *ceiling* `current` may reach — `Combat.unreservedMax(char, stat) = max - reserved` —
+and never touches `max`, so percentage-of-maximum modifiers stay honest. Reservations live on the
+`char`, beside the `{max,current}` pools they constrain; they are cleared at battle setup and
+released by the death path when either the summon or its summoner falls. `Combat.restoreResource`
+and `Combat.applyHeal` are the only places the ceiling is enforced.
+
+**Ability prices** all flow through `Combat.abilityCost(unit, ab)`, which folds in any status
+`costMultiplier` (Haste). A reservation is not a price, and is deliberately never discounted.
+
+**Forced movement** (`Combat.knockback` / `Combat.pull`) moves a unit with no turn and no move
+cost, but shares `enterTile` with `Combat.moveUnit` — so being shoved across a spike trap is
+exactly as dangerous as walking over it.
+
+**The `fx` context is built three times** in `combat.lua`: for real in `Combat.useItem`, and once
+each as a non-mutating dry run in `Combat.previewAbility` (the aimed hover preview) and
+`Combat.abilityOutput` (the inventory tooltip). Both dry runs are `pcall`-guarded, so **a new `fx`
+helper must be added to all three** — otherwise the guarded replay swallows a nil-call and the
+tooltips silently go blank.
 
 ## Tests
 

@@ -12,6 +12,7 @@
 
 local Scale = require("scale")
 local Combat = require("models.combat")
+local Character = require("models.character")
 
 local ItemTooltip = {}
 
@@ -48,6 +49,7 @@ local DESC = { 0.80, 0.82, 0.88 }
 local WARN = { 0.95, 0.45, 0.42 } -- cost value + note when the actor can't afford the ability
 local POWER = { 0.95, 0.72, 0.48 } -- ability Power row (the offensive balance stat)
 local HEAL = { 0.55, 0.90, 0.58 }  -- ability heal row
+local SUMMON = { 0.78, 0.62, 0.96 } -- ability "Summons" row (matches the ability item accent)
 
 local function titleCase(s)
     return (tostring(s):gsub("^%l", string.upper))
@@ -123,6 +125,22 @@ local function buildBlocks(item, actor)
                 blocks[#blocks + 1] = { kind = "stat", label = "Applies",
                     value = def.name or st.id or "status", valueColor = def.color or VALUE }
             end
+            -- Board effects the dry run recorded rather than performed.
+            if out.summon then
+                local def = Character.defs[out.summon]
+                blocks[#blocks + 1] = { kind = "stat", label = "Summons",
+                    value = (def and def.name) or "a double", valueColor = SUMMON }
+            end
+            if out.knockback then
+                blocks[#blocks + 1] = { kind = "stat", label = "Knockback",
+                    value = out.knockback .. (out.knockback == 1 and " tile" or " tiles") }
+            end
+            if out.pull then
+                blocks[#blocks + 1] = { kind = "stat", label = "Pull", value = "To adjacent" }
+            end
+            if out.steal then
+                blocks[#blocks + 1] = { kind = "stat", label = "Steals", value = "One item" }
+            end
         end
 
         if ab.target then
@@ -139,15 +157,29 @@ local function buildBlocks(item, actor)
             blocks[#blocks + 1] = { kind = "stat", label = "Speed", value = tostring(ab.speed) }
         end
         if ab.cost then
-            local afford = not actor or Combat.canAfford(actor.char, ab)
+            -- Price the cast for THIS actor: a cost-reducing status (Haste) is already folded into
+            -- Combat.abilityCost, so the tooltip quotes what will actually be paid.
+            local cost = (actor and Combat.abilityCost(actor, ab)) or ab.cost
+            local afford = not actor or Combat.canAfford(actor, ab)
             blocks[#blocks + 1] = { kind = "stat", label = "Cost",
-                value = ab.cost.amount .. " " .. titleCase(ab.cost.stat),
-                valueColor = afford and RES_COLOR[ab.cost.stat] or WARN }
+                value = cost.amount .. " " .. titleCase(cost.stat),
+                valueColor = afford and RES_COLOR[cost.stat] or WARN }
             if not afford then
                 blocks[#blocks + 1] = { kind = "warn",
-                    text = "Not enough " .. ab.cost.stat .. " (have "
-                        .. math.floor(Combat.resource(actor.char, ab.cost.stat)) .. ")" }
+                    text = "Not enough " .. cost.stat .. " (have "
+                        .. math.floor(Combat.resource(actor.char, cost.stat)) .. ")" }
             end
+        end
+        -- A reservation isn't spent, it's committed: the share of the pool's MAXIMUM this ability
+        -- locks away for as long as what it summons survives.
+        if ab.reserve then
+            local pct = math.floor((ab.reserve.percent or 0) * 100 + 0.5)
+            local value = pct .. "% of max " .. ab.reserve.stat
+            local reserve = actor and Combat.abilityReserve(actor, ab)
+            if reserve then value = reserve.amount .. " " .. titleCase(reserve.stat) .. " (" .. pct .. "%)" end
+            blocks[#blocks + 1] = { kind = "stat", label = "Reserves", value = value,
+                valueColor = RES_COLOR[ab.reserve.stat] or VALUE }
+            blocks[#blocks + 1] = { kind = "note", text = "Reserved until the summon falls" }
         end
         if ab.consumesItem then
             blocks[#blocks + 1] = { kind = "note", text = "Consumed on use" }

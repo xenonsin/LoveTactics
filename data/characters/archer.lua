@@ -12,5 +12,7 @@ return {
     -- Weapon + armor for combat, plus the trap kit (spike-trap ability + trap detector)
     -- that makes the archer the party's trapper. Rain of Arrows only fires with a bow sitting
     -- adjacent to it in the grid -- arrange the loadout to enable it (see ability_rain_of_arrows.lua).
-    startingItems = { "bow", "leather_armor", "ability_spike_trap", "trap_sense", "healing_potion", "torch", "buckler", "ability_rain_of_arrows" }, -- item ids
+    -- Summon Wolf reserves a quarter of the archer's (deliberately small) mana pool for as long as
+    -- the wolf lives, so fielding it costs a Spike Trap's worth of headroom for the whole battle.
+    startingItems = { "bow", "leather_armor", "ability_spike_trap", "trap_sense", "healing_potion", "torch", "buckler", "ability_rain_of_arrows", "ability_summon_wolf" }, -- item ids
 }

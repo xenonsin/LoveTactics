@@ -24,6 +24,7 @@ local Sprite = require("models.sprite")
 local Tileset = require("models.tileset")
 local Biome = require("models.biome")
 local Combat = require("models.combat")
+local Status = require("models.status")
 
 local BattleMap = {}
 BattleMap.__index = BattleMap
@@ -369,6 +370,8 @@ end
 
 -- Unit bodies: sprite/token + side ring. HP bars and turn numbers are a separate pass
 -- (drawUnitInfo) drawn AFTER the highlights so those readouts stay legible on top.
+-- An untargetable (Invisible) unit is drawn faded: the player still sees where their own hidden
+-- unit stands, and the fade is the cue that the enemy currently cannot reach it.
 function BattleMap:drawUnits()
     if not self.combat then return end
     local s = self.size
@@ -376,25 +379,26 @@ function BattleMap:drawUnits()
         if u.alive then
             local wx, wy = self:cellToPixel(u.x, u.y)
             local isParty = u.side == "party"
+            local a = Status.untargetable(u) and 0.40 or 1
             local sprite = u.char.sprite
             if type(sprite) == "userdata" then
-                love.graphics.setColor(1, 1, 1)
+                love.graphics.setColor(1, 1, 1, a)
                 local sw, sh = sprite:getDimensions()
                 local scale = math.min((s - 8) / sw, (s - 8) / sh)
                 love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale,
                     sw / 2, sh / 2)
             else
                 -- Token fallback: colored disc with the unit's initial.
-                if isParty then love.graphics.setColor(0.35, 0.65, 0.95)
-                else love.graphics.setColor(0.90, 0.35, 0.30) end
+                if isParty then love.graphics.setColor(0.35, 0.65, 0.95, a)
+                else love.graphics.setColor(0.90, 0.35, 0.30, a) end
                 love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.32)
                 love.graphics.setFont(self.font)
-                love.graphics.setColor(1, 1, 1)
+                love.graphics.setColor(1, 1, 1, a)
                 love.graphics.printf((u.char.name or "?"):sub(1, 1), wx, wy + s / 2 - 8, s, "center")
             end
             -- Side ring.
-            if isParty then love.graphics.setColor(0.4, 0.7, 1, 0.9)
-            else love.graphics.setColor(1, 0.45, 0.4, 0.9) end
+            if isParty then love.graphics.setColor(0.4, 0.7, 1, 0.9 * a)
+            else love.graphics.setColor(1, 0.45, 0.4, 0.9 * a) end
             love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
         end
     end

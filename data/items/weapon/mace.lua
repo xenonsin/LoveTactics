@@ -1,0 +1,23 @@
+-- A heavy blunt weapon: it hits, then it SHOVES. fx.knockback drives the target two tiles straight
+-- back along the line from the wielder; if a wall, the board edge, or another unit stops it short,
+-- everything involved in the collision takes the Power as impact damage. Slow (speed 4) and dear in
+-- stamina -- you buy the displacement, not the damage.
+return {
+    name = "Mace",
+    description = "A crushing blow that drives the target back two spaces. A collision hurts everyone in it.",
+    sprite = "assets/items/mace.png",
+    type = "weapon",
+    tags = { "blunt", "impact", "physical" },
+    activeAbility = {
+        name = "Crush",
+        target = "enemy",
+        range = 1,
+        speed = 4,
+        cost = { stat = "stamina", amount = 8 },
+        power = 8,
+        effect = function(fx)
+            fx.damage(fx.target)
+            fx.knockback(fx.target, 2, { power = fx.power })
+        end,
+    },
+}

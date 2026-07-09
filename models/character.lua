@@ -130,6 +130,19 @@ function Character.addItem(char, item)
     return true
 end
 
+-- Remove `item` (identity match) from the grid, emptying its cell. Returns true if it was there.
+-- The counterpart to Character.addItem, used when an item leaves a character entirely -- stolen by
+-- a pickpocket, or moved out to the player's stash.
+function Character.removeItem(char, item)
+    for i = 1, Character.MAX_INVENTORY do
+        if char.inventory[i] == item then
+            char.inventory[i] = nil
+            return true
+        end
+    end
+    return false
+end
+
 -- Build a fresh, mutable character instance from a blueprint id.
 function Character.instantiate(id)
     local def = Character.defs[id]

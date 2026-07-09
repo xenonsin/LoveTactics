@@ -93,6 +93,9 @@ function game:openEncounter(cell)
             quest = game.quest,
             prestige = game.prestige,
             party = game.player and game.player.party or {},
+            -- The player's stash, by reference: an item stolen mid-battle by a thief with a full
+            -- grid is appended straight to it, so a theft survives whatever the battle does next.
+            stash = game.player and game.player.stash,
             -- Victory resumes THIS overworld (no regenerate); the objective completes
             -- the quest instead. See the file header on why enter is skipped here.
             onWin = function()

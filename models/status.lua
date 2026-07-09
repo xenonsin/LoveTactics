@@ -113,6 +113,27 @@ function Status.vulnerability(unit, tags)
     return total
 end
 
+-- Multiplier applied to every ability cost the unit pays, from each active status's
+-- `costMultiplier` (1 when none). Multiplicative so two haste-like buffs compound rather than
+-- cancel. Folded into Combat.abilityCost, the single source of truth for what an ability costs.
+function Status.costMultiplier(unit)
+    local m = 1
+    for _, s in ipairs(unit.statuses or {}) do
+        if s.def.costMultiplier then m = m * s.def.costMultiplier end
+    end
+    return m
+end
+
+-- Can the opposing side pick this unit as a target? False while any active status sets
+-- `untargetable` (Invisible). Read by Combat.abilityTargets and the enemy AI's target scans;
+-- friendly and self casts ignore it, so an ally can still heal an invisible friend.
+function Status.untargetable(unit)
+    for _, s in ipairs(unit.statuses or {}) do
+        if s.def.untargetable then return true end
+    end
+    return false
+end
+
 -- Apply status `id` to `unit`. One instance per id: re-applying refreshes the remaining
 -- duration to the longer of old/new and re-runs onApply (so re-stunning bumps again). Runs
 -- the def's onApply hook. Returns the (possibly refreshed) status instance.
@@ -133,7 +154,9 @@ function Status.apply(combat, unit, id, opts)
     end
     if def.onApply then def.onApply(ctxFor(combat, unit, status)) end
     -- Log only a fresh application (a refresh of an existing status would just spam the panel).
-    if isNew then
+    -- A `hideLog` status announces nothing at all: Invisible would otherwise write the very line
+    -- the Decoy that granted it is trying to keep out of the log.
+    if isNew and not def.hideLog then
         local Combat = require("models.combat")
         Combat.logEvent(combat, "status",
             string.format("%s is afflicted with %s.", (unit.char and unit.char.name) or "Unit", def.name or id))
@@ -153,9 +176,11 @@ function Status.tick(combat, elapsed)
                 s.remaining = s.remaining - elapsed
                 if s.remaining <= 0 then
                     table.remove(list, i)
-                    local Combat = require("models.combat")
-                    Combat.logEvent(combat, "status",
-                        string.format("%s's %s wears off.", (unit.char and unit.char.name) or "Unit", s.name or s.id))
+                    if not s.def.hideLog then
+                        local Combat = require("models.combat")
+                        Combat.logEvent(combat, "status",
+                            string.format("%s's %s wears off.", (unit.char and unit.char.name) or "Unit", s.name or s.id))
+                    end
                     if s.def.onExpire then s.def.onExpire(ctxFor(combat, unit, s)) end
                 end
             end

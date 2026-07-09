@@ -5,4 +5,17 @@ return {
     startingRoster = { "knight", "mage", "archer", "priest" }, -- character ids
     -- The active party: a subset of the roster, capped at Player.MAX_PARTY.
     startingParty = { "knight", "mage", "archer", "priest" }, -- character ids
+    -- Items the player owns that nobody is carrying. The stash is unbounded; move gear between it
+    -- and a character's 3x3 grid in the Loadout panel. A pickpocket whose grid is full pockets its
+    -- loot in here too. These are the pieces the starting loadouts have no room for.
+    startingStash = { -- item ids
+        "boots_of_speed",
+        "mace",
+        "decoy",
+        "ability_pickpocket",
+        "ability_haste",
+        "ability_push",
+        "ability_pull",
+        "ability_doppelganger",
+    },
 }

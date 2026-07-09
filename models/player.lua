@@ -1,8 +1,9 @@
 -- Player logic. Defaults live in data/player.lua; `Player.new` builds the
--- mutable runtime state: the full roster of owned characters plus the active
--- party (a capped subset of the roster).
+-- mutable runtime state: the full roster of owned characters, the active
+-- party (a capped subset of the roster), and the stash of unequipped items.
 
 local Character = require("models.character")
+local Item = require("models.item")
 
 local Player = {}
 
@@ -42,6 +43,40 @@ function Player.addToParty(player, char)
     return true
 end
 
+-- The stash: every item the player owns that isn't sitting in some character's 3x3 grid. It has no
+-- capacity at all -- a plain list -- so loot always has somewhere to go. A pickpocket whose own grid
+-- is full pockets the stolen item straight in here (Combat.steal appends to combat.stash, which the
+-- battle state points at this very table), and the Loadout panel moves items between it and a
+-- character's grid.
+
+-- Put `item` in the stash. A stackable item merges into an existing stack of the same id first, so
+-- a run of stolen potions collapses into one entry rather than filling the list.
+function Player.addToStash(player, item)
+    player.stash = player.stash or {}
+    if Item.isStackable(item) then
+        for _, existing in ipairs(player.stash) do
+            if existing.id == item.id and Item.isStackable(existing) then
+                local room = Item.maxStack(existing) - existing.quantity
+                if room > 0 then
+                    local moved = math.min(room, item.quantity)
+                    existing.quantity = existing.quantity + moved
+                    item.quantity = item.quantity - moved
+                    if item.quantity <= 0 then return true end -- fully absorbed
+                end
+            end
+        end
+    end
+    player.stash[#player.stash + 1] = item
+    return true
+end
+
+-- Pull the item at `index` out of the stash and hand it back (nil if there is nothing there).
+function Player.takeFromStash(player, index)
+    local stash = player.stash
+    if not stash or not stash[index] then return nil end
+    return table.remove(stash, index)
+end
+
 -- Remove a character from the active party (leaves them in the roster).
 -- Returns true if the character was in the party.
 function Player.removeFromParty(player, char)
@@ -70,12 +105,17 @@ function Player.new()
         prestige = Player.defaults.prestige,
         roster = roster,
         party = {},
+        stash = {}, -- unequipped items; unbounded (see Player.addToStash)
     }
 
     for _, charId in ipairs(Player.defaults.startingParty) do
         local char = byId[charId]
         assert(char, "startingParty id not in roster: " .. tostring(charId))
         assert(Player.addToParty(player, char), "startingParty exceeds MAX_PARTY of " .. Player.MAX_PARTY)
+    end
+
+    for _, itemId in ipairs(Player.defaults.startingStash or {}) do
+        Player.addToStash(player, Item.instantiate(itemId))
     end
 
     return player

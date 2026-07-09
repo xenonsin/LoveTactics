@@ -263,6 +263,91 @@ the hover tooltip shows its remaining `Quantity`. See `models/item.lua`
 (`Item.isStackable` / `Item.maxStack`), `models/combat.lua` (`Combat.isDepleted`), and
 `tests/stacking_spec.lua`.
 
+## Add a summon ability
+
+A summon ability puts any `data/characters/` blueprint on the field as a real unit: it joins the
+turn order, obeys whoever called it, and carries its own items. Use `target = "tile"` (the clicked
+cell arrives as `fx.tx` / `fx.ty`) and call `fx.summon` in the effect:
+
+```lua
+activeAbility = {
+    name = "Summon Wolf",
+    target = "tile", range = 1, speed = 6,
+    reserve = { stat = "mana", percent = 0.25 }, -- see below
+    power = 10,
+    effect = function(fx)
+        fx.summon("wolf_grunt", fx.tx, fx.ty, {
+            scaling = { health = 2, damage = 0.5 }, -- stat = base + power * factor
+            power = fx.power,
+            -- stats   = { health = 60 },  -- flat overrides of the blueprint's stats
+            -- items   = { "fangs" },      -- replaces its startingItems entirely
+            -- control = "none",           -- default: inherit the summoner's controller
+            -- fragile = true,             -- any hit at all is lethal
+        })
+    end,
+}
+```
+
+`fx.copy(x, y, opts)` summons a duplicate of the **caster** instead — its current stats, wounds and
+all, plus a fresh copy of its grid. Mark an item `noCopy = true` to keep it out of the duplicate
+(otherwise a doppelganger carries the doppelganger ability and summons itself). See
+`data/items/ability/ability_summon_wolf.lua` and `ability_doppelganger.lua`.
+
+**Reservation.** `reserve = { stat, percent }` commits a share of the pool's *maximum* for as long
+as the summoned creature lives. It lowers the ceiling `current` may reach, never `max` — so
+reserving life genuinely leaves you with less life to lose, while `%-of-max` modifiers are
+unaffected. The cast is refused unless the caster actually holds the resource. When the summon dies
+— or its summoner does — the reservation is released. The bond runs the other way too: **a dead
+summoner's creatures vanish with it**, which is what lets `killAll` still resolve.
+
+## Knockback and pull
+
+Both are generic (`Combat.knockback` / `Combat.pull`), reachable from any effect. Forced movement
+costs the target no turn and no movement, but triggers every trap and hazard it is dragged across.
+
+```lua
+effect = function(fx)
+    fx.damage(fx.target)
+    fx.knockback(fx.target, 2, { power = fx.power }) -- 2 tiles, straight back from the caster
+end
+```
+
+A knockback stopped by the board edge, impassable terrain, or another unit deals `power` as impact
+damage to **everyone involved** — the shoved unit and whatever it slammed into. Direction resolves
+to the dominant axis (ties break toward x), matching the 4-directional grid.
+
+`fx.pull(fx.target)` is the inverse: it drags a unit toward the caster until adjacent, re-aiming
+each step, and needs a clear line of sight. See `data/items/weapon/mace.lua`,
+`data/items/ability/ability_push.lua`, and `ability_pull.lua`.
+
+## The stash, and stealing into it
+
+`player.stash` is an unbounded list of every item nobody is carrying (`Player.addToStash` /
+`Player.takeFromStash`); seed it from `data/player.lua`'s `startingStash`. The Loadout panel shows
+it beside the 3×3 grid (`ui/stash_list.lua`) and moves items either way.
+
+`fx.steal(fx.target)` lifts one item off a unit. Two blueprint flags shape what a thief finds:
+
+- `noSteal = true` — never taken (a beast's fangs, an elemental's flame fists).
+- `stealPriority = N` — the highest is always taken first, ties broken at random (default 0). This
+  is how `data/items/utility/decoy.lua` makes itself the obvious thing to grab.
+
+If the thief's own grid is full, a party thief pockets the item into the stash (`combat.stash`,
+pointed at `player.stash` by `states/battle.lua`); an enemy thief simply destroys it. See
+`data/items/ability/ability_pickpocket.lua` and `tests/steal_spec.lua`.
+
+## Abilities that lie to the combat log
+
+Set `silent = true` on an ability to suppress its default `"X uses Y."` line, then write your own
+with `fx.log(kind, text)`. The Decoy uses this to report a plain move, so nothing in the log gives
+the trick away. A status can do the same with `hideLog = true` — Invisible would otherwise announce
+itself the moment the Decoy grants it. See `data/items/utility/decoy.lua` and
+`data/status/invisible.lua`.
+
+Note that **any new `fx` helper must be added to all three `fx` tables** in `models/combat.lua`
+(`Combat.useItem`, plus the dry runs in `Combat.previewAbility` and `Combat.abilityOutput`). The
+dry runs are `pcall`-guarded, so a missing helper doesn't error — it silently blanks the tooltips.
+
 ## Tests
 
 Add a `tests/<area>_spec.lua` returning `{ name, fn }` cases; it is auto-discovered. Test the

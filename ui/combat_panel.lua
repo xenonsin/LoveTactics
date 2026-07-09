@@ -50,11 +50,18 @@ local WARN_COLOR = { 0.95, 0.40, 0.38 }  -- red cost badge on an ability the act
 -- "after" fill in the pool colour, then the lost slice in red (delta < 0, brighter when lethal) or
 -- the gained slice in green (delta > 0) beside it. Mirrors ui/tile_tooltip.lua's bar so the banner
 -- preview reads the same as the tooltip. No delta = a plain fill.
-local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal)
+-- `reserved` (a share of the pool committed to sustaining a summon) is carved off the far end as a
+-- dimmed tail; the track still spans the pool's true maximum, so the usable fill visibly shrinks.
+local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal, reserved)
     delta = delta or 0
     local ratio = (max > 0) and math.max(0, math.min(1, cur / max)) or 0
     love.graphics.setColor(0, 0, 0, 0.5)
     love.graphics.rectangle("fill", x, y, w, h, 2, 2)
+    if reserved and reserved > 0 and max > 0 then
+        local resW = w * (reserved / max)
+        love.graphics.setColor(color[1] * 0.5, color[2] * 0.5, color[3] * 0.5, 0.7)
+        love.graphics.rectangle("fill", x + w - resW, y, resW, h, 2, 2)
+    end
     if delta ~= 0 and max > 0 then
         local afterRatio = math.max(0, math.min(1, (cur + delta) / max))
         if delta < 0 then
@@ -131,13 +138,14 @@ function CombatPanel:slotIndexAt(px, py)
     return nil
 end
 
--- Can the current actor pay `item`'s ability cost right now? True for passive/costless items and
--- when there is no current actor. Drives the grayed-out "can't afford" slot state.
+-- Can the current actor pay `item`'s ability cost (and set aside its reservation) right now? True
+-- for passive/costless items and when there is no current actor. Drives the grayed-out
+-- "can't afford" slot state.
 function CombatPanel:canAfford(item)
     local ab = item and item.activeAbility
     local cur = self.view.current
     if not ab or not cur then return true end
-    return Combat.canAfford(cur.char, ab)
+    return Combat.canAfford(cur, ab)
 end
 
 -- ---------------------------------------------------------------------------
@@ -337,7 +345,8 @@ function CombatPanel:drawEntry(entry, ey, num)
                     delta = -(pv.cost.amount or 0)
                 end
             end
-            drawResourceBar(rx, by, rw, 7, stat.current, stat.max, res.color, delta, lethal)
+            drawResourceBar(rx, by, rw, 7, stat.current, stat.max, res.color, delta, lethal,
+                Combat.reservedAmount(unit.char, res.key))
             by = by + 10
         end
     end

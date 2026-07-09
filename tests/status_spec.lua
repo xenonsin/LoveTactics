@@ -3,6 +3,7 @@
 -- turn, tick-based expiry driven by the rebase amount, and duration refresh. Pure logic, headless.
 
 local Character = require("models.character")
+local Item = require("models.item")
 local Combat = require("models.combat")
 local Status = require("models.status")
 
@@ -139,6 +140,68 @@ return {
 
             Status.tick(c, 3)
             assert(not Status.has(bandit, "burn"), "burn wears off after its duration")
+        end,
+    },
+    {
+        name = "Haste halves ability costs and pulls its target up the turn order",
+        fn = function()
+            local priest = Character.instantiate("priest")
+            priest.inventory = {}
+            Character.addItem(priest, Item.instantiate("ability_haste"))
+            local knight = Character.instantiate("knight")
+            knight.inventory = {}
+            Character.addItem(knight, Item.instantiate("iron_sword"))
+
+            local c = Combat.new(arena(8, 8), { unit(priest, 1, 1), unit(knight, 2, 1) },
+                { unit("bandit", 8, 8) })
+            local pu, ku, bandit = c.units[1], c.units[2], c.units[3]
+            -- Park the bandit far down the order so the priest's own turn cost sets the rebase.
+            pu.initiative, ku.initiative, bandit.initiative = 0, 20, 50
+            openTurn(c, pu)
+
+            local sword = knight.inventory[1]
+            local full = Combat.abilityCost(ku, sword.activeAbility).amount
+            local clock0 = c.clock
+
+            assert(Combat.useItem(c, pu, priest.inventory[1], ku.x, ku.y), "the priest quickens the knight")
+            assert(Status.has(ku, "hasted"), "the knight is hasted")
+            assert(Combat.abilityCost(ku, sword.activeAbility).amount == math.floor(full / 2 + 0.5),
+                "and everything it casts costs half as much")
+
+            -- Haste cut the knight's 20 down to 10; ending the priest's turn then rebased the whole
+            -- field by the ticks that elapsed, so back that out to see the halving on its own.
+            local elapsed = c.clock - clock0
+            assert(ku.initiative == 10 - elapsed,
+                "its current initiative was halved (expected " .. (10 - elapsed) .. ", got " .. ku.initiative .. ")")
+        end,
+    },
+    {
+        name = "a cost multiplier never discounts a reservation",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local mage = c.units[1]
+            local ab = { cost = { stat = "mana", amount = 20 }, reserve = { stat = "mana", percent = 0.25 } }
+            local reserveBefore = Combat.abilityReserve(mage, ab).amount
+
+            Status.apply(c, mage, "hasted")
+            assert(Combat.abilityCost(mage, ab).amount == 10, "the price is halved")
+            assert(Combat.abilityReserve(mage, ab).amount == reserveBefore,
+                "but a commitment is not a price -- it is untouched")
+        end,
+    },
+    {
+        name = "Boots of Speed widen the reachable set without touching the base stat",
+        fn = function()
+            local knight = Character.instantiate("knight")
+            knight.inventory = {} -- drop the chainmail, whose -1 movement would muddy the comparison
+            local c = Combat.new(arena(8, 8), { unit(knight, 4, 4) }, { unit("bandit", 8, 8) })
+            local u = c.units[1]
+            local base = Combat.moveBudget(u)
+
+            Character.addItem(knight, Item.instantiate("boots_of_speed"))
+            Combat.applyPassives(c)
+            assert(Combat.moveBudget(u) == base + 1, "the boots grant a space")
+            assert(knight.stats.movement == base, "and the character's own stat never drifts")
         end,
     },
 }
