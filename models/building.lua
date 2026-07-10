@@ -25,6 +25,7 @@ function Building.list(prestige)
             w = def.w,
             h = def.h,
             panel = def.panel,
+            vendor = def.vendor, -- vendor id for shop buildings; nil otherwise
             unlockPrestige = def.unlockPrestige or 1,
             locked = prestige < (def.unlockPrestige or 1),
         }

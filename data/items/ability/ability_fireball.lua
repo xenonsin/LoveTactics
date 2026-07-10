@@ -4,6 +4,9 @@ return {
     sprite = "assets/items/ability_fireball.png",
     type = "ability",
     tags = { "fire", "magical" }, -- the "magical" tag routes damage to magicDamage/magicDefense
+    class = "mage",
+    price = 350,
+    repRank = 3,
     activeAbility = {
         name = "Fireball",
         target = "enemy",

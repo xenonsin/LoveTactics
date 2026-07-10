@@ -128,11 +128,17 @@ local function buildBlocks(item, actor)
                 blocks[#blocks + 1] = { kind = "stat", label = "Applies",
                     value = def.name or st.id or "status", valueColor = def.color or VALUE }
             end
-            -- Board effects the dry run recorded rather than performed.
+            -- Board effects the dry run recorded rather than performed. A summon still standing
+            -- reddens the row that names it -- that creature is the reason the cast is refused.
             if out.summon then
                 local def = Character.defs[out.summon]
                 blocks[#blocks + 1] = { kind = "stat", label = "Summons",
-                    value = (def and def.name) or "a double", valueColor = SUMMON }
+                    value = (def and def.name) or "a double",
+                    valueColor = (blocked and blocked.kind == "active" and WARN) or SUMMON }
+                -- A timed summon fades on its own; an ability that omits `duration` says so, since
+                -- "until it dies" is the load-bearing difference between the wolf and the elemental.
+                blocks[#blocks + 1] = { kind = "stat", label = "Duration",
+                    value = out.summonDuration and tostring(out.summonDuration) or "Until slain" }
             end
             if out.knockback then
                 blocks[#blocks + 1] = { kind = "stat", label = "Knockback",
@@ -178,7 +184,7 @@ local function buildBlocks(item, actor)
             blocks[#blocks + 1] = { kind = "stat", label = "Reserves", value = value,
                 valueColor = (blocked and blocked.kind == "reserve" and WARN)
                     or RES_COLOR[ab.reserve.stat] or VALUE }
-            blocks[#blocks + 1] = { kind = "note", text = "Spent on cast, unrecoverable until the summon falls" }
+            blocks[#blocks + 1] = { kind = "note", text = "Spent on cast, unrecoverable until the summon is gone" }
         end
         -- An adjacency requirement always shows, green once the grid satisfies it and red while it
         -- doesn't -- the same green as the connector line the item grid draws to the neighbor.

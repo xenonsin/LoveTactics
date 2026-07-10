@@ -200,10 +200,12 @@ local function hydrateTiles(layout)
 end
 
 -- Bind unit id lists onto a layout's spawn points (zipping to the shorter length).
-local function bindUnits(ids, spawns)
+-- `offset` skips spawn points already claimed by an earlier bind.
+local function bindUnits(ids, spawns, offset)
+    offset = offset or 0
     local units = {}
     for i, id in ipairs(ids) do
-        local sp = spawns[i]
+        local sp = spawns[i + offset]
         if not sp then break end
         units[i] = { id = id, x = sp.x, y = sp.y }
     end
@@ -212,12 +214,28 @@ end
 
 -- Build a fully populated arena from a context + spec. See the module header for the
 -- spec shape. Deterministic when `spec.seed` is set.
+--
+-- `spec.allies` names non-party characters that fight on the party's side under AI control
+-- (an escorted caravan, a herd to defend). They claim party spawn points after the party
+-- itself, and are what a `protect` objective is usually pointed at.
 function Arena.build(ctx, spec)
     spec = spec or {}
     local partyIds = spec.party or {}
+    local allyIds = Arena.resolveComposition(spec.allies, ctx)
+    if not spec.allies then allyIds = {} end -- resolveComposition defaults to a bandit; allies default to none
     local enemyIds = Arena.resolveComposition(spec.composition, ctx)
 
-    local layout = Arena.pickLayout(spec, #partyIds, #enemyIds)
+    local layout = Arena.pickLayout(spec, #partyIds + #allyIds, #enemyIds)
+
+    -- A curated layout may not have authored enough party spawns for the party *and* its
+    -- escort. Dropping the escortee would instantly fail a `protect` objective, so fall
+    -- back to a procedural layout sized for everyone. Only escort builds can trip this.
+    if #allyIds > 0 and #layout.partySpawns < #partyIds + #allyIds then
+        layout = Arena.generateLayout({
+            biome = spec.biome, seed = spec.seed,
+            party = #partyIds + #allyIds, enemies = #enemyIds,
+        })
+    end
 
     return {
         cols = layout.cols, rows = layout.rows,
@@ -225,6 +243,7 @@ function Arena.build(ctx, spec)
         biome = spec.biome or layout.biome,
         tiles = hydrateTiles(layout),
         party = bindUnits(partyIds, layout.partySpawns),
+        allies = bindUnits(allyIds, layout.partySpawns, #partyIds),
         enemies = bindUnits(enemyIds, layout.enemySpawns),
         traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
         objective = normalizeObjective(spec.objective),

@@ -6,6 +6,9 @@ return {
     sprite = "assets/items/ability_jolt.png",
     type = "ability",
     tags = { "lightning", "magical" },
+    class = "mage",
+    price = 90,
+    repRank = 1,
     activeAbility = {
         name = "Jolt",
         target = "enemy",

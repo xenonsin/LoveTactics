@@ -414,6 +414,19 @@ function CombatPanel:drawLock(x, y, w, h, r, g, b, a)
     love.graphics.rectangle("fill", x + w * 0.1, bodyTop, w * 0.8, h - h * 0.42, 1, 1)
 end
 
+-- A summoning circle with something bound inside it: the glyph for an ability whose creature is
+-- still on the field, and so cannot be cast again until it falls. A ring around a core dot -- at
+-- this size (9x10) a literal figure-in-a-circle silts up into a blob, while two concentric shapes
+-- with clear space between them stay legible.
+function CombatPanel:drawSummonRing(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local cx, cy = x + w / 2, y + h / 2
+    love.graphics.setLineWidth(1.5)
+    love.graphics.circle("line", cx, cy, math.min(w, h) * 0.46)
+    love.graphics.setLineWidth(1)
+    love.graphics.circle("fill", cx, cy, math.min(w, h) * 0.16)
+end
+
 -- Two stubs with a gap between them: a "broken link" glyph marking an adjacency requirement the
 -- grid doesn't satisfy (a met one is drawn as a solid connector line over the grid instead).
 function CombatPanel:drawBrokenLink(x, y, w, h, r, g, b, a)
@@ -425,8 +438,8 @@ function CombatPanel:drawBrokenLink(x, y, w, h, r, g, b, a)
 end
 
 -- A cost/speed corner badge: a dark pill with an icon and a label. `corner` is "left"
--- (top-left costs) or "right" (top-right speed); `iconKind` is "dot", "hourglass", "lock" or
--- "link". `row` stacks a badge under the previous one in the same corner (0 = top, the default).
+-- (top-left costs) or "right" (top-right speed); `iconKind` is "dot", "hourglass", "lock", "link"
+-- or "ring". `row` stacks a badge under the previous one in the same corner (0 = top, the default).
 function CombatPanel:drawBadge(sx, sy, sw, corner, iconKind, amount, color, a, row)
     love.graphics.setFont(self.smallFont)
     local label = tostring(amount)
@@ -449,6 +462,8 @@ function CombatPanel:drawBadge(sx, sy, sw, corner, iconKind, amount, color, a, r
         self:drawLock(ix, iy, iconW, 10, color[1], color[2], color[3], a)
     elseif iconKind == "link" then
         self:drawBrokenLink(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+    elseif iconKind == "ring" then
+        self:drawSummonRing(ix, iy, iconW, 10, color[1], color[2], color[3], a)
     else -- resource "dot": a filled diamond reads cleaner than a circle at this size
         local cx, cy, rr = ix + iconW / 2, iy + 5, 5
         love.graphics.setColor(color[1], color[2], color[3], a or 1)
@@ -574,6 +589,15 @@ function CombatPanel:drawItemGrid()
                     local req = ab.requiresAdjacent
                     self:drawBadge(sx, sy, sw, "left", "link", req.tag or req.type or "item",
                         WARN_COLOR, 1, row)
+                end
+                -- The creature this ability called is still standing, so it cannot be cast again:
+                -- a red summoning-ring badge under the cost badges says the ability is ACTIVE rather
+                -- than unaffordable. A timed summon counts down in the badge instead (bare ticks, the
+                -- same way every other duration in the game is quoted). The hover tooltip names it.
+                if blocked and blocked.kind == "active" then
+                    local left = blocked.summon.summonRemaining
+                    local label = left and math.max(0, math.ceil(left)) or "Active"
+                    self:drawBadge(sx, sy, sw, "left", "ring", label, WARN_COLOR, 1, row)
                 end
             end
         end

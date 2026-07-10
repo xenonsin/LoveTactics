@@ -6,6 +6,9 @@ return {
     description = "Warded weave that drinks in hostile magic. Light armor: no movement penalty.",
     sprite = "assets/items/silk_robes.png",
     type = "armor",
+    class = "mage",
+    price = 170,
+    repRank = 2,
     -- Light tier for casters: little against steel, strong against spells.
     bonus = { magicDefense = 4 },
     resist = { magical = 3 },

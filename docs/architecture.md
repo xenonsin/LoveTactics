@@ -53,7 +53,11 @@ all three:
 
 - **`ui/menu.lua`** — vertical button list. Mouse hover selects / click activates; up-down /
   W-S / D-pad / left-stick navigate; Enter/Space/A activate. `opts.centerX` places it off the
-  screen center (used to seat the quest list inside a panel column).
+  screen center (used to seat the quest list inside a panel column). `opts.maxVisible` caps how
+  many rows are drawn and **scrolls** the rest: the selection leads and the window follows, the
+  wheel scrolls without moving the selection, PgUp/PgDn jump a windowful, and rows outside the
+  window get no rect at all — so they fall out of hit-testing and drawing for free. A list that
+  grows with content (the Quest Board, a vendor's shelf) must set it.
 - **`ui/building_map.lua`** — clickable hotspots positioned over a background image (the hub
   city). Same input surface as the menu; left/right (and D-pad / left-stick X) cycle through
   unlocked buildings, skipping locked ones.
@@ -96,7 +100,27 @@ before drawing.
 **Keep `models/` and `data/` free of `love.graphics` at require-time.** The headless test
 runner loads these modules with no window; touching graphics at load time would break it.
 (Widgets and states may use `love.graphics` freely — they are only required when switched to,
-which never happens in test mode.)
+which never happens in test mode.) `models/save.lua` uses `love.filesystem`, which *is*
+available headless.
+
+## Progression and persistence
+
+`models/player.lua` owns **one live player per session**, `Player.active`, established by
+`Player.start(fresh)` from the main menu — either a new game or the save file. States must read
+it (`hub.enter` does `Player.active or Player.start()`) and never call `Player.new()`, which
+discards all progress.
+
+`models/save.lua` serializes a **lean schema of blueprint ids**, never live instances, into
+`love.filesystem` (the save directory is named by `t.identity` in `conf.lua`). Loading
+re-hydrates through `Character.instantiate` / `Item.instantiate`, so blueprints stay the source
+of truth and a content edit flows into existing saves rather than corrupting them. Current
+health/mana/stamina are *not* saved: `hub.enter` calls `Player.restore`, which refills the
+roster, so attrition lasts a quest rather than a campaign and a loaded party is always whole.
+
+The economy is one direction of dependency: `Quest` → `Player` → `Vendor` → `Item`. `Vendor`
+resolves reputation ranks from a **points number, not a player**, which is what keeps `Player`
+free to depend on it without a require cycle. Progress is written at the two points it changes —
+`Quest.complete` (the objective-win branch of `states/game.lua`) and a vendor purchase.
 
 ## Combat: battle arenas
 
@@ -155,12 +179,29 @@ and never touches `max`, so percentage-of-maximum modifiers stay honest. Reserva
 released by the death path when either the summon or its summoner falls. `Combat.restoreResource`
 and `Combat.applyHeal` are the only places the ceiling is enforced.
 
+**One summon per item.** The unit `fx.summon` / `fx.copy` creates is stamped onto the item that
+called it, and `Combat.activeSummon(item)` reads it back for as long as it lives. That is the whole
+mechanism behind "you may not recast a summon while its creature stands": `Combat.itemBlockReason`
+reports `kind = "active"`, which grays the slot, refuses the cast, and hides the ability from the AI.
+It needs no bookkeeping on death — the unit's own `alive` flag retires the claim — and battle setup
+wipes any claim a surviving summon left on a party item.
+
+**Summon duration** is optional and measured in ticks. `Summon.tick` sits beside `Status.tick` and
+`Hazard.tick` in `Combat.rebase`, counting `unit.summonRemaining` down by the elapsed clock; at zero
+the creature fades via `Combat.dismiss`. A summon with no `duration` has no countdown and stands
+until it is killed. `Combat.dismiss` is the single path for leaving the field short of dying — the
+summoner fell, or the binding lapsed — and it cascades to anything that summon was itself sustaining.
+
 **Ability prices** all flow through `Combat.abilityCost(unit, ab)`, which folds in any status
 `costMultiplier` (Haste). A reservation is not a price, and is deliberately never discounted.
 
-**Forced movement** (`Combat.knockback` / `Combat.pull`) moves a unit with no turn and no move
-cost, but shares `enterTile` with `Combat.moveUnit` — so being shoved across a spike trap is
-exactly as dangerous as walking over it.
+**Arriving on a tile** is one function, `Combat.enterTile`: it springs an opposing trap and fires the
+on-entry effect of any hazard there. Every way a unit can come to occupy a tile goes through it —
+`Combat.moveUnit` (per path tile), forced movement (`Combat.knockback` / `Combat.pull`, which moves a
+unit with no turn and no move cost), and `Summon.spawn` / `Summon.copy`. So being shoved across a
+spike trap, or conjured on top of one, is exactly as dangerous as walking over it. A summon can
+therefore die on arrival: `fx.summon` / `fx.copy` bind the ability's reservation and its
+`activeSummon` claim only to a creature that survived, or the caster would hold mana for a corpse.
 
 **The `fx` context is built three times** in `combat.lua`: for real in `Combat.useItem`, and once
 each as a non-mutating dry run in `Combat.previewAbility` (the aimed hover preview) and

@@ -7,6 +7,9 @@ return {
     sprite = "assets/items/ability_spike_trap.png",
     type = "ability",
     tags = { "trap", "utility" },
+    class = "rogue",
+    price = 330,
+    repRank = 3,
     activeAbility = {
         name = "Spike Trap",
         target = "tile",

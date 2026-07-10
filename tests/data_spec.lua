@@ -11,10 +11,12 @@ return {
         name = "player defaults come from data/player.lua",
         fn = function()
             local p = Player.new()
-            assert(p.gold == 0, "gold should be 0")
-            assert(p.prestige == 1, "prestige should be 1")
+            assert(p.gold == Player.defaults.gold, "gold should come from the defaults")
+            assert(p.prestige == Player.defaults.prestige, "prestige should come from the defaults")
             assert(#p.roster == 4, "roster should have 4 members")
             assert(#p.party == 4, "party should have 4 members")
+            assert(next(p.reputation) == nil, "a new player owes nobody any reputation")
+            assert(next(p.completedQuests) == nil, "a new player has completed no quests")
         end,
     },
     {

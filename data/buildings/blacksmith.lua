@@ -1,9 +1,9 @@
 return {
     name = "Blacksmith",
-    order = 2,
-    x = 420,
-    y = 400,
-    w = 200,
+    order = 9,
+    x = 195,
+    y = 530,
+    w = 270,
     h = 140,
     panel = nil, -- placeholder until designed
     unlockPrestige = 1,

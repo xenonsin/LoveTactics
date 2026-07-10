@@ -9,12 +9,22 @@
 --
 -- `power` scales the creature through `scaling`: each entry is added on top of the blueprint's base
 -- (health +2 per point, damage +0.5 per point), so a stronger caster fields a stronger wolf.
+--
+-- One wolf at a time: the ability is refused while the last one it called still stands (the rule is
+-- automatic for anything that summons -- see Combat.activeSummon).
+--
+-- The wolf has no `duration`, so it is called for good: it stands until something kills it, or until
+-- the archer sustaining it falls. Compare ability_summon_fire_elemental.lua, whose binding lapses on
+-- a timer -- the same reservation buys a permanent body here and a temporary one there.
 return {
     name = "Summon Wolf",
-    description = "Call a wolf to your side. Reserves a quarter of your maximum mana while it lives.",
+    description = "Call a wolf to your side, one at a time. Reserves a quarter of your maximum mana while it lives.",
     sprite = "assets/items/ability_summon_wolf.png",
     type = "ability",
     tags = { "summon", "beast" },
+    class = "hunter",
+    price = 420,
+    repRank = 3,
     activeAbility = {
         name = "Summon Wolf",
         target = "tile",

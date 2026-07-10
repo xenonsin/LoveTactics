@@ -8,6 +8,9 @@ return {
     sprite = "assets/items/ability_push.png",
     type = "ability",
     tags = { "impact", "physical" },
+    class = "knight",
+    price = 200,
+    repRank = 2,
     activeAbility = {
         name = "Push",
         target = "enemy",

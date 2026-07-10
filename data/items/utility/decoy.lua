@@ -12,6 +12,9 @@
 --    double, so destroying it rewrites the entry in place and the log finally admits what happened
 --    (models/combat.lua's unmaskDecoy).
 --
+--    Only one double at a time: while it stands, the item is spent (Combat.activeSummon -- one summon
+--    per item). Destroy the double, or let it die with its caster, and the trick can be run again.
+--
 -- 2. CARRIED: `stealPriority` outranks everything else in the grid, so a pickpocket rummaging
 --    through this character grabs the Decoy first and leaves the real gear alone (Combat.steal).
 --
@@ -33,6 +36,9 @@ return {
         silent = true, -- the log must not give the trick away; see fx.log below
         effect = function(fx)
             local double = fx.copy(fx.tx, fx.ty, { fragile = true, control = "none", decoy = true })
+            -- Planted on a trap, the fragile double dies on the spot and the log has already said so.
+            -- There is nothing left to hide behind: no concealment, and no fake move line to write.
+            if not double.alive then return end
             fx.applyStatus(fx.user, "invisible")
             -- The lie, and the receipt for it: destroying the double corrects this very entry.
             double.decoyLogEntry = fx.log("move", string.format("%s moves to (%d, %d).",

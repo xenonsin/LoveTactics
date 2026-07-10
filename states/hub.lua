@@ -31,12 +31,17 @@ local function openPanel(building)
         title = building.name,
         prestige = hub.player and hub.player.prestige or 1,
         player = hub.player, -- forwarded so a launched quest knows the active party
+        vendor = building.vendor, -- vendor id, for buildings that are shops
         onClose = function() activePanel = nil end,
     })
 end
 
 function hub.enter()
-    hub.player = Player.new()
+    -- The session's one player, carried across every hub visit. Rebuilding it here (as this
+    -- once did, via Player.new) would discard gold, reputation, and everything bought.
+    hub.player = Player.active or Player.start()
+    -- Coming home rests the company: health and mana refill. Attrition lasts a quest, not forever.
+    Player.restore(hub.player)
     activePanel = nil
     background = Sprite.load("assets/hub/city.png")
     map = BuildingMap.new(Building.list(hub.player.prestige), {

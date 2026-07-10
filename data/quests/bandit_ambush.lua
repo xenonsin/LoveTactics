@@ -1,10 +1,15 @@
--- Quest blueprint. `requiredPrestige` gates when the quest appears on the
--- board; `Quest.available(prestige)` filters on it.
+-- Quest blueprint. `requiredPrestige` gates when the quest appears on the board, and
+-- `sponsor` names the data/vendors/<id>.lua that pays for it -- completing it earns
+-- `rewardRep` with that vendor, unlocking more of their stock. `Quest.available(player)`
+-- filters on prestige, reputation (`requiredRep`), and what you have already finished.
 return {
     name = "Bandit Ambush",
-    description = "Raiders have blocked the north road. Clear them out.",
+    description = "Raiders have blocked the north road. The Bastion wants it open by week's end.",
     difficulty = "Easy",
+    sponsor = "bastion",
     rewardGold = 50,
+    rewardRep = 20,
+    rewardPrestige = 1,
     requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {

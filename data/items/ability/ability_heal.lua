@@ -7,6 +7,9 @@ return {
     sprite = "assets/items/ability_heal.png",
     type = "ability",
     tags = { "holy", "restorative" },
+    class = "priest",
+    price = 140,
+    repRank = 2,
     activeAbility = {
         name = "Heal",
         target = "ally", -- includes the caster (a unit is its own ally)

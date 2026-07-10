@@ -7,5 +7,8 @@ return {
     sprite = "assets/items/trap_sense.png",
     type = "utility",
     tags = { "detect traps" },
+    class = "hunter",
+    price = 150,
+    repRank = 2,
     detectRadius = 2,
 }

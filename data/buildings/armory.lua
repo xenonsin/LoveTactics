@@ -1,12 +1,12 @@
 -- Armory building: opens the Loadout panel (ui/panels/loadout.lua) to arrange each character's
--- 3x3 item grid. Positioned in the 1280x720 logical space, clear of the Quest Board hotspot.
+-- 3x3 item grid. Not a vendor -- it rearranges what you already own.
 return {
     name = "Armory",
     order = 2,
-    x = 470,
-    y = 430,
-    w = 200,
-    h = 120,
+    x = 350,
+    y = 150,
+    w = 270,
+    h = 140,
     panel = "loadout",
     unlockPrestige = 1,
 }

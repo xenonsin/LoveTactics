@@ -9,6 +9,9 @@ return {
     sprite = "assets/items/ability_sanctuary.png",
     type = "ability",
     tags = { "holy", "restorative" },
+    class = "priest",
+    price = 360,
+    repRank = 3,
     activeAbility = {
         name = "Sanctuary",
         target = "tile",

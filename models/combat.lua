@@ -347,7 +347,8 @@ end
 -- unit is mid-turn at initiative 0, and rebasing under it would corrupt the timeline.
 --
 -- `opts`: control ("player"|"ai"|"none"; defaults from `side`), summoner (the unit sustaining it),
--- fragile (any hit is lethal), summoned (marks it as not a "real" combatant -- see Combat.evaluate).
+-- fragile (any hit is lethal), summoned (marks it as not a "real" combatant -- see Combat.evaluate),
+-- duration (ticks it may stand before it fades; nil = until something kills it -- see Summon.tick).
 function Combat.addUnit(combat, char, side, x, y, opts)
     opts = opts or {}
     local unit = {
@@ -361,6 +362,7 @@ function Combat.addUnit(combat, char, side, x, y, opts)
         summoner = opts.summoner,
         fragile = opts.fragile,
         summoned = opts.summoned,
+        summonRemaining = opts.duration, -- nil for an indefinite summon; ticks down in rebase
     }
     unit.index = #combat.units + 1
     combat.units[unit.index] = unit
@@ -389,7 +391,9 @@ function Combat.new(arena, partyUnits, enemyUnits)
                 initiative = Combat.initiative(u.char),
                 speed = Combat.speed(u.char), -- primary tie-break
                 alive = true,
-                control = (side == "party") and "player" or "ai",
+                -- Side implies control, except where the caller overrides it: an escorted
+                -- ally fights on the party's side but runs itself (control = "ai"/"none").
+                control = u.control or ((side == "party") and "player" or "ai"),
             }
             unit.index = #combat.units + 1
             combat.units[unit.index] = unit
@@ -397,9 +401,15 @@ function Combat.new(arena, partyUnits, enemyUnits)
             -- resource), while mana persists on the reused party instance (spent mana stays
             -- spent). Enemies are freshly instantiated, so this is a harmless no-op for them.
             -- Reservations never outlive the battle that made them (their summons are gone), so
-            -- clear them BEFORE the refill or a stale one would cap stamina below its max.
+            -- clear them BEFORE the refill or a stale one would cap stamina below its max. A summon
+            -- claim (Combat.activeSummon) is the same kind of leftover: the wolf that was still
+            -- standing at the last blow is not on this field, so its horn is free to blow again.
             if side == "party" then
                 unit.char.reservations = nil
+                for i = 1, Character.MAX_INVENTORY do
+                    local item = unit.char.inventory[i]
+                    if item then item.activeSummon = nil end
+                end
                 local st = unit.char.stats.stamina
                 if type(st) == "table" then st.current = st.max end
             end
@@ -448,9 +458,11 @@ function Combat.rebase(combat)
     end
     combat.clock = combat.clock + minInit
     -- The subtracted amount IS the ticks that just elapsed: count status durations down by it,
-    -- count hazard durations down (and let fire spread) by it, and regenerate stamina by the same time.
+    -- count hazard durations down (and let fire spread) by it, fade any timed summon whose time is
+    -- up, and regenerate stamina by the same time.
     Status.tick(combat, minInit)
     Hazard.tick(combat, minInit)
+    Summon.tick(combat, minInit)
     Combat.regenerate(combat, minInit)
 end
 
@@ -769,14 +781,17 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRa
     return out
 end
 
--- Everything a unit sets off by occupying (x, y): an opposing trap on the tile triggers, and --
--- when the unit ENTERED the tile rather than started on it -- any hazard there fires its on-entry
--- effect. Shared by a walk (Combat.moveUnit, per path tile) and by forced movement (knockback /
--- pull), so being shoved across a spike trap is exactly as dangerous as walking over it.
-local function enterTile(combat, unit, x, y, entered)
+-- Everything a unit sets off by arriving on (x, y): an opposing trap on the tile triggers, and any
+-- hazard there fires its on-entry effect. Shared by a walk (Combat.moveUnit, per path tile), by
+-- forced movement (knockback / pull), and by a summon appearing (models/summon.lua) -- so being
+-- shoved across a spike trap, or conjured on top of one, is exactly as dangerous as walking over it.
+--
+-- The unit must already stand on (x, y) when this is called: a trap may kill it, and the death path
+-- reads its position. Callers move it first, then announce the arrival.
+function Combat.enterTile(combat, unit, x, y)
     local trap = Trap.at(combat, x, y)
     if trap then Trap.trigger(combat, trap, unit) end
-    if unit.alive and entered then Hazard.onEnter(combat, unit, x, y) end
+    if unit.alive then Hazard.onEnter(combat, unit, x, y) end
 end
 
 -- The initiative a walk of terrain-weighted `cost` actually charges `unit`: the raw path cost
@@ -840,7 +855,7 @@ function Combat.stepMove(combat, walk)
     walk.index = walk.index + 1
     local tile = walk.path[walk.index]
     walk.unit.x, walk.unit.y = tile.x, tile.y
-    enterTile(combat, walk.unit, tile.x, tile.y, true)
+    Combat.enterTile(combat, walk.unit, tile.x, tile.y)
     return true
 end
 
@@ -895,7 +910,7 @@ local function shoveStep(combat, unit, dx, dy)
     local nx, ny = unit.x + dx, unit.y + dy
     if not canShoveInto(combat, nx, ny) then return false end
     unit.x, unit.y = nx, ny
-    enterTile(combat, unit, nx, ny, true)
+    Combat.enterTile(combat, unit, nx, ny)
     return true
 end
 
@@ -1139,6 +1154,27 @@ local function unmaskDecoy(combat, decoy)
     end
 end
 
+-- Take a summon off the field without killing it: its summoner fell, or the binding that held it
+-- ran out (Summon.tick). Not a death -- nothing struck it -- so it is logged as vanishing rather
+-- than as a defeat, and `text` lets the caller say why. Everything its presence held up is unwound:
+-- whatever IT was sustaining is dismissed in turn (the chain always terminates -- a summoner exists
+-- before its summon, so the bond can't loop), and its reservations are released.
+--
+-- The one place a summon leaves the field short of dying, so the `activeSummon` claim and the
+-- reservation are freed together, from here, however it went.
+function Combat.dismiss(combat, unit, text)
+    if not unit or not unit.alive then return end
+    unit.alive = false
+    Combat.logEvent(combat, "death", text or string.format("%s vanishes.", unitName(unit)))
+    -- A decoy dismissed alongside the caster it was covering for: nobody is left to reveal, but the
+    -- fake move it wrote is still sitting in the log. Set it straight.
+    correctDecoyRecord(unit)
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.summoner == unit then Combat.dismiss(combat, u) end
+    end
+    Combat.releaseHeldBy(combat, unit)
+end
+
 -- Everything that follows from a unit dropping: mark it dead, log the kill, and unwind whatever
 -- its existence was holding up. Called from the one place a unit can die (Combat.dealFlatDamage).
 --   * A destroyed decoy unmasks itself, and the caster it was hiding (see above).
@@ -1157,14 +1193,7 @@ local function killUnit(combat, target)
     end
 
     for _, u in ipairs(combat.units) do
-        if u.alive and u.summoner == target then
-            u.alive = false
-            Combat.logEvent(combat, "death", string.format("%s vanishes.", unitName(u)))
-            -- A decoy dismissed alongside the caster it was covering for: nobody is left to reveal,
-            -- but the fake move it wrote is still sitting in the log. Set it straight.
-            correctDecoyRecord(u)
-            Combat.releaseHeldBy(combat, u)
-        end
+        if u.alive and u.summoner == target then Combat.dismiss(combat, u) end
     end
 
     Combat.releaseHeldBy(combat, target)
@@ -1407,10 +1436,19 @@ function Combat.abilityOutput(unit, item)
         adjacentMatching = function() return 0 end,
         placeTrap = function() return nil end,
         placeHazard = function() return nil end,
-        -- Record WHAT the ability summons so the inventory tooltip can name it, without building
-        -- anything; the stand-in keeps a chained effect from faulting out of the pcall.
-        summon = function(charId) out.summon = charId; return previewStandIn() end,
-        copy = function() out.summon = "copy"; return previewStandIn() end,
+        -- Record WHAT the ability summons -- and for how long -- so the inventory tooltip can name it
+        -- and quote its duration, without building anything; the stand-in keeps a chained effect from
+        -- faulting out of the pcall.
+        summon = function(charId, _, _, opts)
+            out.summon = charId
+            out.summonDuration = opts and opts.duration
+            return previewStandIn()
+        end,
+        copy = function(_, _, opts)
+            out.summon = "copy"
+            out.summonDuration = opts and opts.duration
+            return previewStandIn()
+        end,
         knockback = function(_, distance) out.knockback = distance or 1; return 0, false end,
         pull = function() out.pull = true; return false end,
         steal = function() out.steal = true; return nil end,
@@ -1652,17 +1690,32 @@ function Combat.isDepleted(item)
     return ab ~= nil and ab.consumesItem and (item.quantity or 1) <= 0
 end
 
+-- The creature this item summoned and is still sustaining, or nil once it falls. An item holds ONE
+-- summon at a time: `fx.summon` / `fx.copy` stamp what they spawned onto the item (below), and the
+-- unit's own `alive` flag retires the claim -- a summon that dies, and a summon dismissed with its
+-- summoner, both clear it without anyone having to remember to. That makes a summon ability
+-- self-limiting: it cannot be recast while what it called still stands (Combat.itemBlockReason).
+--
+-- Party items outlive their battle, so a summon still standing at the final blow would keep its
+-- claim forever; Combat.new wipes the field's claims at setup, beside the reservations.
+function Combat.activeSummon(item)
+    local held = item and item.activeSummon
+    if held and held.alive then return held end
+    return nil
+end
+
 -- Why can't `unit` activate `item` right now? Covers every condition known BEFORE a target is
--- picked: a spent stack, a cost or reservation it can't pay, an unmet grid adjacency (Rain of
--- Arrows without its bow). Returns nil when the item is activatable -- and for a passive item,
--- which is inert rather than blocked. A nil `unit` checks only the item-intrinsic conditions, so a
--- tooltip with no actor still reports an empty stack.
+-- picked: a spent stack, a summon of this item's still on the field, a cost or reservation it can't
+-- pay, an unmet grid adjacency (Rain of Arrows without its bow). Returns nil when the item is
+-- activatable -- and for a passive item, which is inert rather than blocked. A nil `unit` checks
+-- only the item-intrinsic conditions, so a tooltip with no actor still reports an empty stack.
 --
 -- The single source of truth for the grayed-out slot, the refused arm (mouse / key / gamepad), the
 -- tooltip's red note and the AI's item filter -- so a condition can never gate the cast in
 -- Combat.useItem while the UI still advertises the item as ready. Returns:
---   { kind   = "depleted" | "cost" | "reserve" | "adjacency",
+--   { kind   = "depleted" | "active" | "cost" | "reserve" | "adjacency",
 --     stat   = the resource at fault (cost / reserve only),
+--     summon = the creature still standing (active only),
 --     reason = terse, what useItem reports to its caller,
 --     text   = a sentence for the player }
 function Combat.itemBlockReason(unit, item)
@@ -1670,6 +1723,17 @@ function Combat.itemBlockReason(unit, item)
     if not ab then return nil end
     if Combat.isDepleted(item) then
         return { kind = "depleted", reason = "out of stock", text = "Out of stock -- restock to use" }
+    end
+    -- One summon per summoner: while the wolf lives, the horn that called it stays silent. Checked
+    -- before affordability so a caster whose mana is locked away by the very reservation sustaining
+    -- its wolf is told about the wolf, not about the mana. A timed summon says how long the wait is.
+    local held = Combat.activeSummon(item)
+    if held then
+        local text = (held.char.name or "Its summon") .. " is still on the field"
+        if held.summonRemaining then
+            text = text .. string.format(" (%d left)", math.max(0, math.ceil(held.summonRemaining)))
+        end
+        return { kind = "active", summon = held, reason = "summon still active", text = text }
     end
     if not unit then return nil end
 
@@ -1853,21 +1917,32 @@ function Combat.useItem(combat, unit, item, tx, ty)
             opts.side = opts.side or unit.side
             return Hazard.place(combat, px, py, id, opts)
         end,
-        -- Summon a character onto the field, sustained by the caster (models/summon.lua). The
-        -- ability's reservation (ab.reserve) is bound to whatever comes back, so the committed
-        -- resource is freed the moment the creature falls.
+        -- Summon a character onto the field, sustained by the caster (models/summon.lua). Whatever
+        -- comes back holds two things for as long as it lives: the ability's reservation (ab.reserve),
+        -- so the committed resource is freed the moment the creature falls, and the item's own
+        -- `activeSummon` claim, which keeps the ability from being cast again while it stands. An
+        -- effect that summons twice leaves the last one holding the claim.
+        --
+        -- A creature can die on the tile it is called to -- a trap under it, a fire on it -- and then
+        -- there is nothing to sustain and nothing to hold: binding a reservation to a corpse would
+        -- lock the caster's mana away for good, since the death that would release it has already
+        -- passed. It arrives dead, the cast is spent, and the caster keeps its ceiling.
         summon = function(charId, px, py, opts)
             local summoned = Summon.spawn(combat, unit, charId, px, py, opts)
-            if reserve and summoned then
-                Combat.reserve(unit.char, reserve.stat, reserve.amount, summoned)
+            if summoned and summoned.alive then
+                item.activeSummon = summoned
+                if reserve then Combat.reserve(unit.char, reserve.stat, reserve.amount, summoned) end
             end
             return summoned
         end,
-        -- Summon a duplicate of the caster (doppelganger / decoy).
+        -- Summon a duplicate of the caster (doppelganger / decoy). Held the same way: one double at
+        -- a time, and no second decoy while the first still stands -- and the same, too, for a double
+        -- that does not survive the tile it is planted on.
         copy = function(px, py, opts)
             local copied = Summon.copy(combat, unit, px, py, opts)
-            if reserve and copied then
-                Combat.reserve(unit.char, reserve.stat, reserve.amount, copied)
+            if copied and copied.alive then
+                item.activeSummon = copied
+                if reserve then Combat.reserve(unit.char, reserve.stat, reserve.amount, copied) end
             end
             return copied
         end,
@@ -2080,12 +2155,35 @@ end
 -- Objective evaluation
 -- ---------------------------------------------------------------------------
 
+-- Is the character a `protect` objective names still standing on the party's side? A
+-- summoned duplicate shares its origin's `char.id`, so it would otherwise stand in for the
+-- charge it is impersonating -- only the real one keeps the escort alive (the same rule
+-- Combat.evaluate's assassinate branch applies to its mark).
+function Combat.isProtectedAlive(combat, charId)
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.side == "party" and u.char.id == charId and not u.summoned then
+            return true
+        end
+    end
+    return false
+end
+
 -- Resolve the arena objective to "win" / "loss" / nil. A total party wipe is always a
 -- loss. Called after each action so the battle state can fire onWin/onLoss.
+--
+-- `obj.protect` is a *composable* loss condition, not a win type: it names a party-side
+-- character (usually an escorted ally, see Arena.build's `spec.allies`) whose death fails
+-- the battle whatever the win type is. That is what expresses an escort -- "survive 8
+-- turns, and the caravan must live" -- without exit tiles or pathing.
 function Combat.evaluate(combat)
     if Combat.aliveCount(combat, "party") == 0 then return "loss" end
 
     local obj = combat.objective or { type = "killAll" }
+
+    if obj.protect and not Combat.isProtectedAlive(combat, obj.protect) then
+        return "loss"
+    end
+
     if obj.type == "assassinate" then
         for _, u in ipairs(combat.units) do
             -- A summoned duplicate shares its origin's `char.id`, so it would otherwise read as the

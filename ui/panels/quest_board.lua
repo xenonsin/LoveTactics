@@ -8,14 +8,21 @@
 local State = require("states")
 local Menu = require("ui.menu")
 local Quest = require("models.quest")
+local Player = require("models.player")
+local Vendor = require("models.vendor")
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
 
 local QuestBoard = {}
 QuestBoard.__index = QuestBoard
 
--- Panel box geometry, centered in the 1280x720 logical space.
-local BOX_W, BOX_H = 640, 400
+-- Panel box geometry, centered in the 1280x720 logical space. The quest list grows without
+-- bound as vendors gain quest lines, so it scrolls (Menu's `maxVisible`) rather than trying to
+-- fit -- six rows at a time, with carets marking what is out of sight.
+local BOX_W, BOX_H = 760, 520
+
+local LIST_TOP = 96
+local ROW_H, ROW_SPACING, MAX_VISIBLE = 44, 8, 6
 
 function QuestBoard.new(opts)
     opts = opts or {}
@@ -30,7 +37,9 @@ function QuestBoard.new(opts)
 
     self.prestige = opts.prestige or 1
     self.player = opts.player -- carried into the game state so the overworld sees the party
-    self.quests = Quest.available(self.prestige)
+    -- The board is filtered by the whole player, not just prestige: finished quests drop off
+    -- it, and a sponsor's later quests only appear once you have the reputation for them.
+    self.quests = Quest.available(self.player)
 
     -- Build the quest list. Selecting a quest starts it: the game state generates
     -- the overworld map from the quest's `map` params, using the player's prestige
@@ -45,15 +54,15 @@ function QuestBoard.new(opts)
         }
     end
 
-    -- Left column: narrow buttons anchored under the title.
-    local leftColCenter = self.boxX + BOX_W * 0.28
+    -- Left column: narrow buttons anchored under the title, scrolling past MAX_VISIBLE.
     self.menu = Menu.new(items, {
-        buttonWidth = 260,
-        buttonHeight = 44,
-        spacing = 12,
-        startY = self.boxY + 90,
-        centerX = leftColCenter,
+        buttonWidth = 280,
+        buttonHeight = ROW_H,
+        spacing = ROW_SPACING,
+        startY = self.boxY + LIST_TOP,
+        centerX = self.boxX + BOX_W * 0.26,
         font = self.headFont,
+        maxVisible = MAX_VISIBLE,
     })
 
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
@@ -99,7 +108,7 @@ function QuestBoard:draw()
 
     love.graphics.setFont(self.bodyFont)
     love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf("Click a quest / Enter / A: Start    Click X / Esc / B: Close",
+    love.graphics.printf("Click a quest / Enter / A: Start    Wheel / PgUp / PgDn: Scroll    Click X / Esc / B: Close",
         self.boxX, self.boxY + BOX_H - 34, BOX_W, "center")
 
     self.closeButton:draw()
@@ -111,21 +120,37 @@ function QuestBoard:drawDetail()
     local quest = self.quests[self.menu.selected]
     if not quest then return end
 
-    local x = self.boxX + BOX_W * 0.52
-    local w = BOX_W * 0.42
-    local y = self.boxY + 90
+    local x = self.boxX + BOX_W * 0.50
+    local w = BOX_W * 0.44
+    local y = self.boxY + LIST_TOP - 12
 
     love.graphics.setFont(self.headFont)
     love.graphics.setColor(0.95, 0.95, 0.95)
     love.graphics.printf(quest.name, x, y, w, "left")
 
+    -- The sponsor is the reason to pick one quest over another, so it reads in the accent
+    -- color directly under the name, with the player's standing beside it.
     love.graphics.setFont(self.bodyFont)
+    love.graphics.setColor(0.95, 0.85, 0.55)
+    love.graphics.printf(quest.sponsorName, x, y + 30, w, "left")
+
+    if quest.sponsor then
+        local rank = Player.repRank(self.player, quest.sponsor)
+        love.graphics.setColor(0.6, 0.65, 0.75)
+        love.graphics.printf(Vendor.rankName(quest.sponsor, rank), x, y + 50, w, "left")
+    end
+
     love.graphics.setColor(0.8, 0.82, 0.88)
-    love.graphics.printf(quest.description, x, y + 40, w, "left")
+    love.graphics.printf(quest.description, x, y + 78, w, "left")
 
     love.graphics.setColor(0.6, 0.65, 0.75)
-    love.graphics.printf("Difficulty: " .. tostring(quest.difficulty), x, y + 130, w, "left")
-    love.graphics.printf("Reward: " .. tostring(quest.rewardGold) .. " gold", x, y + 158, w, "left")
+    love.graphics.printf("Difficulty: " .. tostring(quest.difficulty), x, y + 168, w, "left")
+
+    local rewards = tostring(quest.rewardGold) .. " gold"
+    if quest.rewardRep > 0 then rewards = rewards .. ", " .. quest.rewardRep .. " rep" end
+    if quest.rewardPrestige > 0 then rewards = rewards .. ", " .. quest.rewardPrestige .. " prestige" end
+    love.graphics.setColor(0.7, 0.78, 0.7)
+    love.graphics.printf("Reward: " .. rewards, x, y + 190, w, "left")
 end
 
 local function isInsideBox(self, x, y)
@@ -136,6 +161,10 @@ end
 function QuestBoard:mousemoved(x, y)
     self.closeButton:mousemoved(x, y)
     self.menu:mousemoved(x, y)
+end
+
+function QuestBoard:wheelmoved(dx, dy)
+    self.menu:wheelmoved(dx, dy)
 end
 
 function QuestBoard:mousepressed(x, y, button)

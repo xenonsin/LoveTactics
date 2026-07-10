@@ -61,15 +61,26 @@ local function pointIn(btn, x, y)
     return x >= btn.x and x <= btn.x + btn.w and y >= btn.y and y <= btn.y + btn.h
 end
 
--- Human-readable objective line for the HUD.
+local function charName(id)
+    local def = id and Character.defs[id]
+    return (def and def.name) or id or "the target"
+end
+
+-- Human-readable objective line for the HUD. `protect` is a loss condition layered over
+-- whatever the win type is, so it reads as a second clause rather than replacing the first.
 local function objectiveText(obj)
+    local text
     if obj.type == "survive" then
-        return "Objective: survive " .. (obj.turns or "?") .. " turns"
+        text = "Objective: survive " .. (obj.turns or "?") .. " turns"
     elseif obj.type == "assassinate" then
-        local target = obj.target and Character.defs[obj.target]
-        return "Objective: defeat " .. ((target and target.name) or obj.target or "the target")
+        text = "Objective: defeat " .. charName(obj.target)
+    else
+        text = "Objective: defeat all enemies"
     end
-    return "Objective: defeat all enemies"
+    if obj.protect then
+        text = text .. " -- " .. charName(obj.protect) .. " must survive"
+    end
+    return text
 end
 
 -- Resolve the encounter's composition spec + objective. Placed encounters read their
@@ -80,10 +91,12 @@ local function specFor(opts, partyIds, seed)
     if enc.kind == "objective" then
         local obj = (opts.quest and opts.quest.map and opts.quest.map.objective) or {}
         spec.composition = obj.composition
-        spec.objective = obj.win -- { type, target } win condition; nil -> killAll
+        spec.allies = obj.allies -- AI-run escorts fighting on the party's side
+        spec.objective = obj.win -- { type, target, protect } win condition; nil -> killAll
     else
         local def = enc.id and EncounterModel.get(enc.id)
         spec.composition = def and def.composition
+        spec.allies = def and def.allies
         spec.objective = def and def.objective
     end
     return spec
@@ -679,6 +692,13 @@ function battle.enter(self, opts)
     battle.partyUnits, battle.enemyUnits = {}, {}
     for _, u in ipairs(battle.arena.party) do
         battle.partyUnits[#battle.partyUnits + 1] = { char = partyById[u.id], x = u.x, y = u.y }
+    end
+    -- Escorted allies fight on the party's side but are not the player's characters (they
+    -- are not in partyById), so they get fresh instances and run themselves. A `protect`
+    -- objective points at one of these; see Arena.build and Combat.evaluate.
+    for _, u in ipairs(battle.arena.allies or {}) do
+        battle.partyUnits[#battle.partyUnits + 1] =
+            { char = Character.instantiate(u.id), x = u.x, y = u.y, control = "ai" }
     end
     for _, u in ipairs(battle.arena.enemies) do
         battle.enemyUnits[#battle.enemyUnits + 1] =

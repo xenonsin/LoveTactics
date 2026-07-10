@@ -1,10 +1,10 @@
 return {
     name = "Market",
-    order = 4,
-    x = 980,
-    y = 440,
-    w = 200,
-    h = 120,
+    order = 11,
+    x = 815,
+    y = 530,
+    w = 270,
+    h = 140,
     panel = nil, -- placeholder until designed
     unlockPrestige = 1,
 }

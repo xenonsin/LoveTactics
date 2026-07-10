@@ -1,8 +1,11 @@
 return {
     name = "Siege of Warlord's Keep",
-    description = "Storm the warlord's stronghold. Only the renowned need apply.",
+    description = "The Warlord once fought under the Colosseum's banner. They want him brought back, or brought down.",
     difficulty = "Hard",
+    sponsor = "colosseum",
     rewardGold = 300,
+    rewardRep = 60,
+    rewardPrestige = 2,
     requiredPrestige = 3,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {

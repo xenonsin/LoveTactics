@@ -4,6 +4,7 @@
 
 local Overworld = require("models.overworld")
 local Quest = require("models.quest")
+local Player = require("models.player")
 local Tileset = require("models.tileset")
 
 local function typeWalkable(tile)
@@ -396,8 +397,11 @@ return {
     {
         name = "quest map params flow through Quest.available without mutating blueprints",
         fn = function()
+            local player = Player.new()
+            player.prestige = 3
+
             local found
-            for _, q in ipairs(Quest.available(3)) do
+            for _, q in ipairs(Quest.available(player)) do
                 if q.id == "warlord_keep" then found = q end
             end
             assert(found, "warlord_keep not available at prestige 3")

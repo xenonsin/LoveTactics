@@ -8,6 +8,28 @@ local Item = {}
 
 Item.defs = Registry.load("data/items", "data.items")
 
+-- The six classes. An item's `class` decides which vendor stocks it (see models/vendor.lua);
+-- it never gates who may equip the item. Anyone can carry anything -- class only says where
+-- you buy it. That is what lets a player build a bespoke class by mixing shelves (a ninja is
+-- mage gear on a rogue).
+--
+-- Deliberately its own field rather than an entry in `tags`: `tags` drives damage scaling and
+-- armor `resist` lookups, so a shop taxonomy living there would be one typo away from armor
+-- mitigating "rogue" damage.
+Item.CLASSES = {
+    fighter = true,
+    priest = true,
+    hunter = true,
+    knight = true,
+    mage = true,
+    rogue = true,
+}
+
+-- nil for a universal item that no class vendor stocks.
+function Item.classOf(item)
+    return item and item.class
+end
+
 -- Stacking: only consumables occupy a single inventory slot as a countable stack (a bundle of
 -- health potions with a finite number of uses). Every other type is one-per-slot. A stack can
 -- grow up to `maxStack` (the blueprint may override Item.DEFAULT_MAX_STACK), so "limited uses"
@@ -61,6 +83,9 @@ function Item.instantiate(id, quantity)
         noSteal = def.noSteal,                 -- a pickpocket can never lift this (a beast's fangs)
         stealPriority = def.stealPriority,     -- a pickpocket takes the highest first (decoy bait)
         noCopy = def.noCopy,                   -- a summoned copy of the holder never carries this
+        class = def.class,                     -- which class vendor sells it; nil = sold by none
+        price = def.price,                     -- vendor gold cost; nil means it is never sold
+        repRank = def.repRank,                 -- vendor rank needed to unlock it (default 1)
     }
 
     -- Stack count: consumables carry a `quantity` (clamped to the item's cap); everything else is

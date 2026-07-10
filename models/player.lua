@@ -1,13 +1,23 @@
 -- Player logic. Defaults live in data/player.lua; `Player.new` builds the
 -- mutable runtime state: the full roster of owned characters, the active
--- party (a capped subset of the roster), and the stash of unequipped items.
+-- party (a capped subset of the roster), the stash of unequipped items, and the
+-- progression state (gold, prestige, per-vendor reputation, completed quests).
+--
+-- `Player.active` is the one live player for the session. States must read it via
+-- `Player.start()` rather than calling `Player.new()`, which discards all progress.
 
 local Character = require("models.character")
 local Item = require("models.item")
+local Save = require("models.save")
+local Vendor = require("models.vendor")
 
 local Player = {}
 
 Player.defaults = require("data.player")
+
+-- The current player. Set by Player.start; read by the hub and anything the hub hands
+-- the player to. nil until a game is started or loaded.
+Player.active = nil
 
 -- Hard cap on the active party. The roster (owned characters) is unbounded;
 -- only this many can be deployed at once.
@@ -106,6 +116,8 @@ function Player.new()
         roster = roster,
         party = {},
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
+        reputation = {},      -- vendor id -> reputation points (see Player.addReputation)
+        completedQuests = {}, -- quest id -> true; keeps finished quests off the board
     }
 
     for _, charId in ipairs(Player.defaults.startingParty) do
@@ -119,6 +131,91 @@ function Player.new()
     end
 
     return player
+end
+
+-- ---------------------------------------------------------------------------
+-- Progression: gold, prestige, reputation
+-- ---------------------------------------------------------------------------
+
+function Player.addGold(player, amount)
+    player.gold = player.gold + amount
+end
+
+-- Deduct `amount` if the player can afford it. Returns true on success, false (and
+-- charges nothing) if they cannot -- callers branch on this rather than pre-checking.
+function Player.spendGold(player, amount)
+    if amount > player.gold then return false end
+    player.gold = player.gold - amount
+    return true
+end
+
+function Player.addPrestige(player, amount)
+    player.prestige = player.prestige + amount
+end
+
+-- Reputation points with one vendor. Unknown vendors read as 0 rather than nil so
+-- callers can do arithmetic without guarding.
+function Player.reputation(player, vendorId)
+    return (player.reputation or {})[vendorId] or 0
+end
+
+function Player.addReputation(player, vendorId, amount)
+    player.reputation = player.reputation or {}
+    player.reputation[vendorId] = Player.reputation(player, vendorId) + amount
+end
+
+-- The player's standing with a vendor as a rank index (see Vendor.rankFor). Rank gates
+-- which of a vendor's items are on the shelf.
+function Player.repRank(player, vendorId)
+    return Vendor.rankFor(vendorId, Player.reputation(player, vendorId))
+end
+
+function Player.hasCompleted(player, questId)
+    return (player.completedQuests or {})[questId] == true
+end
+
+-- ---------------------------------------------------------------------------
+-- Rest
+-- ---------------------------------------------------------------------------
+
+-- Refill every roster member's resource stats to full. Health and mana carry across the
+-- battles *within* a quest -- attrition over a run is the point -- but returning to the hub
+-- rests the whole company. Called from states/hub.lua on entry, so a quest won or lost always
+-- leaves the party whole, and this is why models/save.lua need not persist current resources.
+function Player.restore(player)
+    for _, char in ipairs(player.roster or {}) do
+        for _, stat in ipairs(Character.RESOURCE_STATS) do
+            local resource = char.stats[stat]
+            if type(resource) == "table" then resource.current = resource.max end
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Session lifecycle
+-- ---------------------------------------------------------------------------
+
+-- Establish `Player.active` and return it. With `fresh`, starts a new game and wipes any
+-- save; otherwise resumes the save on disk, falling back to a new game when there is none
+-- (or it is unreadable). Idempotent-ish: call it once per game start, not per state entry.
+function Player.start(fresh)
+    if fresh then
+        Save.clear()
+        Player.active = Player.new()
+    else
+        Player.active = Save.read() or Player.new()
+    end
+    return Player.active
+end
+
+-- Persist the active player. Called at the points progress is earned or spent -- quest
+-- completion and vendor purchases -- so a crash costs at most one battle.
+function Player.save()
+    if Player.active then Save.write(Player.active) end
+end
+
+function Player.hasSave()
+    return Save.exists()
 end
 
 return Player

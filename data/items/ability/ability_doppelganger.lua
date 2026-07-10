@@ -4,8 +4,9 @@
 -- second turn in the order.
 --
 -- What it isn't is durable: `fragile` means any hit at all destroys it, however light. And it can't
--- beget more of itself -- this item is `noCopy`, so the duplicate's grid comes up one slot short
--- (see models/summon.lua).
+-- beget more of itself, twice over: this item is `noCopy`, so the duplicate's grid comes up one slot
+-- short (see models/summon.lua), and the caster may not split again while the first double stands
+-- (Combat.activeSummon -- one summon per item, whatever it summons).
 return {
     name = "Doppelganger",
     description = "Conjure a duplicate of yourself. It fights with your kit, but dies to a single hit.",

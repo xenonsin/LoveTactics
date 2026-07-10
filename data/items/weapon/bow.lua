@@ -4,6 +4,9 @@ return {
     sprite = "assets/items/bow.png",
     type = "weapon",
     tags = { "bow", "pierce", "physical" },
+    class = "hunter",
+    price = 80,
+    repRank = 1,
     activeAbility = {
         name = "Shoot",
         target = "enemy",

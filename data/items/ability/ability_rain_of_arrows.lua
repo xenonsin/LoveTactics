@@ -8,6 +8,9 @@ return {
     sprite = "assets/items/ability_rain_of_arrows.png",
     type = "ability",
     tags = { "pierce", "physical" },
+    class = "hunter",
+    price = 340,
+    repRank = 3,
     activeAbility = {
         name = "Rain of Arrows",
         target = "enemy",

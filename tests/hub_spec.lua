@@ -4,6 +4,15 @@
 
 local Building = require("models.building")
 local Quest = require("models.quest")
+local Player = require("models.player")
+
+-- Quest.available filters on the whole player (prestige, reputation, completed quests),
+-- so specs build a throwaway player pinned to the prestige under test.
+local function playerAt(prestige)
+    local p = Player.new()
+    p.prestige = prestige
+    return p
+end
 
 return {
     {
@@ -45,13 +54,13 @@ return {
     {
         name = "Quest.available filters by requiredPrestige",
         fn = function()
-            local low = Quest.available(1)
+            local low = Quest.available(playerAt(1))
             for _, q in ipairs(low) do
                 assert(q.requiredPrestige <= 1, q.id .. " should not appear at prestige 1")
             end
 
             local hasHard = false
-            for _, q in ipairs(Quest.available(3)) do
+            for _, q in ipairs(Quest.available(playerAt(3))) do
                 if q.id == "warlord_keep" then hasHard = true end
             end
             assert(hasHard, "warlord_keep should be available at prestige 3")
@@ -61,7 +70,7 @@ return {
         name = "blueprints are untouched after list/available",
         fn = function()
             Building.list(1)
-            Quest.available(3)
+            Quest.available(playerAt(3))
             assert(Building.defs.quest_board.locked == nil, "building blueprint mutated")
             assert(Building.defs.quest_board.name == "Quest Board", "building name changed")
             assert(Quest.defs.warlord_keep.id == nil, "quest blueprint mutated")

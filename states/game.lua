@@ -12,6 +12,7 @@ local Scale = require("scale")
 local Overworld = require("models.overworld")
 local OverworldMap = require("ui.overworld_map")
 local Player = require("models.player")
+local Quest = require("models.quest")
 local EncounterPanel = require("ui.panels.encounter")
 local EncounterModel = require("models.encounter")
 local Loadout = require("ui.panels.loadout")
@@ -103,6 +104,10 @@ function game:openEncounter(cell)
                 game.activePanel = nil
                 if kind == "objective" then
                     game.complete = true
+                    -- The single payout seam: gold, prestige, and sponsor reputation are
+                    -- granted here, once, and the game saves. Losing the quest (onLoss)
+                    -- pays nothing, so a wipe costs the run.
+                    game.reward = Quest.complete(game.player, game.quest)
                     State.switch(require("states.hub"))
                 else
                     State.current = game

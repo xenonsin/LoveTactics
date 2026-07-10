@@ -4,6 +4,9 @@ return {
     sprite = "assets/items/sword.png",
     type = "weapon",
     tags = { "sword", "slash", "physical" }, -- drive damage scaling + armor mitigation
+    class = "fighter",
+    price = 60,
+    repRank = 1,
     activeAbility = {
         name = "Slash",
         target = "enemy",

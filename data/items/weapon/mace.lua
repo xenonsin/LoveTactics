@@ -8,6 +8,9 @@ return {
     sprite = "assets/items/mace.png",
     type = "weapon",
     tags = { "blunt", "impact", "physical" },
+    class = "fighter",
+    price = 190,
+    repRank = 2,
     activeAbility = {
         name = "Crush",
         target = "enemy",

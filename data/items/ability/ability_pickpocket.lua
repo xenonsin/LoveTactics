@@ -10,6 +10,9 @@ return {
     sprite = "assets/items/ability_pickpocket.png",
     type = "ability",
     tags = { "thievery", "utility" },
+    class = "rogue",
+    price = 95,
+    repRank = 1,
     activeAbility = {
         name = "Pickpocket",
         target = "enemy",

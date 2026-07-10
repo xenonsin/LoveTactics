@@ -12,12 +12,20 @@
 --                 enemy-summoned wolf is AI-run for free and a player's is yours to command.
 --   * fragile  -- any hit at all is lethal (a doppelganger, a decoy).
 --   * summoned -- it is not a "real" combatant; Combat.evaluate ignores it for `assassinate`.
+--   * summonRemaining -- ticks left before it fades on its own (from opts.duration). Absent on an
+--                 indefinite summon, which stands until it is killed. See Summon.tick.
 --
 --   Summon.spawn(combat, caster, "wolf_grunt", x, y, { scaling = { health = 2 }, power = 10 })
+--   Summon.spawn(combat, caster, "fire_elemental", x, y, { duration = 24 })  -- fades on a timer
 --   Summon.copy(combat, caster, x, y, { fragile = true, control = "none", decoy = true })
 --
+-- Being an ordinary unit cuts both ways: a summon ARRIVES on its tile (Combat.enterTile), so an
+-- opposing trap beneath it springs and a hazard burning there catches it, exactly as if it had
+-- walked in. Both calls therefore return a unit that may already be dead -- a fragile double planted
+-- on a spike trap never draws breath. Check `unit.alive` before binding anything to it.
+--
 -- Reached from a data-file ability effect through `fx.summon` / `fx.copy` (see Combat.useItem),
--- which also binds the ability's reservation to the unit that comes back.
+-- which also binds the ability's reservation to the unit that comes back -- but only to a live one.
 
 local Character = require("models.character")
 local Item = require("models.item")
@@ -79,14 +87,37 @@ local function resolveControl(control, summoner)
     return control
 end
 
+-- Count every timed summon down by `elapsed` ticks and dismiss the ones that run out. Called from
+-- Combat.rebase with the ticks that just elapsed, exactly like Status.tick and Hazard.tick -- so a
+-- duration is measured in the same currency as a Burn or a patch of fire, not in turns.
+--
+-- A summon with no `duration` has no `summonRemaining` and is skipped: it stands until something
+-- kills it, or until its summoner falls. `Combat.dismiss` does the unwinding (the reservation it
+-- held is released, and the ability that called it becomes castable again).
+function Summon.tick(combat, elapsed)
+    if not elapsed or elapsed <= 0 then return end
+    local Combat = require("models.combat")
+    for _, unit in ipairs(combat.units) do
+        if unit.alive and unit.summonRemaining then
+            unit.summonRemaining = unit.summonRemaining - elapsed
+            if unit.summonRemaining <= 0 then
+                unit.summonRemaining = 0
+                Combat.dismiss(combat, unit,
+                    string.format("%s's time runs out and it fades away.", unit.char.name or "The summon"))
+            end
+        end
+    end
+end
+
 -- Summon the character blueprint `charId` onto (x, y), sustained by `summoner`.
 -- opts = {
---   stats   = { health = 60 },        -- flat overrides of the blueprint's stats
---   items   = { "fangs" },            -- replaces the blueprint's startingItems entirely
---   scaling = { health = 2 },         -- per-stat multipliers of `power`, added on top
---   power   = 10,                     -- the ability's Power (fx.power)
---   control = "player"|"ai"|"none"|"inherit",
---   fragile = true, side = "party",
+--   stats    = { health = 60 },       -- flat overrides of the blueprint's stats
+--   items    = { "fangs" },           -- replaces the blueprint's startingItems entirely
+--   scaling  = { health = 2 },        -- per-stat multipliers of `power`, added on top
+--   power    = 10,                    -- the ability's Power (fx.power)
+--   duration = 24,                    -- ticks it stands before fading; omit for an indefinite summon
+--   control  = "player"|"ai"|"none"|"inherit",
+--   fragile  = true, side = "party",
 -- }
 -- Returns the new unit.
 function Summon.spawn(combat, summoner, charId, x, y, opts)
@@ -108,9 +139,14 @@ function Summon.spawn(combat, summoner, charId, x, y, opts)
         summoner = summoner,
         fragile = opts.fragile,
         summoned = true,
+        duration = opts.duration,
     })
     Combat.logEvent(combat, "system",
         string.format("%s summons %s.", summoner.char.name or "Unit", char.name or "a creature"))
+    -- A conjured body occupies its tile like any other: an opposing trap under it springs, and a
+    -- hazard burning there takes hold. Last, and after the announcement, because the creature may not
+    -- survive its own arrival -- the caller must check `unit.alive` before binding anything to it.
+    Combat.enterTile(combat, unit, x, y)
     return unit
 end
 
@@ -149,7 +185,10 @@ function Summon.copy(combat, summoner, x, y, opts)
         summoner = summoner,
         fragile = opts.fragile,
         summoned = true,
+        duration = opts.duration,
     })
+    -- Tagged before the tile can kill it: a decoy struck down must be recognised as one (the death
+    -- path unmasks the caster), and a trap under it does exactly that.
     if opts.decoy then unit.decoyOf = summoner end
     -- A decoy must be indistinguishable from the real thing, so it announces nothing; the ability
     -- fakes a move line of its own (data/items/utility/decoy.lua).
@@ -157,6 +196,7 @@ function Summon.copy(combat, summoner, x, y, opts)
         Combat.logEvent(combat, "system",
             string.format("%s conjures a double.", summoner.char.name or "Unit"))
     end
+    Combat.enterTile(combat, unit, x, y) -- as in Summon.spawn: the double may not outlive its arrival
     return unit
 end
 

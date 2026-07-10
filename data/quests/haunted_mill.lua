@@ -1,8 +1,11 @@
 return {
     name = "The Haunted Mill",
-    description = "Something stalks the old mill after dark. Investigate.",
+    description = "Something stalks the old mill after dark. The Cathedral wants it laid to rest.",
     difficulty = "Normal",
+    sponsor = "cathedral",
     rewardGold = 120,
+    rewardRep = 30,
+    rewardPrestige = 1,
     requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {

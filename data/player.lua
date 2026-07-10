@@ -1,5 +1,7 @@
 return {
-    gold = 0,
+    -- Enough to afford a rank-0 item from a vendor on the first visit, so the shops are
+    -- usable before the first quest is finished.
+    gold = 250,
     prestige = 1,
     -- Every character the player owns (unlimited size).
     startingRoster = { "knight", "mage", "archer", "priest" }, -- character ids

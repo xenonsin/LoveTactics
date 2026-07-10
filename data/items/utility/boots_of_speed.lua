@@ -7,5 +7,8 @@ return {
     sprite = "assets/items/boots_of_speed.png",
     type = "utility",
     tags = { "boots" },
+    class = "rogue",
+    price = 200,
+    repRank = 2,
     bonus = { movement = 1 },
 }

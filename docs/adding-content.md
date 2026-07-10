@@ -4,6 +4,20 @@ All game content is data-driven: drop a Lua file into the matching `data/` folde
 `models/registry.lua` picks it up by filename (no registration). Blueprints are read-only —
 models copy them into runtime state.
 
+## The progression loop
+
+Six class vendors (`data/vendors/`) each own a hub building, a shelf of items, and a line of
+quests. The loop: **pick a quest by its sponsor → complete it → earn gold, prestige, and
+reputation with that sponsor → spend it on the stock that reputation unlocked.**
+
+An item's `class` (`fighter`, `priest`, `hunter`, `knight`, `mage`, `rogue`) decides *where you
+buy* it, never *who may equip it* — anyone can carry anything, which is what lets a player build a
+bespoke class by mixing shelves (a ninja is mage gear on a rogue).
+
+Health and mana carry across the battles **within** a quest, so a run is a war of attrition.
+Returning to the hub calls `Player.restore`, which refills the whole roster — attrition lasts a
+quest, not a campaign. That is why `models/save.lua` stores no current resource values.
+
 ## Add a quest
 
 Create `data/quests/<id>.lua`:
@@ -11,15 +25,53 @@ Create `data/quests/<id>.lua`:
 ```lua
 return {
     name = "Bandit Ambush",
-    description = "Raiders have blocked the north road. Clear them out.",
+    description = "Raiders have blocked the north road.",
     difficulty = "Easy",
+    sponsor = "bastion",   -- a data/vendors/<id>.lua; reputation is earned with them
     rewardGold = 50,
-    requiredPrestige = 1, -- appears once the player's prestige reaches this
+    rewardRep = 20,        -- reputation with the sponsor
+    rewardPrestige = 1,
+    requiredPrestige = 1,  -- appears once the player's prestige reaches this
+    -- optional gates:
+    requiredRep = { vendor = "cathedral", rank = 2 }, -- hidden until you have their trust
+    repeatable = true,     -- stays on the board after completion (grind quests)
 }
 ```
 
-It shows up automatically on the Quest Board for players whose prestige meets
-`requiredPrestige` (`Quest.available` in `models/quest.lua`).
+It shows up automatically on the Quest Board once the player meets every gate and has not
+already finished it (`Quest.available` in `models/quest.lua`). `Quest.complete` pays it out from
+the objective-win branch in `states/game.lua` and saves.
+
+## Add a vendor
+
+Create `data/vendors/<id>.lua`:
+
+```lua
+return {
+    name = "The Colosseum",
+    class = "fighter",     -- must be a key of Item.CLASSES
+    description = "...",
+    ranks     = { 0, 40, 100, 200 },  -- ascending reputation thresholds; ranks[1] must be 0
+    rankNames = { "Recruit", "Contender", "Champion", "Legend" },
+}
+```
+
+Then point a building at it with `panel = "vendor", vendor = "<id>"`.
+
+**Stock is derived, not authored.** A vendor sells every item whose `class` matches its own and
+which has a `price`. To put an item on a shelf, give it both:
+
+```lua
+tags  = { "sword", "slash", "physical" },  -- combat: damage scaling + armor mitigation
+class = "fighter",                         -- shop: which vendor stocks it
+price = 60,
+repRank = 1,  -- reputation rank needed to buy it (default 1); higher ranks show as locked
+```
+
+`class` is deliberately its own field rather than an entry in `tags`: `tags` drives combat
+scaling and `resist` lookups, so a shop taxonomy living there would be one typo away from armor
+mitigating "rogue" damage. An item with no `class` is universal and no vendor stocks it; an item
+with a `price` but no `class` is unbuyable dead data, and `tests/progression_spec.lua` fails it.
 
 ## Add a building to the hub city
 
@@ -29,8 +81,9 @@ Create `data/buildings/<id>.lua`:
 return {
     name = "Guild Hall",
     order = 5,             -- sort + keyboard/gamepad nav order
-    x = 980, y = 200, w = 200, h = 130,  -- clickable hotspot in the 1280x720 logical space
+    x = 980, y = 340, w = 270, h = 140,  -- clickable hotspot in the 1280x720 logical space
     panel = nil,           -- module name under ui/panels/, or nil for the placeholder
+    vendor = nil,          -- vendor id, for shop buildings (panel = "vendor")
     unlockPrestige = 3,    -- locked (dimmed, non-clickable) until prestige >= 3
 }
 ```
@@ -38,7 +91,12 @@ return {
 This is how **the city grows over time**: give new buildings a higher `unlockPrestige` and they
 appear locked, then unlock as the player earns prestige. Positions are in the 1280×720 logical
 coordinate space (see `scale.lua`), which is letterbox-scaled to the real window; place them
-over the corresponding spot on `assets/hub/city.png`.
+over the corresponding spot on `assets/hub/city.png`. The city is laid out on a **4/4/3 grid of
+270×140 cards with 40px gutters** — columns at `x = 40, 350, 660, 970`, rows at `y = 150, 340,
+530` (the last row centered at `x = 195, 505, 815`). Stay on that grid so hotspots never overlap.
+
+> `Building.list` and `Quest.available` copy blueprint fields **one at a time**. A new field must
+> be added to that copy or it silently reads as `nil` at runtime.
 
 ## Add a pop-up panel for a building
 
@@ -125,6 +183,29 @@ objective = {
 ```
 
 Encounters without a `composition` fall back to a single generic foe.
+
+## Escort missions: allies and `protect`
+
+`win.protect = "<character id>"` is a **composable loss condition, not a win type**: whatever the
+win type is, the battle is lost the instant that character dies. Pair it with `allies`, a list of
+non-party characters who spawn on the party's side under AI control and fight for themselves:
+
+```lua
+objective = {
+    name = "Ambush at the Pass",
+    composition = function(ctx) return { "bandit_chief", "bandit", "bandit" } end,
+    allies = { "caravan_master" },                        -- AI-run, on the party's side
+    win = { type = "killAll", protect = "caravan_master" }, -- ...and he must live
+},
+```
+
+That expresses "clear the ambush, and the caravan must survive" — or, with `survive`, "hold eight
+turns and keep the charge alive" — with no exit-tile or pathing machinery. `Combat.planEnemyAction`
+targets by `unit.side`, so an ally never turns on the party. `Arena.build` seats allies on party
+spawn points *after* the party, falling back to a procedural layout if a curated arena hasn't
+authored enough of them.
+
+True "escort to an exit tile" is not implemented; it would need exit tiles in `models/arena.lua`.
 
 ## Add a curated battle arena
 
@@ -279,6 +360,7 @@ activeAbility = {
         fx.summon("wolf_grunt", fx.tx, fx.ty, {
             scaling = { health = 2, damage = 0.5 }, -- stat = base + power * factor
             power = fx.power,
+            -- duration = 24,              -- ticks before it fades; omit = stands until slain
             -- stats   = { health = 60 },  -- flat overrides of the blueprint's stats
             -- items   = { "fangs" },      -- replaces its startingItems entirely
             -- control = "none",           -- default: inherit the summoner's controller
@@ -292,6 +374,25 @@ activeAbility = {
 all, plus a fresh copy of its grid. Mark an item `noCopy = true` to keep it out of the duplicate
 (otherwise a doppelganger carries the doppelganger ability and summons itself). See
 `data/items/ability/ability_summon_wolf.lua` and `ability_doppelganger.lua`.
+
+**One summon per item.** Whatever `fx.summon` / `fx.copy` puts on the field is stamped onto the item
+that called it (`Combat.activeSummon`), and the ability **cannot be cast again while that creature
+lives** — it is grayed out with an "Active" badge, the tooltip names what's holding it, and the AI
+won't pick it either. Nothing has to be declared for this; it applies to every summon ability. The
+claim clears the moment the creature falls (or is dismissed with its summoner), and never carries
+into the next battle. `Combat.itemBlockReason` returns `kind = "active"` while it stands.
+
+**Duration** is optional. `duration = 24` gives the creature 24 *ticks* — the same currency a status
+or a hazard is measured in, counted down by `Combat.rebase` — after which it fades on its own,
+releasing its reservation and freeing the ability. Omit it and the summon is indefinite: it stands
+until something kills it, or until its summoner falls. That is the whole difference between Summon
+Wolf (a permanent body, limited only by the mana it locks away) and Summon Fire Elemental (a burst
+of pressure on a timer). The card counts a timed summon down in its badge; the tooltip quotes
+`Duration` as a number, or "Until slain" for an indefinite one.
+
+Both endings run through `Combat.dismiss`, which takes a summon off the field *without* it having
+died: it logs a fade rather than a defeat, dismisses anything that summon was itself sustaining, and
+releases its reservations.
 
 **Reservation.** `reserve = { stat, percent }` commits a share of the pool's *maximum* for as long
 as the summoned creature lives. A reservation is both a price and a lock: the amount is **spent out
