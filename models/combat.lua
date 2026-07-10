@@ -35,16 +35,18 @@
 -- composes effects without requiring this module. All the damage/heal math lives in the
 -- helpers (Combat.dealDamage / Combat.applyHeal).
 --
--- Status effects (models/status.lua) and traps (models/trap.lua) hook into this module: statuses
--- tick down inside rebase, gate/charge movement, and fire on turn start/end; traps live in
--- combat.traps, trigger as a unit paths over them (Combat.moveUnit), and can be struck down
--- (Combat.strikeTrap). Both are required here; NEITHER requires this module at load time (they
--- pull combat helpers through a lazy require), so there is no require cycle.
+-- Status effects (models/status.lua), traps (models/trap.lua) and traits (models/trait.lua) hook
+-- into this module: statuses tick down inside rebase, gate/charge movement, and fire on turn
+-- start/end; traps live in combat.traps, trigger as a unit paths over them (Combat.moveUnit), and
+-- can be struck down (Combat.strikeTrap); traits are standing reactions that fire at four moments
+-- below (combat start, damage survived, cast finished, death). All are required here; NONE requires
+-- this module at load time (they pull combat helpers through a lazy require), so there is no cycle.
 
 local Status = require("models.status")
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local Summon = require("models.summon")
+local Trait = require("models.trait")
 local Character = require("models.character")
 
 local Combat = {}
@@ -367,6 +369,9 @@ function Combat.addUnit(combat, char, side, x, y, opts)
     unit.index = #combat.units + 1
     combat.units[unit.index] = unit
     applyUnitPassives(unit)
+    -- Traits are attached but their opener is NOT fired: a summon arriving mid-battle did not start
+    -- the battle. Its reactive hooks (onDamaged / onCast / onDeath) are live from this moment.
+    Trait.attach(unit)
     return unit
 end
 
@@ -442,6 +447,10 @@ function Combat.new(arena, partyUnits, enemyUnits)
     -- opens on a clean "battle begins" line so the panel isn't empty on the first frame.
     Combat.logEvent(combat, "system", "The battle begins.")
 
+    -- Last, so an opener that reads or reshapes the field (Envy copying your strongest unit) finds
+    -- every unit, passive, trap and hazard already in place. Its lines follow the "battle begins".
+    Trait.setup(combat)
+
     return combat
 end
 
@@ -485,6 +494,25 @@ end
 function Combat.unitAt(combat, x, y)
     for _, u in ipairs(combat.units) do
         if u.alive and u.x == x and u.y == y then return u end
+    end
+    return nil
+end
+
+-- The first walkable, unoccupied tile in the 8-neighbourhood of (x, y), or nil when the spot is
+-- hemmed in. The same standard `useItem` enforces for a `target = "tile"` cast -- so an effect that
+-- has to PUT something down beside a unit it picked by name (the Philosopher's Stone copying a foe
+-- onto the ground next to its caster) can honour that standard without re-deriving it.
+--
+-- Orthogonals before diagonals: a body set down beside you should read as beside you.
+function Combat.openTileNear(combat, x, y)
+    local ring = { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 }, { 1, -1 }, { 1, 1 }, { -1, 1 }, { -1, -1 } }
+    for _, d in ipairs(ring) do
+        local nx, ny = x + d[1], y + d[2]
+        local row = combat.arena and combat.arena.tiles and combat.arena.tiles[ny]
+        local cell = row and row[nx]
+        if cell and cell.walkable and not Combat.unitAt(combat, nx, ny) then
+            return nx, ny
+        end
     end
     return nil
 end
@@ -1192,6 +1220,9 @@ local function killUnit(combat, target)
         Combat.logEvent(combat, "death", string.format("%s is defeated!", unitName(target)))
     end
 
+    -- Before the unwinding below, so a dying trait still has its summons and reservations to spend.
+    Trait.onDeath(combat, target, {})
+
     for _, u in ipairs(combat.units) do
         if u.alive and u.summoner == target then Combat.dismiss(combat, u) end
     end
@@ -1215,6 +1246,13 @@ function Combat.dealFlatDamage(combat, target, base, tags, source)
     if hp.current <= 0 or target.fragile then
         hp.current = 0
         killUnit(combat, target)
+    else
+        -- Reaction traits fire here and nowhere else: AFTER mitigation, so a hook reads the damage
+        -- that actually landed, and only on a SURVIVOR, so the blow that kills you grants no rage and
+        -- a boss's health-threshold phase can never trigger on a corpse. Nothing in the damage
+        -- PREVIEW reaches this function (previewAbility routes through Combat.computeDamage), so a
+        -- hovered target never quietly advances a trait.
+        Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source })
     end
     return dmg
 end
@@ -1308,6 +1346,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         power = ab.power, -- the ability's balance scalar; effects derive heal/status magnitude from it
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
+        -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.
+        -- Read-only, so the dry run may answer it truthfully.
+        openTileNear = function(x, y) return Combat.openTileNear(combat, x, y) end,
         aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty) end,
         aoeCells = function() return Combat.aoeCells(combat, ab, tx, ty) end,
         adjacentItems = function()
@@ -1371,6 +1412,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         placeHazard = function() return nil end,
         summon = function() return previewStandIn() end,
         copy = function() return previewStandIn() end,
+        copyOf = function() return previewStandIn() end,
         knockback = function() return 0, false end,
         pull = function() return false end,
         steal = function() return nil end,
@@ -1416,6 +1458,9 @@ function Combat.abilityOutput(unit, item)
         power = ab.power,
         unitAt = function() return nil end,
         unitsNear = function() return { dummy } end,
+        -- There is no board here, so hand back the cell itself: an effect that goes on to place
+        -- something there must not bail before it has told us what it would have placed.
+        openTileNear = function(x, y) return x, y end,
         aoeUnits = function() return { dummy } end,
         aoeCells = function() return {} end,
         damage = function(tgt, opts)
@@ -1446,6 +1491,13 @@ function Combat.abilityOutput(unit, item)
         end,
         copy = function(_, _, opts)
             out.summon = "copy"
+            out.summonDuration = opts and opts.duration
+            return previewStandIn()
+        end,
+        -- The tooltip has no board and therefore no target to name, so it says what the ability does
+        -- rather than whose shape it would take.
+        copyOf = function(_, _, _, opts)
+            out.summon = "copy of the target"
             out.summonDuration = opts and opts.duration
             return previewStandIn()
         end,
@@ -1850,6 +1902,9 @@ function Combat.useItem(combat, unit, item, tx, ty)
         power = ab.power, -- the ability's balance scalar; effects derive heal/status magnitude from it
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
+        -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.
+        -- Read-only, so the dry run may answer it truthfully.
+        openTileNear = function(x, y) return Combat.openTileNear(combat, x, y) end,
         aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty) end,
         -- The cells this ability's AoE footprint covers (reads `ab.aoe`); an effect iterates them to
         -- paint the ground -- e.g. Fireball dropping a fire hazard on every blasted tile.
@@ -1946,6 +2001,18 @@ function Combat.useItem(combat, unit, item, tx, ty)
             end
             return copied
         end,
+        -- Summon a duplicate of SOMEONE ELSE, on the caster's side (the Philosopher's Stone). Held
+        -- exactly like the other two: one shape at a time per item, and a shape that dies on the tile
+        -- it was called to holds nothing.
+        copyOf = function(tgt, px, py, opts)
+            if not tgt then return nil end
+            local copied = Summon.copyOf(combat, unit, tgt, px, py, opts)
+            if copied and copied.alive then
+                item.activeSummon = copied
+                if reserve then Combat.reserve(unit.char, reserve.stat, reserve.amount, copied) end
+            end
+            return copied
+        end,
         -- Shove a unit `distance` tiles straight away from the caster; a collision hurts everyone.
         knockback = function(tgt, distance, opts)
             if not tgt then return 0 end
@@ -1994,6 +2061,11 @@ function Combat.useItem(combat, unit, item, tx, ty)
         local cells = ab.aoe and Combat.aoeCells(combat, ab, tx, ty) or { { x = tx, y = ty } }
         Hazard.douse(combat, cells, castTags)
     end
+
+    -- The cast has fully resolved (effect, then the water/fire interaction). A reaction trait sees a
+    -- finished action, never a half-applied one -- and fires before the turn is charged, so a
+    -- counter-cast is not billed to the initiative of the unit that provoked it.
+    Trait.onCast(combat, unit, { item = item, ability = ab, tx = tx, ty = ty })
 
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed.
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)

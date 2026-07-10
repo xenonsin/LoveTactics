@@ -163,6 +163,10 @@ function Character.instantiate(id)
         sprite = Sprite.load(def.sprite),
         stats = stats,
         inventory = {},
+        -- Innate combat reactions (models/trait.lua). A boss blueprint's `traits` reach its unit
+        -- through here; enemies instantiate exactly as party members do, so this is all the wiring
+        -- a general's rule needs.
+        traits = def.traits,
         -- Hidden fallback weapon (never in inventory, never shown in the item grid). Sourced
         -- from the blueprint's `unarmed` id or the generic default.
         unarmed = Item.instantiate(def.unarmed or Character.DEFAULT_UNARMED),

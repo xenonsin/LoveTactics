@@ -6,13 +6,17 @@ models copy them into runtime state.
 
 ## The progression loop
 
-Six class vendors (`data/vendors/`) each own a hub building, a shelf of items, and a line of
+Seven class vendors (`data/vendors/`) each own a hub building, a shelf of items, and a line of
 quests. The loop: **pick a quest by its sponsor → complete it → earn gold, prestige, and
 reputation with that sponsor → spend it on the stock that reputation unlocked.**
 
-An item's `class` (`fighter`, `priest`, `hunter`, `knight`, `mage`, `rogue`) decides *where you
-buy* it, never *who may equip it* — anyone can carry anything, which is what lets a player build a
-bespoke class by mixing shelves (a ninja is mage gear on a rogue).
+An item's `class` (`fighter`, `priest`, `hunter`, `knight`, `mage`, `rogue`, `alchemist`) decides
+*where you buy* it, never *who may equip it* — anyone can carry anything, which is what lets a
+player build a bespoke class by mixing shelves (a ninja is mage gear on a rogue).
+
+Each vendor also names a deadly `sin`, and its quest line ends facing that sin's general. Seven
+generals dead opens the Gate Below. Read [story.md](story.md) before adding a quest to the end of a
+vendor's line, or a boss of any kind.
 
 Health and mana carry across the battles **within** a quest, so a run is a war of attrition.
 Returning to the hub calls `Player.restore`, which refills the whole roster — attrition lasts a
@@ -34,13 +38,23 @@ return {
     requiredPrestige = 1,  -- appears once the player's prestige reaches this
     -- optional gates:
     requiredRep = { vendor = "cathedral", rank = 2 }, -- hidden until you have their trust
+    requiredQuests = { "general_wrath", ... },        -- ALL must be done; see below
     repeatable = true,     -- stays on the board after completion (grind quests)
+    -- optional rewards:
+    rewardItems = { "mail_of_the_unappeased" },  -- granted into the stash on completion
+    gateHint = "beneath the sand",               -- a fragment shown on a quest that requires this one
 }
 ```
 
 It shows up automatically on the Quest Board once the player meets every gate and has not
 already finished it (`Quest.available` in `models/quest.lua`). `Quest.complete` pays it out from
 the objective-win branch in `states/game.lua` and saves.
+
+Prestige and reputation are **hard** gates — fail one and the quest is not on the board at all.
+`requiredQuests` is a **soft** lock: hold at least one prerequisite and the quest appears `locked`,
+showing "3 of 7 keys" and the `gateHint` of every prerequisite already finished. The board must refuse
+to start a locked quest (`ui/panels/quest_board.lua`). Seeing what you have not yet earned is the point
+of a ladder — the same reason `Vendor.stock` flags rank-locked items rather than hiding them.
 
 ## Add a vendor
 
@@ -95,8 +109,9 @@ over the corresponding spot on `assets/hub/city.png`. The city is laid out on a 
 270×140 cards with 40px gutters** — columns at `x = 40, 350, 660, 970`, rows at `y = 150, 340,
 530` (the last row centered at `x = 195, 505, 815`). Stay on that grid so hotspots never overlap.
 
-> `Building.list` and `Quest.available` copy blueprint fields **one at a time**. A new field must
-> be added to that copy or it silently reads as `nil` at runtime.
+> `Building.list`, `Quest.available`, `Item.instantiate` and `Character.instantiate` copy blueprint
+> fields **one at a time**. A new field must be added to that copy or it silently reads as `nil` at
+> runtime — and silently is the word: nothing errors, the feature just never happens.
 
 ## Add a pop-up panel for a building
 
@@ -151,8 +166,15 @@ return {
         defense = 6, magicDefense = 3,
         movement = 3, -- spaces per turn on the battle grid
     },
+    traits = { "wrath_rising" }, -- optional: standing combat reactions (models/trait.lua)
 }
 ```
+
+**`traits`** are how a boss gets an identity rather than just bigger numbers. A trait is a
+`data/traits/<id>.lua` file exposing any of `onCombatStart`, `onDamaged` (fires after mitigation, and
+only if the unit survived), `onCast`, `onDeath`. An **item** may declare `traits` too, which grants them
+to whoever carries it in their 3×3 grid — that is how a slain general's relic hands its rule to the
+player. See [story.md](story.md).
 
 ## Scale a combat encounter's roster
 

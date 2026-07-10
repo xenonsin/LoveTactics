@@ -44,11 +44,17 @@ function QuestBoard.new(opts)
     -- Build the quest list. Selecting a quest starts it: the game state generates
     -- the overworld map from the quest's `map` params, using the player's prestige
     -- to pick dynamic encounters (see states/game.lua, models/encounter.lua).
+    --
+    -- A `locked` quest is on the board but not startable: the Gate Below appears the moment you kill
+    -- your first general and counts your keys until you have all seven (see Quest.available). Menu has
+    -- no notion of a disabled row -- activation just calls `action` -- so the guard lives here, and it
+    -- is the one thing standing between a one-key player and the Demon Lord.
     local items = {}
     for _, quest in ipairs(self.quests) do
         items[#items + 1] = {
-            label = quest.name,
+            label = quest.locked and (quest.name .. " (Locked)") or quest.name,
             action = function()
+                if quest.locked then return end
                 State.switch(require("states.game"), quest, self.prestige, self.player)
             end,
         }
@@ -146,11 +152,38 @@ function QuestBoard:drawDetail()
     love.graphics.setColor(0.6, 0.65, 0.75)
     love.graphics.printf("Difficulty: " .. tostring(quest.difficulty), x, y + 168, w, "left")
 
+    -- A locked quest has no reward to offer yet, only a tally and whatever the dead have given up.
+    -- This is the whole endgame UI: watch the count climb, watch the place name itself.
+    if quest.locked then
+        self:drawKeys(quest, x, y, w)
+        return
+    end
+
     local rewards = tostring(quest.rewardGold) .. " gold"
     if quest.rewardRep > 0 then rewards = rewards .. ", " .. quest.rewardRep .. " rep" end
     if quest.rewardPrestige > 0 then rewards = rewards .. ", " .. quest.rewardPrestige .. " prestige" end
     love.graphics.setColor(0.7, 0.78, 0.7)
     love.graphics.printf("Reward: " .. rewards, x, y + 190, w, "left")
+end
+
+-- The locked-quest pane: how many keys are held, and the location fragments the generals already
+-- killed gave up. Each hint is one dead sin; seven of them name the place.
+function QuestBoard:drawKeys(quest, x, y, w)
+    love.graphics.setColor(0.85, 0.6, 0.55)
+    love.graphics.printf(string.format("%d of %d keys", quest.keysHeld, quest.keysNeeded),
+        x, y + 190, w, "left")
+
+    local hints = quest.hints or {}
+    if #hints == 0 then
+        love.graphics.setColor(0.5, 0.52, 0.58)
+        love.graphics.printf("Sealed. The generals know where.", x, y + 218, w, "left")
+        return
+    end
+
+    love.graphics.setColor(0.55, 0.58, 0.66)
+    love.graphics.printf("Fragments:", x, y + 218, w, "left")
+    love.graphics.setColor(0.72, 0.7, 0.62)
+    love.graphics.printf(table.concat(hints, "\n"), x, y + 240, w, "left")
 end
 
 local function isInsideBox(self, x, y)

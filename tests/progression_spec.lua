@@ -137,13 +137,22 @@ return {
 
     -- ----------------------------------------------------------------- vendor
     {
-        name = "vendor registry discovers all six class vendors by filename",
+        name = "vendor registry discovers all seven class vendors, each claiming one deadly sin",
         fn = function()
-            for _, id in ipairs({ "colosseum", "cathedral", "hunters_lodge", "bastion", "arcanum", "undercroft" }) do
-                assert(Vendor.defs[id], id .. " vendor missing")
-                assert(Vendor.defs[id].ranks[1] == 0, id .. " entry rank must be 0")
-                assert(#Vendor.defs[id].ranks == #Vendor.defs[id].rankNames,
-                    id .. " has a rank without a name")
+            local claimed = {}
+            for _, id in ipairs({ "colosseum", "cathedral", "hunters_lodge", "bastion",
+                                  "arcanum", "undercroft", "alchemist" }) do
+                local def = Vendor.defs[id]
+                assert(def, id .. " vendor missing")
+                assert(def.ranks[1] == 0, id .. " entry rank must be 0")
+                assert(#def.ranks == #def.rankNames, id .. " has a rank without a name")
+                assert(def.sin, id .. " names no sin")
+                assert(not claimed[def.sin], "two vendors claim " .. tostring(def.sin))
+                claimed[def.sin] = true
+            end
+            -- Seven vendors, seven sins, one each: the shape the whole endgame hangs off.
+            for _, sin in ipairs({ "wrath", "lust", "gluttony", "sloth", "pride", "greed", "envy" }) do
+                assert(claimed[sin], "no vendor claims " .. sin)
             end
         end,
     },
@@ -227,11 +236,16 @@ return {
 
     -- ------------------------------------------------------------------ quest
     {
-        name = "every quest names a sponsor that exists",
+        name = "every sponsored quest names a vendor that exists, and only the finale is unsponsored",
         fn = function()
             for id, def in pairs(Quest.defs) do
-                assert(def.sponsor, id .. " has no sponsor")
-                assert(Vendor.defs[def.sponsor], id .. " names unknown sponsor " .. tostring(def.sponsor))
+                if def.sponsor then
+                    assert(Vendor.defs[def.sponsor], id .. " names unknown sponsor " .. tostring(def.sponsor))
+                else
+                    -- Quest.available renders a sponsorless quest as "Unsponsored". Exactly one quest
+                    -- earns that: no vendor sends you through the Gate Below -- all seven of them did.
+                    assert(id == "the_gate_below", id .. " has no sponsor")
+                end
             end
         end,
     },
@@ -292,6 +306,163 @@ return {
             local gold, prestige = p.gold, p.prestige
             assert(Quest.complete(p, quest) == nil, "a completed quest must not pay twice")
             assert(p.gold == gold and p.prestige == prestige, "the refused payout must grant nothing")
+        end,
+    },
+
+    -- ------------------------------------------------- the seven sins / the Gate Below
+    {
+        -- Quest.available copies blueprint fields ONE AT A TIME. A field the loop forgets reads nil
+        -- at runtime and the gate silently opens (or the relic silently vanishes). Guard both.
+        name = "Quest.available carries requiredQuests and rewardItems through the field copy",
+        fn = function()
+            local p = playerAt(10)
+            p.completedQuests.general_wrath = true
+
+            local gate, general
+            for _, q in ipairs(Quest.available(p)) do
+                if q.id == "the_gate_below" then gate = q end
+                if q.id == "general_wrath" then general = q end
+            end
+
+            assert(gate, "the Gate should be on the board once one general is dead")
+            assert(gate.requiredQuests and #gate.requiredQuests == 7,
+                "the Gate must carry its seven prerequisites")
+
+            -- general_wrath is completed above, so read rewardItems off the blueprint's own copy.
+            assert(Quest.defs.general_wrath.rewardItems[1] == "mail_of_the_unappeased",
+                "Ira should drop her mail")
+            assert(general == nil, "and a completed, non-repeatable general leaves the board")
+        end,
+    },
+    {
+        name = "the Gate Below is hidden at zero keys, locked while short, and startable at seven",
+        fn = function()
+            local p = playerAt(10)
+
+            local function gateEntry()
+                for _, q in ipairs(Quest.available(p)) do
+                    if q.id == "the_gate_below" then return q end
+                end
+                return nil
+            end
+
+            assert(gateEntry() == nil, "with no generals dead, the Gate is not even rumoured")
+
+            p.completedQuests.general_wrath = true
+            local gate = gateEntry()
+            assert(gate, "one key reveals it")
+            assert(gate.locked, "but it cannot be entered")
+            assert(gate.keysHeld == 1 and gate.keysNeeded == 7, "and it counts what is missing")
+
+            p.completedQuests.general_greed = true
+            gate = gateEntry()
+            assert(gate.keysHeld == 2 and gate.locked, "two of seven is still short")
+
+            for _, id in ipairs(Quest.defs.the_gate_below.requiredQuests) do
+                p.completedQuests[id] = true
+            end
+            gate = gateEntry()
+            assert(gate and not gate.locked, "seven keys open it")
+            assert(gate.keysHeld == 7, "and the count is full")
+        end,
+    },
+    {
+        name = "a locked Gate recites only the hints of the generals already killed",
+        fn = function()
+            local p = playerAt(10)
+            p.completedQuests.general_wrath = true
+
+            local gate
+            for _, q in ipairs(Quest.available(p)) do
+                if q.id == "the_gate_below" then gate = q end
+            end
+
+            assert(gate.hints and #gate.hints == 1, "one dead general gives up one fragment")
+            assert(gate.hints[1] == Quest.defs.general_wrath.gateHint,
+                "and it is that general's own fragment")
+        end,
+    },
+    {
+        name = "prestige and reputation stay HARD gates: a locked quest still needs the standing",
+        fn = function()
+            local p = playerAt(1) -- the Gate wants prestige 10
+            p.completedQuests.general_wrath = true
+
+            for _, q in ipairs(Quest.available(p)) do
+                assert(q.id ~= "the_gate_below",
+                    "holding a key does not excuse you from the prestige gate")
+            end
+        end,
+    },
+    {
+        name = "Quest.complete grants a relic into the stash exactly once",
+        fn = function()
+            local p = playerAt(5)
+            Player.addReputation(p, "colosseum", Vendor.defs.colosseum.ranks[4])
+
+            local quest
+            for _, q in ipairs(Quest.available(p)) do
+                if q.id == "general_wrath" then quest = q end
+            end
+            assert(quest, "at Legend and prestige 5, Ira should be on the board")
+
+            local function stashCount(id)
+                local n = 0
+                for _, item in ipairs(p.stash) do
+                    if item.id == id then n = n + 1 end
+                end
+                return n
+            end
+            assert(stashCount("mail_of_the_unappeased") == 0, "the mail starts on Ira, not on you")
+
+            local reward = Quest.complete(p, quest)
+            assert(stashCount("mail_of_the_unappeased") == 1, "killing her drops it into the stash")
+            assert(reward.received and reward.received[1].id == "mail_of_the_unappeased",
+                "and the summary names what was received, for the reward panel")
+
+            assert(Quest.complete(p, quest) == nil, "a second clear pays nothing")
+            assert(stashCount("mail_of_the_unappeased") == 1, "and mints no second relic")
+        end,
+    },
+    {
+        -- The relic is a trophy meant to be WORN. What opens the Gate is the quest you finished, so
+        -- moving the mail onto a knight -- or losing it entirely -- can never soft-lock the endgame.
+        name = "the Gate is keyed off the completed quest, not off holding the relic",
+        fn = function()
+            local p = playerAt(10)
+            for _, id in ipairs(Quest.defs.the_gate_below.requiredQuests) do
+                p.completedQuests[id] = true
+            end
+            Player.grantItem(p, "mail_of_the_unappeased")
+
+            local function gateOpen()
+                for _, q in ipairs(Quest.available(p)) do
+                    if q.id == "the_gate_below" then return not q.locked end
+                end
+                return false
+            end
+            assert(gateOpen(), "seven completed generals open the Gate")
+
+            -- Wear it: it leaves the stash for a character's 3x3 grid.
+            local mail = Player.takeFromStash(p, #p.stash)
+            Character.addItem(p.roster[1], mail)
+            assert(gateOpen(), "wearing the relic does not close the Gate")
+
+            -- Lose it entirely.
+            p.stash = {}
+            p.roster[1].inventory = {}
+            assert(gateOpen(), "nor does losing it")
+        end,
+    },
+    {
+        name = "Player.grantItem stacks a consumable rather than filling the stash with singles",
+        fn = function()
+            local p = Player.new()
+            p.stash = {}
+            Player.grantItem(p, "healing_potion")
+            Player.grantItem(p, "healing_potion")
+            assert(#p.stash == 1, "two potions collapse into one stack")
+            assert(p.stash[1].quantity == 2, "and the stack counts both")
         end,
     },
     {

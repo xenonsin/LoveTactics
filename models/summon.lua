@@ -150,27 +150,21 @@ function Summon.spawn(combat, summoner, charId, x, y, opts)
     return unit
 end
 
--- Summon a duplicate of `summoner` itself -- same stats, same kit (a doppelganger), or a mute
--- double that only has to look right (a decoy). The copy is built by hand rather than from a
--- blueprint so it carries the caster's CURRENT stats, wounds and all.
+-- Build a character from a LIVE one rather than from a blueprint, so the result carries that
+-- character's current stats, wounds and all. Shared by both copy paths below.
 --
 -- Items are re-instantiated by id, skipping any the blueprint marks `noCopy`: without that a
 -- doppelganger would carry the doppelganger ability and summon itself, and a decoy would carry
 -- another decoy. Reservations are never copied -- they belong to the caster who committed them.
---
--- `opts.decoy` tags the copy as the caster's decoy, so destroying it reveals them (see Combat's
--- death path).
-function Summon.copy(combat, summoner, x, y, opts)
-    local Combat = require("models.combat")
-    opts = opts or {}
-    local src = summoner.char
-
+-- Innate traits DO come along: a copy of Wrath's general rages like the original.
+local function buildCopyChar(src)
     local char = {
         id = src.id,
         name = src.name,
         sprite = src.sprite,
         stats = copyStats(src.stats),
         inventory = {},
+        traits = src.traits,
         unarmed = Item.instantiate((src.unarmed and src.unarmed.id) or Character.DEFAULT_UNARMED),
     }
     for i = 1, Character.MAX_INVENTORY do
@@ -179,6 +173,19 @@ function Summon.copy(combat, summoner, x, y, opts)
             char.inventory[i] = Item.instantiate(item.id, item.quantity)
         end
     end
+    return char
+end
+
+-- Summon a duplicate of `summoner` itself -- same stats, same kit (a doppelganger), or a mute
+-- double that only has to look right (a decoy).
+--
+-- `opts.decoy` tags the copy as the caster's decoy, so destroying it reveals them (see Combat's
+-- death path).
+function Summon.copy(combat, summoner, x, y, opts)
+    local Combat = require("models.combat")
+    opts = opts or {}
+
+    local char = buildCopyChar(summoner.char)
 
     local unit = Combat.addUnit(combat, char, summoner.side, x, y, {
         control = resolveControl(opts.control, summoner),
@@ -197,6 +204,42 @@ function Summon.copy(combat, summoner, x, y, opts)
             string.format("%s conjures a double.", summoner.char.name or "Unit"))
     end
     Combat.enterTile(combat, unit, x, y) -- as in Summon.spawn: the double may not outlive its arrival
+    return unit
+end
+
+-- Copy SOMEONE ELSE. Where Summon.copy duplicates the caster (pride: the mage admiring itself),
+-- this puts a duplicate of an arbitrary `target` on the copier's side (envy: the wanting of another's
+-- shape). It backs the Philosopher's Stone and the general of Envy alike -- the ability the player
+-- buys at the top of the Crucible's shelf is the one used against them at the end of its line.
+--
+-- The copy is `summoned`, which is what keeps the objectives honest and needs no special casing: a
+-- duplicate shares its origin's `char.id`, and both Combat.evaluate's assassinate branch and
+-- Combat.isProtectedAlive already filter on that flag. Copying the mark does not spare it; copying an
+-- escorted charge does not stand in for it.
+--
+-- `opts.summoner` defaults to `copier`, so killing the copier dismisses the copy -- an enemy that
+-- wears your knight's face dies with the thing wearing it, `killAll` stays resolvable, and no
+-- orphaned enemy unit walks around carrying a party member's id. Pass `summoner = false` for a copy
+-- that must outlive its maker.
+function Summon.copyOf(combat, copier, target, x, y, opts)
+    local Combat = require("models.combat")
+    opts = opts or {}
+
+    local char = buildCopyChar(target.char)
+
+    local summoner = copier
+    if opts.summoner ~= nil then summoner = opts.summoner or nil end
+
+    local unit = Combat.addUnit(combat, char, opts.side or copier.side, x, y, {
+        control = resolveControl(opts.control, copier),
+        summoner = summoner,
+        fragile = opts.fragile,
+        summoned = true,
+        duration = opts.duration,
+    })
+    Combat.logEvent(combat, "system", string.format("%s takes the shape of %s.",
+        copier.char.name or "Unit", target.char.name or "a foe"))
+    Combat.enterTile(combat, unit, x, y) -- as above: the shape may not outlive its arrival
     return unit
 end
 

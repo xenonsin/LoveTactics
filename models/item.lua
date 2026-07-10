@@ -8,7 +8,7 @@ local Item = {}
 
 Item.defs = Registry.load("data/items", "data.items")
 
--- The six classes. An item's `class` decides which vendor stocks it (see models/vendor.lua);
+-- The seven classes. An item's `class` decides which vendor stocks it (see models/vendor.lua);
 -- it never gates who may equip the item. Anyone can carry anything -- class only says where
 -- you buy it. That is what lets a player build a bespoke class by mixing shelves (a ninja is
 -- mage gear on a rogue).
@@ -16,13 +16,16 @@ Item.defs = Registry.load("data/items", "data.items")
 -- Deliberately its own field rather than an entry in `tags`: `tags` drives damage scaling and
 -- armor `resist` lookups, so a shop taxonomy living there would be one typo away from armor
 -- mitigating "rogue" damage.
+--
+-- One class per deadly sin: each vendor's quest line ends facing its own (see docs/story.md).
 Item.CLASSES = {
-    fighter = true,
-    priest = true,
-    hunter = true,
-    knight = true,
-    mage = true,
-    rogue = true,
+    fighter = true,   -- wrath
+    priest = true,    -- lust
+    hunter = true,    -- gluttony
+    knight = true,    -- sloth
+    mage = true,      -- pride
+    rogue = true,     -- greed
+    alchemist = true, -- envy
 }
 
 -- nil for a universal item that no class vendor stocks.
@@ -83,6 +86,7 @@ function Item.instantiate(id, quantity)
         noSteal = def.noSteal,                 -- a pickpocket can never lift this (a beast's fangs)
         stealPriority = def.stealPriority,     -- a pickpocket takes the highest first (decoy bait)
         noCopy = def.noCopy,                   -- a summoned copy of the holder never carries this
+        traits = deepCopy(def.traits),         -- combat reactions granted to whoever carries it
         class = def.class,                     -- which class vendor sells it; nil = sold by none
         price = def.price,                     -- vendor gold cost; nil means it is never sold
         repRank = def.repRank,                 -- vendor rank needed to unlock it (default 1)

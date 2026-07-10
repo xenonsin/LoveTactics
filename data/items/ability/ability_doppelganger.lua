@@ -7,12 +7,20 @@
 -- beget more of itself, twice over: this item is `noCopy`, so the duplicate's grid comes up one slot
 -- short (see models/summon.lua), and the caster may not split again while the first double stands
 -- (Combat.activeSummon -- one summon per item, whatever it summons).
+--
+-- Mage gear, and it belongs on that shelf for a reason: the Arcanum's sin is Pride, and this is a
+-- spell whose answer to every problem is a second copy of the caster. Its opposite number sits in the
+-- Crucible -- the Philosopher's Stone, which copies SOMEONE ELSE. The same mechanic turned outward is
+-- Envy. See docs/story.md.
 return {
     name = "Doppelganger",
     description = "Conjure a duplicate of yourself. It fights with your kit, but dies to a single hit.",
     sprite = "assets/items/ability_doppelganger.png",
     type = "ability",
     tags = { "summon", "illusion" },
+    class = "mage",
+    price = 350,
+    repRank = 3,
     noCopy = true,
     activeAbility = {
         name = "Doppelganger",

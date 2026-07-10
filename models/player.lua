@@ -80,6 +80,15 @@ function Player.addToStash(player, item)
     return true
 end
 
+-- Instantiate `itemId` and put it in the stash. The one path by which the player is GIVEN an item
+-- rather than buying it: a quest's `rewardItems` (models/quest.lua), which is how a general's relic
+-- reaches the bag. Returns the instance, so a caller can name it in a reward summary.
+function Player.grantItem(player, itemId)
+    local item = Item.instantiate(itemId)
+    Player.addToStash(player, item)
+    return item
+end
+
 -- Pull the item at `index` out of the stash and hand it back (nil if there is nothing there).
 function Player.takeFromStash(player, index)
     local stash = player.stash

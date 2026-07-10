@@ -155,10 +155,10 @@ quest's `map.objective` (`composition` + `win = { type, target }`).
 
 ### Combat subsystems
 
-`models/combat.lua` owns the rules; four sibling modules layer on top of it. Each is required by
+`models/combat.lua` owns the rules; five sibling modules layer on top of it. Each is required by
 `combat.lua` at load time and reaches *back* into it through a **lazy require inside its
 functions**, so the dependency stays one-way and no require cycle forms. Follow that shape when
-adding a fifth.
+adding a sixth.
 
 | Module | Lives in | What it adds |
 |---|---|---|
@@ -166,6 +166,16 @@ adding a fifth.
 | `models/trap.lua` | `combat.traps` | hidden tile objects, triggered by pathing over them |
 | `models/hazard.lua` | `combat.hazards` | persistent per-cell area effects (fire, rain, sanctuary) |
 | `models/summon.lua` | `combat.units` | characters placed on the field mid-battle |
+| `models/trait.lua` | `unit.traits` | standing reactions: combat start, damage survived, cast, death |
+
+**Traits vs. statuses.** A trait is the *rule*; a status is the *stacking effect* it applies. Statuses
+are timed, refreshable, and render as removable badges; traits are innate, permanent, and invisible.
+Traits come off a character blueprint (`traits = { "wrath_rising" }`) **or off any item in the 3x3
+grid**, which is how a boss's relic hands its rule to whoever wears it. `onDamaged` fires after
+mitigation and only on a survivor — the blow that kills you grants no rage, and a health-threshold
+phase never triggers on a corpse. A per-unit, per-hook reentrancy flag and a depth cap keep a
+retaliation from recursing. The damage preview routes through `Combat.computeDamage`, never
+`dealFlatDamage`, so hovering a target never advances a trait.
 
 **Who drives a unit** is `unit.control` — `"player"`, `"ai"`, or `"none"` (a decoy: it holds a
 slot in the turn order and burns a tick, but never acts). `states/battle.lua` branches on
