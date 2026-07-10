@@ -19,4 +19,7 @@ return {
     },
     traits = { "hollow_crown" },
     -- No weapon of its own. `unarmed` is what is left when everything borrowed has been stripped away.
+    -- Its one carried thing isn't gear: demonic flesh, which takes holy damage the harder (a negative
+    -- holy resist folded in as passive armor). Demon Bane was forged for exactly this body.
+    startingItems = { "demonic_essence" },
 }

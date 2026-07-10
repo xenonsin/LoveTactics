@@ -47,6 +47,7 @@ local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local Summon = require("models.summon")
 local Trait = require("models.trait")
+local Wall = require("models.wall")
 local Character = require("models.character")
 
 local Combat = {}
@@ -165,7 +166,7 @@ function Combat.hasLineOfSight(combat, x0, y0, x1, y1)
         if (x == x0 and y == y0) or (x == x1 and y == y1) then return end
         local row = tiles[y]
         local cell = row and row[x]
-        total = total + ((cell and cell.sightCost) or 0)
+        total = total + ((cell and cell.sightCost) or 0) + Wall.sightCostAt(combat, x, y)
     end)
     return total < Combat.SIGHT_BLOCK
 end
@@ -443,6 +444,13 @@ function Combat.new(arena, partyUnits, enemyUnits)
         Hazard.place(combat, h.x, h.y, h.id, { side = h.side, duration = h.duration })
     end
 
+    -- Walls: conjured blockers (models/wall.lua), placed in-combat via fx.placeWall. Authored via
+    -- arena.walls ({ id, x, y, side }) for a map that wants standing cover.
+    combat.walls = {}
+    for _, w in ipairs((arena and arena.walls) or {}) do
+        Wall.place(combat, w.x, w.y, w.id, { side = w.side, duration = w.duration })
+    end
+
     -- Authored traps are placed above WITHOUT logging (they're hidden until detected); the log
     -- opens on a clean "battle begins" line so the panel isn't empty on the first frame.
     Combat.logEvent(combat, "system", "The battle begins.")
@@ -472,17 +480,83 @@ function Combat.rebase(combat)
     Status.tick(combat, minInit)
     Hazard.tick(combat, minInit)
     Summon.tick(combat, minInit)
+    Wall.tick(combat, minInit)
+    Combat.tickCooldowns(combat, minInit)
     Combat.regenerate(combat, minInit)
 end
 
--- Passive stamina recovery: each living unit regains its staminaRegen rate per elapsed tick,
--- clamped to max. Mana deliberately does NOT regenerate. Called from rebase with the ticks that
--- just elapsed (the same amount fed to Status.tick), so recovery scales with time on the clock.
+-- ---------------------------------------------------------------------------
+-- Cooldowns
+--
+-- A cooldown is a per-unit timer keyed by a string (usually a trait id), measured in the same
+-- *ticks* every duration uses. A triggered ability (a counter) fires, sets a cooldown, and stays
+-- silent until it counts back to 0 -- the recharge Combat.tickCooldowns runs from rebase, beside
+-- Status.tick. Deliberately generic: any future "once every N ticks" effect hangs its key here
+-- rather than inventing its own clock.
+-- ---------------------------------------------------------------------------
+
+-- Put `key` on cooldown for `ticks` on `unit` (refreshes to the longer of any existing remaining).
+function Combat.setCooldown(unit, key, ticks)
+    unit.cooldowns = unit.cooldowns or {}
+    unit.cooldowns[key] = math.max(unit.cooldowns[key] or 0, ticks or 0)
+end
+
+-- Is `key` still recharging on `unit`? False once it has counted back to 0 (or was never set).
+function Combat.onCooldown(unit, key)
+    local cd = unit.cooldowns
+    return cd ~= nil and (cd[key] or 0) > 0
+end
+
+-- Count every unit's cooldowns down by `elapsed` ticks, clearing any that reach 0. Called from
+-- Combat.rebase with the ticks that just elapsed, the same amount fed to Status.tick.
+function Combat.tickCooldowns(combat, elapsed)
+    if not elapsed or elapsed <= 0 then return end
+    for _, u in ipairs(combat.units) do
+        local cd = u.cooldowns
+        if cd then
+            for key, remaining in pairs(cd) do
+                local left = remaining - elapsed
+                if left <= 0 then cd[key] = nil else cd[key] = left end
+            end
+        end
+    end
+end
+
+-- Mana regenerated per tick by an Arcane Reservoir bearer -- the lone exception to "mana never
+-- regenerates". Everyone else's rate is zero, so the global rule holds; the trait is what bends it.
+Combat.ARCANE_REGEN = 1
+-- Health an adjacent Sanctified Presence restores per tick, to each ally it wards (and to the priest).
+Combat.SANCTIFY_HEAL = 1
+
+-- Is `u` warded by a Sanctified Presence this tick? True if it bears the trait itself (the priest is
+-- its own font) or stands orthogonally adjacent to a living ally that does.
+local function nearSanctifier(combat, u)
+    if Trait.has(u, "sanctified_presence") then return true end
+    for _, o in ipairs(combat.units) do
+        if o.alive and o ~= u and o.side == u.side and Trait.has(o, "sanctified_presence")
+            and manhattan(o.x, o.y, u.x, u.y) == 1 then
+            return true
+        end
+    end
+    return false
+end
+
+-- Passive recovery each rebase: every living unit regains its staminaRegen rate per elapsed tick
+-- (clamped to max). Mana deliberately does NOT regenerate -- except for an Arcane Reservoir bearer.
+-- A unit under a Sanctified Presence also mends a little health. Called from rebase with the ticks
+-- that just elapsed (the same amount fed to Status.tick), so recovery scales with time on the clock.
 function Combat.regenerate(combat, elapsed)
     if not elapsed or elapsed <= 0 then return end
     for _, u in ipairs(combat.units) do
         if u.alive then
             Combat.restoreResource(u.char, "stamina", flatStat(u, "staminaRegen") * elapsed)
+            -- Quiet heals (no per-tick log line, like stamina): the badge/aura is the tell, not the log.
+            if Trait.has(u, "arcane_reservoir") then
+                Combat.restoreResource(u.char, "mana", Combat.ARCANE_REGEN * elapsed)
+            end
+            if nearSanctifier(combat, u) then
+                Combat.restoreResource(u.char, "health", Combat.SANCTIFY_HEAL * elapsed)
+            end
         end
     end
 end
@@ -737,7 +811,8 @@ function Combat.reachable(combat, unit)
                 local nx, ny = cur.x + d[1], cur.y + d[2]
                 if nx >= 1 and nx <= arena.cols and ny >= 1 and ny <= arena.rows then
                     local cell = arena.tiles[ny][nx]
-                    if cell.walkable and not Combat.unitAt(combat, nx, ny) then
+                    if cell.walkable and not Combat.unitAt(combat, nx, ny)
+                        and not Wall.blocksAt(combat, nx, ny) then
                         local ncost = cur.cost + cell.moveCost
                         if ncost <= budget then
                             local nk = key(nx, ny)
@@ -927,6 +1002,7 @@ local function canShoveInto(combat, x, y)
     local row = combat.arena and combat.arena.tiles and combat.arena.tiles[y]
     local cell = row and row[x]
     if not (cell and cell.walkable) then return false, nil end
+    if Wall.blocksAt(combat, x, y) then return false, nil end -- a conjured wall bars the shove
     local blocker = Combat.unitAt(combat, x, y)
     if blocker then return false, blocker end
     return true, nil
@@ -1144,6 +1220,10 @@ end
 function Combat.mitigatedDamage(target, base, tags)
     tags = tags or {}
     local magical = hasTag(tags, "magical")
+    -- A barrier of the incoming school swallows the hit whole: report 0 so the damage preview reads
+    -- the negation. Combat.dealFlatDamage makes the same check and is the one that CONSUMES the
+    -- barrier -- this read never mutates, so a hovered target never spends someone's ward.
+    if Status.barrierAgainst(target, magical) then return 0 end
     local defStat = magical and "magicDefense" or "defense"
     local defense = flatStat(target, defStat)
     local resist = 0
@@ -1231,7 +1311,53 @@ local function killUnit(combat, target)
     target.char.reservations = nil
 end
 
-function Combat.dealFlatDamage(combat, target, base, tags, source)
+-- An adjacent ally may throw itself in front of a blow aimed at `target`, taking it instead. Returns
+-- the guardian to strike (and spends its intercept) or nil for no redirect. Two guard kinds, both set
+-- by an onCombatStart trait onto `unit.guard`:
+--   * "oathward"  -- soaks the FIRST hit on an adjacent ally each turn (a cooldown gates the rest)
+--   * "martyr"    -- takes a would-be-LETHAL blow for an adjacent ally, once per battle
+-- The intercept's own damage runs through dealFlatDamage again (so the guardian's armor and barriers
+-- apply); each redirect spends a charge, so a ring of guardians can't bounce a hit forever.
+function Combat.tryRedirect(combat, target, base, tags)
+    for _, g in ipairs(combat.units) do
+        if g.alive and g.guard and g ~= target and g.side == target.side
+            and manhattan(g.x, g.y, target.x, target.y) == 1 then
+            local kind = g.guard.kind
+            if kind == "oathward" and not Combat.onCooldown(g, "oathward") then
+                Combat.setCooldown(g, "oathward", g.guard.cooldown or 6)
+                Combat.logEvent(combat, "action",
+                    string.format("%s takes the blow for %s!", unitName(g), unitName(target)))
+                return g
+            elseif kind == "martyr" and not g.guard.used then
+                if Combat.mitigatedDamage(target, base, tags) >= (target.char.stats.health.current or 0) then
+                    g.guard.used = true
+                    Combat.logEvent(combat, "action",
+                        string.format("%s throws itself in front of %s!", unitName(g), unitName(target)))
+                    return g
+                end
+            end
+        end
+    end
+    return nil
+end
+
+function Combat.dealFlatDamage(combat, target, base, tags, source, attacker)
+    -- An adjacent guardian (Oathward, Martyr's Vow) may take the blow in the target's place. The
+    -- redirected hit re-enters here on the guardian, so its own armor, barrier and traits all apply.
+    local guardian = Combat.tryRedirect(combat, target, base, tags)
+    if guardian then
+        return Combat.dealFlatDamage(combat, guardian, base, tags, source, attacker)
+    end
+    -- A barrier of the incoming school (physical/magical, the same switch mitigation reads) negates
+    -- the blow outright: consume that one ward, deal nothing, and return BEFORE the trait dispatch --
+    -- an absorbed hit is not a "wound survived", so it grants no rage and advances no threshold phase.
+    local barrier = Status.barrierAgainst(target, hasTag(tags or {}, "magical"))
+    if barrier then
+        Status.remove(target, barrier.id)
+        Combat.logEvent(combat, "status",
+            string.format("%s's %s absorbs the blow.", unitName(target), barrier.name or barrier.id))
+        return 0
+    end
     local dmg = Combat.mitigatedDamage(target, base, tags)
     local hp = target.char.stats.health
     hp.current = hp.current - dmg
@@ -1252,7 +1378,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source)
         -- a boss's health-threshold phase can never trigger on a corpse. Nothing in the damage
         -- PREVIEW reaches this function (previewAbility routes through Combat.computeDamage), so a
         -- hovered target never quietly advances a trait.
-        Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source })
+        Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker })
     end
     return dmg
 end
@@ -1267,7 +1393,9 @@ function Combat.dealDamage(combat, user, target, item, opts)
     -- declared Power for a one-off hit). Mitigation then subtracts the target's defense + resists.
     local power = opts.power or (ab and ab.power) or 0
     local base = power + flatStat(user, atkStat)
-    return Combat.dealFlatDamage(combat, target, base, tags)
+    -- `user` rides along as the attacker so a reaction trait (a counter) knows who struck, and how
+    -- far away they stood. A flat source (a trap, a burn) passes no attacker and provokes no counter.
+    return Combat.dealFlatDamage(combat, target, base, tags, nil, user)
 end
 
 -- Pure: the post-mitigation damage `user` striking `target` with `item` (and `opts`, e.g.
@@ -1410,6 +1538,8 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         -- unit doesn't fault out of the pcall and blank the tooltip.
         placeTrap = function() return nil end,
         placeHazard = function() return nil end,
+        placeWall = function() return nil end,
+        dispel = function() return { revealed = 0, wallsDestroyed = 0 } end,
         summon = function() return previewStandIn() end,
         copy = function() return previewStandIn() end,
         copyOf = function() return previewStandIn() end,
@@ -1481,6 +1611,8 @@ function Combat.abilityOutput(unit, item)
         adjacentMatching = function() return 0 end,
         placeTrap = function() return nil end,
         placeHazard = function() return nil end,
+        placeWall = function() return nil end,
+        dispel = function() return { revealed = 0, wallsDestroyed = 0 } end,
         -- Record WHAT the ability summons -- and for how long -- so the inventory tooltip can name it
         -- and quote its duration, without building anything; the stand-in keeps a chained effect from
         -- faulting out of the pcall.
@@ -1555,6 +1687,117 @@ local function spendResource(char, stat, amount)
     local res = char.stats[stat]
     if type(res) == "table" then res.current = res.current - amount
     else char.stats[stat] = (res or 0) - amount end
+end
+
+-- Overchannel: a mage that casts through its own life when the mana runs dry (the trait of the same
+-- name). A capability read, not a dispatched hook -- there is no "onSpend" trait event, so the cost
+-- path consults this directly (documented as the one trait that works this way).
+function Combat.canOverchannel(unit)
+    return Trait.has(unit, "overchannel")
+end
+
+-- Pay an ability's `cost` for `unit`. Normally a plain spend; but an Overchannel unit short on mana
+-- drains what mana it has and pays the shortfall out of health (1 HP per missing point). The single
+-- spend path useItem / strikeTrap / strikeWall all route through, so casting-in-blood is uniform.
+function Combat.spendCost(combat, unit, cost)
+    if not cost then return end
+    local char = unit.char
+    if cost.stat == "mana" and Combat.canOverchannel(unit) then
+        local have = resourceValue(char, "mana")
+        if have < cost.amount then
+            local shortfall = cost.amount - have
+            spendResource(char, "mana", have) -- drain the pool to 0
+            spendResource(char, "health", shortfall) -- pay the rest in blood
+            Combat.logEvent(combat, "status",
+                string.format("%s overchannels, burning %d health.", unitName(unit), shortfall))
+            return
+        end
+    end
+    spendResource(char, cost.stat, cost.amount)
+end
+
+-- ---------------------------------------------------------------------------
+-- Blink (teleport movement)
+--
+-- A `moveBehavior` item (ability_blink) doesn't cast: it toggles the unit's `blinkArmed` flag, and
+-- while that is set AND the unit can pay one jump, the unit MOVES by teleport this turn instead of
+-- walking. A blink ignores terrain cost and intervening obstacles, reaches its own (wider) range,
+-- costs a resource per jump rather than move initiative, and -- like a walk -- spends the turn's one
+-- move without ending the turn. A blink it can't afford falls back to an ordinary walk.
+-- ---------------------------------------------------------------------------
+
+-- The unit's teleport item (a `moveBehavior` of mode "teleport") in its grid, or nil.
+function Combat.blinkItem(char)
+    for _, item in ipairs(Character.eachItem(char)) do
+        local mb = item.moveBehavior
+        if mb and mb.mode == "teleport" then return item end
+    end
+    return nil
+end
+
+-- The active blink for `unit` this turn -- its moveBehavior and the item -- or nil for a normal walk.
+-- Present only when the unit has toggled blink on AND can pay one jump's cost. The single gate the
+-- move overlay, the click handler, and Combat.blink all read, so teleport is offered exactly when it
+-- can be taken (and a blink you can't afford silently becomes a walk).
+function Combat.blinkReady(unit)
+    if not unit.blinkArmed then return nil end
+    local item = Combat.blinkItem(unit.char)
+    if not item then return nil end
+    local mb = item.moveBehavior
+    if mb.cost and resourceValue(unit.char, mb.cost.stat) < mb.cost.amount then return nil end
+    return mb, item
+end
+
+-- Tiles a unit may blink to this turn: every walkable, unoccupied, wall-free tile within the blink's
+-- `movement` (Manhattan), ignoring terrain move cost and intervening obstacles -- a teleport does not
+-- walk, so nothing bars the line, only the destination itself. Returns reachable's shape
+-- ({ [key] = { x, y, cost, steps } }) so the battle overlay and click handling treat it identically;
+-- cost is 0 (a blink charges no move initiative) and steps a nominal 1.
+function Combat.teleportCells(combat, unit, range)
+    range = range or 0
+    local out = {}
+    local cols = (combat.arena and combat.arena.cols) or 0
+    local rows = (combat.arena and combat.arena.rows) or 0
+    for dx = -range, range do
+        for dy = -range, range do
+            if not (dx == 0 and dy == 0) and (math.abs(dx) + math.abs(dy)) <= range then
+                local x, y = unit.x + dx, unit.y + dy
+                if x >= 1 and x <= cols and y >= 1 and y <= rows then
+                    local cell = combat.arena.tiles[y][x]
+                    if cell.walkable and not Combat.unitAt(combat, x, y)
+                        and not Wall.blocksAt(combat, x, y) then
+                        out[key(x, y)] = { x = x, y = y, cost = 0, steps = 1 }
+                    end
+                end
+            end
+        end
+    end
+    return out
+end
+
+-- Teleport `unit` to (x, y): spend the blink cost, jump straight there (no path, no move cost), and
+-- trigger the destination tile (a trap or hazard on it still bites a unit that blinks onto it). Marks
+-- the turn's one move as spent WITHOUT ending the turn -- the unit may still act or wait. Charges no
+-- move initiative; the resource cost is the whole price. Returns true, or false + a reason.
+function Combat.blink(combat, unit, x, y)
+    if not unit.alive then return false, "dead" end
+    if not combat.turn or combat.turn.unit ~= unit then return false, "not this unit's turn" end
+    if combat.turn.moved then return false, "already moved" end
+    local mb = Combat.blinkReady(unit)
+    if not mb then return false, "cannot blink" end
+    local row = combat.arena and combat.arena.tiles and combat.arena.tiles[y]
+    local cell = row and row[x]
+    if not (cell and cell.walkable) then return false, "blocked tile" end
+    if Combat.unitAt(combat, x, y) or Wall.blocksAt(combat, x, y) then return false, "occupied tile" end
+    if manhattan(unit.x, unit.y, x, y) > (mb.movement or 0) then return false, "out of range" end
+
+    if mb.cost then spendResource(unit.char, mb.cost.stat, mb.cost.amount) end
+    combat.turn.moved = true
+    combat.turn.moveCost = 0 -- a blink owes no move initiative; its resource cost is the price
+    unit.x, unit.y = x, y
+    Combat.logEvent(combat, "move", string.format("%s blinks to (%d, %d).", unitName(unit), x, y))
+    Combat.enterTile(combat, unit, x, y)
+    return true
 end
 
 -- ---------------------------------------------------------------------------
@@ -1706,9 +1949,18 @@ end
 local function costBlock(unit, ab)
     local cost = Combat.abilityCost(unit, ab)
     if cost and resourceValue(unit.char, cost.stat) < cost.amount then
-        return { kind = "cost", stat = cost.stat, reason = "insufficient " .. cost.stat,
-            text = string.format("Not enough %s (have %d)", cost.stat,
-                math.floor(resourceValue(unit.char, cost.stat))) }
+        -- An Overchannel mage isn't blocked for low mana: it pays the shortfall in health, so long as
+        -- it has the blood to spare (never a lethal self-cost). Only then does the low pool gate it.
+        local paidInBlood = false
+        if cost.stat == "mana" and Combat.canOverchannel(unit) then
+            local shortfall = cost.amount - resourceValue(unit.char, "mana")
+            if resourceValue(unit.char, "health") > shortfall then paidInBlood = true end
+        end
+        if not paidInBlood then
+            return { kind = "cost", stat = cost.stat, reason = "insufficient " .. cost.stat,
+                text = string.format("Not enough %s (have %d)", cost.stat,
+                    math.floor(resourceValue(unit.char, cost.stat))) }
+        end
     end
     -- A reservation is spent like a cost and then locked away, so the caster must hold it now (and
     -- reserving health can never be lethal). Combat.useItem pays the cost before the effect takes
@@ -1788,6 +2040,12 @@ function Combat.itemBlockReason(unit, item)
         return { kind = "active", summon = held, reason = "summon still active", text = text }
     end
     if not unit then return nil end
+
+    -- Silenced: a mana cost can't be paid, so a mana ability is refused (one drawing on stamina or
+    -- health still fires). Checked before affordability so the note reads "silenced", not "no mana".
+    if ab.cost and ab.cost.stat == "mana" and Status.silenced(unit) then
+        return { kind = "silenced", reason = "silenced", text = "Silenced -- cannot cast mana abilities" }
+    end
 
     local cost = costBlock(unit, ab)
     if cost then return cost end
@@ -1887,7 +2145,7 @@ function Combat.useItem(combat, unit, item, tx, ty)
     -- cast is committed from here: pay the cost. The reservation isn't taken until the effect
     -- produces the summon that holds it (below).
     local cost = Combat.abilityCost(unit, ab)
-    if cost then spendResource(unit.char, cost.stat, cost.amount) end
+    if cost then Combat.spendCost(combat, unit, cost) end
     local reserve = Combat.abilityReserve(unit, ab)
 
     -- Effect context: bound helpers let a data-file effect compose damage/heal/AoE
@@ -1971,6 +2229,19 @@ function Combat.useItem(combat, unit, item, tx, ty)
             opts = opts or {}
             opts.side = opts.side or unit.side
             return Hazard.place(combat, px, py, id, opts)
+        end,
+        -- Raise a wall segment on a tile, owned by the caster's side (models/wall.lua). Summon Wall
+        -- calls this once per tile of its 3x1 line; a tile that can't hold a wall (a unit on it,
+        -- solid terrain, another wall) is silently skipped by Wall.place returning nil.
+        placeWall = function(px, py, id, opts)
+            opts = opts or {}
+            opts.side = opts.side or unit.side
+            return Wall.place(combat, px, py, id, opts)
+        end,
+        -- Reveal invisible units and tear down `illusion` walls across a set of cells (Dispel
+        -- Illusions). Defaults to the ability's own AoE footprint around the aimed tile.
+        dispel = function(cells)
+            return Combat.dispel(combat, cells or Combat.aoeCells(combat, ab, tx, ty))
         end,
         -- Summon a character onto the field, sustained by the caster (models/summon.lua). Whatever
         -- comes back holds two things for as long as it lives: the ability's reservation (ab.reserve),
@@ -2105,7 +2376,7 @@ function Combat.strikeTrap(combat, unit, weapon, x, y)
         return false, "no line of sight"
     end
     local cost = Combat.abilityCost(unit, ab)
-    if cost then spendResource(unit.char, cost.stat, cost.amount) end
+    if cost then Combat.spendCost(combat, unit, cost) end
 
     -- Damage the trap by the weapon's attack stat (magical weapons use magicDamage). Traps have
     -- no defense, so this is the raw stat, floored.
@@ -2114,6 +2385,52 @@ function Combat.strikeTrap(combat, unit, weapon, x, y)
 
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
     return true, { trap = trap }
+end
+
+-- Strike a wall at (x, y) with `weapon`: the wall analogue of Combat.strikeTrap, so a unit can tear
+-- down a conjured barrier the hard way (Dispel clears it for free, but a party without one still has
+-- an answer). Validates range + affordability, spends the cost, damages the wall by the weapon's
+-- attack stat, and ends the turn. Walls are always visible, so there is no visibility gate. Returns
+-- (true, { wall }) or (false, reason).
+function Combat.strikeWall(combat, unit, weapon, x, y)
+    if not unit.alive then return false, "dead" end
+    local wall = Wall.at(combat, x, y)
+    if not wall then return false, "no wall" end
+    local ab = weapon and weapon.activeAbility
+    if not ab then return false, "no ability" end
+    local blocked = Combat.itemBlockReason(unit, weapon)
+    if blocked then return false, blocked.reason end
+    local dist = manhattan(unit.x, unit.y, x, y)
+    if dist > Combat.abilityRange(combat, unit, ab) then return false, "out of range" end
+    if dist < Combat.abilityMinRange(ab) then return false, "too close" end
+    if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, x, y) then
+        return false, "no line of sight"
+    end
+    local cost = Combat.abilityCost(unit, ab)
+    if cost then Combat.spendCost(combat, unit, cost) end
+
+    Combat.logEvent(combat, "trap", string.format("%s strikes %s.", unitName(unit), wall.name or "a wall"))
+    Wall.damage(combat, wall, Combat.computeTrapDamage(unit, weapon))
+
+    endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
+    return true, { wall = wall }
+end
+
+-- Dispel: reveal every invisible unit standing on `cells` (stripping the Invisible that hides a
+-- decoy's caster) and tear down every `illusion`-tagged wall there. The heart of Dispel Illusions;
+-- reached through fx.dispel. Returns { revealed, wallsDestroyed } counts.
+function Combat.dispel(combat, cells)
+    local revealed = 0
+    for _, c in ipairs(cells or {}) do
+        local u = Combat.unitAt(combat, c.x, c.y)
+        if u and Status.has(u, "invisible") then
+            Status.remove(u, "invisible")
+            Combat.logEvent(combat, "status", string.format("%s is revealed!", unitName(u)))
+            revealed = revealed + 1
+        end
+    end
+    local wallsDestroyed = Wall.dispelIn(combat, cells)
+    return { revealed = revealed, wallsDestroyed = wallsDestroyed }
 end
 
 -- ---------------------------------------------------------------------------

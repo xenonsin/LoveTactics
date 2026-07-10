@@ -79,6 +79,26 @@ local function ctxFor(combat, unit, trait, event)
             unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
             return unit.bonus[stat]
         end,
+        -- Strike `target` with the bearer's default weapon, weapon-scaled (unlike the flat `damage`
+        -- above) -- what a counter throws back. Free: it spends no resource and ends no turn, so a
+        -- reaction can retaliate without paying a cast's price. The blow re-enters dealFlatDamage and
+        -- so can provoke the target's OWN counter; the dispatch guards (unit._reacting + MAX_DEPTH)
+        -- stop that from looping.
+        basicAttack = function(target)
+            if not target then return 0 end
+            local weapon = Combat.defaultWeapon(unit.char)
+            if not weapon then return 0 end
+            return Combat.dealDamage(combat, unit, target, weapon)
+        end,
+        -- The effective reach of the bearer's default weapon from where it stands (base range plus any
+        -- high-ground field bonus). A ranged counter reads this to tell a bow (>1) from a blade, and to
+        -- check the attacker is within answering distance. 0 for a unit with no weapon at all.
+        weaponRange = function()
+            local weapon = Combat.defaultWeapon(unit.char)
+            local ab = weapon and weapon.activeAbility
+            if not ab then return 0 end
+            return Combat.abilityRange(combat, unit, ab)
+        end,
         summon = function(charId, px, py, opts)
             return Summon.spawn(combat, unit, charId, px, py, opts)
         end,
@@ -88,6 +108,11 @@ local function ctxFor(combat, unit, trait, event)
         end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
+        -- A cooldown keyed on the bearer, so a triggered reaction (a counter) can gate its own
+        -- re-fire without the data file reaching into the combat module. Measured in ticks; it
+        -- recharges from Combat.rebase alongside status durations.
+        onCooldown = function(key) return Combat.onCooldown(unit, key) end,
+        setCooldown = function(key, ticks) Combat.setCooldown(unit, key, ticks) end,
         -- A free tile beside (x, y), or nil when the spot is hemmed in. What a hook calls before it
         -- summons or copies, because a body needs ground to stand on.
         openTileNear = function(x, y) return Combat.openTileNear(combat, x, y) end,

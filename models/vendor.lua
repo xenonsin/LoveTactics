@@ -99,4 +99,50 @@ function Vendor.stock(vendorId, rank)
     return stock
 end
 
+-- ---------------------------------------------------------------------------
+-- Ability upgrades
+--
+-- Weapons and armor are forged at the Blacksmith; ABILITIES are honed here, at their class vendor --
+-- spells are trained, not hammered, so an upgrade costs gold (no materials) and is gated by standing
+-- rather than ore. Both paths raise the same `level`, baked by Item.instantiate.
+-- ---------------------------------------------------------------------------
+
+-- The highest ability level a given rank has earned the right to buy: rank 1 unlocks +1/+2, and each
+-- further rank one more, so Legend (rank 4) can reach the +5 cap. A gate on the power curve that
+-- mirrors the reputation ladder the whole game runs on.
+function Vendor.abilityLevelCap(rank)
+    return math.min(Item.MAX_LEVEL, (rank or 1) + 1)
+end
+
+-- The cost to hone `item` one level at a vendor of `rank` standing: gold that climbs with the level,
+-- plus whether that level is yet unlocked by the rank. Returns nil once the item is at Item.MAX_LEVEL.
+--   { level = <target>, gold = <n>, locked = <bool> }
+function Vendor.abilityUpgradeCost(item, rank)
+    local target = (item.level or 0) + 1
+    if target > Item.MAX_LEVEL then return nil end
+    return {
+        level = target,
+        gold = 60 * target, -- +1 costs 60g, +5 costs 300g
+        locked = target > Vendor.abilityLevelCap(rank),
+    }
+end
+
+-- Perform an ability upgrade for `player` at vendor `vendorId`: verify the item is an ability of the
+-- vendor's class, that the next level is rank-unlocked, and that the gold is there; spend it and
+-- return a FRESH instance at the new level (the caller swaps it into the slot it came from). Returns
+-- the new item, or nil + a reason ("class" | "max level" | "locked" | "gold").
+function Vendor.upgradeAbility(player, vendorId, item)
+    local Player = require("models.player")
+    local def = Vendor.defs[vendorId]
+    if not def then return nil, "class" end
+    if item.type ~= "ability" or Item.classOf(item) ~= def.class then return nil, "class" end
+    local rank = Vendor.rankFor(vendorId, Player.reputation(player, vendorId))
+    local cost = Vendor.abilityUpgradeCost(item, rank)
+    if not cost then return nil, "max level" end
+    if cost.locked then return nil, "locked" end
+    if player.gold < cost.gold then return nil, "gold" end
+    Player.spendGold(player, cost.gold)
+    return Item.instantiate(item.id, item.quantity, cost.level)
+end
+
 return Vendor

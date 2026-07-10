@@ -503,7 +503,10 @@ function CombatPanel:drawItemGrid()
         -- alpha to point at it. Only on a party turn: off-turn slots dim for a different reason, and
         -- the hover tooltip spells the reason out either way.
         local blocked = isPartyTurn and self:blockReason(item) or nil
-        local usable = item and item.activeAbility ~= nil and isPartyTurn and not blocked
+        -- A Blink (moveBehavior) item is activatable too, even though it has no ability: clicking it
+        -- toggles teleport movement rather than arming a cast.
+        local isBlink = item and item.moveBehavior ~= nil
+        local usable = item and (item.activeAbility ~= nil or isBlink) and isPartyTurn and not blocked
 
         if item then
             local dim = (not usable) and 0.45 or 1
@@ -602,14 +605,16 @@ function CombatPanel:drawItemGrid()
             end
         end
 
-        -- Border: armed strike (red) / armed support (green), hovered (gold),
-        -- usable (blue), else idle.
+        -- Border: armed strike (red) / armed support (green), a toggled-on Blink (violet), hovered
+        -- (gold), usable (blue), else idle.
+        local blinkOn = isBlink and self.view.current and self.view.current.blinkArmed
         if armed then
             if Combat.isSupportAbility(item.activeAbility) then
                 love.graphics.setColor(0.35, 0.85, 0.40) -- support armed (heal / buff)
             else
                 love.graphics.setColor(0.85, 0.35, 0.35) -- offensive armed (strike / trap)
             end
+        elseif blinkOn then love.graphics.setColor(0.60, 0.45, 0.95) -- Blink toggled on (violet)
         elseif usable and self.hoverIndex == i then love.graphics.setColor(0.95, 0.85, 0.55)
         elseif usable then love.graphics.setColor(0.4, 0.6, 0.85)
         else love.graphics.setColor(0.35, 0.37, 0.45) end
@@ -637,7 +642,9 @@ function CombatPanel:usableItemAt(px, py)
     if not self.view.isPartyTurn then return nil end
     local i = self:slotIndexAt(px, py)
     local item = i and (self.view.items or {})[i]
-    if item and item.activeAbility and not self:blockReason(item) then
+    -- A Blink (moveBehavior) item is clickable too: activating it toggles teleport movement. It has
+    -- no ability cost, so blockReason never gates it.
+    if item and (item.activeAbility or item.moveBehavior) and not self:blockReason(item) then
         return item, i
     end
     return nil

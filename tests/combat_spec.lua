@@ -22,6 +22,10 @@ end
 -- A { char, x, y } spawn entry. Accepts a blueprint id or a prebuilt character instance.
 local function unit(charOrId, x, y)
     local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
+    -- Isolate these mechanics tests from a character's innate traits (an archer's wolf companion, a
+    -- knight's Oathward): those are exercised in tests/innate_spec.lua, and would otherwise perturb
+    -- the unit counts and initiative these fixtures assume.
+    char.traits = {}
     return { char = char, x = x, y = y }
 end
 

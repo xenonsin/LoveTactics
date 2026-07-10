@@ -62,9 +62,60 @@ local function deepCopy(value)
     return out
 end
 
+-- The highest upgrade level a forgeable item can reach (the five material tiers, +1..+5).
+Item.MAX_LEVEL = 5
+
+-- The per-level stat gain an upgrade grants, as { stat = perLevelAmount }. An item may name its own
+-- balance knob with an `upgrade` field; otherwise a sensible default is derived from its kind -- a
+-- weapon/ability sharpens the one Power its abilities scale by, armor thickens whichever defense it
+-- leans on. Returns nil for an item that cannot be upgraded at all (a plain consumable/utility).
+-- The single source of truth shared by Item.applyLevel (which bakes it) and the blacksmith/vendor UI.
+function Item.upgradeSpec(item)
+    if item.upgrade then return item.upgrade end
+    if item.type == "armor" then
+        if item.bonus and item.bonus.defense then return { defense = 2 } end
+        if item.bonus and item.bonus.magicDefense then return { magicDefense = 2 } end
+        return { defense = 2 }
+    end
+    if item.activeAbility and (item.type == "weapon" or item.type == "ability") then
+        return { power = 2 } -- Power is "the one stat their abilities scale by"
+    end
+    return nil
+end
+
+-- Can this item be taken to the forge (or, for an ability, the class vendor) and leveled up?
+function Item.isUpgradable(item)
+    return item ~= nil and Item.upgradeSpec(item) ~= nil
+end
+
+-- Bake `item.level` levels of its upgrade into its scaling stat(s) and append " +n" to the display
+-- name. Called once at instantiate; an upgrade re-instantiates from the blueprint at the new level
+-- (see the blacksmith), so this never double-applies onto an already-leveled instance.
+local function applyLevel(item)
+    local lvl = item.level or 0
+    if lvl <= 0 then return end
+    local spec = Item.upgradeSpec(item)
+    if spec then
+        for stat, perLevel in pairs(spec) do
+            local add = perLevel * lvl
+            if stat == "power" then
+                if item.activeAbility then
+                    item.activeAbility.power = (item.activeAbility.power or 0) + add
+                end
+            else
+                item.bonus = item.bonus or {}
+                item.bonus[stat] = (item.bonus[stat] or 0) + add
+            end
+        end
+    end
+    -- "+n" rides on the name, so it shows everywhere the name does (grid, tooltip, combat log).
+    item.name = (item.name or "?") .. " +" .. lvl
+end
+
 -- Build a fresh, mutable item instance from a blueprint id. `quantity` seeds a stack (clamped to
 -- the item's maxStack) and defaults to 1; it is only meaningful for stackable (consumable) items.
-function Item.instantiate(id, quantity)
+-- `level` is the upgrade level (default 0), baked into the scaling stats and the " +n" name suffix.
+function Item.instantiate(id, quantity, level)
     local def = Item.defs[id]
     assert(def, "unknown item id: " .. tostring(id))
 
@@ -80,6 +131,8 @@ function Item.instantiate(id, quantity)
         bonus = deepCopy(def.bonus),           -- armor: flat stat bonuses folded in at setup
         resist = deepCopy(def.resist),         -- armor: tag -> flat damage reduction
         waitBehavior = deepCopy(def.waitBehavior), -- swaps this holder's Wait -> Focus / Defend
+        moveBehavior = deepCopy(def.moveBehavior), -- swaps this holder's walk -> teleport (Blink)
+        upgrade = deepCopy(def.upgrade),       -- per-level stat gain at the forge (nil = a default is derived)
         visionRadius = def.visionRadius,       -- overworld vision boost (e.g. torch); nil for most
         detectRadius = def.detectRadius,       -- combat: reveals traps within this radius (detectors)
         maxStack = def.maxStack,               -- stackable (consumable) items: per-slot cap override
@@ -90,6 +143,7 @@ function Item.instantiate(id, quantity)
         class = def.class,                     -- which class vendor sells it; nil = sold by none
         price = def.price,                     -- vendor gold cost; nil means it is never sold
         repRank = def.repRank,                 -- vendor rank needed to unlock it (default 1)
+        level = math.max(0, level or 0),       -- upgrade level; 0 = a base, un-forged item
     }
 
     -- Stack count: consumables carry a `quantity` (clamped to the item's cap); everything else is
@@ -100,6 +154,7 @@ function Item.instantiate(id, quantity)
         item.quantity = 1
     end
 
+    applyLevel(item) -- fold the upgrade into the scaling stats and the display name
     return item
 end
 

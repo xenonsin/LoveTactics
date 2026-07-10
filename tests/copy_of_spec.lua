@@ -28,6 +28,9 @@ end
 
 local function unit(charOrId, x, y)
     local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
+    -- Isolate from innate traits (see tests/innate_spec.lua): a lone archer would otherwise field a
+    -- wolf and skew the unit counts these copy tests assume.
+    char.traits = {}
     return { char = char, x = x, y = y }
 end
 

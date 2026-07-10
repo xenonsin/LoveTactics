@@ -134,6 +134,28 @@ function Status.untargetable(unit)
     return false
 end
 
+-- The barrier status on `unit` that would negate an incoming hit of the given school (`magical`
+-- true -> a magical barrier, false -> a physical one), or nil. A barrier def carries
+-- `negates = "physical"|"magical"`; the first matching one is returned so Combat.dealFlatDamage can
+-- consume it and the damage preview can read the negation. Mirrors Status.untargetable in shape --
+-- a single flag scanned across the unit's active statuses.
+function Status.barrierAgainst(unit, magical)
+    local want = magical and "magical" or "physical"
+    for _, s in ipairs(unit.statuses or {}) do
+        if s.def.negates == want then return s end
+    end
+    return nil
+end
+
+-- Is this unit silenced -- unable to spend mana on an ability? True while any active status sets
+-- `silencesMana`. Read by Combat.itemBlockReason, the single gate for a refused mana cast.
+function Status.silenced(unit)
+    for _, s in ipairs(unit.statuses or {}) do
+        if s.def.silencesMana then return true end
+    end
+    return false
+end
+
 -- Apply status `id` to `unit`. One instance per id: re-applying refreshes the remaining
 -- duration to the longer of old/new and re-runs onApply (so re-stunning bumps again). Runs
 -- the def's onApply hook. Returns the (possibly refreshed) status instance.

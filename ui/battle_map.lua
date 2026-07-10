@@ -58,7 +58,7 @@ function BattleMap.new(arena, opts)
     self.numberFont = opts.numberFont or love.graphics.newFont(12)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
-    self.overlays = { move = {}, range = {}, threat = {}, traps = {}, hazards = {} }
+    self.overlays = { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {} }
 
     -- On-screen tile size. Defaults to the arena's logical tileSize but can be overridden so the
     -- board renders a little smaller than its data size, opening breathing room around it. All
@@ -99,7 +99,7 @@ end
 --   threat -> default-attack reach (red), the band beyond `move` shown during MOVE mode
 --   traps  -> runtime trap objects the viewer can see (own + detected), drawn under the units
 function BattleMap:setOverlays(overlays)
-    self.overlays = overlays or { move = {}, range = {}, threat = {}, traps = {}, hazards = {} }
+    self.overlays = overlays or { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {} }
 end
 
 -- Build the tileset quads + SpriteBatch for the mapped art types, or record that we
@@ -181,6 +181,7 @@ function BattleMap:draw()
     self:drawTiles()
     self:drawHazards() -- area effects wash the ground under the interaction highlights
     self:drawOverlays()
+    self:drawWalls() -- conjured blockers stand on the ground, above overlays, under the units
     self:drawTraps() -- revealed traps sit above the ground/overlays, under the units
     self:drawUnits()
     self:drawHighlights()
@@ -262,6 +263,43 @@ function BattleMap:drawTraps()
             end
         end
     end
+end
+
+-- Walls (self.overlays.walls): conjured blockers, one runtime object per tile ({ x, y, side,
+-- sprite, health, maxHealth }). Always visible to both sides. Drawn as the wall's sprite, or a
+-- solid stone-grey block filling most of the tile with a thin HP bar once it has been struck, so it
+-- reads as a thing standing in the way. Sits above overlays, under the units.
+function BattleMap:drawWalls()
+    local s = self.size
+    for _, w in ipairs(self.overlays.walls or {}) do
+        if w.alive then
+            local wx, wy = self:cellToPixel(w.x, w.y)
+            local sprite = w.sprite
+            if type(sprite) == "userdata" then
+                love.graphics.setColor(1, 1, 1)
+                local sw, sh = sprite:getDimensions()
+                local scale = math.min(s / sw, s / sh)
+                love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale, sw / 2, sh / 2)
+            else
+                love.graphics.setColor(0.45, 0.47, 0.52, 0.92) -- stone grey
+                love.graphics.rectangle("fill", wx + 3, wy + 3, s - 6, s - 6, 3, 3)
+                love.graphics.setColor(0.22, 0.23, 0.27, 0.95)
+                love.graphics.setLineWidth(2)
+                love.graphics.rectangle("line", wx + 3, wy + 3, s - 6, s - 6, 3, 3)
+                love.graphics.setLineWidth(1)
+            end
+            -- Struck wall: a thin amber HP bar along the tile bottom (mirrors damaged traps).
+            if w.health and w.maxHealth and w.health < w.maxHealth then
+                local ratio = math.max(0, math.min(1, w.health / w.maxHealth))
+                local bx, by, bw, bh = wx + 8, wy + s - 12, s - 16, 4
+                love.graphics.setColor(0, 0, 0, 0.6)
+                love.graphics.rectangle("fill", bx - 1, by - 1, bw + 2, bh + 2, 2, 2)
+                love.graphics.setColor(0.9, 0.7, 0.3, 0.95)
+                love.graphics.rectangle("fill", bx, by, bw * ratio, bh, 2, 2)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1)
 end
 
 function BattleMap:drawTiles()

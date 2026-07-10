@@ -24,6 +24,9 @@ end
 
 local function unit(charOrId, x, y)
     local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
+    -- Isolate from innate traits (see tests/innate_spec.lua): the archer's innate wolf companion
+    -- would otherwise add a unit and take the tile these summon fixtures spawn onto by hand.
+    char.traits = {}
     return { char = char, x = x, y = y }
 end
 

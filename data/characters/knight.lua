@@ -9,6 +9,9 @@ return {
         movement = 3, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
+    -- Innate: sworn to shield the weak -- soaks the first blow each turn on an adjacent ally
+    -- (data/traits/oathward.lua).
+    traits = { "oathward" },
     -- Frontline tank: sword for the melee strike, chainmail for solid all-round steel
     -- (only -1 movement so it still keeps pace), and a potion to self-mend under fire.
     startingItems = { "iron_sword", "chainmail", "healing_potion" }, -- item ids

@@ -19,5 +19,12 @@ return {
         "ability_push",
         "ability_pull",
         "ability_doppelganger",
+        "ability_blink",
+    },
+    -- Forging stock the player starts with, so the Blacksmith is usable before the first quest pays
+    -- out materials (see models/material.lua). Enough for a couple of early upgrades.
+    startingMaterials = { -- material id -> count
+        iron_scrap = 6,
+        steel_ingot = 2,
     },
 }

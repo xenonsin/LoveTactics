@@ -9,6 +9,9 @@ return {
         movement = 3, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
+    -- Innate: walks on consecrated ground -- adjacent allies (and the priest) mend each tick
+    -- (data/traits/sanctified_presence.lua).
+    traits = { "sanctified_presence" },
     -- Support caster: the signature Heal spell to mend allies at range, Jolt to delay a
     -- pressing threat, silk robes for spell resistance, and a potion as a fallback mend. The
     -- focus stone swaps Wait -> Focus (recover mana) and the parasitic staff siphons mana on

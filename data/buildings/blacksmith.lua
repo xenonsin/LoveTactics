@@ -5,6 +5,6 @@ return {
     y = 530,
     w = 270,
     h = 140,
-    panel = nil, -- placeholder until designed
+    panel = "blacksmith", -- upgrade weapons/armor with materials + gold (ui/panels/blacksmith.lua)
     unlockPrestige = 1,
 }

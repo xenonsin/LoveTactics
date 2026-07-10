@@ -127,9 +127,20 @@ end
 local function computeReachable(unit)
     if Status.blocksMove(unit) then
         battle.reachable, battle.moveCells = {}, {}
+        battle.blinking = false
         return
     end
-    battle.reachable = Combat.reachable(battle.combat, unit)
+    -- An armed, affordable Blink turns the move set into a teleport diamond (ignoring terrain and
+    -- obstacles); otherwise it is the ordinary walk. battle.blinking drives the confirm/preview path
+    -- and lets the overlay read as a jump rather than a stroll.
+    local blink = Combat.blinkReady(unit)
+    if blink then
+        battle.blinking = true
+        battle.reachable = Combat.teleportCells(battle.combat, unit, blink.movement)
+    else
+        battle.blinking = false
+        battle.reachable = Combat.reachable(battle.combat, unit)
+    end
     local cells = {}
     for _, node in pairs(battle.reachable) do
         cells[#cells + 1] = { x = node.x, y = node.y }
@@ -212,7 +223,11 @@ local function computeThreat(unit)
     battle.defaultWeapon = weapon
     local ab = weapon and weapon.activeAbility
     local range = (ab and ab.range) or 1
-    battle.attackReach = Combat.attackReach(battle.combat, unit, range, battle.reachable,
+    -- While Blink is armed the move set is a teleport diamond, which is NOT a set of walk-and-strike
+    -- stand tiles (click-to-attack folds a WALK into the approach). So threaten only from the current
+    -- tile: the mage blinks OR strikes from where it stands, it does not walk-then-strike.
+    local reachForThreat = battle.blinking and {} or battle.reachable
+    battle.attackReach = Combat.attackReach(battle.combat, unit, range, reachForThreat,
         ab and ab.requiresSight, Combat.abilityMinRange(ab))
 
     local moveKeys = {}
@@ -307,10 +322,27 @@ local function cancelArm()
     battle.armedItem = nil
 end
 
--- Arm an ability item (or toggle it off if already armed).
+-- Toggle a Blink (moveBehavior) item on or off for `unit`. A free, turn-neutral flip: it spends
+-- nothing and ends no turn -- mana is paid per jump, at move time (Combat.blink). Flipping it
+-- recomputes the move overlay so the blue band switches between walk and teleport at once. If the
+-- unit cannot afford even one jump, computeReachable simply keeps showing the walk (a silent
+-- fallback), so arming it is never a trap.
+local function toggleBlink(unit)
+    if battle.mode == "armed" then cancelArm() end
+    unit.blinkArmed = not unit.blinkArmed
+    computeReachable(unit)
+    computeThreat(unit)
+end
+
+-- Arm an ability item (or toggle it off if already armed). A Blink item toggles teleport movement
+-- instead of arming a cast (it has a moveBehavior, not an activeAbility).
 local function armItem(item)
     local current = battle.current
     if battle.over or walking() or not current or not Combat.isPlayerControlled(current) then return end
+    if item and item.moveBehavior and item.moveBehavior.mode == "teleport" then
+        toggleBlink(current)
+        return
+    end
     if not (item and item.activeAbility) then return end
     if battle.armedItem == item then cancelArm() return end
     -- Anything that would make useItem reject the cast -- an unpayable cost, a spent stack, a
@@ -405,6 +437,32 @@ local function revealedEnemyTrapAt(unit, x, y)
     return nil
 end
 
+-- A living wall on (x, y), or nil. Walls are always visible to both sides, so unlike traps there is
+-- no per-side filter -- any wall in reach can be struck down (your own, to open a path; the enemy's,
+-- to break through). `battle.wallCells` is the per-frame "x,y" lookup built in refreshView.
+local function wallAt(x, y)
+    return battle.wallCells and battle.wallCells[x .. "," .. y]
+end
+
+-- Strike a wall on (tx, ty) with the default weapon, folding an approach move into the strike
+-- exactly like tryDamageTrap. Combat.strikeWall re-checks range/cost; this handles the click UX.
+local function tryDamageWall(unit, tx, ty)
+    local entry = battle.attackReach and battle.attackReach[tx .. "," .. ty]
+    local weapon = battle.defaultWeapon
+    if not entry or not weapon then return end
+    if Combat.itemBlockReason(unit, weapon) then return end
+    local function strike()
+        if Combat.strikeWall(battle.combat, unit, weapon, tx, ty) then advanceTurn() end
+    end
+    if entry.fromX ~= unit.x or entry.fromY ~= unit.y then
+        if Combat.hasMoved(battle.combat) then return end
+        return startWalk(unit, entry.fromX, entry.fromY, function()
+            if unit.alive then strike() else advanceTurn() end
+        end)
+    end
+    strike()
+end
+
 -- What confirming on cell (cx, cy) would DO right now, as a descriptor the action-preview tooltip
 -- (ui/action_preview.lua) renders beside the character/tile tooltip. Mirrors confirm()'s branching
 -- so the preview always names the very action a click would take:
@@ -469,9 +527,24 @@ local function actionPreviewFor(cx, cy)
                      support = false, trapDamage = dmg, trapLethal = dmg >= (trap.health or 0),
                      spend = weapon and Combat.abilitySpend(current, weapon.activeAbility) or nil }
         end
-        -- An empty reachable tile -> move there.
+        -- A wall in reach -> click-to-break (reuses the trap-strike preview shape).
+        local wall = wallAt(cx, cy)
+        if wall and battle.attackReach and battle.attackReach[cx .. "," .. cy] then
+            local weapon = battle.defaultWeapon
+            local dmg = weapon and Combat.computeTrapDamage(current, weapon) or 0
+            return { kind = "strikeTrap", item = weapon, actor = current, trap = wall,
+                     support = false, trapDamage = dmg, trapLethal = dmg >= (wall.health or 0),
+                     spend = weapon and Combat.abilitySpend(current, weapon.activeAbility) or nil }
+        end
+        -- An empty reachable tile -> move (or blink) there.
         local node = battle.reachable and battle.reachable[cx .. "," .. cy]
         if node then
+            if battle.blinking then
+                -- A blink owes no move initiative; its price is the mana it spends per jump.
+                local mb = Combat.blinkReady(current)
+                return { kind = "move", actor = current, steps = node.steps, moveCost = 0, blink = true,
+                         spend = mb and mb.cost and { { kind = "cost", stat = mb.cost.stat, amount = mb.cost.amount } } or nil }
+            end
             -- The initiative the walk charges, not the raw path cost: a hasted unit pays half.
             return { kind = "move", actor = current, steps = node.steps,
                      moveCost = Combat.moveInitiative(current, node.cost) }
@@ -494,14 +567,26 @@ local function confirm()
             tryDefaultAttack(current, cx, cy)
         elseif revealedEnemyTrapAt(current, cx, cy) then
             tryDamageTrap(current, cx, cy)
+        elseif wallAt(cx, cy) and battle.attackReach and battle.attackReach[cx .. "," .. cy] then
+            tryDamageWall(current, cx, cy)
         elseif battle.reachable[cx .. "," .. cy] then
-            -- Walk there (startWalk already cleared the move band -- only one move per turn). Once
-            -- the unit arrives, recompute the threat band from the tile it actually stopped on and
-            -- stay in this turn so the player can still arm an item or wait. A unit that walked
-            -- into a lethal trap has no turn left to take.
-            startWalk(current, cx, cy, function()
-                if current.alive then computeThreat(current) else advanceTurn() end
-            end)
+            if battle.blinking then
+                -- A blink is instant (no walk animation): jump, spend mana, then recompute the threat
+                -- band from where it landed. Blinking onto a lethal trap/hazard ends the turn.
+                if Combat.blink(battle.combat, current, cx, cy) then
+                    battle.reachable, battle.moveCells = {}, {}
+                    battle.threatCells, battle.attackReach = {}, {}
+                    if current.alive then computeThreat(current) else advanceTurn() end
+                end
+            else
+                -- Walk there (startWalk already cleared the move band -- only one move per turn). Once
+                -- the unit arrives, recompute the threat band from the tile it actually stopped on and
+                -- stay in this turn so the player can still arm an item or wait. A unit that walked
+                -- into a lethal trap has no turn left to take.
+                startWalk(current, cx, cy, function()
+                    if current.alive then computeThreat(current) else advanceTurn() end
+                end)
+            end
         end
     elseif battle.mode == "armed" and battle.armedItem then
         if Combat.useItem(battle.combat, current, battle.armedItem, cx, cy) then advanceTurn() end
@@ -620,6 +705,14 @@ local function refreshView()
     -- Hazards (fire/rain/sanctuary) are always visible to both sides, so the renderer draws the whole
     -- live list -- no per-side visibility filter like traps have.
     overlays.hazards = battle.combat.hazards
+
+    -- Walls (conjured blockers) are always visible to both sides too. Keep a per-frame "x,y" lookup
+    -- for click-to-strike (wallAt), mirroring battle.trapCells.
+    overlays.walls = battle.combat.walls
+    battle.wallCells = {}
+    for _, w in ipairs(battle.combat.walls or {}) do
+        if w.alive then battle.wallCells[w.x .. "," .. w.y] = w end
+    end
 
     -- Preview resources lost / damage dealt on the turn-order banners: the action under the mouse
     -- (the same one the tile tooltip shows) projects its damage/heal onto every affected unit's

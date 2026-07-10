@@ -173,13 +173,14 @@ return {
     {
         name = "an item in the 3x3 grid grants its traits -- take the relic, take the rule",
         fn = function()
-            -- A knight with no rage of their own.
-            local plain = Character.instantiate("knight")
-            local c1 = Combat.new(arena(6, 6), { unit(plain, 1, 1) }, { unit("bandit", 4, 4) })
-            assert(#c1.units[1].traits == 0, "a knight has no innate trait")
+            -- A bandit with no rage of their own (a starter like the knight now carries an innate
+            -- trait, so use a trait-free enemy for the "no trait" baseline).
+            local plain = Character.instantiate("bandit")
+            local c1 = Combat.new(arena(6, 6), { unit(plain, 1, 1) }, { unit("wolf_grunt", 4, 4) })
+            assert(#c1.units[1].traits == 0, "a bandit has no innate trait")
 
-            -- The same knight, wearing what was taken off Ira's body.
-            local armed = Character.instantiate("knight")
+            -- The same bandit, wearing what was taken off Ira's body.
+            local armed = Character.instantiate("bandit")
             Character.addItem(armed, Item.instantiate("mail_of_the_unappeased"))
             local c2 = Combat.new(arena(6, 6), { unit(armed, 1, 1) }, { unit("bandit", 4, 4) })
             local u = c2.units[1]

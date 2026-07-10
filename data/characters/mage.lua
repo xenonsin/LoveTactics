@@ -9,6 +9,8 @@ return {
         movement = 3, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
+    -- Innate: casts through its own life when the mana runs dry (data/traits/overchannel.lua).
+    traits = { "overchannel" },
     -- healing_potion stays first (its default weapon / basic-attack ordering is unchanged).
     -- The trap kit now lives on the archer; the mage keeps Jolt as its status-system spell.
     -- Fire Stone infuses adjacent weapons/abilities with fire + Burn; packed next to Fireball it

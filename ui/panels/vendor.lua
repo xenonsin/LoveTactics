@@ -11,6 +11,7 @@ local Menu = require("ui.menu")
 local VendorModel = require("models.vendor")
 local Player = require("models.player")
 local Item = require("models.item")
+local Character = require("models.character")
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
 
@@ -54,14 +55,27 @@ function VendorPanel:refresh()
     self.rank = Player.repRank(self.player, self.vendorId)
     self.stock = VendorModel.stock(self.vendorId, self.rank)
 
-    local items = {}
+    -- The panel's rows are the buy list followed by "Upgrade X" rows for every ability of this
+    -- vendor's class the player already owns -- spells are honed here, not at the forge.
+    self.rows = {}
     for _, entry in ipairs(self.stock) do
-        local label = entry.name .. "  -  " .. entry.price .. "g"
-        if entry.locked then label = entry.name .. "  -  locked" end
-        items[#items + 1] = {
-            label = label,
-            action = function() self:buy(entry) end,
-        }
+        self.rows[#self.rows + 1] = { kind = "buy", buy = entry }
+    end
+    for _, up in ipairs(self:collectUpgrades()) do
+        self.rows[#self.rows + 1] = { kind = "upgrade", up = up }
+    end
+
+    local items = {}
+    for i, row in ipairs(self.rows) do
+        local label
+        if row.kind == "buy" then
+            label = row.buy.name .. "  -  " .. (row.buy.locked and "locked" or (row.buy.price .. "g"))
+        else
+            local cost = VendorModel.abilityUpgradeCost(row.up.item, self.rank)
+            local tail = cost and (cost.locked and "locked" or (cost.gold .. "g")) or "max"
+            label = "Upgrade " .. row.up.item.name .. "  -  " .. tail
+        end
+        items[#items + 1] = { label = label, action = function() self:activate(self.rows[i]) end }
     end
 
     self.menu = Menu.new(items, {
@@ -100,6 +114,62 @@ function VendorPanel:buy(entry)
     self:refresh()
 end
 
+-- Every ability item of this vendor's class the player owns, each with where it lives so an upgrade
+-- can swap it back in place (a roster member's grid cell, or a stash slot).
+function VendorPanel:collectUpgrades()
+    local class = self.def.class
+    if not class then return {} end
+    local out = {}
+    for _, char in ipairs(self.player.roster or {}) do
+        for cell = 1, Character.MAX_INVENTORY do
+            local item = char.inventory[cell]
+            if item and item.type == "ability" and Item.classOf(item) == class then
+                out[#out + 1] = { item = item, where = char.name or "?",
+                    loc = { kind = "grid", char = char, cell = cell } }
+            end
+        end
+    end
+    for i, item in ipairs(self.player.stash or {}) do
+        if item.type == "ability" and Item.classOf(item) == class then
+            out[#out + 1] = { item = item, where = "Stash", loc = { kind = "stash", index = i } }
+        end
+    end
+    return out
+end
+
+-- Route a selected row to buying (stock) or honing (an owned ability).
+function VendorPanel:activate(row)
+    if not row then return end
+    if row.kind == "buy" then self:buy(row.buy) else self:upgradeAbility(row.up) end
+end
+
+-- Hone an owned ability up one level for gold (rank-gated). Swaps the fresh "+n" instance into the
+-- slot it came from and saves; every refusal names itself in self.message.
+function VendorPanel:upgradeAbility(up)
+    local item = up.item
+    local cost = VendorModel.abilityUpgradeCost(item, self.rank)
+    if not cost then
+        self.message, self.messageOk = (item.name .. " is at maximum level."), false
+        return
+    end
+    local newItem, reason = VendorModel.upgradeAbility(self.player, self.vendorId, item)
+    if not newItem then
+        self.message = (reason == "gold" and "Not enough gold.")
+            or (reason == "locked" and "Needs higher standing to upgrade further.")
+            or "It cannot be upgraded here."
+        self.messageOk = false
+        return
+    end
+    if up.loc.kind == "grid" then
+        up.loc.char.inventory[up.loc.cell] = newItem
+    else
+        self.player.stash[up.loc.index] = newItem
+    end
+    Player.save()
+    self.message, self.messageOk = (newItem.name .. " honed."), true
+    self:refresh()
+end
+
 function VendorPanel:close()
     if self.onClose then self.onClose() end
 end
@@ -107,7 +177,7 @@ end
 function VendorPanel:update(dt)
     -- Menu:update polls the analog stick and can move the selection, which is the same
     -- divide-by-zero as navigation; an empty shop skips it (see hasStock).
-    if #self.stock > 0 then self.menu:update(dt) end
+    if self:hasStock() then self.menu:update(dt) end
 end
 
 function VendorPanel:draw()
@@ -125,7 +195,7 @@ function VendorPanel:draw()
 
     self:drawStanding()
 
-    if #self.stock == 0 then
+    if not self:hasStock() then
         love.graphics.setFont(self.bodyFont)
         love.graphics.setColor(0.85, 0.85, 0.9)
         love.graphics.printf("Nothing for sale.", self.boxX, self.boxY + BOX_H / 2, BOX_W, "center")
@@ -176,22 +246,32 @@ end
 -- painting over them. Cheaper than forking the widget, and keeps every other panel's
 -- navigation identical.
 function VendorPanel:drawLockedOverlay()
-    for i, entry in ipairs(self.stock) do
-        local item = self.menu.items[i]
-        if entry.locked and item and item.x then
+    for i, row in ipairs(self.rows) do
+        local slot = self.menu.items[i]
+        local locked = false
+        if row.kind == "buy" then
+            locked = row.buy.locked
+        else
+            local cost = VendorModel.abilityUpgradeCost(row.up.item, self.rank)
+            locked = (cost == nil) or cost.locked
+        end
+        if locked and slot and slot.x then
             love.graphics.setColor(0.12, 0.13, 0.18, 0.6)
-            love.graphics.rectangle("fill", item.x, item.y, item.w, item.h, 8, 8)
+            love.graphics.rectangle("fill", slot.x, slot.y, slot.w, slot.h, 8, 8)
         end
     end
 end
 
 function VendorPanel:drawDetail()
-    local entry = self.stock[self.menu.selected]
-    if not entry then return end
+    local row = self.rows[self.menu.selected]
+    if not row then return end
 
     local x = self.boxX + BOX_W * 0.52
     local w = BOX_W * 0.42
     local y = self.boxY + LIST_TOP
+
+    if row.kind == "upgrade" then return self:drawUpgradeDetail(row.up, x, y, w) end
+    local entry = row.buy
 
     love.graphics.setFont(self.headFont)
     love.graphics.setColor(0.95, 0.95, 0.95)
@@ -214,6 +294,36 @@ function VendorPanel:drawDetail()
     end
 end
 
+-- The detail pane for an owned-ability upgrade row: current level, the next-level gold cost, and
+-- whether the player's standing has unlocked it yet.
+function VendorPanel:drawUpgradeDetail(up, x, y, w)
+    local item = up.item
+    love.graphics.setFont(self.headFont)
+    love.graphics.setColor(0.95, 0.95, 0.95)
+    love.graphics.printf(item.name .. "  (" .. up.where .. ")", x, y, w, "left")
+
+    love.graphics.setFont(self.bodyFont)
+    love.graphics.setColor(0.6, 0.65, 0.75)
+    love.graphics.printf("ability   (level " .. (item.level or 0) .. " / " .. Item.MAX_LEVEL .. ")",
+        x, y + 26, w, "left")
+
+    love.graphics.setColor(0.8, 0.82, 0.88)
+    love.graphics.printf(item.description or "", x, y + 54, w, "left")
+
+    local cost = VendorModel.abilityUpgradeCost(item, self.rank)
+    if not cost then
+        love.graphics.setColor(0.7, 0.85, 0.7)
+        love.graphics.printf("At maximum level.", x, y + 168, w, "left")
+    elseif cost.locked then
+        love.graphics.setColor(0.9, 0.6, 0.55)
+        love.graphics.printf("Locked: needs higher standing to reach +" .. cost.level, x, y + 168, w, "left")
+    else
+        local ok = self.player.gold >= cost.gold
+        love.graphics.setColor(ok and 0.95 or 0.9, ok and 0.85 or 0.55, ok and 0.55 or 0.5)
+        love.graphics.printf("Upgrade to +" .. cost.level .. ": " .. cost.gold .. " gold", x, y + 168, w, "left")
+    end
+end
+
 local function isInsideBox(self, x, y)
     return x >= self.boxX and x <= self.boxX + BOX_W
         and y >= self.boxY and y <= self.boxY + BOX_H
@@ -222,7 +332,7 @@ end
 -- Menu:moveSelection takes `#items` as a modulus, so navigating an empty shop would divide
 -- by zero. An empty stock swallows navigation entirely; only Close still answers.
 function VendorPanel:hasStock()
-    return #self.stock > 0
+    return self.rows and #self.rows > 0
 end
 
 function VendorPanel:mousemoved(x, y)

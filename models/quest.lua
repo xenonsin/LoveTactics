@@ -145,6 +145,15 @@ function Quest.complete(player, quest)
         received[#received + 1] = Player.grantItem(player, itemId)
     end
 
+    -- Forging materials: `rewardMaterials = { steel_ingot = 3 }` accrues into the player's stock
+    -- (models/material.lua), the raw metal the Blacksmith spends on upgrades. Guarded by the same
+    -- double-payout check at the top, so a re-cleared tile can't mint a second haul.
+    local materials = {}
+    for matId, count in pairs(quest.rewardMaterials or {}) do
+        Player.addMaterial(player, matId, count)
+        materials[matId] = count
+    end
+
     Player.save()
 
     local rankAfter = quest.sponsor and Player.repRank(player, quest.sponsor)
@@ -153,6 +162,7 @@ function Quest.complete(player, quest)
         prestige = prestige,
         rep = rep,
         received = received, -- item instances, for the reward panel to name
+        materials = materials, -- { id = count } granted, for the reward panel to name
         sponsor = quest.sponsor,
         -- True when this quest pushed the player up a rank -- the moment new stock appears
         -- on the sponsor's shelf, and the thing worth announcing.

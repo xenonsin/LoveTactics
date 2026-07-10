@@ -10,6 +10,8 @@ return {
     rewardGold = 50,
     rewardRep = 20,
     rewardPrestige = 1,
+    -- Forging stock, spent at the Blacksmith to level up gear (models/material.lua).
+    rewardMaterials = { iron_scrap = 3 },
     requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {

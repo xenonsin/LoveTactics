@@ -127,7 +127,12 @@ function Player.new()
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
         reputation = {},      -- vendor id -> reputation points (see Player.addReputation)
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board
+        materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
     }
+
+    for matId, count in pairs(Player.defaults.startingMaterials or {}) do
+        player.materials[matId] = count
+    end
 
     for _, charId in ipairs(Player.defaults.startingParty) do
         local char = byId[charId]
@@ -181,6 +186,38 @@ end
 
 function Player.hasCompleted(player, questId)
     return (player.completedQuests or {})[questId] == true
+end
+
+-- ---------------------------------------------------------------------------
+-- Materials (forging stock; see models/material.lua and the Blacksmith)
+-- ---------------------------------------------------------------------------
+
+-- How many of material `id` the player holds (0, not nil, for one never seen).
+function Player.materialCount(player, id)
+    return (player.materials or {})[id] or 0
+end
+
+function Player.addMaterial(player, id, amount)
+    player.materials = player.materials or {}
+    player.materials[id] = Player.materialCount(player, id) + (amount or 0)
+end
+
+-- Can the player pay a `{ [id] = count }` material cost in full?
+function Player.canAffordMaterials(player, cost)
+    for id, count in pairs(cost or {}) do
+        if Player.materialCount(player, id) < count then return false end
+    end
+    return true
+end
+
+-- Deduct a `{ [id] = count }` material cost if it can be paid in full. Returns true on success,
+-- false (charging nothing) otherwise -- callers branch on this rather than pre-checking.
+function Player.spendMaterials(player, cost)
+    if not Player.canAffordMaterials(player, cost) then return false end
+    for id, count in pairs(cost or {}) do
+        player.materials[id] = Player.materialCount(player, id) - count
+    end
+    return true
 end
 
 -- ---------------------------------------------------------------------------

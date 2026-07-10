@@ -9,6 +9,8 @@ return {
         movement = 4, -- number of spaces this character can move
         speed = 5,    -- nimble
     },
+    -- Innate: raised beside a wolf, she fields it free at the opening bell (data/traits/wolf_companion.lua).
+    traits = { "wolf_companion" },
     -- Weapon + armor for combat, plus the trap kit (spike-trap ability + trap detector)
     -- that makes the archer the party's trapper. Rain of Arrows only fires with a bow sitting
     -- adjacent to it in the grid -- arrange the loadout to enable it (see ability_rain_of_arrows.lua).

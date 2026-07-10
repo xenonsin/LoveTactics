@@ -15,6 +15,7 @@
 
 local Character = require("models.character")
 local Item = require("models.item")
+local Material = require("models.material")
 
 local Save = {}
 
@@ -22,7 +23,8 @@ Save.FILE = "save.lua"
 
 -- Bump when the *schema* changes shape (not when game content changes). A save whose
 -- version doesn't match is discarded rather than half-read into a broken player.
-Save.VERSION = 1
+-- v2: item upgrade levels + the materials the forge spends.
+Save.VERSION = 2
 
 -- ---------------------------------------------------------------------------
 -- Serialization
@@ -78,7 +80,12 @@ end
 -- ---------------------------------------------------------------------------
 
 local function snapshotItem(item)
-    return { id = item.id, quantity = item.quantity or 1 }
+    -- Upgrade level rides along so a forged "+n" item survives a save; omitted when 0 to keep base
+    -- gear diffing clean. Rehydrated through Item.instantiate, which re-bakes the level from the
+    -- blueprint, so a rebalanced upgrade curve flows into old saves like every other content edit.
+    local snap = { id = item.id, quantity = item.quantity or 1 }
+    if item.level and item.level > 0 then snap.level = item.level end
+    return snap
 end
 
 -- A character's grid is sparse (cells 1..9, any may be nil), so it is snapshotted as a
@@ -118,12 +125,18 @@ function Save.snapshot(player)
         if done then completedQuests[questId] = true end
     end
 
+    local materials = {}
+    for id, count in pairs(player.materials or {}) do
+        if count and count > 0 then materials[id] = count end
+    end
+
     return {
         version = Save.VERSION,
         gold = player.gold,
         prestige = player.prestige,
         reputation = reputation,
         completedQuests = completedQuests,
+        materials = materials,
         roster = roster,
         party = party,
         stash = stash,
@@ -148,7 +161,7 @@ local function restoreCharacter(snap)
     char.inventory = {}
     for cell, itemSnap in pairs(snap.inventory or {}) do
         if known(Item.defs, itemSnap.id) then
-            char.inventory[tonumber(cell)] = Item.instantiate(itemSnap.id, itemSnap.quantity)
+            char.inventory[tonumber(cell)] = Item.instantiate(itemSnap.id, itemSnap.quantity, itemSnap.level)
         end
     end
     return char
@@ -176,7 +189,7 @@ function Save.restore(snap)
     local stash = {}
     for _, itemSnap in ipairs(snap.stash or {}) do
         if known(Item.defs, itemSnap.id) then
-            stash[#stash + 1] = Item.instantiate(itemSnap.id, itemSnap.quantity)
+            stash[#stash + 1] = Item.instantiate(itemSnap.id, itemSnap.quantity, itemSnap.level)
         end
     end
 
@@ -186,11 +199,18 @@ function Save.restore(snap)
     local completedQuests = {}
     for questId in pairs(snap.completedQuests or {}) do completedQuests[questId] = true end
 
+    -- Materials are dropped if the id no longer exists in data/ (a removed tier), like every other id.
+    local materials = {}
+    for id, count in pairs(snap.materials or {}) do
+        if known(Material.defs, id) and count and count > 0 then materials[id] = count end
+    end
+
     return {
         gold = snap.gold or 0,
         prestige = snap.prestige or 1,
         reputation = reputation,
         completedQuests = completedQuests,
+        materials = materials,
         roster = roster,
         party = party,
         stash = stash,
