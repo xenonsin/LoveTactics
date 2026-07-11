@@ -26,8 +26,10 @@ local InventoryGrid = require("ui.inventory_grid")
 local StashList = require("ui.stash_list")
 local AdjacencyLinks = require("ui.adjacency_links")
 local CloseButton = require("ui.close_button")
+local QuantityPopup = require("ui.quantity_popup")
 local Character = require("models.character")
 local Player = require("models.player")
+local Item = require("models.item")
 local Scale = require("scale")
 
 local Loadout = {}
@@ -68,6 +70,7 @@ function Loadout.new(opts)
     self.charIndex = 1
     self.focus = "grid" -- which surface the keyboard/gamepad cursor drives
     self.drag = nil     -- in-flight drag: { from = "grid"|"stash", index, x, y, startX, startY, active }
+    self.quantityPopup = nil -- open "how many?" picker when splitting a stash stack, else nil
 
     local gridW = InventoryGrid.new({}).gridW
     local contentY = self.boxY + 130
@@ -148,6 +151,111 @@ function Loadout:placeIntoGrid(stashIndex, cell)
     self.stash:refresh()
 end
 
+-- The stash row currently holding `item` (identity match), or nil. The stash list is mutated as
+-- items move, so a captured index can go stale; a captured reference does not.
+function Loadout:stashIndexOf(item)
+    for i, it in ipairs((self.player and self.player.stash) or {}) do
+        if it == item then return i end
+    end
+    return nil
+end
+
+-- Route a stash row toward grid cell `cell`. A stackable consumable holding more than one first
+-- asks how many to move (openQuantityPopup); everything else moves in full straight away. This is
+-- the single entry point for both a click-to-place and a drag-drop from the stash.
+function Loadout:transferStashToGrid(stashIndex, cell)
+    local stashItem = self.player and self.player.stash and self.player.stash[stashIndex]
+    if not stashItem then return end
+    if Item.isStackable(stashItem) and (stashItem.quantity or 1) > 1 then
+        self:openQuantityPopup(stashItem, cell)
+    else
+        self:commitStashToGrid(stashItem, cell, stashItem.quantity or 1)
+    end
+end
+
+-- Move `count` of the stash item (by reference) onto the current character. A stackable consumable
+-- merges into the character's existing same-id stack(s) first -- so re-dropping a potion the party
+-- already carries just grows that stack rather than swapping a cell -- and only the leftover claims
+-- a cell. A non-stackable item ignores `count` and does the plain whole-item place/swap.
+function Loadout:commitStashToGrid(stashItem, cell, count)
+    local char = self:currentChar()
+    if not (char and self.player and stashItem) then return end
+
+    if not Item.isStackable(stashItem) then
+        local index = self:stashIndexOf(stashItem)
+        if index then self:placeIntoGrid(index, cell) end
+        return
+    end
+
+    count = math.max(1, math.min(count or stashItem.quantity, stashItem.quantity))
+
+    -- Whether the character already holds this consumable decides where any leftover lands: overflow
+    -- from an existing (now-full) stack spills to a free cell, but a brand-new consumable honors the
+    -- dropped cell so the player places it where they aimed.
+    local hadExisting = false
+    for i = 1, Character.MAX_INVENTORY do
+        local existing = char.inventory[i]
+        if existing and existing.id == stashItem.id and Item.isStackable(existing) then
+            hadExisting = true
+            break
+        end
+    end
+
+    local remaining = count
+    for i = 1, Character.MAX_INVENTORY do
+        local existing = char.inventory[i]
+        if existing and existing.id == stashItem.id and Item.isStackable(existing) then
+            local room = Item.maxStack(existing) - existing.quantity
+            if room > 0 then
+                local moved = math.min(room, remaining)
+                existing.quantity = existing.quantity + moved
+                remaining = remaining - moved
+                if remaining <= 0 then break end
+            end
+        end
+    end
+
+    if remaining > 0 then
+        local slot = hadExisting and Character.firstEmptySlot(char) or cell
+        if slot then
+            local displaced = char.inventory[slot]
+            char.inventory[slot] = Item.instantiate(stashItem.id, remaining, stashItem.level)
+            remaining = 0
+            if displaced then Player.addToStash(self.player, displaced) end
+        end
+        -- slot nil (grid full while every existing stack was full): the leftover stays in the stash.
+    end
+
+    -- Draw the stash stack down by whatever actually left it, dropping the row once it empties.
+    stashItem.quantity = stashItem.quantity - (count - remaining)
+    if stashItem.quantity <= 0 then
+        local index = self:stashIndexOf(stashItem)
+        if index then Player.takeFromStash(self.player, index) end
+    end
+
+    self.stash:cancelPickup()
+    self.stash:refresh()
+end
+
+-- Open the "how many?" picker for splitting a multi-count stash stack. Captures the item by
+-- reference (its stash row may shift as things move) and finishes the transfer on confirm.
+function Loadout:openQuantityPopup(stashItem, cell)
+    self.quantityPopup = QuantityPopup.new({
+        max = stashItem.quantity,
+        value = stashItem.quantity,
+        title = "Move how many?",
+        label = stashItem.name,
+        onConfirm = function(n)
+            self.quantityPopup = nil
+            self:commitStashToGrid(stashItem, cell, n)
+        end,
+        onCancel = function()
+            self.quantityPopup = nil
+            self.stash:cancelPickup()
+        end,
+    })
+end
+
 -- Send the grid item held in cell `cell` out to the stash, emptying the cell.
 function Loadout:stowFromGrid(cell)
     local char = self:currentChar()
@@ -165,7 +273,7 @@ end
 -- grid handles it as an ordinary pick-then-swap within the 3x3.
 function Loadout:activateGrid(cell)
     if self.stash.picked then
-        self:placeIntoGrid(self.stash.picked, cell)
+        self:transferStashToGrid(self.stash.picked, cell)
     else
         self.grid:activate(cell)
     end
@@ -213,7 +321,7 @@ function Loadout:dropDrag(x, y)
     local cell = self.grid:indexAt(x, y)
     if drag.from == "stash" then
         if cell then
-            self:placeIntoGrid(drag.index, cell)
+            self:transferStashToGrid(drag.index, cell)
         else
             self.stash:cancelPickup()
         end
@@ -226,7 +334,9 @@ function Loadout:dropDrag(x, y)
     end
 end
 
-function Loadout:update() end
+function Loadout:update(dt)
+    if self.quantityPopup then self.quantityPopup:update(dt) end
+end
 
 local function pointIn(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
@@ -309,6 +419,9 @@ function Loadout:draw()
 
     self.closeButton:draw()
     self:drawDrag()
+
+    -- The quantity picker rides above everything, dimming the panel behind it.
+    if self.quantityPopup then self.quantityPopup:draw() end
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -344,6 +457,7 @@ function Loadout:drawDrag()
 end
 
 function Loadout:mousemoved(x, y)
+    if self.quantityPopup then self.quantityPopup:mousemoved(x, y) return end
     self.closeButton:mousemoved(x, y)
     self.grid:mousemoved(x, y)
     self.stash:mousemoved(x, y)
@@ -361,6 +475,7 @@ end
 -- from the last mousemoved, so the very first wheel notch after the panel opens already lands.
 function Loadout:wheelmoved(_, dy)
     if dy == 0 then return end
+    if self.quantityPopup then self.quantityPopup:wheelmoved(dy) return end
     local x, y = Scale.toGame(love.mouse.getPosition())
     if not self.stash:contains(x, y) then return end
     self.stash:wheelmoved(dy)
@@ -368,6 +483,7 @@ function Loadout:wheelmoved(_, dy)
 end
 
 function Loadout:mousepressed(x, y, button)
+    if self.quantityPopup then self.quantityPopup:mousepressed(x, y, button) return end
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then
         self:close()
@@ -407,11 +523,13 @@ function Loadout:mousepressed(x, y, button)
 end
 
 function Loadout:mousereleased(x, y, button)
+    if self.quantityPopup then self.quantityPopup:mousereleased(x, y, button) return end
     if button ~= 1 then return end
     self:dropDrag(x, y)
 end
 
 function Loadout:keypressed(key)
+    if self.quantityPopup then self.quantityPopup:keypressed(key) return end
     if key == "escape" then
         self:cancelDrag()
         if not (self.grid:cancelPickup() or self.stash:cancelPickup()) then self:close() end
@@ -432,6 +550,7 @@ function Loadout:keypressed(key)
 end
 
 function Loadout:gamepadpressed(joystick, button)
+    if self.quantityPopup then self.quantityPopup:gamepadpressed(joystick, button) return end
     if button == "b" then
         self:cancelDrag()
         if not (self.grid:cancelPickup() or self.stash:cancelPickup()) then self:close() end
