@@ -69,7 +69,10 @@ function Player.addToStash(player, item)
     player.stash = player.stash or {}
     if Item.isStackable(item) then
         for _, existing in ipairs(player.stash) do
-            if existing.id == item.id and Item.isStackable(existing) then
+            -- Same blueprint AND same upgrade level: a +1 potion is a different item than a +0 one, so
+            -- a refined stack never absorbs (or is absorbed by) an unrefined one.
+            if existing.id == item.id and (existing.level or 0) == (item.level or 0)
+                and Item.isStackable(existing) then
                 local room = Item.maxStack(existing) - existing.quantity
                 if room > 0 then
                     local moved = math.min(room, item.quantity)

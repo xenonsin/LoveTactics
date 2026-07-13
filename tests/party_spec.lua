@@ -146,10 +146,10 @@ return {
     {
         name = "Vendor.upgradeAbility hones an owned ability one level for gold",
         fn = function()
-            -- An ability item whose class matches some vendor.
+            -- An upgradable ability item (one with a magnitude to level) whose class matches a vendor.
             local abilityId, vendorId
             for id, def in pairs(Item.defs) do
-                if def.type == "ability" and def.class then
+                if def.type == "ability" and def.class and Item.isUpgradable(Item.instantiate(id)) then
                     for vid, vdef in pairs(Vendor.defs) do
                         if vdef.class == def.class then abilityId, vendorId = id, vid break end
                     end

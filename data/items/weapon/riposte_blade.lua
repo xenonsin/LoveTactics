@@ -19,7 +19,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        power = 6,
+        power = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 },
         effect = function(fx)
             fx.damage(fx.target)
         end,

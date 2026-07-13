@@ -11,7 +11,7 @@ return {
     class = "fighter",
     price = 340,
     repRank = 3,
-    bonus = { defense = 7 },
-    resist = { physical = 2 },
+    bonus = { defense = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 13, 14 } },
+    resist = { physical = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
     traits = { "thorns" },
 }

@@ -1897,15 +1897,18 @@ local function dummyTarget()
 end
 
 -- Pure: the raw output `unit` would get from `item`'s ability, with NO board target -- for the
--- inventory-hover tooltip, which has an actor but nothing aimed. Replays the real effect against a
--- zero-defense stand-in (so `damage` is the pre-armor Power + attack stat) and captures the
--- `fx.power`-derived heal and status too, so it stays correct for AoE / multi-hit / heal / buff
--- abilities alike. Returns { damage, heal, statuses = { { id, def, opts } }, multi } (multi flags an
--- AoE ability, whose number is per target) or nil for an item with no active-ability effect. The
--- effect is pcall-guarded so a data-file quirk can never crash the tooltip.
+-- inventory-hover tooltip and the shop detail pane. Replays the real effect against a zero-defense
+-- stand-in (so `damage` is the pre-armor Power + attack stat) and captures the `fx.power`-derived
+-- heal and status too, so it stays correct for AoE / multi-hit / heal / buff abilities alike.
+-- `unit` may be nil (a shop with no unit selected, an Armory hover with no acting member): it falls
+-- back to a zero-stat stand-in caster, so `out.damage` is exactly the item's raw Power -- which is
+-- what the "Power" row quotes regardless. Returns { damage, heal, statuses = { { id, def, opts } },
+-- multi } (multi flags an AoE ability, whose number is per target) or nil for an item with no
+-- active-ability effect. The effect is pcall-guarded so a data-file quirk can never crash the caller.
 function Combat.abilityOutput(unit, item)
     local ab = item and item.activeAbility
     if not ab or not ab.effect then return nil end
+    unit = unit or previewStandIn()
     local dummy = dummyTarget()
     local out = { damage = 0, heal = 0, statuses = {}, multi = ab.aoe ~= nil }
     local fx = {

@@ -14,7 +14,7 @@ return {
     class = "knight",
     price = 800,
     repRank = 4,
-    bonus = { defense = 9, movement = -1 },
-    resist = { physical = 4, slash = 3, pierce = 3, impact = 3 },
+    bonus = { defense = { 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18 }, movement = -1 },
+    resist = { physical = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 }, slash = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 }, pierce = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 }, impact = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
     waitBehavior = { kind = "defend", speed = 4 },
 }

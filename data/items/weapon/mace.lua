@@ -17,7 +17,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        power = 8,
+        power = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 },
         effect = function(fx)
             fx.damage(fx.target)
             fx.knockback(fx.target, 2, { power = fx.power })

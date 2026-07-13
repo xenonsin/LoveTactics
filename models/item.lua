@@ -62,54 +62,98 @@ local function deepCopy(value)
     return out
 end
 
--- The highest upgrade level a forgeable item can reach (the five material tiers, +1..+5).
-Item.MAX_LEVEL = 5
+-- The highest upgrade level a forgeable item can reach. Every item carries a `level` from 0 (base) to
+-- MAX_LEVEL, and that level -- not any derived rating -- is the single number every stat scales with.
+Item.MAX_LEVEL = 10
 
--- The per-level stat gain an upgrade grants, as { stat = perLevelAmount }. An item may name its own
--- balance knob with an `upgrade` field; otherwise a sensible default is derived from its kind -- a
--- weapon/ability sharpens the one Power its abilities scale by, armor thickens whichever defense it
--- leans on. Returns nil for an item that cannot be upgraded at all (a plain consumable/utility).
--- The single source of truth shared by Item.applyLevel (which bakes it) and the blacksmith/vendor UI.
-function Item.upgradeSpec(item)
-    if item.upgrade then return item.upgrade end
-    if item.type == "armor" then
-        if item.bonus and item.bonus.defense then return { defense = 2 } end
-        if item.bonus and item.bonus.magicDefense then return { magicDefense = 2 } end
-        return { defense = 2 }
+local function titleCase(s)
+    return (tostring(s):gsub("^%l", string.upper))
+end
+
+-- Resolve one authored magnitude to its value at `level`. A TUNED magnitude is a list over the levels
+-- 0..MAX_LEVEL (element 1 = level 0, element 2 = level 1, ...); a level past the authored length
+-- clamps to the last entry, so a short list holds flat once it runs out. A plain NUMBER is a flat
+-- magnitude that does not scale -- the same at every level (the form most items still carry). This is
+-- the single rule the whole model reads: "what is this magnitude worth at this upgrade level?"
+local function resolveLevel(v, level)
+    if type(v) ~= "table" then return v end
+    local idx = math.max(1, math.min(#v, (level or 0) + 1))
+    return v[idx]
+end
+Item.resolveLevel = resolveLevel
+
+-- Every place an item carries a scaling magnitude, as get/set pairs, so one walk resolves them all at
+-- instantiate. This is the definition of "a derived magnitude": an ability's Power, armor's stat
+-- bonuses and resists, a resource ceiling, and an aura's power/range/status magnitude.
+local function eachMagnitude(item, fn)
+    local ab = item.activeAbility
+    if ab and ab.power ~= nil then fn(ab.power, function(x) ab.power = x end) end
+    if item.bonus then for k, v in pairs(item.bonus) do fn(v, function(x) item.bonus[k] = x end) end end
+    if item.resist then for k, v in pairs(item.resist) do fn(v, function(x) item.resist[k] = x end) end end
+    if item.maxBonus then for k, v in pairs(item.maxBonus) do fn(v, function(x) item.maxBonus[k] = x end) end end
+    if item.unarmedBonus then for k, v in pairs(item.unarmedBonus) do fn(v, function(x) item.unarmedBonus[k] = x end) end end
+    local aura = item.aura
+    if aura then
+        if aura.powerBonus ~= nil then fn(aura.powerBonus, function(x) aura.powerBonus = x end) end
+        if aura.rangeBonus ~= nil then fn(aura.rangeBonus, function(x) aura.rangeBonus = x end) end
+        local st = aura.status
+        if st and st.opts and st.opts.magnitude ~= nil then
+            fn(st.opts.magnitude, function(x) st.opts.magnitude = x end)
+        end
     end
-    if item.activeAbility and (item.type == "weapon" or item.type == "ability") then
-        return { power = 2 } -- Power is "the one stat their abilities scale by"
+end
+
+-- The item's primary stat -- the one the tooltip/shop headline leads with -- as `value, label, key`.
+-- The priority reads off the stat that defines the item: a caster's Power, then armor's defense /
+-- magic defense, then the largest of any remaining bonus / resource / aura magnitude. Resolved at the
+-- item's level, so it quotes the current (leveled) number. `key` is the raw bonus key (or nil) so a
+-- caller can suppress that same row elsewhere. nil when the item grants no magnitude at all.
+function Item.primaryStat(item)
+    if not item then return nil end
+    local lvl = item.level or 0
+    local ab = item.activeAbility
+    if ab and ab.power ~= nil then return resolveLevel(ab.power, lvl), "Power", nil end
+    if item.bonus then
+        if item.bonus.defense ~= nil then return resolveLevel(item.bonus.defense, lvl), "Defense", "defense" end
+        if item.bonus.magicDefense ~= nil then return resolveLevel(item.bonus.magicDefense, lvl), "Magic Defense", "magicDefense" end
     end
+    local best, bestLabel, bestKey
+    local function consider(v, label, key)
+        v = resolveLevel(v, lvl)
+        if v and v ~= 0 and (not best or math.abs(v) > math.abs(best)) then best, bestLabel, bestKey = v, label, key end
+    end
+    if item.bonus then for k, v in pairs(item.bonus) do consider(v, titleCase(k), k) end end
+    if item.maxBonus then for k, v in pairs(item.maxBonus) do consider(v, "Max " .. titleCase(k)) end end
+    if item.unarmedBonus then for k, v in pairs(item.unarmedBonus) do consider(v, "Fist " .. titleCase(k)) end end
+    local aura = item.aura
+    if aura then
+        if aura.status and aura.status.opts then consider(aura.status.opts.magnitude, titleCase(aura.status.id or "effect")) end
+        consider(aura.powerBonus, "Aura Power")
+        consider(aura.rangeBonus, "Aura Range")
+    end
+    if best then return best, bestLabel, bestKey end
     return nil
 end
 
--- Can this item be taken to the forge (or, for an ability, the class vendor) and leveled up?
+-- Whether an item can be leveled up at all: it can, as long as it has a magnitude to scale. WHERE it
+-- is leveled is a routing question the forge/vendor answer (weapons/armor/utility at the smithy,
+-- abilities at their class vendor, consumables at the alchemist); this only asks whether there is any
+-- stat for a level to move. An item with no magnitude (a plain torch) can't be upgraded.
 function Item.isUpgradable(item)
-    return item ~= nil and Item.upgradeSpec(item) ~= nil
+    return item ~= nil and Item.primaryStat(item) ~= nil
 end
 
--- Bake `item.level` levels of its upgrade into its scaling stat(s) and append " +n" to the display
--- name. Called once at instantiate; an upgrade re-instantiates from the blueprint at the new level
--- (see the blacksmith), so this never double-applies onto an already-leveled instance.
+-- Bake `item.level` into every magnitude (resolving each per-level list to this level's tuned value)
+-- and append " +n" to the display name. Called once at instantiate; an upgrade re-instantiates from
+-- the blueprint at the new level (see the blacksmith), so this never compounds onto a leveled instance.
 local function applyLevel(item)
-    local lvl = item.level or 0
-    if lvl <= 0 then return end
-    local spec = Item.upgradeSpec(item)
-    if spec then
-        for stat, perLevel in pairs(spec) do
-            local add = perLevel * lvl
-            if stat == "power" then
-                if item.activeAbility then
-                    item.activeAbility.power = (item.activeAbility.power or 0) + add
-                end
-            else
-                item.bonus = item.bonus or {}
-                item.bonus[stat] = (item.bonus[stat] or 0) + add
-            end
-        end
+    local lvl = math.max(0, math.min(item.level or 0, Item.MAX_LEVEL))
+    item.level = lvl
+    eachMagnitude(item, function(v, set) set(resolveLevel(v, lvl)) end)
+    if lvl > 0 then
+        -- "+n" rides on the name, so it shows everywhere the name does (grid, tooltip, combat log).
+        item.name = (item.name or "?") .. " +" .. lvl
     end
-    -- "+n" rides on the name, so it shows everywhere the name does (grid, tooltip, combat log).
-    item.name = (item.name or "?") .. " +" .. lvl
 end
 
 -- Build a fresh, mutable item instance from a blueprint id. `quantity` seeds a stack (clamped to
@@ -134,7 +178,6 @@ function Item.instantiate(id, quantity, level)
         maxBonus = deepCopy(def.maxBonus),     -- resource passives: raise a max health/stamina/mana ceiling
         waitBehavior = deepCopy(def.waitBehavior), -- swaps this holder's Wait -> Focus / Defend
         moveBehavior = deepCopy(def.moveBehavior), -- swaps this holder's walk -> teleport (Blink)
-        upgrade = deepCopy(def.upgrade),       -- per-level stat gain at the forge (nil = a default is derived)
         visionRadius = def.visionRadius,       -- overworld vision boost (e.g. torch); nil for most
         detectRadius = def.detectRadius,       -- combat: reveals traps within this radius (detectors)
         maxStack = def.maxStack,               -- stackable (consumable) items: per-slot cap override

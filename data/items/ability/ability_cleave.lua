@@ -20,7 +20,7 @@ return {
         minRange = 1,          -- must pick a neighbor (a facing); never the caster's own tile
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
-        power = 8, -- per-target damage = power + the caster's Damage, minus Defense
+        power = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- per-target damage = power + the caster's Damage, minus Defense
         aoe = { shape = "front", width = 3 }, -- a 3-wide arc perpendicular to the facing
         requiresAdjacent = { type = "weapon", tag = "melee" }, -- a melee weapon must sit adjacent in the grid
         effect = function(fx)

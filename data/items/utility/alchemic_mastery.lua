@@ -16,6 +16,6 @@ return {
     repRank = 2,
     aura = {
         appliesTo = { "consumable" }, -- only the throwables and potions it sits beside
-        powerBonus = 5,               -- added to the neighbor consumable's ability Power
+        powerBonus = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 },               -- added to the neighbor consumable's ability Power
     },
 }

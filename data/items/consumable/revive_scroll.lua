@@ -16,7 +16,7 @@ return {
         target = "tile",
         support = true, -- friendly cast: preview green
         range = 1,      -- must be adjacent to the body
-        power = 50,     -- percent of health restored
+        power = { 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 },     -- percent of health restored
         speed = 4,
         consumesItem = true,
         effect = function(fx)

@@ -10,6 +10,6 @@ return {
     price = 380,
     repRank = 3,
     -- Heavy tier: the most steel a body can carry, and it shows in the pace.
-    bonus = { defense = 13, movement = -2 },
-    resist = { physical = 4, slash = 4, pierce = 4 },
+    bonus = { defense = { 13, 14, 16, 17, 18, 20, 21, 22, 23, 25, 26 }, movement = -2 },
+    resist = { physical = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 }, slash = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 }, pierce = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 } },
 }

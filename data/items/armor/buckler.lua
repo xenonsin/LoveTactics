@@ -10,7 +10,7 @@ return {
     class = "knight",
     price = 220,
     repRank = 2,
-    bonus = { defense = 3 },
-    resist = { physical = 1 },
+    bonus = { defense = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
+    resist = { physical = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
     waitBehavior = { kind = "defend", speed = 5 },
 }

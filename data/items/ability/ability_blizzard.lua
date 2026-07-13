@@ -18,7 +18,7 @@ return {
         range = 3,
         speed = 5,
         cost = { stat = "mana", amount = 16 },
-        power = 6, -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
+        power = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
         aoe = { radius = 1, shape = "square" }, -- 3x3 storm, corners included
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

@@ -10,24 +10,49 @@ local Vendor = require("models.vendor")
 
 return {
     {
-        name = "a +n weapon's ability Power scales with the level, and the name gains a suffix",
+        name = "a +n weapon's Power resolves to that level's tuned value, and the name gains a suffix",
         fn = function()
-            local base = Item.instantiate("iron_sword")           -- level 0
+            local curve = Item.defs.iron_sword.activeAbility.power -- the per-level list, 0..MAX_LEVEL
+            assert(type(curve) == "table", "iron_sword Power is authored as a per-level table")
+            local base = Item.instantiate("iron_sword")            -- level 0
             local up3 = Item.instantiate("iron_sword", 1, 3)       -- +3
-            local step = Item.upgradeSpec(base).power
-            assert(up3.activeAbility.power == base.activeAbility.power + step * 3,
-                "each level adds the upgrade step to Power")
+            assert(base.activeAbility.power == curve[1], "level 0 resolves the first table entry")
+            assert(up3.activeAbility.power == curve[4], "+3 resolves the level-3 entry (index 4)")
+            assert(up3.activeAbility.power > base.activeAbility.power, "and it is stronger than the base")
             assert(up3.name == base.name .. " +3", "the name carries the +3 suffix, got " .. up3.name)
             assert(base.name:find("+") == nil, "a base item has no suffix")
         end,
     },
     {
-        name = "a +n armor's defense bonus scales with the level",
+        name = "a +n armor's defense and resists resolve to their level's tuned values",
         fn = function()
-            local base = Item.instantiate("chainmail")
+            local dcurve = Item.defs.chainmail.bonus.defense
+            local rcurve = Item.defs.chainmail.resist.slash
             local up2 = Item.instantiate("chainmail", 1, 2)
-            local step = Item.upgradeSpec(base).defense
-            assert(up2.bonus.defense == base.bonus.defense + step * 2, "each level thickens the armor")
+            assert(up2.bonus.defense == dcurve[3], "+2 defense is the level-2 entry (index 3)")
+            assert(up2.resist.slash == rcurve[3], "+2 slash resist is the level-2 entry")
+            assert(up2.bonus.movement == -1, "a flat magnitude (the movement penalty) does not scale")
+        end,
+    },
+    {
+        name = "the level clamps to MAX_LEVEL (10) and a short table holds at its last entry",
+        fn = function()
+            assert(Item.MAX_LEVEL == 10, "the ceiling is ten")
+            local curve = Item.defs.iron_sword.activeAbility.power
+            local maxed = Item.instantiate("iron_sword", 1, 99) -- asks past the ceiling
+            assert(maxed.level == 10, "the level is clamped to MAX_LEVEL")
+            assert(maxed.activeAbility.power == curve[#curve], "and Power reads the final tuned entry")
+        end,
+    },
+    {
+        name = "primaryStat leads with the defining magnitude at the current level, with its label",
+        fn = function()
+            local v, label = Item.primaryStat(Item.instantiate("iron_sword", 1, 2))
+            assert(label == "Power" and v == Item.defs.iron_sword.activeAbility.power[3],
+                "a blade leads with its leveled Power")
+            local dv, dlabel = Item.primaryStat(Item.instantiate("leather_armor"))
+            assert(dlabel == "Defense" and dv == Item.defs.leather_armor.bonus.defense[1],
+                "armor leads with its defense")
         end,
     },
     {

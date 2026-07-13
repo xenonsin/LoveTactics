@@ -10,6 +10,6 @@ return {
     price = 170,
     repRank = 2,
     -- Light tier for casters: little against steel, strong against spells.
-    bonus = { magicDefense = 4 },
-    resist = { magical = 3 },
+    bonus = { magicDefense = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 } },
+    resist = { magical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
 }

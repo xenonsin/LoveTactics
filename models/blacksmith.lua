@@ -10,9 +10,11 @@ local Player = require("models.player")
 
 local Blacksmith = {}
 
--- Is this item forgeable at the smithy? Weapons and armor only -- abilities go to the class vendor.
+-- Is this item forgeable at the smithy? Weapons, armor, and utility gear are hammered here; abilities
+-- go to their class vendor and consumables to the Alchemist.
 function Blacksmith.canForge(item)
-    return Item.isUpgradable(item) and (item.type == "weapon" or item.type == "armor")
+    return Item.isUpgradable(item)
+        and (item.type == "weapon" or item.type == "armor" or item.type == "utility")
 end
 
 -- The cost to take `item` from its current level to the next: gold that climbs with the level, plus

@@ -15,7 +15,7 @@ return {
         range = 1,
         speed = 6, -- a heavy commitment
         cost = { stat = "stamina", amount = 12 },
-        power = 6,
+        power = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 },
         adjacencyScaling = { type = "weapon" }, -- +1x damage per adjacent weapon (UI + effect)
         effect = function(fx)
             local weapons = fx.adjacentMatching({ type = "weapon" })

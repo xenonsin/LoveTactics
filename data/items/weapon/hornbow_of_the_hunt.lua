@@ -20,7 +20,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "stamina", amount = 10 },
-        power = 14,
+        power = { 14, 15, 17, 18, 20, 21, 22, 24, 25, 27, 28 },
         effect = function(fx)
             fx.damage(fx.target)
         end,

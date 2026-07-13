@@ -10,6 +10,6 @@ return {
     price = 400,
     repRank = 3,
     -- Heavy tier: trades a little raw steel for a genuine guard against magic.
-    bonus = { defense = 10, magicDefense = 6, movement = -2 },
-    resist = { physical = 3, magical = 3 },
+    bonus = { defense = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, magicDefense = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, movement = -2 },
+    resist = { physical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 }, magical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
 }

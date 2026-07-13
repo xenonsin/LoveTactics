@@ -14,7 +14,7 @@ return {
         requiresSight = true, -- must see the foe: terrain cover blocks the throw
         speed = 4, -- powerful but slow
         cost = { stat = "mana", amount = 12 },
-        power = 8, -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
+        power = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
         -- Bursts on impact: a 1-tile radius around the target, corners included (a 3x3 square).
         -- The targeting UI reads this to paint the affected tiles red before you commit.
         aoe = { radius = 1, shape = "square" },

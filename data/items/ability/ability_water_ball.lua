@@ -19,7 +19,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "mana", amount = 12 },
-        power = 5, -- the impact damage a stopped shove deals; the soak is the real payoff
+        power = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- the impact damage a stopped shove deals; the soak is the real payoff
         effect = function(fx)
             local ox, oy = fx.target.x, fx.target.y -- the tile the blow lands on, before the shove
             fx.knockback(fx.target, 3, { power = fx.power })

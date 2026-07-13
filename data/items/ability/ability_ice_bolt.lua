@@ -18,7 +18,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 10 },
-        power = 5, -- balances both the hit AND the freeze delay below
+        power = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- balances both the hit AND the freeze delay below
         effect = function(fx)
             fx.damage(fx.target)
             fx.applyStatus(fx.target, "freeze", { magnitude = fx.power }) -- delay scales with Power

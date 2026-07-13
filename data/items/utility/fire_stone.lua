@@ -22,6 +22,6 @@ return {
         appliesTo = { "weapon", "ability" }, -- which neighbor types the heat infuses
         exceptTags = { "water" },            -- water-aligned kit resists the infusion
         grantTags = { "fire" },              -- folded into the neighbor's attack tags
-        status = { id = "burn", opts = { duration = 3, magnitude = 4 } }, -- applied on a damaging hit
+        status = { id = "burn", opts = { duration = 3, magnitude = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 } } }, -- applied on a damaging hit
     },
 }

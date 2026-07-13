@@ -13,15 +13,17 @@
 local Scale = require("scale")
 local Combat = require("models.combat")
 local Character = require("models.character")
+local Item = require("models.item")
 
 local ItemTooltip = {}
 
-local titleFont, bodyFont, smallFont
+local titleFont, bodyFont, smallFont, powerFont
 local function fonts()
     titleFont = titleFont or love.graphics.newFont(15)
     bodyFont = bodyFont or love.graphics.newFont(12)
     smallFont = smallFont or love.graphics.newFont(11)
-    return titleFont, bodyFont, smallFont
+    powerFont = powerFont or love.graphics.newFont(22) -- the headline Power value
+    return titleFont, bodyFont, smallFont, powerFont
 end
 
 -- Accent color per item type (title + type-line tint).
@@ -67,6 +69,7 @@ end
 -- Build the ordered content blocks for `item`. Block kinds:
 --   title  { text, color }              -- item name, tinted by type
 --   type   { text }                     -- e.g. "ABILITY"
+--   power  { label, value }             -- headline primary stat (label caption + big value)
 --   desc   { text }                     -- wrapped flavor/description
 --   sep    {}                           -- thin divider + gap between sections
 --   head   { text }                     -- ability name heading
@@ -84,6 +87,15 @@ local function buildBlocks(item, actor)
 
     blocks[#blocks + 1] = { kind = "title", text = item.name or "Item", color = typeCol }
     blocks[#blocks + 1] = { kind = "type", text = (item.type and item.type:upper()) or "ITEM", color = typeCol }
+
+    -- Primary stat: the one magnitude that defines the item (a blade's Power, armor's defense), quoted
+    -- at its current upgrade level. It leads the tooltip as a headline; the upgrade level itself rides
+    -- on the " +n" name. `primaryLabel` names the stat so the armor bonus block can skip it below and
+    -- not print the same number twice.
+    local primaryValue, primaryLabel, primaryKey = Item.primaryStat(item)
+    if primaryValue then
+        blocks[#blocks + 1] = { kind = "power", label = primaryLabel:upper(), value = primaryValue }
+    end
 
     if item.description and item.description ~= "" then
         blocks[#blocks + 1] = { kind = "desc", text = item.description }
@@ -110,15 +122,12 @@ local function buildBlocks(item, actor)
         blocks[#blocks + 1] = { kind = "sep" }
         blocks[#blocks + 1] = { kind = "head", text = ab.name or "Active Ability" }
 
-        -- Ability output: an offensive ability shows its raw Power (the balance stat), a healing one
-        -- its heal amount, plus any status it applies. A dry-run against a zero-defense stand-in
-        -- (needs the acting unit) tells damage from heal and surfaces the statuses.
-        local out = actor and Combat.abilityOutput(actor, item)
+        -- Ability output beyond the headline Power (drawn up top): a healing ability shows its heal
+        -- amount, plus any status it applies. A dry-run against a zero-defense stand-in tells damage
+        -- from heal and surfaces the statuses; with no actor (an Armory hover) it runs against a
+        -- neutral caster so the derived numbers still show, just without the actor's stats folded in.
+        local out = Combat.abilityOutput(actor, item)
         if out then
-            if out.damage > 0 and ab.power then
-                blocks[#blocks + 1] = { kind = "stat", label = "Power",
-                    value = tostring(ab.power), valueColor = POWER }
-            end
             if out.heal > 0 then
                 blocks[#blocks + 1] = { kind = "stat", label = "Heal",
                     value = "+" .. out.heal, valueColor = HEAL }
@@ -203,17 +212,22 @@ local function buildBlocks(item, actor)
         end
     end
 
-    -- Passive armor: flat stat bonuses + tag-keyed damage resistances.
+    -- Passive armor: flat stat bonuses + tag-keyed damage resistances. The stat that already leads as
+    -- the headline (defense, usually) is skipped here so the same number is not printed twice; the
+    -- block shows the extras (a second defense, the movement penalty).
+    local bonusShown = false
     if item.bonus and next(item.bonus) then
-        blocks[#blocks + 1] = { kind = "sep" }
         for _, stat in ipairs(sortedKeys(item.bonus)) do
-            local amount = item.bonus[stat]
-            blocks[#blocks + 1] = { kind = "stat", label = titleCase(stat),
-                value = (amount >= 0 and "+" or "") .. tostring(amount) }
+            if stat ~= primaryKey then
+                local amount = item.bonus[stat]
+                if not bonusShown then blocks[#blocks + 1] = { kind = "sep" }; bonusShown = true end
+                blocks[#blocks + 1] = { kind = "stat", label = titleCase(stat),
+                    value = (amount >= 0 and "+" or "") .. tostring(amount) }
+            end
         end
     end
     if item.resist and next(item.resist) then
-        if not (item.bonus and next(item.bonus)) then blocks[#blocks + 1] = { kind = "sep" } end
+        if not bonusShown then blocks[#blocks + 1] = { kind = "sep" } end
         local parts = {}
         for _, tag in ipairs(sortedKeys(item.resist)) do
             parts[#parts + 1] = tag .. " " .. tostring(item.resist[tag])
@@ -239,19 +253,20 @@ end
 -- never slides under a side panel (defaults to the screen width). No-op when item is nil.
 function ItemTooltip.draw(item, mx, my, maxRight, actor)
     if not item then return end
-    local title, body, small = fonts()
+    local title, body, small, power = fonts()
     local pad, w = 9, 244
     local innerW = w - pad * 2
     maxRight = maxRight or Scale.WIDTH
 
     local blocks = buildBlocks(item, actor)
-    local titleH, bodyH, smallH = title:getHeight(), body:getHeight(), small:getHeight()
+    local titleH, bodyH, smallH, powerH = title:getHeight(), body:getHeight(), small:getHeight(), power:getHeight()
 
     -- Measure: sum each block's height (wrapping desc against innerW, cached for the draw pass).
     local h = pad
     for _, b in ipairs(blocks) do
         if b.kind == "title" then h = h + titleH + 3
         elseif b.kind == "type" then h = h + smallH + 4
+        elseif b.kind == "power" then h = h + powerH + 4
         elseif b.kind == "desc" or b.kind == "warn" then
             local _, lines = body:getWrap(b.text, innerW)
             b.lines = math.max(1, #lines)
@@ -292,6 +307,15 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
             love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.85)
             love.graphics.print(b.text, bx + pad, ty)
             ty = ty + smallH + 4
+        elseif b.kind == "power" then
+            -- Headline: a muted stat caption bottom-aligned to the big tinted value on the right.
+            love.graphics.setFont(small)
+            love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
+            love.graphics.print(b.label, bx + pad, ty + (powerH - smallH) - 2)
+            love.graphics.setFont(power)
+            love.graphics.setColor(POWER[1], POWER[2], POWER[3], 1)
+            love.graphics.printf(tostring(b.value), bx + pad, ty, innerW, "right")
+            ty = ty + powerH + 4
         elseif b.kind == "desc" then
             love.graphics.setFont(body)
             love.graphics.setColor(DESC[1], DESC[2], DESC[3], 1)

@@ -16,7 +16,7 @@ return {
         range = 1,
         speed = 2,
         consumesItem = true,
-        power = 25, -- mana restored
+        power = { 25, 28, 30, 33, 35, 38, 40, 43, 45, 48, 50 }, -- mana restored
         effect = function(fx)
             fx.restore(fx.target, "mana", fx.power)
         end,

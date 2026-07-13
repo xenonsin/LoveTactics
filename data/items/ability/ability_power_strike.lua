@@ -17,7 +17,7 @@ return {
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
-        power = 8,
+        power = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 },
         requiresAdjacent = { type = "weapon", tag = "melee" }, -- a melee weapon must sit adjacent in the grid
         effect = function(fx)
             fx.damage(fx.target)

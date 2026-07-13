@@ -11,5 +11,5 @@ return {
     class = "priest",
     price = 260,
     repRank = 3,
-    unarmedBonus = { range = 1 },
+    unarmedBonus = { range = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
 }

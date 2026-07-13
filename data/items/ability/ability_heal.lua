@@ -16,7 +16,7 @@ return {
         range = 3,
         speed = 3,
         cost = { stat = "mana", amount = 10 },
-        power = 24, -- HP restored; Power is the balance knob for the heal
+        power = { 24, 26, 29, 31, 34, 36, 38, 41, 43, 46, 48 }, -- HP restored; Power is the balance knob for the heal
         effect = function(fx)
             fx.heal(fx.target, fx.power) -- restore Power HP via the shared heal helper
         end,

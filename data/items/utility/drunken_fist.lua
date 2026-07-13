@@ -11,5 +11,5 @@ return {
     class = "priest",
     price = 200,
     repRank = 2,
-    unarmedBonus = { drunkPower = 6 },
+    unarmedBonus = { drunkPower = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 } },
 }

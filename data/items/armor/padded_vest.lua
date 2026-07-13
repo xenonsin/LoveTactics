@@ -7,6 +7,6 @@ return {
     sprite = "assets/items/padded_vest.png",
     type = "armor",
     -- Light tier: minimal protection, but never slows you down.
-    bonus = { defense = 2 },
-    resist = { physical = 1 },
+    bonus = { defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
+    resist = { physical = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
 }

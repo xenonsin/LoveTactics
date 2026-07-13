@@ -16,7 +16,7 @@ return {
         range = 1,
         speed = 7, -- ponderous: you pay for the stun in turn order
         cost = { stat = "stamina", amount = 12 },
-        power = 12,
+        power = { 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24 },
         effect = function(fx)
             fx.damage(fx.target)
             fx.applyStatus(fx.target, "stun")

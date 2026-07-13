@@ -15,7 +15,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 5 },
-        power = 4,
+        power = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 },
         effect = function(fx)
             if fx.damage(fx.target) > 0 then
                 fx.applyStatus(fx.target, "poison")

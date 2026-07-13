@@ -17,6 +17,7 @@ local Vendor = require("models.vendor")
 local Player = require("models.player")
 local Item = require("models.item")
 local Character = require("models.character")
+local Combat = require("models.combat")
 local Sprite = require("models.sprite")
 local Scale = require("scale")
 
@@ -97,23 +98,22 @@ function Shop.new(opts)
     return self
 end
 
--- Owned ability items of this vendor's class, with where each lives so an upgrade can swap it back
--- (a roster member's grid cell, or a stash slot). Mirrors the retired vendor.lua:collectUpgrades.
+-- Owned items this vendor can upgrade (Vendor.canUpgradeHere: abilities of its class, or -- at the
+-- Alchemist -- any consumable), with where each lives so an upgrade can swap it back in place: a
+-- roster member's grid cell, or a stash slot.
 function Shop:collectUpgrades()
-    local class = self.def.class
-    if not class then return {} end
     local out = {}
     for _, char in ipairs(self.player.roster or {}) do
         for cell = 1, Character.MAX_INVENTORY do
             local item = char.inventory[cell]
-            if item and item.type == "ability" and Item.classOf(item) == class then
+            if item and Vendor.canUpgradeHere(self.vendorId, item) then
                 out[#out + 1] = { item = item, where = char.name or "?",
                     loc = { kind = "grid", char = char, cell = cell } }
             end
         end
     end
     for i, item in ipairs(self.player.stash or {}) do
-        if item.type == "ability" and Item.classOf(item) == class then
+        if Vendor.canUpgradeHere(self.vendorId, item) then
             out[#out + 1] = { item = item, where = "Stash", loc = { kind = "stash", index = i } }
         end
     end
@@ -307,7 +307,7 @@ function Shop:draw()
         love.graphics.setFont(self.bodyFont)
         love.graphics.setColor(0.6, 0.63, 0.72)
         local empty = (self.mode == "buy" and "Nothing for sale.")
-            or (self.mode == "sell" and "Your stash is empty.") or "No abilities to upgrade here."
+            or (self.mode == "sell" and "Your stash is empty.") or "Nothing to upgrade here."
         love.graphics.printf(empty, self.listLeft, self.boxY + 200, self.listW, "center")
     end
 
@@ -402,18 +402,25 @@ function Shop:drawDetail()
     love.graphics.setColor(0.8, 0.82, 0.88)
     love.graphics.printf(item.description or "", x, y + 48, w, "left")
 
-    -- Active-ability quick stats.
+    -- Quick stats. The item's primary stat -- the one magnitude that defines it (armor's defense, a
+    -- blade's Power), quoted at its current level -- leads the block for ANY item, armor included.
     local sy = y + 130
+    love.graphics.setFont(self.smallFont)
+    local function statLine(label, value, valueColor)
+        love.graphics.setColor(0.6, 0.64, 0.72)
+        love.graphics.print(label, x, sy)
+        local vc = valueColor or { 0.9, 0.91, 0.96 }
+        love.graphics.setColor(vc[1], vc[2], vc[3])
+        love.graphics.printf(value, x, sy, w, "right")
+        sy = sy + 20
+    end
     local ab = item.activeAbility
+    -- A dry-run against a zero-stat caster surfaces a healing ability's restored amount by the Power.
+    local out = ab and Combat.abilityOutput(nil, item)
+    local primaryValue, primaryLabel = Item.primaryStat(item)
+    if primaryValue then statLine(primaryLabel, tostring(primaryValue), { 0.95, 0.72, 0.48 }) end
+    if out and out.heal > 0 then statLine("Heal", "+" .. out.heal, { 0.55, 0.90, 0.58 }) end
     if ab then
-        love.graphics.setFont(self.smallFont)
-        local function statLine(label, value)
-            love.graphics.setColor(0.6, 0.64, 0.72)
-            love.graphics.print(label, x, sy)
-            love.graphics.setColor(0.9, 0.91, 0.96)
-            love.graphics.printf(value, x, sy, w, "right")
-            sy = sy + 20
-        end
         if ab.target then statLine("Target", TARGET_LABEL[ab.target] or ab.target) end
         statLine("Range", tostring(ab.range or 1))
         if ab.speed then statLine("Speed", tostring(ab.speed)) end

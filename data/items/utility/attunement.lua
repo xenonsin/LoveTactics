@@ -11,5 +11,5 @@ return {
     class = "mage",
     price = 180,
     repRank = 2,
-    maxBonus = { mana = 12 },
+    maxBonus = { mana = { 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24 } },
 }

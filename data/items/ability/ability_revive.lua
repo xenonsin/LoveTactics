@@ -17,7 +17,7 @@ return {
         target = "tile",
         support = true, -- friendly cast: preview green
         range = 3,
-        power = 50, -- the percent of health restored (see the effect)
+        power = { 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 }, -- the percent of health restored (see the effect)
         speed = 6,
         cost = { stat = "mana", amount = 20 },
         effect = function(fx)

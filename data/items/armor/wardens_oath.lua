@@ -11,6 +11,6 @@ return {
     price = 280,
     repRank = 3,
     traits = { "oathward" },
-    bonus = { defense = 6, movement = -1 },
-    resist = { physical = 2 },
+    bonus = { defense = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, movement = -1 },
+    resist = { physical = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
 }

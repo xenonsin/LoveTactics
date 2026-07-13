@@ -12,6 +12,6 @@ return {
     class = "mage",
     price = 800,
     repRank = 4,
-    bonus = { magicDamage = 10, magicDefense = 5 },
-    resist = { magical = 4 },
+    bonus = { magicDamage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, magicDefense = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 } },
+    resist = { magical = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 } },
 }

@@ -20,6 +20,6 @@ return {
         appliesTo = { "weapon", "ability" }, -- which neighbor types the toxin coats
         exceptTags = { "restorative" },      -- a healing draught is not turned into a poison
         grantTags = { "poison" },            -- folded into the neighbor's attack tags
-        status = { id = "poison", opts = { duration = 5, magnitude = 3 } }, -- applied on a damaging hit
+        status = { id = "poison", opts = { duration = 5, magnitude = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } } }, -- applied on a damaging hit
     },
 }
