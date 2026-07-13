@@ -9,6 +9,7 @@
 local Registry = require("models.registry")
 local Player = require("models.player")
 local Vendor = require("models.vendor")
+local Building = require("models.building")
 
 local Quest = {}
 
@@ -20,6 +21,15 @@ local function meetsRepGate(player, def)
     local gate = def.requiredRep
     if not gate then return true end
     return Player.repRank(player, gate.vendor) >= gate.rank
+end
+
+-- Is the quest's sponsoring vendor open yet? A vendor's shop opens with its building
+-- (Building.vendorUnlockPrestige), and a sponsor's quests must not appear before you can
+-- walk into the shop that pays for them -- a bastion quest at prestige 1 would point at a
+-- door still locked until prestige 2. Unsponsored quests (the Gate Below) are never gated.
+local function meetsSponsorGate(player, def)
+    if not def.sponsor then return true end
+    return (player.prestige or 1) >= Building.vendorUnlockPrestige(def.sponsor)
 end
 
 -- Does the player hold every quest this one names as a prerequisite? `requiredQuests` is a list of
@@ -57,11 +67,12 @@ local function gateHints(player, def)
     return hints
 end
 
--- The quests this player may see: prestige met, reputation gate met, and not already completed
--- (unless the quest is `repeatable` -- grind quests that keep a sponsor's reputation climbing after
--- their story line is spent).
+-- The quests this player may see: prestige met, reputation gate met, sponsor's shop open, and not
+-- already completed (unless the quest is `repeatable` -- grind quests that keep a sponsor's
+-- reputation climbing after their story line is spent).
 --
--- Prestige and reputation are HARD gates: fail one and the quest is not on the board at all. A
+-- Prestige, reputation, and the sponsor's unlock are HARD gates: fail one and the quest is not on
+-- the board at all. A
 -- `requiredQuests` gate is SOFT: once the player holds at least one of the prerequisites, the quest
 -- appears `locked`, carrying its key count and the hints earned so far. Seeing what you have not yet
 -- earned is the point of a ladder -- the same reason Vendor.stock returns rank-locked items flagged
@@ -71,7 +82,8 @@ function Quest.available(player)
 
     local list = {}
     for id, def in pairs(Quest.defs) do
-        local unlocked = prestige >= (def.requiredPrestige or 1) and meetsRepGate(player, def)
+        local unlocked = prestige >= (def.requiredPrestige or 1)
+            and meetsRepGate(player, def) and meetsSponsorGate(player, def)
         local exhausted = Player.hasCompleted(player, id) and not def.repeatable
         local questsMet, keysHeld, keysNeeded = questGate(player, def)
         local locked = not questsMet

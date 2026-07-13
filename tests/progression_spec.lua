@@ -285,6 +285,29 @@ return {
         end,
     },
     {
+        name = "Quest.available hides a quest until its sponsor's shop has opened",
+        fn = function()
+            local Building = require("models.building")
+            -- bandit_ambush is a prestige-1 quest sponsored by the Bastion, whose building does
+            -- not open until prestige 2. A player at prestige 1 must not see it -- it would point
+            -- at a locked door.
+            assert(Quest.defs.bandit_ambush.sponsor == "bastion", "bandit_ambush should be a Bastion quest")
+            assert(Building.vendorUnlockPrestige("bastion") == 2, "the Bastion should open at prestige 2")
+
+            local function boardHas(player, id)
+                for _, q in ipairs(Quest.available(player)) do
+                    if q.id == id then return true end
+                end
+                return false
+            end
+
+            assert(not boardHas(playerAt(1), "bandit_ambush"),
+                "bandit_ambush must stay hidden while the Bastion is still locked")
+            assert(boardHas(playerAt(2), "bandit_ambush"),
+                "bandit_ambush should appear once the Bastion opens at prestige 2")
+        end,
+    },
+    {
         name = "Quest.complete grants gold, prestige and sponsor reputation exactly once",
         fn = function()
             local p = playerAt(1)

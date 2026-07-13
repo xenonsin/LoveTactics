@@ -35,4 +35,19 @@ function Building.list(prestige)
     return list
 end
 
+-- The prestige at which the vendor with `vendorId` first opens for business -- i.e. the
+-- unlock threshold of the building that houses it. A quest hides its sponsor's line until
+-- that shop exists in the hub (see models/quest.lua); showing a quest for a vendor the
+-- player cannot yet visit only advertises a locked door. A vendor with no building, or a
+-- nil id, defaults to 1 (always open).
+function Building.vendorUnlockPrestige(vendorId)
+    if not vendorId then return 1 end
+    for _, def in pairs(Building.defs) do
+        if def.vendor == vendorId then
+            return def.unlockPrestige or 1
+        end
+    end
+    return 1
+end
+
 return Building
