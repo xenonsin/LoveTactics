@@ -12,13 +12,13 @@ return {
     {
         name = "a +n weapon's Power resolves to that level's tuned value, and the name gains a suffix",
         fn = function()
-            local curve = Item.defs.iron_sword.activeAbility.power -- the per-level list, 0..MAX_LEVEL
+            local curve = Item.defs.iron_sword.activeAbility.damage -- the per-level list, 0..MAX_LEVEL
             assert(type(curve) == "table", "iron_sword Power is authored as a per-level table")
             local base = Item.instantiate("iron_sword")            -- level 0
             local up3 = Item.instantiate("iron_sword", 1, 3)       -- +3
-            assert(base.activeAbility.power == curve[1], "level 0 resolves the first table entry")
-            assert(up3.activeAbility.power == curve[4], "+3 resolves the level-3 entry (index 4)")
-            assert(up3.activeAbility.power > base.activeAbility.power, "and it is stronger than the base")
+            assert(base.activeAbility.damage == curve[1], "level 0 resolves the first table entry")
+            assert(up3.activeAbility.damage == curve[4], "+3 resolves the level-3 entry (index 4)")
+            assert(up3.activeAbility.damage > base.activeAbility.damage, "and it is stronger than the base")
             assert(up3.name == base.name .. " +3", "the name carries the +3 suffix, got " .. up3.name)
             assert(base.name:find("+") == nil, "a base item has no suffix")
         end,
@@ -38,18 +38,18 @@ return {
         name = "the level clamps to MAX_LEVEL (10) and a short table holds at its last entry",
         fn = function()
             assert(Item.MAX_LEVEL == 10, "the ceiling is ten")
-            local curve = Item.defs.iron_sword.activeAbility.power
+            local curve = Item.defs.iron_sword.activeAbility.damage
             local maxed = Item.instantiate("iron_sword", 1, 99) -- asks past the ceiling
             assert(maxed.level == 10, "the level is clamped to MAX_LEVEL")
-            assert(maxed.activeAbility.power == curve[#curve], "and Power reads the final tuned entry")
+            assert(maxed.activeAbility.damage == curve[#curve], "and Power reads the final tuned entry")
         end,
     },
     {
         name = "primaryStat leads with the defining magnitude at the current level, with its label",
         fn = function()
             local v, label = Item.primaryStat(Item.instantiate("iron_sword", 1, 2))
-            assert(label == "Power" and v == Item.defs.iron_sword.activeAbility.power[3],
-                "a blade leads with its leveled Power")
+            assert(label == "Damage" and v == Item.defs.iron_sword.activeAbility.damage[3],
+                "a blade leads with its leveled Damage")
             local dv, dlabel = Item.primaryStat(Item.instantiate("leather_armor"))
             assert(dlabel == "Defense" and dv == Item.defs.leather_armor.bonus.defense[1],
                 "armor leads with its defense")

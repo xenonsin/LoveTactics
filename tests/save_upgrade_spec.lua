@@ -18,9 +18,9 @@ return {
             local item = restored.roster[1].inventory[1]
             assert(item.id == "iron_sword", "the sword survives")
             assert(item.level == 3, "its +3 level survives, got " .. tostring(item.level))
-            -- And the level is re-baked, not just stored: its Power reflects the upgrade.
+            -- And the level is re-baked, not just stored: its damage reflects the upgrade.
             local base = Item.instantiate("iron_sword")
-            assert(item.activeAbility.power > base.activeAbility.power, "the restored item is actually stronger")
+            assert(item.activeAbility.damage > base.activeAbility.damage, "the restored item is actually stronger")
         end,
     },
     {

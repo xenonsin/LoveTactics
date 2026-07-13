@@ -18,12 +18,12 @@ return {
         range = 3,
         speed = 5,
         cost = { stat = "mana", amount = 16 },
-        power = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 },
+        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 },
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 fx.damage(u)
-                fx.applyStatus(u, "stun", { magnitude = fx.power })
+                fx.applyStatus(u, "stun", { magnitude = fx.amount })
             end
         end,
     },

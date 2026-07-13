@@ -1,5 +1,5 @@
 -- A conjured creature, reached only through a summon ability
--- (data/items/ability/ability_summon_wind_elemental.lua), which scales it by the ability's Power.
+-- (data/items/ability/ability_summon_wind_elemental.lua), which scales it by the ability's summon power.
 -- The scout: featherlight and blindingly fast (movement 6, speed 7), darting in with quick Gale Fists.
 -- Frail, so it lives by never standing still. See data/characters/fire_elemental.lua.
 return {

@@ -14,7 +14,7 @@ return {
         range = 1,
         speed = 2,
         cost = { stat = "stamina", amount = 5 },
-        power = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 },
+        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 },
         effect = function(fx)
             if fx.damage(fx.target) > 0 then
                 fx.applyStatus(fx.target, "wet")

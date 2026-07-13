@@ -99,7 +99,7 @@ return {
             local base = Character.defs.wolf_grunt.stats
 
             local wolf = Summon.spawn(c, archer, "wolf_grunt", 2, 1, {
-                scaling = { health = 2, damage = 0.5 }, power = 10,
+                scaling = { health = 2, damage = 0.5 }, amount = 10,
             })
             local hp = wolf.char.stats.health
             assert(hp.max == base.health + 20, "health max grew by power * factor")

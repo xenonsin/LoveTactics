@@ -18,12 +18,12 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        power = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- the base, at full health; scaled up by the missing fraction below
+        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- the base, at full health; scaled up by the missing fraction below
         effect = function(fx)
             local hp = fx.user.char.stats.health
             local ratio = (hp.max and hp.max > 0) and (hp.current / hp.max) or 1
             local missing = math.max(0, 1 - ratio)
-            fx.damage(fx.target, { power = fx.power * (1 + missing) }) -- x1 full -> x2 at 0 HP
+            fx.damage(fx.target, { amount = fx.amount * (1 + missing) }) -- x1 full -> x2 at 0 HP
         end,
     },
 }

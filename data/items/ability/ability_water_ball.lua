@@ -19,10 +19,10 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "mana", amount = 12 },
-        power = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- the impact damage a stopped shove deals; the soak is the real payoff
+        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- the impact damage a stopped shove deals; the soak is the real payoff
         effect = function(fx)
             local ox, oy = fx.target.x, fx.target.y -- the tile the blow lands on, before the shove
-            fx.knockback(fx.target, 3, { power = fx.power })
+            fx.knockback(fx.target, 3, { amount = fx.amount })
             -- The splash soaks a 3x3 around where it struck; off-grid tiles are skipped by placeHazard.
             for dx = -1, 1 do
                 for dy = -1, 1 do

@@ -246,17 +246,17 @@ function Combat.moveBudget(unit)
     return flatStat(unit, "movement")
 end
 
--- Extra Power a strike gets when it is thrown with the wielder's bare fists: the aggregated
--- `unarmedBonus.power` from passive "fist" items carried in the grid (Iron Fist), plus
--- `unarmedBonus.drunkPower` while the unit is Drunk (Drunken Fist). 0 for any crafted weapon --
+-- Extra damage a strike gets when it is thrown with the wielder's bare fists: the aggregated
+-- `unarmedBonus.damage` from passive "fist" items carried in the grid (Iron Fist), plus
+-- `unarmedBonus.drunkDamage` while the unit is Drunk (Drunken Fist). 0 for any crafted weapon --
 -- an identity check against the hidden unarmed instance keeps the bonus off real blades. The
 -- companion range/extra-hit halves live in Combat.abilityRange and data/items/weapon/unarmed.lua.
-local function unarmedPowerBonus(user, item)
+local function unarmedDamageBonus(user, item)
     if not (user and item and item == user.char.unarmed) then return 0 end
     local ub = user.unarmedBonus
     if not ub then return 0 end
-    local bonus = ub.power or 0
-    if ub.drunkPower and Status.has(user, "drunk") then bonus = bonus + ub.drunkPower end
+    local bonus = ub.damage or 0
+    if ub.drunkDamage and Status.has(user, "drunk") then bonus = bonus + ub.drunkDamage end
     return bonus
 end
 
@@ -385,7 +385,7 @@ local function applyUnitPassives(unit)
     -- damage/range/hit paths; `char.maxBonus` is folded into Combat.unreservedMax (the one cap).
     -- Both are rebuilt from scratch here every setup, so nothing compounds battle to battle and the
     -- shared character instance's base stats are never mutated.
-    unit.unarmedBonus = { power = 0, range = 0, hits = 0, drunkPower = 0 }
+    unit.unarmedBonus = { damage = 0, range = 0, hits = 0, drunkDamage = 0 }
     local maxBonus = {}
     for _, item in ipairs(Character.eachItem(unit.char)) do
         for stat, amount in pairs(item.bonus or {}) do
@@ -1094,7 +1094,7 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Flat damage everything involved in a collision takes when a shove is stopped short. The mace /
--- Push ability override it with their Power (opts.power).
+-- Push ability override it with their own damage (opts.amount).
 Combat.COLLISION_DAMAGE = 4
 
 -- The cardinal step matching a delta, along the DOMINANT axis (a diagonal shove resolves to the
@@ -1133,7 +1133,7 @@ end
 function Combat.knockback(combat, source, target, distance, opts)
     opts = opts or {}
     if not (target and target.alive) then return 0, false end
-    local power = opts.power or Combat.COLLISION_DAMAGE
+    local amount = opts.amount or Combat.COLLISION_DAMAGE
     local dx, dy = signDominant(target.x - source.x, target.y - source.y)
     if dx == 0 and dy == 0 then return 0, false end
 
@@ -1144,9 +1144,9 @@ function Combat.knockback(combat, source, target, distance, opts)
             Combat.logEvent(combat, "damage",
                 string.format("%s slams into %s.", unitName(target),
                     blocker and unitName(blocker) or "an obstacle"))
-            Combat.dealFlatDamage(combat, target, power, { "physical", "impact" }, "the impact")
+            Combat.dealFlatDamage(combat, target, amount, { "physical", "impact" }, "the impact")
             if blocker and blocker.alive then
-                Combat.dealFlatDamage(combat, blocker, power, { "physical", "impact" }, "the impact")
+                Combat.dealFlatDamage(combat, blocker, amount, { "physical", "impact" }, "the impact")
             end
             return moved, true
         end
@@ -1288,19 +1288,19 @@ end
 -- Aggregate the adjacency auras affecting a cast of `item` from `char`'s grid: the extra tags to
 -- fold into the attack, the statuses to inflict on a damaged target, and the numeric modifiers a
 -- neighboring charm grants the cast. Returns (tags, statuses, mods) where mods is
--- { power, range, preserve }: `power`/`range` add to the ability's Power and reach (an Alchemic
+-- { amount, range, preserve }: `amount`/`range` add to the ability's magnitude and reach (an Alchemic
 -- Mastery / Long-Fuse Reagent charm buffing an adjacent bomb), and `preserve` spares a consumable's
 -- stack when it is used (an Everflask). All three are additive across every applicable neighbor.
 local function adjacencyAura(char, item)
     local tags, statuses = {}, {}
-    local mods = { power = 0, range = 0, preserve = false, lifesteal = 0 }
+    local mods = { amount = 0, range = 0, preserve = false, lifesteal = 0 }
     local idx = char and Character.slotIndex(char, item)
     if idx then
         for _, nb in ipairs(Character.adjacentItems(char, idx)) do
             if nb.aura and Combat.auraApplies(nb.aura, item) then
                 for _, t in ipairs(nb.aura.grantTags or {}) do tags[#tags + 1] = t end
                 if nb.aura.status then statuses[#statuses + 1] = nb.aura.status end
-                mods.power = mods.power + (nb.aura.powerBonus or 0)
+                mods.amount = mods.amount + (nb.aura.amountBonus or 0)
                 mods.range = mods.range + (nb.aura.rangeBonus or 0)
                 mods.lifesteal = mods.lifesteal + (nb.aura.lifesteal or 0) -- Vampiric Strike: heal a share of damage
                 if nb.aura.preserve then mods.preserve = true end
@@ -1602,16 +1602,25 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     return dmg
 end
 
+-- The magnitude an ability declares, whatever it drives -- a weapon/spell's `damage`, a potion's
+-- `healing`, a draught's `restore`, a scroll's `reviveHealth`, or a summon's `summonPower`. Exactly
+-- one is authored per ability; this returns its (already leveled) value, or nil for an ability that
+-- grants no magnitude (a pure displacement/cleanse). The single reader, so the concrete field an item
+-- chose is looked up in one place -- fx.amount, the primary-stat headline, and dealDamage all agree.
+function Combat.abilityMagnitude(ab)
+    if not ab then return nil end
+    return ab.damage or ab.healing or ab.restore or ab.reviveHealth or ab.summonPower
+end
+
 function Combat.dealDamage(combat, user, target, item, opts)
     opts = opts or {}
     local tags = collectTags(item, opts)
     local magical = hasTag(tags, "magical")
     local atkStat = magical and "magicDamage" or "damage"
     local ab = item and item.activeAbility
-    -- Additive: the ability's Power plus the attacker's attack stat (opts.power overrides the
-    -- declared Power for a one-off hit). Mitigation then subtracts the target's defense + resists.
-    local power = opts.power or (ab and ab.power) or 0
-    local base = power + flatStat(user, atkStat) + unarmedPowerBonus(user, item)
+    -- Additive: the ability's damage plus the attacker's attack stat (opts.amount overrides the
+    -- declared damage for a one-off hit). Mitigation then subtracts the target's defense + resists.
+    local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item)
     -- `user` rides along as the attacker so a reaction trait (a counter) knows who struck, and how
     -- far away they stood. A flat source (a trap, a burn) passes no attacker and provokes no counter.
     local dealt = Combat.dealFlatDamage(combat, target, base, tags, nil, user, opts)
@@ -1622,7 +1631,7 @@ function Combat.dealDamage(combat, user, target, item, opts)
 end
 
 -- Pure: the post-mitigation damage `user` striking `target` with `item` (and `opts`, e.g.
--- { power = 0.5 }) WOULD deal, computed exactly like Combat.dealDamage but without touching HP or
+-- { amount = 0.5 }) WOULD deal, computed exactly like Combat.dealDamage but without touching HP or
 -- the log. Drives the target-hover damage preview so its number always matches the real hit.
 function Combat.computeDamage(combat, user, target, item, opts)
     opts = opts or {}
@@ -1630,8 +1639,7 @@ function Combat.computeDamage(combat, user, target, item, opts)
     local magical = hasTag(tags, "magical")
     local atkStat = magical and "magicDamage" or "damage"
     local ab = item and item.activeAbility
-    local power = opts.power or (ab and ab.power) or 0
-    local base = power + flatStat(user, atkStat) + unarmedPowerBonus(user, item)
+    local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item)
     return Combat.mitigatedDamage(target, base, tags, opts)
 end
 
@@ -1642,8 +1650,8 @@ function Combat.computeTrapDamage(unit, weapon)
     local tags = collectTags(weapon, {})
     local atkStat = hasTag(tags, "magical") and "magicDamage" or "damage"
     local ab = weapon and weapon.activeAbility
-    local power = (ab and ab.power) or 0
-    return math.max(1, math.floor(power + flatStat(unit, atkStat) + 0.5))
+    local dmg = (ab and ab.damage) or 0
+    return math.max(1, math.floor(dmg + flatStat(unit, atkStat) + 0.5))
 end
 
 -- Restore health to `target`, capped at its ceiling (its max less any reserved health -- reserved
@@ -1736,7 +1744,7 @@ function Combat.raiseZombie(combat, caster, corpse, charId, opts)
         control = "ai",              -- allied but not directly controllable
         side = caster.side,
         duration = opts.duration,    -- zombies rot away on a timer if the caller sets one
-        power = opts.power,
+        amount = opts.amount,
         scaling = opts.scaling,
     })
 end
@@ -1773,12 +1781,13 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         return e
     end
     local auraTags, auraStatuses, auraMods = adjacencyAura(unit.char, item)
-    -- Fold in a neighboring Alchemic Mastery charm's Power bonus exactly as Combat.useItem does, so
-    -- the previewed number matches the hit the player is about to land.
-    local effectivePower = ab.power and (ab.power + auraMods.power) or ab.power
+    -- Fold in a neighboring Alchemic Mastery charm's magnitude bonus exactly as Combat.useItem does,
+    -- so the previewed number matches the hit the player is about to land.
+    local declared = Combat.abilityMagnitude(ab)
+    local effectiveAmount = declared and (declared + auraMods.amount) or declared
     local fx = {
         user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
-        power = effectivePower, -- the ability's balance scalar; effects derive heal/status magnitude from it
+        amount = effectiveAmount, -- the ability's scaled magnitude; effects derive heal/status/etc. from it
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.
@@ -1803,7 +1812,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         damage = function(tgt, opts)
             if not tgt then return 0 end
             opts = opts or {}
-            if opts.power == nil then opts.power = effectivePower end
+            if opts.amount == nil then opts.amount = effectiveAmount end
             local d = Combat.computeDamage(combat, unit, tgt, item, withAuraTags(opts, auraTags))
             local e = entryFor(tgt)
             e.damage = e.damage + d
@@ -1898,11 +1907,11 @@ end
 
 -- Pure: the raw output `unit` would get from `item`'s ability, with NO board target -- for the
 -- inventory-hover tooltip and the shop detail pane. Replays the real effect against a zero-defense
--- stand-in (so `damage` is the pre-armor Power + attack stat) and captures the `fx.power`-derived
--- heal and status too, so it stays correct for AoE / multi-hit / heal / buff abilities alike.
+-- stand-in (so `damage` is the pre-armor ability damage + attack stat) and captures the `fx.amount`-
+-- derived heal and status too, so it stays correct for AoE / multi-hit / heal / buff abilities alike.
 -- `unit` may be nil (a shop with no unit selected, an Armory hover with no acting member): it falls
--- back to a zero-stat stand-in caster, so `out.damage` is exactly the item's raw Power -- which is
--- what the "Power" row quotes regardless. Returns { damage, heal, statuses = { { id, def, opts } },
+-- back to a zero-stat stand-in caster, so `out.damage` is exactly the item's raw damage -- which is
+-- what the primary-stat row quotes regardless. Returns { damage, heal, statuses = { { id, def, opts } },
 -- multi } (multi flags an AoE ability, whose number is per target) or nil for an item with no
 -- active-ability effect. The effect is pcall-guarded so a data-file quirk can never crash the caller.
 function Combat.abilityOutput(unit, item)
@@ -1913,7 +1922,7 @@ function Combat.abilityOutput(unit, item)
     local out = { damage = 0, heal = 0, statuses = {}, multi = ab.aoe ~= nil }
     local fx = {
         user = unit, target = dummy, item = item, combat = nil, tx = 0, ty = 0,
-        power = ab.power,
+        amount = Combat.abilityMagnitude(ab),
         unitAt = function() return nil end,
         unitsNear = function() return { dummy } end,
         -- There is no board here, so hand back the cell itself: an effect that goes on to place
@@ -2513,17 +2522,19 @@ function Combat.useItem(combat, unit, item, tx, ty)
     -- Adjacency auras from neighboring items (e.g. a Fire Stone next to this weapon) fold extra
     -- tags into every hit and inflict their status on any target this cast damages.
     local auraTags, auraStatuses, auraMods = adjacencyAura(unit.char, item)
-    -- The cast's effective Power: the ability's own, raised by a neighboring Alchemic Mastery charm
-    -- (auraMods.power, 0 without one). A Power-less effect (a pure summon or cleanse) stays nil, so
-    -- the bonus never conjures damage out of nothing. Threaded into fx.power (for effects that read it
-    -- directly, e.g. a heal) AND into fx.damage's default opts.power below -- Combat.dealDamage bases
-    -- its hit on opts.power/ab.power, not on fx.power, so a damage bomb needs it fed in there too.
-    local effectivePower = ab.power and (ab.power + auraMods.power) or ab.power
+    -- The cast's effective magnitude: the ability's own declared amount, raised by a neighboring
+    -- Alchemic Mastery charm (auraMods.amount, 0 without one). An amount-less effect (a pure summon or
+    -- cleanse) stays nil, so the bonus never conjures damage out of nothing. Threaded into fx.amount
+    -- (for effects that read it directly, e.g. a heal) AND into fx.damage's default opts.amount below --
+    -- Combat.dealDamage bases its hit on opts.amount/ab.damage, not on fx.amount, so a damage bomb
+    -- needs it fed in there too.
+    local declared = Combat.abilityMagnitude(ab)
+    local effectiveAmount = declared and (declared + auraMods.amount) or declared
     local result = { damageDealt = 0, healed = 0 }
     local fx = {
         user = unit, target = target, item = item, combat = combat,
         tx = tx, ty = ty, -- the targeted cell, for tile-targeted abilities (e.g. placing a trap)
-        power = effectivePower, -- effects derive heal/status/restore magnitude from it
+        amount = effectiveAmount, -- effects derive heal/status/restore magnitude from it
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.
@@ -2552,11 +2563,11 @@ function Combat.useItem(combat, unit, item, tx, ty)
         end,
         damage = function(tgt, opts)
             if not tgt then return 0 end
-            -- Default the hit's Power to the cast's effective Power (which folds in the Alchemic
-            -- Mastery bonus); an effect that passes its own `opts.power` still overrides. Normally
-            -- effectivePower == ab.power, so this is a no-op for every cast with no charm beside it.
+            -- Default the hit's amount to the cast's effective magnitude (which folds in the Alchemic
+            -- Mastery bonus); an effect that passes its own `opts.amount` still overrides. Normally
+            -- effectiveAmount == ab.damage, so this is a no-op for every cast with no charm beside it.
             opts = opts or {}
-            if opts.power == nil then opts.power = effectivePower end
+            if opts.amount == nil then opts.amount = effectiveAmount end
             local d = Combat.dealDamage(combat, unit, tgt, item, withAuraTags(opts, auraTags))
             result.damageDealt = result.damageDealt + d
             if d > 0 then

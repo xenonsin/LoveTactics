@@ -35,7 +35,7 @@ end
 
 return {
     {
-        name = "Alchemic Mastery adds its powerBonus to an adjacent consumable's hit (preview and live)",
+        name = "Alchemic Mastery adds its amountBonus to an adjacent consumable's hit (preview and live)",
         fn = function()
             -- Foe two tiles east, so the radius-1 burst never reaches the caster's own tile.
             local c = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 4, 2) })
@@ -47,11 +47,11 @@ return {
             local plainDmg = plain.entries[bandit].damage
             assert(plainDmg > 5, "the plain bomb already lands well above the floor, got " .. plainDmg)
 
-            -- Alchemic Mastery (powerBonus 5) in the adjacent cell: exactly +5 on the same hit.
+            -- Alchemic Mastery (amountBonus 5) in the adjacent cell: exactly +5 on the same hit.
             equip(k.char, { [5] = "fire_bomb", [4] = "alchemic_mastery" })
             local boosted = Combat.previewAbility(c, k, k.char.inventory[5], 4, 2)
             assert(boosted.entries[bandit].damage == plainDmg + 5,
-                "Mastery adds its powerBonus to the preview, got " .. boosted.entries[bandit].damage)
+                "Mastery adds its amountBonus to the preview, got " .. boosted.entries[bandit].damage)
 
             -- And the live cast matches the boosted preview (the number the player was shown).
             k.char.stats.stamina.current = 99

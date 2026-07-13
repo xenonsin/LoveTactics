@@ -82,19 +82,35 @@ local function resolveLevel(v, level)
 end
 Item.resolveLevel = resolveLevel
 
+-- An ability names its magnitude for what it does: a weapon/spell's `damage`, a potion's `healing`,
+-- a draught's `restore`, a scroll's `reviveHealth`, or a summon's `summonPower`. Exactly one is
+-- authored per ability. Each entry is { key, label } -- the label heads the tooltip/shop row.
+local ABILITY_MAGNITUDES = {
+    { "damage", "Damage" },
+    { "healing", "Healing" },
+    { "restore", "Restore" },
+    { "reviveHealth", "Revive" },
+    { "summonPower", "Power" },
+}
+
 -- Every place an item carries a scaling magnitude, as get/set pairs, so one walk resolves them all at
--- instantiate. This is the definition of "a derived magnitude": an ability's Power, armor's stat
--- bonuses and resists, a resource ceiling, and an aura's power/range/status magnitude.
+-- instantiate. This is the definition of "a derived magnitude": an ability's damage/healing/etc.,
+-- armor's stat bonuses and resists, a resource ceiling, and an aura's amount/range/status magnitude.
 local function eachMagnitude(item, fn)
     local ab = item.activeAbility
-    if ab and ab.power ~= nil then fn(ab.power, function(x) ab.power = x end) end
+    if ab then
+        for _, m in ipairs(ABILITY_MAGNITUDES) do
+            local key = m[1]
+            if ab[key] ~= nil then fn(ab[key], function(x) ab[key] = x end) end
+        end
+    end
     if item.bonus then for k, v in pairs(item.bonus) do fn(v, function(x) item.bonus[k] = x end) end end
     if item.resist then for k, v in pairs(item.resist) do fn(v, function(x) item.resist[k] = x end) end end
     if item.maxBonus then for k, v in pairs(item.maxBonus) do fn(v, function(x) item.maxBonus[k] = x end) end end
     if item.unarmedBonus then for k, v in pairs(item.unarmedBonus) do fn(v, function(x) item.unarmedBonus[k] = x end) end end
     local aura = item.aura
     if aura then
-        if aura.powerBonus ~= nil then fn(aura.powerBonus, function(x) aura.powerBonus = x end) end
+        if aura.amountBonus ~= nil then fn(aura.amountBonus, function(x) aura.amountBonus = x end) end
         if aura.rangeBonus ~= nil then fn(aura.rangeBonus, function(x) aura.rangeBonus = x end) end
         local st = aura.status
         if st and st.opts and st.opts.magnitude ~= nil then
@@ -104,15 +120,20 @@ local function eachMagnitude(item, fn)
 end
 
 -- The item's primary stat -- the one the tooltip/shop headline leads with -- as `value, label, key`.
--- The priority reads off the stat that defines the item: a caster's Power, then armor's defense /
--- magic defense, then the largest of any remaining bonus / resource / aura magnitude. Resolved at the
--- item's level, so it quotes the current (leveled) number. `key` is the raw bonus key (or nil) so a
--- caller can suppress that same row elsewhere. nil when the item grants no magnitude at all.
+-- The priority reads off the stat that defines the item: an ability's own magnitude (damage / healing
+-- / etc.), then armor's defense / magic defense, then the largest of any remaining bonus / resource /
+-- aura magnitude. Resolved at the item's level, so it quotes the current (leveled) number. `key` is the
+-- raw bonus key (or nil) so a caller can suppress that same row elsewhere. nil when the item grants no
+-- magnitude at all.
 function Item.primaryStat(item)
     if not item then return nil end
     local lvl = item.level or 0
     local ab = item.activeAbility
-    if ab and ab.power ~= nil then return resolveLevel(ab.power, lvl), "Power", nil end
+    if ab then
+        for _, m in ipairs(ABILITY_MAGNITUDES) do
+            if ab[m[1]] ~= nil then return resolveLevel(ab[m[1]], lvl), m[2], nil end
+        end
+    end
     if item.bonus then
         if item.bonus.defense ~= nil then return resolveLevel(item.bonus.defense, lvl), "Defense", "defense" end
         if item.bonus.magicDefense ~= nil then return resolveLevel(item.bonus.magicDefense, lvl), "Magic Defense", "magicDefense" end
@@ -128,7 +149,7 @@ function Item.primaryStat(item)
     local aura = item.aura
     if aura then
         if aura.status and aura.status.opts then consider(aura.status.opts.magnitude, titleCase(aura.status.id or "effect")) end
-        consider(aura.powerBonus, "Aura Power")
+        consider(aura.amountBonus, "Aura Amount")
         consider(aura.rangeBonus, "Aura Range")
     end
     if best then return best, bestLabel, bestKey end

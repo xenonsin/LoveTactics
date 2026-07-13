@@ -100,7 +100,7 @@ return {
             local hero, foe = c.units[1], c.units[2]
             assert(punch(c, hero, foe) == 2, "sober: just the bare fist's Power 2")
             Status.apply(c, hero, "drunk") -- +3 Damage (statBonus) and +6 drunk fist Power
-            -- base = Power 2 + damage(0 + drunk 3) + drunkPower 6 = 11.
+            -- base = damage 2 + damage(0 + drunk 3) + drunkDamage 6 = 11.
             assert(punch(c, hero, foe) == 11, "drunk: fist swells to 11 damage, got")
         end,
     },

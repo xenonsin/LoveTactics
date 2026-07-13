@@ -41,10 +41,10 @@ return {
             local u, d, m = c.units[1], c.units[2], c.units[3]
             local sword = hero.inventory[1]
 
-            -- The holy hit on demonic flesh: power + the wielder's Damage stat, then +8 from the
+            -- The holy hit on demonic flesh: damage + the wielder's Damage stat, then +8 from the
             -- negative holy resist.
             local ab = sword.activeAbility
-            local expected = ab.power + hero.stats.damage + 8
+            local expected = ab.damage + hero.stats.damage + 8
             local holy = Combat.computeDamage(c, u, d, sword)
             assert(holy == expected,
                 "holy hit on a demon deals base + 8 (expected " .. expected .. ", got " .. holy .. ")")

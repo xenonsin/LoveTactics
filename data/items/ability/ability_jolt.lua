@@ -16,10 +16,10 @@ return {
         requiresSight = true, -- a bolt needs a clear line: terrain cover blocks it
         speed = 3,
         cost = { stat = "mana", amount = 10 },
-        power = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 }, -- balances both the hit AND the stun delay below
+        damage = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 }, -- balances both the hit AND the stun delay below
         effect = function(fx)
             fx.damage(fx.target) -- power + the caster's MagicDamage, minus MagicDefense
-            fx.applyStatus(fx.target, "stun", { magnitude = fx.power }) -- delay scales with Power
+            fx.applyStatus(fx.target, "stun", { magnitude = fx.amount }) -- delay scales with Power
         end,
     },
 }

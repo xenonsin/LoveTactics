@@ -21,7 +21,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 5 },
-        power = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- flat, modest: the debuff is the payload, not the splash
+        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- flat, modest: the debuff is the payload, not the splash
         consumesItem = true,
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)

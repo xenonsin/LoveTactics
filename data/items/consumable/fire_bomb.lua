@@ -22,7 +22,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 4 },
-        power = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, -- flat: nothing about the thrower makes the fire hotter
+        damage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, -- flat: nothing about the thrower makes the fire hotter
         consumesItem = true,
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)

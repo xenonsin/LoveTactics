@@ -19,7 +19,7 @@ return {
         minRange = 1,      -- it is a leap, not a stomp in place
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
-        power = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- per-target blast damage = power + the caster's Damage, minus Defense
+        damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- per-target blast damage = power + the caster's Damage, minus Defense
         aoe = { shape = "square", radius = 1 }, -- the 3x3 burst centred on the landing tile
         effect = function(fx)
             fx.teleportUser(fx.tx, fx.ty) -- land first...

@@ -19,7 +19,7 @@ return {
         range = 1,
         speed = 1, -- the fastest strike in the game: you act again almost at once
         cost = { stat = "stamina", amount = 4 },
-        power = { 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18 },
+        damage = { 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18 },
         effect = function(fx)
             fx.damage(fx.target)
         end,

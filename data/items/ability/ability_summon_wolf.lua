@@ -31,11 +31,11 @@ return {
         range = 1,
         speed = 6,
         reserve = { stat = "mana", percent = 0.25 },
-        power = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
+        summonPower = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
         effect = function(fx)
             fx.summon("wolf_grunt", fx.tx, fx.ty, {
                 scaling = { health = 2, damage = 0.5 },
-                power = fx.power,
+                amount = fx.amount,
             })
         end,
     },

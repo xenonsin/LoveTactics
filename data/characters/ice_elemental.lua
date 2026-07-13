@@ -1,5 +1,5 @@
 -- A conjured creature, reached only through a summon ability
--- (data/items/ability/ability_summon_ice_elemental.lua), which scales it by the ability's Power.
+-- (data/items/ability/ability_summon_ice_elemental.lua), which scales it by the ability's summon power.
 -- Slow and hardy, a wall of ice: high magic defense, steady magic damage through its Frost Fists.
 -- See data/characters/fire_elemental.lua for the blueprint shape.
 return {

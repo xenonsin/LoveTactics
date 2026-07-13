@@ -17,7 +17,7 @@ return {
         requiresSight = true, -- a bolt needs a clear line: terrain cover blocks it
         speed = 3,
         cost = { stat = "mana", amount = 10 },
-        power = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- per-hit damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- per-hit damage = power + the caster's MagicDamage, minus MagicDefense
         effect = function(fx)
             fx.damage(fx.target)
             fx.applyStatus(fx.target, "burn")

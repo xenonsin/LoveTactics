@@ -1,5 +1,5 @@
 -- A conjured creature, reached only through the alchemist's Summon Homunculus ability
--- (data/items/ability/ability_summon_homunculus.lua), which scales it by the ability's Power. A
+-- (data/items/ability/ability_summon_homunculus.lua), which scales it by the ability's summon power. A
 -- frail, shambling construct of alchemical clay -- little health and a soft touch -- whose worth is
 -- not the hit but the Poison its Homunculus Fists leave behind, ticking on long after it falls. A
 -- body to soak a turn and rot a foe, not to win a duel. See data/characters/water_elemental.lua for

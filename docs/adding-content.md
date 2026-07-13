@@ -397,11 +397,11 @@ activeAbility = {
     name = "Summon Wolf",
     target = "tile", range = 1, speed = 6,
     reserve = { stat = "mana", percent = 0.25 }, -- see below
-    power = 10,
+    summonPower = 10,
     effect = function(fx)
         fx.summon("wolf_grunt", fx.tx, fx.ty, {
-            scaling = { health = 2, damage = 0.5 }, -- stat = base + power * factor
-            power = fx.power,
+            scaling = { health = 2, damage = 0.5 }, -- stat = base + amount * factor
+            amount = fx.amount,
             -- duration = 24,              -- ticks before it fades; omit = stands until slain
             -- stats   = { health = 60 },  -- flat overrides of the blueprint's stats
             -- items   = { "fangs" },      -- replaces its startingItems entirely
@@ -458,11 +458,11 @@ costs the target no turn and no movement, but triggers every trap and hazard it 
 ```lua
 effect = function(fx)
     fx.damage(fx.target)
-    fx.knockback(fx.target, 2, { power = fx.power }) -- 2 tiles, straight back from the caster
+    fx.knockback(fx.target, 2, { amount = fx.amount }) -- 2 tiles, straight back from the caster
 end
 ```
 
-A knockback stopped by the board edge, impassable terrain, or another unit deals `power` as impact
+A knockback stopped by the board edge, impassable terrain, or another unit deals `amount` as impact
 damage to **everyone involved** — the shoved unit and whatever it slammed into. Direction resolves
 to the dominant axis (ties break toward x), matching the 4-directional grid.
 

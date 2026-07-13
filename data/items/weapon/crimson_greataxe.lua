@@ -18,7 +18,7 @@ return {
         minRange = 1,          -- must pick a neighbor (a facing); never the wielder's own tile
         speed = 6, -- ponderous: you pay for the damage in turn order
         cost = { stat = "stamina", amount = 16 },
-        power = { 18, 20, 22, 23, 25, 27, 29, 31, 32, 34, 36 },
+        damage = { 18, 20, 22, 23, 25, 27, 29, 31, 32, 34, 36 },
         aoe = { shape = "front", width = 3 }, -- axes cleave innately: a 3-wide arc in front
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

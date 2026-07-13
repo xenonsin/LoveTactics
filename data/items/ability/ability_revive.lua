@@ -17,15 +17,15 @@ return {
         target = "tile",
         support = true, -- friendly cast: preview green
         range = 3,
-        power = { 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 }, -- the percent of health restored (see the effect)
+        reviveHealth = { 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 }, -- the percent of health restored (see the effect)
         speed = 6,
         cost = { stat = "mana", amount = 20 },
         effect = function(fx)
             local corpse = fx.corpseAt(fx.tx, fx.ty)
             -- Only an ally's body, and only if nobody stands on it (fx.corpseAt already refuses an
-            -- occupied tile). fx.power is a percent; the reanimation takes it as a fraction of max HP.
+            -- occupied tile). fx.amount is a percent; the reanimation takes it as a fraction of max HP.
             if corpse and corpse.side == fx.user.side then
-                fx.reanimate(corpse, (fx.power or 50) / 100)
+                fx.reanimate(corpse, (fx.amount or 50) / 100)
             end
         end,
     },

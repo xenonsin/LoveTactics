@@ -248,9 +248,9 @@ return {
             local wand = {
                 name = "Draining Wand", tags = { "arcane", "magical" },
                 activeAbility = {
-                    name = "Drain", target = "enemy", range = 3, speed = 3, power = 5,
+                    name = "Drain", target = "enemy", range = 3, speed = 3, damage = 5,
                     effect = function(fx)
-                        local dealt = fx.damage(fx.target) -- power + magicDamage - magicDefense
+                        local dealt = fx.damage(fx.target) -- damage + magicDamage - magicDefense
                         fx.heal(fx.user, dealt) -- lifesteal the amount dealt
                     end,
                 },

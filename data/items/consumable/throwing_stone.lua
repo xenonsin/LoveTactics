@@ -21,7 +21,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 2 },
-        power = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- flat: a thrown rock hits the same however strong the arm
+        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- flat: a thrown rock hits the same however strong the arm
         consumesItem = true,
         effect = function(fx)
             fx.damage(fx.target)

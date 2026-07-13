@@ -17,7 +17,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        power = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- lands whole: no defense or resist is subtracted (raw)
+        damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- lands whole: no defense or resist is subtracted (raw)
         requiresAdjacent = { type = "weapon", tag = "melee" }, -- a melee weapon must sit adjacent in the grid
         effect = function(fx)
             fx.damage(fx.target, { raw = true }) -- armor-piercing: skips defense + resists

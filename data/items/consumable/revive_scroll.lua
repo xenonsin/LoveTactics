@@ -16,13 +16,13 @@ return {
         target = "tile",
         support = true, -- friendly cast: preview green
         range = 1,      -- must be adjacent to the body
-        power = { 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 },     -- percent of health restored
+        reviveHealth = { 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 },     -- percent of health restored
         speed = 4,
         consumesItem = true,
         effect = function(fx)
             local corpse = fx.corpseAt(fx.tx, fx.ty)
             if corpse and corpse.side == fx.user.side then
-                fx.reanimate(corpse, (fx.power or 50) / 100)
+                fx.reanimate(corpse, (fx.amount or 50) / 100)
             end
         end,
     },

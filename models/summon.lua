@@ -15,7 +15,7 @@
 --   * summonRemaining -- ticks left before it fades on its own (from opts.duration). Absent on an
 --                 indefinite summon, which stands until it is killed. See Summon.tick.
 --
---   Summon.spawn(combat, caster, "wolf_grunt", x, y, { scaling = { health = 2 }, power = 10 })
+--   Summon.spawn(combat, caster, "wolf_grunt", x, y, { scaling = { health = 2 }, amount = 10 })
 --   Summon.spawn(combat, caster, "fire_elemental", x, y, { duration = 24 })  -- fades on a timer
 --   Summon.copy(combat, caster, x, y, { fragile = true, control = "none", decoy = true })
 --
@@ -57,14 +57,13 @@ local function addStat(stats, key, amount)
     end
 end
 
--- Apply an ability's `power` to the summoned creature. Scaling is ADDITIVE and per-stat:
--- `scaling = { health = 2, damage = 0.5 }` with power 10 grants +20 health and +5 damage. This
--- mirrors Combat.dealDamage's `power + attackStat`, so "Power" reads the same everywhere: the
--- ability's magnitude, added on top of a base.
-local function applyScaling(stats, scaling, power)
-    if not (scaling and power) then return end
+-- Apply an ability's summon power to the summoned creature. Scaling is ADDITIVE and per-stat:
+-- `scaling = { health = 2, damage = 0.5 }` with amount 10 grants +20 health and +5 damage. This
+-- mirrors Combat.dealDamage's `damage + attackStat`: the ability's magnitude, added on top of a base.
+local function applyScaling(stats, scaling, amount)
+    if not (scaling and amount) then return end
     for key, factor in pairs(scaling) do
-        addStat(stats, key, math.floor(power * factor + 0.5))
+        addStat(stats, key, math.floor(amount * factor + 0.5))
     end
 end
 
@@ -113,8 +112,8 @@ end
 -- opts = {
 --   stats    = { health = 60 },       -- flat overrides of the blueprint's stats
 --   items    = { "fangs" },           -- replaces the blueprint's startingItems entirely
---   scaling  = { health = 2 },        -- per-stat multipliers of `power`, added on top
---   power    = 10,                    -- the ability's Power (fx.power)
+--   scaling  = { health = 2 },        -- per-stat multipliers of `amount`, added on top
+--   amount   = 10,                    -- the ability's summon power (fx.amount)
 --   duration = 24,                    -- ticks it stands before fading; omit for an indefinite summon
 --   control  = "player"|"ai"|"none"|"inherit",
 --   fragile  = true, side = "party",
@@ -132,7 +131,7 @@ function Summon.spawn(combat, summoner, charId, x, y, opts)
         end
     end
     applyOverrides(char.stats, opts.stats)
-    applyScaling(char.stats, opts.scaling, opts.power)
+    applyScaling(char.stats, opts.scaling, opts.amount)
 
     local unit = Combat.addUnit(combat, char, opts.side or summoner.side, x, y, {
         control = resolveControl(opts.control, summoner),

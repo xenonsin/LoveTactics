@@ -13,7 +13,7 @@ return {
         range = 1,
         speed = 5, -- slow and lurching
         cost = { stat = "stamina", amount = 5 },
-        power = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 13, 14 },
+        damage = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 13, 14 },
         effect = function(fx)
             fx.damage(fx.target)
         end,

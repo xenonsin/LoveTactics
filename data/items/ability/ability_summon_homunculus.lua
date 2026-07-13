@@ -18,11 +18,11 @@ return {
         range = 2,
         speed = 6,
         reserve = { stat = "mana", percent = 0.2 },
-        power = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 },
+        summonPower = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 },
         effect = function(fx)
             fx.summon("homunculus", fx.tx, fx.ty, {
                 scaling = { health = 1, damage = 0.5 },
-                power = fx.power,
+                amount = fx.amount,
                 duration = 24,
             })
         end,

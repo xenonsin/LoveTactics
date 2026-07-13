@@ -9,7 +9,7 @@
 --   exceptTags = { <tag>, ... }       -- neighbors carrying any of these are left uninfused
 --   grantTags  = { <tag>, ... }       -- folded into the neighbor's attack tags (this stone: "fire")
 --   status     = { id = , opts = }    -- applied to any target the neighbor's hit damages
---   powerBonus = <n>                  -- added to the neighbor's ability Power (Alchemic Mastery)
+--   amountBonus = <n>                 -- added to the neighbor's ability magnitude (Alchemic Mastery)
 --   rangeBonus = <n>                  -- added to the neighbor's ability range (Long-Fuse Reagent)
 --   preserve   = true                 -- the neighbor consumable's stack is not spent on use (Everflask)
 return {

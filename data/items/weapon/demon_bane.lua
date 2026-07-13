@@ -20,7 +20,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
-        power = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 },
+        damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 },
         effect = function(fx)
             fx.damage(fx.target) -- inherits the item tags, so the hit carries `holy`
         end,

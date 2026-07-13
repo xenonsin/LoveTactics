@@ -15,11 +15,11 @@ return {
         range = 2,
         speed = 6,
         reserve = { stat = "mana", percent = 0.25 },
-        power = { 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24 },
+        summonPower = { 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24 },
         effect = function(fx)
             fx.summon("ice_elemental", fx.tx, fx.ty, {
                 scaling = { health = 2, magicDamage = 0.4 },
-                power = fx.power,
+                amount = fx.amount,
                 duration = 24,
             })
         end,

@@ -22,7 +22,7 @@ return {
         requiresSight = true, -- arrows need a clear arc to the target cell
         speed = 5,
         cost = { stat = "stamina", amount = 10 },
-        power = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- per-target damage = power + the caster's Damage, minus Defense
+        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- per-target damage = power + the caster's Damage, minus Defense
         aoe = { radius = 1, shape = "square" }, -- 3x3 burst around the aimed cell (corners included)
         requiresAdjacent = { type = "weapon", tag = "bow" }, -- a bow must sit adjacent in the grid
         effect = function(fx)

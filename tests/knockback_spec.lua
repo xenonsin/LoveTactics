@@ -65,7 +65,7 @@ return {
             local knight, bandit = c.units[1], c.units[2]
             local before = hp(bandit)
 
-            local moved, collided = Combat.knockback(c, knight, bandit, 3, { power = 10 })
+            local moved, collided = Combat.knockback(c, knight, bandit, 3, { amount = 10 })
             assert(moved == 0 and collided, "the very first step is barred by the obstacle")
             assert(bandit.x == 5 and bandit.y == 4, "it does not move")
             assert(hp(bandit) < before, "but it takes the impact")
@@ -78,7 +78,7 @@ return {
             local knight, bandit = c.units[1], c.units[2]
             local before = hp(bandit)
 
-            local moved, collided = Combat.knockback(c, knight, bandit, 2, { power = 10 })
+            local moved, collided = Combat.knockback(c, knight, bandit, 2, { amount = 10 })
             assert(moved == 0 and collided, "the board edge bars the push")
             assert(bandit.x == 8, "it stays put")
             assert(hp(bandit) < before, "and takes the impact")
@@ -92,7 +92,7 @@ return {
             local knight, bandit, boar = c.units[1], c.units[2], c.units[3]
             local banditHP, boarHP = hp(bandit), hp(boar)
 
-            local moved, collided = Combat.knockback(c, knight, bandit, 2, { power = 12 })
+            local moved, collided = Combat.knockback(c, knight, bandit, 2, { amount = 12 })
             assert(moved == 0 and collided, "the boar blocks the first step")
             assert(bandit.x == 4, "neither unit is displaced by the collision")
             assert(boar.x == 5, "the blocker holds its ground")
@@ -108,7 +108,7 @@ return {
             local knight, bandit = c.units[1], c.units[2]
             bandit.fragile = true
 
-            Combat.knockback(c, knight, bandit, 1, { power = 1 })
+            Combat.knockback(c, knight, bandit, 1, { amount = 1 })
             assert(not bandit.alive, "any damage at all is lethal to a fragile unit")
         end,
     },

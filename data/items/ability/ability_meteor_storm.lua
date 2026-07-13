@@ -22,7 +22,7 @@ return {
         range = 4,
         speed = 7, -- the most punishing spell, and the slowest to come around again
         cost = { stat = "mana", amount = 22 },
-        power = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- per-meteor damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- per-meteor damage = power + the caster's MagicDamage, minus MagicDefense
         aoe = { radius = 3, shape = "square" }, -- paints the ~6x6 threatened zone (see note above)
         effect = function(fx)
             -- The 6x6 block of candidate tiles around the aim point.

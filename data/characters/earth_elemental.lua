@@ -1,5 +1,5 @@
 -- A conjured creature, reached only through a summon ability
--- (data/items/ability/ability_summon_earth_elemental.lua), which scales it by the ability's Power.
+-- (data/items/ability/ability_summon_earth_elemental.lua), which scales it by the ability's summon power.
 -- The tank of the set: the most health and armor, but slow, and it fights PHYSICALLY -- its Stone
 -- Fists crush (and shatter the Frozen) rather than cast. See data/characters/fire_elemental.lua.
 return {

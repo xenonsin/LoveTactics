@@ -11,7 +11,7 @@ return {
     onCombatStart = function(ctx)
         local x, y = ctx.openTileNear(ctx.unit.x, ctx.unit.y)
         if x then
-            ctx.summon("wolf_grunt", x, y, { scaling = { health = 2, damage = 0.5 }, power = 8 })
+            ctx.summon("wolf_grunt", x, y, { scaling = { health = 2, damage = 0.5 }, amount = 8 })
         end
     end,
 }
