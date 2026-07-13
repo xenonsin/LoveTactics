@@ -3,7 +3,7 @@ return {
     description = "A basic blade. Strikes an adjacent foe.",
     sprite = "assets/items/sword.png",
     type = "weapon",
-    tags = { "sword", "slash", "physical" }, -- drive damage scaling + armor mitigation
+    tags = { "sword", "slash", "physical", "melee" }, -- drive damage scaling + armor mitigation
     class = "fighter",
     price = 60,
     repRank = 1,

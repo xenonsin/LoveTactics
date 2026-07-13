@@ -55,7 +55,9 @@ function QuestBoard.new(opts)
             label = quest.locked and (quest.name .. " (Locked)") or quest.name,
             action = function()
                 if quest.locked then return end
-                State.switch(require("states.game"), quest, self.prestige, self.player)
+                -- Pick the deployable party before the overworld: party_select commits the choice
+                -- and switches on to states.game with the same (quest, prestige, player).
+                State.switch(require("states.party_select"), quest, self.prestige, self.player)
             end,
         }
     end

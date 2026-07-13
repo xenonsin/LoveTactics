@@ -1,6 +1,9 @@
 return {
     name = "Knight",
     sprite = "assets/chars/knight.png",
+    -- Innate growth class: the fallback (and tie-break) for the level-up growth system when this
+    -- character has no cast history yet. See models/growth.lua and data/growth/<class>.lua.
+    class = "knight",
     stats = {
         health = 100, mana = 20, stamina = 60, -- resource stats
         staminaRegen = 2, -- stamina recovered per elapsed tick (a flat stat, not a resource)

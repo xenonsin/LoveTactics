@@ -47,6 +47,17 @@ function hub.enter()
     map = BuildingMap.new(Building.list(hub.player.prestige), {
         onActivate = openPanel,
     })
+
+    -- Just back from a won quest? Surface the reward + the company's level-ups, then clear the handoff
+    -- so it shows once (states/game.lua stashed it on the player before switching here).
+    if hub.player.pendingSummary then
+        local Advancement = require("ui.panels.advancement")
+        activePanel = Advancement.new({
+            reward = hub.player.pendingSummary,
+            onClose = function() activePanel = nil end,
+        })
+        hub.player.pendingSummary = nil
+    end
 end
 
 function hub.update(dt)

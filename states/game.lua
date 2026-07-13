@@ -15,7 +15,7 @@ local Player = require("models.player")
 local Quest = require("models.quest")
 local EncounterPanel = require("ui.panels.encounter")
 local EncounterModel = require("models.encounter")
-local Loadout = require("ui.panels.loadout")
+local Party = require("ui.panels.party")
 
 local game = {}
 
@@ -24,7 +24,7 @@ local hudFont = love.graphics.newFont(16)
 
 -- Clickable "Back" button so a mouse-only player can leave to the hub.
 local backButton = { x = 16, y = 16, w = 110, h = 36 }
--- Clickable "Items" button: opens the Loadout panel to arrange party items on the overworld.
+-- Clickable "Items" button: opens the Party screen (stash mode) to arrange party items on the overworld.
 local itemsButton = { x = 138, y = 16, w = 110, h = 36 }
 
 local function rectContains(r, x, y)
@@ -35,9 +35,9 @@ local function backContains(x, y)
     return rectContains(backButton, x, y)
 end
 
--- Open the loadout panel over the overworld (same modal slot as the encounter panel).
+-- Open the Party screen over the overworld (same modal slot as the encounter panel).
 local function openLoadout()
-    game.activePanel = Loadout.new({
+    game.activePanel = Party.new({
         player = game.player,
         onClose = function() game.activePanel = nil end,
     })
@@ -108,6 +108,9 @@ function game:openEncounter(cell)
                     -- granted here, once, and the game saves. Losing the quest (onLoss)
                     -- pays nothing, so a wipe costs the run.
                     game.reward = Quest.complete(game.player, game.quest)
+                    -- Hand the reward (gold/prestige/rep + the roster's level-ups) to the hub, which
+                    -- opens the Company Advancement overlay on entry and clears this once shown.
+                    if game.player and game.reward then game.player.pendingSummary = game.reward end
                     State.switch(require("states.hub"))
                 else
                     State.current = game

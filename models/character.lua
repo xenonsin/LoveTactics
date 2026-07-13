@@ -143,8 +143,20 @@ function Character.removeItem(char, item)
     return false
 end
 
--- Build a fresh, mutable character instance from a blueprint id.
-function Character.instantiate(id)
+-- Add a class-usage cast to a character's running tally. Fired from Combat.useItem whenever a party
+-- member resolves an action with a class-tagged item (a spell, a weapon strike, a thrown consumable).
+-- The most-used class drives stat growth on level-up (see models/growth.lua).
+function Character.recordUse(char, class)
+    if not class then return end
+    char.classUse = char.classUse or {}
+    char.classUse[class] = (char.classUse[class] or 0) + 1
+end
+
+-- Build a fresh, mutable character instance from a blueprint id. `progress` (optional) restores the
+-- saved level-up state: { level, classUse, growth }. When present, the accumulated growth deltas are
+-- re-baked into the stats here (max for resource stats), so a loaded character comes back at its full
+-- leveled power without replaying its history. A new character passes nil -> level 1, no growth.
+function Character.instantiate(id, progress)
     local def = Character.defs[id]
     assert(def, "unknown character id: " .. tostring(id))
 
@@ -157,11 +169,29 @@ function Character.instantiate(id)
         end
     end
 
+    -- Re-bake accumulated level-up growth onto the base stats (resource growth raises the pool's max).
+    local growth = (progress and progress.growth) or {}
+    for stat, amount in pairs(growth) do
+        local live = stats[stat]
+        if type(live) == "table" and isResourceStat(stat) then
+            live.max = live.max + amount
+            live.current = live.max
+        elseif type(live) == "number" then
+            stats[stat] = live + amount
+        end
+    end
+
     local char = {
         id = id,
         name = def.name,
         sprite = Sprite.load(def.sprite),
         stats = stats,
+        -- Progression state (models/growth.lua): innate growth class (fallback/tie-break), the level
+        -- (tracks player prestige), the per-class cast tally, and the accumulated stat growth.
+        class = def.class,
+        level = (progress and progress.level) or 1,
+        classUse = (progress and progress.classUse) or {},
+        growth = (progress and progress.growth) or {},
         inventory = {},
         -- Innate combat reactions (models/trait.lua). A boss blueprint's `traits` reach its unit
         -- through here; enemies instantiate exactly as party members do, so this is all the wiring

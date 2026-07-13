@@ -10,6 +10,7 @@ return {
     color = { 0.85, 0.45, 0.2 }, -- badge tint (ember orange)
     duration = 3,
     magnitude = 4, -- fire damage per turn
+    debuff = true, -- removable by Cure
     onTurnStart = function(ctx)
         ctx.damage(ctx.unit, ctx.magnitude, { "fire" })
     end,

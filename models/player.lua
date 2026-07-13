@@ -7,6 +7,7 @@
 -- `Player.start()` rather than calling `Player.new()`, which discards all progress.
 
 local Character = require("models.character")
+local Growth = require("models.growth")
 local Item = require("models.item")
 local Save = require("models.save")
 local Vendor = require("models.vendor")
@@ -43,11 +44,14 @@ function Player.visionRadius(player)
     return r
 end
 
--- Add a roster member to the active party, enforcing the party cap.
--- Returns true on success, false if the party is already full.
+-- Add a roster member to the active party, enforcing the party cap and rejecting a member who is
+-- already deployed. Returns true on success, false if the party is full or already holds `char`.
 function Player.addToParty(player, char)
     if #player.party >= Player.MAX_PARTY then
         return false
+    end
+    for _, member in ipairs(player.party) do
+        if member == char then return false end
     end
     player.party[#player.party + 1] = char
     return true
@@ -163,8 +167,26 @@ function Player.spendGold(player, amount)
     return true
 end
 
+-- Grant prestige and level the company to match. Returns the advancement summary from Player.syncLevels
+-- (the leveled members and their gains), which Quest.complete folds into its reward table.
 function Player.addPrestige(player, amount)
     player.prestige = player.prestige + amount
+    return Player.syncLevels(player)
+end
+
+-- Character level tracks the player's global prestige: raise every roster member to level == prestige,
+-- resolving each pending level-up through models/growth (stat gains from the member's most-used class,
+-- see docs). Idempotent -- a member already at the current prestige is left alone -- so it is safe to
+-- call on every prestige change AND on load (a freshly recruited or migrated member catches up here).
+-- Returns a summary list of the members that actually advanced, each { char, fromLevel, toLevel,
+-- class, gains }, for the post-quest advancement overlay.
+function Player.syncLevels(player)
+    local summaries = {}
+    for _, char in ipairs(player.roster or {}) do
+        local summary = Growth.resolve(char, player.prestige)
+        if summary then summaries[#summaries + 1] = summary end
+    end
+    return summaries
 end
 
 -- Reputation points with one vendor. Unknown vendors read as 0 rather than nil so
@@ -251,6 +273,10 @@ function Player.start(fresh)
     else
         Player.active = Save.read() or Player.new()
     end
+    -- Catch every roster member's level up to the current prestige. A no-op for a fresh game at
+    -- prestige 1, but a loaded save whose stored levels lag (a schema migration, a recruit granted at
+    -- higher prestige) is squared away here before anything reads the roster.
+    Player.syncLevels(Player.active)
     return Player.active
 end
 

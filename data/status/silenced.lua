@@ -9,5 +9,6 @@ return {
     description = "Silenced: mana abilities cannot be cast.",
     color = { 0.55, 0.55, 0.62 }, -- badge tint (muted grey)
     duration = 8,
+    debuff = true, -- removable by Cure
     silencesMana = true,
 }

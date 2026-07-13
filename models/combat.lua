@@ -91,6 +91,19 @@ local function manhattan(ax, ay, bx, by)
     return math.abs(ax - bx) + math.abs(ay - by)
 end
 
+-- The cardinal unit step from (ax, ay) toward (bx, by) along the DOMINANT axis (an exact diagonal
+-- breaks toward x). Returns 0, 0 when the two points coincide. The grid is 4-directional, so a
+-- "facing" derived from a caster->target vector is too. Shared by directional AoE footprints
+-- (Combat.aoeCells) and forced movement (signDominant, below, defers to it).
+local function stepToward(ax, ay, bx, by)
+    local dx, dy = bx - ax, by - ay
+    if math.abs(dx) >= math.abs(dy) then
+        if dx == 0 then return 0, 0 end
+        return (dx > 0) and 1 or -1, 0
+    end
+    return 0, (dy > 0) and 1 or -1
+end
+
 local function hasTag(tags, want)
     for _, t in ipairs(tags or {}) do
         if t == want then return true end
@@ -270,27 +283,54 @@ function Combat.abilityMinRange(ab)
 end
 
 -- Cells an area-of-effect ability centred on (tx, ty) covers, clamped to the arena. An ability's
--- optional `aoe = { radius = r, shape = "square"|"diamond" }` defines the blast footprint:
---   * "square" (default) -- every cell within Chebyshev distance r, i.e. the (2r+1)^2 block
+-- optional `aoe` defines the blast footprint. The centred shapes read only (tx, ty):
+--   * "square" (default) -- every cell within Chebyshev distance `radius`, i.e. the (2r+1)^2 block
 --                           "including the corners" (a fireball's boxy burst).
---   * "diamond"          -- every cell within Manhattan distance r (a pointed burst, no corners).
+--   * "diamond"          -- every cell within Manhattan distance `radius` (a pointed burst, no corners).
+-- The DIRECTIONAL shapes orient off the caster->target vector, so they need `unit` (the caster):
+--   * "line"             -- `length` tiles starting at (tx, ty) and running AWAY from the caster
+--                           (a bolt punching through a row -- Powershot).
+--   * "front"            -- a `width`-wide arc PERPENDICULAR to the facing, centred on (tx, ty)
+--                           (a 3x1 sweep in front -- Cleave).
 -- With no `aoe` (or radius 0) the footprint is just the target cell, so a single-target ability
--- and an AoE one share one path. The single source of truth for BOTH what a cast hits (fx.aoeUnits)
--- and the red/green footprint highlight the battle state previews, so the two can never disagree.
-function Combat.aoeCells(combat, ab, tx, ty)
+-- and an AoE one share one path; a directional shape with no `unit` (or a target on the caster)
+-- likewise falls back to the aimed cell. The single source of truth for BOTH what a cast hits
+-- (fx.aoeUnits) and the red/green footprint highlight the battle state previews, so the two can
+-- never disagree.
+function Combat.aoeCells(combat, ab, tx, ty, unit)
     local aoe = ab and ab.aoe
-    local r = (aoe and aoe.radius) or 0
-    local diamond = aoe and aoe.shape == "diamond"
     local cols = (combat.arena and combat.arena.cols) or 0
     local rows = (combat.arena and combat.arena.rows) or 0
     local cells = {}
+    local function add(x, y)
+        if x >= 1 and x <= cols and y >= 1 and y <= rows then
+            cells[#cells + 1] = { x = x, y = y }
+        end
+    end
+
+    local shape = aoe and aoe.shape
+    if shape == "line" or shape == "front" then
+        local dx, dy = 0, 0
+        if unit then dx, dy = stepToward(unit.x, unit.y, tx, ty) end
+        if dx == 0 and dy == 0 then add(tx, ty) return cells end -- no facing: just the aimed cell
+        if shape == "line" then
+            local length = (aoe and aoe.length) or 1
+            for i = 0, length - 1 do add(tx + dx * i, ty + dy * i) end
+        else -- "front": a width-wide line perpendicular to the facing, centred on the aimed cell
+            local width = (aoe and aoe.width) or 1
+            local px, py = -dy, dx -- rotate the facing 90 degrees for the perpendicular axis
+            local half = math.floor(width / 2)
+            for i = -half, half do add(tx + px * i, ty + py * i) end
+        end
+        return cells
+    end
+
+    local r = (aoe and aoe.radius) or 0
+    local diamond = shape == "diamond"
     for dx = -r, r do
         for dy = -r, r do
             if not diamond or (math.abs(dx) + math.abs(dy) <= r) then
-                local x, y = tx + dx, ty + dy
-                if x >= 1 and x <= cols and y >= 1 and y <= rows then
-                    cells[#cells + 1] = { x = x, y = y }
-                end
+                add(tx + dx, ty + dy)
             end
         end
     end
@@ -299,10 +339,11 @@ end
 
 -- Living units standing on an ability's AoE footprint centred on (tx, ty) -- everyone a cast would
 -- sweep, friend or foe. Reached through `fx.aoeUnits` so a data-file effect just iterates and hits;
--- a single-target ability (no `aoe`) yields only the occupant of the target cell, if any.
-function Combat.aoeUnits(combat, ab, tx, ty)
+-- a single-target ability (no `aoe`) yields only the occupant of the target cell, if any. `unit` is
+-- the caster, needed to orient a directional footprint (line/front); harmless for the others.
+function Combat.aoeUnits(combat, ab, tx, ty, unit)
     local out = {}
-    for _, c in ipairs(Combat.aoeCells(combat, ab, tx, ty)) do
+    for _, c in ipairs(Combat.aoeCells(combat, ab, tx, ty, unit)) do
         local u = Combat.unitAt(combat, c.x, c.y)
         if u then out[#out + 1] = u end
     end
@@ -894,7 +935,32 @@ end
 function Combat.enterTile(combat, unit, x, y)
     local trap = Trap.at(combat, x, y)
     if trap then Trap.trigger(combat, trap, unit) end
-    if unit.alive then Hazard.onEnter(combat, unit, x, y) end
+    if unit.alive then
+        Hazard.onEnter(combat, unit, x, y)
+        Combat.updateAuras(combat, unit)
+    end
+end
+
+-- Drop any "aura" status the unit is no longer standing in. An aura status carries `source` = the id
+-- of the hazard that granted it (e.g. Sanctuary's Regeneration -> "hazard_heal"); it lasts only while
+-- a live hazard of that id sits under the unit. Called from Combat.enterTile, the one chokepoint every
+-- position change routes through (a walk step, a knockback / pull, a summon appearing), so leaving a
+-- Sanctuary ends its blessing on the very beat the unit steps off -- not `regen` ticks later. A status
+-- with no `source` (a spell / potion buff) is never touched.
+function Combat.updateAuras(combat, unit)
+    local list = unit.statuses
+    if not list then return end
+    for i = #list, 1, -1 do
+        local s = list[i]
+        if s.source and not Hazard.at(combat, unit.x, unit.y, s.source) then
+            table.remove(list, i)
+            if not s.def.hideLog then
+                Combat.logEvent(combat, "status",
+                    string.format("%s's %s fades outside the %s.",
+                        unitName(unit), s.name or s.id, Hazard.defs[s.source] and Hazard.defs[s.source].name or "zone"))
+            end
+        end
+    end
 end
 
 -- The initiative a walk of terrain-weighted `cost` actually charges `unit`: the raw path cost
@@ -989,11 +1055,7 @@ Combat.COLLISION_DAMAGE = 4
 -- axis it leans on; an exact diagonal breaks toward x). The grid is 4-directional, so forced
 -- movement is too.
 local function signDominant(dx, dy)
-    if math.abs(dx) >= math.abs(dy) then
-        if dx == 0 then return 0, 0 end
-        return (dx > 0) and 1 or -1, 0
-    end
-    return 0, (dy > 0) and 1 or -1
+    return stepToward(0, 0, dx, dy)
 end
 
 -- Can `unit` be shoved onto (x, y)? Returns ok, blocker -- where a nil blocker on a failed step
@@ -1123,19 +1185,37 @@ function Combat.auraApplies(a, item)
 end
 
 -- Aggregate the adjacency auras affecting a cast of `item` from `char`'s grid: the extra tags to
--- fold into the attack, and the statuses to inflict on a damaged target. Returns (tags, statuses).
+-- fold into the attack, the statuses to inflict on a damaged target, and the numeric modifiers a
+-- neighboring charm grants the cast. Returns (tags, statuses, mods) where mods is
+-- { power, range, preserve }: `power`/`range` add to the ability's Power and reach (an Alchemic
+-- Mastery / Long-Fuse Reagent charm buffing an adjacent bomb), and `preserve` spares a consumable's
+-- stack when it is used (an Everflask). All three are additive across every applicable neighbor.
 local function adjacencyAura(char, item)
     local tags, statuses = {}, {}
+    local mods = { power = 0, range = 0, preserve = false }
     local idx = char and Character.slotIndex(char, item)
     if idx then
         for _, nb in ipairs(Character.adjacentItems(char, idx)) do
             if nb.aura and Combat.auraApplies(nb.aura, item) then
                 for _, t in ipairs(nb.aura.grantTags or {}) do tags[#tags + 1] = t end
                 if nb.aura.status then statuses[#statuses + 1] = nb.aura.status end
+                mods.power = mods.power + (nb.aura.powerBonus or 0)
+                mods.range = mods.range + (nb.aura.rangeBonus or 0)
+                if nb.aura.preserve then mods.preserve = true end
             end
         end
     end
-    return tags, statuses
+    return tags, statuses, mods
+end
+
+-- The range a neighboring charm's aura adds to a cast of `item` from `char`'s grid (a Long-Fuse
+-- Reagent lengthening an adjacent bomb's throw), or 0. Public so the range gate, the targeting
+-- highlight, the target scan, and the AI all extend reach by the same amount the cast will get --
+-- a highlight that outran the gate (or fell short of it) would read as a bug.
+function Combat.adjacencyRangeBonus(char, item)
+    if not (char and item) then return 0 end
+    local _, _, mods = adjacencyAura(char, item)
+    return mods.range
 end
 
 -- Return `opts` with `auraTags` appended to its tag list, without mutating the caller's table
@@ -1293,6 +1373,14 @@ end
 local function killUnit(combat, target)
     target.alive = false
 
+    -- A "real" fallen combatant leaves a body behind: mark it a corpse so it can be reanimated
+    -- (Revive puts the same character back on its feet) or raised (Raise Dead turns it into a zombie).
+    -- A summoned creature and a decoy leave nothing -- they were never truly there -- so they are
+    -- skipped, which also keeps a raised zombie or a dismissed wolf from itself becoming a corpse.
+    if not target.summoned and not target.decoyOf then
+        target.corpse = true
+    end
+
     -- A decoy wears its caster's name, so "Archer is defeated!" would read as the real thing dying.
     if target.decoyOf then
         unmaskDecoy(combat, target)
@@ -1356,6 +1444,12 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker)
         Status.remove(target, barrier.id)
         Combat.logEvent(combat, "status",
             string.format("%s's %s absorbs the blow.", unitName(target), barrier.name or barrier.id))
+        return 0
+    end
+    -- A standing Dodge reflex (a trait on cooldown, not a consumed status) voids a physical blow
+    -- outright. Like the barrier above it returns BEFORE the trait damage dispatch -- an evaded hit is
+    -- not a wound survived, so it grants no rage, advances no threshold phase, and provokes no counter.
+    if Trait.tryEvade(combat, target, tags) then
         return 0
     end
     local dmg = Combat.mitigatedDamage(target, base, tags)
@@ -1437,6 +1531,87 @@ function Combat.applyHeal(combat, target, amount)
     return healed
 end
 
+-- Strip every debuff from `unit` and log it (Cure). Delegates the removal to Status.cleanse -- the
+-- single rule for what counts as a debuff -- and adds the log line the spell wants. Returns the count.
+function Combat.cleanse(combat, unit)
+    local n = Status.cleanse(unit)
+    if n > 0 then
+        Combat.logEvent(combat, "status",
+            string.format("%s is cleansed of %d debuff%s.", unitName(unit), n, n == 1 and "" or "s"))
+    end
+    return n
+end
+
+-- ---------------------------------------------------------------------------
+-- Corpses (reanimation / raising)
+--
+-- A "real" unit that dies stays in combat.units flagged `corpse` (killUnit), lying on its last tile.
+-- It is not alive -- unitAt / turnOrder / aliveCount all ignore it, so a living unit may walk over it
+-- and the objectives resolve as normal -- but it is still THERE to be brought back:
+--   * Combat.reanimate -- Revive: the same character stands up again at a fraction of its health.
+--   * Combat.raiseZombie -- Raise Dead: the body is consumed and a fresh zombie takes its place.
+-- Either path clears `corpse`, so a body can only be used once.
+-- ---------------------------------------------------------------------------
+
+-- The corpse on (x, y), or nil. A tile with a LIVING unit on it has no reachable corpse (you can't
+-- work on a body someone is standing on) -- Revive's "as long as no one is on top of the tile".
+function Combat.corpseAt(combat, x, y)
+    if Combat.unitAt(combat, x, y) then return nil end
+    for _, u in ipairs(combat.units) do
+        if u.corpse and not u.alive and u.x == x and u.y == y then return u end
+    end
+    return nil
+end
+
+-- Every reachable corpse standing on the given cells (a list of { x, y }) -- what Raise Dead sweeps
+-- across its footprint. Skips a tile a living unit occupies (Combat.corpseAt's rule).
+function Combat.corpsesIn(combat, cells)
+    local out = {}
+    for _, c in ipairs(cells or {}) do
+        local corpse = Combat.corpseAt(combat, c.x, c.y)
+        if corpse then out[#out + 1] = corpse end
+    end
+    return out
+end
+
+-- Reanimate a corpse: the same character rises again on its own side at `fraction` (default 0.5) of
+-- its health ceiling, its debuffs and wounds wiped, slotted back into the turn order at a natural
+-- initiative. Refuses a tile a living unit now stands on. Returns true on success. The heart of
+-- Revive (and the revive scroll). The unit keeps its identity -- its id, its kit, its traits -- so an
+-- escorted ally brought back still counts for a protect objective.
+function Combat.reanimate(combat, corpse, fraction)
+    if not corpse or corpse.alive or not corpse.corpse then return false end
+    if Combat.unitAt(combat, corpse.x, corpse.y) then return false end
+    fraction = fraction or 0.5
+    corpse.alive = true
+    corpse.corpse = false
+    corpse.statuses = {}
+    local hp = corpse.char.stats.health
+    hp.current = math.max(1, math.floor(Combat.unreservedMax(corpse.char, "health") * fraction + 0.5))
+    -- A body raised mid-battle rejoins like a fresh summon: its natural initiative, clamped so it can't
+    -- cut ahead of the acting unit (which sits at 0). No rebase -- the caster is mid-turn.
+    corpse.initiative = math.max(0, Combat.initiative(corpse.char))
+    Combat.logEvent(combat, "heal", string.format("%s rises again!", unitName(corpse)))
+    return true
+end
+
+-- Raise a corpse as a zombie: consume the body (it can't be revived or raised again) and put a fresh
+-- `charId` creature on `caster`'s side where it lay, AI-run (yours in allegiance but not in command)
+-- and sustained by the caster. Returns the new unit (which may already be dead if its tile is deadly).
+function Combat.raiseZombie(combat, caster, corpse, charId, opts)
+    if not corpse or corpse.alive or not corpse.corpse then return nil end
+    opts = opts or {}
+    local x, y = corpse.x, corpse.y
+    corpse.corpse = false -- the body is spent, whatever becomes of the zombie
+    return Summon.spawn(combat, caster, charId, x, y, {
+        control = "ai",              -- allied but not directly controllable
+        side = caster.side,
+        duration = opts.duration,    -- zombies rot away on a timer if the caller sets one
+        power = opts.power,
+        scaling = opts.scaling,
+    })
+end
+
 -- A throwaway unit handed back by a dry run's `summon`/`copy` so an effect that keeps using the
 -- creature it just called (buffing it, moving it) works on something rather than nil. Nothing
 -- reads it back out -- it exists only to keep the replayed effect from faulting.
@@ -1468,17 +1643,20 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         end
         return e
     end
-    local auraTags, auraStatuses = adjacencyAura(unit.char, item)
+    local auraTags, auraStatuses, auraMods = adjacencyAura(unit.char, item)
+    -- Fold in a neighboring Alchemic Mastery charm's Power bonus exactly as Combat.useItem does, so
+    -- the previewed number matches the hit the player is about to land.
+    local effectivePower = ab.power and (ab.power + auraMods.power) or ab.power
     local fx = {
         user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
-        power = ab.power, -- the ability's balance scalar; effects derive heal/status magnitude from it
+        power = effectivePower, -- the ability's balance scalar; effects derive heal/status magnitude from it
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.
         -- Read-only, so the dry run may answer it truthfully.
         openTileNear = function(x, y) return Combat.openTileNear(combat, x, y) end,
-        aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty) end,
-        aoeCells = function() return Combat.aoeCells(combat, ab, tx, ty) end,
+        aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty, unit) end,
+        aoeCells = function() return Combat.aoeCells(combat, ab, tx, ty, unit) end,
         adjacentItems = function()
             local idx = Character.slotIndex(unit.char, item)
             return idx and Character.adjacentItems(unit.char, idx) or {}
@@ -1495,6 +1673,8 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         end,
         damage = function(tgt, opts)
             if not tgt then return 0 end
+            opts = opts or {}
+            if opts.power == nil then opts.power = effectivePower end
             local d = Combat.computeDamage(combat, unit, tgt, item, withAuraTags(opts, auraTags))
             local e = entryFor(tgt)
             e.damage = e.damage + d
@@ -1547,6 +1727,15 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         pull = function() return false end,
         steal = function() return nil end,
         hasten = function() return 0 end,
+        -- Board-mutating helpers are inert in a dry run; the read-only ones may answer truthfully.
+        random = function() return 1 end,
+        cleanse = function() return 0 end,
+        corpseAt = function(x, y) return Combat.corpseAt(combat, x, y) end,
+        corpsesIn = function(cells)
+            return Combat.corpsesIn(combat, cells or Combat.aoeCells(combat, ab, tx, ty, unit))
+        end,
+        reanimate = function() return false end,
+        raise = function() return previewStandIn() end,
         log = function() end,
     }
     if ab.effect then pcall(ab.effect, fx) end
@@ -1637,6 +1826,18 @@ function Combat.abilityOutput(unit, item)
         pull = function() out.pull = true; return false end,
         steal = function() out.steal = true; return nil end,
         hasten = function() return 0 end,
+        -- No board here, so the corpse/reanimation helpers report nothing; `raise` records what it
+        -- would call so the inventory tooltip can name it, like `summon` does.
+        random = function() return 1 end,
+        cleanse = function() return 0 end,
+        corpseAt = function() return nil end,
+        corpsesIn = function() return {} end,
+        reanimate = function() return false end,
+        raise = function(_, charId, opts)
+            out.summon = charId
+            out.summonDuration = opts and opts.duration
+            return previewStandIn()
+        end,
         log = function() end,
     }
     pcall(ab.effect, fx)
@@ -1648,7 +1849,7 @@ function Combat.abilityTargets(combat, unit, item)
     local ab = item.activeAbility
     if not ab then return {} end
     local out = {}
-    local range = Combat.abilityRange(combat, unit, ab)
+    local range = Combat.abilityRange(combat, unit, ab) + Combat.adjacencyRangeBonus(unit.char, item)
     local minRange = Combat.abilityMinRange(ab)
     for _, other in ipairs(combat.units) do
         local d = manhattan(unit.x, unit.y, other.x, other.y)
@@ -1658,7 +1859,12 @@ function Combat.abilityTargets(combat, unit, item)
             -- so an ally can still heal or buff someone the enemy has lost sight of.
             if ab.target == "enemy" then valid = other.side ~= unit.side and not Status.untargetable(other)
             elseif ab.target == "ally" then valid = other.side == unit.side -- includes self
-            elseif ab.target == "self" then valid = other == unit end
+            elseif ab.target == "self" then valid = other == unit
+            -- An occupiable AoE (e.g. Rain of Arrows) aims at a cell, so it can be centred right on
+            -- a foe -- surface those foes as targets so the enemy AI plans the volley like a strike.
+            -- A point placement (a trap: tile-target but no aoe/allowOccupied) stays unplannable here.
+            elseif ab.target == "tile" and ab.aoe and ab.allowOccupied then
+                valid = other.side ~= unit.side and not Status.untargetable(other) end
             -- A sight-gated ability can't reach a target it has no clear line to (terrain cover).
             if valid and ab.requiresSight
                 and not Combat.hasLineOfSight(combat, unit.x, unit.y, other.x, other.y) then
@@ -2047,6 +2253,15 @@ function Combat.itemBlockReason(unit, item)
         return { kind = "silenced", reason = "silenced", text = "Silenced -- cannot cast mana abilities" }
     end
 
+    -- Disarmed: crafted weapons are struck from the hand. A weapon -- the basic attack included, since
+    -- it routes through here as the default weapon's ability -- is refused while this lasts; the bare
+    -- `unarmed` fallback is exempt (a disarmed unit can still throw a punch), as are abilities and
+    -- potions. Disarm takes the blade, not the satchel, and never the fists -- so it can't become a
+    -- strictly-better Stun. Mirrors the silenced gate above.
+    if item.type == "weapon" and not hasTag(item.tags, "unarmed") and Status.disarmed(unit) then
+        return { kind = "disarmed", reason = "disarmed", text = "Disarmed -- cannot use weapons" }
+    end
+
     local cost = costBlock(unit, ab)
     if cost then return cost end
     if not Combat.adjacencyMet(unit.char, item) then
@@ -2113,7 +2328,7 @@ function Combat.useItem(combat, unit, item, tx, ty)
     if blocked then return false, blocked.reason end
 
     local dist = manhattan(unit.x, unit.y, tx, ty)
-    if dist > Combat.abilityRange(combat, unit, ab) then
+    if dist > Combat.abilityRange(combat, unit, ab) + Combat.adjacencyRangeBonus(unit.char, item) then
         return false, "out of range"
     end
     if dist < Combat.abilityMinRange(ab) then
@@ -2152,21 +2367,27 @@ function Combat.useItem(combat, unit, item, tx, ty)
     -- without touching this module. Results are accumulated for the caller/UI.
     -- Adjacency auras from neighboring items (e.g. a Fire Stone next to this weapon) fold extra
     -- tags into every hit and inflict their status on any target this cast damages.
-    local auraTags, auraStatuses = adjacencyAura(unit.char, item)
+    local auraTags, auraStatuses, auraMods = adjacencyAura(unit.char, item)
+    -- The cast's effective Power: the ability's own, raised by a neighboring Alchemic Mastery charm
+    -- (auraMods.power, 0 without one). A Power-less effect (a pure summon or cleanse) stays nil, so
+    -- the bonus never conjures damage out of nothing. Threaded into fx.power (for effects that read it
+    -- directly, e.g. a heal) AND into fx.damage's default opts.power below -- Combat.dealDamage bases
+    -- its hit on opts.power/ab.power, not on fx.power, so a damage bomb needs it fed in there too.
+    local effectivePower = ab.power and (ab.power + auraMods.power) or ab.power
     local result = { damageDealt = 0, healed = 0 }
     local fx = {
         user = unit, target = target, item = item, combat = combat,
         tx = tx, ty = ty, -- the targeted cell, for tile-targeted abilities (e.g. placing a trap)
-        power = ab.power, -- the ability's balance scalar; effects derive heal/status magnitude from it
+        power = effectivePower, -- effects derive heal/status/restore magnitude from it
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.
         -- Read-only, so the dry run may answer it truthfully.
         openTileNear = function(x, y) return Combat.openTileNear(combat, x, y) end,
-        aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty) end,
+        aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty, unit) end,
         -- The cells this ability's AoE footprint covers (reads `ab.aoe`); an effect iterates them to
         -- paint the ground -- e.g. Fireball dropping a fire hazard on every blasted tile.
-        aoeCells = function() return Combat.aoeCells(combat, ab, tx, ty) end,
+        aoeCells = function() return Combat.aoeCells(combat, ab, tx, ty, unit) end,
         -- Items adjacent to this one in the caster's 3x3 grid (diagonals included).
         adjacentItems = function()
             local idx = Character.slotIndex(unit.char, item)
@@ -2186,6 +2407,11 @@ function Combat.useItem(combat, unit, item, tx, ty)
         end,
         damage = function(tgt, opts)
             if not tgt then return 0 end
+            -- Default the hit's Power to the cast's effective Power (which folds in the Alchemic
+            -- Mastery bonus); an effect that passes its own `opts.power` still overrides. Normally
+            -- effectivePower == ab.power, so this is a no-op for every cast with no charm beside it.
+            opts = opts or {}
+            if opts.power == nil then opts.power = effectivePower end
             local d = Combat.dealDamage(combat, unit, tgt, item, withAuraTags(opts, auraTags))
             result.damageDealt = result.damageDealt + d
             if d > 0 then
@@ -2241,7 +2467,7 @@ function Combat.useItem(combat, unit, item, tx, ty)
         -- Reveal invisible units and tear down `illusion` walls across a set of cells (Dispel
         -- Illusions). Defaults to the ability's own AoE footprint around the aimed tile.
         dispel = function(cells)
-            return Combat.dispel(combat, cells or Combat.aoeCells(combat, ab, tx, ty))
+            return Combat.dispel(combat, cells or Combat.aoeCells(combat, ab, tx, ty, unit))
         end,
         -- Summon a character onto the field, sustained by the caster (models/summon.lua). Whatever
         -- comes back holds two things for as long as it lives: the ability's reservation (ab.reserve),
@@ -2306,6 +2532,25 @@ function Combat.useItem(combat, unit, item, tx, ty)
             tgt.initiative = tgt.initiative * (1 - (fraction or 0.5))
             return tgt.initiative
         end,
+        -- A random integer in 1..n, drawn from the model's indirected source (so a spec can stub it).
+        -- What a scattershot ability rolls to pick its tiles (Meteor Storm), and any future dice.
+        random = function(n) return Combat.random(n or 1) end,
+        -- Strip every debuff from a unit (Cure). Returns the number removed.
+        cleanse = function(tgt)
+            if not tgt then return 0 end
+            return Combat.cleanse(combat, tgt)
+        end,
+        -- The reachable corpse on a tile, or nil (Revive picks the body it stands over).
+        corpseAt = function(x, y) return Combat.corpseAt(combat, x, y) end,
+        -- Every corpse under a set of cells, defaulting to this ability's own AoE footprint (Raise Dead
+        -- sweeping its blast for bodies).
+        corpsesIn = function(cells)
+            return Combat.corpsesIn(combat, cells or Combat.aoeCells(combat, ab, tx, ty, unit))
+        end,
+        -- Reanimate a corpse in place at `fraction` health (Revive). Returns true on success.
+        reanimate = function(corpse, fraction) return Combat.reanimate(combat, corpse, fraction) end,
+        -- Consume a corpse and raise a `charId` zombie on the caster's side where it lay (Raise Dead).
+        raise = function(corpse, charId, opts) return Combat.raiseZombie(combat, unit, corpse, charId, opts) end,
         -- Write a line straight into the combat log, for an ability whose entry must not read as
         -- what it actually is (a Decoy reports a move, not a cast -- see `ab.silent`). Hands back
         -- the entry, so an effect can keep a handle on a line it may later have to correct.
@@ -2329,7 +2574,7 @@ function Combat.useItem(combat, unit, item, tx, ty)
     -- also lays down rain clears the fire it fell on. Uses the full cast tag set (item + ability).
     local castTags = collectTags(item, nil)
     if hasTag(castTags, "water") then
-        local cells = ab.aoe and Combat.aoeCells(combat, ab, tx, ty) or { { x = tx, y = ty } }
+        local cells = ab.aoe and Combat.aoeCells(combat, ab, tx, ty, unit) or { { x = tx, y = ty } }
         Hazard.douse(combat, cells, castTags)
     end
 
@@ -2338,6 +2583,14 @@ function Combat.useItem(combat, unit, item, tx, ty)
     -- counter-cast is not billed to the initiative of the unit that provoked it.
     Trait.onCast(combat, unit, { item = item, ability = ab, tx = tx, ty = ty })
 
+    -- Tally a class-tagged action toward the actor's growth (models/growth.lua). A weapon strike, a
+    -- spell, or a thrown consumable all land here with the item's `class`. Only a real player roster
+    -- member counts: `control == "player"` excludes AI escortees, and `not summoned` excludes summons
+    -- (both use transient char instances that would never persist the tally anyway).
+    if item.class and Combat.isPlayerControlled(unit) and not unit.summoned then
+        Character.recordUse(unit.char, item.class)
+    end
+
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed.
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
 
@@ -2345,7 +2598,7 @@ function Combat.useItem(combat, unit, item, tx, ty)
     -- slot STAYS in the inventory as an empty stack -- Combat.isDepleted then blocks activation
     -- until it's restocked (Character.addItem merges a fresh stack back in). Non-stacked items
     -- carry quantity 1, so this leaves an empty, greyed-out slot after their single use.
-    if ab.consumesItem then
+    if ab.consumesItem and not auraMods.preserve then
         item.quantity = math.max(0, (item.quantity or 1) - 1)
     end
 
@@ -2499,6 +2752,7 @@ function Combat.planEnemyAction(combat, unit)
         for _, item in ipairs(items) do
             local ab = item.activeAbility
             local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
+                + Combat.adjacencyRangeBonus(unit.char, item)
             local minRange = Combat.abilityMinRange(ab)
             for _, p in ipairs(combat.units) do
                 if isFoe(p)

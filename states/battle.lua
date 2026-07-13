@@ -164,6 +164,7 @@ local function computeRange(unit, item)
         return
     end
     local range = Combat.abilityRange(battle.combat, unit, ab)
+        + Combat.adjacencyRangeBonus(unit.char, item)
     local minRange = Combat.abilityMinRange(ab)
     local requiresSight = ab and ab.requiresSight
     local cells = {}
@@ -207,7 +208,7 @@ local function aoeFootprint(item, cx, cy)
         if c.x == cx and c.y == cy then onTarget = true break end
     end
     if not onTarget then return nil end
-    return Combat.aoeCells(battle.combat, ab, cx, cy)
+    return Combat.aoeCells(battle.combat, ab, cx, cy, battle.current)
 end
 
 -- The default-attack (threat) reach: where the unit could strike this turn with its default

@@ -5,7 +5,7 @@ return {
     y = 340,
     w = 270,
     h = 140,
-    panel = "vendor",
+    panel = "shop",
     vendor = "undercroft", -- rogue class
     unlockPrestige = 3,
 }

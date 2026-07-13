@@ -62,6 +62,11 @@ function Status.instantiate(id, opts)
         name = def.name,
         remaining = opts.duration or def.duration or 0,
         magnitude = opts.magnitude or def.magnitude,
+        -- The hazard that granted this status, if any (e.g. "hazard_heal"). An "aura" status lasts
+        -- only while its unit stands on a live hazard of this id: Combat.updateAuras drops it on the
+        -- beat the unit leaves the zone. nil for a status applied by anything else (a spell, a
+        -- potion), which just counts down normally.
+        source = opts.source,
         def = def,
     }
 end
@@ -86,6 +91,23 @@ function Status.remove(unit, id)
     for i = #list, 1, -1 do
         if list[i].id == id then table.remove(list, i) end
     end
+end
+
+-- Strip every DEBUFF from `unit` (a status whose def sets `debuff = true`: Burn, Wet, Stun, Root,
+-- Silenced, Frozen, Mired). Buffs (Regeneration, Aegis, a barrier) are left untouched. Returns the
+-- number removed. Backs Cure (data/items/ability/ability_cure.lua) through Combat.cleanse; an aura
+-- debuff simply re-applies next entry if the unit is still standing in what caused it.
+function Status.cleanse(unit)
+    local list = unit.statuses
+    if not list then return 0 end
+    local removed = 0
+    for i = #list, 1, -1 do
+        if list[i].def.debuff then
+            table.remove(list, i)
+            removed = removed + 1
+        end
+    end
+    return removed
 end
 
 -- Sum the flat `statBonus[name]` contributed by every active status on `unit` (0 if none). Lets a
@@ -152,6 +174,17 @@ end
 function Status.silenced(unit)
     for _, s in ipairs(unit.statuses or {}) do
         if s.def.silencesMana then return true end
+    end
+    return false
+end
+
+-- Is this unit disarmed -- unable to use a crafted weapon? True while any active status sets
+-- `disablesWeapon`. Read by Combat.itemBlockReason, the single gate for a refused weapon, exactly as
+-- Status.silenced gates a refused mana cast. The bare `unarmed` fallback is exempt there, so a
+-- disarmed unit can still punch.
+function Status.disarmed(unit)
+    for _, s in ipairs(unit.statuses or {}) do
+        if s.def.disablesWeapon then return true end
     end
     return false
 end

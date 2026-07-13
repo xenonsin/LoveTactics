@@ -8,6 +8,7 @@ return {
     color = { 0.95, 0.85, 0.35 }, -- badge tint (gold)
     magnitude = 5,                -- ticks added to the target's initiative
     duration = 5,                 -- ticks the badge lingers
+    debuff = true,                -- removable by Cure
     onApply = function(ctx)
         ctx.unit.initiative = ctx.unit.initiative + (ctx.magnitude or 0)
     end,

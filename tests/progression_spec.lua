@@ -12,6 +12,7 @@ local Save = require("models.save")
 local Character = require("models.character")
 local Combat = require("models.combat")
 local Arena = require("models.arena")
+local Growth = require("models.growth")
 
 -- Run `fn` with Save pointed at a scratch file, cleaning up afterwards either way.
 local function withScratchSave(fn)
@@ -577,6 +578,78 @@ return {
                     assert(item.id ~= "item_that_was_deleted", "the unknown item should be dropped")
                 end
                 assert(#loaded.roster == #p.roster, "the unknown character should be dropped")
+            end)
+        end,
+    },
+
+    -- --------------------------------------------------- character progression (levels/growth)
+    {
+        name = "syncLevels catches every roster member up to prestige and reports who advanced",
+        fn = function()
+            local p = Player.new() -- roster at level 1, prestige 1
+            p.prestige = 4
+
+            -- A recruit added mid-campaign starts at level 1 and must be caught up too.
+            local recruit = Character.instantiate("mage")
+            p.roster[#p.roster + 1] = recruit
+            assert(recruit.level == 1, "a fresh recruit starts at level 1")
+
+            local summary = Player.syncLevels(p)
+            assert(#summary == #p.roster, "every roster member advanced from level 1")
+            for _, char in ipairs(p.roster) do
+                assert(char.level == 4, char.name .. " should be caught up to prestige 4")
+            end
+
+            -- Summary entries carry the shape the advancement overlay renders.
+            local entry = summary[1]
+            assert(entry.char and entry.fromLevel == 1 and entry.toLevel == 4, "summary spans the climb")
+            assert(entry.class and next(entry.gains), "summary names the growth class and its gains")
+
+            -- Already caught up: a second sync reports nothing.
+            assert(#Player.syncLevels(p) == 0, "a re-sync at the same prestige advances no one")
+        end,
+    },
+    {
+        name = "Quest.complete folds the roster's advancement into its reward table",
+        fn = function()
+            local p = playerAt(1)
+            local quest
+            for _, q in ipairs(Quest.available(p)) do
+                if q.id == "arena_debut" then quest = q end
+            end
+            assert(quest and quest.rewardPrestige > 0, "arena_debut should grant prestige")
+
+            local reward = Quest.complete(p, quest)
+            assert(reward.advancement, "the reward carries an advancement list")
+            assert(#reward.advancement == #p.roster, "prestige leveled the whole company")
+        end,
+    },
+    {
+        name = "a save round trip preserves level, class usage, and re-bakes accumulated growth",
+        fn = function()
+            withScratchSave(function()
+                local p = Player.new()
+                local knight = p.roster[1]
+                knight.classUse = { mage = 12 }
+                p.prestige = 5
+                Player.syncLevels(p) -- knight grows 1->5 as a mage; stats baked
+
+                local grownMagic = knight.stats.magicDamage
+                local grownHealthMax = knight.stats.health.max
+                assert(knight.level == 5, "the knight reached level 5")
+                assert(grownMagic > Character.instantiate("knight").stats.magicDamage,
+                    "the mage growth actually raised magic")
+
+                Save.write(p)
+                local loaded = Save.read()
+                assert(loaded, "the save should read back")
+
+                local loadedKnight = loaded.roster[1]
+                assert(loadedKnight.level == 5, "level should survive")
+                assert(loadedKnight.classUse.mage == 12, "the class tally should survive")
+                assert(loadedKnight.stats.magicDamage == grownMagic, "growth should re-bake onto magic")
+                assert(loadedKnight.stats.health.max == grownHealthMax, "growth should re-bake onto the HP pool")
+                assert(Growth.dominantClass(loadedKnight) == "mage", "the loaded knight still grows as a mage")
             end)
         end,
     },

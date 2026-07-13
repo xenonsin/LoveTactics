@@ -104,6 +104,38 @@ return {
         end,
     },
     {
+        name = "sanctuary Regeneration ends the moment its unit leaves the hallowed ground",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, {})
+            local knight = c.units[1]
+            -- A 3x1 strip of sanctuary; the knight starts on the middle tile.
+            Hazard.place(c, 3, 4, "hazard_heal")
+            Hazard.place(c, 4, 4, "hazard_heal")
+            assert(Status.has(knight, "regen"), "standing in the sanctuary grants Regeneration")
+
+            -- Sidestep to the adjacent sanctuary tile: still hallowed, so the blessing holds.
+            openTurn(c, knight)
+            assert(Combat.moveUnit(c, knight, 3, 4), "the knight steps to the neighboring sanctuary tile")
+            assert(Status.has(knight, "regen"), "moving within the zone keeps Regeneration")
+
+            -- Step off onto ordinary ground: the blessing ends on the very beat it leaves.
+            openTurn(c, knight)
+            assert(Combat.moveUnit(c, knight, 2, 4), "the knight steps off the hallowed ground")
+            assert(not Status.has(knight, "regen"), "leaving the sanctuary ends Regeneration at once")
+        end,
+    },
+    {
+        name = "a source-less Regeneration (a spell/potion buff) is not an aura and survives moving",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, {})
+            local knight = c.units[1]
+            Status.apply(c, knight, "regen") -- no `source`: a plain buff, not tied to any tile
+            openTurn(c, knight)
+            assert(Combat.moveUnit(c, knight, 3, 4), "the knight walks across open ground")
+            assert(Status.has(knight, "regen"), "a source-less Regeneration lingers, unaffected by leaving")
+        end,
+    },
+    {
         name = "a sanctuary blesses only its caster's side; a foe standing in it gains nothing",
         fn = function()
             -- The priest consecrates its own tile: the 3x3 blast also covers the bandit at (3,4).

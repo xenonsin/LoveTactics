@@ -31,13 +31,17 @@ function InventoryGrid.new(opts)
     self.x = opts.x or 0
     self.y = opts.y or 0
     self.char = opts.char
+    -- Cell size is configurable so a cramped host (the Party screen's narrow member column) can
+    -- shrink the grid; defaults keep every existing caller unchanged.
+    self.slot = opts.slot or SLOT
+    self.gap = opts.gap or GAP
     self.cursor = 1       -- keyboard/gamepad cursor cell (1..9)
     self.picked = nil     -- the cell currently picked up, or nil
     self.hover = nil      -- mouse-hover cell, or nil
     self.nameFont = love.graphics.newFont(11)
     self.bigFont = love.graphics.newFont(22)
-    self.gridW = COLS * SLOT + (COLS - 1) * GAP
-    self.gridH = ROWS * SLOT + (ROWS - 1) * GAP
+    self.gridW = COLS * self.slot + (COLS - 1) * self.gap
+    self.gridH = ROWS * self.slot + (ROWS - 1) * self.gap
     return self
 end
 
@@ -50,7 +54,7 @@ end
 function InventoryGrid:slotRect(index)
     local col = (index - 1) % COLS
     local row = math.floor((index - 1) / COLS)
-    return self.x + col * (SLOT + GAP), self.y + row * (SLOT + GAP), SLOT, SLOT
+    return self.x + col * (self.slot + self.gap), self.y + row * (self.slot + self.gap), self.slot, self.slot
 end
 
 function InventoryGrid:indexAt(px, py)

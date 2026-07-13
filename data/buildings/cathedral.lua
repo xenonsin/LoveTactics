@@ -5,7 +5,7 @@ return {
     y = 150,
     w = 270,
     h = 140,
-    panel = "vendor",
+    panel = "shop",
     vendor = "cathedral", -- priest class
     unlockPrestige = 1,
 }

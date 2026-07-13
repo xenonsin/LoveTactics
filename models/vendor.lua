@@ -99,6 +99,13 @@ function Vendor.stock(vendorId, rank)
     return stock
 end
 
+-- What a vendor pays to buy `item` back: half its shelf price, rounded down. An item with no
+-- `price` was never for sale and so can't be sold (returns 0) -- the Party screen refuses those
+-- rather than giving them away for nothing. One place so the panel and its test agree on the rate.
+function Vendor.sellValue(item)
+    return item.price and math.floor(item.price * 0.5) or 0
+end
+
 -- ---------------------------------------------------------------------------
 -- Ability upgrades
 --

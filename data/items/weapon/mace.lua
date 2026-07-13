@@ -7,7 +7,7 @@ return {
     description = "A crushing blow that drives the target back two spaces. A collision hurts everyone in it.",
     sprite = "assets/items/mace.png",
     type = "weapon",
-    tags = { "blunt", "impact", "physical" },
+    tags = { "blunt", "impact", "physical", "melee" },
     class = "fighter",
     price = 190,
     repRank = 2,

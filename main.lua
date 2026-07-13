@@ -1,5 +1,6 @@
 local State = require("states")
 local Scale = require("scale")
+local InputMode = require("input_mode")
 
 function love.load(args)
     -- Headless test entry: `& "E:\LOVE\lovec.exe" . test`
@@ -27,6 +28,7 @@ end
 -- any deltas) into the logical space the states and widgets are authored in.
 local function forwardMouse(name)
     love[name] = function(x, y, a, b, c)
+        InputMode.set("mouse")
         local state = State.current
         if state and state[name] then
             local gx, gy = Scale.toGame(x, y)
@@ -50,6 +52,7 @@ end
 
 -- mousemoved also carries (dx, dy) deltas in real pixels; scale them too.
 love.mousemoved = function(x, y, dx, dy, istouch)
+    InputMode.set("mouse")
     local state = State.current
     if state and state.mousemoved then
         local gx, gy = Scale.toGame(x, y)
@@ -60,6 +63,7 @@ end
 -- F11 toggles fullscreen (desktop mode) so the game fills a 1920x1080 display;
 -- everything else routes to the current state.
 love.keypressed = function(key, ...)
+    InputMode.set("keyboard")
     if key == "f11" then
         local full = love.window.getFullscreen()
         love.window.setFullscreen(not full, "desktop")
@@ -72,12 +76,29 @@ love.keypressed = function(key, ...)
     end
 end
 
+-- The wheel is a mouse gesture; a pad button/stick means the player picked up the gamepad. Each
+-- updates the shared InputMode so on-screen prompts show the matching glyphs (see input_mode.lua).
+love.wheelmoved = function(x, y)
+    InputMode.set("mouse")
+    local state = State.current
+    if state and state.wheelmoved then return state.wheelmoved(x, y) end
+end
+
+love.gamepadpressed = function(joystick, button)
+    InputMode.set("gamepad")
+    local state = State.current
+    if state and state.gamepadpressed then return state.gamepadpressed(joystick, button) end
+end
+
+love.gamepadaxis = function(joystick, axis, value)
+    InputMode.axis(value) -- switches to gamepad only past the deadzone (ignores stick drift)
+    local state = State.current
+    if state and state.gamepadaxis then return state.gamepadaxis(joystick, axis, value) end
+end
+
 forward("update")
 forwardMouse("mousepressed")
 forwardMouse("mousereleased")
 forward("keyreleased")
-forward("wheelmoved")
 forward("textinput")
-forward("gamepadpressed")
 forward("gamepadreleased")
-forward("gamepadaxis")

@@ -414,6 +414,21 @@ end
 function BattleMap:drawUnits()
     if not self.combat then return end
     local s = self.size
+    -- Corpses first, so a living unit standing on a fallen one always draws on top. A corpse is drawn
+    -- as a faint, desaturated token with no side ring -- present enough to mark the tile for a Revive
+    -- or Raise Dead, subtle enough not to clutter the board. A body a living unit now stands over is
+    -- skipped entirely (it's hidden and unreachable anyway).
+    for _, u in ipairs(self.combat.units) do
+        if u.corpse and not u.alive and not Combat.unitAt(self.combat, u.x, u.y) then
+            local wx, wy = self:cellToPixel(u.x, u.y)
+            love.graphics.setColor(0.30, 0.30, 0.34, 0.45)
+            love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.24)
+            love.graphics.setColor(0.12, 0.12, 0.14, 0.45)
+            love.graphics.setLineWidth(2)
+            love.graphics.circle("line", wx + s / 2, wy + s / 2, s * 0.24)
+            love.graphics.setLineWidth(1)
+        end
+    end
     for _, u in ipairs(self.combat.units) do
         if u.alive then
             local wx, wy = self:cellToPixel(u.x, u.y)

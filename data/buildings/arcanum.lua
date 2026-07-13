@@ -5,7 +5,7 @@ return {
     y = 340,
     w = 270,
     h = 140,
-    panel = "vendor",
+    panel = "shop",
     vendor = "arcanum", -- mage class
     unlockPrestige = 3,
 }

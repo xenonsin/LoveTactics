@@ -123,7 +123,10 @@ function Hazard.place(combat, x, y, id, opts)
 
     local tiles = combat.arena and combat.arena.tiles
     local cell = tiles and tiles[y] and tiles[y][x]
-    if cell and not cell.walkable then return nil end
+    -- Off the map (no cell) or on impassable terrain: nothing to stand on, so no hazard takes. The
+    -- off-grid guard lets an effect paint a rough footprint (a splash around a shoved foe) without
+    -- clamping every cell itself -- out-of-bounds tiles are simply skipped.
+    if not (cell and cell.walkable) then return nil end
 
     combat.hazards = combat.hazards or {}
 

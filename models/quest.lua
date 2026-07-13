@@ -125,7 +125,9 @@ function Quest.complete(player, quest)
     local rep = quest.rewardRep or 0
 
     Player.addGold(player, gold)
-    Player.addPrestige(player, prestige)
+    -- Prestige raises every roster member's level; the returned summary (who advanced, and their stat
+    -- gains from their most-used class) rides out in the reward table for the advancement overlay.
+    local advancement = Player.addPrestige(player, prestige)
 
     local rankBefore
     if quest.sponsor and rep > 0 then
@@ -163,6 +165,7 @@ function Quest.complete(player, quest)
         rep = rep,
         received = received, -- item instances, for the reward panel to name
         materials = materials, -- { id = count } granted, for the reward panel to name
+        advancement = advancement, -- roster members that leveled up, for the advancement overlay
         sponsor = quest.sponsor,
         -- True when this quest pushed the player up a rank -- the moment new stock appears
         -- on the sponsor's shelf, and the thing worth announcing.

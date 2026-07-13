@@ -5,7 +5,7 @@ return {
     y = 150,
     w = 270,
     h = 140,
-    panel = "vendor",
+    panel = "shop",
     vendor = "colosseum", -- fighter class; see data/vendors/colosseum.lua
     unlockPrestige = 1,
 }

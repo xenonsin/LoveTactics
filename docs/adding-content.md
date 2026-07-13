@@ -22,6 +22,25 @@ Health and mana carry across the battles **within** a quest, so a run is a war o
 Returning to the hub calls `Player.restore`, which refills the whole roster — attrition lasts a
 quest, not a campaign. That is why `models/save.lua` stores no current resource values.
 
+## Character growth
+
+Characters have no individual XP. Every roster member's **level tracks the player's global
+prestige** (`Player.syncLevels`, run on each prestige gain and on load), so swapping party members
+carries no grind penalty. What makes two same-level characters differ is *how you played them*:
+each character tallies which class's items it casts (`Combat.useItem` → `Character.recordUse`), and
+on every level-up it gains the stats of its **most-used class** (`models/growth.lua`). A knight you
+keep casting Fireball with grows into a battlemage.
+
+- **Growth tables** live in `data/growth/<class>.lua` — one flat table of per-level stat gains per
+  `Item.CLASSES` entry (`health`/`mana`/`stamina` gains raise the pool's `max`). Gains are
+  deterministic (no RNG) and `movement` is deliberately never grown.
+- A character blueprint may set an innate **`class`** (`data/characters/knight.lua` → `"knight"`),
+  used as the growth class before it has cast anything and as the tie-break; a class-less blueprint
+  falls back to `Growth.NEUTRAL_CLASS`.
+- Growth is baked onto `char.stats` and the running total kept in `char.growth`; the save stores
+  `level`/`classUse`/`growth` and re-bakes on load (`Save.VERSION` 3). The post-quest **Company
+  Advancement** overlay (`ui/panels/advancement.lua`) shows each member's level-up.
+
 ## Add a quest
 
 Create `data/quests/<id>.lua`:
@@ -70,7 +89,8 @@ return {
 }
 ```
 
-Then point a building at it with `panel = "vendor", vendor = "<id>"`.
+Then point a building at it with `panel = "party", vendor = "<id>"` (the Party screen opens in store
+mode when a `vendor` is named).
 
 **Stock is derived, not authored.** A vendor sells every item whose `class` matches its own and
 which has a `price`. To put an item on a shelf, give it both:
@@ -97,7 +117,7 @@ return {
     order = 5,             -- sort + keyboard/gamepad nav order
     x = 980, y = 340, w = 270, h = 140,  -- clickable hotspot in the 1280x720 logical space
     panel = nil,           -- module name under ui/panels/, or nil for the placeholder
-    vendor = nil,          -- vendor id, for shop buildings (panel = "vendor")
+    vendor = nil,          -- vendor id, for shop buildings (panel = "party", store mode)
     unlockPrestige = 3,    -- locked (dimmed, non-clickable) until prestige >= 3
 }
 ```
@@ -453,8 +473,9 @@ each step, and needs a clear line of sight. See `data/items/weapon/mace.lua`,
 ## The stash, and stealing into it
 
 `player.stash` is an unbounded list of every item nobody is carrying (`Player.addToStash` /
-`Player.takeFromStash`); seed it from `data/player.lua`'s `startingStash`. The Loadout panel shows
-it beside the 3×3 grid (`ui/stash_list.lua`) and moves items either way.
+`Player.takeFromStash`); seed it from `data/player.lua`'s `startingStash`. The Party screen
+(`ui/panels/party.lua`) shows it as a grid (`ui/pool_grid.lua`) beside each member's 3×3 grid and
+moves items either way — or, at a vendor, swaps that pool for the shop's Store.
 
 `fx.steal(fx.target)` lifts one item off a unit. Two blueprint flags shape what a thief finds:
 

@@ -1,6 +1,8 @@
 return {
     name = "Priest",
     sprite = "assets/chars/priest.png",
+    -- Innate growth class: the fallback/tie-break for the level-up growth system (models/growth.lua).
+    class = "priest",
     stats = {
         health = 70, mana = 70, stamina = 40, -- resource stats
         staminaRegen = 1, -- stamina recovered per elapsed tick (a flat stat, not a resource)

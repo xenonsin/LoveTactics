@@ -8,7 +8,7 @@ return {
     description = "A great hornbow that reaches across the field. Cannot fire at point-blank range.",
     sprite = "assets/items/hornbow_of_the_hunt.png",
     type = "weapon",
-    tags = { "bow", "pierce", "physical" },
+    tags = { "bow", "pierce", "physical", "ranged" },
     class = "hunter",
     price = 800,
     repRank = 4,

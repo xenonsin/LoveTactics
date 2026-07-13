@@ -6,7 +6,7 @@ return {
     description = "Bite an adjacent foe.",
     sprite = "assets/items/fangs.png",
     type = "weapon",
-    tags = { "bite", "physical" },
+    tags = { "bite", "physical", "melee" },
     noSteal = true, -- a pickpocket cannot lift the teeth out of a wolf's head
     activeAbility = {
         name = "Bite",

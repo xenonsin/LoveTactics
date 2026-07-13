@@ -15,7 +15,7 @@ return {
     description = "A bare-handed strike at an adjacent foe.",
     sprite = "assets/items/unarmed.png", -- never rendered (hidden from the grid); ok if missing
     type = "weapon",
-    tags = { "unarmed", "physical" },
+    tags = { "unarmed", "physical", "melee" },
     activeAbility = {
         name = "Strike",
         target = "enemy",

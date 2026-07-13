@@ -24,7 +24,8 @@ Save.FILE = "save.lua"
 -- Bump when the *schema* changes shape (not when game content changes). A save whose
 -- version doesn't match is discarded rather than half-read into a broken player.
 -- v2: item upgrade levels + the materials the forge spends.
-Save.VERSION = 2
+-- v3: per-character progression -- level, class-usage tally, and accumulated stat growth.
+Save.VERSION = 3
 
 -- ---------------------------------------------------------------------------
 -- Serialization
@@ -97,7 +98,26 @@ local function snapshotCharacter(char)
         local item = char.inventory[cell]
         if item then inventory[cell] = snapshotItem(item) end
     end
-    return { id = char.id, inventory = inventory }
+
+    local snap = { id = char.id, inventory = inventory }
+
+    -- Progression (models/growth.lua). Level defaults back to 1 on load, so omit it while unleveled to
+    -- keep an early-game save diffing clean; the same for an empty tally / no accumulated growth.
+    if char.level and char.level > 1 then snap.level = char.level end
+
+    local classUse = {}
+    for class, count in pairs(char.classUse or {}) do
+        if count and count > 0 then classUse[class] = count end
+    end
+    if next(classUse) then snap.classUse = classUse end
+
+    local growth = {}
+    for stat, amount in pairs(char.growth or {}) do
+        if amount and amount ~= 0 then growth[stat] = amount end
+    end
+    if next(growth) then snap.growth = growth end
+
+    return snap
 end
 
 function Save.snapshot(player)
@@ -154,7 +174,13 @@ local function known(defs, id)
 end
 
 local function restoreCharacter(snap)
-    local char = Character.instantiate(snap.id)
+    -- Pass the saved progression through instantiate, which re-bakes the accumulated growth onto the
+    -- base stats (max for resource pools) so the character loads at its full leveled power.
+    local char = Character.instantiate(snap.id, {
+        level = snap.level,
+        classUse = snap.classUse,
+        growth = snap.growth,
+    })
 
     -- instantiate() seeds the grid from the blueprint's startingItems; the save owns the
     -- grid, so clear it and lay the saved items back into their exact cells.

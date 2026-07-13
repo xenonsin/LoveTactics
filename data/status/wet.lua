@@ -9,5 +9,6 @@ return {
     description = "Soaked: takes extra damage from lightning attacks.",
     color = { 0.40, 0.62, 0.92 }, -- badge tint (rain blue)
     duration = 3,
+    debuff = true, -- removable by Cure
     vulnerable = { lightning = 6 }, -- bonus damage taken from lightning-tagged hits
 }

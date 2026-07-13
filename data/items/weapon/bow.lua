@@ -3,7 +3,7 @@ return {
     description = "Fires an arrow at a foe two to three tiles away -- too far for point-blank shots.",
     sprite = "assets/items/bow.png",
     type = "weapon",
-    tags = { "bow", "pierce", "physical" },
+    tags = { "bow", "pierce", "physical", "ranged" },
     class = "hunter",
     price = 80,
     repRank = 1,

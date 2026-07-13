@@ -8,7 +8,7 @@ return {
     description = "A slender blade that has changed hands more often than it has been cleaned.",
     sprite = "assets/items/kingsblood_dagger.png",
     type = "weapon",
-    tags = { "dagger", "pierce", "physical" },
+    tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
     price = 800,
     repRank = 4,

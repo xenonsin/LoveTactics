@@ -8,7 +8,7 @@ return {
     description = "A duelist's sword. When struck in melee, it answers on its own.",
     sprite = "assets/items/riposte_blade.png",
     type = "weapon",
-    tags = { "sword", "slash", "physical" },
+    tags = { "sword", "slash", "physical", "melee" },
     class = "fighter",
     price = 220,
     repRank = 2,

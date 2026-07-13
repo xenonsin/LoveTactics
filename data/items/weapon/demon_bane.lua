@@ -10,7 +10,7 @@ return {
     description = "A consecrated sword. Its blows are holy -- and the damned feel them tenfold.",
     sprite = "assets/items/demon_bane.png",
     type = "weapon",
-    tags = { "sword", "slash", "physical", "holy" },
+    tags = { "sword", "slash", "physical", "holy", "melee" },
     class = "priest",
     price = 260,
     repRank = 3,

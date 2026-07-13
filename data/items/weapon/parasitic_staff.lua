@@ -3,7 +3,7 @@ return {
     description = "A hungry staff that siphons life into arcane power -- restores mana on hit.",
     sprite = "assets/items/parasitic_staff.png",
     type = "weapon",
-    tags = { "staff", "magical" }, -- magical: routes through magicDamage / magicDefense
+    tags = { "staff", "magical", "melee" }, -- magical: routes through magicDamage / magicDefense; strikes at melee range
     activeAbility = {
         name = "Siphon",
         target = "enemy",

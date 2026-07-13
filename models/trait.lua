@@ -35,6 +35,34 @@ local Trait = {}
 
 Trait.defs = Registry.load("data/traits", "data.traits")
 
+local function hasTag(tags, want)
+    for _, t in ipairs(tags or {}) do
+        if t == want then return true end
+    end
+    return false
+end
+
+-- Does a standing evade reflex (the Dodge trait) let `unit` slip a would-be PHYSICAL hit? Mirrors
+-- Status.barrierAgainst in shape and role: Combat.dealFlatDamage consults it BEFORE mitigation and,
+-- when it fires, deals 0. Unlike a barrier (a consumed status) this is a passive gated by a cooldown
+-- keyed on the trait's id -- the first physical blow is evaded, then the reflex recharges for
+-- `magnitude` ticks before it can void another, so a dodger can't stand permanently untouchable. Only a
+-- physical (non-magical) hit is evaded; a spell passes through. Mutates (starts the cooldown, logs), so
+-- it must run on a REAL hit only -- never the damage preview, which reads mitigatedDamage instead.
+function Trait.tryEvade(combat, unit, tags)
+    if not unit or not unit.traits or hasTag(tags, "magical") then return false end
+    local Combat = require("models.combat")
+    for _, t in ipairs(unit.traits) do
+        if t.def.evadesPhysical and not Combat.onCooldown(unit, t.id) then
+            Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
+            Combat.logEvent(combat, "action",
+                string.format("%s dodges the blow!", (unit.char and unit.char.name) or "Unit"))
+            return true
+        end
+    end
+    return false
+end
+
 -- A trait hook that deals damage re-enters Combat.dealFlatDamage, which dispatches onDamaged again.
 -- Two guards, because they catch different shapes of the same bug: `unit._reacting` stops a trait
 -- retriggering *itself* (a retaliation that wounds its own bearer), and the depth cap stops two

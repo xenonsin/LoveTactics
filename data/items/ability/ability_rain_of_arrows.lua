@@ -13,13 +13,17 @@ return {
     repRank = 3,
     activeAbility = {
         name = "Rain of Arrows",
-        target = "enemy",
+        -- A saturating volley is aimed at a CELL, not a single foe: it can be centred on any
+        -- walkable tile in range -- empty ground, an enemy, or one of your own (allowOccupied) --
+        -- and the blast then sweeps everyone standing in the 3x3, friend and foe alike.
+        target = "tile",
+        allowOccupied = true,
         range = 4,
         requiresSight = true, -- arrows need a clear arc to the target cell
         speed = 5,
         cost = { stat = "stamina", amount = 10 },
         power = 5, -- per-target damage = power + the caster's Damage, minus Defense
-        aoe = { radius = 1, shape = "square" }, -- 3x3 burst around the target (corners included)
+        aoe = { radius = 1, shape = "square" }, -- 3x3 burst around the aimed cell (corners included)
         requiresAdjacent = { type = "weapon", tag = "bow" }, -- a bow must sit adjacent in the grid
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

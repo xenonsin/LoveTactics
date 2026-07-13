@@ -1,0 +1,30 @@
+-- Blizzard: a howling storm of ice over a 3x3 area. Everything caught in it -- friend and foe alike,
+-- so mind your own line -- takes ice damage and is left Frozen (data/status/freeze.lua): delayed, and
+-- brittle to crush and fire. The area counterpart to Ice Bolt; a ground-target cast (target = "tile",
+-- allowOccupied) so you may center it on a clustered enemy.
+return {
+    name = "Blizzard",
+    description = "A storm of ice over an area: damages and Freezes everyone within.",
+    sprite = "assets/items/ability_blizzard.png",
+    type = "ability",
+    tags = { "ice", "magical" },
+    class = "mage",
+    price = 380,
+    repRank = 3,
+    activeAbility = {
+        name = "Blizzard",
+        target = "tile",
+        allowOccupied = true, -- an area cast may center on an occupied tile
+        range = 3,
+        speed = 5,
+        cost = { stat = "mana", amount = 16 },
+        power = 6, -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
+        aoe = { radius = 1, shape = "square" }, -- 3x3 storm, corners included
+        effect = function(fx)
+            for _, u in ipairs(fx.aoeUnits()) do
+                fx.damage(u)
+                fx.applyStatus(u, "freeze", { magnitude = fx.power })
+            end
+        end,
+    },
+}

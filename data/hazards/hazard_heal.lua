@@ -12,6 +12,8 @@ return {
     disposition = "friendly", -- a hurt unit of the caster's side will step onto it
     onEnter = function(ctx)
         if not ctx.isAlly(ctx.unit) then return end
-        ctx.applyStatus(ctx.unit, "regen")
+        -- Tag the Regeneration with its source so it ends the moment the unit steps off the hallowed
+        -- ground (Combat.updateAuras), rather than lingering its full duration off the zone.
+        ctx.applyStatus(ctx.unit, "regen", { source = "hazard_heal" })
     end,
 }
