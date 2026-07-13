@@ -389,7 +389,12 @@ function CombatPanel:drawEntry(entry, ey, num)
                     if s.stat == res.key then delta = delta - (s.amount or 0) end
                 end
             end
-            drawResourceBar(rx, by, rw, 7, stat.current, stat.max, res.color, delta, lethal,
+            -- Draw against the EFFECTIVE ceiling (base max plus any carried resource-passive), so a
+            -- Toughness/Endurance/Attunement bearer's fuller pool shows on the bar. unreservedMax
+            -- already folds in char.maxBonus; adding the reserved amount back recovers the full max.
+            local effMax = Combat.unreservedMax(unit.char, res.key)
+                + Combat.reservedAmount(unit.char, res.key)
+            drawResourceBar(rx, by, rw, 7, stat.current, effMax, res.color, delta, lethal,
                 Combat.reservedAmount(unit.char, res.key))
             by = by + 10
         end

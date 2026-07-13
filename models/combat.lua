@@ -246,6 +246,20 @@ function Combat.moveBudget(unit)
     return flatStat(unit, "movement")
 end
 
+-- Extra Power a strike gets when it is thrown with the wielder's bare fists: the aggregated
+-- `unarmedBonus.power` from passive "fist" items carried in the grid (Iron Fist), plus
+-- `unarmedBonus.drunkPower` while the unit is Drunk (Drunken Fist). 0 for any crafted weapon --
+-- an identity check against the hidden unarmed instance keeps the bonus off real blades. The
+-- companion range/extra-hit halves live in Combat.abilityRange and data/items/weapon/unarmed.lua.
+local function unarmedPowerBonus(user, item)
+    if not (user and item and item == user.char.unarmed) then return 0 end
+    local ub = user.unarmedBonus
+    if not ub then return 0 end
+    local bonus = ub.power or 0
+    if ub.drunkPower and Status.has(user, "drunk") then bonus = bonus + ub.drunkPower end
+    return bonus
+end
+
 -- Positional ("field") bonuses a unit gains from WHERE it stands, as an aggregated bag of flat
 -- modifiers, e.g. { range = 1 }. Sources: the terrain tile it occupies (Arena tile `bonus`,
 -- carried onto the runtime cell) and any placed field objects on that tile (combat.fieldObjects,
@@ -272,6 +286,12 @@ end
 -- targeting, the threat/range highlights, and the enemy AI's planning alike.
 function Combat.abilityRange(combat, unit, ab, x, y)
     local base = (ab and ab.range) or 1
+    -- A "fist" item (Shadow Fist) that lengthens the bare-handed strike: add its range only when
+    -- `ab` is this unit's own hidden unarmed ability, so a crafted weapon's reach is untouched.
+    if unit and unit.unarmedBonus and unit.unarmedBonus.range
+        and unit.char.unarmed and ab == unit.char.unarmed.activeAbility then
+        base = base + unit.unarmedBonus.range
+    end
     return base + (Combat.fieldBonus(combat, x or unit.x, y or unit.y).range or 0)
 end
 
@@ -360,6 +380,13 @@ end
 -- (Combat.addUnit) gets the same treatment as one placed at setup.
 local function applyUnitPassives(unit)
     unit.bonus, unit.resist = {}, {}
+    -- Aggregated bare-fist buffs (Iron/Shadow/Swift/Drunken Fist) and resource-ceiling raises
+    -- (Toughness/Endurance/Attunement) from the grid. `unit.unarmedBonus` is read by the unarmed
+    -- damage/range/hit paths; `char.maxBonus` is folded into Combat.unreservedMax (the one cap).
+    -- Both are rebuilt from scratch here every setup, so nothing compounds battle to battle and the
+    -- shared character instance's base stats are never mutated.
+    unit.unarmedBonus = { power = 0, range = 0, hits = 0, drunkPower = 0 }
+    local maxBonus = {}
     for _, item in ipairs(Character.eachItem(unit.char)) do
         for stat, amount in pairs(item.bonus or {}) do
             unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
@@ -367,7 +394,14 @@ local function applyUnitPassives(unit)
         for tag, amount in pairs(item.resist or {}) do
             unit.resist[tag] = (unit.resist[tag] or 0) + amount
         end
+        for stat, amount in pairs(item.unarmedBonus or {}) do
+            unit.unarmedBonus[stat] = (unit.unarmedBonus[stat] or 0) + amount
+        end
+        for stat, amount in pairs(item.maxBonus or {}) do
+            maxBonus[stat] = (maxBonus[stat] or 0) + amount
+        end
     end
+    unit.char.maxBonus = maxBonus
 end
 
 function Combat.applyPassives(combat)
@@ -470,6 +504,18 @@ function Combat.new(arena, partyUnits, enemyUnits)
     Combat.rebase(combat)
     combat.clock = 0
     Combat.applyPassives(combat)
+
+    -- Passives (above) established each unit's resource ceilings, including any Endurance/Attunement
+    -- raise. Stamina refills to its full effective ceiling for the party here -- addSide topped it to
+    -- the BASE max before maxBonus existed, so a fresh battle's stamina pool includes the bonus.
+    -- Mana is deliberately left where it stood (it persists between battles); the extra mana ceiling
+    -- is headroom to recover into, exactly like the extra health ceiling.
+    for _, unit in ipairs(combat.units) do
+        if unit.side == "party" then
+            local st = unit.char.stats.stamina
+            if type(st) == "table" then st.current = Combat.unreservedMax(unit.char, "stamina") end
+        end
+    end
 
     -- Authored traps: arena.traps is a list of { id, x, y, side } (side defaults to "enemy",
     -- i.e. hidden from the player until detected). In-combat placement adds more via fx.placeTrap.
@@ -1135,6 +1181,61 @@ function Combat.pull(combat, source, target)
     return true, moved
 end
 
+-- Set `unit` down on (x, y) in a blink, setting off whatever the tile holds (a trap, a hazard) --
+-- the self-relocation a Leaping Crash makes before it bursts. No move cost and no line check: a
+-- teleport, not a walk. Returns true once placed (false for a dead/nil unit).
+function Combat.teleportUnit(combat, unit, x, y)
+    if not (unit and unit.alive) then return false end
+    unit.x, unit.y = x, y
+    Combat.logEvent(combat, "move",
+        string.format("%s leaps to (%d, %d).", unitName(unit), x, y))
+    Combat.enterTile(combat, unit, x, y)
+    return true
+end
+
+-- A Charge: `user` pins the foe directly in front and drives it `distance` tiles straight ahead,
+-- moving in lockstep behind it (the target leads, the charger follows into the tile it vacates). The
+-- direction is fixed at the outset. The run stops the moment the lane ahead is barred by impassable
+-- terrain, a wall, or the board edge. Any OTHER unit caught in the lane is shoved one tile to the
+-- side and takes minor impact damage; if it cannot be cleared, the charge grinds to a halt against
+-- it. `target` must start orthogonally adjacent (the "pin"). Returns the number of tiles advanced.
+function Combat.charge(combat, user, target, distance)
+    if not (user and user.alive and target and target.alive) then return 0 end
+    if manhattan(user.x, user.y, target.x, target.y) ~= 1 then return 0 end -- must be pinned in front
+    local dx, dy = signDominant(target.x - user.x, target.y - user.y)
+    if dx == 0 and dy == 0 then return 0 end
+
+    local moved = 0
+    for _ = 1, (distance or 1) do
+        if not (user.alive and target.alive) then break end
+        local fx_, fy_ = target.x + dx, target.y + dy
+        local ok, blocker = canShoveInto(combat, fx_, fy_)
+        if not ok then
+            if not blocker then break end -- impassable terrain / wall / edge halts the charge
+            -- A bystander in the lane: shove it aside (either perpendicular) and bloody it.
+            local px, py = -dy, dx
+            local pushed = shoveStep(combat, blocker, px, py) or shoveStep(combat, blocker, -px, -py)
+            Combat.logEvent(combat, "damage",
+                string.format("%s is trampled by the charge.", unitName(blocker)))
+            Combat.dealFlatDamage(combat, blocker, Combat.COLLISION_DAMAGE, { "physical", "impact" }, "the charge")
+            ok = canShoveInto(combat, fx_, fy_) -- the lane may now be clear (pushed aside, or slain)
+            if not ok then break end
+        end
+        local oldTx, oldTy = target.x, target.y
+        target.x, target.y = fx_, fy_
+        Combat.enterTile(combat, target, fx_, fy_)
+        if user.alive then
+            user.x, user.y = oldTx, oldTy
+            Combat.enterTile(combat, user, oldTx, oldTy)
+        end
+        moved = moved + 1
+        Combat.logEvent(combat, "move",
+            string.format("%s charges, driving %s to (%d, %d).", unitName(user), unitName(target), fx_, fy_))
+        if not target.alive then break end
+    end
+    return moved
+end
+
 -- ---------------------------------------------------------------------------
 -- Item actions + damage/heal helpers
 -- ---------------------------------------------------------------------------
@@ -1192,7 +1293,7 @@ end
 -- stack when it is used (an Everflask). All three are additive across every applicable neighbor.
 local function adjacencyAura(char, item)
     local tags, statuses = {}, {}
-    local mods = { power = 0, range = 0, preserve = false }
+    local mods = { power = 0, range = 0, preserve = false, lifesteal = 0 }
     local idx = char and Character.slotIndex(char, item)
     if idx then
         for _, nb in ipairs(Character.adjacentItems(char, idx)) do
@@ -1201,6 +1302,7 @@ local function adjacencyAura(char, item)
                 if nb.aura.status then statuses[#statuses + 1] = nb.aura.status end
                 mods.power = mods.power + (nb.aura.powerBonus or 0)
                 mods.range = mods.range + (nb.aura.rangeBonus or 0)
+                mods.lifesteal = mods.lifesteal + (nb.aura.lifesteal or 0) -- Vampiric Strike: heal a share of damage
                 if nb.aura.preserve then mods.preserve = true end
             end
         end
@@ -1297,13 +1399,20 @@ end
 -- the matching defense stat (magical tags route to magicDefense) and any tag `resist`, floored at
 -- 1. No mutation or logging -- shared by Combat.dealFlatDamage (which then applies it) and the
 -- damage-preview tooltip (Combat.computeDamage / Combat.previewAbility).
-function Combat.mitigatedDamage(target, base, tags)
+function Combat.mitigatedDamage(target, base, tags, opts)
     tags = tags or {}
     local magical = hasTag(tags, "magical")
     -- A barrier of the incoming school swallows the hit whole: report 0 so the damage preview reads
     -- the negation. Combat.dealFlatDamage makes the same check and is the one that CONSUMES the
     -- barrier -- this read never mutates, so a hovered target never spends someone's ward.
     if Status.barrierAgainst(target, magical) then return 0 end
+    -- Raw (armor-piercing) damage skips defense and tag resists entirely -- a Penetrating Strike
+    -- that lands its full Power on the flesh. Barriers and vulnerabilities still apply (a ward is
+    -- not armor). Floors at 1 like any hit.
+    if opts and opts.raw then
+        local vuln = Status.vulnerability(target, tags)
+        return math.max(1, math.floor(base + vuln + 0.5))
+    end
     local defStat = magical and "magicDefense" or "defense"
     local defense = flatStat(target, defStat)
     local resist = 0
@@ -1429,12 +1538,12 @@ function Combat.tryRedirect(combat, target, base, tags)
     return nil
 end
 
-function Combat.dealFlatDamage(combat, target, base, tags, source, attacker)
+function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opts)
     -- An adjacent guardian (Oathward, Martyr's Vow) may take the blow in the target's place. The
     -- redirected hit re-enters here on the guardian, so its own armor, barrier and traits all apply.
     local guardian = Combat.tryRedirect(combat, target, base, tags)
     if guardian then
-        return Combat.dealFlatDamage(combat, guardian, base, tags, source, attacker)
+        return Combat.dealFlatDamage(combat, guardian, base, tags, source, attacker, opts)
     end
     -- A barrier of the incoming school (physical/magical, the same switch mitigation reads) negates
     -- the blow outright: consume that one ward, deal nothing, and return BEFORE the trait dispatch --
@@ -1452,7 +1561,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker)
     if Trait.tryEvade(combat, target, tags) then
         return 0
     end
-    local dmg = Combat.mitigatedDamage(target, base, tags)
+    local dmg = Combat.mitigatedDamage(target, base, tags, opts)
     local hp = target.char.stats.health
     hp.current = hp.current - dmg
     if source then
@@ -1461,9 +1570,25 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker)
     else
         Combat.logEvent(combat, "damage", string.format("%s takes %d damage.", unitName(target), dmg))
     end
+    -- A berserk window (Fury's `preventsDeath` status) holds the bearer up at 1 HP through a blow
+    -- that would fell it -- but never a `fragile` shape (a decoy/doppelganger is unmade by any hit).
+    if hp.current <= 0 and not target.fragile and Status.preventsDeath(target) then
+        hp.current = 1
+        Combat.logEvent(combat, "action",
+            string.format("%s refuses to fall!", unitName(target)))
+        Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker })
+        return dmg
+    end
     -- A `fragile` unit (a doppelganger, a decoy) dies to ANY hit, however light. Damage floors at 1
     -- in mitigatedDamage, so reaching here at all is fatal for one.
     if hp.current <= 0 or target.fragile then
+        -- A once-per-battle Second Wind trait may catch a would-be-lethal blow and stand the bearer
+        -- back up at half health, exactly like a barrier voids a hit -- but only a "real" unit
+        -- (never a fragile shape, which the check above already excluded from the death path).
+        if not target.fragile and Trait.trySurvive(combat, target) then
+            Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker })
+            return dmg
+        end
         hp.current = 0
         killUnit(combat, target)
     else
@@ -1486,10 +1611,14 @@ function Combat.dealDamage(combat, user, target, item, opts)
     -- Additive: the ability's Power plus the attacker's attack stat (opts.power overrides the
     -- declared Power for a one-off hit). Mitigation then subtracts the target's defense + resists.
     local power = opts.power or (ab and ab.power) or 0
-    local base = power + flatStat(user, atkStat)
+    local base = power + flatStat(user, atkStat) + unarmedPowerBonus(user, item)
     -- `user` rides along as the attacker so a reaction trait (a counter) knows who struck, and how
     -- far away they stood. A flat source (a trap, a burn) passes no attacker and provokes no counter.
-    return Combat.dealFlatDamage(combat, target, base, tags, nil, user)
+    local dealt = Combat.dealFlatDamage(combat, target, base, tags, nil, user, opts)
+    -- Let the attacker's statuses record what they just did (Fury banks damage dealt to heal from
+    -- later). Fired here, where the attacker is known, only for a survived-or-not real hit.
+    Status.onDealDamage(combat, user, dealt)
+    return dealt
 end
 
 -- Pure: the post-mitigation damage `user` striking `target` with `item` (and `opts`, e.g.
@@ -1502,8 +1631,8 @@ function Combat.computeDamage(combat, user, target, item, opts)
     local atkStat = magical and "magicDamage" or "damage"
     local ab = item and item.activeAbility
     local power = opts.power or (ab and ab.power) or 0
-    local base = power + flatStat(user, atkStat)
-    return Combat.mitigatedDamage(target, base, tags)
+    local base = power + flatStat(user, atkStat) + unarmedPowerBonus(user, item)
+    return Combat.mitigatedDamage(target, base, tags, opts)
 end
 
 -- Pure: the damage `unit` striking a trap with `weapon` would deal -- the weapon's attack stat
@@ -1682,6 +1811,11 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
                 for _, st in ipairs(auraStatuses) do
                     e.statuses[#e.statuses + 1] = { id = st.id, def = Status.defs[st.id], opts = st.opts }
                 end
+                -- A neighboring Vampiric Strike charm heals the caster for a share of the hit -- show
+                -- it on the caster's own bar so the previewed heal matches the live cast.
+                if auraMods.lifesteal > 0 then
+                    entryFor(unit).heal = entryFor(unit).heal + math.floor(d * auraMods.lifesteal)
+                end
             end
             return d
         end,
@@ -1725,6 +1859,8 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         copyOf = function() return previewStandIn() end,
         knockback = function() return 0, false end,
         pull = function() return false end,
+        teleportUser = function() return false end,
+        charge = function() return 0 end,
         steal = function() return nil end,
         hasten = function() return 0 end,
         -- Board-mutating helpers are inert in a dry run; the read-only ones may answer truthfully.
@@ -1824,6 +1960,8 @@ function Combat.abilityOutput(unit, item)
         end,
         knockback = function(_, distance) out.knockback = distance or 1; return 0, false end,
         pull = function() out.pull = true; return false end,
+        teleportUser = function() return false end,
+        charge = function(_, distance) out.charge = distance or 1; return 0 end,
         steal = function() out.steal = true; return nil end,
         hasten = function() return 0 end,
         -- No board here, so the corpse/reanimation helpers report nothing; `raise` records what it
@@ -2041,6 +2179,10 @@ end
 function Combat.unreservedMax(char, stat)
     local res = char.stats[stat]
     local max = (type(res) == "table") and res.max or (res or 0)
+    -- A carried resource-passive (Toughness/Endurance/Attunement) raises the ceiling without touching
+    -- the base `max`. `char.maxBonus` is rebuilt from the grid every setup (applyUnitPassives), so it
+    -- never compounds; it is nil outside a battle, where these items have no effect anyway.
+    max = max + ((char.maxBonus and char.maxBonus[stat]) or 0)
     return math.max(0, max - Combat.reservedAmount(char, stat))
 end
 
@@ -2418,6 +2560,11 @@ function Combat.useItem(combat, unit, item, tx, ty)
                 for _, st in ipairs(auraStatuses) do
                     Status.apply(combat, tgt, st.id, st.opts)
                 end
+                -- A neighboring Vampiric Strike charm makes this weapon drink: the caster heals a
+                -- share of the damage it just dealt.
+                if auraMods.lifesteal > 0 then
+                    result.healed = result.healed + Combat.applyHeal(combat, unit, math.floor(d * auraMods.lifesteal))
+                end
             end
             return d
         end,
@@ -2519,6 +2666,14 @@ function Combat.useItem(combat, unit, item, tx, ty)
         pull = function(tgt)
             if not tgt then return false end
             return Combat.pull(combat, unit, tgt)
+        end,
+        -- Teleport the CASTER onto a tile, springing whatever it lands on (Leaping Crash's jump).
+        teleportUser = function(x, y) return Combat.teleportUnit(combat, unit, x, y) end,
+        -- Pin the target in front and drive it (and the caster behind it) `distance` tiles ahead,
+        -- trampling anyone in the lane (Charge).
+        charge = function(tgt, distance)
+            if not tgt then return 0 end
+            return Combat.charge(combat, unit, tgt, distance)
         end,
         -- Lift a random item off a unit (Combat.steal picks it; a Decoy volunteers itself).
         steal = function(tgt)
@@ -2702,6 +2857,48 @@ function Combat.planEnemyAction(combat, unit)
     -- it isn't chased, attacked, or approached. (A decoy, however, is a perfectly ordinary foe.)
     local function isFoe(other)
         return other.alive and other.side ~= unit.side and not Status.untargetable(other)
+    end
+
+    -- Taunt overrides everything: a taunted unit must go for the taunter with its default weapon and
+    -- nothing else. Strike it if it is already in reach; otherwise close to a tile that can hit it and
+    -- swing; otherwise shamble toward it. The taunter is a foe (opposite side) by construction.
+    local taunt = Status.get(unit, "taunt")
+    if taunt and taunt.taunter and taunt.taunter.alive and taunt.taunter.side ~= unit.side then
+        local tt = taunt.taunter
+        local weapon = Combat.defaultWeapon(unit.char)
+        if weapon then
+            local ab = weapon.activeAbility
+            for _, t in ipairs(Combat.abilityTargets(combat, unit, weapon)) do
+                if t.x == tt.x and t.y == tt.y then
+                    return { item = weapon, tx = tt.x, ty = tt.y }
+                end
+            end
+            local minRange = Combat.abilityMinRange(ab)
+            local best
+            for _, node in pairs(Combat.reachable(combat, unit)) do
+                local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
+                    + Combat.adjacencyRangeBonus(unit.char, weapon)
+                local d = manhattan(node.x, node.y, tt.x, tt.y)
+                if d <= range and d >= minRange
+                    and (not (ab and ab.requiresSight) or Combat.hasLineOfSight(combat, node.x, node.y, tt.x, tt.y))
+                    and (not best or node.steps < best.steps) then
+                    best = { x = node.x, y = node.y, steps = node.steps }
+                end
+            end
+            if best then return { move = { x = best.x, y = best.y }, item = weapon, tx = tt.x, ty = tt.y } end
+        end
+        -- Out of reach even after moving: step as close to the taunter as the turn allows.
+        local dest
+        for _, node in pairs(Combat.reachable(combat, unit)) do
+            local d = manhattan(node.x, node.y, tt.x, tt.y)
+            if not dest or d < dest.dist or (d == dest.dist and node.steps < dest.steps) then
+                dest = { x = node.x, y = node.y, dist = d, steps = node.steps }
+            end
+        end
+        if dest and dest.dist < manhattan(unit.x, unit.y, tt.x, tt.y) then
+            return { move = { x = dest.x, y = dest.y } }
+        end
+        return { wait = true }
     end
 
     -- Nearest living party unit (the foe we path toward / attack).

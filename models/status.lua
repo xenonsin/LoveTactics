@@ -169,6 +169,16 @@ function Status.barrierAgainst(unit, magical)
     return nil
 end
 
+-- Does any active status keep this unit on its feet through a blow that would kill it? True while
+-- any active status sets `preventsDeath` (Fury's berserk window). Read by Combat.dealFlatDamage,
+-- which floors the survivor at 1 HP instead of dropping it. Mirrors Status.silenced in shape.
+function Status.preventsDeath(unit)
+    for _, s in ipairs(unit.statuses or {}) do
+        if s.def.preventsDeath then return true end
+    end
+    return false
+end
+
 -- Is this unit silenced -- unable to spend mana on an ability? True while any active status sets
 -- `silencesMana`. Read by Combat.itemBlockReason, the single gate for a refused mana cast.
 function Status.silenced(unit)
@@ -259,6 +269,23 @@ end
 
 function Status.onTurnEnd(combat, unit)
     runTurnHook(combat, unit, "onTurnEnd")
+end
+
+-- The bearer just DEALT `amount` post-mitigation damage to someone. Fired from Combat.dealDamage
+-- (where the attacker is known), so a status can record what its bearer does while it is active --
+-- the general "accumulate state, resolve on expiry" mechanism (Fury banks damage dealt, then heals
+-- a share of it in onExpire). The hook receives the same ctx as the others, plus `ctx.amount`.
+-- Iterates a snapshot so a hook that mutates the status list can't corrupt the walk.
+function Status.onDealDamage(combat, unit, amount)
+    local snapshot = {}
+    for _, s in ipairs(unit.statuses or {}) do snapshot[#snapshot + 1] = s end
+    for _, s in ipairs(snapshot) do
+        if s.def.onDealDamage then
+            local ctx = ctxFor(combat, unit, s)
+            ctx.amount = amount
+            s.def.onDealDamage(ctx)
+        end
+    end
 end
 
 -- Does any active status forbid this unit from moving this turn (root)?

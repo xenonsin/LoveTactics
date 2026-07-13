@@ -130,6 +130,8 @@ function Item.instantiate(id, quantity, level)
         aura = deepCopy(def.aura),             -- adjacency: grants tags/statuses to neighboring casts
         bonus = deepCopy(def.bonus),           -- armor: flat stat bonuses folded in at setup
         resist = deepCopy(def.resist),         -- armor: tag -> flat damage reduction
+        unarmedBonus = deepCopy(def.unarmedBonus), -- "fist" charms: buff the bare-handed strike
+        maxBonus = deepCopy(def.maxBonus),     -- resource passives: raise a max health/stamina/mana ceiling
         waitBehavior = deepCopy(def.waitBehavior), -- swaps this holder's Wait -> Focus / Defend
         moveBehavior = deepCopy(def.moveBehavior), -- swaps this holder's walk -> teleport (Blink)
         upgrade = deepCopy(def.upgrade),       -- per-level stat gain at the forge (nil = a default is derived)

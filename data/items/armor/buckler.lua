@@ -6,6 +6,7 @@ return {
     description = "A light shield. Replaces Wait with Defend: brace for a burst of physical defense.",
     sprite = "assets/items/buckler.png",
     type = "armor",
+    tags = { "shield" }, -- a Shield Bash item beside it in the grid can bash with it
     class = "knight",
     price = 220,
     repRank = 2,

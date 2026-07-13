@@ -10,6 +10,7 @@ return {
     description = "A tower shield bearing the names of the forsworn. Replaces Wait with Defend.",
     sprite = "assets/items/oathkeeper_shield.png",
     type = "armor",
+    tags = { "shield" }, -- a Shield Bash item beside it in the grid can bash with it
     class = "knight",
     price = 800,
     repRank = 4,

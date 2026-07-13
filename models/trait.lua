@@ -63,6 +63,28 @@ function Trait.tryEvade(combat, unit, tags)
     return false
 end
 
+-- Does a once-per-battle Second Wind reflex (a `revivesOnLethal` trait) catch a blow that would drop
+-- `unit`, standing it back up at half its (unreserved) max health? Mirrors Trait.tryEvade in shape:
+-- Combat.dealFlatDamage consults it at the moment a hit reaches 0 HP and, if it fires, keeps the unit
+-- alive and skips the kill. The trait's own `stacks` latch spends the one charge, so it saves the
+-- bearer exactly once a battle. Mutates (restores HP, latches, logs), so it must run on a REAL lethal
+-- hit only -- never the damage preview, which never reaches the death path.
+function Trait.trySurvive(combat, unit)
+    if not unit or not unit.traits then return false end
+    local Combat = require("models.combat")
+    for _, t in ipairs(unit.traits) do
+        if t.def.revivesOnLethal and t.stacks == 0 then
+            t.stacks = 1
+            local hp = unit.char.stats.health
+            hp.current = math.max(1, math.floor(Combat.unreservedMax(unit.char, "health") * 0.5 + 0.5))
+            Combat.logEvent(combat, "action",
+                string.format("%s catches a second wind and rises!", (unit.char and unit.char.name) or "Unit"))
+            return true
+        end
+    end
+    return false
+end
+
 -- A trait hook that deals damage re-enters Combat.dealFlatDamage, which dispatches onDamaged again.
 -- Two guards, because they catch different shapes of the same bug: `unit._reacting` stops a trait
 -- retriggering *itself* (a retaliation that wounds its own bearer), and the depth cap stops two
