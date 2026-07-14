@@ -22,6 +22,11 @@ end
 
 local function unit(charOrId, x, y)
     local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
+    -- Strip the innate signature relic (see tests/innate_spec.lua): the mage relic's mana ceiling
+    -- would otherwise raise the pool these reservation fixtures assert exact values against.
+    for i = 1, Character.MAX_INVENTORY do
+        if char.inventory[i] and char.inventory[i].bound then char.inventory[i] = nil end
+    end
     return { char = char, x = x, y = y }
 end
 

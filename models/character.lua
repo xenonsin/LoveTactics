@@ -18,6 +18,22 @@ Character.MAX_INVENTORY = 9
 -- to size or scan it -- iterate 1..MAX_INVENTORY (or use Character.eachItem) instead.
 Character.COLS, Character.ROWS = 3, 3
 
+-- A blueprint's `startingItems` is a POSITIONAL 3x3 grid (row-major, matching the grid the player
+-- sees): cell i holds startingItems[i]. An entry is an item id string, a { id, count } stack (for a
+-- consumable), or false/nil for an empty cell. A designer arranges the loadout by cell -- including
+-- the character's bound signature relic, which is just an item marked `bound` sitting in whatever cell
+-- (conventionally the center, cell 5) they place it. There is no reserved slot: the lock lives on the
+-- item (Item.isBound), not the cell, so the same technique works for any item in any cell.
+local function layoutId(entry)
+    if type(entry) == "string" then return entry end
+    if type(entry) == "table" then return entry.id or entry[1] end
+    return nil
+end
+local function layoutCount(entry)
+    if type(entry) == "table" then return entry.n or entry[2] end
+    return nil
+end
+
 -- The fallback unarmed weapon id, attached to every instance as `char.unarmed` (a hidden
 -- weapon that never sits in `inventory`). A blueprint may override it with an `unarmed`
 -- field naming a different item (e.g. a beast's natural bite). See data/items/unarmed.lua.
@@ -143,6 +159,39 @@ function Character.removeItem(char, item)
     return false
 end
 
+-- Reconcile the BOUND items in `char`'s blueprint loadout into a LOADED character's grid. A bound item
+-- (a signature relic) is nailed to the cell the blueprint authored it in -- it can never be moved -- so
+-- on load we make sure each one is present in exactly that cell. A current save already has it there
+-- (at its upgraded level, which is preserved); a save that predates the item gets it seeded. Anything a
+-- stale save left in a bound cell is displaced to the first free cell. Idempotent. Generalizes to any
+-- number of bound items in any cells, not just one center relic.
+function Character.ensureBoundItems(char)
+    local def = Character.defs[char.id]
+    if not (def and def.startingItems) then return end
+    for cell = 1, Character.MAX_INVENTORY do
+        local id = layoutId(def.startingItems[cell])
+        if id and Item.defs[id] and Item.defs[id].bound then
+            local current = char.inventory[cell]
+            if not (current and current.id == id) then
+                -- Recover the relic from wherever a stale save left it (preserving its level), else mint
+                -- a base one; move any non-relic occupant of the cell aside; then seat the relic.
+                local relic
+                for i = 1, Character.MAX_INVENTORY do
+                    local it = char.inventory[i]
+                    if it and it.id == id then relic = it; char.inventory[i] = nil; break end
+                end
+                relic = relic or Item.instantiate(id)
+                if char.inventory[cell] then
+                    local occupant = char.inventory[cell]
+                    char.inventory[cell] = nil
+                    Character.addItem(char, occupant)
+                end
+                char.inventory[cell] = relic
+            end
+        end
+    end
+end
+
 -- Add a class-usage cast to a character's running tally. Fired from Combat.useItem whenever a party
 -- member resolves an action with a class-tagged item (a spell, a weapon strike, a thrown consumable).
 -- The most-used class drives stat growth on level-up (see models/growth.lua).
@@ -196,17 +245,22 @@ function Character.instantiate(id, progress)
         classUse = (progress and progress.classUse) or {},
         growth = (progress and progress.growth) or {},
         inventory = {},
-        -- Innate combat reactions (models/trait.lua). A boss blueprint's `traits` reach its unit
-        -- through here; enemies instantiate exactly as party members do, so this is all the wiring
-        -- a general's rule needs.
-        traits = def.traits,
         -- Hidden fallback weapon (never in inventory, never shown in the item grid). Sourced
         -- from the blueprint's `unarmed` id or the generic default.
         unarmed = Item.instantiate(def.unarmed or Character.DEFAULT_UNARMED),
     }
 
-    for _, itemId in ipairs(def.startingItems or {}) do
-        Character.addItem(char, Item.instantiate(itemId))
+    -- Starting loadout, authored as a positional 3x3 grid: cell i holds startingItems[i] (an item id,
+    -- a { id, count } stack, or false/nil for empty). Placed by cell, not merged -- the designer's
+    -- layout is exactly what the character starts with. A character's innate reaction is no longer a
+    -- property here; it rides on a bound signature item placed in the grid like any other (its trait
+    -- reaches the unit via models/trait.lua, its lock via Item.isBound).
+    local layout = def.startingItems or {}
+    for cell = 1, Character.MAX_INVENTORY do
+        local id = layoutId(layout[cell])
+        if id then
+            char.inventory[cell] = Item.instantiate(id, layoutCount(layout[cell]))
+        end
     end
 
     return char

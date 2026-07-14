@@ -16,6 +16,7 @@
 --   grid:keypressed(key); grid:gamepadpressed(joystick, button); grid:cancelPickup()
 
 local Character = require("models.character")
+local Item = require("models.item")
 local AdjacencyLinks = require("ui.adjacency_links")
 
 local InventoryGrid = {}
@@ -24,6 +25,19 @@ InventoryGrid.__index = InventoryGrid
 local SLOT = 92
 local GAP = 12
 local COLS, ROWS = Character.COLS, Character.ROWS
+
+-- A small gold padlock centered at (x, y), badging a bound cell (a signature relic that can't be
+-- moved). Drawn top-left, opposite the top-right default-weapon star, so the two never overlap.
+local function drawLock(x, y)
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.rectangle("fill", x - 7, y - 7, 14, 15, 3, 3) -- backing so it reads over any icon
+    love.graphics.setColor(0.72, 0.58, 0.22)                    -- shackle
+    love.graphics.setLineWidth(2)
+    love.graphics.arc("line", "open", x, y - 1, 4, math.pi, 2 * math.pi)
+    love.graphics.setColor(0.98, 0.82, 0.30)                    -- body
+    love.graphics.rectangle("fill", x - 5, y - 1, 10, 7, 2, 2)
+    love.graphics.setLineWidth(1)
+end
 
 -- Vertices of a 5-point star inscribed in radius `r` about (cx, cy), point-up. Used for the
 -- "default weapon" badge (gold/filled when pinned, faint outline when merely pinnable).
@@ -114,12 +128,15 @@ end
 
 -- Pick up (first activation on a non-empty cell), or place/swap (second activation): exchange the
 -- picked cell's contents with cell `i` -- either side may be empty, so this covers plain moves too.
+-- A bound item (a signature relic, Item.isBound) is nailed to its cell: it can't be picked up, and no
+-- other item can be swapped into its cell, so it never moves.
 function InventoryGrid:activate(i)
     if not (self.char and i) then return end
     local inv = self.char.inventory
     if self.picked == nil then
-        if inv[i] ~= nil then self.picked = i end
+        if inv[i] ~= nil and not Item.isBound(inv[i]) then self.picked = i end
     else
+        if Item.isBound(inv[i]) then return end -- can't displace a bound item from its cell
         inv[self.picked], inv[i] = inv[i], inv[self.picked]
         self.picked = nil
     end
@@ -141,9 +158,14 @@ function InventoryGrid:draw()
 
     -- Cell plates, then the adjacency wires across them -- both under the items, so a wire reads
     -- over the plate without ever covering an icon or a name band.
-    love.graphics.setColor(0.16, 0.17, 0.22)
     for i = 1, COLS * ROWS do
         local sx, sy, sw, sh = self:slotRect(i)
+        local item = inv[i]
+        if item and Item.isBound(item) then
+            love.graphics.setColor(0.24, 0.20, 0.14) -- a warm plate marks a bound (locked) cell
+        else
+            love.graphics.setColor(0.16, 0.17, 0.22)
+        end
         love.graphics.rectangle("fill", sx, sy, sw, sh, 6, 6)
     end
     AdjacencyLinks.draw(self.char, function(i) return self:slotRect(i) end, { width = 3 })
@@ -210,6 +232,16 @@ function InventoryGrid:draw()
         end
     end
     love.graphics.setLineWidth(1)
+
+    -- Bound cells (signature relics) get a padlock badge, top-left, so the lock reads at a glance.
+    -- Drawn over the items so an icon never hides it, and opposite the top-right default-weapon star.
+    for i = 1, COLS * ROWS do
+        local item = inv[i]
+        if item and Item.isBound(item) then
+            local sx, sy = self:slotRect(i)
+            drawLock(sx + 13, sy + 13)
+        end
+    end
 
     -- Selection overlays: hover (mouse), the keyboard/gamepad cursor, and the picked-up cell.
     if self.hover then

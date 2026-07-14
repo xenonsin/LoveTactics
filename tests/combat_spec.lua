@@ -22,10 +22,14 @@ end
 -- A { char, x, y } spawn entry. Accepts a blueprint id or a prebuilt character instance.
 local function unit(charOrId, x, y)
     local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
-    -- Isolate these mechanics tests from a character's innate traits (an archer's wolf companion, a
-    -- knight's Oathward): those are exercised in tests/innate_spec.lua, and would otherwise perturb
-    -- the unit counts and initiative these fixtures assume.
+    -- Isolate these mechanics tests from a character's innate, which now rides on a bound signature
+    -- relic in the grid (an archer's wolf companion, a knight's Oathward): strip that relic, since its
+    -- trait, stats, and combat-start summon would otherwise perturb the unit counts and initiative
+    -- these fixtures assume. Innate delivery itself is exercised in tests/innate_spec.lua.
     char.traits = {}
+    for i = 1, Character.MAX_INVENTORY do
+        if char.inventory[i] and char.inventory[i].bound then char.inventory[i] = nil end
+    end
     return { char = char, x = x, y = y }
 end
 

@@ -174,7 +174,7 @@ over the corresponding spot on `assets/hub/city.png`. The city is laid out on a 
 ## Add an enemy
 
 Enemies reuse the party-character schema, so drop a stat block into `data/characters/<id>.lua`
-(a `startingItems` list is optional for foes):
+(a `startingItems` grid is optional for foes):
 
 ```lua
 return {
@@ -186,15 +186,29 @@ return {
         defense = 6, magicDefense = 3,
         movement = 3, -- spaces per turn on the battle grid
     },
-    traits = { "wrath_rising" }, -- optional: standing combat reactions (models/trait.lua)
+    -- Innate reaction: place a bound signature relic in the loadout (see below).
+    startingItems = {
+        false, false,                  false,
+        false, "sig_unappeased_heart", "crimson_greataxe",
+        false, false,                  false,
+    },
 }
 ```
 
-**`traits`** are how a boss gets an identity rather than just bigger numbers. A trait is a
-`data/traits/<id>.lua` file exposing any of `onCombatStart`, `onDamaged` (fires after mitigation, and
-only if the unit survived), `onCast`, `onDeath`. An **item** may declare `traits` too, which grants them
-to whoever carries it in their 3×3 grid — that is how a slain general's relic hands its rule to the
-player. See [story.md](story.md).
+**Traits** are how a character (a boss especially) gets an identity rather than just bigger numbers.
+A trait is a `data/traits/<id>.lua` file exposing any of `onCombatStart`, `onDamaged` (fires after
+mitigation, and only if the unit survived), `onCast`, `onDeath`. A trait reaches a unit through an
+**item**: any item that declares `traits = { "<id>" }` grants them to whoever carries it in their 3×3
+grid. A character's *innate* reaction is delivered by a **bound signature relic** — an item with
+`bound = true` (never moved, stowed, sold, or stolen, only forged; see `models/item.lua` `Item.isBound`)
+placed in the loadout grid, conventionally the center cell. That same mechanism is how a slain
+general's relic hands its rule to the player. A signature relic carries a real item `type`
+(armor/utility/...) and lives in that type's folder; `bound`, not the type, is what locks it. See
+[story.md](story.md) and the `sig_*` relics under `data/items/armor/` and `data/items/utility/`.
+
+> The runtime `char.traits` list still exists as a low-level hook (tests and summon-copies use it),
+> but character *blueprints* no longer carry a `traits` field — author the innate as a bound signature
+> item instead.
 
 ## Scale a combat encounter's roster
 
@@ -370,12 +384,17 @@ with a running `quantity` (its "limited number of uses"), while every other type
 one-per-slot. Adding a duplicate consumable (`Character.addItem`) merges it into the existing
 stack up to a per-slot cap — `Item.DEFAULT_MAX_STACK` (9), overridable per blueprint with a
 `maxStack` field — and only the overflow claims a new slot. A consuming use
-(`activeAbility.consumesItem`) decrements the stack, floored at 0. So a character carries
-multiple health potions by listing the id more than once in `startingItems` (or via
+(`activeAbility.consumesItem`) decrements the stack, floored at 0. `startingItems` is a **positional
+3×3 grid** (row-major; cell `i` holds entry `i`; `false`/`nil` is an empty cell), so a stack is
+authored as a `{ id, count }` cell rather than by repeating the id (or built at runtime via
 `Item.instantiate(id, quantity)`):
 
 ```lua
-startingItems = { "healing_potion", "healing_potion", "healing_potion" }, -- one slot, x3
+startingItems = {
+    { "healing_potion", 3 }, false, false, -- a x3 potion stack in cell 1
+    false,                   false, false,
+    false,                   false, false,
+}
 ```
 
 A spent stack **keeps its (now empty) slot** rather than vanishing: `Combat.isDepleted(item)`

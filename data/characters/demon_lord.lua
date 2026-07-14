@@ -18,9 +18,15 @@ return {
         movement = 3,
         speed = 3,
     },
-    traits = { "hollow_crown" },
-    -- No weapon of its own. `unarmed` is what is left when everything borrowed has been stripped away.
-    -- Its one carried thing isn't gear: demonic flesh, which takes holy damage the harder (a negative
+    -- Its loadout as the 3x3 grid (row-major); false = an empty cell. Its rule rides on the Hollow Crown
+    -- relic in the center (data/items/armor/sig_hollow_crown.lua): a bound item -- here `bound`
+    -- matters because a party rogue can never pickpocket it, so the boss can't be stripped of its entire
+    -- fight. No weapon of its own (`unarmed` is what's left when everything borrowed is stripped away);
+    -- its one carried thing isn't gear but demonic flesh, which takes holy damage the harder (a negative
     -- holy resist folded in as passive armor). Demon Bane was forged for exactly this body.
-    startingItems = { "demonic_essence" },
+    startingItems = {
+        false, false,              false,
+        false, "sig_hollow_crown", "demonic_essence",
+        false, false,              false,
+    },
 }

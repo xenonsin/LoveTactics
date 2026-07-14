@@ -11,15 +11,16 @@ return {
         movement = 3, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
-    -- Innate: walks on consecrated ground -- adjacent allies (and the priest) mend each tick
-    -- (data/traits/sanctified_presence.lua).
-    traits = { "sanctified_presence" },
-    -- Support caster: the signature Heal spell to mend allies at range, Jolt to delay a
-    -- pressing threat, silk robes for spell resistance, and a potion as a fallback mend. The
-    -- focus stone swaps Wait -> Focus (recover mana) and the parasitic staff siphons mana on
-    -- hit -- the priest's two ways to refuel the non-regenerating mana pool.
+    -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. The
+    -- build-around is the Hallowed Censer relic in the center (data/items/utility/sig_hallowed_censer.lua):
+    -- a bound item -- never moved, stowed, sold, or stolen, only forged -- that consecrates the ground
+    -- (Sanctified Presence). Around it, a support caster's kit: the Heal spell to mend at range, Jolt to
+    -- delay a pressing threat, silk robes for spell resistance, a potion as a fallback mend, and the two
+    -- ways to refuel the non-regenerating mana pool -- the focus stone (Wait -> Focus) and the parasitic
+    -- staff (siphons mana on hit).
     startingItems = {
-        "ability_heal", "ability_jolt", "silk_robes", "healing_potion",
-        "focus_stone", "parasitic_staff", "ability_sanctuary",
-    }, -- item ids
+        "ability_heal",    "ability_jolt",        "silk_robes",
+        "healing_potion",  "sig_hallowed_censer",  "focus_stone",
+        "parasitic_staff", "ability_sanctuary",   false,
+    },
 }

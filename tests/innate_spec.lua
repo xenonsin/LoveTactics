@@ -61,7 +61,8 @@ return {
         fn = function()
             local mage = Character.instantiate("mage")
             mage.inventory = {}
-            Character.addItem(mage, Item.instantiate("ability_fireball"))
+            Character.addItem(mage, Item.instantiate("ability_fireball"))          -- cell 1
+            Character.addItem(mage, Item.instantiate("sig_overflowing_focus"))     -- the Overchannel relic
             local c = Combat.new(arena(8, 8), { { char = mage, x = 1, y = 1 } }, { unit("bandit", 1, 3) })
             local u = c.units[1]
             local fireball = mage.inventory[1]

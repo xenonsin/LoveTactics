@@ -11,20 +11,16 @@ return {
         movement = 3, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
-    -- Innate: casts through its own life when the mana runs dry (data/traits/overchannel.lua).
-    traits = { "overchannel" },
-    -- healing_potion stays first (its default weapon / basic-attack ordering is unchanged).
-    -- The trap kit now lives on the archer; the mage keeps Jolt as its status-system spell.
-    -- Fire Stone infuses adjacent weapons/abilities with fire + Burn; packed next to Fireball it
-    -- makes the mage's spells set foes alight (see fire_stone.lua).
-    -- Summon Fire Elemental reserves a quarter of that deep mana pool for as long as the elemental
-    -- stands, so a summoning mage fights the rest of the battle on three-quarters of its magic.
-    startingItems = { "healing_potion"
-    , "ability_jolt"
-    , "silk_robes"
-    , "parasitic_staff"
-    , "ability_fireball"
-    , "fire_stone"
-    , "ability_rain"
-    , "ability_summon_fire_elemental" }, -- item ids
+    -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. The
+    -- build-around is the Overflowing Focus relic in the center (data/items/utility/sig_overflowing_focus.lua):
+    -- a bound item -- never moved, stowed, sold, or stolen, only forged -- that pays a cast's mana
+    -- shortfall in blood (Overchannel). healing_potion stays in cell 1 (its default-weapon / basic-attack
+    -- ordering is unchanged). Fire Stone infuses adjacent weapons/abilities with fire + Burn; it sits
+    -- next to Fireball so the mage's spells set foes alight from the start (see fire_stone.lua). Summon
+    -- Fire Elemental reserves a quarter of the deep mana pool for as long as the elemental stands.
+    startingItems = {
+        "healing_potion", "ability_jolt",             "silk_robes",
+        "parasitic_staff", "sig_overflowing_focus",   "fire_stone",
+        "ability_rain",   "ability_summon_fire_elemental", "ability_fireball",
+    },
 }

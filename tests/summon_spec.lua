@@ -24,9 +24,14 @@ end
 
 local function unit(charOrId, x, y)
     local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
-    -- Isolate from innate traits (see tests/innate_spec.lua): the archer's innate wolf companion
-    -- would otherwise add a unit and take the tile these summon fixtures spawn onto by hand.
+    -- Isolate from the innate, which now rides on a bound signature relic in the grid (see
+    -- tests/innate_spec.lua): strip that relic. The archer's innate wolf would otherwise add a unit and
+    -- take the tile these fixtures spawn onto by hand, and the mage relic's mana ceiling would skew the
+    -- reservation math.
     char.traits = {}
+    for i = 1, Character.MAX_INVENTORY do
+        if char.inventory[i] and char.inventory[i].bound then char.inventory[i] = nil end
+    end
     return { char = char, x = x, y = y }
 end
 

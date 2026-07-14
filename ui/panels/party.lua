@@ -280,6 +280,7 @@ end
 function Party:placeIntoGrid(stashIndex, cell)
     local char = self:currentChar()
     if not (char and self.player) then return end
+    if Item.isBound(char.inventory[cell]) then return end -- a bound relic can't be displaced from its cell
     local incoming = Player.takeFromStash(self.player, stashIndex)
     if not incoming then return end
     local displaced = char.inventory[cell]
@@ -344,6 +345,7 @@ function Party:commitStashToGrid(stashItem, cell, count)
 
     if remaining > 0 then
         local slot = hadExisting and Character.firstEmptySlot(char) or cell
+        if slot and Item.isBound(char.inventory[slot]) then slot = nil end -- never overwrite a bound relic
         if slot then
             local displaced = char.inventory[slot]
             char.inventory[slot] = Item.instantiate(stashItem.id, remaining, stashItem.level)
@@ -385,6 +387,7 @@ function Party:stowFromGrid(cell)
     if not (char and self.player) then return end
     local item = char.inventory[cell]
     if not item then return end
+    if Item.isBound(item) then self.grid:cancelPickup() return end -- a bound relic never leaves the grid
     Character.removeItem(char, item)
     Player.addToStash(self.player, item)
     self.grid:cancelPickup()
@@ -399,6 +402,7 @@ function Party:giveGridItemToMember(cell, memberIdx)
     if member == char then self.grid:cancelPickup() return end
     local item = char.inventory[cell]
     if not item then return end
+    if Item.isBound(item) then self.grid:cancelPickup() return end -- a bound relic can't be given away
     Character.removeItem(char, item)
     if not Character.addItem(member, item) then
         -- No room: return it to where it came from (its cell just freed up).
@@ -824,7 +828,14 @@ function Party:drawFocus()
     love.graphics.setColor(0.7, 0.74, 0.82)
     love.graphics.print("Traits", x, sy)
     sy = sy + 20
-    local traits = char.traits or {}
+    -- A character's reactions now ride on its items (the bound signature relic, plus any trait-granting
+    -- gear), so gather them from the grid rather than a character property. char.traits is kept for
+    -- manual/test use but is normally empty. Mirrors how models/trait.lua collects a unit's traits.
+    local traits = {}
+    for _, id in ipairs(char.traits or {}) do traits[#traits + 1] = id end
+    for _, item in ipairs(Character.eachItem(char)) do
+        for _, id in ipairs(item.traits or {}) do traits[#traits + 1] = id end
+    end
     if #traits == 0 then
         love.graphics.setFont(self.tinyFont)
         love.graphics.setColor(0.55, 0.58, 0.66)

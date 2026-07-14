@@ -2635,7 +2635,9 @@ function Combat.steal(combat, thief, victim)
     local best, pool = nil, {}
     for i = 1, Character.MAX_INVENTORY do
         local item = victim.char.inventory[i]
-        if item and not item.noSteal then
+        -- `noSteal` (a beast's fangs) and `bound` (a signature relic, Item.isBound) are both untakeable:
+        -- bound keeps a boss from being stripped of its whole fight in one pickpocket.
+        if item and not item.noSteal and not item.bound then
             local priority = item.stealPriority or 0
             if not best or priority > best then best, pool = priority, { item }
             elseif priority == best then pool[#pool + 1] = item end

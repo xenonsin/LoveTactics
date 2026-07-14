@@ -104,9 +104,12 @@ function Trap.at(combat, x, y)
 end
 
 -- The best "detect traps" radius among a character's items, or nil if it carries no detector.
+-- Uses `pairs`, not `ipairs`: the 3x3 grid is a sparse array (a removed item leaves a gap), and
+-- ipairs would stop at the first empty cell and miss a detector sitting past it. Order doesn't matter
+-- here -- we take the max radius across every carried detector.
 local function detectorRadius(char)
     local best
-    for _, item in ipairs(char.inventory or {}) do
+    for _, item in pairs(char.inventory or {}) do
         if hasTag(item.tags, Trap.DETECT_TAG) then
             local r = item.detectRadius or Trap.DEFAULT_DETECT_RADIUS
             if not best or r > best then best = r end

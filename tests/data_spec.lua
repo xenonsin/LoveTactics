@@ -70,8 +70,10 @@ return {
         name = "starting inventory built from def item ids",
         fn = function()
             local c = Character.instantiate("knight")
-            assert(#c.inventory == 3, "expected 3 starting items, got " .. #c.inventory)
+            -- Iron Sword, Chainmail, Healing Potion, Torch, and the bound Sworn Aegis relic (cell 5).
+            assert(#c.inventory == 5, "expected 5 starting items, got " .. #c.inventory)
             assert(c.inventory[1].name == "Iron Sword", "first item")
+            assert(c.inventory[5].id == "sig_sworn_aegis", "the signature relic sits in the center")
         end,
     },
     {
@@ -104,7 +106,11 @@ return {
     {
         name = "addItem fills the first empty grid cell and leaves later gaps intact",
         fn = function()
-            local c = Character.instantiate("knight") -- 3 dense starting items in slots 1..3
+            local c = Character.instantiate("knight")
+            c.inventory = {} -- start clean; this test controls the layout (3 dense items in slots 1..3)
+            Character.addItem(c, Item.instantiate("iron_sword"))
+            Character.addItem(c, Item.instantiate("chainmail"))
+            Character.addItem(c, Item.instantiate("healing_potion"))
             c.inventory[2] = nil -- open a gap in the middle
             assert(Character.itemCount(c) == 2, "two items remain after clearing slot 2")
             assert(Character.firstEmptySlot(c) == 2, "slot 2 is the first empty cell")
@@ -127,7 +133,7 @@ return {
         name = "party vision radius is driven by a torch-carrying member",
         fn = function()
             local p = Player.new()
-            -- The archer starts with a torch, so the party sees at the torch's radius.
+            -- The knight starts with a torch, so the party sees at the torch's radius.
             assert(Player.visionRadius(p) == Item.defs.torch.visionRadius,
                 "party with a torch should see at the torch's radius")
 

@@ -11,7 +11,9 @@ local Player = require("models.player")
 local Blacksmith = {}
 
 -- Is this item forgeable at the smithy? Weapons, armor, and utility gear are hammered here; abilities
--- go to their class vendor and consumables to the Alchemist.
+-- go to their class vendor and consumables to the Alchemist. A bound signature relic is one of these
+-- ordinary types (armor or utility), so it forges in place like any gear -- `bound` blocks moving and
+-- selling it, never upgrading it, which is the whole point of a build-around.
 function Blacksmith.canForge(item)
     return Item.isUpgradable(item)
         and (item.type == "weapon" or item.type == "armor" or item.type == "utility")

@@ -12,10 +12,15 @@ return {
         movement = 3, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
-    -- Innate: sworn to shield the weak -- soaks the first blow each turn on an adjacent ally
-    -- (data/traits/oathward.lua).
-    traits = { "oathward" },
-    -- Frontline tank: sword for the melee strike, chainmail for solid all-round steel
-    -- (only -1 movement so it still keeps pace), and a potion to self-mend under fire.
-    startingItems = { "iron_sword", "chainmail", "healing_potion" }, -- item ids
+    -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. The
+    -- build-around is the Sworn Aegis relic in the center (data/items/armor/sig_sworn_aegis.lua):
+    -- a bound item -- never moved, stowed, sold, or stolen, only forged -- that carries the Knight's
+    -- Oathward guard. Frontline steel around it: sword for the melee strike, chainmail for all-round
+    -- defense (only -1 movement so it keeps pace), a potion to self-mend under fire, and the party's
+    -- torch (its overworld vision -- see Player.visionRadius).
+    startingItems = {
+        "iron_sword", "chainmail",       "healing_potion",
+        "torch",      "sig_sworn_aegis", false,
+        false,        false,             false,
+    },
 }

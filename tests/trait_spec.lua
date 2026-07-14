@@ -43,8 +43,13 @@ local function withTraits(defs, fn)
 end
 
 -- A character instance carrying `traits`, built off an existing blueprint so its stats are real.
+-- Strips the innate signature relic so the ONLY trait is the fixture one (a knight would otherwise
+-- also carry Oathward from its relic); item-delivered traits have their own case below.
 local function charWithTraits(id, traits)
     local char = Character.instantiate(id)
+    for i = 1, Character.MAX_INVENTORY do
+        if char.inventory[i] and char.inventory[i].bound then char.inventory[i] = nil end
+    end
     char.traits = traits
     return char
 end

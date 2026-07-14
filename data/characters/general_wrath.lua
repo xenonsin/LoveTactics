@@ -18,6 +18,13 @@ return {
         movement = 4,
         speed = 4,
     },
-    traits = { "wrath_rising" },
-    startingItems = { "crimson_greataxe" },
+    -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Unappeased
+    -- Heart relic in the center (data/items/utility/sig_unappeased_heart.lua): a bound item, and
+    -- `bound` keeps it unstealable -- a rogue can't lift her whole fight off her in one grab. Her greataxe
+    -- sits beside it.
+    startingItems = {
+        false, false,                  false,
+        false, "sig_unappeased_heart", "crimson_greataxe",
+        false, false,                  false,
+    },
 }

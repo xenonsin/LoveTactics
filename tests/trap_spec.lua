@@ -22,6 +22,11 @@ end
 
 local function unit(charOrId, x, y)
     local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
+    -- Strip the innate signature relic (see tests/innate_spec.lua): the archer's would field a wolf
+    -- (an extra unit) and its center cell would skew grid-position math these fixtures rely on.
+    for i = 1, Character.MAX_INVENTORY do
+        if char.inventory[i] and char.inventory[i].bound then char.inventory[i] = nil end
+    end
     return { char = char, x = x, y = y }
 end
 
@@ -114,6 +119,7 @@ return {
             -- Enemy trap at (4,4). A knight carrying a Trap Sense Charm (detectRadius 2) reveals it
             -- only when close enough; the owning side always sees its own trap.
             local scout = Character.instantiate("knight")
+            scout.inventory = {} -- controlled grid: just the detector (no starting gear, no innate relic)
             assert(Character.addItem(scout, Item.instantiate("trap_sense")), "equip the detector")
 
             local c = Combat.new(arena(8, 8), { unit(scout, 4, 7) }, {})
@@ -143,7 +149,8 @@ return {
             -- Knight (mana 20) with the Spike Trap ability aims at a solid obstacle in range: the
             -- cast is rejected before any cost is paid and the turn stays open.
             local caster = Character.instantiate("knight")
-            Character.addItem(caster, Item.instantiate("ability_spike_trap"))
+            caster.inventory = {} -- controlled grid: only the trap ability (no innate relic or starting gear)
+    Character.addItem(caster, Item.instantiate("ability_spike_trap"))
             local c = Combat.new(arena(8, 8), { unit(caster, 3, 3) }, {})
             c.arena.tiles[5][3].walkable = false -- block the target cell (tx=3, ty=5) -> tiles[y][x]
             local u = c.units[1]
@@ -174,7 +181,8 @@ return {
             -- Knight with the Spike Trap ability aims at the bandit's own tile (2 away, in range 3):
             -- rejected before any cost, since a trap can't be summoned onto an occupied tile.
             local caster = Character.instantiate("knight")
-            Character.addItem(caster, Item.instantiate("ability_spike_trap"))
+            caster.inventory = {} -- controlled grid: only the trap ability (no innate relic or starting gear)
+    Character.addItem(caster, Item.instantiate("ability_spike_trap"))
             local c = Combat.new(arena(8, 8), { unit(caster, 3, 3) }, { unit("bandit", 3, 5) })
             local u = c.units[1]
             local ability = u.char.inventory[#u.char.inventory]
@@ -199,7 +207,8 @@ return {
 
             -- Summoned: a unit uses the Spike Trap ability (target = "tile") on an empty cell.
             local caster = Character.instantiate("knight") -- mana 20 >= ability cost 8
-            Character.addItem(caster, Item.instantiate("ability_spike_trap"))
+            caster.inventory = {} -- controlled grid: only the trap ability (no innate relic or starting gear)
+    Character.addItem(caster, Item.instantiate("ability_spike_trap"))
             local c2 = Combat.new(arena(8, 8), { unit(caster, 3, 3) }, {})
             local u = c2.units[1]
             local ability = u.char.inventory[#u.char.inventory]

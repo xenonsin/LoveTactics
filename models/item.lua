@@ -51,6 +51,14 @@ function Item.maxStack(item)
     return item.maxStack or Item.DEFAULT_MAX_STACK
 end
 
+-- Is this item bound to its holder? A bound item (a character's signature relic) can never be moved
+-- within the grid, stowed, given away, sold, or stolen -- only upgraded in place. It's a reusable
+-- flag: any item can set `bound = true` and every mutation path (the grid editor, the party panel,
+-- the vendor, combat theft) refuses to move it. The one thing that reads it, so they all agree.
+function Item.isBound(item)
+    return item ~= nil and item.bound == true
+end
+
 -- Recursively copy a blueprint value so a runtime instance never mutates the immutable
 -- def. Tables are copied; every non-table value (numbers, strings, and crucially the
 -- ability `effect` *function*) is carried by reference -- functions aren't mutated, so
@@ -206,6 +214,7 @@ function Item.instantiate(id, quantity, level)
         hands = def.hands,                     -- weapons: 1 (default, nil) or 2 -- what Dual Wield reads
         stealPriority = def.stealPriority,     -- a pickpocket takes the highest first (decoy bait)
         noCopy = def.noCopy,                   -- a summoned copy of the holder never carries this
+        bound = def.bound,                     -- bound to its holder: never moved, stowed, sold, or stolen (a signature relic)
         traits = deepCopy(def.traits),         -- combat reactions granted to whoever carries it
         class = def.class,                     -- which class vendor sells it; nil = sold by none
         price = def.price,                     -- vendor gold cost; nil means it is never sold

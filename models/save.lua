@@ -203,6 +203,9 @@ local function restoreCharacter(snap)
             char.inventory[tonumber(cell)] = Item.instantiate(itemSnap.id, itemSnap.quantity, itemSnap.level)
         end
     end
+    -- Re-seat any bound signature relics in their authored cells. A current save already has them (at
+    -- their upgraded level, preserved); a save predating a relic gets it restored. See Character.ensureBoundItems.
+    Character.ensureBoundItems(char)
     char.defaultWeaponSlot = snap.defaultWeaponSlot -- nil on an old save = the auto pick
     return char
 end

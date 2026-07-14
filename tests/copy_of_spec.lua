@@ -28,9 +28,13 @@ end
 
 local function unit(charOrId, x, y)
     local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
-    -- Isolate from innate traits (see tests/innate_spec.lua): a lone archer would otherwise field a
-    -- wolf and skew the unit counts these copy tests assume.
+    -- Isolate from the innate, which now rides on a bound signature relic in the grid (see
+    -- tests/innate_spec.lua): strip that relic. A lone archer would otherwise field a wolf and skew the
+    -- unit counts these copy tests assume.
     char.traits = {}
+    for i = 1, Character.MAX_INVENTORY do
+        if char.inventory[i] and char.inventory[i].bound then char.inventory[i] = nil end
+    end
     return { char = char, x = x, y = y }
 end
 
@@ -189,6 +193,7 @@ return {
         name = "the Philosopher's Stone transmutes a foe into an ally beside its caster",
         fn = function()
             local mage = Character.instantiate("mage")
+            mage.inventory = {} -- clear the full hero grid (incl. the innate relic) to make room for the Stone
             Character.addItem(mage, Item.instantiate("philosophers_stone"))
 
             local c = Combat.new(arena(8, 8), { unit(mage, 3, 3) }, { unit("bandit", 3, 5) })
@@ -215,6 +220,7 @@ return {
         name = "the Stone's tooltip names what it would summon without touching the board",
         fn = function()
             local mage = Character.instantiate("mage")
+            mage.inventory = {} -- clear the full hero grid (incl. the innate relic) to make room for the Stone
             Character.addItem(mage, Item.instantiate("philosophers_stone"))
             local c = Combat.new(arena(8, 8), { unit(mage, 3, 3) }, { unit("bandit", 3, 5) })
             local caster = c.units[1]
