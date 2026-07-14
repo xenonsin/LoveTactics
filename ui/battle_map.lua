@@ -374,10 +374,21 @@ function BattleMap:drawOverlays()
         for _, g2 in ipairs(segs) do love.graphics.line(g2[1], g2[2], g2[3], g2[4]) end
         love.graphics.setLineWidth(1)
     end
+    -- "Threats" survey: the full enemy danger zone (every tile a foe could reach-and-strike),
+    -- purple, painted first so the actor's own blue/red bands sit on top of it.
+    paint(self.overlays.enemyRanges, 0.65, 0.30, 0.90)
     -- Default-attack (threat) reach in red, under the blue move band. Its cells are the tiles
     -- beyond movement the unit could still strike, so it never overlaps the move set.
     paint(self.overlays.threat, 1.00, 0.32, 0.30)
+    -- Reachable move tiles: blue when safe, PURPLE where a foe could also strike this turn (the
+    -- intersection of your movement and an enemy's attack range), so a step into danger reads.
     paint(self.overlays.move, 0.30, 0.60, 1.00)
+    paint(self.overlays.moveDanger, 0.65, 0.30, 0.90)
+    -- Hovered unit's reach (Fire Emblem / Triangle Strategy preview): its movement in blue -- the
+    -- same as yours -- and its attack range in crimson. The state suppresses the actor's own overlays
+    -- while a unit is hovered, so the two never paint together.
+    paint(self.overlays.inspectMove, 0.30, 0.60, 1.00)
+    paint(self.overlays.inspectRange, 0.90, 0.25, 0.30)
     -- Support abilities (heals / buffs) reach in green; offensive ones in red.
     if self.overlays.rangeSupport then
         paint(self.overlays.range, 0.35, 0.85, 0.40)
@@ -400,6 +411,26 @@ function BattleMap:drawOverlays()
             love.graphics.setLineWidth(3)
             love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4)
             love.graphics.setColor(r, g, b, 1.0)
+            love.graphics.setLineWidth(2)
+            love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4)
+        end
+        love.graphics.setLineWidth(1)
+    end
+
+    -- An in-progress CHANNEL's threatened tiles: an ability winding up (an enemy's Meteor Storm, or the
+    -- party's own) paints where it WILL land, so units still have turns to step clear before it resolves.
+    -- Pulses in an ominous magenta-violet to read as "imminent detonation", distinct from the steady
+    -- armed-AoE wash above. Read straight off unit.channel, so it persists across every unit's turn.
+    if self.overlays.channelAoe then
+        local t = 0.5 + 0.5 * math.sin(love.timer.getTime() * 5) -- 0..1 pulse
+        for _, c in ipairs(self.overlays.channelAoe) do
+            local wx, wy = self:cellToPixel(c.x, c.y)
+            love.graphics.setColor(0.90, 0.30, 0.55, 0.20 + 0.20 * t)
+            love.graphics.rectangle("fill", wx + 1, wy + 1, s - 2, s - 2)
+            love.graphics.setColor(0, 0, 0, 0.5)
+            love.graphics.setLineWidth(3)
+            love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4)
+            love.graphics.setColor(0.98, 0.50, 0.80, 0.6 + 0.4 * t)
             love.graphics.setLineWidth(2)
             love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4)
         end
@@ -584,6 +615,23 @@ function BattleMap:drawHighlights()
         love.graphics.setColor(0.98, 0.82, 0.35, pulse)
         love.graphics.setLineWidth(3)
         love.graphics.rectangle("line", wx + 3, wy + 3, s - 6, s - 6, 5, 5)
+        love.graphics.setLineWidth(1)
+    end
+
+    -- Threat lines: a pulsing red line from each foe that could strike the cursor tile toward that
+    -- tile, so a move onto a threatened square reads as "here is who can hit me" (Triangle Strategy).
+    local tl = self.overlays.threatLine
+    if tl and tl.from then
+        local twx, twy = self:cellToPixel(tl.to.x, tl.to.y)
+        local tcx, tcy = twx + s / 2, twy + s / 2
+        local pulse = 0.4 + 0.4 * math.sin((self.time or 0) * 6)
+        love.graphics.setColor(1, 0.2, 0.2, 0.35 + 0.5 * pulse)
+        love.graphics.setLineWidth(2 + 2 * pulse)
+        for _, fr in ipairs(tl.from) do
+            local fwx, fwy = self:cellToPixel(fr.x, fr.y)
+            love.graphics.line(fwx + s / 2, fwy + s / 2, tcx, tcy)
+        end
+        love.graphics.circle("fill", tcx, tcy, 4) -- convergence dot, so a single line still reads
         love.graphics.setLineWidth(1)
     end
 end

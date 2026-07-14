@@ -9,6 +9,7 @@ return {
     magnitude = 5,                -- ticks added to the target's initiative
     duration = 5,                 -- ticks the badge lingers
     debuff = true,                -- removable by Cure
+    interruptsChannel = true,     -- a stunned caster drops whatever spell it was channeling
     onApply = function(ctx)
         ctx.unit.initiative = ctx.unit.initiative + (ctx.magnitude or 0)
     end,

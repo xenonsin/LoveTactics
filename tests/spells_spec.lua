@@ -131,7 +131,7 @@ return {
             Status.apply(c, mage, "mired")
             assert(Combat.abilityCost(mage, fireball.activeAbility).amount == baseCost * 2,
                 "Mired doubles the ability cost")
-            Status.remove(mage, "mired")
+            Status.remove(c, mage, "mired")
 
             -- The hazard grants Mired as an aura that ends the instant the unit steps clear.
             Hazard.place(c, 2, 1, "hazard_quicksand")
@@ -197,7 +197,8 @@ return {
             mage.x, mage.y = 5, 8 -- in range (dist 3) but OUTSIDE the 3x3 blast (no self-freeze)
             local hp1 = b1.char.stats.health.current
             openTurn(c, mage)
-            assert(Combat.useItem(c, mage, blizzard, 5, 5), "Blizzard lands on the cluster")
+            assert(Combat.useItem(c, mage, blizzard, 5, 5), "Blizzard begins channeling")
+            assert(Combat.resolveChannel(c, mage), "the wound-up blast lands on the cluster")
             assert(b1.char.stats.health.current < hp1, "the blast damaged a foe")
             assert(Status.has(b1, "freeze") and Status.has(b2, "freeze"), "both foes are Frozen")
         end,
@@ -263,8 +264,10 @@ return {
             Combat.random = function() return 1 end
             openTurn(c, mage)
             local ok = Combat.useItem(c, mage, meteor, 6, 6)
+            local resolved = ok and Combat.resolveChannel(c, mage) -- the random strikes fall on resolution
             Combat.random = oldRandom
-            assert(ok, "Meteor Storm casts")
+            assert(ok, "Meteor Storm begins channeling")
+            assert(resolved, "the wound-up storm resolves")
             assert(Hazard.at(c, 4, 4, "hazard_fire"), "a meteor left fire on (4,4)")
             assert(knight.char.stats.health.current < hp0, "the foe under a strike took damage")
         end,

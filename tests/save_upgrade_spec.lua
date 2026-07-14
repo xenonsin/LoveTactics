@@ -44,4 +44,33 @@ return {
             assert(restored.stash[1].level == 2, "the stashed +2 armor keeps its level")
         end,
     },
+    {
+        name = "consumable recipe tiers round-trip, and an id no longer in data/ is dropped",
+        fn = function()
+            local player = Player.new()
+            player.recipes = { acid_bomb = 3, ghost_tonic = 2 } -- ghost_tonic is not a real item id
+
+            local restored = Save.restore(Save.snapshot(player))
+            assert(restored.recipes.acid_bomb == 3, "the acid_bomb recipe tier survives")
+            assert(restored.recipes.ghost_tonic == nil, "a tier for a vanished item is dropped")
+        end,
+    },
+    {
+        name = "a character's pinned default weapon slot round-trips (and old saves load nil)",
+        fn = function()
+            local player = Player.new()
+            -- Pin a second weapon in cell 4 as the first roster member's default attack.
+            player.roster[1].inventory[4] = Item.instantiate("bow")
+            player.roster[1].defaultWeaponSlot = 4
+
+            local snap = Save.snapshot(player)
+            local restored = Save.restore(snap)
+            assert(restored.roster[1].defaultWeaponSlot == 4, "the pinned slot survives a round trip")
+
+            -- An old save that predates the field restores to nil (the auto pick), not a crash.
+            snap.roster[1].defaultWeaponSlot = nil
+            local restored2 = Save.restore(snap)
+            assert(restored2.roster[1].defaultWeaponSlot == nil, "a save without the field loads as nil")
+        end,
+    },
 }

@@ -189,6 +189,9 @@ function Character.instantiate(id, progress)
         -- Progression state (models/growth.lua): innate growth class (fallback/tie-break), the level
         -- (tracks player prestige), the per-class cast tally, and the accumulated stat growth.
         class = def.class,
+        -- A general/boss blueprint sets `boss = true`; carried through so an ability can refuse to work
+        -- on one (Coup de Grace won't execute a boss, Charm won't turn it). Nil for an ordinary unit.
+        boss = def.boss,
         level = (progress and progress.level) or 1,
         classUse = (progress and progress.classUse) or {},
         growth = (progress and progress.growth) or {},

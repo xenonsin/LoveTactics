@@ -21,6 +21,7 @@ return {
         allowOccupied = true,
         range = 4,
         speed = 7, -- the most punishing spell, and the slowest to come around again
+        channel = 4, -- the longest wind-up: the widest blast telegraphs earliest
         cost = { stat = "mana", amount = 22 },
         damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- per-meteor damage = power + the caster's MagicDamage, minus MagicDefense
         aoe = { radius = 3, shape = "square" }, -- paints the ~6x6 threatened zone (see note above)

@@ -7,6 +7,7 @@ return {
     sprite = "assets/items/crimson_greataxe.png",
     type = "weapon",
     tags = { "axe", "slash", "physical", "melee" },
+    hands = 2, -- a greataxe: two-handed (Dual Wield can pair it only once forged to +5)
     class = "fighter",
     price = 800,
     repRank = 4,

@@ -48,7 +48,7 @@ local function ctxFor(combat, unit, status)
         end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         -- End this status now (e.g. Defending self-expiring at the owner's next turn start).
-        expire = function() Status.remove(unit, status.id) end,
+        expire = function() Status.remove(combat, unit, status.id) end,
     }
 end
 
@@ -83,13 +83,19 @@ function Status.has(unit, id)
     return Status.get(unit, id) ~= nil
 end
 
--- Remove status `id` from `unit` (no-op if absent). Used by a self-expiring hook (Defending ends
--- at the owner's next turn) -- the countdown in Status.tick remains the general expiry path.
-function Status.remove(unit, id)
+-- Remove status `id` from `unit` (no-op if absent), firing the def's onExpire teardown as it leaves.
+-- A status that unwinds unit state on its way out (Charm restoring the side it flipped) therefore
+-- reverts on EVERY removal path -- a Cure, a barrier consumed, a self-expire -- not only a natural
+-- countdown. The instance is pulled from the list BEFORE onExpire runs, so a hook that itself calls
+-- remove/expire for the same id can't double-fire. Needs `combat` to build the hook's context.
+function Status.remove(combat, unit, id)
     local list = unit.statuses
     if not list then return end
     for i = #list, 1, -1 do
-        if list[i].id == id then table.remove(list, i) end
+        if list[i].id == id then
+            local s = table.remove(list, i)
+            if s.def.onExpire then s.def.onExpire(ctxFor(combat, unit, s)) end
+        end
     end
 end
 
@@ -97,14 +103,17 @@ end
 -- Silenced, Frozen, Mired). Buffs (Regeneration, Aegis, a barrier) are left untouched. Returns the
 -- number removed. Backs Cure (data/items/ability/ability_cure.lua) through Combat.cleanse; an aura
 -- debuff simply re-applies next entry if the unit is still standing in what caused it.
-function Status.cleanse(unit)
+function Status.cleanse(combat, unit)
     local list = unit.statuses
     if not list then return 0 end
     local removed = 0
     for i = #list, 1, -1 do
         if list[i].def.debuff then
-            table.remove(list, i)
+            local s = table.remove(list, i)
             removed = removed + 1
+            -- Fire the teardown so a cleansed debuff unwinds its unit-state (Charm reverts the side it
+            -- flipped) exactly as a natural expiry would.
+            if s.def.onExpire then s.def.onExpire(ctxFor(combat, unit, s)) end
         end
     end
     return removed
@@ -117,6 +126,19 @@ function Status.statBonus(unit, name)
     for _, s in ipairs(unit.statuses or {}) do
         local bonus = s.def.statBonus
         if bonus and bonus[name] then total = total + bonus[name] end
+    end
+    return total
+end
+
+-- Reduction to `unit`'s ability RANGE, summed from every active status's `rangeMalus` (0 if none).
+-- Range is per-ability, not a flat stat, so a range-cutting status (Blind) can't ride statBonus the
+-- way a movement cut (Cripple) does; Combat.abilityRange subtracts this and floors the reach at 1, so
+-- a blinded unit can still strike an adjacent foe. The single reader keeps targeting, the range
+-- highlights and the enemy AI's planning all honouring the shortened sight at once.
+function Status.rangeMalus(unit)
+    local total = 0
+    for _, s in ipairs(unit.statuses or {}) do
+        if s.def.rangeMalus then total = total + s.def.rangeMalus end
     end
     return total
 end
@@ -225,6 +247,36 @@ function Status.apply(combat, unit, id, opts)
         local Combat = require("models.combat")
         Combat.logEvent(combat, "status",
             string.format("%s is afflicted with %s.", (unit.char and unit.char.name) or "Unit", def.name or id))
+    end
+
+    -- Fire the standing-reaction hook for a status landing (Trait.onStatusApplied), on BOTH sides of
+    -- the event: the RECIPIENT (a ward that cleanses a debuff the moment it lands) and, when the cast
+    -- carried its caster through `opts.applier`, the APPLIER (a relic that rewards inflicting a debuff).
+    -- Pulled lazily so status.lua -> trait.lua stays a call-time edge with no load cycle. Guarded on
+    -- `combat` so a dry run (which never passes one) can't reach the reaction machinery.
+    if combat then
+        -- `def` is deliberately NOT threaded as an event field: the trait ctx already binds ctx.def to
+        -- the reacting TRAIT's blueprint, and a hook reads the landed status through ctx.status(.def).
+        local Trait = require("models.trait")
+        Trait.onStatusApplied(combat, unit,
+            { status = status, applier = opts.applier, recipient = unit, role = "recipient" })
+        local applier = opts.applier
+        if applier and applier ~= unit and applier.alive then
+            Trait.onStatusApplied(combat, applier,
+                { status = status, applier = applier, recipient = unit, role = "applier" })
+        end
+
+        -- A hard-control or forced-movement status shatters a channel the recipient was winding up.
+        -- `interruptsChannel = true` always breaks it (Stun, Freeze); `"mana"` breaks only a mana-cost
+        -- channel (Silence gags the incantation but leaves a stamina channel alone). The onApply above
+        -- already fired, so a stun's own initiative shove still lands even as the channel it cancels goes.
+        local ic = def.interruptsChannel
+        if ic and unit.channel then
+            local Combat = require("models.combat")
+            if ic == true or (ic == "mana" and unit.channel.ab.cost and unit.channel.ab.cost.stat == "mana") then
+                Combat.interruptChannel(combat, unit, def.name or id)
+            end
+        end
     end
     return status
 end

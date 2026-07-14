@@ -13,6 +13,11 @@
 --   * onCombatStart(ctx) -- once, after every unit, passive, trap and hazard is in place
 --   * onDamaged(ctx)     -- the bearer was hit and SURVIVED; ctx.amount is post-mitigation
 --   * onCast(ctx)        -- the bearer finished using an item; ctx.item / ctx.tx / ctx.ty
+--   * onStatusApplied(ctx) -- a status landed and the bearer was on one side of it; ctx.role is
+--                            "recipient" (the bearer gained it) or "applier" (the bearer inflicted
+--                            it), plus ctx.status (the landed instance; ctx.status.def for its
+--                            blueprint), ctx.applier and ctx.recipient. Note ctx.def is still the
+--                            reacting TRAIT's own blueprint, not the status's.
 --   * onDeath(ctx)       -- the bearer dropped
 --
 -- Two things carry traits, and both flow through Trait.attach:
@@ -57,6 +62,29 @@ function Trait.tryEvade(combat, unit, tags)
             Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
             Combat.logEvent(combat, "action",
                 string.format("%s dodges the blow!", (unit.char and unit.char.name) or "Unit"))
+            return true
+        end
+    end
+    return false
+end
+
+-- Does a carried smoke charge (a `blocksNextHit` trait) let `unit` slip an incoming ATTACK -- negating
+-- it and blinking the bearer clear -- the way Trait.tryEvade voids a blow? Consulted in
+-- Combat.dealFlatDamage BEFORE mitigation, beside tryEvade: when it fires the hit deals 0 and the
+-- bearer is shoved `blink` tiles straight away from its attacker (Combat.knockback from the attacker's
+-- side). Unlike the passive Dodge this is a once-per-battle charge, latched on `stacks` like Second
+-- Wind, so a smoke bomb saves its bearer exactly once. Only a real ATTACK triggers it (an `attacker` is
+-- known) -- a poison tick or a trap, which passes none, neither fires it nor wastes the charge. Mutates
+-- (spends the charge, moves the unit, logs), so it must run on a REAL hit only, never the damage preview.
+function Trait.trySmoke(combat, unit, attacker)
+    if not unit or not unit.traits or not attacker then return false end
+    local Combat = require("models.combat")
+    for _, t in ipairs(unit.traits) do
+        if t.def.blocksNextHit and t.stacks == 0 then
+            t.stacks = 1 -- spend the one charge FIRST, so the blink's own trap/hazard entries can't re-fire it
+            Combat.logEvent(combat, "action",
+                string.format("%s vanishes in a burst of smoke!", (unit.char and unit.char.name) or "Unit"))
+            Combat.knockback(combat, attacker, unit, t.def.blink or 2)
             return true
         end
     end
@@ -119,6 +147,10 @@ local function ctxFor(combat, unit, trait, event)
         applyStatus = function(tgt, id, opts)
             if not tgt then return nil end
             return Status.apply(combat, tgt, id, opts)
+        end,
+        -- Strip one status by id (a ward shrugging off the debuff that just landed on its bearer).
+        clearStatus = function(tgt, id)
+            if tgt then Status.remove(combat, tgt, id) end
         end,
         -- Raise (or lower) a flat stat on the bearer for the rest of the battle. `unit.bonus` is the
         -- per-unit table applyUnitPassives builds from the grid's passive items -- writing here never
@@ -256,6 +288,12 @@ end
 -- The bearer finished resolving an item's ability. Fired from Combat.useItem.
 function Trait.onCast(combat, unit, info)
     dispatch(combat, unit, "onCast", info)
+end
+
+-- A status just landed, and `unit` was on one side of it (recipient or applier). Fired from
+-- Status.apply, once per side that carries traits.
+function Trait.onStatusApplied(combat, unit, info)
+    dispatch(combat, unit, "onStatusApplied", info)
 end
 
 -- The bearer dropped. Fired from killUnit, before its summons are dismissed.

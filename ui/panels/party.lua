@@ -915,6 +915,11 @@ function Party:drawPromptBar()
         add(cancelGlyph, "Close", PROMPT_NO)
         add(regionGlyph, "Region")
         add(switchGlyph, "Switch")
+        -- Set-default-weapon control, shown only when a weapon cell is focused (it's the only place
+        -- pinning does anything). Matches the star badge drawn on the grid cell.
+        if self.focus == "grid" and self.grid:isWeaponCell(self.grid.cursor) then
+            add(pad and "X" or "F", "Default")
+        end
     end
     ButtonPrompt.draw(segments, self.boxX, self.boxY + BOX_H - 30, BOX_W, { align = "center" })
 end
@@ -1085,6 +1090,8 @@ function Party:keypressed(key)
     elseif key == "right" or key == "d" then self:navigate(1, 0)
     elseif key == "up" or key == "w" then self:navigate(0, -1)
     elseif key == "down" or key == "s" then self:navigate(0, 1)
+    elseif key == "f" then
+        if self.focus == "grid" then self.grid:setDefaultAt(self.grid.cursor) end
     elseif key == "return" or key == "kpenter" or key == "space" then self:confirm()
     end
 end
@@ -1104,6 +1111,8 @@ function Party:gamepadpressed(joystick, button)
     elseif button == "dpright" then self:navigate(1, 0)
     elseif button == "dpup" then self:navigate(0, -1)
     elseif button == "dpdown" then self:navigate(0, 1)
+    elseif button == "x" then
+        if self.focus == "grid" then self.grid:setDefaultAt(self.grid.cursor) end
     elseif button == "a" then self:confirm()
     end
 end

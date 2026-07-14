@@ -1,6 +1,7 @@
 -- Enemy character blueprint. See data/characters/bandit.lua for the shape.
 return {
     name = "Ancient Stag",
+    boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/stag.png",
     stats = {
         health = 90, mana = 30, stamina = 60,

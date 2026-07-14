@@ -17,6 +17,7 @@ return {
         allowOccupied = true, -- an area cast may center on an occupied tile
         range = 3,
         speed = 5,
+        channel = 3, -- a longer tell than Fireball, fitting the Freeze payoff
         cost = { stat = "mana", amount = 16 },
         damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
         aoe = { radius = 1, shape = "square" }, -- 3x3 storm, corners included

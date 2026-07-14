@@ -135,6 +135,7 @@ function Player.new()
         reputation = {},      -- vendor id -> reputation points (see Player.addReputation)
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
+        recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
     }
 
     for matId, count in pairs(Player.defaults.startingMaterials or {}) do
@@ -243,6 +244,21 @@ function Player.spendMaterials(player, cost)
         player.materials[id] = Player.materialCount(player, id) - count
     end
     return true
+end
+
+-- ---------------------------------------------------------------------------
+-- Recipes (consumable tiers; see the Upgrade mode in ui/panels/shop.lua)
+-- ---------------------------------------------------------------------------
+
+-- The tier a consumable id has been upgraded to (0, not nil, for one never refined). Every future
+-- purchase of that item comes at this level, so the recipe is per-type progression, not per-instance.
+function Player.recipeLevel(player, id)
+    return (player.recipes or {})[id] or 0
+end
+
+function Player.setRecipeLevel(player, id, level)
+    player.recipes = player.recipes or {}
+    player.recipes[id] = level
 end
 
 -- ---------------------------------------------------------------------------

@@ -118,4 +118,65 @@ return {
             assert(up4 == nil and reason == "locked", "and the vendor refuses it, got " .. tostring(reason))
         end,
     },
+    {
+        name = "Vendor.priceFor scales +50% of base per tier; sellValue follows the item's level",
+        fn = function()
+            assert(Vendor.priceFor(100, 0) == 100, "tier 0 is the base price")
+            assert(Vendor.priceFor(100, 1) == 150, "+1 is +50%")
+            assert(Vendor.priceFor(100, 4) == 300, "+4 is triple the base")
+            assert(Vendor.priceFor(nil, 3) == nil, "a never-sold item has no price at any tier")
+            -- Sell value is half the leveled shelf price, so a refined consumable is worth more.
+            local base = Item.instantiate("acid_bomb")      -- +0
+            local up2 = Item.instantiate("acid_bomb", 1, 2) -- +2
+            assert(Vendor.sellValue(up2) > Vendor.sellValue(base), "a +2 consumable sells for more than a +0")
+            assert(Vendor.sellValue(up2) == math.floor(Vendor.priceFor(Item.defs.acid_bomb.price, 2) * 0.5),
+                "sell value is half the leveled shelf price")
+        end,
+    },
+    {
+        name = "a vendor refines a consumable recipe per-type: gold spent, tier raised, future buys upgraded",
+        fn = function()
+            local player = Player.new()
+            player.gold = 1000
+            assert(Player.recipeLevel(player, "acid_bomb") == 0, "the recipe starts at tier 0")
+
+            local cost = Vendor.recipeUpgradeCost(0, 1)
+            local level = Vendor.upgradeRecipe(player, "alchemist", "acid_bomb")
+            assert(level == 1, "the recipe rises to +1, got " .. tostring(level))
+            assert(Player.recipeLevel(player, "acid_bomb") == 1, "the tier is stored on the player")
+            assert(player.gold == 1000 - cost.gold, "gold was spent (60), no materials")
+
+            -- The shelf now lists acid_bomb at the raised tier and its scaled price (repRank 2 -> shown
+            -- at higher standing). A purchase would instantiate at this level.
+            local found
+            for _, e in ipairs(Vendor.stock("alchemist", 4, player.recipes)) do
+                if e.id == "acid_bomb" then found = e end
+            end
+            assert(found and found.level == 1, "the shelf lists the refined tier")
+            assert(found.price == Vendor.priceFor(Item.defs.acid_bomb.price, 1), "and at the scaled price")
+        end,
+    },
+    {
+        name = "recipe refinement is rank-gated, wrong-bench-safe, and refuses when unpaid",
+        fn = function()
+            local player = Player.new()
+            player.gold = 1000
+            -- Rank 1 (no reputation) unlocks +1/+2; +3 is locked until the standing is earned.
+            assert(Vendor.upgradeRecipe(player, "alchemist", "acid_bomb") == 1)
+            assert(Vendor.upgradeRecipe(player, "alchemist", "acid_bomb") == 2)
+            local up3, reason = Vendor.upgradeRecipe(player, "alchemist", "acid_bomb")
+            assert(up3 == nil and reason == "locked", "+3 is locked at rank 1, got " .. tostring(reason))
+
+            -- Wrong bench: a vendor that doesn't sell acid can't refine its recipe.
+            local wrong, why = Vendor.upgradeRecipe(player, "arcanum", "acid_bomb")
+            assert(wrong == nil and why == "class", "the mage vendor won't refine acid, got " .. tostring(why))
+
+            -- Broke: no gold, nothing charged, tier unchanged.
+            player.gold = 0
+            player.recipes = {}
+            local poor, r = Vendor.upgradeRecipe(player, "alchemist", "acid_bomb")
+            assert(poor == nil and r == "gold", "no gold -> refused, got " .. tostring(r))
+            assert(player.gold == 0 and Player.recipeLevel(player, "acid_bomb") == 0, "and nothing changed")
+        end,
+    },
 }

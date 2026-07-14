@@ -15,6 +15,7 @@ return {
     -- (onApply is not undone by expiry) -- this is how long the ice stays brittle.
     duration = 12,
     debuff = true,                -- removable by Cure
+    interruptsChannel = true,     -- ice locks the caster mid-incantation, breaking a channel
     vulnerable = { crush = 6, fire = 6 }, -- bonus damage taken from crush- and fire-tagged hits
     onApply = function(ctx)
         ctx.unit.initiative = ctx.unit.initiative + (ctx.magnitude or 0)

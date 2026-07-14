@@ -9,6 +9,7 @@ return {
     sprite = "assets/items/spear.png",
     type = "weapon",
     tags = { "spear", "pierce", "physical", "melee" },
+    hands = 2, -- a two-handed polearm (Dual Wield can pair it only once forged to +5)
     class = "fighter",
     price = 140,
     repRank = 2,

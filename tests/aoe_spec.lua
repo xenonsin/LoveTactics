@@ -97,7 +97,8 @@ return {
             local victims = { c.units[2], c.units[3], c.units[4], c.units[5] }
             local before = {}
             for _, v in ipairs(victims) do before[v] = v.char.stats.health.current end
-            assert(Combat.useItem(c, mage, fireball, 5, 5), "fireball lands")
+            assert(Combat.useItem(c, mage, fireball, 5, 5), "fireball begins channeling")
+            assert(Combat.resolveChannel(c, mage), "the wound-up blast lands")
             for _, v in ipairs(victims) do
                 assert(v.char.stats.health.current < before[v],
                     "unit at (" .. v.x .. "," .. v.y .. ") took blast damage")

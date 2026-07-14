@@ -98,9 +98,9 @@ function Shop.new(opts)
     return self
 end
 
--- Owned items this vendor can upgrade (Vendor.canUpgradeHere: abilities of its class, or -- at the
--- Alchemist -- any consumable), with where each lives so an upgrade can swap it back in place: a
--- roster member's grid cell, or a stash slot.
+-- Owned items this vendor hones PER INSTANCE (Vendor.canUpgradeHere: abilities of its class --
+-- consumables refine per-type instead, see the recipe rows in refresh), with where each lives so an
+-- upgrade can swap it back in place: a roster member's grid cell, or a stash slot.
 function Shop:collectUpgrades()
     local out = {}
     for _, char in ipairs(self.player.roster or {}) do
@@ -128,10 +128,12 @@ function Shop:refresh()
     self.rows = {}
 
     if self.mode == "buy" then
-        for _, entry in ipairs(Vendor.stock(self.vendorId, self.rank)) do
+        for _, entry in ipairs(Vendor.stock(self.vendorId, self.rank, self.player.recipes)) do
+            -- Instantiate at the item's recipe tier, so its name (+n) and stats reflect what's bought.
+            local item = Item.instantiate(entry.id, nil, entry.level)
             self.rows[#self.rows + 1] = {
-                item = Item.instantiate(entry.id), entry = entry,
-                label = entry.name .. "  -  " .. (entry.locked and "locked" or (entry.price .. "g")),
+                item = item, entry = entry,
+                label = item.name .. "  -  " .. (entry.locked and "locked" or (entry.price .. "g")),
                 locked = entry.locked,
             }
         end
@@ -146,11 +148,26 @@ function Shop:refresh()
             }
         end
     else -- upgrade
+        -- Consumable recipe tiers: this vendor's own consumable shelf, refined per-type. Upgrading one
+        -- raises the tier every future purchase comes at (Vendor.upgradeRecipe / Player.recipeLevel).
+        for _, entry in ipairs(Vendor.stock(self.vendorId, self.rank, self.player.recipes)) do
+            local sample = entry.type == "consumable" and Item.instantiate(entry.id, nil, entry.level)
+            if sample and Item.isUpgradable(sample) then
+                local cost = Vendor.recipeUpgradeCost(entry.level, self.rank)
+                local tail = cost and (cost.locked and "locked" or (cost.gold .. "g")) or "max"
+                self.rows[#self.rows + 1] = {
+                    kind = "recipe", id = entry.id, item = sample, cost = cost,
+                    label = sample.name .. "  -  " .. tail,
+                    locked = (cost == nil) or cost.locked,
+                }
+            end
+        end
+        -- Ability instances, honed per-item (Vendor.canUpgradeHere excludes consumables).
         for _, up in ipairs(self:collectUpgrades()) do
             local cost = Vendor.abilityUpgradeCost(up.item, self.rank)
             local tail = cost and (cost.locked and "locked" or (cost.gold .. "g")) or "max"
             self.rows[#self.rows + 1] = {
-                item = up.item, up = up, cost = cost,
+                kind = "instance", item = up.item, up = up, cost = cost,
                 label = up.item.name .. " (" .. up.where .. ")  -  " .. tail,
                 locked = (cost == nil) or cost.locked,
             }
@@ -217,9 +234,10 @@ function Shop:buy(row)
         self:setMsg("Not enough gold.", false)
         return
     end
-    Player.addToStash(self.player, Item.instantiate(entry.id))
+    local item = Item.instantiate(entry.id, nil, entry.level)
+    Player.addToStash(self.player, item)
     Player.save()
-    self:setMsg(entry.name .. " bought. It is in your stash.", true)
+    self:setMsg(item.name .. " bought. It is in your stash.", true)
     self:refresh()
 end
 
@@ -257,6 +275,21 @@ function Shop:commitSell(item, value, n)
 end
 
 function Shop:upgrade(row)
+    if row.kind == "recipe" then
+        local level, reason = Vendor.upgradeRecipe(self.player, self.vendorId, row.id)
+        if not level then
+            self:setMsg((reason == "gold" and "Not enough gold.")
+                or (reason == "locked" and "Needs higher standing to refine further.")
+                or (reason == "max level" and (row.item.name .. " is at its highest tier."))
+                or "It cannot be refined here.", false)
+            return
+        end
+        Player.save()
+        self:setMsg(row.item.name .. " recipe refined to +" .. level .. ".", true)
+        self:refresh()
+        return
+    end
+
     local up = row.up
     local newItem, reason = Vendor.upgradeAbility(self.player, self.vendorId, up.item)
     if not newItem then

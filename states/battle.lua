@@ -50,12 +50,23 @@ local AI_DELAY = 0.35 -- seconds between enemy actions, so each move is watchabl
 -- beat the unit lands on that tile. Applies to both sides.
 local MOVE_STEP = 0.25
 
--- Clickable "Forfeit" button so a mouse-only player can bail out (counts as a loss), plus a
--- "Wait" button so a mouse-only player can end a turn without acting (a delay).
+-- Clickable "Forfeit" button so a mouse-only player can bail out (counts as a loss). Wait/Focus/
+-- Defend is not here: it lives in a long button under the item grid (ui/combat_panel.lua).
 local forfeitButton = { x = 16, y = 16, w = 130, h = 36 }
-local waitButton = { x = 16, y = 60, w = 130, h = 36 }
 -- Toggles the combat-log panel on the left (also L / gamepad left-shoulder).
-local logButton = { x = 16, y = 104, w = 130, h = 36 }
+local logButton = { x = 16, y = 60, w = 130, h = 36 }
+-- Toggles the danger overlay that paints EVERY enemy's reach-and-strike range purple across the
+-- whole board (also T / gamepad left-stick), so the player can survey all threats at once.
+local rangesButton = { x = 16, y = 104, w = 130, h = 36 }
+
+-- The 3x3 item grid mapped onto the number KEYPAD by physical position: kp7 is the top-left slot,
+-- kp3 the bottom-right, matching the grid's row-major layout so the keys sit where the slots do.
+-- kp0 is the Wait action. (The top-row 1-9 keys still arm slots 1-9 in order.)
+local KEYPAD_SLOT = {
+    kp7 = 1, kp8 = 2, kp9 = 3,
+    kp4 = 4, kp5 = 5, kp6 = 6,
+    kp1 = 7, kp2 = 8, kp3 = 9,
+}
 
 local function pointIn(btn, x, y)
     return x >= btn.x and x <= btn.x + btn.w and y >= btn.y and y <= btn.y + btn.h
@@ -248,6 +259,82 @@ local function computeThreat(unit)
     battle.threatCells = cells
 end
 
+-- The reach a single unit threatens THIS turn with its default weapon: its walk-and-strike band,
+-- split (like computeThreat) into the movement tiles and the attack tiles beyond them. Powers the
+-- "hover a unit to read its range" preview (Fire Emblem / Triangle Strategy): the inspected unit's
+-- own movement (orange) + attack reach (crimson), computed on demand and cached against the unit it
+-- was built for (battle.inspectFor) so it isn't rebuilt every frame. Pass nil to clear.
+local function computeInspect(unit)
+    battle.inspectFor = unit
+    battle.inspectMoveCells = {}
+    battle.inspectRangeCells = {}
+    if not unit then return end
+    local reachable = Status.blocksMove(unit) and {} or Combat.reachable(battle.combat, unit)
+    local moveKeys = {}
+    for k, node in pairs(reachable) do
+        battle.inspectMoveCells[#battle.inspectMoveCells + 1] = { x = node.x, y = node.y }
+        moveKeys[k] = true
+    end
+    local weapon = Combat.defaultWeapon(unit.char)
+    local ab = weapon and weapon.activeAbility
+    local range = (ab and ab.range) or 1
+    local reach = Combat.attackReach(battle.combat, unit, range, reachable,
+        ab and ab.requiresSight, Combat.abilityMinRange(ab))
+    for k, cell in pairs(reach) do
+        -- The attack band is what it can hit BEYOND where it can stand -- the move tiles are their
+        -- own overlay, and its own tile isn't a strike target.
+        if not moveKeys[k] and not (cell.x == unit.x and cell.y == unit.y) then
+            battle.inspectRangeCells[#battle.inspectRangeCells + 1] = { x = cell.x, y = cell.y }
+        end
+    end
+end
+
+-- The unit whose range the board is currently previewing: the one hovered on the turn-order strip
+-- (an explicit "look at this" gesture) or, failing that, the one under the board cursor -- as long
+-- as it isn't the acting unit itself and we're in plain MOVE mode (not aiming an armed ability).
+--
+-- DISABLED for now: hovering a foe to preview its reach clashed with the click-to-attack preview on
+-- the same hover. Returning nil keeps the actor's own move/danger overlays up at all times; delete
+-- the early return to bring the feature back (the compute/draw path below is intact).
+local function desiredInspectUnit()
+    do return nil end
+    if battle.mode ~= "move" or battle.over then return nil end
+    local cur = battle.current
+    local h = battle.hoverUnit
+    if h and h.alive and h ~= cur then return h end
+    local u = Combat.unitAt(battle.combat, battle.map.cursor.x, battle.map.cursor.y)
+    if u and u.alive and u ~= cur then return u end
+    return nil
+end
+
+-- The party's danger zone: every tile any living hostile unit could reach-and-strike this turn with
+-- its default weapon, unioned across the enemies. `battle.dangerCells` is the keyed set ("x,y" ->
+-- {x,y}) the purple overlay reads; `battle.dangerSources` maps each threatened tile to the list of
+-- enemy POSITIONS that threaten it, so a tile the cursor lands on can trace a red line back to each
+-- foe. Recomputed on turn hand-off and after any walk (an enemy's reachable set shifts as units
+-- move) -- never per frame. Decoys (control "none") never advance, so they raise no threat.
+local function computeDanger()
+    local cells, sources = {}, {}
+    for _, u in ipairs(battle.combat.units) do
+        if u.alive and u.side ~= "party" and u.control ~= "none" then
+            local weapon = Combat.defaultWeapon(u.char)
+            local ab = weapon and weapon.activeAbility
+            local range = (ab and ab.range) or 1
+            local reach = Combat.attackReach(battle.combat, u, range,
+                Combat.reachable(battle.combat, u), ab and ab.requiresSight, Combat.abilityMinRange(ab))
+            for k, cell in pairs(reach) do
+                if not cells[k] then cells[k] = { x = cell.x, y = cell.y } end
+                local src = sources[k]
+                if not src then src = {} sources[k] = src end
+                src[#src + 1] = { x = u.x, y = u.y }
+            end
+        end
+    end
+    battle.dangerCells = cells
+    battle.dangerSources = sources
+    battle.inspectFor = nil -- board changed: a lingering hover preview is rebuilt on the next frame
+end
+
 -- Start the current unit's turn: MOVE mode + reachable set for a unit the player commands, or an
 -- AI delay for anyone else (an enemy, or a summon fighting for them). Control -- not side -- picks
 -- the branch, so a player's summon takes an interactive turn and an inert decoy does not.
@@ -262,6 +349,15 @@ local function beginTurn()
     battle.threatCells = {}
     battle.attackReach = {}
     if not current then return end
+    computeDanger() -- every turn, so the "Threats" survey toggle stays fresh on enemy turns too
+    -- A unit surfacing mid-channel doesn't take an interactive turn -- its slot IS the spell resolving.
+    -- Hold a beat on the telegraphed tiles (like the AI's think-pause) so the blast reads, then
+    -- battle.update fires resolveChannel. Works for both sides: an enemy Meteor Storm resolves itself,
+    -- with no player-vs-AI branch involved.
+    if current.channel then
+        battle.resolveTimer = AI_DELAY
+        return
+    end
     if Combat.isPlayerControlled(current) then
         computeReachable(current)
         computeThreat(current)
@@ -288,6 +384,14 @@ end
 -- Is a unit mid-walk? The board is mid-animation, so player input and the AI clock both hold.
 local function walking()
     return battle.walk ~= nil
+end
+
+-- Should player input be held right now? True mid-walk, and also while the current unit is resolving
+-- a channel -- a channeling caster (even a player one) doesn't get an interactive turn; its slot IS
+-- the spell going off, and letting the player arm a second action then would double-cast. The input
+-- guards below test this instead of raw walking().
+local function busy()
+    return walking() or (battle.current ~= nil and battle.current.channel ~= nil)
 end
 
 -- Send `unit` walking to (x, y), calling `onDone` once it comes to rest -- on the destination, or
@@ -339,7 +443,7 @@ end
 -- instead of arming a cast (it has a moveBehavior, not an activeAbility).
 local function armItem(item)
     local current = battle.current
-    if battle.over or walking() or not current or not Combat.isPlayerControlled(current) then return end
+    if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
     if item and item.moveBehavior and item.moveBehavior.mode == "teleport" then
         toggleBlink(current)
         return
@@ -370,7 +474,7 @@ end
 -- refuse them, leaving Y with nothing to advance to.
 local function cycleAbilityItem()
     local current = battle.current
-    if battle.over or walking() or not current or not Combat.isPlayerControlled(current) then return end
+    if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
     local items = Combat.abilityItems(current.char)
     if #items == 0 then return end
     local idx = 0
@@ -480,7 +584,7 @@ end
 -- panel lists and the actor's turn-strip bars project as a red loss slice.
 local function actionPreviewFor(cx, cy)
     local current = battle.current
-    if battle.over or walking() or not current or not Combat.isPlayerControlled(current) then return nil end
+    if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return nil end
     local unit = Combat.unitAt(battle.combat, cx, cy)
 
     if battle.mode == "armed" and battle.armedItem then
@@ -560,7 +664,7 @@ end
 -- armed item on it (ends the turn).
 local function confirm()
     local current = battle.current
-    if battle.over or walking() or not current or not Combat.isPlayerControlled(current) then return end
+    if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
     local cx, cy = battle.map.cursor.x, battle.map.cursor.y
     if battle.mode == "move" then
         local target = Combat.unitAt(battle.combat, cx, cy)
@@ -577,7 +681,7 @@ local function confirm()
                 if Combat.blink(battle.combat, current, cx, cy) then
                     battle.reachable, battle.moveCells = {}, {}
                     battle.threatCells, battle.attackReach = {}, {}
-                    if current.alive then computeThreat(current) else advanceTurn() end
+                    if current.alive then computeThreat(current) computeDanger() else advanceTurn() end
                 end
             else
                 -- Walk there (startWalk already cleared the move band -- only one move per turn). Once
@@ -585,7 +689,7 @@ local function confirm()
                 -- stay in this turn so the player can still arm an item or wait. A unit that walked
                 -- into a lethal trap has no turn left to take.
                 startWalk(current, cx, cy, function()
-                    if current.alive then computeThreat(current) else advanceTurn() end
+                    if current.alive then computeThreat(current) computeDanger() else advanceTurn() end
                 end)
             end
         end
@@ -599,10 +703,11 @@ end
 -- Combat.waitBehavior. Available whether or not the unit moved.
 local function waitTurn()
     local current = battle.current
-    if battle.over or walking() or not current or not Combat.isPlayerControlled(current) then return end
+    if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
     local kind = Combat.waitBehavior(current).kind
     local action = (kind == "focus" and Combat.focus)
         or (kind == "defend" and Combat.defend)
+        or (kind == "overwatch" and Combat.overwatch)
         or Combat.wait
     if action(battle.combat, current) then advanceTurn() end
 end
@@ -643,6 +748,10 @@ local function refreshView()
     -- sits at initiative 0; a move already taken this turn is folded in via the pending move
     -- cost, and a wait previews the delay slot (next unit's initiative + 1).
     local newInit
+    -- A channeled ability's ghost lands at its RESOLUTION slot (the wind-up, ab.channel) and reads
+    -- "channel resolves here" instead of "would act here", so the preview shows when the spell goes
+    -- off, not when the cast is initiated.
+    local channelPreview = false
     if isParty then
         local pendingMove = (battle.combat.turn and battle.combat.turn.moveCost) or 0
         if battle.hoverWait then
@@ -652,9 +761,13 @@ local function refreshView()
             end
             newInit = nxt and math.max(pendingMove, nxt + 1) or (pendingMove + Combat.WAIT_COST)
         elseif battle.hoverItem and battle.hoverItem.activeAbility then
-            newInit = pendingMove + (battle.hoverItem.activeAbility.speed or 0)
+            local a = battle.hoverItem.activeAbility
+            newInit = pendingMove + (a.channel or Combat.actionSpeed(current, a, battle.hoverItem))
+            channelPreview = a.channel ~= nil
         elseif battle.mode == "armed" and battle.armedItem then
-            newInit = pendingMove + (battle.armedItem.activeAbility.speed or 0)
+            local a = battle.armedItem.activeAbility
+            newInit = pendingMove + (a.channel or Combat.actionSpeed(current, a, battle.armedItem))
+            channelPreview = a.channel ~= nil
         elseif battle.mode == "move" then
             local node = battle.reachable and battle.reachable[battle.map.cursor.x .. "," .. battle.map.cursor.y]
             if node then newInit = Combat.moveInitiative(current, node.cost) end
@@ -689,12 +802,58 @@ local function refreshView()
         overlays.range = battle.rangeCells
         overlays.rangeSupport = Combat.isSupportAbility(hoverAbility)
     elseif isParty then
-        overlays.move = battle.moveCells
-        overlays.threat = battle.threatCells -- red default-attack reach beyond the move band
+        -- Hovering a unit previews ITS reach instead of the actor's (Fire Emblem / Triangle
+        -- Strategy): the hovered unit's own movement (orange) + attack range (crimson) REPLACE the
+        -- actor's blue/red/purple overlays until the cursor leaves it. Cached against the unit it was
+        -- built for (battle.inspectFor) so it rebuilds only when the hovered unit changes.
+        local inspect = desiredInspectUnit()
+        if inspect ~= battle.inspectFor then computeInspect(inspect) end
+        if inspect then
+            overlays.inspectMove = battle.inspectMoveCells
+            overlays.inspectRange = battle.inspectRangeCells
+        else
+            overlays.threat = battle.threatCells -- red default-attack reach beyond the move band
+            -- Split the reachable move band by danger: a tile the actor could step to that a foe
+            -- could ALSO strike this turn turns purple (the intersection of your movement and an
+            -- enemy's attack range), so a step into the line of fire reads; the rest stay blue.
+            local danger = battle.dangerCells or {}
+            local safe, risky, riskyKeys = {}, {}, {}
+            for _, c in ipairs(battle.moveCells) do
+                local k = c.x .. "," .. c.y
+                if danger[k] then risky[#risky + 1] = c riskyKeys[k] = true else safe[#safe + 1] = c end
+            end
+            overlays.move = safe
+            overlays.moveDanger = risky
+            -- A red line pulses from each foe that threatens the tile under the cursor toward it, so
+            -- the move being weighed reads as "here is who could hit me there". Only the purple
+            -- movement tiles (a step the actor can actually take into a foe's range) draw it -- not
+            -- every threatened tile on the board.
+            local ck = battle.map.cursor.x .. "," .. battle.map.cursor.y
+            local from = riskyKeys[ck] and battle.dangerSources and battle.dangerSources[ck]
+            if from then
+                overlays.threatLine = { to = { x = battle.map.cursor.x, y = battle.map.cursor.y }, from = from }
+            end
+        end
     end
     overlays.current = { x = current.x, y = current.y }
     local hover = battle.hoverUnit
     if hover and hover.alive then overlays.hover = { x = hover.x, y = hover.y } end
+
+    -- "Threats" survey (the left-column toggle): wash EVERY tile any enemy could reach-and-strike
+    -- this turn in purple, so the whole danger picture reads at once. During the actor's own move
+    -- turn its reachable tiles are left to the move overlay (blue / move-danger purple), so the
+    -- survey only fills in the danger BEYOND where the actor can step.
+    if battle.showEnemyRanges then
+        local moveKeys = {}
+        if isParty and battle.mode == "move" then
+            for _, c in ipairs(battle.moveCells or {}) do moveKeys[c.x .. "," .. c.y] = true end
+        end
+        local ranges = {}
+        for k, c in pairs(battle.dangerCells or {}) do
+            if not moveKeys[k] then ranges[#ranges + 1] = c end
+        end
+        overlays.enemyRanges = ranges
+    end
 
     -- Traps the party can currently see (its own + detected enemy traps): a per-frame lookup for
     -- click-to-damage (revealedEnemyTrapAt) and the list the renderer draws.
@@ -752,7 +911,25 @@ local function refreshView()
         armedItem = battle.armedItem,
         showInitiative = battle.showInitiative,
         preview = bannerPreview,
+        previewLabel = channelPreview and "channel resolves here" or nil,
     })
+
+    -- Telegraph every in-progress channel's blast on the board -- not just the local armed preview, so
+    -- an ENEMY winding up Meteor Storm paints the tiles it will hit, and the player can step clear.
+    -- Read from unit.channel (the pending payload), independent of whose turn it is.
+    local channelAoe
+    for _, u in ipairs(battle.combat.units) do
+        local ch = u.alive and u.channel
+        if ch then
+            channelAoe = channelAoe or {}
+            -- Call Combat.aoeCells directly rather than aoeFootprint: the footprint helper gates on the
+            -- ACTING unit's range set, but this is the channeler's own stored aim, cast turns ago.
+            for _, c in ipairs(Combat.aoeCells(battle.combat, ch.ab, ch.tx, ch.ty, u)) do
+                channelAoe[#channelAoe + 1] = c
+            end
+        end
+    end
+    overlays.channelAoe = channelAoe
 
     overlays.hpPreview = bannerPreview -- per-unit incoming damage/heal, for on-board HP bars
     battle.map:setOverlays(overlays)
@@ -810,6 +987,7 @@ function battle.enter(self, opts)
         onActivateItem = function(item) armItem(item) end,
         onHoverItem = function(item) battle.hoverItem = item end,
         onHoverUnit = function(unit) battle.hoverUnit = unit end,
+        onWait = function() waitTurn() end, -- the long Wait button under the item grid
     })
     -- The log toggles into a thin, board-width strip in the bottom gutter, directly under the
     -- board (derived from the map so it stays aligned no matter the arena size).
@@ -830,6 +1008,15 @@ function battle.update(dt)
     battle.map:update(dt)
     if walking() then
         updateWalk(dt) -- a walk holds the AI clock: whoever is on their feet finishes first
+    elseif not battle.over and battle.current and battle.current.channel then
+        -- The current unit is mid-channel: count the think-pause down, then detonate the spell and
+        -- hand off. Checked before the AI branch so a player's own channel resolves too (a player
+        -- channeler is player-controlled, so the AI branch below would skip it).
+        battle.resolveTimer = (battle.resolveTimer or 0) - dt
+        if battle.resolveTimer <= 0 then
+            Combat.resolveChannel(battle.combat, battle.current)
+            advanceTurn()
+        end
     elseif not battle.over and battle.current and not Combat.isPlayerControlled(battle.current) then
         battle.aiTimer = (battle.aiTimer or 0) - dt
         if battle.aiTimer <= 0 then executeEnemyAction() end
@@ -965,22 +1152,6 @@ function battle.drawHud()
     love.graphics.printf("Forfeit", forfeitButton.x, forfeitButton.y + forfeitButton.h / 2 - 8,
         forfeitButton.w, "center")
 
-    -- Wait / End Turn button, active only on a party unit's turn.
-    local canWait = battle.current and Combat.isPlayerControlled(battle.current) and not battle.over
-    if canWait then love.graphics.setColor(0.18, 0.22, 0.30) else love.graphics.setColor(0.14, 0.15, 0.18) end
-    love.graphics.rectangle("fill", waitButton.x, waitButton.y, waitButton.w, waitButton.h, 6, 6)
-    if canWait then love.graphics.setColor(0.5, 0.65, 0.85) else love.graphics.setColor(0.3, 0.32, 0.38) end
-    love.graphics.rectangle("line", waitButton.x, waitButton.y, waitButton.w, waitButton.h, 6, 6)
-    if canWait then love.graphics.setColor(0.9, 0.94, 1) else love.graphics.setColor(0.5, 0.52, 0.58) end
-    love.graphics.setFont(hudFont)
-    -- Label reflects the acting unit's wait behavior (item-swapped Focus / Defend, else Wait).
-    local waitLabel = "Wait"
-    if battle.current then
-        local kind = Combat.waitBehavior(battle.current).kind
-        waitLabel = (kind == "focus" and "Focus") or (kind == "defend" and "Defend") or "Wait"
-    end
-    love.graphics.printf(waitLabel, waitButton.x, waitButton.y + waitButton.h / 2 - 8, waitButton.w, "center")
-
     -- Combat-log toggle: brighter when the panel is open so its state reads at a glance.
     local logOn = battle.log and battle.log.visible
     if logOn then love.graphics.setColor(0.20, 0.26, 0.22) else love.graphics.setColor(0.15, 0.17, 0.16) end
@@ -991,6 +1162,18 @@ function battle.drawHud()
     love.graphics.setFont(hudFont)
     love.graphics.printf(logOn and "Log ✓" or "Log", logButton.x, logButton.y + logButton.h / 2 - 8,
         logButton.w, "center")
+
+    -- All-enemy-ranges toggle: brighter (purple) when the danger overlay is on, matching the
+    -- purple the threatened tiles are washed in.
+    local rangesOn = battle.showEnemyRanges
+    if rangesOn then love.graphics.setColor(0.26, 0.18, 0.30) else love.graphics.setColor(0.16, 0.15, 0.18) end
+    love.graphics.rectangle("fill", rangesButton.x, rangesButton.y, rangesButton.w, rangesButton.h, 6, 6)
+    if rangesOn then love.graphics.setColor(0.72, 0.45, 0.92) else love.graphics.setColor(0.40, 0.36, 0.44) end
+    love.graphics.rectangle("line", rangesButton.x, rangesButton.y, rangesButton.w, rangesButton.h, 6, 6)
+    if rangesOn then love.graphics.setColor(0.90, 0.80, 0.98) else love.graphics.setColor(0.62, 0.60, 0.66) end
+    love.graphics.setFont(hudFont)
+    love.graphics.printf(rangesOn and "Threats ✓" or "Threats",
+        rangesButton.x, rangesButton.y + rangesButton.h / 2 - 8, rangesButton.w, "center")
 
     -- Encounter name + objective, centred over the battlefield region.
     love.graphics.setFont(titleFont)
@@ -1044,6 +1227,10 @@ function battle.keypressed(key)
         battle.log:toggle()
         return
     end
+    if key == "t" then -- toggle the all-enemy-attack-ranges danger overlay
+        battle.showEnemyRanges = not battle.showEnemyRanges
+        return
+    end
     -- Scroll the turn-order strip toward later / earlier turns (read-only, so allowed once the
     -- battle is over too).
     if key == "pageup" then
@@ -1056,10 +1243,12 @@ function battle.keypressed(key)
     if battle.over then return end
     if key == "return" or key == "kpenter" or key == "space" then
         confirm()
-    elseif key == "tab" then
+    elseif key == "tab" or key == "kp0" then
         waitTurn()
     elseif key == "escape" then
         if battle.mode == "armed" then cancelArm() else lose() end
+    elseif KEYPAD_SLOT[key] then
+        armSlot(KEYPAD_SLOT[key]) -- numpad, mapped by physical position to the 3x3 item grid
     elseif key:match("^[1-9]$") then
         armSlot(tonumber(key))
     else
@@ -1074,6 +1263,10 @@ function battle.gamepadpressed(joystick, button)
     end
     if button == "rightshoulder" then -- page the turn-order strip, wrapping back to the actor
         battle.panel:cyclePage()
+        return
+    end
+    if button == "leftstick" then -- toggle the all-enemy-attack-ranges danger overlay
+        battle.showEnemyRanges = not battle.showEnemyRanges
         return
     end
     if battle.over then return end
@@ -1094,10 +1287,11 @@ end
 
 function battle.mousemoved(x, y, dx, dy)
     battle.mouseX, battle.mouseY = x, y -- drives the status tooltip (board + panel hit-tests)
-    -- Hovering the Wait button previews the delay slot on the timeline.
-    battle.hoverWait = pointIn(waitButton, x, y) and battle.current
+    -- Hovering the panel's Wait button previews the delay slot on the timeline.
+    local overPanel = battle.panel:mousemoved(x, y)
+    battle.hoverWait = battle.panel.waitHover and battle.current
         and Combat.isPlayerControlled(battle.current) and not battle.over and not walking() or false
-    if battle.panel:mousemoved(x, y) then return end
+    if overPanel then return end
     battle.map:mousemoved(x, y)
 end
 
@@ -1115,12 +1309,12 @@ function battle.mousepressed(x, y, button)
         lose()
         return
     end
-    if button == 1 and pointIn(waitButton, x, y) then
-        waitTurn()
-        return
-    end
     if button == 1 and pointIn(logButton, x, y) then
         battle.log:toggle()
+        return
+    end
+    if button == 1 and pointIn(rangesButton, x, y) then
+        battle.showEnemyRanges = not battle.showEnemyRanges
         return
     end
     -- A click inside the open log panel is consumed by it (it must not fall through to a

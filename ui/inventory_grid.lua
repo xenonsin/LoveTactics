@@ -25,6 +25,19 @@ local SLOT = 92
 local GAP = 12
 local COLS, ROWS = Character.COLS, Character.ROWS
 
+-- Vertices of a 5-point star inscribed in radius `r` about (cx, cy), point-up. Used for the
+-- "default weapon" badge (gold/filled when pinned, faint outline when merely pinnable).
+local function starPoints(cx, cy, r)
+    local pts = {}
+    for k = 0, 9 do
+        local ang = -math.pi / 2 + k * math.pi / 5
+        local rad = (k % 2 == 0) and r or r * 0.42
+        pts[#pts + 1] = cx + math.cos(ang) * rad
+        pts[#pts + 1] = cy + math.sin(ang) * rad
+    end
+    return pts
+end
+
 function InventoryGrid.new(opts)
     opts = opts or {}
     local self = setmetatable({}, InventoryGrid)
@@ -63,6 +76,33 @@ function InventoryGrid:indexAt(px, py)
         if px >= sx and px <= sx + sw and py >= sy and py <= sy + sh then return i end
     end
     return nil
+end
+
+-- Does cell `i` hold an attackable weapon (a default-weapon candidate)? Mirrors
+-- Combat.defaultWeapon's test so the star badge only offers itself on cells that can be pinned.
+function InventoryGrid:isWeaponCell(i)
+    local item = self.char and i and self.char.inventory[i]
+    return item ~= nil and item.type == "weapon" and item.activeAbility ~= nil
+end
+
+-- Top-right corner rect where a weapon cell's "default weapon" star badge is drawn / clicked.
+function InventoryGrid:starRect(i)
+    local sx, sy, sw = self:slotRect(i)
+    local d = 20
+    return sx + sw - d - 3, sy + 3, d, d
+end
+
+-- Pin (or un-pin) cell `i` as the character's default attack weapon. Only weapon cells qualify;
+-- clicking the current default toggles it back to the auto pick (nil). Combat.defaultWeapon reads
+-- char.defaultWeaponSlot, validating it still holds a weapon, so a stale pin is harmless.
+function InventoryGrid:setDefaultAt(i)
+    if not (self.char and self:isWeaponCell(i)) then return false end
+    if self.char.defaultWeaponSlot == i then
+        self.char.defaultWeaponSlot = nil
+    else
+        self.char.defaultWeaponSlot = i
+    end
+    return true
 end
 
 -- Move the cursor by (dc, dr) grid steps, clamped to the 3x3.
@@ -143,6 +183,34 @@ function InventoryGrid:draw()
         end
     end
 
+    -- Default-weapon star, top-right of each weapon cell: gold + filled on the pinned default,
+    -- a faint outline on the other weapons (the affordance that they can be pinned). Non-weapon
+    -- cells get nothing. Drawn over the items so it is never hidden by an icon.
+    for i = 1, COLS * ROWS do
+        if self:isWeaponCell(i) then
+            local rx, ry, rw = self:starRect(i)
+            local cx, cy, r = rx + rw / 2, ry + rw / 2, rw * 0.5
+            local pts = starPoints(cx, cy, r)
+            local pinned = (self.char.defaultWeaponSlot == i)
+            if pinned then
+                love.graphics.setColor(0, 0, 0, 0.55)
+                love.graphics.circle("fill", cx, cy, r + 2)
+                love.graphics.setColor(0.98, 0.82, 0.30)
+                love.graphics.polygon("fill", pts)
+                love.graphics.setColor(0.4, 0.3, 0.05)
+                love.graphics.setLineWidth(1)
+                love.graphics.polygon("line", pts)
+            else
+                love.graphics.setColor(0, 0, 0, 0.35)
+                love.graphics.circle("fill", cx, cy, r + 2)
+                love.graphics.setColor(0.85, 0.85, 0.55, 0.55)
+                love.graphics.setLineWidth(1.5)
+                love.graphics.polygon("line", pts)
+            end
+        end
+    end
+    love.graphics.setLineWidth(1)
+
     -- Selection overlays: hover (mouse), the keyboard/gamepad cursor, and the picked-up cell.
     if self.hover then
         local sx, sy, sw, sh = self:slotRect(self.hover)
@@ -176,6 +244,15 @@ function InventoryGrid:mousepressed(x, y, button)
     local i = self:indexAt(x, y)
     if not i then return false end
     self.cursor = i
+    -- A click on a weapon cell's star badge pins/un-pins the default weapon instead of picking the
+    -- item up (checked before activate so the two never fire on one click).
+    if self:isWeaponCell(i) then
+        local rx, ry, rw, rh = self:starRect(i)
+        if x >= rx and x <= rx + rw and y >= ry and y <= ry + rh then
+            self:setDefaultAt(i)
+            return true
+        end
+    end
     self:activate(i)
     return true
 end

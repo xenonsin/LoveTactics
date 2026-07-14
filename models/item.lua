@@ -203,6 +203,7 @@ function Item.instantiate(id, quantity, level)
         detectRadius = def.detectRadius,       -- combat: reveals traps within this radius (detectors)
         maxStack = def.maxStack,               -- stackable (consumable) items: per-slot cap override
         noSteal = def.noSteal,                 -- a pickpocket can never lift this (a beast's fangs)
+        hands = def.hands,                     -- weapons: 1 (default, nil) or 2 -- what Dual Wield reads
         stealPriority = def.stealPriority,     -- a pickpocket takes the highest first (decoy bait)
         noCopy = def.noCopy,                   -- a summoned copy of the holder never carries this
         traits = deepCopy(def.traits),         -- combat reactions granted to whoever carries it

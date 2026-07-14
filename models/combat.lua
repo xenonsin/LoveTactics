@@ -200,6 +200,14 @@ end
 -- it carries no weapon. Drives the default-attack (threat) range highlight and the click-to-
 -- attack basic strike. May be nil only for a hand-built char with neither.
 function Combat.defaultWeapon(char)
+    -- An explicit pick (set in the Loadout screen) wins, but only while the slot still holds a
+    -- usable weapon -- the grid may have been rearranged or the weapon stripped since it was pinned,
+    -- so a stale slot silently falls back to the scan below rather than attacking with nothing.
+    local slot = char.defaultWeaponSlot
+    if slot then
+        local item = char.inventory[slot]
+        if item and item.type == "weapon" and item.activeAbility then return item end
+    end
     for _, item in ipairs(Character.eachItem(char)) do
         if item.type == "weapon" and item.activeAbility then return item end
     end
@@ -292,7 +300,11 @@ function Combat.abilityRange(combat, unit, ab, x, y)
         and unit.char.unarmed and ab == unit.char.unarmed.activeAbility then
         base = base + unit.unarmedBonus.range
     end
-    return base + (Combat.fieldBonus(combat, x or unit.x, y or unit.y).range or 0)
+    local range = base + (Combat.fieldBonus(combat, x or unit.x, y or unit.y).range or 0)
+    -- A range-cutting debuff (Blind) shortens the reach, but never below 1: a blinded unit is groping
+    -- in the dark, not disarmed, so it can still strike an adjacent foe.
+    if unit then range = range - Status.rangeMalus(unit) end
+    return math.max(1, range)
 end
 
 -- Minimum range of ability `ab`: a fixed "dead zone" a target must be at least this far away to be
@@ -300,6 +312,16 @@ end
 -- this gets NO tile field bonus -- a vantage point extends max reach, it doesn't shrink the dead zone.
 function Combat.abilityMinRange(ab)
     return (ab and ab.minRange) or 0
+end
+
+-- The initiative `item`'s action will bill at end of turn -- normally the ability's own `speed`, but an
+-- ability may compute it live through `speedPreview(unit, item)` (Dual Wield: the summed speed of the
+-- weapons it will swing). The single reader for the timeline ghost, so the previewed slot matches what
+-- endTurn actually charges (which the effect sets via fx.setSpeed to the same number).
+function Combat.actionSpeed(unit, ab, item)
+    if not ab then return Combat.DEFAULT_SPEED end
+    if ab.speedPreview then return ab.speedPreview(unit, item) end
+    return ab.speed or Combat.DEFAULT_SPEED
 end
 
 -- Cells an area-of-effect ability centred on (tx, ty) covers, clamped to the arena. An ability's
@@ -678,6 +700,18 @@ function Combat.openTileNear(combat, x, y)
     return nil
 end
 
+-- Does `unit` cross traps unharmed? True when it carries any item tagged "ignore traps" (Feather
+-- Boots). Mirrors the "detect traps" inventory scan in models/trap.lua: a passive keyed off an item
+-- sitting in the 3x3 grid, never an equip slot. Read by Combat.enterTile to skip the trap trigger.
+local IGNORE_TRAPS_TAG = "ignore traps"
+function Combat.ignoresTraps(unit)
+    if not (unit and unit.char) then return false end
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        if hasTag(item.tags, IGNORE_TRAPS_TAG) then return true end
+    end
+    return false
+end
+
 function Combat.unitsNear(combat, x, y, radius)
     radius = radius or 0
     local out = {}
@@ -758,10 +792,15 @@ function Combat.currentUnit(combat)
 end
 
 -- Open the current unit's turn: a fresh { unit, moved, moveCost } record the move/action
--- calls read and end. Returns the unit whose turn it is (nil if none are left alive).
+-- calls read and end. `startX`/`startY` pin the tile the unit stood on as the turn opened, so an
+-- effect that must return there (Shadow Strike blinking back after its hit) has a fixed anchor even
+-- after the unit has moved. Returns the unit whose turn it is (nil if none are left alive).
 function Combat.startTurn(combat)
     local unit = Combat.currentUnit(combat)
-    combat.turn = unit and { unit = unit, moved = false, moveCost = 0 } or nil
+    combat.turn = unit and { unit = unit, moved = false, moveCost = 0, startX = unit.x, startY = unit.y } or nil
+    -- An Overwatch stance is a one-turn watch: it lapses the moment its holder comes back around to
+    -- act, so the unit chooses anew each turn whether to hold the line again.
+    if unit then unit.overwatch = nil end
     if unit then Status.onTurnStart(combat, unit) end
     return unit
 end
@@ -845,6 +884,22 @@ function Combat.defend(combat, unit)
     Status.apply(combat, unit, "defending")
     Combat.logEvent(combat, "defend", string.format("%s takes a defensive stance.", unitName(unit)))
     endTurn(combat, unit, behavior.speed or Combat.DEFEND_SPEED)
+    return true
+end
+
+-- Overwatch: end the turn without attacking, entering a watchful stance instead. While it holds, an
+-- enemy that WALKS into the bearer's weapon range is shot automatically (Combat.triggerOverwatch, fired
+-- from Combat.stepMove) -- each shot spending `staminaPerShot` of the bearer's stamina but none of the
+-- timeline, and it keeps firing on each step through range until that stamina runs dry. Setting the
+-- stance costs behavior.speed (deliberately steep -- a whole turn spent watching, no move-and-shoot).
+-- The stance lapses when the bearer's own next turn opens (Combat.startTurn). The wait swap granted by
+-- a sentry item (data/items/utility/overwatch_scope.lua).
+function Combat.overwatch(combat, unit)
+    if not unit.alive then return false, "dead" end
+    local behavior = Combat.waitBehavior(unit)
+    unit.overwatch = { staminaPerShot = behavior.stamina or 0 }
+    Combat.logEvent(combat, "action", string.format("%s takes overwatch.", unitName(unit)))
+    endTurn(combat, unit, behavior.speed or Combat.FOCUS_SPEED)
     return true
 end
 
@@ -980,7 +1035,10 @@ end
 -- reads its position. Callers move it first, then announce the arrival.
 function Combat.enterTile(combat, unit, x, y)
     local trap = Trap.at(combat, x, y)
-    if trap then Trap.trigger(combat, trap, unit) end
+    -- Feather Boots walk over any trap unharmed. The guard sits at this one chokepoint, so the wearer
+    -- is spared whether it strode onto the trap, was shoved onto it, or was conjured on top of one --
+    -- but hazards (a spreading fire, quicksand) still bite: the boots dodge blades, not the ground.
+    if trap and not Combat.ignoresTraps(unit) then Trap.trigger(combat, trap, unit) end
     if unit.alive then
         Hazard.onEnter(combat, unit, x, y)
         Combat.updateAuras(combat, unit)
@@ -1071,6 +1129,9 @@ function Combat.stepMove(combat, walk)
     local tile = walk.path[walk.index]
     walk.unit.x, walk.unit.y = tile.x, tile.y
     Combat.enterTile(combat, walk.unit, tile.x, tile.y)
+    -- A unit walking into an opposing Overwatch stance's firing line is shot for it. Only a walk
+    -- triggers this (not a knockback or a summon appearing), so it lives here rather than in enterTile.
+    Combat.triggerOverwatch(combat, walk.unit)
     return true
 end
 
@@ -1123,6 +1184,9 @@ local function shoveStep(combat, unit, dx, dy)
     if not canShoveInto(combat, nx, ny) then return false end
     unit.x, unit.y = nx, ny
     Combat.enterTile(combat, unit, nx, ny)
+    -- Being knocked off your feet shatters a channel you were winding up. Idempotent, so a
+    -- multi-tile slide (knockback/pull/charge all route here) only fizzles the channel once.
+    if unit.channel then Combat.interruptChannel(combat, unit, "knocked off balance") end
     return true
 end
 
@@ -1190,6 +1254,8 @@ function Combat.teleportUnit(combat, unit, x, y)
     Combat.logEvent(combat, "move",
         string.format("%s leaps to (%d, %d).", unitName(unit), x, y))
     Combat.enterTile(combat, unit, x, y)
+    -- Teleport sets x,y directly rather than through shoveStep, so break a channel here too.
+    if unit.channel then Combat.interruptChannel(combat, unit, "displaced") end
     return true
 end
 
@@ -1357,21 +1423,32 @@ end
 -- The active adjacency relationships in `char`'s grid, for UI connector lines. Returns a list of
 -- { from, to, kind } where from/to are 1-based cell indices and `kind` is one of:
 --   "aura"        -- the item at `from` has an aura that applies to the item at `to`,
---   "boost"       -- the ability at `from` scales off the matching item at `to`,
+--   "boost"       -- the ability at `from` scales off / draws on the item at `to`,
 --   "requirement" -- the ability at `from`'s requiresAdjacent is met by the item at `to`.
+-- An ability may pin the EXACT neighbors its boost draws on with `adjacencyUses(char, item)`, returning
+-- the item instances it will actually use (Dual Wield: only the weapons it will swing, capped by level).
+-- When present, that explicit set wins over the broad `adjacencyScaling` predicate, so the lines never
+-- promise a weapon the cast won't touch.
 function Combat.adjacencyLinks(char)
     local links = {}
     for i = 1, Character.MAX_INVENTORY do
         local item = char.inventory[i]
         if item then
             local ab = item.activeAbility
+            local usesSet
+            if ab and ab.adjacencyUses then
+                usesSet = {}
+                for _, it in ipairs(ab.adjacencyUses(char, item)) do usesSet[it] = true end
+            end
             for _, j in ipairs(Character.adjacentIndices(i)) do
                 local nb = char.inventory[j]
                 if nb then
                     if item.aura and Combat.auraApplies(item.aura, nb) then
                         links[#links + 1] = { from = i, to = j, kind = "aura" }
                     end
-                    if ab and ab.adjacencyScaling and Combat.matchesAdjacency(nb, ab.adjacencyScaling) then
+                    if usesSet then
+                        if usesSet[nb] then links[#links + 1] = { from = i, to = j, kind = "boost" } end
+                    elseif ab and ab.adjacencyScaling and Combat.matchesAdjacency(nb, ab.adjacencyScaling) then
                         links[#links + 1] = { from = i, to = j, kind = "boost" }
                     end
                     if ab and ab.requiresAdjacent and Combat.matchesAdjacency(nb, ab.requiresAdjacent) then
@@ -1446,7 +1523,7 @@ local function unmaskDecoy(combat, decoy)
     Combat.logEvent(combat, "death", string.format("%s's decoy is destroyed.", unitName(caster)))
     correctDecoyRecord(decoy)
     if caster.alive and Status.has(caster, "invisible") then
-        Status.remove(caster, "invisible")
+        Status.remove(combat, caster, "invisible")
         Combat.logEvent(combat, "status", string.format("%s is revealed!", unitName(caster)))
     end
 end
@@ -1462,6 +1539,7 @@ end
 function Combat.dismiss(combat, unit, text)
     if not unit or not unit.alive then return end
     unit.alive = false
+    if unit.channel then Combat.interruptChannel(combat, unit, "dismissed") end
     Combat.logEvent(combat, "death", text or string.format("%s vanishes.", unitName(unit)))
     -- A decoy dismissed alongside the caster it was covering for: nobody is left to reveal, but the
     -- fake move it wrote is still sitting in the log. Set it straight.
@@ -1481,6 +1559,9 @@ end
 --     (a summon's death frees its summoner's mana); a dead caster drops its own.
 local function killUnit(combat, target)
     target.alive = false
+    -- A caster cut down mid-channel drops the spell -- clear the pending payload and badge so nothing
+    -- detonates from a corpse and the turn order stays clean.
+    if target.channel then Combat.interruptChannel(combat, target, "death") end
 
     -- A "real" fallen combatant leaves a body behind: mark it a corpse so it can be reanimated
     -- (Revive puts the same character back on its feet) or raised (Raise Dead turns it into a zombie).
@@ -1550,7 +1631,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- an absorbed hit is not a "wound survived", so it grants no rage and advances no threshold phase.
     local barrier = Status.barrierAgainst(target, hasTag(tags or {}, "magical"))
     if barrier then
-        Status.remove(target, barrier.id)
+        Status.remove(combat, target, barrier.id)
         Combat.logEvent(combat, "status",
             string.format("%s's %s absorbs the blow.", unitName(target), barrier.name or barrier.id))
         return 0
@@ -1559,6 +1640,13 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- outright. Like the barrier above it returns BEFORE the trait damage dispatch -- an evaded hit is
     -- not a wound survived, so it grants no rage, advances no threshold phase, and provokes no counter.
     if Trait.tryEvade(combat, target, tags) then
+        return 0
+    end
+    -- A carried smoke charge (Smoke Bomb) negates an incoming ATTACK outright and blinks the bearer
+    -- clear. Like the Dodge reflex above it returns BEFORE mitigation and the trait damage dispatch,
+    -- so a vanished blow grants no rage and provokes no counter; only a real strike (a known attacker)
+    -- fires it, so a poison tick or trap can't waste the one charge.
+    if Trait.trySmoke(combat, target, attacker) then
         return 0
     end
     local dmg = Combat.mitigatedDamage(target, base, tags, opts)
@@ -1671,7 +1759,7 @@ end
 -- Strip every debuff from `unit` and log it (Cure). Delegates the removal to Status.cleanse -- the
 -- single rule for what counts as a debuff -- and adds the log line the spell wants. Returns the count.
 function Combat.cleanse(combat, unit)
-    local n = Status.cleanse(unit)
+    local n = Status.cleanse(combat, unit)
     if n > 0 then
         Combat.logEvent(combat, "status",
             string.format("%s is cleansed of %d debuff%s.", unitName(unit), n, n == 1 and "" or "s"))
@@ -1844,6 +1932,11 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
             e.statuses[#e.statuses + 1] = { id = id, def = Status.defs[id], opts = opts }
             return nil
         end,
+        -- Read-only, so the dry run may answer truthfully; the mutating ones are inert.
+        hasStatus = function(tgt, id) return tgt ~= nil and Status.has(tgt, id) end,
+        clearStatus = function() end,
+        swap = function() return false end,
+        drain = function() return 0 end,
         -- A dry run must not mutate resources; report the clamped gain without applying it, against
         -- the same ceiling Combat.restoreResource honours.
         restore = function(tgt, stat, amount)
@@ -1881,6 +1974,16 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         end,
         reanimate = function() return false end,
         raise = function() return previewStandIn() end,
+        -- Dual Wield's preview: a sub-strike shows the weapon's post-mitigation damage on the target,
+        -- so the tooltip totals the swings. setSpeed is inert here (the timeline isn't previewed).
+        strikeWith = function(weapon)
+            local wab = weapon and weapon.activeAbility
+            if not (wab and target) then return { damageDealt = 0 } end
+            local d = Combat.computeDamage(combat, unit, target, weapon, { amount = Combat.abilityMagnitude(wab) })
+            entryFor(target).damage = entryFor(target).damage + d
+            return { damageDealt = d }
+        end,
+        setSpeed = function() end,
         log = function() end,
     }
     if ab.effect then pcall(ab.effect, fx) end
@@ -1943,6 +2046,10 @@ function Combat.abilityOutput(unit, item)
             out.statuses[#out.statuses + 1] = { id = id, def = Status.defs[id], opts = opts }
             return nil
         end,
+        hasStatus = function() return false end,
+        clearStatus = function() end,
+        swap = function() return false end,
+        drain = function() return 0 end,
         restore = function(_, _, amount) return amount or 0 end,
         adjacentItems = function() return {} end,
         adjacentMatching = function() return 0 end,
@@ -1988,6 +2095,17 @@ function Combat.abilityOutput(unit, item)
             out.summonDuration = opts and opts.duration
             return previewStandIn()
         end,
+        -- Dual Wield's raw-output row: add each swung weapon's pre-armor damage against the stand-in.
+        -- With no acting unit (or its weapons not beside it) the effect finds nothing to swing and the
+        -- row reads 0 -- honest, since Dual Wield's output IS whatever weapons sit next to it.
+        strikeWith = function(weapon)
+            local wab = weapon and weapon.activeAbility
+            if not wab then return { damageDealt = 0 } end
+            local d = Combat.computeDamage(nil, unit, dummy, weapon, { amount = Combat.abilityMagnitude(wab) })
+            out.damage = out.damage + d
+            return { damageDealt = d }
+        end,
+        setSpeed = function() end,
         log = function() end,
     }
     pcall(ab.effect, fx)
@@ -2043,6 +2161,75 @@ local function spendResource(char, stat, amount)
     local res = char.stats[stat]
     if type(res) == "table" then res.current = res.current - amount
     else char.stats[stat] = (res or 0) - amount end
+end
+
+-- Drain up to `amount` of a resource from `char`, returning how much was actually removed (never more
+-- than it held). The mirror of Combat.restoreResource, which refuses negatives -- so Drain Mana reads
+-- what it took here and hands exactly that much back to its caster. A {max,current} pool loses from
+-- `current` (floored at 0); a plain-number stat is decremented the same way.
+function Combat.drainResource(char, stat, amount)
+    if not amount or amount <= 0 then return 0 end
+    local res = char.stats[stat]
+    if type(res) == "table" then
+        local before = res.current
+        res.current = math.max(0, res.current - amount)
+        return before - res.current
+    end
+    local before = res or 0
+    char.stats[stat] = math.max(0, before - amount)
+    return before - math.max(0, before - amount)
+end
+
+-- Swap two units' tiles (the Rogue's Swap). Both arrivals spring whatever waits on the tile they land
+-- on (Combat.enterTile: traps, hazards), exactly as a walk or a shove would -- so trading places into a
+-- trap is as real as stepping onto one, unless Feather Boots carry the mover clear. Positions are set
+-- together FIRST, then arrivals resolved, so enterTile never reads a stale collision mid-swap.
+function Combat.swapUnits(combat, a, b)
+    if not (a and b and a.alive and b.alive) then return false end
+    a.x, a.y, b.x, b.y = b.x, b.y, a.x, a.y
+    Combat.enterTile(combat, a, a.x, a.y)
+    if b.alive then Combat.enterTile(combat, b, b.x, b.y) end
+    return true
+end
+
+-- One Overwatch reaction: `watcher`, holding the stance, looses a single weapon-scaled shot at `mover`
+-- if its default weapon reaches the mover from where it stands and it can pay the stance's per-shot
+-- stamina. The shot spends stamina but no timeline. Returns true if it fired. Reads and pays stamina
+-- through the same helpers a cast uses, so a summon carrying a flat stamina number and a hero with a
+-- pool both resolve.
+local function overwatchShot(combat, watcher, mover)
+    if not (mover.alive and watcher.alive) then return false end
+    local weapon = Combat.defaultWeapon(watcher.char)
+    local ab = weapon and weapon.activeAbility
+    if not ab then return false end
+    local per = (watcher.overwatch and watcher.overwatch.staminaPerShot) or 0
+    if resourceValue(watcher.char, "stamina") < per then return false end
+    local range = Combat.abilityRange(combat, watcher, ab, watcher.x, watcher.y)
+        + Combat.adjacencyRangeBonus(watcher.char, weapon)
+    local d = manhattan(watcher.x, watcher.y, mover.x, mover.y)
+    if d > range or d < Combat.abilityMinRange(ab) then return false end
+    if ab.requiresSight and not Combat.hasLineOfSight(combat, watcher.x, watcher.y, mover.x, mover.y) then
+        return false
+    end
+    if per > 0 then spendResource(watcher.char, "stamina", per) end
+    Combat.logEvent(combat, "action", string.format("%s fires on overwatch!", unitName(watcher)))
+    Combat.dealDamage(combat, watcher, mover, weapon)
+    return true
+end
+
+-- Every opposing Overwatch stance reacts to `mover` arriving on its current tile: each watcher whose
+-- weapon now reaches the mover looses a shot. Driven per walked tile from Combat.stepMove, so a unit
+-- crossing a firing line is shot on each step it spends within range, until a watcher's stamina runs
+-- dry. Guarded against re-entrancy so a reaction that shifts a unit can't spiral back through here.
+function Combat.triggerOverwatch(combat, mover)
+    if not mover or not mover.alive or combat._overwatching then return end
+    combat._overwatching = true
+    for _, watcher in ipairs(combat.units) do
+        if watcher.alive and watcher.overwatch and watcher.side ~= mover.side then
+            overwatchShot(combat, watcher, mover)
+        end
+    end
+    combat._overwatching = false
 end
 
 -- Overchannel: a mage that casts through its own life when the mana runs dry (the trait of the same
@@ -2423,6 +2610,16 @@ function Combat.itemBlockReason(unit, item)
         return { kind = "adjacency", reason = "requires " .. label,
             text = "Requires an " .. label .. " in the item grid" }
     end
+    -- A custom usability gate the data file owns (Dual Wield: at least two qualifying adjacent weapons,
+    -- a rule too dynamic for the static `requiresAdjacent` predicate -- the qualifying set changes with
+    -- the item's level). It reads only the unit + its grid, so it stays a pure read like the rest here.
+    if ab.usable then
+        local ok, text = ab.usable(unit, item)
+        if not ok then
+            return { kind = "requirement", reason = text or "unusable",
+                text = text or "Cannot be used right now" }
+        end
+    end
     return nil
 end
 
@@ -2468,10 +2665,81 @@ function Combat.steal(combat, thief, victim)
     return item
 end
 
+-- Forward declaration so Combat.useItem (and Combat.resolveChannel below) can call resolveCast,
+-- which is defined just after useItem. `function resolveCast(...)` there assigns to this local.
+local resolveCast
+
+-- Strike (tx, ty) with `weapon` as if `user` had cast it: build the weapon's OWN effect context and
+-- run its effect, so the weapon's damage, tags, on-hit status, and its own adjacency auras all land
+-- exactly as a real cast would. Dual Wield swings several adjacent weapons in one action through this;
+-- each sub-strike pays no cost and does not end the turn -- the driving ability owns the resource and
+-- timeline accounting. Returns the weapon's result accumulator ({ damageDealt, healed }). This mirrors
+-- the damage/status half of resolveCast's fx below (aura tags, on-hit statuses, lifesteal), scoped to
+-- the small helper surface a weapon effect actually uses (damage / applyStatus / aoeUnits / knockback).
+function Combat.strikeWith(combat, user, weapon, tx, ty)
+    local ab = weapon and weapon.activeAbility
+    if not ab then return { damageDealt = 0, healed = 0 } end
+    local target = Combat.unitAt(combat, tx, ty)
+    local auraTags, auraStatuses, auraMods = adjacencyAura(user.char, weapon)
+    local declared = Combat.abilityMagnitude(ab)
+    local effectiveAmount = declared and (declared + auraMods.amount) or declared
+    local result = { damageDealt = 0, healed = 0 }
+    local fx = {
+        user = user, target = target, item = weapon, combat = combat,
+        tx = tx, ty = ty, amount = effectiveAmount,
+        unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
+        unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
+        aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty, user) end,
+        aoeCells = function() return Combat.aoeCells(combat, ab, tx, ty, user) end,
+        hasStatus = function(t, id) return t ~= nil and Status.has(t, id) end,
+        random = function(n) return Combat.random(n or 1) end,
+        log = function(kind, text) return Combat.logEvent(combat, kind, text) end,
+        restore = function(t, stat, amount)
+            if not t then return 0 end
+            return Combat.restoreResource(t.char, stat, amount)
+        end,
+        heal = function(t, amount)
+            if not t then return 0 end
+            local h = Combat.applyHeal(combat, t, amount)
+            result.healed = result.healed + h
+            return h
+        end,
+        applyStatus = function(t, id, opts)
+            if not t then return nil end
+            opts = opts or {}
+            if opts.applier == nil then opts.applier = user end
+            return Status.apply(combat, t, id, opts)
+        end,
+        knockback = function(t, distance, opts)
+            if not t then return 0 end
+            return Combat.knockback(combat, user, t, distance, opts)
+        end,
+        damage = function(tgt, opts)
+            if not tgt then return 0 end
+            opts = opts or {}
+            if opts.amount == nil then opts.amount = effectiveAmount end
+            local d = Combat.dealDamage(combat, user, tgt, weapon, withAuraTags(opts, auraTags))
+            result.damageDealt = result.damageDealt + d
+            if d > 0 then
+                for _, st in ipairs(auraStatuses) do
+                    Status.apply(combat, tgt, st.id, st.opts)
+                end
+                if auraMods.lifesteal > 0 then
+                    result.healed = result.healed + Combat.applyHeal(combat, user, math.floor(d * auraMods.lifesteal))
+                end
+            end
+            return d
+        end,
+    }
+    if ab.effect then ab.effect(fx) end
+    return result
+end
+
 -- Perform an item action: validate range + target kind + resource cost, spend the cost,
 -- run the ability's effect(fx), push the actor back by the ability speed, and consume the
 -- item if it's a consumable. Returns (true, result) or (false, reason). `result` is
--- { damageDealt, healed } aggregated across the effect's helper calls.
+-- { damageDealt, healed } aggregated across the effect's helper calls. A channeled ability
+-- instead winds up here and resolves later via Combat.resolveChannel (see the channel branch).
 function Combat.useItem(combat, unit, item, tx, ty)
     if not unit.alive then return false, "dead" end
     local ab = item.activeAbility
@@ -2515,6 +2783,35 @@ function Combat.useItem(combat, unit, item, tx, ty)
     -- produces the summon that holds it (below).
     local cost = Combat.abilityCost(unit, ab)
     if cost then Combat.spendCost(combat, unit, cost) end
+
+    -- A channeled ability (a large AOE spell) doesn't resolve now: the caster winds up for
+    -- `ab.channel` ticks, during which every other unit gets to act and may walk out of the
+    -- threatened tiles. Everything is committed at cast-start -- the cost is spent above, and a
+    -- consumable is spent here too -- so an interrupted channel is a fully-wasted cast. The effect
+    -- itself runs later, from Combat.resolveChannel when the caster's slot comes back around, and
+    -- only THEN is ab.speed charged. Ending the turn by ab.channel (not ab.speed) is what places
+    -- the caster back in the order at exactly its resolution slot, so no separate scheduler exists.
+    if ab.channel and ab.channel > 0 then
+        if ab.consumesItem then item.quantity = math.max(0, (item.quantity or 1) - 1) end
+        unit.channel = { item = item, ab = ab, tx = tx, ty = ty }
+        Status.apply(combat, unit, "channeling", { duration = ab.channel + 1 })
+        Combat.logEvent(combat, "action",
+            string.format("%s begins channeling %s.", unitName(unit), item.name or "an ability"))
+        endTurn(combat, unit, ab.channel)
+        return true, { channeling = true }
+    end
+
+    return resolveCast(combat, unit, item, ab, tx, ty)
+end
+
+-- Resolve a cast's actual effect: build the effect context, run the ability, settle the water/fire
+-- interaction and reaction traits, then end the turn by charging ab.speed. Shared by an instant cast
+-- (Combat.useItem calls it immediately) and a channel that has finished winding up (Combat.resolveChannel
+-- calls it turns later). `target` and `reserve` are derived HERE, not at cast-start, so a channel reads
+-- the LIVE board -- a foe that stepped out of the blast is simply gone from fx.aoeUnits(). `alreadyConsumed`
+-- is set by the channel path (which spent the stack at cast-start) so the stack isn't decremented twice.
+function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
+    local target = Combat.unitAt(combat, tx, ty)
     local reserve = Combat.abilityReserve(unit, ab)
 
     -- Effect context: bound helpers let a data-file effect compose damage/heal/AoE
@@ -2531,6 +2828,9 @@ function Combat.useItem(combat, unit, item, tx, ty)
     local declared = Combat.abilityMagnitude(ab)
     local effectiveAmount = declared and (declared + auraMods.amount) or declared
     local result = { damageDealt = 0, healed = 0 }
+    -- The initiative this action bills at end of turn, defaulting to the ability's own speed. An effect
+    -- may override it (Dual Wield sets the summed speed of the weapons it swings) through fx.setSpeed.
+    local ctl = { speed = ab.speed or Combat.DEFAULT_SPEED }
     local fx = {
         user = unit, target = target, item = item, combat = combat,
         tx = tx, ty = ty, -- the targeted cell, for tile-targeted abilities (e.g. placing a trap)
@@ -2593,10 +2893,32 @@ function Combat.useItem(combat, unit, item, tx, ty)
             if not tgt then return 0 end
             return Combat.restoreResource(tgt.char, stat, amount)
         end,
-        -- Apply a status effect (models/status.lua) to a unit.
+        -- Apply a status effect (models/status.lua) to a unit. The caster rides along as `applier`, so
+        -- a standing reaction can tell "I inflicted this" from "this landed on me" (Trait.onStatusApplied).
         applyStatus = function(tgt, id, opts)
             if not tgt then return nil end
+            opts = opts or {}
+            if opts.applier == nil then opts.applier = unit end
             return Status.apply(combat, tgt, id, opts)
+        end,
+        -- Does `tgt` currently carry status `id`? What a conditional strike keys its bonus off (a blow
+        -- that bites harder against a burned, poisoned or marked foe).
+        hasStatus = function(tgt, id) return tgt ~= nil and Status.has(tgt, id) end,
+        -- Strip exactly one status by id (Shatter consuming the freeze it shatters, Detonate the DoT it
+        -- sets off). Unlike fx.cleanse (every debuff at once) this removes only the named one.
+        clearStatus = function(tgt, id)
+            if tgt then Status.remove(combat, tgt, id) end
+        end,
+        -- Trade tiles with `tgt` (the Rogue's Swap); both arrivals spring what waits on the new tile.
+        swap = function(tgt)
+            if not tgt then return false end
+            return Combat.swapUnits(combat, unit, tgt)
+        end,
+        -- Drain up to `amount` of a resource from `tgt`, returning what was actually taken -- so a siphon
+        -- (Drain Mana) can hand exactly that much back to the caster with fx.restore.
+        drain = function(tgt, stat, amount)
+            if not tgt then return 0 end
+            return Combat.drainResource(tgt.char, stat, amount)
         end,
         -- Summon a trap on a tile, owned by the acting unit's side (fx.item's placer). Only a
         -- party placement is logged with its location -- an enemy trap stays hidden until it is
@@ -2720,6 +3042,19 @@ function Combat.useItem(combat, unit, item, tx, ty)
         reanimate = function(corpse, fraction) return Combat.reanimate(combat, corpse, fraction) end,
         -- Consume a corpse and raise a `charId` zombie on the caster's side where it lay (Raise Dead).
         raise = function(corpse, charId, opts) return Combat.raiseZombie(combat, unit, corpse, charId, opts) end,
+        -- Strike the aimed tile with another of the caster's weapons, running ITS own ability effect --
+        -- its damage, tags, and on-hit status all land (Combat.strikeWith). Dual Wield swings several
+        -- adjacent weapons in one action this way; each sub-strike pays no cost and doesn't end the turn.
+        -- Its damage/heal fold into this cast's result so the caller/UI tallies the whole flurry.
+        strikeWith = function(weapon)
+            local r = Combat.strikeWith(combat, unit, weapon, tx, ty)
+            result.damageDealt = result.damageDealt + (r.damageDealt or 0)
+            result.healed = result.healed + (r.healed or 0)
+            return r
+        end,
+        -- Override the initiative this action bills at end of turn (Dual Wield: the summed speed of the
+        -- weapons it swung). Defaults to ab.speed.
+        setSpeed = function(n) ctl.speed = n end,
         -- Write a line straight into the combat log, for an ability whose entry must not read as
         -- what it actually is (a Decoy reports a move, not a cast -- see `ab.silent`). Hands back
         -- the entry, so an effect can keep a handle on a line it may later have to correct.
@@ -2760,18 +3095,47 @@ function Combat.useItem(combat, unit, item, tx, ty)
         Character.recordUse(unit.char, item.class)
     end
 
-    -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed.
-    endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
+    -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed (or the
+    -- speed an effect chose through fx.setSpeed -- Dual Wield's summed weapon speeds).
+    endTurn(combat, unit, ctl.speed)
 
     -- Consume one use: decrement the stack (a bundle of consumables), floored at 0. The spent
     -- slot STAYS in the inventory as an empty stack -- Combat.isDepleted then blocks activation
     -- until it's restocked (Character.addItem merges a fresh stack back in). Non-stacked items
     -- carry quantity 1, so this leaves an empty, greyed-out slot after their single use.
-    if ab.consumesItem and not auraMods.preserve then
+    if ab.consumesItem and not auraMods.preserve and not alreadyConsumed then
         item.quantity = math.max(0, (item.quantity or 1) - 1)
     end
 
     return true, result
+end
+
+-- Resolve the ability a unit has been channeling now that its wind-up is over. Clears the pending
+-- payload and the "channeling" badge, then runs the deferred effect through resolveCast -- which is
+-- where the effect finally fires and, via endTurn, ab.speed is charged (the recovery cost is paid on
+-- resolution, never on cast-start). The stack was already consumed at cast-start, so pass
+-- alreadyConsumed. Returns resolveCast's (true, result), or false if the unit wasn't channeling.
+function Combat.resolveChannel(combat, unit)
+    local pending = unit.channel
+    if not pending then return false end
+    unit.channel = nil
+    Status.remove(combat, unit, "channeling")
+    Combat.logEvent(combat, "action",
+        string.format("%s's %s resolves.", unitName(unit), pending.item.name or "channel"))
+    return resolveCast(combat, unit, pending.item, pending.ab, pending.tx, pending.ty, true)
+end
+
+-- Cancel a channel in progress: drop the pending payload and the badge, and log the fizzle. A hard
+-- commit -- the mana (and any consumable) spent to begin the channel are gone, NOT refunded, so an
+-- interrupt is a fully-wasted cast. Idempotent (a multi-tile knockback calls it once). Returns true if
+-- a channel was actually interrupted. `reason` is a short phrase for the log ("stunned", "displaced").
+function Combat.interruptChannel(combat, unit, reason)
+    if not unit.channel then return false end
+    unit.channel = nil
+    Status.remove(combat, unit, "channeling")
+    Combat.logEvent(combat, "status",
+        string.format("%s's channel is interrupted (%s)!", unitName(unit), reason or "disrupted"))
+    return true
 end
 
 -- Strike a REVEALED trap at (x, y) with `weapon`: the trap analogue of attacking a unit, so a
@@ -2846,7 +3210,7 @@ function Combat.dispel(combat, cells)
     for _, c in ipairs(cells or {}) do
         local u = Combat.unitAt(combat, c.x, c.y)
         if u and Status.has(u, "invisible") then
-            Status.remove(u, "invisible")
+            Status.remove(combat, u, "invisible")
             Combat.logEvent(combat, "status", string.format("%s is revealed!", unitName(u)))
             revealed = revealed + 1
         end

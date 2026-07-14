@@ -9,6 +9,7 @@
 -- Her mail carries the same rule for whoever lifts it off her (data/items/armor/mail_of_the_unappeased.lua).
 return {
     name = "Ira, the Unappeased",
+    boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_wrath.png",
     stats = {
         health = 260, mana = 0, stamina = 120,

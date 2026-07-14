@@ -25,7 +25,8 @@ Save.FILE = "save.lua"
 -- version doesn't match is discarded rather than half-read into a broken player.
 -- v2: item upgrade levels + the materials the forge spends.
 -- v3: per-character progression -- level, class-usage tally, and accumulated stat growth.
-Save.VERSION = 3
+-- v4: consumable recipe tiers (item id -> level; every purchase comes at that tier).
+Save.VERSION = 4
 
 -- ---------------------------------------------------------------------------
 -- Serialization
@@ -101,6 +102,11 @@ local function snapshotCharacter(char)
 
     local snap = { id = char.id, inventory = inventory }
 
+    -- The player's pinned default attack weapon (a grid cell index, set in the Loadout screen).
+    -- Optional -- omitted when unset, so a character that never chose one diffs clean and loads
+    -- back to the auto pick (first grid weapon). See Combat.defaultWeapon.
+    if char.defaultWeaponSlot then snap.defaultWeaponSlot = char.defaultWeaponSlot end
+
     -- Progression (models/growth.lua). Level defaults back to 1 on load, so omit it while unleveled to
     -- keep an early-game save diffing clean; the same for an empty tally / no accumulated growth.
     if char.level and char.level > 1 then snap.level = char.level end
@@ -150,6 +156,12 @@ function Save.snapshot(player)
         if count and count > 0 then materials[id] = count end
     end
 
+    -- Consumable recipe tiers. Omit level 0 (the default) so an un-refined game diffs clean.
+    local recipes = {}
+    for id, level in pairs(player.recipes or {}) do
+        if level and level > 0 then recipes[id] = level end
+    end
+
     return {
         version = Save.VERSION,
         gold = player.gold,
@@ -157,6 +169,7 @@ function Save.snapshot(player)
         reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,
+        recipes = recipes,
         roster = roster,
         party = party,
         stash = stash,
@@ -190,6 +203,7 @@ local function restoreCharacter(snap)
             char.inventory[tonumber(cell)] = Item.instantiate(itemSnap.id, itemSnap.quantity, itemSnap.level)
         end
     end
+    char.defaultWeaponSlot = snap.defaultWeaponSlot -- nil on an old save = the auto pick
     return char
 end
 
@@ -231,12 +245,19 @@ function Save.restore(snap)
         if known(Material.defs, id) and count and count > 0 then materials[id] = count end
     end
 
+    -- Recipe tiers for items that still exist in data/ (a removed consumable drops its tier).
+    local recipes = {}
+    for id, level in pairs(snap.recipes or {}) do
+        if known(Item.defs, id) and level and level > 0 then recipes[id] = level end
+    end
+
     return {
         gold = snap.gold or 0,
         prestige = snap.prestige or 1,
         reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,
+        recipes = recipes,
         roster = roster,
         party = party,
         stash = stash,

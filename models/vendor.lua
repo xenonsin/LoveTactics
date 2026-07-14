@@ -65,12 +65,23 @@ function Vendor.nextRank(vendorId, points)
     return nextThreshold - points, rank + 1
 end
 
+-- The shelf price of a base item scaled to `level`: +50% of the base per tier, rounded. A consumable
+-- refined to a higher recipe tier (Player.recipeLevel) is stocked and sold at this raised price. A nil
+-- base (an item that was never for sale) stays nil. One place so shelf price and sell value agree.
+function Vendor.priceFor(base, level)
+    return base and math.floor(base * (1 + 0.5 * (level or 0)) + 0.5)
+end
+
 -- Every item this vendor could ever sell, in shelf order (cheapest first). Rank-gated
 -- items are included; `locked` marks the ones the player has not earned yet, so the shop
 -- can show them greyed out -- seeing what reputation buys is the point of the ladder.
 --
+-- `recipes` is an optional plain { itemId = tier } map (the player's consumable recipe levels):
+-- a listed item is stocked at its tier, with `price` scaled to match, so buying it yields the
+-- upgraded item. Kept a bare table (like `rank`) so this module stays player-free.
+--
 -- Returns fresh tables, never the blueprints (which stay immutable).
-function Vendor.stock(vendorId, rank)
+function Vendor.stock(vendorId, rank, recipes)
     local def = Vendor.defs[vendorId]
     if not def then return {} end
     rank = rank or 1
@@ -79,12 +90,14 @@ function Vendor.stock(vendorId, rank)
     for id, item in pairs(Item.defs) do
         if item.price and Item.classOf(item) == def.class then
             local repRank = item.repRank or 1
+            local level = (recipes and recipes[id]) or 0
             stock[#stock + 1] = {
                 id = id,
                 name = item.name,
                 description = item.description,
                 type = item.type,
-                price = item.price,
+                level = level,
+                price = Vendor.priceFor(item.price, level),
                 repRank = repRank,
                 locked = rank < repRank,
             }
@@ -99,29 +112,32 @@ function Vendor.stock(vendorId, rank)
     return stock
 end
 
--- What a vendor pays to buy `item` back: half its shelf price, rounded down. An item with no
+-- What a vendor pays to buy `item` back: half its shelf price at the item's own level, rounded down --
+-- so a refined consumable sells for more than a base one, matching what it cost. An item with no
 -- `price` was never for sale and so can't be sold (returns 0) -- the Party screen refuses those
 -- rather than giving them away for nothing. One place so the panel and its test agree on the rate.
 function Vendor.sellValue(item)
-    return item.price and math.floor(item.price * 0.5) or 0
+    if not item.price then return 0 end
+    return math.floor(Vendor.priceFor(item.price, item.level or 0) * 0.5)
 end
 
 -- ---------------------------------------------------------------------------
 -- Vendor upgrades
 --
 -- Weapons, armor and utility gear are forged at the Blacksmith; ABILITIES are honed here at their
--- class vendor, and CONSUMABLES are refined at the Alchemist (regardless of their own class -- one
--- bench brews them all). A vendor upgrade is trained/brewed, not hammered, so it costs gold (no
--- materials) and is gated by standing rather than ore. Every path raises the same `level`, baked by
--- Item.instantiate.
+-- class vendor (per instance -- you own one and improve it). CONSUMABLES are refined per-TYPE: a
+-- vendor upgrades the recipe for a consumable it sells (Vendor.upgradeRecipe), and thereafter every
+-- copy bought comes at that tier (see Vendor.stock's `recipes` and Player.recipeLevel). A vendor
+-- upgrade is trained/brewed, not hammered, so it costs gold (no materials) and is gated by standing
+-- rather than ore. Every path raises the same `level`, baked by Item.instantiate.
 -- ---------------------------------------------------------------------------
 
--- Whether `vendorId` is the bench that upgrades `item`: an ability at its class vendor, a consumable
--- at the Alchemist. The single rule the shop's Upgrade list and the upgrade action both read.
+-- Whether `vendorId` is the bench that upgrades `item` PER INSTANCE: an ability at its class vendor.
+-- Consumables no longer take this path (they are refined per-type via Vendor.upgradeRecipe), so they
+-- return false here. The single rule the shop's Upgrade list and the instance-upgrade action read.
 function Vendor.canUpgradeHere(vendorId, item)
     local def = Vendor.defs[vendorId]
     if not def or not item or not Item.isUpgradable(item) then return false end
-    if item.type == "consumable" then return vendorId == "alchemist" end
     if item.type == "ability" then return Item.classOf(item) == def.class end
     return false
 end
@@ -163,8 +179,48 @@ function Vendor.upgradeItem(player, vendorId, item)
     return Item.instantiate(item.id, item.quantity, cost.level)
 end
 
--- Back-compat aliases: the old ability-only names, now that the bench upgrades consumables too.
+-- Back-compat aliases: the old ability-only names for the instance-upgrade path.
 Vendor.abilityUpgradeCost = Vendor.upgradeCost
 Vendor.upgradeAbility = Vendor.upgradeItem
+
+-- ---------------------------------------------------------------------------
+-- Consumable recipe upgrades (per-type)
+-- ---------------------------------------------------------------------------
+
+-- The cost to raise a consumable's recipe one tier from `level` at a vendor of `rank` standing: gold
+-- that climbs with the tier (the same 60g-per-level curve the instance bench charges), plus whether
+-- that tier is yet unlocked by the rank. Returns nil once the recipe is at Item.MAX_LEVEL.
+--   { level = <target>, gold = <n>, locked = <bool> }
+function Vendor.recipeUpgradeCost(level, rank)
+    local target = (level or 0) + 1
+    if target > Item.MAX_LEVEL then return nil end
+    return {
+        level = target,
+        gold = 60 * target,
+        locked = target > Vendor.abilityLevelCap(rank),
+    }
+end
+
+-- Refine the recipe for consumable `itemId` one tier at `vendorId`: verify this vendor sells that
+-- consumable and it is upgradable, that the next tier is rank-unlocked, and that the gold is there;
+-- spend the gold and bump Player.recipeLevel. Returns the new tier, or nil + a reason ("class" |
+-- "max level" | "locked" | "gold"). ("class" here means "this vendor doesn't sell that consumable".)
+function Vendor.upgradeRecipe(player, vendorId, itemId)
+    local Player = require("models.player")
+    local def = Vendor.defs[vendorId]
+    local item = Item.defs[itemId] and Item.instantiate(itemId)
+    if not def or not item or item.type ~= "consumable"
+        or Item.classOf(item) ~= def.class or not Item.isUpgradable(item) then
+        return nil, "class"
+    end
+    local rank = Vendor.rankFor(vendorId, Player.reputation(player, vendorId))
+    local cost = Vendor.recipeUpgradeCost(Player.recipeLevel(player, itemId), rank)
+    if not cost then return nil, "max level" end
+    if cost.locked then return nil, "locked" end
+    if player.gold < cost.gold then return nil, "gold" end
+    Player.spendGold(player, cost.gold)
+    Player.setRecipeLevel(player, itemId, cost.level)
+    return cost.level
+end
 
 return Vendor

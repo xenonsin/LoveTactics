@@ -332,7 +332,8 @@ return {
             local hp0 = bandit.char.stats.health.current
             openTurn(c, mage)
 
-            assert(Combat.useItem(c, mage, fireball, 3, 3), "Fireball lands on the bandit")
+            assert(Combat.useItem(c, mage, fireball, 3, 3), "Fireball begins channeling")
+            assert(Combat.resolveChannel(c, mage), "the wound-up blast lands on the bandit")
             assert(bandit.char.stats.health.current < hp0, "the blast damaged the foe")
             assert(Hazard.at(c, 3, 3, "hazard_fire"), "the blast centre is ablaze")
             assert(Hazard.at(c, 2, 2, "hazard_fire") and Hazard.at(c, 4, 4, "hazard_fire"),

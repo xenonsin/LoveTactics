@@ -17,6 +17,7 @@ return {
         allowOccupied = true,
         range = 3,
         speed = 4,
+        channel = 3, -- the pillar gathers before it falls; enemies can scatter from the light
         cost = { stat = "mana", amount = 12 },
         damage = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 13, 14 }, -- per-enemy damage = power + the caster's MagicDamage, minus MagicDefense
         aoe = { radius = 1, shape = "square" }, -- 3x3 pillar

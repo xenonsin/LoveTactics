@@ -7,6 +7,7 @@ return {
     sprite = "assets/items/war_hammer.png",
     type = "weapon",
     tags = { "blunt", "impact", "physical", "melee" },
+    hands = 2, -- a two-handed maul (Dual Wield can pair it only once forged to +5)
     class = "fighter",
     price = 260,
     repRank = 3,

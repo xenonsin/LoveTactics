@@ -35,6 +35,13 @@ local function openTurn(c, u)
     c.turn = { unit = u, moved = false, moveCost = 0 }
 end
 
+-- Current value of a unit's resource pool, whether the stat is a {current,max} table or a plain
+-- number (Combat.resourceValue's rule, mirrored here so the channel tests can read mana either way).
+local function poolOf(u, stat)
+    local m = u.char.stats[stat]
+    return type(m) == "table" and m.current or m
+end
+
 return {
     {
         name = "initiative is the average ability speed minus the speed stat (higher speed acts sooner)",
@@ -567,6 +574,28 @@ return {
         end,
     },
     {
+        name = "defaultWeaponSlot pins an explicit default weapon, with safe fallbacks",
+        fn = function()
+            -- Knight carries iron_sword in slot 1; add a bow in a later slot as a second option.
+            local knight = Character.instantiate("knight")
+            local bow = Item.instantiate("bow")
+            knight.inventory[3] = bow
+            assert(Combat.defaultWeapon(knight).name == "Iron Sword", "no pin -> first grid weapon wins")
+
+            -- A pin at a weapon cell overrides row-major grid order.
+            knight.defaultWeaponSlot = 3
+            assert(Combat.defaultWeapon(knight) == bow, "a pinned slot beats grid order")
+
+            -- A pin at an empty cell is stale -> fall back to the first-weapon scan.
+            knight.defaultWeaponSlot = 5
+            assert(Combat.defaultWeapon(knight).name == "Iron Sword", "a pin on an empty cell falls back")
+
+            -- A pin on a non-weapon item is ignored too.
+            knight.inventory[5] = Item.instantiate("acid_bomb") -- a consumable, not a weapon
+            assert(Combat.defaultWeapon(knight).name == "Iron Sword", "a pin on a non-weapon falls back")
+        end,
+    },
+    {
         name = "a weaponless unit can still strike with its unarmed weapon (low power, free)",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("warlord", 3, 3) }, { unit("bandit", 3, 4) })
@@ -662,6 +691,387 @@ return {
             assert(ar["4,4"] == nil, "the origin (distance 0) is inside the dead zone")
             assert(ar["6,4"], "a 2-tile target is threatened")
             assert(ar["7,4"], "a 3-tile target is threatened")
+        end,
+    },
+    {
+        name = "Shadow Strike hits an adjacent foe, then blinks the caster back to its turn origin",
+        fn = function()
+            -- Rogue opens its turn at (1,1), moves up beside a bandit at (3,1), strikes, and snaps
+            -- back to (1,1) -- the tile Combat.startTurn pinned as the turn's origin.
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 3, 1) })
+            local rogue, bandit = c.units[1], c.units[2]
+            rogue.char.inventory = { Item.instantiate("ability_shadow_strike") }
+            local strike = rogue.char.inventory[1]
+
+            -- Mirror startTurn's origin record, then "move" adjacent to the bandit.
+            c.turn = { unit = rogue, moved = true, moveCost = 0, startX = 1, startY = 1 }
+            rogue.x, rogue.y = 2, 1
+
+            local hp0 = bandit.char.stats.health.current
+            local ok = Combat.useItem(c, rogue, strike, bandit.x, bandit.y)
+            assert(ok, "the adjacent strike lands")
+            assert(bandit.char.stats.health.current < hp0, "the bandit takes damage")
+            assert(rogue.x == 1 and rogue.y == 1, "the rogue blinks back to where its turn began")
+        end,
+    },
+    {
+        name = "Shadow Strike stays put when the caster never left its origin tile",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 2, 1) }, { unit("bandit", 3, 1) })
+            local rogue, bandit = c.units[1], c.units[2]
+            rogue.char.inventory = { Item.instantiate("ability_shadow_strike") }
+            local strike = rogue.char.inventory[1]
+
+            -- Origin equals the current tile (no move this turn): the blink-back is a no-op.
+            c.turn = { unit = rogue, moved = false, moveCost = 0, startX = 2, startY = 1 }
+            assert(Combat.useItem(c, rogue, strike, bandit.x, bandit.y), "the strike lands")
+            assert(rogue.x == 2 and rogue.y == 1, "no move -> the caster holds its ground")
+        end,
+    },
+    {
+        name = "Tangling Roots and the Net both leave their target Rooted",
+        fn = function()
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8),
+                { unit("mage", 1, 1), unit("knight", 5, 5) }, { unit("bandit", 1, 3), unit("bandit", 5, 6) })
+            local mage, rogue, bandit1, bandit2 = c.units[1], c.units[2], c.units[3], c.units[4]
+
+            mage.char.inventory = { Item.instantiate("ability_tangling_roots") }
+            openTurn(c, mage)
+            assert(Combat.useItem(c, mage, mage.char.inventory[1], bandit1.x, bandit1.y), "roots cast lands")
+            assert(Status.has(bandit1, "root"), "Tangling Roots applies Root")
+
+            rogue.char.inventory = { Item.instantiate("net") }
+            openTurn(c, rogue)
+            assert(Combat.useItem(c, rogue, rogue.char.inventory[1], bandit2.x, bandit2.y), "net throw lands")
+            assert(Status.has(bandit2, "root"), "the Net applies Root")
+        end,
+    },
+
+    -- ---------------------------------------------------------------------------
+    -- Channeled abilities: a large AOE spell winds up for `ab.channel` ticks (during which other
+    -- units act and may flee the blast) before resolving, and only THEN pays ab.speed. Hard control
+    -- and forced movement interrupt it; the committed cost is not refunded. See models/combat.lua
+    -- (useItem's channel branch, resolveCast, resolveChannel, interruptChannel).
+    -- ---------------------------------------------------------------------------
+    {
+        name = "a channeled ability winds up instead of firing, committing its cost up front",
+        fn = function()
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8),
+                { unit("mage", 2, 2) }, { unit("bandit", 2, 4), unit("bandit", 3, 4) })
+            local mage, b1, b2 = c.units[1], c.units[2], c.units[3]
+            mage.char.inventory = { Item.instantiate("ability_fireball") }
+            local fireball = mage.char.inventory[1]
+            assert(fireball.activeAbility.channel == 2, "fireball carries a channel wind-up (deep-copied from data)")
+            mage.initiative, b1.initiative, b2.initiative = 0, 1, 2
+            local mana0 = poolOf(mage, "mana")
+            local hp1, hp2 = b1.char.stats.health.current, b2.char.stats.health.current
+
+            openTurn(c, mage)
+            local ok, res = Combat.useItem(c, mage, fireball, b1.x, b1.y)
+            assert(ok and res.channeling, "the cast reports it began a channel")
+            assert(b1.char.stats.health.current == hp1 and b2.char.stats.health.current == hp2,
+                "nothing is damaged during the wind-up")
+            assert(mage.channel and mage.channel.ab == fireball.activeAbility,
+                "the pending spell is held on the caster")
+            assert(Status.has(mage, "channeling"), "the caster shows the Channeling badge")
+            assert(poolOf(mage, "mana") == mana0 - 12, "mana is spent at cast-start, not at resolution")
+            assert(Combat.currentUnit(c) == b1, "the caster's turn ended -- another unit acts during the wind-up")
+        end,
+    },
+    {
+        name = "a wound-up channel resolves its effect and charges speed (not the channel)",
+        fn = function()
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8),
+                { unit("mage", 2, 2) }, { unit("bandit", 6, 6), unit("bandit", 1, 1) })
+            local mage, tank, other = c.units[1], c.units[2], c.units[3]
+            mage.char.inventory = { Item.instantiate("ability_fireball") }
+            local fireball = mage.char.inventory[1]
+            tank.char.stats.health.current = 999 -- survive the blast so it stays in the rebase
+            -- A clean initiative ladder (all speeds 0) so the number resolution leaves is unambiguous.
+            mage.initiative, other.initiative, tank.initiative = 0, 1, 9
+            mage.speed, other.speed, tank.speed = 0, 0, 0
+            mage.channel = { item = fireball, ab = fireball.activeAbility, tx = tank.x, ty = tank.y }
+            Status.apply(c, mage, "channeling")
+            openTurn(c, mage)
+
+            local hp0 = tank.char.stats.health.current
+            assert(Combat.resolveChannel(c, mage), "the channel resolves")
+            assert(tank.char.stats.health.current < hp0, "the blast finally lands its damage")
+            assert(mage.channel == nil, "the pending spell is cleared")
+            assert(not Status.has(mage, "channeling"), "the Channeling badge is gone")
+            -- endTurn charged ab.speed (4): mage 0->4, rebase by min(4,1,9)=1 -> 3. Had it (wrongly)
+            -- charged the channel (2), mage would sit at 1. So 3 proves the recovery cost is speed.
+            assert(mage.initiative == 3, "resolution charges ab.speed (mage at 3), not the channel wind-up")
+            assert(Combat.currentUnit(c) == other, "the once-1 unit rebased to 0 and now acts")
+        end,
+    },
+    {
+        name = "a stun interrupts a channel and does not refund the committed mana",
+        fn = function()
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 2, 4) })
+            local mage, b1 = c.units[1], c.units[2]
+            mage.char.inventory = { Item.instantiate("ability_fireball") }
+            mage.initiative, b1.initiative = 0, 1
+            openTurn(c, mage)
+
+            local mana0 = poolOf(mage, "mana")
+            local hp0 = b1.char.stats.health.current
+            assert(Combat.useItem(c, mage, mage.char.inventory[1], b1.x, b1.y), "the channel begins")
+            assert(mage.channel, "the channel is pending")
+            Status.apply(c, mage, "stun")
+            assert(mage.channel == nil, "the stun shatters the channel")
+            assert(not Status.has(mage, "channeling"), "the Channeling badge is cleared")
+            assert(poolOf(mage, "mana") == mana0 - 12, "the committed mana is NOT refunded")
+            assert(not Combat.resolveChannel(c, mage), "there is nothing left to resolve")
+            assert(b1.char.stats.health.current == hp0, "the spell never went off")
+        end,
+    },
+    {
+        name = "knockback interrupts a channel",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("mage", 4, 4) }, { unit("bandit", 4, 6) })
+            local mage, b1 = c.units[1], c.units[2]
+            mage.char.inventory = { Item.instantiate("ability_fireball") }
+            mage.initiative, b1.initiative = 0, 1
+            openTurn(c, mage)
+
+            local hp0 = b1.char.stats.health.current
+            assert(Combat.useItem(c, mage, mage.char.inventory[1], b1.x, b1.y), "the channel begins")
+            assert(mage.channel, "the channel is pending")
+            local moved = Combat.knockback(c, b1, mage, 1) -- shove the caster away from the bandit
+            assert(moved >= 1, "the caster is actually shoved")
+            assert(mage.channel == nil, "being knocked off balance breaks the channel")
+            assert(b1.char.stats.health.current == hp0, "the spell never detonates")
+        end,
+    },
+    {
+        name = "silence interrupts a mana channel, but disarm leaves it intact",
+        fn = function()
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 2, 4) })
+            local mage, b1 = c.units[1], c.units[2]
+            mage.char.inventory = { Item.instantiate("ability_fireball") }
+            mage.initiative, b1.initiative = 0, 1
+            openTurn(c, mage)
+            assert(Combat.useItem(c, mage, mage.char.inventory[1], b1.x, b1.y), "the channel begins")
+
+            -- Disarm strikes weapons from the hand; a spell is a mana ability, so the channel survives.
+            Status.apply(c, mage, "disarmed")
+            assert(mage.channel, "disarm leaves the spell channel intact")
+            -- Silence gags the incantation: the mana channel breaks.
+            Status.apply(c, mage, "silenced")
+            assert(mage.channel == nil, "silence shatters the mana channel")
+        end,
+    },
+    {
+        name = "a caster cut down mid-channel drops the spell",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 2, 4) })
+            local mage, b1 = c.units[1], c.units[2]
+            mage.char.inventory = { Item.instantiate("ability_fireball") }
+            mage.initiative, b1.initiative = 0, 1
+            openTurn(c, mage)
+
+            local hp0 = b1.char.stats.health.current
+            assert(Combat.useItem(c, mage, mage.char.inventory[1], b1.x, b1.y), "the channel begins")
+            assert(mage.channel, "the channel is pending")
+            Combat.dealFlatDamage(c, mage, 9999, { "physical" }, "a test blow")
+            assert(not mage.alive, "the caster dies")
+            assert(mage.channel == nil, "the pending spell is cleared on death")
+            assert(b1.char.stats.health.current == hp0, "nothing detonates from a corpse")
+        end,
+    },
+    {
+        name = "a channel whose target has left the blast resolves harmlessly",
+        fn = function()
+            local c = Combat.new(arena(10, 10), { unit("mage", 2, 2) }, { unit("bandit", 2, 4) })
+            local mage, b1 = c.units[1], c.units[2]
+            mage.char.inventory = { Item.instantiate("ability_fireball") }
+            mage.initiative, b1.initiative = 0, 1
+            openTurn(c, mage)
+            assert(Combat.useItem(c, mage, mage.char.inventory[1], b1.x, b1.y), "the channel begins at the bandit")
+
+            b1.x, b1.y = 9, 9 -- the bandit steps well clear of the 3x3 blast before it resolves
+            local hp0 = b1.char.stats.health.current
+            assert(Combat.resolveChannel(c, mage), "the channel still resolves on its stored tile")
+            assert(b1.char.stats.health.current == hp0, "the foe that fled the blast takes no damage")
+            assert(mage.channel == nil, "the channel is cleared")
+        end,
+    },
+    {
+        name = "an interrupted channeled consumable is still spent (committed at cast-start)",
+        fn = function()
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 2, 4) })
+            local mage, b1 = c.units[1], c.units[2]
+            -- A hand-rolled channeled consumable (none ship in data) to exercise the consume-at-start path.
+            local bomb = {
+                name = "Slow Bomb", type = "consumable", quantity = 2,
+                activeAbility = {
+                    name = "Wind-up Bomb", target = "enemy", range = 3, channel = 2, speed = 3,
+                    consumesItem = true, aoe = { radius = 1, shape = "square" },
+                    effect = function(fx) for _, u in ipairs(fx.aoeUnits()) do fx.damage(u, { amount = 5 }) end end,
+                },
+            }
+            mage.char.inventory = { bomb }
+            mage.initiative, b1.initiative = 0, 1
+            openTurn(c, mage)
+
+            assert(Combat.useItem(c, mage, bomb, b1.x, b1.y), "the channel begins")
+            assert(bomb.quantity == 1, "the consumable is spent at cast-start, not at resolution")
+            Status.apply(c, mage, "stun")
+            assert(mage.channel == nil, "the stun interrupts the channel")
+            assert(bomb.quantity == 1, "the spent charge is NOT returned on interrupt")
+        end,
+    },
+    {
+        name = "Dual Wield swings two adjacent 1h weapons: both hits land, and the turn bills their summed speed",
+        fn = function()
+            -- Rogue at (1,1), foe adjacent at (2,1), far foe pins the rebase so the clock reads the cost.
+            local c = Combat.new(arena(8, 8),
+                { unit("knight", 1, 1) }, { unit("bandit", 2, 1), unit("bandit", 8, 8) })
+            local rogue, bandit, far = c.units[1], c.units[2], c.units[3]
+
+            -- Dual Wield at grid centre (5), two 1h melee weapons in the adjacent middle row (4, 6):
+            -- an iron sword (speed 3) and toxic fists (speed?) that poison on hit.
+            local dual = Item.instantiate("ability_dual_wield")
+            rogue.char.inventory = {}
+            rogue.char.inventory[5] = dual
+            rogue.char.inventory[4] = Item.instantiate("iron_sword")       -- speed 3
+            rogue.char.inventory[6] = Item.instantiate("homunculus_fists") -- 1h melee, poisons on hit
+            local sumSpeed = rogue.char.inventory[4].activeAbility.speed
+                + rogue.char.inventory[6].activeAbility.speed
+
+            -- Pin every other unit above the billed cost so the rebase subtracts exactly rogue's
+            -- action cost -- then c.clock advances by precisely the summed weapon speeds.
+            rogue.initiative, bandit.initiative, far.initiative = 0, 100, 100
+            rogue.char.stats.staminaRegen = 0
+            -- Give the foe plenty of health so it survives the first swing -- otherwise the second
+            -- weapon's on-hit (the poison) would land on a corpse and never register.
+            bandit.char.stats.health.max = 999
+            bandit.char.stats.health.current = 999
+            local clock0 = c.clock
+            local hp0 = bandit.char.stats.health.current
+            openTurn(c, rogue)
+            local ok, res = Combat.useItem(c, rogue, dual, bandit.x, bandit.y)
+            assert(ok, "Dual Wield fires with two qualifying weapons beside it")
+            assert(res.damageDealt > 0, "the flurry reports the damage it dealt")
+            assert(bandit.char.stats.health.current < hp0, "the strikes land on the foe")
+            -- The fists' on-hit Poison is applied through the sub-strike -- verified via the log line
+            -- (the summed-speed time jump ticks the short poison off during the end-of-turn rebase, but
+            -- the affliction was really applied, and the log records it).
+            local poisoned = false
+            for _, e in ipairs(c.log) do
+                if e.kind == "status" and e.text:find("Poison") then poisoned = true break end
+            end
+            assert(poisoned, "the fists' on-hit effect lands through the sub-strike")
+            assert(c.clock - clock0 == sumSpeed, "the turn bills the summed weapon speeds, got " .. (c.clock - clock0))
+        end,
+    },
+    {
+        name = "Dual Wield is gated: it needs two qualifying weapons, and 2h ones only count once forged to +5",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 2, 1) })
+            local rogue, bandit = c.units[1], c.units[2]
+            local dual = Item.instantiate("ability_dual_wield")
+            rogue.char.inventory = {}
+            rogue.char.inventory[5] = dual
+            rogue.char.inventory[4] = Item.instantiate("iron_sword") -- one 1h weapon: not enough alone
+
+            -- One weapon: blocked, and useItem refuses without spending anything.
+            local blocked = Combat.itemBlockReason(rogue, dual)
+            assert(blocked and blocked.kind == "requirement", "one weapon isn't enough to arm Dual Wield")
+            openTurn(c, rogue)
+            assert(Combat.useItem(c, rogue, dual, bandit.x, bandit.y) == false, "the cast is refused while under-armed")
+
+            -- Add a 2h greataxe beside it: still blocked at +0 (2h needs +5), then allowed once forged.
+            rogue.char.inventory[6] = Item.instantiate("crimson_greataxe") -- hands = 2
+            assert(Combat.itemBlockReason(rogue, dual), "a 2h weapon doesn't qualify below +5")
+            rogue.char.inventory[5] = Item.instantiate("ability_dual_wield", 1, 5) -- forge to +5
+            assert(Combat.itemBlockReason(rogue, rogue.char.inventory[5]) == nil,
+                "at +5 the 2h weapon counts, so the pair arms it")
+        end,
+    },
+    {
+        name = "Dual Wield swings a third weapon only once forged to +10",
+        fn = function()
+            local function armedCount(level)
+                local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 2, 1) })
+                local rogue, bandit = c.units[1], c.units[2]
+                local dual = Item.instantiate("ability_dual_wield", 1, level)
+                rogue.char.inventory = {}
+                rogue.char.inventory[5] = dual
+                -- Three 1h weapons around the centre (2, 4, 6 are all adjacent to 5).
+                rogue.char.inventory[2] = Item.instantiate("iron_sword")
+                rogue.char.inventory[4] = Item.instantiate("iron_sword")
+                rogue.char.inventory[6] = Item.instantiate("iron_sword")
+                rogue.initiative, bandit.initiative = 0, 100 -- pin the foe above the billed cost
+                rogue.char.stats.staminaRegen = 0
+                local clock0 = c.clock
+                openTurn(c, rogue)
+                assert(Combat.useItem(c, rogue, dual, bandit.x, bandit.y), "the flurry fires")
+                return (c.clock - clock0) / rogue.char.inventory[2].activeAbility.speed -- swings = billed / per-sword speed
+            end
+            assert(armedCount(0) == 2, "at +0 the cap is two weapons")
+            assert(armedCount(10) == 3, "at +10 it swings three")
+        end,
+    },
+    {
+        name = "the timeline preview reads Dual Wield's summed weapon speed, not its nominal speed",
+        fn = function()
+            local knight = Character.instantiate("knight")
+            knight.inventory = {}
+            local dual = Item.instantiate("ability_dual_wield") -- nominal speed 4
+            knight.inventory[5] = dual
+            knight.inventory[4] = Item.instantiate("iron_sword") -- speed 3, adjacent
+            knight.inventory[6] = Item.instantiate("war_hammer") -- speed 7 but 2h: excluded at +0
+            local u = { char = knight, x = 1, y = 1 }
+
+            -- One qualifying weapon (the hammer is 2h, out at +0): not armed -> falls back to nominal.
+            assert(Combat.actionSpeed(u, dual.activeAbility, dual) == dual.activeAbility.speed,
+                "under-armed Dual Wield previews its nominal speed")
+            -- Add a second 1h weapon: armed -> the preview is the summed weapon speeds (3 + 3), not 4.
+            knight.inventory[2] = Item.instantiate("iron_sword") -- speed 3, adjacent to 5
+            assert(Combat.actionSpeed(u, dual.activeAbility, dual) == 6,
+                "armed Dual Wield previews the summed weapon speeds")
+
+            -- A plain ability with no speedPreview reads its own speed.
+            local sword = Item.instantiate("iron_sword")
+            assert(Combat.actionSpeed(u, sword.activeAbility, sword) == sword.activeAbility.speed,
+                "an ordinary ability previews its own speed")
+        end,
+    },
+    {
+        name = "Dual Wield's connector lines point only to the weapons it will swing (capped, level-gated)",
+        fn = function()
+            local function boostTargets(level)
+                local knight = Character.instantiate("knight")
+                knight.inventory = {}
+                knight.inventory[5] = Item.instantiate("ability_dual_wield", 1, level)
+                knight.inventory[2] = Item.instantiate("iron_sword")
+                knight.inventory[4] = Item.instantiate("iron_sword")
+                knight.inventory[6] = Item.instantiate("iron_sword")
+                knight.inventory[8] = Item.instantiate("bow") -- ranged: never qualifies
+                local to = {}
+                for _, l in ipairs(Combat.adjacencyLinks(knight)) do
+                    if l.from == 5 and l.kind == "boost" then to[l.to] = true end
+                end
+                local n = 0
+                for _ in pairs(to) do n = n + 1 end
+                return n, to
+            end
+
+            local n0, to0 = boostTargets(0)
+            assert(n0 == 2, "at +0 exactly two weapons are linked (the cap), got " .. n0)
+            assert(not to0[8], "the bow (ranged) is never linked")
+
+            local n10, to10 = boostTargets(10)
+            assert(n10 == 3, "at +10 all three swords are linked, got " .. n10)
+            assert(not to10[8], "the bow is still excluded")
         end,
     },
 }

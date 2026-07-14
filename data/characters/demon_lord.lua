@@ -9,6 +9,7 @@
 -- pool of health and almost nothing behind it. Every threat in this battle is borrowed.
 return {
     name = "The Hollow Crown",
+    boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/demon_lord.png",
     stats = {
         health = 600, mana = 0, stamina = 100,

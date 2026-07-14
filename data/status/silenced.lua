@@ -11,4 +11,5 @@ return {
     duration = 8,
     debuff = true, -- removable by Cure
     silencesMana = true,
+    interruptsChannel = "mana", -- gags an in-progress mana channel; a stamina channel is untouched
 }

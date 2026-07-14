@@ -96,6 +96,7 @@ function CombatPanel.new(combat, opts)
     self.onActivateItem = opts.onActivateItem
     self.onHoverItem = opts.onHoverItem
     self.onHoverUnit = opts.onHoverUnit
+    self.onWait = opts.onWait -- the long Wait/Focus/Defend button under the item grid
 
     self.headFont = love.graphics.newFont(16)
     self.nameFont = love.graphics.newFont(14)
@@ -105,11 +106,16 @@ function CombatPanel.new(combat, opts)
     self.x = Scale.WIDTH - PANEL_W
     self.w = PANEL_W
 
-    -- Item grid: 3x3, centred horizontally, anchored to the bottom.
+    -- Item grid: 3x3, centred horizontally. A long Wait button sits under it at the very bottom,
+    -- so the grid is lifted to make room (button height + a gap + the bottom margin).
     self.gridW = COLS * SLOT_W + (COLS - 1) * SLOT_GAP
     self.gridH = ROWS * SLOT_H + (ROWS - 1) * SLOT_GAP
     self.gridX = self.x + math.floor((PANEL_W - self.gridW) / 2)
-    self.gridY = Scale.HEIGHT - self.gridH - 16
+    -- Wait/Focus/Defend button: a bar the width of the grid, pinned to the panel bottom.
+    self.waitBtn = { x = self.gridX, w = self.gridW, h = 34 }
+    self.waitBtn.y = Scale.HEIGHT - 16 - self.waitBtn.h
+    self.waitHover = false
+    self.gridY = self.waitBtn.y - 10 - self.gridH
     -- Turn strip lives above the item grid.
     self.stripTop = 44
     self.stripBottom = self.gridY - 28
@@ -175,7 +181,38 @@ function CombatPanel:draw()
 
     self:drawTurnStrip()
     self:drawItemGrid()
+    self:drawWaitButton()
     love.graphics.setColor(1, 1, 1)
+end
+
+-- The long Wait button under the item grid. Its label mirrors the acting unit's wait behavior
+-- (item-swapped Focus / Defend, else Wait), matching the old corner button. Enabled only on a party
+-- turn; brightens under the cursor. The battle state supplies onWait and reads waitHover (set in
+-- mousemoved) to preview the delay slot on the timeline.
+function CombatPanel:drawWaitButton()
+    local b = self.waitBtn
+    local enabled = self.view.isPartyTurn
+    local hot = enabled and self.waitHover
+    local label = "Wait"
+    if self.view.current then
+        local kind = Combat.waitBehavior(self.view.current).kind
+        label = (kind == "focus" and "Focus") or (kind == "defend" and "Defend")
+            or (kind == "overwatch" and "Overwatch") or "Wait"
+    end
+    if enabled then love.graphics.setColor(hot and 0.24 or 0.18, hot and 0.30 or 0.24, hot and 0.42 or 0.34)
+    else love.graphics.setColor(0.14, 0.15, 0.18) end
+    love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
+    if enabled then love.graphics.setColor(0.5, 0.65, 0.85) else love.graphics.setColor(0.3, 0.32, 0.38) end
+    love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
+    if enabled then love.graphics.setColor(0.9, 0.94, 1) else love.graphics.setColor(0.5, 0.52, 0.58) end
+    love.graphics.setFont(self.nameFont)
+    love.graphics.printf(label, b.x, b.y + b.h / 2 - 9, b.w, "center")
+end
+
+-- Is (px, py) over the Wait button?
+function CombatPanel:overWait(px, py)
+    local b = self.waitBtn
+    return px >= b.x and px <= b.x + b.w and py >= b.y and py <= b.y + b.h
 end
 
 -- How many entries fit between stripTop and stripBottom, and how far the strip can scroll
@@ -355,7 +392,7 @@ function CombatPanel:drawEntry(entry, ey, num)
         -- A ghost slot shows where the actor would land, not its live resources.
         love.graphics.setColor(0.95, 0.85, 0.55, 0.95)
         love.graphics.print(unit.char.name or "?", rx, ey + 8)
-        love.graphics.print("would act here", rx, ey + 30)
+        love.graphics.print(self.view.previewLabel or "would act here", rx, ey + 30)
         return
     end
 
@@ -705,16 +742,22 @@ end
 function CombatPanel:mousemoved(x, y)
     if not self:contains(x, y) then
         self:setHover(nil, nil, nil)
+        self.waitHover = false
         return false
     end
     local item, i = self:usableItemAt(x, y)
     self:setHover(item, i, self:unitAt(x, y))
+    self.waitHover = self.view.isPartyTurn and self:overWait(x, y) or false
     return true
 end
 
 -- Returns true when the click was inside the panel (consumed).
 function CombatPanel:mousepressed(x, y, button)
     if button ~= 1 or not self:contains(x, y) then return false end
+    if self.view.isPartyTurn and self:overWait(x, y) then
+        if self.onWait then self.onWait() end
+        return true
+    end
     local item, i = self:usableItemAt(x, y)
     if item and self.onActivateItem then self.onActivateItem(item, i) end
     return true
