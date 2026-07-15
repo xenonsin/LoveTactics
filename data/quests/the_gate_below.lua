@@ -34,7 +34,6 @@ return {
     },
     map = {
         biome = "underworld",
-        cols = 55, rows = 37,
         encounters = { min = 12, max = 16, always = { "elite", "elite", "elite" } },
         objective = {
             name = "The Hollow Crown",

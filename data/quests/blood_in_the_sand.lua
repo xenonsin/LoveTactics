@@ -16,7 +16,6 @@ return {
     repeatable = true,
     map = {
         biome = "castle",
-        cols = 45, rows = 31,
         encounters = { min = 8, max = 12, always = { "elite" } },
         objective = {
             name = "The Card",

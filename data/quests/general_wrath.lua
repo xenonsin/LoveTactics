@@ -22,7 +22,6 @@ return {
     gateHint = "beneath the sand, where the roaring was loudest",
     map = {
         biome = "castle",
-        cols = 51, rows = 35,
         encounters = { min = 10, max = 14, always = { "elite", "elite" } },
         objective = {
             name = "Ira, the Unappeased",

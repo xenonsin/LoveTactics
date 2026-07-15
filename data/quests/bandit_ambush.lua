@@ -16,8 +16,7 @@ return {
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {
         biome = "forest",
-        cols = 31, rows = 21,
-        encounters = { min = 4, max = 6 }, -- rivers come from the biome
+        encounters = { min = 4, max = 6 }, -- map size scales with this; rivers come from the biome
         -- The objective encounter's battle: its enemy roster (composition) and win
         -- condition (win). `win.type` defaults to "killAll" if omitted.
         objective = {

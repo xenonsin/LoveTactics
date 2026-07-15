@@ -70,6 +70,11 @@ function Placeholder:mousemoved(x, y)
     self.closeButton:mousemoved(x, y)
 end
 
+-- Hand over the one button this panel has (the close X); arrow over the rest. See ui/cursor.lua.
+function Placeholder:cursorKind(x, y)
+    return self.closeButton:contains(x, y) and "hand" or "arrow"
+end
+
 function Placeholder:mousepressed(x, y, button)
     if button ~= 1 then return end
     -- The close button, or any click outside the panel box, dismisses the modal.

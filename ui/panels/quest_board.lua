@@ -198,6 +198,12 @@ function QuestBoard:mousemoved(x, y)
     self.menu:mousemoved(x, y)
 end
 
+-- Hand over the close X or any quest row; arrow elsewhere. See ui/cursor.lua.
+function QuestBoard:cursorKind(x, y)
+    if self.closeButton:contains(x, y) or self.menu:mouseOverItem(x, y) then return "hand" end
+    return "arrow"
+end
+
 function QuestBoard:wheelmoved(dx, dy)
     self.menu:wheelmoved(dx, dy)
 end

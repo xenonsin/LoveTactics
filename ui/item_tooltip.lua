@@ -14,6 +14,7 @@ local Scale = require("scale")
 local Combat = require("models.combat")
 local Character = require("models.character")
 local Item = require("models.item")
+local Trap = require("models.trap")
 local RangeDiagram = require("ui.range_diagram")
 
 local ItemTooltip = {}
@@ -153,6 +154,30 @@ local function buildBlocks(item, actor, innerW)
                 -- "until it dies" is the load-bearing difference between the wolf and the elemental.
                 blocks[#blocks + 1] = { kind = "stat", label = "Duration",
                     value = out.summonDuration and tostring(out.summonDuration) or "Until slain" }
+            end
+            -- A trap-placing ability names the trap it summons and spells out what crossing it does:
+            -- its blueprint flavour, then the raw damage / status a victim eats (dry-run via
+            -- Trap.preview), and how much punishment the armed trap soaks before it breaks.
+            if out.trap then
+                local tdef = Trap.defs[out.trap] or {}
+                local tp = Trap.preview(out.trap)
+                blocks[#blocks + 1] = { kind = "stat", label = "Places",
+                    value = tdef.name or "a trap", valueColor = SUMMON }
+                if tdef.description and tdef.description ~= "" then
+                    blocks[#blocks + 1] = { kind = "note", text = tdef.description }
+                end
+                if tp and tp.damage > 0 then
+                    blocks[#blocks + 1] = { kind = "stat", label = "Trap damage",
+                        value = tostring(tp.damage), valueColor = POWER }
+                end
+                for _, st in ipairs(tp and tp.statuses or {}) do
+                    local def = st.def or {}
+                    blocks[#blocks + 1] = { kind = "stat", label = "Trap applies",
+                        value = def.name or st.id or "status", valueColor = def.color or VALUE }
+                end
+                if tdef.health then
+                    blocks[#blocks + 1] = { kind = "stat", label = "Trap HP", value = tostring(tdef.health) }
+                end
             end
             if out.knockback then
                 blocks[#blocks + 1] = { kind = "stat", label = "Knockback",

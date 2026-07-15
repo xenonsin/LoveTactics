@@ -13,6 +13,7 @@
 
 local Scale = require("scale")
 local Combat = require("models.combat")
+local Trap = require("models.trap")
 
 local TileTooltip = {}
 
@@ -268,6 +269,21 @@ local function buildBlocks(info)
                 block.lethal = info.preview.lethal
             end
             blocks[#blocks + 1] = block
+        end
+        -- What crossing this trap does: its blueprint flavour, then the raw damage / status a victim
+        -- eats (dry-run via Trap.preview) -- so a revealed trap reads as a threat, not just an HP bar.
+        local tdef = trap.def or {}
+        if tdef.description and tdef.description ~= "" then
+            blocks[#blocks + 1] = { kind = "desc", text = tdef.description }
+        end
+        local tp = trap.id and Trap.preview(trap.id)
+        if tp and tp.damage > 0 then
+            blocks[#blocks + 1] = { kind = "stat", label = "Damage", value = tostring(tp.damage) }
+        end
+        for _, st in ipairs(tp and tp.statuses or {}) do
+            local def = st.def or {}
+            blocks[#blocks + 1] = { kind = "stat", label = "Applies",
+                value = def.name or st.id or "status", valueColor = def.color or VALUE }
         end
         if info.cell then
             appendHazard(blocks, info)

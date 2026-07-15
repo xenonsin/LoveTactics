@@ -367,6 +367,29 @@ return {
         end,
     },
     {
+        name = "previewTimeline takes a list of labelled ghosts (a channel's resolve + follow-up slot)",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("mage", 4, 7) }, { unit("wolf_grunt", 4, 2) })
+            local mage = c.units[1]
+            mage.initiative = 0
+
+            -- A channeled cast plants two ghosts of the caster: the resolution slot and the turn past it.
+            local entries = Combat.previewTimeline(c, mage, {
+                { initiative = 4, label = "channel resolves here" },
+                { initiative = 11, label = "then acts here" },
+            })
+
+            local ghosts = {}
+            for _, e in ipairs(entries) do if e.preview then ghosts[#ghosts + 1] = e end end
+            assert(#ghosts == 2, "exactly two preview ghosts, got " .. #ghosts)
+            assert(ghosts[1].initiative == 4 and ghosts[1].previewLabel == "channel resolves here",
+                "first ghost is the resolution slot, labelled")
+            assert(ghosts[2].initiative == 11 and ghosts[2].previewLabel == "then acts here",
+                "second ghost is the follow-up slot, labelled")
+            assert(ghosts[1].unit == mage and ghosts[2].unit == mage, "both ghosts are the caster")
+        end,
+    },
+    {
         name = "a wait preview ghost lands just AFTER the unit it delays past at a shared initiative",
         fn = function()
             -- Two party units tied at initiative 2 with equal speed; previewing the first one
@@ -488,6 +511,35 @@ return {
             assert(Combat.moveUnit(c, u, 3, 1), "move across the forest to x=3")
             Combat.pass(c, u) -- sole unit rebases back to 0; the cost 3 shows on the clock
             assert(c.clock == 3, "move time is the terrain-weighted cost 3, not the 2 tiles")
+        end,
+    },
+    {
+        name = "a unit walks THROUGH an ally but not onto it; an enemy still blocks the corridor",
+        fn = function()
+            -- 6x1 corridor, archer (movement budget 3) at x=1 with a friendly at x=2 boxing it in.
+            local c = Combat.new(arena(6, 1), { unit("archer", 1, 1), unit("knight", 2, 1) }, {})
+            local archer = c.units[1]
+            openTurn(c, archer)
+
+            local r = Combat.reachable(c, archer)
+            assert(r["2,1"] == nil, "the ally's tile is a walk-through, not a stopping point")
+            assert(r["3,1"] and r["3,1"].cost == 2, "the archer reaches past the ally to x=3")
+            assert(r["4,1"] and r["4,1"].cost == 3, "and to x=4, at the edge of its budget")
+
+            -- planMove routes the path straight through the ally's tile...
+            local plan = Combat.planMove(c, archer, 4, 1)
+            assert(plan and #plan.path == 4, "the path is origin + 3 steps")
+            assert(plan.path[2].x == 2, "step 2 passes through the ally's tile at x=2")
+
+            -- ...but stopping on the ally is refused.
+            local nope, why = Combat.planMove(c, archer, 2, 1)
+            assert(nope == nil and why == "occupied", "can't end the move on the ally, got " .. tostring(why))
+
+            -- An ENEMY in the same spot bars the corridor outright.
+            local c2 = Combat.new(arena(6, 1), { unit("archer", 1, 1) }, { unit("bandit", 2, 1) })
+            Combat.startTurn(c2)
+            local r2 = Combat.reachable(c2, c2.units[1])
+            assert(r2["3,1"] == nil and r2["4,1"] == nil, "an enemy blocks passage down the corridor")
         end,
     },
     {

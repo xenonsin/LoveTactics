@@ -517,6 +517,18 @@ function Shop:mousemoved(x, y)
     if self:hasRows() then self.menu:mousemoved(x, y) end
 end
 
+-- Hand over the close X, the Buy/Sell/Upgrade mode tabs, or any item row; arrow elsewhere. When the
+-- sell-quantity popup is open it owns the pointer. See ui/cursor.lua.
+function Shop:cursorKind(x, y)
+    if self.quantityPopup then return self.quantityPopup:cursorKind(x, y) end
+    if self.closeButton:contains(x, y) then return "hand" end
+    for _, m in ipairs(MODES) do
+        if pointIn(self.segRects[m], x, y) then return "hand" end
+    end
+    if self:hasRows() and self.menu:mouseOverItem(x, y) then return "hand" end
+    return "arrow"
+end
+
 function Shop:wheelmoved(dx, dy)
     if self.quantityPopup then self.quantityPopup:wheelmoved(dy) return end
     if self:hasRows() then self.menu:wheelmoved(dx, dy) end

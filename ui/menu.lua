@@ -222,6 +222,14 @@ function Menu:mousepressed(x, y, button)
     end
 end
 
+-- True when the point is over any visible menu item, so a state can show the hand cursor there.
+function Menu:mouseOverItem(x, y)
+    for _, item in ipairs(self.items) do
+        if isInside(item, x, y) then return true end
+    end
+    return false
+end
+
 -- Wheel scrolls the window without moving the selection, the way a list is expected to behave.
 function Menu:wheelmoved(dx, dy)
     self:scrollBy(-dy)

@@ -777,21 +777,27 @@ function Combat.previewOrder(combat, unit, newInit)
     end)
 end
 
--- Like the live turn order, but with an extra GHOST copy of `unit` inserted where it would
--- land if it acted (newTime). The actor keeps its real slot AND gains a preview slot, so the
--- UI can show "you are here now / you would move to here". Returns a list of
--- { unit, preview } entries in turn order (soonest first); the real entry sorts before the
--- ghost on a tie so the live one stays lower in a bottom-anchored strip.
-function Combat.previewTimeline(combat, unit, newInit)
+-- Like the live turn order, but with extra GHOST copies of `unit` inserted where it would
+-- land if it acted. The actor keeps its real slot AND gains a preview slot, so the UI can show
+-- "you are here now / you would move to here". `ghosts` is either a single initiative number
+-- (one unlabelled ghost) or a list of { initiative, label } specs -- a channeled ability passes
+-- two, the slot the spell RESOLVES at and the slot the caster next acts at past it. Returns a
+-- list of { unit, preview, initiative, previewLabel } entries in turn order (soonest first); a
+-- real entry sorts before a ghost on a tie so the live one stays lower in a bottom-anchored strip.
+function Combat.previewTimeline(combat, unit, ghosts)
     local entries = {}
     for _, u in ipairs(combat.units) do
         if u.alive then entries[#entries + 1] = { unit = u, preview = false, initiative = u.initiative } end
     end
-    entries[#entries + 1] = { unit = unit, preview = true, initiative = newInit }
+    if type(ghosts) == "number" then ghosts = { { initiative = ghosts } } end
+    for _, g in ipairs(ghosts) do
+        entries[#entries + 1] = { unit = unit, preview = true, initiative = g.initiative, previewLabel = g.label }
+    end
     -- Order by initiative, matching Combat.turnOrder's tie-breaks so the strip agrees with the
     -- board's turn numbers; a preview ghost sorts AFTER real entries at an exact tie. Every
     -- branch is guarded so comparing an entry with itself returns false (a valid weak order --
-    -- an unguarded `return not a.preview` here would assert x < x and corrupt table.sort).
+    -- an unguarded `return not a.preview` here would assert x < x and corrupt table.sort). Two
+    -- ghosts of the same unit only ever tie if their slots coincide, and then rank equal (fine).
     table.sort(entries, function(a, b)
         if a.initiative ~= b.initiative then return a.initiative < b.initiative end
         if a.preview ~= b.preview then return b.preview end -- real before ghost at a tie
@@ -939,13 +945,14 @@ end
 
 local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
 
--- Tiles a unit can reach this turn: a Dijkstra over the arena weighted by tile
--- `moveCost`, budget = the unit's `movement`, blocked by non-walkable tiles and cells
--- occupied by other units. Returns `{ [key]= { x, y, cost, steps } }`, keyed by "x,y".
--- `cost` is the terrain-weighted path cost: it spends the movement budget AND is the
--- initiative the move costs at end-of-turn (so rough terrain is slower to cross in both
--- reach and time). `steps` is the raw tile count, used only by the enemy AI's pathing.
-function Combat.reachable(combat, unit)
+-- The full movement graph for a unit this turn: a Dijkstra over the arena weighted by tile
+-- `moveCost`, budget = the unit's `movement`. Impassable terrain, walls, and ENEMY-occupied cells
+-- bar the way outright; a FRIENDLY unit's cell may be walked THROUGH but not stopped on -- it is
+-- expanded like any tile (so allies never wall a corridor) yet carries `occupied = true` so callers
+-- can drop it as a landing spot. Returns `{ [key]= { x, y, cost, steps, fromKey, occupied } }`,
+-- keyed "x,y", INCLUDING the origin (cost 0) so a path can be traced back through it. Private: the
+-- public Combat.reachable filters this down to the tiles a unit may actually stop on.
+local function moveGraph(combat, unit)
     local arena = combat.arena
     local budget = flatStat(unit, "movement")
 
@@ -968,15 +975,18 @@ function Combat.reachable(combat, unit)
                 local nx, ny = cur.x + d[1], cur.y + d[2]
                 if nx >= 1 and nx <= arena.cols and ny >= 1 and ny <= arena.rows then
                     local cell = arena.tiles[ny][nx]
-                    if cell.walkable and not Combat.unitAt(combat, nx, ny)
-                        and not Wall.blocksAt(combat, nx, ny) then
+                    local occ = Combat.unitAt(combat, nx, ny)
+                    -- An enemy bars the tile outright; a friendly unit may be passed through (transit
+                    -- only). Walls and impassable terrain always bar the way.
+                    local enemy = occ ~= nil and occ.side ~= unit.side
+                    if cell.walkable and not enemy and not Wall.blocksAt(combat, nx, ny) then
                         local ncost = cur.cost + cell.moveCost
                         if ncost <= budget then
                             local nk = key(nx, ny)
                             local existing = best[nk]
                             if not existing or ncost < existing.cost then
                                 local node = { x = nx, y = ny, cost = ncost, steps = cur.steps + 1,
-                                               fromKey = key(cur.x, cur.y) }
+                                               fromKey = key(cur.x, cur.y), occupied = occ ~= nil }
                                 best[nk] = node
                                 frontier[#frontier + 1] = node
                             end
@@ -987,8 +997,23 @@ function Combat.reachable(combat, unit)
         end
     end
 
-    best[key(unit.x, unit.y)] = nil -- the origin isn't a "move" target
     return best
+end
+
+-- Tiles a unit can reach AND STOP ON this turn: the movement graph (moveGraph) minus the origin and
+-- minus any friendly-occupied tile it merely walks through. Returns `{ [key]= { x, y, cost, steps } }`,
+-- keyed by "x,y". `cost` is the terrain-weighted path cost: it spends the movement budget AND is the
+-- initiative the move costs at end-of-turn (so rough terrain is slower to cross in both reach and
+-- time). `steps` is the raw tile count, used only by the enemy AI's pathing.
+function Combat.reachable(combat, unit)
+    local graph = moveGraph(combat, unit)
+    graph[key(unit.x, unit.y)] = nil -- the origin isn't a "move" target
+    local out = {}
+    for k, node in pairs(graph) do
+        -- An ally's tile is a walk-through, never a stopping point: keep it out of the reachable set.
+        if not node.occupied then out[k] = node end
+    end
+    return out
 end
 
 -- Every cell a unit could strike THIS turn with a `range`-reach weapon: for the origin tile
@@ -1100,18 +1125,22 @@ function Combat.planMove(combat, unit, x, y)
     if not combat.turn or combat.turn.unit ~= unit then return nil, "not this unit's turn" end
     if combat.turn.moved then return nil, "already moved" end
     if Status.blocksMove(unit) then return nil, "rooted" end
-    local reachable = Combat.reachable(combat, unit)
-    local node = reachable[key(x, y)]
-    if not node then return nil, "unreachable" end
+    -- Trace through the full graph (allies are walk-through transit nodes), not the filtered
+    -- reachable set, so a path may route past a friendly unit -- but the destination itself must be
+    -- a tile the unit can stop on (the origin has no fromKey; an ally's tile is `occupied`).
+    local graph = moveGraph(combat, unit)
+    local node = graph[key(x, y)]
+    if not node or not node.fromKey then return nil, "unreachable" end
+    if node.occupied then return nil, "occupied" end
 
-    -- Walk the fromKey chain back from the destination -- it stops at the first step, the origin
-    -- having been cleared from the reachable set -- then reverse it and put the origin back on the
-    -- front, so `path` reads in the order the unit's feet take it.
+    -- Walk the fromKey chain back from the destination -- it stops at the origin (which has no
+    -- fromKey) -- then reverse it and put the origin on the front, so `path` reads in the order the
+    -- unit's feet take it.
     local back = {}
     local n = node
-    while n do
+    while n and n.fromKey do
         back[#back + 1] = n
-        n = n.fromKey and reachable[n.fromKey] or nil
+        n = graph[n.fromKey]
     end
     local path = { { x = unit.x, y = unit.y } }
     for i = #back, 1, -1 do path[#path + 1] = { x = back[i].x, y = back[i].y } end
@@ -1147,7 +1176,11 @@ function Combat.planMoveVia(combat, unit, cells)
         local k = key(c.x, c.y)
         if seen[k] then return nil, "revisit" end -- catch a double-back (incl. onto the origin) first
         local occ = Combat.unitAt(combat, c.x, c.y)
-        if occ and occ ~= unit then return nil, "occupied" end -- the mover vacates its own tile
+        if occ and occ ~= unit then
+            -- The mover may pass THROUGH a friendly unit but must not stop on one (the destination is
+            -- the last cell); an enemy bars the way outright, transit or not.
+            if i == #cells or occ.side ~= unit.side then return nil, "occupied" end
+        end
         if Wall.blocksAt(combat, c.x, c.y) then return nil, "wall" end
         seen[k] = true
         cost = cost + tile.moveCost
@@ -2108,7 +2141,9 @@ function Combat.abilityOutput(unit, item)
         restore = function(_, _, amount) return amount or 0 end,
         adjacentItems = function() return {} end,
         adjacentMatching = function() return 0 end,
-        placeTrap = function() return nil end,
+        -- Record WHICH trap the ability would place so the inventory tooltip can name it and quote
+        -- what crossing it does (via Trap.preview), the way `summon` records its creature.
+        placeTrap = function(_, _, id) out.trap = id; return nil end,
         placeHazard = function() return nil end,
         placeWall = function() return nil end,
         dispel = function() return { revealed = 0, wallsDestroyed = 0 } end,

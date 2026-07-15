@@ -1033,6 +1033,16 @@ end
 -- Input
 -- ---------------------------------------------------------------------------
 
+-- Hand over anything you can pick: the close X, a party-member portrait on the rail, a loadout grid
+-- cell, or a stash-pool cell. When the split-quantity popup is open it owns the pointer. Arrow over
+-- the dead space between. See ui/cursor.lua.
+function Party:cursorKind(x, y)
+    if self.quantityPopup then return self.quantityPopup:cursorKind(x, y) end
+    if self.closeButton:contains(x, y) then return "hand" end
+    if self:railIndexAt(x, y) or self.grid:indexAt(x, y) or self.pool:contains(x, y) then return "hand" end
+    return "arrow"
+end
+
 function Party:mousemoved(x, y)
     self.mx, self.my = x, y
     if self.quantityPopup then self.quantityPopup:mousemoved(x, y) return end

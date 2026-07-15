@@ -11,8 +11,7 @@ return {
     requiredPrestige = 1,
     map = {
         biome = "castle",
-        cols = 25, rows = 19,
-        encounters = { min = 2, max = 4 },
+        encounters = { min = 2, max = 4 }, -- map size scales with this (models/overworld.lua)
         objective = {
             name = "The Bout",
             composition = function(ctx)

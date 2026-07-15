@@ -146,6 +146,51 @@ return {
         end,
     },
     {
+        name = "map size scales with encounter count when cols/rows are unset",
+        fn = function()
+            -- No explicit cols/rows: the play area should grow with the resolved
+            -- encounter count so light quests get compact maps and heavy ones sprawl.
+            local small = Overworld.generate({
+                seed = 11, biome = "forest", encounterCount = 3,
+                encounters = { { kind = "combat", weight = 1 } },
+            })
+            local big = Overworld.generate({
+                seed = 11, biome = "forest", encounterCount = 14,
+                encounters = { { kind = "combat", weight = 1 } },
+            })
+            assert(small.cols < big.cols and small.rows < big.rows,
+                "a 3-encounter map (" .. small.cols .. "x" .. small.rows
+                .. ") should be smaller than a 14-encounter map ("
+                .. big.cols .. "x" .. big.rows .. ")")
+        end,
+    },
+    {
+        name = "small auto-sized maps with keys stay solvable",
+        fn = function()
+            -- The auto-size path shrinks the play area for light quests; the
+            -- objective/lock/key solvability guarantee must still hold there.
+            for seed = 1, 25 do
+                local grid = Overworld.generate({
+                    seed = seed, biome = "forest", encounterCount = 3, keyCount = 2,
+                    encounters = { { kind = "combat", weight = 1 } },
+                    objective = { name = "Boss" },
+                })
+                assert((grid:solve()), "auto-sized keyed seed " .. seed .. " unsolvable")
+            end
+        end,
+    },
+    {
+        name = "explicit cols/rows override the encounter-count sizing",
+        fn = function()
+            local grid = Overworld.generate({
+                cols = 41, rows = 29, seed = 7, biome = "forest", encounterCount = 3,
+                encounters = { { kind = "combat", weight = 1 } },
+            })
+            assert(grid.cols == 41 + 2 * grid.margin, "explicit cols should win over auto-size")
+            assert(grid.rows == 29 + 2 * grid.margin, "explicit rows should win over auto-size")
+        end,
+    },
+    {
         name = "always-encounters are force-placed",
         fn = function()
             local grid = Overworld.generate({

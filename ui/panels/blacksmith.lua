@@ -233,6 +233,13 @@ function BlacksmithPanel:mousemoved(x, y)
     if self:hasItems() then self.menu:mousemoved(x, y) end
 end
 
+-- Hand over the close X or any craftable row; arrow elsewhere. See ui/cursor.lua.
+function BlacksmithPanel:cursorKind(x, y)
+    if self.closeButton:contains(x, y) then return "hand" end
+    if self:hasItems() and self.menu:mouseOverItem(x, y) then return "hand" end
+    return "arrow"
+end
+
 function BlacksmithPanel:wheelmoved(dx, dy)
     if self:hasItems() then self.menu:wheelmoved(dx, dy) end
 end

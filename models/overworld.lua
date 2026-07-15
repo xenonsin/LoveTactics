@@ -49,6 +49,22 @@ local function resolveCount(v, rng)
     return v or 0
 end
 
+-- Scale the play area to the number of "stops" the trail must host — the
+-- encounters this map actually rolled, plus the objective and any keys — so a
+-- light quest gets a compact map instead of a sparse, half-empty one, and a run
+-- that rolls its encounter count low ends up smaller than one that rolls high.
+-- The intercepts reserve room for the objective/start; the slopes reproduce the
+-- (~1.5:1 landscape) sizes the built-in quests used to hand-author. Dimensions
+-- are kept odd for a centred lattice and floored at a playable minimum.
+local function deriveDims(encounters, keyCount)
+    local content = (encounters or 0) + (keyCount or 0)
+    local cols = math.max(17, 15 + math.floor(2.5 * content))
+    local rows = math.max(13, 13 + math.floor(1.5 * content))
+    if cols % 2 == 0 then cols = cols + 1 end
+    if rows % 2 == 0 then rows = rows + 1 end
+    return cols, rows
+end
+
 -- ---------------------------------------------------------------------------
 -- Generation
 -- ---------------------------------------------------------------------------
@@ -67,8 +83,18 @@ function Overworld.generate(params)
     -- not carved out of it: we inflate the grid by 2*margin and offset the node
     -- lattice inward by the same amount, so the trail network keeps its full size.
     self.margin = params.margin or biomeDef.margin or 3
-    local playCols = params.cols or 41
-    local playRows = params.rows or 29
+    self.rng = love.math.newRandomGenerator(params.seed or os.time())
+
+    -- Resolve how many encounters this map will actually hold up front (a
+    -- { min, max } range is drawn here, once) so the play area can be sized to
+    -- fit the content. placeEncounters reuses this same number.
+    self.encounterTarget = resolveCount(params.encounterCount, self.rng)
+
+    -- Play area: honour explicit cols/rows, otherwise scale with the encounters
+    -- (and keys) so the map never sprawls into empty wandering. See deriveDims.
+    local dCols, dRows = deriveDims(self.encounterTarget, params.keyCount)
+    local playCols = params.cols or dCols
+    local playRows = params.rows or dRows
     self.cols = playCols + 2 * self.margin
     self.rows = playRows + 2 * self.margin
     self.tilesetId = biomeDef.tileset      -- which data/tilesets/<id> draws this map
@@ -76,7 +102,6 @@ function Overworld.generate(params)
     self.spacing = params.spacing or biomeDef.spacing or 4
     self.originX = 0
     self.originY = 0
-    self.rng = love.math.newRandomGenerator(params.seed or os.time())
     self.keyIds = {}
     self.gateCells = {} -- keyId -> gate cell (for cleanup if a key can't be placed)
 
@@ -492,7 +517,8 @@ end
 -- drawn from the weighted `params.encounters` pool. Both come pre-filtered for
 -- the player's prestige/conditionals by the caller (see models/encounter.lua).
 function Overworld:placeEncounters(params)
-    local count = resolveCount(params.encounterCount, self.rng)
+    -- Resolved once in generate() (so the map could be sized to it); reuse it here.
+    local count = self.encounterTarget or resolveCount(params.encounterCount, self.rng)
     local pool = params.encounters or { { kind = "combat", weight = 1 } }
     local always = params.alwaysEncounters or {}
 

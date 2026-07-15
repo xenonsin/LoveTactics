@@ -213,6 +213,11 @@ function Advancement:mousemoved(x, y)
     self.closeButton:mousemoved(x, y)
 end
 
+-- Hand over the close X (the only button; the rest is a summary). See ui/cursor.lua.
+function Advancement:cursorKind(x, y)
+    return self.closeButton:contains(x, y) and "hand" or "arrow"
+end
+
 function Advancement:wheelmoved(_, dy)
     if dy ~= 0 then self:scrollBy(-dy) end
 end

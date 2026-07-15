@@ -155,6 +155,32 @@ function Trap.trigger(combat, trap, victim)
     return true
 end
 
+-- Dry-run a trap blueprint's onTrigger against a stand-in victim to report what crossing its tile
+-- would do -- the raw (pre-mitigation) damage it deals and any status it applies -- WITHOUT a real
+-- combat. Mirrors Combat.abilityOutput's approach for ability items: the trap's own effect is the
+-- source of truth, so a data-only trap (spike = damage, snare = a status) is described without its
+-- numbers being duplicated anywhere. pcall-guarded so a data quirk can never crash a tooltip.
+-- Returns { damage, statuses = { { id, def } } }, or nil for an unknown id.
+function Trap.preview(id)
+    local def = Trap.defs[id]
+    if not def then return nil end
+    local Status = require("models.status")
+    local out = { damage = 0, statuses = {} }
+    local victim = { alive = true, side = "enemy", char = { name = "target" } }
+    local trap = { id = id, name = def.name, def = def, tags = def.tags or {} }
+    local ctx = {
+        combat = nil, trap = trap, victim = victim,
+        damage = function(_, amount) out.damage = out.damage + (amount or 0); return amount or 0 end,
+        applyStatus = function(_, sid)
+            out.statuses[#out.statuses + 1] = { id = sid, def = Status.defs[sid] }
+            return nil
+        end,
+        unitsNear = function() return { victim } end,
+    }
+    if def.onTrigger then pcall(def.onTrigger, ctx) end
+    return out
+end
+
 -- Damage a (revealed) trap. Destroys it at 0 HP, running the def's onDestroy. Returns the
 -- amount applied.
 function Trap.damage(combat, trap, amount)

@@ -72,6 +72,17 @@ local function pointIn(btn, x, y)
     return x >= btn.x and x <= btn.x + btn.w and y >= btn.y and y <= btn.y + btn.h
 end
 
+-- Whether an item carries a given tag (Combat's own hasTag is private). Used by the context cursor
+-- to tell a physical strike ("physical") from a spell ("magical").
+local function itemHasTag(item, want)
+    local tags = item and item.tags
+    if not tags then return false end
+    for _, t in ipairs(tags) do
+        if t == want then return true end
+    end
+    return false
+end
+
 local function charName(id)
     local def = id and Character.defs[id]
     return (def and def.name) or id or "the target"
@@ -169,11 +180,18 @@ end
 -- rebuilds the plain shortest path (Combat.planMove), so the preview always shows a legal walk.
 local function updateMovePath(unit)
     local cx, cy = battle.map.cursor.x, battle.map.cursor.y
-    -- Only a walked move draws a route: not a blink (a teleport has none), the cursor must be a
-    -- reachable tile, and standing still isn't a move.
-    if battle.blinking or (cx == unit.x and cy == unit.y)
-        or not (battle.reachable and battle.reachable[cx .. "," .. cy]) then
+    -- Only a walked move draws a route: not a blink (a teleport has none), and standing still isn't
+    -- a move.
+    if battle.blinking or (cx == unit.x and cy == unit.y) then
         battle.movePath = nil
+        return
+    end
+    -- The cursor must be a reachable tile to STEER the route to it. When it isn't: in armed mode the
+    -- player has steered the approach and moved the cursor onto a foe to aim (or onto a tile out of
+    -- move range) -- keep the drawn route so its endpoint stays the tile the strike fires from. In
+    -- move mode an off-set cursor just clears the route.
+    if not (battle.reachable and battle.reachable[cx .. "," .. cy]) then
+        if battle.mode ~= "armed" then battle.movePath = nil end
         return
     end
 
@@ -209,6 +227,29 @@ local function movePathTo(x, y)
     local last = mp.cells[#mp.cells]
     if last.x == x and last.y == y then return mp end
     return nil
+end
+
+-- The tile a steered route commits the unit to standing on -- the end of the drawn move route
+-- (battle.movePath) plus that route, or nil when none is drawn. In armed mode this is the tile the
+-- player has steered to, and the one an ensuing strike should fire FROM (see armedActionAt).
+local function steeredStand()
+    local mp = battle.movePath
+    if not mp then return nil end
+    return mp.cells[#mp.cells], mp
+end
+
+-- Can `unit`, standing on (sx, sy), legally land `ab` / `item` on the target cell (tx, ty)? The same
+-- per-stand-tile test Combat.attackReach applies -- base range + the item's grid-adjacency bonus +
+-- the stand tile's own field range bonus, clamped below by the ability's min range and gated on line
+-- of sight when it needs it -- pulled out so a SPECIFIC stand tile (the steered route's endpoint) can
+-- be checked, not just the cheapest one attackReach records. Combat.useItem re-validates on confirm.
+local function standCanHit(unit, ab, item, sx, sy, tx, ty)
+    local r = (ab.range or 1) + Combat.adjacencyRangeBonus(unit.char, item)
+        + (Combat.fieldBonus(battle.combat, sx, sy).range or 0)
+    local d = math.abs(sx - tx) + math.abs(sy - ty)
+    if d < Combat.abilityMinRange(ab) or d > r then return false end
+    if ab.requiresSight and not Combat.hasLineOfSight(battle.combat, sx, sy, tx, ty) then return false end
+    return true
 end
 
 -- The armed ability's valid-to-hit AREA (red for offensive, green for support): every tile the
@@ -654,6 +695,50 @@ local function tryDamageWall(unit, tx, ty)
     strike()
 end
 
+-- What an armed click on (cx, cy) resolves to, for the currently armed item (the turn-start default
+-- or an explicitly armed one):
+--   { kind = "act",  entry, cells }  -- a valid target here (a foe/ally to hit, a legal tile to
+--                                 place): walk to the stand tile (entry.fromX/fromY), then use the
+--                                 item. `cells`, when set, is the player-steered route to that stand
+--                                 tile so the approach follows the drawn path, not the shortest one.
+--   { kind = "move", x, y, cells }  -- no valid target, but the cell is a reachable tile: a single-
+--                                 target strike/heal aimed at empty air is a REPOSITION, so walk onto
+--                                 it (following the steered `cells` when a route ends there).
+--   nil                        -- nothing to do here.
+-- The move case is what lets an armed unit still walk freely (like move mode) by clicking an empty
+-- tile: without it, aiming empty air would walk to the adjacent stand tile to "strike" nothing --
+-- the movement stopping a tile short. Tile/self-target abilities never take the move branch (an empty
+-- tile IS their target -- an AoE placement, a self-cast), so aiming them still places/casts.
+-- The stand tile a strike fires from is the steered route's endpoint whenever that tile can legally
+-- reach the target (so the player picks WHERE to attack from); otherwise the cheapest tile
+-- attackReach recorded in rangeReach.
+local function armedActionAt(cx, cy)
+    local item = battle.armedItem
+    local ab = item and item.activeAbility
+    if not ab then return nil end
+    local occ = Combat.unitAt(battle.combat, cx, cy)
+    local support = battle.armedSupport
+    local needsOccupant = ab.target == "enemy" or ab.target == "ally"
+    local hasTarget = occ and occ.alive and (support and occ.side == battle.current.side
+        or not support and occ.side ~= battle.current.side)
+    if needsOccupant and not hasTarget then
+        if battle.reachable and battle.reachable[cx .. "," .. cy] then
+            local mp = movePathTo(cx, cy)
+            return { kind = "move", x = cx, y = cy, cells = mp and mp.cells or nil }
+        end
+        return nil
+    end
+    local entry = battle.rangeReach and battle.rangeReach[cx .. "," .. cy]
+    if not entry then return nil end
+    -- Fire from the steered route's endpoint when it can legally hit the target; else the cheapest.
+    local stand, mp = steeredStand()
+    if stand and standCanHit(battle.current, ab, item, stand.x, stand.y, cx, cy) then
+        return { kind = "act", cells = mp.cells,
+                 entry = { x = cx, y = cy, fromX = stand.x, fromY = stand.y, moveCost = mp.cost } }
+    end
+    return { kind = "act", entry = entry }
+end
+
 -- What confirming on cell (cx, cy) would DO right now, as a descriptor the action-preview tooltip
 -- (ui/action_preview.lua) renders beside the character/tile tooltip. Mirrors confirm()'s branching
 -- so the preview always names the very action a click would take:
@@ -676,13 +761,18 @@ local function actionPreviewFor(cx, cy)
     if battle.mode == "armed" and battle.armedItem then
         local item = battle.armedItem
         if not item.activeAbility then return nil end
-        -- Legal target cell = membership in the pre-computed valid range set (it already drops
-        -- wrong-side occupants, non-empty tile casts, and out-of-sight cells).
-        local valid = false
-        for _, c in ipairs(battle.rangeCells or {}) do
-            if c.x == cx and c.y == cy then valid = true break end
+        local plan = armedActionAt(cx, cy)
+        if not plan then return nil end
+        -- Aiming empty air with a single-target ability is a reposition (walk onto the tile). A
+        -- steered detour ending here is priced by its own (longer) route, not the shortest one's.
+        if plan.kind == "move" then
+            local mp = movePathTo(cx, cy)
+            local node = battle.reachable[cx .. "," .. cy]
+            local cost = mp and mp.cost or node.cost
+            local steps = mp and (#mp.cells - 1) or node.steps
+            return { kind = "move", actor = current, steps = steps,
+                     moveCost = Combat.moveInitiative(current, cost) }
         end
-        if not valid then return nil end
         local preview = Combat.previewAbility(battle.combat, current, item, cx, cy)
         return {
             kind = (item.activeAbility.target == "tile") and "place" or "ability",
@@ -785,12 +875,24 @@ local function confirm()
             end
         end
     elseif battle.mode == "armed" and battle.armedItem then
-        -- Walk-and-strike: if the cheapest stand tile for this target isn't where the unit is, walk
-        -- there first (only if it hasn't moved yet), then cast from where the approach left off --
-        -- exactly like the default action's click-to-use. rangeReach spans the whole armed reach.
         local item = battle.armedItem
-        local entry = battle.rangeReach and battle.rangeReach[cx .. "," .. cy]
-        if not entry then return end
+        local plan = armedActionAt(cx, cy)
+        if not plan then return end
+        -- Aiming an empty reachable tile is a reposition, not an attack on empty air: walk onto it and
+        -- stay armed, refreshing the range from the tile it now stands on (one move per turn).
+        if plan.kind == "move" then
+            if Combat.hasMoved(battle.combat) then return end
+            startWalk(current, plan.x, plan.y, function()
+                if not current.alive then advanceTurn() return end
+                computeThreat(current) computeDanger() computeRange(current, item)
+            end, plan.cells)
+            return
+        end
+        -- Walk-and-strike: if the stand tile for this target -- the steered route's endpoint, or the
+        -- cheapest tile attackReach found -- isn't where the unit is, walk there first (only if it
+        -- hasn't moved yet), following the steered route when one is drawn, then cast from where the
+        -- approach left off. rangeReach spans the whole armed reach.
+        local entry = plan.entry
         local function cast()
             if Combat.useItem(battle.combat, current, item, cx, cy) then advanceTurn() end
         end
@@ -798,7 +900,7 @@ local function confirm()
             if Combat.hasMoved(battle.combat) then return end -- can't move twice in a turn
             startWalk(current, entry.fromX, entry.fromY, function()
                 if current.alive then cast() else advanceTurn() end
-            end)
+            end, plan.cells)
         else
             cast()
         end
@@ -845,16 +947,35 @@ local function executeEnemyAction()
     act_()
 end
 
+-- The timeline ghost(s) for aiming ability `item` from the current stand tile (with `pendingMove`
+-- already spent this turn folded in). A plain cast lands ONE ghost at its action slot. A channeled
+-- cast lands TWO: the slot the spell RESOLVES at (the wind-up, ab.channel) and, past that, the slot
+-- the caster next acts at (resolution + the cast's own speed, the initiative resolveCast charges when
+-- the wind-up finishes) -- so the player reads both when the spell fires and when they regain control.
+local function abilityGhosts(unit, item, pendingMove)
+    local a = item.activeAbility
+    if a.channel then
+        local resolve = pendingMove + a.channel
+        return {
+            { initiative = resolve, label = "channel resolves here" },
+            { initiative = resolve + Combat.actionSpeed(unit, a, item), label = "then acts here" },
+        }
+    end
+    return { { initiative = pendingMove + Combat.actionSpeed(unit, a, item) } }
+end
+
 -- Compute the turn-order preview + battlefield overlays and hand them to the widgets.
 local function refreshView()
     local current = battle.current
     if not current then return end
     local isParty = Combat.isPlayerControlled(current) and not battle.over
 
-    -- Keep the steerable move-route preview fresh (move mode only; cleared otherwise so a stale route
-    -- never lingers into an armed cast or an enemy turn). Must run before the initiative preview below,
-    -- which prices a detour off the route's own cost.
-    if isParty and battle.mode == "move" and not busy() then
+    -- Keep the steerable move-route preview fresh. It runs in move mode AND armed mode: while an
+    -- item is armed the player steers the same Advance-Wars route to a chosen stand tile, then aims
+    -- the strike, which fires from that tile (see armedActionAt). Cleared otherwise (a hovered-slot
+    -- preview, an enemy turn) so a stale route never lingers. Must run before the initiative preview
+    -- below, which prices a detour off the route's own cost.
+    if isParty and not busy() and (battle.mode == "move" or battle.mode == "armed") then
         updateMovePath(current)
     else
         battle.movePath = nil
@@ -862,12 +983,9 @@ local function refreshView()
 
     -- Preview the projected initiative the pending action would give the actor. The actor
     -- sits at initiative 0; a move already taken this turn is folded in via the pending move
-    -- cost, and a wait previews the delay slot (next unit's initiative + 1).
-    local newInit
-    -- A channeled ability's ghost lands at its RESOLUTION slot (the wind-up, ab.channel) and reads
-    -- "channel resolves here" instead of "would act here", so the preview shows when the spell goes
-    -- off, not when the cast is initiated.
-    local channelPreview = false
+    -- cost, and a wait previews the delay slot (next unit's initiative + 1). A channeled ability
+    -- yields TWO ghosts (resolution + follow-up turn); everything else yields one. See abilityGhosts.
+    local ghosts
     if isParty then
         local pendingMove = (battle.combat.turn and battle.combat.turn.moveCost) or 0
         if battle.hoverWait then
@@ -875,29 +993,28 @@ local function refreshView()
             for _, u in ipairs(Combat.turnOrder(battle.combat)) do
                 if u ~= current then nxt = u.initiative break end
             end
-            newInit = nxt and math.max(pendingMove, nxt + 1) or (pendingMove + Combat.WAIT_COST)
+            local w = nxt and math.max(pendingMove, nxt + 1) or (pendingMove + Combat.WAIT_COST)
+            ghosts = { { initiative = w } }
         elseif battle.hoverItem and battle.hoverItem.activeAbility then
-            local a = battle.hoverItem.activeAbility
-            newInit = pendingMove + (a.channel or Combat.actionSpeed(current, a, battle.hoverItem))
-            channelPreview = a.channel ~= nil
+            ghosts = abilityGhosts(current, battle.hoverItem, pendingMove)
         elseif battle.mode == "armed" and battle.armedItem then
-            local a = battle.armedItem.activeAbility
-            newInit = pendingMove + (a.channel or Combat.actionSpeed(current, a, battle.armedItem))
-            channelPreview = a.channel ~= nil
+            ghosts = abilityGhosts(current, battle.armedItem, pendingMove)
         elseif battle.mode == "move" then
+            local cost
             if battle.movePath then
-                newInit = Combat.moveInitiative(current, battle.movePath.cost)
+                cost = battle.movePath.cost
             else
                 local node = battle.reachable and battle.reachable[battle.map.cursor.x .. "," .. battle.map.cursor.y]
-                if node then newInit = Combat.moveInitiative(current, node.cost) end
+                if node then cost = node.cost end
             end
+            if cost then ghosts = { { initiative = Combat.moveInitiative(current, cost) } } end
         end
     end
-    -- Timeline entries for the panel: the live order, plus a ghost of the actor at its
+    -- Timeline entries for the panel: the live order, plus a ghost of the actor at each
     -- projected slot while a move/item/wait is being previewed.
     local entries
-    if newInit then
-        entries = Combat.previewTimeline(battle.combat, current, newInit)
+    if ghosts then
+        entries = Combat.previewTimeline(battle.combat, current, ghosts)
     else
         entries = {}
         for _, u in ipairs(Combat.turnOrder(battle.combat)) do
@@ -908,19 +1025,75 @@ local function refreshView()
     -- Board highlights: the acting unit always, plus whichever unit the timeline is hovering.
     local overlays = { move = {}, range = {} }
     local hoverAbility = battle.hoverItem and battle.hoverItem.activeAbility
-    if isParty and battle.mode == "armed" then
-        overlays.range = battle.rangeCells
-        overlays.rangeSupport = battle.armedSupport
-        -- An armed AoE ability paints its blast footprint around the aimed cell (the cursor),
-        -- brighter than the range wash, so the player sees exactly which tiles the cast sweeps.
-        overlays.aoe = aoeFootprint(battle.armedItem, battle.map.cursor.x, battle.map.cursor.y)
-        overlays.aoeSupport = battle.armedSupport
-    elseif isParty and hoverAbility then
-        -- Hovering an ability slot previews that item's range on the board (without arming it),
-        -- green for a friendly target, red for an offensive one -- mirroring the armed look.
-        computeRange(current, battle.hoverItem)
-        overlays.range = battle.rangeCells
-        overlays.rangeSupport = Combat.isSupportAbility(hoverAbility)
+    if isParty and (battle.mode == "armed" or hoverAbility) then
+        -- Armed (the turn-start default, or an explicitly armed item), or previewing a hovered ability
+        -- slot: show the EFFECTIVE range -- the movement band PLUS the action's reach beyond it, so the
+        -- player reads where the unit can step and where it can act from there. Aiming a cell that needs
+        -- an approach previews the walk-and-strike route to the stand tile the action fires from.
+        local armed = battle.mode == "armed"
+        local previewItem = armed and battle.armedItem or battle.hoverItem
+        local support = armed and battle.armedSupport or Combat.isSupportAbility(hoverAbility)
+        -- The hovered (not-yet-armed) item's reach is computed on the fly; an armed item's was computed
+        -- when it was armed and holds until the turn acts (the board doesn't shift on the player's turn).
+        if hoverAbility and not armed then computeRange(current, battle.hoverItem) end
+
+        -- Movement band, split by danger (blue safe / purple risky) exactly like move mode.
+        local danger = battle.dangerCells or {}
+        local moveKeys, safe, risky = {}, {}, {}
+        for _, c in ipairs(battle.moveCells) do
+            local k = c.x .. "," .. c.y
+            moveKeys[k] = true
+            if danger[k] then risky[#risky + 1] = c else safe[#safe + 1] = c end
+        end
+        overlays.move = safe
+        overlays.moveDanger = risky
+
+        -- The action's reach BEYOND the move band, plus any occupied target cell -- the move band
+        -- already colours the reachable empty tiles, so this is just the extra tiles a move-then-act
+        -- reaches (and the foe/ally you would hit). Green for support, red for a strike.
+        local band = {}
+        for _, c in ipairs(battle.rangeCells or {}) do
+            if not moveKeys[c.x .. "," .. c.y] then band[#band + 1] = c end
+        end
+        overlays.range = band
+        overlays.rangeSupport = support
+
+        -- An AoE ability paints its blast footprint around the aimed cell, brighter than the wash.
+        overlays.aoe = aoeFootprint(previewItem, battle.map.cursor.x, battle.map.cursor.y)
+        overlays.aoeSupport = support
+
+        -- Preview the move to reach the aimed cell, drawn as the same arrow move mode uses: onto the
+        -- cell when it's a reposition (empty reachable tile), or to the stand tile the action fires
+        -- from when hitting a target there. Nil when the unit is already in place or there's nothing
+        -- to do. Only for the armed item (a hovered-slot preview isn't committing to a move).
+        if armed then
+            local plan = armedActionAt(battle.map.cursor.x, battle.map.cursor.y)
+            local tx, ty, cells
+            if plan and plan.kind == "move" then
+                tx, ty, cells = plan.x, plan.y, plan.cells
+            elseif plan and plan.kind == "act"
+                and (plan.entry.fromX ~= current.x or plan.entry.fromY ~= current.y) then
+                tx, ty, cells = plan.entry.fromX, plan.entry.fromY, plan.cells
+            end
+            if tx then
+                -- Draw the steered route to the stand tile when the player has one; otherwise the
+                -- shortest approach.
+                local route = cells
+                if not route then
+                    local r = Combat.planMove(battle.combat, current, tx, ty)
+                    route = r and r.path or nil
+                end
+                overlays.path = route
+                -- If a walk-and-strike steps the actor onto a tile some foe can reach-and-strike,
+                -- pulse a red line from each threatening foe to that projected stand tile -- the same
+                -- "here is who could hit me there" read move mode gives, now for an armed attack that
+                -- moves into the line of fire before it swings.
+                local from = battle.dangerSources and battle.dangerSources[tx .. "," .. ty]
+                if from then
+                    overlays.threatLine = { to = { x = tx, y = ty }, from = from }
+                end
+            end
+        end
     elseif isParty then
         -- Hovering a unit previews ITS reach instead of the actor's (Fire Emblem / Triangle
         -- Strategy): the hovered unit's own movement (orange) + attack range (crimson) REPLACE the
@@ -1004,9 +1177,14 @@ local function refreshView()
     -- banner and its whole spend -- cost plus a summon's reservation -- onto the actor's banner.
     -- Computed after the range/reach overlays so actionPreviewFor sees the current valid-target sets.
     local bannerPreview
+    -- Also the source of truth for the context cursor (battle.cursorKind): the descriptor of what a
+    -- click on the hovered cell would do, or nil when nothing is aimed. Cleared each frame so it can't
+    -- go stale on the enemy's turn or once the mouse leaves the board.
+    battle.hoverAction = nil
     if isParty and battle.mouseX then
         local cx, cy = battle.map:cellAt(battle.mouseX, battle.mouseY)
         local action = cx and actionPreviewFor(cx, cy)
+        battle.hoverAction = action or nil
         if action then
             bannerPreview = {}
             if action.entries then
@@ -1036,7 +1214,6 @@ local function refreshView()
         armedItem = battle.armedItem,
         showInitiative = battle.showInitiative,
         preview = bannerPreview,
-        previewLabel = channelPreview and "channel resolves here" or nil,
     })
 
     -- Telegraph every in-progress channel's blast on the board -- not just the local armed preview, so
@@ -1446,6 +1623,39 @@ function battle.mousepressed(x, y, button)
     if battle.log:contains(x, y) then return end
     if battle.panel:mousepressed(x, y, button) then return end
     if battle.map:mousepressed(x, y, button) then confirm() end
+end
+
+-- Which context cursor to show under the mouse (see ui/cursor.lua). Mirrors mousepressed's region
+-- precedence: a hand over the clickable UI (the left-column buttons, the open log, the right combat
+-- panel), then the board -- where the stashed hoverAction (what a click would DO, from refreshView)
+-- picks the glyph. While it's not the player's turn, the board reads "wait". Only consulted when the
+-- mouse is the active device (main.lua gates on InputMode.isMouse()).
+function battle.cursorKind()
+    local mx, my = battle.mouseX, battle.mouseY
+    if not mx then return "arrow" end
+    -- Off the board: the clickable UI wants a pointing hand.
+    if pointIn(forfeitButton, mx, my) or pointIn(logButton, mx, my) or pointIn(rangesButton, mx, my)
+        or battle.log:contains(mx, my) or battle.panel:contains(mx, my) then
+        return "hand"
+    end
+    if battle.over then return "arrow" end
+    -- Enemy turn, a walk animation, or a channel resolving: a board click does nothing.
+    if busy() or (battle.current and not Combat.isPlayerControlled(battle.current)) then
+        return battle.map:cellAt(mx, my) and "wait" or "arrow"
+    end
+    local a = battle.hoverAction
+    if not a then return "arrow" end -- a board tile with no valid action
+    if a.kind == "move" then return a.blink and "blink" or "move" end
+    if a.kind == "strikeTrap" then return "break" end
+    if a.kind == "place" then return "target" end
+    -- Striking or offensively casting on a foe: a sword for a physical hit, a wand for a magical
+    -- one. The turn auto-arms the actor's default action, so an ordinary weapon attack arrives as
+    -- an armed "ability" too -- the tag, not the kind, is what tells a sword swing from a spell.
+    if a.kind == "attack" or (a.kind == "ability" and not a.support) then
+        return itemHasTag(a.item, "magical") and "cast" or "attack"
+    end
+    if a.kind == "ability" and a.support then return "heal" end
+    return "arrow"
 end
 
 return battle

@@ -3,6 +3,7 @@
 -- the hook contract; ctx.damage / ctx.victim / ctx.trap are provided.
 return {
     name = "Spike Trap",
+    description = "Stabs the first enemy to cross its tile, then breaks.",
     sprite = "assets/traps/spike_trap.png",
     health = 6,                            -- HP: how much damage a revealed trap soaks before it breaks
     tags = { "trap", "pierce", "physical" },

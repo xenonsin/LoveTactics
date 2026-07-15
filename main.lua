@@ -1,6 +1,7 @@
 local State = require("states")
 local Scale = require("scale")
 local InputMode = require("input_mode")
+local Cursor = require("ui.cursor")
 
 function love.load(args)
     -- Headless test entry: `& "E:\LOVE\lovec.exe" . test`
@@ -41,6 +42,19 @@ love.draw = function()
     Scale.start()
     local state = State.current
     if state and state.draw then state.draw() end
+    -- Context cursor: while the mouse is the active device, hide the OS pointer and draw our own
+    -- glyph, chosen by the state's optional cursorKind(x, y) (defaults to the arrow). The mouse
+    -- position -- already in the logical 1280x720 space -- is handed in so states and their panels
+    -- can hit-test their buttons without tracking it themselves. Drawn inside the scale transform so
+    -- it shares that space; leaving a screen swaps State.current, so the glyph reverts on its own.
+    if InputMode.isMouse() then
+        love.mouse.setVisible(false)
+        local gx, gy = Scale.toGame(love.mouse.getPosition())
+        local kind = (state and state.cursorKind and state:cursorKind(gx, gy)) or "arrow"
+        Cursor.draw(kind, gx, gy)
+    else
+        love.mouse.setVisible(true) -- keyboard/gamepad: leave the OS arrow available
+    end
     Scale.finish()
 end
 

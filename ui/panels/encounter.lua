@@ -111,6 +111,12 @@ function Encounter:mousemoved(x, y)
     self.button.hovered = inButton(self.button, x, y)
 end
 
+-- Hand over the close X or the Resolve/Fight button; arrow elsewhere. See ui/cursor.lua.
+function Encounter:cursorKind(x, y)
+    if self.closeButton:contains(x, y) or inButton(self.button, x, y) then return "hand" end
+    return "arrow"
+end
+
 function Encounter:mousepressed(x, y, button)
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then

@@ -11,7 +11,6 @@ return {
     requiredPrestige = 1,
     map = {
         biome = "castle",
-        cols = 37, rows = 27,
         encounters = { min = 5, max = 8, always = { "elite" } },
         objective = {
             name = "The Reading Room",

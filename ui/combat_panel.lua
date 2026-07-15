@@ -102,6 +102,7 @@ function CombatPanel.new(combat, opts)
     self.nameFont = love.graphics.newFont(14)
     self.smallFont = love.graphics.newFont(12)
     self.slotFont = love.graphics.newFont(11)  -- item name inside a grid slot
+    self.barFont = love.graphics.newFont(10)   -- cur/max readout overlaid on turn-strip bars
 
     self.x = Scale.WIDTH - PANEL_W
     self.w = PANEL_W
@@ -392,7 +393,7 @@ function CombatPanel:drawEntry(entry, ey, num)
         -- A ghost slot shows where the actor would land, not its live resources.
         love.graphics.setColor(0.95, 0.85, 0.55, 0.95)
         love.graphics.print(unit.char.name or "?", rx, ey + 8)
-        love.graphics.print(self.view.previewLabel or "would act here", rx, ey + 30)
+        love.graphics.print(entry.previewLabel or "would act here", rx, ey + 30)
         return
     end
 
@@ -431,9 +432,27 @@ function CombatPanel:drawEntry(entry, ey, num)
             -- already folds in char.maxBonus; adding the reserved amount back recovers the full max.
             local effMax = Combat.unreservedMax(unit.char, res.key)
                 + Combat.reservedAmount(unit.char, res.key)
-            drawResourceBar(rx, by, rw, 7, stat.current, effMax, res.color, delta, lethal,
+            drawResourceBar(rx, by, rw, 9, stat.current, effMax, res.color, delta, lethal,
                 Combat.reservedAmount(unit.char, res.key))
-            by = by + 10
+
+            -- Numeric readout overlaid on the bar (right-aligned), so the strip is legible without a
+            -- tooltip. Matches ui/tile_tooltip.lua: "cur / max", or "cur -> after / max" under a
+            -- preview delta, drawn with a dark shadow so it reads over any fill colour.
+            local curN = math.floor(stat.current + 0.5)
+            local maxN = math.floor(effMax + 0.5)
+            local valueText = curN .. " / " .. maxN
+            if delta ~= 0 then
+                local after = math.max(0, math.min(effMax, stat.current + delta))
+                valueText = curN .. " -> " .. math.floor(after + 0.5) .. " / " .. maxN
+            end
+            love.graphics.setFont(self.barFont)
+            local ty = by + (9 - self.barFont:getHeight()) / 2
+            love.graphics.setColor(0, 0, 0, 0.75)
+            love.graphics.printf(valueText, rx + 1, ty + 1, rw - 4, "right")
+            love.graphics.setColor(0.97, 0.97, 0.99)
+            love.graphics.printf(valueText, rx, ty, rw - 3, "right")
+            love.graphics.setFont(self.smallFont)
+            by = by + 11
         end
     end
 end

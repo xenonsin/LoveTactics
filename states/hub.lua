@@ -102,6 +102,15 @@ function hub.mousemoved(x, y, dx, dy)
     end
 end
 
+-- Hand over a clickable building (see ui/cursor.lua), arrow elsewhere. When a panel is open the
+-- city behind it is inert, so defer to the panel's own cursorKind (every panel has one).
+function hub:cursorKind(x, y)
+    if activePanel then
+        return activePanel.cursorKind and activePanel:cursorKind(x, y) or "arrow"
+    end
+    return map:mouseOverBuilding(x, y) and "hand" or "arrow"
+end
+
 function hub.mousepressed(x, y, button)
     if activePanel then
         activePanel:mousepressed(x, y, button)

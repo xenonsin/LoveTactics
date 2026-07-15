@@ -12,7 +12,6 @@ return {
     requiredPrestige = 1,
     map = {
         biome = "forest",
-        cols = 35, rows = 25,
         encounters = { min = 5, max = 7 },
         objective = {
             name = "Ambush at the Pass",

@@ -133,6 +133,14 @@ function BuildingMap:mousepressed(x, y, button)
     end
 end
 
+-- True when the point is over an unlocked (clickable) building, so a state can show the hand cursor.
+function BuildingMap:mouseOverBuilding(x, y)
+    for _, b in ipairs(self.buildings) do
+        if not b.locked and isInside(b, x, y) then return true end
+    end
+    return false
+end
+
 function BuildingMap:keypressed(key)
     if key == "left" or key == "a" or key == "up" or key == "w" then
         self:moveSelection(-1)

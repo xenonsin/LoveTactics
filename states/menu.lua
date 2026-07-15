@@ -76,6 +76,11 @@ function menu.mousemoved(x, y)
     widget:mousemoved(x, y)
 end
 
+-- Hand over a menu button, arrow elsewhere (see ui/cursor.lua).
+function menu:cursorKind(x, y)
+    return widget:mouseOverItem(x, y) and "hand" or "arrow"
+end
+
 function menu.mousepressed(x, y, button)
     widget:mousepressed(x, y, button)
 end

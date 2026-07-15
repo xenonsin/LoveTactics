@@ -197,6 +197,29 @@ return {
         end,
     },
     {
+        name = "Trap.preview dry-runs a trap's trigger to report its damage / status (for tooltips)",
+        fn = function()
+            -- Spike: a damage trap reports its pre-mitigation damage and no status.
+            local spike = Trap.preview("spike_trap")
+            assert(spike and spike.damage == 18, "spike preview reports 18 damage, got " .. tostring(spike and spike.damage))
+            assert(#spike.statuses == 0, "a spike trap applies no status")
+
+            -- Snare: a status trap reports the status it applies and no damage.
+            local snare = Trap.preview("snare_trap")
+            assert(snare and snare.damage == 0, "a snare deals no damage")
+            assert(#snare.statuses == 1 and snare.statuses[1].id == "root", "the snare previews a root status")
+
+            assert(Trap.preview("no_such_trap") == nil, "an unknown trap id previews nothing")
+        end,
+    },
+    {
+        name = "the trap-placement ability's dry run reports which trap it would place (for the tooltip)",
+        fn = function()
+            local out = Combat.abilityOutput(nil, Item.instantiate("ability_spike_trap"))
+            assert(out and out.trap == "spike_trap", "the ability tooltip should name the trap it summons")
+        end,
+    },
+    {
         name = "traps are placed both by authored arena data and by fx.placeTrap (the summon ability)",
         fn = function()
             -- Authored: arena.traps is consumed by Combat.new.

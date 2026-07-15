@@ -165,6 +165,17 @@ function QuantityPopup:mousemoved(x, y)
     if self.dragging then self:valueAt(x) end
 end
 
+-- Hand over any of the popup's controls (close X, -, +, confirm, cancel, or the draggable track);
+-- arrow over the rest of the box. See ui/cursor.lua.
+function QuantityPopup:cursorKind(x, y)
+    if self.closeButton:contains(x, y) then return "hand" end
+    for _, r in ipairs({ self.minusBtn, self.plusBtn, self.confirmBtn, self.cancelBtn }) do
+        if pointIn(r, x, y) then return "hand" end
+    end
+    local track = { x = self.track.x - 8, y = self.track.y - 10, w = self.track.w + 16, h = self.track.h + 20 }
+    return pointIn(track, x, y) and "hand" or "arrow"
+end
+
 function QuantityPopup:mousepressed(x, y, button)
     if button ~= 1 then return true end
     if self.closeButton:mousepressed(x, y, button) then self:cancel() return true end

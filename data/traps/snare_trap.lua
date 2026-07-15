@@ -2,6 +2,7 @@
 -- status-delivering trap. See models/trap.lua; ctx.applyStatus routes to models/status.lua.
 return {
     name = "Snare Trap",
+    description = "Roots the first enemy to cross its tile in place, then breaks.",
     sprite = "assets/traps/snare_trap.png",
     health = 4,
     tags = { "trap", "snare" },

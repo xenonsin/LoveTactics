@@ -10,7 +10,6 @@ return {
     requiredPrestige = 1,
     map = {
         biome = "forest",
-        cols = 39, rows = 27,
         encounters = { min = 6, max = 9 },
         objective = {
             name = "The White Stag",

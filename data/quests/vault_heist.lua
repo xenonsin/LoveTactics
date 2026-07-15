@@ -11,7 +11,6 @@ return {
     requiredPrestige = 1,
     map = {
         biome = "castle",
-        cols = 33, rows = 25,
         encounters = { min = 4, max = 7 },
         objective = {
             name = "The Vault Door",

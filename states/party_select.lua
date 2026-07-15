@@ -280,6 +280,17 @@ end
 -- Input
 -- ---------------------------------------------------------------------------
 
+-- Hand over the Back / Embark buttons, a filled deploy slot (click removes the member), or a
+-- character card; arrow over the rest. See ui/cursor.lua.
+function ps.cursorKind(_, x, y)
+    if rectContains(backButton, x, y) or rectContains(embarkButton, x, y) then return "hand" end
+    for i = 1, Player.MAX_PARTY do
+        local sx, sy, sw, sh = slotRect(i)
+        if player.party[i] and x >= sx and x <= sx + sw and y >= sy and y <= sy + sh then return "hand" end
+    end
+    return cardIndexAt(x, y) and "hand" or "arrow"
+end
+
 function ps.mousepressed(x, y, button)
     if button ~= 1 then return end
     if rectContains(backButton, x, y) then goBack() return end

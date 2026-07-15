@@ -208,6 +208,16 @@ function game.mousemoved(x, y, dx, dy)
     end
 end
 
+-- Hand over the Back / Items buttons, or defer to an open panel; arrow over the overworld map (a
+-- click there travels -- map navigation, not a button). See ui/cursor.lua.
+function game:cursorKind(x, y)
+    if game.activePanel then
+        return game.activePanel.cursorKind and game.activePanel:cursorKind(x, y) or "arrow"
+    end
+    if backContains(x, y) or rectContains(itemsButton, x, y) then return "hand" end
+    return "arrow"
+end
+
 function game.mousepressed(x, y, button)
     if game.activePanel then
         game.activePanel:mousepressed(x, y, button)

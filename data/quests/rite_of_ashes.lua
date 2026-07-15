@@ -15,7 +15,6 @@ return {
     requiredRep = { vendor = "cathedral", rank = 2 }, -- Acolyte or better
     map = {
         biome = "forest",
-        cols = 39, rows = 27,
         encounters = { min = 6, max = 9, always = { "elite" } },
         objective = {
             name = "The Consecration",
