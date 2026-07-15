@@ -1,7 +1,7 @@
 -- Loadout pop-up panel: arrange each roster member's 3x3 item grid, where item POSITIONING drives
 -- adjacency auras/boosts/requirements (ui/adjacency_links.lua) -- that's the point of this screen, so
 -- the grid gets a legend. A scrollable portrait rail runs down the LEFT, then the focused member's
--- portrait + stats + traits, then that member's grid, then the shared stash (ui/pool_grid.lua).
+-- portrait + stats, then that member's grid, then the shared stash (ui/pool_grid.lua).
 -- Buying and selling live on the separate shop screen (ui/panels/shop.lua); this screen never touches
 -- gold.
 --
@@ -31,7 +31,6 @@ local InputMode = require("input_mode")
 local Character = require("models.character")
 local Player = require("models.player")
 local Item = require("models.item")
-local Trait = require("models.trait")
 local Growth = require("models.growth")
 local Scale = require("scale")
 
@@ -739,7 +738,7 @@ function Party:drawRailPortrait(char, i, rx, ry, rw, rh)
     end
 end
 
--- Focus sheet: the selected member's big portrait, name, stats (two per row), and traits.
+-- Focus sheet: the selected member's big portrait, name, and stats (two per row).
 function Party:drawFocus()
     local char = self:currentChar()
     if not char then return end
@@ -821,41 +820,6 @@ function Party:drawFocus()
         end
     end
     if n % 2 == 1 then sy = sy + 22 end
-
-    -- Traits.
-    sy = sy + 10
-    love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.7, 0.74, 0.82)
-    love.graphics.print("Traits", x, sy)
-    sy = sy + 20
-    -- A character's reactions now ride on its items (the bound signature relic, plus any trait-granting
-    -- gear), so gather them from the grid rather than a character property. char.traits is kept for
-    -- manual/test use but is normally empty. Mirrors how models/trait.lua collects a unit's traits.
-    local traits = {}
-    for _, id in ipairs(char.traits or {}) do traits[#traits + 1] = id end
-    for _, item in ipairs(Character.eachItem(char)) do
-        for _, id in ipairs(item.traits or {}) do traits[#traits + 1] = id end
-    end
-    if #traits == 0 then
-        love.graphics.setFont(self.tinyFont)
-        love.graphics.setColor(0.55, 0.58, 0.66)
-        love.graphics.print("None", x, sy)
-    else
-        for _, id in ipairs(traits) do
-            local def = Trait.defs[id]
-            if def then
-                love.graphics.setFont(self.smallFont)
-                love.graphics.setColor(0.85, 0.8, 0.55)
-                love.graphics.print(def.name or id, x, sy)
-                sy = sy + 18
-                love.graphics.setFont(self.tinyFont)
-                love.graphics.setColor(0.68, 0.7, 0.78)
-                local _, lines = self.tinyFont:getWrap(def.description or "", self.focusW)
-                love.graphics.printf(def.description or "", x, sy, self.focusW, "left")
-                sy = sy + math.max(1, #lines) * 14 + 6
-            end
-        end
-    end
 end
 
 -- The focused member's 3x3 grid (the anchor) with the adjacency legend beneath it.

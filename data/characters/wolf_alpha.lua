@@ -10,5 +10,5 @@ return {
         movement = 5,
         speed = 6, -- fastest in the pack
     },
-    startingItems = { "fangs" },
+    startingItems = { "fangs", "feral_instinct" },
 }

@@ -9,5 +9,5 @@ return {
         movement = 5, -- fast, low health
         speed = 5,
     },
-    startingItems = { "fangs" },
+    startingItems = { "fangs", "feral_instinct" },
 }

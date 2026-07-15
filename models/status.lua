@@ -47,6 +47,9 @@ local function ctxFor(combat, unit, status)
             return Status.apply(combat, tgt, id, opts)
         end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
+        -- The living unit on a tile, or nil. What a per-cell hook reads (a banner sweeping the 3x3
+        -- square around it for allies to grant its aura to).
+        unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         -- End this status now (e.g. Defending self-expiring at the owner's next turn start).
         expire = function() Status.remove(combat, unit, status.id) end,
     }
@@ -119,13 +122,16 @@ function Status.cleanse(combat, unit)
     return removed
 end
 
--- Sum the flat `statBonus[name]` contributed by every active status on `unit` (0 if none). Lets a
--- buff/debuff status modify a flat stat; folded into combat's flatStat (e.g. Defending's +defense).
+-- Sum the flat stat bonus for `name` contributed by every active status on `unit` (0 if none). Two
+-- sources add in: a static `statBonus[name]` on the def (Aegis's fixed +defense/+magicDefense), and
+-- the per-instance `magnitude` when the def routes it to this stat via `magnitudeStat = name`
+-- (Defending's +defense, whose size the granting shield tunes). Folded into combat's flatStat.
 function Status.statBonus(unit, name)
     local total = 0
     for _, s in ipairs(unit.statuses or {}) do
         local bonus = s.def.statBonus
         if bonus and bonus[name] then total = total + bonus[name] end
+        if s.def.magnitudeStat == name and s.magnitude then total = total + s.magnitude end
     end
     return total
 end
@@ -217,6 +223,18 @@ end
 function Status.disarmed(unit)
     for _, s in ipairs(unit.statuses or {}) do
         if s.def.disablesWeapon then return true end
+    end
+    return false
+end
+
+-- Is this unit's reflexes shut down -- unable to REACT to anything? True while any active status sets
+-- `disablesReactions` (the hard-control statuses: Stun, Frozen, and any future Sleep). Read by
+-- models/trait.lua to suppress a disabled unit's triggered reactions -- counters, thorns, a dodge, a
+-- smoke-blink -- so a stunned or frozen fighter takes the blow it would normally answer. Mirrors
+-- Status.silenced / Status.disarmed in shape: a single flag scanned across the unit's active statuses.
+function Status.disablesReactions(unit)
+    for _, s in ipairs(unit.statuses or {}) do
+        if s.def.disablesReactions then return true end
     end
     return false
 end

@@ -10,5 +10,5 @@ return {
         movement = 4,
         speed = 5,
     },
-    startingItems = { "fangs" },
+    startingItems = { "fangs", "feral_instinct" },
 }

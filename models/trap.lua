@@ -86,6 +86,7 @@ function Trap.place(combat, x, y, id, side, opts)
         side = side or "enemy",
         health = def.health or 1,
         maxHealth = def.health or 1,
+        amount = opts.amount, -- item-level-scaled trigger magnitude (nil for an arena-authored trap)
         alive = true,
         def = def,
         tags = tags,
@@ -160,14 +161,16 @@ end
 -- combat. Mirrors Combat.abilityOutput's approach for ability items: the trap's own effect is the
 -- source of truth, so a data-only trap (spike = damage, snare = a status) is described without its
 -- numbers being duplicated anywhere. pcall-guarded so a data quirk can never crash a tooltip.
--- Returns { damage, statuses = { { id, def } } }, or nil for an unknown id.
-function Trap.preview(id)
+-- Returns { damage, statuses = { { id, def } } }, or nil for an unknown id. `amount` (optional) is the
+-- item-level-scaled magnitude the trap was placed with, so the preview quotes the damage it will really
+-- deal at that upgrade level rather than the blueprint's base.
+function Trap.preview(id, amount)
     local def = Trap.defs[id]
     if not def then return nil end
     local Status = require("models.status")
     local out = { damage = 0, statuses = {} }
     local victim = { alive = true, side = "enemy", char = { name = "target" } }
-    local trap = { id = id, name = def.name, def = def, tags = def.tags or {} }
+    local trap = { id = id, name = def.name, def = def, tags = def.tags or {}, amount = amount }
     local ctx = {
         combat = nil, trap = trap, victim = victim,
         damage = function(_, amount) out.damage = out.damage + (amount or 0); return amount or 0 end,

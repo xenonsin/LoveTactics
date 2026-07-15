@@ -21,8 +21,10 @@ return {
         cost = { stat = "mana", amount = 12 },
         aoe = { radius = 1, shape = "square" }, -- 3x3 consecrated ground
         effect = function(fx)
+            -- Forging the item deepens the blessing: it heals harder (base 8/turn, +1 per level) and
+            -- lingers longer (base 4 ticks, +1 per level).
             for _, c in ipairs(fx.aoeCells()) do
-                fx.placeHazard(c.x, c.y, "hazard_heal")
+                fx.placeHazard(c.x, c.y, "hazard_heal", { amount = 8 + fx.level, duration = 4 + fx.level })
             end
         end,
     },

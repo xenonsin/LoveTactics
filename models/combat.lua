@@ -135,6 +135,33 @@ function Combat.logEvent(combat, kind, text)
     return entry
 end
 
+-- Structured animation-cue feed, distinct from the text log above. Where logEvent produces a line
+-- of prose for the combat-log panel, this records a small plain-data event (unit references +
+-- numbers) that the view layer turns into a damage floater, an HP-bar drain, a shake/flash, or a
+-- death fade. Kept headless-safe (no love.graphics, no requires): the model appends here and the
+-- battle state drains it after each action; a headless test never drains, so the tail just sits
+-- unused. Preview/compute paths (Combat.computeDamage) never reach the mutation sites that push
+-- here, so a hovered-action preview raises no cues.
+function Combat.pushFx(combat, event)
+    if not combat then return end
+    local fx = combat.fx
+    if not fx then fx = {}; combat.fx = fx end
+    fx[#fx + 1] = event
+    -- A headless run (a test, an AI rollout) never drains, so bound the tail like the log does.
+    if #fx > Combat.LOG_CAP then table.remove(fx, 1) end
+    return event
+end
+
+-- Hand the accumulated fx events to the caller and clear the feed. Returns nil when nothing has
+-- happened since the last drain, so the battle state can cheaply tell an eventful action from a
+-- move-only/wait turn (which then needs no reaction pause).
+function Combat.drainFx(combat)
+    local fx = combat.fx
+    if not fx or #fx == 0 then return nil end
+    combat.fx = {}
+    return fx
+end
+
 -- The display name of a unit for log lines (falls back to a generic label).
 local function unitName(unit)
     return (unit and unit.char and unit.char.name) or "Unit"
@@ -523,11 +550,7 @@ function Combat.new(arena, partyUnits, enemyUnits)
             -- claim (Combat.activeSummon) is the same kind of leftover: the wolf that was still
             -- standing at the last blow is not on this field, so its horn is free to blow again.
             if side == "party" then
-                unit.char.reservations = nil
-                for i = 1, Character.MAX_INVENTORY do
-                    local item = unit.char.inventory[i]
-                    if item then item.activeSummon = nil end
-                end
+                Combat.releaseClaims(unit.char)
                 local st = unit.char.stats.stamina
                 if type(st) == "table" then st.current = st.max end
             end
@@ -777,27 +800,23 @@ function Combat.previewOrder(combat, unit, newInit)
     end)
 end
 
--- Like the live turn order, but with extra GHOST copies of `unit` inserted where it would
--- land if it acted. The actor keeps its real slot AND gains a preview slot, so the UI can show
--- "you are here now / you would move to here". `ghosts` is either a single initiative number
--- (one unlabelled ghost) or a list of { initiative, label } specs -- a channeled ability passes
--- two, the slot the spell RESOLVES at and the slot the caster next acts at past it. Returns a
--- list of { unit, preview, initiative, previewLabel } entries in turn order (soonest first); a
--- real entry sorts before a ghost on a tie so the live one stays lower in a bottom-anchored strip.
-function Combat.previewTimeline(combat, unit, ghosts)
+-- The live turn order plus arbitrary GHOST entries, sorted into one strip. `ghosts` is a list of
+-- { unit, initiative, label } specs -- each a hypothetical future slot for its own unit (an aim
+-- preview projects the actor; an in-progress channel projects the caster's follow-up turn). Returns
+-- a list of { unit, preview, initiative, previewLabel } entries in turn order (soonest first).
+-- Ordering matches Combat.turnOrder's tie-breaks so the strip agrees with the board's turn numbers;
+-- a preview ghost sorts AFTER real entries at an exact tie, so the live card stays lower in a
+-- bottom-anchored strip. Every branch is guarded so comparing an entry with itself returns false (a
+-- valid weak order -- an unguarded `return not a.preview` here would assert x < x and corrupt sort);
+-- two ghosts of the same unit only ever tie if their slots coincide, and then rank equal (fine).
+function Combat.buildTimeline(combat, ghosts)
     local entries = {}
     for _, u in ipairs(combat.units) do
         if u.alive then entries[#entries + 1] = { unit = u, preview = false, initiative = u.initiative } end
     end
-    if type(ghosts) == "number" then ghosts = { { initiative = ghosts } } end
-    for _, g in ipairs(ghosts) do
-        entries[#entries + 1] = { unit = unit, preview = true, initiative = g.initiative, previewLabel = g.label }
+    for _, g in ipairs(ghosts or {}) do
+        entries[#entries + 1] = { unit = g.unit, preview = true, initiative = g.initiative, previewLabel = g.label }
     end
-    -- Order by initiative, matching Combat.turnOrder's tie-breaks so the strip agrees with the
-    -- board's turn numbers; a preview ghost sorts AFTER real entries at an exact tie. Every
-    -- branch is guarded so comparing an entry with itself returns false (a valid weak order --
-    -- an unguarded `return not a.preview` here would assert x < x and corrupt table.sort). Two
-    -- ghosts of the same unit only ever tie if their slots coincide, and then rank equal (fine).
     table.sort(entries, function(a, b)
         if a.initiative ~= b.initiative then return a.initiative < b.initiative end
         if a.preview ~= b.preview then return b.preview end -- real before ghost at a tie
@@ -806,6 +825,43 @@ function Combat.previewTimeline(combat, unit, ghosts)
         return a.unit.index < b.unit.index
     end)
     return entries
+end
+
+-- Like the live turn order, but with extra GHOST copies of `unit` inserted where it would
+-- land if it acted. The actor keeps its real slot AND gains a preview slot, so the UI can show
+-- "you are here now / you would move to here". `ghosts` is either a single initiative number
+-- (one unlabelled ghost) or a list of { initiative, label } specs -- a channeled ability passes
+-- two, the slot the spell RESOLVES at and the slot the caster next acts at past it. A thin wrapper
+-- over Combat.buildTimeline that stamps `unit` onto each ghost spec.
+function Combat.previewTimeline(combat, unit, ghosts)
+    if type(ghosts) == "number" then ghosts = { { initiative = ghosts } } end
+    local specs = {}
+    for _, g in ipairs(ghosts) do
+        specs[#specs + 1] = { unit = unit, initiative = g.initiative, label = g.label }
+    end
+    return Combat.buildTimeline(combat, specs)
+end
+
+-- Ghost timeline specs for every unit currently WINDING UP a channel: one per channeler, at the
+-- slot it will next act -- its current initiative (the resolution slot, where its real card already
+-- sits) plus the channeled cast's own speed (the initiative Combat.resolveChannel charges when the
+-- wind-up finishes). Labelled "then acts here" so the two-slot picture the aim preview showed --
+-- where the spell resolves, then where the caster regains control -- persists once the cast is
+-- committed. The unit resolving THIS beat (initiative 0) is skipped: its follow-up is a hair away
+-- and it's the framed current card, so a ghost there is just noise.
+function Combat.channelGhosts(combat)
+    local specs = {}
+    for _, u in ipairs(combat.units) do
+        local ch = u.alive and u.channel
+        if ch and u.initiative > 0 then
+            specs[#specs + 1] = {
+                unit = u,
+                initiative = u.initiative + Combat.actionSpeed(u, ch.ab, ch.item),
+                label = "then acts here",
+            }
+        end
+    end
+    return specs
 end
 
 function Combat.currentUnit(combat)
@@ -902,7 +958,10 @@ end
 function Combat.defend(combat, unit)
     if not unit.alive then return false, "dead" end
     local behavior = Combat.waitBehavior(unit)
-    Status.apply(combat, unit, "defending")
+    -- The shield tunes the brace size through waitBehavior.defense (already resolved to this shield's
+    -- upgrade level); it rides in as the Defending status's magnitude. nil falls back to the status
+    -- def's own magnitude, so a defend item that names no amount still braces.
+    Status.apply(combat, unit, "defending", { magnitude = behavior.defense })
     Combat.logEvent(combat, "defend", string.format("%s takes a defensive stance.", unitName(unit)))
     endTurn(combat, unit, behavior.speed or Combat.DEFEND_SPEED)
     return true
@@ -1664,6 +1723,9 @@ local function killUnit(combat, target)
         unmaskDecoy(combat, target)
     else
         Combat.logEvent(combat, "death", string.format("%s is defeated!", unitName(target)))
+        -- Animation cue: fade the fallen unit's sprite (and its timeline card) to black and animate
+        -- it out. A corpse token, when one is left, takes over once the fade completes.
+        Combat.pushFx(combat, { type = "death", unit = target })
     end
 
     -- Before the unwinding below, so a dying trait still has its summons and reservations to spend.
@@ -1740,6 +1802,10 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     local dmg = Combat.mitigatedDamage(target, base, tags, opts)
     local hp = target.char.stats.health
     hp.current = hp.current - dmg
+    -- Animation cue: the blow that actually landed (post-mitigation), flagged lethal so the view
+    -- can punch a killing hit harder. The matching death cue is pushed by killUnit below.
+    Combat.pushFx(combat, { type = "damage", unit = target, amount = dmg,
+        lethal = hp.current <= 0, attacker = attacker })
     if source then
         Combat.logEvent(combat, "damage",
             string.format("%s takes %d damage from %s.", unitName(target), dmg, source))
@@ -1779,13 +1845,14 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
 end
 
 -- The magnitude an ability declares, whatever it drives -- a weapon/spell's `damage`, a potion's
--- `healing`, a draught's `restore`, a scroll's `reviveHealth`, or a summon's `summonPower`. Exactly
--- one is authored per ability; this returns its (already leveled) value, or nil for an ability that
--- grants no magnitude (a pure displacement/cleanse). The single reader, so the concrete field an item
--- chose is looked up in one place -- fx.amount, the primary-stat headline, and dealDamage all agree.
+-- `healing`, a draught's `restore`, or a scroll's `reviveHealth`. Exactly one is authored per ability;
+-- this returns its (already leveled) value, or nil for an ability that grants no magnitude (a pure
+-- displacement/cleanse, or a summon/placement that scales off the item's upgrade level via fx.level
+-- instead). The single reader, so the concrete field an item chose is looked up in one place --
+-- fx.amount, the primary-stat headline, and dealDamage all agree.
 function Combat.abilityMagnitude(ab)
     if not ab then return nil end
-    return ab.damage or ab.healing or ab.restore or ab.reviveHealth or ab.summonPower
+    return ab.damage or ab.healing or ab.restore or ab.reviveHealth
 end
 
 function Combat.dealDamage(combat, user, target, item, opts)
@@ -1840,6 +1907,7 @@ function Combat.applyHeal(combat, target, amount)
     local healed = math.max(0, hp.current - before)
     if healed > 0 then
         Combat.logEvent(combat, "heal", string.format("%s is healed for %d.", unitName(target), healed))
+        Combat.pushFx(combat, { type = "heal", unit = target, amount = healed })
     end
     return healed
 end
@@ -2114,13 +2182,17 @@ function Combat.abilityOutput(unit, item)
     local fx = {
         user = unit, target = dummy, item = item, combat = nil, tx = 0, ty = 0,
         amount = Combat.abilityMagnitude(ab),
+        level = item and item.level or 0, -- so a summon/hazard/trap effect can quote its level-scaled output
         unitAt = function() return nil end,
         unitsNear = function() return { dummy } end,
         -- There is no board here, so hand back the cell itself: an effect that goes on to place
         -- something there must not bail before it has told us what it would have placed.
         openTileNear = function(x, y) return x, y end,
         aoeUnits = function() return { dummy } end,
-        aoeCells = function() return {} end,
+        -- One stand-in cell so an area effect that paints the ground (Sanctuary, Rain, a Fireball's
+        -- embers) runs its placement once and records WHAT hazard it lays -- the tooltip needs that.
+        -- Every data effect only loops aoeCells to place hazards, so a single cell can't inflate damage.
+        aoeCells = function() return { { x = 0, y = 0 } } end,
         damage = function(tgt, opts)
             local d = Combat.computeDamage(nil, unit, tgt or dummy, item, opts)
             out.damage = out.damage + d
@@ -2141,10 +2213,22 @@ function Combat.abilityOutput(unit, item)
         restore = function(_, _, amount) return amount or 0 end,
         adjacentItems = function() return {} end,
         adjacentMatching = function() return 0 end,
-        -- Record WHICH trap the ability would place so the inventory tooltip can name it and quote
-        -- what crossing it does (via Trap.preview), the way `summon` records its creature.
-        placeTrap = function(_, _, id) out.trap = id; return nil end,
-        placeHazard = function() return nil end,
+        -- Record WHICH trap the ability would place, and the item-level-scaled magnitude it carries, so
+        -- the inventory tooltip can name it and quote what crossing it does (via Trap.preview) at this
+        -- upgrade level -- the way `summon` records its creature.
+        placeTrap = function(_, _, id, opts)
+            out.trap = id
+            out.trapAmount = opts and opts.amount
+            return nil
+        end,
+        -- Record WHAT hazard the ability would lay, and for how long / how hard, so the tooltip can name
+        -- the ground it paints and quote its lifespan and effect (via Hazard.preview) at this level.
+        placeHazard = function(_, _, id, opts)
+            out.hazard = id
+            out.hazardDuration = opts and opts.duration
+            out.hazardAmount = opts and opts.amount
+            return nil
+        end,
         placeWall = function() return nil end,
         dispel = function() return { revealed = 0, wallsDestroyed = 0 } end,
         -- Record WHAT the ability summons -- and for how long -- so the inventory tooltip can name it
@@ -2645,6 +2729,21 @@ function Combat.activeSummon(item)
     return nil
 end
 
+-- Drop the between-battle leftovers a party character carries out of a finished fight: the mana
+-- reservations its summons held, and the `activeSummon` claim each item keeps while its creature
+-- stands. Both refer to a field that no longer exists once the battle is over, so leaving them in
+-- place makes the overworld read a phantom -- an item tooltip still reporting "is still on the
+-- field", a mana ceiling still capped by a reservation. Called when a battle concludes (states/
+-- battle.lua) so the party returns clean, and again defensively as each unit is placed in Combat.new.
+function Combat.releaseClaims(char)
+    if not char then return end
+    char.reservations = nil
+    for i = 1, Character.MAX_INVENTORY do
+        local item = char.inventory[i]
+        if item then item.activeSummon = nil end
+    end
+end
+
 -- Why can't `unit` activate `item` right now? Covers every condition known BEFORE a target is
 -- picked: a spent stack, a summon of this item's still on the field, a cost or reservation it can't
 -- pay, an unmet grid adjacency (Rain of Arrows without its bow). Returns nil when the item is
@@ -2887,6 +2986,10 @@ function Combat.useItem(combat, unit, item, tx, ty)
         if ab.consumesItem then item.quantity = math.max(0, (item.quantity or 1) - 1) end
         unit.channel = { item = item, ab = ab, tx = tx, ty = ty }
         Status.apply(combat, unit, "channeling", { duration = ab.channel + 1 })
+        -- The wind-up is an action too: a cast beat on begin-channel, then a second when it resolves
+        -- (resolveCast, turns later). So a channeled spell reads both as it is loosed and as it lands.
+        Combat.pushFx(combat, { type = "cast", unit = unit, tx = tx, ty = ty,
+            support = Combat.isSupportAbility(ab) })
         Combat.logEvent(combat, "action",
             string.format("%s begins channeling %s.", unitName(unit), item.name or "an ability"))
         endTurn(combat, unit, ab.channel)
@@ -2905,6 +3008,14 @@ end
 function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
     local target = Combat.unitAt(combat, tx, ty)
     local reserve = Combat.abilityReserve(unit, ab)
+
+    -- A visible "someone is acting" beat on the CASTER, pushed for every ability -- a heal, a summon,
+    -- a self-buff, a strike alike -- so the view can lean/pulse the actor toward the targeted cell and
+    -- glow it (green for a friendly cast, warm for an offensive one). Previously only a blow that drew
+    -- blood animated the actor (the view derived a lunge from the damage cue); a cure or a summon
+    -- resolved with the caster standing dead still. See ui/combat_fx.
+    Combat.pushFx(combat, { type = "cast", unit = unit, tx = tx, ty = ty,
+        support = Combat.isSupportAbility(ab) })
 
     -- Effect context: bound helpers let a data-file effect compose damage/heal/AoE
     -- without touching this module. Results are accumulated for the caller/UI.
@@ -2927,6 +3038,9 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
         user = unit, target = target, item = item, combat = combat,
         tx = tx, ty = ty, -- the targeted cell, for tile-targeted abilities (e.g. placing a trap)
         amount = effectiveAmount, -- effects derive heal/status/restore magnitude from it
+        -- The item's upgrade level (0..N). What a summon/hazard/trap/wall scales off: the stronger the
+        -- forged item, the tougher the creature it calls and the harder/longer-lived the ground it lays.
+        level = item.level or 0,
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.
@@ -3016,6 +3130,8 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
         -- party placement is logged with its location -- an enemy trap stays hidden until it is
         -- detected or triggers, so surfacing its tile here would leak the detect-traps mechanic.
         placeTrap = function(px, py, id, opts)
+            -- opts.amount (an item-level-scaled magnitude) rides onto the trap, so a forged Spike Trap
+            -- stabs harder; the trap's own effect reads trap.amount, falling back to its blueprint.
             local trap = Trap.place(combat, px, py, id, unit.side, opts)
             if trap and unit.side == "party" then
                 Combat.logEvent(combat, "trap",
@@ -3038,6 +3154,18 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
             opts = opts or {}
             opts.side = opts.side or unit.side
             return Wall.place(combat, px, py, id, opts)
+        end,
+        -- Banish a summoned creature: take it off the field without a kill (no corpse, no death
+        -- reactions), the same unwinding a lapsed binding gets (Combat.dismiss). Only a `summoned`
+        -- unit can be banished -- a real combatant is not a conjuration and is left untouched -- so an
+        -- AoE that sweeps friend and foe alike (Banish) only ever unmakes the conjured among them.
+        dismiss = function(tgt)
+            if tgt and tgt.alive and tgt.summoned then
+                Combat.dismiss(combat, tgt,
+                    string.format("%s banishes %s.", unitName(unit), unitName(tgt)))
+                return true
+            end
+            return false
         end,
         -- Reveal invisible units and tear down `illusion` walls across a set of cells (Dispel
         -- Illusions). Defaults to the ability's own AoE footprint around the aimed tile.
@@ -3259,6 +3387,7 @@ function Combat.strikeTrap(combat, unit, weapon, x, y)
     -- Damage the trap by the weapon's attack stat (magical weapons use magicDamage). Traps have
     -- no defense, so this is the raw stat, floored.
     Combat.logEvent(combat, "trap", string.format("%s strikes %s.", unitName(unit), trap.name or "a trap"))
+    Combat.pushFx(combat, { type = "cast", unit = unit, tx = x, ty = y, support = false })
     Trap.damage(combat, trap, Combat.computeTrapDamage(unit, weapon))
 
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
@@ -3288,6 +3417,7 @@ function Combat.strikeWall(combat, unit, weapon, x, y)
     if cost then Combat.spendCost(combat, unit, cost) end
 
     Combat.logEvent(combat, "trap", string.format("%s strikes %s.", unitName(unit), wall.name or "a wall"))
+    Combat.pushFx(combat, { type = "cast", unit = unit, tx = x, ty = y, support = false })
     Wall.damage(combat, wall, Combat.computeTrapDamage(unit, weapon))
 
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)

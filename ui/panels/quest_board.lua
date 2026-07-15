@@ -12,6 +12,7 @@ local Player = require("models.player")
 local Vendor = require("models.vendor")
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
+local InputMode = require("input_mode")
 
 local QuestBoard = {}
 QuestBoard.__index = QuestBoard
@@ -116,8 +117,11 @@ function QuestBoard:draw()
 
     love.graphics.setFont(self.bodyFont)
     love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf("Click a quest / Enter / A: Start    Wheel / PgUp / PgDn: Scroll    Click X / Esc / B: Close",
-        self.boxX, self.boxY + BOX_H - 34, BOX_W, "center")
+    -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
+    local hint = InputMode.isGamepad()
+        and "A: Start    D-pad: Scroll    B: Close"
+        or "Click a quest / Enter: Start    Wheel / PgUp / PgDn: Scroll    Click X / Esc: Close"
+    love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 34, BOX_W, "center")
 
     self.closeButton:draw()
 

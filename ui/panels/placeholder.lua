@@ -10,6 +10,7 @@
 
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
+local InputMode = require("input_mode")
 
 local Placeholder = {}
 Placeholder.__index = Placeholder
@@ -54,7 +55,9 @@ function Placeholder:draw()
     love.graphics.setColor(0.85, 0.85, 0.9)
     love.graphics.printf("Coming soon.", self.boxX, self.boxY + 110, BOX_W, "center")
     love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf("Click X, or Esc / B to close", self.boxX, self.boxY + BOX_H - 40, BOX_W, "center")
+    -- Show the glyph for the device last used: pad button only in gamepad mode, keyboard/mouse otherwise.
+    local hint = InputMode.isGamepad() and "B to close" or "Click X, or Esc to close"
+    love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 40, BOX_W, "center")
 
     self.closeButton:draw()
 

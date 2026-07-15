@@ -9,6 +9,7 @@
 
 local State = require("states")
 local Scale = require("scale")
+local InputMode = require("input_mode")
 local Overworld = require("models.overworld")
 local OverworldMap = require("ui.overworld_map")
 local Player = require("models.player")
@@ -195,8 +196,11 @@ function game.drawHud()
 
     love.graphics.setFont(hudFont)
     love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf("Move: WASD / Arrows / D-pad / click adjacent tile      I: items      Esc: hub",
-        0, Scale.HEIGHT - 30, Scale.WIDTH, "center")
+    -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
+    local hint = InputMode.isGamepad()
+        and "Move: D-pad / Stick      Y: items      Back: hub"
+        or "Move: WASD / Arrows / click adjacent tile      I: items      Esc: hub"
+    love.graphics.printf(hint, 0, Scale.HEIGHT - 30, Scale.WIDTH, "center")
     love.graphics.setColor(1, 1, 1)
 end
 

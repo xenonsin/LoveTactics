@@ -11,7 +11,7 @@
 -- gone by the endgame; hold it and you are down a quarter of your mana until you spend it.
 return {
     name = "Summon Fire Elemental",
-    description = "Bind a fire elemental to the field for a time, one at a time. Reserves a quarter of your maximum mana while it lives.",
+    description = "Channel a fire elemental onto the field for a time, one at a time. Reserves a quarter of your maximum mana while it lives.",
     sprite = "assets/items/ability_summon_fire_elemental.png",
     type = "ability",
     tags = { "summon", "fire" },
@@ -19,14 +19,34 @@ return {
         target = "tile",
         range = 2,
         speed = 6,
+        channel = 2, -- the binding is now WOUND UP: two ticks of incantation before the elemental forms
         reserve = { stat = "mana", percent = 0.25 },
-        summonPower = { 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24 },
         effect = function(fx)
-            fx.summon("fire_elemental", fx.tx, fx.ty, {
+            local elem = fx.summon("fire_elemental", fx.tx, fx.ty, {
                 scaling = { health = 1, magicDamage = 0.5 },
-                amount = fx.amount,
+                amount = 12 + fx.level, -- base 12, +1 per upgrade level
                 duration = 24, -- ticks; the binding lapses and the elemental fades
             })
+            -- Capstone (forged to +10): the elemental erupts into being like a Fireball landing. Foes in
+            -- the 3x3 around it are scorched (magicDamage-scaled, fire-tagged), and the ground is left
+            -- ablaze -- a Fire hazard on every tile but the elemental's own, so its own body doesn't stand
+            -- in the flames. Allies and the just-summoned elemental take no damage from the burst.
+            if fx.level >= 10 then
+                for dy = -1, 1 do
+                    for dx = -1, 1 do
+                        local cx, cy = fx.tx + dx, fx.ty + dy
+                        local u = fx.unitAt(cx, cy)
+                        if u and u.alive and u ~= elem and u.side ~= fx.user.side then
+                            -- "fire" (item tag) + "magical" (routes off the elemental's magicDamage),
+                            -- exactly like a Fireball hit.
+                            fx.damage(u, { amount = 16, tags = { "fire", "magical" } })
+                        end
+                        if not (cx == fx.tx and cy == fx.ty) then
+                            fx.placeHazard(cx, cy, "hazard_fire")
+                        end
+                    end
+                end
+            end
         end,
     },
 }

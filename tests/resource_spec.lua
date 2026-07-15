@@ -125,14 +125,17 @@ return {
             local archer = Character.instantiate("archer")
             local c = Combat.new(arena(6, 6), { unit(archer, 1, 1) }, { unit("bandit", 6, 6) })
             local au = c.units[1]
-            assert(Combat.waitBehavior(au).kind == "defend", "buckler swaps Wait -> Defend")
+            local brace = Combat.waitBehavior(au)
+            assert(brace.kind == "defend", "buckler swaps Wait -> Defend")
+            assert(brace.defense == 6, "the buckler's level-0 brace defense (tunable on the shield)")
 
             -- mitigatedDamage reads the unit's effective defense (flatStat), so it reflects the buff.
             local before = Combat.mitigatedDamage(au, 50, { "physical" })
             openTurn(c, au)
             assert(Combat.defend(c, au), "defend succeeds")
             assert(Status.has(au, "defending"), "the Defending status is applied")
-            assert(Combat.mitigatedDamage(au, 50, { "physical" }) == before - 8, "+8 defense while braced")
+            assert(Combat.mitigatedDamage(au, 50, { "physical" }) == before - brace.defense,
+                "braced defense matches the shield's tuned amount")
 
             -- The status self-expires at the start of the unit's next turn.
             Status.onTurnStart(c, au)

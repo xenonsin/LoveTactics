@@ -27,7 +27,7 @@ return {
                 fx.damage(u)
             end
             for _, c in ipairs(fx.aoeCells()) do
-                fx.placeHazard(c.x, c.y, "hazard_fire")
+                fx.placeHazard(c.x, c.y, "hazard_fire", { amount = 4 + fx.level, duration = 4 + fx.level })
             end
         end,
     },

@@ -25,8 +25,14 @@ local DEFAULTS = { axisThreshold = 0.5 }
 -- Hold-to-move: after the first step, wait `MOVE_INITIAL` before auto-repeating,
 -- then step every `MOVE_REPEAT` seconds while the direction stays held. The pause
 -- keeps single taps to one tile; the fast repeat makes long trails quick to walk.
-local MOVE_INITIAL = 0.28
-local MOVE_REPEAT = 0.08
+local MOVE_INITIAL = 0.18
+local MOVE_REPEAT = 0.05
+
+-- Camera easing rate: the camera target snaps to the player each step, but the
+-- drawn camera eases toward it (`cam += (target-cam) * min(1, dt*CAM_LERP)`) so
+-- the view glides instead of jumping a tile at a time. The player token slides
+-- over `MOVE_REPEAT` so it tracks the camera during a continuous walk.
+local CAM_LERP = 12
 
 function OverworldMap.new(grid, opts)
     opts = opts or {}
@@ -37,6 +43,14 @@ function OverworldMap.new(grid, opts)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.heldDir = nil   -- { dx, dy } of the direction currently held (any input)
     self.moveTimer = 0   -- seconds until the next auto-repeat step
+    self.autoPath = nil  -- queued { dx, dy } steps from a mouse click-to-path
+    self.autoTimer = 0   -- seconds until the next auto-walk step
+
+    -- Camera easing + token slide state (see CAM_LERP / MOVE_REPEAT). The camera
+    -- eases toward camTargetX/Y; the token slides from (slidePrevX, slidePrevY) to
+    -- the current tile over slideDur so a hop reads as motion, not a teleport.
+    self.slidePrevX, self.slidePrevY = nil, nil
+    self.slideT, self.slideDur = 0, MOVE_REPEAT
 
     -- Fog-of-war vision radius (tiles seen around the player). Defaults to 2; the
     -- game state passes the party's effective radius (raised by a torch, etc.).
@@ -52,6 +66,7 @@ function OverworldMap.new(grid, opts)
     self:buildTiles()
     self.grid:reveal(self.px, self.py, self.visionRadius) -- discover the spawn area
     self:updateCamera()
+    self:snapCamera()
     return self
 end
 
@@ -88,7 +103,9 @@ function OverworldMap:buildTiles()
     end
 end
 
--- Centre the camera on the player, clamped to the map bounds.
+-- Aim the camera at the player, clamped to the map bounds. This only sets the
+-- *target*; :update eases the drawn camX/camY toward it so the view glides. Call
+-- :snapCamera to jump the drawn camera to the target (e.g. on spawn).
 function OverworldMap:updateCamera()
     local mapW = self.grid.cols * self.grid.size
     local mapH = self.grid.rows * self.grid.size
@@ -100,8 +117,16 @@ function OverworldMap:updateCamera()
         if mapSize <= half * 2 then return (mapSize - half * 2) / 2 end -- centre small maps
         return math.max(0, math.min(v - half, mapSize - half * 2))
     end
-    self.camX = clamp(px, mapW, halfW)
-    self.camY = clamp(py, mapH, halfH)
+    self.camTargetX = clamp(px, mapW, halfW)
+    self.camTargetY = clamp(py, mapH, halfH)
+    self.camX = self.camX or self.camTargetX
+    self.camY = self.camY or self.camTargetY
+end
+
+-- Jump the drawn camera straight to its target (no easing) -- used on spawn so the
+-- map doesn't pan in from a corner on the first frame.
+function OverworldMap:snapCamera()
+    self.camX, self.camY = self.camTargetX, self.camTargetY
 end
 
 -- ---------------------------------------------------------------------------
@@ -114,6 +139,8 @@ end
 function OverworldMap:step(dx, dy)
     local nx, ny = self.px + dx, self.py + dy
     if not self.grid:isWalkable(nx, ny, self.keysHeld) then return false end
+    self.slidePrevX, self.slidePrevY = self.px, self.py -- slide the token from here
+    self.slideT = self.slideDur
     self.px, self.py = nx, ny
     self.grid:reveal(self.px, self.py, self.visionRadius) -- lift the fog around the new tile
     self:updateCamera()
@@ -171,27 +198,65 @@ end
 -- is held steps immediately, then it auto-repeats after MOVE_INITIAL, MOVE_REPEAT
 -- apart. Changing direction re-arms the pause so a quick tap is a single tile.
 function OverworldMap:update(dt)
-    local dx, dy = self:heldDirection()
-    if dx == 0 and dy == 0 then
-        self.heldDir = nil
-        return
+    -- Camera easing + token slide run every frame, whether or not we're moving.
+    if self.camTargetX then
+        local t = math.min(1, dt * CAM_LERP)
+        self.camX = self.camX + (self.camTargetX - self.camX) * t
+        self.camY = self.camY + (self.camTargetY - self.camY) * t
     end
-    if not self.heldDir or self.heldDir[1] ~= dx or self.heldDir[2] ~= dy then
-        self.heldDir = { dx, dy }
-        self.moveTimer = MOVE_INITIAL
-        self:step(dx, dy)
-    else
-        self.moveTimer = self.moveTimer - dt
-        while self.moveTimer <= 0 do
-            self.moveTimer = self.moveTimer + MOVE_REPEAT
-            if not self:step(dx, dy) then
-                -- Blocked by a wall or an encounter just opened: end the burst and
-                -- wait the full initial delay before trying to move again.
-                self.moveTimer = MOVE_INITIAL
-                break
+    if self.slideT > 0 then self.slideT = math.max(0, self.slideT - dt) end
+
+    local dx, dy = self:heldDirection()
+    if dx ~= 0 or dy ~= 0 then
+        self.autoPath = nil -- manual input cancels any click-to-path walk
+        if not self.heldDir or self.heldDir[1] ~= dx or self.heldDir[2] ~= dy then
+            self.heldDir = { dx, dy }
+            self.moveTimer = MOVE_INITIAL
+            self:step(dx, dy)
+        else
+            self.moveTimer = self.moveTimer - dt
+            while self.moveTimer <= 0 do
+                self.moveTimer = self.moveTimer + MOVE_REPEAT
+                if not self:step(dx, dy) then
+                    -- Blocked by a wall or an encounter just opened: end the burst
+                    -- and wait the full initial delay before trying to move again.
+                    self.moveTimer = MOVE_INITIAL
+                    break
+                end
             end
         end
+        return
     end
+
+    self.heldDir = nil
+    self:updateAutoWalk(dt)
+end
+
+-- Walk the queued click-to-path (self.autoPath) one tile per MOVE_REPEAT. Stops
+-- when the path is spent, a step is blocked, or an encounter opens (step() false).
+function OverworldMap:updateAutoWalk(dt)
+    if not self.autoPath then return end
+    self.autoTimer = self.autoTimer - dt
+    while self.autoTimer <= 0 and self.autoPath do
+        self.autoTimer = self.autoTimer + MOVE_REPEAT
+        local s = table.remove(self.autoPath, 1)
+        if not s or not self:step(s[1], s[2]) then
+            self.autoPath = nil
+        elseif #self.autoPath == 0 then
+            self.autoPath = nil
+        end
+    end
+end
+
+-- Fractional cell the token is drawn at: eases (linearly, for smooth chained
+-- walking) from the previous tile to the current one across a hop.
+function OverworldMap:visualCell()
+    if self.slideT > 0 and self.slidePrevX then
+        local p = 1 - self.slideT / self.slideDur -- 0 -> 1 across the hop
+        return self.slidePrevX + (self.px - self.slidePrevX) * p,
+            self.slidePrevY + (self.py - self.slidePrevY) * p
+    end
+    return self.px, self.py
 end
 
 local function markerColor(kind)
@@ -291,7 +356,7 @@ function OverworldMap:drawMarkers()
 end
 
 function OverworldMap:drawPlayer()
-    local wx, wy = self.grid:cellToPixel(self.px, self.py)
+    local wx, wy = self.grid:cellToPixel(self:visualCell())
     local s = self.grid.size
     love.graphics.setColor(0.95, 0.85, 0.55)
     love.graphics.rectangle("line", wx + 1, wy + 1, s - 2, s - 2, 4, 4)
@@ -311,15 +376,58 @@ function OverworldMap:keypressed(_) end
 
 function OverworldMap:gamepadpressed(_, _) end
 
--- Mouse-only movement: click an orthogonally adjacent walkable tile to step onto
--- it (keeps the whole overworld playable with the mouse alone).
+-- Mouse-only movement: click any *revealed* tile that's reachable along revealed
+-- trail to auto-walk there (an adjacent tile is just the one-step case). Keeps the
+-- whole overworld playable with the mouse alone; the walk stops on encounters.
 function OverworldMap:mousepressed(x, y, button)
     if button ~= 1 then return end
     local cx, cy = self.grid:pixelToCell(x + self.camX, y + self.camY)
-    local dx, dy = cx - self.px, cy - self.py
-    if math.abs(dx) + math.abs(dy) == 1 then
-        self:step(dx, dy)
+    local path = self:pathTo(cx, cy)
+    if path then
+        self.autoPath = path
+        self.autoTimer = 0 -- take the first step on the next update tick
     end
+end
+
+-- BFS from the player to (tx, ty) across tiles that are both revealed (`seen`) and
+-- walkable with the keys currently held. Returns a list of { dx, dy } steps, or nil
+-- if the target isn't a revealed, reachable trail tile. Backs click-to-path so the
+-- mouse never routes the player through fog or a locked gate they can't open.
+function OverworldMap:pathTo(tx, ty)
+    local grid = self.grid
+    local target = grid:get(tx, ty)
+    if not target or not target.seen or not grid:isWalkable(tx, ty, self.keysHeld) then
+        return nil
+    end
+    if tx == self.px and ty == self.py then return nil end
+
+    local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
+    local function key(x, y) return y * grid.cols + x end
+    local startK = key(self.px, self.py)
+    local prev = { [startK] = false } -- visited set; value = { fromKey, dx, dy }
+    local q, qi = { { self.px, self.py } }, 1
+    while qi <= #q do
+        local cur = q[qi]; qi = qi + 1
+        if cur[1] == tx and cur[2] == ty then break end
+        for _, d in ipairs(DIRS) do
+            local nx, ny = cur[1] + d[1], cur[2] + d[2]
+            local c = grid:get(nx, ny)
+            if c and c.seen and prev[key(nx, ny)] == nil
+                and grid:isWalkable(nx, ny, self.keysHeld) then
+                prev[key(nx, ny)] = { key(cur[1], cur[2]), d[1], d[2] }
+                q[#q + 1] = { nx, ny }
+            end
+        end
+    end
+
+    if prev[key(tx, ty)] == nil then return nil end -- unreachable through revealed trail
+    local steps, k = {}, key(tx, ty)
+    while k ~= startK do
+        local p = prev[k]
+        table.insert(steps, 1, { p[2], p[3] })
+        k = p[1]
+    end
+    return steps[1] and steps or nil
 end
 
 function OverworldMap:mousemoved(_, _) end

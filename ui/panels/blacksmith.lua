@@ -15,6 +15,7 @@ local Character = require("models.character")
 local Player = require("models.player")
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
+local InputMode = require("input_mode")
 
 local BlacksmithPanel = {}
 BlacksmithPanel.__index = BlacksmithPanel
@@ -167,8 +168,11 @@ function BlacksmithPanel:draw()
 
     love.graphics.setFont(self.bodyFont)
     love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf("Click an item / Enter / A: Forge    Wheel: Scroll    Click X / Esc / B: Close",
-        self.boxX, self.boxY + BOX_H - 32, BOX_W, "center")
+    -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
+    local hint = InputMode.isGamepad()
+        and "A: Forge    D-pad: Scroll    B: Close"
+        or "Click an item / Enter: Forge    Wheel: Scroll    Click X / Esc: Close"
+    love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 32, BOX_W, "center")
 
     self.closeButton:draw()
     love.graphics.setColor(1, 1, 1)

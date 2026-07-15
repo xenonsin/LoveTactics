@@ -15,9 +15,11 @@
 --   * F5 saves the current arena to data/arenas/ for hand-editing (dev only).
 
 local Scale = require("scale")
+local InputMode = require("input_mode")
 local Arena = require("models.arena")
 local BattleMap = require("ui.battle_map")
 local CombatPanel = require("ui.combat_panel")
+local CombatFx = require("ui.combat_fx")
 local CombatLog = require("ui.combat_log")
 local StatusTooltip = require("ui.status_tooltip")
 local ItemTooltip = require("ui.item_tooltip")
@@ -49,6 +51,11 @@ local AI_DELAY = 0.35 -- seconds between enemy actions, so each move is watchabl
 -- is visible -- and so is what it walks into, since a trap springs or a hazard bites on the very
 -- beat the unit lands on that tile. Applies to both sides.
 local MOVE_STEP = 0.25
+-- Minimum beat held after an action that actually landed a hit (dealt damage, healed, or felled a
+-- unit) before the turn hands off, so the strike and its aftermath read. The hold runs until BOTH
+-- this has elapsed AND the sprite reactions have finished (battle.fx:busy); a turn that changed
+-- nothing visible (a bare move, a wait) skips it entirely and hands off at once.
+local IMPACT_PAUSE = 0.5
 
 -- Clickable "Forfeit" button so a mouse-only player can bail out (counts as a loss). Wait/Focus/
 -- Defend is not here: it lives in a long button under the item grid (ui/combat_panel.lua).
@@ -61,7 +68,7 @@ local rangesButton = { x = 16, y = 104, w = 130, h = 36 }
 
 -- The 3x3 item grid mapped onto the number KEYPAD by physical position: kp7 is the top-left slot,
 -- kp3 the bottom-right, matching the grid's row-major layout so the keys sit where the slots do.
--- kp0 is the Wait action. (The top-row 1-9 keys still arm slots 1-9 in order.)
+-- kp0, the top-row 0, and Space are all the Wait action. (The top-row 1-9 keys still arm slots 1-9 in order.)
 local KEYPAD_SLOT = {
     kp7 = 1, kp8 = 2, kp9 = 3,
     kp4 = 4, kp5 = 5, kp6 = 6,
@@ -129,10 +136,22 @@ end
 -- before battle.enter so its panel callbacks can reference them as upvalues).
 -- ---------------------------------------------------------------------------
 
+-- Release the between-battle leftovers every surviving party member carries out of the fight (mana
+-- reservations, summon claims), so the overworld reads a clean roster: no item tooltip still crying
+-- "is still on the field" over a creature that left with the battlefield. Combat.new does this too as
+-- it rebuilds the grid, but that only fires when the NEXT battle opens -- too late for the hub in
+-- between. Both sides do it on the way out so a loss (a forfeit, a wipe of all but a summon) is clean too.
+local function releaseParty()
+    for _, unit in ipairs(battle.combat.units) do
+        if unit.side == "party" then Combat.releaseClaims(unit.char) end
+    end
+end
+
 local function win()
     battle.over = true
     battle.walk = nil -- nobody finishes their stroll once the battle is decided
     Combat.logEvent(battle.combat, "system", "Victory!")
+    releaseParty()
     if battle.onWin then battle.onWin() end
 end
 
@@ -140,6 +159,7 @@ local function lose()
     battle.over = true
     battle.walk = nil
     Combat.logEvent(battle.combat, "system", "Defeat.")
+    releaseParty()
     if battle.onLoss then battle.onLoss() end
 end
 
@@ -488,12 +508,28 @@ local function beginTurn()
     end
 end
 
--- Resolve the objective after an action; otherwise hand off to the next unit.
-local function advanceTurn()
+-- The real hand-off, run once an action's reactions have played: resolve the objective, else start
+-- the next unit's turn.
+local function resolveAdvance()
+    battle.pendingAdvance = nil
     local result = Combat.evaluate(battle.combat)
     if result == "win" then win() return
     elseif result == "loss" then lose() return end
     beginTurn()
+end
+
+-- End of an action. Drain the model's animation cues (damage/heal/death) into the fx controller, then
+-- hold the hand-off while those reactions read (battle.update runs resolveAdvance once the beat and
+-- battle.fx:busy both clear). An action that raised no cues and left nothing animating -- a bare move,
+-- a wait, a pass -- resolves at once, so non-combat turns stay snappy.
+local function advanceTurn()
+    local events = Combat.drainFx(battle.combat)
+    if events then battle.fx:ingest(events, battle.current) end
+    if events or battle.fx:busy() then
+        battle.pendingAdvance = { hold = IMPACT_PAUSE }
+    else
+        resolveAdvance()
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -512,7 +548,8 @@ end
 -- the spell going off, and letting the player arm a second action then would double-cast. The input
 -- guards below test this instead of raw walking().
 local function busy()
-    return walking() or (battle.current ~= nil and battle.current.channel ~= nil)
+    return walking() or battle.pendingAdvance ~= nil
+        or (battle.current ~= nil and battle.current.channel ~= nil)
 end
 
 -- Send `unit` walking to (x, y), calling `onDone` once it comes to rest -- on the destination, or
@@ -526,7 +563,7 @@ local function startWalk(unit, x, y, onDone, cells)
     local plan = cells and Combat.planMoveVia(battle.combat, unit, cells)
     plan = plan or Combat.planMove(battle.combat, unit, x, y)
     if not plan then return false end
-    battle.walk = { handle = Combat.beginMove(battle.combat, plan), timer = 0, onDone = onDone }
+    battle.walk = { handle = Combat.beginMove(battle.combat, plan), timer = 0, onDone = onDone, unit = unit }
     battle.reachable, battle.moveCells = {}, {}
     battle.threatCells, battle.attackReach = {}, {}
     battle.movePath = nil
@@ -540,8 +577,15 @@ local function updateWalk(dt)
     local w = battle.walk
     w.timer = w.timer - dt
     if w.timer > 0 then return end
+    local u = w.unit
+    local fromX, fromY = u.x, u.y -- cell the unit is leaving, captured before the step commits
     if Combat.stepMove(battle.combat, w.handle) then
         w.timer = MOVE_STEP
+        -- Slide the sprite across the tile it just entered rather than snapping (a surviving unit).
+        if u.alive then battle.fx:setSlide(u, fromX, fromY, MOVE_STEP) end
+        -- A trap that sprang, a hazard that bit, an overwatch shot -- float its number on arrival.
+        -- No actor leans in: this is damage taken while walking, not a strike the unit made.
+        battle.fx:ingest(Combat.drainFx(battle.combat), nil)
         return
     end
     battle.walk = nil
@@ -730,9 +774,16 @@ local function armedActionAt(cx, cy)
     end
     local entry = battle.rangeReach and battle.rangeReach[cx .. "," .. cy]
     if not entry then return nil end
-    -- Fire from the steered route's endpoint when it can legally hit the target; else the cheapest.
+    -- Fire from the steered route's endpoint when it can legally hit the target from a DIFFERENT tile;
+    -- else the cheapest. The endpoint must not BE the target cell: a tile-target cast (summon / AoE
+    -- placement) steers its route right onto the target -- the cursor tile is the target -- so
+    -- honouring that as the stand tile would walk the caster onto the very cell it means to place on,
+    -- and the cast then rejects it as occupied (the caster is now standing there). Excluding it falls
+    -- back to the cheapest in-range stand tile -- the caster's own tile when the target is already in
+    -- range -- so the placement fires in place instead of turning into a bare move.
     local stand, mp = steeredStand()
-    if stand and standCanHit(battle.current, ab, item, stand.x, stand.y, cx, cy) then
+    if stand and not (stand.x == cx and stand.y == cy)
+        and standCanHit(battle.current, ab, item, stand.x, stand.y, cx, cy) then
         return { kind = "act", cells = mp.cells,
                  entry = { x = cx, y = cy, fromX = stand.x, fromY = stand.y, moveCost = mp.cost } }
     end
@@ -964,6 +1015,19 @@ local function abilityGhosts(unit, item, pendingMove)
     return { { initiative = pendingMove + Combat.actionSpeed(unit, a, item) } }
 end
 
+-- The reposition timeline ghost for a walk to the cursor tile: the initiative it charges, following
+-- the steered route's own cost when one is set, else the cheapest path's. nil when the cursor isn't
+-- a reachable tile (nothing to walk to, so no ghost). Shared by move mode and an armed reposition.
+local function moveGhostInitiative(unit)
+    local cost = battle.movePath and battle.movePath.cost
+    if not cost then
+        local node = battle.reachable and battle.reachable[battle.map.cursor.x .. "," .. battle.map.cursor.y]
+        cost = node and node.cost
+    end
+    if cost then return Combat.moveInitiative(unit, cost) end
+    return nil
+end
+
 -- Compute the turn-order preview + battlefield overlays and hand them to the widgets.
 local function refreshView()
     local current = battle.current
@@ -998,29 +1062,31 @@ local function refreshView()
         elseif battle.hoverItem and battle.hoverItem.activeAbility then
             ghosts = abilityGhosts(current, battle.hoverItem, pendingMove)
         elseif battle.mode == "armed" and battle.armedItem then
-            ghosts = abilityGhosts(current, battle.armedItem, pendingMove)
-        elseif battle.mode == "move" then
-            local cost
-            if battle.movePath then
-                cost = battle.movePath.cost
-            else
-                local node = battle.reachable and battle.reachable[battle.map.cursor.x .. "," .. battle.map.cursor.y]
-                if node then cost = node.cost end
+            -- Project a landing slot only when the cursor is actually aimed at a cell the armed item
+            -- can act on: a valid cast target lands the ability's time-cost ghost(s); a reachable tile
+            -- lands a reposition ghost. Aiming empty / out-of-range air commits to nothing, so no ghost
+            -- shows -- arming an item alone must not paint a timeline slot before a target is aimed.
+            local plan = armedActionAt(battle.map.cursor.x, battle.map.cursor.y)
+            if plan and plan.kind == "act" then
+                ghosts = abilityGhosts(current, battle.armedItem, pendingMove)
+            elseif plan and plan.kind == "move" then
+                local w = moveGhostInitiative(current)
+                if w then ghosts = { { initiative = w } } end
             end
-            if cost then ghosts = { { initiative = Combat.moveInitiative(current, cost) } } end
+        elseif battle.mode == "move" then
+            local w = moveGhostInitiative(current)
+            if w then ghosts = { { initiative = w } } end
         end
     end
-    -- Timeline entries for the panel: the live order, plus a ghost of the actor at each
-    -- projected slot while a move/item/wait is being previewed.
-    local entries
-    if ghosts then
-        entries = Combat.previewTimeline(battle.combat, current, ghosts)
-    else
-        entries = {}
-        for _, u in ipairs(Combat.turnOrder(battle.combat)) do
-            entries[#entries + 1] = { unit = u, preview = false, initiative = u.initiative }
-        end
+    -- Timeline entries for the panel: the live order, plus a ghost of the actor at each projected
+    -- slot while a move/item/wait is being previewed, plus a "then acts here" ghost for every unit
+    -- still winding up a channel -- so the resolution + follow-up the aim preview showed stay on the
+    -- strip once the cast is committed (Combat.channelGhosts). Both kinds of ghost feed one build.
+    local specs = Combat.channelGhosts(battle.combat)
+    for _, g in ipairs(ghosts or {}) do
+        specs[#specs + 1] = { unit = current, initiative = g.initiative, label = g.label }
     end
+    local entries = Combat.buildTimeline(battle.combat, specs)
 
     -- Board highlights: the acting unit always, plus whichever unit the timeline is hovering.
     local overlays = { move = {}, range = {} }
@@ -1282,15 +1348,21 @@ function battle.enter(self, opts)
     -- The player's stash, by reference: Combat.steal appends here when a party thief's own 3x3 grid
     -- has no room, so the item is the player's the moment it's lifted, win or lose.
     battle.combat.stash = opts.stash
+    -- One animation controller for the battle, shared into the board and the turn strip so damage
+    -- floaters, HP drain, sprite reactions and card jiggle/fade all read the same state.
+    battle.fx = CombatFx.new()
+    battle.pendingAdvance = nil
     battle.map = BattleMap.new(battle.arena,
         { combat = battle.combat, leftMargin = LEFT_W, rightMargin = PANEL_W,
           tileSize = BOARD_TILE, topMargin = BOARD_TOP })
+    battle.map.fx = battle.fx
     battle.panel = CombatPanel.new(battle.combat, {
         onActivateItem = function(item) armItem(item) end,
         onHoverItem = function(item) battle.hoverItem = item end,
         onHoverUnit = function(unit) battle.hoverUnit = unit end,
         onWait = function() waitTurn() end, -- the long Wait button under the item grid
     })
+    battle.panel.fx = battle.fx
     -- The log toggles into a thin, board-width strip in the bottom gutter, directly under the
     -- board (derived from the map so it stays aligned no matter the arena size).
     local m = battle.map
@@ -1308,22 +1380,42 @@ end
 
 function battle.update(dt)
     battle.map:update(dt)
+    battle.fx:update(dt)
     if walking() then
         updateWalk(dt) -- a walk holds the AI clock: whoever is on their feet finishes first
+    elseif battle.pendingAdvance then
+        -- An action just resolved: hold until the reaction beat elapses AND the sprite reactions
+        -- finish, then hand off (or fire win/loss). Checked before the channel/AI branches so the
+        -- just-acted unit can't take a second action while its hit is still reading.
+        battle.pendingAdvance.hold = battle.pendingAdvance.hold - dt
+        if battle.pendingAdvance.hold <= 0 and not battle.fx:busy() then
+            resolveAdvance()
+        end
     elseif not battle.over and battle.current and battle.current.channel then
-        -- The current unit is mid-channel: count the think-pause down, then detonate the spell and
-        -- hand off. Checked before the AI branch so a player's own channel resolves too (a player
-        -- channeler is player-controlled, so the AI branch below would skip it).
-        battle.resolveTimer = (battle.resolveTimer or 0) - dt
-        if battle.resolveTimer <= 0 then
-            Combat.resolveChannel(battle.combat, battle.current)
-            advanceTurn()
+        -- The current unit is mid-channel: once the timeline has finished reshuffling into the new
+        -- order, count the think-pause down, then detonate the spell and hand off. Checked before the
+        -- AI branch so a player's own channel resolves too (a player channeler is player-controlled,
+        -- so the AI branch below would skip it).
+        if battle.panel:cardsSettled() then
+            battle.resolveTimer = (battle.resolveTimer or 0) - dt
+            if battle.resolveTimer <= 0 then
+                Combat.resolveChannel(battle.combat, battle.current)
+                advanceTurn()
+            end
         end
     elseif not battle.over and battle.current and not Combat.isPlayerControlled(battle.current) then
-        battle.aiTimer = (battle.aiTimer or 0) - dt
-        if battle.aiTimer <= 0 then executeEnemyAction() end
+        -- Hold the enemy's think-pause until the turn-strip cards have settled, so a fast chain of
+        -- AI turns never resolves out from under the card animation (the card would otherwise pop to
+        -- full size mid-slide). The player's own turn isn't gated -- input is already held elsewhere.
+        if battle.panel:cardsSettled() then
+            battle.aiTimer = (battle.aiTimer or 0) - dt
+            if battle.aiTimer <= 0 then executeEnemyAction() end
+        end
     end
     refreshView()
+    -- After refreshView so the strip sees THIS turn's order: the new acting card snaps into the
+    -- framed slot (no tall card left mid-pile) and the rest slide from where they were.
+    battle.panel:update(dt)
 end
 
 function battle.draw()
@@ -1332,6 +1424,7 @@ function battle.draw()
 
     battle.drawLeftColumn()
     battle.map:draw()
+    battle.fx:drawFloaters(battle.map) -- damage / heal numbers, above the board
     battle.panel:draw()
     battle.drawHud()
     battle.log:draw()
@@ -1486,7 +1579,10 @@ function battle.drawHud()
     love.graphics.setColor(0.85, 0.85, 0.9)
     love.graphics.printf(objectiveText(battle.arena.objective), boardX, 52, boardW, "center")
 
-    -- Contextual control hint.
+    -- Contextual control hint, worded for the device last used: mouse/keyboard phrasing ("Click...")
+    -- by default, pad-button phrasing (D-pad cursor + face buttons: A confirm, Y switch, X wait,
+    -- B cancel) in gamepad mode, so the gamepad player never reads a "Click" they can't do.
+    local pad = InputMode.isGamepad()
     local hint
     if battle.current and Combat.isPlayerControlled(battle.current) and not battle.over then
         if battle.mode == "armed" then
@@ -1494,14 +1590,21 @@ function battle.drawHud()
             -- A tile cast places something -- a trap, a summoned creature -- so name it rather than
             -- calling everything a trap.
             if battle.armedTile then
-                verb = "Click a tile to place " .. ((battle.armedItem and battle.armedItem.name) or "it")
-            elseif battle.armedSupport then verb = "Click an ally to support"
-            else verb = "Click a target to strike" end
-            hint = verb .. "  ·  click the item / Esc to cancel"
+                local name = (battle.armedItem and battle.armedItem.name) or "it"
+                verb = pad and ("Aim a tile, A to place " .. name) or ("Click a tile to place " .. name)
+            elseif battle.armedSupport then
+                verb = pad and "A on an ally to support" or "Click an ally to support"
+            else
+                verb = pad and "A on a target to strike" or "Click a target to strike"
+            end
+            hint = pad and (verb .. "  ·  Y to switch  ·  B to cancel")
+                or (verb .. "  ·  click the item / Esc to cancel")
         elseif Combat.hasMoved(battle.combat) then
-            hint = "Click a foe in range to attack  ·  click an item  ·  Wait to hold this turn"
+            hint = pad and "A on a foe in range to attack  ·  Y to switch item  ·  X to hold this turn"
+                or "Click a foe in range to attack  ·  click an item  ·  Wait to hold this turn"
         else
-            hint = "Click a blue tile to move  ·  a foe in red range to attack  ·  an item  ·  Wait to delay"
+            hint = pad and "A on a blue tile to move  ·  a foe in red range to attack  ·  Y to arm  ·  X to delay"
+                or "Click a blue tile to move  ·  a foe in red range to attack  ·  an item  ·  Wait to delay"
         end
     else
         hint = "Enemy acting..."
@@ -1542,9 +1645,9 @@ function battle.keypressed(key)
         return
     end
     if battle.over then return end
-    if key == "return" or key == "kpenter" or key == "space" then
+    if key == "return" or key == "kpenter" then
         confirm()
-    elseif key == "tab" or key == "kp0" then
+    elseif key == "tab" or key == "kp0" or key == "0" or key == "space" then
         waitTurn()
     elseif key == "escape" then
         if battle.mode == "armed" then cancelArm() else lose() end

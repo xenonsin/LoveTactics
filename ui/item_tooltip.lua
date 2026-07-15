@@ -15,6 +15,7 @@ local Combat = require("models.combat")
 local Character = require("models.character")
 local Item = require("models.item")
 local Trap = require("models.trap")
+local Hazard = require("models.hazard")
 local RangeDiagram = require("ui.range_diagram")
 
 local ItemTooltip = {}
@@ -55,6 +56,7 @@ local MET = { 0.70, 0.88, 0.45 }  -- a satisfied requirement (matches the grid's
 local POWER = { 0.95, 0.72, 0.48 } -- ability Power row (the offensive balance stat)
 local HEAL = { 0.55, 0.90, 0.58 }  -- ability heal row
 local SUMMON = { 0.78, 0.62, 0.96 } -- ability "Summons" row (matches the ability item accent)
+local BRACE = { 0.55, 0.72, 0.92 } -- a shield's Defend brace-defense (matches the Defending badge tint)
 -- The range-diagram band tint: green for a friendly cast, red for a hostile one (matches the
 -- board's green/red targeting overlays and the action preview's SUPPORT/OFFENSE accents).
 local RANGE_FRIENDLY = { 0.45, 0.85, 0.50 }
@@ -160,7 +162,7 @@ local function buildBlocks(item, actor, innerW)
             -- Trap.preview), and how much punishment the armed trap soaks before it breaks.
             if out.trap then
                 local tdef = Trap.defs[out.trap] or {}
-                local tp = Trap.preview(out.trap)
+                local tp = Trap.preview(out.trap, out.trapAmount)
                 blocks[#blocks + 1] = { kind = "stat", label = "Places",
                     value = tdef.name or "a trap", valueColor = SUMMON }
                 if tdef.description and tdef.description ~= "" then
@@ -177,6 +179,31 @@ local function buildBlocks(item, actor, innerW)
                 end
                 if tdef.health then
                     blocks[#blocks + 1] = { kind = "stat", label = "Trap HP", value = tostring(tdef.health) }
+                end
+            end
+            -- A hazard-laying ability (Sanctuary, Rain, Quicksand, a Fireball's embers) names the ground
+            -- it paints, what standing in it does (dry-run via Hazard.preview), and how long it lasts --
+            -- the lifespan quoted at this upgrade level, since the item hands it in.
+            if out.hazard then
+                local hdef = Hazard.defs[out.hazard] or {}
+                local hp = Hazard.preview(out.hazard, out.hazardAmount)
+                blocks[#blocks + 1] = { kind = "stat", label = "Places",
+                    value = hdef.name or "a hazard", valueColor = SUMMON }
+                if hdef.description and hdef.description ~= "" then
+                    blocks[#blocks + 1] = { kind = "note", text = hdef.description }
+                end
+                for _, st in ipairs(hp and hp.statuses or {}) do
+                    local def = st.def or {}
+                    blocks[#blocks + 1] = { kind = "stat", label = "Applies",
+                        value = def.name or st.id or "status", valueColor = def.color or VALUE }
+                    -- A ticking status (Regeneration heals, Burn sears) quotes its per-turn magnitude;
+                    -- a flat one (Wet, Mired) carries none and shows just its name.
+                    if st.magnitude and st.magnitude > 0 then
+                        blocks[#blocks + 1] = { kind = "stat", label = "Per turn", value = tostring(st.magnitude) }
+                    end
+                end
+                if out.hazardDuration then
+                    blocks[#blocks + 1] = { kind = "stat", label = "Duration", value = tostring(out.hazardDuration) }
                 end
             end
             if out.knockback then
@@ -279,6 +306,32 @@ local function buildBlocks(item, actor, innerW)
             parts[#parts + 1] = tag .. " " .. tostring(item.resist[tag])
         end
         blocks[#blocks + 1] = { kind = "stat", label = "Resist", value = table.concat(parts, ", ") }
+    end
+
+    -- Wait-swap: an item that changes how this holder's Wait acts (a shield's Defend, a focus charm,
+    -- an overwatch scope) spells out the swap and how much it grants. A shield's brace-defense is
+    -- resolved to the item's upgrade level, so it quotes what the current (forged) shield actually braces.
+    local wb = item.waitBehavior
+    if wb and wb.kind and wb.kind ~= "delay" then
+        blocks[#blocks + 1] = { kind = "sep" }
+        if wb.kind == "defend" then
+            blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Defend" }
+            if wb.defense then
+                blocks[#blocks + 1] = { kind = "stat", label = "Brace defense",
+                    value = "+" .. tostring(wb.defense), valueColor = BRACE }
+            end
+            blocks[#blocks + 1] = { kind = "note",
+                text = "Defend ends your turn to brace: raises physical defense until your next turn." }
+        elseif wb.kind == "focus" then
+            blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Focus" }
+            if wb.mana then
+                blocks[#blocks + 1] = { kind = "stat", label = "Restores", value = "+" .. tostring(wb.mana) .. " Mana" }
+            end
+            blocks[#blocks + 1] = { kind = "note", text = "Focus ends your turn to recover mana." }
+        elseif wb.kind == "overwatch" then
+            blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Overwatch" }
+            blocks[#blocks + 1] = { kind = "note", text = "Overwatch ends your turn to fire on the first foe that moves into range." }
+        end
     end
 
     -- Utility passives.

@@ -220,6 +220,31 @@ return {
         end,
     },
     {
+        name = "a forged Spike Trap stabs harder: the ability scales trap.amount by its upgrade level",
+        fn = function()
+            -- A +5 Spike Trap ability places a trap carrying amount = base 18 + level 5 = 23.
+            local caster = Character.instantiate("knight")
+            caster.inventory = {}
+            Character.addItem(caster, Item.instantiate("ability_spike_trap", 1, 5))
+            local c = Combat.new(arena(8, 8), { unit(caster, 3, 3) }, {})
+            local u = c.units[1]
+            local ability = u.char.inventory[#u.char.inventory]
+            assert(ability.level == 5, "the ability is forged to +5")
+            openTurn(c, u)
+
+            assert(Combat.useItem(c, u, ability, 3, 5), "the trap is placed")
+            local placed = Trap.at(c, 3, 5)
+            assert(placed and placed.amount == 23, "the placed trap carries the level-scaled magnitude (18+5)")
+            -- Trap.preview quotes that scaled damage for the tooltip, not the blueprint's base 18.
+            assert(Trap.preview("spike_trap", placed.amount).damage == 23, "the preview reflects the scaled damage")
+            assert(Trap.preview("spike_trap").damage == 18, "with no amount it falls back to the blueprint base")
+
+            -- The dry-run tooltip carries the same scaled magnitude through out.trapAmount.
+            local out = Combat.abilityOutput(u, ability)
+            assert(out.trap == "spike_trap" and out.trapAmount == 23, "the tooltip dry run reports the scaled amount")
+        end,
+    },
+    {
         name = "traps are placed both by authored arena data and by fx.placeTrap (the summon ability)",
         fn = function()
             -- Authored: arena.traps is consumed by Combat.new.

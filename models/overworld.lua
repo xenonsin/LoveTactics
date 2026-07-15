@@ -51,15 +51,21 @@ end
 
 -- Scale the play area to the number of "stops" the trail must host — the
 -- encounters this map actually rolled, plus the objective and any keys — so a
--- light quest gets a compact map instead of a sparse, half-empty one, and a run
--- that rolls its encounter count low ends up smaller than one that rolls high.
--- The intercepts reserve room for the objective/start; the slopes reproduce the
--- (~1.5:1 landscape) sizes the built-in quests used to hand-author. Dimensions
--- are kept odd for a centred lattice and floored at a playable minimum.
+-- light quest gets a compact map instead of a sparse, half-empty one.
+--
+-- Growth is *sub-linear* (span ~ sqrt(content)): if each side grew linearly with
+-- content the area (and thus the walk) would balloon quadratically, which is what
+-- made heavy quests feel like a slog. A sqrt span keeps encounter density roughly
+-- constant while the map stays traversable, and both sides are hard-capped so no
+-- roll can produce a marathon maze. Dimensions are kept odd for a centred lattice
+-- and floored at a playable minimum. Play-area caps of 45x31 become ~49x35 once
+-- the margin ring is added.
+local DIM_MAX_COLS, DIM_MAX_ROWS = 45, 31
 local function deriveDims(encounters, keyCount)
     local content = (encounters or 0) + (keyCount or 0)
-    local cols = math.max(17, 15 + math.floor(2.5 * content))
-    local rows = math.max(13, 13 + math.floor(1.5 * content))
+    local span = math.floor(5.5 * math.sqrt(content)) -- ~11 at content=4, ~22 at 16
+    local cols = math.max(17, math.min(DIM_MAX_COLS, 15 + span))
+    local rows = math.max(13, math.min(DIM_MAX_ROWS, 13 + math.floor(span * 0.6)))
     if cols % 2 == 0 then cols = cols + 1 end
     if rows % 2 == 0 then rows = rows + 1 end
     return cols, rows
@@ -82,7 +88,7 @@ function Overworld.generate(params)
     -- edge. It is padding *around* the requested play area (the quest's cols/rows),
     -- not carved out of it: we inflate the grid by 2*margin and offset the node
     -- lattice inward by the same amount, so the trail network keeps its full size.
-    self.margin = params.margin or biomeDef.margin or 3
+    self.margin = params.margin or biomeDef.margin or 2
     self.rng = love.math.newRandomGenerator(params.seed or os.time())
 
     -- Resolve how many encounters this map will actually hold up front (a
@@ -114,7 +120,7 @@ function Overworld.generate(params)
     end
 
     self:carveMaze()
-    self:braid(params.braid or 0.4)
+    self:braid(params.braid or 0.55)
     local riverSpec = params.riverCount
     if riverSpec == nil then riverSpec = biomeDef.rivers end
     self:placeRivers(resolveCount(riverSpec, self.rng))
@@ -422,22 +428,36 @@ function Overworld:placeObjectiveAndGates(params)
 
     local dist, parent = self:bfsDistances(start)
 
-    -- Prefer the farthest dead-end (degree 1) so gating its corridor truly locks
-    -- the objective; fall back to the plain farthest tile.
-    local objective, objd, deadObj, deadd
+    -- Objective goes on a far dead-end (gating its corridor truly locks it), but
+    -- NOT necessarily the single farthest one -- always maxing the distance made
+    -- the objective a marathon to the map's far corner. Collect dead-ends in the
+    -- top distance band and pick the one nearest ~80% of the max, so the critical
+    -- path is long enough to gate meaningfully without being the worst case.
+    local objective, objd = nil, nil -- plain farthest walkable tile (fallback)
+    local maxDist = 0
+    local deadEnds = {}              -- { cell, d } for every degree-1 tile
     for y = 1, self.rows do
         for x = 1, self.cols do
             local c = self.cells[y][x]
             local d = dist[cellKey(c)]
             if self:typeWalkable(c.tile) and d then
                 if not objd or d > objd then objd = d; objective = c end
+                if d > maxDist then maxDist = d end
                 if c ~= start and #self:pathNeighbors(x, y) == 1 then
-                    if not deadd or d > deadd then deadd = d; deadObj = c end
+                    deadEnds[#deadEnds + 1] = { cell = c, d = d }
                 end
             end
         end
     end
-    objective = deadObj or objective
+    local band, want = maxDist * 0.7, maxDist * 0.8
+    local pick, pickErr
+    for _, e in ipairs(deadEnds) do
+        if e.d >= band then
+            local err = math.abs(e.d - want)
+            if not pickErr or err < pickErr then pickErr = err; pick = e.cell end
+        end
+    end
+    objective = pick or objective
     self.objective = { x = objective.x, y = objective.y }
     objective.encounter = {
         kind = "objective",
@@ -538,10 +558,12 @@ function Overworld:placeEncounters(params)
         cands[i], cands[j] = cands[j], cands[i]
     end
 
-    -- Bias toward dead-ends: a corridor that terminates in nothing feels like a
-    -- wasted trip, so encounters prefer degree-1 tiles. Stable-partition the
-    -- shuffled candidates (dead-ends first, order otherwise preserved) so the
-    -- picks below fill dead-ends first while still honouring the spacing rule.
+    -- Partial bias toward dead-ends: terminating a corridor in nothing feels like
+    -- a wasted trip, so *some* encounters reward the detour -- but filling every
+    -- dead-end first forced constant spur-and-return walking. Cap the dead-end
+    -- share at ~half the count; the rest go on through-tiles the player passes en
+    -- route. Leftover dead-ends trail the through-tiles as fallback. Order is
+    -- otherwise preserved (stable) so the spacing rule below still holds.
     local deadEnds, rest = {}, {}
     for _, c in ipairs(cands) do
         if #self:pathNeighbors(c.x, c.y) == 1 then
@@ -550,8 +572,11 @@ function Overworld:placeEncounters(params)
             rest[#rest + 1] = c
         end
     end
-    cands = deadEnds
+    local deadQuota = math.ceil((count or 0) * 0.5)
+    cands = {}
+    for i = 1, math.min(deadQuota, #deadEnds) do cands[#cands + 1] = deadEnds[i] end
     for _, c in ipairs(rest) do cands[#cands + 1] = c end
+    for i = deadQuota + 1, #deadEnds do cands[#cands + 1] = deadEnds[i] end
 
     local placed = {}
     local next_ = 1

@@ -341,6 +341,48 @@ return {
         end,
     },
     {
+        name = "Sanctuary scales its heal and lifespan with the item's upgrade level (from the item, in the tooltip)",
+        fn = function()
+            local priest = Character.instantiate("priest")
+            priest.inventory = {}
+            Character.addItem(priest, Item.instantiate("ability_sanctuary", 1, 4))
+            local c = Combat.new(arena(8, 8), { unit(priest, 3, 3) }, { unit("bandit", 8, 8) })
+            local caster = c.units[1]
+            caster.char.stats.mana.current = caster.char.stats.mana.max
+            local sanct = findItem(caster.char, "ability_sanctuary")
+            assert(sanct and sanct.level == 4, "the priest carries a +4 Sanctuary")
+
+            -- The tooltip dry run quotes the level-scaled lifespan and heal the item hands the hazard.
+            local out = Combat.abilityOutput(caster, sanct)
+            assert(out.hazard == "hazard_heal", "the tooltip names the ground it lays")
+            assert(out.hazardDuration == 8, "lifespan = base 4 + level 4 = 8, got " .. tostring(out.hazardDuration))
+            assert(out.hazardAmount == 12, "heal = base 8 + level 4 = 12, got " .. tostring(out.hazardAmount))
+
+            -- And the live cast grants the caster a Regeneration of that scaled magnitude (un-ticked
+            -- fields, so this is robust against the turn-end clock): the placed hazard's `amount` and the
+            -- Regeneration it confers both read 12, not regen's blueprint base 8.
+            openTurn(c, caster)
+            assert(Combat.useItem(c, caster, sanct, 3, 3), "Sanctuary lands on the priest's tile")
+            local hz = Hazard.at(c, 3, 3, "hazard_heal")
+            assert(hz and hz.amount == 12, "the placed hazard carries the scaled heal magnitude")
+            local reg = Status.get(caster, "regen")
+            assert(reg and reg.magnitude == 12, "the blessing heals for the scaled magnitude (12), not 8")
+        end,
+    },
+    {
+        name = "Hazard.preview reports a hazard's applied status and scaled magnitude (for tooltips)",
+        fn = function()
+            -- Sanctuary previewed at heal 15: it grants Regeneration whose per-turn magnitude is that.
+            local hp = Hazard.preview("hazard_heal", 15)
+            assert(hp and #hp.statuses == 1 and hp.statuses[1].id == "regen", "it previews the Regeneration it grants")
+            assert(hp.statuses[1].magnitude == 15, "and quotes the scaled per-turn magnitude, got " .. tostring(hp.statuses[1].magnitude))
+            -- With no amount it falls back to the status's own blueprint magnitude.
+            assert(Hazard.preview("hazard_heal").statuses[1].magnitude == Status.defs.regen.magnitude,
+                "no amount -> regen's blueprint magnitude")
+            assert(Hazard.preview("no_such_hazard") == nil, "an unknown hazard previews nothing")
+        end,
+    },
+    {
         name = "hazard, status and ability blueprints all load headlessly",
         fn = function()
             for _, id in ipairs({ "hazard_fire", "hazard_rain", "hazard_heal" }) do

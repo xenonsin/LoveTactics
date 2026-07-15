@@ -20,6 +20,7 @@ local Character = require("models.character")
 local Combat = require("models.combat")
 local Sprite = require("models.sprite")
 local Scale = require("scale")
+local InputMode = require("input_mode")
 
 local Shop = {}
 Shop.__index = Shop
@@ -503,8 +504,11 @@ function Shop:drawFooter()
         love.graphics.printf(self.message, self.boxX, self.boxY + BOX_H - 52, BOX_W, "center")
     end
     love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf("Enter / A: confirm    Tab / LB-RB: Buy/Sell/Upgrade    Wheel: scroll    Esc / B: close",
-        self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
+    -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
+    local hint = InputMode.isGamepad()
+        and "A: confirm    LB/RB: Buy/Sell/Upgrade    D-pad: scroll    B: close"
+        or "Enter: confirm    Tab: Buy/Sell/Upgrade    Wheel: scroll    Esc: close"
+    love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
 end
 
 -- ---------------------------------------------------------------------------

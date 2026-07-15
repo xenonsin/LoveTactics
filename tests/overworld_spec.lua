@@ -165,6 +165,25 @@ return {
         end,
     },
     {
+        name = "auto-sized maps are capped so heavy quests can't sprawl",
+        fn = function()
+            -- Growth is sub-linear and hard-capped: even an absurd encounter/key
+            -- count must not produce a marathon maze. Play area (grid minus the
+            -- margin ring) stays within the deriveDims ceiling.
+            for seed = 1, 15 do
+                local grid = Overworld.generate({
+                    seed = seed, biome = "forest", encounterCount = 40, keyCount = 4,
+                    encounters = { { kind = "combat", weight = 1 } },
+                    objective = { name = "Boss" },
+                })
+                local playCols = grid.cols - 2 * grid.margin
+                local playRows = grid.rows - 2 * grid.margin
+                assert(playCols <= 45, "play cols exceeded cap: " .. playCols)
+                assert(playRows <= 31, "play rows exceeded cap: " .. playRows)
+            end
+        end,
+    },
+    {
         name = "small auto-sized maps with keys stay solvable",
         fn = function()
             -- The auto-size path shrinks the play area for light quests; the
@@ -369,11 +388,12 @@ return {
         end,
     },
     {
-        name = "encounters are biased onto dead-end tiles",
+        name = "encounters keep a partial dead-end bias (some on through-tiles)",
         fn = function()
             -- A degree-1 walkable tile (excluding the objective) is a dead-end.
-            -- Aggregate over seeds: encounters should land on dead-ends far more
-            -- often than a uniform sprinkle would (the dead-end share of tiles).
+            -- Dead-ends should stay over-represented vs a uniform sprinkle, but the
+            -- bias is only partial now: a healthy share of encounters land on
+            -- through-tiles the player passes en route (less spur-and-return walking).
             local encOnDead, encTotal, deadCands, allCands = 0, 0, 0, 0
             for seed = 1, 25 do
                 local grid = Overworld.generate({
@@ -400,9 +420,13 @@ return {
             end
             local baseline = deadCands / allCands       -- uniform dead-end share
             local hitRate = encOnDead / encTotal        -- of encounters, share on dead-ends
-            assert(hitRate > baseline * 1.5,
-                "encounters not biased to dead-ends: hitRate=" .. hitRate
+            local throughShare = (encTotal - encOnDead) / encTotal
+            assert(hitRate > baseline,
+                "dead-ends should still be over-represented: hitRate=" .. hitRate
                 .. " baseline=" .. baseline)
+            assert(throughShare >= 0.25,
+                "at least a quarter of encounters should sit on through-tiles, got "
+                .. throughShare)
         end,
     },
     {

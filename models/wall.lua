@@ -25,7 +25,8 @@ Wall.defs = Registry.load("data/walls", "data.walls")
 
 -- Place a wall of blueprint `id` at (x, y). Appends a runtime wall to combat.walls and returns it,
 -- or nil if the tile can't hold one -- impassable terrain, a tile a unit stands on, or one that
--- already carries a wall. `opts.side` tints it; `opts.duration` overrides the blueprint's.
+-- already carries a wall. `opts.side` tints it; `opts.duration` and `opts.health` (both item-level
+-- scaled by the raising ability) override the blueprint's lifespan and HP.
 function Wall.place(combat, x, y, id, opts)
     opts = opts or {}
     local def = Wall.defs[id]
@@ -49,8 +50,8 @@ function Wall.place(combat, x, y, id, opts)
         sprite = Sprite.load(def.sprite),
         x = x, y = y,
         side = opts.side or "party",
-        health = def.health or 1,
-        maxHealth = def.health or 1,
+        health = opts.health or def.health or 1,
+        maxHealth = opts.health or def.health or 1,
         blocksMove = def.blocksMove ~= false, -- default true
         sightCost = def.sightCost or 2,
         remaining = opts.duration or def.duration, -- nil = stands until struck down / dispelled

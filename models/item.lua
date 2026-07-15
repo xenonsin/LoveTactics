@@ -91,14 +91,14 @@ end
 Item.resolveLevel = resolveLevel
 
 -- An ability names its magnitude for what it does: a weapon/spell's `damage`, a potion's `healing`,
--- a draught's `restore`, a scroll's `reviveHealth`, or a summon's `summonPower`. Exactly one is
--- authored per ability. Each entry is { key, label } -- the label heads the tooltip/shop row.
+-- a draught's `restore`, or a scroll's `reviveHealth`. Exactly one is authored per ability. Each entry
+-- is { key, label } -- the label heads the tooltip/shop row. A summon or a placed hazard/trap declares
+-- no such magnitude: it scales off the item's upgrade level (fx.level) instead, so it has no headline.
 local ABILITY_MAGNITUDES = {
     { "damage", "Damage" },
     { "healing", "Healing" },
     { "restore", "Restore" },
     { "reviveHealth", "Revive" },
-    { "summonPower", "Power" },
 }
 
 -- Every place an item carries a scaling magnitude, as get/set pairs, so one walk resolves them all at
@@ -116,6 +116,10 @@ local function eachMagnitude(item, fn)
     if item.resist then for k, v in pairs(item.resist) do fn(v, function(x) item.resist[k] = x end) end end
     if item.maxBonus then for k, v in pairs(item.maxBonus) do fn(v, function(x) item.maxBonus[k] = x end) end end
     if item.unarmedBonus then for k, v in pairs(item.unarmedBonus) do fn(v, function(x) item.unarmedBonus[k] = x end) end end
+    -- A shield's Defend brace-bonus (waitBehavior.defense) scales with the shield's level too, so a
+    -- forged shield braces harder (Combat.defend feeds it to the Defending status as its magnitude).
+    local wb = item.waitBehavior
+    if wb and wb.defense ~= nil then fn(wb.defense, function(x) wb.defense = x end) end
     local aura = item.aura
     if aura then
         if aura.amountBonus ~= nil then fn(aura.amountBonus, function(x) aura.amountBonus = x end) end

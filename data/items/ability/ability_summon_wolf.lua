@@ -7,8 +7,9 @@
 -- long as the wolf lives -- the lock lowers the ceiling the archer's mana may regenerate back to,
 -- never the max itself. The ceiling is restored when the wolf falls (or when the summoner does).
 --
--- `power` scales the creature through `scaling`: each entry is added on top of the blueprint's base
--- (health +2 per point, damage +0.5 per point), so a stronger caster fields a stronger wolf.
+-- The item's UPGRADE LEVEL scales the creature through `scaling`: `amount` is the base 10 plus the
+-- forged level (fx.level), and each `scaling` entry is added on top of the blueprint's base (health +2
+-- per point, damage +0.5 per point), so a more-forged horn calls a stronger wolf.
 --
 -- One wolf at a time: the ability is refused while the last one it called still stands (the rule is
 -- automatic for anything that summons -- see Combat.activeSummon).
@@ -30,11 +31,10 @@ return {
         range = 1,
         speed = 6,
         reserve = { stat = "mana", percent = 0.25 },
-        summonPower = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
         effect = function(fx)
             fx.summon("wolf_grunt", fx.tx, fx.ty, {
                 scaling = { health = 2, damage = 0.5 },
-                amount = fx.amount,
+                amount = 10 + fx.level, -- base 10, +1 per upgrade level
             })
         end,
     },

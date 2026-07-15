@@ -12,6 +12,7 @@
 
 local State = require("states")
 local Scale = require("scale")
+local InputMode = require("input_mode")
 local Player = require("models.player")
 
 local ps = {}
@@ -227,8 +228,11 @@ function ps.draw()
 
     love.graphics.setFont(smallFont)
     love.graphics.setColor(0.5, 0.55, 0.65)
-    love.graphics.printf("Click a member to add/remove  |  Arrows + Space: toggle  |  Enter: Embark  |  Esc: Back",
-        0, Scale.HEIGHT - 24, Scale.WIDTH, "center")
+    -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
+    local hint = InputMode.isGamepad()
+        and "D-pad: move  |  A: add/remove  |  Start: Embark  |  B: Back"
+        or "Click a member to add/remove  |  Arrows + Space: toggle  |  Enter: Embark  |  Esc: Back"
+    love.graphics.printf(hint, 0, Scale.HEIGHT - 24, Scale.WIDTH, "center")
 
     love.graphics.setColor(1, 1, 1)
 end

@@ -12,5 +12,6 @@ return {
     repRank = 2,
     bonus = { defense = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
     resist = { physical = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
-    waitBehavior = { kind = "defend", speed = 5 },
+    -- Defend brace: the temporary +defense while braced, tuned here and climbing with the forge.
+    waitBehavior = { kind = "defend", speed = 5, defense = { 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11 } },
 }

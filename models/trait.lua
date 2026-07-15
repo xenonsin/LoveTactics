@@ -47,6 +47,14 @@ local function hasTag(tags, want)
     return false
 end
 
+-- Are `unit`'s reflexes shut down by a hard-control status (Stun, Frozen, and any future Sleep)? A
+-- disabled unit cannot REACT -- no counter, no thorns, no dodge, no smoke-blink -- so every triggered
+-- reaction path below bails on it and the unit simply eats the blow it would otherwise answer. Status
+-- is pulled lazily (like Combat below) so trait.lua -> status.lua stays a call-time edge.
+local function reactionsSuppressed(unit)
+    return unit and require("models.status").disablesReactions(unit)
+end
+
 -- Does a standing evade reflex (the Dodge trait) let `unit` slip a would-be PHYSICAL hit? Mirrors
 -- Status.barrierAgainst in shape and role: Combat.dealFlatDamage consults it BEFORE mitigation and,
 -- when it fires, deals 0. Unlike a barrier (a consumed status) this is a passive gated by a cooldown
@@ -56,6 +64,7 @@ end
 -- it must run on a REAL hit only -- never the damage preview, which reads mitigatedDamage instead.
 function Trait.tryEvade(combat, unit, tags)
     if not unit or not unit.traits or hasTag(tags, "magical") then return false end
+    if reactionsSuppressed(unit) then return false end -- a stunned/frozen unit can't dodge
     local Combat = require("models.combat")
     for _, t in ipairs(unit.traits) do
         if t.def.evadesPhysical and not Combat.onCooldown(unit, t.id) then
@@ -78,6 +87,7 @@ end
 -- (spends the charge, moves the unit, logs), so it must run on a REAL hit only, never the damage preview.
 function Trait.trySmoke(combat, unit, attacker)
     if not unit or not unit.traits or not attacker then return false end
+    if reactionsSuppressed(unit) then return false end -- a stunned/frozen unit can't blink clear
     local Combat = require("models.combat")
     for _, t in ipairs(unit.traits) do
         if t.def.blocksNextHit and t.stacks == 0 then
@@ -281,7 +291,11 @@ function Trait.setup(combat)
 end
 
 -- The bearer took `info.amount` post-mitigation damage and lived. Fired from Combat.dealFlatDamage.
+-- A hard-controlled bearer (Stun, Frozen) is too rattled to answer: its counters, thorns and other
+-- on-hit reactions are suppressed, so the blow lands unanswered. (onStatusApplied is deliberately NOT
+-- gated -- a cleansing ward must still be able to shrug off the very stun/freeze that just landed.)
 function Trait.onDamaged(combat, unit, info)
+    if reactionsSuppressed(unit) then return end
     dispatch(combat, unit, "onDamaged", info)
 end
 

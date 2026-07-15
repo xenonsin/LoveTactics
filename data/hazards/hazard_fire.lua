@@ -12,6 +12,8 @@ return {
     dousedByTags = { "water" },
     spread = { intoTag = "burnable" }, -- creeps into adjacent burnable tiles
     onEnter = function(ctx)
-        ctx.applyStatus(ctx.unit, "burn")
+        -- ctx.amount (the Fireball/Flask item's level-scaled burn) sets how hard the Burn sears; nil
+        -- (an arena-authored blaze) falls back to Burn's own blueprint magnitude.
+        ctx.applyStatus(ctx.unit, "burn", { magnitude = ctx.amount })
     end,
 }

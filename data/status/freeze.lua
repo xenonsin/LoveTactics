@@ -16,6 +16,7 @@ return {
     duration = 12,
     debuff = true,                -- removable by Cure
     interruptsChannel = true,     -- ice locks the caster mid-incantation, breaking a channel
+    disablesReactions = true,     -- encased in ice: it cannot counter, dodge or otherwise react
     vulnerable = { crush = 6, fire = 6 }, -- bonus damage taken from crush- and fire-tagged hits
     onApply = function(ctx)
         ctx.unit.initiative = ctx.unit.initiative + (ctx.magnitude or 0)

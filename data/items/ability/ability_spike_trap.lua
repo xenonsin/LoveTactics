@@ -16,7 +16,8 @@ return {
         speed = 4,
         cost = { stat = "mana", amount = 8 },
         effect = function(fx)
-            fx.placeTrap(fx.tx, fx.ty, "spike_trap")
+            -- The forged trap bites harder: base 18 damage, +1 per upgrade level.
+            fx.placeTrap(fx.tx, fx.ty, "spike_trap", { amount = 18 + fx.level })
         end,
     },
 }

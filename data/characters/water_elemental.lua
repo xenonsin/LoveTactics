@@ -1,5 +1,5 @@
 -- A conjured creature, reached only through a summon ability
--- (data/items/ability/ability_summon_water_elemental.lua), which scales it by the ability's summon power.
+-- (data/items/ability/ability_summon_water_elemental.lua), which scales it by the item's upgrade level.
 -- Sturdier and steadier than the fire elemental: more health, balanced defenses. Its Tide Fists leave
 -- foes Wet. See data/characters/fire_elemental.lua for the blueprint shape.
 return {

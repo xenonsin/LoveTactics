@@ -65,6 +65,10 @@ local function ctxFor(combat, hazard, unit)
         combat = combat,
         hazard = hazard,
         unit = unit,
+        -- The item-level-scaled magnitude the placing ability handed in (or nil for an arena-authored
+        -- hazard). A hazard's onEnter feeds it to the status it grants (a hotter fire, a stronger
+        -- Regeneration); passing nil lets that status fall back to its own blueprint default.
+        amount = hazard.amount,
         applyStatus = function(tgt, id, opts)
             if not tgt then return nil end
             return Status.apply(combat, tgt, id, opts)
@@ -134,6 +138,8 @@ function Hazard.place(combat, x, y, id, opts)
     local existing = Hazard.at(combat, x, y, id)
     if existing then
         existing.remaining = math.max(existing.remaining, opts.duration or def.duration or 1)
+        -- A stronger re-cast overwrites a weaker magnitude; a bare refresh (or spread) leaves it be.
+        if opts.amount and opts.amount > (existing.amount or 0) then existing.amount = opts.amount end
         return existing
     end
 
@@ -147,6 +153,7 @@ function Hazard.place(combat, x, y, id, opts)
         x = x, y = y,
         side = opts.side,
         remaining = opts.duration or def.duration or 1,
+        amount = opts.amount, -- item-level-scaled effect magnitude (nil for an arena-authored hazard)
         alive = true,
         def = def,
         tags = tags,
@@ -181,7 +188,9 @@ function Hazard.spread(combat)
             local nx, ny = h.x + d[1], h.y + d[2]
             local cell = tiles[ny] and tiles[ny][nx]
             if cell and cell.walkable and cell[tag] and not Hazard.at(combat, nx, ny, h.id) then
-                Hazard.place(combat, nx, ny, h.id)
+                -- Carry the source's scaled magnitude into the tile it spreads to, so a hot fire keeps
+                -- burning just as hard as it creeps.
+                Hazard.place(combat, nx, ny, h.id, { side = h.side, amount = h.amount })
             end
         end
     end
@@ -249,6 +258,38 @@ function Hazard.tileBias(combat, x, y, side)
         end
     end
     return score
+end
+
+-- Dry-run a hazard blueprint's onEnter against a stand-in occupant to report what standing in it does
+-- -- the status it grants (with the magnitude it would carry at `amount`) and any direct heal/damage --
+-- WITHOUT a real combat. Mirrors Trap.preview: the hazard's own effect is the source of truth, so the
+-- inventory tooltip can describe a Sanctuary or a Fire without duplicating its numbers. The stand-in
+-- counts as an ally so a side-gated hazard (Sanctuary) still fires. pcall-guarded against a data quirk.
+-- Returns { heal, damage, statuses = { { id, def, magnitude } } }, or nil for an unknown id.
+function Hazard.preview(id, amount)
+    local def = Hazard.defs[id]
+    if not def then return nil end
+    local Status = require("models.status")
+    local out = { heal = 0, damage = 0, statuses = {} }
+    local unit = { alive = true, side = "party", char = { name = "ally" } }
+    local ctx = {
+        combat = nil,
+        hazard = { id = id, name = def.name, def = def, tags = def.tags or {}, amount = amount },
+        unit = unit,
+        amount = amount,
+        applyStatus = function(_, sid, opts)
+            local sdef = Status.defs[sid]
+            out.statuses[#out.statuses + 1] = { id = sid, def = sdef,
+                magnitude = (opts and opts.magnitude) or (sdef and sdef.magnitude) }
+            return nil
+        end,
+        heal = function(_, a) out.heal = out.heal + (a or 0); return a or 0 end,
+        damage = function(_, a) out.damage = out.damage + (a or 0); return a or 0 end,
+        unitsNear = function() return { unit } end,
+        isAlly = function() return true end,
+    }
+    if def.onEnter then pcall(def.onEnter, ctx) end
+    return out
 end
 
 return Hazard

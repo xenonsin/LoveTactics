@@ -35,6 +35,18 @@ return {
         end,
     },
     {
+        name = "a shield's Defend brace-defense is tunable and scales with its upgrade level",
+        fn = function()
+            local curve = Item.defs.buckler.waitBehavior.defense
+            assert(type(curve) == "table", "the buckler's brace defense is authored as a per-level table")
+            local base = Item.instantiate("buckler")       -- level 0
+            local up3 = Item.instantiate("buckler", 1, 3)   -- +3
+            assert(base.waitBehavior.defense == curve[1], "level 0 braces the first table entry")
+            assert(up3.waitBehavior.defense == curve[4], "+3 braces the level-3 entry (index 4)")
+            assert(up3.waitBehavior.defense > base.waitBehavior.defense, "a forged shield braces harder")
+        end,
+    },
+    {
         name = "the level clamps to MAX_LEVEL (10) and a short table holds at its last entry",
         fn = function()
             assert(Item.MAX_LEVEL == 10, "the ceiling is ten")

@@ -122,7 +122,8 @@ return {
             local expected = math.floor(mana.max * 0.25)
 
             local summon = itemNamed(mage.char, "ability_summon_fire_elemental")
-            assert(Combat.useItem(c, mage, summon, 3, 2), "the cast lands on the empty tile")
+            assert(Combat.useItem(c, mage, summon, 3, 2), "the cast begins winding up")
+            assert(Combat.resolveChannel(c, mage), "and the wound-up binding forms the elemental")
 
             local elemental = Combat.unitAt(c, 3, 2)
             assert(elemental and elemental.char.id == "fire_elemental", "the elemental is there")
@@ -140,6 +141,7 @@ return {
             openTurn(c, mage)
             local summon = itemNamed(mage.char, "ability_summon_fire_elemental")
             Combat.useItem(c, mage, summon, 3, 2)
+            Combat.resolveChannel(c, mage) -- the summon winds up before the elemental forms
             local elemental = Combat.unitAt(c, 3, 2)
             assert(Combat.reservedAmount(mage.char, "mana") > 0, "committed while it lives")
 
@@ -156,6 +158,7 @@ return {
             local mage = c.units[1]
             openTurn(c, mage)
             Combat.useItem(c, mage, itemNamed(mage.char, "ability_summon_fire_elemental"), 3, 2)
+            Combat.resolveChannel(c, mage) -- the summon winds up before the elemental forms
             local elemental = Combat.unitAt(c, 3, 2)
 
             Combat.dealFlatDamage(c, mage, 9999, { "physical" })
@@ -265,7 +268,8 @@ return {
             local summon = itemNamed(mage.char, "ability_summon_fire_elemental")
 
             openTurn(c, mage)
-            assert(Combat.useItem(c, mage, summon, 3, 2), "the first elemental is bound")
+            assert(Combat.useItem(c, mage, summon, 3, 2), "the first elemental begins winding up")
+            assert(Combat.resolveChannel(c, mage), "and forms once wound up")
             local elemental = Combat.unitAt(c, 3, 2)
             assert(Combat.activeSummon(summon) == elemental, "the item holds what it called")
 
@@ -283,6 +287,7 @@ return {
             Combat.dealFlatDamage(c, elemental, 9999, { "physical" })
             assert(Combat.activeSummon(summon) == nil, "the claim dies with the creature")
             assert(Combat.useItem(c, mage, summon, 2, 3), "so the mage may call another")
+            assert(Combat.resolveChannel(c, mage), "the second binding winds up and forms")
             assert(Combat.unitAt(c, 2, 3), "and it stands where it was called")
         end,
     },
@@ -294,6 +299,7 @@ return {
             local summon = itemNamed(mage.char, "ability_summon_fire_elemental")
             openTurn(c, mage)
             Combat.useItem(c, mage, summon, 3, 2)
+            Combat.resolveChannel(c, mage) -- wind the summon up so a real elemental stands
 
             -- The mage falls, taking the elemental with it. The item's claim must go too, or a
             -- revived mage would be holding a creature that isn't on the field.
@@ -309,6 +315,7 @@ return {
             openTurn(c, c.units[1])
             local summon = itemNamed(mage, "ability_summon_fire_elemental")
             Combat.useItem(c, c.units[1], summon, 3, 2)
+            Combat.resolveChannel(c, c.units[1]) -- wind the summon up so a real elemental stands
             assert(Combat.activeSummon(summon), "the elemental outlives the fight")
 
             -- Same character instance, new battle: its grid must come up clean.
@@ -318,12 +325,32 @@ return {
         end,
     },
     {
+        name = "releaseClaims frees the summon claim when the battle ends, so the overworld reads clean",
+        fn = function()
+            local mage = Character.instantiate("mage")
+            local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("bandit", 8, 8) })
+            openTurn(c, c.units[1])
+            local summon = itemNamed(mage, "ability_summon_fire_elemental")
+            Combat.useItem(c, c.units[1], summon, 3, 2)
+            Combat.resolveChannel(c, c.units[1]) -- wind the summon up so a real elemental stands
+            assert(Combat.activeSummon(summon), "the elemental stands at the final blow")
+
+            -- Battle over: the party leaves the field (states/battle.lua win/lose call this). No new
+            -- Combat.new has run yet, so this is exactly what a hub/overworld item tooltip reads.
+            Combat.releaseClaims(mage)
+            assert(Combat.activeSummon(summon) == nil, "the claim is gone the moment the battle ends")
+            assert(Combat.itemBlockReason(nil, summon) == nil,
+                "so the item tooltip no longer cries 'still on the field'")
+        end,
+    },
+    {
         name = "a timed summon counts down on the combat clock and fades when its duration runs out",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 8, 8) })
             local mage = c.units[1]
             openTurn(c, mage)
             Combat.useItem(c, mage, itemNamed(mage.char, "ability_summon_fire_elemental"), 3, 2)
+            Combat.resolveChannel(c, mage) -- the summon winds up before the elemental forms
             local elemental = Combat.unitAt(c, 3, 2)
             assert(elemental.summonRemaining == 24, "the elemental is bound for its declared duration")
 
@@ -362,6 +389,7 @@ return {
             mage.initiative, bandit.initiative = 0, 100
             openTurn(c, mage)
             Combat.useItem(c, mage, itemNamed(mage.char, "ability_summon_fire_elemental"), 3, 2)
+            Combat.resolveChannel(c, mage) -- the summon winds up before the elemental forms
             local elemental = Combat.unitAt(c, 3, 2)
             local born = c.clock
             assert(elemental.summonRemaining == 24, "it arrives with its full binding (addUnit never rebases)")
@@ -385,6 +413,7 @@ return {
             local mage = c.units[1]
             openTurn(c, mage)
             Combat.useItem(c, mage, itemNamed(mage.char, "ability_summon_fire_elemental"), 3, 2)
+            Combat.resolveChannel(c, mage) -- the summon winds up before the elemental forms
             local elemental = Combat.unitAt(c, 3, 2)
             -- Hang a second creature off the elemental, so the dismissal has a chain to unwind.
             local pup = Summon.spawn(c, elemental, "wolf_grunt", 4, 2)
@@ -435,6 +464,32 @@ return {
             local preview = Combat.previewAbility(c, archer, itemNamed(archer.char, "ability_summon_wolf"), 3, 2)
             assert(preview ~= nil, "the aimed preview resolves")
             assert(#c.units == before, "still nothing summoned")
+        end,
+    },
+    {
+        name = "a summon scales with its item's upgrade level (fx.level), not a Power stat",
+        fn = function()
+            -- The old `summonPower` list is gone: the ability's `amount` is base + the item's level, so
+            -- a forged summon ability fields a tougher creature.
+            local function fireElementalHealthAt(level)
+                local mage = Character.instantiate("mage")
+                mage.inventory = {}
+                Character.addItem(mage, Item.instantiate("ability_summon_fire_elemental", 1, level))
+                local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("bandit", 8, 8) })
+                local caster = c.units[1]
+                caster.char.stats.mana.current = caster.char.stats.mana.max
+                openTurn(c, caster)
+                local it = itemNamed(caster.char, "ability_summon_fire_elemental")
+                assert(it.level == level, "the summon ability is forged to the asked level")
+                assert(Combat.useItem(c, caster, it, 3, 2), "the elemental begins winding up")
+                assert(Combat.resolveChannel(c, caster), "and forms once wound up")
+                return Combat.unitAt(c, 3, 2).char.stats.health.max
+            end
+            -- Fire elemental base health 30, scaling health = 1 per point, amount = 12 + level.
+            local base = fireElementalHealthAt(0)   -- 30 + 12
+            local forged = fireElementalHealthAt(6) -- 30 + 18
+            assert(base == 42, "a +0 fire elemental has 30 base + 12 amount = 42 health, got " .. base)
+            assert(forged == base + 6, "a +6 fire elemental gains +6 health (amount 18 vs 12), got " .. forged)
         end,
     },
 

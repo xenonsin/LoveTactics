@@ -14,11 +14,10 @@ return {
         range = 2,
         speed = 6,
         reserve = { stat = "mana", percent = 0.25 },
-        summonPower = { 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24 },
         effect = function(fx)
             fx.summon("lightning_elemental", fx.tx, fx.ty, {
                 scaling = { health = 1, magicDamage = 0.5 },
-                amount = fx.amount,
+                amount = 12 + fx.level, -- base 12, +1 per upgrade level
                 duration = 24,
             })
         end,

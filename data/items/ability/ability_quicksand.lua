@@ -19,8 +19,9 @@ return {
         cost = { stat = "mana", amount = 12 },
         aoe = { radius = 1, shape = "square" }, -- 3x3 patch of churned ground
         effect = function(fx)
+            -- A more-forged spell bogs the ground down longer: base 8 ticks, +1 per upgrade level.
             for _, c in ipairs(fx.aoeCells()) do
-                fx.placeHazard(c.x, c.y, "hazard_quicksand")
+                fx.placeHazard(c.x, c.y, "hazard_quicksand", { duration = 8 + fx.level })
             end
         end,
     },

@@ -362,9 +362,10 @@ return {
     sprite = "assets/traps/spike_trap.png",
     health = 6,                           -- HP a revealed trap soaks before breaking
     tags = { "trap", "pierce", "physical" },
-    damage = 18,
-    -- ctx = { combat, trap, victim } + bound helpers (damage / applyStatus / unitsNear):
-    onTrigger = function(ctx) ctx.damage(ctx.victim, ctx.trap.def.damage, ctx.trap.tags) end,
+    damage = 18,                          -- base; the placing ability scales it up via trap.amount
+    -- ctx = { combat, trap, victim } + bound helpers (damage / applyStatus / unitsNear). Read
+    -- `ctx.trap.amount` (the item-level-scaled magnitude) and fall back to the blueprint:
+    onTrigger = function(ctx) ctx.damage(ctx.victim, ctx.trap.amount or ctx.trap.def.damage, ctx.trap.tags) end,
     -- onDestroy = function(ctx) end,     -- when damaged to 0 HP
     -- consumedOnTrigger = false,          -- default true: spent after one trigger; false = persistent
 }
@@ -372,8 +373,12 @@ return {
 
 Get traps onto the field two ways: **authored** on an arena's `traps` list (above), or
 **summoned** in-battle by an ability that targets a tile — give the ability `target = "tile"`
-(any in-range cell) and call `fx.placeTrap(fx.tx, fx.ty, "spike_trap")` in its effect. A unit
-reveals enemy traps by carrying a detector item (`tags = { "detect traps" }`, `detectRadius = 2`).
+(any in-range cell) and call `fx.placeTrap(fx.tx, fx.ty, "spike_trap", { amount = 18 + fx.level })`
+in its effect. Anything an item **summons or places** (a summon, trap, hazard, or wall) scales off
+`fx.level`, the item's upgrade level (0-based): pass an `amount` (effect magnitude), `duration`
+(lifespan), or `health` and the runtime object carries it — `Trap.preview` / `Hazard.preview` quote
+the scaled numbers in the tooltip. A unit reveals enemy traps by carrying a detector item
+(`tags = { "detect traps" }`, `detectRadius = 2`).
 See `data/traps/spike_trap.lua`, `data/traps/snare_trap.lua`, `data/items/ability/ability_spike_trap.lua`, and
 `data/items/utility/trap_sense.lua`.
 
@@ -416,11 +421,10 @@ activeAbility = {
     name = "Summon Wolf",
     target = "tile", range = 1, speed = 6,
     reserve = { stat = "mana", percent = 0.25 }, -- see below
-    summonPower = 10,
     effect = function(fx)
         fx.summon("wolf_grunt", fx.tx, fx.ty, {
             scaling = { health = 2, damage = 0.5 }, -- stat = base + amount * factor
-            amount = fx.amount,
+            amount = 10 + fx.level,       -- scales off the item's upgrade level (base 10, +1 per level)
             -- duration = 24,              -- ticks before it fades; omit = stands until slain
             -- stats   = { health = 60 },  -- flat overrides of the blueprint's stats
             -- items   = { "fangs" },      -- replaces its startingItems entirely

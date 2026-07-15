@@ -506,30 +506,65 @@ function BattleMap:drawUnits()
         end
     end
     for _, u in ipairs(self.combat.units) do
-        if u.alive then
+        -- Animation modifiers (models the combat controller feeds): a pixel offset (walk slide +
+        -- attack lunge + hit shake), a white/red hit flash, and a death fade. A dying unit is
+        -- alive=false in the model yet still drawn here while its fade runs, darkening to black over
+        -- the corpse token drawn above, before that token takes over.
+        local offX, offY, flash, fade = 0, 0, 0, 0
+        local glow, gr, gg, gb = 0, 0, 0, 0
+        if self.fx then
+            offX, offY, flash, fade = self.fx:spriteState(u, s)
+            glow, gr, gg, gb = self.fx:castGlow(u)
+        end
+        if u.alive or fade > 0 then
             local wx, wy = self:cellToPixel(u.x, u.y)
+            wx, wy = wx + offX, wy + offY
             local isParty = u.side == "party"
-            local a = Status.untargetable(u) and 0.40 or 1
+            local a = fade > 0 and (1 - fade) or (Status.untargetable(u) and 0.40 or 1)
+            local tint = 1 - fade -- fade toward black as it dies
             local sprite = u.char.sprite
             if type(sprite) == "userdata" then
-                love.graphics.setColor(1, 1, 1, a)
                 local sw, sh = sprite:getDimensions()
                 local scale = math.min((s - 8) / sw, (s - 8) / sh)
-                love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale,
-                    sw / 2, sh / 2)
+                love.graphics.setColor(tint, tint, tint, a)
+                love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale, sw / 2, sh / 2)
+                if flash > 0 then -- additive pop, so the sprite brightens rather than just recolors
+                    love.graphics.setBlendMode("add")
+                    love.graphics.setColor(flash * 0.9, flash * 0.5, flash * 0.45, a)
+                    love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale, sw / 2, sh / 2)
+                    love.graphics.setBlendMode("alpha")
+                end
+                if glow > 0 then -- the caster's own additive cast glow (a different color from the flash)
+                    love.graphics.setBlendMode("add")
+                    love.graphics.setColor(gr * glow, gg * glow, gb * glow, a)
+                    love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale, sw / 2, sh / 2)
+                    love.graphics.setBlendMode("alpha")
+                end
             else
                 -- Token fallback: colored disc with the unit's initial.
-                if isParty then love.graphics.setColor(0.35, 0.65, 0.95, a)
-                else love.graphics.setColor(0.90, 0.35, 0.30, a) end
+                if isParty then love.graphics.setColor(0.35 * tint, 0.65 * tint, 0.95 * tint, a)
+                else love.graphics.setColor(0.90 * tint, 0.35 * tint, 0.30 * tint, a) end
                 love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.32)
                 love.graphics.setFont(self.font)
-                love.graphics.setColor(1, 1, 1, a)
+                love.graphics.setColor(tint, tint, tint, a)
                 love.graphics.printf((u.char.name or "?"):sub(1, 1), wx, wy + s / 2 - 8, s, "center")
+                if flash > 0 then
+                    love.graphics.setColor(1, 1, 1, flash * 0.6 * a)
+                    love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.32)
+                end
+                if glow > 0 then
+                    love.graphics.setBlendMode("add")
+                    love.graphics.setColor(gr * glow, gg * glow, gb * glow, a)
+                    love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.32)
+                    love.graphics.setBlendMode("alpha")
+                end
             end
-            -- Side ring.
-            if isParty then love.graphics.setColor(0.4, 0.7, 1, 0.9 * a)
-            else love.graphics.setColor(1, 0.45, 0.4, 0.9 * a) end
-            love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+            -- Side ring (dropped once the unit is dying -- a fading corpse wears no allegiance).
+            if fade <= 0 then
+                if isParty then love.graphics.setColor(0.4, 0.7, 1, 0.9 * a)
+                else love.graphics.setColor(1, 0.45, 0.4, 0.9 * a) end
+                love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+            end
         end
     end
 end
@@ -598,8 +633,11 @@ end
 function BattleMap:drawHpBar(u, wx, wy)
     local s = self.size
     local hp = u.char.stats.health
+    -- The shown value lags the model so the bar drains smoothly toward the new HP after a hit; the
+    -- aimed-action preview slice below still projects off the true current HP.
+    local shown = (self.fx and self.fx:displayHp(u)) or (hp and hp.current) or 0
     local ratio = 0
-    if hp and hp.max and hp.max > 0 then ratio = math.max(0, math.min(1, hp.current / hp.max)) end
+    if hp and hp.max and hp.max > 0 then ratio = math.max(0, math.min(1, shown / hp.max)) end
     local bx, by, bw, bh = wx + 4, wy + s - 8, s - 8, 5
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", bx - 1, by - 1, bw + 2, bh + 2, 2, 2)

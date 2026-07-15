@@ -17,8 +17,9 @@ return {
         cost = { stat = "mana", amount = 12 },
         aoe = { radius = 1, shape = "square" }, -- 3x3 downpour, corners included
         effect = function(fx)
+            -- A more-forged spell keeps the downpour up longer: base 5 ticks, +1 per upgrade level.
             for _, c in ipairs(fx.aoeCells()) do
-                fx.placeHazard(c.x, c.y, "hazard_rain")
+                fx.placeHazard(c.x, c.y, "hazard_rain", { duration = 5 + fx.level })
             end
         end,
     },

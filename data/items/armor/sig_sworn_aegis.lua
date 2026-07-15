@@ -20,5 +20,6 @@ return {
     traits = { "oathward" },
     bonus = { defense = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
     resist = { physical = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
-    waitBehavior = { kind = "defend", speed = 5 },
+    -- Defend brace: the knight's core stance, its +defense climbing as the shield is forged.
+    waitBehavior = { kind = "defend", speed = 5, defense = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 } },
 }

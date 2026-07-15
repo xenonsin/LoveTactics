@@ -26,8 +26,11 @@ return {
             local dx, dy = fx.tx - fx.user.x, fx.ty - fx.user.y
             local ax, ay
             if math.abs(dx) >= math.abs(dy) then ax, ay = 0, 1 else ax, ay = 1, 0 end
+            -- A more-forged casting raises a tougher, longer-lasting barrier: HP base 20 (+2 per level),
+            -- lifespan base 18 ticks (+1 per level).
             for i = -1, 1 do
-                fx.placeWall(fx.tx + ax * i, fx.ty + ay * i, "illusory_wall")
+                fx.placeWall(fx.tx + ax * i, fx.ty + ay * i, "illusory_wall",
+                    { health = 20 + 2 * fx.level, duration = 18 + fx.level })
             end
         end,
     },

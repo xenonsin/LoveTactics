@@ -12,6 +12,7 @@
 
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
+local InputMode = require("input_mode")
 
 local Advancement = {}
 Advancement.__index = Advancement
@@ -206,7 +207,9 @@ end
 function Advancement:drawFooter()
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(0.6, 0.63, 0.7)
-    love.graphics.printf("Enter / Click X to continue", self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
+    -- Show the glyph for the device last used: pad button only in gamepad mode, keyboard/mouse otherwise.
+    local hint = InputMode.isGamepad() and "A to continue" or "Enter / Click X to continue"
+    love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
 end
 
 function Advancement:mousemoved(x, y)

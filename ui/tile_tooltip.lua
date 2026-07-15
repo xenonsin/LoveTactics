@@ -276,7 +276,7 @@ local function buildBlocks(info)
         if tdef.description and tdef.description ~= "" then
             blocks[#blocks + 1] = { kind = "desc", text = tdef.description }
         end
-        local tp = trap.id and Trap.preview(trap.id)
+        local tp = trap.id and Trap.preview(trap.id, trap.amount)
         if tp and tp.damage > 0 then
             blocks[#blocks + 1] = { kind = "stat", label = "Damage", value = tostring(tp.damage) }
         end

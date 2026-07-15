@@ -390,6 +390,52 @@ return {
         end,
     },
     {
+        name = "channelGhosts projects a 'then acts here' ghost for a caster mid-channel",
+        fn = function()
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8),
+                { unit("mage", 2, 2) }, { unit("bandit", 6, 6) })
+            local mage, bandit = c.units[1], c.units[2]
+            mage.char.inventory = { Item.instantiate("ability_fireball") }
+            local fireball = mage.char.inventory[1]
+            local speed = fireball.activeAbility.speed -- the initiative resolveChannel charges past the wind-up
+            -- The mage is winding up at its resolution slot (initiative 3); the bandit acts next.
+            mage.initiative, bandit.initiative = 3, 0
+            mage.channel = { item = fireball, ab = fireball.activeAbility, tx = bandit.x, ty = bandit.y }
+            Status.apply(c, mage, "channeling")
+
+            local specs = Combat.channelGhosts(c)
+            assert(#specs == 1, "one channeler yields one follow-up ghost, got " .. #specs)
+            assert(specs[1].unit == mage, "the ghost belongs to the caster")
+            assert(specs[1].initiative == 3 + speed, "the ghost lands at the resolution slot + cast speed")
+            assert(specs[1].label == "then acts here", "the ghost is labelled")
+
+            -- Fed through the shared builder, the caster keeps its real resolution slot AND gains the ghost.
+            local entries = Combat.buildTimeline(c, specs)
+            local real, ghost = 0, 0
+            for _, e in ipairs(entries) do
+                if e.unit == mage then
+                    if e.preview then ghost = ghost + 1 else real = real + 1 end
+                end
+            end
+            assert(real == 1 and ghost == 1, "the channeler shows both a real slot and a follow-up ghost")
+        end,
+    },
+    {
+        name = "channelGhosts skips a caster resolving this beat (initiative 0)",
+        fn = function()
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 6, 6) })
+            local mage = c.units[1]
+            mage.char.inventory = { Item.instantiate("ability_fireball") }
+            local fireball = mage.char.inventory[1]
+            mage.initiative = 0 -- its slot has arrived: it's the framed current card, resolving now
+            mage.channel = { item = fireball, ab = fireball.activeAbility, tx = 6, ty = 6 }
+            Status.apply(c, mage, "channeling")
+            assert(#Combat.channelGhosts(c) == 0, "no follow-up ghost for the channel resolving this beat")
+        end,
+    },
+    {
         name = "a wait preview ghost lands just AFTER the unit it delays past at a shared initiative",
         fn = function()
             -- Two party units tied at initiative 2 with equal speed; previewing the first one
