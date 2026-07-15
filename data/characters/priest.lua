@@ -23,4 +23,8 @@ return {
         "healing_potion",  "sig_hallowed_censer",  "focus_stone",
         "parasitic_staff", "ability_sanctuary",   false,
     },
+    -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
+    -- its range shows, and driving the basic click-to-use. Jolt (an offensive zap) keeps click-to-
+    -- attack intuitive; the player can re-pin the heal or any other ability.
+    defaultAction = "ability_jolt",
 }

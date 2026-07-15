@@ -519,7 +519,7 @@ end
 function CombatPanel:drawItemGrid()
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(0.7, 0.72, 0.8)
-    love.graphics.printf("Items", self.x, self.gridY - 22, self.w, "center")
+    love.graphics.printf("Actions", self.x, self.gridY - 22, self.w, "center")
 
     local isPartyTurn = self.view.isPartyTurn
     local items = self.view.items or {}

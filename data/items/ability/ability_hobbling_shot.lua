@@ -11,7 +11,6 @@ return {
     price = 200,
     repRank = 2,
     activeAbility = {
-        name = "Hobbling Shot",
         target = "enemy",
         range = 4,
         minRange = 2,

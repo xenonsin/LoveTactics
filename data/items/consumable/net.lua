@@ -12,7 +12,6 @@ return {
     price = 90,
     repRank = 1,
     activeAbility = {
-        name = "Throw Net",
         target = "enemy",
         range = 3,
         requiresSight = true, -- a thrown net needs a clear line to its mark

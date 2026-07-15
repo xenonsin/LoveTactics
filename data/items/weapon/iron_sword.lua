@@ -8,7 +8,6 @@ return {
     price = 60,
     repRank = 1,
     activeAbility = {
-        name = "Slash",
         target = "enemy",
         range = 1, -- adjacent only (Manhattan distance)
         speed = 3, -- time cost: feeds initiative + pushes the actor back

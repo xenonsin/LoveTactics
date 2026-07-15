@@ -8,7 +8,6 @@ return {
     price = 80,
     repRank = 1,
     activeAbility = {
-        name = "Shoot",
         target = "enemy",
         range = 3,
         minRange = 2, -- a bow can't fire at adjacent tiles: no point-blank shots

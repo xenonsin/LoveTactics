@@ -10,7 +10,6 @@ return {
     price = 450,
     repRank = 3,
     activeAbility = {
-        name = "Summon Ice Elemental",
         target = "tile",
         range = 2,
         speed = 6,

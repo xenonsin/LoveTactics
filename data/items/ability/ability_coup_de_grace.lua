@@ -12,7 +12,6 @@ return {
     price = 300,
     repRank = 3,
     activeAbility = {
-        name = "Coup de Grace",
         target = "enemy",
         range = 1,
         speed = 5,

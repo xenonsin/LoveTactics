@@ -4,11 +4,10 @@ return {
     sprite = "assets/items/potion.png",
     type = "consumable",
     tags = { "potion", "restorative" },
-    class = "priest",
+    class = "alchemist",
     price = 35,
     repRank = 1,
     activeAbility = {
-        name = "Drink",
         target = "ally", -- includes the user (a unit is its own ally)
         range = 1,
         speed = 2,

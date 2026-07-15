@@ -11,7 +11,6 @@ return {
     type = "ability",
     tags = { "impact", "physical" },
     activeAbility = {
-        name = "Pull",
         target = "enemy",
         range = 4,
         minRange = 2, -- pointless on someone already beside you

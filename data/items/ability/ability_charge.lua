@@ -13,7 +13,6 @@ return {
     price = 320,
     repRank = 3,
     activeAbility = {
-        name = "Charge",
         target = "enemy",
         range = 1, -- the target must start directly in front (adjacent) -- the "pin"
         speed = 4,

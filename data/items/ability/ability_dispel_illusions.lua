@@ -15,7 +15,6 @@ return {
     price = 240,
     repRank = 3,
     activeAbility = {
-        name = "Dispel Illusions",
         target = "tile",
         range = 4,
         speed = 4,

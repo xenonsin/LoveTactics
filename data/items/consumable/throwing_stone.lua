@@ -15,7 +15,6 @@ return {
     repRank = 1,
     maxStack = 12, -- ammunition: a fuller stack than the default 9
     activeAbility = {
-        name = "Throw Stone",
         target = "enemy",
         range = 4,
         requiresSight = true,

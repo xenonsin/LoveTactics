@@ -12,7 +12,6 @@ return {
     price = 300,
     repRank = 3,
     activeAbility = {
-        name = "Quicksand",
         target = "tile",
         allowOccupied = true, -- an area cast may center on an occupied tile
         range = 3,

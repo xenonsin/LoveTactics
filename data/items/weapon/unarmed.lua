@@ -17,7 +17,6 @@ return {
     type = "weapon",
     tags = { "unarmed", "physical", "melee" },
     activeAbility = {
-        name = "Strike",
         target = "enemy",
         range = 1,
         speed = 5, -- == Combat.DEFAULT_SPEED; keeps the no-ability-items initiative unchanged

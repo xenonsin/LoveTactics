@@ -10,7 +10,6 @@ return {
     type = "ability",
     tags = { "slash", "physical" },
     activeAbility = {
-        name = "Omnislash",
         target = "enemy",
         range = 1,
         speed = 6, -- a heavy commitment

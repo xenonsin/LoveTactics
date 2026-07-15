@@ -16,7 +16,6 @@ return {
     price = 500,
     repRank = 4,
     activeAbility = {
-        name = "Raise Dead",
         target = "tile",
         allowOccupied = true,
         support = true, -- raising your dead is a friendly act: preview green

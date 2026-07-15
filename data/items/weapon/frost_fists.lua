@@ -9,7 +9,6 @@ return {
     tags = { "ice", "magical", "melee" },
     noSteal = true,
     activeAbility = {
-        name = "Chill",
         target = "enemy",
         range = 1,
         speed = 2,

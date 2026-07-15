@@ -5,7 +5,6 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "melee" }, -- magical: routes through magicDamage / magicDefense; strikes at melee range
     activeAbility = {
-        name = "Siphon",
         target = "enemy",
         range = 1, -- adjacent only (Manhattan distance)
         speed = 4, -- time cost: feeds initiative + pushes the actor back

@@ -12,7 +12,6 @@ return {
     price = 340,
     repRank = 3,
     activeAbility = {
-        name = "Penetrating Strike",
         target = "enemy",
         range = 1,
         speed = 4,

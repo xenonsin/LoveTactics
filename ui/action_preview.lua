@@ -59,14 +59,14 @@ local function accentFor(action)
     return OFFENSE
 end
 
--- The action verb shown as the panel title: the structural actions get a plain verb ("Move To",
--- "Strike Trap", "Place <ability>"); a unit/self cast reads as its ability name ("Slash", "Fireball").
+-- The action title: the structural actions get a plain verb ("Move To", "Strike Trap",
+-- "Place <item>"); a unit/self cast reads as the item's name ("Iron Sword", "Fireball").
 local function titleFor(action)
-    local ab = action.item and action.item.activeAbility
+    local itemName = action.item and action.item.name
     if action.kind == "move" then return "Move To" end
     if action.kind == "strikeTrap" then return "Strike Trap" end
-    if action.kind == "place" then return "Place " .. ((ab and ab.name) or "Trap") end
-    return (ab and ab.name) or (action.item and action.item.name) or "Action"
+    if action.kind == "place" then return "Place " .. (itemName or "Trap") end
+    return itemName or "Action"
 end
 
 -- Append what the cast takes, shared by every cast (attack / ability / place / trap strike): the

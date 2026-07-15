@@ -12,7 +12,6 @@ return {
     price = 160,
     repRank = 2,
     activeAbility = {
-        name = "Magical Barrier",
         target = "ally", -- includes the caster
         range = 2,
         speed = 3,

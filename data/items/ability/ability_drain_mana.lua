@@ -12,7 +12,6 @@ return {
     price = 180,
     repRank = 2,
     activeAbility = {
-        name = "Drain Mana",
         target = "enemy",
         range = 3,
         requiresSight = true,

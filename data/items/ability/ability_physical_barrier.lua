@@ -12,7 +12,6 @@ return {
     price = 160,
     repRank = 2,
     activeAbility = {
-        name = "Physical Barrier",
         target = "ally", -- includes the caster (a unit is its own ally)
         range = 2,
         speed = 3,

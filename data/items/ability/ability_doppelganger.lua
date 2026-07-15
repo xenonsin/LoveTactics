@@ -23,7 +23,6 @@ return {
     repRank = 3,
     noCopy = true,
     activeAbility = {
-        name = "Doppelganger",
         target = "tile",
         range = 1,
         speed = 6,

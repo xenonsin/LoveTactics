@@ -15,7 +15,6 @@ return {
     price = 260,
     repRank = 3,
     activeAbility = {
-        name = "Summon Wall",
         target = "tile",
         range = 4,
         speed = 5,

@@ -263,6 +263,20 @@ function Character.instantiate(id, progress)
         end
     end
 
+    -- Authored default action (optional): the blueprint names an item id its bearer starts with
+    -- pinned as the default action (Combat.defaultAction / the Loadout star), so a freshly recruited
+    -- character already has a sensible go-to action rather than the bare auto-pick. Resolved to the
+    -- grid cell now holding that item; a missing/unplaced id just leaves the auto-pick in force.
+    if def.defaultAction then
+        for cell = 1, Character.MAX_INVENTORY do
+            local it = char.inventory[cell]
+            if it and it.id == def.defaultAction then
+                char.defaultActionSlot = cell
+                break
+            end
+        end
+    end
+
     return char
 end
 

@@ -15,7 +15,6 @@ return {
     price = 260,
     repRank = 3,
     activeAbility = {
-        name = "Smite",
         target = "enemy",
         range = 1,
         speed = 3,

@@ -9,7 +9,6 @@ return {
     tags = { "crush", "physical", "melee" },
     noSteal = true,
     activeAbility = {
-        name = "Crush",
         target = "enemy",
         range = 1,
         speed = 3,

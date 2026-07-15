@@ -15,7 +15,6 @@ return {
     price = 150,
     repRank = 2,
     activeAbility = {
-        name = "Throw Acid",
         target = "enemy", -- thrown at a foe and bursts around it, like Fireball
         range = 3,
         requiresSight = true,

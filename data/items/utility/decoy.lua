@@ -28,7 +28,6 @@ return {
     stealPriority = 10,
     noCopy = true,
     activeAbility = {
-        name = "Decoy",
         target = "tile",
         range = 1,
         speed = 4,

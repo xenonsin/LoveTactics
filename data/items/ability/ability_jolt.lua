@@ -10,7 +10,6 @@ return {
     price = 90,
     repRank = 1,
     activeAbility = {
-        name = "Jolt",
         target = "enemy",
         range = 3,
         requiresSight = true, -- a bolt needs a clear line: terrain cover blocks it

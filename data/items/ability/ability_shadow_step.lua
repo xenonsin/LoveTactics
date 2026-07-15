@@ -11,7 +11,6 @@ return {
     price = 260,
     repRank = 2,
     activeAbility = {
-        name = "Shadow Step",
         target = "enemy",
         range = 4,
         requiresSight = true,

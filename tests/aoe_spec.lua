@@ -41,7 +41,7 @@ end
 -- The fireball item on a freshly built mage (its inventory carries it by blueprint).
 local function fireballOf(mage)
     for _, it in ipairs(mage.char.inventory) do
-        if it.activeAbility and it.activeAbility.name == "Fireball" then return it end
+        if it.activeAbility and it.name == "Fireball" then return it end
     end
 end
 
@@ -68,7 +68,7 @@ return {
             local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 5, 5) })
             local jolt
             for _, it in ipairs(c.units[1].char.inventory) do
-                if it.activeAbility and it.activeAbility.name == "Jolt" then jolt = it end
+                if it.activeAbility and it.name == "Jolt" then jolt = it end
             end
             local cells = Combat.aoeCells(c, jolt.activeAbility, 3, 3)
             assert(#cells == 1 and cells[1].x == 3 and cells[1].y == 3, "no aoe -> just the cell")

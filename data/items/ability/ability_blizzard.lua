@@ -12,7 +12,6 @@ return {
     price = 380,
     repRank = 3,
     activeAbility = {
-        name = "Blizzard",
         target = "tile",
         allowOccupied = true, -- an area cast may center on an occupied tile
         range = 3,

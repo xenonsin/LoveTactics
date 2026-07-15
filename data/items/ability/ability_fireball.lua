@@ -8,7 +8,6 @@ return {
     price = 350,
     repRank = 3,
     activeAbility = {
-        name = "Fireball",
         target = "enemy",
         range = 3,
         requiresSight = true, -- must see the foe: terrain cover blocks the throw

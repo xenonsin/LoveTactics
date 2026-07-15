@@ -56,21 +56,28 @@ return {
         end,
     },
     {
-        name = "a character's pinned default weapon slot round-trips (and old saves load nil)",
+        name = "a character's pinned default action slot round-trips (with legacy + empty fallbacks)",
         fn = function()
             local player = Player.new()
-            -- Pin a second weapon in cell 4 as the first roster member's default attack.
+            -- Pin a second weapon in cell 4 as the first roster member's default action.
             player.roster[1].inventory[4] = Item.instantiate("bow")
-            player.roster[1].defaultWeaponSlot = 4
+            player.roster[1].defaultActionSlot = 4
 
             local snap = Save.snapshot(player)
             local restored = Save.restore(snap)
-            assert(restored.roster[1].defaultWeaponSlot == 4, "the pinned slot survives a round trip")
+            assert(restored.roster[1].defaultActionSlot == 4, "the pinned slot survives a round trip")
 
-            -- An old save that predates the field restores to nil (the auto pick), not a crash.
+            -- A save from before the default-weapon -> default-action rename keeps its pin: the legacy
+            -- defaultWeaponSlot key is read when the new one is absent.
+            snap.roster[1].defaultActionSlot = nil
+            snap.roster[1].defaultWeaponSlot = 4
+            local legacy = Save.restore(snap)
+            assert(legacy.roster[1].defaultActionSlot == 4, "a legacy defaultWeaponSlot still pins the action")
+
+            -- A save with neither field restores to nil (the auto pick), not a crash.
             snap.roster[1].defaultWeaponSlot = nil
             local restored2 = Save.restore(snap)
-            assert(restored2.roster[1].defaultWeaponSlot == nil, "a save without the field loads as nil")
+            assert(restored2.roster[1].defaultActionSlot == nil, "a save without either field loads as nil")
         end,
     },
 }

@@ -12,7 +12,6 @@ return {
     price = 160,
     repRank = 2,
     activeAbility = {
-        name = "Ice Bolt",
         target = "enemy",
         range = 3,
         requiresSight = true,

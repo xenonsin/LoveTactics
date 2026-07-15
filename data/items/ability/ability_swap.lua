@@ -12,7 +12,6 @@ return {
     price = 160,
     repRank = 1,
     activeAbility = {
-        name = "Swap",
         target = "enemy",
         range = 3,
         requiresSight = true,

@@ -578,25 +578,62 @@ return {
         end,
     },
     {
-        name = "defaultWeaponSlot pins an explicit default weapon, with safe fallbacks",
+        name = "defaultActionSlot pins any ability as the default action, with safe fallbacks",
         fn = function()
             -- Knight carries iron_sword in slot 1; add a bow in a later slot as a second option.
             local knight = Character.instantiate("knight")
             local bow = Item.instantiate("bow")
             knight.inventory[3] = bow
-            assert(Combat.defaultWeapon(knight).name == "Iron Sword", "no pin -> first grid weapon wins")
+            assert(Combat.defaultAction(knight).name == "Iron Sword", "no pin -> first grid weapon wins")
 
-            -- A pin at a weapon cell overrides row-major grid order.
-            knight.defaultWeaponSlot = 3
-            assert(Combat.defaultWeapon(knight) == bow, "a pinned slot beats grid order")
+            -- A pin at an ability cell overrides row-major grid order.
+            knight.defaultActionSlot = 3
+            assert(Combat.defaultAction(knight) == bow, "a pinned slot beats grid order")
 
             -- A pin at an empty cell is stale -> fall back to the first-weapon scan.
-            knight.defaultWeaponSlot = 5
-            assert(Combat.defaultWeapon(knight).name == "Iron Sword", "a pin on an empty cell falls back")
+            knight.defaultActionSlot = 5
+            assert(Combat.defaultAction(knight).name == "Iron Sword", "a pin on an empty cell falls back")
 
-            -- A pin on a non-weapon item is ignored too.
-            knight.inventory[5] = Item.instantiate("acid_bomb") -- a consumable, not a weapon
-            assert(Combat.defaultWeapon(knight).name == "Iron Sword", "a pin on a non-weapon falls back")
+            -- Unlike the default weapon, ANY ability can be the default action: pin a non-weapon
+            -- ability and it wins (a mage making its attack spell the go-to action).
+            local fireball = Item.instantiate("ability_fireball")
+            knight.inventory[5] = fireball
+            knight.defaultActionSlot = 5
+            assert(Combat.defaultAction(knight) == fireball, "a pinned non-weapon ability is the default action")
+
+            -- defaultWeapon stays offensive-only and never reads the action pin.
+            assert(Combat.defaultWeapon(knight).name == "Iron Sword", "defaultWeapon ignores the action pin")
+        end,
+    },
+    {
+        name = "a blueprint's authored defaultAction pins that ability on a fresh instance",
+        fn = function()
+            -- The mage blueprint authors ability_fireball as its default action, so a freshly
+            -- instantiated (recruited) mage already has it pinned rather than the bare auto-pick
+            -- (which, first-weapon-first, would land on its staff).
+            local mage = Character.instantiate("mage")
+            local action = Combat.defaultAction(mage)
+            assert(action and action.id == "ability_fireball", "authored default action is pinned on recruit")
+            assert(mage.defaultActionSlot ~= nil, "the pin resolves to the grid cell holding it")
+            -- The staff is still the plain default WEAPON (offensive fallback); the pin only moves the
+            -- default ACTION.
+            assert(Combat.defaultWeapon(mage).id == "parasitic_staff", "the default weapon is unaffected")
+        end,
+    },
+    {
+        name = "attackReach folds movement in (walk-and-strike reach beyond the caster's own range)",
+        fn = function()
+            -- A melee (range 1) fighter with room to move: its reach should extend past its own
+            -- one-tile ring to everywhere it could walk-then-strike this turn.
+            local c = Combat.new(arena(10, 10), { unit("knight", 2, 2) }, { unit("bandit", 9, 9) })
+            local knight = c.units[1]
+            local reachable = Combat.reachable(c, knight)
+            local reach = Combat.attackReach(c, knight, 1, reachable, false, 0)
+            -- A cell two or more tiles away (unreachable from the origin at range 1) is in reach once
+            -- movement is folded in -- and it records the stand tile the strike launches from.
+            local far = reach[(knight.x + 2) .. "," .. knight.y]
+            assert(far ~= nil, "a tile past the caster's own range is reachable after moving")
+            assert(far.fromX ~= knight.x or far.fromY ~= knight.y, "it records a stand tile to move to first")
         end,
     },
     {

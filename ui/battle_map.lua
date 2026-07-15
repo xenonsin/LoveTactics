@@ -181,6 +181,7 @@ function BattleMap:draw()
     self:drawTiles()
     self:drawHazards() -- area effects wash the ground under the interaction highlights
     self:drawOverlays()
+    self:drawMovePath() -- the actor's steered walk route, an arrow over the blue move wash
     self:drawWalls() -- conjured blockers stand on the ground, above overlays, under the units
     self:drawTraps() -- revealed traps sit above the ground/overlays, under the units
     self:drawUnits()
@@ -436,6 +437,50 @@ function BattleMap:drawOverlays()
         end
         love.graphics.setLineWidth(1)
     end
+end
+
+-- The actor's planned walk route (self.overlays.path): an origin-first list of { x, y } tiles,
+-- drawn as a white polyline through the tile centres with an arrowhead at the destination, so
+-- the exact path the unit will take reads at a glance (Fire Emblem / Advance Wars). A dark backing
+-- stroke under the line keeps it legible over any terrain, mirroring drawOverlays' boundary pass.
+-- Only the origin tile holds a unit; every later tile is empty, so the line never hides a token.
+function BattleMap:drawMovePath()
+    local path = self.overlays.path
+    if not path or #path < 2 then return end
+    local s = self.size
+    local pts = {}
+    for _, c in ipairs(path) do
+        local wx, wy = self:cellToPixel(c.x, c.y)
+        pts[#pts + 1] = wx + s / 2
+        pts[#pts + 1] = wy + s / 2
+    end
+    local prevJoin = love.graphics.getLineJoin()
+    love.graphics.setLineJoin("bevel")
+    love.graphics.setColor(0, 0, 0, 0.55)
+    love.graphics.setLineWidth(6)
+    love.graphics.line(pts)
+    love.graphics.setColor(1, 1, 1, 0.95)
+    love.graphics.setLineWidth(3)
+    love.graphics.line(pts)
+
+    -- Arrowhead at the destination, pointed along the final segment.
+    local n = #pts
+    local ex, ey = pts[n - 1], pts[n]
+    local ang = math.atan2(ey - pts[n - 2], ex - pts[n - 3])
+    local hl = s * 0.30
+    local a1, a2 = ang + math.rad(150), ang - math.rad(150)
+    love.graphics.setColor(0, 0, 0, 0.55)
+    love.graphics.polygon("fill", ex + math.cos(ang) * 2, ey + math.sin(ang) * 2,
+        ex + hl * math.cos(a1), ey + hl * math.sin(a1),
+        ex + hl * math.cos(a2), ey + hl * math.sin(a2))
+    love.graphics.setColor(1, 1, 1, 0.95)
+    love.graphics.polygon("fill", ex, ey,
+        ex + hl * math.cos(a1), ey + hl * math.sin(a1),
+        ex + hl * math.cos(a2), ey + hl * math.sin(a2))
+
+    love.graphics.setLineWidth(1)
+    love.graphics.setLineJoin(prevJoin)
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- Unit bodies: sprite/token + side ring. HP bars and turn numbers are a separate pass

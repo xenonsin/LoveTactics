@@ -13,7 +13,6 @@ return {
     price = 240,
     repRank = 2,
     activeAbility = {
-        name = "Shout",
         target = "tile",       -- aim a nearby tile; the diamond around it is the shout's reach
         allowOccupied = true,
         range = 1,

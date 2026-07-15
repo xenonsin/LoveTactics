@@ -13,7 +13,6 @@ return {
     type = "ability",
     tags = { "support", "magical" },
     activeAbility = {
-        name = "Haste",
         target = "ally", -- includes the caster
         range = 3,
         support = true,  -- friendly cast: previews green, not red

@@ -13,7 +13,6 @@ return {
     price = 260,
     repRank = 2,
     activeAbility = {
-        name = "Water Ball",
         target = "enemy",
         range = 3,
         requiresSight = true,

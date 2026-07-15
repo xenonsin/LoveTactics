@@ -10,7 +10,6 @@ return {
     tags = { "fire", "magical", "melee" },
     noSteal = true,
     activeAbility = {
-        name = "Scorch",
         target = "enemy",
         range = 1,
         speed = 2,

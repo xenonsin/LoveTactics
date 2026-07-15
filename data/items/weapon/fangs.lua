@@ -9,7 +9,6 @@ return {
     tags = { "bite", "physical", "melee" },
     noSteal = true, -- a pickpocket cannot lift the teeth out of a wolf's head
     activeAbility = {
-        name = "Bite",
         target = "enemy",
         range = 1,
         speed = 2,

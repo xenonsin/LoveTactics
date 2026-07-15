@@ -16,7 +16,6 @@ return {
     price = 100,
     repRank = 2,
     activeAbility = {
-        name = "Drink",
         target = "ally", -- includes the user (a unit is its own ally)
         support = true,
         range = 1,

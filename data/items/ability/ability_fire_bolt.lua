@@ -11,7 +11,6 @@ return {
     price = 150,
     repRank = 2,
     activeAbility = {
-        name = "Fire Bolt",
         target = "enemy",
         range = 3,
         requiresSight = true, -- a bolt needs a clear line: terrain cover blocks it

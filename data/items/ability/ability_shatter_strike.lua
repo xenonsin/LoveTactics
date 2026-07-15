@@ -12,7 +12,6 @@ return {
     price = 260,
     repRank = 2,
     activeAbility = {
-        name = "Shatter Strike",
         target = "enemy",
         range = 1,
         speed = 5,

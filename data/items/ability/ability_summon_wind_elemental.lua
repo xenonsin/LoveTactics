@@ -10,7 +10,6 @@ return {
     price = 440,
     repRank = 3,
     activeAbility = {
-        name = "Summon Wind Elemental",
         target = "tile",
         range = 2,
         speed = 6,

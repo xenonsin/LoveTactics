@@ -12,7 +12,6 @@ return {
     price = 220,
     repRank = 3,
     activeAbility = {
-        name = "Unfurl",
         target = "tile",
         support = true, -- friendly cast: preview green
         range = 1,      -- must be adjacent to the body

@@ -199,7 +199,7 @@ function Item.instantiate(id, quantity, level)
         sprite = Sprite.load(def.sprite),
         type = def.type,                       -- weapon | armor | consumable | ability | utility
         tags = deepCopy(def.tags),             -- descriptive tags: scaling + armor mitigation
-        activeAbility = deepCopy(def.activeAbility), -- { name, target, range, speed, cost, effect }
+        activeAbility = deepCopy(def.activeAbility), -- { target, range, speed, cost, effect }
         aura = deepCopy(def.aura),             -- adjacency: grants tags/statuses to neighboring casts
         bonus = deepCopy(def.bonus),           -- armor: flat stat bonuses folded in at setup
         resist = deepCopy(def.resist),         -- armor: tag -> flat damage reduction

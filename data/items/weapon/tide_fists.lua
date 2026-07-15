@@ -9,7 +9,6 @@ return {
     tags = { "water", "magical", "melee" },
     noSteal = true,
     activeAbility = {
-        name = "Surge",
         target = "enemy",
         range = 1,
         speed = 2,

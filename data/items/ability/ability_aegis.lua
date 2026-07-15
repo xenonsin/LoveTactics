@@ -12,7 +12,6 @@ return {
     price = 260,
     repRank = 2,
     activeAbility = {
-        name = "Aegis",
         target = "tile",
         allowOccupied = true,
         support = true, -- friendly area cast: preview green

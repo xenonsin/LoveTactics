@@ -12,7 +12,6 @@ return {
     price = 190,
     repRank = 2,
     activeAbility = {
-        name = "Crush",
         target = "enemy",
         range = 1,
         speed = 4,

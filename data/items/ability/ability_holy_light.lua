@@ -12,7 +12,6 @@ return {
     price = 340,
     repRank = 3,
     activeAbility = {
-        name = "Holy Light",
         target = "tile",
         allowOccupied = true,
         range = 3,

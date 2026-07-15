@@ -13,7 +13,6 @@ return {
     price = 800,
     repRank = 4,
     activeAbility = {
-        name = "Longshot",
         target = "enemy",
         range = 5, -- two tiles further than a plain bow
         minRange = 2,

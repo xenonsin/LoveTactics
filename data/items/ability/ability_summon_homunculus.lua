@@ -13,7 +13,6 @@ return {
     price = 360,
     repRank = 3,
     activeAbility = {
-        name = "Summon Homunculus",
         target = "tile",
         range = 2,
         speed = 6,

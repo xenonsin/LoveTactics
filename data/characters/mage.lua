@@ -23,4 +23,7 @@ return {
         "parasitic_staff", "sig_overflowing_focus",   "fire_stone",
         "ability_rain",   "ability_summon_fire_elemental", "ability_fireball",
     },
+    -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
+    -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
+    defaultAction = "ability_fireball",
 }

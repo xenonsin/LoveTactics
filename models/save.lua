@@ -102,10 +102,10 @@ local function snapshotCharacter(char)
 
     local snap = { id = char.id, inventory = inventory }
 
-    -- The player's pinned default attack weapon (a grid cell index, set in the Loadout screen).
-    -- Optional -- omitted when unset, so a character that never chose one diffs clean and loads
-    -- back to the auto pick (first grid weapon). See Combat.defaultWeapon.
-    if char.defaultWeaponSlot then snap.defaultWeaponSlot = char.defaultWeaponSlot end
+    -- The player's pinned default action (a grid cell index, set in the Loadout screen). Optional --
+    -- omitted when unset, so a character that never chose one diffs clean and loads back to the auto
+    -- pick. See Combat.defaultAction.
+    if char.defaultActionSlot then snap.defaultActionSlot = char.defaultActionSlot end
 
     -- Progression (models/growth.lua). Level defaults back to 1 on load, so omit it while unleveled to
     -- keep an early-game save diffing clean; the same for an empty tally / no accumulated growth.
@@ -206,7 +206,9 @@ local function restoreCharacter(snap)
     -- Re-seat any bound signature relics in their authored cells. A current save already has them (at
     -- their upgraded level, preserved); a save predating a relic gets it restored. See Character.ensureBoundItems.
     Character.ensureBoundItems(char)
-    char.defaultWeaponSlot = snap.defaultWeaponSlot -- nil on an old save = the auto pick
+    -- nil on a save that never pinned one = the auto pick. Fall back to the legacy defaultWeaponSlot
+    -- key so a save from before the default-weapon -> default-action rename keeps its pin.
+    char.defaultActionSlot = snap.defaultActionSlot or snap.defaultWeaponSlot
     return char
 end
 

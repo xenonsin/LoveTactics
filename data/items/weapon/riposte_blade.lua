@@ -14,7 +14,6 @@ return {
     repRank = 2,
     traits = { "melee_counter" },
     activeAbility = {
-        name = "Riposte",
         target = "enemy",
         range = 1,
         speed = 3,

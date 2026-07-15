@@ -12,7 +12,6 @@ return {
     price = 260,
     repRank = 3,
     activeAbility = {
-        name = "Smash",
         target = "enemy",
         range = 1,
         speed = 7, -- ponderous: you pay for the stun in turn order

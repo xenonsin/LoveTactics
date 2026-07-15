@@ -14,6 +14,7 @@ local Scale = require("scale")
 local Combat = require("models.combat")
 local Character = require("models.character")
 local Item = require("models.item")
+local RangeDiagram = require("ui.range_diagram")
 
 local ItemTooltip = {}
 
@@ -53,6 +54,10 @@ local MET = { 0.70, 0.88, 0.45 }  -- a satisfied requirement (matches the grid's
 local POWER = { 0.95, 0.72, 0.48 } -- ability Power row (the offensive balance stat)
 local HEAL = { 0.55, 0.90, 0.58 }  -- ability heal row
 local SUMMON = { 0.78, 0.62, 0.96 } -- ability "Summons" row (matches the ability item accent)
+-- The range-diagram band tint: green for a friendly cast, red for a hostile one (matches the
+-- board's green/red targeting overlays and the action preview's SUPPORT/OFFENSE accents).
+local RANGE_FRIENDLY = { 0.45, 0.85, 0.50 }
+local RANGE_HOSTILE = { 0.95, 0.52, 0.46 }
 
 local function titleCase(s)
     return (tostring(s):gsub("^%l", string.upper))
@@ -79,7 +84,7 @@ end
 -- `actor` (optional) is the unit the ability is priced and gated against: whatever stops it from
 -- being cast right now (Combat.itemBlockReason) reddens the offending row and closes the ability
 -- section with a `warn` block spelling the reason out.
-local function buildBlocks(item, actor)
+local function buildBlocks(item, actor, innerW)
     local blocks = {}
     local typeCol = TYPE_COLOR[item.type] or DEFAULT_COLOR
     -- The one reason this item can't be activated (nil when it can, or when it's passive).
@@ -120,7 +125,7 @@ local function buildBlocks(item, actor)
     local ab = item.activeAbility
     if ab then
         blocks[#blocks + 1] = { kind = "sep" }
-        blocks[#blocks + 1] = { kind = "head", text = ab.name or "Active Ability" }
+        blocks[#blocks + 1] = { kind = "head", text = item.name or "Active Ability" }
 
         -- Ability output beyond the headline Power (drawn up top): a healing ability shows its heal
         -- amount, plus any status it applies. A dry-run against a zero-defense stand-in tells damage
@@ -171,8 +176,24 @@ local function buildBlocks(item, actor)
             rangeText = ab.minRange .. "-" .. (ab.range or 1)
         end
         blocks[#blocks + 1] = { kind = "stat", label = "Range", value = rangeText }
+        -- A little diamond map of that reach beneath the number: the caster at the centre, the
+        -- tiles it can strike tinted green (a friendly cast) or red (a hostile one). Skipped for a
+        -- self-only ability (range 0), which has no reach to draw.
+        local diagram = RangeDiagram.layout(ab, innerW)
+        if diagram then
+            blocks[#blocks + 1] = { kind = "rangediag", layout = diagram,
+                color = Combat.isSupportAbility(ab) and RANGE_FRIENDLY or RANGE_HOSTILE }
+        end
         if ab.speed then
             blocks[#blocks + 1] = { kind = "stat", label = "Speed", value = tostring(ab.speed) }
+        end
+        -- A channeled spell (a big AOE like Meteor Storm) winds up for `ab.channel` turns before it
+        -- fires: the caster is exposed and the effect resolves on its next slot, so the tell is a real
+        -- cost worth quoting. The note spells out the tradeoff (foes can scatter; hard control breaks it).
+        if ab.channel and ab.channel > 0 then
+            blocks[#blocks + 1] = { kind = "stat", label = "Channel",
+                value = ab.channel .. (ab.channel == 1 and " turn" or " turns") }
+            blocks[#blocks + 1] = { kind = "note", text = "Winds up before it fires; disrupted by hard control or forced movement" }
         end
         if ab.cost then
             -- Price the cast for THIS actor: a cost-reducing status (Haste) is already folded into
@@ -258,7 +279,7 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
     local innerW = w - pad * 2
     maxRight = maxRight or Scale.WIDTH
 
-    local blocks = buildBlocks(item, actor)
+    local blocks = buildBlocks(item, actor, innerW)
     local titleH, bodyH, smallH, powerH = title:getHeight(), body:getHeight(), small:getHeight(), power:getHeight()
 
     -- Measure: sum each block's height (wrapping desc against innerW, cached for the draw pass).
@@ -277,6 +298,7 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
             h = h + b.lines * bodyH + 1
         elseif b.kind == "sep" then h = h + 8
         elseif b.kind == "head" then h = h + bodyH + 2
+        elseif b.kind == "rangediag" then h = h + b.layout.height + 4
         else h = h + bodyH + 1 end -- stat
     end
     h = h + pad
@@ -330,6 +352,11 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
             love.graphics.setColor(0.95, 0.85, 0.55, 1)
             love.graphics.print(b.text, bx + pad, ty)
             ty = ty + bodyH + 2
+        elseif b.kind == "rangediag" then
+            -- Centre the diamond in the content column, a hair below the Range number.
+            local gx = bx + pad + math.floor((innerW - b.layout.width) / 2)
+            RangeDiagram.draw(b.layout, gx, ty + 2, b.color)
+            ty = ty + b.layout.height + 4
         elseif b.kind == "note" then
             love.graphics.setFont(body)
             love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)

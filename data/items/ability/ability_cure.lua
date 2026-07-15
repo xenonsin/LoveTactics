@@ -13,7 +13,6 @@ return {
     price = 180,
     repRank = 2,
     activeAbility = {
-        name = "Cure",
         target = "ally", -- includes the caster (a unit is its own ally)
         range = 3,
         speed = 3,

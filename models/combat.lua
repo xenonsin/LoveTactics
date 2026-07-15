@@ -194,22 +194,37 @@ function Combat.abilityItems(char)
     return list
 end
 
--- The unit's "default attack" weapon: the first inventory item of `type == "weapon"` that
+-- The unit's OFFENSIVE default weapon: the first inventory item of `type == "weapon"` that
 -- carries an ability, in inventory (row-major grid) order -- so a lower slot wins. Falls back
 -- to the character's hidden unarmed weapon (models/character.lua attaches `char.unarmed`) when
--- it carries no weapon. Drives the default-attack (threat) range highlight and the click-to-
--- attack basic strike. May be nil only for a hand-built char with neither.
+-- it carries no weapon. This is the "what do you threaten" attack an enemy's danger zone,
+-- overwatch, and counters read -- always a strike, never a heal, and never the player's pinned
+-- default action (see Combat.defaultAction). May be nil only for a hand-built char with neither.
 function Combat.defaultWeapon(char)
-    -- An explicit pick (set in the Loadout screen) wins, but only while the slot still holds a
-    -- usable weapon -- the grid may have been rearranged or the weapon stripped since it was pinned,
-    -- so a stale slot silently falls back to the scan below rather than attacking with nothing.
-    local slot = char.defaultWeaponSlot
+    for _, item in ipairs(Character.eachItem(char)) do
+        if item.type == "weapon" and item.activeAbility then return item end
+    end
+    return char.unarmed
+end
+
+-- The character's player-chosen DEFAULT ACTION: the ability used by the click-to-use basic action
+-- and the effective-range band shown on its turn. Unlike defaultWeapon this can be ANY ability item
+-- (a spell, a heal, a consumable), pinned in the Loadout screen via `char.defaultActionSlot`.
+-- Selection: the pinned slot (only while it still holds an ability item -- a stale pin silently
+-- falls back), else the first inventory weapon with an ability, else the first ability item of any
+-- kind, else the hidden unarmed weapon. So a fighter defaults to its sword and a mage with no weapon
+-- to its attack spell, until the player pins something else.
+function Combat.defaultAction(char)
+    local slot = char.defaultActionSlot
     if slot then
         local item = char.inventory[slot]
-        if item and item.type == "weapon" and item.activeAbility then return item end
+        if item and item.activeAbility then return item end
     end
     for _, item in ipairs(Character.eachItem(char)) do
         if item.type == "weapon" and item.activeAbility then return item end
+    end
+    for _, item in ipairs(Character.eachItem(char)) do
+        if item.activeAbility then return item end
     end
     return char.unarmed
 end
@@ -1102,6 +1117,46 @@ function Combat.planMove(combat, unit, x, y)
     for i = #back, 1, -1 do path[#path + 1] = { x = back[i].x, y = back[i].y } end
 
     return { unit = unit, path = path, cost = node.cost }
+end
+
+-- Validate an EXPLICIT, caller-supplied route for `unit` this turn: the same legality gate as
+-- planMove, but the path is given (a player-steered walk that may deliberately wander -- Advance
+-- Wars style -- rather than the shortest-path tree's pick) instead of derived. The UI's route is
+-- never trusted blind: `cells` (an origin-first list of { x, y }) must start on the unit, step one
+-- tile at a time, never double back over itself, and cross only legal walk tiles, with the summed
+-- terrain cost staying inside the movement budget -- so a hand-built detour costs exactly what it
+-- would if the unit walked it. Returns { unit, path, cost } or nil + a reason.
+function Combat.planMoveVia(combat, unit, cells)
+    if not unit.alive then return nil, "dead" end
+    if not combat.turn or combat.turn.unit ~= unit then return nil, "not this unit's turn" end
+    if combat.turn.moved then return nil, "already moved" end
+    if Status.blocksMove(unit) then return nil, "rooted" end
+    if not cells or #cells < 2 then return nil, "no path" end
+    if cells[1].x ~= unit.x or cells[1].y ~= unit.y then return nil, "not from origin" end
+
+    local arena = combat.arena
+    local budget = flatStat(unit, "movement")
+    local seen = { [key(unit.x, unit.y)] = true }
+    local cost = 0
+    for i = 2, #cells do
+        local c, p = cells[i], cells[i - 1]
+        if math.abs(c.x - p.x) + math.abs(c.y - p.y) ~= 1 then return nil, "not contiguous" end
+        if c.x < 1 or c.x > arena.cols or c.y < 1 or c.y > arena.rows then return nil, "off grid" end
+        local tile = arena.tiles[c.y][c.x]
+        if not tile.walkable then return nil, "blocked" end
+        local k = key(c.x, c.y)
+        if seen[k] then return nil, "revisit" end -- catch a double-back (incl. onto the origin) first
+        local occ = Combat.unitAt(combat, c.x, c.y)
+        if occ and occ ~= unit then return nil, "occupied" end -- the mover vacates its own tile
+        if Wall.blocksAt(combat, c.x, c.y) then return nil, "wall" end
+        seen[k] = true
+        cost = cost + tile.moveCost
+        if cost > budget then return nil, "too far" end
+    end
+
+    local path = {}
+    for i = 1, #cells do path[i] = { x = cells[i].x, y = cells[i].y } end
+    return { unit = unit, path = path, cost = cost }
 end
 
 -- Open a walk. The unit has now spent its one move for the turn and owes the move initiative at

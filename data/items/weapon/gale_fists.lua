@@ -9,7 +9,6 @@ return {
     tags = { "wind", "magical", "melee" },
     noSteal = true,
     activeAbility = {
-        name = "Gust",
         target = "enemy",
         range = 1,
         speed = 1,

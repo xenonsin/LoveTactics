@@ -13,7 +13,6 @@ return {
     price = 300,
     repRank = 3,
     activeAbility = {
-        name = "Shadow Strike",
         target = "enemy",
         range = 1,
         speed = 3,

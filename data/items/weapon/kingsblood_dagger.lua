@@ -14,7 +14,6 @@ return {
     repRank = 4,
     stealPriority = 2, -- a thief covets it above ordinary kit (below a Decoy's bait)
     activeAbility = {
-        name = "Slip",
         target = "enemy",
         range = 1,
         speed = 1, -- the fastest strike in the game: you act again almost at once

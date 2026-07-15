@@ -12,7 +12,6 @@ return {
     price = 400,
     repRank = 3,
     activeAbility = {
-        name = "Thunder Storm",
         target = "tile",
         allowOccupied = true,
         range = 3,

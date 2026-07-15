@@ -11,7 +11,6 @@ return {
     price = 220,
     repRank = 2,
     activeAbility = {
-        name = "Pinning Shot",
         target = "enemy",
         range = 4,
         minRange = 2,

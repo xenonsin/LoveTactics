@@ -20,7 +20,6 @@ return {
     repRank = 4,
     noCopy = true,
     activeAbility = {
-        name = "Transmute",
         target = "enemy",
         range = 3,
         requiresSight = true, -- you cannot covet what you cannot see

@@ -16,7 +16,6 @@ return {
     type = "ability",
     tags = { "summon", "fire" },
     activeAbility = {
-        name = "Summon Fire Elemental",
         target = "tile",
         range = 2,
         speed = 6,

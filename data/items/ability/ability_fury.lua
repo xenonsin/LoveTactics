@@ -13,7 +13,6 @@ return {
     price = 420,
     repRank = 4,
     activeAbility = {
-        name = "Fury",
         target = "self",
         range = 0,
         speed = 5,

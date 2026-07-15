@@ -10,7 +10,6 @@ return {
     type = "ability",
     tags = { "water", "magical" },
     activeAbility = {
-        name = "Rain",
         target = "tile",
         allowOccupied = true, -- an area cast may center on an occupied tile
         range = 3,

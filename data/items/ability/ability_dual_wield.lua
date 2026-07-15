@@ -62,7 +62,6 @@ return {
     price = 360,
     repRank = 3,
     activeAbility = {
-        name = "Dual Wield",
         target = "enemy",
         range = 1,
         speed = 4, -- nominal, for the initiative average only; the real cost is the summed weapon speeds

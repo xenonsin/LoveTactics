@@ -10,7 +10,6 @@ return {
     price = 460,
     repRank = 3,
     activeAbility = {
-        name = "Summon Lightning Elemental",
         target = "tile",
         range = 2,
         speed = 6,

@@ -23,4 +23,7 @@ return {
         "torch",      "sig_sworn_aegis", false,
         false,        false,             false,
     },
+    -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
+    -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
+    defaultAction = "iron_sword",
 }

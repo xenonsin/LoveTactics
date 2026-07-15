@@ -12,7 +12,6 @@ return {
     price = 280,
     repRank = 3,
     activeAbility = {
-        name = "Detonate",
         target = "enemy",
         range = 4,
         requiresSight = true,

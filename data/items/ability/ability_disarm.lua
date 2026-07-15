@@ -13,7 +13,6 @@ return {
     price = 220,
     repRank = 2,
     activeAbility = {
-        name = "Disarm",
         target = "enemy",
         range = 2,
         requiresSight = true,

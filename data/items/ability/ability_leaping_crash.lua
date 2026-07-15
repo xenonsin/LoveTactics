@@ -13,7 +13,6 @@ return {
     price = 360,
     repRank = 3,
     activeAbility = {
-        name = "Leaping Crash",
         target = "tile",   -- an empty tile to land on (not allowOccupied: you cannot land on a unit)
         range = 4,
         minRange = 1,      -- it is a leap, not a stomp in place

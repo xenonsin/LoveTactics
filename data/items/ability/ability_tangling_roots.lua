@@ -12,7 +12,6 @@ return {
     price = 220,
     repRank = 2,
     activeAbility = {
-        name = "Tangling Roots",
         target = "enemy",
         range = 3,
         requiresSight = true, -- the roots have to reach a foe you can see

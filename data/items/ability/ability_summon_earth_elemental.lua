@@ -11,7 +11,6 @@ return {
     price = 470,
     repRank = 4,
     activeAbility = {
-        name = "Summon Earth Elemental",
         target = "tile",
         range = 2,
         speed = 6,

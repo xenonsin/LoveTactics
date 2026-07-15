@@ -9,7 +9,6 @@ return {
     tags = { "lightning", "magical", "melee" },
     noSteal = true,
     activeAbility = {
-        name = "Shock",
         target = "enemy",
         range = 1,
         speed = 2,

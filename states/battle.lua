@@ -159,47 +159,102 @@ local function computeReachable(unit)
     battle.moveCells = cells
 end
 
+-- The route the current unit will walk to the cursor tile: `battle.movePath = { cells, cost }`, or
+-- nil when the cursor isn't a plain walk target. Built Advance-Wars style so the player can STEER
+-- among the many routes to a tile: as the cursor steps to a reachable neighbour of the route's end
+-- the route extends onto it (the "last touched tile" becomes a waypoint), and stepping back onto an
+-- earlier tile trims the route to there. A deliberate detour is allowed as far as the movement budget
+-- stretches (Combat.planMoveVia caps it) and is charged its full cost. Anything the trail can't
+-- absorb -- a cursor JUMP (fast mouse flick, non-adjacent), an over-budget extension, a revisit --
+-- rebuilds the plain shortest path (Combat.planMove), so the preview always shows a legal walk.
+local function updateMovePath(unit)
+    local cx, cy = battle.map.cursor.x, battle.map.cursor.y
+    -- Only a walked move draws a route: not a blink (a teleport has none), the cursor must be a
+    -- reachable tile, and standing still isn't a move.
+    if battle.blinking or (cx == unit.x and cy == unit.y)
+        or not (battle.reachable and battle.reachable[cx .. "," .. cy]) then
+        battle.movePath = nil
+        return
+    end
+
+    -- Try to reuse the existing route: trim if the cursor is on it, extend if it's adjacent to the end.
+    local prev = battle.movePath and battle.movePath.cells
+    local candidate
+    if prev then
+        local hit
+        for i, c in ipairs(prev) do if c.x == cx and c.y == cy then hit = i break end end
+        if hit then
+            candidate = {}
+            for i = 1, hit do candidate[i] = prev[i] end
+        else
+            local last = prev[#prev]
+            if math.abs(last.x - cx) + math.abs(last.y - cy) == 1 then
+                candidate = {}
+                for i = 1, #prev do candidate[i] = prev[i] end
+                candidate[#candidate + 1] = { x = cx, y = cy }
+            end
+        end
+    end
+
+    local plan = candidate and Combat.planMoveVia(battle.combat, unit, candidate)
+    plan = plan or Combat.planMove(battle.combat, unit, cx, cy)
+    battle.movePath = plan and { cells = plan.path, cost = plan.cost } or nil
+end
+
+-- The steered route, only when it actually ends on (x, y) -- so a caller reading it for a specific
+-- cell (confirm, the action preview) never picks up a route built for a different tile.
+local function movePathTo(x, y)
+    local mp = battle.movePath
+    if not mp then return nil end
+    local last = mp.cells[#mp.cells]
+    if last.x == x and last.y == y then return mp end
+    return nil
+end
+
 -- The armed ability's valid-to-hit AREA (red for offensive, green for support): every tile the
--- ability could legally land on from where the unit stands -- in range, walkable (never a wall),
--- and in line of sight when the ability needs it. A tile it CAN'T validly hit is dropped, so the
--- highlight stops at cover and never falls on a unit of the wrong kind (an ally under an enemy
--- strike, a foe under a support cast). A tile-target ability (e.g. summoning a trap) additionally
--- needs an empty cell; a self-only ability can land only on the caster's own tile. Combat.useItem
--- re-checks all of this on confirm.
+-- ability could legally land on this turn -- moving first if needed, so the reach is the WALK-AND-
+-- STRIKE band (Combat.attackReach), not just what it hits from the tile it stands on now. In range
+-- from some reachable stand tile, walkable (never a wall), and in line of sight (from that stand
+-- tile) when the ability needs it. A tile it CAN'T validly hit is dropped, so the highlight stops at
+-- cover and never falls on a unit of the wrong kind (an ally under an enemy strike, a foe under a
+-- support cast). A tile-target ability (e.g. summoning a trap) additionally needs an empty cell; a
+-- self-only ability can land only on the caster's own tile. `battle.rangeReach` records the cheapest
+-- stand tile per cell (like the default action's attackReach) so confirm can walk there and cast.
+-- Combat.useItem re-checks all of this on confirm.
 local function computeRange(unit, item)
     local ab = item.activeAbility
     local target = ab and ab.target
-    -- A self-only ability can only ever land on the caster's own tile.
+    battle.rangeReach = {}
+    -- A self-only ability can only ever land on the caster's own tile (no walk).
     if target == "self" then
         battle.rangeCells = { { x = unit.x, y = unit.y } }
+        battle.rangeReach[unit.x .. "," .. unit.y] =
+            { x = unit.x, y = unit.y, fromX = unit.x, fromY = unit.y, moveCost = 0 }
         return
     end
-    local range = Combat.abilityRange(battle.combat, unit, ab)
-        + Combat.adjacencyRangeBonus(unit.char, item)
+    -- Base range (grid-adjacency bonus folded in); attackReach adds each stand tile's own terrain
+    -- range bonus, so pass the raw base rather than Combat.abilityRange (which bakes in the CURRENT
+    -- tile's field bonus and would double-count it). Blink is a teleport, not a walk-and-strike set,
+    -- so it reaches only from the current tile.
+    local range = ((ab and ab.range) or 1) + Combat.adjacencyRangeBonus(unit.char, item)
     local minRange = Combat.abilityMinRange(ab)
     local requiresSight = ab and ab.requiresSight
+    local reachForRange = battle.blinking and {} or battle.reachable
+    local reach = Combat.attackReach(battle.combat, unit, range, reachForRange, requiresSight, minRange)
     local cells = {}
-    for dx = -range, range do
-        for dy = -range, range do
-            local d = math.abs(dx) + math.abs(dy)
-            if d <= range and d >= minRange then
-                local x, y = unit.x + dx, unit.y + dy
-                if x >= 1 and x <= battle.arena.cols and y >= 1 and y <= battle.arena.rows
-                    and battle.arena.tiles[y][x].walkable
-                    and (not requiresSight
-                         or Combat.hasLineOfSight(battle.combat, unit.x, unit.y, x, y)) then
-                    -- Drop cells the ability can't validly land on: a tile cast needs an empty
-                    -- cell; a unit-target cast can't hit a unit of the wrong side (an empty tile
-                    -- still shows, so the reach reads even with no one standing in it).
-                    local occ = Combat.unitAt(battle.combat, x, y)
-                    local valid
-                    if target == "tile" then valid = occ == nil or ab.allowOccupied == true
-                    elseif occ and target == "enemy" then valid = occ.side ~= unit.side
-                    elseif occ and target == "ally" then valid = occ.side == unit.side
-                    else valid = true end
-                    if valid then cells[#cells + 1] = { x = x, y = y } end
-                end
-            end
+    for k, cell in pairs(reach) do
+        -- Drop cells the ability can't validly land on: a tile cast needs an empty cell; a unit-target
+        -- cast can't hit a unit of the wrong side (an empty tile still shows, so the reach reads even
+        -- with no one standing in it).
+        local occ = Combat.unitAt(battle.combat, cell.x, cell.y)
+        local valid
+        if target == "tile" then valid = occ == nil or ab.allowOccupied == true
+        elseif occ and target == "enemy" then valid = occ.side ~= unit.side
+        elseif occ and target == "ally" then valid = occ.side == unit.side
+        else valid = true end
+        if valid then
+            cells[#cells + 1] = { x = cell.x, y = cell.y }
+            battle.rangeReach[k] = cell
         end
     end
     battle.rangeCells = cells
@@ -222,22 +277,26 @@ local function aoeFootprint(item, cx, cy)
     return Combat.aoeCells(battle.combat, ab, cx, cy, battle.current)
 end
 
--- The default-attack (threat) reach: where the unit could strike this turn with its default
--- weapon (first inventory weapon, else the hidden unarmed weapon), moving first if needed. Stores
--- `battle.defaultWeapon` + `battle.attackReach` (cell -> cheapest stand tile, which spans the whole
--- reach and drives click-to-attack pathing) and `battle.threatCells`, the RED highlight = the reach
--- band beyond movement, minus tiles that aren't valid to hit (the unit's own tile and any ally --
--- you can't strike a friend). Tiles inside the blue move band are left to the blue overlay so the
--- two never stack into a muddy overlap. Reads the live `battle.reachable`, so once the unit has
--- moved (reachable cleared) only what it can hit from where it now stands shows.
+-- The default-ACTION reach: every cell the unit could use its default action on this turn (the
+-- player-chosen action, Combat.defaultAction -- a strike, a heal, a summon), moving first if needed.
+-- Stores `battle.defaultAction` + `battle.attackReach` (cell -> cheapest stand tile, which spans the
+-- whole reach and drives click-to-use pathing), `battle.defaultSupport` (a friendly action, so the
+-- band reads green not red), and `battle.threatCells`, the highlight = the reach band beyond movement,
+-- keeping only cells the action can VALIDLY land on: for a strike, drop the caster's own tile and any
+-- ally; for a support action, drop the caster and any foe (empty cells in range still show either way,
+-- so the reach reads even with no target on it). Tiles inside the blue move band are left to the blue
+-- overlay so the two never stack into a muddy overlap. Reads the live `battle.reachable`, so once the
+-- unit has moved (reachable cleared) only what it can reach from where it now stands shows.
 local function computeThreat(unit)
-    local weapon = Combat.defaultWeapon(unit.char)
-    battle.defaultWeapon = weapon
-    local ab = weapon and weapon.activeAbility
-    local range = (ab and ab.range) or 1
+    local action = Combat.defaultAction(unit.char)
+    battle.defaultAction = action
+    local ab = action and action.activeAbility
+    local support = ab ~= nil and Combat.isSupportAbility(ab)
+    battle.defaultSupport = support
+    local range = ((ab and ab.range) or 1) + Combat.adjacencyRangeBonus(unit.char, action)
     -- While Blink is armed the move set is a teleport diamond, which is NOT a set of walk-and-strike
-    -- stand tiles (click-to-attack folds a WALK into the approach). So threaten only from the current
-    -- tile: the mage blinks OR strikes from where it stands, it does not walk-then-strike.
+    -- stand tiles (click-to-use folds a WALK into the approach). So reach only from the current tile:
+    -- the mage blinks OR acts from where it stands, it does not walk-then-act.
     local reachForThreat = battle.blinking and {} or battle.reachable
     battle.attackReach = Combat.attackReach(battle.combat, unit, range, reachForThreat,
         ab and ab.requiresSight, Combat.abilityMinRange(ab))
@@ -247,11 +306,12 @@ local function computeThreat(unit)
 
     local cells = {}
     for k, cell in pairs(battle.attackReach) do
-        -- Show the reach, minus what can't be hit: the caster's own tile, tiles already lit blue
-        -- (the move band), and any tile an ally occupies (a friendly unit is never a valid target).
+        -- Show the reach, minus tiles already lit blue (the move band), the caster's own tile, and any
+        -- occupant of the wrong side for this action (a friend can't be struck; a foe can't be healed).
         if not moveKeys[k] and not (cell.x == unit.x and cell.y == unit.y) then
             local occ = Combat.unitAt(battle.combat, cell.x, cell.y)
-            if not (occ and occ.side == unit.side) then
+            local wrongSide = occ and (support and occ.side ~= unit.side or not support and occ.side == unit.side)
+            if not wrongSide then
                 cells[#cells + 1] = { x = cell.x, y = cell.y }
             end
         end
@@ -335,6 +395,23 @@ local function computeDanger()
     battle.inspectFor = nil -- board changed: a lingering hover preview is rebuilt on the next frame
 end
 
+-- Auto-arm the unit's default action at the start of its turn, so its effective range shows by
+-- default (the player pins WHICH action in the Loadout screen). This is exactly the state clicking
+-- the item would arm -- armed mode, its walk-and-strike range lit -- so the player can immediately
+-- act, click the item (or Esc) to disarm and move freely, or click a different item to switch. Reads
+-- battle.defaultAction/defaultSupport (computeThreat set them just before). A default the unit can't
+-- afford right now, or a bare-handed unit with no ability at all, simply starts disarmed (move mode).
+local function armDefaultAction(current)
+    local action = battle.defaultAction
+    if not (action and action.activeAbility) then return end
+    if Combat.itemBlockReason(current, action) then return end
+    battle.armedItem = action
+    battle.mode = "armed"
+    battle.armedSupport = battle.defaultSupport
+    battle.armedTile = action.activeAbility.target == "tile"
+    computeRange(current, action)
+end
+
 -- Start the current unit's turn: MOVE mode + reachable set for a unit the player commands, or an
 -- AI delay for anyone else (an enemy, or a summon fighting for them). Control -- not side -- picks
 -- the branch, so a player's summon takes an interactive turn and an inert decoy does not.
@@ -345,9 +422,11 @@ local function beginTurn()
     battle.armedItem = nil
     battle.hoverItem = nil
     battle.rangeCells = {}
+    battle.rangeReach = {}
     battle.moveCells = {}
     battle.threatCells = {}
     battle.attackReach = {}
+    battle.movePath = nil
     if not current then return end
     computeDanger() -- every turn, so the "Threats" survey toggle stays fresh on enemy turns too
     -- A unit surfacing mid-channel doesn't take an interactive turn -- its slot IS the spell resolving.
@@ -361,6 +440,7 @@ local function beginTurn()
     if Combat.isPlayerControlled(current) then
         computeReachable(current)
         computeThreat(current)
+        armDefaultAction(current) -- start with the default action armed (its range shown by default)
         battle.map.cursor.x, battle.map.cursor.y = current.x, current.y
     else
         battle.aiTimer = AI_DELAY
@@ -398,12 +478,17 @@ end
 -- on the tile it died on. Returns false, having changed nothing, if the move is illegal. The move
 -- is spent the instant the walk starts: the blue reachable band and the red threat band both clear,
 -- so nothing on the board invites a second move while the unit is still on its feet.
-local function startWalk(unit, x, y, onDone)
-    local plan = Combat.planMove(battle.combat, unit, x, y)
+-- `cells`, when given, is a player-steered route (see updateMovePath): the walk follows it exactly
+-- rather than the shortest path, as long as Combat.planMoveVia accepts it. Any failure (or no route)
+-- falls back to the shortest path to (x, y) -- so the walk is never worse than the direct one.
+local function startWalk(unit, x, y, onDone, cells)
+    local plan = cells and Combat.planMoveVia(battle.combat, unit, cells)
+    plan = plan or Combat.planMove(battle.combat, unit, x, y)
     if not plan then return false end
     battle.walk = { handle = Combat.beginMove(battle.combat, plan), timer = 0, onDone = onDone }
     battle.reachable, battle.moveCells = {}, {}
     battle.threatCells, battle.attackReach = {}, {}
+    battle.movePath = nil
     return true
 end
 
@@ -487,14 +572,15 @@ local function cycleAbilityItem()
     cancelArm()
 end
 
--- Basic attack on the enemy at (tx, ty) with the current unit's default weapon: if the
--- cheapest stand tile for that cell isn't where the unit already is, move there first (only if
--- it hasn't moved yet), then strike -- a click-to-attack that folds an approach into one action.
--- No-op if the target is out of this turn's threat reach, or the default weapon can't resolve
--- (e.g. an inventory weapon the unit can't afford -- unarmed itself is always free).
-local function tryDefaultAttack(unit, tx, ty)
+-- Use the current unit's default ACTION on cell (tx, ty) -- a strike on a foe, or a heal/buff on an
+-- ally: if the cheapest stand tile for that cell isn't where the unit already is, move there first
+-- (only if it hasn't moved yet), then act -- a click-to-use that folds an approach into one action.
+-- No-op if the target is out of this turn's reach, or the default action can't resolve (e.g. an
+-- ability the unit can't afford -- unarmed itself is always free). Combat.useItem re-checks the
+-- target side, so a mistargeted click simply does nothing.
+local function tryDefaultAction(unit, tx, ty)
     local entry = battle.attackReach and battle.attackReach[tx .. "," .. ty]
-    local weapon = battle.defaultWeapon
+    local weapon = battle.defaultAction
     if not entry or not weapon then return end
     -- Don't reposition for a strike useItem would refuse: a cost the unit can't pay, an unmet grid
     -- requirement. Bail before moving (unarmed is free and requires nothing, so this only guards
@@ -514,12 +600,12 @@ local function tryDefaultAttack(unit, tx, ty)
     strike()
 end
 
--- Strike a revealed enemy trap on (tx, ty) with the default weapon, folding an approach move
--- into the strike exactly like tryDefaultAttack (attackReach records the cheapest stand tile).
+-- Strike a revealed enemy trap on (tx, ty) with the default action, folding an approach move
+-- into the strike exactly like tryDefaultAction (attackReach records the cheapest stand tile).
 -- Combat.strikeTrap re-checks range/visibility/cost; this just handles the click-to-destroy UX.
 local function tryDamageTrap(unit, tx, ty)
     local entry = battle.attackReach and battle.attackReach[tx .. "," .. ty]
-    local weapon = battle.defaultWeapon
+    local weapon = battle.defaultAction
     if not entry or not weapon then return end
     if Combat.itemBlockReason(unit, weapon) then return end
     local function strike()
@@ -549,11 +635,11 @@ local function wallAt(x, y)
     return battle.wallCells and battle.wallCells[x .. "," .. y]
 end
 
--- Strike a wall on (tx, ty) with the default weapon, folding an approach move into the strike
+-- Strike a wall on (tx, ty) with the default action, folding an approach move into the strike
 -- exactly like tryDamageTrap. Combat.strikeWall re-checks range/cost; this handles the click UX.
 local function tryDamageWall(unit, tx, ty)
     local entry = battle.attackReach and battle.attackReach[tx .. "," .. ty]
-    local weapon = battle.defaultWeapon
+    local weapon = battle.defaultAction
     if not entry or not weapon then return end
     if Combat.itemBlockReason(unit, weapon) then return end
     local function strike()
@@ -609,37 +695,33 @@ local function actionPreviewFor(cx, cy)
     end
 
     if battle.mode == "move" then
-        -- A foe in the default-weapon threat reach -> click-to-attack (moving into reach first).
-        if unit and unit.side ~= current.side and unit.alive then
-            local weapon = battle.defaultWeapon
-            if weapon and weapon.activeAbility
-                and battle.attackReach and battle.attackReach[cx .. "," .. cy] then
-                local preview = Combat.previewAbility(battle.combat, current, weapon, cx, cy)
-                return { kind = "attack", item = weapon, actor = current, target = unit,
-                         support = false, entry = preview and preview.entries[unit] or nil,
-                         spend = Combat.abilitySpend(current, weapon.activeAbility),
+        local action = battle.defaultAction
+        local support = battle.defaultSupport
+        local inReach = battle.attackReach and battle.attackReach[cx .. "," .. cy]
+        -- A valid default-action target on this cell, in reach -> click-to-use (moving into reach
+        -- first): a foe to strike with an offensive default, an ally to support with a friendly one.
+        if unit and unit.alive and action and action.activeAbility then
+            local validTarget = support and unit.side == current.side
+                or not support and unit.side ~= current.side
+            if validTarget and inReach then
+                local preview = Combat.previewAbility(battle.combat, current, action, cx, cy)
+                return { kind = support and "ability" or "attack", item = action, actor = current,
+                         target = unit, support = support,
+                         entry = preview and preview.entries[unit] or nil,
+                         spend = Combat.abilitySpend(current, action.activeAbility),
                          entries = preview and preview.entries or nil,
                          order = preview and preview.order or nil }
             end
-            return nil
+            return nil -- an occupied cell that isn't a valid default target: nothing to preview
         end
-        -- A revealed enemy trap in reach -> click-to-destroy.
-        local trap = revealedEnemyTrapAt(current, cx, cy)
-        if trap and battle.attackReach and battle.attackReach[cx .. "," .. cy] then
-            local weapon = battle.defaultWeapon
-            local dmg = weapon and Combat.computeTrapDamage(current, weapon) or 0
-            return { kind = "strikeTrap", item = weapon, actor = current, trap = trap,
+        -- A revealed enemy trap in reach -> click-to-destroy with an offensive default (a support
+        -- default doesn't strike). A wall in reach breaks the same way (reuses the preview shape).
+        local trap = not support and (revealedEnemyTrapAt(current, cx, cy) or wallAt(cx, cy))
+        if trap and inReach then
+            local dmg = action and Combat.computeTrapDamage(current, action) or 0
+            return { kind = "strikeTrap", item = action, actor = current, trap = trap,
                      support = false, trapDamage = dmg, trapLethal = dmg >= (trap.health or 0),
-                     spend = weapon and Combat.abilitySpend(current, weapon.activeAbility) or nil }
-        end
-        -- A wall in reach -> click-to-break (reuses the trap-strike preview shape).
-        local wall = wallAt(cx, cy)
-        if wall and battle.attackReach and battle.attackReach[cx .. "," .. cy] then
-            local weapon = battle.defaultWeapon
-            local dmg = weapon and Combat.computeTrapDamage(current, weapon) or 0
-            return { kind = "strikeTrap", item = weapon, actor = current, trap = wall,
-                     support = false, trapDamage = dmg, trapLethal = dmg >= (wall.health or 0),
-                     spend = weapon and Combat.abilitySpend(current, weapon.activeAbility) or nil }
+                     spend = action and Combat.abilitySpend(current, action.activeAbility) or nil }
         end
         -- An empty reachable tile -> move (or blink) there.
         local node = battle.reachable and battle.reachable[cx .. "," .. cy]
@@ -650,9 +732,13 @@ local function actionPreviewFor(cx, cy)
                 return { kind = "move", actor = current, steps = node.steps, moveCost = 0, blink = true,
                          spend = mb and mb.cost and { { kind = "cost", stat = mb.cost.stat, amount = mb.cost.amount } } or nil }
             end
-            -- The initiative the walk charges, not the raw path cost: a hasted unit pays half.
-            return { kind = "move", actor = current, steps = node.steps,
-                     moveCost = Combat.moveInitiative(current, node.cost) }
+            -- The initiative the walk charges, not the raw path cost: a hasted unit pays half. A
+            -- steered detour ending here costs its own (longer) route, not the shortest one's.
+            local mp = movePathTo(cx, cy)
+            local cost = mp and mp.cost or node.cost
+            local steps = mp and (#mp.cells - 1) or node.steps
+            return { kind = "move", actor = current, steps = steps,
+                     moveCost = Combat.moveInitiative(current, cost) }
         end
     end
 
@@ -660,19 +746,22 @@ local function actionPreviewFor(cx, cy)
 end
 
 -- Confirm on the cursor cell: move there (does NOT end the turn -- the unit can still act or
--- wait), attack an enemy on it with the default weapon (moving into reach first), or use the
--- armed item on it (ends the turn).
+-- wait), use the default action on it (a strike on a foe, a heal on an ally -- moving into reach
+-- first), strike a trap/wall with an offensive default, or use the armed item on it (ends the turn).
 local function confirm()
     local current = battle.current
     if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
     local cx, cy = battle.map.cursor.x, battle.map.cursor.y
     if battle.mode == "move" then
+        local action, support = battle.defaultAction, battle.defaultSupport
         local target = Combat.unitAt(battle.combat, cx, cy)
-        if target and target.side ~= current.side then
-            tryDefaultAttack(current, cx, cy)
-        elseif revealedEnemyTrapAt(current, cx, cy) then
+        local validTarget = target and target.alive and action and action.activeAbility
+            and (support and target.side == current.side or not support and target.side ~= current.side)
+        if validTarget then
+            tryDefaultAction(current, cx, cy)
+        elseif not support and revealedEnemyTrapAt(current, cx, cy) then
             tryDamageTrap(current, cx, cy)
-        elseif wallAt(cx, cy) and battle.attackReach and battle.attackReach[cx .. "," .. cy] then
+        elseif not support and wallAt(cx, cy) and battle.attackReach and battle.attackReach[cx .. "," .. cy] then
             tryDamageWall(current, cx, cy)
         elseif battle.reachable[cx .. "," .. cy] then
             if battle.blinking then
@@ -684,17 +773,35 @@ local function confirm()
                     if current.alive then computeThreat(current) computeDanger() else advanceTurn() end
                 end
             else
-                -- Walk there (startWalk already cleared the move band -- only one move per turn). Once
-                -- the unit arrives, recompute the threat band from the tile it actually stopped on and
-                -- stay in this turn so the player can still arm an item or wait. A unit that walked
-                -- into a lethal trap has no turn left to take.
+                -- Walk there (startWalk already cleared the move band -- only one move per turn),
+                -- following the player-steered route when one ends on this tile. Once the unit
+                -- arrives, recompute the threat band from the tile it actually stopped on and stay in
+                -- this turn so the player can still arm an item or wait. A unit that walked into a
+                -- lethal trap has no turn left to take.
+                local mp = movePathTo(cx, cy)
                 startWalk(current, cx, cy, function()
                     if current.alive then computeThreat(current) computeDanger() else advanceTurn() end
-                end)
+                end, mp and mp.cells)
             end
         end
     elseif battle.mode == "armed" and battle.armedItem then
-        if Combat.useItem(battle.combat, current, battle.armedItem, cx, cy) then advanceTurn() end
+        -- Walk-and-strike: if the cheapest stand tile for this target isn't where the unit is, walk
+        -- there first (only if it hasn't moved yet), then cast from where the approach left off --
+        -- exactly like the default action's click-to-use. rangeReach spans the whole armed reach.
+        local item = battle.armedItem
+        local entry = battle.rangeReach and battle.rangeReach[cx .. "," .. cy]
+        if not entry then return end
+        local function cast()
+            if Combat.useItem(battle.combat, current, item, cx, cy) then advanceTurn() end
+        end
+        if entry.fromX ~= current.x or entry.fromY ~= current.y then
+            if Combat.hasMoved(battle.combat) then return end -- can't move twice in a turn
+            startWalk(current, entry.fromX, entry.fromY, function()
+                if current.alive then cast() else advanceTurn() end
+            end)
+        else
+            cast()
+        end
     end
 end
 
@@ -744,6 +851,15 @@ local function refreshView()
     if not current then return end
     local isParty = Combat.isPlayerControlled(current) and not battle.over
 
+    -- Keep the steerable move-route preview fresh (move mode only; cleared otherwise so a stale route
+    -- never lingers into an armed cast or an enemy turn). Must run before the initiative preview below,
+    -- which prices a detour off the route's own cost.
+    if isParty and battle.mode == "move" and not busy() then
+        updateMovePath(current)
+    else
+        battle.movePath = nil
+    end
+
     -- Preview the projected initiative the pending action would give the actor. The actor
     -- sits at initiative 0; a move already taken this turn is folded in via the pending move
     -- cost, and a wait previews the delay slot (next unit's initiative + 1).
@@ -769,8 +885,12 @@ local function refreshView()
             newInit = pendingMove + (a.channel or Combat.actionSpeed(current, a, battle.armedItem))
             channelPreview = a.channel ~= nil
         elseif battle.mode == "move" then
-            local node = battle.reachable and battle.reachable[battle.map.cursor.x .. "," .. battle.map.cursor.y]
-            if node then newInit = Combat.moveInitiative(current, node.cost) end
+            if battle.movePath then
+                newInit = Combat.moveInitiative(current, battle.movePath.cost)
+            else
+                local node = battle.reachable and battle.reachable[battle.map.cursor.x .. "," .. battle.map.cursor.y]
+                if node then newInit = Combat.moveInitiative(current, node.cost) end
+            end
         end
     end
     -- Timeline entries for the panel: the live order, plus a ghost of the actor at its
@@ -812,7 +932,9 @@ local function refreshView()
             overlays.inspectMove = battle.inspectMoveCells
             overlays.inspectRange = battle.inspectRangeCells
         else
-            overlays.threat = battle.threatCells -- red default-attack reach beyond the move band
+            -- Plain move mode (the unit's default action has been disarmed to move freely): no action
+            -- band -- the range is shown while an action is armed, which is the turn-start default. Just
+            -- the movement overlay here.
             -- Split the reachable move band by danger: a tile the actor could step to that a foe
             -- could ALSO strike this turn turns purple (the intersection of your movement and an
             -- enemy's attack range), so a step into the line of fire reads; the rest stay blue.
@@ -824,6 +946,9 @@ local function refreshView()
             end
             overlays.move = safe
             overlays.moveDanger = risky
+            -- The route the actor will walk to the cursor tile, drawn as an arrow over the move wash
+            -- (nil unless the cursor is a plain walk target -- see updateMovePath).
+            overlays.path = battle.movePath and battle.movePath.cells or nil
             -- A red line pulses from each foe that threatens the tile under the cursor toward it, so
             -- the move being weighed reads as "here is who could hit me there". Only the purple
             -- movement tiles (a step the actor can actually take into a foe's range) draw it -- not
@@ -1192,8 +1317,7 @@ function battle.drawHud()
             -- A tile cast places something -- a trap, a summoned creature -- so name it rather than
             -- calling everything a trap.
             if battle.armedTile then
-                local ab = battle.armedItem and battle.armedItem.activeAbility
-                verb = "Click a tile to place " .. ((ab and ab.name) or "it")
+                verb = "Click a tile to place " .. ((battle.armedItem and battle.armedItem.name) or "it")
             elseif battle.armedSupport then verb = "Click an ally to support"
             else verb = "Click a target to strike" end
             hint = verb .. "  ·  click the item / Esc to cancel"

@@ -16,7 +16,6 @@ return {
     price = 70,
     repRank = 1,
     activeAbility = {
-        name = "Throw Bomb",
         target = "enemy", -- thrown at a foe and bursts around it, like Fireball
         range = 3,
         requiresSight = true,

@@ -11,7 +11,6 @@ return {
     price = 180,
     repRank = 2,
     activeAbility = {
-        name = "Mark Target",
         target = "enemy",
         range = 5,
         requiresSight = true,

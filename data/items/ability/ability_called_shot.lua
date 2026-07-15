@@ -11,7 +11,6 @@ return {
     price = 260,
     repRank = 3,
     activeAbility = {
-        name = "Called Shot",
         target = "enemy",
         range = 5,
         minRange = 2,

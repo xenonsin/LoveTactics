@@ -10,7 +10,6 @@ return {
     tags = { "poison", "physical", "melee" },
     noSteal = true,
     activeAbility = {
-        name = "Toxic Blow",
         target = "enemy",
         range = 1,
         speed = 3,

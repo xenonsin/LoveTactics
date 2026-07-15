@@ -12,7 +12,6 @@ return {
     price = 340,
     repRank = 3,
     activeAbility = {
-        name = "Rain of Arrows",
         -- A saturating volley is aimed at a CELL, not a single foe: it can be centred on any
         -- walkable tile in range -- empty ground, an enemy, or one of your own (allowOccupied) --
         -- and the blast then sweeps everyone standing in the 3x3, friend and foe alike.

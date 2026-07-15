@@ -8,7 +8,6 @@ return {
     tags = { "physical", "melee" },
     noSteal = true,
     activeAbility = {
-        name = "Maul",
         target = "enemy",
         range = 1,
         speed = 5, -- slow and lurching

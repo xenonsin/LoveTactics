@@ -26,7 +26,6 @@ return {
     price = 420,
     repRank = 3,
     activeAbility = {
-        name = "Summon Wolf",
         target = "tile",
         range = 1,
         speed = 6,

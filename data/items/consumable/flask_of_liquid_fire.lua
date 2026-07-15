@@ -14,7 +14,6 @@ return {
     price = 110,
     repRank = 1,
     activeAbility = {
-        name = "Throw Flask",
         target = "tile",
         range = 3,
         requiresSight = true,

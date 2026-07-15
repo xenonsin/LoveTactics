@@ -40,7 +40,7 @@ local function drawLock(x, y)
 end
 
 -- Vertices of a 5-point star inscribed in radius `r` about (cx, cy), point-up. Used for the
--- "default weapon" badge (gold/filled when pinned, faint outline when merely pinnable).
+-- "default action" badge (gold/filled when pinned, faint outline when merely pinnable).
 local function starPoints(cx, cy, r)
     local pts = {}
     for k = 0, 9 do
@@ -50,6 +50,28 @@ local function starPoints(cx, cy, r)
         pts[#pts + 1] = cy + math.sin(ang) * rad
     end
     return pts
+end
+
+-- Draw the default-action star at (cx, cy): gold + filled when `pinned` (this cell IS the default),
+-- a faint gold outline otherwise (the affordance that it CAN be pinned). Shared by the cell badge
+-- and the loadout legend so the two read as the same mark. Exposed as InventoryGrid.drawStar.
+local function drawStar(cx, cy, r, pinned)
+    if pinned then
+        love.graphics.setColor(0, 0, 0, 0.55)
+        love.graphics.circle("fill", cx, cy, r + 2)
+        love.graphics.setColor(0.98, 0.82, 0.30)
+        love.graphics.polygon("fill", starPoints(cx, cy, r))
+        love.graphics.setColor(0.4, 0.3, 0.05)
+        love.graphics.setLineWidth(1)
+        love.graphics.polygon("line", starPoints(cx, cy, r))
+    else
+        love.graphics.setColor(0, 0, 0, 0.35)
+        love.graphics.circle("fill", cx, cy, r + 2)
+        love.graphics.setColor(0.85, 0.85, 0.55, 0.55)
+        love.graphics.setLineWidth(1.5)
+        love.graphics.polygon("line", starPoints(cx, cy, r))
+    end
+    love.graphics.setLineWidth(1)
 end
 
 function InventoryGrid.new(opts)
@@ -92,29 +114,41 @@ function InventoryGrid:indexAt(px, py)
     return nil
 end
 
--- Does cell `i` hold an attackable weapon (a default-weapon candidate)? Mirrors
--- Combat.defaultWeapon's test so the star badge only offers itself on cells that can be pinned.
-function InventoryGrid:isWeaponCell(i)
+-- Does cell `i` hold an ability item (a default-action candidate)? Mirrors Combat.defaultAction's
+-- test so the star badge only offers itself on cells that can be pinned -- any ability, not just a
+-- weapon (a spell or a heal can be the default action too).
+function InventoryGrid:isActionCell(i)
     local item = self.char and i and self.char.inventory[i]
-    return item ~= nil and item.type == "weapon" and item.activeAbility ~= nil
+    return item ~= nil and item.activeAbility ~= nil
 end
 
--- Top-right corner rect where a weapon cell's "default weapon" star badge is drawn / clicked.
+-- Top-right corner rect where an action cell's "default action" star badge is drawn / clicked. A
+-- touch larger than the badge so the mouse target is easy and doesn't fight the item pickup.
 function InventoryGrid:starRect(i)
     local sx, sy, sw = self:slotRect(i)
-    local d = 20
-    return sx + sw - d - 3, sy + 3, d, d
+    local d = 26
+    return sx + sw - d - 2, sy + 2, d, d
 end
 
--- Pin (or un-pin) cell `i` as the character's default attack weapon. Only weapon cells qualify;
--- clicking the current default toggles it back to the auto pick (nil). Combat.defaultWeapon reads
--- char.defaultWeaponSlot, validating it still holds a weapon, so a stale pin is harmless.
+-- The action cell whose star badge is under (px, py), or nil. Lets the host show a star tooltip and
+-- swap the click's meaning (pin the default) for the item pickup on that corner of the cell.
+function InventoryGrid:starAt(px, py)
+    local i = self:indexAt(px, py)
+    if not (i and self:isActionCell(i)) then return nil end
+    local rx, ry, rw, rh = self:starRect(i)
+    if px >= rx and px <= rx + rw and py >= ry and py <= ry + rh then return i end
+    return nil
+end
+
+-- Pin (or un-pin) cell `i` as the character's default action. Only ability cells qualify; clicking
+-- the current default toggles it back to the auto pick (nil). Combat.defaultAction reads
+-- char.defaultActionSlot, validating it still holds an ability item, so a stale pin is harmless.
 function InventoryGrid:setDefaultAt(i)
-    if not (self.char and self:isWeaponCell(i)) then return false end
-    if self.char.defaultWeaponSlot == i then
-        self.char.defaultWeaponSlot = nil
+    if not (self.char and self:isActionCell(i)) then return false end
+    if self.char.defaultActionSlot == i then
+        self.char.defaultActionSlot = nil
     else
-        self.char.defaultWeaponSlot = i
+        self.char.defaultActionSlot = i
     end
     return true
 end
@@ -205,30 +239,13 @@ function InventoryGrid:draw()
         end
     end
 
-    -- Default-weapon star, top-right of each weapon cell: gold + filled on the pinned default,
-    -- a faint outline on the other weapons (the affordance that they can be pinned). Non-weapon
-    -- cells get nothing. Drawn over the items so it is never hidden by an icon.
+    -- Default-action star, top-right of each ability cell: gold + filled on the pinned default,
+    -- a faint outline on the other ability cells (the affordance that they can be pinned). Cells
+    -- with no ability get nothing. Drawn over the items so it is never hidden by an icon.
     for i = 1, COLS * ROWS do
-        if self:isWeaponCell(i) then
+        if self:isActionCell(i) then
             local rx, ry, rw = self:starRect(i)
-            local cx, cy, r = rx + rw / 2, ry + rw / 2, rw * 0.5
-            local pts = starPoints(cx, cy, r)
-            local pinned = (self.char.defaultWeaponSlot == i)
-            if pinned then
-                love.graphics.setColor(0, 0, 0, 0.55)
-                love.graphics.circle("fill", cx, cy, r + 2)
-                love.graphics.setColor(0.98, 0.82, 0.30)
-                love.graphics.polygon("fill", pts)
-                love.graphics.setColor(0.4, 0.3, 0.05)
-                love.graphics.setLineWidth(1)
-                love.graphics.polygon("line", pts)
-            else
-                love.graphics.setColor(0, 0, 0, 0.35)
-                love.graphics.circle("fill", cx, cy, r + 2)
-                love.graphics.setColor(0.85, 0.85, 0.55, 0.55)
-                love.graphics.setLineWidth(1.5)
-                love.graphics.polygon("line", pts)
-            end
+            drawStar(rx + rw / 2, rw / 2 + ry, rw * 0.42, self.char.defaultActionSlot == i)
         end
     end
     love.graphics.setLineWidth(1)
@@ -268,6 +285,7 @@ end
 
 function InventoryGrid:mousemoved(x, y)
     self.hover = self:indexAt(x, y)
+    self.hoverStar = self:starAt(x, y) -- the star badge under the pointer, or nil (drives its tooltip)
 end
 
 -- Returns true if the click landed on a cell (so the panel can treat it as handled).
@@ -276,9 +294,9 @@ function InventoryGrid:mousepressed(x, y, button)
     local i = self:indexAt(x, y)
     if not i then return false end
     self.cursor = i
-    -- A click on a weapon cell's star badge pins/un-pins the default weapon instead of picking the
+    -- A click on an ability cell's star badge pins/un-pins the default action instead of picking the
     -- item up (checked before activate so the two never fire on one click).
-    if self:isWeaponCell(i) then
+    if self:isActionCell(i) then
         local rx, ry, rw, rh = self:starRect(i)
         if x >= rx and x <= rx + rw and y >= ry and y <= ry + rh then
             self:setDefaultAt(i)
@@ -306,5 +324,8 @@ function InventoryGrid:gamepadpressed(_, button)
     elseif button == "a" then self:activate(self.cursor)
     end
 end
+
+-- The default-action star mark, for the host's legend (same look as the cell badge).
+InventoryGrid.drawStar = drawStar
 
 return InventoryGrid

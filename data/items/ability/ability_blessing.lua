@@ -12,7 +12,6 @@ return {
     price = 280,
     repRank = 3,
     activeAbility = {
-        name = "Blessing",
         target = "tile",
         allowOccupied = true,
         support = true,

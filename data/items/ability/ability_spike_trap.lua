@@ -11,7 +11,6 @@ return {
     price = 330,
     repRank = 3,
     activeAbility = {
-        name = "Spike Trap",
         target = "tile",
         range = 3,
         speed = 4,

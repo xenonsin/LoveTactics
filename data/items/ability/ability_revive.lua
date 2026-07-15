@@ -13,7 +13,6 @@ return {
     price = 480,
     repRank = 4,
     activeAbility = {
-        name = "Revive",
         target = "tile",
         support = true, -- friendly cast: preview green
         range = 3,

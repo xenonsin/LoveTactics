@@ -14,7 +14,6 @@ return {
     price = 95,
     repRank = 1,
     activeAbility = {
-        name = "Pickpocket",
         target = "enemy",
         range = 1,
         speed = 4,

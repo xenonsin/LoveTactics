@@ -877,6 +877,11 @@ function Party:drawMemberGrid()
         love.graphics.print(row.label, self.grid.x + 36, ly)
         ly = ly + 24
     end
+    -- Default-action star: the same gold mark drawn on an ability cell, so the badge on the grid
+    -- reads without hunting for what it means (hover the badge itself for the fuller tooltip).
+    InventoryGrid.drawStar(self.grid.x + 13, ly + 8, 8, true)
+    love.graphics.setColor(0.8, 0.82, 0.88)
+    love.graphics.print("Default action (click the star to set)", self.grid.x + 36, ly)
 end
 
 function Party:drawPool()
@@ -926,9 +931,9 @@ function Party:drawPromptBar()
         add(cancelGlyph, "Close", PROMPT_NO)
         add(regionGlyph, "Region")
         add(switchGlyph, "Switch")
-        -- Set-default-weapon control, shown only when a weapon cell is focused (it's the only place
+        -- Set-default-action control, shown only when an ability cell is focused (it's the only place
         -- pinning does anything). Matches the star badge drawn on the grid cell.
-        if self.focus == "grid" and self.grid:isWeaponCell(self.grid.cursor) then
+        if self.focus == "grid" and self.grid:isActionCell(self.grid.cursor) then
             add(pad and "X" or "F", "Default")
         end
     end
@@ -959,12 +964,45 @@ function Party:drawDrag()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- Explain the default-action star when the pointer rests on the badge (mouse only), so its meaning
+-- is a hover away and not just a legend line. Reads whether THIS cell is the current default so the
+-- text tells the player what a click will do (pin it, or clear it). A small self-contained box near
+-- the pointer, clamped on-screen; it replaces the item tooltip while the pointer is on the badge.
+function Party:drawStarTooltip(cell)
+    local pinned = self:currentChar() and self:currentChar().defaultActionSlot == cell
+    local title = pinned and "Default action" or "Set default action"
+    local body = "The action used for click-to-use on the battlefield and the reach band shown on this"
+        .. " unit's turn. " .. (pinned and "Click the star to clear it."
+            or "Click the star to pin it -- any ability can be the default.")
+
+    local W, pad = 240, 10
+    local _, lines = self.tinyFont:getWrap(body, W - pad * 2)
+    local h = pad + self.smallFont:getHeight() + 4 + #lines * (self.tinyFont:getHeight() + 1) + pad
+    local x = math.min(self.mx + 16, Scale.WIDTH - W - 8)
+    local y = math.min(self.my + 16, Scale.HEIGHT - h - 8)
+
+    love.graphics.setColor(0.10, 0.11, 0.15, 0.97)
+    love.graphics.rectangle("fill", x, y, W, h, 6, 6)
+    love.graphics.setColor(0.98, 0.82, 0.30)
+    love.graphics.rectangle("line", x, y, W, h, 6, 6)
+    love.graphics.setFont(self.smallFont)
+    love.graphics.setColor(0.98, 0.86, 0.45)
+    love.graphics.print(title, x + pad, y + pad)
+    love.graphics.setFont(self.tinyFont)
+    love.graphics.setColor(0.82, 0.84, 0.9)
+    love.graphics.printf(body, x + pad, y + pad + self.smallFont:getHeight() + 4, W - pad * 2, "left")
+    love.graphics.setColor(1, 1, 1)
+end
+
 -- Item tooltip, sourced by the device in use so it never lingers out of place: with the mouse it
 -- follows the pointer and shows only while a cell is hovered (so it clears the moment the pointer
 -- leaves); with keyboard/gamepad it sits at the active region's cursor cell. Out of combat there is
 -- no acting unit, so `actor` is nil: ItemTooltip shows the item's static stats.
 function Party:drawActiveTooltip()
     if InputMode.isMouse() then
+        -- The star badge under the pointer wins over the item tooltip (they'd otherwise stack in the
+        -- cell's top-right corner), naming what a click there does.
+        if self.grid.hoverStar then self:drawStarTooltip(self.grid.hoverStar) return end
         local item, maxRight
         if self.pool.hover then
             item, maxRight = self.pool:itemAt(self.pool.hover), Scale.WIDTH -- ItemTooltip flips left
@@ -1048,6 +1086,17 @@ function Party:mousepressed(x, y, button)
     if cell then
         self:setFocus("grid")
         self.grid.cursor = cell
+        -- A click on an ability cell's star badge pins/un-pins the default action instead of picking
+        -- the item up. The grid can't see its own clicks here (the panel owns every grid mutation), so
+        -- this mirrors InventoryGrid:mousepressed's star check -- without it the star is unreachable
+        -- by mouse and every click just lifts the item.
+        if empty and self.grid:isActionCell(cell) then
+            local rx, ry, rw, rh = self.grid:starRect(cell)
+            if x >= rx and x <= rx + rw and y >= ry and y <= ry + rh then
+                self.grid:setDefaultAt(cell)
+                return
+            end
+        end
         self:activateGrid(cell)
         if empty and self.grid.picked == cell then self:beginDrag("grid", cell, x, y) end
         return

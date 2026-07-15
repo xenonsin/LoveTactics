@@ -14,7 +14,6 @@ return {
     price = 140,
     repRank = 2,
     activeAbility = {
-        name = "Thrust",
         target = "tile",       -- aim an adjacent tile: it sets the direction the thrust runs
         allowOccupied = true,  -- the first tile may hold a foe -- the thrust starts there and drives on
         range = 1,

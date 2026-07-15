@@ -13,7 +13,6 @@ return {
     price = 360,
     repRank = 3,
     activeAbility = {
-        name = "Sanctuary",
         target = "tile",
         allowOccupied = true,
         support = true, -- friendly area cast: preview green

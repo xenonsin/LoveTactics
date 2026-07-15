@@ -25,4 +25,7 @@ return {
         "buckler",       "sig_wolfsong_horn",     "healing_potion",
         "bow",           "ability_rain_of_arrows", "ability_summon_wolf",
     },
+    -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
+    -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
+    defaultAction = "bow",
 }
