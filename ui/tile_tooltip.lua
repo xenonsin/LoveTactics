@@ -304,6 +304,34 @@ local function buildBlocks(info)
     return blocks
 end
 
+-- Sum the height of `blocks` at `innerW`, caching each wrapped desc's line count on the block itself
+-- so the draw pass lays it out exactly as measured (the box height can never drift from its content).
+local function measureBlocks(blocks, innerW, body)
+    local titleH, bodyH, barH = titleFont:getHeight(), body:getHeight(), 6
+    local h = 9 -- top pad
+    for _, b in ipairs(blocks) do
+        if b.kind == "title" then h = h + titleH + 3
+        elseif b.kind == "desc" then
+            local _, lines = body:getWrap(b.text, innerW)
+            b.lines = math.max(1, #lines)
+            h = h + b.lines * bodyH + 2
+        elseif b.kind == "sep" then h = h + 8
+        elseif b.kind == "head" then h = h + bodyH + 3
+        elseif b.kind == "bar" then h = h + bodyH + barH + 4
+        else h = h + bodyH + 1 end -- stat
+    end
+    return h + 9 -- bottom pad
+end
+
+-- The height the box for `info` would need at `width`. Shares buildBlocks + the measure walk with
+-- draw, so it can't disagree with what gets drawn. Lets a caller stacking several boxes into a fixed
+-- column work out what fits BEFORE it commits any of them to the screen (states/battle.lua).
+function TileTooltip.measure(info, width)
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap) then return 0 end
+    local _, body = fonts()
+    return measureBlocks(buildBlocks(info), ((width or 210) - 9 * 2), body)
+end
+
 -- Draw the tooltip for the hovered tile `info` anchored near (mx, my). `maxRight` caps the box's
 -- right edge so it never slides under the combat panel (defaults to the screen width). When
 -- `opts.dock` is set the box is parked in the bottom-left gutter instead of following the cursor,
@@ -319,21 +347,7 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
     local blocks = buildBlocks(info)
     local titleH, bodyH = title:getHeight(), body:getHeight()
     local barH = 6 -- pool bar thickness
-
-    -- Measure: sum each block's height (wrapping desc against innerW, cached for the draw pass).
-    local h = pad
-    for _, b in ipairs(blocks) do
-        if b.kind == "title" then h = h + titleH + 3
-        elseif b.kind == "desc" then
-            local _, lines = body:getWrap(b.text, innerW)
-            b.lines = math.max(1, #lines)
-            h = h + b.lines * bodyH + 2
-        elseif b.kind == "sep" then h = h + 8
-        elseif b.kind == "head" then h = h + bodyH + 3
-        elseif b.kind == "bar" then h = h + bodyH + barH + 4
-        else h = h + bodyH + 1 end -- stat
-    end
-    h = h + pad
+    local h = measureBlocks(blocks, innerW, body)
 
     -- Position near the cursor; flip left and clamp so the box stays within [4, maxRight].
     local bx = mx + 14

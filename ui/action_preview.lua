@@ -6,10 +6,15 @@
 -- state (states/battle.lua) computes the outcome via Combat.previewAbility and draws this last, so it
 -- floats above the board and the panel. No love.graphics at require-time.
 --
---   ActionPreview.draw(action, charBox, maxRight)
+--   ActionPreview.draw(action, charBox, maxRight) -> { x, y, w, h }  (the box it drew)
 --     action  = { item, actor, target, support, entry = <Combat.previewAbility entry|nil>,
 --                 spend = <Combat.abilitySpend list|nil> }
 --     charBox = { x, y, w, h } the character tooltip's on-screen rect (this anchors to its left)
+--
+-- A COUNTER -- a reflex the target would answer the blow with (Combat.previewCounters) -- is drawn by
+-- this same widget as a box of its own, via ActionPreview.counterAction. The caller stacks the boxes
+-- in resolution order, which is why draw reports the rect it drew: an answer is a second action in the
+-- exchange and reads best as a peer of the one that provoked it, not as a footnote inside it.
 --
 -- Content is assembled once into an ordered list of blocks that is both measured and drawn, so the
 -- computed box height can never drift from what's rendered (mirrors the other tooltip widgets).
@@ -41,6 +46,7 @@ local DAMAGE = { 0.95, 0.45, 0.42 }
 local HEAL = { 0.55, 0.90, 0.58 }
 local LETHAL = { 1.00, 0.35, 0.32 }
 local TIME = { 0.95, 0.85, 0.55 }    -- gold, matching the timeline/initiative accent
+local WARN = { 0.98, 0.72, 0.38 }    -- amber: what this action costs you BACK (a counter)
 
 -- Cost value tint per resource stat (matches the item-grid cost badges / item tooltip). Health is
 -- PARTY blue: a cost only ever prices the player's own actor, whose HP bar is blue.
@@ -54,8 +60,10 @@ local function titleCase(s)
     return (tostring(s):gsub("^%l", string.upper))
 end
 
--- Border/title tint: blue for a move, green for a friendly cast, red for anything hostile.
+-- Border/title tint: blue for a move, green for a friendly cast, amber for a counter thrown back at
+-- you, red for anything hostile you throw.
 local function accentFor(action)
+    if action.kind == "counter" then return WARN end
     if action.kind == "move" then return MOVE end
     if action.support then return SUPPORT end
     return OFFENSE
@@ -99,6 +107,45 @@ local function appendSpend(blocks, action, ab)
     end
 end
 
+-- Build the blocks for a COUNTER box: a reflex the target would answer this blow with, drawn as its
+-- own panel in the stack rather than a footnote on the action's (see ActionPreview.counterAction).
+-- It reads exactly like the action it answers -- name, "vs <whoever eats it>", then the damage or the
+-- status -- because that is what it is: a second action in the exchange, thrown by the other side.
+-- Amber-framed, the colour every "this is about to cost you" mark on screen wears.
+local function buildCounterBlocks(action)
+    local c = action.counter
+    local blocks = { { kind = "title", text = c.name, color = WARN } }
+    blocks[#blocks + 1] = { kind = "sub",
+        text = "vs " .. ((action.actor and action.actor.char and action.actor.char.name) or "you") }
+    -- No divider under the header, unlike the action box: a whole exchange (a preempt, the blow, an
+    -- answer or two) has to stack inside one column, and these boxes are short enough to read without
+    -- one. The rows they'd separate are two lines away, not twelve.
+    if c.status then
+        blocks[#blocks + 1] = { kind = "stat", label = "Applies", value = c.status, valueColor = WARN }
+    else
+        blocks[#blocks + 1] = { kind = "stat", label = "Damage",
+            value = (c.damage or 0) > 0 and ("-" .. c.damage) or "none", valueColor = DAMAGE }
+    end
+    -- The two reflexes that break the ordinary "they hit you back" shape. Their PLACE in the stack
+    -- already says when they land (a preempt boxes above the blow, an ordinary counter below), so
+    -- these lines say what that means rather than repeating the order.
+    if c.deflects then
+        blocks[#blocks + 1] = { kind = "note", text = "Your blow never lands", color = MUTED }
+    elseif c.first then
+        blocks[#blocks + 1] = { kind = "note", text = "Strikes first", color = MUTED }
+    end
+    if c.lethal then
+        blocks[#blocks + 1] = { kind = "note", text = "Would defeat you!", color = LETHAL }
+    end
+    return blocks
+end
+
+-- Wrap one entry from `action.counters` as an action descriptor of its own, so the caller can draw it
+-- as a separate box in the resolution stack: ActionPreview.draw(ActionPreview.counterAction(c, action), ...).
+function ActionPreview.counterAction(counter, action)
+    return { kind = "counter", counter = counter, actor = action.actor, target = action.target }
+end
+
 -- Build the ordered content blocks for `action`. Block kinds mirror the sibling tooltips:
 --   title { text, color }              -- action verb / ability name
 --   sub   { text }                     -- second line ("vs <target>", "onto this tile", ...)
@@ -106,6 +153,7 @@ end
 --   stat  { label, value, valueColor } -- label (left) + value (right)
 --   note  { text, color }              -- a standalone coloured line (e.g. "Defeats target!")
 local function buildBlocks(action)
+    if action.kind == "counter" then return buildCounterBlocks(action) end
     local accent = accentFor(action)
     local blocks = { { kind = "title", text = titleFor(action), color = accent } }
 
@@ -200,6 +248,27 @@ local function buildBlocks(action)
     return blocks
 end
 
+-- Sum the height of `blocks`. Shared by measure + draw, so a box's height can never drift from what
+-- it renders.
+local function measureBlocks(blocks)
+    local title, body, small = fonts()
+    local h = 9 -- top pad
+    for _, b in ipairs(blocks) do
+        if b.kind == "title" then h = h + title:getHeight() + 3
+        elseif b.kind == "sub" then h = h + small:getHeight() + 4
+        elseif b.kind == "sep" then h = h + 8
+        else h = h + body:getHeight() + 1 end -- stat, note
+    end
+    return h + 9 -- bottom pad
+end
+
+-- The height `action`'s box would need. Lets a caller stacking a whole exchange into a fixed column
+-- work out what fits before it commits anything to the screen (states/battle.lua).
+function ActionPreview.measure(action)
+    if not action then return 0 end
+    return measureBlocks(buildBlocks(action))
+end
+
 -- Draw the action preview for `action` anchored to the character tooltip rect `charBox`. By
 -- default it sits to the LEFT of the box (flipping right when there's no room); pass
 -- `opts.placement = "above"` to stack it directly ABOVE the box instead (sharing its left edge),
@@ -217,20 +286,13 @@ function ActionPreview.draw(action, charBox, maxRight, opts)
 
     local blocks = buildBlocks(action)
     local titleH, bodyH, smallH = title:getHeight(), body:getHeight(), small:getHeight()
-
-    -- Measure: sum each block's height.
-    local h = pad
-    for _, b in ipairs(blocks) do
-        if b.kind == "title" then h = h + titleH + 3
-        elseif b.kind == "sub" then h = h + smallH + 4
-        elseif b.kind == "sep" then h = h + 8
-        else h = h + bodyH + 1 end -- stat, note
-    end
-    h = h + pad
+    local h = measureBlocks(blocks)
 
     -- Position relative to the character box. "above" stacks directly on top of it (same left
     -- edge), floored at dockTop; otherwise anchor to its left, flipping right when there's no room.
-    local gap = 8
+    -- `opts.gap` tightens the spacing when the caller is stacking boxes that belong to each other
+    -- (a blow and the counters answering it), so they read as one exchange and fit one column.
+    local gap = opts.gap or 8
     local bx, by
     if opts.placement == "above" then
         bx = math.max(4, math.min(charBox.x, maxRight - w - 4))
@@ -286,6 +348,9 @@ function ActionPreview.draw(action, charBox, maxRight, opts)
     end
 
     love.graphics.setColor(1, 1, 1)
+    -- Report the drawn box (like ui/tile_tooltip.lua) so a caller stacking the exchange can anchor
+    -- the next panel to this one.
+    return { x = bx, y = by, w = w, h = h }
 end
 
 return ActionPreview

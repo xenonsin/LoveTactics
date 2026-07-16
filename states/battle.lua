@@ -862,11 +862,16 @@ local function actionPreviewFor(cx, cy)
                      moveCost = Combat.moveInitiative(current, cost) }
         end
         local preview = Combat.previewAbility(battle.combat, current, item, cx, cy)
+        local entry = preview and unit and preview.entries[unit] or nil
         return {
             kind = (item.activeAbility.target == "tile") and "place" or "ability",
             item = item, actor = current, target = unit, support = battle.armedSupport,
             spend = Combat.abilitySpend(current, item.activeAbility),
-            entry = preview and unit and preview.entries[unit] or nil,
+            entry = entry,
+            -- Weighed from the tile the cast fires from -- the plan's stand tile, which a steered
+            -- approach may have moved off the actor's own square.
+            counters = Combat.previewCounters(battle.combat, current, item, unit,
+                { entry = entry, fromX = plan.entry.fromX, fromY = plan.entry.fromY }),
             entries = preview and preview.entries or nil, -- every affected unit (AoE), for banner preview
             order = preview and preview.order or nil, -- ordered affected units, for the AoE summary
         }
@@ -883,9 +888,14 @@ local function actionPreviewFor(cx, cy)
                 or not support and unit.side ~= current.side
             if validTarget and inReach then
                 local preview = Combat.previewAbility(battle.combat, current, action, cx, cy)
+                local entry = preview and preview.entries[unit] or nil
                 return { kind = support and "ability" or "attack", item = action, actor = current,
                          target = unit, support = support,
-                         entry = preview and preview.entries[unit] or nil,
+                         entry = entry,
+                         -- Click-to-use walks into reach first, so the answer is weighed from the
+                         -- stand tile the strike fires from, not the tile the actor stands on now.
+                         counters = Combat.previewCounters(battle.combat, current, action, unit,
+                             { entry = entry, fromX = inReach.fromX, fromY = inReach.fromY }),
                          spend = Combat.abilitySpend(current, action.activeAbility),
                          entries = preview and preview.entries or nil,
                          order = preview and preview.order or nil }
@@ -1598,30 +1608,65 @@ function battle.drawTileTooltip(mx, my)
 
     local maxRight = Scale.WIDTH - PANEL_W
     local W = LEFT_W - 32 -- full column width (16px margins each side)
-    local dockTop, gap = 150, 8
+    local dockTop, gap, exGap = 150, 8, 4
 
-    -- Terrain box at the very bottom of the column. Any hazards on the tile ride along on the same
-    -- info so they read as a section directly above the terrain (and below the occupant box).
-    local terrainBox = TileTooltip.draw(
-        { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
-          hazards = Hazard.allAt(battle.combat, cx, cy) },
-        mx, my, maxRight, { dock = true, dockX = 16, dockTop = dockTop, width = W })
-    local topBox = terrainBox
-
-    -- Occupant (unit or trap) in its own box, separated from the terrain by a gap.
+    local terrainInfo = { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
+                          hazards = Hazard.allAt(battle.combat, cx, cy) }
     local objInfo
     if unit and unit.char then objInfo = { unit = unit, preview = preview }
     elseif trap then objInfo = { trap = trap, preview = preview } end
-    if objInfo then
+
+    -- The EXCHANGE, in resolution order (bottom-up, so the list reads last-beat-first): the counters
+    -- that answer after the blow, then the blow, then any reflex that answers BEFORE it (Keen Senses).
+    -- Stacked upward, reading the column downward reads the beats in the order they play out. Each is
+    -- its own box: an answer is a second action in the trade, not a footnote on yours.
+    local exchange = {}
+    if action then
+        local before, after = {}, {}
+        for _, c in ipairs(action.counters or {}) do
+            if c.first then before[#before + 1] = c else after[#after + 1] = c end
+        end
+        for i = #after, 1, -1 do exchange[#exchange + 1] = ActionPreview.counterAction(after[i], action) end
+        exchange[#exchange + 1] = action
+        for i = #before, 1, -1 do exchange[#exchange + 1] = ActionPreview.counterAction(before[i], action) end
+    end
+
+    -- The column is a fixed height and the content isn't: a wordy terrain box, a long status list and
+    -- a two-reflex exchange together overrun it, and boxes clamped at dockTop would then draw over
+    -- each other. So measure first and let the REFERENCE boxes yield -- the exchange is what the click
+    -- commits to, and it always gets its room. Terrain goes first (the board itself shows the tile),
+    -- then the occupant (whose bars are on its board token too). Both almost always fit; this is the
+    -- valve for when they don't.
+    local budget = Scale.HEIGHT - 8 - dockTop
+    for _, a in ipairs(exchange) do budget = budget - ActionPreview.measure(a) - exGap end
+    local objH = objInfo and (TileTooltip.measure(objInfo, W) + gap) or 0
+    local terrainH = TileTooltip.measure(terrainInfo, W) + gap
+    local showObj = objInfo ~= nil and objH <= budget
+    local showTerrain = terrainH + (showObj and objH or 0) <= budget
+
+    -- Terrain box at the very bottom of the column. Any hazards on the tile ride along on the same
+    -- info so they read as a section directly above the terrain (and below the occupant box).
+    local topBox
+    if showTerrain then
+        topBox = TileTooltip.draw(terrainInfo, mx, my, maxRight,
+            { dock = true, dockX = 16, dockTop = dockTop, width = W })
+    end
+
+    -- Occupant (unit or trap) in its own box, separated from the terrain by a gap.
+    if showObj then
         local objBox = TileTooltip.draw(objInfo, mx, my, maxRight,
             { dock = true, dockX = 16, dockTop = dockTop, width = W,
-              dockBottom = (terrainBox and terrainBox.y or Scale.HEIGHT - 8) - gap })
+              dockBottom = (topBox and topBox.y or Scale.HEIGHT - 8) - gap })
         if objBox then topBox = objBox end
     end
 
-    -- Action preview above whatever box is currently on top.
-    if action and topBox then
-        ActionPreview.draw(action, topBox, maxRight, { placement = "above", dockTop = dockTop, width = W })
+    -- Then the exchange, each box anchored above the last. A tighter gap than the one between the
+    -- reference boxes below: these are beats of a single trade and read as one unit.
+    local exOpts = { placement = "above", dockTop = dockTop, width = W, gap = exGap }
+    -- With every reference box dropped there is nothing to anchor to: start from the column floor.
+    topBox = topBox or { x = 16, y = Scale.HEIGHT - 8 + exGap, w = W, h = 0 }
+    for _, a in ipairs(exchange) do
+        topBox = ActionPreview.draw(a, topBox, maxRight, exOpts) or topBox
     end
 end
 

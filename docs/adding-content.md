@@ -316,6 +316,24 @@ general's relic hands its rule to the player. A signature relic carries a real i
 > but character *blueprints* no longer carry a `traits` field — author the innate as a bound signature
 > item instead.
 
+A trait that **retaliates** — answers a blow with one of its own — declares what provokes it as data
+rather than re-checking the same five conditions in its hook:
+
+```lua
+counter = { reach = "melee" },   -- see Trait.mayCounter in models/trait.lua for every field
+onDamaged = function(ctx)
+    if not ctx.mayCounter() then return end   -- the gates: reach, side, cooldown, suppression, ...
+    if not ctx.pay() then return end          -- last, so a reflex that declines is never billed
+    ctx.basicAttack(ctx.attacker)
+    ctx.setCooldown("<id>", ctx.def.magnitude)
+end,
+```
+
+Declaring it is what puts the reflex on the player's **hover preview**: `Trait.counterPreview` reads
+the same rule to warn them, before they commit the turn, that this swing will be answered and by what
+(`ui/action_preview.lua`). A retaliation that hand-rolls its gates instead still fires — it just fires
+as a surprise, which is a bug in a tactics game.
+
 ## Scale a combat encounter's roster
 
 A `combat` / `elite` encounter fields its enemies in the battle arena via `composition`, a

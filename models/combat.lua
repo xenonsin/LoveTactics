@@ -2351,6 +2351,32 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
     return { entries = entries, order = order }
 end
 
+-- Pure: what `target` would throw BACK if `unit` struck it with `item` right now -- the standing
+-- reflexes (a parry, a riposte, thorns, a shield bash) that answer the blow -- as the ordered list
+-- Trait.counterPreview returns, or nil when nothing answers. The companion to previewAbility: that
+-- one says what the swing does, this one says what it costs you to have swung, so the hover preview
+-- can price a trade rather than half of one.
+--
+-- `opts.entry` is the target's own previewAbility entry, since what comes back depends on what goes
+-- out: a blow that FELLS its target is answered by nothing (the on-hit hooks never fire on a kill),
+-- and a reflecting reflex throws back a share of the damage dealt. `opts.fromX/fromY` is the tile the
+-- blow is thrown FROM when that isn't where the actor stands yet -- a click-to-use folds an approach
+-- into the strike, and every reflex is gated on the distance at the moment of the hit, so a preview
+-- weighed from the actor's current tile would promise the wrong answer for the walk-and-strike.
+function Combat.previewCounters(combat, unit, item, target, opts)
+    opts = opts or {}
+    if not unit or not item or not target or not target.alive then return nil end
+    if target.side == unit.side then return nil end -- an ally doesn't answer a heal
+    local entry = opts.entry
+    local list = Trait.counterPreview(combat, target, unit, {
+        tags = collectTags(item, {}),
+        damage = entry and entry.damage or 0,
+        lethal = entry and entry.lethal,
+        fromX = opts.fromX, fromY = opts.fromY,
+    })
+    return (#list > 0) and list or nil
+end
+
 -- A zero-defense, full-HP stand-in target. Feeding it to the effect's damage/heal helpers yields
 -- the RAW (pre-armor) output an ability deals -- no real target needed -- and its huge health means
 -- a dry-run heal reports the full amount and nothing reads as lethal. Used by Combat.abilityOutput.

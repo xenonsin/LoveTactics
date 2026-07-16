@@ -8,6 +8,10 @@ return {
     name = "Shield Bash",
     description = "While Defending, a melee attacker is stunned. Needs an adjacent shield; then recharges.",
     magnitude = 10, -- cooldown ticks after a bash
+    -- What provokes it, checked by ctx.mayCounter (models/trait.lua) -- and read by the hover preview,
+    -- so a player about to walk into a stun is told so. `requiresArmed` is the shield check below.
+    counter = { reach = "melee", requiresStatus = "defending", requiresArmed = true,
+                answersReactions = true, applies = "stun" },
     onCombatStart = function(ctx)
         local Character = require("models.character")
         local armed = false
@@ -24,19 +28,11 @@ return {
         ctx.trait.armed = armed -- inert without a shield beside it
     end,
     onDamaged = function(ctx)
-        if not ctx.trait.armed then return end
-        local Status = require("models.status")
-        if not Status.has(ctx.unit, "defending") then return end -- only while braced
-        local attacker = ctx.attacker
-        if not attacker or not attacker.alive then return end
-        if attacker.side == ctx.unit.side then return end
-        local dist = math.abs(attacker.x - ctx.unit.x) + math.abs(attacker.y - ctx.unit.y)
-        if dist ~= 1 then return end -- melee only
-        if ctx.onCooldown("shield_bash") then return end
-        ctx.applyStatus(attacker, "stun")
+        if not ctx.mayCounter() then return end
+        ctx.applyStatus(ctx.attacker, "stun")
         ctx.log("action", string.format("%s bashes %s with a shield!",
             (ctx.unit.char and ctx.unit.char.name) or "Unit",
-            (attacker.char and attacker.char.name) or "the attacker"))
+            (ctx.attacker.char and ctx.attacker.char.name) or "the attacker"))
         ctx.setCooldown("shield_bash", ctx.def.magnitude)
     end,
 }

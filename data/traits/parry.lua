@@ -21,23 +21,20 @@ return {
     description = "When struck in melee, spend stamina to turn the blow and cut back. Then recover your guard.",
     magnitude = 20,                          -- cooldown ticks after a parry (melee_counter's is 10)
     cost = { stat = "stamina", amount = 4 }, -- paid per parry; no stamina, no answer
+    -- What provokes it, checked by ctx.mayCounter (models/trait.lua) -- and read by the hover preview,
+    -- so the player is warned of this answer through the same rules that throw it. A parry answers an
+    -- ATTACK, never another answer (no answersReactions): "did they swing at me, or were they only
+    -- answering me?" Without that every sword exchange becomes a three-hit volley -- strike, counter,
+    -- counter-back -- since both the knight and the common bandit carry an iron sword. One counter per
+    -- attack; the trade stays legible.
+    counter = { reach = "melee" },
     onDamaged = function(ctx)
-        local attacker = ctx.attacker
-        if not attacker or not attacker.alive then return end
-        if attacker.side == ctx.unit.side then return end -- never answer a friendly or self source
-        if ctx.onCooldown("parry") then return end
-        local dist = math.abs(attacker.x - ctx.unit.x) + math.abs(attacker.y - ctx.unit.y)
-        if dist ~= 1 then return end -- melee only: an archer stood too far to be answered in kind
-        -- A parry answers an ATTACK, never another answer: "did they swing at me, or were they only
-        -- answering me?" (Trait.isReacting). Without it every sword exchange in the game becomes a
-        -- three-hit volley -- strike, counter, counter-back -- since both the knight and the common
-        -- bandit carry an iron sword. One counter per attack; the trade stays legible.
-        if ctx.isReacting(attacker) then return end
-        -- Last gate, and the only one that spends anything: an exhausted swordsman simply eats the
-        -- blow. Every free refusal above must come first, or a parry that declines still bills for it.
+        if not ctx.mayCounter() then return end
+        -- The one gate that spends anything, so it comes after every free refusal above: an exhausted
+        -- swordsman simply eats the blow, and a parry that declines is never billed for it.
         if not ctx.pay() then return end
         ctx.log("action", string.format("%s parries!", (ctx.unit.char and ctx.unit.char.name) or "Unit"))
-        ctx.basicAttack(attacker)
+        ctx.basicAttack(ctx.attacker)
         ctx.setCooldown("parry", ctx.def.magnitude)
     end,
 }

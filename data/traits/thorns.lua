@@ -6,21 +6,19 @@
 --
 -- The reflection re-enters the damage core and so could trip the attacker's own reactions; the
 -- dispatch guards in models/trait.lua (unit._reacting + MAX_DEPTH) keep that from looping.
+--
+-- What provokes it is declared in `counter` and checked by ctx.mayCounter (models/trait.lua), so the
+-- hover preview can warn the player of the spikes through the same rules that bite. Spikes hold no
+-- guard to be worn down: no cooldown, no cost, and they answer an answer as readily as an attack.
 return {
     name = "Thorns",
     description = "Melee attackers take a share of the damage they deal back.",
     magnitude = 40, -- percent of the blow reflected
+    counter = { reach = "melee", requiresTag = "physical", answersReactions = true, reflect = true },
     onDamaged = function(ctx)
-        local attacker = ctx.attacker
-        if not attacker or not attacker.alive then return end
-        if attacker.side == ctx.unit.side then return end -- never a friendly or self source
-        local physical = false
-        for _, t in ipairs(ctx.tags or {}) do if t == "physical" then physical = true break end end
-        if not physical then return end -- only a physical blow is turned on the spikes
-        local dist = math.abs(attacker.x - ctx.unit.x) + math.abs(attacker.y - ctx.unit.y)
-        if dist ~= 1 then return end -- melee only: struck from an adjacent tile
+        if not ctx.mayCounter() then return end
         local reflected = math.floor((ctx.amount or 0) * ctx.def.magnitude / 100)
         if reflected < 1 then return end
-        ctx.damage(attacker, reflected, { "physical" })
+        ctx.damage(ctx.attacker, reflected, { "physical" })
     end,
 }

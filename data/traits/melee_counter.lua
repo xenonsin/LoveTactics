@@ -9,19 +9,19 @@
 --
 -- `magnitude` is the cooldown length in ticks. The reaction only fires on a SURVIVED hit
 -- (Trait.onDamaged is not called on the blow that kills), so a lethal strike is never answered.
+-- What provokes it is declared in `counter` and checked by ctx.mayCounter (models/trait.lua), so the
+-- hover preview can warn the player of this answer through the same rules that throw it.
 return {
     name = "Melee Counter",
     description = "When struck in melee, strike back with your weapon. Then it must recharge.",
     magnitude = 10, -- cooldown ticks after a counter
+    -- Unlike the sword's parry this one answers an answer too: it is the Riposte Blade's reflex, and
+    -- the wider guard is part of what the blade costs.
+    counter = { reach = "melee", answersReactions = true },
     onDamaged = function(ctx)
-        local attacker = ctx.attacker
-        if not attacker or not attacker.alive then return end
-        if attacker.side == ctx.unit.side then return end -- never counter a friendly or self source
-        if ctx.onCooldown("melee_counter") then return end
-        local dist = math.abs(attacker.x - ctx.unit.x) + math.abs(attacker.y - ctx.unit.y)
-        if dist ~= 1 then return end -- melee only: the attacker struck from an adjacent tile
+        if not ctx.mayCounter() then return end
         ctx.log("action", string.format("%s counters!", (ctx.unit.char and ctx.unit.char.name) or "Unit"))
-        ctx.basicAttack(attacker)
+        ctx.basicAttack(ctx.attacker)
         ctx.setCooldown("melee_counter", ctx.def.magnitude)
     end,
 }
