@@ -494,8 +494,11 @@ return {
     onTurnStart = function(ctx) ctx.damage(ctx.unit, ctx.magnitude, { "poison" }) end,
     onTurnEnd   = function(ctx) end,
     onEnterTile = function(ctx) end,   -- the unit crossed onto a tile on foot (bleed)
+    onDamaged   = function(ctx) end,   -- the bearer took a hit and lived (sleep breaks on it)
     -- blocksMove = true,               -- the unit cannot move this turn (root)
     -- turnEndMoveCost = function(ctx) return ctx.moveBudget end, -- pay full move cost anyway
+    -- resistible = "magical",          -- opts into resistance: see below
+    -- illusion = true,                 -- a lie about a body: Dispel Illusions tears it down
 }
 ```
 
@@ -511,6 +514,64 @@ crossed and nothing at all for standing still.
 `ctx.damage(unit, amount, tags, opts)` passes `opts` straight to the damage core, so a tick can be
 `{ raw = true }` (armor-piercing). Reach for it when the effect is not a blow being blocked: defense
 stats run 6–10, so a mitigated tick floors at 1 and its magnitude stops meaning anything.
+
+### Resistance (`resistible`)
+
+A status that takes a unit out of the fight — Sleep, Polymorph — must be resistible, or it is simply
+the best spell in the game. Declare `resistible = "magical"` (or `"physical"`) and `Status.apply`
+scales the duration before the status ever lands:
+
+```
+R        = magicDefense (or defense) + statusResist        -- the target's ward
+duration = duration * 12/(12 + R) * 0.5^(times applied this battle)
+```
+
+Below one tick it does not land at all (`Status.apply` returns nil and logs "shrugs off"). Nothing
+here rolls — the same cast on the same target always buys the same ticks — which is deliberate: a
+hard-control effect that lands "usually" is one whose counterplay is praying. Two consequences worth
+knowing when you author one:
+
+- **The ward curve is a softcap**, so magicDefense alone never reaches immunity and never stops being
+  worth another point. Armor grants its ward as an ordinary flat `bonus = { statusResist = N }` (see
+  `data/items/armor/skeptics_harness.lua`) — no plumbing of its own.
+- **Diminishing returns are what bound it.** Every repeat on the same victim is halved again, so a
+  bounded number of casts reaches "does not land", by arithmetic rather than by an `immune` flag.
+  Refusals count too, so an attacker cannot reset a target's immunity by casting into it.
+
+`onApply` runs only *after* this gate, so a shrugged-off cast never fires it — which is what lets
+`data/status/polymorph.lua` safely put its whole effect (wearing the shape) in `onApply`.
+
+See `models/status.lua` for the full contract and `tests/resist_spec.lua` for the pinned numbers.
+
+## Transform a unit into another character
+
+`models/transform.lua` exchanges a unit's **body** (`unit.char`) for another character blueprint's,
+keeping the same unit: same tile, same turn, same initiative slot, same health bar. It is not a summon
+(which adds a second unit) — a pigged knight *is* the knight.
+
+```lua
+effect = function(fx)
+    fx.transform(fx.target, "pig")   -- a self-cast also binds the ability's `reserve`
+end
+```
+
+The rules that matter when authoring a shape:
+
+- **Pools carry across; everything else comes from the shape.** Health/mana/stamina (and the
+  reservations constraining them) travel from the original — so a transform changes what a unit can
+  *do*, never how much killing it takes. A shape that brought its own health would make polymorph an
+  execute. Put placeholders in the blueprint's resource stats; they are never read.
+- **A self-transform reserves like a summon.** Declare `reserve = { stat = "mana", percent = ... }`
+  and the shape holds it until it ends. Don't also charge a `cost` — a reservation is already both a
+  price and a lock (compare `ability_summon_wolf.lua`, which charges none either).
+- **A status owns the shape's timer**, and its `onExpire` calls `ctx.revert()`. Since `Status.remove`
+  and `Status.cleanse` both fire `onExpire`, every ending (countdown, Cure, dispel) reverts — there is
+  no path that strands a knight as a pig.
+- **`unarmed = false`** on a character blueprint gives a body with no natural weapon at all: that,
+  plus no `startingItems`, is what makes a pig actionless but still able to move.
+- **Tag shape statuses `illusion = true`** so Dispel Illusions can tear them down.
+
+See `data/characters/pig.lua`, `data/status/polymorph.lua`, and `tests/transform_spec.lua`.
 
 ## Add a trap
 

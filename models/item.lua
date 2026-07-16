@@ -136,6 +136,11 @@ local ABILITY_MAGNITUDES = {
     { "healing", "Healing" },
     { "restore", "Restore" },
     { "reviveHealth", "Revive" },
+    -- A ward's magnitude is COVERAGE: how many blows it swallows before it is spent (the barriers,
+    -- which pass it to the status as its `magnitude`). The odd one out in kind but not in shape --
+    -- an ability that negates a hit outright has no number to make bigger, so the only axis an
+    -- upgrade can move it along is how many hits it does that to.
+    { "hits", "Hits" },
 }
 
 -- The `waitBehavior` payoffs that scale with the granting item's level -- what the swapped Wait pays

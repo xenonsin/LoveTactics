@@ -37,6 +37,13 @@ end
 -- The fallback unarmed weapon id, attached to every instance as `char.unarmed` (a hidden
 -- weapon that never sits in `inventory`). A blueprint may override it with an `unarmed`
 -- field naming a different item (e.g. a beast's natural bite). See data/items/unarmed.lua.
+--
+-- A blueprint may also set `unarmed = false` for a body with NO natural weapon whatsoever, leaving
+-- `char.unarmed` nil: a thing that can be moved around the board but cannot strike anything, ever.
+-- That is what a Pig is (data/characters/pig.lua) -- polymorph takes away what you can DO, and with
+-- no items and no fists there is nothing left to do. Every reader of `char.unarmed` already treats it
+-- as optional (Combat.defaultWeapon documents a possible nil; the enemy AI appends it only
+-- `if unit.char.unarmed`), so this needs no special casing anywhere else.
 Character.DEFAULT_UNARMED = "unarmed"
 
 -- Stats that deplete during play. On instantiation these become
@@ -249,8 +256,9 @@ function Character.instantiate(id, progress)
         growth = (progress and progress.growth) or {},
         inventory = {},
         -- Hidden fallback weapon (never in inventory, never shown in the item grid). Sourced
-        -- from the blueprint's `unarmed` id or the generic default.
-        unarmed = Item.instantiate(def.unarmed or Character.DEFAULT_UNARMED),
+        -- from the blueprint's `unarmed` id or the generic default; explicitly `false` for a body
+        -- with no natural weapon at all (see Character.DEFAULT_UNARMED), which leaves this nil.
+        unarmed = def.unarmed ~= false and Item.instantiate(def.unarmed or Character.DEFAULT_UNARMED) or nil,
     }
 
     -- Starting loadout, authored as a positional 3x3 grid: cell i holds startingItems[i] (an item id,

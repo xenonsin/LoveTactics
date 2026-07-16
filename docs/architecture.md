@@ -155,10 +155,10 @@ quest's `map.objective` (`composition` + `win = { type, target }`).
 
 ### Combat subsystems
 
-`models/combat.lua` owns the rules; five sibling modules layer on top of it. Each is required by
+`models/combat.lua` owns the rules; six sibling modules layer on top of it. Each is required by
 `combat.lua` at load time and reaches *back* into it through a **lazy require inside its
 functions**, so the dependency stays one-way and no require cycle forms. Follow that shape when
-adding a sixth.
+adding a seventh.
 
 | Module | Lives in | What it adds |
 |---|---|---|
@@ -166,7 +166,14 @@ adding a sixth.
 | `models/trap.lua` | `combat.traps` | hidden tile objects, triggered by pathing over them |
 | `models/hazard.lua` | `combat.hazards` | persistent per-cell area effects (fire, rain, sanctuary) |
 | `models/summon.lua` | `combat.units` | characters placed on the field mid-battle |
+| `models/transform.lua` | `unit.char` | exchanges a unit's body for another character's (polymorph, wild shape) |
 | `models/trait.lua` | `unit.traits` | standing reactions: combat start, damage survived, cast, death |
+
+**Transform vs. summon.** Both put a character blueprint into a fight, and they are not variants of
+each other. A summon adds a *second unit* — two bodies, two turns, two health bars. A transform swaps
+`unit.char` on an *existing* unit — one body, one turn, one health bar, and the same identity
+throughout (a pigged knight is the knight: kill the pig and the knight is dead). Resource pools carry
+across the swap so a shape can only change what a unit can *do*, never how much killing it takes.
 
 **Traits vs. statuses.** A trait is the *rule*; a status is the *stacking effect* it applies. Statuses
 are timed, refreshable, and render as removable badges; traits are innate, permanent, and invisible.

@@ -18,5 +18,8 @@ return {
     hideDuration = true,    -- the fallback countdown is meaningless -- hide it in the tooltip
     hideLog = true,         -- announcing "afflicted with Invisible" would give the Decoy away
     untargetable = true,
+    -- A lie told about a body -- this one is here and says it isn't -- so Dispel Illusions tears it
+    -- down (Status.illusionsOn). The original and still the archetype of the flag.
+    illusion = true,
     onTurnStart = function(ctx) ctx.expire() end,
 }

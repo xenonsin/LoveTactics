@@ -274,6 +274,38 @@ function Trait.tryPreempt(combat, unit, attacker)
     return not attacker.alive -- felled them: the blow they were throwing never arrives
 end
 
+-- Does a counterspell reflex (a `countersSpell` trait -- Counter Magic) unravel an incoming
+-- SINGLE-TARGET spell outright? Consulted from Combat.dealDamage (never the flat path: a Burn tick and
+-- a trap are not spells anyone can unweave), it negates the cast completely -- no damage, no rider
+-- status, nothing -- for the price of the bearer's own mana and a cooldown.
+--
+-- The trait's economy is the whole point, and it is the counterspell's classic bargain: it is not
+-- gated on the spell being SMALL, so it eats a meteor as happily as a spark -- but it costs a flat
+-- price to do so and then goes quiet for `magnitude` ticks. Answering a cantrip with it is a poor
+-- trade the bearer chose to make; catching the big one is what it was carried for. Unlike a barrier,
+-- nothing about it is spent by being aimed at, so a mage who bluffs at it wastes only their own turn.
+--
+-- Mutates (spends mana, starts the cooldown, logs), so it must run on a REAL cast only -- never the
+-- damage preview, which reads Combat.computeDamage and never reaches dealDamage's ward path.
+function Trait.tryCounterMagic(combat, unit, attacker, tags)
+    if not unit or not unit.traits or not attacker then return false end
+    if not hasTag(tags, "magical") then return false end -- it unweaves spells, not swords
+    if reactionsSuppressed(unit) then return false end   -- a stunned/frozen unit weaves nothing
+    if attacker.side == unit.side then return false end  -- never answer a friendly or self cast
+    local Combat = require("models.combat")
+    for _, t in ipairs(unit.traits) do
+        -- Cost last, so a counter already on cooldown is never weighed against mana it needn't spend.
+        if t.def.countersSpell and not Combat.onCooldown(unit, t.id) and canPay(unit, t.def) then
+            payCost(unit, t.def)
+            Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
+            Combat.logEvent(combat, "action", string.format("%s unravels %s's spell!",
+                (unit.char and unit.char.name) or "Unit", (attacker.char and attacker.char.name) or "the caster"))
+            return true
+        end
+    end
+    return false
+end
+
 -- Does a once-per-battle Second Wind reflex (a `revivesOnLethal` trait) catch a blow that would drop
 -- `unit`, standing it back up at half its (unreserved) max health? Mirrors Trait.tryEvade in shape:
 -- Combat.dealFlatDamage consults it at the moment a hit reaches 0 HP and, if it fires, keeps the unit

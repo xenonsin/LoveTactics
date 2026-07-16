@@ -46,6 +46,7 @@ local Status = require("models.status")
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local Summon = require("models.summon")
+local Transform = require("models.transform")
 local Trait = require("models.trait")
 local Wall = require("models.wall")
 local Character = require("models.character")
@@ -324,6 +325,15 @@ function Combat.moveBudget(unit)
     return flatStat(unit, "movement")
 end
 
+-- Public read of the fold above, for a model that needs an effective stat but has no business
+-- reaching into this one's internals -- models/status.lua's resist rating, which reads magicDefense /
+-- defense / statusResist off a unit exactly as mitigation does. Mirrors Combat.moveBudget: the same
+-- single fold (base + item bonuses + status modifiers), exposed rather than duplicated, so a ward
+-- granted by armor and a ward granted by a buff can never be counted differently.
+function Combat.flatStat(unit, name)
+    return flatStat(unit, name)
+end
+
 -- Extra damage a strike gets when it is thrown with the wielder's bare fists: the aggregated
 -- `unarmedBonus.damage` from passive "fist" items carried in the grid (Iron Fist), plus
 -- `unarmedBonus.drunkDamage` while the unit is Drunk (Drunken Fist). 0 for any crafted weapon --
@@ -498,6 +508,14 @@ end
 
 function Combat.applyPassives(combat)
     for _, unit in ipairs(combat.units) do applyUnitPassives(unit) end
+end
+
+-- Re-fold ONE unit's passives, for a unit whose grid changed after setup. The grid is fixed for the
+-- duration of a battle for everyone who walked into it -- so the only caller is models/transform.lua,
+-- where the body itself is exchanged and the "grid" changes wholesale because the character did. A
+-- bear carries a bear's hide, not the hunter's chainmail, and `unit.bonus` has to be told.
+function Combat.refreshPassives(unit)
+    applyUnitPassives(unit)
 end
 
 -- Who drives this unit's turn: "player" (the battle state hands it the cursor and the item grid),
@@ -909,8 +927,9 @@ end
 
 -- Ghost timeline specs for every unit currently WINDING UP a channel: one per channeler, at the
 -- slot it will next act -- its current initiative (the resolution slot, where its real card already
--- sits) plus the channeled cast's own speed (the initiative Combat.resolveChannel charges when the
--- wind-up finishes). Labelled "then acts here" so the two-slot picture the aim preview showed --
+-- sits) plus the channeled cast's own speed AND the move cost the cast deferred past the resolution
+-- (both of which Combat.resolveChannel's endTurn charges when the wind-up finishes). Labelled
+-- "then acts here" so the two-slot picture the aim preview showed --
 -- where the spell resolves, then where the caster regains control -- persists once the cast is
 -- committed. The unit resolving THIS beat (initiative 0) is skipped: its follow-up is a hair away
 -- and it's the framed current card, so a ghost there is just noise.
@@ -921,7 +940,7 @@ function Combat.channelGhosts(combat)
         if ch and u.initiative > 0 then
             specs[#specs + 1] = {
                 unit = u,
-                initiative = u.initiative + Combat.actionSpeed(u, ch.ab, ch.item),
+                initiative = u.initiative + Combat.actionSpeed(u, ch.ab, ch.item) + Combat.moveDebt(u),
                 label = "then acts here",
             }
         end
@@ -961,17 +980,42 @@ local function nextUnit(combat, unit)
     return nil
 end
 
--- End the active unit's turn: set its initiative to (moveCost spent this turn) + the action
--- cost, then rebase so the next unit drops to 0. Shared by useItem and passing.
-local function endTurn(combat, unit, actionCost)
+-- The ground the active unit covered this turn, in initiative. Shared by every turn-ending path so
+-- they price a walk identically.
+local function turnMoveCost(combat, unit)
     local moveCost = (combat.turn and combat.turn.unit == unit and combat.turn.moveCost) or 0
     -- A status may charge a move cost even if the unit stayed put (root: as if it moved max).
-    moveCost = math.max(moveCost, Status.forcedMoveCost(combat, unit))
+    return math.max(moveCost, Status.forcedMoveCost(combat, unit))
+end
+
+-- End the active unit's turn: set its initiative to (moveCost spent this turn) + the action
+-- cost, then rebase so the next unit drops to 0. Shared by useItem and passing.
+--
+-- `defer` (the channel branch alone) banks this turn's move cost as a DEBT on the unit instead of
+-- charging it, so the turn costs the wind-up and nothing else -- see Combat.moveDebt. Any later
+-- endTurn settles the debt on top of its own costs, so the ground is paid for exactly once whether
+-- the channel resolves or is interrupted.
+local function endTurn(combat, unit, actionCost, defer)
+    local moveCost = turnMoveCost(combat, unit)
+    if defer then
+        unit.moveDebt = (unit.moveDebt or 0) + moveCost
+        moveCost = 0
+    else
+        moveCost = moveCost + (unit.moveDebt or 0)
+        unit.moveDebt = nil
+    end
     Status.onTurnEnd(combat, unit)
     unit.initiative = unit.initiative + moveCost + actionCost
     combat.turnCount = combat.turnCount + 1
     combat.turn = nil
     Combat.rebase(combat)
+end
+
+-- The move cost a unit has banked but not yet paid: the ground it covered on the turn it began a
+-- channel, deferred past the resolution (see endTurn). 0 for everyone else. The single reader for the
+-- timeline's follow-up ghost, so the projected slot matches what the resolving endTurn will charge.
+function Combat.moveDebt(unit)
+    return unit.moveDebt or 0
 end
 
 -- Wait (delay): the acting unit sits at initiative 0, so end the turn by setting its
@@ -981,8 +1025,10 @@ end
 -- is alive. The player's deliberate "delay my turn" action.
 function Combat.wait(combat, unit)
     if not unit.alive then return false, "dead" end
-    local moveCost = (combat.turn and combat.turn.unit == unit and combat.turn.moveCost) or 0
-    moveCost = math.max(moveCost, Status.forcedMoveCost(combat, unit))
+    -- A debt banked by an interrupted channel is ground already covered, so it is owed here too: it
+    -- rides with the move cost through the floor below, and a wait can never dodge it.
+    local moveCost = turnMoveCost(combat, unit) + (unit.moveDebt or 0)
+    unit.moveDebt = nil
     Status.onTurnEnd(combat, unit)
     local nxt = nextUnit(combat, unit)
     unit.initiative = nxt and math.max(moveCost, nxt.initiative + 1) or (moveCost + Combat.WAIT_COST)
@@ -1108,9 +1154,26 @@ local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
 -- can drop it as a landing spot. Returns `{ [key]= { x, y, cost, steps, fromKey, occupied } }`,
 -- keyed "x,y", INCLUDING the origin (cost 0) so a path can be traced back through it. Private: the
 -- public Combat.reachable filters this down to the tiles a unit may actually stop on.
+-- Does `unit` carry something that lifts it off the ground (the `flying` tag -- the Zephyr Striders)?
+-- A flier ignores the ground entirely: every tile costs 1 to enter whatever it is made of, and terrain
+-- that is merely UNWALKABLE (a river, a chasm, a bog) is crossed as if it were open field. Mirrors
+-- Combat.ignoresTraps in shape -- a grid scan for a tag, at the one chokepoint that reads it.
+--
+-- Deliberately does NOT open a wall, a solid rock face, or an occupied tile: those bar the way by
+-- being IN it, not by being poor footing, and a thing that could end its turn inside a wall would
+-- break far more than it fixed. The rule is "the ground stops mattering", not "nothing stops you".
+function Combat.isFlying(unit)
+    if not (unit and unit.char) then return false end
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        if hasTag(item.tags, "flying") then return true end
+    end
+    return false
+end
+
 local function moveGraph(combat, unit)
     local arena = combat.arena
     local budget = flatStat(unit, "movement")
+    local flying = Combat.isFlying(unit)
 
     local best = {}
     local origin = { x = unit.x, y = unit.y, cost = 0, steps = 0 }
@@ -1135,8 +1198,12 @@ local function moveGraph(combat, unit)
                     -- An enemy bars the tile outright; a friendly unit may be passed through (transit
                     -- only). Walls and impassable terrain always bar the way.
                     local enemy = occ ~= nil and occ.side ~= unit.side
-                    if cell.walkable and not enemy and not Wall.blocksAt(combat, nx, ny) then
-                        local ncost = cur.cost + cell.moveCost
+                    -- A flier crosses any ground (walkable or not) and is never slowed by it; everyone
+                    -- else pays what the terrain asks and stops at what it can't walk on. Walls and
+                    -- enemies bar the way for both -- they are obstacles, not footing.
+                    local passable = flying or cell.walkable
+                    if passable and not enemy and not Wall.blocksAt(combat, nx, ny) then
+                        local ncost = cur.cost + (flying and 1 or cell.moveCost)
                         if ncost <= budget then
                             local nk = key(nx, ny)
                             local existing = best[nk]
@@ -1343,6 +1410,10 @@ function Combat.planMoveVia(combat, unit, cells)
 
     local arena = combat.arena
     local budget = flatStat(unit, "movement")
+    -- The same exemption moveGraph grants a flier, for the same reason: this is an independent
+    -- re-derivation of the identical legality question (a steered route rather than a derived one),
+    -- so the two must answer it the same way or a flier's own move band would refuse its own route.
+    local flying = Combat.isFlying(unit)
     local seen = { [key(unit.x, unit.y)] = true }
     local cost = 0
     for i = 2, #cells do
@@ -1350,7 +1421,7 @@ function Combat.planMoveVia(combat, unit, cells)
         if math.abs(c.x - p.x) + math.abs(c.y - p.y) ~= 1 then return nil, "not contiguous" end
         if c.x < 1 or c.x > arena.cols or c.y < 1 or c.y > arena.rows then return nil, "off grid" end
         local tile = arena.tiles[c.y][c.x]
-        if not tile.walkable then return nil, "blocked" end
+        if not (flying or tile.walkable) then return nil, "blocked" end
         local k = key(c.x, c.y)
         if seen[k] then return nil, "revisit" end -- catch a double-back (incl. onto the origin) first
         local occ = Combat.unitAt(combat, c.x, c.y)
@@ -1361,7 +1432,7 @@ function Combat.planMoveVia(combat, unit, cells)
         end
         if Wall.blocksAt(combat, c.x, c.y) then return nil, "wall" end
         seen[k] = true
-        cost = cost + tile.moveCost
+        cost = cost + (flying and 1 or tile.moveCost)
         if cost > budget then return nil, "too far" end
     end
 
@@ -1607,8 +1678,14 @@ function Combat.matchesAdjacency(item, pred)
     return true
 end
 
--- Does an aura block `a` (declared on a neighbor item) apply to the cast `item`? The item's type
--- must be listed in `a.appliesTo`, and it must carry none of `a.exceptTags`.
+-- Does an aura block `a` (declared on a neighbor item) apply to the cast `item`? The item's type must
+-- be listed in `a.appliesTo`, it must carry EVERY tag in `a.requiresTags`, and none of `a.exceptTags`.
+--
+-- `requiresTags` narrows an aura to a SCHOOL rather than to a type -- what a relic that sharpens
+-- magic and nothing else needs (the Resonance Prism: "adjacent magical things", which is a property of
+-- the tags, since a spell and an enchanted blade are different types and the same school). The two tag
+-- filters are opposites and both are needed: `exceptTags` carves an exception out of a broad aura,
+-- `requiresTags` states a narrow one positively.
 function Combat.auraApplies(a, item)
     if not (a and item) then return false end
     local ok = false
@@ -1616,6 +1693,14 @@ function Combat.auraApplies(a, item)
         if t == item.type then ok = true break end
     end
     if not ok then return false end
+    -- Read across the item's tags AND its ability's, so a neighbour aura sees a cast the same way
+    -- Combat.dealDamage's collectTags does -- an ability that declares `magical` on the ability
+    -- rather than on the item is still magic, and a school aura must not miss it on a technicality.
+    for _, t in ipairs(a.requiresTags or {}) do
+        local ab = item.activeAbility
+        local onAbility = ab ~= nil and ab.tags ~= nil and hasTag(ab.tags, t)
+        if not (hasTag(item.tags, t) or onAbility) then return false end
+    end
     for _, t in ipairs(a.exceptTags or {}) do
         if hasTag(item.tags, t) then return false end
     end
@@ -1965,11 +2050,15 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- A barrier of the incoming school (physical/magical, the same switch mitigation reads) negates
     -- the blow outright: consume that one ward, deal nothing, and return BEFORE the trait dispatch --
     -- an absorbed hit is not a "wound survived", so it grants no rage and advances no threshold phase.
+    -- A ward may stand for several blows (its `magnitude`, which the granting spell raises as it is
+    -- forged), so spend ONE hit rather than the whole status and say what is left standing.
     local barrier = Status.barrierAgainst(target, hasTag(tags or {}, "magical"))
     if barrier then
-        Status.remove(combat, target, barrier.id)
+        local left = Status.consumeBarrier(combat, target, barrier)
+        local note = ""
+        if left > 0 then note = string.format(" (%d left)", left) end
         Combat.logEvent(combat, "status",
-            string.format("%s's %s absorbs the blow.", unitName(target), barrier.name or barrier.id))
+            string.format("%s's %s absorbs the blow%s.", unitName(target), barrier.name or barrier.id, note))
         return 0
     end
     -- A standing Dodge reflex (a trait on cooldown, not a consumed status) voids a physical blow
@@ -2041,6 +2130,10 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- PREVIEW reaches this function (previewAbility routes through Combat.computeDamage), so a
         -- hovered target never quietly advances a trait.
         Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker })
+        -- ...and the statuses riding the survivor get the same news, for the ones a blow is supposed
+        -- to BREAK (Sleep). Fired after the traits, so a reflex that answers the blow is not robbed of
+        -- its trigger by the very hit that wakes its bearer.
+        Status.onDamaged(combat, target, dmg, tags)
     end
     return dmg
 end
@@ -2053,7 +2146,53 @@ end
 -- fx.amount, the primary-stat headline, and dealDamage all agree.
 function Combat.abilityMagnitude(ab)
     if not ab then return nil end
-    return ab.damage or ab.healing or ab.restore or ab.reviveHealth
+    return ab.damage or ab.healing or ab.restore or ab.reviveHealth or ab.hits
+end
+
+-- Is `ab` aimed at exactly one body? An ability declaring no `aoe` footprint strikes only what it is
+-- pointed at. The single reader for "single-target", which is the whole domain of the two wards below:
+-- a mirror turns a spell back at the one who threw it, and that only means anything when there IS one
+-- thing thrown at one target. A fireball has no single caster-target thread to run backwards along, so
+-- neither ward touches an area cast -- which is also what keeps them from being flatly better than a
+-- barrier rather than differently good.
+function Combat.isSingleTarget(ab)
+    return ab ~= nil and ab.aoe == nil
+end
+
+-- The two wards that answer a single-target blow BEFORE it lands, tried in order: Counter Magic (a
+-- trait -- unravels the spell for nothing at all, at the price of mana and a cooldown) and then a
+-- mirror status (Reflect Magic / Reflect Steel -- throws it back). True when one of them ate the blow,
+-- in which case the target takes nothing.
+--
+-- `base` is what the ATTACKER's swing was worth, so a reflected spell hits its caster with exactly the
+-- blow they threw -- mitigated by their OWN magic defense on the way in. Deliberately not re-scaled off
+-- the reflector: a knight who mirrors a fireball returns the mage's fireball, not the knight's idea of
+-- one, and a mirror is therefore worth exactly as much as what it is pointed at.
+--
+-- Lives here in dealDamage rather than in dealFlatDamage because only this path knows the ITEM, and
+-- both wards are keyed on the cast being a single-target ability. A trap, a Burn tick, or a falling
+-- rock reaches the flat path with no ability at all, and is (rightly) unmirrorable.
+local function tryWardSpell(combat, user, target, item, tags, base, opts)
+    local ab = item and item.activeAbility
+    if not Combat.isSingleTarget(ab) then return false end
+    if not user or user == target or user.side == target.side then return false end
+    if Trait.tryCounterMagic(combat, target, user, tags) then return true end
+    -- A mirror never answers a mirror: without this, two reflecting mages bounce one spell between
+    -- them until the stack gives out. The first mirror to catch it is the one that gets to throw it.
+    if combat._reflecting then return false end
+    local mirror = Status.reflectorAgainst(target, hasTag(tags, "magical"))
+    if not mirror then return false end
+    Combat.logEvent(combat, "status", string.format("%s's %s turns the blow back on %s!",
+        unitName(target), mirror.name or mirror.id, unitName(user)))
+    combat._reflecting = true
+    -- A beat later than the blow it turned, so the view plays the return after the cast (as a riposte
+    -- does). The caster is passed as `attacker` = the reflector, so the returned blow is a blow from
+    -- the mirror's holder -- it can be barriered, dodged, and counted like any other.
+    Combat.beginBeat(combat)
+    Combat.dealFlatDamage(combat, user, base, tags, mirror.name or mirror.id, target, opts)
+    Combat.endBeat(combat)
+    combat._reflecting = nil
+    return true
 end
 
 function Combat.dealDamage(combat, user, target, item, opts)
@@ -2065,6 +2204,8 @@ function Combat.dealDamage(combat, user, target, item, opts)
     -- Additive: the ability's damage plus the attacker's attack stat (opts.amount overrides the
     -- declared damage for a one-off hit). Mitigation then subtracts the target's defense + resists.
     local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item)
+    -- A counter or a mirror may unmake the cast entirely before it reaches the target's armor.
+    if tryWardSpell(combat, user, target, item, tags, base, opts) then return 0 end
     -- `user` rides along as the attacker so a reaction trait (a counter) knows who struck, and how
     -- far away they stood. A flat source (a trap, a burn) passes no attacker and provokes no counter.
     local dealt = Combat.dealFlatDamage(combat, target, base, tags, nil, user, opts)
@@ -2641,12 +2782,85 @@ function Combat.canOverchannel(unit)
     return Trait.has(unit, "overchannel")
 end
 
+-- ---------------------------------------------------------------------------
+-- Drinking from the grid. Two reflexes reach past their bearer's turn and pull a potion out of the
+-- satchel on their own -- the Survivor's Reflex (a killing blow answered with a healing draught) and
+-- the Alchemist's Reservoir (a spell the mana wouldn't cover, paid for out of a flask). Both need the
+-- same two things: find a potion that gives the right thing, and drink it. They share them here so
+-- "what counts as a mana potion" is answered once, and a new draught is picked up by both for free.
+--
+-- A reflex-drunk potion is deliberately NOT a cast: it costs no turn, no initiative and no speed, it
+-- can't be aimed, and it does only the restoring half of what the item does in your hand. That
+-- asymmetry is the price of the automation -- the reflex spends your stock without your say-so, and
+-- in exchange it never spends your tempo.
+-- ---------------------------------------------------------------------------
+
+-- What resource drinking `item` would give: "health" for a draught declaring `healing`, else whatever
+-- its `restoreStat` names (a mana or stamina draught's `restore`). nil for anything that restores
+-- nothing. The single reader for "what is in this flask", so a potion is classified the same way by
+-- both reflexes and by any future one.
+function Combat.restorativeStat(item)
+    local ab = item and item.activeAbility
+    if not ab then return nil end
+    if ab.healing then return "health" end
+    if ab.restore then return ab.restoreStat end
+    return nil
+end
+
+-- The first in-stock consumable in `unit`'s grid that would restore `stat` to whoever drinks it, or
+-- nil. Grid order (row-major), so the player chooses which flask a reflex reaches for by where they
+-- put it -- the same way the grid already decides a default weapon (Combat.defaultWeapon).
+function Combat.carriedRestorative(unit, stat)
+    if not (unit and unit.char) then return nil end
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        if item.type == "consumable" and not Combat.isDepleted(item)
+            and Combat.restorativeStat(item) == stat then
+            return item
+        end
+    end
+    return nil
+end
+
+-- Drink `item` on the spot: spend one from the stack and hand its magnitude to `unit`. Returns the
+-- amount actually restored (a heal routes through applyHeal so it is capped and logged like any
+-- other; everything else goes through restoreResource, which respects a reserved ceiling).
+function Combat.quaff(combat, unit, item)
+    local stat = Combat.restorativeStat(item)
+    if not stat then return 0 end
+    local ab = item.activeAbility
+    local amount = ab.healing or ab.restore or 0
+    item.quantity = math.max(0, (item.quantity or 1) - 1)
+    Combat.logEvent(combat, "action",
+        string.format("%s downs %s.", unitName(unit), item.name or "a potion"))
+    if stat == "health" then return Combat.applyHeal(combat, unit, amount) end
+    return Combat.restoreResource(unit.char, stat, amount)
+end
+
+-- Alchemist's Reservoir: a caster that pays for a spell out of a flask when the mana runs dry (the
+-- trait of the same name). Read exactly like Combat.canOverchannel beside it -- a capability the cost
+-- path consults directly, since there is no "onSpend" trait event -- and it is the same bargain made
+-- from a different pocket: Overchannel spends life it cannot get back, this spends stock it can.
+-- True only when a mana draught is actually in the satchel, so an empty alchemist is blocked normally.
+function Combat.canDrawOnPotion(unit)
+    return Trait.has(unit, "alchemists_reservoir")
+        and Combat.carriedRestorative(unit, "mana") ~= nil
+end
+
 -- Pay an ability's `cost` for `unit`. Normally a plain spend; but an Overchannel unit short on mana
 -- drains what mana it has and pays the shortfall out of health (1 HP per missing point). The single
 -- spend path useItem / strikeTrap / strikeWall all route through, so casting-in-blood is uniform.
 function Combat.spendCost(combat, unit, cost)
     if not cost then return end
     local char = unit.char
+    -- Short on mana with a flask to hand: drink first, then pay as normal. Tried BEFORE Overchannel
+    -- because a mage carrying both should reach for the potion before it reaches for its own blood --
+    -- stock is the cheaper of the two, and a reflex that burned health while a draught sat unopened in
+    -- the satchel would be a bug that reads as one. Drinking may still leave the cast short (a small
+    -- flask against a big spell), in which case Overchannel picks up the remainder exactly as it would
+    -- have, and a caster with neither is simply refused by costBlock before it ever reaches here.
+    if cost.stat == "mana" and resourceValue(char, "mana") < cost.amount and Combat.canDrawOnPotion(unit) then
+        Combat.quaff(combat, unit, Combat.carriedRestorative(unit, "mana"))
+    end
     if cost.stat == "mana" and Combat.canOverchannel(unit) then
         local have = resourceValue(char, "mana")
         if have < cost.amount then
@@ -2905,7 +3119,17 @@ local function costBlock(unit, ab)
             local shortfall = cost.amount - resourceValue(unit.char, "mana")
             if resourceValue(unit.char, "health") > shortfall then paidInBlood = true end
         end
-        if not paidInBlood then
+        -- Nor is an Alchemist's Reservoir caster with a mana draught still in stock: spendCost will
+        -- open it on the way through. Weighed against what the flask actually holds, so a thimble of
+        -- mana against a great working still reports "not enough mana" rather than promising a cast
+        -- the spend path would then have to refuse -- this gate and that one must agree.
+        local paidInStock = false
+        if cost.stat == "mana" and not paidInBlood and Combat.canDrawOnPotion(unit) then
+            local flask = Combat.carriedRestorative(unit, "mana")
+            local pours = (flask.activeAbility.restore or 0)
+            if resourceValue(unit.char, "mana") + pours >= cost.amount then paidInStock = true end
+        end
+        if not paidInBlood and not paidInStock then
             return { kind = "cost", stat = cost.stat, reason = "insufficient " .. cost.stat,
                 text = string.format("Not enough %s (have %d)", cost.stat,
                     math.floor(resourceValue(unit.char, cost.stat))) }
@@ -2932,6 +3156,20 @@ end
 -- only one of the conditions that gate a cast.
 function Combat.canAfford(unit, ab)
     return costBlock(unit, ab) == nil
+end
+
+-- Is `item` a working of magic -- the thing a denier's armor won't let its wearer touch? True when
+-- the item itself is tagged `magical` (a spell, an enchanted blade) or when its ability is paid for
+-- in mana (the pool that IS magic in this game: see the silence gate, which draws the same line).
+-- Two sources rather than one because the tag and the cost answer different halves of the question --
+-- a mana-free `magical` relic is still sorcery, and a mana-cost ability is sorcery whatever it is
+-- tagged. Anything else -- a sword, a bomb, a potion, a bandage -- passes.
+function Combat.isMagicItem(item)
+    if not item then return false end
+    if hasTag(item.tags, "magical") then return true end
+    local ab = item.activeAbility
+    if ab and ab.tags and hasTag(ab.tags, "magical") then return true end
+    return ab ~= nil and ab.cost ~= nil and ab.cost.stat == "mana"
 end
 
 -- Is this a consuming item whose stack is spent (quantity 0)? A depleted consumable KEEPS its
@@ -3009,6 +3247,16 @@ function Combat.itemBlockReason(unit, item)
     -- health still fires). Checked before affordability so the note reads "silenced", not "no mana".
     if ab.cost and ab.cost.stat == "mana" and Status.silenced(unit) then
         return { kind = "silenced", reason = "silenced", text = "Silenced -- cannot cast mana abilities" }
+    end
+
+    -- Denied: this unit is cut off from magic outright (the Magic Denied status -- worn by the
+    -- Skeptic's Harness, and inflictable by anything else that wants the effect). Broader than the
+    -- silence gate above it: that refuses only what is paid for in mana, this refuses the whole craft,
+    -- an enchanted blade included. Checked after silence so a mage that is both is told the more
+    -- specific thing first.
+    if Status.deniesMagic(unit) and Combat.isMagicItem(item) then
+        return { kind = "denied", reason = "denies magic",
+            text = "Magic isn't real -- this cannot be used" }
     end
 
     -- Disarmed: crafted weapons are struck from the hand. A weapon -- the basic attack included, since
@@ -3209,6 +3457,13 @@ function Combat.useItem(combat, unit, item, tx, ty)
     -- itself runs later, from Combat.resolveChannel when the caster's slot comes back around, and
     -- only THEN is ab.speed charged. Ending the turn by ab.channel (not ab.speed) is what places
     -- the caster back in the order at exactly its resolution slot, so no separate scheduler exists.
+    --
+    -- The wind-up is `ab.channel` ticks and nothing else: the turn's move cost is DEFERRED past the
+    -- resolution (endTurn's `defer`) rather than stacked onto it. Walking before a cast must not
+    -- stretch the caster's own telegraph -- that would hand the foes under the blast extra turns to
+    -- stroll out of it, and silently punish repositioning. The ground is still paid for, on the far
+    -- side: the debt lands on the resolving turn, so the caster's NEXT action comes at the same tick
+    -- either way and only the resolution slot moves earlier.
     if ab.channel and ab.channel > 0 then
         if ab.consumesItem then item.quantity = math.max(0, (item.quantity or 1) - 1) end
         unit.channel = { item = item, ab = ab, tx = tx, ty = ty }
@@ -3219,7 +3474,7 @@ function Combat.useItem(combat, unit, item, tx, ty)
             support = Combat.isSupportAbility(ab) })
         Combat.logEvent(combat, "action",
             string.format("%s begins channeling %s.", unitName(unit), item.name or "an ability"))
-        endTurn(combat, unit, ab.channel)
+        endTurn(combat, unit, ab.channel, true)
         return true, { channeling = true }
     end
 
@@ -3515,6 +3770,21 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
             end
             return copied
         end,
+        -- Exchange a unit's BODY for another character blueprint's (models/transform.lua) -- the same
+        -- unit, in a different shape, keeping its tile, its turn and its health pool. What Wild Shape
+        -- (the caster becomes a beast) and Polymorph (a victim becomes a pig) both run through.
+        --
+        -- A SELF-transform holds the ability's reservation for as long as the shape lasts, exactly as
+        -- a summoned creature holds it for as long as it stands -- wearing a bear and having a bear
+        -- are the same commitment, so they are priced the same way. An INFLICTED shape reserves
+        -- nothing: it is a debuff its victim wears, not an upkeep its caster pays, and the caster
+        -- already paid at cast time. Both are the status's to end, and reverting releases the lien.
+        transform = function(tgt, charId, opts)
+            if not tgt then return nil end
+            opts = opts or {}
+            if opts.reserve == nil and tgt == unit then opts.reserve = reserve end
+            return Transform.apply(combat, tgt, charId, opts)
+        end,
         -- Shove a unit `distance` tiles straight away from the caster; a collision hurts everyone.
         knockback = function(tgt, distance, opts)
             if not tgt then return 0 end
@@ -3741,9 +4011,15 @@ function Combat.dispel(combat, cells)
     local revealed = 0
     for _, c in ipairs(cells or {}) do
         local u = Combat.unitAt(combat, c.x, c.y)
-        if u and Status.has(u, "invisible") then
-            Status.remove(combat, u, "invisible")
-            Combat.logEvent(combat, "status", string.format("%s is revealed!", unitName(u)))
+        -- Every ILLUSION on the unit comes apart, not just Invisible: a status declaring
+        -- `illusion = true` is a lie told about a body, and this spell's whole job is that anything
+        -- untrue in the area stops being so. Invisible is only the first such lie -- the shapes
+        -- (Polymorph, Wild Shape) are the others, and they unravel here for free, reverting through
+        -- the same onExpire every other removal path fires. See Status.illusionsOn.
+        for _, s in ipairs(Status.illusionsOn(u)) do
+            Status.remove(combat, u, s.id)
+            Combat.logEvent(combat, "status",
+                string.format("%s's %s comes apart!", unitName(u), s.name or s.id))
             revealed = revealed + 1
         end
     end
