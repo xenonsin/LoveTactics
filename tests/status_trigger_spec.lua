@@ -74,6 +74,32 @@ return {
         end,
     },
     {
+        name = "Exploit Weakness scales with the number of debuffs on the foe",
+        fn = function()
+            local caster = withGrid("bandit", { "iron_sword", "ability_exploit" })
+            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) },
+                { unit("bandit", 2, 1), unit("bandit", 1, 2) })
+            local u = c.units[1]
+            local ab = itemOf(u.char, "ability_exploit")
+            local one = Combat.unitAt(c, 2, 1)
+            local many = Combat.unitAt(c, 1, 2)
+            Status.apply(c, one, "poison")
+            for _, id in ipairs({ "poison", "burn", "blind" }) do Status.apply(c, many, id) end
+
+            refresh(c, u)
+            local oneHp = one.char.stats.health.current
+            assert(Combat.useItem(c, u, ab, 2, 1), "strike the singly-debuffed foe")
+            local oneDmg = oneHp - one.char.stats.health.current
+
+            refresh(c, u)
+            local manyHp = many.char.stats.health.current
+            assert(Combat.useItem(c, u, ab, 1, 2), "strike the thrice-debuffed foe")
+            local manyDmg = manyHp - many.char.stats.health.current
+
+            assert(manyDmg > oneDmg, "more debuffs, wider opening")
+        end,
+    },
+    {
         name = "Shatter Strike doubles against a frozen foe and consumes the freeze",
         fn = function()
             local caster = withGrid("bandit", { "iron_sword", "ability_shatter_strike" })

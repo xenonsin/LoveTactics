@@ -35,10 +35,12 @@ end
 -- adjacency that makes items interesting -- and the first free cell is forced to a weapon so the unit
 -- always has a real strike to open with. `taken` is shared across the party and each id is drawn at
 -- most once into it, so no item repeats within a grid or between units. Consumables roll a random
--- stack depth.
+-- stack depth. A repair pass then makes every `requiresAdjacent` ability in the grid actually
+-- castable (see below) -- a roll of dead abilities exercises nothing.
 local function randomizeLoadout(char, pool, taken)
     local Character = require("models.character")
     local Item = require("models.item")
+    local Combat = require("models.combat")
 
     local weapons = {}
     for _, id in ipairs(pool) do
@@ -72,6 +74,70 @@ local function randomizeLoadout(char, pool, taken)
             if weaponCell and char.inventory[cell] then char.defaultActionSlot = cell end
         end
     end
+
+    -- An ability that names a neighbor (Power Shot's "adjacent ranged") is blocked outright where the
+    -- fill happened not to drop one beside it, so the roll would keep handing units abilities they
+    -- can't cast. Each offender is repaired in place: first by SWAPPING a matching item already in
+    -- the grid next to it -- which keeps the roll's spread and the ability itself -- and only if no
+    -- swap helps, by redrawing that cell as something satisfied where it sits. Bound cells never move.
+    local function unmetCount()
+        local n = 0
+        for cell = 1, Character.MAX_INVENTORY do
+            local it = char.inventory[cell]
+            if it and not Combat.adjacencyMetAt(char, it, cell) then n = n + 1 end
+        end
+        return n
+    end
+
+    local function movable(cell)
+        return char.inventory[cell] ~= nil and not Item.isBound(char.inventory[cell])
+    end
+
+    -- Swap a `req`-matching item into one of `cell`'s neighbors. Accepted only when the grid ends with
+    -- fewer unmet requirements than it started with, so a swap that merely moves the block onto the
+    -- donor's own ability is reverted rather than traded for.
+    local function swapNeighborIn(cell, req)
+        local before = unmetCount()
+        for _, nb in ipairs(Character.adjacentIndices(cell)) do
+            for donor = 1, Character.MAX_INVENTORY do
+                if donor ~= cell and donor ~= nb and movable(nb) and movable(donor)
+                    and Combat.matchesAdjacency(char.inventory[donor], req) then
+                    char.inventory[nb], char.inventory[donor] = char.inventory[donor], char.inventory[nb]
+                    if unmetCount() < before then return true end
+                    char.inventory[nb], char.inventory[donor] = char.inventory[donor], char.inventory[nb]
+                end
+            end
+        end
+        return false
+    end
+
+    -- Candidates for `cell` that need nothing this grid can't already give them. A weapon cell stays
+    -- a weapon, so repairing one can't leave the unit without a strike to open with.
+    local function satisfiedHere(cell, weaponsOnly)
+        local ids = {}
+        for _, id in ipairs(weaponsOnly and weapons or pool) do
+            local def = Item.defs[id]
+            if Combat.adjacencyMetAt(char, def, cell) then ids[#ids + 1] = id end
+        end
+        return ids
+    end
+
+    local pinned = char.defaultActionSlot and char.inventory[char.defaultActionSlot]
+    for cell = 1, Character.MAX_INVENTORY do
+        local item = char.inventory[cell]
+        local ab = item and item.activeAbility
+        local req = ab and ab.requiresAdjacent
+        if req and movable(cell) and not Combat.adjacencyMetAt(char, item, cell) then
+            if not swapNeighborIn(cell, req) then
+                taken[item.id] = nil -- back into the pool: this grid has no room for it
+                char.inventory[cell] = draw(satisfiedHere(cell, item.type == "weapon"))
+            end
+        end
+    end
+
+    -- The pin follows the item the fill chose, wherever a swap moved it. If the repair drew it away
+    -- entirely, drop the pin: Combat.defaultAction falls back to the first grid weapon on its own.
+    char.defaultActionSlot = pinned and Character.slotIndex(char, pinned) or nil
 end
 
 -- Debug: drop straight into a battle with a stock party and a small enemy roster (mirrors the

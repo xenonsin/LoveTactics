@@ -538,11 +538,11 @@ return {
             -- the inversion that makes this bow want the whole field between it and the kill.
             local near = plainChar("archer")
             local nearBow = give(near, "hornbow_of_the_hunt")
-            local c1 = Combat.new(arena(8, 8), { unit(near, 1, 1) }, { unit(plainChar("bandit"), 3, 1) })
+            local c1 = Combat.new(arena(8, 8), { unit(near, 1, 1) }, { unit(plainChar("bandit"), 4, 1) })
             local n, nt = c1.units[1], c1.units[2]
             local nBefore = hp(nt)
             openTurn(c1, n)
-            assert(Combat.useItem(c1, n, nearBow, 3, 1), "the point-blank-band shot lands (2 tiles)")
+            assert(Combat.useItem(c1, n, nearBow, 4, 1), "the nearest legal shot lands (3 tiles, minRange)")
             local close = nBefore - hp(nt)
 
             local far = plainChar("archer")

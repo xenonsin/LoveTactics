@@ -27,7 +27,7 @@ return {
     activeAbility = {
         target = "enemy",
         range = 5, -- two tiles further than a plain bow
-        minRange = 2,
+        minRange = 3,
         requiresSight = true,
         speed = 3,
         cost = { stat = "stamina", amount = 10 },

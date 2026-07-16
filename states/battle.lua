@@ -286,6 +286,7 @@ local function computeRange(unit, item)
     local ab = item.activeAbility
     local target = ab and ab.target
     battle.rangeReach = {}
+    battle.rangeFor = item -- what the sets below describe; refreshView rebuilds them when it changes
     -- A self-only ability can only ever land on the caster's own tile (no walk).
     if target == "self" then
         battle.rangeCells = { { x = unit.x, y = unit.y } }
@@ -485,6 +486,7 @@ local function beginTurn()
     battle.notice = nil -- a refusal belonged to the turn it was refused on
     battle.rangeCells = {}
     battle.rangeReach = {}
+    battle.rangeFor = nil
     battle.moveCells = {}
     battle.threatCells = {}
     battle.attackReach = {}
@@ -793,6 +795,9 @@ local function armedActionAt(cx, cy)
     local item = battle.armedItem
     local ab = item and item.activeAbility
     if not ab then return nil end
+    -- The range sets may currently describe an ability the player is HOVERING rather than the armed
+    -- one; what an armed confirm does is always read from the armed item's own reach.
+    if battle.rangeFor ~= item then computeRange(battle.current, item) end
     local occ = Combat.unitAt(battle.combat, cx, cy)
     local support = battle.armedSupport
     local needsOccupant = ab.target == "enemy" or ab.target == "ally"
@@ -1182,17 +1187,20 @@ local function refreshView()
     -- Board highlights: the acting unit always, plus whichever unit the timeline is hovering.
     local overlays = { move = {}, range = {} }
     local hoverAbility = battle.hoverItem and battle.hoverItem.activeAbility
-    if isParty and (battle.mode == "armed" or hoverAbility) then
+    if isParty and ((battle.mode == "armed" and battle.armedItem) or hoverAbility) then
         -- Armed (the turn-start default, or an explicitly armed item), or previewing a hovered ability
         -- slot: show the EFFECTIVE range -- the movement band PLUS the action's reach beyond it, so the
         -- player reads where the unit can step and where it can act from there. Aiming a cell that needs
         -- an approach previews the walk-and-strike route to the stand tile the action fires from.
-        local armed = battle.mode == "armed"
-        local previewItem = armed and battle.armedItem or battle.hoverItem
-        local support = armed and battle.armedSupport or Combat.isSupportAbility(hoverAbility)
-        -- The hovered (not-yet-armed) item's reach is computed on the fly; an armed item's was computed
-        -- when it was armed and holds until the turn acts (the board doesn't shift on the player's turn).
-        if hoverAbility and not armed then computeRange(current, battle.hoverItem) end
+        -- A hovered ability slot previews ITS reach even while another item is armed, so the range on
+        -- the board always belongs to the ability under the cursor. When the hover ends the preview
+        -- item falls back to the armed one and the sets rebuild -- rangeFor tracks what they were
+        -- built for, so this costs a recompute only when the previewed ability actually changes.
+        local previewItem = (hoverAbility and battle.hoverItem) or battle.armedItem
+        local armed = battle.mode == "armed" and previewItem == battle.armedItem
+        local support = armed and battle.armedSupport
+            or Combat.isSupportAbility(previewItem.activeAbility)
+        if previewItem ~= battle.rangeFor then computeRange(current, previewItem) end
 
         -- Movement band, split by danger (blue safe / purple risky) exactly like move mode.
         local danger = battle.dangerCells or {}
