@@ -1050,13 +1050,19 @@ end
 -- cast lands TWO: the slot the spell RESOLVES at (the wind-up, ab.channel) and, past that, the slot
 -- the caster next acts at (resolution + the cast's own speed, the initiative resolveCast charges when
 -- the wind-up finishes) -- so the player reads both when the spell fires and when they regain control.
+--
+-- A channel resolves `ab.channel` ticks out NO MATTER how far the caster walked first: the wind-up is
+-- the spell's own, and the move cost is deferred past the resolution (models/combat.lua useItem's
+-- channel branch). So `pendingMove` sits out of the resolve slot and lands in the follow-up instead --
+-- walking moves the ghost the player regains control at, never the one the blast lands at.
 local function abilityGhosts(unit, item, pendingMove)
     local a = item.activeAbility
     if a.channel then
-        local resolve = pendingMove + a.channel
+        local resolve = a.channel
         return {
             { initiative = resolve, label = "channel resolves here" },
-            { initiative = resolve + Combat.actionSpeed(unit, a, item), label = "then acts here" },
+            { initiative = resolve + pendingMove + Combat.actionSpeed(unit, a, item),
+                label = "then acts here" },
         }
     end
     return { { initiative = pendingMove + Combat.actionSpeed(unit, a, item) } }

@@ -15,6 +15,7 @@ local Scale = require("scale")
 local Combat = require("models.combat")
 local Trap = require("models.trap")
 local Colors = require("ui.colors")
+local Glyphs = require("ui.glyphs")
 
 local TileTooltip = {}
 
@@ -54,6 +55,8 @@ local ENEMY_COLOR = Colors.ENEMY
 local MUTED = { 0.62, 0.65, 0.72 }
 local VALUE = { 0.90, 0.91, 0.95 }
 local DESC = { 0.80, 0.82, 0.88 }
+
+local GLYPH_GAP = 4 -- between a row's glyph and the value it marks (matches ui/item_tooltip.lua)
 
 -- Resource pools shown as labeled bars, in draw order. Health has no fixed colour: it's filled with
 -- the unit's SIDE colour (blue ally / red foe) like the board token's bar and the turn card's, so
@@ -200,7 +203,10 @@ local function appendUnit(blocks, unit, preview)
             blocks[#blocks + 1] = { kind = "status",
                 name = def.name or st.name or "Status",
                 color = def.color or { 0.82, 0.82, 0.88 },
-                remaining = st.remaining }
+                -- A self-expiring status (Defending, Channeling) carries a meaningless countdown and
+                -- opts out of it, exactly as in ui/status_tooltip.lua -- the same status must not
+                -- quote a duration in one tooltip and withhold it in the other.
+                remaining = not def.hideDuration and st.remaining or nil }
         end
     end
 end
@@ -453,8 +459,17 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             love.graphics.setFont(body)
             love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
             love.graphics.print(b.name, bx + pad, ty)
-            love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
-            love.graphics.printf(fmtDuration(b.remaining), bx + pad, ty, innerW, "right")
+            -- The duration, under the hourglass -- the game's mark for "measured in ticks", worn by
+            -- every number on that clock (speed badges, recovery, the initiative read-out). A status
+            -- that opts out of its countdown (hideDuration) prints the name alone.
+            if b.remaining then
+                love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
+                local text = fmtDuration(b.remaining)
+                love.graphics.printf(text, bx + pad, ty, innerW, "right")
+                local gw = 7
+                local vx = bx + pad + innerW - body:getWidth(text)
+                Glyphs.hourglass(vx - GLYPH_GAP - gw, ty + 2, gw, bodyH - 4, MUTED[1], MUTED[2], MUTED[3], 1)
+            end
             ty = ty + bodyH + 1
         else -- stat: label left, value right
             love.graphics.setFont(body)

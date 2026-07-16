@@ -5,6 +5,7 @@
 -- draws it here, last, so the tooltip sits above the board AND the panel.
 
 local Scale = require("scale")
+local Glyphs = require("ui.glyphs")
 
 local StatusTooltip = {}
 
@@ -70,9 +71,14 @@ function StatusTooltip.draw(status, mx, my, maxRight)
         ty = ty + #descLines * lineH + 4
     end
 
+    -- The countdown under the hourglass -- the game's mark for "measured in ticks" -- rather than the
+    -- word "Duration", so it reads as the same clock as an ability's speed badge or an item's recovery.
     if showDuration then
-        love.graphics.setColor(0.65, 0.68, 0.75, 1)
-        love.graphics.print("Duration: " .. fmtDuration(status.remaining), bx + pad, ty)
+        local MUTED = { 0.65, 0.68, 0.75 }
+        local gw = 7
+        Glyphs.hourglass(bx + pad, ty + 2, gw, lineH - 4, MUTED[1], MUTED[2], MUTED[3], 1)
+        love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
+        love.graphics.print(fmtDuration(status.remaining), bx + pad + gw + 4, ty)
     end
     love.graphics.setColor(1, 1, 1)
 end

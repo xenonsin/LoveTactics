@@ -951,6 +951,69 @@ return {
         end,
     },
     {
+        name = "walking before a channel does not stretch the wind-up; the move is paid past the resolution",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("mage", 2, 2) }, { unit("bandit", 6, 6) })
+            local mage, other = c.units[1], c.units[2]
+            mage.char.inventory = { Item.instantiate("ability_fireball") }
+            local fireball = mage.char.inventory[1]
+            local speed = fireball.activeAbility.speed
+            -- `other` parks at 0 (out of the blast) so every rebase subtracts 0 and the mage's raw
+            -- initiative is what the asserts below read.
+            mage.initiative, other.initiative = 0, 0
+            mage.speed, other.speed = 0, 0
+
+            -- Walk 3 tiles, then channel an empty tile in range. The wind-up is the spell's own 2 --
+            -- the walk stays out of it.
+            openTurn(c, mage)
+            c.turn.moveCost = 3
+            assert(Combat.useItem(c, mage, fireball, 2, 4), "the channel begins")
+            assert(mage.initiative == fireball.activeAbility.channel,
+                "the blast lands at the wind-up (2), not the wind-up plus the 3 tiles walked; got "
+                    .. mage.initiative)
+            assert(Combat.moveDebt(mage) == 3, "the 3 tiles walked are banked as a debt")
+
+            -- The follow-up ghost owns the deferred move, so the strip projects the real next slot.
+            local ghost = Combat.channelGhosts(c)[1]
+            assert(ghost.initiative == 2 + 3 + speed,
+                "the follow-up ghost = resolution + the walk + the cast's speed; got " .. ghost.initiative)
+
+            -- Resolving settles the debt: the caster's next turn lands at walk + wind-up + speed -- the
+            -- same tick the old stacked model gave it. Only the resolution slot moved earlier.
+            openTurn(c, mage)
+            assert(Combat.resolveChannel(c, mage), "the channel resolves")
+            assert(mage.initiative == 2 + 3 + speed, "resolution charges the deferred walk on top of speed")
+            assert(Combat.moveDebt(mage) == 0, "the debt is settled, and never charged twice")
+        end,
+    },
+    {
+        name = "an interrupted channel still owes the move it deferred",
+        fn = function()
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 2, 4) })
+            local mage, b1 = c.units[1], c.units[2]
+            mage.char.inventory = { Item.instantiate("ability_fireball") }
+            mage.initiative, b1.initiative = 0, 0 -- b1 parks at 0 so no rebase shifts the mage
+            mage.speed, b1.speed = 0, 0
+
+            openTurn(c, mage)
+            c.turn.moveCost = 3
+            assert(Combat.useItem(c, mage, mage.char.inventory[1], b1.x, b1.y), "the channel begins")
+            Status.apply(c, mage, "stun")
+            assert(mage.channel == nil, "the stun shatters the channel")
+            -- The debt outlives the channel that banked it: ground covered is paid for exactly once,
+            -- so being interrupted can never be cheaper than winding up cleanly.
+            assert(Combat.moveDebt(mage) == 3, "the deferred walk survives the interrupt")
+            local before = mage.initiative
+            openTurn(c, mage) -- a fresh turn: no ground covered, so the debt is the only move cost
+            Combat.pass(c, mage)
+            assert(mage.initiative == before + 3 + Combat.WAIT_COST,
+                "the next turn settles the debt on top of its own cost; got " .. mage.initiative)
+            assert(Combat.moveDebt(mage) == 0, "and clears it")
+        end,
+    },
+    {
         name = "a stun interrupts a channel and does not refund the committed mana",
         fn = function()
             local Status = require("models.status")

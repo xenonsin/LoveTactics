@@ -14,13 +14,64 @@ local widget
 -- a release build and the extra buttons disappear.
 local DEBUG = true
 
+-- Debug: the pool the mock battle rolls loadouts from -- every shoppable item, i.e. everything a
+-- player could actually end up holding. Excluded: natural weapons (a beast's fangs are its body, not
+-- gear) and bound signature relics (they belong to one bearer and Character.reconcileBound would put
+-- them back anyway). Built once, sorted by id so a given roll is reproducible from a seed.
+local function randomizablePool()
+    local Item = require("models.item")
+    local pool = {}
+    for id, def in pairs(Item.defs) do
+        if not Item.isBound(def) and Item.archetype(def) ~= "natural" then
+            pool[#pool + 1] = id
+        end
+    end
+    table.sort(pool)
+    return pool
+end
+
+-- Debug: replace `char`'s authored loadout with random gear, leaving bound cells (a signature relic)
+-- as the blueprint placed them. Every free cell gets an item -- a full grid is the point, since it is
+-- adjacency that makes items interesting -- and the first free cell is forced to a weapon so the unit
+-- always has a real strike to open with. Consumables roll a random stack depth.
+local function randomizeLoadout(char, pool)
+    local Character = require("models.character")
+    local Item = require("models.item")
+
+    local weapons = {}
+    for _, id in ipairs(pool) do
+        if Item.defs[id].type == "weapon" then weapons[#weapons + 1] = id end
+    end
+
+    local function roll(id)
+        local def = Item.defs[id]
+        local qty = Item.isStackable(def) and love.math.random(1, Item.maxStack(def)) or 1
+        return Item.instantiate(id, qty)
+    end
+
+    char.defaultActionSlot = nil
+    for cell = 1, Character.MAX_INVENTORY do
+        if not Item.isBound(char.inventory[cell]) then
+            local weaponCell = char.defaultActionSlot == nil
+            local ids = weaponCell and weapons or pool
+            char.inventory[cell] = roll(ids[love.math.random(#ids)])
+            if weaponCell then char.defaultActionSlot = cell end
+        end
+    end
+end
+
 -- Debug: drop straight into a battle with a stock party and a small enemy roster (mirrors the
 -- objective-battle opts states/game.lua builds), so combat can be exercised without a full run.
+-- Loadouts are rolled fresh each time (see randomizeLoadout) so repeated runs exercise a spread of
+-- items rather than the same four authored grids.
 local function startMockBattle()
     local Character = require("models.character")
+    local pool = randomizablePool()
     local party = {}
     for _, id in ipairs({ "knight", "mage", "archer", "priest" }) do
-        party[#party + 1] = Character.instantiate(id)
+        local char = Character.instantiate(id)
+        randomizeLoadout(char, pool)
+        party[#party + 1] = char
     end
     State.switch(require("states.battle"), {
         encounter = { kind = "objective" },

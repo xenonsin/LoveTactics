@@ -12,6 +12,10 @@ return {
     description = "Winding up a powerful spell; disrupted by hard control or forced movement.",
     color = { 0.65, 0.45, 0.95 }, -- badge tint (arcane violet)
     duration = 99,                -- safety cap; overridden per-cast to ab.channel + 1
+    -- The countdown is that safety cap, not the wind-up: it never counts the move cost the caster paid
+    -- on the cast turn, and it carries the +1 tick of slack. The resolve slot lives on the timeline
+    -- ("channel resolves here"), so quoting a second, disagreeing number here is worse than none.
+    hideDuration = true,
     debuff = false,               -- NOT removable by Cure
     hideLog = true,               -- begin/resolve/interrupt are logged explicitly by combat.lua
 }
