@@ -1,6 +1,7 @@
 return {
     name = "Priest",
     sprite = "assets/chars/priest.png",
+    portrait = "assets/portraits/priest.png", -- large VN portrait for conversations (falls back if missing)
     -- Innate growth class: the fallback/tie-break for the level-up growth system (models/growth.lua).
     class = "priest",
     stats = {

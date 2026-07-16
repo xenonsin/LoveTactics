@@ -9,6 +9,8 @@
 --   * onExpire(ctx)       -- when its remaining ticks hit 0
 --   * onTurnStart(ctx)    -- at the top of the affected unit's turn (e.g. poison damage)
 --   * onTurnEnd(ctx)      -- as the affected unit's turn ends
+--   * onEnterTile(ctx)    -- the unit arrived on a tile by ground movement -- walked, shoved, or
+--                            dragged, but never blinked or swapped (e.g. bleed damage)
 --   * blocksMove = true   -- the unit cannot move on its turn (root)
 --   * turnEndMoveCost(ctx)-> a move cost the unit pays at end of turn even if it stayed put
 --                            (root: as if it had moved max spaces)
@@ -34,9 +36,14 @@ local function ctxFor(combat, unit, status)
         status = status,
         magnitude = status.magnitude,
         moveBudget = Combat.moveBudget(unit),
-        damage = function(tgt, amount, tags)
+        -- `opts` reaches Combat.dealFlatDamage as authored -- notably `{ raw = true }`, which skips
+        -- armor and tag resists the way a Penetrating Strike does. A status needs it because a
+        -- lingering effect is not a blow being blocked: defense stats (6-10) dwarf any sane per-tick
+        -- magnitude, so a mitigated tick floors at 1 and its magnitude stops meaning anything. Bleed
+        -- uses it -- a breastplate turns a blade, but it does nothing about a wound already open.
+        damage = function(tgt, amount, tags, opts)
             if not tgt then return 0 end
-            return Combat.dealFlatDamage(combat, tgt, amount, tags, status.name or status.id)
+            return Combat.dealFlatDamage(combat, tgt, amount, tags, status.name or status.id, nil, opts)
         end,
         heal = function(tgt, amount)
             if not tgt then return 0 end
@@ -207,6 +214,19 @@ function Status.preventsDeath(unit)
     return false
 end
 
+-- Does any active status make this unit's GROUND carry `tag`? A status may declare `tileTags`
+-- (Wet -> "conductable"): standing there, its bearer makes the tile answer to that tag exactly as
+-- water terrain or a Rain cloud on the same cell would. Read by Combat.tileHasTag, which asks all
+-- three sources at once -- so a soaked knight and a river conduct the same bolt.
+function Status.hasTileTag(unit, tag)
+    for _, s in ipairs(unit.statuses or {}) do
+        for _, t in ipairs(s.def.tileTags or {}) do
+            if t == tag then return true end
+        end
+    end
+    return false
+end
+
 -- Is this unit silenced -- unable to spend mana on an ability? True while any active status sets
 -- `silencesMana`. Read by Combat.itemBlockReason, the single gate for a refused mana cast.
 function Status.silenced(unit)
@@ -323,9 +343,9 @@ function Status.tick(combat, elapsed)
     end
 end
 
--- Run a named per-turn hook ("onTurnStart" / "onTurnEnd") for every status on `unit`. Iterates
--- a snapshot so a hook that mutates the status list can't corrupt the walk.
-local function runTurnHook(combat, unit, hook)
+-- Run a named ctx hook ("onTurnStart" / "onTurnEnd" / "onEnterTile") for every status on `unit`.
+-- Iterates a snapshot so a hook that mutates the status list can't corrupt the walk.
+local function runHook(combat, unit, hook)
     local snapshot = {}
     for _, s in ipairs(unit.statuses or {}) do snapshot[#snapshot + 1] = s end
     for _, s in ipairs(snapshot) do
@@ -334,11 +354,20 @@ local function runTurnHook(combat, unit, hook)
 end
 
 function Status.onTurnStart(combat, unit)
-    runTurnHook(combat, unit, "onTurnStart")
+    runHook(combat, unit, "onTurnStart")
 end
 
 function Status.onTurnEnd(combat, unit)
-    runTurnHook(combat, unit, "onTurnEnd")
+    runHook(combat, unit, "onTurnEnd")
+end
+
+-- The bearer just arrived on a tile UNDER ITS OWN WEIGHT -- it walked there, or it was shoved,
+-- pulled, or trampled there. Fired from Combat.enterTile, the one chokepoint every position change
+-- routes through, but only for ground movement: a blink, a swap, and a summon's arrival deliberately
+-- do NOT fire it (see the `reason` gate there). The hook a per-tile effect hangs on -- Bleed, which
+-- costs the afflicted unit blood for every step it takes and nothing at all for standing still.
+function Status.onEnterTile(combat, unit)
+    runHook(combat, unit, "onEnterTile")
 end
 
 -- The bearer just DEALT `amount` post-mitigation damage to someone. Fired from Combat.dealDamage

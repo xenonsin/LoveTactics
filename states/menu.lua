@@ -10,6 +10,43 @@ local hintFont = love.graphics.newFont(16)
 
 local widget
 
+-- Debug menu entries (jump into a battle, run string extraction) for development. Flip this off for
+-- a release build and the extra buttons disappear.
+local DEBUG = true
+
+-- Debug: drop straight into a battle with a stock party and a small enemy roster (mirrors the
+-- objective-battle opts states/game.lua builds), so combat can be exercised without a full run.
+local function startMockBattle()
+    local Character = require("models.character")
+    local party = {}
+    for _, id in ipairs({ "knight", "mage", "archer", "priest" }) do
+        party[#party + 1] = Character.instantiate(id)
+    end
+    State.switch(require("states.battle"), {
+        encounter = { kind = "objective" },
+        biome = "castle",
+        prestige = 3,
+        party = party,
+        quest = { map = { biome = "castle", objective = {
+            name = "Mock Battle",
+            composition = function() return { "bandit", "bandit", "champion" } end,
+            win = { type = "killAll" },
+        } } },
+        -- No hub/quest to return to: send both outcomes back to the menu.
+        onWin = function() State.switch(require("states.menu")) end,
+        onLoss = function() State.switch(require("states.menu")) end,
+    })
+end
+
+-- Debug: run the localization string extractor (stamps ids + syncs data/lang/strings.lua). Same as
+-- `lovec . extract-strings`; surfaced here so it can be run from a normal windowed session. Reports
+-- the outcome in a short status line (there is no console under love.exe).
+local function runExtractStrings()
+    local ok, err = pcall(function() require("tools.extract_strings").run() end)
+    menu.status = ok and "Extracted strings -> data/lang/strings.lua" or ("Extract failed: " .. tostring(err))
+    menu.statusTimer = 5
+end
+
 -- Built on entry, not at require time: whether "Continue" belongs on the menu depends on
 -- whether a save exists, and that can change while the game is running (starting a new
 -- game writes one; there is no save until the first quest is completed or purchase made).
@@ -34,6 +71,11 @@ local function buildMenu()
         end,
     }
 
+    if DEBUG then
+        items[#items + 1] = { label = "Mock Battle (debug)", action = startMockBattle }
+        items[#items + 1] = { label = "Extract Strings (debug)", action = runExtractStrings }
+    end
+
     items[#items + 1] = {
         label = "Exit To Desktop",
         action = function() love.event.quit() end,
@@ -48,6 +90,9 @@ end
 
 function menu.update(dt)
     widget:update(dt)
+    if menu.statusTimer and menu.statusTimer > 0 then
+        menu.statusTimer = menu.statusTimer - dt
+    end
 end
 
 function menu.draw()
@@ -68,6 +113,13 @@ function menu.draw()
         love.graphics.setFont(hintFont)
         love.graphics.setColor(0.5, 0.55, 0.7)
         love.graphics.printf("New Game erases your save.", 0, Scale.HEIGHT - 48, screenW, "center")
+    end
+
+    -- Transient debug status (e.g. the result of Extract Strings).
+    if menu.status and menu.statusTimer and menu.statusTimer > 0 then
+        love.graphics.setFont(hintFont)
+        love.graphics.setColor(0.55, 0.8, 0.6)
+        love.graphics.printf(menu.status, 0, Scale.HEIGHT - 24, screenW, "center")
     end
     love.graphics.setColor(1, 1, 1)
 end

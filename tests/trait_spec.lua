@@ -42,14 +42,20 @@ local function withTraits(defs, fn)
     if not ok then error(err, 0) end
 end
 
--- A character instance carrying `traits`, built off an existing blueprint so its stats are real.
--- Strips the innate signature relic so the ONLY trait is the fixture one (a knight would otherwise
--- also carry Oathward from its relic); item-delivered traits have their own case below.
-local function charWithTraits(id, traits)
+-- A character instance with an EMPTY grid, built off an existing blueprint so its stats are real.
+-- Any item may carry traits to its holder, so an empty grid is the only honest "this unit's traits
+-- are exactly what I gave it" baseline: a knight carries Oathward on its signature relic, and every
+-- sword in the game now carries Parry (data/traits/parry.lua), so even a plain bandit is not
+-- trait-free while it holds its iron sword. Item-delivered traits have their own case below.
+local function plainChar(id)
     local char = Character.instantiate(id)
-    for i = 1, Character.MAX_INVENTORY do
-        if char.inventory[i] and char.inventory[i].bound then char.inventory[i] = nil end
-    end
+    for i = 1, Character.MAX_INVENTORY do char.inventory[i] = nil end
+    return char
+end
+
+-- A trait-free character instance (see plainChar) carrying exactly `traits` from its blueprint.
+local function charWithTraits(id, traits)
+    local char = plainChar(id)
     char.traits = traits
     return char
 end
@@ -70,7 +76,7 @@ return {
             }, function()
                 local knight = charWithTraits("knight", { "test_opener" })
                 local c = Combat.new(arena(6, 6),
-                    { unit(knight, 1, 1) }, { unit("bandit", 4, 4) })
+                    { unit(knight, 1, 1) }, { unit(plainChar("bandit"), 4, 4) })
 
                 local u = c.units[1]
                 assert(#u.traits == 1, "the trait should be attached from the character blueprint")
@@ -178,14 +184,16 @@ return {
     {
         name = "an item in the 3x3 grid grants its traits -- take the relic, take the rule",
         fn = function()
-            -- A bandit with no rage of their own (a starter like the knight now carries an innate
-            -- trait, so use a trait-free enemy for the "no trait" baseline).
-            local plain = Character.instantiate("bandit")
+            -- A bandit with no rage of their own, and an empty grid besides: a starter like the knight
+            -- carries an innate trait on its relic, and a bandit's own iron sword now carries Parry,
+            -- so the "no trait" baseline has to be a character holding nothing at all (plainChar).
+            local plain = plainChar("bandit")
             local c1 = Combat.new(arena(6, 6), { unit(plain, 1, 1) }, { unit("wolf_grunt", 4, 4) })
-            assert(#c1.units[1].traits == 0, "a bandit has no innate trait")
+            assert(#c1.units[1].traits == 0, "an empty-handed bandit has no innate trait")
 
-            -- The same bandit, wearing what was taken off Ira's body.
-            local armed = Character.instantiate("bandit")
+            -- The same bandit, wearing what was taken off Ira's body -- and nothing else, so the mail's
+            -- rule is unambiguously the first (and only) trait it carries.
+            local armed = plainChar("bandit")
             Character.addItem(armed, Item.instantiate("mail_of_the_unappeased"))
             local c2 = Combat.new(arena(6, 6), { unit(armed, 1, 1) }, { unit("bandit", 4, 4) })
             local u = c2.units[1]

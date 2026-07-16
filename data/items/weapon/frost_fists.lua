@@ -6,7 +6,7 @@ return {
     description = "Batter an adjacent foe with biting cold.",
     sprite = "assets/items/frost_fists.png",
     type = "weapon",
-    tags = { "ice", "magical", "melee" },
+    tags = { "natural", "ice", "magical", "melee" },
     noSteal = true,
     activeAbility = {
         target = "enemy",

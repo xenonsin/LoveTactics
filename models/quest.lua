@@ -111,6 +111,11 @@ function Quest.available(player)
                 keysNeeded = keysNeeded,
                 hints = locked and gateHints(player, def) or nil,
                 map = def.map, -- overworld generation params; see models/overworld.lua
+                -- Optional conversation ids (data/conversations/): a scene played when the quest is
+                -- started (before party select) and when its objective is cleared. See
+                -- ui/panels/quest_board.lua and states/game.lua for the Conversation.play seams.
+                intro = def.intro,
+                outro = def.outro,
             }
         end
     end

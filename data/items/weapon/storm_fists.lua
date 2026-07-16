@@ -6,7 +6,7 @@ return {
     description = "Shock an adjacent foe; strikes harder against the Wet.",
     sprite = "assets/items/storm_fists.png",
     type = "weapon",
-    tags = { "lightning", "magical", "melee" },
+    tags = { "natural", "lightning", "magical", "melee" },
     noSteal = true,
     activeAbility = {
         target = "enemy",

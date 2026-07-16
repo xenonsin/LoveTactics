@@ -101,6 +101,51 @@ function Trait.trySmoke(combat, unit, attacker)
     return false
 end
 
+-- Does a duelist's blade (a `deflectsMelee` trait) turn an incoming MELEE blow aside AND answer it?
+-- The fencer's riposte proper: the parry and the counter are one motion, so unlike the ordinary
+-- data/traits/parry.lua -- which answers a hit it has already taken -- this one costs the bearer
+-- nothing at all. Consulted in Combat.dealFlatDamage BEFORE mitigation, beside Trait.tryEvade and
+-- Trait.trySmoke: when it fires the blow deals 0 and the attacker eats the bearer's weapon.
+--
+-- Deliberately narrower than the Dodge reflex it sits next to, which voids ANY physical hit from any
+-- range: a blade can only turn aside something within its reach, and only something material. A spell,
+-- an arrow, a poison tick, or a trap all pass straight through -- you cannot parry what you cannot
+-- touch. `magnitude` is the cooldown length in ticks.
+--
+-- Mutates (spends the cooldown, deals the counter, logs), so it must run on a REAL hit only, never the
+-- damage preview -- which never reaches this path, since previews read Combat.mitigatedDamage instead.
+function Trait.tryRiposte(combat, unit, attacker, tags)
+    if not unit or not unit.traits or not attacker or not attacker.alive then return false end
+    if hasTag(tags, "magical") then return false end -- a spell is not something a blade can turn
+    if reactionsSuppressed(unit) then return false end -- a stunned/frozen unit holds no guard
+    if attacker.side == unit.side then return false end -- never answer a friendly or self source
+    local dist = math.abs(attacker.x - unit.x) + math.abs(attacker.y - unit.y)
+    if dist ~= 1 then return false end -- melee only: an archer stands beyond the blade
+    -- Answer attacks, not answers: never riposte something that is itself a reaction, or two duelists
+    -- would trade parries forever (see Trait.isReacting).
+    if Trait.isReacting(attacker) then return false end
+    local Combat = require("models.combat")
+    for _, t in ipairs(unit.traits) do
+        if t.def.deflectsMelee and not Combat.onCooldown(unit, t.id) then
+            Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
+            Combat.logEvent(combat, "action",
+                string.format("%s turns the blow aside and ripostes!",
+                    (unit.char and unit.char.name) or "Unit"))
+            -- Flag our own counter as a reaction for its whole flight, so the attacker's parry reads it
+            -- as an answer and lets it through rather than answering back. Saved/restored rather than
+            -- cleared, so a riposte reached THROUGH another reflex can't unset that one's flag.
+            unit._reacting = unit._reacting or {}
+            local was = unit._reacting.riposte
+            unit._reacting.riposte = true
+            local weapon = Combat.defaultWeapon(unit.char)
+            if weapon then Combat.dealDamage(combat, unit, attacker, weapon) end
+            unit._reacting.riposte = was
+            return true
+        end
+    end
+    return false
+end
+
 -- Does a once-per-battle Second Wind reflex (a `revivesOnLethal` trait) catch a blow that would drop
 -- `unit`, standing it back up at half its (unreserved) max health? Mirrors Trait.tryEvade in shape:
 -- Combat.dealFlatDamage consults it at the moment a hit reaches 0 HP and, if it fires, keeps the unit
@@ -130,6 +175,22 @@ end
 -- and terminates on its own; neither guard interferes with it.
 Trait.MAX_DEPTH = 8
 
+-- Is `unit` in the middle of answering something right now -- a counter, a parry, a riposte? True
+-- between the moment a reflex begins and the moment it finishes, which is exactly when the blow it is
+-- throwing is a REACTION rather than an attack of its own. The retaliation traits read this off their
+-- attacker to answer attacks but not answers ("you swung at me" vs "you were only answering me"),
+-- which is what keeps two swordsmen from volleying counters at each other on every exchange.
+-- `dispatch` maintains the flag for the hook-driven reflexes; Trait.tryRiposte sets its own, since it
+-- fires from the pre-mitigation path rather than through a hook.
+function Trait.isReacting(unit)
+    local reacting = unit and unit._reacting
+    if not reacting then return false end
+    for _, active in pairs(reacting) do
+        if active then return true end
+    end
+    return false
+end
+
 -- Build the effect context handed to a trait def's hooks. Combat is required lazily (at call time,
 -- not load time) so combat.lua -> trait.lua stays one-way. `event` carries the hook's own fields.
 local function ctxFor(combat, unit, trait, event)
@@ -145,6 +206,10 @@ local function ctxFor(combat, unit, trait, event)
         -- The item this trait came off, or nil when the character itself declares it. A relic's
         -- hook can read its own blueprint (name, magnitude) without a registry lookup.
         item = trait.item,
+
+        -- Is that unit mid-reaction (see Trait.isReacting)? A retaliation hook reads it off its
+        -- attacker to tell a real swing from an answer, and decline to answer the latter.
+        isReacting = function(u) return Trait.isReacting(u) end,
 
         damage = function(tgt, amount, tags)
             if not tgt then return 0 end

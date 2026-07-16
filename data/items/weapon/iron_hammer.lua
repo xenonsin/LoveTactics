@@ -2,11 +2,11 @@
 -- It hits hard and STUNS -- shoving the victim down the turn order (data/status/stun.lua) -- but it is
 -- brutally slow to wind up (a high `speed`), so you buy the stun with a big chunk of your own tempo.
 return {
-    name = "War Hammer",
+    name = "Iron Hammer",
     description = "A crushing overhead blow that stuns the target. Devastating, and very slow to swing.",
     sprite = "assets/items/war_hammer.png",
     type = "weapon",
-    tags = { "blunt", "impact", "physical", "melee" },
+    tags = { "hammer", "impact", "physical", "melee" },
     hands = 2, -- a two-handed maul (Dual Wield can pair it only once forged to +5)
     class = "fighter",
     price = 260,

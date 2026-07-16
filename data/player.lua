@@ -12,7 +12,7 @@ return {
     -- loot in here too. These are the pieces the starting loadouts have no room for.
     startingStash = { -- item ids
         "boots_of_speed",
-        "mace",
+        "iron_mace",
         "decoy",
         "ability_pickpocket",
         "ability_haste",

@@ -17,6 +17,7 @@
 
 local Character = require("models.character")
 local Item = require("models.item")
+local Combat = require("models.combat")
 local AdjacencyLinks = require("ui.adjacency_links")
 
 local InventoryGrid = {}
@@ -97,6 +98,28 @@ end
 function InventoryGrid:setChar(char)
     self.char = char
     self.picked = nil
+end
+
+-- The item currently "in hand": the one this grid picked up, or one the host is dragging in from
+-- outside it (the Party screen's stash -- set through setHeldItem, since it isn't in the grid yet).
+function InventoryGrid:heldItem()
+    if self.held then return self.held end
+    return self.picked and self.char and self.char.inventory[self.picked] or nil
+end
+
+-- Tell the grid about an item being dragged over it from elsewhere, so the placement hints below
+-- light up for it too. Pass nil when the drag ends.
+function InventoryGrid:setHeldItem(item)
+    self.held = item
+end
+
+-- Cells where the held item would have its adjacency requirement met (Rain of Arrows: the cells that
+-- touch a bow), as an index set. Empty unless something requiring a neighbor is in hand -- an item
+-- with no requirement can go anywhere, so lighting cells would say nothing.
+function InventoryGrid:candidateCells()
+    local item = self:heldItem()
+    if not item then return {} end
+    return Combat.adjacencyCandidateCells(self.char, item)
 end
 
 -- Cell rect for a 1-based index (row-major -- matches ui/combat_panel.lua and Character grid math).
@@ -190,12 +213,18 @@ function InventoryGrid:draw()
     if not self.char then return end
     local inv = self.char.inventory
 
+    -- Cells that would satisfy the held item's adjacency requirement. Computed once here and reused
+    -- by the plate wash and the outline pass below.
+    local candidates = self:candidateCells()
+
     -- Cell plates, then the adjacency wires across them -- both under the items, so a wire reads
     -- over the plate without ever covering an icon or a name band.
     for i = 1, COLS * ROWS do
         local sx, sy, sw, sh = self:slotRect(i)
         local item = inv[i]
-        if item and Item.isBound(item) then
+        if candidates[i] then
+            love.graphics.setColor(0.16, 0.30, 0.20) -- green: drop the held item here and it works
+        elseif item and Item.isBound(item) then
             love.graphics.setColor(0.24, 0.20, 0.14) -- a warm plate marks a bound (locked) cell
         else
             love.graphics.setColor(0.16, 0.17, 0.22)
@@ -259,6 +288,19 @@ function InventoryGrid:draw()
             drawLock(sx + 13, sy + 13)
         end
     end
+
+    -- Green rims over the candidate plates, so a cell that already holds an item still reads as a
+    -- valid drop (its icon covers most of the wash underneath). Drawn before the selection overlays
+    -- below, which must stay the brightest marks on the grid.
+    for i = 1, COLS * ROWS do
+        if candidates[i] then
+            local sx, sy, sw, sh = self:slotRect(i)
+            love.graphics.setColor(0.40, 0.90, 0.50, 0.85)
+            love.graphics.setLineWidth(2)
+            love.graphics.rectangle("line", sx + 1, sy + 1, sw - 2, sh - 2, 6, 6)
+        end
+    end
+    love.graphics.setLineWidth(1)
 
     -- Selection overlays: hover (mouse), the keyboard/gamepad cursor, and the picked-up cell.
     if self.hover then

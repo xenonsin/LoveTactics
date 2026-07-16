@@ -106,7 +106,7 @@ return {
             assert(reason == "requires adjacent bow", "reason names the requirement, got " .. tostring(reason))
 
             -- Slot a bow adjacent to the ability: now it fires.
-            k.char.inventory[4] = Item.instantiate("bow")
+            k.char.inventory[4] = Item.instantiate("iron_bow")
             assert(Combat.adjacencyMet(k.char, k.char.inventory[5]) == true, "an adjacent bow satisfies it")
             local ok2, r2 = Combat.useItem(c, k, k.char.inventory[5], 3, 5)
             assert(ok2, "the volley fires with an adjacent bow")
@@ -134,7 +134,7 @@ return {
 
             -- Bow in place, so only the cost can stop it. An empty pool blocks it on cost instead,
             -- naming the resource that fell short.
-            k.char.inventory[4] = Item.instantiate("bow")
+            k.char.inventory[4] = Item.instantiate("iron_bow")
             assert(Combat.itemBlockReason(k, rain) == nil, "an adjacent bow unblocks the volley")
             k.char.stats.stamina.current = 0
             local broke = Combat.itemBlockReason(k, rain)
@@ -212,7 +212,7 @@ return {
             knight.inventory[1] = Item.instantiate("ability_omnislash")    -- scales off weapons
             knight.inventory[2] = Item.instantiate("iron_sword")           -- feeds Omnislash
             knight.inventory[7] = Item.instantiate("ability_rain_of_arrows") -- needs a bow
-            knight.inventory[8] = Item.instantiate("bow")                  -- satisfies the requirement
+            knight.inventory[8] = Item.instantiate("iron_bow")                  -- satisfies the requirement
 
             local links = Combat.adjacencyLinks(knight)
             assert(hasLink(links, 5, 4, "aura"), "Fire Stone (5) auras the adjacent sword (4)")

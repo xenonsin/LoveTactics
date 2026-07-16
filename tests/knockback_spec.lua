@@ -172,7 +172,7 @@ return {
         fn = function()
             local knight = Character.instantiate("knight")
             knight.inventory = {}
-            Character.addItem(knight, Item.instantiate("mace"))
+            Character.addItem(knight, Item.instantiate("iron_mace"))
             local c = Combat.new(arena(8, 8), { unit(knight, 3, 4) }, { unit("bandit", 4, 4) })
             local ku, bandit = c.units[1], c.units[2]
             local before = hp(bandit)

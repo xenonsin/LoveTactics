@@ -282,7 +282,7 @@ return {
         name = "the Spear thrust spits the two tiles directly in front",
         fn = function()
             local c = Combat.new(arena(8, 6),
-                { mkunit(2, 3, { stats = { damage = 0, stamina = 50 }, items = { "spear" } }) },
+                { mkunit(2, 3, { stats = { damage = 0, stamina = 50 }, items = { "iron_spear" } }) },
                 { mkunit(3, 3, { stats = { defense = 0, health = 100 } }),
                   mkunit(4, 3, { stats = { defense = 0, health = 100 } }) })
             local hero, near, far = c.units[1], c.units[2], c.units[3]

@@ -3,6 +3,7 @@ return {
     name = "The Colosseum",
     class = "fighter",
     sprite = "assets/vendors/colosseum.png", -- shopkeeper portrait; falls back to a placeholder
+    portrait = "assets/portraits/colosseum.png", -- large VN portrait for conversations (falls back if missing)
     description = "Blood, sand, and a roaring crowd. The masters here sell what wins fights.",
     -- Ascending reputation thresholds; index = rank. ranks[1] must be 0 (entry standing).
     ranks = { 0, 40, 100, 200 },

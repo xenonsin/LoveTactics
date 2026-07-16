@@ -4,7 +4,7 @@
 -- jab. Range 1 aims the tile in front, which sets the direction the thrust travels. Every spear built
 -- from here should keep this 2-tile line: it is the defining trait of the spear.
 return {
-    name = "Spear",
+    name = "Iron Spear",
     description = "A long thrust that spits the two tiles directly in front of you.",
     sprite = "assets/items/spear.png",
     type = "weapon",

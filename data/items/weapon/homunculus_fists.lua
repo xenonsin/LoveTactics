@@ -7,7 +7,7 @@ return {
     description = "Strike an adjacent foe with dripping, toxic hands, leaving them Poisoned.",
     sprite = "assets/items/homunculus_fists.png",
     type = "weapon",
-    tags = { "poison", "physical", "melee" },
+    tags = { "natural", "poison", "physical", "melee" },
     noSteal = true,
     activeAbility = {
         target = "enemy",

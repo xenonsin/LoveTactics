@@ -4,6 +4,9 @@ All game content is data-driven: drop a Lua file into the matching `data/` folde
 `models/registry.lua` picks it up by filename (no registration). Blueprints are read-only —
 models copy them into runtime state.
 
+Adding a **weapon** has its own contract — each weapon belongs to a family (axes cleave, daggers
+bleed) and inherits its mechanics. See [weapons.md](weapons.md).
+
 ## The progression loop
 
 Seven class vendors (`data/vendors/`) each own a hub building, a shelf of items, and a line of
@@ -74,6 +77,57 @@ Prestige and reputation are **hard** gates — fail one and the quest is not on 
 showing "3 of 7 keys" and the `gateHint` of every prerequisite already finished. The board must refuse
 to start a locked quest (`ui/panels/quest_board.lua`). Seeing what you have not yet earned is the point
 of a ladder — the same reason `Vendor.stock` flags rank-locked items rather than hiding them.
+
+## Add a conversation
+
+Story scenes are visual-novel overlays (large portraits + a bottom text box) that can play over any
+screen — the hub, the overworld, or **a battle mid-turn** — freezing it until they end. Create
+`data/conversations/<id>.lua`:
+
+```lua
+return {
+  title = "Debut on the Sand",                 -- optional; shown top-left
+  cast  = { "knight", "priest", "colosseum" }, -- speaker ids, drawn left->right; non-speakers grey out
+  script = {
+    { "colosseum", "You want blood on the sand? Prove it." },  -- a node is { speaker, line }
+    { "knight",    "We only want the quest." },
+    { "colosseum", "Everything has a price. Which is it?",
+      choices = {
+        { "\"Coin.\"",  goto = "coin"  },       -- a choice jumps to a node's `id`
+        { "\"Honor.\"", goto = "honor" },
+      } },
+    { "colosseum", "Honest.",   id = "coin",  goto = "end" },  -- `goto = "end"` finishes early
+    { "colosseum", "Reckless.", id = "honor" },                -- the last line finishes too
+  },
+}
+```
+
+- A node is `{ "<speaker id>", "<text>" }`, played top-to-bottom. `goto` jumps to the node with that
+  `id`; `goto = "end"` (or falling off the end) finishes; a node with neither just advances.
+- `cast` is who stands on screen for the whole scene; each line's speaker becomes active (full colour
+  + a name plate), the rest grey out. A speaker id must be a `data/characters` or `data/vendors` id —
+  that is where the name and large `portrait` come from (a missing portrait falls back to a lettered
+  box). For an off-roster voice, override inline: `{ "narrator", "...", name = "???" }`.
+- Player controls are automatic across mouse + keyboard + gamepad (advance: Enter / Space / click;
+  choose: up/down; skip: Esc / B).
+
+**Play it** from anywhere with `require("models.conversation").play("<id>", onDone)` (the current
+screen freezes and resumes in place when it ends), or hang it off a quest by adding `intro = "<id>"`
+(plays over the hub before the quest starts) or `outro = "<id>"` (plays on victory) to the quest
+blueprint — both are threaded through `Quest.available` for you.
+
+**Then run the extractor** — required before committing:
+
+```powershell
+& "E:\LOVE\lovec.exe" . extract-strings
+```
+
+It stamps a stable localization id (`tag`) into every line and syncs the string grid
+`data/lang/strings.lua` (new lines get an `en` cell; translation columns start blank). Do **not**
+hand-edit the `tag`s or the `en` column. `tests/conversation_spec.lua` fails if a line has no tag or
+the `en` cell is stale, so it doubles as the "did you forget to extract" guard. See
+[localization.md](localization.md) for the translation model. (During development, the main menu has a
+debug **Extract Strings** button that runs the same step.)
 
 ## Add a vendor
 
@@ -276,9 +330,10 @@ return {
     biome = "forest",              -- used to match this arena to a quest's biome
     tiles = {                      -- 8 rows x 8 cols of Arena.TILE_PROPS types
         { "ground", "ground", "ground", "ground", "ground", "ground", "ground", "ground" },
-        -- "forest"/"rough" = move penalty, "obstacle" = blocked. Terrain also shapes LINE OF
-        -- SIGHT (each type carries a `sightCost`): "obstacle"/"mountain" block a ranged shot,
+        -- "forest"/"rough"/"water" = move penalty, "obstacle" = blocked. Terrain also shapes LINE
+        -- OF SIGHT (each type carries a `sightCost`): "obstacle"/"mountain" block a ranged shot,
         -- "forest" is soft cover that only lowers it (two stacked tiles block). See below.
+        -- Terrain also carries TILE TAGS: "water" conducts lightning, "forest" catches fire.
     },
     partySpawns = { { x = 2, y = 8 }, { x = 4, y = 8 }, { x = 6, y = 8 } },
     enemySpawns = { { x = 2, y = 1 }, { x = 4, y = 1 }, { x = 6, y = 1 } },
@@ -321,6 +376,34 @@ grant the same buffs: `fieldBonus` also folds in `combat.fieldObjects`, a list o
 `{ x, y, bonus = { range = 1 } }`. Drop objects into that list and any `bonus` key they carry
 stacks with the terrain — no other wiring needed. See `tests/field_bonus_spec.lua`.
 
+### Tile tags (what the ground is made of)
+
+Terrain type answers *where* a unit can walk; **tile tags** answer *what the ground is*, for effects
+that ask a question rather than name a type. A tile carries the union of three sources, and
+`Combat.tileHasTag(combat, x, y, tag)` asks all three at once:
+
+| Source | Declared as | Example |
+| --- | --- | --- |
+| Terrain | `tags` in its `Arena.TILE_PROPS` entry | `water` is `{ "conductable" }`, `forest` is `{ "burnable" }` |
+| A hazard on the tile | `tags` in `data/hazards/<id>.lua` | a Rain cloud is `{ "water", "conductable" }` |
+| Whoever stands there | `tileTags` in `data/status/<id>.lua` | `wet` is `{ "conductable" }` |
+
+So a soaked knight, a rain cloud and a river are **the same thing** to a lightning bolt — no branch
+anywhere has to know which one answered. Two mechanics ride on this today, and they are the same
+mechanism pointed at different tags:
+
+- **`burnable`** — fire creeps into it. A hazard declaring `spread = { intoTag = "burnable" }` seeds
+  a copy of itself on adjacent tagged tiles each tick (`Hazard.spread`).
+- **`conductable`** — lightning arcs into it. A cast tagged `lightning` strikes every adjacent
+  conductable tile after its effect resolves, for `Combat.CONDUCT_FACTOR` (half) of its magnitude,
+  carrying the cast's own tags — so Wet's `vulnerable = { lightning = N }` amplifies the arc exactly
+  as it does the direct hit. Side-agnostic, like fire: soaking the ground beside your own line is a
+  real risk. See `Combat.conductLightning` and `tests/conduction_spec.lua`.
+
+**A new interaction is a new tag on the data, not a new branch in the model.** To make oil slicks
+catch, tag the hazard `burnable`; to make a Frozen unit conduct, give the status
+`tileTags = { "conductable" }`. Nothing in `models/` changes either time.
+
 ## Add a status effect
 
 Status effects are timed effects on a combat unit, measured in **ticks** (the initiative
@@ -340,6 +423,7 @@ return {
     onExpire    = function(ctx) end,   -- at 0 remaining ticks
     onTurnStart = function(ctx) ctx.damage(ctx.unit, ctx.magnitude, { "poison" }) end,
     onTurnEnd   = function(ctx) end,
+    onEnterTile = function(ctx) end,   -- the unit crossed onto a tile on foot (bleed)
     -- blocksMove = true,               -- the unit cannot move this turn (root)
     -- turnEndMoveCost = function(ctx) return ctx.moveBudget end, -- pay full move cost anyway
 }
@@ -348,6 +432,15 @@ return {
 Apply one from an ability or trap effect via `fx.applyStatus(target, "poison", { duration = 8 })`
 (re-applying refreshes the duration; one instance per id). See `data/status/stun.lua` and
 `data/status/root.lua`.
+
+`onEnterTile` fires only for movement **across the ground** — a walk, or being shoved / pulled /
+trampled — never for a blink, a swap, or a summon's arrival (see `Combat.enterTile`'s `reason`). It
+is what makes a *positional* effect possible: `data/status/bleed.lua` charges its magnitude per tile
+crossed and nothing at all for standing still.
+
+`ctx.damage(unit, amount, tags, opts)` passes `opts` straight to the damage core, so a tick can be
+`{ raw = true }` (armor-piercing). Reach for it when the effect is not a blow being blocked: defense
+stats run 6–10, so a mitigated tick floors at 1 and its magnitude stops meaning anything.
 
 ## Add a trap
 

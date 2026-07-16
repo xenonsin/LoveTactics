@@ -103,7 +103,7 @@ return {
             local walled = Combat.new(arena(6, 1, { { x = 3, y = 1, sightCost = WALL, walkable = false } }),
                 { unit("archer", 1, 1) }, { unit("bandit", 4, 1) })
             local archer = walled.units[1]
-            local bow = itemById(archer.char, "bow")
+            local bow = itemById(archer.char, "iron_bow")
             openTurn(walled, archer)
             local ok, reason = Combat.useItem(walled, archer, bow, 4, 1)
             assert(not ok and reason == "no line of sight", "blocked shot refused: " .. tostring(reason))
@@ -113,7 +113,7 @@ return {
             local a2 = open.units[1]
             openTurn(open, a2)
             local hp0 = open.units[2].char.stats.health.current
-            local ok2, res = Combat.useItem(open, a2, itemById(a2.char, "bow"), 4, 1)
+            local ok2, res = Combat.useItem(open, a2, itemById(a2.char, "iron_bow"), 4, 1)
             assert(ok2, "a clear-line shot succeeds")
             assert(res.damageDealt > 0 and open.units[2].char.stats.health.current < hp0,
                 "the target took damage")
@@ -174,7 +174,7 @@ return {
             -- A bow-only enemy (strip the archer's trap kit so the plan hinges on the ranged shot).
             local function bowman(x, y)
                 local c = Character.instantiate("archer")
-                c.inventory = { itemById(c, "bow") }
+                c.inventory = { itemById(c, "iron_bow") }
                 return unit(c, x, y)
             end
 

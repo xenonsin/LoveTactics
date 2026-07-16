@@ -234,6 +234,9 @@ function Character.instantiate(id, progress)
         id = id,
         name = def.name,
         sprite = Sprite.load(def.sprite),
+        -- Large VN portrait for conversations (ui/dialogue.lua); optional -- Sprite.load is tolerant,
+        -- so a character with no `portrait` (or missing art) falls back to the letter-box placeholder.
+        portrait = Sprite.load(def.portrait),
         stats = stats,
         -- Progression state (models/growth.lua): innate growth class (fallback/tie-break), the level
         -- (tracks player prestige), the per-class cast tally, and the accumulated stat growth.

@@ -3,9 +3,19 @@
 --
 -- It is sold, resold, and stolen back. The guild takes a cut each time -- the first hint of Greed,
 -- whose general lifts the kit out of your hands mid-fight.
+--
+-- Its EXTRA over the plain iron dagger (data/items/weapon/iron_dagger.lua), which bleeds the same:
+-- this one knows the way in. A foe already bleeding is a door standing open, and the Kingsblood puts
+-- half the swing's power again straight through it -- then leaves a deeper wound than any other blade
+-- (a bleed of 5 against the ordinary 3).
+--
+-- Which is Greed's whole argument in a weapon: it does not make the opening, it takes what is already
+-- open. That makes it the one dagger that wants a SECOND dagger in the party -- open the wound with a
+-- cheap iron blade, then let this one collect. It is also why it is worth stealing, and why the guild
+-- keeps selling it back to you.
 return {
     name = "Kingsblood Dagger",
-    description = "A slender blade that has changed hands more often than it has been cleaned.",
+    description = "A slender blade that has changed hands more often than it has been cleaned. It finds a wound already open.",
     sprite = "assets/items/kingsblood_dagger.png",
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
@@ -20,7 +30,14 @@ return {
         cost = { stat = "stamina", amount = 4 },
         damage = { 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18 },
         effect = function(fx)
-            fx.damage(fx.target)
+            -- A wound already open is a door: half the swing's power again goes straight through it.
+            -- Read BEFORE the strike, so it answers "was this foe already bleeding when I found it?"
+            -- rather than rewarding the blade for the cut it is making right now.
+            local open = fx.hasStatus(fx.target, "bleed")
+            local reopen = open and math.floor(fx.amount * 0.5) or 0
+            fx.damage(fx.target, { amount = fx.amount + reopen })
+            -- Daggers bleed (docs/weapons.md); this one cuts deeper than the ordinary 3.
+            fx.applyStatus(fx.target, "bleed", { magnitude = 5 })
         end,
     },
 }

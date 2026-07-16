@@ -76,7 +76,7 @@ return {
                 { unit("archer", 1, 1) }, { unit("bandit", 5, 1) })
             local a = flat.units[1]
             openTurn(flat, a)
-            assert(Combat.useItem(flat, a, itemById(a.char, "bow"), 5, 1) == false,
+            assert(Combat.useItem(flat, a, itemById(a.char, "iron_bow"), 5, 1) == false,
                 "range 3 can't hit a foe 4 tiles off on flat ground")
 
             -- ...but from a +1-range tile the same shot lands.
@@ -85,7 +85,7 @@ return {
             local ah, foe = high.units[1], high.units[2]
             openTurn(high, ah)
             local hp0 = foe.char.stats.health.current
-            assert(Combat.useItem(high, ah, itemById(ah.char, "bow"), 5, 1),
+            assert(Combat.useItem(high, ah, itemById(ah.char, "iron_bow"), 5, 1),
                 "high ground extends the bow to reach the 4-tile foe")
             assert(foe.char.stats.health.current < hp0, "the extended shot dealt damage")
         end,
@@ -118,11 +118,11 @@ return {
             local c = Combat.new(arena(6, 1), { unit("archer", 1, 1) }, { unit("bandit", 5, 1) })
             local a = c.units[1]
             openTurn(c, a)
-            assert(Combat.useItem(c, a, itemById(a.char, "bow"), 5, 1) == false,
+            assert(Combat.useItem(c, a, itemById(a.char, "iron_bow"), 5, 1) == false,
                 "no buff yet: the 4-tile foe is out of range")
 
             c.fieldObjects = { { x = 1, y = 1, bonus = { range = 1 } } } -- e.g. a vantage totem
-            assert(Combat.useItem(c, a, itemById(a.char, "bow"), 5, 1),
+            assert(Combat.useItem(c, a, itemById(a.char, "iron_bow"), 5, 1),
                 "the placed object's +1 range lets the shot reach, exactly like terrain")
         end,
     },
@@ -131,7 +131,7 @@ return {
         fn = function()
             local function bowman(x, y)
                 local ch = Character.instantiate("archer")
-                ch.inventory = { itemById(ch, "bow") } -- strip the trap kit; bow-only plan
+                ch.inventory = { itemById(ch, "iron_bow") } -- strip the trap kit; bow-only plan
                 return unit(ch, x, y)
             end
 

@@ -6,9 +6,11 @@
 --
 -- Layout (per the design sketch): the turn-order strip fills the panel top-down but is
 -- BOTTOM-aligned so the current turn sits just above the item grid at the very bottom.
--- A long order (summons, big encounters) overflows the strip, so it scrolls: `scroll` counts
--- entries hidden off the bottom, i.e. how far toward later turns the window has walked. It
--- re-anchors to the acting unit whenever the turn changes.
+-- The acting card is PINNED to the bottom -- it frames into the action grid below it, so it never
+-- scrolls away. A long order (summons, big encounters) overflows the region ABOVE it, so that
+-- region scrolls: `scroll` counts upcoming entries hidden off the bottom of it, i.e. how far
+-- toward later turns the window has walked, while the current card stays put. Scroll re-anchors
+-- to 0 (the nearest upcoming turns showing) whenever the turn changes.
 --
 --   local panel = CombatPanel.new(combat, {
 --       onActivateItem = function(item, index) ... end,  -- slot clicked (arm / toggle)
@@ -23,6 +25,7 @@ local Scale = require("scale")
 local Combat = require("models.combat")
 local AdjacencyLinks = require("ui.adjacency_links")
 local StatusBadge = require("ui.status_badge")
+local Colors = require("ui.colors")
 
 local CombatPanel = {}
 CombatPanel.__index = CombatPanel
@@ -31,7 +34,7 @@ local PANEL_W = 320
 CombatPanel.WIDTH = PANEL_W -- so states can reserve the same right-side margin
 local SLIM_H = 34      -- a non-current turn card: small portrait, name, one thin HP bar (no numbers)
 local CURRENT_H = 82   -- the acting unit's card: taller, larger portrait, full numbered HP/MP/SP
-local ENTRY_GAP = 6
+local ENTRY_GAP = 4   -- gap between slim cards; kept tight so the strip fits 9 turns (current + 8) without scrolling
 local NUM_GUTTER = 20  -- left column holding each card's turn number, kept clear of the portrait
 local CURRENT_TOP_GAP = 24 -- extra room above the acting card for its "Current Turn" caption
 -- Item slots are rectangular (wider than tall) and kept compact so the turn-order
@@ -42,21 +45,36 @@ local SLOT_GAP = 6
 local COLS, ROWS = 3, 3
 local SCROLL_STEP = 1 -- turn-strip entries per wheel notch (entries are tall; one reads best)
 local CARD_SPEED = 12 -- exponential ease rate of a card sliding to its new slot as the order reshuffles
+local PROM_SPEED = 14 -- ease rate of a card's prominence (slim <-> tall current) as the turn passes
+local SOLIDIFY_SPEED = 10 -- ease rate a just-committed preview ghost solidifies into its real card
 
--- Resource bars drawn per turn-strip entry, in order (skipped when a resource's max is 0).
+-- Frame-rate-independent exponential approach toward `target` (stable regardless of frame time), and a
+-- plain linear blend. Used for every turn-strip tween so the animation feels the same at any FPS.
+local function approach(cur, target, k, dt) return cur + (target - cur) * (1 - math.exp(-k * dt)) end
+local function lerp(a, b, t) return a + (b - a) * t end
+
+-- Resource bars drawn per turn-strip entry, in order (skipped when a resource's max is 0). Health
+-- has no fixed colour: it's filled with the unit's SIDE colour (blue ally / red foe), so a card's
+-- HP bar says whose unit it is the same way the board token's does. Resolved per unit by barColor.
 local RESOURCES = {
-    { key = "health",  color = { 0.35, 0.80, 0.35 } },
-    { key = "mana",    color = { 0.35, 0.55, 0.95 } },
-    { key = "stamina", color = { 0.90, 0.75, 0.30 } },
+    { key = "health" },
+    { key = "mana",    color = Colors.MANA },
+    { key = "stamina", color = Colors.STAMINA },
 }
+
+-- The fill colour for `unit`'s `key` pool -- the side colour for health, the pool's own otherwise.
+local function barColor(res, unit)
+    return res.color or Colors.side(unit.side)
+end
 
 -- Short tag drawn beside each turn-strip bar (tinted with the pool colour), so a bar reads without
 -- relying on colour alone -- and so the value beside it isn't mistaken for a different pool.
 local BAR_LABELS = { health = "HP", mana = "MP", stamina = "SP" }
 
--- Cost badge tint per resource stat (falls back to a neutral grey for anything else).
-local RES_COLOR = {}
-for _, r in ipairs(RESOURCES) do RES_COLOR[r.key] = r.color end
+-- Cost badge tint per resource stat (falls back to a neutral grey for anything else). Health is
+-- PARTY blue rather than a colour of its own: a cost badge only ever prices the player's own actor,
+-- whose HP bar is blue, so "this spends your health" reads in the colour that health already has.
+local RES_COLOR = { health = Colors.PARTY, mana = Colors.MANA, stamina = Colors.STAMINA }
 local COST_FALLBACK = { 0.75, 0.75, 0.80 }
 local SPEED_COLOR = { 0.95, 0.85, 0.55 } -- gold, matching the timeline/initiative accent
 local WARN_COLOR = { 0.95, 0.40, 0.38 }  -- red cost badge on an ability the actor can't afford
@@ -67,32 +85,38 @@ local WARN_COLOR = { 0.95, 0.40, 0.38 }  -- red cost badge on an ability the act
 -- preview reads the same as the tooltip. No delta = a plain fill.
 -- `reserved` (a share of the pool committed to sustaining a summon) is carved off the far end as a
 -- dimmed tail; the track still spans the pool's true maximum, so the usable fill visibly shrinks.
-local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal, reserved)
+-- `alpha` (default 1) fades the whole bar, so a turn-strip card can cross-fade its slim HP bar out as
+-- the full pool stack fades in while it grows into the frame.
+local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal, reserved, alpha)
     delta = delta or 0
+    alpha = alpha or 1
     local ratio = (max > 0) and math.max(0, math.min(1, cur / max)) or 0
-    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.setColor(0, 0, 0, 0.5 * alpha)
     love.graphics.rectangle("fill", x, y, w, h, 2, 2)
     if reserved and reserved > 0 and max > 0 then
         local resW = w * (reserved / max)
-        love.graphics.setColor(color[1] * 0.5, color[2] * 0.5, color[3] * 0.5, 0.7)
+        love.graphics.setColor(color[1] * 0.5, color[2] * 0.5, color[3] * 0.5, 0.7 * alpha)
         love.graphics.rectangle("fill", x + w - resW, y, resW, h, 2, 2)
     end
     if delta ~= 0 and max > 0 then
         local afterRatio = math.max(0, math.min(1, (cur + delta) / max))
         if delta < 0 then
-            love.graphics.setColor(color[1], color[2], color[3], 0.95)
+            love.graphics.setColor(color[1], color[2], color[3], 0.95 * alpha)
             love.graphics.rectangle("fill", x, y, w * afterRatio, h, 2, 2)
-            local loseCol = lethal and { 1.0, 0.30, 0.28 } or { 0.90, 0.35, 0.30 }
-            love.graphics.setColor(loseCol[1], loseCol[2], loseCol[3], 0.9)
+            -- The slice about to be lost is amber, not red: on an enemy's red HP bar a red slice
+            -- would be invisible. Reads against every pool colour.
+            local loseCol = lethal and Colors.LETHAL or Colors.PENDING
+            love.graphics.setColor(loseCol[1], loseCol[2], loseCol[3], 0.95 * alpha)
             love.graphics.rectangle("fill", x + w * afterRatio, y, w * (ratio - afterRatio), h, 2, 2)
         else
-            love.graphics.setColor(color[1], color[2], color[3], 0.95)
+            love.graphics.setColor(color[1], color[2], color[3], 0.95 * alpha)
             love.graphics.rectangle("fill", x, y, w * ratio, h, 2, 2)
-            love.graphics.setColor(0.55, 0.92, 0.58, 0.9)
+            local gain = Colors.HEALING
+            love.graphics.setColor(gain[1], gain[2], gain[3], 0.9 * alpha)
             love.graphics.rectangle("fill", x + w * ratio, y, w * (afterRatio - ratio), h, 2, 2)
         end
     else
-        love.graphics.setColor(color[1], color[2], color[3], 0.95)
+        love.graphics.setColor(color[1], color[2], color[3], 0.95 * alpha)
         love.graphics.rectangle("fill", x, y, w * ratio, h, 2, 2)
     end
 end
@@ -135,8 +159,26 @@ function CombatPanel.new(combat, opts)
     -- Turn-strip animation (fed by update): each card's eased Y so it slides to its new slot as the
     -- order reshuffles, plus the bookkeeping to fade a just-fallen unit's card out in place.
     self.cardY = {}       -- unit -> eased Y
+    self.cardProm = {}    -- unit -> eased prominence 0..1 (1 = the tall framed current card)
     self.lastLayout = {}  -- unit -> { entry, y, h } last laid out, to seed a fading card
     self.dyingCards = {}  -- unit -> { entry, y, h } fading to black on death
+    -- On a turn advance the outgoing actor's card MORPHS in place at its preview ghost's slot -- content
+    -- fading up from the ghost -- rather than sweeping the tall card through the list. wasCurrent tracks
+    -- who held the frame so the hand-off fires exactly once.
+    self.solidify = {}    -- unit -> { t = 1..0, dashed = bool }, a card morphing in from its ghost
+    self.lastGhostY = {}  -- unit -> last on-screen Y of its preview ghost (sticky until it acts), so the
+                          -- morph solidifies at that exact (old-layout) slot rather than its new rank
+    self.wasCurrent = nil -- the unit that held the framed slot last frame
+    -- A turn advance plays out in two STAGED phases so it reads clearly instead of all at once:
+    --   "out" -- the outgoing actor's preview solidifies into its real queue card while its big frame
+    --            card fades out (frameFade); the incoming actor and the rest of the queue are frozen.
+    --   "in"  -- once that finishes, the incoming actor drops into the frame and the queue reflows.
+    -- (Hit reactions finish earlier still: the battle state holds the advance until fx settles.)
+    self.phase = "idle"    -- "idle" | "out" | "in"
+    self.snapOut = nil     -- a ghost-less outgoing to drop straight at its rank (no sweep from the frame)
+    self.outgoingUnit = nil -- the actor leaving the frame during "out"
+    self.frameFade = nil   -- { unit, t = 1..0 } the outgoing's big card fading out of the frame
+    self.frameY = nil      -- current frame-slot top (where the big card sits), cached each update
     return self
 end
 
@@ -147,12 +189,65 @@ function CombatPanel:shownHealth(unit)
     return unit.char.stats.health.current
 end
 
--- Ease each card toward its laid-out slot and retire cards that have left the order. The acting
--- unit's (tall) card is snapped, not eased, so it stays registered inside the framed active panel;
--- the upcoming slim cards slide as the order flows. A unit that just died keeps a card fading to
--- black in place (dyingCards) until its death fade ends.
+-- The current-turn (tall) card is a FIXED anchor -- it never slides or grows; whoever is acting simply
+-- occupies it. The motion is all in the queue: the outgoing actor's preview ghost MORPHS in place into
+-- its real card (solidify), and the other upcoming cards slide to their new ranks. A unit that just died
+-- keeps a card fading to black (dyingCards) until its death fade ends. The battle state holds the next
+-- auto-turn until this settles (cardsSettled).
 function CombatPanel:update(dt)
+    local current = self.view.current
+
+    -- Cache each preview ghost's on-screen Y (sticky until the unit next acts, so it survives the hold
+    -- beat). A hand-off solidifies the outgoing card at THIS slot -- an empty preview slot in the frozen
+    -- old layout -- so it never collides with a held card, and only a unit that had a preview morphs.
+    for _, e in ipairs(self:entryLayout()) do
+        if e.entry.preview then self.lastGhostY[e.entry.unit] = e.y end
+    end
+
+    -- Turn advanced: begin the STAGED hand-off (see the phase notes in new()). If the outgoing actor had
+    -- a preview, phase "out" solidifies its real card at that ghost slot while its big frame card fades
+    -- out and everything else is frozen; otherwise we skip straight to the "in" drop.
+    if current ~= self.wasCurrent then
+        local out = self.wasCurrent
+        if out then
+            self.outgoingUnit = out
+            self.cardProm[out] = 0
+            self.frameFade = { unit = out, t = 1 }
+            local gy = self.lastGhostY[out]
+            self.solidify[out] = { t = 1, dashed = gy ~= nil }
+            -- With a ghost: phase "out" solidifies at that slot with the queue frozen. Without one (an
+            -- enemy attacking from where it stood): skip to "in", but SNAP the outgoing straight to its
+            -- new rank so its card never eases up out of the frame -- the big card only ever fades there.
+            if gy then self.phase = "out"; self.cardY[out] = gy; self.snapOut = nil
+            else self.phase = "in"; self.snapOut = out end
+            self.lastGhostY[out] = nil
+        else
+            self.phase, self.outgoingUnit, self.frameFade, self.snapOut = "idle", nil, nil, nil
+        end
+        if current then self.lastGhostY[current] = nil end -- fresh turn: drop any stale ghost slot
+        self.wasCurrent = current
+    end
+
     local layout = self:entryLayout()
+    self.frameY = nil
+    for _, e in ipairs(layout) do
+        if not e.entry.preview and e.entry.unit == current then self.frameY = e.y break end
+    end
+
+    -- Prominence: non-current cards decay to slim. The incoming current is held slim through "out",
+    -- grows through "in", and sits full at "idle" -- so the big card only inflates as it drops in.
+    for u, p in pairs(self.cardProm) do
+        if u ~= current then
+            local np = approach(p, 0, PROM_SPEED, dt)
+            self.cardProm[u] = (np < 0.01) and nil or np
+        end
+    end
+    if current then
+        if self.phase == "out" then self.cardProm[current] = 0
+        elseif self.phase == "in" then self.cardProm[current] = approach(self.cardProm[current] or 0, 1, PROM_SPEED, dt)
+        else self.cardProm[current] = 1 end
+    end
+
     local present = {}
     local moving = false
     for _, e in ipairs(layout) do
@@ -160,16 +255,40 @@ function CombatPanel:update(dt)
             local u = e.entry.unit
             present[u] = true
             self.lastLayout[u] = { entry = e.entry, y = e.y, h = e.h }
-            if u == self.view.current then
-                self.cardY[u] = e.y -- snapped to the framed slot
-            else
-                local cur = self.cardY[u] or e.y
-                local ny = cur + (e.y - cur) * math.min(1, dt * CARD_SPEED)
+            if self.cardY[u] == nil then self.cardY[u] = e.y end
+            if u == self.snapOut then
+                self.cardY[u] = e.y -- land straight at its rank (no sweep from the frame); fades in there
+                self.snapOut = nil
+            elseif self.phase ~= "out" then
+                -- "in"/"idle": ease toward the new layout. During "out" everything is frozen -- only the
+                -- outgoing card's in-place morph (solidify + frame fade) plays, so it reads on its own.
+                local ny = approach(self.cardY[u], e.y, CARD_SPEED, dt)
                 if math.abs(e.y - ny) > 0.5 then moving = true end
                 self.cardY[u] = ny
             end
         end
     end
+
+    if self.frameFade then
+        self.frameFade.t = approach(self.frameFade.t, 0, SOLIDIFY_SPEED, dt)
+        if self.frameFade.t < 0.02 then self.frameFade = nil end
+    end
+    for u, sd in pairs(self.solidify) do
+        sd.t = approach(sd.t, 0, SOLIDIFY_SPEED, dt)
+        if sd.t < 0.02 then self.solidify[u] = nil else moving = true end
+    end
+    for u, p in pairs(self.cardProm) do if u ~= current and p > 0.02 then moving = true end end
+
+    -- Advance the phase: "out" holds until the morph + frame fade finish, then "in" drops the incoming
+    -- card and reflows the queue, then back to "idle" once everything has settled.
+    if self.phase == "out" then
+        moving = true
+        if not self.frameFade and next(self.solidify) == nil then self.phase = "in" end
+    elseif self.phase == "in" then
+        if current and (self.cardProm[current] or 0) < 0.995 then moving = true end
+        if not moving then self.phase = "idle" end
+    end
+
     for u in pairs(self.cardY) do
         if not present[u] then
             if self.fx and self.fx:deathFade(u) and self.lastLayout[u] then
@@ -184,8 +303,7 @@ function CombatPanel:update(dt)
     for u in pairs(self.lastLayout) do
         if not present[u] and not self.dyingCards[u] then self.lastLayout[u] = nil end
     end
-    -- Cards still sliding (or a death card fading) means the reshuffle isn't done; the battle state
-    -- holds the next unit's action until this clears, so a turn never resolves out from under it.
+    -- Cards still sliding/growing (or a death card fading) means the reshuffle isn't done.
     self._cardsMoving = moving or (next(self.dyingCards) ~= nil)
 end
 
@@ -283,18 +401,35 @@ function CombatPanel:overWait(px, py)
     return px >= b.x and px <= b.x + b.w and py >= b.y and py <= b.y + b.h
 end
 
--- How many entries fit between stripTop and stripBottom, and how far the strip can scroll
--- before the last entry sits at the bottom.
+-- Is the acting card pinned at the bottom right now? It is whenever the current unit heads the
+-- order (refreshView anchors its real entry at index 1). When there's no current -- battle over,
+-- a lull -- nothing is pinned and every entry scrolls as a uniform slim card.
+function CombatPanel:hasPinnedCurrent()
+    local first = (self.view.order or {})[1]
+    return self.view.current ~= nil and first ~= nil and not first.preview
+        and first.unit == self.view.current
+end
+
+-- Bottom edge of the scrollable (upcoming) region: just above the pinned current card (leaving its
+-- caption gap), or the strip bottom when nothing is pinned. The current card is fixed here.
+function CombatPanel:upcomingBottom()
+    if self:hasPinnedCurrent() then
+        return self.stripBottom - CURRENT_H - CURRENT_TOP_GAP
+    end
+    return self.stripBottom
+end
+
+-- How many upcoming (slim) cards fit in the region above the pinned current card, and how far that
+-- region can scroll before the last upcoming entry sits at the bottom. Upcoming cards are a uniform
+-- slim height, so this fit is exact (the tall current card is pinned out of the scroll region).
 function CombatPanel:visibleCount()
-    -- Slim-height estimate: the most cards that could show (all non-current). Drives the scroll
-    -- limit and the scrollbar thumb. entryLayout does the exact, variable-height fit and clips at
-    -- stripTop, so a small over-estimate here only ever leaves the top entries reachable by scroll.
-    local span = self.stripBottom - self.stripTop
+    local span = self:upcomingBottom() - self.stripTop
     return math.max(1, math.floor((span + ENTRY_GAP) / (SLIM_H + ENTRY_GAP)))
 end
 
 function CombatPanel:maxScroll()
-    return math.max(0, #(self.view.order or {}) - self:visibleCount())
+    local upcoming = #(self.view.order or {}) - (self:hasPinnedCurrent() and 1 or 0)
+    return math.max(0, upcoming - self:visibleCount())
 end
 
 -- The on-screen rect of each visible turn-strip entry, shared by draw + hover hit-testing.
@@ -312,24 +447,39 @@ function CombatPanel:entryLayout()
     -- rather than trusting the offset left by the last scroll input.
     self.scroll = math.max(0, math.min(self.scroll, self:maxScroll()))
     local turnNo = 0
-    -- Bottom-pinned: the first visible entry sits at stripBottom (just above the item grid) and the
-    -- strip grows upward. Heights vary -- the acting unit's card is tall (CURRENT_H), every other is
-    -- slim -- so we walk real heights up from the bottom and stop once a card won't clear stripTop.
     local y = self.stripBottom
-    for i, entry in ipairs(entries) do
+    local startIndex = 1
+    -- The acting card is PINNED at the bottom (just above the item grid it frames into), reserving
+    -- CURRENT_H there regardless of scroll -- it never scrolls away. It's anchored at index 1 by the
+    -- battle state's timeline build. Everything else stacks above it as the scrollable region.
+    if self:hasPinnedCurrent() then
+        turnNo = 1
+        local top = y - CURRENT_H
+        out[#out + 1] = { entry = entries[1], num = 1, x = self.x + 8, y = top, w = self.w - 16, h = CURRENT_H }
+        -- Leave extra room above the acting card so its "Current Turn" caption has somewhere to sit.
+        y = top - CURRENT_TOP_GAP
+        startIndex = 2
+    end
+    -- Upcoming entries (uniform slim cards) hang off the current card, stacking upward directly on
+    -- top of it so the whole timeline anchors from the bottom (the Current Turn box). `scroll` hides
+    -- the nearest ones off the bottom of the region, so the window walks up toward later turns while
+    -- the current card stays put; we stop once a card won't clear stripTop (whole cards only -- a
+    -- card that wouldn't fit is dropped, never drawn cut off). Numbering walks every entry (skipped
+    -- or not) so a scrolled-to entry keeps the #N its board token shows.
+    local upcoming = 0
+    for i = startIndex, #entries do
+        local entry = entries[i]
         local num
         if not entry.preview then
             turnNo = turnNo + 1
             num = turnNo
         end
-        if i > self.scroll then
-            local isCurrent = (entry.unit == self.view.current) and not entry.preview
-            local h = isCurrent and CURRENT_H or SLIM_H
-            local top = y - h
+        upcoming = upcoming + 1
+        if upcoming > self.scroll then
+            local top = y - SLIM_H
             if top < self.stripTop then break end
-            out[#out + 1] = { entry = entry, num = num, x = self.x + 8, y = top, w = self.w - 16, h = h }
-            -- Leave extra room above the acting card so its "Current Turn" caption has somewhere to sit.
-            y = top - (isCurrent and CURRENT_TOP_GAP or ENTRY_GAP)
+            out[#out + 1] = { entry = entry, num = num, x = self.x + 8, y = top, w = self.w - 16, h = SLIM_H }
+            y = top - ENTRY_GAP
         end
     end
     return out
@@ -343,6 +493,11 @@ function CombatPanel:drawTurnStrip()
             y = self.cardY[e.entry.unit] -- eased slot (slides as the order reshuffles)
         end
         self:drawCard(e.entry, y, e.num, e.h)
+    end
+    -- During the "out" phase the outgoing actor's big card stays in the frame, fading out, while its
+    -- real queue card solidifies above -- so the frame never blinks empty as the turn hands off.
+    if self.frameFade and self.frameY then
+        self:drawCard({ unit = self.frameFade.unit, forceProm = 1 }, self.frameY, nil, CURRENT_H, self.frameFade.t)
     end
     -- A just-fallen unit's card, fading to black in place before it's gone (it has already left the
     -- live order, so it isn't in entryLayout above).
@@ -358,7 +513,7 @@ end
 -- Draw one turn-strip card at (its left is self.x + 8) row-top `y`, applying the struck unit's hit
 -- rumble (a translated shake) and flash (a red overlay) so a blow reads on the timeline card exactly
 -- as it does on the board sprite. Preview ghosts and un-struck cards just draw plainly.
-function CombatPanel:drawCard(entry, y, num, h)
+function CombatPanel:drawCard(entry, y, num, h, alpha)
     local u = not entry.preview and entry.unit
     local dx, dy, flash = 0, 0, 0
     if u and self.fx then
@@ -369,7 +524,7 @@ function CombatPanel:drawCard(entry, y, num, h)
         love.graphics.push()
         love.graphics.translate(dx, dy)
     end
-    self:drawEntry(entry, y, num, h)
+    self:drawEntry(entry, y, num, h, alpha)
     if flash > 0 then
         love.graphics.setColor(1.0, 0.4, 0.35, flash * 0.45)
         love.graphics.rectangle("fill", self.x + 8, y, self.w - 16, h, 6, 6)
@@ -384,13 +539,17 @@ end
 function CombatPanel:drawActivePanel()
     local cardTop
     for _, e in ipairs(self:entryLayout()) do
+        -- The framed slot is fixed (the layout reserves CURRENT_H for it), so the frame stays put and
+        -- the incoming card slides + grows into it -- no frame pop, and nothing to overrun above.
         if (e.entry.unit == self.view.current) and not e.entry.preview then cardTop = e.y break end
     end
     local x, w = self.x + 5, self.w - 10
     -- With the actor in view the frame opens above its card to hold the "Current Turn" caption;
     -- scrolled out, it just brackets the grid from the Actions header.
     local top = cardTop and (cardTop - 22) or (self.gridY - 20)
-    local bottom = self.gridY + self.gridH + 8
+    -- Reach past the item grid to enclose the Wait button too, so the whole "this unit and its
+    -- actions" module -- portrait, grid, and the Wait/Focus/Defend bar -- reads as one framed turn.
+    local bottom = self.waitBtn.y + self.waitBtn.h + 8
     love.graphics.setColor(0.15, 0.17, 0.22, 0.55)
     love.graphics.rectangle("fill", x, top, w, bottom - top, 9, 9)
     love.graphics.setColor(0.95, 0.85, 0.55, 0.32)
@@ -408,24 +567,27 @@ end
 function CombatPanel:drawScrollBar()
     local max = self:maxScroll()
     if max == 0 then return end
-    local total = #(self.view.order or {})
+    -- The track spans only the scrollable region (above the pinned current card), since that card
+    -- never moves -- so the bar sits over exactly what it scrolls.
+    local total = #(self.view.order or {}) - (self:hasPinnedCurrent() and 1 or 0)
     local bx, bw = self.x + self.w - 5, 3
-    local by, bh = self.stripTop, self.stripBottom - self.stripTop
+    local by, bh = self.stripTop, self:upcomingBottom() - self.stripTop
 
     love.graphics.setColor(0, 0, 0, 0.45)
     love.graphics.rectangle("fill", bx, by, bw, bh, 2, 2)
 
-    -- The window covers visibleCount/total of the order; scroll 0 pins the thumb to the bottom,
-    -- because the strip counts upward from "now".
+    -- The window covers visibleCount/total of the upcoming entries; scroll 0 pins the thumb to the
+    -- bottom, because the strip counts upward from "now".
     local thumbH = math.max(24, bh * (self:visibleCount() / total))
     local t = self.scroll / max
     love.graphics.setColor(0.95, 0.85, 0.55, 0.75)
     love.graphics.rectangle("fill", bx, by + (1 - t) * (bh - thumbH), bw, thumbH, 2, 2)
 end
 
--- A gold dashed rectangle border, used to mark preview (ghost) entries as hypothetical.
-function CombatPanel:dashedRect(x, y, w, h)
-    love.graphics.setColor(0.95, 0.85, 0.55, 0.9)
+-- A gold dashed rectangle border, used to mark preview (ghost) entries as hypothetical and to
+-- dissolve out as a just-committed ghost solidifies into its real card (`alpha` fades it).
+function CombatPanel:dashedRect(x, y, w, h, alpha)
+    love.graphics.setColor(0.95, 0.85, 0.55, alpha or 0.9)
     love.graphics.setLineWidth(1)
     local dash, gap = 6, 4
     local xx = x
@@ -470,8 +632,8 @@ function CombatPanel:drawPortrait(unit, px, py, ps, a)
         local scale = math.min(ps / sw, ps / sh)
         love.graphics.draw(sprite, px + ps / 2, py + ps / 2, 0, scale, scale, sw / 2, sh / 2)
     else
-        if unit.side == "party" then love.graphics.setColor(0.35, 0.55, 0.85, a)
-        else love.graphics.setColor(0.75, 0.35, 0.32, a) end
+        local c = Colors.side(unit.side)
+        love.graphics.setColor(c[1] * 0.8, c[2] * 0.8, c[3] * 0.8, a)
         love.graphics.rectangle("fill", px, py, ps, ps, 4, 4)
         local big = ps >= 48
         love.graphics.setFont(big and self.headFont or self.smallFont)
@@ -483,20 +645,34 @@ end
 -- Turn-order number in the card's left gutter -- deliberately clear of the portrait so it never
 -- hides the face -- vertically centred, larger and gold on the acting card. #1 = acting now, matching
 -- the board token (ui/battle_map.lua drawTurnNumber) so the same #N points at the same unit on both.
-function CombatPanel:drawTurnNumber(num, cardX, cardTop, cardH, isCurrent)
+function CombatPanel:drawTurnNumber(num, cardX, cardTop, cardH, p)
     if not num then return end
-    local font = isCurrent and self.headFont or self.nameFont
+    local font = (p > 0.5) and self.headFont or self.nameFont
     love.graphics.setFont(font)
-    if isCurrent then love.graphics.setColor(0.98, 0.88, 0.5)
-    else love.graphics.setColor(0.82, 0.85, 0.95, 0.9) end
+    love.graphics.setColor(lerp(0.82, 0.98, p), lerp(0.85, 0.88, p), lerp(0.95, 0.5, p), lerp(0.9, 1, p))
     love.graphics.printf(tostring(num), cardX + 1, cardTop + cardH / 2 - font:getHeight() / 2, NUM_GUTTER - 2, "center")
+end
+
+-- Debug read-out: the entry's initiative (0 = acting now), including a preview ghost's projected value.
+-- Tagged with an hourglass -- the same time-to-act glyph as the speed badge -- so the number reads as an
+-- initiative timer, not a stat. Shown only while the F6 toggle is on.
+function CombatPanel:drawInitiative(entry, ex, ew, ey)
+    if not (self.view.showInitiative and entry.initiative) then return end
+    love.graphics.setFont(self.smallFont)
+    local text = string.format("%.1f", entry.initiative)
+    local tw = self.smallFont:getWidth(text)
+    local iconW, gap = 7, 3
+    self:drawHourglass(ex + ew - 6 - tw - gap - iconW, ey + 4, iconW, 9, 0.98, 0.9, 0.6, 0.95)
+    love.graphics.setColor(0.98, 0.9, 0.6, 0.95)
+    love.graphics.printf(text, ex, ey + 3, ew - 6, "right")
 end
 
 -- The acting unit's full pool stack (HP/MP/SP, each max>0), stacked from topY: a colour-tinted
 -- HP/MP/SP tag, the bar, and the value ("cur / max", or "cur -> after / max" under a preview) in a
 -- shared right-hand column so the three rows align. This detail is the current card's alone -- slim
 -- cards show just a thin HP bar -- so the numbers only appear where an action budget is being read.
-function CombatPanel:drawPoolBars(unit, rx, rw, topY)
+function CombatPanel:drawPoolBars(unit, rx, rw, topY, alpha)
+    alpha = alpha or 1
     local pv = self.view.preview and self.view.preview[unit]
     local rows = {}
     for _, res in ipairs(RESOURCES) do
@@ -535,64 +711,32 @@ function CombatPanel:drawPoolBars(unit, rx, rw, topY)
     for _, r in ipairs(rows) do valueColW = math.max(valueColW, self.smallFont:getWidth(r.text) + 2) end
     for i, r in ipairs(rows) do
         local rowY = topY + (i - 1) * 13
-        local c = r.res.color
-        love.graphics.setColor(c[1] * 0.6 + 0.28, c[2] * 0.6 + 0.28, c[3] * 0.6 + 0.28, 0.95)
+        local c = barColor(r.res, unit)
+        love.graphics.setColor(c[1] * 0.6 + 0.28, c[2] * 0.6 + 0.28, c[3] * 0.6 + 0.28, 0.95 * alpha)
         love.graphics.print(BAR_LABELS[r.res.key], rx, rowY + (barH - self.smallFont:getHeight()) / 2)
         local barX = rx + labelW
         local barW = rw - labelW - valueColW - 6
-        drawResourceBar(barX, rowY, barW, barH, r.cur, r.effMax, r.res.color, r.delta, r.lethal, r.reserved)
-        love.graphics.setColor(0.94, 0.95, 0.98)
+        drawResourceBar(barX, rowY, barW, barH, r.cur, r.effMax, c, r.delta, r.lethal, r.reserved, alpha)
+        love.graphics.setColor(0.94, 0.95, 0.98, alpha)
         love.graphics.printf(r.text, rx + rw - valueColW, rowY + (barH - self.smallFont:getHeight()) / 2,
             valueColW, "right")
     end
 end
 
-function CombatPanel:drawEntry(entry, ey, num, h)
+function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     local unit = entry.unit
-    local isPreview = entry.preview
-    local isCurrent = (unit == self.view.current) and not isPreview
-    local isParty = unit.side == "party"
     local ex = self.x + 8
     local ew = self.w - 16
-    -- Preview ghosts render faded, so this alpha multiplier dims everything below.
-    local a = isPreview and 0.55 or 1
 
-    -- Plate + border. The acting unit's card is opaque and gold-bordered (it owns the framed module
-    -- behind it); ghosts are dashed; every other card sits quiet -- dimmer fill, a faint side-tinted
-    -- edge -- so the strip reads as one bright current card above a column of muted upcoming turns.
-    if isPreview then love.graphics.setColor(0.42, 0.38, 0.20, 0.40)
-    elseif isCurrent then love.graphics.setColor(isParty and 0.20 or 0.36, isParty and 0.27 or 0.20, isParty and 0.38 or 0.20, 1)
-    else love.graphics.setColor(isParty and 0.17 or 0.29, isParty and 0.22 or 0.17, isParty and 0.31 or 0.17, 0.72) end
-    love.graphics.rectangle("fill", ex, ey, ew, h, 6, 6)
-
-    love.graphics.setLineWidth(1)
-    if isPreview then
+    -- Preview ghost: a faded, dashed hypothetical slot showing where the actor would land, not stats.
+    if entry.preview then
+        love.graphics.setColor(0.42, 0.38, 0.20, 0.40)
+        love.graphics.rectangle("fill", ex, ey, ew, h, 6, 6)
+        love.graphics.setLineWidth(1)
         self:dashedRect(ex, ey, ew, h)
-    elseif isCurrent then
-        love.graphics.setColor(0.95, 0.85, 0.55)
-        love.graphics.rectangle("line", ex, ey, ew, h, 6, 6)
-    else
-        if isParty then love.graphics.setColor(0.4, 0.6, 0.85, 0.35) else love.graphics.setColor(0.85, 0.45, 0.4, 0.35) end
-        love.graphics.rectangle("line", ex, ey, ew, h, 6, 6)
-    end
-
-    -- Debug: the entry's initiative (0 = acting now), including the preview ghost's new value.
-    -- Tagged with an hourglass -- the same time-to-act glyph as the speed badge -- so the number
-    -- reads as an initiative timer, not a stat.
-    if self.view.showInitiative and entry.initiative then
-        love.graphics.setFont(self.smallFont)
-        local text = string.format("%.1f", entry.initiative)
-        local tw = self.smallFont:getWidth(text)
-        local iconW, gap = 7, 3
-        self:drawHourglass(ex + ew - 6 - tw - gap - iconW, ey + 4, iconW, 9, 0.98, 0.9, 0.6, 0.95)
-        love.graphics.setColor(0.98, 0.9, 0.6, 0.95)
-        love.graphics.printf(text, ex, ey + 3, ew - 6, "right")
-    end
-
-    -- Preview ghost: a hypothetical future slot, so it shows where the actor would land, not stats.
-    if isPreview then
+        self:drawInitiative(entry, ex, ew, ey)
         local ps = h - 6
-        self:drawPortrait(unit, ex + NUM_GUTTER, ey + 3, ps, a)
+        self:drawPortrait(unit, ex + NUM_GUTTER, ey + 3, ps, 0.55)
         local rx = ex + NUM_GUTTER + ps + 8
         love.graphics.setFont(self.nameFont)
         love.graphics.setColor(0.95, 0.85, 0.55, 0.95)
@@ -603,44 +747,96 @@ function CombatPanel:drawEntry(entry, ey, num, h)
         return
     end
 
-    -- The acting unit: a large portrait, the name in the heading font, and the full numbered pools.
-    if isCurrent then
-        local ps = h - 12
-        self:drawTurnNumber(num, ex, ey, h, true)
-        self:drawPortrait(unit, ex + NUM_GUTTER, ey + 6, ps, a)
-        local rx = ex + NUM_GUTTER + ps + 10
-        local rw = ex + ew - rx - 10
-        love.graphics.setFont(self.headFont)
-        love.graphics.setColor(0.97, 0.94, 0.72)
-        love.graphics.print(unit.char.name or "?", rx, ey + 8)
-        for _, r in ipairs(self:statusBadgeRects(unit, ex, ew, ey)) do
+    -- A real card. p = 0 is the slim upcoming look, p = 1 the tall framed current card. `forceProm`
+    -- (the fading frame card in an "out" hand-off) pins it full-height regardless of cardProm.
+    local isCurrent = (unit == self.view.current)
+    local isParty = unit.side == "party"
+    local p = entry.forceProm or self.cardProm[unit] or (isCurrent and 1 or 0)
+    -- Top-anchored: the card hangs from its slot top (ey) and its height grows with p, so a card
+    -- dropping into the frame slides its top down and fills the slot as it arrives.
+    local dh = SLIM_H + (h - SLIM_H) * p
+    local dy = ey
+    -- A card that just handed off its turn MORPHS in from its preview ghost: its content fades up
+    -- (ca 0.35 -> 1) as `solidify` runs down, so the faded ghost visibly becomes the real card. An
+    -- explicit `alpha` (the outgoing's fading frame card) overrides that.
+    local sd = self.solidify[unit]
+    local st = sd and sd.t or 0
+    local ca = alpha or ((st > 0) and lerp(1, 0.35, st) or 1)
+
+    -- Plate fill + border lerp from the muted, side-tinted slim card to the opaque gold current card.
+    local fr, fg, fb
+    if isParty then fr, fg, fb = lerp(0.17, 0.20, p), lerp(0.22, 0.27, p), lerp(0.31, 0.38, p)
+    else fr, fg, fb = lerp(0.29, 0.36, p), lerp(0.17, 0.20, p), lerp(0.17, 0.20, p) end
+    love.graphics.setColor(fr, fg, fb, lerp(0.72, 1, p) * ca)
+    love.graphics.rectangle("fill", ex, dy, ew, dh, 6, 6)
+    local sc = Colors.side(unit.side)
+    local br, bg, bb, ba = sc[1] * 0.9, sc[2] * 0.9, sc[3] * 0.9, 0.35
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(lerp(br, 0.95, p), lerp(bg, 0.85, p), lerp(bb, 0.55, p), lerp(ba, 1, p) * ca)
+    love.graphics.rectangle("line", ex, dy, ew, dh, 6, 6)
+
+    self:drawInitiative(entry, ex, ew, dy)
+
+    -- A unit winding up a channel (never the current card -- that's the caster surfacing to detonate,
+    -- framed with full pools already): its real card holds the resolve slot for the whole wind-up, so
+    -- it names the pending SPELL and cues "channel resolves here" instead of stats, matching the ghost
+    -- the aim preview showed. It stays slim, so no prominence blend applies.
+    if unit.channel and not isCurrent then
+        local ps = dh - 6
+        self:drawTurnNumber(num, ex, dy, dh, 0)
+        self:drawPortrait(unit, ex + NUM_GUTTER, dy + 3, ps, 1)
+        local rx = ex + NUM_GUTTER + ps + 8
+        love.graphics.setFont(self.nameFont)
+        love.graphics.setColor(0.80, 0.66, 0.98) -- arcane violet, matching the Channeling badge tint
+        love.graphics.print(unit.channel.item.name or "Channeling", rx, dy + 3)
+        love.graphics.setFont(self.smallFont)
+        local iconW = 7
+        self:drawHourglass(rx, dy + 21, iconW, 9, 0.80, 0.66, 0.98, 0.9)
+        love.graphics.setColor(0.80, 0.66, 0.98, 0.9)
+        love.graphics.print("channel resolves here", rx + iconW + 4, dy + 20)
+        for _, r in ipairs(self:statusBadgeRects(unit, ex, ew, dy)) do
             StatusBadge.draw(r.st, r.x, r.y, r.w, r.h)
         end
-        self:drawPoolBars(unit, rx, rw, ey + 34)
         return
     end
 
-    -- A slim upcoming-turn card: small portrait, name, and one thin HP bar -- no numbers. The bar
-    -- still carries the aimed-hit preview slice (an enemy about to be struck reads here), it just
-    -- drops the readout; full pools are one hover (the tooltip) away.
-    local ps = h - 6
-    self:drawTurnNumber(num, ex, ey, h, false)
-    self:drawPortrait(unit, ex + NUM_GUTTER, ey + 3, ps, a)
-    local rx = ex + NUM_GUTTER + ps + 8
-    local rw = ex + ew - rx - 8
+    -- Portrait + name sized by prominence; content alpha (ca) fades a just-handed-off card up.
+    local ps = dh - lerp(6, 12, p)
+    self:drawPortrait(unit, ex + NUM_GUTTER, dy + lerp(3, 6, p), ps, ca)
+    self:drawTurnNumber(num, ex, dy, dh, p)
+
+    local rx = ex + NUM_GUTTER + ps + lerp(8, 10, p)
+    local rw = ex + ew - rx - lerp(8, 10, p)
+    -- Name: the small card's font scaled up toward the head font on the current card; colour warms to gold.
+    local nsc = lerp(1, self.headFont:getHeight() / self.nameFont:getHeight(), p)
     love.graphics.setFont(self.nameFont)
-    love.graphics.setColor(0.9, 0.9, 0.94)
-    love.graphics.print(unit.char.name or "?", rx, ey + 4)
-    for _, r in ipairs(self:statusBadgeRects(unit, ex, ew, ey)) do
+    love.graphics.setColor(lerp(0.9, 0.97, p), lerp(0.9, 0.94, p), lerp(0.94, 0.72, p), ca)
+    love.graphics.print(unit.char.name or "?", rx, dy + lerp(4, 8, p), 0, nsc, nsc)
+
+    for _, r in ipairs(self:statusBadgeRects(unit, ex, ew, dy)) do
         StatusBadge.draw(r.st, r.x, r.y, r.w, r.h)
     end
+
+    -- Resource read-out: the current card shows the full numbered HP/MP/SP stack; a slim card shows just
+    -- the thin HP bar. (ca fades either while a handed-off card morphs in.)
     local hp = unit.char.stats.health
-    if type(hp) == "table" and (hp.max or 0) > 0 then
+    if (1 - p) > 0.02 and type(hp) == "table" and (hp.max or 0) > 0 then
         local pv = self.view.preview and self.view.preview[unit]
         local delta = pv and ((pv.heal or 0) - (pv.damage or 0)) or 0
         local reserved = Combat.reservedAmount(unit.char, "health")
         local effMax = Combat.unreservedMax(unit.char, "health") + reserved
-        drawResourceBar(rx, ey + 22, rw, 6, self:shownHealth(unit), effMax, RESOURCES[1].color, delta, pv and pv.lethal, reserved)
+        drawResourceBar(rx, dy + 22, rw, 6, self:shownHealth(unit), effMax, Colors.side(unit.side),
+            delta, pv and pv.lethal, reserved, (1 - p) * ca)
+    end
+    if p > 0.02 then
+        self:drawPoolBars(unit, rx, rw, dy + 34, p * ca)
+    end
+
+    -- The ghost's dashed border dissolves out as the card solidifies, so a card that had a preview
+    -- visibly turns from ghost into real. Only for the real queue card (not the fading frame card,
+    -- `alpha`) and only for a card that actually had a ghost (dashed = true).
+    if sd and sd.dashed and sd.t > 0.02 and not alpha then
+        self:dashedRect(ex, dy, ew, dh, 0.9 * sd.t)
     end
 end
 
@@ -883,18 +1079,27 @@ end
 -- Input  (mouse; keyboard/gamepad item arming is handled by the battle state)
 -- ---------------------------------------------------------------------------
 
--- Returns the ability item under a usable, hovered slot (else nil). An ability the actor can't
--- activate right now is not "usable" here, so hovering it won't preview the timeline and clicking
--- won't arm it -- matching its grayed-out slot (the hover item tooltip via itemAt still explains why).
-function CombatPanel:usableItemAt(px, py)
+-- Returns the ability item under the hovered slot on a party turn, whether or not it can fire right
+-- now (else nil). This is what a CLICK acts on: a blocked ability still has to be reachable, so the
+-- state can refuse it out loud (Rain of Arrows with no bow beside it says why) instead of the click
+-- vanishing into a slot that looks pressable. Deciding IF it may fire is the state's job, not the
+-- panel's -- Combat.itemBlockReason is the one gate, and it lives there.
+-- A Blink (moveBehavior) item qualifies too: activating it toggles teleport movement.
+function CombatPanel:actionItemAt(px, py)
     if not self.view.isPartyTurn then return nil end
     local i = self:slotIndexAt(px, py)
     local item = i and (self.view.items or {})[i]
-    -- A Blink (moveBehavior) item is clickable too: activating it toggles teleport movement. It has
-    -- no ability cost, so blockReason never gates it.
-    if item and (item.activeAbility or item.moveBehavior) and not self:blockReason(item) then
-        return item, i
-    end
+    if item and (item.activeAbility or item.moveBehavior) then return item, i end
+    return nil
+end
+
+-- Returns the ability item under a slot that can actually be activated right now (else nil). The
+-- narrower read, for HOVER: an ability that can't fire must not preview its timeline, matching its
+-- grayed-out slot (the hover tooltip via itemAt still explains why). Clicks use actionItemAt above.
+function CombatPanel:usableItemAt(px, py)
+    local item, i = self:actionItemAt(px, py)
+    -- Blink has no ability cost, so blockReason never gates it.
+    if item and not self:blockReason(item) then return item, i end
     return nil
 end
 
@@ -911,7 +1116,8 @@ end
 function CombatPanel:statusAt(px, py)
     for _, e in ipairs(self:entryLayout()) do
         if not e.entry.preview then
-            for _, r in ipairs(self:statusBadgeRects(e.entry.unit, e.x, e.w, e.y)) do
+            local y = self.cardY[e.entry.unit] or e.y -- the eased slot the card is actually drawn at
+            for _, r in ipairs(self:statusBadgeRects(e.entry.unit, e.x, e.w, y)) do
                 if px >= r.x and px <= r.x + r.w and py >= r.y and py <= r.y + r.h then
                     return r.st
                 end
@@ -921,10 +1127,12 @@ function CombatPanel:statusAt(px, py)
     return nil
 end
 
--- The unit whose turn-strip entry is under the cursor (else nil).
+-- The unit whose turn-strip entry is under the cursor (else nil). Hit-tests the eased slot the card is
+-- drawn at, not the target layout, so hover tracks a card mid-slide.
 function CombatPanel:unitAt(px, py)
     for _, e in ipairs(self:entryLayout()) do
-        if px >= e.x and px <= e.x + e.w and py >= e.y and py <= e.y + e.h then
+        local y = (not e.entry.preview and self.cardY[e.entry.unit]) or e.y
+        if px >= e.x and px <= e.x + e.w and py >= y and py <= y + e.h then
             return e.entry.unit
         end
     end
@@ -964,7 +1172,10 @@ function CombatPanel:mousepressed(x, y, button)
         if self.onWait then self.onWait() end
         return true
     end
-    local item, i = self:usableItemAt(x, y)
+    -- Route the click on ANY ability slot, usable or not: the state arms it, or refuses it with a
+    -- reason the player can read. A silently swallowed click on a slot that looks pressable is the
+    -- bug this avoids.
+    local item, i = self:actionItemAt(x, y)
     if item and self.onActivateItem then self.onActivateItem(item, i) end
     return true
 end

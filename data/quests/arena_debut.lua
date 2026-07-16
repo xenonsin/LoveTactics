@@ -9,6 +9,7 @@ return {
     rewardRep = 25,
     rewardPrestige = 1,
     requiredPrestige = 1,
+    intro = "wrath_intro", -- VN scene played when the bout is started (data/conversations/)
     map = {
         biome = "castle",
         encounters = { min = 2, max = 4 }, -- map size scales with this (models/overworld.lua)

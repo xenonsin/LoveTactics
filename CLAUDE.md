@@ -56,7 +56,8 @@ The codebase is organized into layers loaded via `require()`. See
   memoized image loader (returns the path string if art is missing or `love.graphics` is absent).
 - **`data/`** — declarative blueprints, one Lua file per entity (`characters/`, `items/`,
   `buildings/`, `quests/`, plus `player.lua`). Models copy these into mutable runtime state;
-  blueprints stay immutable.
+  blueprints stay immutable. Weapons additionally follow a per-family contract (axes cleave,
+  daggers bleed) — see [docs/weapons.md](docs/weapons.md), enforced by `tests/weapon_spec.lua`.
 - **`assets/`** — images/audio/maps referenced by path from data files (e.g.
   `assets/hub/city.png`), loaded lazily through `models/sprite.lua`.
 

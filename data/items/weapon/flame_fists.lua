@@ -7,7 +7,7 @@ return {
     description = "Scorch an adjacent foe.",
     sprite = "assets/items/flame_fists.png",
     type = "weapon",
-    tags = { "fire", "magical", "melee" },
+    tags = { "natural", "fire", "magical", "melee" },
     noSteal = true,
     activeAbility = {
         target = "enemy",

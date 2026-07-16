@@ -17,6 +17,7 @@ local Item = require("models.item")
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local RangeDiagram = require("ui.range_diagram")
+local Colors = require("ui.colors")
 
 local ItemTooltip = {}
 
@@ -39,11 +40,12 @@ local TYPE_COLOR = {
 }
 local DEFAULT_COLOR = { 0.90, 0.90, 0.95 }
 
--- Cost value tint per resource stat (matches the item-grid cost badges).
+-- Cost value tint per resource stat (matches the item-grid cost badges). Health is PARTY blue: a
+-- cost only ever prices the player's own actor, whose HP bar is blue.
 local RES_COLOR = {
-    mana = { 0.45, 0.62, 0.95 },
-    stamina = { 0.92, 0.78, 0.35 },
-    health = { 0.45, 0.85, 0.45 },
+    mana = Colors.MANA,
+    stamina = Colors.STAMINA,
+    health = Colors.PARTY,
 }
 
 local TARGET_LABEL = { enemy = "Enemy", ally = "Ally", self = "Self", tile = "Tile" }

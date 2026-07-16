@@ -14,6 +14,7 @@
 local Scale = require("scale")
 local Combat = require("models.combat")
 local Trap = require("models.trap")
+local Colors = require("ui.colors")
 
 local TileTooltip = {}
 
@@ -33,6 +34,7 @@ local TILE_INFO = {
     mountain = { name = "High Ground", desc = "Steep and slow, but grants extra reach and blocks the view behind it." },
     rough    = { name = "Rough Terrain", desc = "Broken ground that slows movement." },
     obstacle = { name = "Obstacle",    desc = "Solid terrain. Blocks movement and line of sight." },
+    water    = { name = "Shallow Water", desc = "Wadeable but slow. Conducts lightning: a bolt striking beside it arcs in." },
 }
 
 -- Accent per terrain type (title + border tint).
@@ -42,21 +44,24 @@ local TILE_COLOR = {
     mountain = { 0.72, 0.74, 0.82 },
     rough    = { 0.80, 0.66, 0.45 },
     obstacle = { 0.62, 0.62, 0.68 },
+    water    = { 0.45, 0.68, 0.95 },
 }
 local DEFAULT_COLOR = { 0.86, 0.87, 0.92 }
 
-local PARTY_COLOR = { 0.45, 0.72, 0.98 }
-local ENEMY_COLOR = { 0.95, 0.48, 0.42 }
+local PARTY_COLOR = Colors.PARTY
+local ENEMY_COLOR = Colors.ENEMY
 
 local MUTED = { 0.62, 0.65, 0.72 }
 local VALUE = { 0.90, 0.91, 0.95 }
 local DESC = { 0.80, 0.82, 0.88 }
 
--- Resource pools shown as labeled bars, in draw order.
+-- Resource pools shown as labeled bars, in draw order. Health has no fixed colour: it's filled with
+-- the unit's SIDE colour (blue ally / red foe) like the board token's bar and the turn card's, so
+-- the same unit reads the same way wherever it's shown. Resolved per unit in appendUnit.
 local RESOURCES = {
-    { stat = "health",  label = "HP", color = { 0.42, 0.80, 0.42 } },
-    { stat = "mana",    label = "MP", color = { 0.45, 0.62, 0.95 } },
-    { stat = "stamina", label = "SP", color = { 0.92, 0.78, 0.35 } },
+    { stat = "health",  label = "HP" },
+    { stat = "mana",    label = "MP", color = Colors.MANA },
+    { stat = "stamina", label = "SP", color = Colors.STAMINA },
 }
 
 -- Flat combat stats shown as label/value rows, in draw order.
@@ -161,7 +166,7 @@ local function appendUnit(blocks, unit, preview)
             -- slice at its far end -- the pool you have, and the pool you've committed.
             local reserved = Combat.reservedAmount(char, r.stat)
             local block = { kind = "bar", label = r.label,
-                cur = res.current or 0, max = res.max - reserved, color = r.color }
+                cur = res.current or 0, max = res.max - reserved, color = r.color or sideCol }
             if reserved > 0 then
                 block.reserved = reserved
                 block.fullMax = res.max
@@ -261,8 +266,10 @@ local function buildBlocks(info)
         blocks[#blocks + 1] = { kind = "stat", label = "Owner",
             value = trap.side == "party" and "Ally" or "Enemy", valueColor = sideCol }
         if trap.health and trap.maxHealth then
+            -- Side-coloured like a unit's HP bar: same rule everywhere, and it keeps the bar clear of
+            -- the amber slice a pending strike paints on it.
             local block = { kind = "bar", label = "HP", cur = trap.health,
-                max = trap.maxHealth, color = { 0.90, 0.70, 0.30 } }
+                max = trap.maxHealth, color = sideCol }
             -- A pending trap strike previews the HP it would knock off (info.preview.damage).
             if info.preview and (info.preview.damage or 0) > 0 then
                 block.delta = -info.preview.damage
@@ -404,20 +411,22 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             end
             if b.delta and scale > 0 then
                 -- Show the change as a second segment: the "after" fill in the pool colour, then the
-                -- lost slice in red (damage) or the gained slice in green (heal) beside it.
+                -- lost slice in amber (damage) or the gained slice in green (heal) beside it. The
+                -- lost slice can't be red -- an enemy's HP bar is red, and red-on-red reads as nothing.
                 local afterVal = math.max(0, math.min(b.max, b.cur + b.delta))
                 local afterRatio = math.max(0, math.min(1, afterVal / scale))
                 if b.delta < 0 then
-                    local loseCol = b.lethal and { 1.0, 0.30, 0.28 } or { 0.90, 0.35, 0.30 }
+                    local loseCol = b.lethal and Colors.LETHAL or Colors.PENDING
                     love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
                     love.graphics.rectangle("fill", bx + pad, barY, innerW * afterRatio, barH, 2, 2)
-                    love.graphics.setColor(loseCol[1], loseCol[2], loseCol[3], 0.9)
+                    love.graphics.setColor(loseCol[1], loseCol[2], loseCol[3], 0.95)
                     love.graphics.rectangle("fill", bx + pad + innerW * afterRatio, barY,
                         innerW * (ratio - afterRatio), barH, 2, 2)
                 else
+                    local gain = Colors.HEALING
                     love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
                     love.graphics.rectangle("fill", bx + pad, barY, innerW * ratio, barH, 2, 2)
-                    love.graphics.setColor(0.55, 0.92, 0.58, 0.9)
+                    love.graphics.setColor(gain[1], gain[2], gain[3], 0.9)
                     love.graphics.rectangle("fill", bx + pad + innerW * ratio, barY,
                         innerW * (afterRatio - ratio), barH, 2, 2)
                 end

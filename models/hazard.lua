@@ -13,11 +13,14 @@
 --   * duration      -- ticks the hazard tile persists (default 1)
 --   * disposition   -- "hostile" | "friendly" | "neutral": drives the enemy AI's avoid/seek (default
 --                      neutral). A "friendly" hazard only draws the side that owns it.
---   * tags          -- descriptive tags (e.g. { "fire" }); a cast whose tags meet a hazard's
---                      dousedByTags removes it
+--   * tags          -- descriptive tags (e.g. { "fire" }). Two jobs: a cast whose tags meet a
+--                      hazard's dousedByTags removes it, AND the hazard lends these tags to the TILE
+--                      it sits on (Combat.tileHasTag) -- which is how a Rain cloud's "conductable"
+--                      makes drenched ground carry a bolt, just as water terrain does.
 --   * dousedByTags  -- tags that dispel this hazard when a matching cast covers its tile (e.g. water -> fire)
 --   * spread        -- { intoTag = "burnable" }: each tick, seed fresh hazards on adjacent tiles
---                      carrying that terrain tag (fire creeping through a forest)
+--                      carrying that tag (fire creeping through a forest). The tag is resolved
+--                      against terrain, hazards and statuses alike -- see Hazard.spread.
 --   * onEnter(ctx)  -- fired for a unit entering (or already standing on, at placement) the tile;
 --                      ctx.unit is that unit
 --   * onExpire(ctx) -- fired when the hazard's duration runs out
@@ -169,14 +172,17 @@ function Hazard.place(combat, x, y, id, opts)
     return hazard
 end
 
--- Seed fresh hazards on tiles adjacent to a spreading hazard: fire creeping into burnable terrain.
+-- Seed fresh hazards on tiles adjacent to a spreading hazard: fire creeping into burnable ground.
 -- For each live hazard whose def declares `spread = { intoTag = "..." }`, any orthogonally-adjacent,
--- walkable tile carrying that terrain tag (e.g. forest's `burnable`) and not already holding this
--- hazard gains a fresh copy. Bounded by the terrain -- once every reachable burnable tile is alight,
--- there is nothing left to seed. Runs once per Hazard.tick.
+-- walkable tile carrying that tag and not already holding this hazard gains a fresh copy. The tag is
+-- resolved through Combat.tileHasTag, which reads terrain, hazards and the occupant's statuses alike
+-- -- so fire creeps into forest ("burnable" terrain) and would equally take an oil slick or a
+-- pitch-soaked unit, with no change here. Bounded by the ground: once every reachable burnable tile
+-- is alight, there is nothing left to seed. Runs once per Hazard.tick.
 function Hazard.spread(combat)
     local tiles = combat.arena and combat.arena.tiles
     if not tiles then return end
+    local Combat = require("models.combat")
     -- Snapshot the current hazards so newly seeded ones don't spread again in the same pass.
     local sources = {}
     for _, h in ipairs(combat.hazards or {}) do
@@ -187,7 +193,8 @@ function Hazard.spread(combat)
         for _, d in ipairs(DIRS) do
             local nx, ny = h.x + d[1], h.y + d[2]
             local cell = tiles[ny] and tiles[ny][nx]
-            if cell and cell.walkable and cell[tag] and not Hazard.at(combat, nx, ny, h.id) then
+            if cell and cell.walkable and Combat.tileHasTag(combat, nx, ny, tag)
+                and not Hazard.at(combat, nx, ny, h.id) then
                 -- Carry the source's scaled magnitude into the tile it spreads to, so a hot fire keeps
                 -- burning just as hard as it creeps.
                 Hazard.place(combat, nx, ny, h.id, { side = h.side, amount = h.amount })

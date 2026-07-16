@@ -482,6 +482,7 @@ local function beginTurn()
     battle.mode = "move"
     battle.armedItem = nil
     battle.hoverItem = nil
+    battle.notice = nil -- a refusal belonged to the turn it was refused on
     battle.rangeCells = {}
     battle.rangeReach = {}
     battle.moveCells = {}
@@ -502,7 +503,18 @@ local function beginTurn()
         computeReachable(current)
         computeThreat(current)
         armDefaultAction(current) -- start with the default action armed (its range shown by default)
-        battle.map.cursor.x, battle.map.cursor.y = current.x, current.y
+        -- Snap the cursor to the new actor for keyboard/pad play. But if the mouse is the live device
+        -- and still resting on a board cell, keep the cursor under it instead -- so a target the player
+        -- was already hovering stays aimed and its action preview appears at once, without a mouse jiggle.
+        local hoverX, hoverY
+        if battle.mouseX and InputMode.isMouse() then
+            hoverX, hoverY = battle.map:cellAt(battle.mouseX, battle.mouseY)
+        end
+        if hoverX then
+            battle.map.cursor.x, battle.map.cursor.y = hoverX, hoverY
+        else
+            battle.map.cursor.x, battle.map.cursor.y = current.x, current.y
+        end
     else
         battle.aiTimer = AI_DELAY
     end
@@ -541,6 +553,27 @@ end
 -- Is a unit mid-walk? The board is mid-animation, so player input and the AI clock both hold.
 local function walking()
     return battle.walk ~= nil
+end
+
+-- How long a refusal notice stays up, in seconds.
+local NOTICE_LIFE = 2.2
+
+-- Say why an action was refused. Every path that turns a player's activation down -- an arm, a
+-- number-key, a click-to-strike -- routes its Combat.itemBlockReason here instead of returning
+-- silently, so a dead click always explains itself (a grayed slot only reads once you go looking for
+-- the tooltip). Drawn over the board by drawNotice and fading on its own timer.
+local function notify(text)
+    if not text then return end
+    battle.notice = { text = text, life = NOTICE_LIFE }
+end
+
+-- Refuse `item` for `unit` if anything blocks it, announcing the reason. Returns true when the
+-- action was blocked (the caller should bail), false when it may proceed.
+local function refuseIfBlocked(unit, item)
+    local blocked = Combat.itemBlockReason(unit, item)
+    if not blocked then return false end
+    notify(string.format("%s: %s", item.name or "That item", blocked.text or blocked.reason))
+    return true
 end
 
 -- Should player input be held right now? True mid-walk, and also while the current unit is resolving
@@ -621,10 +654,10 @@ local function armItem(item)
     if not (item and item.activeAbility) then return end
     if battle.armedItem == item then cancelArm() return end
     -- Anything that would make useItem reject the cast -- an unpayable cost, a spent stack, a
-    -- missing adjacent item (Rain of Arrows without its bow) -- leaves it disarmed. The slot is
-    -- grayed out and the tooltip says why, so a number-key / gamepad arm can't silently fail on
-    -- confirm the way a click already can't.
-    if Combat.itemBlockReason(current, item) then return end
+    -- missing adjacent item (Rain of Arrows without its bow) -- leaves it disarmed, and says so.
+    -- The grayed slot and its tooltip carry the same reason, but only for a player who goes looking:
+    -- an outright click on the slot has to answer for itself.
+    if refuseIfBlocked(current, item) then return end
     battle.armedItem = item
     battle.mode = "armed"
     -- Friendly abilities (heal / buff) highlight green; offensive strikes and trap placements red.
@@ -669,8 +702,8 @@ local function tryDefaultAction(unit, tx, ty)
     if not entry or not weapon then return end
     -- Don't reposition for a strike useItem would refuse: a cost the unit can't pay, an unmet grid
     -- requirement. Bail before moving (unarmed is free and requires nothing, so this only guards
-    -- real weapons).
-    if Combat.itemBlockReason(unit, weapon) then return end
+    -- real weapons), and say why -- this click aimed at a foe, so a silent no-op reads as a bug.
+    if refuseIfBlocked(unit, weapon) then return end
     local function strike()
         if Combat.useItem(battle.combat, unit, weapon, tx, ty) then advanceTurn() end
     end
@@ -692,7 +725,7 @@ local function tryDamageTrap(unit, tx, ty)
     local entry = battle.attackReach and battle.attackReach[tx .. "," .. ty]
     local weapon = battle.defaultAction
     if not entry or not weapon then return end
-    if Combat.itemBlockReason(unit, weapon) then return end
+    if refuseIfBlocked(unit, weapon) then return end
     local function strike()
         if Combat.strikeTrap(battle.combat, unit, weapon, tx, ty) then advanceTurn() end
     end
@@ -726,7 +759,7 @@ local function tryDamageWall(unit, tx, ty)
     local entry = battle.attackReach and battle.attackReach[tx .. "," .. ty]
     local weapon = battle.defaultAction
     if not entry or not weapon then return end
-    if Combat.itemBlockReason(unit, weapon) then return end
+    if refuseIfBlocked(unit, weapon) then return end
     local function strike()
         if Combat.strikeWall(battle.combat, unit, weapon, tx, ty) then advanceTurn() end
     end
@@ -774,15 +807,19 @@ local function armedActionAt(cx, cy)
     end
     local entry = battle.rangeReach and battle.rangeReach[cx .. "," .. cy]
     if not entry then return nil end
-    -- Fire from the steered route's endpoint when it can legally hit the target from a DIFFERENT tile;
-    -- else the cheapest. The endpoint must not BE the target cell: a tile-target cast (summon / AoE
-    -- placement) steers its route right onto the target -- the cursor tile is the target -- so
-    -- honouring that as the stand tile would walk the caster onto the very cell it means to place on,
-    -- and the cast then rejects it as occupied (the caster is now standing there). Excluding it falls
-    -- back to the cheapest in-range stand tile -- the caster's own tile when the target is already in
-    -- range -- so the placement fires in place instead of turning into a bare move.
+    -- The steered route only decides the stand tile when the actor CAN'T already hit from where it
+    -- stands. Otherwise the route is ignored and the strike fires in place: the trail extends itself
+    -- across every reachable tile the cursor crosses, so merely sweeping the mouse onto a foe drew a
+    -- route and silently turned an in-place attack into a walk-and-strike. Steering still picks the
+    -- firing tile for anything out of reach, which is the case it exists for.
+    -- The endpoint must not BE the target cell: a tile-target cast (summon / AoE placement) steers its
+    -- route right onto the target -- the cursor tile is the target -- so honouring that as the stand
+    -- tile would walk the caster onto the very cell it means to place on, and the cast then rejects it
+    -- as occupied (the caster is now standing there). Excluding it falls back to the cheapest in-range
+    -- stand tile, so the placement fires in place instead of turning into a bare move.
     local stand, mp = steeredStand()
-    if stand and not (stand.x == cx and stand.y == cy)
+    local inPlace = standCanHit(battle.current, ab, item, battle.current.x, battle.current.y, cx, cy)
+    if stand and not inPlace and not (stand.x == cx and stand.y == cy)
         and standCanHit(battle.current, ab, item, stand.x, stand.y, cx, cy) then
         return { kind = "act", cells = mp.cells,
                  entry = { x = cx, y = cy, fromX = stand.x, fromY = stand.y, moveCost = mp.cost } }
@@ -1015,17 +1052,24 @@ local function abilityGhosts(unit, item, pendingMove)
     return { { initiative = pendingMove + Combat.actionSpeed(unit, a, item) } }
 end
 
--- The reposition timeline ghost for a walk to the cursor tile: the initiative it charges, following
--- the steered route's own cost when one is set, else the cheapest path's. nil when the cursor isn't
--- a reachable tile (nothing to walk to, so no ghost). Shared by move mode and an armed reposition.
+-- The reposition timeline ghost for a walk to the cursor tile: where the unit's NEXT turn lands if
+-- it repositions there, following the steered route's own cost when one is set, else the cheapest
+-- path's. nil when the cursor isn't a reachable tile (nothing to walk to, so no ghost). Shared by
+-- move mode and an armed reposition.
+--
+-- A bare move never ends the turn -- the unit still has to act or wait -- so a move-ONLY slot is a
+-- position it can never actually rest on. With no action aimed, the honest landing slot is a move
+-- THEN a wait/defend (its wait speed folded onto the move cost); aiming a real target replaces this
+-- ghost with the action's own slot. Without the wait, the ghost under-reads and the card visibly
+-- jumps later the moment the unit waits.
 local function moveGhostInitiative(unit)
     local cost = battle.movePath and battle.movePath.cost
     if not cost then
         local node = battle.reachable and battle.reachable[battle.map.cursor.x .. "," .. battle.map.cursor.y]
         cost = node and node.cost
     end
-    if cost then return Combat.moveInitiative(unit, cost) end
-    return nil
+    if not cost then return nil end
+    return Combat.waitInitiative(battle.combat, unit, Combat.moveInitiative(unit, cost))
 end
 
 -- Compute the turn-order preview + battlefield overlays and hand them to the widgets.
@@ -1050,15 +1094,12 @@ local function refreshView()
     -- cost, and a wait previews the delay slot (next unit's initiative + 1). A channeled ability
     -- yields TWO ghosts (resolution + follow-up turn); everything else yields one. See abilityGhosts.
     local ghosts
+    local pendingMove = (battle.combat.turn and battle.combat.turn.moveCost) or 0
     if isParty then
-        local pendingMove = (battle.combat.turn and battle.combat.turn.moveCost) or 0
         if battle.hoverWait then
-            local nxt
-            for _, u in ipairs(Combat.turnOrder(battle.combat)) do
-                if u ~= current then nxt = u.initiative break end
-            end
-            local w = nxt and math.max(pendingMove, nxt + 1) or (pendingMove + Combat.WAIT_COST)
-            ghosts = { { initiative = w } }
+            -- Whatever the Wait button actually runs -- a plain delay, or a Focus/Defend/Overwatch
+            -- swap with its own speed cost -- so the ghost lands on the same slot the action will.
+            ghosts = { { initiative = Combat.waitInitiative(battle.combat, current) } }
         elseif battle.hoverItem and battle.hoverItem.activeAbility then
             ghosts = abilityGhosts(current, battle.hoverItem, pendingMove)
         elseif battle.mode == "armed" and battle.armedItem then
@@ -1068,7 +1109,11 @@ local function refreshView()
             -- shows -- arming an item alone must not paint a timeline slot before a target is aimed.
             local plan = armedActionAt(battle.map.cursor.x, battle.map.cursor.y)
             if plan and plan.kind == "act" then
-                ghosts = abilityGhosts(current, battle.armedItem, pendingMove)
+                -- A walk-and-strike fires from a stand tile the actor must walk to first, so the
+                -- landing slot owes that approach's initiative on top of any move already spent this
+                -- turn (plan.entry.moveCost is a raw path cost -- convert it, don't add it straight).
+                local approach = Combat.moveInitiative(current, (plan.entry and plan.entry.moveCost) or 0)
+                ghosts = abilityGhosts(current, battle.armedItem, pendingMove + approach)
             elseif plan and plan.kind == "move" then
                 local w = moveGhostInitiative(current)
                 if w then ghosts = { { initiative = w } } end
@@ -1077,6 +1122,27 @@ local function refreshView()
             local w = moveGhostInitiative(current)
             if w then ghosts = { { initiative = w } } end
         end
+    end
+    -- Once a move is committed its speed cost is locked in (turn.moveCost), so a ghost stays on the
+    -- timeline at that slot -- for the PLAYER between the move and choosing an action, and for an ENEMY
+    -- the moment it finishes walking. That committed re-entry is where the actor's card solidifies when
+    -- the turn hands off, so the current-turn card fades in place instead of sweeping up out of the
+    -- frame. The player-preview branches above override it whenever a specific action/aim is shown.
+    -- For the deciding PLAYER with nothing aimed, land the ghost where a move-then-wait actually ends
+    -- up (its wait speed folded on), not the bare move slot the turn can never rest on -- so the card
+    -- doesn't jump later the instant they wait. An enemy just re-enters at its committed move slot.
+    if not ghosts and pendingMove > 0 then
+        local slot = isParty and Combat.waitInitiative(battle.combat, current) or pendingMove
+        ghosts = { { initiative = slot } }
+    end
+    -- An action that has committed and is holding for its impact beat (pendingAdvance) already charged
+    -- the actor forward, so keep a ghost at that now-real slot -- overriding any move-only ghost above.
+    -- Without this the aim preview blinks out the instant the swing lands and only reappears when the
+    -- card solidifies at hand-off; instead the ghost stays on the strip through the hit and then morphs
+    -- into the actor's real card when the turn ends (the solidify path in ui/combat_panel.lua). A
+    -- channeling caster is left to Combat.channelGhosts, which owns the resolve/follow-up picture.
+    if isParty and battle.pendingAdvance and current.initiative > 0 and not current.channel then
+        ghosts = { { initiative = current.initiative } }
     end
     -- Timeline entries for the panel: the live order, plus a ghost of the actor at each projected
     -- slot while a move/item/wait is being previewed, plus a "then acts here" ghost for every unit
@@ -1087,6 +1153,15 @@ local function refreshView()
         specs[#specs + 1] = { unit = current, initiative = g.initiative, label = g.label }
     end
     local entries = Combat.buildTimeline(battle.combat, specs)
+    -- Anchor the acting unit at rank 1 on the strip until the UI actually hands off. The model charges
+    -- its initiative and rebases the instant it acts (endTurn, inside useItem) -- a beat before
+    -- resolveAdvance switches battle.current -- so buildTimeline would otherwise re-rank the current card
+    -- and slide it upward mid-attack, while its damage still reads. Move its real entry to the front.
+    for i, e in ipairs(entries) do
+        if e.unit == current and not e.preview then
+            table.remove(entries, i); table.insert(entries, 1, e); break
+        end
+    end
 
     -- Board highlights: the acting unit always, plus whichever unit the timeline is hovering.
     local overlays = { move = {}, range = {} }
@@ -1199,7 +1274,7 @@ local function refreshView()
             end
         end
     end
-    overlays.current = { x = current.x, y = current.y }
+    overlays.current = { x = current.x, y = current.y, unit = current }
     local hover = battle.hoverUnit
     if hover and hover.alive then overlays.hover = { x = hover.x, y = hover.y } end
 
@@ -1381,14 +1456,23 @@ end
 function battle.update(dt)
     battle.map:update(dt)
     battle.fx:update(dt)
+    -- Age out a refusal notice. Independent of the turn/animation clock: it is UI chrome about a
+    -- click that never became an action, so nothing on the board waits on it.
+    if battle.notice then
+        battle.notice.life = battle.notice.life - dt
+        if battle.notice.life <= 0 then battle.notice = nil end
+    end
     if walking() then
         updateWalk(dt) -- a walk holds the AI clock: whoever is on their feet finishes first
     elseif battle.pendingAdvance then
-        -- An action just resolved: hold until the reaction beat elapses AND the sprite reactions
-        -- finish, then hand off (or fire win/loss). Checked before the channel/AI branches so the
-        -- just-acted unit can't take a second action while its hit is still reading.
+        -- An action just resolved: hold until the reaction beat elapses AND the sprite reactions finish
+        -- AND the HP bars stop draining AND the damage numbers have floated away, then hand off (or fire
+        -- win/loss). Holding the WHOLE damage animation keeps it from bleeding into the turn-order
+        -- restage, so the hit reads fully and THEN the turn moves as its own beat. Checked before the
+        -- channel/AI branches so the just-acted unit can't take a second action while its hit still reads.
         battle.pendingAdvance.hold = battle.pendingAdvance.hold - dt
-        if battle.pendingAdvance.hold <= 0 and not battle.fx:busy() then
+        if battle.pendingAdvance.hold <= 0 and not battle.fx:busy()
+            and battle.fx:hpSettled() and battle.fx:floatersDone() then
             resolveAdvance()
         end
     elseif not battle.over and battle.current and battle.current.channel then
@@ -1428,6 +1512,7 @@ function battle.draw()
     battle.panel:draw()
     battle.drawHud()
     battle.log:draw()
+    battle.drawNotice()
 
     -- Status tooltip, drawn last so it sits above both the board and the panel. The panel is on
     -- top where the two overlap, so it wins the hit-test; its tooltip may extend to the screen
@@ -1456,6 +1541,34 @@ function battle.draw()
             end
         end
     end
+end
+
+-- The refusal notice: why the last activation was turned down (see notify). A red-rimmed banner
+-- centred low over the board -- under the units, clear of the HUD text up top and of both side
+-- columns -- that fades out over its final half-second. Nothing to click: it is a message, not a
+-- prompt, so it never takes input away from the turn underneath it.
+function battle.drawNotice()
+    local notice = battle.notice
+    if not notice then return end
+    local alpha = math.min(1, notice.life / 0.5) -- hold full, then fade over the last half-second
+    local boardX = LEFT_W
+    local boardW = Scale.WIDTH - LEFT_W - PANEL_W
+
+    love.graphics.setFont(hudFont)
+    local w = math.min(boardW - 40, hudFont:getWidth(notice.text) + 32)
+    local h = 34
+    local x = boardX + (boardW - w) / 2
+    local y = Scale.HEIGHT - 96
+
+    love.graphics.setColor(0.20, 0.08, 0.10, 0.92 * alpha)
+    love.graphics.rectangle("fill", x, y, w, h, 6, 6)
+    love.graphics.setColor(0.85, 0.35, 0.35, alpha)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", x, y, w, h, 6, 6)
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(1, 0.88, 0.88, alpha)
+    love.graphics.printf(notice.text, x, y + h / 2 - 8, w, "center")
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- Terrain + occupant tooltips for the battlefield tile under (mx, my). No-op when the mouse is off
@@ -1699,13 +1812,16 @@ function battle.mousemoved(x, y, dx, dy)
     battle.map:mousemoved(x, y)
 end
 
--- The wheel goes to whatever the cursor is over: the turn-order strip on the right panel, else
--- the combat log (which ignores it while closed).
+-- The wheel scrolls the turn-order strip from anywhere it makes sense: over the right panel OR over
+-- the board (the two places the player watches the timeline from). The open combat log claims it
+-- first when the cursor is inside it, so its own history still scrolls; contains() is false while
+-- the log is closed, so a wheel over the board falls through to the strip.
 function battle.wheelmoved(dx, dy)
-    if battle.mouseX and battle.panel:contains(battle.mouseX, battle.mouseY) then
-        if battle.panel:wheelmoved(dx, dy) then return end
+    if battle.mouseX and battle.log:contains(battle.mouseX, battle.mouseY) then
+        battle.log:wheelmoved(dx, dy)
+        return
     end
-    battle.log:wheelmoved(dx, dy)
+    battle.panel:wheelmoved(dx, dy)
 end
 
 function battle.mousepressed(x, y, button)

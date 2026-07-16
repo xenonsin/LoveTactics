@@ -194,7 +194,7 @@ return {
                 "reason names the requirement, got " .. tostring(reason))
 
             -- Slot a bow adjacent: the line fires and skewers both foes on it.
-            k.char.inventory[4] = Item.instantiate("bow")
+            k.char.inventory[4] = Item.instantiate("iron_bow")
             local before = {}
             for _, b in ipairs({ c.units[2], c.units[3] }) do before[b] = b.char.stats.health.current end
             local ok2 = Combat.useItem(c, k, k.char.inventory[5], 4, 3)

@@ -38,9 +38,16 @@ Arena.TILE_SIZE = 64 -- logical pixels per cell (8*64 = 512, centered in 1280x72
 --   * bonus     -- optional positional modifiers granted to a unit STANDING on the tile, e.g.
 --     { range = 1 } for high ground. Combat aggregates these (with any placed field objects) via
 --     Combat.fieldBonus; a generic bag so future tiles/objects can grant other buffs the same way.
+--   * tags      -- what the GROUND here is made of, for effects that ask a tile a question rather
+--     than name a terrain type: "burnable" (fire creeps in -- Hazard.spread), "conductable" (lightning
+--     arcs in -- Combat.conductLightning). A hazard on the tile or a status on whoever stands there
+--     can carry the same tags, and Combat.tileHasTag answers across all three -- so a Rain cloud, a
+--     Wet unit and a river are one thing to a lightning bolt. Add a tag, not a branch.
 Arena.TILE_PROPS = {
     ground   = { moveCost = 1, walkable = true,  sightCost = 0 },  -- open field
-    forest   = { moveCost = 2, walkable = true,  sightCost = 1, burnable = true }, -- slow to cross; soft cover; catches fire
+    forest   = { moveCost = 2, walkable = true,  sightCost = 1, tags = { "burnable" } }, -- slow; soft cover; catches fire
+    -- A ford / shallow pool: wadeable but slow, and it carries a charge to whatever stands in it.
+    water    = { moveCost = 2, walkable = true,  sightCost = 0, tags = { "conductable" } },
     -- Steep high ground: blocks the view behind it, but a unit atop it sees + strikes one tile further.
     mountain = { moveCost = 3, walkable = true,  sightCost = 2, bonus = { range = 1 } },
     rough    = { moveCost = 2, walkable = true,  sightCost = 0 },  -- legacy penalty tile (curated arenas)
@@ -193,7 +200,7 @@ local function hydrateTiles(layout)
             local t = (layout.tiles[y] and layout.tiles[y][x]) or "ground"
             local p = Arena.TILE_PROPS[t] or Arena.TILE_PROPS.ground
             tiles[y][x] = { type = t, moveCost = p.moveCost, walkable = p.walkable,
-                            sightCost = p.sightCost or 0, bonus = p.bonus, burnable = p.burnable }
+                            sightCost = p.sightCost or 0, bonus = p.bonus, tags = p.tags }
         end
     end
     return tiles

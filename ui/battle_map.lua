@@ -26,6 +26,7 @@ local Biome = require("models.biome")
 local Combat = require("models.combat")
 local Status = require("models.status")
 local StatusBadge = require("ui.status_badge")
+local Colors = require("ui.colors")
 
 local BattleMap = {}
 BattleMap.__index = BattleMap
@@ -34,15 +35,17 @@ BattleMap.__index = BattleMap
 -- arena ground.
 local ART = {
     ground = "path", forest = "forest", mountain = "rock",
-    rough = "grass", obstacle = "rock",
+    rough = "grass", obstacle = "rock", water = "water",
 }
 
 -- Translucent wash over costly terrain (drawn on walkable tiles) so a tile's move penalty
--- reads at a glance: leafy green for forest, cold grey for mountain, brown for legacy rough.
+-- reads at a glance: leafy green for forest, cold grey for mountain, brown for legacy rough,
+-- river blue for the shallows a bolt would carry through (see Combat.tileHasTag).
 local TERRAIN_TINT = {
     forest   = { 0.10, 0.35, 0.12, 0.28 },
     mountain = { 0.30, 0.30, 0.34, 0.35 },
     rough    = { 0.20, 0.15, 0.05, 0.25 },
+    water    = { 0.12, 0.34, 0.58, 0.34 },
 }
 
 local DEFAULTS = { axisThreshold = 0.5 }
@@ -345,8 +348,9 @@ end
 -- keeps it legible over same-hue terrain (the red reach over reddish ground).
 function BattleMap:drawOverlays()
     local s = self.size
-    local function paint(cells, r, g, b)
+    local function paint(cells, color)
         cells = cells or {}
+        local r, g, b = color[1], color[2], color[3]
         -- Soft fill.
         love.graphics.setColor(r, g, b, 0.26)
         for _, c in ipairs(cells) do
@@ -377,24 +381,24 @@ function BattleMap:drawOverlays()
     end
     -- "Threats" survey: the full enemy danger zone (every tile a foe could reach-and-strike),
     -- purple, painted first so the actor's own blue/red bands sit on top of it.
-    paint(self.overlays.enemyRanges, 0.65, 0.30, 0.90)
+    paint(self.overlays.enemyRanges, Colors.DANGER)
     -- Default-attack (threat) reach in red, under the blue move band. Its cells are the tiles
     -- beyond movement the unit could still strike, so it never overlaps the move set.
-    paint(self.overlays.threat, 1.00, 0.32, 0.30)
+    paint(self.overlays.threat, Colors.RANGE)
     -- Reachable move tiles: blue when safe, PURPLE where a foe could also strike this turn (the
     -- intersection of your movement and an enemy's attack range), so a step into danger reads.
-    paint(self.overlays.move, 0.30, 0.60, 1.00)
-    paint(self.overlays.moveDanger, 0.65, 0.30, 0.90)
+    paint(self.overlays.move, Colors.MOVE)
+    paint(self.overlays.moveDanger, Colors.DANGER)
     -- Hovered unit's reach (Fire Emblem / Triangle Strategy preview): its movement in blue -- the
-    -- same as yours -- and its attack range in crimson. The state suppresses the actor's own overlays
+    -- same as yours -- and its attack range in red. The state suppresses the actor's own overlays
     -- while a unit is hovered, so the two never paint together.
-    paint(self.overlays.inspectMove, 0.30, 0.60, 1.00)
-    paint(self.overlays.inspectRange, 0.90, 0.25, 0.30)
+    paint(self.overlays.inspectMove, Colors.MOVE)
+    paint(self.overlays.inspectRange, Colors.RANGE)
     -- Support abilities (heals / buffs) reach in green; offensive ones in red.
     if self.overlays.rangeSupport then
-        paint(self.overlays.range, 0.35, 0.85, 0.40)
+        paint(self.overlays.range, Colors.SUPPORT)
     else
-        paint(self.overlays.range, 1.00, 0.32, 0.30)
+        paint(self.overlays.range, Colors.RANGE)
     end
 
     -- Area-of-effect footprint: the cells an armed AoE ability would hit if fired at the aimed
@@ -402,8 +406,8 @@ function BattleMap:drawOverlays()
     -- for a friendly area cast, red for a hostile one. Cells can extend past the range set (a blast
     -- that clips tiles you couldn't aim at directly), so it paints its own fill + a bold border.
     if self.overlays.aoe then
-        local r, g, b = 1.00, 0.42, 0.30
-        if self.overlays.aoeSupport then r, g, b = 0.40, 0.90, 0.45 end
+        local c = self.overlays.aoeSupport and Colors.SUPPORT or Colors.AOE
+        local r, g, b = c[1], c[2], c[3]
         for _, c in ipairs(self.overlays.aoe) do
             local wx, wy = self:cellToPixel(c.x, c.y)
             love.graphics.setColor(r, g, b, 0.40)
@@ -519,9 +523,11 @@ function BattleMap:drawUnits()
         if u.alive or fade > 0 then
             local wx, wy = self:cellToPixel(u.x, u.y)
             wx, wy = wx + offX, wy + offY
-            local isParty = u.side == "party"
             local a = fade > 0 and (1 - fade) or (Status.untargetable(u) and 0.40 or 1)
             local tint = 1 - fade -- fade toward black as it dies
+            -- No side ring: a faction outline here would sit right on top of the range band's own
+            -- boundary stroke (drawOverlays) and the two reds read as one mark. The unit's side is
+            -- carried by its HP bar instead -- see drawHpBar / ui/colors.lua.
             local sprite = u.char.sprite
             if type(sprite) == "userdata" then
                 local sw, sh = sprite:getDimensions()
@@ -541,9 +547,9 @@ function BattleMap:drawUnits()
                     love.graphics.setBlendMode("alpha")
                 end
             else
-                -- Token fallback: colored disc with the unit's initial.
-                if isParty then love.graphics.setColor(0.35 * tint, 0.65 * tint, 0.95 * tint, a)
-                else love.graphics.setColor(0.90 * tint, 0.35 * tint, 0.30 * tint, a) end
+                -- Token fallback: colored disc with the unit's initial, in the unit's side colour.
+                local c = Colors.side(u.side)
+                love.graphics.setColor(c[1] * tint, c[2] * tint, c[3] * tint, a)
                 love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.32)
                 love.graphics.setFont(self.font)
                 love.graphics.setColor(tint, tint, tint, a)
@@ -559,12 +565,6 @@ function BattleMap:drawUnits()
                     love.graphics.setBlendMode("alpha")
                 end
             end
-            -- Side ring (dropped once the unit is dying -- a fading corpse wears no allegiance).
-            if fade <= 0 then
-                if isParty then love.graphics.setColor(0.4, 0.7, 1, 0.9 * a)
-                else love.graphics.setColor(1, 0.45, 0.4, 0.9 * a) end
-                love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
-            end
         end
     end
 end
@@ -573,7 +573,17 @@ end
 function BattleMap:drawUnitInfo()
     if not self.combat then return end
     local orderIndex = {}
-    for i, u in ipairs(Combat.turnOrder(self.combat)) do orderIndex[u] = i end
+    local order = Combat.turnOrder(self.combat)
+    -- Anchor the acting unit at #1 until the UI hands off: its initiative is charged the instant it acts
+    -- (a beat before battle.current switches), which would otherwise flip its board token to a later
+    -- number while its attack still plays. Mirrors the turn strip (states/battle.lua refreshView).
+    local acting = self.overlays and self.overlays.current and self.overlays.current.unit
+    if acting then
+        for i, u in ipairs(order) do
+            if u == acting then table.remove(order, i); table.insert(order, 1, u); break end
+        end
+    end
+    for i, u in ipairs(order) do orderIndex[u] = i end
     for _, u in ipairs(self.combat.units) do
         if u.alive then
             local wx, wy = self:cellToPixel(u.x, u.y)
@@ -629,10 +639,14 @@ function BattleMap:statusAt(px, py)
     return nil
 end
 
--- Thin HP bar along the bottom of the unit's tile (green -> red as HP drops).
+-- Thin HP bar along the bottom of the unit's tile, filled in the unit's SIDE colour (blue ally /
+-- red foe) -- with no ring on the token, this bar is what says whose unit this is. The hue is spent
+-- on the side, so how hurt the unit is reads from the bar's length, darkened toward empty by
+-- Colors.drain rather than shifting hue.
 function BattleMap:drawHpBar(u, wx, wy)
     local s = self.size
     local hp = u.char.stats.health
+    local side = Colors.side(u.side)
     -- The shown value lags the model so the bar drains smoothly toward the new HP after a hit; the
     -- aimed-action preview slice below still projects off the true current HP.
     local shown = (self.fx and self.fx:displayHp(u)) or (hp and hp.current) or 0
@@ -644,23 +658,24 @@ function BattleMap:drawHpBar(u, wx, wy)
 
     -- Aimed-action preview: project the hovered cast's damage/heal onto this unit's HP bar so the
     -- incoming hit reads on the board too (mirrors the turn strip's drawResourceBar). No preview =
-    -- a plain fill. Hue: green when full, red when empty.
+    -- a plain fill.
     local pv = self.overlays.hpPreview and self.overlays.hpPreview[u]
     local delta = pv and ((pv.heal or 0) - (pv.damage or 0)) or 0
     if delta ~= 0 and hp and hp.max and hp.max > 0 then
         local afterRatio = math.max(0, math.min(1, (hp.current + delta) / hp.max))
-        love.graphics.setColor(1 - ratio, 0.2 + 0.6 * ratio, 0.15, 0.95)
+        love.graphics.setColor(Colors.drain(side, ratio))
         love.graphics.rectangle("fill", bx, by, bw * math.min(ratio, afterRatio), bh, 2, 2)
-        if delta < 0 then -- red slice for the HP about to be lost (brighter on a lethal blow)
-            if pv.lethal then love.graphics.setColor(1.0, 0.30, 0.28, 0.9)
-            else love.graphics.setColor(0.90, 0.35, 0.30, 0.9) end
+        if delta < 0 then -- the HP about to be lost: amber, since red would vanish on a foe's red bar
+            local c = pv.lethal and Colors.LETHAL or Colors.PENDING
+            love.graphics.setColor(c[1], c[2], c[3], 0.95)
             love.graphics.rectangle("fill", bx + bw * afterRatio, by, bw * (ratio - afterRatio), bh, 2, 2)
         else -- green slice for the HP about to be gained
-            love.graphics.setColor(0.55, 0.92, 0.58, 0.9)
+            local c = Colors.HEALING
+            love.graphics.setColor(c[1], c[2], c[3], 0.9)
             love.graphics.rectangle("fill", bx + bw * ratio, by, bw * (afterRatio - ratio), bh, 2, 2)
         end
     else
-        love.graphics.setColor(1 - ratio, 0.2 + 0.6 * ratio, 0.15, 0.95)
+        love.graphics.setColor(Colors.drain(side, ratio))
         love.graphics.rectangle("fill", bx, by, bw * ratio, bh, 2, 2)
     end
 end

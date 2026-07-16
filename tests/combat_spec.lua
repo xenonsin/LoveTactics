@@ -238,7 +238,7 @@ return {
             local ac = Combat.new(arena(8, 8), { unit("warlord", 1, 1) }, { unit(armored, 1, 2) })
             local attacker, defender = ac.units[1], ac.units[2] -- warlord damage 28
             local sword = Item.instantiate("iron_sword") -- tags { sword, slash, physical }
-            local bow = Item.instantiate("bow")          -- tags { bow, pierce, physical }
+            local bow = Item.instantiate("iron_bow")          -- tags { bow, pierce, physical }
 
             local dSlash = Combat.dealDamage(ac, attacker, defender, sword, {}) -- sword power 6
             defender.char.stats.health.current = defender.char.stats.health.max -- reset for a clean 2nd hit
@@ -266,7 +266,10 @@ return {
                     end,
                 },
             }
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 2, 3) })
+            -- Stand the mage two tiles off, inside the wand's range 3 but outside the bandit's reach:
+            -- this is a RANGED drain, and a mage in melee would eat the bandit's sword-parry
+            -- (data/traits/parry.lua) on the way, which has nothing to do with effect composition.
+            local c = Combat.new(arena(8, 8), { unit("mage", 2, 5) }, { unit("bandit", 2, 3) })
             local mage = c.units[1]
             mage.char.stats.health.current = 40
             local ok, res = Combat.useItem(c, mage, wand, 2, 3)
@@ -680,7 +683,7 @@ return {
         fn = function()
             -- Knight carries iron_sword in slot 1; add a bow in a later slot as a second option.
             local knight = Character.instantiate("knight")
-            local bow = Item.instantiate("bow")
+            local bow = Item.instantiate("iron_bow")
             knight.inventory[3] = bow
             assert(Combat.defaultAction(knight).name == "Iron Sword", "no pin -> first grid weapon wins")
 
@@ -785,7 +788,7 @@ return {
                 { unit("bandit", 5, 4), unit("bandit", 6, 4), unit("bandit", 7, 4) })
             local archer = c.units[1]
             local adj, mid, far = c.units[2], c.units[3], c.units[4]
-            local bow = Item.instantiate("bow")
+            local bow = Item.instantiate("iron_bow")
 
             -- The confirm gate rejects a point-blank shot before spending any cost.
             local stam0 = archer.char.stats.stamina.current
@@ -1167,7 +1170,7 @@ return {
             local dual = Item.instantiate("ability_dual_wield") -- nominal speed 4
             knight.inventory[5] = dual
             knight.inventory[4] = Item.instantiate("iron_sword") -- speed 3, adjacent
-            knight.inventory[6] = Item.instantiate("war_hammer") -- speed 7 but 2h: excluded at +0
+            knight.inventory[6] = Item.instantiate("iron_hammer") -- speed 7 but 2h: excluded at +0
             local u = { char = knight, x = 1, y = 1 }
 
             -- One qualifying weapon (the hammer is 2h, out at +0): not armed -> falls back to nominal.
@@ -1194,7 +1197,7 @@ return {
                 knight.inventory[2] = Item.instantiate("iron_sword")
                 knight.inventory[4] = Item.instantiate("iron_sword")
                 knight.inventory[6] = Item.instantiate("iron_sword")
-                knight.inventory[8] = Item.instantiate("bow") -- ranged: never qualifies
+                knight.inventory[8] = Item.instantiate("iron_bow") -- ranged: never qualifies
                 local to = {}
                 for _, l in ipairs(Combat.adjacencyLinks(knight)) do
                     if l.from == 5 and l.kind == "boost" then to[l.to] = true end

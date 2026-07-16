@@ -1,18 +1,33 @@
--- The item equivalent of the Melee Counter reflex: a duelist's blade that strikes back on its own.
--- `traits` on an item reach whoever carries it (models/trait.lua), so any character -- not just a
--- born counter-fighter -- can build a retaliation loadout around it. A fighter-class weapon, sold at
--- the Colosseum. The strike it answers with is the wielder's DEFAULT weapon, so pairing it with a
--- heavier blade sharpens the counter.
+-- A duelist's blade that does not trade. `traits` on an item reach whoever carries it
+-- (models/trait.lua), so any character -- not just a born counter-fighter -- can build a retaliation
+-- loadout around it. A fighter-class weapon, sold at the Colosseum. The strike it answers with is the
+-- wielder's DEFAULT weapon, so pairing it with a heavier blade sharpens the answer.
+--
+-- A sword, so it owes the family's counter-reaction (docs/weapons.md) -- but it REPLACES the ordinary
+-- data/traits/parry.lua with data/traits/riposte.lua rather than carrying both. That swap is the whole
+-- of what the price buys, and it is a difference in KIND, not degree:
+--
+--   an ordinary sword parries -- takes the blow, then answers it. A trade.
+--   this blade ripostes       -- turns the blow aside so it deals nothing, and answers it anyway.
+--
+-- Which is what the word has always meant with a sword in hand, and what this blade was missing back
+-- when its only claim was a shorter cooldown than the sword every recruit carries. Standing a duelist
+-- in a doorway is now a real tactic: adjacent attackers simply fail, one every 16 ticks.
+--
+-- The counter-play is written into the reflex rather than into a number: it only turns aside a
+-- MATERIAL blow from an ADJACENT foe. Shoot it, burn it, or stand two tiles off and swing a spear,
+-- and the guard is worth nothing at all.
 return {
     name = "Riposte Blade",
-    description = "A duelist's sword. When struck in melee, it answers on its own.",
+    description = "A duelist's sword. A melee blow it sees coming is turned aside entirely -- and answered.",
     sprite = "assets/items/riposte_blade.png",
     type = "weapon",
     tags = { "sword", "slash", "physical", "melee" },
+    hands = 1,
     class = "fighter",
     price = 220,
     repRank = 2,
-    traits = { "melee_counter" },
+    traits = { "riposte" },
     activeAbility = {
         target = "enemy",
         range = 1,

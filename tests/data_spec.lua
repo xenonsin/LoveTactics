@@ -114,8 +114,8 @@ return {
             c.inventory[2] = nil -- open a gap in the middle
             assert(Character.itemCount(c) == 2, "two items remain after clearing slot 2")
             assert(Character.firstEmptySlot(c) == 2, "slot 2 is the first empty cell")
-            Character.addItem(c, Item.instantiate("bow"))
-            assert(c.inventory[2] and c.inventory[2].name == "Bow", "the new item fills the gap at slot 2")
+            Character.addItem(c, Item.instantiate("iron_bow"))
+            assert(c.inventory[2] and c.inventory[2].name == "Iron Bow", "the new item fills the gap at slot 2")
             assert(c.inventory[3], "the item beyond the gap is untouched")
         end,
     },

@@ -11,6 +11,8 @@ return {
     sprite = "assets/items/demon_bane.png",
     type = "weapon",
     tags = { "sword", "slash", "physical", "holy", "melee" },
+    hands = 1,
+    traits = { "parry" }, -- a sword, so it parries (docs/weapons.md) -- and the counter carries `holy` too
     class = "priest",
     price = 260,
     repRank = 3,

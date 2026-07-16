@@ -3,11 +3,11 @@
 -- everything involved in the collision takes the Power as impact damage. Slow (speed 4) and dear in
 -- stamina -- you buy the displacement, not the damage.
 return {
-    name = "Mace",
+    name = "Iron Mace",
     description = "A crushing blow that drives the target back two spaces. A collision hurts everyone in it.",
     sprite = "assets/items/mace.png",
     type = "weapon",
-    tags = { "blunt", "impact", "physical", "melee" },
+    tags = { "mace", "impact", "physical", "melee" },
     class = "fighter",
     price = 190,
     repRank = 2,

@@ -237,7 +237,7 @@ return {
         name = "fire spreads to an adjacent burnable tile on tick, but not onto plain ground",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
-            c.arena.tiles[2][3].burnable = true -- (3,2) is forest-like; (1,2) stays plain ground
+            c.arena.tiles[2][3].tags = { "burnable" } -- (3,2) is forest-like; (1,2) stays plain ground
             Hazard.place(c, 2, 2, "hazard_fire")
 
             Hazard.tick(c, 1) -- counts duration down, then spreads

@@ -5,7 +5,7 @@ return {
     description = "Maul an adjacent foe with dead hands.",
     sprite = "assets/items/rotting_claws.png",
     type = "weapon",
-    tags = { "physical", "melee" },
+    tags = { "natural", "physical", "melee" },
     noSteal = true,
     activeAbility = {
         target = "enemy",

@@ -7,11 +7,13 @@
 --
 -- Two-handed, so Dual Wield can pair it only once forged to +5. A fighter's capstone weapon.
 return {
-    name = "Greatsword",
+    name = "Iron Greatsword",
     description = "A massive two-handed blade. Winds up a turn, then falls on one tile for devastating damage.",
     sprite = "assets/items/greatsword.png",
     type = "weapon",
-    tags = { "sword", "slash", "physical", "melee" },
+    -- Its own archetype, NOT the sword family (docs/weapons.md): a greatsword's verb is the wind-up,
+    -- and it must not inherit the sword's Parry -- a two-handed capstone does not also counter.
+    tags = { "greatsword", "slash", "physical", "melee" },
     hands = 2,
     class = "fighter",
     price = 760,

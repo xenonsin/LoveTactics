@@ -183,6 +183,26 @@ function CombatFx:busy()
     return false
 end
 
+-- True once every strip/board HP bar has finished draining to its real value -- the slowest hit
+-- reaction to settle. The turn hand-off waits on this (on top of busy()) so a bar isn't still draining
+-- while the turn-order cards restage. Kept out of busy() so it never stalls player INPUT, only the
+-- automatic hand-off.
+function CombatFx:hpSettled()
+    for unit, val in pairs(self.hp) do
+        local hp = unit.char and unit.char.stats and unit.char.stats.health
+        if hp and math.abs(val - hp.current) >= 0.5 then return false end
+    end
+    return true
+end
+
+-- True once every damage/heal number has drifted up and faded -- the last of the "damage animation"
+-- to clear. The turn hand-off waits on this too, so a number is never still floating on the board while
+-- the turn-order cards restage. (Its lifetime, FLOAT_LIFE, therefore paces the beat between a hit
+-- landing and the turn moving.)
+function CombatFx:floatersDone()
+    return #self.floaters == 0
+end
+
 -- ---------------------------------------------------------------------------
 -- Read-outs for the draw layer
 -- ---------------------------------------------------------------------------

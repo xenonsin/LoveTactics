@@ -824,6 +824,20 @@ end
 
 -- The focused member's 3x3 grid (the anchor) with the adjacency legend beneath it.
 function Party:drawMemberGrid()
+    -- What the player is holding over the grid from OUTSIDE it -- a stash item mid-drag, or one
+    -- picked up with the keyboard. The grid finds its own pickup on its own; this is the case it
+    -- can't see, since the item isn't in the inventory yet. Handing it over lets the grid green-light
+    -- the cells where the item's adjacency requirement would be met (a Rain of Arrows lights the
+    -- cells touching a bow). Derived at draw time so it tracks every path that fills/empties the
+    -- hand -- mouse drag, click, or keyboard pick -- without each one having to remember to say so.
+    local incoming
+    if self.drag and self.drag.from == "pool" then
+        incoming = self:dragItem()
+    elseif self.pool.picked then
+        incoming = self.pool:itemAt(self.pool.picked)
+    end
+    self.grid:setHeldItem(incoming)
+
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(0.75, 0.78, 0.86)
     love.graphics.print("Inventory", self.grid.x, self.gridLabelY)

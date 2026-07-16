@@ -963,6 +963,19 @@ function Combat.defend(combat, unit)
     -- def's own magnitude, so a defend item that names no amount still braces.
     Status.apply(combat, unit, "defending", { magnitude = behavior.defense })
     Combat.logEvent(combat, "defend", string.format("%s takes a defensive stance.", unitName(unit)))
+    -- A tower shield covers the line, not just the man holding it: `waitBehavior.covers` braces every
+    -- ADJACENT ALLY too, for that (smaller) amount. Only the largest shields declare it -- see
+    -- data/items/armor/oathkeeper_shield.lua -- and it is what makes bracing a formation decision
+    -- rather than a private one: where you stand when you plant decides who else gets the wall.
+    if behavior.covers then
+        for _, ally in ipairs(Combat.unitsNear(combat, unit.x, unit.y, 1)) do
+            if ally ~= unit and ally.side == unit.side then
+                Status.apply(combat, ally, "defending", { magnitude = behavior.covers })
+                Combat.logEvent(combat, "defend",
+                    string.format("%s is covered by the wall.", unitName(ally)))
+            end
+        end
+    end
     endTurn(combat, unit, behavior.speed or Combat.DEFEND_SPEED)
     return true
 end
@@ -981,6 +994,25 @@ function Combat.overwatch(combat, unit)
     Combat.logEvent(combat, "action", string.format("%s takes overwatch.", unitName(unit)))
     endTurn(combat, unit, behavior.speed or Combat.FOCUS_SPEED)
     return true
+end
+
+-- The initiative the unit's "Wait" action would land it at right now, for the timeline ghost.
+-- Mirrors whichever of wait/focus/defend/overwatch its waitBehavior selects (and their speed
+-- costs) so the preview matches the action that actually runs -- a Focus/Defend/Overwatch swap
+-- charges behavior.speed, not the plain delay slot. The unit's committed move (combat.turn.moveCost)
+-- is folded in the same way each real action folds it. `moveCostOverride` (a move-initiative value)
+-- previews a wait AFTER a not-yet-committed move -- the reposition ghost, before the walk is taken.
+function Combat.waitInitiative(combat, unit, moveCostOverride)
+    local moveCost = moveCostOverride
+        or (combat.turn and combat.turn.unit == unit and combat.turn.moveCost) or 0
+    moveCost = math.max(moveCost, Status.forcedMoveCost(combat, unit))
+    local behavior = Combat.waitBehavior(unit)
+    if behavior.kind == "delay" then
+        local nxt = nextUnit(combat, unit)
+        return nxt and math.max(moveCost, nxt.initiative + 1) or (moveCost + Combat.WAIT_COST)
+    end
+    local default = (behavior.kind == "defend" and Combat.DEFEND_SPEED) or Combat.FOCUS_SPEED
+    return unit.initiative + moveCost + (behavior.speed or default)
 end
 
 -- Pass: end the turn without acting, paying the normal timeline cost (this turn's move cost,
@@ -1130,9 +1162,18 @@ end
 -- forced movement (knockback / pull), and by a summon appearing (models/summon.lua) -- so being
 -- shoved across a spike trap, or conjured on top of one, is exactly as dangerous as walking over it.
 --
+-- `reason` says HOW the unit came to be here, for the effects that care about the difference:
+--   "walk"   -- it stepped here itself, one metered tile of its move (Combat.stepMove)
+--   "forced" -- it was shoved, pulled, or trampled here (knockback / pull / charge)
+--   nil      -- it did not cross the ground at all: a blink, a swap, or a summon's arrival
+-- Traps, hazards, and auras deliberately ignore `reason` -- the ground does not care how you came to
+-- stand on it. Only Status.onEnterTile reads it, so that Bleed costs a unit blood for every tile it
+-- crosses under its own weight (walked OR dragged) but nothing for a blink. `reason` is optional and
+-- defaults to nil (no ground crossing), so a call site that forgets it errs toward firing nothing.
+--
 -- The unit must already stand on (x, y) when this is called: a trap may kill it, and the death path
 -- reads its position. Callers move it first, then announce the arrival.
-function Combat.enterTile(combat, unit, x, y)
+function Combat.enterTile(combat, unit, x, y, reason)
     local trap = Trap.at(combat, x, y)
     -- Feather Boots walk over any trap unharmed. The guard sits at this one chokepoint, so the wearer
     -- is spared whether it strode onto the trap, was shoved onto it, or was conjured on top of one --
@@ -1141,6 +1182,11 @@ function Combat.enterTile(combat, unit, x, y)
     if unit.alive then
         Hazard.onEnter(combat, unit, x, y)
         Combat.updateAuras(combat, unit)
+    end
+    -- Last, and re-checking `alive`: a trap or hazard may already have killed the unit on this very
+    -- tile, and a corpse does not bleed.
+    if unit.alive and (reason == "walk" or reason == "forced") then
+        Status.onEnterTile(combat, unit)
     end
 end
 
@@ -1275,7 +1321,7 @@ function Combat.stepMove(combat, walk)
     walk.index = walk.index + 1
     local tile = walk.path[walk.index]
     walk.unit.x, walk.unit.y = tile.x, tile.y
-    Combat.enterTile(combat, walk.unit, tile.x, tile.y)
+    Combat.enterTile(combat, walk.unit, tile.x, tile.y, "walk")
     -- A unit walking into an opposing Overwatch stance's firing line is shot for it. Only a walk
     -- triggers this (not a knockback or a summon appearing), so it lives here rather than in enterTile.
     Combat.triggerOverwatch(combat, walk.unit)
@@ -1330,7 +1376,7 @@ local function shoveStep(combat, unit, dx, dy)
     local nx, ny = unit.x + dx, unit.y + dy
     if not canShoveInto(combat, nx, ny) then return false end
     unit.x, unit.y = nx, ny
-    Combat.enterTile(combat, unit, nx, ny)
+    Combat.enterTile(combat, unit, nx, ny, "forced")
     -- Being knocked off your feet shatters a channel you were winding up. Idempotent, so a
     -- multi-tile slide (knockback/pull/charge all route here) only fizzles the channel once.
     if unit.channel then Combat.interruptChannel(combat, unit, "knocked off balance") end
@@ -1400,6 +1446,8 @@ function Combat.teleportUnit(combat, unit, x, y)
     unit.x, unit.y = x, y
     Combat.logEvent(combat, "move",
         string.format("%s leaps to (%d, %d).", unitName(unit), x, y))
+    -- No `reason`: a leap crosses no ground, so it springs the tile it lands on but never fires a
+    -- per-tile status. Bleeding out of a melee costs blood; blinking out of one does not.
     Combat.enterTile(combat, unit, x, y)
     -- Teleport sets x,y directly rather than through shoveStep, so break a channel here too.
     if unit.channel then Combat.interruptChannel(combat, unit, "displaced") end
@@ -1436,10 +1484,13 @@ function Combat.charge(combat, user, target, distance)
         end
         local oldTx, oldTy = target.x, target.y
         target.x, target.y = fx_, fy_
-        Combat.enterTile(combat, target, fx_, fy_)
+        -- Both are "forced": neither crossing is a metered walk. The target is driven backwards, and
+        -- the charger is carried along by its own rush rather than spending movement -- but both are
+        -- on the ground the whole way, so both pay a bleed for every tile of it.
+        Combat.enterTile(combat, target, fx_, fy_, "forced")
         if user.alive then
             user.x, user.y = oldTx, oldTy
-            Combat.enterTile(combat, user, oldTx, oldTy)
+            Combat.enterTile(combat, user, oldTx, oldTy, "forced")
         end
         moved = moved + 1
         Combat.logEvent(combat, "move",
@@ -1520,7 +1571,42 @@ local function adjacencyAura(char, item)
             end
         end
     end
+    -- LIFESTEAL, the keyword (see docs/weapons.md): an ability may declare `lifesteal` itself and heal
+    -- its user for that share of what it deals, with no charm beside it -- a weapon that drinks on its
+    -- own. Folded into the same `mods.lifesteal` the Vampiric Strike aura feeds, so the two simply ADD
+    -- (charm a hungry weapon and it drinks deeper), and every reader -- the live cast AND the damage
+    -- preview -- honours a declared lifesteal for free rather than each having to learn the keyword.
+    local ab = item and item.activeAbility
+    if ab and ab.lifesteal then mods.lifesteal = mods.lifesteal + ab.lifesteal end
     return tags, statuses, mods
+end
+
+-- The magnitude a cast of `ab` at (tx, ty) actually lands with: its declared amount (nil for an
+-- amount-less effect -- a pure summon or cleanse -- so a bonus can never conjure damage out of
+-- nothing), raised by a neighbouring charm's `amount` aura, then by FRENZY.
+--
+-- FRENZY, the keyword (see docs/weapons.md): `ab.frenzy` is a fraction, and every body the cast's area
+-- catches BEYOND THE FIRST adds that share of the magnitude to what each of them takes. A swing into
+-- one foe is ordinary; a swing into three lands harder on all three. It is the inversion that makes a
+-- crowd something a weapon WANTS -- being surrounded stops being the danger and becomes the point.
+--
+-- It counts bodies, not enemies: an area has never cared whose side it sweeps, and neither does this.
+-- An ally caught in the arc feeds it exactly as a foe would.
+--
+-- One funnel for all three cast paths (the preview, Combat.strikeWith, and resolveCast), so the number
+-- the tooltip promises is the number the swing delivers. `combat` may be absent in a board-less
+-- preview, where there is nothing to count and frenzy folds to nothing.
+local function castAmount(combat, unit, ab, tx, ty, auraMods)
+    local declared = Combat.abilityMagnitude(ab)
+    if not declared then return nil end
+    local amount = declared + auraMods.amount
+    if ab.frenzy and combat then
+        local caught = #Combat.aoeUnits(combat, ab, tx, ty, unit)
+        if caught > 1 then
+            amount = amount + math.floor(amount * ab.frenzy) * (caught - 1)
+        end
+    end
+    return amount
 end
 
 -- The range a neighboring charm's aura adds to a cast of `item` from `char`'s grid (a Long-Fuse
@@ -1553,18 +1639,45 @@ function Combat.adjacencyLabel(pred)
     return "adjacent " .. ((pred and (pred.tag or pred.type)) or "item")
 end
 
--- Is `item`'s adjacency requirement satisfied in `char`'s grid? True when the ability declares no
--- `requiresAdjacent`, or when at least one adjacent item matches it.
-function Combat.adjacencyMet(char, item)
+-- Would `item` have its adjacency requirement satisfied if it sat in cell `index` of `char`'s grid?
+-- Hypothetical: `index` need not be where the item currently is, which is what lets the loadout light
+-- the cells a held item COULD be dropped into (Combat.adjacencyCandidateCells). The item is ignored
+-- as its own neighbor, so a grid it's already in answers the same as one it isn't.
+function Combat.adjacencyMetAt(char, item, index)
     local ab = item and item.activeAbility
     local req = ab and ab.requiresAdjacent
     if not req then return true end
-    local idx = char and Character.slotIndex(char, item)
-    if not idx then return false end
-    for _, nb in ipairs(Character.adjacentItems(char, idx)) do
-        if Combat.matchesAdjacency(nb, req) then return true end
+    if not (char and index) then return false end
+    for _, i in ipairs(Character.adjacentIndices(index)) do
+        local nb = char.inventory[i]
+        if nb ~= nil and nb ~= item and Combat.matchesAdjacency(nb, req) then return true end
     end
     return false
+end
+
+-- Is `item`'s adjacency requirement satisfied where it sits in `char`'s grid right now? True when the
+-- ability declares no `requiresAdjacent`, or when at least one adjacent item matches it. The gate the
+-- cast, the arm and the grayed slot all read.
+function Combat.adjacencyMet(char, item)
+    local ab = item and item.activeAbility
+    if not (ab and ab.requiresAdjacent) then return true end
+    local idx = char and Character.slotIndex(char, item)
+    if not idx then return false end
+    return Combat.adjacencyMetAt(char, item, idx)
+end
+
+-- Every cell of `char`'s grid where `item` would meet its adjacency requirement, as a set keyed by
+-- cell index. Empty when the item has no requirement (nothing to point at -- every cell is equally
+-- fine, so the loadout highlights none of them rather than all nine). What the loadout paints green
+-- while an item is held: a Rain of Arrows lights only the cells that touch a bow.
+function Combat.adjacencyCandidateCells(char, item)
+    local out = {}
+    local ab = item and item.activeAbility
+    if not (char and ab and ab.requiresAdjacent) then return out end
+    for i = 1, Character.MAX_INVENTORY do
+        if Combat.adjacencyMetAt(char, item, i) then out[i] = true end
+    end
+    return out
 end
 
 -- The active adjacency relationships in `char`'s grid, for UI connector lines. Returns a list of
@@ -1799,6 +1912,13 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     if Trait.trySmoke(combat, target, attacker) then
         return 0
     end
+    -- A duelist's blade (the Riposte Blade) turns an incoming melee blow aside and answers it in the
+    -- same motion. Like the two reflexes above it returns BEFORE mitigation and the trait damage
+    -- dispatch -- a blow that never landed is not a wound survived, so it grants no rage and provokes
+    -- no second counter on top of the riposte's own.
+    if Trait.tryRiposte(combat, target, attacker, tags) then
+        return 0
+    end
     local dmg = Combat.mitigatedDamage(target, base, tags, opts)
     local hp = target.char.stats.health
     hp.current = hp.current - dmg
@@ -2025,10 +2145,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         return e
     end
     local auraTags, auraStatuses, auraMods = adjacencyAura(unit.char, item)
-    -- Fold in a neighboring Alchemic Mastery charm's magnitude bonus exactly as Combat.useItem does,
-    -- so the previewed number matches the hit the player is about to land.
-    local declared = Combat.abilityMagnitude(ab)
-    local effectiveAmount = declared and (declared + auraMods.amount) or declared
+    -- Fold in a neighboring Alchemic Mastery charm's magnitude bonus (and any frenzy) exactly as
+    -- Combat.useItem does, so the previewed number matches the hit the player is about to land.
+    local effectiveAmount = castAmount(combat, unit, ab, tx, ty, auraMods)
     local fx = {
         user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
         amount = effectiveAmount, -- the ability's scaled magnitude; effects derive heal/status/etc. from it
@@ -2358,6 +2477,8 @@ end
 -- on (Combat.enterTile: traps, hazards), exactly as a walk or a shove would -- so trading places into a
 -- trap is as real as stepping onto one, unless Feather Boots carry the mover clear. Positions are set
 -- together FIRST, then arrivals resolved, so enterTile never reads a stale collision mid-swap.
+-- Neither passes a `reason`: a swap trades two units through each other without either crossing the
+-- ground between, so it springs both tiles but bleeds neither.
 function Combat.swapUnits(combat, a, b)
     if not (a and b and a.alive and b.alive) then return false end
     a.x, a.y, b.x, b.y = b.x, b.y, a.x, a.y
@@ -2513,7 +2634,7 @@ function Combat.blink(combat, unit, x, y)
     combat.turn.moveCost = 0 -- a blink owes no move initiative; its resource cost is the price
     unit.x, unit.y = x, y
     Combat.logEvent(combat, "move", string.format("%s blinks to (%d, %d).", unitName(unit), x, y))
-    Combat.enterTile(combat, unit, x, y)
+    Combat.enterTile(combat, unit, x, y) -- no `reason`: a blink crosses no ground (see Combat.enterTile)
     return true
 end
 
@@ -2872,8 +2993,7 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
     if not ab then return { damageDealt = 0, healed = 0 } end
     local target = Combat.unitAt(combat, tx, ty)
     local auraTags, auraStatuses, auraMods = adjacencyAura(user.char, weapon)
-    local declared = Combat.abilityMagnitude(ab)
-    local effectiveAmount = declared and (declared + auraMods.amount) or declared
+    local effectiveAmount = castAmount(combat, user, ab, tx, ty, auraMods)
     local result = { damageDealt = 0, healed = 0 }
     local fx = {
         user = user, target = target, item = weapon, combat = combat,
@@ -2999,6 +3119,82 @@ function Combat.useItem(combat, unit, item, tx, ty)
     return resolveCast(combat, unit, item, ab, tx, ty)
 end
 
+-- ---------------------------------------------------------------------------
+-- Tile tags & elemental spread. A tile is not just its terrain type: what the ground is MADE of at
+-- (x, y) is the union of three sources, any of which may carry the same tag --
+--   * the terrain itself     (Arena.TILE_PROPS[t].tags -- a river is "conductable", forest "burnable"),
+--   * any hazard on the tile (def.tags -- a Rain cloud is "conductable" too),
+--   * whoever stands there   (a status's `tileTags` -- Wet makes its bearer's cell "conductable").
+-- Combat.tileHasTag asks all three at once, so an effect keyed off a tag never has to care which one
+-- answered: a bolt treats a soaked knight, a rain cloud and a river identically. Fire creeping into
+-- "burnable" (Hazard.spread) and lightning arcing into "conductable" (below) are the same mechanism
+-- pointed at different tags -- a new interaction is a new tag on the data, not a new branch here.
+-- ---------------------------------------------------------------------------
+
+-- Does the ground at (x, y) carry `tag`, from terrain, a hazard, or its occupant's statuses? False
+-- off the map. Pure, so the battle UI can light the tiles a tag covers and tests can assert it.
+function Combat.tileHasTag(combat, x, y, tag)
+    local row = combat.arena and combat.arena.tiles and combat.arena.tiles[y]
+    local cell = row and row[x]
+    if not cell then return false end -- off the map
+    if hasTag(cell.tags, tag) then return true end
+    for _, h in ipairs(Hazard.allAt(combat, x, y)) do
+        if hasTag(h.tags, tag) then return true end
+    end
+    local occupant = Combat.unitAt(combat, x, y)
+    return occupant ~= nil and Status.hasTileTag(occupant, tag)
+end
+
+-- Orthogonal neighbors, matching the movement DIRS and Hazard.spread: an element crosses an edge,
+-- not a corner, so it can't cut diagonally past a gap.
+local SPREAD_DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
+
+-- The tiles carrying `tag` that a footprint of `cells` reaches: every orthogonally-adjacent tagged
+-- tile that isn't itself part of the footprint (those already took the direct hit). Deduped, so a
+-- tile touching two blasted cells is only returned once.
+function Combat.taggedCellsAround(combat, cells, tag)
+    local inFootprint, seen, out = {}, {}, {}
+    for _, c in ipairs(cells) do inFootprint[c.x .. "," .. c.y] = true end
+    for _, c in ipairs(cells) do
+        for _, d in ipairs(SPREAD_DIRS) do
+            local nx, ny = c.x + d[1], c.y + d[2]
+            local k = nx .. "," .. ny
+            if not inFootprint[k] and not seen[k] and Combat.tileHasTag(combat, nx, ny, tag) then
+                seen[k] = true
+                out[#out + 1] = { x = nx, y = ny }
+            end
+        end
+    end
+    return out
+end
+
+-- Fraction of the cast's magnitude an arc carries. Below 1 so conducting stays a bonus for setting
+-- the water up, never better than aiming the bolt at the target itself.
+Combat.CONDUCT_FACTOR = 0.5
+
+-- The tag a lightning cast arcs through; see the section header for what may carry it.
+Combat.CONDUCT_TAG = "conductable"
+
+-- Arc a lightning cast out of `cells` into the conductable ground around them, striking whoever
+-- stands in it. The arc carries the CAST's own tags, so a Wet victim's `vulnerable = { lightning }`
+-- amplifies it exactly as it would the direct hit. Side-agnostic, like the fire it mirrors: a charge
+-- in a puddle doesn't check whose boots are in it, so soaking the ground beside your own line is a
+-- real risk. Returns the total damage dealt.
+function Combat.conductLightning(combat, unit, cells, tags, amount, source)
+    if not amount or amount <= 0 then return 0 end
+    local base = math.max(1, math.floor(amount * Combat.CONDUCT_FACTOR))
+    local total = 0
+    for _, c in ipairs(Combat.taggedCellsAround(combat, cells, Combat.CONDUCT_TAG)) do
+        local victim = Combat.unitAt(combat, c.x, c.y)
+        if victim and victim.alive then
+            Combat.logEvent(combat, "action",
+                string.format("The charge arcs through the water into %s.", unitName(victim)))
+            total = total + Combat.dealFlatDamage(combat, victim, base, tags, source, unit)
+        end
+    end
+    return total
+end
+
 -- Resolve a cast's actual effect: build the effect context, run the ability, settle the water/fire
 -- interaction and reaction traits, then end the turn by charging ab.speed. Shared by an instant cast
 -- (Combat.useItem calls it immediately) and a channel that has finished winding up (Combat.resolveChannel
@@ -3022,14 +3218,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
     -- Adjacency auras from neighboring items (e.g. a Fire Stone next to this weapon) fold extra
     -- tags into every hit and inflict their status on any target this cast damages.
     local auraTags, auraStatuses, auraMods = adjacencyAura(unit.char, item)
-    -- The cast's effective magnitude: the ability's own declared amount, raised by a neighboring
-    -- Alchemic Mastery charm (auraMods.amount, 0 without one). An amount-less effect (a pure summon or
-    -- cleanse) stays nil, so the bonus never conjures damage out of nothing. Threaded into fx.amount
-    -- (for effects that read it directly, e.g. a heal) AND into fx.damage's default opts.amount below --
-    -- Combat.dealDamage bases its hit on opts.amount/ab.damage, not on fx.amount, so a damage bomb
-    -- needs it fed in there too.
-    local declared = Combat.abilityMagnitude(ab)
-    local effectiveAmount = declared and (declared + auraMods.amount) or declared
+    -- The cast's effective magnitude (see castAmount): the ability's own declared amount, raised by a
+    -- neighboring Alchemic Mastery charm and by any `frenzy` the ability declares. An amount-less
+    -- effect (a pure summon or cleanse) stays nil, so a bonus never conjures damage out of nothing.
+    -- Threaded into fx.amount (for effects that read it directly, e.g. a heal) AND into fx.damage's
+    -- default opts.amount below -- Combat.dealDamage bases its hit on opts.amount/ab.damage, not on
+    -- fx.amount, so a damage bomb needs it fed in there too.
+    local effectiveAmount = castAmount(combat, unit, ab, tx, ty, auraMods)
     local result = { damageDealt = 0, healed = 0 }
     -- The initiative this action bills at end of turn, defaulting to the ability's own speed. An effect
     -- may override it (Dual Wield sets the summed speed of the weapons it swings) through fx.setSpeed.
@@ -3297,9 +3492,17 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
     -- footprint (the AoE cells, or just the aimed cell). Runs after the effect so a water AoE that
     -- also lays down rain clears the fire it fell on. Uses the full cast tag set (item + ability).
     local castTags = collectTags(item, nil)
+    local footprint = ab.aoe and Combat.aoeCells(combat, ab, tx, ty, unit) or { { x = tx, y = ty } }
     if hasTag(castTags, "water") then
-        local cells = ab.aoe and Combat.aoeCells(combat, ab, tx, ty, unit) or { { x = tx, y = ty } }
-        Hazard.douse(combat, cells, castTags)
+        Hazard.douse(combat, footprint, castTags)
+    end
+
+    -- Water carries a charge: a cast carrying the "lightning" tag arcs out of its footprint into any
+    -- adjacent water -- wet ground, a rain cloud, or a Wet unit (Combat.conductLightning). Runs after
+    -- the effect, so a bolt that soaks as it lands electrifies the puddle it just made.
+    if hasTag(castTags, "lightning") then
+        result.damageDealt = result.damageDealt + Combat.conductLightning(
+            combat, unit, footprint, castTags, effectiveAmount, item.name)
     end
 
     -- The cast has fully resolved (effect, then the water/fire interaction). A reaction trait sees a

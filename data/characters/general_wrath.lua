@@ -11,6 +11,7 @@ return {
     name = "Ira, the Unappeased",
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_wrath.png",
+    portrait = "assets/portraits/general_wrath.png", -- large VN portrait for conversations (falls back if missing)
     stats = {
         health = 260, mana = 0, stamina = 120,
         damage = 18, magicDamage = 0, -- low, and rising

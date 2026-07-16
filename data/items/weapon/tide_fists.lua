@@ -6,7 +6,7 @@ return {
     description = "Batter an adjacent foe with water, leaving them Wet.",
     sprite = "assets/items/tide_fists.png",
     type = "weapon",
-    tags = { "water", "magical", "melee" },
+    tags = { "natural", "water", "magical", "melee" },
     noSteal = true,
     activeAbility = {
         target = "enemy",

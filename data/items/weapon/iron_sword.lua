@@ -1,9 +1,15 @@
+-- The sword archetype's plainest expression, and the reference weapon the rest of the melee kit is
+-- tuned against: average damage, average speed, no drawback (docs/weapons.md). What it has instead of
+-- a verb of its own is Parry -- it answers a melee blow on its own -- and the free hand a two-handed
+-- weapon costs you. Every other melee weapon buys its trick by giving one of those up.
 return {
     name = "Iron Sword",
-    description = "A basic blade. Strikes an adjacent foe.",
+    description = "A basic blade. Strikes an adjacent foe, and turns a blow struck back at it.",
     sprite = "assets/items/sword.png",
     type = "weapon",
     tags = { "sword", "slash", "physical", "melee" }, -- drive damage scaling + armor mitigation
+    hands = 1, -- one-handed: the sword's other half is the slot it leaves free for a shield
+    traits = { "parry" }, -- swords parry (docs/weapons.md): answer a melee blow with one of your own
     class = "fighter",
     price = 60,
     repRank = 1,

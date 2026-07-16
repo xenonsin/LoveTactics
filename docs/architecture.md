@@ -213,6 +213,12 @@ spike trap, or conjured on top of one, is exactly as dangerous as walking over i
 therefore die on arrival: `fx.summon` / `fx.copy` bind the ability's reservation and its
 `activeSummon` claim only to a creature that survived, or the caster would hold mana for a corpse.
 
+Its `reason` argument says *how* the unit got there — `"walk"` (a metered step), `"forced"` (shoved,
+pulled, trampled), or nil (a blink, a swap, a summon's arrival: no ground crossed). Traps, hazards,
+and auras ignore it, since the ground does not care how you came to stand on it; only
+`Status.onEnterTile` reads it, which is what makes Bleed cost blood per tile crossed under a unit's
+own weight while a blink escapes it clean. It defaults to nil, so a forgetful call site fires nothing.
+
 **The `fx` context is built three times** in `combat.lua`: for real in `Combat.useItem`, and once
 each as a non-mutating dry run in `Combat.previewAbility` (the aimed hover preview) and
 `Combat.abilityOutput` (the inventory tooltip). Both dry runs are `pcall`-guarded, so **a new `fx`

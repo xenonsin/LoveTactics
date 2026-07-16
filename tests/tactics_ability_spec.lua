@@ -83,7 +83,7 @@ return {
     {
         name = "Overwatch fires on each step a foe takes through range, until stamina runs out",
         fn = function()
-            local watcher = withGrid("archer", { "bow" }) -- bow: range 3, minRange 2
+            local watcher = withGrid("archer", { "iron_bow" }) -- bow: range 3, minRange 2
             local c = Combat.new(arena(8, 8), { unit(watcher, 1, 1) }, { unit("bandit", 5, 1) })
             local w = c.units[1]
             local mover = Combat.unitAt(c, 5, 1)
@@ -100,7 +100,7 @@ return {
     {
         name = "Overwatch stops firing once the watcher can no longer pay a shot",
         fn = function()
-            local watcher = withGrid("archer", { "bow" })
+            local watcher = withGrid("archer", { "iron_bow" })
             local c = Combat.new(arena(8, 8), { unit(watcher, 1, 1) }, { unit("bandit", 5, 1) })
             local w = c.units[1]
             local mover = Combat.unitAt(c, 5, 1)
@@ -221,7 +221,7 @@ return {
     {
         name = "Pinning Shot roots the target; Hobbling Shot cripples it",
         fn = function()
-            local pinner = withGrid("archer", { "bow", "ability_pinning_shot" })
+            local pinner = withGrid("archer", { "iron_bow", "ability_pinning_shot" })
             local c = Combat.new(arena(8, 8), { unit(pinner, 1, 1) }, { unit("bandit", 1, 4) })
             local u = c.units[1]
             u.char.stats.stamina.current = 40
@@ -233,7 +233,7 @@ return {
             assert(Status.has(foe, "root"), "the target is rooted")
             assert(foe.char.stats.health.current < hp0, "and takes damage")
 
-            local hobbler = withGrid("archer", { "bow", "ability_hobbling_shot" })
+            local hobbler = withGrid("archer", { "iron_bow", "ability_hobbling_shot" })
             local c2 = Combat.new(arena(8, 8), { unit(hobbler, 1, 1) }, { unit("bandit", 1, 4) })
             local u2 = c2.units[1]
             u2.char.stats.stamina.current = 40
@@ -247,7 +247,7 @@ return {
     {
         name = "Mark Target marks a foe; Called Shot hits a marked foe harder than an unmarked one",
         fn = function()
-            local caster = withGrid("archer", { "ability_mark_target", "bow", "ability_called_shot" })
+            local caster = withGrid("archer", { "ability_mark_target", "iron_bow", "ability_called_shot" })
             local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) },
                 { unit("bandit", 1, 4), unit("bandit", 2, 4) })
             local u = c.units[1]

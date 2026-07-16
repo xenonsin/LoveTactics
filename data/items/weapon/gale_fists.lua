@@ -6,7 +6,7 @@ return {
     description = "Slash an adjacent foe with a cutting gust. Very fast.",
     sprite = "assets/items/gale_fists.png",
     type = "weapon",
-    tags = { "wind", "magical", "melee" },
+    tags = { "natural", "wind", "magical", "melee" },
     noSteal = true,
     activeAbility = {
         target = "enemy",

@@ -103,7 +103,7 @@ return {
         name = "a party thief with a full grid pockets the loot into the stash",
         fn = function()
             local thief = Character.instantiate("archer")
-            equip(thief, { "bow", "chainmail", "torch", "buckler", "trap_sense",
+            equip(thief, { "iron_bow", "chainmail", "torch", "buckler", "trap_sense",
                            "ability_spike_trap", "ability_jolt", "silk_robes", "ability_pickpocket" })
             assert(Character.firstEmptySlot(thief) == nil, "the thief's grid is full")
             local victim = Character.instantiate("bandit")
@@ -124,7 +124,7 @@ return {
             local victim = Character.instantiate("knight")
             equip(victim, { "iron_sword" })
             local thief = Character.instantiate("bandit")
-            equip(thief, { "bow", "chainmail", "torch", "buckler", "trap_sense",
+            equip(thief, { "iron_bow", "chainmail", "torch", "buckler", "trap_sense",
                            "ability_spike_trap", "ability_jolt", "silk_robes", "ability_pickpocket" })
 
             local c = Combat.new(arena(8, 8), { unit(victim, 2, 2) }, { unit(thief, 3, 2) })

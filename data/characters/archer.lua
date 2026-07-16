@@ -1,6 +1,7 @@
 return {
     name = "Archer",
     sprite = "assets/chars/archer.png",
+    portrait = "assets/portraits/archer.png", -- large VN portrait for conversations (falls back if missing)
     -- Innate growth class: the fallback/tie-break for the level-up growth system (models/growth.lua).
     -- The archer is a hunter (the bow's shelf), so an unused archer grows toward ranged stats.
     class = "hunter",
@@ -23,9 +24,9 @@ return {
     startingItems = {
         "leather_armor", "ability_spike_trap",    "trap_sense",
         "buckler",       "sig_wolfsong_horn",     "healing_potion",
-        "bow",           "ability_rain_of_arrows", "ability_summon_wolf",
+        "iron_bow",           "ability_rain_of_arrows", "ability_summon_wolf",
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
-    defaultAction = "bow",
+    defaultAction = "iron_bow",
 }

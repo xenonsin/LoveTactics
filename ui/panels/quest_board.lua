@@ -58,7 +58,16 @@ function QuestBoard.new(opts)
                 if quest.locked then return end
                 -- Pick the deployable party before the overworld: party_select commits the choice
                 -- and switches on to states.game with the same (quest, prestige, player).
-                State.switch(require("states.party_select"), quest, self.prestige, self.player)
+                local function begin()
+                    State.switch(require("states.party_select"), quest, self.prestige, self.player)
+                end
+                -- An intro scene plays first (over the hub, which stays frozen behind it); once it
+                -- concludes we proceed into party select. No intro -> straight through.
+                if quest.intro then
+                    require("models.conversation").play(quest.intro, begin)
+                else
+                    begin()
+                end
             end,
         }
     end

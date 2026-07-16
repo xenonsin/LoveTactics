@@ -6,7 +6,7 @@ return {
     description = "Crush an adjacent foe; shatters the Frozen.",
     sprite = "assets/items/stone_fists.png",
     type = "weapon",
-    tags = { "crush", "physical", "melee" },
+    tags = { "natural", "crush", "physical", "melee" },
     noSteal = true,
     activeAbility = {
         target = "enemy",

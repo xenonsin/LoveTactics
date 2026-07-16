@@ -15,6 +15,7 @@
 -- computed box height can never drift from what's rendered (mirrors the other tooltip widgets).
 
 local Scale = require("scale")
+local Colors = require("ui.colors")
 
 local ActionPreview = {}
 
@@ -41,11 +42,12 @@ local HEAL = { 0.55, 0.90, 0.58 }
 local LETHAL = { 1.00, 0.35, 0.32 }
 local TIME = { 0.95, 0.85, 0.55 }    -- gold, matching the timeline/initiative accent
 
--- Cost value tint per resource stat (matches the item-grid cost badges / item tooltip).
+-- Cost value tint per resource stat (matches the item-grid cost badges / item tooltip). Health is
+-- PARTY blue: a cost only ever prices the player's own actor, whose HP bar is blue.
 local RES_COLOR = {
-    mana = { 0.45, 0.62, 0.95 },
-    stamina = { 0.92, 0.78, 0.35 },
-    health = { 0.45, 0.85, 0.45 },
+    mana = Colors.MANA,
+    stamina = Colors.STAMINA,
+    health = Colors.PARTY,
 }
 
 local function titleCase(s)

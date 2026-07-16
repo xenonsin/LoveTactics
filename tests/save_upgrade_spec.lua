@@ -60,7 +60,7 @@ return {
         fn = function()
             local player = Player.new()
             -- Pin a second weapon in cell 4 as the first roster member's default action.
-            player.roster[1].inventory[4] = Item.instantiate("bow")
+            player.roster[1].inventory[4] = Item.instantiate("iron_bow")
             player.roster[1].defaultActionSlot = 4
 
             local snap = Save.snapshot(player)

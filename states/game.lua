@@ -112,7 +112,14 @@ function game:openEncounter(cell)
                     -- Hand the reward (gold/prestige/rep + the roster's level-ups) to the hub, which
                     -- opens the Company Advancement overlay on entry and clears this once shown.
                     if game.player and game.reward then game.player.pendingSummary = game.reward end
-                    State.switch(require("states.hub"))
+                    -- An outro scene plays over the (frozen) final battle frame before returning to
+                    -- the hub; the hub then opens the reward summary. No outro -> straight home.
+                    local function goHub() State.switch(require("states.hub")) end
+                    if game.quest and game.quest.outro then
+                        require("models.conversation").play(game.quest.outro, goHub)
+                    else
+                        goHub()
+                    end
                 else
                     State.current = game
                 end

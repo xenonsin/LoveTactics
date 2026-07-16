@@ -1,9 +1,21 @@
--- Colosseum rank-4. The axe drinks what it spills: heavy, slow, and it hits harder the deeper
--- the fight goes. The Colosseum's masters do not say where the crimson comes from -- the first
--- hint that the arena's patron sin is Wrath, and that Wrath grows on damage taken.
+-- Colosseum rank-4. The axe drinks what it spills, and it means that literally: a third of everything
+-- the arc opens goes back into the arm that swung it. The masters do not say where the crimson comes
+-- from -- the first hint that the arena's patron sin is Wrath, and that Wrath feeds on blood.
+--
+-- Its EXTRA over the plain iron axe (data/items/weapon/iron_axe.lua), which cleaves the same 3-wide
+-- arc, is the `lifesteal` keyword (docs/weapons.md): the wielder heals a share of the whole swing, and
+-- since a cleave lands on up to three bodies at once, the axe heals most exactly when it is most
+-- outnumbered. It is the sustain weapon for a fighter who intends to stand in the middle of the arena
+-- and not leave it -- which is what the crowd is paying for.
+--
+-- Its opposite number is data/items/weapon/butchers_wedge.lua, the same family's `frenzy` axe: that one
+-- hits a crowd HARDER, this one LIVES through one. The Colosseum sells the fantasy either way.
+--
+-- Lifesteal ADDS to a Vampiric Strike charm (data/items/utility/vampiric_strike.lua) sitting beside it
+-- in the grid, rather than overriding it -- a hungry weapon charmed hungrier drinks at 83%.
 return {
     name = "Crimson Greataxe",
-    description = "A greataxe slick with a red that never dries. Devastating, and slow to swing.",
+    description = "A greataxe slick with a red that never dries. It drinks a share of everything its arc opens.",
     sprite = "assets/items/crimson_greataxe.png",
     type = "weapon",
     tags = { "axe", "slash", "physical", "melee" },
@@ -20,7 +32,11 @@ return {
         cost = { stat = "stamina", amount = 16 },
         damage = { 18, 20, 22, 23, 25, 27, 29, 31, 32, 34, 36 },
         aoe = { shape = "front", width = 3 }, -- axes cleave innately: a 3-wide arc in front
+        lifesteal = 0.33, -- the wielder drinks a third of everything the arc opens (a keyword)
         effect = function(fx)
+            -- Nothing here about the drinking: `lifesteal` is a keyword the model folds into every hit
+            -- this cast lands (Combat.adjacencyAura -> mods.lifesteal), so the effect stays the plain
+            -- cleave and the damage PREVIEW shows the heal without this file lifting a finger.
             for _, u in ipairs(fx.aoeUnits()) do
                 fx.damage(u)
             end

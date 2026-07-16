@@ -33,6 +33,43 @@ function Item.classOf(item)
     return item and item.class
 end
 
+-- The twelve weapon families. A weapon carries exactly one of these among its `tags`, and that tag
+-- names the base mechanics the weapon inherits -- an axe cleaves, a hammer stuns, a dagger bleeds.
+-- See docs/weapons.md for the contract each family owes.
+--
+-- Unlike `class` above this DOES live in `tags`, because a family is a real property of the swing:
+-- it sits beside the damage school (physical/magical), the hit tag (slash/pierce/impact), and the
+-- reach tag (melee/ranged) that scaling and armor `resist` already read. All of them are peers in one
+-- flat list -- membership is what identifies the family, never position, so re-ordering an item's
+-- tags can never change what it is.
+Item.ARCHETYPES = {
+    shield = true, staff = true, greatsword = true, axe = true,
+    mace = true, dagger = true, sword = true, hammer = true,
+    wand = true, spear = true, bow = true, unarmed = true,
+    -- The thirteenth, and the only one no player ever shops for: a creature's own body -- a wolf's
+    -- fangs, a zombie's claws, an elemental's burning hands. Granted by a blueprint's startingItems,
+    -- never sold and never stolen (`noSteal`), and owing no shared mechanic beyond that, since what a
+    -- monster's body does is the monster's business. It is a family so that every weapon in the game
+    -- answers "which family?" -- an unfamilied weapon is an authoring slip, not a natural weapon.
+    --
+    -- Distinct from `unarmed`, which is the PLAYER's bare fist: that one is a single hidden instance
+    -- (char.unarmed) and the fist charms find it by identity, not by tag (see combat.lua's
+    -- unarmedDamageBonus). Tagging a creature's fists `unarmed` would not feed them those bonuses --
+    -- it would only make them undisarmable by accident.
+    natural = true,
+}
+
+-- The archetype tag on `item`, or nil if it declares none (an ability, a charm, a consumable -- none
+-- of which belong to a weapon family). A weapon carrying two archetype tags is authoring error: this
+-- returns whichever comes first, and tests/weapon_spec.lua fails the build over it.
+function Item.archetype(item)
+    if not item then return nil end
+    for _, tag in ipairs(item.tags or {}) do
+        if Item.ARCHETYPES[tag] then return tag end
+    end
+    return nil
+end
+
 -- Stacking: only consumables occupy a single inventory slot as a countable stack (a bundle of
 -- health potions with a finite number of uses). Every other type is one-per-slot. A stack can
 -- grow up to `maxStack` (the blueprint may override Item.DEFAULT_MAX_STACK), so "limited uses"
@@ -101,9 +138,15 @@ local ABILITY_MAGNITUDES = {
     { "reviveHealth", "Revive" },
 }
 
+-- The `waitBehavior` payoffs that scale with the granting item's level -- what the swapped Wait pays
+-- out: defend's brace (`defense`) and the share it lends adjacent allies (`covers`), focus's mana,
+-- overwatch's per-shot stamina.
+local WAIT_BEHAVIOR_MAGNITUDES = { "defense", "mana", "stamina", "covers" }
+
 -- Every place an item carries a scaling magnitude, as get/set pairs, so one walk resolves them all at
 -- instantiate. This is the definition of "a derived magnitude": an ability's damage/healing/etc.,
--- armor's stat bonuses and resists, a resource ceiling, and an aura's amount/range/status magnitude.
+-- armor's stat bonuses and resists, a resource ceiling, a wait-swap's payoff, and an aura's
+-- amount/range/status magnitude.
 local function eachMagnitude(item, fn)
     local ab = item.activeAbility
     if ab then
@@ -116,10 +159,17 @@ local function eachMagnitude(item, fn)
     if item.resist then for k, v in pairs(item.resist) do fn(v, function(x) item.resist[k] = x end) end end
     if item.maxBonus then for k, v in pairs(item.maxBonus) do fn(v, function(x) item.maxBonus[k] = x end) end end
     if item.unarmedBonus then for k, v in pairs(item.unarmedBonus) do fn(v, function(x) item.unarmedBonus[k] = x end) end end
-    -- A shield's Defend brace-bonus (waitBehavior.defense) scales with the shield's level too, so a
-    -- forged shield braces harder (Combat.defend feeds it to the Defending status as its magnitude).
+    -- A wait-swap's payoff scales with its item's level too, so a forged shield braces harder and a
+    -- forged staff meditates deeper: `defense` (Combat.defend feeds it to the Defending status as its
+    -- magnitude), `mana` (Combat.focus restores it), `stamina` (Combat.overwatch's per-shot budget).
+    -- Deliberately NOT `speed`: that is what the swap costs the timeline, not what it pays out, and an
+    -- upgrade should never buy back tempo.
     local wb = item.waitBehavior
-    if wb and wb.defense ~= nil then fn(wb.defense, function(x) wb.defense = x end) end
+    if wb then
+        for _, key in ipairs(WAIT_BEHAVIOR_MAGNITUDES) do
+            if wb[key] ~= nil then fn(wb[key], function(x) wb[key] = x end) end
+        end
+    end
     local aura = item.aura
     if aura then
         if aura.amountBonus ~= nil then fn(aura.amountBonus, function(x) aura.amountBonus = x end) end
