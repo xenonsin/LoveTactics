@@ -475,6 +475,12 @@ local function ctxFor(combat, unit, trait, event)
     local Status = require("models.status")
     local Summon = require("models.summon")
 
+    -- Stamp a live conjuration onto the item that granted this trait (see ctx.summon below).
+    local function claim(summoned)
+        if trait.item and summoned and summoned.alive then trait.item.activeSummon = summoned end
+        return summoned
+    end
+
     local ctx = {
         combat = combat,
         unit = unit,
@@ -503,6 +509,14 @@ local function ctxFor(combat, unit, trait, event)
         heal = function(tgt, amount)
             if not tgt then return 0 end
             return Combat.applyHeal(combat, tgt, amount)
+        end,
+        -- Take `amount` of a resource straight out of a unit, returning what was actually taken.
+        -- Deliberately not `damage` when the resource is health: a drain is a toll, not a blow -- no
+        -- armor softens it, no barrier eats it, no dodge slips it, and it cannot kill (it floors at 0).
+        -- What a price paid in flesh runs through (data/traits/blood_price.lua).
+        drain = function(tgt, stat, amount)
+            if not tgt then return 0 end
+            return Combat.drainResource(tgt.char, stat, amount)
         end,
         applyStatus = function(tgt, id, opts)
             if not tgt then return nil end
@@ -541,12 +555,23 @@ local function ctxFor(combat, unit, trait, event)
             if not ab then return 0 end
             return Combat.abilityRange(combat, unit, ab)
         end,
+        -- Summon a creature, sustained by the bearer -- and, when the trait came off an ITEM, hold that
+        -- item's `activeSummon` claim with it, exactly as `fx.summon` does for an ability's own cast
+        -- (see Combat.useItem). One rule, however the item summons: while the creature a relic put on
+        -- the field still stands, the relic's own call is refused (Combat.itemBlockReason). That is what
+        -- keeps the Wolfsong Horn silent while the companion it opened the battle with is alive -- the
+        -- archer buys the Spirit by outliving her wolf, not by blowing the horn over its head.
+        --
+        -- Claimed only for a creature that drew breath: one that dies on the tile it was called to
+        -- (a trap, a fire) holds nothing, the same as an ability's summon. A trait on an item with no
+        -- active ability of its own (the Hollow Crown) stamps a claim nothing ever reads.
         summon = function(charId, px, py, opts)
-            return Summon.spawn(combat, unit, charId, px, py, opts)
+            return claim(Summon.spawn(combat, unit, charId, px, py, opts))
         end,
-        -- Take the shape of another unit: a copy of `target` on the bearer's side (Envy).
+        -- Take the shape of another unit: a copy of `target` on the bearer's side (Envy). Held like
+        -- the summon above.
         copyOf = function(target, px, py, opts)
-            return Summon.copyOf(combat, unit, target, px, py, opts)
+            return claim(Summon.copyOf(combat, unit, target, px, py, opts))
         end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,

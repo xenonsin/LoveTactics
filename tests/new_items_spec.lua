@@ -146,7 +146,7 @@ return {
         end,
     },
     {
-        name = "the Wolfsong Horn calls the Spirit at the cost of half the summoner's current health",
+        name = "the Wolfsong Horn calls the Spirit for free, and bills half the archer's health when it dies",
         fn = function()
             local archer = Character.instantiate("archer")
             local horn = itemNamed(archer, "sig_wolfsong_horn")
@@ -159,8 +159,55 @@ return {
             assert(Combat.useItem(c, u, itemNamed(u.char, "sig_wolfsong_horn"), 3, 2), "the horn sounds")
             local spirit = Combat.unitAt(c, 3, 2)
             assert(spirit and spirit.char.id == "wolfsong_spirit", "the Wolfsong Spirit answers")
-            assert(u.char.stats.health.current == 37, "and the archer pays half her current health, got "
+            assert(u.char.stats.health.current == 74, "the call itself costs her nothing")
+
+            Combat.dealFlatDamage(c, spirit, 9999, {}, "test")
+            assert(not spirit.alive, "the Spirit is cut down")
+            assert(u.char.stats.health.current == 37, "and its death takes half her remaining health, got "
                 .. u.char.stats.health.current)
+        end,
+    },
+    {
+        name = "a Spirit dismissed with its fallen archer bills nobody",
+        fn = function()
+            local archer = Character.instantiate("archer")
+            itemNamed(archer, "sig_wolfsong_horn").traits = {} -- no companion in the way
+            local c = Combat.new(arena(8, 8), { unit(archer, 2, 2) }, { unit("bandit", 8, 8) })
+            local u = c.units[1]
+            openTurn(c, u)
+            assert(Combat.useItem(c, u, itemNamed(u.char, "sig_wolfsong_horn"), 3, 2), "the horn sounds")
+            local spirit = Combat.unitAt(c, 3, 2)
+
+            Combat.dealFlatDamage(c, u, 9999, {}, "test")
+            assert(not u.alive and not spirit.alive, "the archer falls and the Spirit goes with her")
+            -- Her health is already 0, so the toll is invisible in the numbers: read the log instead.
+            -- A dismissal is not a death and never reaches the hook, so nothing was ever charged.
+            for _, entry in ipairs(c.log or {}) do
+                assert(not entry.text:find("blood%-price"),
+                    "she is not billed for the wolf that vanished with her: " .. entry.text)
+            end
+        end,
+    },
+    {
+        name = "the horn stays silent while the free companion still stands",
+        fn = function()
+            local archer = Character.instantiate("archer")
+            local c = Combat.new(arena(8, 8), { unit(archer, 2, 2) }, { unit("bandit", 8, 8) })
+            local u = c.units[1]
+            local horn = itemNamed(u.char, "sig_wolfsong_horn")
+            local wolf = Combat.activeSummon(horn)
+            assert(wolf and wolf.char.id == "wolf_grunt", "the companion holds the horn's claim from the bell")
+
+            local blocked = Combat.itemBlockReason(u, horn)
+            assert(blocked and blocked.kind == "active", "so the true call is refused")
+            openTurn(c, u)
+            assert(not Combat.useItem(c, u, horn, 3, 2), "and the horn cannot be blown over a living wolf")
+
+            Combat.dealFlatDamage(c, wolf, 9999, {}, "test")
+            assert(Combat.activeSummon(horn) == nil, "the claim dies with the companion")
+            openTurn(c, u)
+            assert(Combat.useItem(c, u, horn, 3, 2), "and only then does the Spirit answer")
+            assert(u.char.stats.health.current == u.char.stats.health.max, "at no cost up front")
         end,
     },
 }

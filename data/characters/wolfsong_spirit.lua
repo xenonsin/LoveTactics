@@ -1,6 +1,7 @@
 -- The Wolfsong Spirit: the great wolf that answers the Wolfsong Horn's true call, not the everyday
--- companion but the beast behind it -- called only at a blood-price (the summoner pays half their
--- current health for it, see data/items/utility/sig_wolfsong_horn.lua). Bigger, faster and fiercer
+-- companion but the beast behind it (see data/items/utility/sig_wolfsong_horn.lua). It is called for
+-- nothing and paid for when it dies: the `blood_price` trait bills the archer half her remaining
+-- health the moment it falls. Bigger, faster and fiercer
 -- than any wolf of the pack (compare data/characters/wolf_alpha.lua), it is a conjured body: no mana
 -- of its own, a natural bite for a weapon, and it stands only as long as the archer sustaining it does.
 -- Scaled by the horn's forged level like any summon. See data/characters/fire_elemental.lua for the
@@ -15,5 +16,7 @@ return {
         movement = 6, -- fastest thing on four legs
         speed = 6,
     },
-    startingItems = { "fangs", "feral_instinct" },
+    -- The binding carries the blood_price trait: its death, not its call, is what costs the archer
+    -- (data/items/utility/wolfsong_binding.lua). Like every trait, it reaches the body through the grid.
+    startingItems = { "fangs", "feral_instinct", "wolfsong_binding" },
 }
