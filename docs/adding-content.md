@@ -111,6 +111,56 @@ return {
 - Player controls are automatic across mouse + keyboard + gamepad (advance: Enter / Space / click;
   choose: up/down; skip: Esc / B).
 
+### Gating a scene on progress
+
+Write the scene for the whole story, then let it pare itself down to fit the save it plays in. A cast
+entry may carry a `when` condition, and a **block** of the script may too — `Conversation.resolve`
+drops what does not apply before the widget ever sees it, so a priest who has not been recruited is
+neither on stage nor in the script:
+
+```lua
+cast = { "knight", "mage", { id = "priest", when = { has = "priest" } }, "colosseum" },
+script = {
+  { "colosseum", "Fresh blood for the sand." },
+  -- One block, one condition: these lines stand or fall together.
+  { when = { has = "priest" }, script = {
+    { "priest", "The Light is watching, even here.", id = "ready" },
+    { "mage",   "Watching, and unimpressed. Open the gate." },
+  } },
+}
+```
+
+**Gate the exchange, not the line.** The mage above is *answering* the priest, so gating only the
+priest's line would leave the mage retorting to a remark nobody made. That is what blocks are for —
+they group the lines that only make sense together. `tests/conversation_spec.lua` enforces the half of
+this it can prove: a conditional cast member may only speak inside a block that requires them.
+
+Conditions are **data, not functions** (unlike an encounter's `condition(ctx)`) for two reasons: the
+extractor rewrites these files and would erase a closure, and data can be inspected — which is how the
+spec proves the rule above. The grammar:
+
+| `when`                            | holds when                                    |
+| --------------------------------- | --------------------------------------------- |
+| `{ has = "priest" }`              | the character is on the roster (recruited)     |
+| `{ notHas = "priest" }`           | …and its negation                              |
+| `{ done = "vault_heist" }`        | the quest is completed                         |
+| `{ notDone = "vault_heist" }`     | …and its negation                              |
+| `{ prestige = 3 }`                | player prestige is **at least** 3              |
+| `{ all = { c1, c2 } }`            | every sub-condition holds                      |
+| `{ any = { c1, c2 } }`            | at least one holds                             |
+
+Several keys in one table AND together (`{ has = "priest", prestige = 2 }`). Blocks nest, and an inner
+condition can only narrow its parent, never escape it. An unknown key raises rather than quietly
+passing, so a typo'd `{ hass = ... }` fails loudly instead of reading as "always show".
+
+A `goto` aimed at a line that got dropped is **re-pointed to the next surviving line** (or `"end"` if
+there is none), so gating a block can never strand a branch — jumping into the priest block above
+simply rejoins the scene where it would have anyway.
+
+Two rules the spec holds you to: every authored line must be reachable in a fully-unlocked save (a
+condition nothing can satisfy is dead content — usually a typo'd id), and gated speakers must be
+guarded as described above.
+
 **Play it** from anywhere with `require("models.conversation").play("<id>", onDone)` (the current
 screen freezes and resumes in place when it ends), or hang it off a quest by adding `intro = "<id>"`
 (plays over the hub before the quest starts) or `outro = "<id>"` (plays on victory) to the quest
@@ -124,7 +174,9 @@ blueprint — both are threaded through `Quest.available` for you.
 
 It stamps a stable localization id (`tag`) into every line and syncs the string grid
 `data/lang/strings.lua` (new lines get an `en` cell; translation columns start blank). Do **not**
-hand-edit the `tag`s or the `en` column. `tests/conversation_spec.lua` fails if a line has no tag or
+hand-edit the `tag`s or the `en` column. Note that stamping **rewrites the conversation file from the
+data**, so a comment written inside one does not survive the next extraction — put the explanation in
+a commit message or here instead. `tests/conversation_spec.lua` fails if a line has no tag or
 the `en` cell is stale, so it doubles as the "did you forget to extract" guard. See
 [localization.md](localization.md) for the translation model. (During development, the main menu has a
 debug **Extract Strings** button that runs the same step.)

@@ -40,6 +40,45 @@ local function nodeSpeaker(n) return n.by or n[1] end
 local function nodeText(n) return n.text or n[2] end
 local function choiceText(c) return c.text or c[1] end
 
+-- A script entry that groups lines under a shared `when` rather than speaking one (see
+-- models/conversation.lua). Blocks nest, so every walk below recurses through them.
+local function isBlock(entry) return entry.script ~= nil end
+
+-- Call `fn(node)` for every speaking node in an (optionally nested) script, in authored order.
+local function eachNode(entries, fn)
+    for _, entry in ipairs(entries or {}) do
+        if isBlock(entry) then eachNode(entry.script, fn) else fn(entry) end
+    end
+end
+
+-- Serialize a `when` condition table. These are pure data (that is WHY conditions are data and not
+-- predicate functions -- a closure could not survive this round trip and would be erased here).
+-- Keys are emitted in a stable order so re-stamping a file produces no spurious diff.
+local WHEN_KEYS = { "has", "notHas", "done", "notDone", "prestige", "all", "any" }
+local function serializeWhen(when)
+    local parts = {}
+    for _, key in ipairs(WHEN_KEYS) do
+        local v = when[key]
+        if v ~= nil then
+            if key == "all" or key == "any" then
+                local subs = {}
+                for _, sub in ipairs(v) do subs[#subs + 1] = serializeWhen(sub) end
+                parts[#parts + 1] = key .. " = { " .. table.concat(subs, ", ") .. " }"
+            elseif type(v) == "number" then
+                parts[#parts + 1] = key .. " = " .. tostring(v)
+            else
+                parts[#parts + 1] = key .. " = " .. q(v)
+            end
+        end
+    end
+    for key in pairs(when) do
+        local known = false
+        for _, k in ipairs(WHEN_KEYS) do if k == key then known = true break end end
+        assert(known, "cannot serialize unknown `when` condition '" .. tostring(key) .. "'")
+    end
+    return "{ " .. table.concat(parts, ", ") .. " }"
+end
+
 -- Serialize one choice: { "<text>", tag = N, goto = ".." }
 local function serializeChoice(c)
     local parts = { q(choiceText(c) or "") }
@@ -49,24 +88,52 @@ local function serializeChoice(c)
 end
 
 -- Serialize one node: { "<speaker>", "<text>", tag = N, id = "..", goto = "..", choices = { .. } }.
--- Nodes are one line; a node with choices spans lines with the choices indented under it.
-local function serializeNode(n)
+-- Nodes are one line; a node with choices spans lines with the choices indented under it. `indent`
+-- is the leading whitespace for this nesting depth (a node inside a block sits one level deeper).
+local function serializeNode(n, indent)
     local parts = { q(nodeSpeaker(n) or ""), q(nodeText(n) or "") }
     if n.tag ~= nil then parts[#parts + 1] = "tag = " .. n.tag end
     if n.id then parts[#parts + 1] = "id = " .. q(n.id) end
     if n.name then parts[#parts + 1] = "name = " .. q(n.name) end
     if n.portrait then parts[#parts + 1] = "portrait = " .. q(n.portrait) end
     if n.goto then parts[#parts + 1] = "goto = " .. q(n.goto) end
-    local head = "        { " .. table.concat(parts, ", ")
+    if n.when then parts[#parts + 1] = "when = " .. serializeWhen(n.when) end
+    local head = indent .. "{ " .. table.concat(parts, ", ")
     if n.choices then
         local lines = { head .. ", choices = {" }
         for _, c in ipairs(n.choices) do
-            lines[#lines + 1] = "            " .. serializeChoice(c) .. ","
+            lines[#lines + 1] = indent .. "    " .. serializeChoice(c) .. ","
         end
-        lines[#lines + 1] = "        } },"
+        lines[#lines + 1] = indent .. "} },"
         return table.concat(lines, "\n")
     end
     return head .. " },"
+end
+
+-- Serialize a script (nodes and nested conditional blocks) into `out`, one entry per element.
+local function serializeScript(entries, indent, out)
+    for _, entry in ipairs(entries or {}) do
+        if isBlock(entry) then
+            out[#out + 1] = indent .. "{ when = " .. serializeWhen(entry.when or {}) .. ", script = {"
+            serializeScript(entry.script, indent .. "    ", out)
+            out[#out + 1] = indent .. "} },"
+        else
+            out[#out + 1] = serializeNode(entry, indent)
+        end
+    end
+end
+
+-- Serialize a cast entry: a bare id string, or a table when it carries overrides (`when`, an
+-- ad-hoc name/portrait, an explicit slot). Collapsing a table entry to its id -- as this once did
+-- -- would quietly drop the very condition that keeps an unrecruited character off the stage.
+local function serializeCastEntry(e)
+    if type(e) ~= "table" then return q(e) end
+    local parts = { "id = " .. q(e.id) }
+    if e.name then parts[#parts + 1] = "name = " .. q(e.name) end
+    if e.portrait then parts[#parts + 1] = "portrait = " .. q(e.portrait) end
+    if e.slot then parts[#parts + 1] = "slot = " .. tostring(e.slot) end
+    if e.when then parts[#parts + 1] = "when = " .. serializeWhen(e.when) end
+    return "{ " .. table.concat(parts, ", ") .. " }"
 end
 
 -- Serialize a whole conversation def back to a readable .lua file.
@@ -77,13 +144,11 @@ local function serializeConversation(def)
     out[#out + 1] = "return {"
     if def.title then out[#out + 1] = "    title = " .. q(def.title) .. "," end
     local cast = {}
-    for _, e in ipairs(def.cast or {}) do cast[#cast + 1] = q(castId(e)) end
+    for _, e in ipairs(def.cast or {}) do cast[#cast + 1] = serializeCastEntry(e) end
     out[#out + 1] = "    cast  = { " .. table.concat(cast, ", ") .. " },"
     out[#out + 1] = ""
     out[#out + 1] = "    script = {"
-    for _, n in ipairs(def.script or {}) do
-        out[#out + 1] = serializeNode(n)
-    end
+    serializeScript(def.script, "        ", out)
     out[#out + 1] = "    },"
     out[#out + 1] = "}"
     out[#out + 1] = ""
@@ -126,10 +191,10 @@ end
 local function stampTags(def)
     local used, maxTag = {}, 0
     local function note(t) if type(t) == "number" then used[t] = true; if t > maxTag then maxTag = t end end end
-    for _, n in ipairs(def.script or {}) do
+    eachNode(def.script, function(n)
         note(n.tag)
         for _, c in ipairs(n.choices or {}) do note(c.tag) end
-    end
+    end)
     local changed = false
     local function assign(entry)
         if entry.tag == nil then
@@ -138,25 +203,29 @@ local function stampTags(def)
             changed = true
         end
     end
-    for _, n in ipairs(def.script or {}) do
+    eachNode(def.script, function(n)
         assign(n)
         for _, c in ipairs(n.choices or {}) do assign(c) end
-    end
+    end)
     return changed
 end
 
 -- All translatable strings for one conversation, as ordered { key, en } records: the title, every
 -- line and choice (keyed by its stamped tag), and each distinct speaker's name.
+--
+-- This reads the AUTHORED def, never a resolved one, so conditions are deliberately ignored here:
+-- a translator gets every line the scene can ever show, including the priest's, regardless of who
+-- happens to be recruited in whatever save was last played.
 local function collect(convId, def, out, seenNames)
     if def.title then
         out[#out + 1] = { key = Locale.key.title(convId), en = def.title }
     end
-    for _, n in ipairs(def.script or {}) do
+    eachNode(def.script, function(n)
         out[#out + 1] = { key = Locale.key.line(convId, n.tag), en = nodeText(n) or "" }
         for _, c in ipairs(n.choices or {}) do
             out[#out + 1] = { key = Locale.key.line(convId, c.tag), en = choiceText(c) or "" }
         end
-    end
+    end)
     -- Speaker names (from the cast and any `by`), de-duplicated across the whole run.
     local function noteName(id)
         if not id or seenNames[id] then return end
@@ -165,7 +234,7 @@ local function collect(convId, def, out, seenNames)
         if d and d.name then out[#out + 1] = { key = Locale.key.name(id), en = d.name } end
     end
     for _, e in ipairs(def.cast or {}) do noteName(castId(e)) end
-    for _, n in ipairs(def.script or {}) do noteName(nodeSpeaker(n)) end
+    eachNode(def.script, function(n) noteName(nodeSpeaker(n)) end)
 end
 
 -- Load the translations already on disk as cells[key][lang] = value, plus the sorted list of the

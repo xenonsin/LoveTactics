@@ -2,7 +2,7 @@
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 return {
     title = "Debut on the Sand",
-    cast  = { "knight", "mage", "priest", "colosseum" },
+    cast  = { "knight", "mage", { id = "priest", when = { has = "priest" } }, "colosseum" },
 
     script = {
         { "colosseum", "So. Fresh blood for the sand. The crowd does love a debut -- win or die.", tag = 1 },
@@ -13,7 +13,9 @@ return {
         } },
         { "colosseum", "Honest, at least. The purse is yours if you live.", tag = 6, id = "coin", goto = "ready" },
         { "colosseum", "Honor. The crowd will cheer it and forget it by morning.", tag = 7, id = "honor" },
-        { "priest", "Then let us be quick about it. The Light is watching, even here.", tag = 8, id = "ready" },
-        { "mage", "Watching, and unimpressed. Open the gate.", tag = 9 },
+        { when = { has = "priest" }, script = {
+            { "priest", "Then let us be quick about it. The Light is watching, even here.", tag = 8, id = "ready" },
+            { "mage", "Watching, and unimpressed. Open the gate.", tag = 9 },
+        } },
     },
 }
