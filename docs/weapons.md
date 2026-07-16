@@ -29,7 +29,7 @@ which vendor stocks the item and never gates who may carry it. A hunter may abso
 
 | Family | Base mechanic | Base weapon |
 |---|---|---|
-| `sword` | Average damage and speed, `hands = 1`, and it **parries**: answers an adjacent melee blow with one of its own. The reference weapon the melee kit is tuned against — its edge is having no drawback, and leaving a hand free. | `iron_sword` |
+| `sword` | Average damage and speed, `hands = 1`, and it **parries**: answers an adjacent melee blow with one of its own, for a little stamina. The reference weapon the melee kit is tuned against — its edge is costing nothing up front, and leaving a hand free. | `iron_sword` |
 | `greatsword` | **Channels** a turn, then lands on one tile for the heaviest hit in the game. `hands = 2`. Its own family, *not* a sword — it must not also parry. | `iron_greatsword` |
 | `axe` | **Cleaves**: `aoe = { shape = "front", width = 3 }`, a 3-wide arc perpendicular to the aimed tile. Softer per target than a sword; worth it when more than one thing is in front of you. | `iron_axe` |
 | `spear` | **Skewers a line**: `aoe = { shape = "line", length = 2 }`, the two tiles directly in front. `hands = 2`. | `iron_spear` |
@@ -128,15 +128,26 @@ meaning anything. Being *dragged* bleeds (a mace shove costs the victim two tile
 
 **Parry / Riposte** (`sword`). Every sword answers a melee blow. The two reflexes differ in kind:
 
-- `parry` (`data/traits/parry.lua`) — a **trade**: take the hit, then answer it. 20-tick cooldown.
+- `parry` (`data/traits/parry.lua`) — a **trade**: take the hit, then answer it. 4 stamina, 20-tick
+  cooldown.
 - `riposte` (`data/traits/riposte.lua`) — **not** a trade: the blow is turned aside so it deals
-  nothing *and* is answered. 16-tick cooldown, and the only reflex in the game that both negates and
-  counters. It fires pre-mitigation from `Trait.tryRiposte` (beside Dodge and Smoke Screen), because
-  a hook only ever fires on a blow that already landed.
+  nothing *and* is answered. 6 stamina, 16-tick cooldown, and the only reflex in the game that both
+  negates and counters. It fires pre-mitigation from `Trait.tryRiposte` (beside Dodge and Smoke
+  Screen), because a hook only ever fires on a blow that already landed.
 
 A sword carries **one** of them, never both — `riposte_blade` swaps parry out for riposte, and that
 swap is the whole of what its price buys. Both decline to answer a blow that is itself a reaction
 (`Trait.isReacting`), or two swordsmen would volley counters on every exchange.
+
+### Pricing a triggered reflex
+
+Every triggered reflex — `parry`, `riposte`, and the priest's `keen_senses` — is priced in **both** a
+`cost = { stat, amount }` and a `magnitude` cooldown, paid through `payCost` in `models/trait.lua`
+(hooks reach it as `ctx.pay()`). The two are different levers and a reflex wants both: the cooldown
+paces answers **within** an exchange, the stamina bounds them **across** a battle. Cost is always the
+**last** gate — check suppression, range and cooldown first, or a reflex that then declines has
+silently billed its bearer. A def with no `cost` is free (the passive reflexes — `dodge`,
+`melee_counter`, `ranged_counter` — still are).
 
 ## Adding a weapon
 

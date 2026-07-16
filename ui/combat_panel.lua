@@ -289,16 +289,22 @@ function CombatPanel:update(dt)
         if not moving then self.phase = "idle" end
     end
 
+    -- A unit that just left the order: hold its card as a dying card while the fx controller either is
+    -- fading it out (deathFade) or has not yet PLAYED the blow that felled it (awaiting -- a counter,
+    -- resolved in the model but still a beat away on screen). Without the latter the card would blink
+    -- out the instant the model killed it and never fade at all.
     for u in pairs(self.cardY) do
         if not present[u] then
-            if self.fx and self.fx:deathFade(u) and self.lastLayout[u] then
+            if self.fx and (self.fx:deathFade(u) or self.fx:awaiting(u)) and self.lastLayout[u] then
                 self.dyingCards[u] = self.lastLayout[u]
             end
             self.cardY[u] = nil
         end
     end
     for u in pairs(self.dyingCards) do
-        if not (self.fx and self.fx:deathFade(u)) then self.dyingCards[u] = nil end
+        if not (self.fx and (self.fx:deathFade(u) or self.fx:awaiting(u))) then
+            self.dyingCards[u] = nil
+        end
     end
     for u in pairs(self.lastLayout) do
         if not present[u] and not self.dyingCards[u] then self.lastLayout[u] = nil end

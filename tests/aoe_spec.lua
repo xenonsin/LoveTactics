@@ -198,7 +198,8 @@ return {
             local before = {}
             for _, b in ipairs({ c.units[2], c.units[3] }) do before[b] = b.char.stats.health.current end
             local ok2 = Combat.useItem(c, k, k.char.inventory[5], 4, 3)
-            assert(ok2, "the shot fires with an adjacent ranged weapon")
+            assert(ok2, "the shot begins its overdraw with an adjacent ranged weapon")
+            assert(Combat.resolveChannel(c, k), "the braced arrow looses")
             for _, b in ipairs({ c.units[2], c.units[3] }) do
                 assert(b.char.stats.health.current < before[b],
                     "the foe at (" .. b.x .. "," .. b.y .. ") is pierced by the line")

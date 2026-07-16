@@ -261,6 +261,7 @@ function Item.instantiate(id, quantity, level)
         maxBonus = deepCopy(def.maxBonus),     -- resource passives: raise a max health/stamina/mana ceiling
         waitBehavior = deepCopy(def.waitBehavior), -- swaps this holder's Wait -> Focus / Defend
         moveBehavior = deepCopy(def.moveBehavior), -- swaps this holder's walk -> teleport (Blink)
+        trail = deepCopy(def.trail),           -- { hazard, duration }: ground left behind every tile walked
         visionRadius = def.visionRadius,       -- overworld vision boost (e.g. torch); nil for most
         detectRadius = def.detectRadius,       -- combat: reveals traps within this radius (detectors)
         maxStack = def.maxStack,               -- stackable (consumable) items: per-slot cap override

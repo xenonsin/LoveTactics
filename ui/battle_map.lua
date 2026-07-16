@@ -497,9 +497,11 @@ function BattleMap:drawUnits()
     -- Corpses first, so a living unit standing on a fallen one always draws on top. A corpse is drawn
     -- as a faint, desaturated token with no side ring -- present enough to mark the tile for a Revive
     -- or Raise Dead, subtle enough not to clutter the board. A body a living unit now stands over is
-    -- skipped entirely (it's hidden and unreachable anyway).
+    -- skipped entirely (it's hidden and unreachable anyway), as is one whose killing blow the fx
+    -- controller is still holding back (fx:awaiting) -- the body must not drop before the counter lands.
     for _, u in ipairs(self.combat.units) do
-        if u.corpse and not u.alive and not Combat.unitAt(self.combat, u.x, u.y) then
+        if u.corpse and not u.alive and not Combat.unitAt(self.combat, u.x, u.y)
+            and not (self.fx and self.fx:awaiting(u)) then
             local wx, wy = self:cellToPixel(u.x, u.y)
             love.graphics.setColor(0.30, 0.30, 0.34, 0.45)
             love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.24)
@@ -513,14 +515,18 @@ function BattleMap:drawUnits()
         -- Animation modifiers (models the combat controller feeds): a pixel offset (walk slide +
         -- attack lunge + hit shake), a white/red hit flash, and a death fade. A dying unit is
         -- alive=false in the model yet still drawn here while its fade runs, darkening to black over
-        -- the corpse token drawn above, before that token takes over.
+        -- the corpse token drawn above, before that token takes over. A unit felled by a counter the
+        -- controller has not played yet (fx:awaiting) is likewise alive=false with its fade not begun,
+        -- and must keep drawing untouched -- otherwise it would blink out and reappear to die.
         local offX, offY, flash, fade = 0, 0, 0, 0
         local glow, gr, gg, gb = 0, 0, 0, 0
+        local awaiting = false
         if self.fx then
             offX, offY, flash, fade = self.fx:spriteState(u, s)
             glow, gr, gg, gb = self.fx:castGlow(u)
+            awaiting = self.fx:awaiting(u)
         end
-        if u.alive or fade > 0 then
+        if u.alive or fade > 0 or awaiting then
             local wx, wy = self:cellToPixel(u.x, u.y)
             wx, wy = wx + offX, wy + offY
             local a = fade > 0 and (1 - fade) or (Status.untargetable(u) and 0.40 or 1)

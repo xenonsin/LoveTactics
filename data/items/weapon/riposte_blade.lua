@@ -5,14 +5,16 @@
 --
 -- A sword, so it owes the family's counter-reaction (docs/weapons.md) -- but it REPLACES the ordinary
 -- data/traits/parry.lua with data/traits/riposte.lua rather than carrying both. That swap is the whole
--- of what the price buys, and it is a difference in KIND, not degree:
+-- of what the price buys, and it is a difference in KIND, not degree. Both are priced in stamina and a
+-- cooldown, like every triggered reflex; what differs is what the stamina buys:
 --
 --   an ordinary sword parries -- takes the blow, then answers it. A trade.
 --   this blade ripostes       -- turns the blow aside so it deals nothing, and answers it anyway.
 --
 -- Which is what the word has always meant with a sword in hand, and what this blade was missing back
 -- when its only claim was a shorter cooldown than the sword every recruit carries. Standing a duelist
--- in a doorway is now a real tactic: adjacent attackers simply fail, one every 16 ticks.
+-- in a doorway is a real tactic: adjacent attackers simply fail, one every 16 ticks -- for as long as
+-- the duelist's stamina holds out, which is the second thing the doorway costs.
 --
 -- The counter-play is written into the reflex rather than into a number: it only turns aside a
 -- MATERIAL blow from an ADJACENT foe. Shoot it, burn it, or stand two tiles off and swing a spear,

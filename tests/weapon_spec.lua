@@ -289,6 +289,54 @@ return {
         end,
     },
     {
+        name = "a parry is paid for in stamina, and an exhausted swordsman simply eats the blow",
+        fn = function()
+            local defender = plainChar("bandit")
+            give(defender, "iron_sword")
+            local attacker = plainChar("bandit")
+            give(attacker, "iron_sword")
+            local c = Combat.new(arena(8, 8), { unit(defender, 3, 3) }, { unit(attacker, 3, 4) })
+            local d, a = c.units[1], c.units[2]
+
+            local stamina = Combat.resource(d.char, "stamina")
+            Combat.dealFlatDamage(c, d, 5, { "physical" }, "test", a)
+            assert(Combat.resource(d.char, "stamina") == stamina - 4, "a parry costs 4 stamina")
+
+            -- Empty the pool and clear the guard: the cooldown is no longer what is stopping them.
+            d.char.stats.stamina.current = 3 -- one short
+            Combat.tickCooldowns(c, 99) -- the real recharge clock; setCooldown(.., 0) would NOT clear it
+            local before = hp(a)
+            Combat.dealFlatDamage(c, d, 5, { "physical" }, "test", a)
+            assert(hp(a) == before, "no stamina, no parry")
+            assert(d.char.stats.stamina.current == 3, "and the answer that never came bills nothing")
+        end,
+    },
+    {
+        name = "a riposte too is paid for -- an exhausted duelist's guard drops entirely",
+        fn = function()
+            local duelist = plainChar("bandit")
+            give(duelist, "riposte_blade")
+            local attacker = plainChar("bandit")
+            give(attacker, "iron_sword")
+            local c = Combat.new(arena(8, 8), { unit(duelist, 3, 3) }, { unit(attacker, 3, 4) })
+            local d, a = c.units[1], c.units[2]
+
+            local stamina = Combat.resource(d.char, "stamina")
+            local before = hp(d)
+            Combat.dealFlatDamage(c, d, 8, { "physical" }, "test", a)
+            assert(hp(d) == before, "the blow is turned aside entirely")
+            assert(Combat.resource(d.char, "stamina") == stamina - 6, "a riposte costs 6 stamina")
+
+            -- Spent and off cooldown: the blade no longer negates anything, which is the whole point
+            -- of pricing it -- a duelist in a doorway can now be worn down rather than waited out.
+            d.char.stats.stamina.current = 5 -- one short
+            Combat.tickCooldowns(c, 99) -- the real recharge clock; setCooldown(.., 0) would NOT clear it
+            Combat.dealFlatDamage(c, d, 8, { "physical" }, "test", a)
+            assert(hp(d) < before, "an exhausted guard stops nothing")
+            assert(d.char.stats.stamina.current == 5, "and bills nothing for the guard it never raised")
+        end,
+    },
+    {
         name = "a parry answers an attack, not another parry -- two swordsmen never volley",
         fn = function()
             -- Both carry swords. The attacker's strike provokes ONE counter; that counter must not

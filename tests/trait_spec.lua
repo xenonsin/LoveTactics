@@ -158,6 +158,44 @@ return {
         end,
     },
     {
+        name = "a counter's fx cues land a beat AFTER the blow that provoked them",
+        fn = function()
+            withTraits({
+                test_riposter = {
+                    name = "Riposter",
+                    onDamaged = function(ctx) ctx.damage(ctx.attacker, 5) end,
+                },
+            }, function()
+                local knight = charWithTraits("knight", { "test_riposter" })
+                local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("bandit", 2, 1) })
+                local defender, attacker = c.units[1], c.units[2]
+
+                Combat.dealFlatDamage(c, defender, 20, { "physical" }, nil, attacker)
+
+                local events = Combat.drainFx(c)
+                assert(events and #events == 2, "the blow and the counter should each raise a cue")
+                assert(events[1].unit == defender and events[1].beat == 0,
+                    "the blow itself is beat 0 -- the action the player took")
+                assert(events[2].unit == attacker and events[2].beat == 1,
+                    "the counter answers it, so its cue must be a beat later")
+            end)
+        end,
+    },
+    {
+        name = "an ordinary action's cues all share beat 0: nothing is deferred without a reaction",
+        fn = function()
+            local c = Combat.new(arena(6, 6), { unit(plainChar("knight"), 1, 1) },
+                { unit(plainChar("bandit"), 2, 1) })
+            Combat.dealFlatDamage(c, c.units[2], 5, { "physical" }, nil, c.units[1])
+
+            local events = Combat.drainFx(c)
+            assert(events and #events >= 1, "the hit should raise a cue")
+            for _, e in ipairs(events) do
+                assert(e.beat == 0, "an unanswered blow raises no later beat")
+            end
+        end,
+    },
+    {
         name = "wrath_rising banks a damage bonus per hit survived, and shows it as a badge",
         fn = function()
             local ira = Character.instantiate("general_wrath")
@@ -251,6 +289,91 @@ return {
                 assert(u.traits[1].summonsAlive == 1,
                     "onDeath must run before the summon-dismiss cascade unwinds the wolf")
             end)
+        end,
+    },
+    {
+        name = "Keen Senses answers an attack BEFORE it lands, and pays stamina for the privilege",
+        fn = function()
+            local priest = charWithTraits("priest", { "keen_senses" })
+            Character.addItem(priest, Item.instantiate("parasitic_staff"))
+            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("bandit", 2, 1) })
+            local p, b = c.units[1], c.units[2]
+            local stamina = Combat.resource(p.char, "stamina")
+            local banditHP = b.char.stats.health.current
+            local priestHP = p.char.stats.health.current
+
+            local dealt = Combat.dealFlatDamage(c, p, 12, nil, nil, b)
+
+            assert(b.char.stats.health.current < banditHP, "the counter should have struck the attacker")
+            assert(Combat.resource(p.char, "stamina") == stamina - 6, "the counter costs 6 stamina")
+            -- The attacker lived, so their blow still arrives -- this reflex reorders an exchange, it
+            -- does not cancel one.
+            assert(dealt > 0 and p.char.stats.health.current == priestHP - dealt,
+                "a counter that only wounds must not stop the blow that provoked it")
+            -- The bandit's iron sword carries Parry, which must read our counter as an ANSWER and let
+            -- it through: the priest is hit exactly once, by the blow they preempted.
+            assert(b.alive, "the bandit survives a single counter")
+        end,
+    },
+    {
+        name = "Keen Senses' counter kills the attacker, and the attack dies with them",
+        fn = function()
+            local priest = charWithTraits("priest", { "keen_senses" })
+            Character.addItem(priest, Item.instantiate("parasitic_staff"))
+            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("bandit", 2, 1) })
+            local p, b = c.units[1], c.units[2]
+            b.char.stats.health.current = 1
+            local priestHP = p.char.stats.health.current
+
+            local dealt = Combat.dealFlatDamage(c, p, 12, nil, nil, b)
+
+            assert(not b.alive, "the counter should fell a bandit at 1 HP")
+            assert(dealt == 0 and p.char.stats.health.current == priestHP,
+                "a swing from a corpse never arrives")
+        end,
+    },
+    {
+        name = "Keen Senses recovers its guard between answers, like every other reflex",
+        fn = function()
+            local priest = charWithTraits("priest", { "keen_senses" })
+            Character.addItem(priest, Item.instantiate("parasitic_staff"))
+            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("bandit", 2, 1) })
+            local p, b = c.units[1], c.units[2]
+
+            Combat.dealFlatDamage(c, p, 6, nil, nil, b)
+            local banditHP = b.char.stats.health.current
+            local stamina = Combat.resource(p.char, "stamina")
+
+            -- A second attack inside the 12-tick window finds the sense spent, not merely unaffordable.
+            Combat.dealFlatDamage(c, p, 6, nil, nil, b)
+            assert(b.char.stats.health.current == banditHP, "no second answer while it recharges")
+            assert(Combat.resource(p.char, "stamina") == stamina, "and a reflex on cooldown costs nothing")
+
+            Combat.tickCooldowns(c, 99) -- the real recharge clock; setCooldown(.., 0) would NOT clear it
+            Combat.dealFlatDamage(c, p, 6, nil, nil, b)
+            assert(b.char.stats.health.current < banditHP, "recovered, it answers again")
+        end,
+    },
+    {
+        name = "Keen Senses goes quiet on an empty pool, and on a foe beyond reach",
+        fn = function()
+            local priest = charWithTraits("priest", { "keen_senses" })
+            Character.addItem(priest, Item.instantiate("parasitic_staff"))
+            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("bandit", 2, 1) })
+            local p, b = c.units[1], c.units[2]
+            local banditHP = b.char.stats.health.current
+
+            p.char.stats.stamina.current = 5 -- one short of the 6 a counter costs
+            assert(Combat.dealFlatDamage(c, p, 12, nil, nil, b) > 0, "the blow lands unanswered")
+            assert(b.char.stats.health.current == banditHP, "no stamina, no answer")
+            assert(p.char.stats.stamina.current == 5, "and nothing is spent on the reflex that never fired")
+
+            -- Sensing a blow is not reaching the one who threw it: a sword answers only its own range.
+            p.char.stats.stamina.current = 40
+            b.x = 5
+            assert(Combat.dealFlatDamage(c, p, 12, nil, nil, b) > 0, "the distant blow lands")
+            assert(b.char.stats.health.current == banditHP, "a sword cannot answer across the field")
+            assert(p.char.stats.stamina.current == 40, "and the unfired reflex costs nothing")
         end,
     },
     {

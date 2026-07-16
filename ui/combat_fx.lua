@@ -31,6 +31,10 @@ local CAST_LEAN   = 0.26    -- fraction of a tile the caster thrusts toward its 
 local CAST_BOB    = 0.16    -- fraction of a tile a self/tile cast (no aim direction) hops upward
 local CAST_GLOW   = 0.85    -- peak additive glow on the caster mid-cast
 local DEATH_TIME  = 0.55    -- fade-to-black duration for a felled unit
+local BEAT_GAP    = 0.38    -- pause between an exchange's beats: a counter lands this long after the
+                            -- blow it answers, so the two read as cause and reply rather than one hit.
+                            -- Comfortably past SHAKE_TIME/FLASH_TIME, so the first hit's reaction has
+                            -- finished before the answer begins.
 local HP_SPEED    = 9        -- exponential drain rate of the shown HP toward the real value
 local CARD_SHAKE_MAG = 5     -- px the struck unit's turn-strip card rumbles (synced to the sprite shake)
 
@@ -41,7 +45,9 @@ function CombatFx.new()
     self.units = {}    -- unit -> { lungeT, lungeDx, lungeDy, shakeT, flashT, slideT, slideDur,
                        --           slideFromX, slideFromY, dying, dead }
     self.floaters = {} -- list of { unit, text, color, age, life, jx, big }
+    self.pending = {}  -- beats waiting their turn: { t = seconds left, events = cue list }
     self.hp = {}       -- unit -> shown HP value, eased toward hp.current
+    self.held = {}     -- unit -> how many pending beats still owe it a hit; its HP bar waits on them
     self.font = love.graphics.newFont(18)
     self.bigFont = love.graphics.newFont(24)
     return self
@@ -61,8 +67,58 @@ end
 -- Drain-and-feed: `events` is a Combat.drainFx list (or nil); `actor` is the unit that acted, which
 -- leans toward the first thing it hurt. Pass actor = nil for incidental damage with no attacker to
 -- lean (a trap/hazard/overwatch hit taken mid-walk), which then just floats and shakes the victim.
+--
+-- The model resolves a whole exchange in one pass, so a batch can hold both a blow and the counter it
+-- provoked. Playing those together reads as one indecipherable flash, so each cue's `beat` (stamped by
+-- Combat.pushFx: 0 for the action, 1 for what answered it, 2 for the answer to that) is split out and
+-- played in order, BEAT_GAP apart. Beats are compared, never counted: a batch that is entirely
+-- reactions (a trap answering a walk) starts at once, since its earliest beat is its own beat 0.
 function CombatFx:ingest(events, actor)
     if not events then return end
+    local order, byBeat = {}, {}
+    for _, e in ipairs(events) do
+        local b = e.beat or 0
+        if not byBeat[b] then byBeat[b] = {}; order[#order + 1] = b end
+        local list = byBeat[b]
+        list[#list + 1] = e
+    end
+    table.sort(order)
+    for i, b in ipairs(order) do
+        if i == 1 then
+            self:playBeat(byBeat[b], actor)
+        else
+            -- Deferred beats carry no actor: only the unit that opened the exchange leans off the
+            -- batch, while a counter-striker leans off its own cue's `attacker` inside playBeat.
+            self.pending[#self.pending + 1] = { t = (i - 1) * BEAT_GAP, events = byBeat[b] }
+            self:hold(byBeat[b], 1)
+        end
+    end
+end
+
+-- Claim (delta 1) or release (delta -1) the units a deferred beat has yet to touch. The model resolved
+-- the whole exchange before we saw any of it, so a counter's damage is ALREADY off the attacker's
+-- health -- and a unit the counter felled is ALREADY alive = false -- while its beat still waits to
+-- play. Without this the bar would drain and the corpse drop a beat early, giving the answer away
+-- before it lands. Counted, not a flag, so overlapping beats on one unit release it only once the last
+-- of them has played.
+function CombatFx:hold(events, delta)
+    for _, e in ipairs(events) do
+        if e.type == "damage" or e.type == "heal" or e.type == "death" then
+            local n = (self.held[e.unit] or 0) + delta
+            self.held[e.unit] = n > 0 and n or nil
+        end
+    end
+end
+
+-- Does a beat still waiting to play owe `unit` something? True between the model resolving a blow and
+-- the view getting round to showing it. The board reads it to keep drawing a unit the model has
+-- already killed (and to hold its corpse token back) until the counter that felled it actually plays.
+function CombatFx:awaiting(unit)
+    return self.held[unit] ~= nil
+end
+
+-- Play one beat's worth of cues -- the reactions for a single blow and everything simultaneous with it.
+function CombatFx:playBeat(events, actor)
     local firstTarget
     local actorCast = false -- did the acting unit already play a cast beat this batch?
     for _, e in ipairs(events) do
@@ -72,6 +128,11 @@ function CombatFx:ingest(events, actor)
         elseif e.type == "damage" then
             self:hit(e.unit, e.amount, e.lethal)
             firstTarget = firstTarget or e.unit
+            -- A blow struck by someone other than the acting unit -- a counter, a riposte, a thorns
+            -- answer -- leans off its own cue, since the actor fallback below can't speak for it.
+            if e.attacker and e.attacker ~= actor and e.attacker ~= e.unit then
+                self:lunge(e.attacker, e.unit)
+            end
         elseif e.type == "heal" then
             self:floatText(e.unit, "+" .. tostring(e.amount), { 0.55, 0.95, 0.60 })
         elseif e.type == "death" then
@@ -141,6 +202,18 @@ end
 -- ---------------------------------------------------------------------------
 
 function CombatFx:update(dt)
+    -- A deferred beat comes due: play its cues now, exactly as if they had just been drained. Walked
+    -- back-to-front so a removal can't skip the next entry; a beat that fires cannot enqueue another
+    -- (ingest is the only writer), so the list always drains.
+    for i = #self.pending, 1, -1 do
+        local p = self.pending[i]
+        p.t = p.t - dt
+        if p.t <= 0 then
+            table.remove(self.pending, i)
+            self:hold(p.events, -1) -- its bars may drain now: the blow is landing this frame
+            self:playBeat(p.events, nil)
+        end
+    end
     -- Floaters age out.
     for i = #self.floaters, 1, -1 do
         local f = self.floaters[i]
@@ -162,10 +235,11 @@ function CombatFx:update(dt)
             if r.dying <= 0 then r.dying = nil; r.dead = true end
         end
     end
-    -- Shown HP eases toward the real current value (both directions -- drain and heal).
+    -- Shown HP eases toward the real current value (both directions -- drain and heal), except on a
+    -- unit a pending beat still owes a hit -- its bar holds until that blow actually plays (see :hold).
     for unit, val in pairs(self.hp) do
         local hp = unit.char and unit.char.stats and unit.char.stats.health
-        if hp then
+        if hp and not self.held[unit] then
             local nv = val + (hp.current - val) * math.min(1, dt * HP_SPEED)
             if math.abs(nv - hp.current) < 0.5 then nv = hp.current end
             self.hp[unit] = nv
@@ -177,6 +251,9 @@ end
 -- Floaters, card jiggle, HP drain and the walk slide are all deliberately excluded -- they may drift
 -- into the next turn without stalling the pace.
 function CombatFx:busy()
+    -- A beat still waiting to play is the loudest reason to hold the hand-off: the exchange is not
+    -- over until the counter it is holding has landed.
+    if #self.pending > 0 then return true end
     for _, r in pairs(self.units) do
         if r.lungeT or r.castT or r.shakeT or r.flashT or r.dying then return true end
     end

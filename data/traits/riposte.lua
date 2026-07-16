@@ -13,12 +13,15 @@
 -- a hook (onDamaged) only ever fires on a blow that ALREADY landed, and this one must never land.
 --
 -- Tuning: the cooldown sits above Dodge's 12 because this both voids and answers, where Dodge only
--- voids -- but it is far narrower than Dodge, which slips any physical hit from any range. This one
+-- voids, and the stamina is dearer than a parry's for the same reason (every triggered reflex is priced
+-- in both -- see payCost in models/trait.lua). But it is far narrower than Dodge, which slips any
+-- physical hit from any range, and unlike Dodge it can be exhausted. This one
 -- only answers a material blow from an adjacent foe: an arrow, a spell, a poison tick, or a trap all
 -- go straight through a raised guard. Attack it from two tiles away and the blade is just a sword.
 return {
     name = "Riposte",
-    description = "Turn an adjacent melee attack aside entirely and run the attacker through. Then recover your guard.",
-    magnitude = 16,        -- cooldown ticks after a riposte
+    description = "Spend stamina to turn an adjacent melee attack aside entirely and run the attacker through. Then recover your guard.",
+    magnitude = 16,                          -- cooldown ticks after a riposte
+    cost = { stat = "stamina", amount = 6 }, -- dearer than a parry's 4: this one also negates the blow
     deflectsMelee = true,  -- read by Combat.dealFlatDamage (via Trait.tryRiposte) before mitigation
 }

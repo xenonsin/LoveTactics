@@ -146,10 +146,26 @@ function Combat.pushFx(combat, event)
     if not combat then return end
     local fx = combat.fx
     if not fx then fx = {}; combat.fx = fx end
+    -- Which beat of the exchange raised this cue (see Combat.beginBeat): 0 for the action itself,
+    -- 1 for what answered it, 2 for the answer to that. The view plays each beat in turn rather than
+    -- all at once, so a counter reads as a reply and not as part of the blow that provoked it.
+    event.beat = combat._fxBeat or 0
     fx[#fx + 1] = event
     -- A headless run (a test, an AI rollout) never drains, so bound the tail like the log does.
     if #fx > Combat.LOG_CAP then table.remove(fx, 1) end
     return event
+end
+
+-- Open a reaction beat: every cue raised until the matching endBeat is stamped one step later than
+-- the blow that provoked it (see pushFx). The model still resolves the whole exchange in one
+-- uninterrupted pass -- this only tells the view what answered what, so it can play a counter after
+-- the attack rather than over it. Nested, because a counter can itself be countered.
+function Combat.beginBeat(combat)
+    if combat then combat._fxBeat = (combat._fxBeat or 0) + 1 end
+end
+
+function Combat.endBeat(combat)
+    if combat then combat._fxBeat = math.max(0, (combat._fxBeat or 1) - 1) end
 end
 
 -- Hand the accumulated fx events to the caller and clear the feed. Returns nil when nothing has
@@ -750,6 +766,21 @@ function Combat.ignoresTraps(unit)
     return false
 end
 
+-- Leave behind whatever ground `unit`'s kit paints on a tile it crosses (Pilgrim's Sandals hallow
+-- every print they make). A `trail = { hazard, duration }` on any item in the 3x3 grid -- the same
+-- inventory scan as Combat.ignoresTraps above -- drops that hazard on the tile, sided with the wearer
+-- so an ally-only zone can never serve the foe walking through it. Called from Combat.enterTile on a
+-- ground crossing only: footprints are pressed by feet, so a blink or a swap leaves none.
+function Combat.layTrail(combat, unit)
+    if not (unit and unit.char) then return end
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        local trail = item.trail
+        if trail and trail.hazard then
+            Hazard.place(combat, unit.x, unit.y, trail.hazard, { side = unit.side, duration = trail.duration })
+        end
+    end
+end
+
 function Combat.unitsNear(combat, x, y, radius)
     radius = radius or 0
     local out = {}
@@ -1167,8 +1198,10 @@ end
 --   "forced" -- it was shoved, pulled, or trampled here (knockback / pull / charge)
 --   nil      -- it did not cross the ground at all: a blink, a swap, or a summon's arrival
 -- Traps, hazards, and auras deliberately ignore `reason` -- the ground does not care how you came to
--- stand on it. Only Status.onEnterTile reads it, so that Bleed costs a unit blood for every tile it
--- crosses under its own weight (walked OR dragged) but nothing for a blink. `reason` is optional and
+-- stand on it. Only the two effects of CROSSING it read `reason`, and both take "walk" or "forced"
+-- alike: Status.onEnterTile, so that Bleed costs a unit blood for every tile it crosses under its own
+-- weight (walked OR dragged) but nothing for a blink, and Combat.layTrail, so a trail is pressed by
+-- feet on the ground and never by a blink or a swap. `reason` is optional and
 -- defaults to nil (no ground crossing), so a call site that forgets it errs toward firing nothing.
 --
 -- The unit must already stand on (x, y) when this is called: a trap may kill it, and the death path
@@ -1179,6 +1212,12 @@ function Combat.enterTile(combat, unit, x, y, reason)
     -- is spared whether it strode onto the trap, was shoved onto it, or was conjured on top of one --
     -- but hazards (a spreading fire, quicksand) still bite: the boots dodge blades, not the ground.
     if trap and not Combat.ignoresTraps(unit) then Trap.trigger(combat, trap, unit) end
+    -- Ground the unit's own kit paints under it (Pilgrim's Sandals). Laid BEFORE the hazard/aura pass
+    -- below, so a trail granting an aura status is already under the unit's feet when Combat.updateAuras
+    -- decides what to keep -- otherwise the wearer's own blessing would be stripped on the very tile
+    -- that just granted it. Placing fires the fresh hazard's onEnter for the occupant, and the
+    -- Hazard.onEnter pass below reaches it a second time: a refresh, which neither stacks nor logs.
+    if unit.alive and (reason == "walk" or reason == "forced") then Combat.layTrail(combat, unit) end
     if unit.alive then
         Hazard.onEnter(combat, unit, x, y)
         Combat.updateAuras(combat, unit)
@@ -1917,6 +1956,14 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- dispatch -- a blow that never landed is not a wound survived, so it grants no rage and provokes
     -- no second counter on top of the riposte's own.
     if Trait.tryRiposte(combat, target, attacker, tags) then
+        return 0
+    end
+    -- A preternatural reflex (Keen Senses) answers an incoming attack BEFORE it lands, spending stamina.
+    -- Unlike the three reflexes above it does not negate the blow: it only goes first, so it returns
+    -- true -- and stops the hit here -- purely in the case where its counter killed the attacker and
+    -- the swing died with them. A counter that merely wounds falls through, and the blow lands on top
+    -- of it as normal.
+    if Trait.tryPreempt(combat, target, attacker) then
         return 0
     end
     local dmg = Combat.mitigatedDamage(target, base, tags, opts)

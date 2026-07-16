@@ -180,6 +180,39 @@ return {
         end,
     },
     {
+        name = "Pilgrim's Sandals hallow every tile walked, blessing the wearer and sparing a foe",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("priest", 4, 4) }, { unit("bandit", 8, 8) })
+            local priest, bandit = c.units[1], c.units[2]
+            Character.addItem(priest.char, Item.instantiate("pilgrims_sandals"))
+            openTurn(c, priest)
+
+            assert(Combat.moveUnit(c, priest, 2, 4), "the priest walks two tiles west")
+            assert(Hazard.at(c, 3, 4, "hazard_heal"), "the tile crossed en route is left hallowed")
+            assert(Hazard.at(c, 2, 4, "hazard_heal"), "so is the tile it stopped on")
+            assert(not Hazard.at(c, 4, 4, "hazard_heal"), "but not the tile it started on -- it crossed no ground to get there")
+            -- The passive self-heal falls out of the trail: the wearer stands in its own last print.
+            assert(Status.has(priest, "regen"), "standing in its own footprint mends the wearer")
+
+            -- The trail is sided with the wearer, so the foe following it down gains nothing.
+            openTurn(c, bandit)
+            bandit.x, bandit.y = 3, 3
+            assert(Combat.moveUnit(c, bandit, 3, 4), "the bandit steps onto the priest's footprint")
+            assert(not Status.has(bandit, "regen"), "a foe walking the priest's trail is not mended by it")
+        end,
+    },
+    {
+        name = "a trail is pressed by feet: a blink onto open ground leaves none",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("priest", 4, 4) }, {})
+            local priest = c.units[1]
+            Character.addItem(priest.char, Item.instantiate("pilgrims_sandals"))
+            priest.x, priest.y = 6, 6
+            Combat.enterTile(c, priest, 6, 6) -- no `reason`: a blink crosses no ground
+            assert(not Hazard.at(c, 6, 6, "hazard_heal"), "a blink leaves no footprint")
+        end,
+    },
+    {
         name = "Wet makes a lightning hit deal more damage (and the preview shares the same math)",
         fn = function()
             -- Mage's Jolt (tags lightning+magical) against a knight, before and after soaking it.

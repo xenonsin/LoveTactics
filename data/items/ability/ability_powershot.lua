@@ -18,6 +18,7 @@ return {
         range = 1,
         minRange = 1,          -- must pick a neighbor (a facing); never the caster's own tile
         speed = 4,
+        channel = 2, -- the overdraw takes two ticks to brace; hard control breaks the draw
         cost = { stat = "stamina", amount = 10 },
         damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- per-target damage = power + the caster's Damage, minus Defense
         aoe = { shape = "line", length = 4 }, -- four tiles in a straight line away from the caster

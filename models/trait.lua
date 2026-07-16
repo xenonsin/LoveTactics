@@ -55,6 +55,29 @@ local function reactionsSuppressed(unit)
     return unit and require("models.status").disablesReactions(unit)
 end
 
+-- Pay `def`'s reflex cost out of `unit`, or report that it cannot be paid. Every triggered reflex in
+-- the game is priced the same way -- a `cost = { stat, amount }` on the trait def, paid on each firing,
+-- on top of the `magnitude` cooldown that follows it -- so a defender answers only while their pool
+-- lasts, and only as often as their guard recovers. A def with no cost is free and always "pays".
+--
+-- The two gates are deliberately different levers and every reflex wants both: the cooldown paces
+-- answers WITHIN an exchange (you cannot parry twice in one flurry), while the cost bounds them ACROSS
+-- a battle (a swordsman who spends the fight countering has nothing left to swing with). Free reflexes
+-- on a timer alone made standing in a doorway strictly correct; this is what prices that choice.
+--
+-- Mutates on success, so it must be the LAST gate a reflex checks -- never call it before the cheap
+-- refusals (suppression, range, cooldown), or a reflex that then declines has quietly billed its
+-- bearer for nothing. Callers: Trait.tryRiposte/tryPreempt below, and `ctx.pay` for a hook-driven
+-- reflex (data/traits/parry.lua) that prices itself from its own data file.
+local function payCost(unit, def)
+    local cost = def and def.cost
+    if not cost then return true end
+    local Combat = require("models.combat")
+    if Combat.resource(unit.char, cost.stat) < cost.amount then return false end
+    Combat.drainResource(unit.char, cost.stat, cost.amount)
+    return true
+end
+
 -- Does a standing evade reflex (the Dodge trait) let `unit` slip a would-be PHYSICAL hit? Mirrors
 -- Status.barrierAgainst in shape and role: Combat.dealFlatDamage consults it BEFORE mitigation and,
 -- when it fires, deals 0. Unlike a barrier (a consumed status) this is a passive gated by a cooldown
@@ -126,7 +149,8 @@ function Trait.tryRiposte(combat, unit, attacker, tags)
     if Trait.isReacting(attacker) then return false end
     local Combat = require("models.combat")
     for _, t in ipairs(unit.traits) do
-        if t.def.deflectsMelee and not Combat.onCooldown(unit, t.id) then
+        -- Cost last, so a blade already on cooldown is never billed for the guard it cannot raise.
+        if t.def.deflectsMelee and not Combat.onCooldown(unit, t.id) and payCost(unit, t.def) then
             Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
             Combat.logEvent(combat, "action",
                 string.format("%s turns the blow aside and ripostes!",
@@ -137,10 +161,70 @@ function Trait.tryRiposte(combat, unit, attacker, tags)
             unit._reacting = unit._reacting or {}
             local was = unit._reacting.riposte
             unit._reacting.riposte = true
+            -- A beat later than the blow it turned aside, so the answer animates after it (see
+            -- Combat.beginBeat). Set here rather than in `dispatch`, since a riposte fires from the
+            -- pre-mitigation path rather than through a hook -- the same reason `_reacting` is local.
+            Combat.beginBeat(combat)
             local weapon = Combat.defaultWeapon(unit.char)
             if weapon then Combat.dealDamage(combat, unit, attacker, weapon) end
+            Combat.endBeat(combat)
             unit._reacting.riposte = was
             return true
+        end
+    end
+    return false
+end
+
+-- Does a preternatural reflex (a `preemptsAttack` trait -- Keen Senses) let `unit` answer an incoming
+-- attack BEFORE it lands? The one reflex in the game that changes the ORDER of an exchange rather than
+-- its arithmetic: consulted in Combat.dealFlatDamage beside tryEvade/trySmoke/tryRiposte, it throws the
+-- bearer's counter first and only then lets the blow through.
+--
+-- The return value is what the blow does NEXT, not whether the counter fired: true only when the
+-- counter FELLED the attacker, in which case the swing dies with them and deals nothing. A counter that
+-- merely wounds returns false -- the answer landed first, and the attack still lands after it. That
+-- asymmetry is the reflex's whole appeal and its whole cost: it saves the bearer outright only when it
+-- kills, and it is paid for either way.
+--
+-- Unlike its neighbors this one is gated by a RESOURCE rather than a cooldown -- it answers every attack
+-- it can afford (see data/traits/keen_senses.lua) -- and it answers any attack, magical or not, since
+-- what it senses is the intent and not the steel. It still needs to REACH the attacker: no default
+-- weapon, or a foe standing beyond that weapon's range, and the sense goes unanswered.
+--
+-- Mutates (spends stamina, deals the counter, logs), so it must run on a REAL hit only, never the
+-- damage preview -- which never reaches this path, since previews read Combat.mitigatedDamage instead.
+function Trait.tryPreempt(combat, unit, attacker)
+    if not unit or not unit.traits or not attacker or not attacker.alive then return false end
+    if reactionsSuppressed(unit) then return false end -- a stunned/frozen unit senses nothing in time
+    if attacker.side == unit.side then return false end -- never answer a friendly or self source
+    -- Answer attacks, not answers (see Trait.isReacting) -- otherwise two of these would preempt each
+    -- other until one pool ran dry.
+    if Trait.isReacting(attacker) then return false end
+    local Combat = require("models.combat")
+    local weapon = Combat.defaultWeapon(unit.char)
+    local ab = weapon and weapon.activeAbility
+    if not ab then return false end -- nothing in hand to answer with
+    local dist = math.abs(attacker.x - unit.x) + math.abs(attacker.y - unit.y)
+    if dist > Combat.abilityRange(combat, unit, ab) then return false end -- sensed, but out of reach
+    for _, t in ipairs(unit.traits) do
+        -- Cost last, so a sense already spent is never billed for the answer it cannot throw.
+        if t.def.preemptsAttack and not Combat.onCooldown(unit, t.id) and payCost(unit, t.def) then
+            Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
+            Combat.logEvent(combat, "action",
+                string.format("%s sees it coming and strikes first!",
+                    (unit.char and unit.char.name) or "Unit"))
+            -- Flagged a reaction for the counter's whole flight, so the attacker's own parry reads
+            -- it as an answer and lets it through rather than answering back. Saved/restored rather
+            -- than cleared, so a preempt reached THROUGH another reflex can't unset that one's flag.
+            unit._reacting = unit._reacting or {}
+            local was = unit._reacting.preempt
+            unit._reacting.preempt = true
+            -- Deliberately NO beginBeat, unlike every other reflex: those answer a blow and so
+            -- animate a beat after it, while this one PRECEDES the blow. Staying on the current beat
+            -- is what makes the view play it first (see Combat.pushFx).
+            Combat.dealDamage(combat, unit, attacker, weapon)
+            unit._reacting.preempt = was
+            return not attacker.alive -- felled them: the blow they were throwing never arrives
         end
     end
     return false
@@ -270,6 +354,11 @@ local function ctxFor(combat, unit, trait, event)
         -- recharges from Combat.rebase alongside status durations.
         onCooldown = function(key) return Combat.onCooldown(unit, key) end,
         setCooldown = function(key, ticks) Combat.setCooldown(unit, key, ticks) end,
+        -- Pay this trait's own declared `cost` (see payCost), returning false when the bearer cannot
+        -- afford it -- at which point the hook must decline and answer nothing. Call it LAST, after
+        -- every free refusal (cooldown, range, friendly fire), so a reflex that declines is never
+        -- billed. Free for a def that declares no cost.
+        pay = function() return payCost(unit, trait.def) end,
         -- A free tile beside (x, y), or nil when the spot is hemmed in. What a hook calls before it
         -- summons or copies, because a body needs ground to stand on.
         openTileNear = function(x, y) return Combat.openTileNear(combat, x, y) end,
@@ -336,11 +425,16 @@ local function dispatch(combat, unit, hook, event)
     end
 
     unit._reacting[hook] = true
+    -- Anything a hook does is an ANSWER to whatever fired it, so its animation cues belong to a later
+    -- beat than the blow itself -- the view plays them after it rather than on top of it.
+    local Combat = require("models.combat")
+    Combat.beginBeat(combat)
     local snapshot = {}
     for _, t in ipairs(unit.traits) do snapshot[#snapshot + 1] = t end
     for _, t in ipairs(snapshot) do
         if t.def[hook] then t.def[hook](ctxFor(combat, unit, t, event)) end
     end
+    Combat.endBeat(combat)
     unit._reacting[hook] = false
     combat._traitDepth = combat._traitDepth - 1
 end
