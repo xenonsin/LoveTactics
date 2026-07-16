@@ -20,6 +20,7 @@ return {
     sprite = "assets/items/hornbow_of_the_hunt.png",
     type = "weapon",
     tags = { "bow", "pierce", "physical", "ranged" },
+    hands = 2, -- two-handed, like every bow
     class = "hunter",
     price = 800,
     repRank = 4,

@@ -107,6 +107,11 @@ return {
                     assert((ab.range or 1) >= 2, id .. ": a bow shoots at range")
                     assert((ab.minRange or 0) >= 2, id .. ": a bow has no point-blank shot")
                 end,
+                longbow = function(ab, id)
+                    assert((ab.channel or 0) >= 1, id .. ": a longbow is drawn before it looses")
+                    assert((ab.range or 1) >= 5, id .. ": a longbow outreaches a bow by two tiles")
+                    assert((ab.minRange or 0) >= 2, id .. ": a longbow has no point-blank shot")
+                end,
                 wand = function(ab, id)
                     assert((ab.range or 1) >= 2, id .. ": a wand strikes at range")
                 end,
@@ -128,6 +133,14 @@ return {
                     end
                     assert(answers, id .. ": a sword answers a melee blow")
                     assert((def.hands or 1) == 1, id .. ": a sword is one-handed")
+                end,
+                -- Both bow families: one hand holds the stave, the other draws. Checked as an item
+                -- property rather than an ability one, since `hands` is a property of the object.
+                bow = function(def, id)
+                    assert((def.hands or 1) == 2, id .. ": every bow is two-handed")
+                end,
+                longbow = function(def, id)
+                    assert((def.hands or 1) == 2, id .. ": every bow is two-handed")
                 end,
             }
 

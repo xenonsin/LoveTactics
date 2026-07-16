@@ -33,7 +33,7 @@ function Item.classOf(item)
     return item and item.class
 end
 
--- The twelve weapon families. A weapon carries exactly one of these among its `tags`, and that tag
+-- The thirteen weapon families. A weapon carries exactly one of these among its `tags`, and that tag
 -- names the base mechanics the weapon inherits -- an axe cleaves, a hammer stuns, a dagger bleeds.
 -- See docs/weapons.md for the contract each family owes.
 --
@@ -45,8 +45,8 @@ end
 Item.ARCHETYPES = {
     shield = true, staff = true, greatsword = true, axe = true,
     mace = true, dagger = true, sword = true, hammer = true,
-    wand = true, spear = true, bow = true, unarmed = true,
-    -- The thirteenth, and the only one no player ever shops for: a creature's own body -- a wolf's
+    wand = true, spear = true, bow = true, longbow = true, unarmed = true,
+    -- The fourteenth, and the only one no player ever shops for: a creature's own body -- a wolf's
     -- fangs, a zombie's claws, an elemental's burning hands. Granted by a blueprint's startingItems,
     -- never sold and never stolen (`noSteal`), and owing no shared mechanic beyond that, since what a
     -- monster's body does is the monster's business. It is a family so that every weapon in the game

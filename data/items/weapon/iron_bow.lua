@@ -4,6 +4,7 @@ return {
     sprite = "assets/items/bow.png",
     type = "weapon",
     tags = { "bow", "pierce", "physical", "ranged" },
+    hands = 2, -- every bow is two-handed: one hand holds the stave, the other draws (Dual Wield can pair it only once forged to +5)
     class = "hunter",
     price = 80,
     repRank = 1,
