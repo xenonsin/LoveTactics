@@ -203,20 +203,10 @@ local function traceLine(x0, y0, x1, y1, visit)
     end
 end
 
--- Is there a clear line of sight between (x0,y0) and (x1,y1)? True when the summed `sightCost`
--- of the tiles the line crosses -- EXCLUDING the two endpoints, so a unit always sees its own
--- tile and its target's even on cover -- stays below Combat.SIGHT_BLOCK. Off-map cells count as
--- transparent (they can't sit between two in-bounds tiles anyway). Endpoints are canonicalised
--- so A->B and B->A always agree. Ability targeting (Combat.useItem / abilityTargets), the
--- threat-reach highlight, and the enemy AI all gate ranged (`ab.requiresSight`) actions on this.
-function Combat.hasLineOfSight(combat, x0, y0, x1, y1)
-    if x0 == x1 and y0 == y1 then return true end
-    -- Canonical endpoint order (smaller x, then smaller y first) so the trace is symmetric.
-    if x1 < x0 or (x1 == x0 and y1 < y0) then
-        x0, y0, x1, y1 = x1, y1, x0, y0
-    end
-    local tiles = combat.arena and combat.arena.tiles
-    if not tiles then return true end
+-- Summed `sightCost` of the tiles one traced line crosses, EXCLUDING the two endpoints -- so a
+-- unit always sees its own tile and its target's even on cover. Off-map cells count as
+-- transparent (they can't sit between two in-bounds tiles anyway).
+local function sightCostAlong(combat, tiles, x0, y0, x1, y1)
     local total = 0
     traceLine(x0, y0, x1, y1, function(x, y)
         if (x == x0 and y == y0) or (x == x1 and y == y1) then return end
@@ -224,7 +214,29 @@ function Combat.hasLineOfSight(combat, x0, y0, x1, y1)
         local cell = row and row[x]
         total = total + ((cell and cell.sightCost) or 0) + Wall.sightCostAt(combat, x, y)
     end)
-    return total < Combat.SIGHT_BLOCK
+    return total
+end
+
+-- Is there a clear line of sight between (x0,y0) and (x1,y1)? True when either endpoint can trace
+-- a line to the other whose summed sightCost stays below Combat.SIGHT_BLOCK.
+--
+-- BOTH directions are traced because one is not a mirror of the other. Bresenham breaks its
+-- half-step tie (e2 == -dy) toward stepping y first, so a line hugs its STARTING column for that
+-- first step -- and a trace begun at the other endpoint can therefore cross a different set of
+-- tiles. Taking the cheaper of the two makes sight depend only on the pair of cells, which buys
+-- two properties the callers rely on: A->B and B->A always agree (the threat highlight and
+-- overwatch need that reciprocity), and two stand tiles mirrored about a blocker agree too --
+-- a lone mountain no longer shadows one diagonal while leaving its mirror open.
+--
+-- The permissive choice (cheaper line, not stricter) matches traceLine's corner-threading: a
+-- single 1-tile blocker never seals a line. Ability targeting (Combat.useItem / abilityTargets),
+-- the threat-reach highlight, and the enemy AI all gate ranged (`ab.requiresSight`) actions here.
+function Combat.hasLineOfSight(combat, x0, y0, x1, y1)
+    if x0 == x1 and y0 == y1 then return true end
+    local tiles = combat.arena and combat.arena.tiles
+    if not tiles then return true end
+    if sightCostAlong(combat, tiles, x0, y0, x1, y1) < Combat.SIGHT_BLOCK then return true end
+    return sightCostAlong(combat, tiles, x1, y1, x0, y0) < Combat.SIGHT_BLOCK
 end
 
 -- Items in a character's inventory that define an active ability (the ones that feed
@@ -683,6 +695,28 @@ function Combat.tickCooldowns(combat, elapsed)
             end
         end
     end
+end
+
+-- Is `item`'s reflex still recharging on `unit`, and how far along? A cooldown is keyed on the
+-- trait's id and the trait remembers the item that granted it (Trait.instantiate), so this walks the
+-- bearer's traits back to the slot they came from -- the read the item grid needs to say "this blade
+-- cannot parry again yet". The longest remaining wins when one item grants several reflexes: the slot
+-- is ready only once all of them are. Returns nil for a ready item, else:
+--   { remaining = ticks left, total = the full cooldown, trait = the reflex that is recharging }
+-- `total` is floored at `remaining`, so a def whose magnitude was raised mid-battle can't report a
+-- fraction above 1.
+function Combat.itemCooldown(unit, item)
+    if not unit or not item or not unit.traits then return nil end
+    local best
+    for _, t in ipairs(unit.traits) do
+        if t.item == item then
+            local left = unit.cooldowns and unit.cooldowns[t.id]
+            if left and left > 0 and (not best or left > best.remaining) then
+                best = { remaining = left, total = math.max(t.def.magnitude or left, left), trait = t }
+            end
+        end
+    end
+    return best
 end
 
 -- Mana regenerated per tick by an Arcane Reservoir bearer -- the lone exception to "mana never

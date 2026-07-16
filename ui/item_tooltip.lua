@@ -17,6 +17,7 @@ local Item = require("models.item")
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local RangeDiagram = require("ui.range_diagram")
+local Glyphs = require("ui.glyphs")
 local Colors = require("ui.colors")
 
 local ItemTooltip = {}
@@ -63,6 +64,7 @@ local BRACE = { 0.55, 0.72, 0.92 } -- a shield's Defend brace-defense (matches t
 -- board's green/red targeting overlays and the action preview's SUPPORT/OFFENSE accents).
 local RANGE_FRIENDLY = { 0.45, 0.85, 0.50 }
 local RANGE_HOSTILE = { 0.95, 0.52, 0.46 }
+local GLYPH_GAP = 4 -- between a stat row's glyph and the value it marks
 
 local function titleCase(s)
     return (tostring(s):gsub("^%l", string.upper))
@@ -83,7 +85,8 @@ end
 --   desc   { text }                     -- wrapped flavor/description
 --   sep    {}                           -- thin divider + gap between sections
 --   head   { text }                     -- ability name heading
---   stat   { label, value, valueColor } -- label (left) + value (right)
+--   stat   { label, value, valueColor, icon } -- label (left) + value (right); `icon` ("hourglass")
+--                                        marks the VALUE with that glyph, in the value's own colour
 --   note   { text }                     -- muted wrapped aside (e.g. "Consumed on use")
 --   warn   { text }                     -- red wrapped line (e.g. "Not enough mana")
 -- `actor` (optional) is the unit the ability is priced and gated against: whatever stops it from
@@ -287,6 +290,19 @@ local function buildBlocks(item, actor, innerW)
         end
     end
 
+    -- This item's triggered reflex (a Riposte Blade's parry) has fired and is still recovering, so it
+    -- cannot answer again yet -- the words behind the item grid's recovery clock. Not a `blocked`
+    -- reason: nothing is being cast, so there is nothing to refuse. Quoted in bare ticks under the
+    -- hourglass, like every other duration.
+    local cooling = Combat.itemCooldown(actor, item)
+    if cooling then
+        blocks[#blocks + 1] = { kind = "sep" }
+        blocks[#blocks + 1] = { kind = "stat", label = "Recovery", icon = "hourglass",
+            value = tostring(math.max(0, math.ceil(cooling.remaining))), valueColor = WARN }
+        blocks[#blocks + 1] = { kind = "note",
+            text = (cooling.trait.name or "Its reflex") .. " has fired; it cannot trigger again until it recovers." }
+    end
+
     -- Passive armor: flat stat bonuses + tag-keyed damage resistances. The stat that already leads as
     -- the headline (defense, usually) is skipped here so the same number is not printed twice; the
     -- block shows the extras (a second defense, the movement penalty).
@@ -454,6 +470,14 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
             local vc = b.valueColor or VALUE
             love.graphics.setColor(vc[1], vc[2], vc[3], 1)
             love.graphics.printf(b.value, bx + pad, ty, innerW, "right")
+            -- An optional glyph riding just ahead of the VALUE (never the label), tinted to match it:
+            -- glyph-then-number is how the grid's badges quote a tick, so a tooltip row quoting one
+            -- reads the same way. Placed off the value's own width, since the value is right-aligned.
+            if b.icon == "hourglass" then
+                local gw = 7
+                local vx = bx + pad + innerW - body:getWidth(b.value)
+                Glyphs.hourglass(vx - GLYPH_GAP - gw, ty + 2, gw, bodyH - 4, vc[1], vc[2], vc[3], 1)
+            end
             ty = ty + bodyH + 1
         end
     end

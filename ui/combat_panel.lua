@@ -25,6 +25,7 @@ local Scale = require("scale")
 local Combat = require("models.combat")
 local AdjacencyLinks = require("ui.adjacency_links")
 local StatusBadge = require("ui.status_badge")
+local Glyphs = require("ui.glyphs")
 local Colors = require("ui.colors")
 
 local CombatPanel = {}
@@ -43,6 +44,10 @@ local SLOT_W = 96
 local SLOT_H = 58
 local SLOT_GAP = 6
 local COLS, ROWS = 3, 3
+-- A slot badge's pill: side padding, the glyph's width, the gap before its number, and the pill's
+-- height (see drawBadgeAt). Named because badgeSize measures a badge the same way, for a caller that
+-- must place one itself.
+local BADGE_PAD_X, BADGE_ICON_W, BADGE_GAP, BADGE_H = 5, 9, 3, 18
 local SCROLL_STEP = 1 -- turn-strip entries per wheel notch (entries are tall; one reads best)
 local CARD_SPEED = 12 -- exponential ease rate of a card sliding to its new slot as the order reshuffles
 local PROM_SPEED = 14 -- ease rate of a card's prominence (slim <-> tall current) as the turn passes
@@ -78,6 +83,56 @@ local RES_COLOR = { health = Colors.PARTY, mana = Colors.MANA, stamina = Colors.
 local COST_FALLBACK = { 0.75, 0.75, 0.80 }
 local SPEED_COLOR = { 0.95, 0.85, 0.55 } -- gold, matching the timeline/initiative accent
 local WARN_COLOR = { 0.95, 0.40, 0.38 }  -- red cost badge on an ability the actor can't afford
+
+-- How far the ray at angle `a` travels from a rectangle's centre before it meets the rectangle's
+-- edge, given the half-extents. What makes the cooldown wedge below fill its slot corner-to-corner
+-- without spilling: every vertex lands ON the boundary, so no clipping is needed. (A scissor can't do
+-- this job here -- love.graphics.setScissor takes real window pixels, while everything in this file is
+-- authored in the 1280x720 logical space, see scale.lua.)
+local function edgeRadius(a, hw, hh)
+    local c, s = math.abs(math.cos(a)), math.abs(math.sin(a))
+    return math.min(c > 1e-6 and hw / c or math.huge, s > 1e-6 and hh / s or math.huge)
+end
+
+-- The recovery clock over a slot whose reflex is still recovering: a dark wedge covering the share of
+-- the recovery still to run, sweeping clockwise from 12 o'clock and shrinking away as the reflex comes
+-- back. Just the wedge: the ticks left ride in an hourglass badge its caller centres on it (see
+-- drawItemGrid), so this stays a shape and the count stays a badge like every other number in a slot.
+--
+-- Drawn as a triangle fan over the slot RECTANGLE rather than one pie polygon, for two reasons: a
+-- sector closes on itself at a full turn (the frame a fresh cooldown starts on) and love.math.triangulate
+-- rejects that, and a fan lets each vertex ride the rectangle's edge. The rect's four corner angles are
+-- folded into the sample list so a fan segment never cuts across one and leaves a corner uncovered.
+local COOLDOWN_TINT = { 0.05, 0.06, 0.09, 0.66 }
+local COOLDOWN_STEPS = 24 -- samples per full turn; the corners are added on top of these
+local function drawCooldownSweep(x, y, w, h, frac)
+    frac = math.max(0, math.min(1, frac))
+    local cx, cy, hw, hh = x + w / 2, y + h / 2, w / 2, h / 2
+    local a0 = -math.pi / 2                  -- 12 o'clock
+    local a1 = a0 + 2 * math.pi * frac       -- clockwise: +y is down, so the sweep runs the right way
+
+    local angles = {}
+    for i = 0, COOLDOWN_STEPS do
+        local a = a0 + (a1 - a0) * (i / COOLDOWN_STEPS)
+        angles[#angles + 1] = a
+    end
+    for _, corner in ipairs({ math.atan2(hh, hw), math.atan2(hh, -hw),
+                              math.atan2(-hh, -hw), math.atan2(-hh, hw) }) do
+        -- atan2 answers in (-pi, pi]; lift the corner into the sweep's own range before testing it.
+        while corner < a0 do corner = corner + 2 * math.pi end
+        if corner < a1 then angles[#angles + 1] = corner end
+    end
+    table.sort(angles)
+
+    love.graphics.setColor(COOLDOWN_TINT)
+    for i = 2, #angles do
+        local pa, na = angles[i - 1], angles[i]
+        local pr, nr = edgeRadius(pa, hw, hh), edgeRadius(na, hw, hh)
+        love.graphics.polygon("fill", cx, cy,
+            cx + math.cos(pa) * pr, cy + math.sin(pa) * pr,
+            cx + math.cos(na) * nr, cy + math.sin(na) * nr)
+    end
+end
 
 -- Draw a resource bar with an optional preview `delta` (an aimed action's projected change): the
 -- "after" fill in the pool colour, then the lost slice in red (delta < 0, brighter when lethal) or
@@ -846,11 +901,11 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     end
 end
 
--- Small hourglass glyph (two triangles) for the speed badge, drawn in the given box.
+-- Small hourglass glyph (two triangles) for the speed badge, drawn in the given box. Kept as a method
+-- for its callers' sake; the glyph itself lives in ui/glyphs.lua, since the item tooltip quotes a
+-- recovery with the same mark.
 function CombatPanel:drawHourglass(x, y, w, h, r, g, b, a)
-    love.graphics.setColor(r, g, b, a or 1)
-    love.graphics.polygon("fill", x, y, x + w, y, x + w / 2, y + h / 2)
-    love.graphics.polygon("fill", x + w / 2, y + h / 2, x, y + h, x + w, y + h)
+    Glyphs.hourglass(x, y, w, h, r, g, b, a)
 end
 
 -- Small padlock (shackle arc over a body) for the reserve badge: the resource this ability locks
@@ -891,15 +946,25 @@ end
 -- (top-left costs) or "right" (top-right speed); `iconKind` is "dot", "hourglass", "lock", "link"
 -- or "ring". `row` stacks a badge under the previous one in the same corner (0 = top, the default).
 function CombatPanel:drawBadge(sx, sy, sw, corner, iconKind, amount, color, a, row)
-    love.graphics.setFont(self.smallFont)
-    local label = tostring(amount)
-    local tw = self.smallFont:getWidth(label)
-    local iconW, gap, padX = 9, 3, 5
-    local bw = padX + iconW + gap + tw + padX
-    local bh = 18
+    local bw, bh = self:badgeSize(amount)
     local pad = 3
     local bx = (corner == "right") and (sx + sw - pad - bw) or (sx + pad)
-    local by = sy + pad + (row or 0) * (bh + 2)
+    self:drawBadgeAt(bx, sy + pad + (row or 0) * (bh + 2), iconKind, amount, color, a)
+end
+
+-- The box `amount`'s badge will fill, so a caller that is NOT putting one in a corner -- the recovery
+-- clock, which centres its badge on the icon -- can place it before drawing it.
+function CombatPanel:badgeSize(amount)
+    return BADGE_PAD_X * 2 + BADGE_ICON_W + BADGE_GAP + self.smallFont:getWidth(tostring(amount)), BADGE_H
+end
+
+-- The badge proper, at an explicit position: what both the corner badges above and the centred
+-- recovery clock draw through, so every pill in the grid is built the same way.
+function CombatPanel:drawBadgeAt(bx, by, iconKind, amount, color, a)
+    love.graphics.setFont(self.smallFont)
+    local label = tostring(amount)
+    local iconW, gap, padX = BADGE_ICON_W, BADGE_GAP, BADGE_PAD_X
+    local bw, bh = self:badgeSize(amount)
 
     love.graphics.setColor(0.06, 0.07, 0.10, 0.82 * (a or 1))
     love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
@@ -957,9 +1022,15 @@ function CombatPanel:drawItemGrid()
         -- toggles teleport movement rather than arming a cast.
         local isBlink = item and item.moveBehavior ~= nil
         local usable = item and (item.activeAbility ~= nil or isBlink) and isPartyTurn and not blocked
+        -- A triggered reflex (a Riposte Blade's parry) that has fired and is still recovering. Not a
+        -- blockReason: nothing here is being cast, so there is no arm to refuse -- the slot simply
+        -- cannot answer yet, and says so with the recovery clock below.
+        local cooling = item and self.view.current and Combat.itemCooldown(self.view.current, item)
 
         if item then
-            local dim = (not usable) and 0.45 or 1
+            -- Grayer than an ordinary idle slot: a recovering reflex is inert in a way a merely
+            -- passive one isn't, so it must not read as ready at a glance.
+            local dim = cooling and 0.3 or ((not usable) and 0.45 or 1)
             local ab = item.activeAbility
 
             -- Icon fills the slot; the badges and name overlay its corners/bottom.
@@ -978,6 +1049,21 @@ function CombatPanel:drawItemGrid()
                 love.graphics.setFont(self.headFont)
                 love.graphics.setColor(dim, dim, dim)
                 love.graphics.printf((item.name or "?"):sub(1, 1), icx - ph / 2, icy - 12, ph, "center")
+            end
+
+            -- The recovery clock over the icon (never over the name band, which stays readable): the
+            -- wedge, then the ticks left in an hourglass badge centred on it. Centred rather than
+            -- tucked in a corner because the clock is the whole story of a recovering slot -- it is
+            -- what the eye should land on, not a footnote to the art behind it. Red, like every other
+            -- badge that says "not yet".
+            if cooling then
+                local cwx, cwy = sx + 1, sy + 1
+                local cww, cwh = sw - 2, sh - NAME_H - 1
+                drawCooldownSweep(cwx, cwy, cww, cwh, cooling.remaining / cooling.total)
+                local left = math.max(0, math.ceil(cooling.remaining))
+                local bw, bh = self:badgeSize(left)
+                self:drawBadgeAt(cwx + (cww - bw) / 2, cwy + (cwh - bh) / 2,
+                    "hourglass", left, WARN_COLOR, 1)
             end
 
             -- Name band overlaid along the bottom, single line scaled to fit.

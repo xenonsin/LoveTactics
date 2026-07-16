@@ -4,6 +4,7 @@
 
 local Character = require("models.character")
 local Combat = require("models.combat")
+local Item = require("models.item")
 
 local function arena(cols, rows)
     local tiles = {}
@@ -103,6 +104,38 @@ return {
             local hp1 = mauler.char.stats.health.current
             Combat.dealDamage(c, mauler, archer, Combat.defaultWeapon(mauler.char))
             assert(mauler.char.stats.health.current == hp1, "a ranged counter ignores an adjacent striker")
+        end,
+    },
+    {
+        -- The read behind the item grid's recharge clock: a slot whose reflex has fired reports how
+        -- much of its cooldown is left, and reports nothing at all once it has recovered.
+        name = "itemCooldown traces a recharging reflex back to the grid slot that granted it",
+        fn = function()
+            local blade = Item.instantiate("riposte_blade")
+            local char = Character.instantiate("knight")
+            char.inventory[1] = blade
+            local c = Combat.new(arena(6, 6), { { char = char, x = 1, y = 1 } }, { unit("bandit", 1, 2) })
+            local knight = c.units[1]
+
+            assert(Combat.itemCooldown(knight, blade) == nil, "a blade that has not parried is ready")
+
+            Combat.setCooldown(knight, "riposte", 16)
+            local cd = Combat.itemCooldown(knight, blade)
+            assert(cd and cd.remaining == 16, "the fresh cooldown reports its full length")
+            assert(cd.total == 16, "priced against the trait's own magnitude")
+            assert(cd.trait.id == "riposte", "and names the reflex that is recharging")
+
+            Combat.tickCooldowns(c, 10)
+            local half = Combat.itemCooldown(knight, blade)
+            assert(half and half.remaining == 6, "it counts down with every other duration")
+            assert(half.total == 16, "while the total it is measured against holds")
+
+            -- A slot that granted no trait never reads as recharging, cooldowns on the bearer or not.
+            local plain = Item.instantiate("iron_sword")
+            assert(Combat.itemCooldown(knight, plain) == nil, "an item with no reflex has no clock")
+
+            Combat.tickCooldowns(c, 6)
+            assert(Combat.itemCooldown(knight, blade) == nil, "and the clock clears once it recovers")
         end,
     },
 }

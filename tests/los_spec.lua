@@ -96,6 +96,24 @@ return {
         end,
     },
     {
+        name = "a lone mountain does not shadow one diagonal while leaving its mirror open",
+        fn = function()
+            -- Regression: (1,3) and (3,3) are exact mirrors about a mountain at (2,2), shooting the
+            -- same foe at (2,1) from the same distance -- but hasLineOfSight canonicalised its
+            -- endpoints (smaller x first), which made the trace START from the foe for the right-hand
+            -- tile and from the stand tile for the left. Bresenham's half-step tie hugs the starting
+            -- column, so (3,3) crossed the mountain while (1,3) slipped past via (1,2): two identical
+            -- shots disagreed. Tracing both directions and taking the cheaper line settles it.
+            local c = Combat.new(arena(3, 3, { { x = 2, y = 2, sightCost = 2 } }), {}, {})
+            local left, right = Combat.hasLineOfSight(c, 1, 3, 2, 1), Combat.hasLineOfSight(c, 3, 3, 2, 1)
+            assert(left == right, "mirrored stand tiles agree about the same target")
+            assert(left, "a lone blocker never seals a diagonal (permissive: the cheaper line wins)")
+
+            -- Permissive must not mean blind: straight through the mountain is still blocked.
+            assert(not Combat.hasLineOfSight(c, 2, 3, 2, 1), "the tile behind it stays hidden")
+        end,
+    },
+    {
         name = "a ranged attack is refused without line of sight and lands once the line is clear",
         fn = function()
             -- Archer's default weapon is the bow (range 3, requiresSight). Foe 3 tiles away with a
