@@ -33,8 +33,10 @@ end
 -- Debug: replace `char`'s authored loadout with random gear, leaving bound cells (a signature relic)
 -- as the blueprint placed them. Every free cell gets an item -- a full grid is the point, since it is
 -- adjacency that makes items interesting -- and the first free cell is forced to a weapon so the unit
--- always has a real strike to open with. Consumables roll a random stack depth.
-local function randomizeLoadout(char, pool)
+-- always has a real strike to open with. `taken` is shared across the party and each id is drawn at
+-- most once into it, so no item repeats within a grid or between units. Consumables roll a random
+-- stack depth.
+local function randomizeLoadout(char, pool, taken)
     local Character = require("models.character")
     local Item = require("models.item")
 
@@ -43,7 +45,20 @@ local function randomizeLoadout(char, pool)
         if Item.defs[id].type == "weapon" then weapons[#weapons + 1] = id end
     end
 
-    local function roll(id)
+    for cell = 1, Character.MAX_INVENTORY do
+        local held = char.inventory[cell]
+        if held then taken[held.id] = true end
+    end
+
+    -- Draw without replacement: `ids` is a candidate list, already-taken entries are skipped.
+    local function draw(ids)
+        local available = {}
+        for _, id in ipairs(ids) do
+            if not taken[id] then available[#available + 1] = id end
+        end
+        if #available == 0 then return nil end
+        local id = available[love.math.random(#available)]
+        taken[id] = true
         local def = Item.defs[id]
         local qty = Item.isStackable(def) and love.math.random(1, Item.maxStack(def)) or 1
         return Item.instantiate(id, qty)
@@ -53,9 +68,8 @@ local function randomizeLoadout(char, pool)
     for cell = 1, Character.MAX_INVENTORY do
         if not Item.isBound(char.inventory[cell]) then
             local weaponCell = char.defaultActionSlot == nil
-            local ids = weaponCell and weapons or pool
-            char.inventory[cell] = roll(ids[love.math.random(#ids)])
-            if weaponCell then char.defaultActionSlot = cell end
+            char.inventory[cell] = draw(weaponCell and weapons or pool)
+            if weaponCell and char.inventory[cell] then char.defaultActionSlot = cell end
         end
     end
 end
@@ -63,14 +77,16 @@ end
 -- Debug: drop straight into a battle with a stock party and a small enemy roster (mirrors the
 -- objective-battle opts states/game.lua builds), so combat can be exercised without a full run.
 -- Loadouts are rolled fresh each time (see randomizeLoadout) so repeated runs exercise a spread of
--- items rather than the same four authored grids.
+-- items rather than the same four authored grids. One `taken` set spans the party, so the four grids
+-- between them show 36 distinct items.
 local function startMockBattle()
     local Character = require("models.character")
     local pool = randomizablePool()
+    local taken = {}
     local party = {}
     for _, id in ipairs({ "knight", "mage", "archer", "priest" }) do
         local char = Character.instantiate(id)
-        randomizeLoadout(char, pool)
+        randomizeLoadout(char, pool, taken)
         party[#party + 1] = char
     end
     State.switch(require("states.battle"), {
