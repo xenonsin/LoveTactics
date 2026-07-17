@@ -459,8 +459,12 @@ function Trait.counterPreview(combat, target, attacker, opts)
     if pt then entry(pt.name, weaponBack(), { first = true }) end
 
     -- A riposte turns the blow aside entirely, and a blow that never lands provokes no on-hit hook --
-    -- nor does one that kills (Trait.onDamaged is not called on the killing blow).
-    if rt or opts.lethal then return out end
+    -- nor does one that kills (Trait.onDamaged is not called on the killing blow). Nor does one that
+    -- lands hard control (`opts.suppressed`: a hammer's stun, an ice bolt's freeze), which arrives
+    -- with the wound and rattles the target out of answering it -- the same order the live hit runs in
+    -- (Combat.dealFlatDamage). Deliberately BELOW the two model-side reflexes and not above them: both
+    -- fire before the blow lands, so a stun that only exists once it has landed cannot pre-empt them.
+    if rt or opts.lethal or opts.suppressed then return out end
     for _, t in ipairs(target.traits or {}) do
         if Trait.mayCounter(combat, target, t, attacker, opts.tags, opts.area) and canPay(target, t.def) then
             local rule = t.def.counter

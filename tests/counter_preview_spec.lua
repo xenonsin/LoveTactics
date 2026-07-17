@@ -12,6 +12,7 @@ local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
 local Trait = require("models.trait")
+local Status = require("models.status")
 
 local function arena(cols, rows)
     local tiles = {}
@@ -237,6 +238,82 @@ return {
             b.x = 2
             b.side = k.side
             assert(not Trait.mayCounter(c, b, parry, k, { "physical" }), "a friendly source is never answered")
+        end,
+    },
+    {
+        -- The bug this guards: the hammer USED to stun on the line after fx.damage, which is one line
+        -- too late -- the parry had already fired from inside the damage core, so the weapon whose
+        -- whole point is leaving the target reeling was answered by the target it had just rattled.
+        -- The stun now rides the blow (`inflicts`), landing between the wound and the on-hit hooks.
+        name = "a hammer's stun rides the blow, so the reeling target never answers it",
+        fn = function()
+            local knight = fighter("character_knight", {}, { "weapon_iron_hammer" })
+            local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
+            local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
+            local k, b = c.units[1], c.units[2]
+            b.char.stats.health.max = 999 -- it must SURVIVE the hammer, or it proves nothing
+            b.char.stats.health.current = 999
+            local knightHP = k.char.stats.health.current
+
+            assert(soleCounter(c, k, b) == nil, "no answer is promised for a blow that stuns")
+
+            local weapon = Combat.defaultWeapon(k.char)
+            Combat.useItem(c, k, weapon, b.x, b.y)
+            assert(b.char.stats.health.current < 999, "the hammer landed")
+            assert(k.char.stats.health.current == knightHP,
+                "and the stunned target threw nothing back, as the panel promised")
+        end,
+    },
+    {
+        -- The other half of the rule: suppression is the CARRIED status's doing, not the attacker's
+        -- luck. Strip the stun off the same weapon and the same fixture answers again -- otherwise
+        -- this pair would pass just as well if hammers had quietly stopped provoking anything.
+        name = "the same hammer without its stun is answered normally",
+        fn = function()
+            local knight = fighter("character_knight", {}, { "weapon_iron_hammer" })
+            local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" })
+            local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
+            local k, b = c.units[1], c.units[2]
+            b.char.stats.health.max = 999
+            b.char.stats.health.current = 999
+            local knightHP = k.char.stats.health.current
+
+            -- A hammer that only hits: no stun rides along.
+            local hammer = Combat.defaultWeapon(k.char)
+            hammer.activeAbility.effect = function(fx) fx.damage(fx.target) end
+
+            local counter = soleCounter(c, k, b)
+            assert(counter and counter.name == "Parry", "an unrattled swordsman answers as usual")
+
+            Combat.useItem(c, k, hammer, b.x, b.y)
+            assert(knightHP - k.char.stats.health.current == counter.damage,
+                "and the live parry deals exactly what the panel promised")
+        end,
+    },
+    {
+        -- A riposte fires BEFORE the blow lands and negates it outright -- so the hammer never
+        -- connects, never stuns, and has no standing to suppress the answer to a hit it didn't land.
+        -- This is the line between the two kinds of reflex, and it is the one most likely to be
+        -- broken by someone "simplifying" the suppression check upward past the pre-hit reflexes.
+        name = "a riposte still turns a stunning blow aside: an unlanded hammer stuns no one",
+        fn = function()
+            local knight = fighter("character_knight", {}, { "weapon_iron_hammer" })
+            local duelist = fighter("character_bandit", {}, { "weapon_riposte_blade" })
+            local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(duelist, 2, 1) })
+            local k, d = c.units[1], c.units[2]
+            local knightHP = k.char.stats.health.current
+            local duelistHP = d.char.stats.health.current
+
+            local counter = soleCounter(c, k, d)
+            assert(counter, "the blade still answers a hammer")
+            assert(counter.deflects, "and the panel says it turns the blow aside")
+
+            local weapon = Combat.defaultWeapon(k.char)
+            Combat.useItem(c, k, weapon, d.x, d.y)
+            assert(d.char.stats.health.current == duelistHP, "the deflected hammer deals nothing")
+            assert(not Status.has(d, "status_stun"), "so it stuns no one")
+            assert(knightHP - k.char.stats.health.current == counter.damage,
+                "and the riposte lands exactly what the panel promised")
         end,
     },
 }

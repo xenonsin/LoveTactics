@@ -20,8 +20,10 @@ return {
         cost = { stat = "mana", amount = 10 },
         damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- balances both the hit AND the freeze delay below
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_freeze", { magnitude = fx.amount }) -- delay scales with Power
+            -- The freeze rides the blow so it lands before the target can react to it. It is applied
+            -- after mitigation is settled, so Frozen's own crush/fire `vulnerable` never feeds this
+            -- bolt -- the ice has to survive a turn before anyone can shatter it. Delay scales with Power.
+            fx.damage(fx.target, { inflicts = { id = "status_freeze", magnitude = fx.amount } })
         end,
     },
 }

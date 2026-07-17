@@ -20,8 +20,8 @@ return {
         damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 },
         requiresAdjacent = { type = "weapon", tag = "melee" }, -- a melee weapon must sit adjacent in the grid
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_stun")
+            -- The stun rides the blow, so the reeling target does not answer it (see the War Hammer).
+            fx.damage(fx.target, { inflicts = "status_stun" })
         end,
     },
 }

@@ -517,6 +517,27 @@ Apply one from an ability or trap effect via `fx.applyStatus(target, "status_poi
 (re-applying refreshes the duration; one instance per id). See `data/status/status_stun.lua` and
 `data/status/status_root.lua`.
 
+**A status that shuts down reactions must ride the blow, not follow it.** `fx.damage` runs the whole
+damage core, counters and all, before it returns — so a stun applied on the *next* line lands after
+the target has already answered, and a hammer gets parried by the fighter it just rattled. Hand the
+status to the hit instead, and it lands between the wound and the on-hit hooks:
+
+```lua
+effect = function(fx)
+    fx.damage(fx.target, { inflicts = "status_stun" })                       -- an id, or...
+    -- fx.damage(fx.target, { inflicts = { id = "status_stun", magnitude = fx.amount } })
+end
+```
+
+This matters only for the statuses that set `disablesReactions` (Stun, Frozen, Sleep, Polymorph);
+anything else is free to follow the damage in the ordinary way. A carried status lands **after**
+mitigation is settled, so Frozen's own crush/fire `vulnerable` can never feed the bolt that applied
+it, and only on a survivor — no stunning a corpse. The pre-hit reflexes (Dodge, Riposte, Keen Senses)
+are deliberately untouched by it: they *negate* the blow, and a blow that never landed never stunned
+anyone. Both damage previews and the counter preview read `inflicts` too, so the tooltip keeps naming
+the stun and stops promising a counter that won't come. See `data/items/weapon/weapon_iron_hammer.lua`
+and `tests/counter_preview_spec.lua`.
+
 **A recurring effect belongs on `onTick`, not `onTurnStart`.** Durations are measured in ticks, and a
 single rebase routinely elapses more ticks than a short status has left — a turn costs about
 `Status.TICKS_PER_TURN`, while Burn lasts 3 — so a turn-driven effect can expire before its bearer's

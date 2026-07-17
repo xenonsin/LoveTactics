@@ -92,6 +92,20 @@ local function manhattan(ax, ay, bx, by)
     return math.abs(ax - bx) + math.abs(ay - by)
 end
 
+-- Unwrap a hit's `opts.inflicts` -- the status a blow CARRIES (see Combat.dealFlatDamage) -- into the
+-- id and the Status.apply opts it rides with. Accepts a bare id ("status_stun") or a table naming one
+-- ({ id = "status_stun", magnitude = 6 }). Returns nil for a hit that carries nothing.
+--
+-- Shared by the live path and BOTH damage previews, which is the whole reason it is a function: a
+-- carried status is invisible to the tooltip's fx.applyStatus recorder, so a preview that didn't
+-- unwrap it here would quietly stop naming the stun the player is about to land.
+local function carriedStatus(opts)
+    local carried = opts and opts.inflicts
+    if not carried then return nil end
+    if type(carried) == "string" then return carried, nil end
+    return carried.id, carried
+end
+
 -- The cardinal unit step from (ax, ay) toward (bx, by) along the DOMINANT axis (an exact diagonal
 -- breaks toward x). Returns 0, 0 when the two points coincide. The grid is 4-directional, so a
 -- "facing" derived from a caster->target vector is too. Shared by directional AoE footprints
@@ -2183,12 +2197,34 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     else
         Combat.logEvent(combat, "damage", string.format("%s takes %d damage.", unitName(target), dmg))
     end
+    -- A blow may CARRY hard control (a hammer's Stun, an ice bolt's Freeze): `opts.inflicts` names a
+    -- status that lands WITH the hit rather than after it. The distinction is the whole point --
+    -- an effect that applies its stun on the line after `fx.damage` applies it one line too late,
+    -- because the counter it was supposed to prevent already fired from inside the damage core. So
+    -- the status goes on here, between the wound and Trait.onDamaged, and the reaction gate
+    -- (Status.disablesReactions, read by every path in models/trait.lua) finds it in time: a fighter
+    -- the hammer just rattled does not answer the hammer.
+    --
+    -- It lands here and not earlier for a reason of its own: mitigation is already computed above, so
+    -- a status that makes its bearer softer (Frozen's crush/fire `vulnerable`) cannot feed the very
+    -- bolt that applied it. And the pre-hit reflexes -- Dodge, Riposte, Keen Senses -- all returned
+    -- long before this line, which is correct: they NEGATE the blow, and a blow that never landed
+    -- never stunned anyone, so it has no business suppressing the answer to it.
+    --
+    -- Accepts an id, or { id = ..., ... } carrying Status.apply opts (a `magnitude` scaled off Power).
+    -- Only a survivor is worth controlling, so each path below inflicts before it dispatches, and the
+    -- death path (which never dispatches) skips it -- no stunning a corpse.
+    local function inflictCarried()
+        local id, carryOpts = carriedStatus(opts)
+        if id then Status.apply(combat, target, id, carryOpts) end
+    end
     -- A berserk window (Fury's `preventsDeath` status) holds the bearer up at 1 HP through a blow
     -- that would fell it -- but never a `fragile` shape (a decoy/doppelganger is unmade by any hit).
     if hp.current <= 0 and not target.fragile and Status.preventsDeath(target) then
         hp.current = 1
         Combat.logEvent(combat, "action",
             string.format("%s refuses to fall!", unitName(target)))
+        inflictCarried()
         Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
             area = opts and opts.area })
         return dmg
@@ -2200,6 +2236,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- back up at half health, exactly like a barrier voids a hit -- but only a "real" unit
         -- (never a fragile shape, which the check above already excluded from the death path).
         if not target.fragile and Trait.trySurvive(combat, target) then
+            inflictCarried()
             Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
             area = opts and opts.area })
             return dmg
@@ -2212,6 +2249,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- a boss's health-threshold phase can never trigger on a corpse. Nothing in the damage
         -- PREVIEW reaches this function (previewAbility routes through Combat.computeDamage), so a
         -- hovered target never quietly advances a trait.
+        inflictCarried()
         Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
             area = opts and opts.area })
         -- ...and the statuses riding the survivor get the same news, for the ones a blow is supposed
@@ -2504,6 +2542,19 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
             local d = Combat.computeDamage(combat, unit, tgt, item, withAuraTags(opts, auraTags))
             local e = entryFor(tgt)
             e.damage = e.damage + d
+            -- A status the blow CARRIES (a hammer's stun) never passes through fx.applyStatus, so
+            -- record it here or the tooltip would show the damage and silently drop the stun.
+            local carriedId, carryOpts = carriedStatus(opts)
+            if carriedId then
+                local cdef = Status.defs[carriedId]
+                e.statuses[#e.statuses + 1] = { id = carriedId, def = cdef, opts = carryOpts }
+                -- ...and flag the one thing the COUNTER preview needs to know about it: a carried
+                -- status that shuts down reflexes means the on-hit answers won't fire, because it
+                -- lands before them (Combat.dealFlatDamage). Recorded from the hit itself rather than
+                -- sniffed out of e.statuses afterwards -- a stun applied the ordinary way, on the line
+                -- AFTER the damage, does NOT suppress anything, and the two must not be confused.
+                if cdef and cdef.disablesReactions then e.suppressesCounters = true end
+            end
             if d > 0 then
                 for _, st in ipairs(auraStatuses) do
                     e.statuses[#e.statuses + 1] = { id = st.id, def = Status.defs[st.id], opts = st.opts }
@@ -2621,6 +2672,11 @@ function Combat.previewCounters(combat, unit, item, target, opts)
         -- blast off the same `aoe` footprint the live hit does, so the panel can't promise a parry the
         -- bomb will never provoke.
         area = ab ~= nil and not Combat.isSingleTarget(ab),
+        -- A blow that CARRIES hard control (the War Hammer's stun) lands it before the on-hit hooks
+        -- are consulted, so the target is too rattled to answer -- previewAbility flags that on the
+        -- entry when it replays the effect. Passing it on is what keeps this panel honest: without it
+        -- the hover would warn of a parry that the hammer then never provokes.
+        suppressed = entry and entry.suppressesCounters,
         fromX = opts.fromX, fromY = opts.fromY,
     })
     return (#list > 0) and list or nil
@@ -2671,6 +2727,12 @@ function Combat.abilityOutput(unit, item)
         damage = function(tgt, opts)
             local d = Combat.computeDamage(nil, unit, tgt or dummy, item, opts)
             out.damage = out.damage + d
+            -- A carried status (see Combat.dealFlatDamage) bypasses fx.applyStatus, so the inventory
+            -- tooltip has to read it off the hit itself to keep naming it.
+            local carriedId, carryOpts = carriedStatus(opts)
+            if carriedId then
+                out.statuses[#out.statuses + 1] = { id = carriedId, def = Status.defs[carriedId], opts = carryOpts }
+            end
             return d
         end,
         heal = function(_, amount)

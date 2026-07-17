@@ -19,8 +19,10 @@ return {
         cost = { stat = "stamina", amount = 12 },
         damage = { 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24 },
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_stun")
+            -- The stun rides the blow (`inflicts`) rather than following it: a hammer that stunned on
+            -- the NEXT line would be answered by the very fighter it just rattled, because the counter
+            -- fires from inside fx.damage. See Combat.dealFlatDamage.
+            fx.damage(fx.target, { inflicts = "status_stun" })
         end,
     },
 }
