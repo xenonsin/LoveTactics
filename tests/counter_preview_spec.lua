@@ -192,6 +192,33 @@ return {
         end,
     },
     {
+        name = "an AREA blow is answered by nothing -- the panel promises no parry, and none is thrown",
+        fn = function()
+            -- A blast is nobody's duel: it is aimed at ground, and everything standing there catches the
+            -- same burst. There is no swing aimed at the swordsman to turn aside, so his Parry sleeps --
+            -- which is also what keeps one bomb from being answered once per body it caught.
+            local knight = fighter("knight", {}, { "iron_axe" }) -- axes cleave: a 3-wide arc, an AoE
+            local bandit = fighter("bandit", {}, { "iron_sword" }) -- the sword carries Parry
+            local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
+            local k, b = c.units[1], c.units[2]
+            local knightHP = k.char.stats.health.current
+            local stamina = Combat.resource(b.char, "stamina")
+
+            local counter, weapon = soleCounter(c, k, b)
+            assert(counter == nil, "the panel promises no answer to a cleave")
+
+            assert(Combat.useItem(c, k, weapon, b.x, b.y), "the arc lands")
+            assert(k.char.stats.health.current == knightHP, "and nothing is thrown back at the axeman")
+            assert(Combat.resource(b.char, "stamina") == stamina, "the swordsman's guard was never spent")
+
+            -- The same swordsman still answers a blow aimed at HIM, so the case above is the blast
+            -- talking and not a broken fixture.
+            local sword = fighter("knight", {}, { "iron_sword" })
+            local c2 = Combat.new(arena(6, 6), { unit(sword, 1, 1) }, { unit(fighter("bandit", {}, { "iron_sword" }), 2, 1) })
+            assert(soleCounter(c2, c2.units[1], c2.units[2]), "a single-target blow is answered as ever")
+        end,
+    },
+    {
         name = "counterPreview walks the same gates the live reflex does",
         fn = function()
             -- mayCounter is the single rule both the hover panel and the onDamaged hooks read, so a

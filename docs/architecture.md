@@ -164,7 +164,7 @@ adding a seventh.
 |---|---|---|
 | `models/status.lua` | `unit.statuses` | timed effects; tick down inside `Combat.rebase` |
 | `models/trap.lua` | `combat.traps` | hidden tile objects, triggered by pathing over them |
-| `models/hazard.lua` | `combat.hazards` | persistent per-cell area effects (fire, rain, sanctuary) |
+| `models/hazard.lua` | `combat.hazards` | persistent per-cell area effects (fire, rain, sanctuary, a banner's square) |
 | `models/summon.lua` | `combat.units` | characters placed on the field mid-battle |
 | `models/transform.lua` | `unit.char` | exchanges a unit's body for another character's (polymorph, wild shape) |
 | `models/trait.lua` | `unit.traits` | standing reactions: combat start, damage survived, cast, death |
@@ -209,6 +209,36 @@ the creature fades via `Combat.dismiss`. A summon with no `duration` has no coun
 until it is killed. `Combat.dismiss` is the single path for leaving the field short of dying — the
 summoner fell, or the binding lapsed — and it cascades to anything that summon was itself sustaining.
 
+**Zones and auras are one thing.** A hazard *is* the zone concept — fire, rain, a Sanctuary, the square
+a planted banner holds — and there is no separate aura system. An "aura" is only what you call a
+zone-granted status that clings to its zone, and it falls out of two rules in `models/hazard.lua`:
+
+- **The status decides whether it clings.** Every status a zone grants is stamped with that zone's id
+  as its `source` automatically, unless the status declares `lingers`. A `lingers` status (Burn,
+  Poison, Wet) travels with the unit and runs its own duration wherever it goes — you carry the flames
+  out of the fire. Anything else is *zone-bound* (Regeneration, Mired, Inspiration): `Status.tick`
+  never ages it, and it lasts exactly as long as a live zone granting it sits under its bearer.
+  Stamping the source in the zone machinery rather than at each call site is what keeps this a property
+  of the status, so no hazard def can get it wrong by forgetting an argument.
+- **Two ways to stop standing in a zone, one path out.** The unit walks off it (`Combat.enterTile` →
+  `Hazard.reap`), or the ground goes out from under a unit that never moved — its duration ran out, or
+  its `owner` was cut down (`Hazard.tick` → `Hazard.reap`). Both ask the same question once a beat: is
+  a zone that grants this still under you?
+
+**A zone `owner`** ties ground to a body on the field. A banner is nothing but a destructible object
+that owns its square: it is `timeless` (takes no turns, never appears in the turn order) and has no
+effect of its own, and `Hazard.dropOwnedBy` removes its ground the moment it dies — which removes the
+buff by the ordinary rule. "The banner rallies nearby allies" is emergent from those rules rather than
+a mechanic anyone wrote.
+
+**Recurring status effects run on the clock**, via `onTick` rather than `onTurnStart`. Durations are in
+ticks, so a turn-driven effect could expire before its bearer's next turn arrived and never fire, and
+charged a slow unit no more than a fast one for the same elapsed time. Defs quote `magnitude` per turn
+and spend it through `ctx.accrue`, which converts to this tick's share and banks the fraction (a rebase
+can elapse a fraction of a tick, and damage floors at 1, so paying each sliver directly would round
+every one up). `onTurnStart` remains for what is genuinely turn-scoped: Defending and Invisible
+expiring at their owner's next turn.
+
 **Ability prices** all flow through `Combat.abilityCost(unit, ab)`, which folds in any status
 `costMultiplier` (Haste). A reservation is not a price, and is deliberately never discounted.
 
@@ -221,8 +251,8 @@ therefore die on arrival: `fx.summon` / `fx.copy` bind the ability's reservation
 `activeSummon` claim only to a creature that survived, or the caster would hold mana for a corpse.
 
 Its `reason` argument says *how* the unit got there — `"walk"` (a metered step), `"forced"` (shoved,
-pulled, trampled), or nil (a blink, a swap, a summon's arrival: no ground crossed). Traps, hazards,
-and auras ignore it, since the ground does not care how you came to stand on it; only
+pulled, trampled), or nil (a blink, a swap, a summon's arrival: no ground crossed). Traps and hazards
+ignore it, since the ground does not care how you came to stand on it; only
 `Status.onEnterTile` reads it, which is what makes Bleed cost blood per tile crossed under a unit's
 own weight while a blink escapes it clean. It defaults to nil, so a forgetful call site fires nothing.
 

@@ -112,10 +112,12 @@ end
 -- opts = {
 --   stats    = { health = 60 },       -- flat overrides of the blueprint's stats
 --   items    = { "fangs" },           -- replaces the blueprint's startingItems entirely
+--   traits   = { "blood_price" },     -- innate traits the CALL binds to the creature (see below)
 --   scaling  = { health = 2 },        -- per-stat multipliers of `amount`, added on top
 --   amount   = 10,                    -- the ability's summon power (fx.amount)
 --   duration = 24,                    -- ticks it stands before fading; omit for an indefinite summon
 --   control  = "player"|"ai"|"none"|"inherit",
+--   timeless = true,                  -- an object, not a body: no turns, no slot in the turn order
 --   fragile  = true, side = "party",
 -- }
 -- Returns the new unit.
@@ -130,6 +132,13 @@ function Summon.spawn(combat, summoner, charId, x, y, opts)
             Character.addItem(char, Item.instantiate(itemId))
         end
     end
+    -- Traits the CALL binds to the creature, rather than ones the creature was born with: a price the
+    -- summoner pays, a leash, a fuse. They belong to the ability because that is what struck the
+    -- bargain -- the same blueprint summoned by a different ability owes nothing (data/traits/
+    -- blood_price.lua). Trait.attach reads char.traits when the unit joins the field, so setting it
+    -- here is enough; Character.instantiate leaves it nil, since a body's own reactions ride on its
+    -- items instead (models/character.lua).
+    char.traits = opts.traits
     applyOverrides(char.stats, opts.stats)
     applyScaling(char.stats, opts.scaling, opts.amount)
 
@@ -139,6 +148,7 @@ function Summon.spawn(combat, summoner, charId, x, y, opts)
         fragile = opts.fragile,
         summoned = true,
         duration = opts.duration,
+        timeless = opts.timeless,
     })
     Combat.logEvent(combat, "system",
         string.format("%s summons %s.", summoner.char.name or "Unit", char.name or "a creature"))

@@ -12,9 +12,10 @@ return {
     disposition = "friendly", -- a hurt unit of the caster's side will step onto it
     onEnter = function(ctx)
         if not ctx.isAlly(ctx.unit) then return end
-        -- Tag the Regeneration with its source so it ends the moment the unit steps off the hallowed
-        -- ground (Combat.updateAuras), rather than lingering its full duration off the zone. ctx.amount
-        -- (the Sanctuary item's level-scaled heal) sets how much it mends; nil falls back to regen's own.
-        ctx.applyStatus(ctx.unit, "regen", { source = "hazard_heal", magnitude = ctx.amount })
+        -- Regeneration does not declare `lingers`, so it is zone-bound: this grant is stamped with the
+        -- Sanctuary as its source automatically, and ends the moment the unit steps off the hallowed
+        -- ground or the ground itself fades. ctx.amount (the Sanctuary item's level-scaled heal) sets
+        -- how much it mends; nil falls back to regen's own.
+        ctx.applyStatus(ctx.unit, "regen", { magnitude = ctx.amount })
     end,
 }

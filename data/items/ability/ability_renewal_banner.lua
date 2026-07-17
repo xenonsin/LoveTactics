@@ -20,10 +20,14 @@ return {
         support = true,
         cost = { stat = "mana", amount = 16 },
         effect = function(fx)
-            local banner = fx.summon("banner", fx.tx, fx.ty, { control = "none" })
+            local banner = fx.summon("banner", fx.tx, fx.ty, { control = "none", timeless = true })
             if banner and banner.alive then
-                banner.bannerAura = "regen"
-                fx.applyStatus(banner, "banner_aura")
+                -- The 3x3 of Renewing Ground the standard holds open; see ability_rally_banner.lua.
+                for dy = -1, 1 do
+                    for dx = -1, 1 do
+                        fx.placeHazard(fx.tx + dx, fx.ty + dy, "hazard_renewal", { owner = banner })
+                    end
+                end
             end
         end,
     },

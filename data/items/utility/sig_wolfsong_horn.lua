@@ -9,8 +9,10 @@
 -- Beyond the free companion, the horn holds a TRUE call (activeAbility): a full-throated blast that
 -- summons the Wolfsong Spirit (data/characters/wolfsong_spirit.lua) -- the great wolf behind the pack,
 -- far fiercer than any grunt. It answers no reservation but a blood-price, and the price is charged
--- when the Spirit DIES, not when it is called: its `blood_price` trait takes half the archer's
--- remaining health the moment it falls (data/traits/blood_price.lua).
+-- when the Spirit DIES, not when it is called: the call binds `blood_price` to the beast it raises
+-- (data/traits/blood_price.lua), and that trait takes half the archer's remaining health the moment it
+-- falls. The bargain is the HORN's, not the Spirit's -- the same body called by any other means owes
+-- nothing, which is why the price is written here beside the call that strikes it.
 --
 -- Both calls share one throat. The companion holds the horn's `activeSummon` claim from the opening
 -- bell (models/trait.lua), so the true call is refused for as long as the wolf at her side is alive,
@@ -34,12 +36,15 @@ return {
         range = 1,
         speed = 6,
         -- The call itself takes nothing: one spirit at a time (fx.summon stamps item.activeSummon),
-        -- scaled by the horn's forge level, and its own blood_price trait collects when it falls. A
-        -- spirit that dies on the tile it was called to (a trap, a fire) bills the archer immediately --
-        -- it drew breath and lost it, which is exactly what the price is for.
+        -- scaled by the horn's forge level, and the blood_price it binds collects when the beast falls.
+        -- A spirit that dies on the tile it was called to (a trap, a fire) bills the archer immediately
+        -- -- it drew breath and lost it, which is exactly what the price is for.
         effect = function(fx)
-            fx.summon("wolfsong_spirit", fx.tx, fx.ty,
-                { scaling = { health = 2, damage = 0.5 }, amount = 8 + fx.level })
+            fx.summon("wolfsong_spirit", fx.tx, fx.ty, {
+                traits = { "blood_price" },
+                scaling = { health = 2, damage = 0.5 },
+                amount = 8 + fx.level,
+            })
         end,
     },
 }

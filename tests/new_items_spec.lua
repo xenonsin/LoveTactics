@@ -8,6 +8,7 @@ local Item = require("models.item")
 local Combat = require("models.combat")
 local Summon = require("models.summon")
 local Status = require("models.status")
+local Hazard = require("models.hazard")
 
 local function arena(cols, rows, objective)
     local tiles = {}
@@ -40,6 +41,28 @@ end
 local function equip(char, ids)
     char.inventory = {}
     for _, id in ipairs(ids) do Character.addItem(char, Item.instantiate(id)) end
+end
+
+-- A character stripped of its blueprint kit. What a spec wants when the stock inventory would answer
+-- for the body: a knight's reflexes (Parry, a guard that takes an adjacent ally's blow) would otherwise
+-- intercept the very thing being measured.
+local function bare(id)
+    local char = Character.instantiate(id)
+    char.inventory = {}
+    return char
+end
+
+-- Plant a banner at (x, y) and lay the 3x3 zone it owns, exactly as the banner abilities do
+-- (data/items/ability/ability_rally_banner.lua) -- without going through the item, so a spec can put
+-- one on the board in one line. Returns the banner unit.
+local function plantBanner(c, summoner, x, y, zoneId)
+    local banner = Summon.spawn(c, summoner, "banner", x, y, { control = "none", timeless = true })
+    for dy = -1, 1 do
+        for dx = -1, 1 do
+            Hazard.place(c, x + dx, y + dy, zoneId, { side = banner.side, owner = banner })
+        end
+    end
+    return banner
 end
 
 return {
@@ -112,22 +135,103 @@ return {
         end,
     },
     {
-        name = "a Banner pulses its status to allies in the 3x3 around it, but not to foes",
+        name = "a Banner's ground inspires allies in the 3x3 around it, but not foes or itself",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("archer", 2, 2), unit("knight", 5, 4) },
                 { unit("bandit", 6, 4) })
             local archer, knight, bandit = c.units[1], c.units[2], c.units[3]
 
             -- Plant a rally banner beside the knight (and one tile from the bandit).
-            local banner = Summon.spawn(c, archer, "banner", 4, 4, { control = "none" })
-            banner.bannerAura = "inspiration"
-            Status.apply(c, banner, "banner_aura")
+            local banner = plantBanner(c, archer, 4, 4, "hazard_rally")
 
-            Status.onTurnStart(c, banner) -- the banner comes around to pulse
-            assert(Status.has(knight, "inspiration"), "the ally beside it is inspired")
+            assert(Status.has(knight, "inspiration"), "the ally standing in its square is inspired")
             assert(Status.statBonus(knight, "damage") == 4, "which raises its Damage")
-            assert(not Status.has(bandit, "inspiration"), "the enemy in range gets nothing")
-            assert(not Status.has(banner, "inspiration"), "and the banner does not inspire itself")
+            assert(not Status.has(bandit, "inspiration"), "the enemy in the square gets nothing")
+            assert(not Status.has(banner, "inspiration"), "and the banner does not rally itself")
+        end,
+    },
+    {
+        name = "a Banner's Inspiration is zone-bound: it does not age, and ends the beat an ally leaves",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("archer", 2, 2), unit(bare("knight"), 5, 4) },
+                { unit("bandit", 8, 8) })
+            local archer, knight = c.units[1], c.units[2]
+            plantBanner(c, archer, 4, 4, "hazard_rally")
+            assert(Status.has(knight, "inspiration"), "the knight starts in the banner's shadow")
+
+            -- Far longer than Inspiration's own duration (8): a zone-bound status does not age, so
+            -- standing put holds it indefinitely rather than letting it lapse under the banner.
+            Status.tick(c, 50)
+            Hazard.tick(c, 50)
+            assert(Status.has(knight, "inspiration"), "it holds while the knight stands in the square")
+
+            -- Step out of the square (x 3..5): gone on that beat, not `duration` ticks later.
+            openTurn(c, knight)
+            assert(Combat.moveUnit(c, knight, 6, 4), "the knight steps clear of the banner's shadow")
+            assert(not Status.has(knight, "inspiration"), "and its Inspiration ends the instant it does")
+        end,
+    },
+    {
+        name = "cutting down a Banner takes its ground, and the rally with it",
+        fn = function()
+            -- A BARE knight: a blueprint's stock kit carries a guard reflex, and Combat.dealFlatDamage
+            -- offers an adjacent guardian the blow first -- so a kitted knight standing in the square
+            -- would throw itself in front of the axe and the banner would never fall at all.
+            local c = Combat.new(arena(8, 8), { unit("archer", 2, 2), unit(bare("knight"), 5, 4) },
+                { unit("bandit", 8, 8) })
+            local archer, knight, bandit = c.units[1], c.units[2], c.units[3]
+            local banner = plantBanner(c, archer, 4, 4, "hazard_rally")
+            assert(Status.has(knight, "inspiration"), "the knight is inspired while it stands")
+
+            -- Cut the standard down. Its ground goes on the same beat (Hazard.dropOwnedBy)...
+            Combat.dealFlatDamage(c, banner, 9999, { "physical" }, nil, bandit)
+            assert(not banner.alive, "the banner falls")
+            assert(not Hazard.at(c, 5, 4, "hazard_rally"), "and its square stops being rallying ground")
+
+            -- ...and the buff unwinds by the ordinary rule, with nobody having moved at all.
+            Hazard.tick(c, 1)
+            assert(not Status.has(knight, "inspiration"),
+                "the rally ends for an ally who never moved, because the ground under it is gone")
+        end,
+    },
+    {
+        name = "a Banner is an object, not a combatant: it never appears in the turn order",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("archer", 2, 2) }, { unit("bandit", 6, 4) })
+            local archer = c.units[1]
+            local banner = Summon.spawn(c, archer, "banner", 4, 4, { control = "none", timeless = true })
+
+            assert(banner.alive, "the standard stands on the board")
+            assert(Combat.unitAt(c, 4, 4) == banner, "and holds its tile like any other body")
+            for _, u in ipairs(Combat.turnOrder(c)) do
+                assert(u ~= banner, "but it takes no slot in the turn order")
+            end
+            for _, e in ipairs(Combat.buildTimeline(c, {})) do
+                assert(e.unit ~= banner, "nor a card in the timeline strip the player reads")
+            end
+        end,
+    },
+    {
+        name = "a Banner outside the timeline does not stall the combat clock",
+        fn = function()
+            -- The banner is never charged an initiative, so were it still counted in Combat.rebase's
+            -- minimum it would sit at 0 forever, pin the rebase amount to 0, and freeze every status,
+            -- hazard and summon duration in the battle.
+            local c = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 6, 4) })
+            local knight = c.units[1]
+            local banner = Summon.spawn(c, knight, "banner", 4, 4, { control = "none", timeless = true })
+
+            -- Push every real combatant off 0 (whatever the field holds), leaving the knight soonest.
+            for _, u in ipairs(c.units) do
+                if not u.timeless then u.initiative = 9 end
+            end
+            knight.initiative = 7
+            local bannerInit, before = banner.initiative, c.clock
+
+            Combat.rebase(c)
+            assert(c.clock == before + 7, "the clock still advances by the soonest real actor's initiative")
+            assert(knight.initiative == 0, "and the next real actor rebases to 0")
+            assert(banner.initiative == bannerInit, "the banner is left out of the rebase entirely")
         end,
     },
     {

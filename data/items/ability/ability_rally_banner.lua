@@ -24,10 +24,17 @@ return {
         support = true, -- a friendly cast: reads green, and the AI treats it so
         cost = { stat = "stamina", amount = 12 },
         effect = function(fx)
-            local banner = fx.summon("banner", fx.tx, fx.ty, { control = "none" })
+            local banner = fx.summon("banner", fx.tx, fx.ty, { control = "none", timeless = true })
             if banner and banner.alive then
-                banner.bannerAura = "inspiration" -- the status the aura sweeps to nearby allies
-                fx.applyStatus(banner, "banner_aura")
+                -- The rally IS the ground, not the banner: lay the 3x3 square of Rally zone
+                -- (data/hazards/hazard_rally.lua) and hand each tile to the banner as its owner, so the
+                -- whole square lifts the moment the standard falls. Tiles that can't hold a zone (a
+                -- wall, off the map) are skipped by Hazard.place returning nil.
+                for dy = -1, 1 do
+                    for dx = -1, 1 do
+                        fx.placeHazard(fx.tx + dx, fx.ty + dy, "hazard_rally", { owner = banner })
+                    end
+                end
             end
         end,
     },

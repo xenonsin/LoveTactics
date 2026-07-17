@@ -16,7 +16,7 @@ return {
     price = 160,
     repRank = 2,
     activeAbility = {
-        target = "enemy", -- thrown at a foe and bursts around it, like Fire Bomb / Flash Bomb
+        target = "tile", -- thrown at a foe and bursts around it, like Fire Bomb / Flash Bomb
         range = 3,
         requiresSight = true,
         speed = 4,

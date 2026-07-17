@@ -64,7 +64,7 @@ return {
         end,
     },
     {
-        name = "walking onto a fire hazard applies Burn, which then damages at the next turn start",
+        name = "walking onto a fire hazard applies Burn, which then sears as the clock runs",
         fn = function()
             -- Archer (movement 4, less 1 for leather = 3) walks (1,1)->(1,4) across fire at (1,3).
             local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
@@ -75,10 +75,12 @@ return {
 
             assert(Combat.moveUnit(c, archer, 1, 4), "the move across the fire succeeds")
             assert(Status.has(archer, "burn"), "entering the fire applied Burn")
-            assert(archer.char.stats.health.current == hp0, "Burn deals no damage on entry (it ticks at turn start)")
+            assert(archer.char.stats.health.current == hp0, "Burn deals no damage on entry -- it needs time")
 
-            Combat.startTurn(c) -- opens the archer's next turn -> Burn's onTurnStart fires
-            assert(archer.char.stats.health.current < hp0, "Burn dealt fire damage at the turn start")
+            -- Burn carries the flames out of the fire (it declares `lingers`) and bites on elapsed
+            -- ticks, not at a turn start the archer may never reach while it lasts.
+            Status.tick(c, Status.TICKS_PER_TURN)
+            assert(archer.char.stats.health.current < hp0, "Burn seared as the clock ran")
         end,
     },
     {
@@ -230,18 +232,23 @@ return {
         end,
     },
     {
-        name = "Regeneration restores health at the start of the afflicted unit's turn",
+        name = "Regeneration restores health as the clock runs, at its per-turn magnitude",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
             local knight = c.units[1]
             local hp = knight.char.stats.health
             hp.current = hp.max - 20 -- wound it so a heal has room
-            Status.apply(c, knight, "regen")
+            -- Applied directly rather than by a zone, so it carries no source and simply runs its own
+            -- duration (a zone's Regeneration would instead last exactly as long as the unit stands in
+            -- it). The duration is generous so a whole turn's worth of ticks falls inside its life --
+            -- what is measured here is the per-turn -> per-tick conversion.
+            Status.apply(c, knight, "regen", { duration = 20 })
 
             local before = hp.current
-            Combat.startTurn(c) -- Regen's onTurnStart heals
-            assert(hp.current > before, "Regeneration mended health at the turn start")
-            assert(hp.current == before + Status.defs.regen.magnitude, "healed exactly its magnitude")
+            Status.tick(c, Status.TICKS_PER_TURN) -- one turn's worth of ticks
+            assert(hp.current > before, "Regeneration mended health as time passed")
+            assert(hp.current == before + Status.defs.regen.magnitude,
+                "a turn's worth of ticks mends exactly its per-turn magnitude")
         end,
     },
     {

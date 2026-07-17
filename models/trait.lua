@@ -155,8 +155,9 @@ end
 --
 -- Deliberately narrower than the Dodge reflex it sits next to, which voids ANY physical hit from any
 -- range: a blade can only turn aside something within its reach, and only something material. A spell,
--- an arrow, a poison tick, or a trap all pass straight through -- you cannot parry what you cannot
--- touch. `magnitude` is the cooldown length in ticks.
+-- an arrow, a poison tick, a trap, or an area blast (`area`, the flag every reflex in this file shares
+-- -- see Trait.mayCounter) all pass straight through: you cannot parry what you cannot touch, and a
+-- blast is not a swing aimed at anyone. `magnitude` is the cooldown length in ticks.
 --
 -- Mutates (spends the cooldown, deals the counter, logs), so it must run on a REAL hit only, never the
 -- damage preview -- which never reaches this path, since previews read Combat.mitigatedDamage instead.
@@ -164,8 +165,9 @@ end
 -- The gates live in `riposteTrait` -- a pure predicate naming the blade that would answer -- so that
 -- the hover preview (Trait.counterPreview) can ask "would this be riposted?" through the very same
 -- rules the live blow runs, and the two can never drift apart.
-local function riposteTrait(combat, unit, attacker, tags)
+local function riposteTrait(combat, unit, attacker, tags, area)
     if not unit or not unit.traits or not attacker or not attacker.alive then return nil end
+    if area then return nil end -- a blast is not a blow: there is no swing to turn aside
     if hasTag(tags, "magical") then return nil end -- a spell is not something a blade can turn
     if reactionsSuppressed(unit) then return nil end -- a stunned/frozen unit holds no guard
     if attacker.side == unit.side then return nil end -- never answer a friendly or self source
@@ -183,8 +185,8 @@ local function riposteTrait(combat, unit, attacker, tags)
     return nil
 end
 
-function Trait.tryRiposte(combat, unit, attacker, tags)
-    local t = riposteTrait(combat, unit, attacker, tags)
+function Trait.tryRiposte(combat, unit, attacker, tags, area)
+    local t = riposteTrait(combat, unit, attacker, tags, area)
     if not t then return false end
     local Combat = require("models.combat")
     payCost(unit, t.def) -- the predicate already checked it can be paid
@@ -231,8 +233,9 @@ end
 -- Like the riposte above it, the gates live in a pure predicate (`preemptTrait`), so the hover
 -- preview can ask whether a blow would be answered first without spending the bearer's stamina to
 -- find out -- and so it asks through the very rules the live blow runs.
-local function preemptTrait(combat, unit, attacker)
+local function preemptTrait(combat, unit, attacker, area)
     if not unit or not unit.traits or not attacker or not attacker.alive then return nil end
+    if area then return nil end -- a blast is not a swing to sense coming (see Trait.mayCounter)
     if reactionsSuppressed(unit) then return nil end -- a stunned/frozen unit senses nothing in time
     if attacker.side == unit.side then return nil end -- never answer a friendly or self source
     -- Answer attacks, not answers (see Trait.isReacting) -- otherwise two of these would preempt each
@@ -251,8 +254,8 @@ local function preemptTrait(combat, unit, attacker)
     return nil
 end
 
-function Trait.tryPreempt(combat, unit, attacker)
-    local t = preemptTrait(combat, unit, attacker)
+function Trait.tryPreempt(combat, unit, attacker, area)
+    local t = preemptTrait(combat, unit, attacker, area)
     if not t then return false end
     local Combat = require("models.combat")
     payCost(unit, t.def) -- the predicate already checked it can be paid
@@ -370,9 +373,18 @@ end
 -- Free gates only: it never spends the reflex's `cost` (the hook calls ctx.pay() last for that, and
 -- Trait.counterPreview asks canPay). Cost aside, a true here means the reflex fires -- which is what
 -- lets the hover preview promise a counter and be right, since it walks these same gates.
-function Trait.mayCounter(combat, unit, trait, attacker, tags)
+--
+-- `area` flags a blow that came out of an AREA ability -- a bomb, a fireball, a cleave -- rather than a
+-- blow aimed at this bearer (Combat.dealDamage sets it off Combat.isSingleTarget). None of them answer
+-- one, and for the same reason the mirror wards don't: a blast is nobody's duel. It is thrown at GROUND,
+-- and everything standing on that ground catches the same burst -- there is no swing aimed at you to
+-- turn aside, and no thread back to the thrower to answer along. Without this a bomb lobbed into a
+-- huddle is answered once per body caught, which prices the cheapest consumable in the game as if it
+-- were five duels at once -- and reads as nonsense besides, a swordsman parrying an explosion.
+function Trait.mayCounter(combat, unit, trait, attacker, tags, area)
     local rule = trait and trait.def and trait.def.counter
     if not rule or not unit or not attacker or not attacker.alive then return false end
+    if area then return false end
     if attacker.side == unit.side then return false end -- never answer a friendly or self source
     if reactionsSuppressed(unit) then return false end -- a stunned/frozen unit answers nothing
     if rule.requiresArmed and not trait.armed then return false end
@@ -404,7 +416,8 @@ end
 -- preview can warn the player that the swing they are lining up will be answered, and by what.
 --
 -- `opts` describes the blow being weighed: `tags` (its school), `damage` (what it would deal, which is
--- what a reflecting reflex throws back a share of) and `lethal` (whether it kills). Lethality matters:
+-- what a reflecting reflex throws back a share of), `area` (whether it is a blast rather than a blow
+-- aimed at this target -- see Trait.mayCounter; nothing answers one) and `lethal`. Lethality matters:
 -- the hook-driven reflexes fire from Trait.onDamaged, which a killing blow never reaches, so a strike
 -- that fells its target is answered by nothing. The two model-side reflexes are the exception -- both
 -- fire BEFORE the blow lands, so they answer even a lethal one.
@@ -440,16 +453,16 @@ function Trait.counterPreview(combat, target, attacker, opts)
         return e
     end
 
-    local rt = riposteTrait(combat, target, attacker, opts.tags)
+    local rt = riposteTrait(combat, target, attacker, opts.tags, opts.area)
     if rt then entry(rt.name, weaponBack(), { deflects = true }) end
-    local pt = preemptTrait(combat, target, attacker)
+    local pt = preemptTrait(combat, target, attacker, opts.area)
     if pt then entry(pt.name, weaponBack(), { first = true }) end
 
     -- A riposte turns the blow aside entirely, and a blow that never lands provokes no on-hit hook --
     -- nor does one that kills (Trait.onDamaged is not called on the killing blow).
     if rt or opts.lethal then return out end
     for _, t in ipairs(target.traits or {}) do
-        if Trait.mayCounter(combat, target, t, attacker, opts.tags) and canPay(target, t.def) then
+        if Trait.mayCounter(combat, target, t, attacker, opts.tags, opts.area) and canPay(target, t.def) then
             local rule = t.def.counter
             if rule.applies then
                 local def = Status.defs[rule.applies]
@@ -499,7 +512,8 @@ local function ctxFor(combat, unit, trait, event)
         -- declares, in one call, and the same call the hover preview asks. Costs nothing: a priced
         -- reflex still calls ctx.pay() last.
         mayCounter = function()
-            return Trait.mayCounter(combat, unit, trait, (event or {}).attacker, (event or {}).tags)
+            local e = event or {}
+            return Trait.mayCounter(combat, unit, trait, e.attacker, e.tags, e.area)
         end,
 
         damage = function(tgt, amount, tags)

@@ -126,20 +126,63 @@ return {
         end,
     },
     {
-        name = "Burn deals fire damage at each turn start and wears off after its duration",
+        name = "Burn sears on the clock: a turn's worth of ticks costs its per-turn magnitude",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
             local bandit = c.units[2]
-            bandit.char.stats.defense = 0 -- isolate the tick from defense mitigation
+            bandit.char.stats.defense = 0 -- isolate the burn from defense mitigation
             local hp0 = bandit.char.stats.health.current
-            Status.apply(c, bandit, "burn") -- duration 3, magnitude 4
+            -- A generous duration, so a whole turn's worth of ticks falls INSIDE its life: what is on
+            -- trial here is the per-turn -> per-tick conversion, not Burn's own tuning (its stock
+            -- duration of 3 ticks is shorter than the ~5 a turn costs, so it would only live to earn a
+            -- fraction -- see the case below).
+            Status.apply(c, bandit, "burn", { duration = 20 }) -- magnitude 4 per turn
+            Status.tick(c, Status.TICKS_PER_TURN)
+            assert(bandit.char.stats.health.current == hp0 - 4,
+                "a turn's worth of ticks deals exactly the per-turn magnitude, got "
+                    .. (hp0 - bandit.char.stats.health.current))
+        end,
+    },
+    {
+        name = "a status ticks for the stretch it was alive, then wears off -- never for a rebase it did not see",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local bandit = c.units[2]
+            bandit.char.stats.defense = 0
+            local hp0 = bandit.char.stats.health.current
+            Status.apply(c, bandit, "burn") -- stock: duration 3 ticks, magnitude 4 per turn
             assert(Status.get(bandit, "burn").remaining == 3, "burn starts at duration 3")
 
-            Status.onTurnStart(c, bandit)
-            assert(bandit.char.stats.health.current == hp0 - 4, "a burn tick deals 4 fire damage")
+            -- One rebase elapsing MORE ticks than the burn has left. It must be paid for the 3 ticks it
+            -- actually lived (4/turn over 3 of 5 ticks = 2.4, and only whole points are spent), not for
+            -- all 5 -- and it must not be deleted before it burns at all, which is what ageing ahead of
+            -- the tick would do.
+            Status.tick(c, Status.TICKS_PER_TURN)
+            assert(bandit.char.stats.health.current == hp0 - 2,
+                "it sears for the 3 ticks it lived and no further, got "
+                    .. (hp0 - bandit.char.stats.health.current))
+            assert(not Status.has(bandit, "burn"), "and those same ticks ran its duration out")
+        end,
+    },
+    {
+        name = "Burn's fractional ticks accrue rather than each rounding up to a full point",
+        fn = function()
+            -- The reason ctx.accrue banks a remainder: a rebase can elapse a fraction of a tick, and
+            -- damage floors at 1, so paying each sliver immediately would sear far harder than the
+            -- magnitude claims. Ten tenth-of-a-tick rebases must cost exactly what one whole tick does.
+            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local bandit = c.units[2]
+            bandit.char.stats.defense = 0
+            local hp0 = bandit.char.stats.health.current
+            Status.apply(c, bandit, "burn") -- 4 per turn = 0.8 per tick at TICKS_PER_TURN = 5
 
-            Status.tick(c, 3)
-            assert(not Status.has(bandit, "burn"), "burn wears off after its duration")
+            for _ = 1, 10 do Status.tick(c, 0.1) end -- one tick's worth, in ten slivers
+            local dealt = hp0 - bandit.char.stats.health.current
+            assert(dealt == 0, "less than a whole point has accrued, so nothing is spent yet, got " .. dealt)
+
+            for _ = 1, 10 do Status.tick(c, 0.1) end -- a second tick's worth: 1.6 accrued -> 1 spent
+            dealt = hp0 - bandit.char.stats.health.current
+            assert(dealt == 1, "the banked fraction pays out a whole point and no more, got " .. dealt)
         end,
     },
     {

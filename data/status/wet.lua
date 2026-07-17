@@ -14,6 +14,7 @@ return {
     color = { 0.40, 0.62, 0.92 }, -- badge tint (rain blue)
     duration = 3,
     debuff = true, -- removable by Cure
+    lingers = true, -- you walk out of the rain still soaked; it dries on its own duration
     vulnerable = { lightning = 6 }, -- bonus damage taken from lightning-tagged hits
     tileTags = { "conductable" },   -- its tile carries a charge, exactly as a river's does
 }

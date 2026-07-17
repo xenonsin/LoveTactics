@@ -1,16 +1,44 @@
 -- Hazards: persistent area effects painted onto the combat grid -- a patch of fire, a rain cloud, a
--- sanctuary. Kin to traps (models/trap.lua), but with the opposite temperament: a hazard CANNOT be
--- destroyed, can be freely moved into / stood on by EITHER side, is ALWAYS visible, occupies many
--- tiles (one runtime object per covered cell, like a trap is per-cell), and PERSISTS for a duration
--- that counts down on the shared initiative clock. When a unit ENTERS a hazard tile the effect fires;
--- the effect is delivered as a status (Status.apply), which then lingers/ticks on its own -- and,
--- being one-instance-per-id, refreshes rather than stacks on re-entry. Whether the effect respects
--- sides is the def's own business: fire burns friend and foe alike, while a sanctuary blesses only
--- its caster's side (see Hazard.allied / ctx.isAlly). Pure logic (no love.graphics beyond the
--- tolerant Sprite loader), so it loads under the headless tests.
+-- sanctuary, the square a planted banner holds. Kin to traps (models/trap.lua), but with the opposite
+-- temperament: a hazard CANNOT be destroyed, can be freely moved into / stood on by EITHER side, is
+-- ALWAYS visible, occupies many tiles (one runtime object per covered cell, like a trap is per-cell),
+-- and PERSISTS for a duration that counts down on the shared initiative clock. When a unit ENTERS a
+-- hazard tile the effect fires; the effect is delivered as a status (Status.apply) -- and, being
+-- one-instance-per-id, refreshes rather than stacks on re-entry. Whether the effect respects sides is
+-- the def's own business: fire burns friend and foe alike, while a sanctuary blesses only its caster's
+-- side (see Hazard.allied / ctx.isAlly). Pure logic (no love.graphics beyond the tolerant Sprite
+-- loader), so it loads under the headless tests.
+--
+-- ---------------------------------------------------------------------------
+-- A hazard is the ONE zone concept. There is no separate "aura": an aura is just what you call a
+-- zone-granted status that clings to its zone, and it falls out of two rules that live here.
+--
+-- 1. WHO ends the status -- the STATUS decides, not the zone. Every status a zone grants is stamped
+--    with that zone's id as its `source` (see the ctx's applyStatus), unless the status declares
+--    `lingers`. A `lingers` status (Burn, Poison, Wet) travels with the unit and runs its own duration
+--    wherever it goes: you carry the flames out of the fire. Anything else is ZONE-BOUND (Regeneration,
+--    Mired, Inspiration) -- it does not age at all (Status.tick skips it), it lasts exactly as long as
+--    a live zone granting it sits under its bearer, and Hazard.reap ends it the instant one doesn't.
+--    Stamping the source here rather than at each call site is what keeps that a property of the
+--    status, so no zone def can get it wrong by forgetting an argument.
+--
+-- 2. WHEN it ends -- two ways to stop standing in a zone, one path. The unit walks off it
+--    (Combat.enterTile -> Hazard.reap), or the ground goes out from under a unit that never moved:
+--    its duration ran out, or its OWNER was cut down (Hazard.tick -> Hazard.reap). Both end a blessing
+--    identically, because both are the same question asked once a beat: is a zone that grants this
+--    still under you?
+--
+-- An `owner` is what ties a zone to a body on the field. A banner is nothing but a destructible object
+-- that owns its square (data/characters/banner.lua): it takes no turns and has no effect of its own,
+-- and killing it removes the ground, which removes the buff. "The banner rallies nearby allies" is an
+-- emergent reading of those two rules rather than a mechanic anyone had to write.
+-- ---------------------------------------------------------------------------
 --
 -- Blueprints live in data/hazards/<id>.lua and expose:
---   * duration      -- ticks the hazard tile persists (default 1)
+--   * duration      -- ticks the hazard tile persists (default 1). An owned zone quotes a huge one and
+--                      really answers to its owner's life (see Hazard.dropOwnedBy).
+--   * owner         -- (runtime, via Hazard.place opts) the unit holding this zone open; nil for a zone
+--                      that answers only to its duration
 --   * disposition   -- "hostile" | "friendly" | "neutral": drives the enemy AI's avoid/seek (default
 --                      neutral). A "friendly" hazard only draws the side that owns it.
 --   * tags          -- descriptive tags (e.g. { "fire" }). Two jobs: a cast whose tags meet a
@@ -72,8 +100,17 @@ local function ctxFor(combat, hazard, unit)
         -- hazard). A hazard's onEnter feeds it to the status it grants (a hotter fire, a stronger
         -- Regeneration); passing nil lets that status fall back to its own blueprint default.
         amount = hazard.amount,
+        -- Grant a status FROM THIS ZONE. The zone's id is stamped on it as `source` automatically,
+        -- unless the status declares `lingers` -- so which statuses cling to their zone and which
+        -- travel with the unit is decided once, by the status itself, and no zone def can get it
+        -- wrong by forgetting an argument. Hazard.reap reads that stamp; see the module header.
         applyStatus = function(tgt, id, opts)
             if not tgt then return nil end
+            local def = Status.defs[id]
+            if def and not def.lingers then
+                opts = opts or {}
+                opts.source = hazard.id
+            end
             return Status.apply(combat, tgt, id, opts)
         end,
         heal = function(tgt, amount)
@@ -98,11 +135,22 @@ function Hazard.allAt(combat, x, y)
     return out
 end
 
--- The first live hazard of blueprint `id` on a tile, or nil. Used to dedupe placement (refresh
--- rather than stack a second identical hazard).
+-- The first live hazard of blueprint `id` on a tile, or nil -- whoever owns it. What Hazard.reap asks:
+-- "is any live zone granting this still under the unit?", where a second banner's overlapping square
+-- answers just as well as the first.
 function Hazard.at(combat, x, y, id)
     for _, h in ipairs(combat.hazards or {}) do
         if h.alive and h.x == x and h.y == y and (not id or h.id == id) then return h end
+    end
+    return nil
+end
+
+-- The live hazard of blueprint `id` on a tile belonging to exactly `owner` (nil owner matches only an
+-- unowned zone), or nil. Placement's dedupe key -- deliberately narrower than Hazard.at, which cannot
+-- tell "any owner" from "no owner" through one optional argument.
+local function sameZoneAt(combat, x, y, id, owner)
+    for _, h in ipairs(combat.hazards or {}) do
+        if h.alive and h.x == x and h.y == y and h.id == id and h.owner == owner then return h end
     end
     return nil
 end
@@ -137,8 +185,11 @@ function Hazard.place(combat, x, y, id, opts)
 
     combat.hazards = combat.hazards or {}
 
-    -- Dedupe: an identical hazard already here just refreshes its remaining duration.
-    local existing = Hazard.at(combat, x, y, id)
+    -- Dedupe: an identical hazard already here just refreshes its remaining duration. Keyed on the
+    -- OWNER as well as the id, so two banners whose squares overlap each keep their own zone on the
+    -- shared tile -- otherwise the second would fold into the first, and cutting down one banner would
+    -- strip ground the other is still holding.
+    local existing = sameZoneAt(combat, x, y, id, opts.owner)
     if existing then
         existing.remaining = math.max(existing.remaining, opts.duration or def.duration or 1)
         -- A stronger re-cast overwrites a weaker magnitude; a bare refresh (or spread) leaves it be.
@@ -160,6 +211,10 @@ function Hazard.place(combat, x, y, id, opts)
         alive = true,
         def = def,
         tags = tags,
+        -- The field object holding this zone open (a planted banner). While it lives the zone stands;
+        -- when it dies the zone goes with it, and whatever it was granting unwinds by the ordinary
+        -- rules. nil for a zone that answers to nothing but its own duration -- a fire, a rain cloud.
+        owner = opts.owner,
     }
     combat.hazards[#combat.hazards + 1] = hazard
 
@@ -203,9 +258,79 @@ function Hazard.spread(combat)
     end
 end
 
--- Count every hazard's duration down by `elapsed` ticks; expire (and fire onExpire for) any that
--- reach 0, then let survivors spread. Called from Combat.rebase with the rebase amount (the ticks
--- that just elapsed), alongside Status.tick.
+-- Drop every zone `owner` was holding open -- its banner is down, so its ground goes with it. Returns
+-- the number removed. Called from the death path (Combat.kill) the instant the owner falls, so the
+-- rally ends on that beat rather than at the next rebase; Hazard.tick sweeps as a backstop for any
+-- unit that left the field by a path the death path doesn't cover.
+--
+-- Only removes the ZONES. The statuses they were granting are not touched here: they unwind by the
+-- ordinary rule a beat later, when Hazard.reap finds no live zone under their bearers -- so ground
+-- that vanishes and ground you walk out of end a blessing the same way, through one path.
+function Hazard.dropOwnedBy(combat, owner)
+    if not owner then return 0 end
+    local list = combat.hazards
+    if not list then return 0 end
+    local n = 0
+    for i = #list, 1, -1 do
+        local h = list[i]
+        if h.owner == owner then
+            h.alive = false
+            table.remove(list, i)
+            if h.def.onExpire then h.def.onExpire(ctxFor(combat, h, nil)) end
+            n = n + 1
+        end
+    end
+    return n
+end
+
+-- Drop any ZONE-BOUND status `unit` is no longer standing in. Such a status carries `source` = the id
+-- of the zone that granted it (stamped automatically -- see the ctx's applyStatus); it lives exactly
+-- as long as a live zone of that id sits under the unit, and Status.tick never ages it. This is the
+-- one place it can end.
+--
+-- Called from Combat.enterTile -- the chokepoint every position change routes through (a walk step, a
+-- knockback, a summon appearing) -- so leaving a Sanctuary ends its blessing on the very beat the unit
+-- steps off. And called from Hazard.tick for every living unit, which is the half a move-driven check
+-- alone cannot cover: the ground can vanish from under a unit that never moves at all -- its duration
+-- spent, or the banner holding it open cut down. A status with no `source` (a spell, a potion) is
+-- never touched.
+-- Removal goes through Status.remove rather than lifting the entry out of the list here, so a
+-- zone-bound status unwinds whatever it was holding (Status.remove fires its onExpire with a proper
+-- status ctx). Leaving a zone therefore tears a status down exactly as a Cure or a natural expiry
+-- would -- there is no removal path that can strand a unit in a state its status was meant to revert.
+function Hazard.reap(combat, unit)
+    local list = unit.statuses
+    if not list then return end
+    local Status = require("models.status")
+    local Combat = require("models.combat")
+    -- Snapshot the ids to drop before touching the list: Status.remove mutates it, and an onExpire is
+    -- free to mutate it further.
+    local dropped = {}
+    for _, s in ipairs(list) do
+        if s.source and not Hazard.at(combat, unit.x, unit.y, s.source) then
+            dropped[#dropped + 1] = s
+        end
+    end
+    for _, s in ipairs(dropped) do
+        Status.remove(combat, unit, s.id)
+        if not s.def.hideLog then
+            Combat.logEvent(combat, "status",
+                string.format("%s's %s fades outside the %s.",
+                    (unit.char and unit.char.name) or "Unit", s.name or s.id,
+                    Hazard.defs[s.source] and Hazard.defs[s.source].name or "zone"))
+        end
+    end
+end
+
+-- One full turn of the zone cycle, called from Combat.rebase with the ticks that just elapsed,
+-- alongside Status.tick. In order:
+--   1. age every zone and expire the ones that run out,
+--   2. drop any zone whose owner has died,
+--   3. reap the zone-bound statuses left with no zone under them (steps 1 and 2 just removed the
+--      ground out from under units that never moved -- nothing else would notice),
+--   4. let the survivors spread.
+-- Reaping after the removals, and not before, is what makes "the hazard is removed from the tile" and
+-- "the unit walked off the tile" the same event as far as a blessing is concerned.
 function Hazard.tick(combat, elapsed)
     if not elapsed or elapsed <= 0 then return end
     local list = combat.hazards
@@ -218,6 +343,17 @@ function Hazard.tick(combat, elapsed)
             table.remove(list, i)
             if h.def.onExpire then h.def.onExpire(ctxFor(combat, h, nil)) end
         end
+    end
+    for i = #list, 1, -1 do
+        local h = list[i]
+        if h.owner and not h.owner.alive then
+            h.alive = false
+            table.remove(list, i)
+            if h.def.onExpire then h.def.onExpire(ctxFor(combat, h, nil)) end
+        end
+    end
+    for _, unit in ipairs(combat.units or {}) do
+        if unit.alive then Hazard.reap(combat, unit) end
     end
     Hazard.spread(combat)
 end

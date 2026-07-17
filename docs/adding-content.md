@@ -486,12 +486,19 @@ return {
     abbr = "Ps",                   -- short badge label (2-3 chars; longer is squeezed to fit)
     color = { 0.5, 0.85, 0.4 },    -- badge tint (board + turn strip)
     duration = 6,                  -- ticks before it expires
-    magnitude = 4,                 -- effect strength (meaning is up to the hooks)
+    magnitude = 4,                 -- effect strength (meaning is up to the hooks). A recurring
+                                   -- effect quotes it PER TURN; see onTick below.
+    lingers = true,                -- keep it when leaving the zone that granted it: see "Auras" below
     -- Hooks receive ctx = { combat, unit, status, magnitude, moveBudget } + bound helpers
-    -- (damage / applyStatus / unitsNear). Any subset is optional:
+    -- (damage / applyStatus / unitsNear / accrue). Any subset is optional:
     onApply     = function(ctx) end,   -- when first applied / re-applied (stun bumps initiative)
     onExpire    = function(ctx) end,   -- at 0 remaining ticks
-    onTurnStart = function(ctx) ctx.damage(ctx.unit, ctx.magnitude, { "poison" }) end,
+    onTick      = function(ctx)        -- the hook for a RECURRING effect (burn, poison, regen).
+        local n = ctx.accrue(ctx.magnitude)  -- per-turn magnitude -> whole units for this tick
+        if n > 0 then ctx.damage(ctx.unit, n, { "poison" }) end
+    end,
+    onTurnStart = function(ctx) end,   -- only for what is genuinely scoped to a TURN (Defending and
+                                       -- Invisible self-expiring at their owner's next one)
     onTurnEnd   = function(ctx) end,
     onEnterTile = function(ctx) end,   -- the unit crossed onto a tile on foot (bleed)
     onDamaged   = function(ctx) end,   -- the bearer took a hit and lived (sleep breaks on it)
@@ -505,6 +512,13 @@ return {
 Apply one from an ability or trap effect via `fx.applyStatus(target, "poison", { duration = 8 })`
 (re-applying refreshes the duration; one instance per id). See `data/status/stun.lua` and
 `data/status/root.lua`.
+
+**A recurring effect belongs on `onTick`, not `onTurnStart`.** Durations are measured in ticks, and a
+single rebase routinely elapses more ticks than a short status has left — a turn costs about
+`Status.TICKS_PER_TURN`, while Burn lasts 3 — so a turn-driven effect can expire before its bearer's
+next turn ever arrives and never fire at all. It would also charge a slow unit no more than a fast one
+for the same stretch of time. Quote `magnitude` per turn and hand it to `ctx.accrue`, which converts it
+to this tick's share and banks the fraction until a whole point has built up.
 
 `onEnterTile` fires only for movement **across the ground** — a walk, or being shoved / pulled /
 trampled — never for a blink, a swap, or a summon's arrival (see `Combat.enterTile`'s `reason`). It

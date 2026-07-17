@@ -1,7 +1,8 @@
 -- Quicksand: churned, sucking ground. A unit standing on it is Mired (data/status/mired.lua) -- the
--- inverse of Haste, doubling the time its casts and steps cost. The status is granted as an AURA
--- (tagged with this hazard's id as its `source`), so it clings only while the unit is on the sand and
--- lifts the instant it steps clear (Combat.updateAuras), exactly as a Sanctuary's Regeneration does.
+-- inverse of Haste, doubling the time its casts and steps cost. Mired declares no `lingers`, so it is
+-- ZONE-BOUND: the grant is stamped with this hazard's id as its `source`, and it clings only while the
+-- unit is on the sand, lifting the instant it steps clear or the sand itself settles (Hazard.reap) --
+-- exactly as a Sanctuary's Regeneration does.
 --
 -- Terrain the mage churns up with the Quicksand spell (data/items/ability/ability_quicksand.lua). It
 -- lingers a good while and reads as HOSTILE to the enemy AI, which will step around a patch rather than
@@ -14,8 +15,9 @@ return {
     duration = 8,             -- ticks the churned ground persists
     disposition = "hostile",  -- the enemy AI steps around it
     onEnter = function(ctx)
-        -- Tag the Mired status with its source so it ends the moment the unit steps off the sand
-        -- (Combat.updateAuras), rather than lingering its full duration on firm ground.
-        ctx.applyStatus(ctx.unit, "mired", { source = "hazard_quicksand" })
+        -- Mired does not declare `lingers`, so it is zone-bound: the grant is stamped with this hazard
+        -- as its source automatically, and lifts the moment the unit steps onto firm ground or the sand
+        -- itself settles.
+        ctx.applyStatus(ctx.unit, "mired")
     end,
 }

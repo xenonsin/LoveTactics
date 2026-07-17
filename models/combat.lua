@@ -526,6 +526,21 @@ function Combat.isPlayerControlled(unit)
     return unit ~= nil and unit.control == "player"
 end
 
+-- Does this unit ride the initiative timeline? Every real combatant does -- including a control-"none"
+-- decoy, which must LOOK like a unit taking turns for the deception to work. A `timeless` unit does
+-- not: it is scenery with health, a planted OBJECT rather than a body that acts (a banner). It stands
+-- on the board, blocks its tile, takes damage and dies, but never takes a turn, never appears in the
+-- turn order, and wears no turn number.
+--
+-- The single gate for all three: Combat.rebase's minimum, the turn order, and the timeline strip.
+-- Rebase is the load-bearing one -- a unit that never acts is never charged an initiative, so leaving
+-- one in the minimum would peg it at 0 forever, stop the clock, and freeze every duration in the
+-- battle. Anything a timeless unit is meant to DO must therefore ride the clock rather than its turn:
+-- a banner does nothing at all, and simply owns the ground that does the work (models/hazard.lua).
+function Combat.inTimeline(unit)
+    return unit ~= nil and unit.alive and not unit.timeless
+end
+
 -- Add a unit to a battle already in progress (a summon). It joins combat.units, so every query
 -- (turnOrder, unitAt, aliveCount, the renderer, the AI) picks it up with no further wiring.
 --
@@ -536,7 +551,8 @@ end
 --
 -- `opts`: control ("player"|"ai"|"none"; defaults from `side`), summoner (the unit sustaining it),
 -- fragile (any hit is lethal), summoned (marks it as not a "real" combatant -- see Combat.evaluate),
--- duration (ticks it may stand before it fades; nil = until something kills it -- see Summon.tick).
+-- duration (ticks it may stand before it fades; nil = until something kills it -- see Summon.tick),
+-- timeless (an object, not a body: it stands outside the turn order entirely -- see Combat.inTimeline).
 function Combat.addUnit(combat, char, side, x, y, opts)
     opts = opts or {}
     local unit = {
@@ -551,6 +567,7 @@ function Combat.addUnit(combat, char, side, x, y, opts)
         fragile = opts.fragile,
         summoned = opts.summoned,
         summonRemaining = opts.duration, -- nil for an indefinite summon; ticks down in rebase
+        timeless = opts.timeless, -- stands outside the initiative timeline (Combat.inTimeline)
     }
     unit.index = #combat.units + 1
     combat.units[unit.index] = unit
@@ -660,11 +677,11 @@ end
 function Combat.rebase(combat)
     local minInit
     for _, u in ipairs(combat.units) do
-        if u.alive and (not minInit or u.initiative < minInit) then minInit = u.initiative end
+        if Combat.inTimeline(u) and (not minInit or u.initiative < minInit) then minInit = u.initiative end
     end
     if not minInit then return end
     for _, u in ipairs(combat.units) do
-        if u.alive then u.initiative = u.initiative - minInit end
+        if Combat.inTimeline(u) then u.initiative = u.initiative - minInit end
     end
     combat.clock = combat.clock + minInit
     -- The subtracted amount IS the ticks that just elapsed: count status durations down by it,
@@ -850,14 +867,14 @@ function Combat.aliveCount(combat, side)
     return n
 end
 
--- Order living units by turn using `initOf(unit)` for each unit's initiative: lowest first,
--- then higher `speed` (the faster unit wins a tie), then the deterministic tie-break (party
--- before enemy, then index). `initOf` lets previewOrder substitute a hypothetical initiative
--- for one unit without mutating.
+-- Order the units that ride the timeline (Combat.inTimeline -- living, and not a timeless object like
+-- a banner) by turn using `initOf(unit)` for each unit's initiative: lowest first, then higher `speed`
+-- (the faster unit wins a tie), then the deterministic tie-break (party before enemy, then index).
+-- `initOf` lets previewOrder substitute a hypothetical initiative for one unit without mutating.
 local function orderBy(combat, initOf)
     local order = {}
     for _, u in ipairs(combat.units) do
-        if u.alive then order[#order + 1] = u end
+        if Combat.inTimeline(u) then order[#order + 1] = u end
     end
     table.sort(order, function(a, b)
         local ia, ib = initOf(a), initOf(b)
@@ -895,7 +912,9 @@ end
 function Combat.buildTimeline(combat, ghosts)
     local entries = {}
     for _, u in ipairs(combat.units) do
-        if u.alive then entries[#entries + 1] = { unit = u, preview = false, initiative = u.initiative } end
+        if Combat.inTimeline(u) then
+            entries[#entries + 1] = { unit = u, preview = false, initiative = u.initiative }
+        end
     end
     for _, g in ipairs(ghosts or {}) do
         entries[#entries + 1] = { unit = g.unit, preview = true, initiative = g.initiative, previewLabel = g.label }
@@ -1314,41 +1333,19 @@ function Combat.enterTile(combat, unit, x, y, reason)
     -- but hazards (a spreading fire, quicksand) still bite: the boots dodge blades, not the ground.
     if trap and not Combat.ignoresTraps(unit) then Trap.trigger(combat, trap, unit) end
     -- Ground the unit's own kit paints under it (Pilgrim's Sandals). Laid BEFORE the hazard/aura pass
-    -- below, so a trail granting an aura status is already under the unit's feet when Combat.updateAuras
+    -- below, so a trail granting a zone-bound status is already under the unit's feet when Hazard.reap
     -- decides what to keep -- otherwise the wearer's own blessing would be stripped on the very tile
     -- that just granted it. Placing fires the fresh hazard's onEnter for the occupant, and the
     -- Hazard.onEnter pass below reaches it a second time: a refresh, which neither stacks nor logs.
     if unit.alive and (reason == "walk" or reason == "forced") then Combat.layTrail(combat, unit) end
     if unit.alive then
         Hazard.onEnter(combat, unit, x, y)
-        Combat.updateAuras(combat, unit)
+        Hazard.reap(combat, unit)
     end
     -- Last, and re-checking `alive`: a trap or hazard may already have killed the unit on this very
     -- tile, and a corpse does not bleed.
     if unit.alive and (reason == "walk" or reason == "forced") then
         Status.onEnterTile(combat, unit)
-    end
-end
-
--- Drop any "aura" status the unit is no longer standing in. An aura status carries `source` = the id
--- of the hazard that granted it (e.g. Sanctuary's Regeneration -> "hazard_heal"); it lasts only while
--- a live hazard of that id sits under the unit. Called from Combat.enterTile, the one chokepoint every
--- position change routes through (a walk step, a knockback / pull, a summon appearing), so leaving a
--- Sanctuary ends its blessing on the very beat the unit steps off -- not `regen` ticks later. A status
--- with no `source` (a spell / potion buff) is never touched.
-function Combat.updateAuras(combat, unit)
-    local list = unit.statuses
-    if not list then return end
-    for i = #list, 1, -1 do
-        local s = list[i]
-        if s.source and not Hazard.at(combat, unit.x, unit.y, s.source) then
-            table.remove(list, i)
-            if not s.def.hideLog then
-                Combat.logEvent(combat, "status",
-                    string.format("%s's %s fades outside the %s.",
-                        unitName(unit), s.name or s.id, Hazard.defs[s.source] and Hazard.defs[s.source].name or "zone"))
-            end
-        end
     end
 end
 
@@ -1965,6 +1962,8 @@ function Combat.dismiss(combat, unit, text)
     for _, u in ipairs(combat.units) do
         if u.alive and u.summoner == unit then Combat.dismiss(combat, u) end
     end
+    -- As in killUnit: a dismissed banner's ground goes with it, however it left the field.
+    Hazard.dropOwnedBy(combat, unit)
     Combat.releaseHeldBy(combat, unit)
 end
 
@@ -2006,6 +2005,11 @@ local function killUnit(combat, target)
         if u.alive and u.summoner == target then Combat.dismiss(combat, u) end
     end
 
+    -- Ground the dead unit was holding open goes with it: cut down a banner and its square stops being
+    -- hallowed on this beat. The statuses it was granting are not stripped here -- Hazard.reap ends
+    -- those the moment it finds no zone underfoot, so a zone that vanishes and a unit that walks away
+    -- unwind through exactly the same path.
+    Hazard.dropOwnedBy(combat, target)
     Combat.releaseHeldBy(combat, target)
     target.char.reservations = nil
 end
@@ -2078,7 +2082,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- same motion. Like the two reflexes above it returns BEFORE mitigation and the trait damage
     -- dispatch -- a blow that never landed is not a wound survived, so it grants no rage and provokes
     -- no second counter on top of the riposte's own.
-    if Trait.tryRiposte(combat, target, attacker, tags) then
+    if Trait.tryRiposte(combat, target, attacker, tags, opts and opts.area) then
         return 0
     end
     -- A preternatural reflex (Keen Senses) answers an incoming attack BEFORE it lands, spending stamina.
@@ -2086,7 +2090,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- true -- and stops the hit here -- purely in the case where its counter killed the attacker and
     -- the swing died with them. A counter that merely wounds falls through, and the blow lands on top
     -- of it as normal.
-    if Trait.tryPreempt(combat, target, attacker) then
+    if Trait.tryPreempt(combat, target, attacker, opts and opts.area) then
         return 0
     end
     local dmg = Combat.mitigatedDamage(target, base, tags, opts)
@@ -2108,7 +2112,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         hp.current = 1
         Combat.logEvent(combat, "action",
             string.format("%s refuses to fall!", unitName(target)))
-        Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker })
+        Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
+            area = opts and opts.area })
         return dmg
     end
     -- A `fragile` unit (a doppelganger, a decoy) dies to ANY hit, however light. Damage floors at 1
@@ -2118,7 +2123,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- back up at half health, exactly like a barrier voids a hit -- but only a "real" unit
         -- (never a fragile shape, which the check above already excluded from the death path).
         if not target.fragile and Trait.trySurvive(combat, target) then
-            Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker })
+            Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
+            area = opts and opts.area })
             return dmg
         end
         hp.current = 0
@@ -2129,7 +2135,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- a boss's health-threshold phase can never trigger on a corpse. Nothing in the damage
         -- PREVIEW reaches this function (previewAbility routes through Combat.computeDamage), so a
         -- hovered target never quietly advances a trait.
-        Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker })
+        Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
+            area = opts and opts.area })
         -- ...and the statuses riding the survivor get the same news, for the ones a blow is supposed
         -- to BREAK (Sleep). Fired after the traits, so a reflex that answers the blow is not robbed of
         -- its trigger by the very hit that wakes its bearer.
@@ -2204,6 +2211,12 @@ function Combat.dealDamage(combat, user, target, item, opts)
     -- Additive: the ability's damage plus the attacker's attack stat (opts.amount overrides the
     -- declared damage for a one-off hit). Mitigation then subtracts the target's defense + resists.
     local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item)
+    -- Flag a blow that came out of an AREA ability (a bomb, a fireball, a cleave), so the reflexes down
+    -- in dealFlatDamage know a blast from a blow aimed at one body: nothing answers a blast (see
+    -- Trait.mayCounter). Keyed on the same isSingleTarget the wards above are, and for the same reason.
+    -- This is the only path that knows the ITEM -- a trap or a Burn tick reaches the flat path with no
+    -- ability at all, and passes no attacker either, so it provokes nothing regardless.
+    if ab and not Combat.isSingleTarget(ab) then opts.area = true end
     -- A counter or a mirror may unmake the cast entirely before it reaches the target's armor.
     if tryWardSpell(combat, user, target, item, tags, base, opts) then return 0 end
     -- `user` rides along as the attacker so a reaction trait (a counter) knows who struck, and how
@@ -2509,10 +2522,15 @@ function Combat.previewCounters(combat, unit, item, target, opts)
     if not unit or not item or not target or not target.alive then return nil end
     if target.side == unit.side then return nil end -- an ally doesn't answer a heal
     local entry = opts.entry
+    local ab = item.activeAbility
     local list = Trait.counterPreview(combat, target, unit, {
         tags = collectTags(item, {}),
         damage = entry and entry.damage or 0,
         lethal = entry and entry.lethal,
+        -- An area cast is answered by nothing, exactly as in Combat.dealDamage -- the preview reads the
+        -- blast off the same `aoe` footprint the live hit does, so the panel can't promise a parry the
+        -- bomb will never provoke.
+        area = ab ~= nil and not Combat.isSingleTarget(ab),
         fromX = opts.fromX, fromY = opts.fromY,
     })
     return (#list > 0) and list or nil

@@ -244,12 +244,12 @@ local function buildBlocks(item, actor, innerW)
         if ab.speed then
             blocks[#blocks + 1] = { kind = "stat", label = "Speed", value = tostring(ab.speed) }
         end
-        -- A channeled spell (a big AOE like Meteor Storm) winds up for `ab.channel` turns before it
+        -- A channeled spell (a big AOE like Meteor Storm) winds up for `ab.channel` ticks before it
         -- fires: the caster is exposed and the effect resolves on its next slot, so the tell is a real
         -- cost worth quoting. The note spells out the tradeoff (foes can scatter; hard control breaks it).
         if ab.channel and ab.channel > 0 then
-            blocks[#blocks + 1] = { kind = "stat", label = "Channel",
-                value = ab.channel .. (ab.channel == 1 and " turn" or " turns") }
+            blocks[#blocks + 1] = { kind = "stat", label = "Channel", icon = "hourglass",
+                value = tostring(ab.channel) }
             blocks[#blocks + 1] = { kind = "note", text = "Winds up before it fires; disrupted by hard control or forced movement" }
         end
         if ab.cost then

@@ -7,8 +7,25 @@
 -- model calls at the right moments:
 --   * onApply(ctx)        -- when the status is first applied / re-applied (stun bumps init)
 --   * onExpire(ctx)       -- when its remaining ticks hit 0
---   * onTurnStart(ctx)    -- at the top of the affected unit's turn (e.g. poison damage)
+--   * onTurnStart(ctx)    -- at the top of the affected unit's turn. For what is genuinely scoped to a
+--                            TURN -- Defending and Invisible self-expiring at their owner's next one.
+--                            A recurring effect does NOT belong here: see onTick.
 --   * onTurnEnd(ctx)      -- as the affected unit's turn ends
+--   * onTick(ctx)         -- every rebase, with ctx.elapsed = the ticks that just passed. The hook for
+--                            a recurring effect (Burn, Poison, Regeneration): duration is measured in
+--                            ticks, so an effect paid out per TURN is wrong twice over -- it can expire
+--                            before a normal unit's next turn ever arrives and never fire at all, and
+--                            it charges a slow unit no more than a fast one for the same elapsed time.
+--                            Quote `magnitude` per turn and spread it with ctx.accrue.
+--
+-- and declare, among others:
+--   * lingers = true      -- the status STAYS when the bearer leaves the zone that granted it (Burn,
+--                            Poison, Wet). Without it a zone-granted status is ZONE-BOUND: it lasts
+--                            exactly as long as the bearer stands in a live zone that grants it, and
+--                            ends the instant it leaves or the zone dies (Regeneration, Mired,
+--                            Inspiration). Only ever consulted for a status a zone granted -- one from
+--                            a spell or a potion has no zone to leave and simply runs its duration.
+--                            See models/hazard.lua, which owns the whole rule.
 --   * onEnterTile(ctx)    -- the unit arrived on a tile by ground movement -- walked, shoved, or
 --                            dragged, but never blinked or swapped (e.g. bleed damage)
 --   * blocksMove = true   -- the unit cannot move on its turn (root)
@@ -26,16 +43,45 @@ local Status = {}
 
 Status.defs = Registry.load("data/status", "data.status")
 
+-- How many ticks one turn is worth, for converting a def's readable PER-TURN magnitude into the
+-- amount a single tick actually lands (see ctx.accrue). Mirrors Combat.DEFAULT_SPEED -- the cost of a
+-- typical action, and so the rough length of a turn -- but is stated here rather than required, since
+-- combat.lua requires this module and the dependency only runs one way.
+--
+-- It is a tuning yardstick, not a rule: nothing forces a turn to cost exactly this. A slow unit whose
+-- turns are further apart genuinely takes more Burn between them, which is the point of pricing these
+-- effects on the clock instead of on turns.
+Status.TICKS_PER_TURN = 5
+
 -- Build the effect context handed to a status def's hooks. Combat is required lazily
 -- (at call time, not load time) so combat.lua -> status.lua stays a one-way dependency.
 local function ctxFor(combat, unit, status)
     local Combat = require("models.combat")
-    return {
+    local ctx
+    ctx = {
         combat = combat,
         unit = unit,
         status = status,
         magnitude = status.magnitude,
         moveBudget = Combat.moveBudget(unit),
+        -- Convert a PER-TURN magnitude into the whole units to apply on THIS tick, banking the
+        -- remainder on the status instance. Only meaningful from an `onTick` hook, which sets
+        -- ctx.elapsed; elsewhere there are no elapsed ticks and it yields 0.
+        --
+        -- Defs keep quoting the readable per-turn number a designer tuned, while the effect lands
+        -- smoothly across the clock. The banking is what makes that honest: a rebase can elapse a
+        -- FRACTION of a tick, and Combat.dealFlatDamage floors a hit at 1, so spending
+        -- `magnitude * elapsed` directly would round every sliver up to a whole point and sear a unit
+        -- far harder than its magnitude claims. Carrying the fraction spends it only once a full point
+        -- has really accrued, so the damage over a stretch of clock matches the rate no matter how
+        -- that stretch is chopped into rebases.
+        accrue = function(perTurn)
+            local rate = (perTurn or 0) / Status.TICKS_PER_TURN
+            status.debt = (status.debt or 0) + rate * (ctx.elapsed or 0)
+            local whole = math.floor(status.debt)
+            status.debt = status.debt - whole
+            return whole
+        end,
         -- `opts` reaches Combat.dealFlatDamage as authored -- notably `{ raw = true }`, which skips
         -- armor and tag resists the way a Penetrating Strike does. A status needs it because a
         -- lingering effect is not a blow being blocked: defense stats (6-10) dwarf any sane per-tick
@@ -58,8 +104,7 @@ local function ctxFor(combat, unit, status)
         -- otherwise have to infer from the numbers -- a sleeper being jolted awake by a blow, and the
         -- initiative that hands back with it. Mirrors the trait ctx's helper of the same name.
         log = function(kind, text) return Combat.logEvent(combat, kind, text) end,
-        -- The living unit on a tile, or nil. What a per-cell hook reads (a banner sweeping the 3x3
-        -- square around it for allies to grant its aura to).
+        -- The living unit on a tile, or nil. What a hook that reads the board around its bearer needs.
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         -- End this status now (e.g. Defending self-expiring at the owner's next turn start).
         expire = function() Status.remove(combat, unit, status.id) end,
@@ -76,6 +121,7 @@ local function ctxFor(combat, unit, status)
             return require("models.transform").revert(combat, unit)
         end,
     }
+    return ctx
 end
 
 -- ---------------------------------------------------------------------------
@@ -159,11 +205,16 @@ function Status.instantiate(id, opts)
         name = def.name,
         remaining = opts.duration or def.duration or 0,
         magnitude = opts.magnitude or def.magnitude,
-        -- The hazard that granted this status, if any (e.g. "hazard_heal"). An "aura" status lasts
-        -- only while its unit stands on a live hazard of this id: Combat.updateAuras drops it on the
-        -- beat the unit leaves the zone. nil for a status applied by anything else (a spell, a
-        -- potion), which just counts down normally.
+        -- The ZONE that granted this status, if any (e.g. "hazard_heal") -- stamped by the zone itself
+        -- (models/hazard.lua), never by hand, and only onto a status that does not declare `lingers`.
+        -- Its presence is what makes this instance zone-bound: it never ages (see Status.tick), and it
+        -- lasts exactly as long as a live zone of this id sits under its bearer, ending the beat
+        -- Hazard.reap finds none. nil for a status applied by anything else (a spell, a potion), which
+        -- has no ground to leave and simply counts down.
         source = opts.source,
+        -- Fractional carry for ctx.accrue: the part of a per-turn magnitude that has built up but not
+        -- yet added to a whole point. Set lazily on first use.
+        debt = nil,
         def = def,
     }
 end
@@ -496,24 +547,65 @@ function Status.apply(combat, unit, id, opts)
     return status
 end
 
--- Count every status down by `elapsed` ticks; expire (and fire onExpire for) any that reach 0.
--- Called from Combat.rebase with the rebase amount (the ticks that just elapsed).
+-- Run the clock forward `elapsed` ticks over every status: fire each one's `onTick` for the stretch it
+-- was actually alive, then age it and expire (firing onExpire for) any that run out. Called from
+-- Combat.rebase with the rebase amount (the ticks that just elapsed).
+--
+-- Three rules make this correct, and each of them is a bug if you drop it:
+--
+--   * TICK FIRST, AGE SECOND, and tick over `min(elapsed, remaining)` -- the slice of the rebase the
+--     status was alive for. Durations are in ticks and a single rebase routinely elapses more of them
+--     than a status has left (Burn lasts 3; a turn costs ~5), so ageing first would delete a Burn
+--     before it ever burned. Slicing is what keeps the last partial stretch honest rather than
+--     rounding it up to a full rebase's worth.
+--   * A ZONE-BOUND status (one a zone stamped with its `source`) is never aged at all: it lasts
+--     exactly as long as its zone holds it, and Hazard.reap ends it -- on the beat its bearer steps
+--     clear, or the zone dies. Ageing it would put it on two clocks at once and let a Sanctuary's
+--     Regeneration lapse under a unit still standing in the Sanctuary. Its `remaining` stays untouched
+--     as the backstop it is: the SAME status from something that is not a zone (a potion) carries no
+--     source, has no ground to leave, and simply runs its duration here.
+--   * Only what EXISTED when the tick began is aged. A hook is free to grant a status mid-tick, and it
+--     must not be docked ticks that elapsed before it was applied; it starts counting at the next
+--     rebase, with its full duration.
+--
+-- Ageing deliberately walks dead units too (a corpse's statuses still wind down), but an onTick effect
+-- is something the bearer DOES, so only the living do it.
 function Status.tick(combat, elapsed)
     if not elapsed or elapsed <= 0 then return end
+
+    -- Snapshot before anything fires: which statuses this tick governs, and how much of `elapsed` each
+    -- of them lives through.
+    local entries = {}
     for _, unit in ipairs(combat.units) do
-        local list = unit.statuses
-        if list then
-            for i = #list, 1, -1 do
-                local s = list[i]
-                s.remaining = s.remaining - elapsed
-                if s.remaining <= 0 then
-                    table.remove(list, i)
-                    if not s.def.hideLog then
-                        local Combat = require("models.combat")
-                        Combat.logEvent(combat, "status",
-                            string.format("%s's %s wears off.", (unit.char and unit.char.name) or "Unit", s.name or s.id))
-                    end
-                    if s.def.onExpire then s.def.onExpire(ctxFor(combat, unit, s)) end
+        for _, s in ipairs(unit.statuses or {}) do
+            local slice = elapsed
+            if not s.source then slice = math.min(elapsed, s.remaining) end
+            entries[#entries + 1] = { unit = unit, status = s, slice = slice }
+        end
+    end
+
+    for _, e in ipairs(entries) do
+        if e.unit.alive and e.status.def.onTick and e.slice > 0 then
+            local ctx = ctxFor(combat, e.unit, e.status)
+            ctx.elapsed = e.slice
+            e.status.def.onTick(ctx)
+        end
+    end
+
+    for _, e in ipairs(entries) do
+        local s = e.status
+        if not s.source then
+            s.remaining = s.remaining - elapsed
+            if s.remaining <= 0 then
+                -- Through Status.remove, so a status that unwinds unit state on its way out (Charm
+                -- restoring the side it flipped) reverts on a natural expiry exactly as it does on a
+                -- Cure. The announcement stays here: remove() is the silent mechanism, and only this
+                -- path is the status quietly running out of time.
+                Status.remove(combat, e.unit, s.id)
+                if not s.def.hideLog then
+                    local Combat = require("models.combat")
+                    Combat.logEvent(combat, "status", string.format("%s's %s wears off.",
+                        (e.unit.char and e.unit.char.name) or "Unit", s.name or s.id))
                 end
             end
         end

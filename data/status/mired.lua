@@ -3,10 +3,11 @@
 -- 0.5, folded into Combat.abilityCost and Combat.moveInitiative). Like Hasted it does not change how
 -- FAR the unit can walk, only how much time the walk and its casts burn.
 --
--- Delivered as an AURA by the Quicksand hazard (data/hazards/hazard_quicksand.lua): applied with
--- `source = "hazard_quicksand"`, it lasts only while the unit stands on live quicksand and lifts the
--- instant it steps clear (Combat.updateAuras), mirroring Sanctuary's Regeneration. A debuff, so Cure
--- strips it -- though it simply re-applies if the unit is still sinking.
+-- Delivered by the Quicksand hazard (data/hazards/hazard_quicksand.lua). It declares no `lingers`, so
+-- it is ZONE-BOUND: the grant is stamped with that hazard as its `source`, it never ages, and it lasts
+-- exactly as long as the unit stands on live quicksand -- lifting the instant it steps clear, or the
+-- sand settles under it (Hazard.reap). Mirrors Sanctuary's Regeneration. A debuff, so Cure strips it --
+-- though stepping onto the sand again re-applies it.
 return {
     name = "Mired",
     abbr = "Mir",

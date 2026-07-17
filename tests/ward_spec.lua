@@ -73,7 +73,12 @@ return {
             local mageHp = mage.char.stats.health.current
             local knightHp = knight.char.stats.health.current
 
-            Combat.useItem(c, mage, caster.inventory[1], knight.x, knight.y) -- Fire Bolt: single target
+            -- Thrown through dealDamage rather than useItem, for the same reason the area half below is:
+            -- the ward path lives in dealDamage, and useItem would also run Fire Bolt's OTHER effect --
+            -- the Burn it leaves on its target, which no mirror ever claimed to catch. That Burn sears on
+            -- the clock, so the rebase ending the cast would cost the knight a point of health and this
+            -- assertion could no longer tell a reflected bolt from a landed one.
+            Combat.dealDamage(c, mage, knight, caster.inventory[1]) -- Fire Bolt: single target
             assert(knight.char.stats.health.current == knightHp, "the mirrored bolt does not land")
             assert(mage.char.stats.health.current < mageHp, "it lands on the mage instead")
 
@@ -120,7 +125,9 @@ return {
 
             local hp = warded.char.stats.health.current
             local mana = warded.char.stats.mana.current
-            Combat.useItem(c, attacker, caster.inventory[1], warded.x, warded.y)
+            -- Through dealDamage, where the ward lives: useItem would also land Fire Bolt's Burn, which
+            -- the counter does not stop and which now sears on the clock (see the mirror spec above).
+            Combat.dealDamage(c, attacker, warded, caster.inventory[1])
             assert(warded.char.stats.health.current == hp, "the spell is unravelled entirely")
             assert(warded.char.stats.mana.current < mana, "and paid for in the warded mage's mana")
 

@@ -16,7 +16,7 @@ return {
     price = 70,
     repRank = 1,
     activeAbility = {
-        target = "enemy", -- thrown at a foe and bursts around it, like Fireball
+        target = "tile", -- thrown at a foe and bursts around it, like Fireball
         range = 3,
         requiresSight = true,
         speed = 4,

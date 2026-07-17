@@ -1,19 +1,21 @@
--- The binding on the Wolfsong Spirit (data/characters/wolfsong_spirit.lua): what the great wolf costs
--- is not paid when it is called, but when it FALLS. The archer who sounded the horn loses half the
--- health she has at that moment -- the beast goes back where it came from and takes a share of its
--- summoner's flesh with it.
+-- The generic binding for a summon that is called for free and paid for when it FALLS: its summoner
+-- loses half the health they have at that moment -- the conjured thing goes back where it came from
+-- and takes a share of its summoner's flesh with it.
 --
--- Paying on death rather than on the call is what makes the Spirit a bargain worth weighing instead of
--- a flat toll: the strength is free while it stands, and the bill lands at the worst possible moment --
--- when whatever killed the wolf is still on the field and the archer is suddenly half of herself.
+-- Paying on death rather than on the call is what makes such a summon a bargain worth weighing instead
+-- of a flat toll: the strength is free while it stands, and the bill lands at the worst possible moment
+-- -- when whatever killed it is still on the field and its summoner is suddenly half of themselves.
 --
--- The toll rides on the CREATURE, not the horn, because the creature is what knows it died -- delivered
--- through its grid by data/items/utility/wolfsong_binding.lua, the way every trait reaches its bearer.
--- Trait.onDeath fires from killUnit before the field is unwound, so the summoner is still there to bill.
+-- Any summoning ability binds this to what it raises by naming it in the call's `traits`
+-- (models/summon.lua) -- the Wolfsong Horn's true call is the first (data/items/utility/
+-- sig_wolfsong_horn.lua). The price belongs to the ABILITY that struck the bargain, not to the
+-- creature's blueprint: the same body called by some other means owes nothing. It lands on the
+-- creature all the same, because the creature is what knows it died. Trait.onDeath fires from killUnit
+-- before the field is unwound, so the summoner is still there to bill.
 --
--- Only a killed spirit pays. Combat.dismiss -- a lapsed binding, or a summoner cut down beneath it --
--- never reaches this hook, and rightly: an archer who falls does not then bleed for the wolf that
--- vanished with her.
+-- Only a killed summon pays. Combat.dismiss -- a lapsed binding, or a summoner cut down beneath it --
+-- never reaches this hook, and rightly: a summoner who falls does not then bleed for the thing that
+-- vanished with them.
 --
 -- The price is a `drain` (ctx.drain, models/trait.lua), not damage: no armor softens it, no barrier eats
 -- it, and it can never be lethal -- half of what remains always leaves something behind.
