@@ -1698,6 +1698,10 @@ function Combat.charge(combat, user, target, distance)
     local dx, dy = signDominant(target.x - user.x, target.y - user.y)
     if dx == 0 and dy == 0 then return 0 end
 
+    -- Where the pair start, so the view can slide both from here to their final tiles rather than
+    -- snapping them across the lane (the model resolves the whole rush in this one atomic pass).
+    local uOx, uOy = user.x, user.y
+    local tOx, tOy = target.x, target.y
     local moved = 0
     for _ = 1, (distance or 1) do
         if not (user.alive and target.alive) then break end
@@ -1728,6 +1732,13 @@ function Combat.charge(combat, user, target, distance)
         Combat.logEvent(combat, "move",
             string.format("%s charges, driving %s to (%d, %d).", unitName(user), unitName(target), fx_, fy_))
         if not target.alive then break end
+    end
+    -- Slide cues: the target (and the charger behind it) glide from their start tiles to where this
+    -- pass left them, so the drive reads as a rush across the lane instead of a teleport. Nothing to
+    -- slide if the lane was barred at the outset (moved == 0).
+    if moved > 0 then
+        if target.alive then Combat.pushFx(combat, { type = "slide", unit = target, fromX = tOx, fromY = tOy }) end
+        if user.alive then Combat.pushFx(combat, { type = "slide", unit = user, fromX = uOx, fromY = uOy }) end
     end
     return moved
 end

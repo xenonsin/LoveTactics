@@ -37,6 +37,7 @@ local BEAT_GAP    = 0.38    -- pause between an exchange's beats: a counter land
                             -- finished before the answer begins.
 local HP_SPEED    = 9        -- exponential drain rate of the shown HP toward the real value
 local CARD_SHAKE_MAG = 5     -- px the struck unit's turn-strip card rumbles (synced to the sprite shake)
+local CHARGE_STEP = 0.12     -- seconds per tile a forced rush (Charge) slides -- brisker than a walk step
 
 local function easeOut(t) return 1 - (1 - t) * (1 - t) end
 
@@ -135,6 +136,8 @@ function CombatFx:playBeat(events, actor)
             end
         elseif e.type == "heal" then
             self:floatText(e.unit, "+" .. tostring(e.amount), { 0.55, 0.95, 0.60 })
+        elseif e.type == "slide" then
+            self:forcedSlide(e.unit, e.fromX, e.fromY)
         elseif e.type == "death" then
             self:reaction(e.unit).dying = DEATH_TIME
         end
@@ -190,11 +193,23 @@ end
 
 -- Start a smooth slide of `unit` from the cell it just left toward the cell it now occupies, played
 -- out over `dur` (states/battle.lua drives one per walked tile). Purely visual: the model position
--- is already the destination cell.
-function CombatFx:setSlide(unit, fromX, fromY, dur)
+-- is already the destination cell. A walk drives one per tile and paces itself, so its slide is not
+-- gated; a `gate` slide (a forced rush covering several tiles at once) instead holds the turn hand-off
+-- until it finishes, so the rush reads before the turn passes.
+function CombatFx:setSlide(unit, fromX, fromY, dur, gate)
     local r = self:reaction(unit)
     r.slideFromX, r.slideFromY = fromX, fromY
     r.slideT, r.slideDur = dur, dur
+    r.slideGate = gate or nil
+end
+
+-- A forced multi-tile slide (Charge): `unit` glides from (fromX, fromY) to where the model already
+-- put it, over a duration scaled to the tiles crossed so a longer drive takes longer. Gated, so the
+-- rush finishes before the turn hands off.
+function CombatFx:forcedSlide(unit, fromX, fromY)
+    local dist = math.abs(fromX - unit.x) + math.abs(fromY - unit.y)
+    if dist == 0 then return end
+    self:setSlide(unit, fromX, fromY, dist * CHARGE_STEP, true)
 end
 
 -- ---------------------------------------------------------------------------
@@ -228,7 +243,7 @@ function CombatFx:update(dt)
         if r.flashT then r.flashT = r.flashT - dt; if r.flashT <= 0 then r.flashT = nil end end
         if r.slideT then
             r.slideT = r.slideT - dt
-            if r.slideT <= 0 then r.slideT = nil; r.slideDur = nil end
+            if r.slideT <= 0 then r.slideT = nil; r.slideDur = nil; r.slideGate = nil end
         end
         if r.dying then
             r.dying = r.dying - dt
@@ -255,7 +270,9 @@ function CombatFx:busy()
     -- over until the counter it is holding has landed.
     if #self.pending > 0 then return true end
     for _, r in pairs(self.units) do
-        if r.lungeT or r.castT or r.shakeT or r.flashT or r.dying then return true end
+        -- A gated slide (a forced Charge rush) holds too, so the drive lands before the turn passes;
+        -- a plain walk slide (slideGate nil) still drifts freely, paced by the walk loop itself.
+        if r.lungeT or r.castT or r.shakeT or r.flashT or r.dying or (r.slideT and r.slideGate) then return true end
     end
     return false
 end
