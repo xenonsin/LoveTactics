@@ -7,6 +7,10 @@ models copy them into runtime state.
 Adding a **weapon** has its own contract — each weapon belongs to a family (axes cleave, daggers
 bleed) and inherits its mechanics. See [weapons.md](weapons.md).
 
+Adding **any item** has one too, because every item must answer which shelf it goes on: each class
+owns a vocabulary, and an item's `class` should be the shelf whose vocabulary it speaks. See
+[classes.md](classes.md).
+
 ## The progression loop
 
 Seven class vendors (`data/vendors/`) each own a hub building, a shelf of items, and a line of

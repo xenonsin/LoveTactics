@@ -221,8 +221,8 @@ return {
     {
         name = "class survives instantiation and is absent on universal items",
         fn = function()
-            assert(Item.instantiate("weapon_iron_sword").class == "fighter", "class should reach the instance")
-            assert(Item.classOf(Item.instantiate("weapon_iron_sword")) == "fighter", "classOf should read it")
+            assert(Item.instantiate("weapon_iron_sword").class == "knight", "class should reach the instance")
+            assert(Item.classOf(Item.instantiate("weapon_iron_sword")) == "knight", "classOf should read it")
             assert(Item.instantiate("weapon_unarmed").class == nil, "the unarmed fallback belongs to no class")
         end,
     },

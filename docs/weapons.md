@@ -38,10 +38,11 @@ which vendor stocks the item and never gates who may carry it. A hunter may abso
 | `dagger` | **Quick** (`speed` 1–2) and applies **Bleed**. Modest damage; the wound does the rest. | `weapon_iron_dagger` |
 | `bow` | **Ranged physical**. `requiresSight`, and `minRange = 2` — a bow has no point-blank shot. `hands = 2`, as every bow is. | `weapon_iron_bow` |
 | `longbow` | **Channels** a turn to draw, then looses from `range = 5` — two tiles beyond a bow — keeping `requiresSight`, `minRange = 2` and `hands = 2`. Its own family, *not* a bow: the draw is the verb, and the reach is what pays for it. | `weapon_iron_longbow` |
-| `weapon_wand` | **Ranged magical**. `requiresSight`, and *no* `minRange`: a wand needs only a direction, which is its whole claim over a bow. | `weapon_wand` |
-| `weapon_staff` | Swaps **Wait → Focus** (`waitBehavior`): end the turn to recover mana. The swap *is* the weapon; the strike is a deliberate afterthought. | `weapon_staff` |
+| `wand` | **Ranged magical**. `requiresSight`, and *no* `minRange`: a wand needs only a direction, which is its whole claim over a bow. | `weapon_wand` |
+| `staff` | Swaps **Wait → Focus** (`waitBehavior`): end the turn to recover mana. The swap *is* the weapon; the strike is a deliberate afterthought. | `weapon_staff` |
+| `censer` | **Emits `incense`**: a square of ground around the bearer, lifted and laid again wherever they go. The smoke is the weapon and the strike an afterthought, as a staff's is — but where a staff's swap pays the bearer, a censer's ground pays whoever stands in it. | `weapon_censer` |
 | `shield` | Swaps **Wait → Defend** (`waitBehavior`): brace for a burst of physical defense. Lives in `data/items/armor/`, not `weapon/`. | `armor_buckler` |
-| `weapon_unarmed` | The player's bare fist. Reads `unarmedBonus` from "fist" charms in the grid. | `weapon_unarmed` |
+| `unarmed` | The player's bare fist. Reads `unarmedBonus` from "fist" charms in the grid. | `weapon_unarmed` |
 | `natural` | A creature's own body — fangs, claws, an elemental's burning hands. Granted by a blueprint's `startingItems`, never sold or stolen (`noSteal`), and owes no shared mechanic beyond that. | `weapon_fangs`, `weapon_flame_fists` |
 
 ## Naming: the base weapon is `weapon_iron_x`
@@ -66,10 +67,11 @@ Within that, each family's plain, undecorated weapon is named **`weapon_iron_<fa
 implementation: the mechanic and nothing else, the thing every other weapon in the family is
 measured against.
 
-The forged-metal families all follow it. `weapon_wand`, `weapon_staff` and `armor_buckler` are the
-deliberate exceptions — a wand and a staff are foci rather than forged blades ("Iron Wand" would be
-lying about the object), and a buckler is a named kind of shield the way a hatchet is a named kind of
-axe. Creatures' weapons (`natural`) are never "base" at all; nobody forges a wolf.
+The forged-metal families all follow it. `weapon_wand`, `weapon_staff`, `weapon_censer` and
+`armor_buckler` are the deliberate exceptions — a wand, a staff and a censer are foci rather than
+forged blades ("Iron Censer" would be lying about the object), and a buckler is a named kind of shield
+the way a hatchet is a named kind of axe. Creatures' weapons (`natural`) are never "base" at all;
+nobody forges a wolf.
 
 Beware the ids that are also **tags** (`weapon_iron_dagger`'s id vs. the `dagger` archetype tag) and the
 utility items that grant a **same-named trait** (`utility_second_wind` grants trait `trait_second_wind`).
@@ -89,13 +91,20 @@ not a weapon, it is a `+n`. That is what the forge is for. Every named weapon th
 | Weapon | Family | Its extra over the base |
 |---|---|---|
 | `weapon_riposte_blade` | sword | Swaps Parry for **Riposte** — the blow is *negated*, not traded, and answered anyway. |
-| `demon_bane` | sword | Its blows carry the `holy` tag, which demonic flesh resists in the negative. |
-| `butchers_wedge` | axe | **`frenzy`**: every extra body in the arc raises what all of them take. Poor against one foe — the crowd is its damage stat. |
-| `crimson_greataxe` | axe | **`lifesteal`**: drinks a third of everything the arc opens, so it heals most when most outnumbered. |
-| `kingsblood_dagger` | dagger | Half the swing again through a foe **already bleeding**, and its own wound runs deeper (5, not 3). It takes what is already open. |
-| `hornbow_of_the_hunt` | bow | Every tile past the point-blank band adds a fifth of the shot. It wants the whole field between you and the kill. |
-| `parasitic_staff` | staff | Siphons mana on the **hit**, so Focus is its floor rather than its only recourse. |
-| `oathkeeper_shield` | shield | `waitBehavior.covers`: bracing also braces every **adjacent ally**. Where you plant decides who else gets the wall. |
+| `weapon_demon_bane` | sword | Its blows carry the `holy` tag, which demonic flesh resists in the negative. |
+| `weapon_butchers_wedge` | axe | **`frenzy`**: every extra body in the arc raises what all of them take. Poor against one foe — the crowd is its damage stat. |
+| `weapon_crimson_greataxe` | axe | **`lifesteal`**: drinks a third of everything the arc opens, so it heals most when most outnumbered. |
+| `weapon_kingsblood_dagger` | dagger | Half the swing again through a foe **already bleeding**, and its own wound runs deeper (5, not 3). It takes what is already open. |
+| `weapon_cutpurse_knife` | dagger | **Drains stamina** into the rogue. Stamina is what buys a foe's reflexes, so a few cuts in, its guard stops answering — for everyone. Worthless against a beast that had none. |
+| `weapon_hornbow_of_the_hunt` | bow | Every tile past the point-blank band adds a fifth of the shot. It wants the whole field between you and the kill. |
+| `weapon_parasitic_staff` | staff | Siphons mana on the **hit**, so Focus is its floor rather than its only recourse. |
+| `weapon_crozier` | staff | `waitBehavior.covers`: Focus also feeds mana to every **adjacent ally**. A mage's staff answers *my* mana ran out; this one answers the party's. |
+| `weapon_emberwand` | wand | Its bolt **leaves the ground alight**. Asks where the enemy is willing to stand rather than how hard it can hit — and the fire is unsided, so it is a wall you must be willing to stand behind. |
+| `weapon_vitriol_wand` | wand | Lays **Acid** (−6 to both defenses). Declines to out-damage armor and removes it instead, so its damage stat is the rest of your party. Fire it first. |
+| `weapon_envenomed_kris` | dagger | Bleed **and** Poison. Bleed taxes moving, Poison taxes waiting — together they close the door that standing still used to open. |
+| `weapon_apothecarys_lancet` | dagger | The one dagger that **does not bleed** — it delivers Poison instead. A deviation, and deliberately so: Bleed is a question the victim answers by standing still, and Poison is not a question. |
+| `weapon_censer_of_ashes` | censer | A **hostile** cloud: it chokes the smoke instead of blessing it, so the walk toward the enemy is itself the attack. |
+| `armor_oathkeeper_shield` | shield | `waitBehavior.covers`: bracing also braces every **adjacent ally**. Where you plant decides who else gets the wall. |
 
 A good extra changes *how the weapon is played*, not how big its number is. The Hornbow inverts a bow's
 usual pull toward the edge of its band; the Wedge turns being surrounded from a danger into the point.
@@ -105,7 +114,15 @@ Overlapping an existing charm is **fine** — a weapon may carry `lifesteal` nat
 Vampiric Strike charm grants it, and may apply statuses on hit. They stack rather than compete (a
 Crimson Greataxe with a Vampiric Strike beside it drinks at 83%). The two axes above are the pattern
 worth copying: one family, one base, and two named weapons pulling it in opposite directions —
-`butchers_wedge` hits a crowd harder, `crimson_greataxe` lives through one.
+`weapon_butchers_wedge` hits a crowd harder, `weapon_crimson_greataxe` lives through one.
+
+The two censers are that same pattern: `weapon_censer` blesses the ground it walks and
+`weapon_censer_of_ashes` chokes it. Both are the Cathedral's — the censer family belongs to one shelf
+and no other (see [classes.md](classes.md)) — so the family's two directions say something about *lust*
+rather than about two classes: the object never changes, only the voice it is swung in.
+
+`weapon_crozier` and `armor_oathkeeper_shield` are worth reading together too: both spend
+`waitBehavior.covers`, so one word means "and everyone beside you" on either half of the wait swap.
 
 ## Keywords
 
@@ -137,12 +154,38 @@ accident.
 
 Most families need no engine support — they are an `activeAbility` shape (`aoe`, `range`, `channel`,
 `speed`) plus an `effect(fx)` that calls an existing helper (`fx.knockback`, `fx.applyStatus`,
-`fx.aoeUnits`). Three are worth knowing about:
+`fx.aoeUnits`). Four are worth knowing about.
+
+Note that the three below are **item-level** fields, not `activeAbility` ones, so they are not keywords
+in the sense the table above means: they describe what carrying the thing does, rather than what casting
+it does. That is the actual shared idea behind these families — for a staff, a shield and a censer, the
+strike is the afterthought and the *having* is the weapon.
 
 **Wait swaps** (`staff`, `shield`). An item declaring `waitBehavior = { kind = "focus" | "defend" |
 "overwatch", … }` changes what its holder's Wait button does — `Combat.waitBehavior` scans the grid
-and first-in-inventory wins. The payoff key (`mana` / `defense` / `stamina`) scales with the item's
-upgrade level; `speed` deliberately does not, since an upgrade should never buy back tempo.
+and first-in-inventory wins. The payoff key (`mana` / `defense` / `stamina` / `covers`) scales with the
+item's upgrade level; `speed` deliberately does not, since an upgrade should never buy back tempo.
+`covers` spreads the payoff to adjacent allies and reads the same on both halves — a wall for
+`armor_oathkeeper_shield`, mana for `weapon_crozier`.
+
+**Incense** (`censer`). An item declaring `incense = { hazard, radius, amount }` lays that hazard in a
+square around its bearer, **owned by them**, and `Combat.layIncense` lifts the previous cloud by
+owner+id before laying the next. That lifting is the entire mechanic: without it the smoke would pile up
+into a wake, which is what `trail` already is. Three ways to hold ground, one machine:
+
+| | Owned by | Lifted? | Reads as |
+|---|---|---|---|
+| a **banner** (`hazard_rally`) | a body planted in it | on the owner's death | ground that **stays** |
+| a **trail** (Pilgrim's Sandals) | nobody | never — it outlives your passing | ground you **leave behind** |
+| **incense** (`censer`) | the bearer | every time they move | ground that **walks** |
+
+It is laid from `Combat.enterTile` *before* that function's `Hazard.reap` — the bearer stands in the
+middle of its own cloud, and reaping first would strip the blessing it is in the act of granting (the
+same ordering `layTrail` needs, and for the same reason). Unlike a trail it ignores `reason` entirely:
+smoke is carried rather than pressed by feet, so it keeps up with a blink. It is laid again from
+`Combat.rebase`, which is the half movement cannot cover — a bearer who never moves, and construction.
+`amount` scales with the forge; `radius` deliberately does not, on the same principle as `speed` above:
+an upgrade buys a stronger blessing, never a wider one.
 
 **Bleed** (`dagger`). The game's one *positional* debuff: it fires from `onEnterTile`, so it damages
 once per tile the victim crosses and not at all for standing still. A bleeding unit chooses between

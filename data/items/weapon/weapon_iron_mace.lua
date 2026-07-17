@@ -9,7 +9,7 @@ return {
     sprite = "assets/items/mace.png",
     type = "weapon",
     tags = { "mace", "impact", "physical", "melee" },
-    class = "fighter",
+    class = "knight", -- the Bastion's: displacement is the wall's trade, not wrath's (docs/classes.md)
     price = 190,
     repRank = 2,
     activeAbility = {

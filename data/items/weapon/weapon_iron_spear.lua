@@ -11,7 +11,7 @@ return {
     type = "weapon",
     tags = { "spear", "pierce", "physical", "melee" },
     hands = 2, -- a two-handed polearm (Dual Wield can pair it only once forged to +5)
-    class = "fighter",
+    class = "knight", -- reach holds a line, and holding the line is the Bastion's whole trade (docs/classes.md)
     price = 140,
     repRank = 2,
     activeAbility = {

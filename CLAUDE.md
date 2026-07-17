@@ -58,6 +58,9 @@ The codebase is organized into layers loaded via `require()`. See
   `buildings/`, `quests/`, plus `player.lua`). Models copy these into mutable runtime state;
   blueprints stay immutable. Weapons additionally follow a per-family contract (axes cleave,
   daggers bleed) — see [docs/weapons.md](docs/weapons.md), enforced by `tests/weapon_spec.lua`.
+  Every item also belongs to a **class**, which is the vendor shelf that stocks it and never an equip
+  gate (anyone can carry anything) — see [docs/classes.md](docs/classes.md), enforced by
+  `tests/class_spec.lua`.
 - **`assets/`** — images/audio/maps referenced by path from data files (e.g.
   `assets/hub/city.png`), loaded lazily through `models/sprite.lua`.
 

@@ -14,6 +14,7 @@ local Item = require("models.item")
 local Combat = require("models.combat")
 local Status = require("models.status")
 local Trait = require("models.trait")
+local Hazard = require("models.hazard")
 
 local function arena(cols, rows)
     local tiles = {}
@@ -141,6 +142,16 @@ return {
                 end,
                 longbow = function(def, id)
                     assert((def.hands or 1) == 2, id .. ": every bow is two-handed")
+                end,
+                censer = function(def, id)
+                    -- The smoke IS the weapon: a censer that emits nothing is just a bad mace.
+                    local inc = def.incense
+                    assert(inc, id .. ": a censer emits incense")
+                    assert(inc.hazard and Hazard.defs[inc.hazard],
+                        id .. ": a censer names ground that exists (incense.hazard)")
+                    -- A censer must never ALSO swap Wait -- that is the staff's verb, and the two
+                    -- families are separated on exactly that line (docs/weapons.md).
+                    assert(not def.waitBehavior, id .. ": a censer emits, it does not swap Wait")
                 end,
             }
 

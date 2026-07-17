@@ -5,6 +5,12 @@ return {
     sprite = "assets/items/parasitic_staff.png",
     type = "weapon",
     tags = { "staff", "magical", "melee" }, -- magical: routes through magicDamage / magicDefense; strikes at melee range
+    -- The Arcanum's, though no vendor stocks it: a `class` with no `price` is not a shelf listing, it is
+    -- what the strike TALLIES for growth (Combat.useItem -> Character.recordUse). Issued to the mage and
+    -- the priest both, and both grow a little more arcane for leaning on it -- which is the emergent
+    -- growth system working rather than a leak in it (models/growth.lua). The priest's own default
+    -- action, Jolt, is a mage ability for the same reason.
+    class = "mage",
     -- Every staff swaps Wait into Focus (docs/weapons.md). This one is the family taken further: it
     -- also siphons mana on the HIT below, so it can refill while still attacking -- Focus is its floor,
     -- not its only recourse. It focuses deeper than a plain staff, befitting the rarer weapon.

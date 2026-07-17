@@ -653,6 +653,13 @@ function Combat.new(arena, partyUnits, enemyUnits)
     for _, h in ipairs((arena and arena.hazards) or {}) do
         Hazard.place(combat, h.x, h.y, h.id, { side = h.side, duration = h.duration })
     end
+    -- Censers lay the ground they carry (Combat.layIncense), and it has to happen HERE rather than
+    -- ride in on the Combat.rebase above: that call runs before this table exists, so the line above
+    -- would throw its cloud away a moment after it was laid. From here on the bearer keeps it -- from
+    -- Combat.enterTile as they move, and from Combat.rebase for one who never does.
+    for _, unit in ipairs(combat.units) do
+        Combat.layIncense(combat, unit)
+    end
 
     -- Walls: conjured blockers (models/wall.lua), placed in-combat via fx.placeWall. Authored via
     -- arena.walls ({ id, x, y, side }) for a map that wants standing cover.
@@ -684,6 +691,13 @@ function Combat.rebase(combat)
         if Combat.inTimeline(u) then u.initiative = u.initiative - minInit end
     end
     combat.clock = combat.clock + minInit
+    -- Re-lay every censer's smoke around its bearer BEFORE the zone cycle below. This is the half that
+    -- movement cannot cover: Combat.enterTile keeps the cloud under a bearer that walks, but a bearer
+    -- that never moves needs its ground to still be there when Hazard.tick asks who is standing in
+    -- what -- and this runs at construction too, so the smoke is up before the first turn is taken.
+    for _, u in ipairs(combat.units) do
+        if u.alive then Combat.layIncense(combat, u) end
+    end
     -- The subtracted amount IS the ticks that just elapsed: count status durations down by it,
     -- count hazard durations down (and let fire spread) by it, fade any timed summon whose time is
     -- up, and regenerate stamina by the same time.
@@ -846,6 +860,48 @@ function Combat.layTrail(combat, unit)
         local trail = item.trail
         if trail and trail.hazard then
             Hazard.place(combat, unit.x, unit.y, trail.hazard, { side = unit.side, duration = trail.duration })
+        end
+    end
+end
+
+-- Lay the ground a unit's kit carries WITH it. An `incense = { hazard, radius, amount }` on any item in
+-- the 3x3 grid -- a censer (docs/weapons.md) -- lays that hazard in a square around the bearer, OWNED
+-- by them. Same inventory scan as Combat.layTrail directly above, and the deliberate contrast to it:
+--
+--   a banner is ground that STAYS      -- owned by a body planted in it (data/hazards/hazard_rally.lua)
+--   a trail  is ground you LEAVE       -- unowned, it outlives your passing (Pilgrim's Sandals)
+--   incense  is ground that WALKS      -- lifted from where you were, laid where you are
+--
+-- The ownership is what does the work. Lifting last beat's cloud by owner+id before laying the next is
+-- the whole of "it follows you" -- without it the smoke would accumulate into a wake, which is what a
+-- trail already is. Narrowed to this censer's own hazard id so a bearer holding other ground open
+-- (a banner it planted, ground a future ability sides to its caster) never has it lifted from under it.
+--
+-- Called from Combat.enterTile, BEFORE that function's Hazard.reap pass, for the same reason layTrail
+-- is: the bearer stands in the middle of its own cloud, and a reap that ran first would strip the
+-- blessing the censer is in the act of granting. Unlike a trail it ignores `reason` entirely -- smoke
+-- is not pressed by feet, so it keeps up with a blink or a shove as readily as a step. Also called
+-- from Combat.rebase, which is the half movement cannot cover: a bearer who never moves at all still
+-- holds its ground, and construction routes through there too, so the smoke is up before the first turn.
+function Combat.layIncense(combat, unit)
+    if not (unit and unit.char and unit.alive) then return end
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        local inc = item.incense
+        if inc and inc.hazard then
+            Hazard.dropOwnedBy(combat, unit, inc.hazard)
+            local r = inc.radius or 1
+            for dy = -r, r do
+                for dx = -r, r do
+                    -- Chebyshev square, matching Combat.aoeCells' default shape. Off-grid and wall
+                    -- cells are Hazard.place's problem -- it skips them -- so the edge of the map
+                    -- simply clips the cloud rather than needing a bounds check here.
+                    Hazard.place(combat, unit.x + dx, unit.y + dy, inc.hazard, {
+                        owner = unit,
+                        side = unit.side, -- so an ally-only cloud can never serve the foe standing in it
+                        amount = inc.amount,
+                    })
+                end
+            end
         end
     end
 end
@@ -1078,6 +1134,22 @@ function Combat.focus(combat, unit)
     local restored = Combat.restoreResource(unit.char, "mana", behavior.mana or 0)
     Combat.logEvent(combat, "focus",
         string.format("%s focuses (+%d mana).", unitName(unit), restored))
+    -- A crozier feeds the line, not just the hand holding it: `waitBehavior.covers` restores that
+    -- (smaller) amount of mana to every ADJACENT ALLY too. Exactly the shape the Oathkeeper Shield uses
+    -- to spread its brace (see Combat.defend), read here as mana instead of defense -- so the same one
+    -- word means "and everyone beside you" on both halves of the wait swap. What it buys is the same
+    -- kind of decision: where a priest plants to meditate decides whose spells come back with it.
+    if behavior.covers then
+        for _, ally in ipairs(Combat.unitsNear(combat, unit.x, unit.y, 1)) do
+            if ally ~= unit and ally.side == unit.side then
+                local got = Combat.restoreResource(ally.char, "mana", behavior.covers)
+                if got > 0 then
+                    Combat.logEvent(combat, "focus",
+                        string.format("%s draws on the calm (+%d mana).", unitName(ally), got))
+                end
+            end
+        end
+    end
     endTurn(combat, unit, behavior.speed or Combat.FOCUS_SPEED)
     return true
 end
@@ -1338,6 +1410,11 @@ function Combat.enterTile(combat, unit, x, y, reason)
     -- that just granted it. Placing fires the fresh hazard's onEnter for the occupant, and the
     -- Hazard.onEnter pass below reaches it a second time: a refresh, which neither stacks nor logs.
     if unit.alive and (reason == "walk" or reason == "forced") then Combat.layTrail(combat, unit) end
+    -- The censer's cloud keeps up with the bearer, and unlike the trail above it does so however the
+    -- bearer arrived: `reason` is not read, because smoke is carried rather than pressed by feet, so a
+    -- blink brings it along. Laid before the reap pass below for the same reason the trail is -- the
+    -- bearer stands in its own cloud, and reaping first would strip the blessing it just laid.
+    if unit.alive then Combat.layIncense(combat, unit) end
     if unit.alive then
         Hazard.onEnter(combat, unit, x, y)
         Hazard.reap(combat, unit)
@@ -2386,6 +2463,19 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
     local fx = {
         user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
         amount = effectiveAmount, -- the ability's scaled magnitude; effects derive heal/status/etc. from it
+        -- The item's upgrade level, as the other two fx tables already carry it (Combat.abilityOutput
+        -- and the live cast). It belongs on all three for the reason docs/architecture.md gives about
+        -- the fx helpers: a dry run that is missing one silently swallows the effect from that point on.
+        -- Without it an effect reaching for `fx.level` throws while building its ARGUMENTS
+        -- (`{ amount = 4 + fx.level }`), before the inert stand-in it was calling is ever reached.
+        --
+        -- Nothing visible is broken by its absence TODAY, and it is worth being precise about why: every
+        -- current fx.level user (Fireball, Sanctuary, Quicksand, Rain, Spike Trap, the summons) paints
+        -- its ground AFTER it deals its damage, so the throw lands past the last line the preview
+        -- actually reports and the damage is already recorded. The preview is correct by running order
+        -- rather than by construction. This makes it correct by construction -- an effect that scales a
+        -- heal or a second strike off fx.level would otherwise lose it, and would do so silently.
+        level = item and item.level or 0,
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.

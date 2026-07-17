@@ -1,7 +1,9 @@
 -- A duelist's blade that does not trade. `traits` on an item reach whoever carries it
 -- (models/trait.lua), so any character -- not just a born counter-fighter -- can build a retaliation
--- loadout around it. A fighter-class weapon, sold at the Colosseum. The strike it answers with is the
--- wielder's DEFAULT weapon, so pairing it with a heavier blade sharpens the answer.
+-- loadout around it. A knight-class weapon, sold at the Bastion: turning a blow aside and answering it
+-- is the guard's verb rather than wrath's, and the sword family is the Bastion's shelf
+-- (docs/classes.md). The strike it answers with is the wielder's DEFAULT weapon, so pairing it with a
+-- heavier blade sharpens the answer.
 --
 -- A sword, so it owes the family's counter-reaction (docs/weapons.md) -- but it REPLACES the ordinary
 -- data/traits/parry.lua with data/traits/riposte.lua rather than carrying both. That swap is the whole
@@ -27,7 +29,7 @@ return {
     type = "weapon",
     tags = { "sword", "slash", "physical", "melee" },
     hands = 1,
-    class = "fighter",
+    class = "knight",
     price = 220,
     repRank = 2,
     traits = { "trait_riposte" },

@@ -263,17 +263,22 @@ end
 -- rally ends on that beat rather than at the next rebase; Hazard.tick sweeps as a backstop for any
 -- unit that left the field by a path the death path doesn't cover.
 --
+-- `id` optionally narrows it to one blueprint, mirroring Hazard.at's optional id: nil means "every
+-- zone this owner holds" (the death path wants all of them), while a caller that holds several kinds
+-- of ground open and means to lift only one names it. Combat.layIncense is that caller -- a censer
+-- lifts its own smoke each time it moves, and must not take a zone the bearer holds by other means.
+--
 -- Only removes the ZONES. The statuses they were granting are not touched here: they unwind by the
 -- ordinary rule a beat later, when Hazard.reap finds no live zone under their bearers -- so ground
 -- that vanishes and ground you walk out of end a blessing the same way, through one path.
-function Hazard.dropOwnedBy(combat, owner)
+function Hazard.dropOwnedBy(combat, owner, id)
     if not owner then return 0 end
     local list = combat.hazards
     if not list then return 0 end
     local n = 0
     for i = #list, 1, -1 do
         local h = list[i]
-        if h.owner == owner then
+        if h.owner == owner and (not id or h.id == id) then
             h.alive = false
             table.remove(list, i)
             if h.def.onExpire then h.def.onExpire(ctxFor(combat, h, nil)) end

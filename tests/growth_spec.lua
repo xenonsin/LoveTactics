@@ -152,15 +152,20 @@ return {
             local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2) }, { unit("character_bandit", 3, 2) })
             local knight, bandit = c.units[1], c.units[2]
 
-            -- The knight's iron sword is a fighter weapon; a strike routes through useItem.
-            local sword = weaponOf(knight.char, "weapon_iron_sword")
-            assert(sword and sword.class == "fighter", "the knight carries a fighter sword")
+            -- Deliberately an OFF-CLASS weapon: a knight swinging a Colosseum hammer. The tally must
+            -- follow the ITEM's class, not the character's own -- with a knight-class weapon in a
+            -- knight's hands, a tally that wrongly read char.class would pass this by coincidence.
+            local hammer = Item.instantiate("weapon_iron_hammer")
+            Character.addItem(knight.char, hammer)
+            assert(hammer.class == "fighter", "the hammer is a fighter weapon")
+            assert(knight.char.class == "knight", "carried by a knight -- the two must differ")
 
             openTurn(c, knight)
-            local ok = Combat.useItem(c, knight, sword, bandit.x, bandit.y)
+            local ok = Combat.useItem(c, knight, hammer, bandit.x, bandit.y)
             assert(ok, "the strike should resolve")
             assert(knight.char.classUse and knight.char.classUse.fighter == 1,
-                "a player strike bumps the fighter tally")
+                "a player strike bumps the tally of the WEAPON's class")
+            assert(not knight.char.classUse.knight, "and never the wielder's own class")
 
             -- The bandit striking back (AI-controlled) must not accrue a tally on its transient char.
             local bWeapon = Combat.defaultWeapon(bandit.char)

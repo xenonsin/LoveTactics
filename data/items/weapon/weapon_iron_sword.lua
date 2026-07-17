@@ -11,7 +11,7 @@ return {
     tags = { "sword", "slash", "physical", "melee" }, -- drive damage scaling + armor mitigation
     hands = 1, -- one-handed: the sword's other half is the slot it leaves free for a shield
     traits = { "trait_parry" }, -- swords parry (docs/weapons.md): answer a melee blow with one of your own
-    class = "fighter",
+    class = "knight", -- the sword is the Bastion's shelf: a blade that answers is a wall's argument (docs/classes.md)
     price = 60,
     repRank = 1,
     activeAbility = {
