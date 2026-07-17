@@ -66,6 +66,7 @@ local BRACE = { 0.55, 0.72, 0.92 } -- a shield's Defend brace-defense (matches t
 local RANGE_FRIENDLY = { 0.45, 0.85, 0.50 }
 local RANGE_HOSTILE = { 0.95, 0.52, 0.46 }
 local GLYPH_GAP = 4 -- between a stat row's glyph and the value it marks
+local STAT_GAP = 8  -- least space kept between a stat row's label and its value column
 
 local function titleCase(s)
     return (tostring(s):gsub("^%l", string.upper))
@@ -105,6 +106,18 @@ function ItemTooltip.printFlavor(text, x, y, w, font)
     love.graphics.printf(text, 0, 0, textW, "left")
     love.graphics.pop()
     return math.max(1, #wrapped) * font:getHeight()
+end
+
+-- The value column of a stat row: it starts after the label and runs to the row's right edge, so a
+-- long value (a weapon's tag list, an armor's resists) wraps inside the tooltip instead of running
+-- past its border. Returns the column's x offset from the row's left edge, its width, and the
+-- wrapped lines. Measure and draw MUST both size themselves from this, or the box height stops
+-- matching the rows inside it.
+local function statLayout(font, label, value, innerW)
+    local x = font:getWidth(label) + STAT_GAP
+    local w = math.max(1, innerW - x)
+    local _, lines = font:getWrap(tostring(value), w)
+    return x, w, math.max(1, #lines)
 end
 
 -- Sorted keys of a map, so pairs-driven rows (armor bonuses/resists) render deterministically.
@@ -445,7 +458,11 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
         elseif b.kind == "sep" then h = h + 8
         elseif b.kind == "head" then h = h + bodyH + 2
         elseif b.kind == "rangediag" then h = h + b.layout.height + 4
-        else h = h + bodyH + 1 end -- stat
+        else -- stat: the value wraps in the column left over beside the label
+            local vx, vw, lines = statLayout(body, b.label, b.value, innerW)
+            b.valueX, b.valueW, b.lines = vx, vw, lines
+            h = h + b.lines * bodyH + 1
+        end
     end
     h = h + pad
 
@@ -521,17 +538,18 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
             love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
             love.graphics.print(b.label, bx + pad, ty)
             local vc = b.valueColor or VALUE
+            local cx = bx + pad + b.valueX
             love.graphics.setColor(vc[1], vc[2], vc[3], 1)
-            love.graphics.printf(b.value, bx + pad, ty, innerW, "right")
+            love.graphics.printf(b.value, cx, ty, b.valueW, "right")
             -- An optional glyph riding just ahead of the VALUE (never the label), tinted to match it:
             -- glyph-then-number is how the grid's badges quote a tick, so a tooltip row quoting one
             -- reads the same way. Placed off the value's own width, since the value is right-aligned.
             if b.icon == "hourglass" then
                 local gw = 7
-                local vx = bx + pad + innerW - body:getWidth(b.value)
+                local vx = cx + b.valueW - body:getWidth(b.value)
                 Glyphs.hourglass(vx - GLYPH_GAP - gw, ty + 2, gw, bodyH - 4, vc[1], vc[2], vc[3], 1)
             end
-            ty = ty + bodyH + 1
+            ty = ty + b.lines * bodyH + 1
         end
     end
 
