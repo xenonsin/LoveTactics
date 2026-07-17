@@ -909,7 +909,7 @@ function CombatPanel:drawHourglass(x, y, w, h, r, g, b, a)
 end
 
 -- Small padlock (shackle arc over a body) for the reserve badge: the resource this ability locks
--- away, told apart from the plain cost dot because it never comes back on its own.
+-- away, told apart from the cost glyphs because it never comes back on its own.
 function CombatPanel:drawLock(x, y, w, h, r, g, b, a)
     love.graphics.setColor(r, g, b, a or 1)
     local cx, bodyTop = x + w / 2, y + h * 0.42
@@ -932,6 +932,51 @@ function CombatPanel:drawSummonRing(x, y, w, h, r, g, b, a)
     love.graphics.circle("fill", cx, cy, math.min(w, h) * 0.16)
 end
 
+-- The resource glyphs: one shape per pool a cost can be paid in. A cost badge is tinted by its
+-- resource, but that tint is spent the moment the actor can't afford the cast -- every short badge
+-- goes WARN red at once -- so the SHAPE has to carry which pool is short on its own. Each fills the
+-- box it's handed, like every other badge glyph here.
+
+-- Mana: a cut gem, point up and point down. The arcane pool, and the oldest of the three marks.
+function CombatPanel:drawManaGem(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local cx, cy, rx, ry = x + w / 2, y + h / 2, w / 2, h / 2
+    love.graphics.polygon("fill", cx, cy - ry, cx + rx, cy, cx, cy + ry, cx - rx, cy)
+end
+
+-- Stamina: a drop of sweat -- a round body under a point. Exertion, the bodily counterpart to the
+-- gem's arcane. A bolt is the usual mark for this pool elsewhere, but not here: drawBrokenLink below
+-- is two diagonal strokes drawn red, and it stacks on the same slot right under this badge, so a red
+-- bolt beside it would be a coin flip. The body is a circle rather than a polygon because the drop's
+-- whole read is that its bottom is round where the gem's is sharp.
+function CombatPanel:drawStaminaDrop(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local cx, rr = x + w / 2, w * 0.42
+    local by = y + h - rr
+    love.graphics.polygon("fill", cx, y, cx + rr, by, cx - rr, by)
+    love.graphics.circle("fill", cx, by, rr)
+end
+
+-- Health: a heart, the universal mark, which is what frees the drop above to read as sweat rather
+-- than blood. Two lobes over a point: the lobed TOP is what tells it from the drop's single point
+-- once both are forced red and the tint stops helping.
+function CombatPanel:drawHealthHeart(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local rr = w * 0.26
+    local cx, ly = x + w / 2, y + rr + h * 0.06
+    love.graphics.circle("fill", cx - rr * 0.92, ly, rr)
+    love.graphics.circle("fill", cx + rr * 0.92, ly, rr)
+    love.graphics.polygon("fill", cx - rr * 1.84, ly, cx + rr * 1.84, ly, cx, y + h)
+end
+
+-- Which glyph prices which pool. A cost badge names its resource as its icon kind, so an unknown
+-- stat (a mod's own pool) still gets a mark -- the gem, the generic "some resource" shape.
+local RES_GLYPH = {
+    mana    = CombatPanel.drawManaGem,
+    stamina = CombatPanel.drawStaminaDrop,
+    health  = CombatPanel.drawHealthHeart,
+}
+
 -- Two stubs with a gap between them: a "broken link" glyph marking an adjacency requirement the
 -- grid doesn't satisfy (a met one is drawn as a solid connector line over the grid instead).
 function CombatPanel:drawBrokenLink(x, y, w, h, r, g, b, a)
@@ -943,8 +988,9 @@ function CombatPanel:drawBrokenLink(x, y, w, h, r, g, b, a)
 end
 
 -- A cost/speed corner badge: a dark pill with an icon and a label. `corner` is "left"
--- (top-left costs) or "right" (top-right speed); `iconKind` is "dot", "hourglass", "lock", "link"
--- or "ring". `row` stacks a badge under the previous one in the same corner (0 = top, the default).
+-- (top-left costs) or "right" (top-right speed); `iconKind` is "hourglass", "lock", "link", "ring",
+-- or a resource name ("mana"/"stamina"/"health") for a cost badge, which draws that pool's glyph.
+-- `row` stacks a badge under the previous one in the same corner (0 = top, the default).
 function CombatPanel:drawBadge(sx, sy, sw, corner, iconKind, amount, color, a, row)
     local bw, bh = self:badgeSize(amount)
     local pad = 3
@@ -979,10 +1025,9 @@ function CombatPanel:drawBadgeAt(bx, by, iconKind, amount, color, a)
         self:drawBrokenLink(ix, iy, iconW, 10, color[1], color[2], color[3], a)
     elseif iconKind == "ring" then
         self:drawSummonRing(ix, iy, iconW, 10, color[1], color[2], color[3], a)
-    else -- resource "dot": a filled diamond reads cleaner than a circle at this size
-        local cx, cy, rr = ix + iconW / 2, iy + 5, 5
-        love.graphics.setColor(color[1], color[2], color[3], a or 1)
-        love.graphics.polygon("fill", cx, cy - rr, cx + rr, cy, cx, cy + rr, cx - rr, cy)
+    else -- a cost: `iconKind` is the resource it's paid in, and each pool has its own shape
+        local glyph = RES_GLYPH[iconKind] or CombatPanel.drawManaGem
+        glyph(self, ix, iy, iconW, 10, color[1], color[2], color[3], a)
     end
 
     love.graphics.setColor(0.96, 0.96, 0.98, a or 1)
@@ -1103,12 +1148,12 @@ function CombatPanel:drawItemGrid()
                 if ab.cost then
                     local short = blocked and blocked.kind == "cost"
                     local c = short and WARN_COLOR or (RES_COLOR[ab.cost.stat] or COST_FALLBACK)
-                    self:drawBadge(sx, sy, sw, "left", "dot", ab.cost.amount, c, short and 1 or dim, row)
+                    self:drawBadge(sx, sy, sw, "left", ab.cost.stat, ab.cost.amount, c, short and 1 or dim, row)
                     row = row + 1
                 end
                 -- A reservation is a cost too -- paid on the cast, then locked away for as long as
                 -- what it summons lives -- so it earns its own badge under the cost, a padlock
-                -- instead of the resource dot. Priced against the actor (a share of ITS maximum),
+                -- instead of the resource's own glyph. Priced against the actor (a share of ITS maximum),
                 -- falling back to the raw percentage when there's nobody to price it for.
                 if ab.reserve then
                     local short = blocked and blocked.kind == "reserve"
