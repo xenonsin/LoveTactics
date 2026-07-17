@@ -600,21 +600,42 @@ function BattleMap:drawUnitInfo()
     end
 end
 
+-- Badge row geometry. The row must live inside the tile, which is only BADGE_INSET*2 shy of 60px
+-- wide, so BADGE_W is a ceiling rather than a fixed width: badges narrow toward BADGE_MIN_W as the
+-- statuses pile up (ui/status_badge.lua squeezes the abbr to whatever width it is handed). Below
+-- BADGE_MIN_W an abbr is unreadable, so the row stops shrinking and overflows into a "+n" instead.
+local BADGE_W, BADGE_MIN_W, BADGE_H, BADGE_GAP, BADGE_INSET = 18, 11, 12, 2, 4
+
 -- The on-screen rect of each active status badge on unit `u` (whose tile top-left is wx, wy):
 -- a right-justified row along the tile's bottom, just above the HP bar. Shared by the badge
 -- draw and the hover hit-test (statusAt) so a tooltip lands exactly on the badge pointed at.
+-- A rect carries either `st` (a status) or `more` (the count the row had no room for).
 function BattleMap:statusBadgeRects(u, wx, wy)
     local list = u.statuses
     if not list or #list == 0 then return {} end
     local s = self.size
-    local bw, bh, gap = 18, 12, 2
-    local totalW = #list * bw + (#list - 1) * gap
-    local startX = wx + s - totalW - 4
+    local inner = s - BADGE_INSET * 2
+    local gap = BADGE_GAP
+
+    -- How many slots the row shows, and how wide each is: every status if they still fit at
+    -- BADGE_MIN_W, else as many as do -- the last of which is spent on the "+n" marker.
+    local slots, bw = #list, math.floor((inner - (#list - 1) * gap) / #list)
+    if bw < BADGE_MIN_W then
+        slots = math.max(1, math.floor((inner + gap) / (BADGE_MIN_W + gap)))
+        bw = math.floor((inner - (slots - 1) * gap) / slots)
+    end
+    bw = math.min(bw, BADGE_W)
+
+    local shown = (slots < #list) and (slots - 1) or #list
+    local totalW = slots * bw + (slots - 1) * gap
+    local startX = wx + s - BADGE_INSET - totalW
     -- The HP bar's black backing tops out at wy + s - 9; sit the badges a couple px above it.
-    local by = wy + s - 11 - bh
+    local by = wy + s - 11 - BADGE_H
     local rects = {}
-    for i, st in ipairs(list) do
-        rects[i] = { st = st, x = startX + (i - 1) * (bw + gap), y = by, w = bw, h = bh }
+    for i = 1, slots do
+        local r = { x = startX + (i - 1) * (bw + gap), y = by, w = bw, h = BADGE_H }
+        if i <= shown then r.st = list[i] else r.more = #list - shown end
+        rects[i] = r
     end
     return rects
 end
@@ -624,7 +645,11 @@ end
 -- unit reads at a glance. Reads unit.statuses (runtime data), never love.graphics at require-time.
 function BattleMap:drawStatusBadges(u, wx, wy)
     for _, r in ipairs(self:statusBadgeRects(u, wx, wy)) do
-        StatusBadge.draw(r.st, r.x, r.y, r.w, r.h)
+        if r.st then
+            StatusBadge.draw(r.st, r.x, r.y, r.w, r.h)
+        else
+            StatusBadge.drawMore(r.more, r.x, r.y, r.w, r.h)
+        end
     end
 end
 
@@ -636,7 +661,7 @@ function BattleMap:statusAt(px, py)
         if u.alive then
             local wx, wy = self:cellToPixel(u.x, u.y)
             for _, r in ipairs(self:statusBadgeRects(u, wx, wy)) do
-                if px >= r.x and px <= r.x + r.w and py >= r.y and py <= r.y + r.h then
+                if r.st and px >= r.x and px <= r.x + r.w and py >= r.y and py <= r.y + r.h then
                     return r.st
                 end
             end
