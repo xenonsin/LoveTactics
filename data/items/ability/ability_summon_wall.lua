@@ -7,7 +7,8 @@
 -- also be struck down segment by segment, and fades on its own timer. See data/walls/illusory_wall.lua.
 return {
     name = "Summon Wall",
-    description = "Raise a 3-tile wall that blocks movement and sight. It fades, or can be broken.",
+    description = "Raises a 3-tile wall blocking movement and sight. It fades, or can be broken.",
+    flavor = "The Cathedral prefers the word boundary. The effect is a wall.",
     sprite = "assets/items/ability_summon_wall.png",
     type = "ability",
     tags = { "holy", "illusion" },

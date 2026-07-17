@@ -59,7 +59,7 @@ return {
         name = "Feather Boots carry the wearer over a trap unharmed; without them it triggers",
         fn = function()
             -- With the boots: cross the spike trap at (1,3) on the way to (1,4), take no damage.
-            local booted = withGrid("archer", { "feather_boots" })
+            local booted = withGrid("character_archer", { "utility_feather_boots" })
             local c = Combat.new(arena(8, 8), { unit(booted, 1, 1) }, {})
             Trap.place(c, 1, 3, "spike_trap", "enemy")
             local u = c.units[1]
@@ -70,7 +70,7 @@ return {
             assert(Trap.at(c, 1, 3) ~= nil, "the trap is not spent by a feather-booted mover")
 
             -- Control: the same walk without boots springs the trap.
-            local bare = withGrid("archer", {})
+            local bare = withGrid("character_archer", {})
             local c2 = Combat.new(arena(8, 8), { unit(bare, 1, 1) }, {})
             Trap.place(c2, 1, 3, "spike_trap", "enemy")
             local u2 = c2.units[1]
@@ -83,8 +83,8 @@ return {
     {
         name = "Overwatch fires on each step a foe takes through range, until stamina runs out",
         fn = function()
-            local watcher = withGrid("archer", { "iron_bow" }) -- bow: range 3, minRange 2
-            local c = Combat.new(arena(8, 8), { unit(watcher, 1, 1) }, { unit("bandit", 5, 1) })
+            local watcher = withGrid("character_archer", { "weapon_iron_bow" }) -- bow: range 3, minRange 2
+            local c = Combat.new(arena(8, 8), { unit(watcher, 1, 1) }, { unit("character_bandit", 5, 1) })
             local w = c.units[1]
             local mover = Combat.unitAt(c, 5, 1)
             w.char.stats.stamina.current = 20
@@ -100,8 +100,8 @@ return {
     {
         name = "Overwatch stops firing once the watcher can no longer pay a shot",
         fn = function()
-            local watcher = withGrid("archer", { "iron_bow" })
-            local c = Combat.new(arena(8, 8), { unit(watcher, 1, 1) }, { unit("bandit", 5, 1) })
+            local watcher = withGrid("character_archer", { "weapon_iron_bow" })
+            local c = Combat.new(arena(8, 8), { unit(watcher, 1, 1) }, { unit("character_bandit", 5, 1) })
             local w = c.units[1]
             local mover = Combat.unitAt(c, 5, 1)
             w.char.stats.stamina.current = 6 -- exactly one shot
@@ -114,8 +114,8 @@ return {
     {
         name = "Smoke Bomb negates the first attack and blinks the bearer clear, then is spent",
         fn = function()
-            local bearer = withGrid("knight", { "smoke_bomb" })
-            local c = Combat.new(arena(8, 8), { unit(bearer, 3, 3) }, { unit("bandit", 2, 3) })
+            local bearer = withGrid("character_knight", { "utility_smoke_bomb" })
+            local c = Combat.new(arena(8, 8), { unit(bearer, 3, 3) }, { unit("character_bandit", 2, 3) })
             local b = c.units[1]
             local attacker = Combat.unitAt(c, 2, 3)
             local hp0 = b.char.stats.health.current
@@ -133,11 +133,11 @@ return {
     {
         name = "Coup de Grace executes a foe below a quarter health, but not above it",
         fn = function()
-            local caster = withGrid("bandit", { "iron_sword", "ability_coup_de_grace" })
+            local caster = withGrid("character_bandit", { "weapon_iron_sword", "ability_coup_de_grace" })
             local ab = itemOf(caster, "ability_coup_de_grace")
 
             -- Below threshold: a clean kill.
-            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("bandit", 2, 1) })
+            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("character_bandit", 2, 1) })
             local u = c.units[1]
             local low = Combat.unitAt(c, 2, 1)
             low.char.stats.health.current = 5 -- well under 25% of 60
@@ -146,8 +146,8 @@ return {
             assert(not low.alive, "a foe below a quarter health is executed")
 
             -- Above threshold: a heavy but survivable hit.
-            local c2 = Combat.new(arena(8, 8), { unit(withGrid("bandit", { "iron_sword", "ability_coup_de_grace" }), 1, 1) },
-                { unit("bandit", 2, 1) })
+            local c2 = Combat.new(arena(8, 8), { unit(withGrid("character_bandit", { "weapon_iron_sword", "ability_coup_de_grace" }), 1, 1) },
+                { unit("character_bandit", 2, 1) })
             local u2 = c2.units[1]
             local ab2 = itemOf(u2.char, "ability_coup_de_grace")
             local healthy = Combat.unitAt(c2, 2, 1)
@@ -161,8 +161,8 @@ return {
     {
         name = "Coup de Grace never executes a boss",
         fn = function()
-            local caster = withGrid("bandit", { "iron_sword", "ability_coup_de_grace" })
-            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("warlord", 2, 1) })
+            local caster = withGrid("character_bandit", { "weapon_iron_sword", "ability_coup_de_grace" })
+            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("character_warlord", 2, 1) })
             local u = c.units[1]
             local ab = itemOf(u.char, "ability_coup_de_grace")
             local boss = Combat.unitAt(c, 2, 1)
@@ -175,8 +175,8 @@ return {
     {
         name = "Shadow Step blinks the caster adjacent to the target and damages it",
         fn = function()
-            local caster = withGrid("bandit", { "ability_shadow_step" })
-            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("bandit", 4, 1) })
+            local caster = withGrid("character_bandit", { "ability_shadow_step" })
+            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("character_bandit", 4, 1) })
             local u = c.units[1]
             local ab = itemOf(u.char, "ability_shadow_step")
             local foe = Combat.unitAt(c, 4, 1)
@@ -191,8 +191,8 @@ return {
     {
         name = "Swap trades the caster's tile with the target's",
         fn = function()
-            local caster = withGrid("bandit", { "ability_swap" })
-            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("bandit", 3, 1) })
+            local caster = withGrid("character_bandit", { "ability_swap" })
+            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("character_bandit", 3, 1) })
             local u = c.units[1]
             local ab = itemOf(u.char, "ability_swap")
             local foe = Combat.unitAt(c, 3, 1)
@@ -205,8 +205,8 @@ return {
     {
         name = "Drain Mana moves mana from the target to the caster",
         fn = function()
-            local caster = withGrid("mage", { "ability_drain_mana" })
-            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("mage", 3, 1) })
+            local caster = withGrid("character_mage", { "ability_drain_mana" })
+            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("character_mage", 3, 1) })
             local u = c.units[1]
             local ab = itemOf(u.char, "ability_drain_mana")
             local foe = Combat.unitAt(c, 3, 1)
@@ -221,8 +221,8 @@ return {
     {
         name = "Pinning Shot roots the target; Hobbling Shot cripples it",
         fn = function()
-            local pinner = withGrid("archer", { "iron_bow", "ability_pinning_shot" })
-            local c = Combat.new(arena(8, 8), { unit(pinner, 1, 1) }, { unit("bandit", 1, 4) })
+            local pinner = withGrid("character_archer", { "weapon_iron_bow", "ability_pinning_shot" })
+            local c = Combat.new(arena(8, 8), { unit(pinner, 1, 1) }, { unit("character_bandit", 1, 4) })
             local u = c.units[1]
             u.char.stats.stamina.current = 40
             local ab = itemOf(u.char, "ability_pinning_shot")
@@ -230,26 +230,26 @@ return {
             local hp0 = foe.char.stats.health.current
             openTurn(c, u)
             assert(Combat.useItem(c, u, ab, 1, 4), "the pinning shot lands")
-            assert(Status.has(foe, "root"), "the target is rooted")
+            assert(Status.has(foe, "status_root"), "the target is rooted")
             assert(foe.char.stats.health.current < hp0, "and takes damage")
 
-            local hobbler = withGrid("archer", { "iron_bow", "ability_hobbling_shot" })
-            local c2 = Combat.new(arena(8, 8), { unit(hobbler, 1, 1) }, { unit("bandit", 1, 4) })
+            local hobbler = withGrid("character_archer", { "weapon_iron_bow", "ability_hobbling_shot" })
+            local c2 = Combat.new(arena(8, 8), { unit(hobbler, 1, 1) }, { unit("character_bandit", 1, 4) })
             local u2 = c2.units[1]
             u2.char.stats.stamina.current = 40
             local ab2 = itemOf(u2.char, "ability_hobbling_shot")
             local foe2 = Combat.unitAt(c2, 1, 4)
             openTurn(c2, u2)
             assert(Combat.useItem(c2, u2, ab2, 1, 4), "the hobbling shot lands")
-            assert(Status.has(foe2, "cripple"), "the target is crippled")
+            assert(Status.has(foe2, "status_cripple"), "the target is crippled")
         end,
     },
     {
         name = "Mark Target marks a foe; Called Shot hits a marked foe harder than an unmarked one",
         fn = function()
-            local caster = withGrid("archer", { "ability_mark_target", "iron_bow", "ability_called_shot" })
+            local caster = withGrid("character_archer", { "ability_mark_target", "weapon_iron_bow", "ability_called_shot" })
             local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) },
-                { unit("bandit", 1, 4), unit("bandit", 2, 4) })
+                { unit("character_bandit", 1, 4), unit("character_bandit", 2, 4) })
             local u = c.units[1]
             u.char.stats.stamina.current = 60
             local mark = itemOf(u.char, "ability_mark_target")
@@ -259,7 +259,7 @@ return {
 
             refresh(c, u)
             assert(Combat.useItem(c, u, mark, 1, 4), "the mark lands")
-            assert(Status.has(marked, "mark"), "the target is marked")
+            assert(Status.has(marked, "status_mark"), "the target is marked")
 
             refresh(c, u)
             local plainHp = plain.char.stats.health.current
@@ -277,16 +277,16 @@ return {
     {
         name = "Flash Bomb blinds everything in its blast",
         fn = function()
-            local caster = withGrid("bandit", { "flash_bomb" })
+            local caster = withGrid("character_bandit", { "consumable_flash_bomb" })
             local c = Combat.new(arena(8, 8), { unit(caster, 4, 1) },
-                { unit("bandit", 4, 4), unit("bandit", 4, 5) })
+                { unit("character_bandit", 4, 4), unit("character_bandit", 4, 5) })
             local u = c.units[1]
-            local flash = itemOf(u.char, "flash_bomb")
+            local flash = itemOf(u.char, "consumable_flash_bomb")
             local a = Combat.unitAt(c, 4, 4)
             local b = Combat.unitAt(c, 4, 5)
             openTurn(c, u)
             assert(Combat.useItem(c, u, flash, 4, 4), "the flash bomb bursts")
-            assert(Status.has(a, "blind") and Status.has(b, "blind"), "both foes in the blast are blinded")
+            assert(Status.has(a, "status_blind") and Status.has(b, "status_blind"), "both foes in the blast are blinded")
         end,
     },
     {
@@ -295,8 +295,8 @@ return {
             local realRandom = Combat.random
 
             -- Success: a badly wounded foe, with the roll forced to succeed, flips to the party side.
-            local caster = withGrid("mage", { "ability_charm" })
-            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("bandit", 1, 3) })
+            local caster = withGrid("character_mage", { "ability_charm" })
+            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("character_bandit", 1, 3) })
             local u = c.units[1]
             local ab = itemOf(u.char, "ability_charm")
             local foe = Combat.unitAt(c, 1, 3)
@@ -306,12 +306,12 @@ return {
             local ok = Combat.useItem(c, u, ab, 1, 3)
             Combat.random = realRandom
             assert(ok, "the charm resolves")
-            assert(Status.has(foe, "charm"), "the wounded foe is charmed")
+            assert(Status.has(foe, "status_charm"), "the wounded foe is charmed")
             assert(foe.side == "party" and foe.control == "ai", "it fights for the party under AI control")
 
             -- Boss immunity: a boss is never turned, whatever the roll.
-            local caster2 = withGrid("mage", { "ability_charm" })
-            local c2 = Combat.new(arena(8, 8), { unit(caster2, 1, 1) }, { unit("warlord", 1, 3) })
+            local caster2 = withGrid("character_mage", { "ability_charm" })
+            local c2 = Combat.new(arena(8, 8), { unit(caster2, 1, 1) }, { unit("character_warlord", 1, 3) })
             local u2 = c2.units[1]
             local ab2 = itemOf(u2.char, "ability_charm")
             local boss = Combat.unitAt(c2, 1, 3)
@@ -320,7 +320,7 @@ return {
             Combat.random = function() return 1 end
             Combat.useItem(c2, u2, ab2, 1, 3)
             Combat.random = realRandom
-            assert(not Status.has(boss, "charm"), "a boss is not charmed")
+            assert(not Status.has(boss, "status_charm"), "a boss is not charmed")
             assert(boss.side == "enemy", "the boss stays on the enemy side")
         end,
     },

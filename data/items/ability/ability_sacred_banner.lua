@@ -5,7 +5,8 @@
 -- See data/items/ability/ability_rally_banner.lua for how the banner and its aura work.
 return {
     name = "Sacred Banner",
-    description = "Plant a holy banner that blesses nearby allies, raising their Damage and Magic Damage while it stands.",
+    description = "Plants a destructible banner that Blesses nearby allies while it stands.",
+    flavor = "Raised over ground the Cathedral has already decided to keep.",
     sprite = "assets/items/ability_sacred_banner.png",
     type = "ability",
     tags = { "banner", "holy" },
@@ -19,7 +20,7 @@ return {
         support = true,
         cost = { stat = "mana", amount = 16 },
         effect = function(fx)
-            local banner = fx.summon("banner", fx.tx, fx.ty, { control = "none", timeless = true })
+            local banner = fx.summon("character_banner", fx.tx, fx.ty, { control = "none", timeless = true })
             if banner and banner.alive then
                 -- The 3x3 of Sacred Ground the standard holds open; see ability_rally_banner.lua.
                 for dy = -1, 1 do

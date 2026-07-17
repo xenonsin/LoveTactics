@@ -119,19 +119,19 @@ return {
             -- Archer's default weapon is the bow (range 3, requiresSight). Foe 3 tiles away with a
             -- wall between them: the shot is refused with a line-of-sight reason.
             local walled = Combat.new(arena(6, 1, { { x = 3, y = 1, sightCost = WALL, walkable = false } }),
-                { unit("archer", 1, 1) }, { unit("bandit", 4, 1) })
+                { unit("character_archer", 1, 1) }, { unit("character_bandit", 4, 1) })
             local archer = walled.units[1]
-            local bow = itemById(archer.char, "iron_bow")
+            local bow = itemById(archer.char, "weapon_iron_bow")
             openTurn(walled, archer)
             local ok, reason = Combat.useItem(walled, archer, bow, 4, 1)
             assert(not ok and reason == "no line of sight", "blocked shot refused: " .. tostring(reason))
 
             -- Same geometry with the lane open: the arrow lands.
-            local open = Combat.new(arena(6, 1), { unit("archer", 1, 1) }, { unit("bandit", 4, 1) })
+            local open = Combat.new(arena(6, 1), { unit("character_archer", 1, 1) }, { unit("character_bandit", 4, 1) })
             local a2 = open.units[1]
             openTurn(open, a2)
             local hp0 = open.units[2].char.stats.health.current
-            local ok2, res = Combat.useItem(open, a2, itemById(a2.char, "iron_bow"), 4, 1)
+            local ok2, res = Combat.useItem(open, a2, itemById(a2.char, "weapon_iron_bow"), 4, 1)
             assert(ok2, "a clear-line shot succeeds")
             assert(res.damageDealt > 0 and open.units[2].char.stats.health.current < hp0,
                 "the target took damage")
@@ -142,13 +142,13 @@ return {
         fn = function()
             -- Mage's Fireball (range 3, requiresSight). Foe within range but behind a wall.
             local walled = Combat.new(arena(6, 1, { { x = 3, y = 1, sightCost = WALL } }),
-                { unit("mage", 1, 1) }, { unit("bandit", 4, 1) })
+                { unit("character_mage", 1, 1) }, { unit("character_bandit", 4, 1) })
             local mage, foe = walled.units[1], walled.units[2]
             local fireball = itemById(mage.char, "ability_fireball")
             local targets = Combat.abilityTargets(walled, mage, fireball)
             assert(#targets == 0, "a foe with no clear line is not a valid target")
 
-            local open = Combat.new(arena(6, 1), { unit("mage", 1, 1) }, { unit("bandit", 4, 1) })
+            local open = Combat.new(arena(6, 1), { unit("character_mage", 1, 1) }, { unit("character_bandit", 4, 1) })
             local m2 = open.units[1]
             local seen = Combat.abilityTargets(open, m2, itemById(m2.char, "ability_fireball"))
             assert(#seen == 1 and seen[1] == open.units[2], "with a clear line the foe is targetable")
@@ -160,7 +160,7 @@ return {
             -- Archer at (1,1), bow range 3, wall at (3,1). Pass an empty reachable set so the reach
             -- is measured only from the origin tile (isolating sight from movement).
             local c = Combat.new(arena(6, 1, { { x = 3, y = 1, sightCost = WALL, walkable = false } }),
-                { unit("archer", 1, 1) }, {})
+                { unit("character_archer", 1, 1) }, {})
             local archer = c.units[1]
 
             local sighted = Combat.attackReach(c, archer, 3, {}, true)
@@ -179,7 +179,7 @@ return {
             -- can ever stand there, so it must be absent from the reach -- no red highlight, and
             -- click-to-attack can't target it. The open tile past it (in range) still lists.
             local c = Combat.new(arena(4, 1, { { x = 2, y = 1, sightCost = WALL, walkable = false } }),
-                { unit("knight", 1, 1) }, {})
+                { unit("character_knight", 1, 1) }, {})
             local ar = Combat.attackReach(c, c.units[1], 2, {}, false)
             assert(ar["1,1"], "the unit's own (walkable) tile stays in reach")
             assert(ar["2,1"] == nil, "the adjacent impassable obstacle is excluded from reach")
@@ -191,21 +191,21 @@ return {
         fn = function()
             -- A bow-only enemy (strip the archer's trap kit so the plan hinges on the ranged shot).
             local function bowman(x, y)
-                local c = Character.instantiate("archer")
-                c.inventory = { itemById(c, "iron_bow") }
+                local c = Character.instantiate("character_archer")
+                c.inventory = { itemById(c, "weapon_iron_bow") }
                 return unit(c, x, y)
             end
 
             -- Enemy at (1,1), party at (4,1), a wall between them on a single-row arena so it can't
             -- flank. It must NOT plan a blocked shot; it steps closer to open a line instead.
             local walled = Combat.new(arena(6, 1, { { x = 3, y = 1, sightCost = WALL, walkable = false } }),
-                { unit("knight", 4, 1) }, { bowman(1, 1) })
+                { unit("character_knight", 4, 1) }, { bowman(1, 1) })
             local plan = Combat.planEnemyAction(walled, walled.units[2])
             assert(not plan.item, "the archer does not fire through the wall")
             assert(plan.move and plan.move.x == 2, "it advances toward the target to seek a line")
 
             -- Clear the lane: now the very same archer opens with a shot from range.
-            local open = Combat.new(arena(6, 1), { unit("knight", 4, 1) }, { bowman(1, 1) })
+            local open = Combat.new(arena(6, 1), { unit("character_knight", 4, 1) }, { bowman(1, 1) })
             local shot = Combat.planEnemyAction(open, open.units[2])
             assert(shot.item and shot.tx == 4 and shot.ty == 1, "with a clear line it shoots in place")
         end,

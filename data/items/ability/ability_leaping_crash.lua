@@ -5,7 +5,8 @@
 -- detonate. The reach is the leap distance; the blast is fixed at radius 1 around where you come down.
 return {
     name = "Leaping Crash",
-    description = "Leap to an empty tile and slam down, damaging everything in the square around you.",
+    description = "Leap to an empty tile and slam down, damaging everything around you.",
+    flavor = "A gap-closer and an opener at once. The Colosseum mostly loves the noise.",
     sprite = "assets/items/ability_leaping_crash.png",
     type = "ability",
     tags = { "impact", "physical" },

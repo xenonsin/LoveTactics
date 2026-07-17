@@ -3,7 +3,8 @@
 -- the line reposition around it. Requires an adjacent bow in the grid.
 return {
     name = "Pinning Shot",
-    description = "Damage a foe and root it in place. Requires an adjacent bow.",
+    description = "Deals damage and inflicts Root. Requires an adjacent bow.",
+    flavor = "Lock the charger down and let the line walk around it at leisure.",
     sprite = "assets/items/ability_pinning_shot.png",
     type = "ability",
     tags = { "pierce", "physical" },
@@ -21,7 +22,7 @@ return {
         requiresAdjacent = { type = "weapon", tag = "bow" },
         effect = function(fx)
             fx.damage(fx.target)
-            fx.applyStatus(fx.target, "root")
+            fx.applyStatus(fx.target, "status_root")
         end,
     },
 }

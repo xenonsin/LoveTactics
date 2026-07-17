@@ -74,9 +74,9 @@ return {
                     end,
                 },
             }, function()
-                local knight = charWithTraits("knight", { "test_opener" })
+                local knight = charWithTraits("character_knight", { "test_opener" })
                 local c = Combat.new(arena(6, 6),
-                    { unit(knight, 1, 1) }, { unit(plainChar("bandit"), 4, 4) })
+                    { unit(knight, 1, 1) }, { unit(plainChar("character_bandit"), 4, 4) })
 
                 local u = c.units[1]
                 assert(#u.traits == 1, "the trait should be attached from the character blueprint")
@@ -96,8 +96,8 @@ return {
                     onDamaged = function(ctx) ctx.trait.lastAmount = ctx.amount end,
                 },
             }, function()
-                local knight = charWithTraits("knight", { "test_watcher" })
-                local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("bandit", 4, 4) })
+                local knight = charWithTraits("character_knight", { "test_watcher" })
+                local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("character_bandit", 4, 4) })
                 local u = c.units[1]
 
                 local dealt = Combat.dealFlatDamage(c, u, 30, { "physical" }, "test")
@@ -116,8 +116,8 @@ return {
                     onDamaged = function(ctx) ctx.trait.hits = (ctx.trait.hits or 0) + 1 end,
                 },
             }, function()
-                local knight = charWithTraits("knight", { "test_counter" })
-                local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("bandit", 4, 4) })
+                local knight = charWithTraits("character_knight", { "test_counter" })
+                local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("character_bandit", 4, 4) })
                 local u = c.units[1]
 
                 Combat.dealFlatDamage(c, u, 20, nil, "test")
@@ -141,8 +141,8 @@ return {
                     end,
                 },
             }, function()
-                local knight = charWithTraits("knight", { "test_selfharm" })
-                local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("bandit", 4, 4) })
+                local knight = charWithTraits("character_knight", { "test_selfharm" })
+                local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("character_bandit", 4, 4) })
                 local u = c.units[1]
                 local before = u.char.stats.health.current
 
@@ -166,8 +166,8 @@ return {
                     onDamaged = function(ctx) ctx.damage(ctx.attacker, 5) end,
                 },
             }, function()
-                local knight = charWithTraits("knight", { "test_riposter" })
-                local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("bandit", 2, 1) })
+                local knight = charWithTraits("character_knight", { "test_riposter" })
+                local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("character_bandit", 2, 1) })
                 local defender, attacker = c.units[1], c.units[2]
 
                 Combat.dealFlatDamage(c, defender, 20, { "physical" }, nil, attacker)
@@ -184,8 +184,8 @@ return {
     {
         name = "an ordinary action's cues all share beat 0: nothing is deferred without a reaction",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit(plainChar("knight"), 1, 1) },
-                { unit(plainChar("bandit"), 2, 1) })
+            local c = Combat.new(arena(6, 6), { unit(plainChar("character_knight"), 1, 1) },
+                { unit(plainChar("character_bandit"), 2, 1) })
             Combat.dealFlatDamage(c, c.units[2], 5, { "physical" }, nil, c.units[1])
 
             local events = Combat.drainFx(c)
@@ -198,12 +198,12 @@ return {
     {
         name = "wrath_rising banks a damage bonus per hit survived, and shows it as a badge",
         fn = function()
-            local ira = Character.instantiate("general_wrath")
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit(ira, 5, 5) })
+            local ira = Character.instantiate("character_general_wrath")
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit(ira, 5, 5) })
             local boss = c.units[2]
 
             local baseDamage = boss.bonus.damage or 0
-            local gain = Trait.defs.wrath_rising.magnitude
+            local gain = Trait.defs.trait_wrath_rising.magnitude
 
             for i = 1, 3 do
                 Combat.dealFlatDamage(c, boss, 10, nil, "test")
@@ -212,7 +212,7 @@ return {
                     "each survived hit should add exactly one gain")
             end
 
-            local badge = Status.get(boss, "wrath")
+            local badge = Status.get(boss, "status_wrath")
             assert(badge, "the wrath badge should be visible on the general")
             assert(badge.magnitude == gain * 3, "the badge should read the total banked")
             assert(not badge.def.statBonus,
@@ -225,19 +225,19 @@ return {
             -- A bandit with no rage of their own, and an empty grid besides: a starter like the knight
             -- carries an innate trait on its relic, and a bandit's own iron sword now carries Parry,
             -- so the "no trait" baseline has to be a character holding nothing at all (plainChar).
-            local plain = plainChar("bandit")
-            local c1 = Combat.new(arena(6, 6), { unit(plain, 1, 1) }, { unit("wolf_grunt", 4, 4) })
+            local plain = plainChar("character_bandit")
+            local c1 = Combat.new(arena(6, 6), { unit(plain, 1, 1) }, { unit("character_wolf_grunt", 4, 4) })
             assert(#c1.units[1].traits == 0, "an empty-handed bandit has no innate trait")
 
             -- The same bandit, wearing what was taken off Ira's body -- and nothing else, so the mail's
             -- rule is unambiguously the first (and only) trait it carries.
-            local armed = plainChar("bandit")
-            Character.addItem(armed, Item.instantiate("mail_of_the_unappeased"))
-            local c2 = Combat.new(arena(6, 6), { unit(armed, 1, 1) }, { unit("bandit", 4, 4) })
+            local armed = plainChar("character_bandit")
+            Character.addItem(armed, Item.instantiate("armor_mail_of_the_unappeased"))
+            local c2 = Combat.new(arena(6, 6), { unit(armed, 1, 1) }, { unit("character_bandit", 4, 4) })
             local u = c2.units[1]
 
-            assert(Trait.has(u, "wrath_rising"), "the mail should carry Wrath's rule to its wearer")
-            assert(u.traits[1].item and u.traits[1].item.id == "mail_of_the_unappeased",
+            assert(Trait.has(u, "trait_wrath_rising"), "the mail should carry Wrath's rule to its wearer")
+            assert(u.traits[1].item and u.traits[1].item.id == "armor_mail_of_the_unappeased",
                 "the trait should remember which item granted it")
 
             local base = u.bonus.damage or 0
@@ -248,8 +248,8 @@ return {
     {
         name = "the damage preview never advances a trait",
         fn = function()
-            local ira = Character.instantiate("general_wrath")
-            local c = Combat.new(arena(8, 8), { unit("knight", 4, 5) }, { unit(ira, 4, 4) })
+            local ira = Character.instantiate("character_general_wrath")
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 5) }, { unit(ira, 4, 4) })
             local knight, boss = c.units[1], c.units[2]
 
             local before = boss.bonus.damage or 0
@@ -258,7 +258,7 @@ return {
 
             assert((boss.bonus.damage or 0) == before,
                 "hovering a target must not feed its rage -- preview routes around dealFlatDamage")
-            assert(not Status.get(boss, "wrath"), "and it must not paint a badge either")
+            assert(not Status.get(boss, "status_wrath"), "and it must not paint a badge either")
         end,
     },
     {
@@ -278,11 +278,11 @@ return {
                 },
             }, function()
                 local Summon = require("models.summon")
-                local mage = charWithTraits("mage", { "test_lastwords" })
-                local c = Combat.new(arena(8, 8), { unit(mage, 1, 1) }, { unit("bandit", 6, 6) })
+                local mage = charWithTraits("character_mage", { "test_lastwords" })
+                local c = Combat.new(arena(8, 8), { unit(mage, 1, 1) }, { unit("character_bandit", 6, 6) })
                 local u = c.units[1]
 
-                Summon.spawn(c, u, "wolf_grunt", 2, 1)
+                Summon.spawn(c, u, "character_wolf_grunt", 2, 1)
                 Combat.dealFlatDamage(c, u, 9999, nil, "test")
 
                 assert(not u.alive, "the mage should be dead")
@@ -294,9 +294,9 @@ return {
     {
         name = "Keen Senses answers an attack BEFORE it lands, and pays stamina for the privilege",
         fn = function()
-            local priest = charWithTraits("priest", { "keen_senses" })
-            Character.addItem(priest, Item.instantiate("parasitic_staff"))
-            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("bandit", 2, 1) })
+            local priest = charWithTraits("character_priest", { "trait_keen_senses" })
+            Character.addItem(priest, Item.instantiate("weapon_parasitic_staff"))
+            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("character_bandit", 2, 1) })
             local p, b = c.units[1], c.units[2]
             local stamina = Combat.resource(p.char, "stamina")
             local banditHP = b.char.stats.health.current
@@ -318,9 +318,9 @@ return {
     {
         name = "Keen Senses' counter kills the attacker, and the attack dies with them",
         fn = function()
-            local priest = charWithTraits("priest", { "keen_senses" })
-            Character.addItem(priest, Item.instantiate("parasitic_staff"))
-            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("bandit", 2, 1) })
+            local priest = charWithTraits("character_priest", { "trait_keen_senses" })
+            Character.addItem(priest, Item.instantiate("weapon_parasitic_staff"))
+            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("character_bandit", 2, 1) })
             local p, b = c.units[1], c.units[2]
             b.char.stats.health.current = 1
             local priestHP = p.char.stats.health.current
@@ -335,9 +335,9 @@ return {
     {
         name = "Keen Senses recovers its guard between answers, like every other reflex",
         fn = function()
-            local priest = charWithTraits("priest", { "keen_senses" })
-            Character.addItem(priest, Item.instantiate("parasitic_staff"))
-            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("bandit", 2, 1) })
+            local priest = charWithTraits("character_priest", { "trait_keen_senses" })
+            Character.addItem(priest, Item.instantiate("weapon_parasitic_staff"))
+            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("character_bandit", 2, 1) })
             local p, b = c.units[1], c.units[2]
 
             Combat.dealFlatDamage(c, p, 6, nil, nil, b)
@@ -357,9 +357,9 @@ return {
     {
         name = "Keen Senses goes quiet on an empty pool, and on a foe beyond reach",
         fn = function()
-            local priest = charWithTraits("priest", { "keen_senses" })
-            Character.addItem(priest, Item.instantiate("parasitic_staff"))
-            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("bandit", 2, 1) })
+            local priest = charWithTraits("character_priest", { "trait_keen_senses" })
+            Character.addItem(priest, Item.instantiate("weapon_parasitic_staff"))
+            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("character_bandit", 2, 1) })
             local p, b = c.units[1], c.units[2]
             local banditHP = b.char.stats.health.current
 
@@ -379,8 +379,8 @@ return {
     {
         name = "the Hollow Crown wears a general as its health falls past a threshold",
         fn = function()
-            local lord = Character.instantiate("demon_lord")
-            local c = Combat.new(arena(10, 10), { unit("knight", 1, 1) }, { unit(lord, 5, 5) })
+            local lord = Character.instantiate("character_demon_lord")
+            local c = Combat.new(arena(10, 10), { unit("character_knight", 1, 1) }, { unit(lord, 5, 5) })
             local boss = c.units[2]
 
             assert(#c.units == 2, "no shades before the first threshold")

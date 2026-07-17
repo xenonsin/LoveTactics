@@ -28,6 +28,6 @@ return {
         if not ctx.isAlly(ctx.unit) then return end
         -- Inspiration declares no `lingers`, so this grant is stamped with "hazard_rally" as its source
         -- automatically and lasts exactly as long as the unit stands here.
-        ctx.applyStatus(ctx.unit, "inspiration", { magnitude = ctx.amount })
+        ctx.applyStatus(ctx.unit, "status_inspiration", { magnitude = ctx.amount })
     end,
 }

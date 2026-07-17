@@ -4,7 +4,8 @@
 -- whatever it slammed into). See Combat.knockback.
 return {
     name = "Push",
-    description = "Drive an adjacent foe three spaces back. Colliding with anything hurts both sides.",
+    description = "Drives an adjacent foe three tiles back. A collision hurts both sides.",
+    flavor = "No damage of its own. The wall, the fire and the spikes do all of the talking.",
     sprite = "assets/items/ability_push.png",
     type = "ability",
     tags = { "impact", "physical" },

@@ -12,12 +12,12 @@ return {
     description = "Sucking ground: doubles the movement and ability costs of any unit standing in it.",
     sprite = "assets/hazards/quicksand.png",
     tags = { "earth" },
-    duration = 8,             -- ticks the churned ground persists
+    duration = 20,            -- ticks the churned ground persists: ~4 turns, the area-denial it is for
     disposition = "hostile",  -- the enemy AI steps around it
     onEnter = function(ctx)
         -- Mired does not declare `lingers`, so it is zone-bound: the grant is stamped with this hazard
         -- as its source automatically, and lifts the moment the unit steps onto firm ground or the sand
         -- itself settles.
-        ctx.applyStatus(ctx.unit, "mired")
+        ctx.applyStatus(ctx.unit, "status_mired")
     end,
 }

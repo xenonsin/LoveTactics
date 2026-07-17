@@ -4,7 +4,8 @@
 -- must be worn all the way down, not cut short. Requires an adjacent melee weapon in the grid.
 return {
     name = "Coup de Grace",
-    description = "A finishing strike: an adjacent foe below a quarter health is slain outright. Bosses are immune. Requires an adjacent melee weapon.",
+    description = "Slays an adjacent foe below a quarter health outright. Bosses are immune. Needs a melee weapon adjacent.",
+    flavor = "The Undercroft does not call it mercy. It does not call it anything else either.",
     sprite = "assets/items/ability_coup_de_grace.png",
     type = "ability",
     tags = { "guile", "physical" },

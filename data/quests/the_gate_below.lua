@@ -34,17 +34,17 @@ return {
     },
     map = {
         biome = "underworld",
-        encounters = { min = 12, max = 16, always = { "elite", "elite", "elite" } },
+        encounters = { min = 12, max = 16, always = { "encounter_elite", "encounter_elite", "encounter_elite" } },
         objective = {
             name = "The Hollow Crown",
             composition = function(ctx)
-                local list = { "demon_lord" }
+                local list = { "character_demon_lord" }
                 -- Its honour guard, not its arsenal -- the arsenal is what it summons out of your
                 -- own past as it fails (data/traits/hollow_crown.lua).
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 4) do list[#list + 1] = "champion" end
+                for i = 1, 2 + math.floor((ctx.prestige or 1) / 4) do list[#list + 1] = "character_champion" end
                 return list
             end,
-            win = { type = "assassinate", target = "demon_lord" },
+            win = { type = "assassinate", target = "character_demon_lord" },
         },
         keyCount = 0, -- see the header: the overworld's keys are not this quest's keys
     },

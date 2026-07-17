@@ -1,6 +1,7 @@
 return {
     name = "Fireball",
-    description = "Hurls a fireball at a distant tile, bursting in a 3x3. Scales with magic.",
+    description = "Bursts on a tile for fire damage in an area, and leaves the ground burning.",
+    flavor = "The Arcanum's loudest argument, and the one it is proudest of winning.",
     sprite = "assets/items/ability_fireball.png",
     type = "ability",
     tags = { "fire", "magical" }, -- the "magical" tag routes damage to magicDamage/magicDefense
@@ -33,7 +34,7 @@ return {
             -- `aoe` footprint). It burns whoever enters, spreads into forest, and lingers a few turns.
             -- A more-forged Fireball sears hotter (Burn base 4/turn, +1 per level) and burns longer.
             for _, c in ipairs(fx.aoeCells()) do
-                fx.placeHazard(c.x, c.y, "hazard_fire", { amount = 4 + fx.level, duration = 4 + fx.level })
+                fx.placeHazard(c.x, c.y, "hazard_fire", { amount = 4 + fx.level, duration = 15 + fx.level })
             end
         end,
     },

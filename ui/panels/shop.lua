@@ -13,6 +13,7 @@
 local Menu = require("ui.menu")
 local QuantityPopup = require("ui.quantity_popup")
 local CloseButton = require("ui.close_button")
+local ItemTooltip = require("ui.item_tooltip") -- for printFlavor: the sheared italic story line
 local Vendor = require("models.vendor")
 local Player = require("models.player")
 local Item = require("models.item")
@@ -434,7 +435,15 @@ function Shop:drawDetail()
 
     love.graphics.setFont(self.bodyFont)
     love.graphics.setColor(0.8, 0.82, 0.88)
-    love.graphics.printf(item.description or "", x, y + 48, w, "left")
+    local desc = item.description or ""
+    love.graphics.printf(desc, x, y + 48, w, "left")
+
+    -- The story line rides under the description, in the gap ahead of the stat block below.
+    if item.flavor and item.flavor ~= "" then
+        local _, descLines = self.bodyFont:getWrap(desc, w)
+        local descH = #descLines * self.bodyFont:getHeight()
+        ItemTooltip.printFlavor(item.flavor, x, y + 48 + descH + 6, w, self.bodyFont)
+    end
 
     -- Quick stats. The item's primary stat -- the one magnitude that defines it (armor's defense, a
     -- blade's Power), quoted at its current level -- leads the block for ANY item, armor included.

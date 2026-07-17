@@ -57,14 +57,14 @@ end
 --     requires the speaker it gates (see `guarantees`), which no closure could ever offer.
 --
 -- The grammar, evaluated against a context from `Conversation.context`:
---   { has = "priest" }        the character is on the roster (recruited)
---   { notHas = "priest" }     ... and its negation
+--   { has = "character_priest" }        the character is on the roster (recruited)
+--   { notHas = "character_priest" }     ... and its negation
 --   { done = "vault_heist" }  the quest is completed
 --   { notDone = "..." }
 --   { prestige = 3 }          player prestige is AT LEAST 3
 --   { all = { c1, c2 } }      every sub-condition holds
 --   { any = { c1, c2 } }      at least one holds
--- Several keys in one table AND together: { has = "priest", done = "vault_heist" }.
+-- Several keys in one table AND together: { has = "character_priest", done = "vault_heist" }.
 local PREDICATES = {}
 PREDICATES.has = function(ctx, id) return ctx.roster[id] == true end
 PREDICATES.notHas = function(ctx, id) return ctx.roster[id] ~= true end
@@ -89,7 +89,7 @@ Conversation.PREDICATES = PREDICATES
 
 -- Does `when` hold in `ctx`? A nil condition is unconditional (always true), so an ungated
 -- scene needs no ceremony. An unknown key is an authoring error and raises rather than
--- quietly passing -- a mistyped `{ hass = "priest" }` must never read as "always show".
+-- quietly passing -- a mistyped `{ hass = "character_priest" }` must never read as "always show".
 function Conversation.test(when, ctx)
     if when == nil then return true end
     assert(type(when) == "table", "a `when` condition must be a table, got " .. type(when))
@@ -122,7 +122,7 @@ end
 
 -- Can `when` ever hold WITHOUT character `id` on the roster? `guarantees` returns true when it
 -- cannot -- i.e. the condition provably implies the character is present. This is what lets the
--- spec prove a gated speaker's lines are guarded: a block that says { has = "priest" } may safely
+-- spec prove a gated speaker's lines are guarded: a block that says { has = "character_priest" } may safely
 -- contain priest lines; one that says { done = "arena_debut" } may not.
 -- Conservative by construction: it only ever returns true when it is certain, so a condition
 -- shape it cannot reason about reads as "no guarantee" and the spec asks the author to be explicit.

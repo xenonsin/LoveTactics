@@ -5,7 +5,8 @@
 -- foe. A support cast, so its cursor previews green.
 return {
     name = "Revive",
-    description = "Raise a fallen ally where they lie, restoring half their health.",
+    description = "Raises a fallen ally where they lie, restoring half their health.",
+    flavor = "The miracle, and the Cathedral's entire claim on your attention.",
     sprite = "assets/items/ability_revive.png",
     type = "ability",
     tags = { "holy", "restorative" },

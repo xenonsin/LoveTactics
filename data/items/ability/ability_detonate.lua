@@ -4,7 +4,8 @@
 -- has stacked its damage-over-time first.
 return {
     name = "Detonate",
-    description = "Detonate the poison or fire on a foe into an area blast, consuming it. Weak with no affliction to set off.",
+    description = "Detonates Burn or Poison on a foe into an area blast, consuming it. Weak without one.",
+    flavor = "The Arcanum did not light the fire. It only found a use for someone else's.",
     sprite = "assets/items/ability_detonate.png",
     type = "ability",
     tags = { "fire", "magical" },
@@ -22,12 +23,12 @@ return {
         effect = function(fx)
             local t = fx.target
             if not t then return end
-            if fx.hasStatus(t, "burn") or fx.hasStatus(t, "poison") then
+            if fx.hasStatus(t, "status_burn") or fx.hasStatus(t, "status_poison") then
                 for _, u in ipairs(fx.aoeUnits()) do
                     fx.damage(u, { amount = fx.amount * 2 })
                 end
-                fx.clearStatus(t, "burn")
-                fx.clearStatus(t, "poison")
+                fx.clearStatus(t, "status_burn")
+                fx.clearStatus(t, "status_poison")
             else
                 fx.damage(t) -- nothing to set off: a single weak bolt
             end

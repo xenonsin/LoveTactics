@@ -5,7 +5,8 @@
 -- thing that lives by its weapon: a heavy hitter drops to slapping for a few turns.
 return {
     name = "Disarm",
-    description = "Foul a foe's grip so it cannot use its weapon for a time. Deals no damage.",
+    description = "Inflicts Disarmed: the foe cannot use its weapon for a time. Deals no damage.",
+    flavor = "A splash of solvent -- the Crucible's answer to anything that lives by its grip.",
     sprite = "assets/items/ability_disarm.png",
     type = "ability",
     tags = { "arcane" },
@@ -19,7 +20,7 @@ return {
         speed = 4,
         cost = { stat = "mana", amount = 12 },
         effect = function(fx)
-            fx.applyStatus(fx.target, "disarmed")
+            fx.applyStatus(fx.target, "status_disarmed")
         end,
     },
 }

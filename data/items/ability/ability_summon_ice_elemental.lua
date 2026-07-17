@@ -2,7 +2,8 @@
 -- scaling, duration and one-at-a-time rule work. A slow, hardy wall of ice.
 return {
     name = "Summon Ice Elemental",
-    description = "Bind an ice elemental to the field for a time, one at a time. Reserves a quarter of your maximum mana while it lives.",
+    description = "Binds an ice elemental for a time. One at a time; reserves a quarter of your max mana.",
+    flavor = "A slow, hardy wall of ice with nowhere in particular it needs to be.",
     sprite = "assets/items/ability_summon_ice_elemental.png",
     type = "ability",
     tags = { "summon", "ice" },
@@ -15,7 +16,7 @@ return {
         speed = 6,
         reserve = { stat = "mana", percent = 0.25 },
         effect = function(fx)
-            fx.summon("ice_elemental", fx.tx, fx.ty, {
+            fx.summon("character_ice_elemental", fx.tx, fx.ty, {
                 scaling = { health = 2, magicDamage = 0.4 },
                 amount = 12 + fx.level, -- base 12, +1 per upgrade level
                 duration = 24,

@@ -6,7 +6,8 @@
 -- tool -- taking not a foe's gold but the foe itself.
 return {
     name = "Charm",
-    description = "Beguile a foe into fighting for you -- more likely the more wounded it is. Bosses are unmoved.",
+    description = "Turns a foe to your side -- likelier the more wounded it is. Bosses are unmoved.",
+    flavor = "Greed's real tool: not taking a foe's gold, but taking the foe.",
     sprite = "assets/items/ability_charm.png",
     type = "ability",
     tags = { "guile", "utility" },
@@ -33,11 +34,11 @@ return {
                 -- Flip the victim onto the caster's side under AI control, stashing what to restore.
                 -- Guard on the status so a refresh (re-charm) doesn't overwrite the stash with the
                 -- already-flipped values.
-                if not fx.hasStatus(t, "charm") then
+                if not fx.hasStatus(t, "status_charm") then
                     t._charmSide, t._charmControl = t.side, t.control
                     t.side, t.control = fx.user.side, "ai"
                 end
-                fx.applyStatus(t, "charm")
+                fx.applyStatus(t, "status_charm")
             else
                 fx.log("action", string.format("%s resists the charm.", t.char.name or "The target"))
             end

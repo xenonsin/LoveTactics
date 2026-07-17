@@ -5,7 +5,8 @@
 -- displacement, not a strike: use it to bury a foe in a corner, or plough it back through its own line.
 return {
     name = "Charge",
-    description = "Pin the foe in front and drive it (and yourself) three tiles ahead, trampling the lane.",
+    description = "Drives the foe in front, and you, three tiles ahead, trampling the lane.",
+    flavor = "Displacement, not a strike. Where they end up is the entire point of the exercise.",
     sprite = "assets/items/ability_charge.png",
     type = "ability",
     tags = { "impact", "physical" },

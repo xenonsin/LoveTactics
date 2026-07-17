@@ -5,7 +5,8 @@
 -- cast and Combat.adjacencyLinks draws the connector line to the bow that satisfies it.
 return {
     name = "Power Shot",
-    description = "A single overdrawn arrow that pierces a straight line four tiles long. Requires an adjacent ranged weapon.",
+    description = "Looses an arrow piercing a line four tiles long. Needs an adjacent ranged weapon.",
+    flavor = "The overdraw is the whole shot. The Lodge counts the bodies afterward, in a line.",
     sprite = "assets/items/ability_powershot.png",
     type = "ability",
     tags = { "pierce", "physical" },

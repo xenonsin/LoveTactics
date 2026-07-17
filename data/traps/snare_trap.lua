@@ -7,6 +7,6 @@ return {
     health = 4,
     tags = { "trap", "snare" },
     onTrigger = function(ctx)
-        ctx.applyStatus(ctx.victim, "root")
+        ctx.applyStatus(ctx.victim, "status_root")
     end,
 }

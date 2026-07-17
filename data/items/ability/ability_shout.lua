@@ -5,7 +5,8 @@
 -- to take them. Allies caught in the area are untouched -- only foes are provoked.
 return {
     name = "Shout",
-    description = "A war-cry that taunts nearby foes: they must attack you with their default weapon.",
+    description = "Inflicts Taunt on nearby foes: they must attack you with their default weapon.",
+    flavor = "The knight's answer to Sloth: draw the blows onto the one built to take them.",
     sprite = "assets/items/ability_shout.png",
     type = "ability",
     tags = { "impact" },
@@ -22,7 +23,7 @@ return {
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 if u.side ~= fx.user.side then
-                    local st = fx.applyStatus(u, "taunt")
+                    local st = fx.applyStatus(u, "status_taunt")
                     if st then st.taunter = fx.user end -- who the taunt drags them toward
                 end
             end

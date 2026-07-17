@@ -23,15 +23,15 @@ return {
     {
         name = "a physical barrier negates the next physical hit, is consumed, and lets magic through",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             local hp0 = bandit.char.stats.health.current
 
-            Status.apply(c, bandit, "physical_barrier")
+            Status.apply(c, bandit, "status_physical_barrier")
             local dealt = Combat.dealFlatDamage(c, bandit, 30, { "physical" }, "test")
             assert(dealt == 0, "the physical hit is negated, got " .. dealt)
             assert(bandit.char.stats.health.current == hp0, "no health was lost")
-            assert(not Status.has(bandit, "physical_barrier"), "the barrier is spent by the hit")
+            assert(not Status.has(bandit, "status_physical_barrier"), "the barrier is spent by the hit")
 
             -- Only that ONE hit is warded: the next physical blow lands in full.
             local again = Combat.dealFlatDamage(c, bandit, 30, { "physical" }, "test")
@@ -41,47 +41,47 @@ return {
     {
         name = "a physical barrier does nothing against a magical hit",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             bandit.char.stats.magicDefense = 0
             local hp0 = bandit.char.stats.health.current
 
-            Status.apply(c, bandit, "physical_barrier")
+            Status.apply(c, bandit, "status_physical_barrier")
             local dealt = Combat.dealFlatDamage(c, bandit, 20, { "magical" }, "test")
             assert(dealt == 20, "a magical hit passes straight through a physical barrier, got " .. dealt)
             assert(bandit.char.stats.health.current == hp0 - 20, "the magical hit landed in full")
-            assert(Status.has(bandit, "physical_barrier"), "and the physical barrier is untouched")
+            assert(Status.has(bandit, "status_physical_barrier"), "and the physical barrier is untouched")
         end,
     },
     {
         name = "a magical barrier negates a magical hit but not a physical one",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             bandit.char.stats.defense = 0
 
-            Status.apply(c, bandit, "magical_barrier")
+            Status.apply(c, bandit, "status_magical_barrier")
             assert(Combat.dealFlatDamage(c, bandit, 25, { "magical" }, "test") == 0,
                 "the magical barrier eats the spell")
-            assert(not Status.has(bandit, "magical_barrier"), "and is spent")
+            assert(not Status.has(bandit, "status_magical_barrier"), "and is spent")
 
-            Status.apply(c, bandit, "magical_barrier")
+            Status.apply(c, bandit, "status_magical_barrier")
             assert(Combat.dealFlatDamage(c, bandit, 10, { "physical" }, "test") == 10,
                 "but a physical blow passes through it")
-            assert(Status.has(bandit, "magical_barrier"), "leaving the magical barrier intact")
+            assert(Status.has(bandit, "status_magical_barrier"), "leaving the magical barrier intact")
         end,
     },
     {
         name = "the damage preview reports a warded hit as 0 without consuming the barrier",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
-            Status.apply(c, bandit, "physical_barrier")
+            Status.apply(c, bandit, "status_physical_barrier")
 
             -- Combat.mitigatedDamage is the pure read the tooltip uses; it must see the negation but
             -- never spend the ward.
             assert(Combat.mitigatedDamage(bandit, 30, { "physical" }) == 0, "preview shows 0 for a warded hit")
-            assert(Status.has(bandit, "physical_barrier"), "a hovered preview does not consume the barrier")
+            assert(Status.has(bandit, "status_physical_barrier"), "a hovered preview does not consume the barrier")
         end,
     },
 }

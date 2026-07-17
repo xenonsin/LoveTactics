@@ -14,6 +14,7 @@ local Material = require("models.material")
 local Character = require("models.character")
 local Player = require("models.player")
 local CloseButton = require("ui.close_button")
+local ItemTooltip = require("ui.item_tooltip") -- for printFlavor: the sheared italic story line
 local Scale = require("scale")
 local InputMode = require("input_mode")
 
@@ -197,7 +198,15 @@ function BlacksmithPanel:drawDetail()
         x, y + 26, w, "left")
 
     love.graphics.setColor(0.8, 0.82, 0.88)
-    love.graphics.printf(item.description or "", x, y + 54, w, "left")
+    local desc = item.description or ""
+    love.graphics.printf(desc, x, y + 54, w, "left")
+
+    -- The story line rides under the description, in the gap ahead of the upgrade cost below.
+    if item.flavor and item.flavor ~= "" then
+        local _, descLines = self.bodyFont:getWrap(desc, w)
+        local descH = #descLines * self.bodyFont:getHeight()
+        ItemTooltip.printFlavor(item.flavor, x, y + 54 + descH + 6, w, self.bodyFont)
+    end
 
     local cost = Blacksmith.upgradeCost(item)
     if not cost then

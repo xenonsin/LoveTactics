@@ -64,11 +64,11 @@ return {
     {
         name = "a summon joins the units, the turn order, and starts at its own natural initiative",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, { unit("character_bandit", 8, 8) })
             local archer = c.units[1]
             local before = #c.units
 
-            local wolf = Summon.spawn(c, archer, "wolf_grunt", 2, 1)
+            local wolf = Summon.spawn(c, archer, "character_wolf_grunt", 2, 1)
             assert(#c.units == before + 1, "it is a real unit on the field")
             assert(Combat.unitAt(c, 2, 1) == wolf, "standing where it was called")
             assert(inOrder(c, wolf), "and it takes turns")
@@ -82,28 +82,28 @@ return {
     {
         name = "a summon inherits its summoner's controller, and its passives are folded in",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, { unit("character_bandit", 8, 8) })
             local archer, bandit = c.units[1], c.units[2]
 
-            local mine = Summon.spawn(c, archer, "wolf_grunt", 2, 1)
+            local mine = Summon.spawn(c, archer, "character_wolf_grunt", 2, 1)
             assert(mine.side == "party" and Combat.isPlayerControlled(mine), "my wolf answers to me")
             assert(mine.bonus and mine.resist, "its item passives were folded in on arrival")
 
-            local theirs = Summon.spawn(c, bandit, "wolf_grunt", 7, 8)
+            local theirs = Summon.spawn(c, bandit, "character_wolf_grunt", 7, 8)
             assert(theirs.side == "enemy" and theirs.control == "ai", "their wolf answers to the AI")
 
-            local inert = Summon.spawn(c, archer, "wolf_grunt", 1, 2, { control = "none" })
+            local inert = Summon.spawn(c, archer, "character_wolf_grunt", 1, 2, { control = "none" })
             assert(not Combat.isPlayerControlled(inert), "an inert summon is nobody's to command")
         end,
     },
     {
         name = "power scales a summon additively, per stat, and it arrives at full health",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, { unit("character_bandit", 8, 8) })
             local archer = c.units[1]
-            local base = Character.defs.wolf_grunt.stats
+            local base = Character.defs.character_wolf_grunt.stats
 
-            local wolf = Summon.spawn(c, archer, "wolf_grunt", 2, 1, {
+            local wolf = Summon.spawn(c, archer, "character_wolf_grunt", 2, 1, {
                 scaling = { health = 2, damage = 0.5 }, amount = 10,
             })
             local hp = wolf.char.stats.health
@@ -115,7 +115,7 @@ return {
     {
         name = "an ability's reservation is bound to the creature it summons",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             openTurn(c, mage)
             local mana = mage.char.stats.mana
@@ -126,7 +126,7 @@ return {
             assert(Combat.resolveChannel(c, mage), "and the wound-up binding forms the elemental")
 
             local elemental = Combat.unitAt(c, 3, 2)
-            assert(elemental and elemental.char.id == "fire_elemental", "the elemental is there")
+            assert(elemental and elemental.char.id == "character_fire_elemental", "the elemental is there")
             assert(Combat.reservedAmount(mage.char, "mana") == expected, "a quarter of max mana is committed")
             assert(mana.max == 80, "the maximum itself is untouched")
             assert(Combat.unreservedMax(mage.char, "mana") == 80 - expected, "the ceiling drops by the reservation")
@@ -136,7 +136,7 @@ return {
     {
         name = "killing a summon releases the mana its summoner set aside",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             openTurn(c, mage)
             local summon = itemNamed(mage.char, "ability_summon_fire_elemental")
@@ -154,7 +154,7 @@ return {
     {
         name = "killing the summoner dismisses its summons and frees the reservation",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             openTurn(c, mage)
             Combat.useItem(c, mage, itemNamed(mage.char, "ability_summon_fire_elemental"), 3, 2)
@@ -170,9 +170,9 @@ return {
     {
         name = "a live enemy summon blocks killAll; killing its summoner dismisses it and resolves the fight",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
             local bandit = c.units[2]
-            local wolf = Summon.spawn(c, bandit, "wolf_grunt", 7, 8)
+            local wolf = Summon.spawn(c, bandit, "character_wolf_grunt", 7, 8)
 
             -- Kill the bandit's summoner-less companion first: only the wolf is left standing, and it
             -- is an enemy like any other, so the objective must not resolve.
@@ -186,10 +186,10 @@ return {
     {
         name = "a summon of a still-living enemy keeps killAll open",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
             local bandit = c.units[2]
             -- Give the wolf an independent summoner that never dies, so it outlives the bandit.
-            local wolf = Summon.spawn(c, bandit, "wolf_grunt", 7, 8)
+            local wolf = Summon.spawn(c, bandit, "character_wolf_grunt", 7, 8)
             wolf.summoner = nil
 
             Combat.dealFlatDamage(c, bandit, 9999, { "physical" })
@@ -203,12 +203,12 @@ return {
     {
         name = "a summoned duplicate of an assassination target does not count as the target",
         fn = function()
-            local c = Combat.new(arena(8, 8, { type = "assassinate", target = "bandit_chief" }),
-                { unit("knight", 1, 1) }, { unit("bandit_chief", 8, 8) })
+            local c = Combat.new(arena(8, 8, { type = "assassinate", target = "character_bandit_chief" }),
+                { unit("character_knight", 1, 1) }, { unit("character_bandit_chief", 8, 8) })
             local chief = c.units[2]
 
             local double = Summon.copy(c, chief, 7, 8, { fragile = true })
-            assert(double.char.id == "bandit_chief", "the copy shares the mark's identity")
+            assert(double.char.id == "character_bandit_chief", "the copy shares the mark's identity")
             assert(double.summoned, "but it is flagged as conjured")
 
             Combat.dealFlatDamage(c, chief, 9999, { "physical" })
@@ -219,16 +219,16 @@ return {
     {
         name = "a copy carries the caster's current stats and kit, minus anything marked noCopy",
         fn = function()
-            local mage = Character.instantiate("mage")
-            equip(mage, { "ability_fireball", "ability_doppelganger", "silk_robes" })
-            local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("bandit", 8, 8) })
+            local mage = Character.instantiate("character_mage")
+            equip(mage, { "ability_fireball", "ability_doppelganger", "armor_silk_robes" })
+            local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("character_bandit", 8, 8) })
             local caster = c.units[1]
             caster.char.stats.health.current = 31 -- wounded
 
             local double = Summon.copy(c, caster, 3, 2, { fragile = true })
             assert(double.char.stats.health.current == 31, "the copy is as wounded as the original")
             assert(itemNamed(double.char, "ability_fireball"), "it carries the caster's spells")
-            assert(itemNamed(double.char, "silk_robes"), "and its armor")
+            assert(itemNamed(double.char, "armor_silk_robes"), "and its armor")
             assert(not itemNamed(double.char, "ability_doppelganger"),
                 "but never the ability that made it -- a copy cannot copy itself")
             assert(double.char.inventory ~= caster.char.inventory, "the grids are separate")
@@ -237,7 +237,7 @@ return {
     {
         name = "a fragile summon dies to any hit at all",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             local double = Summon.copy(c, knight, 3, 2, { fragile = true })
             assert(double.char.stats.health.current > 1, "it looks perfectly healthy")
@@ -249,7 +249,7 @@ return {
     {
         name = "a summon ability is refused when its reservation cannot be committed",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             openTurn(c, mage)
             mage.char.stats.mana.current = 1
@@ -263,7 +263,7 @@ return {
     {
         name = "a summon ability cannot be recast while its creature stands, and frees up when it falls",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             local summon = itemNamed(mage.char, "ability_summon_fire_elemental")
 
@@ -294,7 +294,7 @@ return {
     {
         name = "a summon dismissed with its summoner releases the ability that called it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             local summon = itemNamed(mage.char, "ability_summon_fire_elemental")
             openTurn(c, mage)
@@ -310,8 +310,8 @@ return {
     {
         name = "a summon still standing at the last blow does not follow the party into the next battle",
         fn = function()
-            local mage = Character.instantiate("mage")
-            local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("bandit", 8, 8) })
+            local mage = Character.instantiate("character_mage")
+            local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("character_bandit", 8, 8) })
             openTurn(c, c.units[1])
             local summon = itemNamed(mage, "ability_summon_fire_elemental")
             Combat.useItem(c, c.units[1], summon, 3, 2)
@@ -319,7 +319,7 @@ return {
             assert(Combat.activeSummon(summon), "the elemental outlives the fight")
 
             -- Same character instance, new battle: its grid must come up clean.
-            local next_ = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("bandit", 8, 8) })
+            local next_ = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("character_bandit", 8, 8) })
             assert(Combat.activeSummon(summon) == nil, "the claim was left behind with the old field")
             assert(Combat.itemBlockReason(next_.units[1], summon) == nil, "so it may be cast again")
         end,
@@ -327,8 +327,8 @@ return {
     {
         name = "releaseClaims frees the summon claim when the battle ends, so the overworld reads clean",
         fn = function()
-            local mage = Character.instantiate("mage")
-            local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("bandit", 8, 8) })
+            local mage = Character.instantiate("character_mage")
+            local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("character_bandit", 8, 8) })
             openTurn(c, c.units[1])
             local summon = itemNamed(mage, "ability_summon_fire_elemental")
             Combat.useItem(c, c.units[1], summon, 3, 2)
@@ -346,7 +346,7 @@ return {
     {
         name = "a timed summon counts down on the combat clock and fades when its duration runs out",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             openTurn(c, mage)
             Combat.useItem(c, mage, itemNamed(mage.char, "ability_summon_fire_elemental"), 3, 2)
@@ -370,7 +370,7 @@ return {
     {
         name = "a summon with no duration stands indefinitely, however much time passes",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, { unit("character_bandit", 8, 8) })
             local archer = c.units[1]
             openTurn(c, archer)
             Combat.useItem(c, archer, itemNamed(archer.char, "ability_summon_wolf"), 3, 2)
@@ -384,7 +384,7 @@ return {
     {
         name = "the real turn clock ages a summon: ending turns fades it without anyone calling tick",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 8, 8) })
             local mage, bandit = c.units[1], c.units[2]
             mage.initiative, bandit.initiative = 0, 100
             openTurn(c, mage)
@@ -409,14 +409,14 @@ return {
     {
         name = "a faded summon's own summons go with it, and the log says it faded rather than fell",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             openTurn(c, mage)
             Combat.useItem(c, mage, itemNamed(mage.char, "ability_summon_fire_elemental"), 3, 2)
             Combat.resolveChannel(c, mage) -- the summon winds up before the elemental forms
             local elemental = Combat.unitAt(c, 3, 2)
             -- Hang a second creature off the elemental, so the dismissal has a chain to unwind.
-            local pup = Summon.spawn(c, elemental, "wolf_grunt", 4, 2)
+            local pup = Summon.spawn(c, elemental, "character_wolf_grunt", 4, 2)
 
             Summon.tick(c, 999)
             assert(not elemental.alive, "the elemental fades")
@@ -433,9 +433,9 @@ return {
     {
         name = "one double at a time: a doppelganger cannot beget a second while the first stands",
         fn = function()
-            local mage = Character.instantiate("mage")
+            local mage = Character.instantiate("character_mage")
             equip(mage, { "ability_doppelganger" })
-            local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("character_bandit", 8, 8) })
             local caster = c.units[1]
             local double = itemNamed(caster.char, "ability_doppelganger")
 
@@ -453,12 +453,12 @@ return {
     {
         name = "the summon tooltip preview names the creature without spawning it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, { unit("character_bandit", 8, 8) })
             local archer = c.units[1]
             local before = #c.units
 
             local out = Combat.abilityOutput(archer, itemNamed(archer.char, "ability_summon_wolf"))
-            assert(out and out.summon == "wolf_grunt", "the dry run reports what would be summoned")
+            assert(out and out.summon == "character_wolf_grunt", "the dry run reports what would be summoned")
             assert(#c.units == before, "and summons nothing")
 
             local preview = Combat.previewAbility(c, archer, itemNamed(archer.char, "ability_summon_wolf"), 3, 2)
@@ -472,10 +472,10 @@ return {
             -- The old `summonPower` list is gone: the ability's `amount` is base + the item's level, so
             -- a forged summon ability fields a tougher creature.
             local function fireElementalHealthAt(level)
-                local mage = Character.instantiate("mage")
+                local mage = Character.instantiate("character_mage")
                 mage.inventory = {}
                 Character.addItem(mage, Item.instantiate("ability_summon_fire_elemental", 1, level))
-                local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("bandit", 8, 8) })
+                local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit("character_bandit", 8, 8) })
                 local caster = c.units[1]
                 caster.char.stats.mana.current = caster.char.stats.mana.max
                 openTurn(c, caster)
@@ -498,11 +498,11 @@ return {
     {
         name = "a creature summoned on top of an enemy trap springs it the moment it arrives",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, { unit("character_bandit", 8, 8) })
             local archer = c.units[1]
             Trap.place(c, 2, 1, "spike_trap", "enemy")
 
-            local wolf = Summon.spawn(c, archer, "wolf_grunt", 2, 1)
+            local wolf = Summon.spawn(c, archer, "character_wolf_grunt", 2, 1)
             local hp = wolf.char.stats.health
             assert(hp.current < hp.max, "the spikes bit the wolf as it was called onto them")
             assert(Trap.at(c, 2, 1) == nil, "and the one-shot trap is spent")
@@ -511,11 +511,11 @@ return {
     {
         name = "a creature summoned onto its own side's trap leaves it alone",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, { unit("character_bandit", 8, 8) })
             local archer = c.units[1]
             Trap.place(c, 2, 1, "spike_trap", "party")
 
-            local wolf = Summon.spawn(c, archer, "wolf_grunt", 2, 1)
+            local wolf = Summon.spawn(c, archer, "character_wolf_grunt", 2, 1)
             local hp = wolf.char.stats.health
             assert(hp.current == hp.max, "own-side immunity holds for a summon as for a walker")
             assert(Trap.at(c, 2, 1), "the trap is still armed, waiting for an enemy")
@@ -524,12 +524,12 @@ return {
     {
         name = "a creature summoned into a fire catches Burn on arrival",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, { unit("character_bandit", 8, 8) })
             local archer = c.units[1]
             Hazard.place(c, 2, 1, "hazard_fire")
 
-            local wolf = Summon.spawn(c, archer, "wolf_grunt", 2, 1)
-            assert(Status.has(wolf, "burn"), "conjured into the flames is conjured alight")
+            local wolf = Summon.spawn(c, archer, "character_wolf_grunt", 2, 1)
+            assert(Status.has(wolf, "status_burn"), "conjured into the flames is conjured alight")
         end,
     },
     {
@@ -540,7 +540,7 @@ return {
             Trap.defs.test_slayer = { name = "Slayer", health = 1,
                 onTrigger = function(ctx) ctx.damage(ctx.victim, 9999, {}) end }
 
-            local c = Combat.new(arena(8, 8), { unit("archer", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, { unit("character_bandit", 8, 8) })
             local archer = c.units[1]
             Trap.place(c, 3, 2, "test_slayer", "enemy")
             local mana = archer.char.stats.mana
@@ -561,19 +561,19 @@ return {
     {
         name = "a decoy destroyed by the trap it was planted on hides nobody",
         fn = function()
-            local thief = Character.instantiate("archer")
-            equip(thief, { "decoy" })
-            local c = Combat.new(arena(8, 8), { unit(thief, 2, 2) }, { unit("bandit", 8, 8) })
+            local thief = Character.instantiate("character_archer")
+            equip(thief, { "utility_decoy" })
+            local c = Combat.new(arena(8, 8), { unit(thief, 2, 2) }, { unit("character_bandit", 8, 8) })
             local caster = c.units[1]
             Trap.place(c, 3, 2, "spike_trap", "enemy") -- a fragile double dies to any hit at all
             openTurn(c, caster)
 
-            assert(Combat.useItem(c, caster, itemNamed(caster.char, "decoy"), 3, 2), "the double is planted")
+            assert(Combat.useItem(c, caster, itemNamed(caster.char, "utility_decoy"), 3, 2), "the double is planted")
             local double = c.units[#c.units]
             assert(not double.alive, "and the spikes destroy it where it stands")
-            assert(not Status.has(caster, "invisible"),
+            assert(not Status.has(caster, "status_invisible"),
                 "there is nothing left to hide behind, so the caster never slips out of sight")
-            assert(Combat.activeSummon(itemNamed(caster.char, "decoy")) == nil, "the trick may be tried again")
+            assert(Combat.activeSummon(itemNamed(caster.char, "utility_decoy")) == nil, "the trick may be tried again")
 
             -- The fake "moves to" line is never written: the double died before the lie was told.
             for _, e in ipairs(c.log) do

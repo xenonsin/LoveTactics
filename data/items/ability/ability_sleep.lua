@@ -21,7 +21,8 @@
 -- know what the cast buys before spending on it.
 return {
     name = "Sleep",
-    description = "Put a foe deeply asleep, far down the turn order. Any damage wakes it.",
+    description = "Puts a foe far down the turn order. Any damage wakes it.",
+    flavor = "Do not sleep the thing you are about to kill. Sleep the one you intend to ignore.",
     sprite = "assets/items/ability_sleep.png",
     type = "ability",
     tags = { "arcane", "magical", "utility" },
@@ -35,7 +36,7 @@ return {
         speed = 5,
         cost = { stat = "mana", amount = 14 },
         effect = function(fx)
-            if fx.target then fx.applyStatus(fx.target, "sleep") end
+            if fx.target then fx.applyStatus(fx.target, "status_sleep") end
         end,
     },
 }

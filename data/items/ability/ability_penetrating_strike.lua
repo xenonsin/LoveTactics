@@ -4,7 +4,8 @@
 -- Combat.mitigatedDamage), though a barrier still swallows it whole. The answer to a wall of plate.
 return {
     name = "Penetrating Strike",
-    description = "A precise thrust that ignores armor and resistances. Requires an adjacent melee weapon.",
+    description = "Ignores armor and resistances entirely. Requires an adjacent melee weapon.",
+    flavor = "The answer to a wall of plate, which the Colosseum keeps selling to the other side.",
     sprite = "assets/items/ability_penetrating_strike.png",
     type = "ability",
     tags = { "pierce", "physical" },

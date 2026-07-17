@@ -221,17 +221,17 @@ return {
     {
         name = "class survives instantiation and is absent on universal items",
         fn = function()
-            assert(Item.instantiate("iron_sword").class == "fighter", "class should reach the instance")
-            assert(Item.classOf(Item.instantiate("iron_sword")) == "fighter", "classOf should read it")
-            assert(Item.instantiate("unarmed").class == nil, "the unarmed fallback belongs to no class")
+            assert(Item.instantiate("weapon_iron_sword").class == "fighter", "class should reach the instance")
+            assert(Item.classOf(Item.instantiate("weapon_iron_sword")) == "fighter", "classOf should read it")
+            assert(Item.instantiate("weapon_unarmed").class == nil, "the unarmed fallback belongs to no class")
         end,
     },
     {
         name = "blueprints are untouched after Vendor.stock",
         fn = function()
             Vendor.stock("colosseum", 1)
-            assert(Item.defs.iron_sword.locked == nil, "item blueprint gained a `locked` field")
-            assert(Item.defs.iron_sword.id == nil, "item blueprint gained an `id` field")
+            assert(Item.defs.weapon_iron_sword.locked == nil, "item blueprint gained a `locked` field")
+            assert(Item.defs.weapon_iron_sword.id == nil, "item blueprint gained an `id` field")
         end,
     },
 
@@ -353,7 +353,7 @@ return {
                 "the Gate must carry its seven prerequisites")
 
             -- general_wrath is completed above, so read rewardItems off the blueprint's own copy.
-            assert(Quest.defs.general_wrath.rewardItems[1] == "mail_of_the_unappeased",
+            assert(Quest.defs.general_wrath.rewardItems[1] == "armor_mail_of_the_unappeased",
                 "Ira should drop her mail")
             assert(general == nil, "and a completed, non-repeatable general leaves the board")
         end,
@@ -437,15 +437,15 @@ return {
                 end
                 return n
             end
-            assert(stashCount("mail_of_the_unappeased") == 0, "the mail starts on Ira, not on you")
+            assert(stashCount("armor_mail_of_the_unappeased") == 0, "the mail starts on Ira, not on you")
 
             local reward = Quest.complete(p, quest)
-            assert(stashCount("mail_of_the_unappeased") == 1, "killing her drops it into the stash")
-            assert(reward.received and reward.received[1].id == "mail_of_the_unappeased",
+            assert(stashCount("armor_mail_of_the_unappeased") == 1, "killing her drops it into the stash")
+            assert(reward.received and reward.received[1].id == "armor_mail_of_the_unappeased",
                 "and the summary names what was received, for the reward panel")
 
             assert(Quest.complete(p, quest) == nil, "a second clear pays nothing")
-            assert(stashCount("mail_of_the_unappeased") == 1, "and mints no second relic")
+            assert(stashCount("armor_mail_of_the_unappeased") == 1, "and mints no second relic")
         end,
     },
     {
@@ -457,7 +457,7 @@ return {
             for _, id in ipairs(Quest.defs.the_gate_below.requiredQuests) do
                 p.completedQuests[id] = true
             end
-            Player.grantItem(p, "mail_of_the_unappeased")
+            Player.grantItem(p, "armor_mail_of_the_unappeased")
 
             local function gateOpen()
                 for _, q in ipairs(Quest.available(p)) do
@@ -483,8 +483,8 @@ return {
         fn = function()
             local p = Player.new()
             p.stash = {}
-            Player.grantItem(p, "healing_potion")
-            Player.grantItem(p, "healing_potion")
+            Player.grantItem(p, "consumable_healing_potion")
+            Player.grantItem(p, "consumable_healing_potion")
             assert(#p.stash == 1, "two potions collapse into one stack")
             assert(p.stash[1].quantity == 2, "and the stack counts both")
         end,
@@ -538,16 +538,16 @@ return {
                 -- so the exact cell is gameplay state and must survive.
                 local knight = p.roster[1]
                 knight.inventory = {}
-                knight.inventory[7] = Item.instantiate("fire_stone")
+                knight.inventory[7] = Item.instantiate("utility_fire_stone")
 
                 Save.write(p)
                 local loaded = Save.read()
 
                 assert(#loaded.roster == #p.roster, "roster size should survive")
                 assert(#loaded.party == #p.party, "party size should survive")
-                assert(loaded.roster[1].id == "knight", "roster order should survive")
+                assert(loaded.roster[1].id == "character_knight", "roster order should survive")
                 assert(loaded.roster[1].inventory[7], "the item should be back in cell 7")
-                assert(loaded.roster[1].inventory[7].id == "fire_stone", "the right item should be in cell 7")
+                assert(loaded.roster[1].inventory[7].id == "utility_fire_stone", "the right item should be in cell 7")
                 assert(loaded.roster[1].inventory[1] == nil, "empty cells should stay empty")
 
                 -- Party members are the same instances as their roster entries, not copies.
@@ -561,13 +561,13 @@ return {
             withScratchSave(function()
                 local p = Player.new()
                 p.stash = {}
-                Player.addToStash(p, Item.instantiate("healing_potion", 5))
+                Player.addToStash(p, Item.instantiate("consumable_healing_potion", 5))
 
                 Save.write(p)
                 local loaded = Save.read()
 
                 assert(#loaded.stash == 1, "the stash should hold one entry")
-                assert(loaded.stash[1].id == "healing_potion", "the potion should survive")
+                assert(loaded.stash[1].id == "consumable_healing_potion", "the potion should survive")
                 assert(loaded.stash[1].quantity == 5, "the stack size should survive")
             end)
         end,
@@ -613,7 +613,7 @@ return {
             p.prestige = 4
 
             -- A recruit added mid-campaign starts at level 1 and must be caught up too.
-            local recruit = Character.instantiate("mage")
+            local recruit = Character.instantiate("character_mage")
             p.roster[#p.roster + 1] = recruit
             assert(recruit.level == 1, "a fresh recruit starts at level 1")
 
@@ -660,7 +660,7 @@ return {
                 local grownMagic = knight.stats.magicDamage
                 local grownHealthMax = knight.stats.health.max
                 assert(knight.level == 5, "the knight reached level 5")
-                assert(grownMagic > Character.instantiate("knight").stats.magicDamage,
+                assert(grownMagic > Character.instantiate("character_knight").stats.magicDamage,
                     "the mage growth actually raised magic")
 
                 Save.write(p)
@@ -681,15 +681,15 @@ return {
     {
         name = "a protect objective loses the battle the moment the charge falls",
         fn = function()
-            local objective = { type = "killAll", protect = "caravan_master" }
+            local objective = { type = "killAll", protect = "character_caravan_master" }
             local c = Combat.new(arena(8, 8, objective),
-                { unit("knight", 3, 6), unit("caravan_master", 4, 6, "ai") },
-                { unit("bandit", 4, 1) })
+                { unit("character_knight", 3, 6), unit("character_caravan_master", 4, 6, "ai") },
+                { unit("character_bandit", 4, 1) })
 
             assert(Combat.evaluate(c) == nil, "the battle is undecided while everyone stands")
 
             local escortee = c.units[2]
-            assert(escortee.char.id == "caravan_master", "the escortee should be unit 2")
+            assert(escortee.char.id == "character_caravan_master", "the escortee should be unit 2")
             escortee.alive = false
             assert(Combat.evaluate(c) == "loss", "losing the charge should lose the battle")
         end,
@@ -697,10 +697,10 @@ return {
     {
         name = "protect does not block the win when the charge survives",
         fn = function()
-            local objective = { type = "killAll", protect = "caravan_master" }
+            local objective = { type = "killAll", protect = "character_caravan_master" }
             local c = Combat.new(arena(8, 8, objective),
-                { unit("knight", 3, 6), unit("caravan_master", 4, 6, "ai") },
-                { unit("bandit", 4, 1) })
+                { unit("character_knight", 3, 6), unit("character_caravan_master", 4, 6, "ai") },
+                { unit("character_bandit", 4, 1) })
 
             c.units[3].alive = false -- the last enemy falls
             assert(Combat.evaluate(c) == "win", "killAll should still resolve with the charge alive")
@@ -710,8 +710,8 @@ return {
         name = "an escorted ally fights on the party's side but is not player-controlled",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("knight", 3, 6), unit("caravan_master", 4, 6, "ai") },
-                { unit("bandit", 4, 1) })
+                { unit("character_knight", 3, 6), unit("character_caravan_master", 4, 6, "ai") },
+                { unit("character_bandit", 4, 1) })
 
             local knight, escortee = c.units[1], c.units[2]
             assert(Combat.isPlayerControlled(knight), "the knight takes an interactive turn")
@@ -732,16 +732,16 @@ return {
         fn = function()
             local built = Arena.build({ prestige = 1 }, {
                 biome = "forest",
-                party = { "knight", "mage" },
-                allies = { "caravan_master" },
-                composition = { "bandit" },
-                objective = { type = "killAll", protect = "caravan_master" },
+                party = { "character_knight", "character_mage" },
+                allies = { "character_caravan_master" },
+                composition = { "character_bandit" },
+                objective = { type = "killAll", protect = "character_caravan_master" },
                 seed = 4242,
             })
 
             assert(#built.party == 2, "both party members should spawn")
             assert(#built.allies == 1, "the escortee should spawn")
-            assert(built.allies[1].id == "caravan_master", "the escortee should be the caravan master")
+            assert(built.allies[1].id == "character_caravan_master", "the escortee should be the caravan master")
 
             -- Nobody shares a tile.
             local seen = {}
@@ -758,7 +758,7 @@ return {
             -- Arena.resolveComposition defaults a nil composition to a lone bandit; allies must
             -- not inherit that fallback or every battle would gain a stray ally.
             local built = Arena.build({ prestige = 1 }, {
-                biome = "forest", party = { "knight" }, composition = { "bandit" }, seed = 7,
+                biome = "forest", party = { "character_knight" }, composition = { "character_bandit" }, seed = 7,
             })
             assert(#built.allies == 0, "no allies were asked for, so none should spawn")
         end,

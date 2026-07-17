@@ -164,7 +164,7 @@ function Quest.complete(player, quest)
         received[#received + 1] = Player.grantItem(player, itemId)
     end
 
-    -- Forging materials: `rewardMaterials = { steel_ingot = 3 }` accrues into the player's stock
+    -- Forging materials: `rewardMaterials = { material_steel_ingot = 3 }` accrues into the player's stock
     -- (models/material.lua), the raw metal the Blacksmith spends on upgrades. Guarded by the same
     -- double-payout check at the top, so a re-cleared tile can't mint a second haul.
     local materials = {}

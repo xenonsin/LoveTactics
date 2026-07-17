@@ -3,7 +3,8 @@
 -- data/items/ability/ability_mark_target.lua. Requires an adjacent bow in the grid.
 return {
     name = "Called Shot",
-    description = "A precise shot that doubles its damage against a marked foe. Requires an adjacent bow.",
+    description = "Doubles its damage against a Marked foe. Requires an adjacent bow.",
+    flavor = "The Lodge calls the shot before it takes it. The calling is most of the skill.",
     sprite = "assets/items/ability_called_shot.png",
     type = "ability",
     tags = { "pierce", "physical" },
@@ -22,7 +23,7 @@ return {
         effect = function(fx)
             local t = fx.target
             if not t then return end
-            if fx.hasStatus(t, "mark") then
+            if fx.hasStatus(t, "status_mark") then
                 fx.damage(t, { amount = fx.amount * 2 })
             else
                 fx.damage(t)

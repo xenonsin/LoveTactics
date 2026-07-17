@@ -5,7 +5,8 @@
 -- comes back -- if you can keep swinging long enough to collect.
 return {
     name = "Fury",
-    description = "Drop to 1 HP and become unkillable for a spell; then heal for half the damage you dealt.",
+    description = "Drops you to 1 HP and makes you unkillable for a spell, then heals half the damage you dealt.",
+    flavor = "Burn the candle at both ends. The more you spend, the more comes back -- if you last long enough to collect.",
     sprite = "assets/items/ability_fury.png",
     type = "ability",
     tags = { "physical" },
@@ -21,7 +22,7 @@ return {
             -- Applying Fury both drops the caster to 1 HP and opens the berserk window (see the
             -- status's onApply). Kept in the status so a dry-run preview -- which stubs applyStatus --
             -- never mutates the real unit's health.
-            fx.applyStatus(fx.user, "fury")
+            fx.applyStatus(fx.user, "status_fury")
         end,
     },
 }

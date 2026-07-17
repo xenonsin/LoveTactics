@@ -20,7 +20,7 @@ end
 
 -- A mage carrying only the Blink item (so its default movement is the base stat).
 local function blinkMage(x, y)
-    local char = Character.instantiate("mage")
+    local char = Character.instantiate("character_mage")
     char.inventory = {}
     Character.addItem(char, Item.instantiate("ability_blink"))
     return char, { char = char, x = x, y = y }
@@ -81,7 +81,7 @@ return {
     {
         name = "blink is unavailable to a unit that carries no Blink item, however the flag is set",
         fn = function()
-            local c = Combat.new(arena(8, 8), { { char = Character.instantiate("knight"), x = 1, y = 1 } }, {})
+            local c = Combat.new(arena(8, 8), { { char = Character.instantiate("character_knight"), x = 1, y = 1 } }, {})
             local u = c.units[1]
             u.blinkArmed = true -- set, but there is no teleport item to honour it
             assert(Combat.blinkReady(u) == nil, "no blink without a blink item")

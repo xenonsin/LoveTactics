@@ -4,7 +4,8 @@
 -- ground-target support cast (target = "tile", allowOccupied, support) so its footprint previews green.
 return {
     name = "Aegis",
-    description = "Ward allies in an area, raising their Defense and Magic Defense.",
+    description = "Wards allies in an area, raising their Defense and Magic Defense.",
+    flavor = "The Cathedral's light does not ask who deserves it, only who is standing close enough.",
     sprite = "assets/items/ability_aegis.png",
     type = "ability",
     tags = { "holy", "protective" },
@@ -22,7 +23,7 @@ return {
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 if u.side == fx.user.side then
-                    fx.applyStatus(u, "aegis")
+                    fx.applyStatus(u, "status_aegis")
                 end
             end
         end,

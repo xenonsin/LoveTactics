@@ -32,14 +32,14 @@ return {
     {
         name = "stun adds ticks to the target's initiative, shoving it down the turn order",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, bandit.initiative = 0.5, 0 -- bandit would act first
             assert(Combat.turnOrder(c)[1] == bandit, "bandit (0) acts first before the stun")
 
-            Status.apply(c, bandit, "stun", { magnitude = 5 })
+            Status.apply(c, bandit, "status_stun", { magnitude = 5 })
             assert(bandit.initiative == 5, "stun added 5 to the bandit's initiative, got " .. bandit.initiative)
-            assert(Status.has(bandit, "stun"), "the stun status is recorded on the unit")
+            assert(Status.has(bandit, "status_stun"), "the stun status is recorded on the unit")
             assert(Combat.turnOrder(c)[1] == knight, "knight (0.5) now acts before the stunned bandit (5)")
         end,
     },
@@ -49,10 +49,10 @@ return {
             -- Knight (chainmail drops movement to 2, iron_sword speed 3) rooted, bandit parked far so
             -- the cost shows as elapsed clock. It cannot move, but can still attack -- and pays the
             -- full move cost.
-            local c = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, bandit.initiative = 0, 100
-            Status.apply(c, knight, "root")
+            Status.apply(c, knight, "status_root")
             openTurn(c, knight)
 
             assert(Combat.moveUnit(c, knight, 3, 2) == false, "a rooted unit cannot move")
@@ -67,7 +67,7 @@ return {
     {
         name = "Status.tick counts durations down by the elapsed ticks and expires at 0 (onExpire fires)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
             local knight = c.units[1]
 
             -- A temporary status def with an onExpire hook (removed afterward so it can't leak).
@@ -91,17 +91,17 @@ return {
     {
         name = "re-applying a status refreshes its remaining duration to the longer value",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
             local knight = c.units[1]
-            Status.apply(c, knight, "root") -- duration 6
+            Status.apply(c, knight, "status_root") -- duration 6
             Status.tick(c, 4)
-            assert(Status.get(knight, "root").remaining == 2, "counted down to 2")
+            assert(Status.get(knight, "status_root").remaining == 2, "counted down to 2")
 
-            Status.apply(c, knight, "root") -- refresh
-            assert(Status.get(knight, "root").remaining == 6, "re-apply refreshes to the full 6")
+            Status.apply(c, knight, "status_root") -- refresh
+            assert(Status.get(knight, "status_root").remaining == 6, "re-apply refreshes to the full 6")
             -- One instance per id: still a single root, not two.
             local count = 0
-            for _, s in ipairs(knight.statuses) do if s.id == "root" then count = count + 1 end end
+            for _, s in ipairs(knight.statuses) do if s.id == "status_root" then count = count + 1 end end
             assert(count == 1, "only one root instance is kept")
         end,
     },
@@ -110,25 +110,25 @@ return {
         fn = function()
             -- The bandit is rooted; the knight acts, advancing the clock by its turn cost, which
             -- should count the bandit's root down by the same amount via Combat.rebase -> Status.tick.
-            local c = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, bandit.initiative = 0, 100
-            Status.apply(c, bandit, "root") -- duration 6
-            assert(Status.get(bandit, "root").remaining == 6, "root starts at 6")
+            Status.apply(c, bandit, "status_root") -- duration 6
+            assert(Status.get(bandit, "status_root").remaining == 6, "root starts at 6")
 
             Combat.startTurn(c)
             local clock0 = c.clock
             assert(Combat.useItem(c, knight, knight.char.inventory[1], 3, 4), "knight strikes (speed 3)")
             local elapsed = c.clock - clock0
             assert(elapsed == 3, "the knight's turn advanced the clock by 3")
-            assert(Status.get(bandit, "root").remaining == 6 - elapsed,
+            assert(Status.get(bandit, "status_root").remaining == 6 - elapsed,
                 "the bandit's root counted down by the elapsed ticks")
         end,
     },
     {
         name = "Burn sears on the clock: a turn's worth of ticks costs its per-turn magnitude",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             bandit.char.stats.defense = 0 -- isolate the burn from defense mitigation
             local hp0 = bandit.char.stats.health.current
@@ -136,7 +136,7 @@ return {
             -- trial here is the per-turn -> per-tick conversion, not Burn's own tuning (its stock
             -- duration of 3 ticks is shorter than the ~5 a turn costs, so it would only live to earn a
             -- fraction -- see the case below).
-            Status.apply(c, bandit, "burn", { duration = 20 }) -- magnitude 4 per turn
+            Status.apply(c, bandit, "status_burn", { duration = 20 }) -- magnitude 4 per turn
             Status.tick(c, Status.TICKS_PER_TURN)
             assert(bandit.char.stats.health.current == hp0 - 4,
                 "a turn's worth of ticks deals exactly the per-turn magnitude, got "
@@ -146,12 +146,15 @@ return {
     {
         name = "a status ticks for the stretch it was alive, then wears off -- never for a rebase it did not see",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             bandit.char.stats.defense = 0
             local hp0 = bandit.char.stats.health.current
-            Status.apply(c, bandit, "burn") -- stock: duration 3 ticks, magnitude 4 per turn
-            assert(Status.get(bandit, "burn").remaining == 3, "burn starts at duration 3")
+            -- A deliberately SHORT burn -- shorter than the rebase below -- rather than the stock
+            -- duration: what is on trial is the slicing, and pinning it to Burn's own tuning would make
+            -- this spec fail every time someone retunes the fire.
+            Status.apply(c, bandit, "status_burn", { duration = 3 }) -- magnitude 4 per turn
+            assert(Status.get(bandit, "status_burn").remaining == 3, "the burn starts with 3 ticks to live")
 
             -- One rebase elapsing MORE ticks than the burn has left. It must be paid for the 3 ticks it
             -- actually lived (4/turn over 3 of 5 ticks = 2.4, and only whole points are spent), not for
@@ -161,7 +164,7 @@ return {
             assert(bandit.char.stats.health.current == hp0 - 2,
                 "it sears for the 3 ticks it lived and no further, got "
                     .. (hp0 - bandit.char.stats.health.current))
-            assert(not Status.has(bandit, "burn"), "and those same ticks ran its duration out")
+            assert(not Status.has(bandit, "status_burn"), "and those same ticks ran its duration out")
         end,
     },
     {
@@ -170,11 +173,11 @@ return {
             -- The reason ctx.accrue banks a remainder: a rebase can elapse a fraction of a tick, and
             -- damage floors at 1, so paying each sliver immediately would sear far harder than the
             -- magnitude claims. Ten tenth-of-a-tick rebases must cost exactly what one whole tick does.
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             bandit.char.stats.defense = 0
             local hp0 = bandit.char.stats.health.current
-            Status.apply(c, bandit, "burn") -- 4 per turn = 0.8 per tick at TICKS_PER_TURN = 5
+            Status.apply(c, bandit, "status_burn") -- 4 per turn = 0.8 per tick at TICKS_PER_TURN = 5
 
             for _ = 1, 10 do Status.tick(c, 0.1) end -- one tick's worth, in ten slivers
             local dealt = hp0 - bandit.char.stats.health.current
@@ -188,15 +191,15 @@ return {
     {
         name = "Haste halves ability costs and pulls its target up the turn order",
         fn = function()
-            local priest = Character.instantiate("priest")
+            local priest = Character.instantiate("character_priest")
             priest.inventory = {}
             Character.addItem(priest, Item.instantiate("ability_haste"))
-            local knight = Character.instantiate("knight")
+            local knight = Character.instantiate("character_knight")
             knight.inventory = {}
-            Character.addItem(knight, Item.instantiate("iron_sword"))
+            Character.addItem(knight, Item.instantiate("weapon_iron_sword"))
 
             local c = Combat.new(arena(8, 8), { unit(priest, 1, 1), unit(knight, 2, 1) },
-                { unit("bandit", 8, 8) })
+                { unit("character_bandit", 8, 8) })
             local pu, ku, bandit = c.units[1], c.units[2], c.units[3]
             -- Park the bandit far down the order so the priest's own turn cost sets the rebase.
             pu.initiative, ku.initiative, bandit.initiative = 0, 20, 50
@@ -207,7 +210,7 @@ return {
             local clock0 = c.clock
 
             assert(Combat.useItem(c, pu, priest.inventory[1], ku.x, ku.y), "the priest quickens the knight")
-            assert(Status.has(ku, "hasted"), "the knight is hasted")
+            assert(Status.has(ku, "status_hasted"), "the knight is hasted")
             assert(Combat.abilityCost(ku, sword.activeAbility).amount == math.floor(full / 2 + 0.5),
                 "and everything it casts costs half as much")
 
@@ -224,9 +227,9 @@ return {
             -- Archer (movement 4, less 1 for its leather armor = 3) walks three tiles of open
             -- ground: a raw path cost of 3, which endTurn folds in as elapsed clock.
             local function walkCost(hasted)
-                local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
+                local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
                 local archer = c.units[1]
-                if hasted then Status.apply(c, archer, "hasted") end
+                if hasted then Status.apply(c, archer, "status_hasted") end
                 openTurn(c, archer)
                 local reach = Combat.reachable(c, archer)
                 local ok, cost = Combat.moveUnit(c, archer, 1, 4)
@@ -249,12 +252,12 @@ return {
     {
         name = "a cost multiplier never discounts a reservation",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             local ab = { cost = { stat = "mana", amount = 20 }, reserve = { stat = "mana", percent = 0.25 } }
             local reserveBefore = Combat.abilityReserve(mage, ab).amount
 
-            Status.apply(c, mage, "hasted")
+            Status.apply(c, mage, "status_hasted")
             assert(Combat.abilityCost(mage, ab).amount == 10, "the price is halved")
             assert(Combat.abilityReserve(mage, ab).amount == reserveBefore,
                 "but a commitment is not a price -- it is untouched")
@@ -263,13 +266,13 @@ return {
     {
         name = "Boots of Speed widen the reachable set without touching the base stat",
         fn = function()
-            local knight = Character.instantiate("knight")
+            local knight = Character.instantiate("character_knight")
             knight.inventory = {} -- drop the chainmail, whose -1 movement would muddy the comparison
-            local c = Combat.new(arena(8, 8), { unit(knight, 4, 4) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit(knight, 4, 4) }, { unit("character_bandit", 8, 8) })
             local u = c.units[1]
             local base = Combat.moveBudget(u)
 
-            Character.addItem(knight, Item.instantiate("boots_of_speed"))
+            Character.addItem(knight, Item.instantiate("utility_boots_of_speed"))
             Combat.applyPassives(c)
             assert(Combat.moveBudget(u) == base + 1, "the boots grant a space")
             assert(knight.stats.movement == base, "and the character's own stat never drifts")

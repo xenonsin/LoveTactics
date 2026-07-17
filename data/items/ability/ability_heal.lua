@@ -1,9 +1,10 @@
 -- A restorative ability: channels light to mend an ally at range for a Power-scaled heal.
--- Reuses the shared fx.heal helper (see data/items/consumable/healing_potion.lua), but as a
+-- Reuses the shared fx.heal helper (see data/items/consumable/consumable_healing_potion.lua), but as a
 -- repeatable mana spell rather than a one-shot consumable -- the priest's signature.
 return {
     name = "Heal",
-    description = "Channel restorative light to mend a nearby ally.",
+    description = "Mends a nearby ally.",
+    flavor = "The Cathedral's whole reputation, restored one body at a time.",
     sprite = "assets/items/ability_heal.png",
     type = "ability",
     tags = { "holy", "restorative" },

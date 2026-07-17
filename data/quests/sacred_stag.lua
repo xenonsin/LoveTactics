@@ -14,12 +14,12 @@ return {
         objective = {
             name = "The White Stag",
             composition = function(ctx)
-                local list = { "stag_beast" }
-                for i = 1, 1 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "boar" end
-                if (ctx.prestige or 1) >= 3 then list[#list + 1] = "wolf_alpha" end
+                local list = { "character_stag_beast" }
+                for i = 1, 1 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_boar" end
+                if (ctx.prestige or 1) >= 3 then list[#list + 1] = "character_wolf_alpha" end
                 return list
             end,
-            win = { type = "assassinate", target = "stag_beast" },
+            win = { type = "assassinate", target = "character_stag_beast" },
         },
         keyCount = 0,
     },

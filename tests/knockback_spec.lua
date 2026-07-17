@@ -35,7 +35,7 @@ return {
     {
         name = "knockback shoves a unit straight away from its attacker",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 3, 4) }, { unit("bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 4) }, { unit("character_bandit", 4, 4) })
             local knight, bandit = c.units[1], c.units[2]
 
             local moved, collided = Combat.knockback(c, knight, bandit, 2)
@@ -47,12 +47,12 @@ return {
     {
         name = "a diagonal shove resolves onto the dominant axis (ties break toward x)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 4, 3) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 4, 3) })
             local knight, bandit = c.units[1], c.units[2]
             Combat.knockback(c, knight, bandit, 1)
             assert(bandit.x == 5 and bandit.y == 3, "dx (2) beats dy (1), so it slides along x")
 
-            local c2 = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 3, 3) })
+            local c2 = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 3, 3) })
             Combat.knockback(c2, c2.units[1], c2.units[2], 1)
             assert(c2.units[2].x == 4 and c2.units[2].y == 3, "an exact diagonal breaks toward x")
         end,
@@ -61,7 +61,7 @@ return {
         name = "a shove into a wall stops there and hurts the unit that hit it",
         fn = function()
             local c = Combat.new(arena(8, 8, { { x = 6, y = 4 } }),
-                { unit("knight", 3, 4) }, { unit("bandit", 5, 4) })
+                { unit("character_knight", 3, 4) }, { unit("character_bandit", 5, 4) })
             local knight, bandit = c.units[1], c.units[2]
             local before = hp(bandit)
 
@@ -74,7 +74,7 @@ return {
     {
         name = "a shove off the map edge stops at the edge and deals impact damage",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 6, 4) }, { unit("bandit", 8, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 6, 4) }, { unit("character_bandit", 8, 4) })
             local knight, bandit = c.units[1], c.units[2]
             local before = hp(bandit)
 
@@ -88,7 +88,7 @@ return {
         name = "a shove into another unit damages BOTH of them",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("knight", 3, 4) }, { unit("bandit", 4, 4), unit("boar", 5, 4) })
+                { unit("character_knight", 3, 4) }, { unit("character_bandit", 4, 4), unit("character_boar", 5, 4) })
             local knight, bandit, boar = c.units[1], c.units[2], c.units[3]
             local banditHP, boarHP = hp(bandit), hp(boar)
 
@@ -104,7 +104,7 @@ return {
         name = "a fragile unit dies to a single collision",
         fn = function()
             local c = Combat.new(arena(8, 8, { { x = 6, y = 4 } }),
-                { unit("knight", 3, 4) }, { unit("bandit", 5, 4) })
+                { unit("character_knight", 3, 4) }, { unit("character_bandit", 5, 4) })
             local knight, bandit = c.units[1], c.units[2]
             bandit.fragile = true
 
@@ -115,7 +115,7 @@ return {
     {
         name = "a unit knocked across a trap sets it off, exactly as if it had walked",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 3, 4) }, { unit("bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 4) }, { unit("character_bandit", 4, 4) })
             local knight, bandit = c.units[1], c.units[2]
             Trap.place(c, 5, 4, "spike_trap", "party")
             local before = hp(bandit)
@@ -130,7 +130,7 @@ return {
         name = "pull drags a unit to an adjacent tile, re-aiming each step",
         fn = function()
             -- A diagonal target: a fixed direction would march it past the puller along one axis.
-            local c = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 5, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 5, 4) })
             local knight, bandit = c.units[1], c.units[2]
 
             local ok, moved = Combat.pull(c, knight, bandit)
@@ -146,7 +146,7 @@ return {
             -- A mountain (sightCost 2) between the two blocks the line on its own.
             local a = arena(8, 8)
             a.tiles[4][4] = { type = "mountain", moveCost = 2, walkable = true, sightCost = 2 }
-            local c = Combat.new(a, { unit("knight", 4, 3) }, { unit("bandit", 4, 6) })
+            local c = Combat.new(a, { unit("character_knight", 4, 3) }, { unit("character_bandit", 4, 6) })
             local knight, bandit = c.units[1], c.units[2]
 
             local ok, reason = Combat.pull(c, knight, bandit)
@@ -158,7 +158,7 @@ return {
         name = "pull stops short when a unit blocks the line",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("knight", 2, 4) }, { unit("boar", 4, 4), unit("bandit", 6, 4) })
+                { unit("character_knight", 2, 4) }, { unit("character_boar", 4, 4), unit("character_bandit", 6, 4) })
             local knight, boar, bandit = c.units[1], c.units[2], c.units[3]
 
             local ok = Combat.pull(c, knight, bandit)
@@ -170,10 +170,10 @@ return {
     {
         name = "the Mace hits and then drives its target back",
         fn = function()
-            local knight = Character.instantiate("knight")
+            local knight = Character.instantiate("character_knight")
             knight.inventory = {}
-            Character.addItem(knight, Item.instantiate("iron_mace"))
-            local c = Combat.new(arena(8, 8), { unit(knight, 3, 4) }, { unit("bandit", 4, 4) })
+            Character.addItem(knight, Item.instantiate("weapon_iron_mace"))
+            local c = Combat.new(arena(8, 8), { unit(knight, 3, 4) }, { unit("character_bandit", 4, 4) })
             local ku, bandit = c.units[1], c.units[2]
             local before = hp(bandit)
             c.turn = { unit = ku, moved = false, moveCost = 0 }
@@ -186,12 +186,12 @@ return {
     {
         name = "the Pull ability refuses a target it cannot see, without spending the turn",
         fn = function()
-            local knight = Character.instantiate("knight")
+            local knight = Character.instantiate("character_knight")
             knight.inventory = {}
             Character.addItem(knight, Item.instantiate("ability_pull"))
             local a = arena(8, 8)
             a.tiles[4][4] = { type = "mountain", moveCost = 2, walkable = true, sightCost = 2 }
-            local c = Combat.new(a, { unit(knight, 4, 3) }, { unit("bandit", 4, 6) })
+            local c = Combat.new(a, { unit(knight, 4, 3) }, { unit("character_bandit", 4, 6) })
             local ku, bandit = c.units[1], c.units[2]
             c.turn = { unit = ku, moved = false, moveCost = 0 }
 

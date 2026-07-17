@@ -10,9 +10,9 @@ return {
     -- "water" douses fire (Hazard.douse); "conductable" makes the drenched ground itself carry a
     -- charge, so a bolt landing beside the cloud arcs through it (Combat.tileHasTag).
     tags = { "water", "conductable" },
-    duration = 5,
+    duration = 15, -- ticks the cloud lingers: ~3 turns at Status.TICKS_PER_TURN
     disposition = "neutral",
     onEnter = function(ctx)
-        ctx.applyStatus(ctx.unit, "wet")
+        ctx.applyStatus(ctx.unit, "status_wet")
     end,
 }

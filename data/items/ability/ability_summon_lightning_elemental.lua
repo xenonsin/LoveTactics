@@ -2,7 +2,8 @@
 -- reservation, scaling, duration and one-at-a-time rule work. A frail but hard-hitting glass cannon.
 return {
     name = "Summon Lightning Elemental",
-    description = "Bind a lightning elemental to the field for a time, one at a time. Reserves a quarter of your maximum mana while it lives.",
+    description = "Binds a lightning elemental for a time. One at a time; reserves a quarter of your max mana.",
+    flavor = "A glass cannon with a temper. It will not be alive long enough to regret it.",
     sprite = "assets/items/ability_summon_lightning_elemental.png",
     type = "ability",
     tags = { "summon", "lightning" },
@@ -15,7 +16,7 @@ return {
         speed = 6,
         reserve = { stat = "mana", percent = 0.25 },
         effect = function(fx)
-            fx.summon("lightning_elemental", fx.tx, fx.ty, {
+            fx.summon("character_lightning_elemental", fx.tx, fx.ty, {
                 scaling = { health = 1, magicDamage = 0.5 },
                 amount = 12 + fx.level, -- base 12, +1 per upgrade level
                 duration = 24,

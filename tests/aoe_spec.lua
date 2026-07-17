@@ -49,7 +49,7 @@ return {
     {
         name = "aoeCells is a 3x3 square (corners included) and clamps to the arena bounds",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 5, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 5, 5) })
             local ab = fireballOf(c.units[1]).activeAbility
 
             local cells = Combat.aoeCells(c, ab, 5, 5)
@@ -65,7 +65,7 @@ return {
     {
         name = "a single-target ability (no aoe) covers only the target cell",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 2, 2) }, { unit("bandit", 5, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 5, 5) })
             local jolt
             for _, it in ipairs(c.units[1].char.inventory) do
                 if it.activeAbility and it.name == "Jolt" then jolt = it end
@@ -80,8 +80,8 @@ return {
             -- Three foes clustered so a burst at (5,5) catches an edge and a corner too, plus an
             -- ally standing in the blast to prove friendly fire.
             local c = Combat.new(arena(8, 8),
-                { unit("mage", 5, 3), unit("knight", 4, 4) },
-                { unit("bandit", 5, 5), unit("bandit", 6, 6), unit("bandit", 4, 5) })
+                { unit("character_mage", 5, 3), unit("character_knight", 4, 4) },
+                { unit("character_bandit", 5, 5), unit("character_bandit", 6, 6), unit("character_bandit", 4, 5) })
             local mage = c.units[1]
             local fireball = fireballOf(mage)
 
@@ -148,8 +148,8 @@ return {
         name = "Cleave needs an adjacent melee weapon, then carves the 3x1 arc in front (hits every unit)",
         fn = function()
             -- Three foes across the row south of the knight; the swing is aimed at the middle one.
-            local c = Combat.new(arena(8, 8), { unit("knight", 3, 3) },
-                { unit("bandit", 2, 4), unit("bandit", 3, 4), unit("bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) },
+                { unit("character_bandit", 2, 4), unit("character_bandit", 3, 4), unit("character_bandit", 4, 4) })
             local k = c.units[1]
             equip(k.char, { [5] = "ability_cleave" })
             k.char.stats.stamina.current = 99
@@ -163,7 +163,7 @@ return {
                 "reason names the requirement, got " .. tostring(reason))
 
             -- Slot a sword adjacent: now it swings, and all three foes in the arc are struck.
-            k.char.inventory[4] = Item.instantiate("iron_sword")
+            k.char.inventory[4] = Item.instantiate("weapon_iron_sword")
             local before = {}
             for _, b in ipairs({ c.units[2], c.units[3], c.units[4] }) do
                 before[b] = b.char.stats.health.current
@@ -180,8 +180,8 @@ return {
         name = "Power Shot needs an adjacent ranged weapon, then pierces a straight line of foes",
         fn = function()
             -- Two foes down the row east of the archer, one right in front and one three tiles out.
-            local c = Combat.new(arena(8, 8), { unit("knight", 3, 3) },
-                { unit("bandit", 4, 3), unit("bandit", 6, 3) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) },
+                { unit("character_bandit", 4, 3), unit("character_bandit", 6, 3) })
             local k = c.units[1]
             equip(k.char, { [5] = "ability_powershot" })
             k.char.stats.stamina.current = 99
@@ -194,7 +194,7 @@ return {
                 "reason names the requirement, got " .. tostring(reason))
 
             -- Slot a bow adjacent: the line fires and skewers both foes on it.
-            k.char.inventory[4] = Item.instantiate("iron_bow")
+            k.char.inventory[4] = Item.instantiate("weapon_iron_bow")
             local before = {}
             for _, b in ipairs({ c.units[2], c.units[3] }) do before[b] = b.char.stats.health.current end
             local ok2 = Combat.useItem(c, k, k.char.inventory[5], 4, 3)

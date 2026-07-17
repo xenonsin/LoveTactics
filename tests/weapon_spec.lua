@@ -129,7 +129,7 @@ return {
                     -- A counter-reaction, either the ordinary Parry or a blade that upgrades it.
                     local answers = false
                     for _, t in ipairs(def.traits or {}) do
-                        if t == "parry" or t == "riposte" or t == "melee_counter" then answers = true end
+                        if t == "trait_parry" or t == "trait_riposte" or t == "trait_melee_counter" then answers = true end
                     end
                     assert(answers, id .. ": a sword answers a melee blow")
                     assert((def.hands or 1) == 1, id .. ": a sword is one-handed")
@@ -176,11 +176,11 @@ return {
     {
         name = "bleed costs a tile of blood for every tile WALKED, and nothing for standing still",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit(plainChar("knight"), 1, 1) },
-                { unit(plainChar("bandit"), 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit(plainChar("character_knight"), 1, 1) },
+                { unit(plainChar("character_bandit"), 8, 8) })
             local knight = c.units[1]
             knight.char.stats.staminaRegen = 0
-            Status.apply(c, knight, "bleed", { magnitude = 3, duration = 99 })
+            Status.apply(c, knight, "status_bleed", { magnitude = 3, duration = 99 })
 
             -- Standing still costs nothing: a wait is not a step.
             local before = hp(knight)
@@ -201,20 +201,20 @@ return {
         fn = function()
             -- Forced movement: shoved two tiles = two tiles of bleeding. Being dragged is still
             -- crossing the ground, which is the whole rule (Combat.enterTile's `reason`).
-            local c = Combat.new(arena(8, 8), { unit(plainChar("knight"), 3, 4) },
-                { unit(plainChar("bandit"), 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit(plainChar("character_knight"), 3, 4) },
+                { unit(plainChar("character_bandit"), 4, 4) })
             local knight, bandit = c.units[1], c.units[2]
-            Status.apply(c, bandit, "bleed", { magnitude = 3, duration = 99 })
+            Status.apply(c, bandit, "status_bleed", { magnitude = 3, duration = 99 })
             local before = hp(bandit)
             Combat.knockback(c, knight, bandit, 2)
             assert(bandit.x == 6, "shoved the full two tiles")
             assert(hp(bandit) == before - 6, "two shoved tiles bled twice, got " .. (before - hp(bandit)))
 
             -- A teleport crosses no ground at all, so it costs nothing -- the premium a blink buys.
-            local c2 = Combat.new(arena(8, 8), { unit(plainChar("knight"), 1, 1) },
-                { unit(plainChar("bandit"), 8, 8) })
+            local c2 = Combat.new(arena(8, 8), { unit(plainChar("character_knight"), 1, 1) },
+                { unit(plainChar("character_bandit"), 8, 8) })
             local k2 = c2.units[1]
-            Status.apply(c2, k2, "bleed", { magnitude = 3, duration = 99 })
+            Status.apply(c2, k2, "status_bleed", { magnitude = 3, duration = 99 })
             local hp2 = hp(k2)
             Combat.teleportUnit(c2, k2, 5, 5)
             assert(k2.x == 5 and k2.y == 5, "it leapt across the board")
@@ -224,14 +224,14 @@ return {
     {
         name = "a dagger opens the wound it is named for",
         fn = function()
-            local rogue = plainChar("bandit")
-            local dagger = give(rogue, "iron_dagger")
-            local c = Combat.new(arena(8, 8), { unit(rogue, 3, 3) }, { unit(plainChar("bandit"), 3, 4) })
+            local rogue = plainChar("character_bandit")
+            local dagger = give(rogue, "weapon_iron_dagger")
+            local c = Combat.new(arena(8, 8), { unit(rogue, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local attacker, victim = c.units[1], c.units[2]
 
             openTurn(c, attacker)
             assert(Combat.useItem(c, attacker, dagger, 3, 4), "the stab lands")
-            assert(Status.has(victim, "bleed"), "and leaves the target bleeding")
+            assert(Status.has(victim, "status_bleed"), "and leaves the target bleeding")
         end,
     },
 
@@ -239,9 +239,9 @@ return {
     {
         name = "a staff swaps its holder's Wait into Focus, and Focus restores mana",
         fn = function()
-            local mage = plainChar("mage")
-            give(mage, "staff")
-            local c = Combat.new(arena(8, 8), { unit(mage, 1, 1) }, { unit(plainChar("bandit"), 8, 8) })
+            local mage = plainChar("character_mage")
+            give(mage, "weapon_staff")
+            local c = Combat.new(arena(8, 8), { unit(mage, 1, 1) }, { unit(plainChar("character_bandit"), 8, 8) })
             local u = c.units[1]
 
             assert(Combat.waitBehavior(u).kind == "focus", "the staff's holder Focuses instead of waiting")
@@ -255,9 +255,9 @@ return {
     {
         name = "a wand's bolt is routed by magic, not muscle",
         fn = function()
-            local caster = plainChar("mage")
-            local wand = give(caster, "wand")
-            local c = Combat.new(arena(8, 8), { unit(caster, 2, 2) }, { unit(plainChar("bandit"), 2, 5) })
+            local caster = plainChar("character_mage")
+            local wand = give(caster, "weapon_wand")
+            local c = Combat.new(arena(8, 8), { unit(caster, 2, 2) }, { unit(plainChar("character_bandit"), 2, 5) })
             local mage, target = c.units[1], c.units[2]
 
             -- Raising Damage must not move a wand bolt; raising Magic Damage must.
@@ -283,13 +283,13 @@ return {
     {
         name = "a sword answers a melee blow, then must recover its guard",
         fn = function()
-            local defender = plainChar("bandit")
-            give(defender, "iron_sword")
-            local attacker = plainChar("bandit")
-            give(attacker, "iron_sword")
+            local defender = plainChar("character_bandit")
+            give(defender, "weapon_iron_sword")
+            local attacker = plainChar("character_bandit")
+            give(attacker, "weapon_iron_sword")
             local c = Combat.new(arena(8, 8), { unit(defender, 3, 3) }, { unit(attacker, 3, 4) })
             local d, a = c.units[1], c.units[2]
-            assert(Trait.has(d, "parry"), "an iron sword carries Parry to its holder")
+            assert(Trait.has(d, "trait_parry"), "an iron sword carries Parry to its holder")
 
             local before = hp(a)
             Combat.dealFlatDamage(c, d, 5, { "physical" }, "test", a)
@@ -304,10 +304,10 @@ return {
     {
         name = "a parry is paid for in stamina, and an exhausted swordsman simply eats the blow",
         fn = function()
-            local defender = plainChar("bandit")
-            give(defender, "iron_sword")
-            local attacker = plainChar("bandit")
-            give(attacker, "iron_sword")
+            local defender = plainChar("character_bandit")
+            give(defender, "weapon_iron_sword")
+            local attacker = plainChar("character_bandit")
+            give(attacker, "weapon_iron_sword")
             local c = Combat.new(arena(8, 8), { unit(defender, 3, 3) }, { unit(attacker, 3, 4) })
             local d, a = c.units[1], c.units[2]
 
@@ -327,10 +327,10 @@ return {
     {
         name = "a riposte too is paid for -- an exhausted duelist's guard drops entirely",
         fn = function()
-            local duelist = plainChar("bandit")
-            give(duelist, "riposte_blade")
-            local attacker = plainChar("bandit")
-            give(attacker, "iron_sword")
+            local duelist = plainChar("character_bandit")
+            give(duelist, "weapon_riposte_blade")
+            local attacker = plainChar("character_bandit")
+            give(attacker, "weapon_iron_sword")
             local c = Combat.new(arena(8, 8), { unit(duelist, 3, 3) }, { unit(attacker, 3, 4) })
             local d, a = c.units[1], c.units[2]
 
@@ -354,10 +354,10 @@ return {
         fn = function()
             -- Both carry swords. The attacker's strike provokes ONE counter; that counter must not
             -- provoke a counter-counter, or every exchange in the game becomes a three-hit trade.
-            local defender = plainChar("bandit")
-            give(defender, "iron_sword")
-            local attacker = plainChar("bandit")
-            local sword = give(attacker, "iron_sword")
+            local defender = plainChar("character_bandit")
+            give(defender, "weapon_iron_sword")
+            local attacker = plainChar("character_bandit")
+            local sword = give(attacker, "weapon_iron_sword")
             local c = Combat.new(arena(8, 8), { unit(defender, 3, 3) }, { unit(attacker, 3, 4) })
             local d, a = c.units[1], c.units[2]
 
@@ -378,13 +378,13 @@ return {
     {
         name = "the Riposte Blade turns a melee blow aside entirely and answers it",
         fn = function()
-            local duelist = plainChar("bandit")
-            give(duelist, "riposte_blade")
-            local attacker = plainChar("bandit")
-            local sword = give(attacker, "iron_sword")
+            local duelist = plainChar("character_bandit")
+            give(duelist, "weapon_riposte_blade")
+            local attacker = plainChar("character_bandit")
+            local sword = give(attacker, "weapon_iron_sword")
             local c = Combat.new(arena(8, 8), { unit(duelist, 3, 3) }, { unit(attacker, 3, 4) })
             local d, a = c.units[1], c.units[2]
-            assert(Trait.has(d, "riposte"), "the blade carries Riposte, not the ordinary Parry")
+            assert(Trait.has(d, "trait_riposte"), "the blade carries Riposte, not the ordinary Parry")
 
             local dBefore, aBefore = hp(d), hp(a)
             openTurn(c, a)
@@ -402,20 +402,20 @@ return {
         fn = function()
             -- The keyword's reference user. One body is a plain cleave; three is the same swing landing
             -- harder on all three -- the inversion that makes being surrounded the point.
-            local hero = plainChar("knight")
-            give(hero, "butchers_wedge")
-            local c1 = Combat.new(arena(8, 8), { unit(hero, 3, 3) }, { unit(plainChar("bandit"), 3, 4) })
+            local hero = plainChar("character_knight")
+            give(hero, "weapon_butchers_wedge")
+            local c1 = Combat.new(arena(8, 8), { unit(hero, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local a1, lone = c1.units[1], c1.units[2]
             local before1 = hp(lone)
             openTurn(c1, a1)
             assert(Combat.useItem(c1, a1, a1.char.inventory[1], 3, 4), "the lone swing lands")
             local solo = before1 - hp(lone)
 
-            local hero2 = plainChar("knight")
-            give(hero2, "butchers_wedge")
+            local hero2 = plainChar("character_knight")
+            give(hero2, "weapon_butchers_wedge")
             local c2 = Combat.new(arena(8, 8), { unit(hero2, 3, 3) },
-                { unit(plainChar("bandit"), 3, 4), unit(plainChar("bandit"), 2, 4),
-                  unit(plainChar("bandit"), 4, 4) })
+                { unit(plainChar("character_bandit"), 3, 4), unit(plainChar("character_bandit"), 2, 4),
+                  unit(plainChar("character_bandit"), 4, 4) })
             local a2, mid = c2.units[1], c2.units[2]
             local before2 = hp(mid)
             openTurn(c2, a2)
@@ -431,11 +431,11 @@ return {
         fn = function()
             -- The tooltip must read the crowd before the player commits, or the number it quotes is a
             -- lie. Both the preview and the live cast run through Combat.castAmount for this reason.
-            local hero = plainChar("knight")
-            local wedge = give(hero, "butchers_wedge")
+            local hero = plainChar("character_knight")
+            local wedge = give(hero, "weapon_butchers_wedge")
             local c = Combat.new(arena(8, 8), { unit(hero, 3, 3) },
-                { unit(plainChar("bandit"), 3, 4), unit(plainChar("bandit"), 2, 4),
-                  unit(plainChar("bandit"), 4, 4) })
+                { unit(plainChar("character_bandit"), 3, 4), unit(plainChar("character_bandit"), 2, 4),
+                  unit(plainChar("character_bandit"), 4, 4) })
             local a, mid = c.units[1], c.units[2]
 
             local preview = Combat.previewAbility(c, a, wedge, 3, 4)
@@ -454,10 +454,10 @@ return {
     {
         name = "lifesteal: the Crimson Greataxe drinks a share of everything its arc opens",
         fn = function()
-            local hero = plainChar("knight")
-            local axe = give(hero, "crimson_greataxe")
+            local hero = plainChar("character_knight")
+            local axe = give(hero, "weapon_crimson_greataxe")
             local c = Combat.new(arena(8, 8), { unit(hero, 3, 3) },
-                { unit(plainChar("bandit"), 3, 4), unit(plainChar("bandit"), 2, 4) })
+                { unit(plainChar("character_bandit"), 3, 4), unit(plainChar("character_bandit"), 2, 4) })
             local a = c.units[1]
             a.char.stats.health.current = 40 -- leave room for the drink to show
 
@@ -468,9 +468,9 @@ return {
             assert(hp(a) == 40 + res.healed, "the heal reached the wielder's own bar")
 
             -- It is the whole arc it drinks from, not just the aimed body: two foes feed it more.
-            local solo = plainChar("knight")
-            local axe2 = give(solo, "crimson_greataxe")
-            local c2 = Combat.new(arena(8, 8), { unit(solo, 3, 3) }, { unit(plainChar("bandit"), 3, 4) })
+            local solo = plainChar("character_knight")
+            local axe2 = give(solo, "weapon_crimson_greataxe")
+            local c2 = Combat.new(arena(8, 8), { unit(solo, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local s = c2.units[1]
             s.char.stats.health.current = 40
             openTurn(c2, s)
@@ -485,18 +485,18 @@ return {
         fn = function()
             -- The keyword folds into the same mods.lifesteal the aura feeds, so a hungry weapon charmed
             -- hungrier drinks deeper. Slot 2 is adjacent to slot 1 in the 3x3 grid.
-            local plain = plainChar("knight")
-            local axe = give(plain, "crimson_greataxe")
-            local c1 = Combat.new(arena(8, 8), { unit(plain, 3, 3) }, { unit(plainChar("bandit"), 3, 4) })
+            local plain = plainChar("character_knight")
+            local axe = give(plain, "weapon_crimson_greataxe")
+            local c1 = Combat.new(arena(8, 8), { unit(plain, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local u1 = c1.units[1]
             u1.char.stats.health.current = 30
             openTurn(c1, u1)
             local _, bare = Combat.useItem(c1, u1, axe, 3, 4)
 
-            local charmed = plainChar("knight")
-            local axe2 = give(charmed, "crimson_greataxe")
-            charmed.inventory[2] = Item.instantiate("vampiric_strike")
-            local c2 = Combat.new(arena(8, 8), { unit(charmed, 3, 3) }, { unit(plainChar("bandit"), 3, 4) })
+            local charmed = plainChar("character_knight")
+            local axe2 = give(charmed, "weapon_crimson_greataxe")
+            charmed.inventory[2] = Item.instantiate("utility_vampiric_strike")
+            local c2 = Combat.new(arena(8, 8), { unit(charmed, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local u2 = c2.units[1]
             u2.char.stats.health.current = 30
             openTurn(c2, u2)
@@ -509,9 +509,9 @@ return {
     {
         name = "the Kingsblood Dagger puts half a swing again through a wound already open",
         fn = function()
-            local rogue = plainChar("bandit")
-            local blade = give(rogue, "kingsblood_dagger")
-            local c = Combat.new(arena(8, 8), { unit(rogue, 3, 3) }, { unit(plainChar("bandit"), 3, 4) })
+            local rogue = plainChar("character_bandit")
+            local blade = give(rogue, "weapon_kingsblood_dagger")
+            local c = Combat.new(arena(8, 8), { unit(rogue, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local thief, mark = c.units[1], c.units[2]
 
             -- A clean target: an ordinary strike, and it leaves its own deeper wound behind.
@@ -519,7 +519,7 @@ return {
             openTurn(c, thief)
             assert(Combat.useItem(c, thief, blade, 3, 4), "the first stab lands")
             local clean = before - hp(mark)
-            local wound = Status.get(mark, "bleed")
+            local wound = Status.get(mark, "status_bleed")
             assert(wound and wound.magnitude == 5, "the Kingsblood cuts deeper than the ordinary 3")
 
             -- The same blade into the wound it just opened: half the swing again.
@@ -536,18 +536,18 @@ return {
         fn = function()
             -- Same bow, same target, two ranges. The far shot must land harder than the near one --
             -- the inversion that makes this bow want the whole field between it and the kill.
-            local near = plainChar("archer")
-            local nearBow = give(near, "hornbow_of_the_hunt")
-            local c1 = Combat.new(arena(8, 8), { unit(near, 1, 1) }, { unit(plainChar("bandit"), 4, 1) })
+            local near = plainChar("character_archer")
+            local nearBow = give(near, "weapon_hornbow_of_the_hunt")
+            local c1 = Combat.new(arena(8, 8), { unit(near, 1, 1) }, { unit(plainChar("character_bandit"), 4, 1) })
             local n, nt = c1.units[1], c1.units[2]
             local nBefore = hp(nt)
             openTurn(c1, n)
             assert(Combat.useItem(c1, n, nearBow, 4, 1), "the nearest legal shot lands (3 tiles, minRange)")
             local close = nBefore - hp(nt)
 
-            local far = plainChar("archer")
-            local farBow = give(far, "hornbow_of_the_hunt")
-            local c2 = Combat.new(arena(8, 8), { unit(far, 1, 1) }, { unit(plainChar("bandit"), 6, 1) })
+            local far = plainChar("character_archer")
+            local farBow = give(far, "weapon_hornbow_of_the_hunt")
+            local c2 = Combat.new(arena(8, 8), { unit(far, 1, 1) }, { unit(plainChar("character_bandit"), 6, 1) })
             local f, ft = c2.units[1], c2.units[2]
             local fBefore = hp(ft)
             openTurn(c2, f)
@@ -561,23 +561,23 @@ return {
     {
         name = "an Oathkeeper Shield braces the whole line, not just the one holding it",
         fn = function()
-            local warden = plainChar("knight")
-            give(warden, "oathkeeper_shield")
+            local warden = plainChar("character_knight")
+            give(warden, "armor_oathkeeper_shield")
             local c = Combat.new(arena(8, 8),
-                { unit(warden, 3, 3), unit(plainChar("knight"), 3, 4), unit(plainChar("knight"), 7, 7) },
-                { unit(plainChar("bandit"), 8, 8) })
+                { unit(warden, 3, 3), unit(plainChar("character_knight"), 3, 4), unit(plainChar("character_knight"), 7, 7) },
+                { unit(plainChar("character_bandit"), 8, 8) })
             local holder, beside, away = c.units[1], c.units[2], c.units[3]
 
             assert(Combat.waitBehavior(holder).kind == "defend", "the shield swaps Wait for Defend")
             openTurn(c, holder)
             assert(Combat.defend(c, holder), "the wall is planted")
 
-            assert(Status.has(holder, "defending"), "the holder braces")
-            local covered = Status.get(beside, "defending")
+            assert(Status.has(holder, "status_defending"), "the holder braces")
+            local covered = Status.get(beside, "status_defending")
             assert(covered, "and the ally beside it is covered by the wall")
-            assert(covered.magnitude < Status.get(holder, "defending").magnitude,
+            assert(covered.magnitude < Status.get(holder, "status_defending").magnitude,
                 "the ally gets a lesser share than the one actually holding the shield")
-            assert(not Status.has(away, "defending"), "an ally across the board is not covered")
+            assert(not Status.has(away, "status_defending"), "an ally across the board is not covered")
         end,
     },
     {
@@ -585,27 +585,27 @@ return {
         fn = function()
             -- The counterpart to the case above: `covers` is the Oathkeeper's extra, and the base
             -- shield must NOT have quietly gained it.
-            local warden = plainChar("knight")
-            give(warden, "buckler")
+            local warden = plainChar("character_knight")
+            give(warden, "armor_buckler")
             local c = Combat.new(arena(8, 8),
-                { unit(warden, 3, 3), unit(plainChar("knight"), 3, 4) },
-                { unit(plainChar("bandit"), 8, 8) })
+                { unit(warden, 3, 3), unit(plainChar("character_knight"), 3, 4) },
+                { unit(plainChar("character_bandit"), 8, 8) })
             local holder, beside = c.units[1], c.units[2]
 
             openTurn(c, holder)
             assert(Combat.defend(c, holder), "the buckler braces")
-            assert(Status.has(holder, "defending"), "its holder is braced")
-            assert(not Status.has(beside, "defending"), "but a buckler covers nobody else")
+            assert(Status.has(holder, "status_defending"), "its holder is braced")
+            assert(not Status.has(beside, "status_defending"), "but a buckler covers nobody else")
         end,
     },
     {
         name = "a riposte turns aside only what a blade can reach and touch",
         fn = function()
             -- Ranged: the guard is worth nothing to an archer three tiles off.
-            local duelist = plainChar("bandit")
-            give(duelist, "riposte_blade")
-            local archer = plainChar("archer")
-            local bow = give(archer, "iron_bow")
+            local duelist = plainChar("character_bandit")
+            give(duelist, "weapon_riposte_blade")
+            local archer = plainChar("character_archer")
+            local bow = give(archer, "weapon_iron_bow")
             local c = Combat.new(arena(8, 8), { unit(duelist, 3, 3) }, { unit(archer, 3, 6) })
             local d, a = c.units[1], c.units[2]
 
@@ -615,9 +615,9 @@ return {
             assert(hp(d) < before, "an arrow flies straight past a raised guard")
 
             -- Magical: a spell is not something a blade can turn, even at point-blank.
-            local d2 = plainChar("bandit")
-            give(d2, "riposte_blade")
-            local c2 = Combat.new(arena(8, 8), { unit(d2, 3, 3) }, { unit(plainChar("mage"), 3, 4) })
+            local d2 = plainChar("character_bandit")
+            give(d2, "weapon_riposte_blade")
+            local c2 = Combat.new(arena(8, 8), { unit(d2, 3, 3) }, { unit(plainChar("character_mage"), 3, 4) })
             local du, mg = c2.units[1], c2.units[2]
             local hp2 = hp(du)
             Combat.dealFlatDamage(c2, du, 8, { "magical" }, "test", mg)

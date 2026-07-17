@@ -12,8 +12,8 @@
 --
 --   local arena = Arena.build(
 --       { prestige = 2, biome = "forest", quest = q },     -- ctx for composition()
---       { biome = "forest", party = { "knight", "mage" },  -- spec
---         composition = function(ctx) return { "wolf_grunt" } end,
+--       { biome = "forest", party = { "character_knight", "character_mage" },  -- spec
+--         composition = function(ctx) return { "character_wolf_grunt" } end,
 --         objective = { type = "killAll" }, seed = 123 })
 --   -- arena = { cols, rows, tileSize, biome, tiles[y][x]={type,moveCost,walkable},
 --   --           party={{id,x,y}}, enemies={{id,x,y}}, objective, seed }
@@ -72,7 +72,7 @@ function Arena.resolveComposition(composition, ctx)
     elseif type(composition) == "table" then
         return composition
     end
-    return { "bandit" }
+    return { "character_bandit" }
 end
 
 local function normalizeObjective(obj)

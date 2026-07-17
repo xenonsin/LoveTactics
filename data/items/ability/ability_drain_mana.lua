@@ -4,7 +4,8 @@
 -- magnitude field (fx.amount), so the siphon grows as the item is forged.
 return {
     name = "Drain Mana",
-    description = "Siphon a foe's mana into your own reserves.",
+    description = "Siphons a foe's mana into your own reserves.",
+    flavor = "The Undercroft steals what the Arcanum insists cannot be stolen.",
     sprite = "assets/items/ability_drain_mana.png",
     type = "ability",
     tags = { "guile", "utility" },

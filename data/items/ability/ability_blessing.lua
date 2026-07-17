@@ -4,7 +4,8 @@
 -- Aegis). A ground-target support cast, so its footprint previews green.
 return {
     name = "Blessing",
-    description = "Bless allies in an area, raising their Damage and Magic Damage.",
+    description = "Blesses allies in an area, raising their Damage and Magic Damage.",
+    flavor = "A benediction delivered at volume. The Cathedral has never believed in whispering.",
     sprite = "assets/items/ability_blessing.png",
     type = "ability",
     tags = { "holy", "restorative" },
@@ -22,7 +23,7 @@ return {
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 if u.side == fx.user.side then
-                    fx.applyStatus(u, "blessing")
+                    fx.applyStatus(u, "status_blessing")
                 end
             end
         end,

@@ -23,7 +23,7 @@ return {
     {
         name = "a wall bars movement onto its tile (reachable routes around it)",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_knight", 1, 1) }, {})
             local knight = c.units[1]
             -- Wall the tile directly to the knight's right.
             assert(Wall.place(c, 2, 1, "illusory_wall"), "the wall is placed")
@@ -37,7 +37,7 @@ return {
     {
         name = "a wall screens line of sight through its tile",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("archer", 1, 1) }, { unit("bandit", 1, 3) })
+            local c = Combat.new(arena(6, 6), { unit("character_archer", 1, 1) }, { unit("character_bandit", 1, 3) })
             assert(Combat.hasLineOfSight(c, 1, 1, 1, 3), "the lane is clear before the wall")
             Wall.place(c, 1, 2, "illusory_wall") -- sightCost 2, a full block
             assert(not Combat.hasLineOfSight(c, 1, 1, 1, 3), "the wall blocks the line between them")
@@ -46,7 +46,7 @@ return {
     {
         name = "a wall can be struck down, and reopens the tile once it falls",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_knight", 1, 1) }, {})
             local knight = c.units[1]
             local wall = Wall.place(c, 2, 1, "illusory_wall")
 
@@ -59,7 +59,7 @@ return {
     {
         name = "a forced shove is stopped by a wall (knockback halts and hurts)",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("knight", 3, 3) }, { unit("bandit", 4, 3) })
+            local c = Combat.new(arena(6, 6), { unit("character_knight", 3, 3) }, { unit("character_bandit", 4, 3) })
             local knight, bandit = c.units[1], c.units[2]
             Wall.place(c, 5, 3, "illusory_wall") -- directly behind the bandit's shove path
             local hp0 = bandit.char.stats.health.current
@@ -73,7 +73,7 @@ return {
     {
         name = "a timed wall fades once its duration runs out",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_knight", 1, 1) }, {})
             local wall = Wall.place(c, 2, 1, "illusory_wall") -- duration 18
             assert(wall.remaining == 18, "the wall starts at its full duration")
 
@@ -86,7 +86,7 @@ return {
         fn = function()
             -- Priest at (1,3) aims straight ahead to (4,3): a horizontal approach, so the wall runs
             -- vertically through the aimed cell.
-            local char = Character.instantiate("priest")
+            local char = Character.instantiate("character_priest")
             char.inventory = {}
             Character.addItem(char, Item.instantiate("ability_summon_wall"))
             local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 3 } }, {})

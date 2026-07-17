@@ -16,6 +16,6 @@ return {
     onEnter = function(ctx)
         if ctx.unit == ctx.hazard.owner then return end
         if not ctx.isAlly(ctx.unit) then return end
-        ctx.applyStatus(ctx.unit, "regen", { magnitude = ctx.amount })
+        ctx.applyStatus(ctx.unit, "status_regen", { magnitude = ctx.amount })
     end,
 }

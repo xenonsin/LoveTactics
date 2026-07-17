@@ -18,7 +18,8 @@
 -- fight asks: do you need to be everywhere, or unmoved?
 return {
     name = "Wild Shape: Bear",
-    description = "Take a bear's body -- armored and heavy-handed. Reserves mana while worn.",
+    description = "Take a bear's body: armored and heavy-handed. Reserves mana while worn.",
+    flavor = "Do you need to be everywhere, or unmoved? The bear is the second answer.",
     sprite = "assets/items/ability_wild_shape_bear.png",
     type = "ability",
     tags = { "primal", "illusion", "utility" },
@@ -33,8 +34,8 @@ return {
         -- body is the bigger commitment -- but the same kind of price, so the two read as one choice.
         reserve = { stat = "mana", percent = 0.40 }, -- held for as long as the shape is worn
         effect = function(fx)
-            if fx.transform(fx.user, "dire_bear") then
-                fx.applyStatus(fx.user, "wild_shape_bear")
+            if fx.transform(fx.user, "character_dire_bear") then
+                fx.applyStatus(fx.user, "status_wild_shape_bear")
             end
         end,
     },

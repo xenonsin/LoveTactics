@@ -34,20 +34,20 @@ return {
     {
         name = "every new blueprint (statuses, hazards, characters, abilities) loads headlessly",
         fn = function()
-            for _, id in ipairs({ "freeze", "aegis", "blessing", "mired" }) do
+            for _, id in ipairs({ "status_freeze", "status_aegis", "status_blessing", "status_mired" }) do
                 assert(Status.defs[id], "status loaded: " .. id)
             end
-            assert(Trait.defs.dodge, "dodge trait loaded")
+            assert(Trait.defs.trait_dodge, "dodge trait loaded")
             assert(Hazard.defs.hazard_quicksand, "quicksand hazard loaded")
-            for _, id in ipairs({ "water_elemental", "lightning_elemental", "ice_elemental",
-                                  "earth_elemental", "wind_elemental", "zombie" }) do
+            for _, id in ipairs({ "character_water_elemental", "character_lightning_elemental", "character_ice_elemental",
+                                  "character_earth_elemental", "character_wind_elemental", "character_zombie" }) do
                 assert(Character.instantiate(id), "character loaded: " .. id)
             end
             for _, id in ipairs({
                 "ability_fire_bolt", "ability_ice_bolt", "ability_blizzard", "ability_thunder_storm",
                 "ability_meteor_storm", "ability_water_ball", "ability_quicksand", "ability_raise_dead",
                 "ability_aegis", "ability_blessing", "ability_cure", "ability_holy_light",
-                "ability_revive", "revive_scroll",
+                "ability_revive", "consumable_revive_scroll",
                 "ability_summon_water_elemental", "ability_summon_lightning_elemental",
                 "ability_summon_ice_elemental", "ability_summon_earth_elemental",
                 "ability_summon_wind_elemental",
@@ -56,17 +56,17 @@ return {
                 assert(it and it.activeAbility, "ability loaded: " .. id)
             end
             -- The Dodge item is a passive (no activeAbility); it grants the trait.
-            local reflex = Item.instantiate("duelists_reflex")
-            assert(reflex and reflex.traits and reflex.traits[1] == "dodge", "Duelist's Reflex grants Dodge")
+            local reflex = Item.instantiate("utility_duelists_reflex")
+            assert(reflex and reflex.traits and reflex.traits[1] == "trait_dodge", "Duelist's Reflex grants Dodge")
         end,
     },
     {
         name = "Freeze delays the target and makes it vulnerable to crush and fire",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("knight", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_knight", 1, 2) })
             local mage, knight = c.units[1], c.units[2]
             local init0 = knight.initiative
-            Status.apply(c, knight, "freeze")
+            Status.apply(c, knight, "status_freeze")
             assert(knight.initiative > init0, "Freeze shoved the knight down the turn order")
 
             -- The crush/fire vulnerability lands on the damage math, exactly like Wet's lightning: a
@@ -79,12 +79,12 @@ return {
     {
         name = "Ice Bolt freezes; Fire Bolt burns",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("knight", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_knight", 1, 2) })
             local mage, knight = c.units[1], c.units[2]
             local iceBolt = Item.instantiate("ability_ice_bolt")
             openTurn(c, mage)
             assert(Combat.useItem(c, mage, iceBolt, knight.x, knight.y), "Ice Bolt lands")
-            assert(Status.has(knight, "freeze"), "Ice Bolt left the knight Frozen")
+            assert(Status.has(knight, "status_freeze"), "Ice Bolt left the knight Frozen")
         end,
     },
     {
@@ -92,16 +92,16 @@ return {
         fn = function()
             -- Combat.cleanse is the mechanic (a cast would also advance the clock and time buffs out,
             -- which is a separate concern) -- test the cleanse itself: debuffs go, buffs stay.
-            local c = Combat.new(arena(8, 8), { unit("priest", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1) }, {})
             local priest = c.units[1]
-            Status.apply(c, priest, "burn")   -- debuff
-            Status.apply(c, priest, "mired")  -- debuff
-            Status.apply(c, priest, "regen")  -- buff (keep it)
-            Status.apply(c, priest, "aegis")  -- buff (keep it)
+            Status.apply(c, priest, "status_burn")   -- debuff
+            Status.apply(c, priest, "status_mired")  -- debuff
+            Status.apply(c, priest, "status_regen")  -- buff (keep it)
+            Status.apply(c, priest, "status_aegis")  -- buff (keep it)
             local removed = Combat.cleanse(c, priest)
             assert(removed == 2, "cleansed exactly the two debuffs")
-            assert(not Status.has(priest, "burn") and not Status.has(priest, "mired"), "debuffs gone")
-            assert(Status.has(priest, "regen") and Status.has(priest, "aegis"), "buffs survived")
+            assert(not Status.has(priest, "status_burn") and not Status.has(priest, "status_mired"), "debuffs gone")
+            assert(Status.has(priest, "status_regen") and Status.has(priest, "status_aegis"), "buffs survived")
             -- And the Cure item itself casts cleanly.
             local cure = Item.instantiate("ability_cure")
             openTurn(c, priest)
@@ -111,45 +111,45 @@ return {
     {
         name = "Aegis buffs allies in its blast, not enemies",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("priest", 3, 3), unit("knight", 3, 4) },
-                                              { unit("bandit", 4, 3) })
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 3, 3), unit("character_knight", 3, 4) },
+                                              { unit("character_bandit", 4, 3) })
             local priest, knight, bandit = c.units[1], c.units[2], c.units[3]
             local aegis = Item.instantiate("ability_aegis")
             openTurn(c, priest)
             assert(Combat.useItem(c, priest, aegis, 3, 3), "Aegis lands on the priest's tile")
-            assert(Status.has(priest, "aegis") and Status.has(knight, "aegis"), "allies warded")
-            assert(not Status.has(bandit, "aegis"), "the foe in the blast gains nothing")
+            assert(Status.has(priest, "status_aegis") and Status.has(knight, "status_aegis"), "allies warded")
+            assert(not Status.has(bandit, "status_aegis"), "the foe in the blast gains nothing")
         end,
     },
     {
         name = "Mired doubles ability cost; the Quicksand hazard applies it and lifts on leaving",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, {})
             local mage = c.units[1]
             local fireball = Item.instantiate("ability_fireball")
             local baseCost = Combat.abilityCost(mage, fireball.activeAbility).amount
-            Status.apply(c, mage, "mired")
+            Status.apply(c, mage, "status_mired")
             assert(Combat.abilityCost(mage, fireball.activeAbility).amount == baseCost * 2,
                 "Mired doubles the ability cost")
-            Status.remove(c, mage, "mired")
+            Status.remove(c, mage, "status_mired")
 
             -- The hazard grants Mired as an aura that ends the instant the unit steps clear.
             Hazard.place(c, 2, 1, "hazard_quicksand")
             Hazard.place(c, 3, 1, "hazard_quicksand")
             openTurn(c, mage)
             assert(Combat.moveUnit(c, mage, 2, 1), "step onto the sand")
-            assert(Status.has(mage, "mired"), "standing in quicksand mires the unit")
+            assert(Status.has(mage, "status_mired"), "standing in quicksand mires the unit")
             openTurn(c, mage)
             assert(Combat.moveUnit(c, mage, 1, 1), "step off onto firm ground")
-            assert(not Status.has(mage, "mired"), "leaving the sand lifts Mired at once")
+            assert(not Status.has(mage, "status_mired"), "leaving the sand lifts Mired at once")
         end,
     },
     {
         name = "the Dodge trait auto-evades a physical hit, then recharges; magic ignores it",
         fn = function()
             -- Give a knight the Duelist's Reflex (grants the passive Dodge trait). Combat.new attaches it.
-            local knightChar = Character.instantiate("knight")
-            Character.addItem(knightChar, Item.instantiate("duelists_reflex"))
+            local knightChar = Character.instantiate("character_knight")
+            Character.addItem(knightChar, Item.instantiate("utility_duelists_reflex"))
             local c = Combat.new(arena(8, 8), { { char = knightChar, x = 1, y = 1 } }, {})
             local knight = c.units[1]
             local hp = knight.char.stats.health
@@ -158,7 +158,7 @@ return {
             local before = hp.current
             Combat.dealFlatDamage(c, knight, 15, { "physical" }, "a blow")
             assert(hp.current == before, "the first physical blow was dodged")
-            assert(Combat.onCooldown(knight, "dodge"), "the reflex is now recharging")
+            assert(Combat.onCooldown(knight, "trait_dodge"), "the reflex is now recharging")
 
             -- A second physical blow while recharging lands normally.
             before = hp.current
@@ -167,17 +167,17 @@ return {
 
             -- Recharge, then a magical hit is NOT dodged even though the reflex is ready.
             Combat.tickCooldowns(c, 99)
-            assert(not Combat.onCooldown(knight, "dodge"), "the reflex has recharged")
+            assert(not Combat.onCooldown(knight, "trait_dodge"), "the reflex has recharged")
             before = hp.current
             Combat.dealFlatDamage(c, knight, 15, { "magical" }, "a spell")
             assert(hp.current < before, "a spell cannot be dodged")
-            assert(not Combat.onCooldown(knight, "dodge"), "and did not spend the reflex")
+            assert(not Combat.onCooldown(knight, "trait_dodge"), "and did not spend the reflex")
         end,
     },
     {
         name = "Water Ball shoves a foe three tiles and leaves rain where it struck",
         fn = function()
-            local c = Combat.new(arena(10, 3), { unit("mage", 2, 2) }, { unit("knight", 3, 2) })
+            local c = Combat.new(arena(10, 3), { unit("character_mage", 2, 2) }, { unit("character_knight", 3, 2) })
             local mage, knight = c.units[1], c.units[2]
             local waterBall = Item.instantiate("ability_water_ball")
             openTurn(c, mage)
@@ -189,8 +189,8 @@ return {
     {
         name = "Blizzard damages and Freezes everyone in its blast",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) },
-                                              { unit("bandit", 5, 5), unit("bandit", 6, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) },
+                                              { unit("character_bandit", 5, 5), unit("character_bandit", 6, 5) })
             local mage = c.units[1]
             local b1, b2 = c.units[2], c.units[3]
             local blizzard = Item.instantiate("ability_blizzard")
@@ -200,13 +200,13 @@ return {
             assert(Combat.useItem(c, mage, blizzard, 5, 5), "Blizzard begins channeling")
             assert(Combat.resolveChannel(c, mage), "the wound-up blast lands on the cluster")
             assert(b1.char.stats.health.current < hp1, "the blast damaged a foe")
-            assert(Status.has(b1, "freeze") and Status.has(b2, "freeze"), "both foes are Frozen")
+            assert(Status.has(b1, "status_freeze") and Status.has(b2, "status_freeze"), "both foes are Frozen")
         end,
     },
     {
         name = "a fallen ally leaves a corpse that Revive brings back at half health",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("priest", 1, 1), unit("knight", 2, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1), unit("character_knight", 2, 1) }, {})
             local priest, knight = c.units[1], c.units[2]
             -- Fell the knight.
             Combat.dealFlatDamage(c, knight, 9999, { "physical" }, "a blow")
@@ -224,8 +224,8 @@ return {
     {
         name = "Revive refuses a corpse a living unit is standing on",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("priest", 1, 1), unit("knight", 2, 1) },
-                                              { unit("bandit", 5, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1), unit("character_knight", 2, 1) },
+                                              { unit("character_bandit", 5, 5) })
             local priest, knight, bandit = c.units[1], c.units[2], c.units[3]
             Combat.dealFlatDamage(c, knight, 9999, { "physical" }, "a blow")
             bandit.x, bandit.y = 2, 1 -- stand the foe on the body
@@ -236,7 +236,7 @@ return {
     {
         name = "Raise Dead turns corpses in its blast into allied, AI-run zombies",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 5, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 5, 5) })
             local mage, bandit = c.units[1], c.units[2]
             Combat.dealFlatDamage(c, bandit, 9999, { "physical" }, "a blow")
             assert(bandit.corpse, "the bandit left a corpse")
@@ -255,7 +255,7 @@ return {
     {
         name = "Meteor Storm scatters fire and damages foes in its zone",
         fn = function()
-            local c = Combat.new(arena(12, 12), { unit("mage", 6, 6) }, { unit("knight", 4, 4) })
+            local c = Combat.new(arena(12, 12), { unit("character_mage", 6, 6) }, { unit("character_knight", 4, 4) })
             local mage, knight = c.units[1], c.units[2]
             -- Aim at (6,6): with random stubbed to 1, the first strike lands on (tx-2, ty-2) = (4,4).
             local meteor = Item.instantiate("ability_meteor_storm")
@@ -275,7 +275,7 @@ return {
     {
         name = "summoning an elemental reserves a quarter of the caster's maximum mana",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, {})
             local mage = c.units[1]
             local summon = Item.instantiate("ability_summon_ice_elemental")
             local manaMax = mage.char.stats.mana.max

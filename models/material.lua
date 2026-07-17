@@ -16,7 +16,7 @@ end
 
 -- The tier of material a given upgrade level draws on: iron scrap (1) for +1/+2, steel (2) for
 -- +3/+4, mythril (3) for +5. The single mapping the blacksmith cost curve reads.
-Material.TIER_BY_LEVEL = { "iron_scrap", "iron_scrap", "steel_ingot", "steel_ingot", "mythril" }
+Material.TIER_BY_LEVEL = { "material_iron_scrap", "material_iron_scrap", "material_steel_ingot", "material_steel_ingot", "material_mythril" }
 
 function Material.forLevel(level)
     return Material.TIER_BY_LEVEL[level] or Material.TIER_BY_LEVEL[#Material.TIER_BY_LEVEL]

@@ -16,12 +16,12 @@ return {
         objective = {
             name = "Ambush at the Pass",
             composition = function(ctx)
-                local list = { "bandit_chief" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "bandit" end
+                local list = { "character_bandit_chief" }
+                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_bandit" end
                 return list
             end,
-            allies = { "caravan_master" }, -- fights beside the party, runs itself
-            win = { type = "killAll", protect = "caravan_master" },
+            allies = { "character_caravan_master" }, -- fights beside the party, runs itself
+            win = { type = "killAll", protect = "character_caravan_master" },
         },
         keyCount = 0,
     },

@@ -44,7 +44,7 @@ end
 -- no items and no fists there is nothing left to do. Every reader of `char.unarmed` already treats it
 -- as optional (Combat.defaultWeapon documents a possible nil; the enemy AI appends it only
 -- `if unit.char.unarmed`), so this needs no special casing anywhere else.
-Character.DEFAULT_UNARMED = "unarmed"
+Character.DEFAULT_UNARMED = "weapon_unarmed"
 
 -- Stats that deplete during play. On instantiation these become
 -- { max = base, current = base }; every other stat is copied as a flat number.

@@ -177,7 +177,7 @@ across the swap so a shape can only change what a unit can *do*, never how much 
 
 **Traits vs. statuses.** A trait is the *rule*; a status is the *stacking effect* it applies. Statuses
 are timed, refreshable, and render as removable badges; traits are innate, permanent, and invisible.
-Traits come off a character blueprint (`traits = { "wrath_rising" }`) **or off any item in the 3x3
+Traits come off a character blueprint (`traits = { "trait_wrath_rising" }`) **or off any item in the 3x3
 grid**, which is how a boss's relic hands its rule to whoever wears it. `onDamaged` fires after
 mitigation and only on a survivor — the blow that kills you grants no rage, and a health-threshold
 phase never triggers on a corpse. A per-unit, per-hook reentrancy flag and a depth cap keep a

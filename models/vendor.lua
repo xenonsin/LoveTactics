@@ -95,6 +95,7 @@ function Vendor.stock(vendorId, rank, recipes)
                 id = id,
                 name = item.name,
                 description = item.description,
+                flavor = item.flavor,
                 type = item.type,
                 level = level,
                 price = Vendor.priceFor(item.price, level),

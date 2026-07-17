@@ -3,7 +3,8 @@
 -- it slows a foe rather than pinning it outright, and it lasts. Requires an adjacent bow in the grid.
 return {
     name = "Hobbling Shot",
-    description = "Damage a foe and cripple its movement. Requires an adjacent bow.",
+    description = "Deals damage and inflicts Cripple. Requires an adjacent bow.",
+    flavor = "An arrow to the leg. The Lodge maintains that this is the humane option.",
     sprite = "assets/items/ability_hobbling_shot.png",
     type = "ability",
     tags = { "pierce", "physical" },
@@ -21,7 +22,7 @@ return {
         requiresAdjacent = { type = "weapon", tag = "bow" },
         effect = function(fx)
             fx.damage(fx.target)
-            fx.applyStatus(fx.target, "cripple")
+            fx.applyStatus(fx.target, "status_cripple")
         end,
     },
 }

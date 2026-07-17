@@ -11,7 +11,8 @@
 -- gone by the endgame; hold it and you are down a quarter of your mana until you spend it.
 return {
     name = "Summon Fire Elemental",
-    description = "Channel a fire elemental onto the field for a time, one at a time. Reserves a quarter of your maximum mana while it lives.",
+    description = "Binds a fire elemental for a time. One at a time; reserves a quarter of your max mana.",
+    flavor = "A binding lapses. The Arcanum finds that reassuring; the elemental does not.",
     sprite = "assets/items/ability_summon_fire_elemental.png",
     type = "ability",
     tags = { "summon", "fire" },
@@ -22,7 +23,7 @@ return {
         channel = 2, -- the binding is now WOUND UP: two ticks of incantation before the elemental forms
         reserve = { stat = "mana", percent = 0.25 },
         effect = function(fx)
-            local elem = fx.summon("fire_elemental", fx.tx, fx.ty, {
+            local elem = fx.summon("character_fire_elemental", fx.tx, fx.ty, {
                 scaling = { health = 1, magicDamage = 0.5 },
                 amount = 12 + fx.level, -- base 12, +1 per upgrade level
                 duration = 24, -- ticks; the binding lapses and the elemental fades

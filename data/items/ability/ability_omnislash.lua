@@ -5,7 +5,8 @@
 -- Combat.adjacencyLinks) using the same predicate the effect scales off.
 return {
     name = "Omnislash",
-    description = "A single devastating flurry. Damage multiplies for each adjacent weapon.",
+    description = "A single flurry. Damage multiplies for each adjacent weapon in the grid.",
+    flavor = "Surround it with blades and it lands like all of them at once.",
     sprite = "assets/items/ability_omnislash.png",
     type = "ability",
     tags = { "slash", "physical" },

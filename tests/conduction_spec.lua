@@ -42,7 +42,7 @@ return {
     {
         name = "tileHasTag reads terrain, hazards and the occupant's statuses alike",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 5, 5) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 5, 5) }, {})
             local knight = c.units[1]
 
             assert(not Combat.tileHasTag(c, 2, 2, "conductable"), "plain ground conducts nothing")
@@ -59,16 +59,16 @@ return {
 
             -- 3. The occupant's status: Wet declares tileTags = { "conductable" }.
             assert(not Combat.tileHasTag(c, 5, 5, "conductable"), "a dry unit's tile does not conduct")
-            Status.apply(c, knight, "wet")
+            Status.apply(c, knight, "status_wet")
             assert(Combat.tileHasTag(c, 5, 5, "conductable"), "a Wet unit's tile conducts")
-            Status.remove(c, knight, "wet")
+            Status.remove(c, knight, "status_wet")
             assert(not Combat.tileHasTag(c, 5, 5, "conductable"), "and stops once it dries off")
         end,
     },
     {
         name = "taggedCellsAround returns adjacent tagged tiles, deduped and excluding the footprint",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
             -- Water at (4,4) and (5,4); the cast footprint is (4,5) and (5,5), directly below them.
             c.arena.tiles[4][4].tags = { "conductable" }
             c.arena.tiles[4][5].tags = { "conductable" }
@@ -87,11 +87,11 @@ return {
     {
         name = "a lightning cast arcs into an adjacent Wet foe standing beside its target",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 4) },
-                { unit("bandit", 4, 4), unit("bandit", 5, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 4) },
+                { unit("character_bandit", 4, 4), unit("character_bandit", 5, 4) })
             local mage, direct, splash = c.units[1], c.units[2], c.units[3]
 
-            Status.apply(c, splash, "wet")
+            Status.apply(c, splash, "status_wet")
             local before = splash.char.stats.health.current
             local untouched = direct.char.stats.health.current
 
@@ -109,12 +109,12 @@ return {
         fn = function()
             -- Two identical soaked bandits: one is Jolted directly, the other only conducts. The
             -- direct hit must be the harder of the two.
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 4) },
-                { unit("bandit", 4, 4), unit("bandit", 5, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 4) },
+                { unit("character_bandit", 4, 4), unit("character_bandit", 5, 4) })
             local mage, direct, splash = c.units[1], c.units[2], c.units[3]
 
-            Status.apply(c, direct, "wet")
-            Status.apply(c, splash, "wet")
+            Status.apply(c, direct, "status_wet")
+            Status.apply(c, splash, "status_wet")
             local hp0, hp1 = direct.char.stats.health.current, splash.char.stats.health.current
 
             local jolt = grant(mage.char, "ability_jolt", 1)
@@ -131,8 +131,8 @@ return {
     {
         name = "a lightning cast does not arc onto dry ground",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 4) },
-                { unit("bandit", 4, 4), unit("bandit", 5, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 4) },
+                { unit("character_bandit", 4, 4), unit("character_bandit", 5, 4) })
             local mage, direct, dry = c.units[1], c.units[2], c.units[3]
 
             local before = dry.char.stats.health.current
@@ -146,11 +146,11 @@ return {
     {
         name = "the arc is side-agnostic: a charge in a puddle takes friend and foe alike",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 4), unit("knight", 5, 4) },
-                { unit("bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 4), unit("character_knight", 5, 4) },
+                { unit("character_bandit", 4, 4) })
             local mage, ally, foe = c.units[1], c.units[2], c.units[3]
 
-            Status.apply(c, ally, "wet")
+            Status.apply(c, ally, "status_wet")
             local before = ally.char.stats.health.current
 
             local jolt = grant(mage.char, "ability_jolt", 1)
@@ -164,11 +164,11 @@ return {
     {
         name = "a non-lightning cast never arcs, however wet the ground is",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 4) },
-                { unit("bandit", 4, 4), unit("bandit", 5, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 4) },
+                { unit("character_bandit", 4, 4), unit("character_bandit", 5, 4) })
             local mage, foe, splash = c.units[1], c.units[2], c.units[3]
 
-            Status.apply(c, splash, "wet")
+            Status.apply(c, splash, "status_wet")
             local before = splash.char.stats.health.current
 
             local bolt = grant(mage.char, "ability_fire_bolt", 1)

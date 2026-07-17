@@ -16,21 +16,21 @@ return {
     rewardGold = 500,
     rewardRep = 80,
     rewardPrestige = 3,
-    rewardItems = { "mail_of_the_unappeased" },
+    rewardItems = { "armor_mail_of_the_unappeased" },
     requiredPrestige = 5,
     requiredRep = { vendor = "colosseum", rank = 4 }, -- Legend
     gateHint = "beneath the sand, where the roaring was loudest",
     map = {
         biome = "castle",
-        encounters = { min = 10, max = 14, always = { "elite", "elite" } },
+        encounters = { min = 10, max = 14, always = { "encounter_elite", "encounter_elite" } },
         objective = {
             name = "Ira, the Unappeased",
             composition = function(ctx)
-                local list = { "general_wrath" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "champion" end
+                local list = { "character_general_wrath" }
+                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_champion" end
                 return list
             end,
-            win = { type = "assassinate", target = "general_wrath" },
+            win = { type = "assassinate", target = "character_general_wrath" },
         },
         keyCount = 2,
     },

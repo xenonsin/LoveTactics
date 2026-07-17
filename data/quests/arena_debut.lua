@@ -9,15 +9,15 @@ return {
     rewardRep = 25,
     rewardPrestige = 1,
     requiredPrestige = 1,
-    intro = "wrath_intro", -- VN scene played when the bout is started (data/conversations/)
+    intro = "conversation_wrath_intro", -- VN scene played when the bout is started (data/conversations/)
     map = {
         biome = "castle",
         encounters = { min = 2, max = 4 }, -- map size scales with this (models/overworld.lua)
         objective = {
             name = "The Bout",
             composition = function(ctx)
-                local list = { "champion" }
-                for i = 1, 1 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "bandit" end
+                local list = { "character_champion" }
+                for i = 1, 1 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_bandit" end
                 return list
             end,
             win = { type = "killAll" },

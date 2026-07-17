@@ -19,7 +19,8 @@
 -- a timer -- the same reservation buys a permanent body here and a temporary one there.
 return {
     name = "Summon Wolf",
-    description = "Call a wolf to your side, one at a time. Reserves a quarter of your maximum mana while it lives.",
+    description = "Calls a wolf to your side. One at a time; reserves a quarter of your max mana while it lives.",
+    flavor = "Called for good, not bound for a while. It stands until something takes it down.",
     sprite = "assets/items/ability_summon_wolf.png",
     type = "ability",
     tags = { "summon", "beast" },
@@ -32,7 +33,7 @@ return {
         speed = 6,
         reserve = { stat = "mana", percent = 0.25 },
         effect = function(fx)
-            fx.summon("wolf_grunt", fx.tx, fx.ty, {
+            fx.summon("character_wolf_grunt", fx.tx, fx.ty, {
                 scaling = { health = 2, damage = 0.5 },
                 amount = 10 + fx.level, -- base 10, +1 per upgrade level
             })

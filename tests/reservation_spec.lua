@@ -37,7 +37,7 @@ return {
     {
         name = "reserving spends the resource and lowers the ceiling, but never touches max",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             local mana = mage.char.stats.mana
             local max = mana.max
@@ -53,7 +53,7 @@ return {
     {
         name = "a reservation is spent out of current even when the pool is far from full",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             local mana = mage.char.stats.mana
             mana.current = 12 -- spent most of the pool already
@@ -70,7 +70,7 @@ return {
     {
         name = "restoreResource and applyHeal stop at the reserved ceiling, not at max",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             local hp = knight.char.stats.health
             local ceiling = hp.max - 30
@@ -93,7 +93,7 @@ return {
     {
         name = "regen still fills to the ceiling once a reservation is active",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             local st = knight.char.stats.stamina
             Combat.reserve(knight.char, "stamina", 20, holder())
@@ -107,7 +107,7 @@ return {
     {
         name = "canReserve demands you actually hold the resource, and never lets a health reserve kill",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             mage.char.stats.mana.current = 5
 
@@ -123,7 +123,7 @@ return {
     {
         name = "releaseHeldBy frees a dead holder's reservation and restores the ceiling",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             local mana = mage.char.stats.mana
             local wolf = holder()
@@ -140,11 +140,11 @@ return {
     {
         name = "a stale reservation never survives into the next battle",
         fn = function()
-            local mage = Character.instantiate("mage")
+            local mage = Character.instantiate("character_mage")
             Combat.reserve(mage, "mana", 10, holder())
             assert(Combat.reservedAmount(mage, "mana") == 10, "reserved before the battle")
 
-            local c = Combat.new(arena(8, 8), { unit(mage, 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit(mage, 1, 1) }, { unit("character_bandit", 8, 8) })
             assert(Combat.reservedAmount(mage, "mana") == 0, "battle setup clears it (its summon is long gone)")
             local st = c.units[1].char.stats.stamina
             assert(st.current == st.max, "so the stamina refill still reaches a full max")
@@ -153,7 +153,7 @@ return {
     {
         name = "abilityCost applies a status cost multiplier; abilityReserve does not",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             local ab = { cost = { stat = "mana", amount = 12 }, reserve = { stat = "mana", percent = 0.25 } }
 
@@ -161,7 +161,7 @@ return {
             local max = mage.char.stats.mana.max
             assert(Combat.abilityReserve(mage, ab).amount == math.floor(max * 0.25), "reserve is a share of max")
 
-            Status.apply(c, mage, "hasted")
+            Status.apply(c, mage, "status_hasted")
             assert(Combat.abilityCost(mage, ab).amount == 6, "a cost multiplier halves the price")
             assert(Combat.abilityReserve(mage, ab).amount == math.floor(max * 0.25),
                 "a reservation is committed, not paid -- the multiplier must not touch it")
@@ -170,8 +170,8 @@ return {
     {
         name = "a previewed heal respects the reserved ceiling, exactly like the real one",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("priest", 1, 1), unit("knight", 2, 1) },
-                { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1), unit("character_knight", 2, 1) },
+                { unit("character_bandit", 8, 8) })
             local priest, knight = c.units[1], c.units[2]
             Character.addItem(priest.char, Item.instantiate("ability_heal"))
 
@@ -195,7 +195,7 @@ return {
     {
         name = "canAfford refuses an ability whose reservation cannot be committed",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             local ab = { reserve = { stat = "mana", percent = 0.25 } }
             assert(Combat.canAfford(mage, ab), "a full pool can commit a quarter of itself")
@@ -207,7 +207,7 @@ return {
     {
         name = "an ability that both costs and reserves one pool must afford the two together",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             local mana = mage.char.stats.mana
             local ab = { cost = { stat = "mana", amount = 12 }, reserve = { stat = "mana", percent = 0.25 } }
@@ -226,7 +226,7 @@ return {
     {
         name = "abilitySpend lists both the cost and the reservation, priced against the actor",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             local max = mage.char.stats.mana.max
             local ab = { cost = { stat = "mana", amount = 12 }, reserve = { stat = "mana", percent = 0.25 } }
@@ -238,7 +238,7 @@ return {
                 "then the reservation, a share of maximum")
 
             -- The hover preview must show the price the cast will actually charge, not the printed one.
-            Status.apply(c, mage, "hasted")
+            Status.apply(c, mage, "status_hasted")
             local hasted = Combat.abilitySpend(mage, ab)
             assert(hasted[1].amount == 6, "the cost row follows the cost multiplier")
             assert(hasted[2].amount == math.floor(max * 0.25), "the reservation row does not")
@@ -247,7 +247,7 @@ return {
     {
         name = "abilitySpend covers a summon that only reserves, and is empty for a free ability",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 8, 8) })
             local mage = c.units[1]
             local max = mage.char.stats.mana.max
 

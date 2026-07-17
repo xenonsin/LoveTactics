@@ -30,7 +30,7 @@ return {
     {
         name = "a cooldown counts down through rebase ticks and clears at 0",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_knight", 1, 1) }, {})
             local u = c.units[1]
             Combat.setCooldown(u, "test", 8)
             assert(Combat.onCooldown(u, "test"), "on cooldown after being set")
@@ -46,15 +46,15 @@ return {
         fn = function()
             -- Knight (default weapon iron_sword) with the counter reflex; bandit adjacent.
             local c = Combat.new(arena(6, 6),
-                { unitWithTraits("knight", 1, 1, { "melee_counter" }) },
-                { unit("bandit", 1, 2) })
+                { unitWithTraits("character_knight", 1, 1, { "trait_melee_counter" }) },
+                { unit("character_bandit", 1, 2) })
             local knight, bandit = c.units[1], c.units[2]
             local weapon = Combat.defaultWeapon(bandit.char)
 
             local hp0 = bandit.char.stats.health.current
             Combat.dealDamage(c, bandit, knight, weapon) -- the bandit strikes the knight in melee
             assert(bandit.char.stats.health.current < hp0, "the knight counters the adjacent striker")
-            assert(Combat.onCooldown(knight, "melee_counter"), "and the reflex is now recharging")
+            assert(Combat.onCooldown(knight, "trait_melee_counter"), "and the reflex is now recharging")
 
             -- A second blow while it recharges draws no counter.
             local hp1 = bandit.char.stats.health.current
@@ -72,15 +72,15 @@ return {
         name = "melee_counter ignores a ranged hit (the attacker stood too far to answer in kind)",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { unitWithTraits("knight", 1, 1, { "melee_counter" }) },
-                { unit("archer", 1, 3) }) -- two tiles away: a ranged strike
+                { unitWithTraits("character_knight", 1, 1, { "trait_melee_counter" }) },
+                { unit("character_archer", 1, 3) }) -- two tiles away: a ranged strike
             local knight, archer = c.units[1], c.units[2]
             local bow = Combat.defaultWeapon(archer.char)
 
             local hp0 = archer.char.stats.health.current
             Combat.dealDamage(c, archer, knight, bow)
             assert(archer.char.stats.health.current == hp0, "a melee counter does not answer a ranged shot")
-            assert(not Combat.onCooldown(knight, "melee_counter"), "and the reflex was never spent")
+            assert(not Combat.onCooldown(knight, "trait_melee_counter"), "and the reflex was never spent")
         end,
     },
     {
@@ -88,8 +88,8 @@ return {
         fn = function()
             -- Archer (default weapon bow, range 3) with the ranged reflex.
             local c = Combat.new(arena(6, 6),
-                { unitWithTraits("archer", 1, 1, { "ranged_counter" }) },
-                { unit("bandit", 1, 3), unit("wolf_grunt", 1, 2) })
+                { unitWithTraits("character_archer", 1, 1, { "trait_ranged_counter" }) },
+                { unit("character_bandit", 1, 3), unit("character_wolf_grunt", 1, 2) })
             local archer = c.units[1]
             local shooter, mauler = c.units[2], c.units[3]
 
@@ -97,7 +97,7 @@ return {
             local hp0 = shooter.char.stats.health.current
             Combat.dealDamage(c, shooter, archer, Combat.defaultWeapon(shooter.char))
             assert(shooter.char.stats.health.current < hp0, "the archer returns fire on a ranged attacker")
-            assert(Combat.onCooldown(archer, "ranged_counter"), "and the reflex is recharging")
+            assert(Combat.onCooldown(archer, "trait_ranged_counter"), "and the reflex is recharging")
 
             -- Clear the cooldown; an ADJACENT blow now draws no ranged counter.
             Combat.tickCooldowns(c, 10)
@@ -111,19 +111,19 @@ return {
         -- much of its cooldown is left, and reports nothing at all once it has recovered.
         name = "itemCooldown traces a recharging reflex back to the grid slot that granted it",
         fn = function()
-            local blade = Item.instantiate("riposte_blade")
-            local char = Character.instantiate("knight")
+            local blade = Item.instantiate("weapon_riposte_blade")
+            local char = Character.instantiate("character_knight")
             char.inventory[1] = blade
-            local c = Combat.new(arena(6, 6), { { char = char, x = 1, y = 1 } }, { unit("bandit", 1, 2) })
+            local c = Combat.new(arena(6, 6), { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 1, 2) })
             local knight = c.units[1]
 
             assert(Combat.itemCooldown(knight, blade) == nil, "a blade that has not parried is ready")
 
-            Combat.setCooldown(knight, "riposte", 16)
+            Combat.setCooldown(knight, "trait_riposte", 16)
             local cd = Combat.itemCooldown(knight, blade)
             assert(cd and cd.remaining == 16, "the fresh cooldown reports its full length")
             assert(cd.total == 16, "priced against the trait's own magnitude")
-            assert(cd.trait.id == "riposte", "and names the reflex that is recharging")
+            assert(cd.trait.id == "trait_riposte", "and names the reflex that is recharging")
 
             Combat.tickCooldowns(c, 10)
             local half = Combat.itemCooldown(knight, blade)
@@ -131,7 +131,7 @@ return {
             assert(half.total == 16, "while the total it is measured against holds")
 
             -- A slot that granted no trait never reads as recharging, cooldowns on the bearer or not.
-            local plain = Item.instantiate("iron_sword")
+            local plain = Item.instantiate("weapon_iron_sword")
             assert(Combat.itemCooldown(knight, plain) == nil, "an item with no reflex has no clock")
 
             Combat.tickCooldowns(c, 6)

@@ -50,7 +50,7 @@ local ACTIVE_TINT = { 1, 1, 1 }
 local FALLBACK_ACTIVE = { 0.42, 0.45, 0.56 }
 local FALLBACK_INACTIVE = { 0.20, 0.21, 0.27 }
 
--- A cast entry is either an id string ("knight") or a table ({ id = "knight", name = ..., slot = ..
+-- A cast entry is either an id string ("character_knight") or a table ({ id = "character_knight", name = ..., slot = ..
 -- }); a script node is authored positionally as { "<speaker>", "<text>", id = .., goto = .., choices
 -- = { { "<text>", goto = .. }, .. } }. These normalize either shape to a table with `by`/`text`.
 local function castEntry(raw)

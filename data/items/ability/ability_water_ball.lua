@@ -5,7 +5,8 @@
 -- douses fire on the tile it hits. Positional utility, not raw damage.
 return {
     name = "Water Ball",
-    description = "Slam a foe three tiles back and soak the area (Wet: +lightning damage).",
+    description = "Slams a foe three tiles back and soaks the area, inflicting Wet.",
+    flavor = "Positional utility, not raw damage -- a sentence no fighter has ever finished reading.",
     sprite = "assets/items/ability_water_ball.png",
     type = "ability",
     tags = { "water", "magical" },

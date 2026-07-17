@@ -15,12 +15,12 @@ return {
     requiredRep = { vendor = "cathedral", rank = 2 }, -- Acolyte or better
     map = {
         biome = "forest",
-        encounters = { min = 6, max = 9, always = { "elite" } },
+        encounters = { min = 6, max = 9, always = { "encounter_elite" } },
         objective = {
             name = "The Consecration",
             composition = function(ctx)
-                local list = { "miller_ghost" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "wolf_grunt" end
+                local list = { "character_miller_ghost" }
+                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_wolf_grunt" end
                 return list
             end,
             win = { type = "survive", turns = 8 },

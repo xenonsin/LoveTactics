@@ -6,7 +6,8 @@
 -- Pulls an archer out of its dead zone, or a healer out of the back line and into the melee.
 return {
     name = "Pull",
-    description = "Haul a foe you can see into an adjacent space. It triggers anything it is dragged over.",
+    description = "Hauls a foe you can see to an adjacent tile, triggering all it is dragged over.",
+    flavor = "Pulls an archer out of its dead zone, or a healer out of the back line and into the noise.",
     sprite = "assets/items/ability_pull.png",
     type = "ability",
     tags = { "impact", "physical" },

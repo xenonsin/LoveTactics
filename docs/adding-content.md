@@ -37,7 +37,7 @@ keep casting Fireball with grows into a battlemage.
 - **Growth tables** live in `data/growth/<class>.lua` — one flat table of per-level stat gains per
   `Item.CLASSES` entry (`health`/`mana`/`stamina` gains raise the pool's `max`). Gains are
   deterministic (no RNG) and `movement` is deliberately never grown.
-- A character blueprint may set an innate **`class`** (`data/characters/knight.lua` → `"knight"`),
+- A character blueprint may set an innate **`class`** (`data/characters/character_knight.lua` → `"knight"`),
   used as the growth class before it has cast anything and as the tie-break; a class-less blueprint
   falls back to `Growth.NEUTRAL_CLASS`.
 - Growth is baked onto `char.stats` and the running total kept in `char.growth`; the save stores
@@ -87,10 +87,10 @@ screen — the hub, the overworld, or **a battle mid-turn** — freezing it unti
 ```lua
 return {
   title = "Debut on the Sand",                 -- optional; shown top-left
-  cast  = { "knight", "priest", "colosseum" }, -- speaker ids, drawn left->right; non-speakers grey out
+  cast  = { "character_knight", "character_priest", "colosseum" }, -- speaker ids, drawn left->right; non-speakers grey out
   script = {
     { "colosseum", "You want blood on the sand? Prove it." },  -- a node is { speaker, line }
-    { "knight",    "We only want the quest." },
+    { "character_knight",    "We only want the quest." },
     { "colosseum", "Everything has a price. Which is it?",
       choices = {
         { "\"Coin.\"",  goto = "coin"  },       -- a choice jumps to a node's `id`
@@ -119,13 +119,13 @@ drops what does not apply before the widget ever sees it, so a priest who has no
 neither on stage nor in the script:
 
 ```lua
-cast = { "knight", "mage", { id = "priest", when = { has = "priest" } }, "colosseum" },
+cast = { "character_knight", "character_mage", { id = "character_priest", when = { has = "character_priest" } }, "colosseum" },
 script = {
   { "colosseum", "Fresh blood for the sand." },
   -- One block, one condition: these lines stand or fall together.
-  { when = { has = "priest" }, script = {
-    { "priest", "The Light is watching, even here.", id = "ready" },
-    { "mage",   "Watching, and unimpressed. Open the gate." },
+  { when = { has = "character_priest" }, script = {
+    { "character_priest", "The Light is watching, even here.", id = "ready" },
+    { "character_mage",   "Watching, and unimpressed. Open the gate." },
   } },
 }
 ```
@@ -141,15 +141,15 @@ spec proves the rule above. The grammar:
 
 | `when`                            | holds when                                    |
 | --------------------------------- | --------------------------------------------- |
-| `{ has = "priest" }`              | the character is on the roster (recruited)     |
-| `{ notHas = "priest" }`           | …and its negation                              |
+| `{ has = "character_priest" }`              | the character is on the roster (recruited)     |
+| `{ notHas = "character_priest" }`           | …and its negation                              |
 | `{ done = "vault_heist" }`        | the quest is completed                         |
 | `{ notDone = "vault_heist" }`     | …and its negation                              |
 | `{ prestige = 3 }`                | player prestige is **at least** 3              |
 | `{ all = { c1, c2 } }`            | every sub-condition holds                      |
 | `{ any = { c1, c2 } }`            | at least one holds                             |
 
-Several keys in one table AND together (`{ has = "priest", prestige = 2 }`). Blocks nest, and an inner
+Several keys in one table AND together (`{ has = "character_priest", prestige = 2 }`). Blocks nest, and an inner
 condition can only narrow its parent, never escape it. An unknown key raises rather than quietly
 passing, so a typo'd `{ hass = ... }` fails loudly instead of reading as "always show".
 
@@ -344,8 +344,8 @@ A `combat` / `elite` encounter fields its enemies in the battle arena via `compo
 composition = function(ctx)
     local p = ctx.prestige or 1
     local list = {}
-    for i = 1, 2 + math.floor(p / 2) do list[i] = "wolf_grunt" end
-    if p >= 3 then list[#list + 1] = "wolf_alpha" end -- an alpha joins at higher renown
+    for i = 1, 2 + math.floor(p / 2) do list[i] = "character_wolf_grunt" end
+    if p >= 3 then list[#list + 1] = "character_wolf_alpha" end -- an alpha joins at higher renown
     return list
 end,
 ```
@@ -357,8 +357,8 @@ condition `win = { type = "killAll" | "survive" | "assassinate", turns = N, targ
 ```lua
 objective = {
     name = "The Warlord",
-    composition = function(ctx) return { "warlord", "champion", "champion" } end,
-    win = { type = "assassinate", target = "warlord" },
+    composition = function(ctx) return { "character_warlord", "character_champion", "character_champion" } end,
+    win = { type = "assassinate", target = "character_warlord" },
 },
 ```
 
@@ -373,9 +373,9 @@ non-party characters who spawn on the party's side under AI control and fight fo
 ```lua
 objective = {
     name = "Ambush at the Pass",
-    composition = function(ctx) return { "bandit_chief", "bandit", "bandit" } end,
-    allies = { "caravan_master" },                        -- AI-run, on the party's side
-    win = { type = "killAll", protect = "caravan_master" }, -- ...and he must live
+    composition = function(ctx) return { "character_bandit_chief", "character_bandit", "character_bandit" } end,
+    allies = { "character_caravan_master" },                        -- AI-run, on the party's side
+    win = { type = "killAll", protect = "character_caravan_master" }, -- ...and he must live
 },
 ```
 
@@ -509,9 +509,9 @@ return {
 }
 ```
 
-Apply one from an ability or trap effect via `fx.applyStatus(target, "poison", { duration = 8 })`
-(re-applying refreshes the duration; one instance per id). See `data/status/stun.lua` and
-`data/status/root.lua`.
+Apply one from an ability or trap effect via `fx.applyStatus(target, "status_poison", { duration = 8 })`
+(re-applying refreshes the duration; one instance per id). See `data/status/status_stun.lua` and
+`data/status/status_root.lua`.
 
 **A recurring effect belongs on `onTick`, not `onTurnStart`.** Durations are measured in ticks, and a
 single rebase routinely elapses more ticks than a short status has left — a turn costs about
@@ -522,7 +522,7 @@ to this tick's share and banks the fraction until a whole point has built up.
 
 `onEnterTile` fires only for movement **across the ground** — a walk, or being shoved / pulled /
 trampled — never for a blink, a swap, or a summon's arrival (see `Combat.enterTile`'s `reason`). It
-is what makes a *positional* effect possible: `data/status/bleed.lua` charges its magnitude per tile
+is what makes a *positional* effect possible: `data/status/status_bleed.lua` charges its magnitude per tile
 crossed and nothing at all for standing still.
 
 `ctx.damage(unit, amount, tags, opts)` passes `opts` straight to the damage core, so a tick can be
@@ -547,13 +547,13 @@ knowing when you author one:
 
 - **The ward curve is a softcap**, so magicDefense alone never reaches immunity and never stops being
   worth another point. Armor grants its ward as an ordinary flat `bonus = { statusResist = N }` (see
-  `data/items/armor/skeptics_harness.lua`) — no plumbing of its own.
+  `data/items/armor/armor_skeptics_harness.lua`) — no plumbing of its own.
 - **Diminishing returns are what bound it.** Every repeat on the same victim is halved again, so a
   bounded number of casts reaches "does not land", by arithmetic rather than by an `immune` flag.
   Refusals count too, so an attacker cannot reset a target's immunity by casting into it.
 
 `onApply` runs only *after* this gate, so a shrugged-off cast never fires it — which is what lets
-`data/status/polymorph.lua` safely put its whole effect (wearing the shape) in `onApply`.
+`data/status/status_polymorph.lua` safely put its whole effect (wearing the shape) in `onApply`.
 
 See `models/status.lua` for the full contract and `tests/resist_spec.lua` for the pinned numbers.
 
@@ -585,7 +585,7 @@ The rules that matter when authoring a shape:
   plus no `startingItems`, is what makes a pig actionless but still able to move.
 - **Tag shape statuses `illusion = true`** so Dispel Illusions can tear them down.
 
-See `data/characters/pig.lua`, `data/status/polymorph.lua`, and `tests/transform_spec.lua`.
+See `data/characters/character_pig.lua`, `data/status/status_polymorph.lua`, and `tests/transform_spec.lua`.
 
 ## Add a trap
 
@@ -618,7 +618,7 @@ in its effect. Anything an item **summons or places** (a summon, trap, hazard, o
 the scaled numbers in the tooltip. A unit reveals enemy traps by carrying a detector item
 (`tags = { "detect traps" }`, `detectRadius = 2`).
 See `data/traps/spike_trap.lua`, `data/traps/snare_trap.lua`, `data/items/ability/ability_spike_trap.lua`, and
-`data/items/utility/trap_sense.lua`.
+`data/items/utility/utility_trap_sense.lua`.
 
 ## Stackable consumables
 
@@ -742,7 +742,7 @@ moves items either way — or, at a vendor, swaps that pool for the shop's Store
 
 - `noSteal = true` — never taken (a beast's fangs, an elemental's flame fists).
 - `stealPriority = N` — the highest is always taken first, ties broken at random (default 0). This
-  is how `data/items/utility/decoy.lua` makes itself the obvious thing to grab.
+  is how `data/items/utility/utility_decoy.lua` makes itself the obvious thing to grab.
 
 If the thief's own grid is full, a party thief pockets the item into the stash (`combat.stash`,
 pointed at `player.stash` by `states/battle.lua`); an enemy thief simply destroys it. See
@@ -753,8 +753,8 @@ pointed at `player.stash` by `states/battle.lua`); an enemy thief simply destroy
 Set `silent = true` on an ability to suppress its default `"X uses Y."` line, then write your own
 with `fx.log(kind, text)`. The Decoy uses this to report a plain move, so nothing in the log gives
 the trick away. A status can do the same with `hideLog = true` — Invisible would otherwise announce
-itself the moment the Decoy grants it. See `data/items/utility/decoy.lua` and
-`data/status/invisible.lua`.
+itself the moment the Decoy grants it. See `data/items/utility/utility_decoy.lua` and
+`data/status/status_invisible.lua`.
 
 Note that **any new `fx` helper must be added to all three `fx` tables** in `models/combat.lua`
 (`Combat.useItem`, plus the dry runs in `Combat.previewAbility` and `Combat.abilityOutput`). The

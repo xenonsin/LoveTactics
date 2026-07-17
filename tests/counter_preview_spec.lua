@@ -31,7 +31,7 @@ end
 
 -- A character instance with an empty grid carrying exactly `traits`, then exactly `items` -- so a
 -- fixture's reflexes are only the ones it was handed. Note the grid arms it too: an iron sword brings
--- Parry along with it (data/items/weapon/iron_sword.lua), which is how most of these fixtures get one.
+-- Parry along with it (data/items/weapon/weapon_iron_sword.lua), which is how most of these fixtures get one.
 local function fighter(id, traits, items)
     local char = Character.instantiate(id)
     for i = 1, Character.MAX_INVENTORY do char.inventory[i] = nil end
@@ -56,8 +56,8 @@ return {
     {
         name = "a previewed parry names the reflex and the damage the live counter deals",
         fn = function()
-            local knight = fighter("knight", {}, { "iron_sword" })
-            local bandit = fighter("bandit", {}, { "iron_sword" }) -- the sword carries Parry
+            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
             local knightHP = k.char.stats.health.current
@@ -71,7 +71,7 @@ return {
 
             -- Reading the preview must cost the defender nothing at all.
             assert(Combat.resource(b.char, "stamina") == stamina, "the preview spends no stamina")
-            assert(not Combat.onCooldown(b, "parry"), "and burns no cooldown")
+            assert(not Combat.onCooldown(b, "trait_parry"), "and burns no cooldown")
             assert(k.char.stats.health.current == knightHP, "and lands no damage")
 
             Combat.useItem(c, k, weapon, b.x, b.y)
@@ -82,8 +82,8 @@ return {
     {
         name = "a blow that fells its target is answered by nothing, and the panel says so",
         fn = function()
-            local knight = fighter("knight", {}, { "iron_sword" })
-            local bandit = fighter("bandit", {}, { "iron_sword" }) -- the sword carries Parry
+            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
             b.char.stats.health.current = 1 -- the next hit kills, and a corpse never parries
@@ -100,8 +100,8 @@ return {
     {
         name = "a reflex that can't be paid for, or is still recharging, is never promised",
         fn = function()
-            local knight = fighter("knight", {}, { "iron_sword" })
-            local bandit = fighter("bandit", {}, { "iron_sword" }) -- the sword carries Parry
+            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
 
@@ -111,7 +111,7 @@ return {
             b.char.stats.stamina.current = 40
             assert(soleCounter(c, k, b), "with stamina back, the answer is on again")
 
-            Combat.setCooldown(b, "parry", 20)
+            Combat.setCooldown(b, "trait_parry", 20)
             assert(soleCounter(c, k, b) == nil, "a guard still recovering answers nothing")
             Combat.tickCooldowns(c, 20)
             assert(soleCounter(c, k, b), "recovered, it answers again")
@@ -120,8 +120,8 @@ return {
     {
         name = "the reach rules hold: a melee reflex is promised only from an adjacent tile",
         fn = function()
-            local knight = fighter("knight", {}, { "iron_sword" })
-            local bandit = fighter("bandit", {}, { "iron_sword" }) -- the sword carries Parry
+            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(8, 8), { unit(knight, 1, 1) }, { unit(bandit, 5, 1) })
             local k, b = c.units[1], c.units[2]
 
@@ -139,8 +139,8 @@ return {
     {
         name = "a riposte is previewed as turning the blow aside, and the live blow deals nothing",
         fn = function()
-            local knight = fighter("knight", {}, { "iron_sword" })
-            local duelist = fighter("bandit", {}, { "riposte_blade" })
+            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local duelist = fighter("character_bandit", {}, { "weapon_riposte_blade" })
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(duelist, 2, 1) })
             local k, d = c.units[1], c.units[2]
             local knightHP, duelistHP = k.char.stats.health.current, d.char.stats.health.current
@@ -160,8 +160,8 @@ return {
         name = "Keen Senses is previewed as answering FIRST, and flags an answer that would kill",
         fn = function()
             -- A staff, not a sword: an iron sword would carry its own Parry and answer twice.
-            local priest = fighter("priest", { "keen_senses" }, { "parasitic_staff" })
-            local bandit = fighter("bandit", {}, { "iron_sword" })
+            local priest = fighter("character_priest", { "trait_keen_senses" }, { "weapon_parasitic_staff" })
+            local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" })
             local c = Combat.new(arena(6, 6), { unit(bandit, 1, 1) }, { unit(priest, 2, 1) })
             local b, p = c.units[1], c.units[2]
 
@@ -178,8 +178,8 @@ return {
     {
         name = "an ally's support cast provokes nothing, and neither does a spell on a swordsman",
         fn = function()
-            local mage = fighter("mage", {}, { "wand" })
-            local bandit = fighter("bandit", {}, { "iron_sword" }) -- the sword carries Parry
+            local mage = fighter("character_mage", {}, { "weapon_wand" })
+            local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(mage, 1, 1) }, { unit(bandit, 2, 1) })
             local m, b = c.units[1], c.units[2]
 
@@ -197,8 +197,8 @@ return {
             -- A blast is nobody's duel: it is aimed at ground, and everything standing there catches the
             -- same burst. There is no swing aimed at the swordsman to turn aside, so his Parry sleeps --
             -- which is also what keeps one bomb from being answered once per body it caught.
-            local knight = fighter("knight", {}, { "iron_axe" }) -- axes cleave: a 3-wide arc, an AoE
-            local bandit = fighter("bandit", {}, { "iron_sword" }) -- the sword carries Parry
+            local knight = fighter("character_knight", {}, { "weapon_iron_axe" }) -- axes cleave: a 3-wide arc, an AoE
+            local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
             local knightHP = k.char.stats.health.current
@@ -213,8 +213,8 @@ return {
 
             -- The same swordsman still answers a blow aimed at HIM, so the case above is the blast
             -- talking and not a broken fixture.
-            local sword = fighter("knight", {}, { "iron_sword" })
-            local c2 = Combat.new(arena(6, 6), { unit(sword, 1, 1) }, { unit(fighter("bandit", {}, { "iron_sword" }), 2, 1) })
+            local sword = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local c2 = Combat.new(arena(6, 6), { unit(sword, 1, 1) }, { unit(fighter("character_bandit", {}, { "weapon_iron_sword" }), 2, 1) })
             assert(soleCounter(c2, c2.units[1], c2.units[2]), "a single-target blow is answered as ever")
         end,
     },
@@ -223,12 +223,12 @@ return {
         fn = function()
             -- mayCounter is the single rule both the hover panel and the onDamaged hooks read, so a
             -- reflex the panel promises is one the hook fires: assert they agree unit by unit.
-            local knight = fighter("knight", {}, { "iron_sword" })
-            local bandit = fighter("bandit", {}, { "iron_sword" }) -- the sword carries Parry
+            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
             local parry
-            for _, t in ipairs(b.traits) do if t.id == "parry" then parry = t end end
+            for _, t in ipairs(b.traits) do if t.id == "trait_parry" then parry = t end end
             assert(parry, "fixture carries the reflex under test")
 
             assert(Trait.mayCounter(c, b, parry, k, { "physical" }), "adjacent: the gate opens")

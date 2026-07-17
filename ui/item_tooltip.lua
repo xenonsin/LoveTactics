@@ -54,6 +54,7 @@ local TARGET_LABEL = { enemy = "Enemy", ally = "Ally", self = "Self", tile = "Ti
 local MUTED = { 0.62, 0.65, 0.72 }
 local VALUE = { 0.90, 0.91, 0.95 }
 local DESC = { 0.80, 0.82, 0.88 }
+local FLAVOR = { 0.70, 0.68, 0.78 } -- the story line at the foot: dimmer than DESC, so it reads as an aside
 local WARN = { 0.95, 0.45, 0.42 } -- the row at fault + the note, when the ability can't be cast
 local MET = { 0.70, 0.88, 0.45 }  -- a satisfied requirement (matches the grid's connector line)
 local POWER = { 0.95, 0.72, 0.48 } -- ability Power row (the offensive balance stat)
@@ -70,6 +71,42 @@ local function titleCase(s)
     return (tostring(s):gsub("^%l", string.upper))
 end
 
+-- Fake italic for the flavor line. The project ships no font asset and LOVE's default face has no
+-- italic cut, so the slant is a shear: x' = x + FLAVOR_SHEAR * y, pivoting on the block's top edge,
+-- which slides each glyph's foot left while its head stays put. The text is therefore drawn inset by
+-- that overhang and wrapped to a column narrower by the same amount, so the lean lands inside the
+-- padding rather than across the tooltip's border.
+local FLAVOR_SHEAR = -0.18
+
+-- The inset and the wrap width for a flavor line drawn with `font` in a `w`-wide column. Measure and
+-- draw MUST both size themselves from this: wrapping to one width and drawing at another is how a
+-- measured box height silently stops matching the text inside it. The overhang scales with the line
+-- height, so a panel's larger font leans further and needs a wider inset than the tooltip's.
+local function flavorLayout(font, w)
+    local inset = math.ceil(-FLAVOR_SHEAR * font:getHeight())
+    return inset, w - inset
+end
+
+-- Draw `text` as a sheared italic aside, wrapped into a `w`-wide column at (x, y). Returns the
+-- height consumed, so callers laying out their own column can advance past it -- the shop and
+-- blacksmith panels print flavor under an item's description without the block system. `font`
+-- defaults to the tooltip's own body font; a caller with its own type scale passes that instead, so
+-- the flavor matches the column it sits in.
+function ItemTooltip.printFlavor(text, x, y, w, font)
+    local _, body = fonts()
+    font = font or body
+    local inset, textW = flavorLayout(font, w)
+    local _, wrapped = font:getWrap(text, textW)
+    love.graphics.setFont(font)
+    love.graphics.setColor(FLAVOR[1], FLAVOR[2], FLAVOR[3], 1)
+    love.graphics.push()
+    love.graphics.translate(x + inset, y)
+    love.graphics.shear(FLAVOR_SHEAR, 0)
+    love.graphics.printf(text, 0, 0, textW, "left")
+    love.graphics.pop()
+    return math.max(1, #wrapped) * font:getHeight()
+end
+
 -- Sorted keys of a map, so pairs-driven rows (armor bonuses/resists) render deterministically.
 local function sortedKeys(t)
     local keys = {}
@@ -82,7 +119,8 @@ end
 --   title  { text, color }              -- item name, tinted by type
 --   type   { text }                     -- e.g. "ABILITY"
 --   power  { label, value }             -- headline primary stat (label caption + big value)
---   desc   { text }                     -- wrapped flavor/description
+--   desc   { text }                     -- wrapped mechanical description (docs/item-text.md)
+--   flavor { text }                     -- wrapped story line, sheared italic; always last
 --   sep    {}                           -- thin divider + gap between sections
 --   head   { text }                     -- ability name heading
 --   stat   { label, value, valueColor, icon } -- label (left) + value (right); `icon` ("hourglass")
@@ -363,6 +401,12 @@ local function buildBlocks(item, actor, innerW)
         end
     end
 
+    -- The story line has the tooltip's last word, below everything mechanical (docs/item-text.md).
+    if item.flavor and item.flavor ~= "" then
+        blocks[#blocks + 1] = { kind = "sep" }
+        blocks[#blocks + 1] = { kind = "flavor", text = item.flavor }
+    end
+
     return blocks
 end
 
@@ -386,6 +430,12 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
         elseif b.kind == "power" then h = h + powerH + 4
         elseif b.kind == "desc" or b.kind == "warn" then
             local _, lines = body:getWrap(b.text, innerW)
+            b.lines = math.max(1, #lines)
+            h = h + b.lines * bodyH + 2
+        elseif b.kind == "flavor" then
+            -- Wrapped against the shear-inset column, exactly as ItemTooltip.printFlavor draws it.
+            local _, textW = flavorLayout(body, innerW)
+            local _, lines = body:getWrap(b.text, textW)
             b.lines = math.max(1, #lines)
             h = h + b.lines * bodyH + 2
         elseif b.kind == "note" then
@@ -453,6 +503,9 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
             local gx = bx + pad + math.floor((innerW - b.layout.width) / 2)
             RangeDiagram.draw(b.layout, gx, ty + 2, b.color)
             ty = ty + b.layout.height + 4
+        elseif b.kind == "flavor" then
+            ItemTooltip.printFlavor(b.text, bx + pad, ty, innerW)
+            ty = ty + b.lines * bodyH + 2
         elseif b.kind == "note" then
             love.graphics.setFont(body)
             love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)

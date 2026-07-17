@@ -5,7 +5,8 @@
 -- previews green like a heal rather than red like an attack.
 return {
     name = "Sanctuary",
-    description = "Consecrate an area, granting Regeneration to allies who stand within.",
+    description = "Consecrates an area, granting Regeneration to allies who stand within.",
+    flavor = "Hallowed ground, and it knows perfectly well whose side it is on.",
     sprite = "assets/items/ability_sanctuary.png",
     type = "ability",
     tags = { "holy", "restorative" },
@@ -22,9 +23,9 @@ return {
         aoe = { radius = 1, shape = "square" }, -- 3x3 consecrated ground
         effect = function(fx)
             -- Forging the item deepens the blessing: it heals harder (base 8/turn, +1 per level) and
-            -- lingers longer (base 4 ticks, +1 per level).
+            -- lingers longer (base 15 ticks -- about 3 turns -- +1 per level).
             for _, c in ipairs(fx.aoeCells()) do
-                fx.placeHazard(c.x, c.y, "hazard_heal", { amount = 8 + fx.level, duration = 4 + fx.level })
+                fx.placeHazard(c.x, c.y, "hazard_heal", { amount = 8 + fx.level, duration = 15 + fx.level })
             end
         end,
     },

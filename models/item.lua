@@ -254,7 +254,8 @@ function Item.instantiate(id, quantity, level)
     local item = {
         id = id,
         name = def.name,
-        description = def.description,
+        description = def.description,         -- what it does: mechanical, one sentence (docs/item-text.md)
+        flavor = def.flavor,                   -- what it means: the story line, italic at the tooltip's foot
         sprite = Sprite.load(def.sprite),
         type = def.type,                       -- weapon | armor | consumable | ability | utility
         tags = deepCopy(def.tags),             -- descriptive tags: scaling + armor mitigation

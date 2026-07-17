@@ -6,7 +6,8 @@
 -- the banner and its aura work.
 return {
     name = "Renewal Banner",
-    description = "Plant a mending banner that regenerates nearby allies' health while it stands.",
+    description = "Plants a destructible banner granting nearby allies Regeneration while it stands.",
+    flavor = "The Cathedral's standard rallies nobody. It simply declines to let them fall.",
     sprite = "assets/items/ability_renewal_banner.png",
     type = "ability",
     tags = { "banner", "holy", "restorative" },
@@ -20,7 +21,7 @@ return {
         support = true,
         cost = { stat = "mana", amount = 16 },
         effect = function(fx)
-            local banner = fx.summon("banner", fx.tx, fx.ty, { control = "none", timeless = true })
+            local banner = fx.summon("character_banner", fx.tx, fx.ty, { control = "none", timeless = true })
             if banner and banner.alive then
                 -- The 3x3 of Renewing Ground the standard holds open; see ability_rally_banner.lua.
                 for dy = -1, 1 do

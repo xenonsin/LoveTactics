@@ -3,7 +3,8 @@
 -- is hemmed in with no open neighbour, the strike still lands from where the caster stood.
 return {
     name = "Shadow Step",
-    description = "Blink to a foe's side and strike it.",
+    description = "Blinks to a foe's side and strikes it.",
+    flavor = "The Undercroft's preferred introduction.",
     sprite = "assets/items/ability_shadow_step.png",
     type = "ability",
     tags = { "guile", "physical" },

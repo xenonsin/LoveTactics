@@ -6,7 +6,8 @@
 -- arrives on a timer rather than all at once.
 return {
     name = "Renewal",
-    description = "Bless an ally with Regeneration, mending them a little at the start of each turn.",
+    description = "Grants an ally Regeneration, mending them at the start of each of their turns.",
+    flavor = "It wants to land before the wounds come, which is the hardest thing the Cathedral teaches.",
     sprite = "assets/items/ability_renewal.png",
     type = "ability",
     tags = { "holy", "restorative" },
@@ -20,7 +21,7 @@ return {
         support = true,
         cost = { stat = "mana", amount = 10 },
         effect = function(fx)
-            fx.applyStatus(fx.target, "regen")
+            fx.applyStatus(fx.target, "status_regen")
         end,
     },
 }

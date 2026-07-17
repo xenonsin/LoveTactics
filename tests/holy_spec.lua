@@ -1,4 +1,4 @@
--- Tests for holy damage (data/items/weapon/demon_bane.lua): it is routed like physical damage but
+-- Tests for holy damage (data/items/weapon/weapon_demon_bane.lua): it is routed like physical damage but
 -- carries the `holy` tag, so a target with a negative holy resist (demonic flesh) takes extra. No
 -- engine change -- Combat.mitigatedDamage has always summed resist, negatives included. Headless.
 
@@ -22,19 +22,19 @@ return {
         name = "a negative holy resist makes a holy hit land harder (demonic flesh + Demon Bane)",
         fn = function()
             -- Target carries Demonic Essence (resist { holy = -8 }); zero its defense to isolate.
-            local demon = Character.instantiate("bandit")
+            local demon = Character.instantiate("character_bandit")
             demon.inventory = {}
-            Character.addItem(demon, Item.instantiate("demonic_essence"))
+            Character.addItem(demon, Item.instantiate("utility_demonic_essence"))
             demon.stats.defense = 0
 
             -- A plain target with the same zero defense but NO demonic flesh, to isolate the resist.
-            local mortal = Character.instantiate("bandit")
+            local mortal = Character.instantiate("character_bandit")
             mortal.inventory = {}
             mortal.stats.defense = 0
 
-            local hero = Character.instantiate("knight")
+            local hero = Character.instantiate("character_knight")
             hero.inventory = {}
-            Character.addItem(hero, Item.instantiate("demon_bane"))
+            Character.addItem(hero, Item.instantiate("weapon_demon_bane"))
 
             local c = Combat.new(arena(6, 6), { { char = hero, x = 1, y = 1 } },
                 { { char = demon, x = 1, y = 2 }, { char = mortal, x = 2, y = 2 } })

@@ -16,12 +16,12 @@ return {
     repeatable = true,
     map = {
         biome = "castle",
-        encounters = { min = 8, max = 12, always = { "elite" } },
+        encounters = { min = 8, max = 12, always = { "encounter_elite" } },
         objective = {
             name = "The Card",
             composition = function(ctx)
-                local list = { "champion" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "bandit_chief" end
+                local list = { "character_champion" }
+                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_bandit_chief" end
                 return list
             end,
             win = { type = "killAll" },

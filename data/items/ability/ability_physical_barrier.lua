@@ -11,7 +11,8 @@
 -- entire round of focused fire.
 return {
     name = "Physical Barrier",
-    description = "Ward yourself or an ally against the next physical blow.",
+    description = "Wards yourself or an ally against the next physical blow.",
+    flavor = "A negation has no size to grow, only a count -- and the count is what you are buying.",
     sprite = "assets/items/ability_physical_barrier.png",
     type = "ability",
     tags = { "holy", "protective" },
@@ -25,7 +26,7 @@ return {
         cost = { stat = "mana", amount = 12 },
         hits = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4 }, -- blows the ward swallows, by upgrade level
         effect = function(fx)
-            fx.applyStatus(fx.target, "physical_barrier", { magnitude = fx.amount })
+            fx.applyStatus(fx.target, "status_physical_barrier", { magnitude = fx.amount })
         end,
     },
 }

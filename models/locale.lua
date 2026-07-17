@@ -1,7 +1,7 @@
 -- Localization catalog. ONE grid table -- data/lang/strings.lua -- with a row per string id and a
 -- column per language:
 --
---   ["line.wrath_intro.1"] = { en = "So. Fresh blood ...", ja = "ほう、砂場に ..." },
+--   ["line.conversation_wrath_intro.1"] = { en = "So. Fresh blood ...", ja = "ほう、砂場に ..." },
 --   ["name.colosseum"]     = { en = "The Colosseum",        ja = "闘技場" },
 --
 -- This is the "localization spreadsheet" layout (id | en | ja | ...): a translator sees English and

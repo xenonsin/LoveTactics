@@ -29,7 +29,8 @@
 -- you have already paid for it.
 return {
     name = "Wild Shape: Wolf",
-    description = "Take a wolf's body -- fast and sharp-toothed. Reserves mana while worn.",
+    description = "Take a wolf's body: fast and sharp-toothed. Reserves mana while worn.",
+    flavor = "You give up the thing you are good at to become the thing you were keeping at a distance.",
     sprite = "assets/items/ability_wild_shape_wolf.png",
     type = "ability",
     tags = { "primal", "illusion", "utility" },
@@ -44,8 +45,8 @@ return {
         -- wolf you summon rather than wear.
         reserve = { stat = "mana", percent = 0.25 }, -- held for as long as the shape is worn
         effect = function(fx)
-            if fx.transform(fx.user, "wolf_grunt") then
-                fx.applyStatus(fx.user, "wild_shape_wolf")
+            if fx.transform(fx.user, "character_wolf_grunt") then
+                fx.applyStatus(fx.user, "status_wild_shape_wolf")
             end
         end,
     },

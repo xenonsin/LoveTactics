@@ -158,35 +158,35 @@ return {
     {
         name = "test evaluates the condition grammar against a context",
         fn = function()
-            local ctx = { roster = { priest = true }, quests = { vault_heist = true }, prestige = 2 }
+            local ctx = { roster = { character_priest = true }, quests = { vault_heist = true }, prestige = 2 }
             assert(Conversation.test(nil, ctx), "no condition is unconditional")
-            assert(Conversation.test({ has = "priest" }, ctx), "priest is on the roster")
-            assert(not Conversation.test({ has = "mage" }, ctx), "mage is not")
-            assert(Conversation.test({ notHas = "mage" }, ctx), "notHas inverts")
+            assert(Conversation.test({ has = "character_priest" }, ctx), "priest is on the roster")
+            assert(not Conversation.test({ has = "character_mage" }, ctx), "mage is not")
+            assert(Conversation.test({ notHas = "character_mage" }, ctx), "notHas inverts")
             assert(Conversation.test({ done = "vault_heist" }, ctx), "quest is completed")
             assert(not Conversation.test({ done = "arena_debut" }, ctx), "uncompleted quest fails")
             assert(Conversation.test({ notDone = "arena_debut" }, ctx), "notDone inverts")
             assert(Conversation.test({ prestige = 2 }, ctx), "prestige is a MINIMUM, so equal passes")
             assert(not Conversation.test({ prestige = 3 }, ctx), "below the minimum fails")
-            assert(Conversation.test({ has = "priest", done = "vault_heist" }, ctx), "sibling keys AND")
-            assert(not Conversation.test({ has = "priest", prestige = 9 }, ctx), "one failing key fails the AND")
-            assert(Conversation.test({ any = { { has = "mage" }, { has = "priest" } } }, ctx), "any is an OR")
-            assert(not Conversation.test({ all = { { has = "mage" }, { has = "priest" } } }, ctx), "all is an AND")
-            local ok = pcall(Conversation.test, { hass = "priest" }, ctx)
+            assert(Conversation.test({ has = "character_priest", done = "vault_heist" }, ctx), "sibling keys AND")
+            assert(not Conversation.test({ has = "character_priest", prestige = 9 }, ctx), "one failing key fails the AND")
+            assert(Conversation.test({ any = { { has = "character_mage" }, { has = "character_priest" } } }, ctx), "any is an OR")
+            assert(not Conversation.test({ all = { { has = "character_mage" }, { has = "character_priest" } } }, ctx), "all is an AND")
+            local ok = pcall(Conversation.test, { hass = "character_priest" }, ctx)
             assert(not ok, "a typo'd condition key must raise, never silently pass")
         end,
     },
     {
         name = "guarantees proves a condition requires a character, conservatively",
         fn = function()
-            assert(Conversation.guarantees({ has = "priest" }, "priest"), "a direct has")
-            assert(not Conversation.guarantees({ has = "mage" }, "priest"), "a different character")
-            assert(not Conversation.guarantees({ done = "vault_heist" }, "priest"), "an unrelated condition")
-            assert(Conversation.guarantees({ all = { { done = "x" }, { has = "priest" } } }, "priest"),
+            assert(Conversation.guarantees({ has = "character_priest" }, "character_priest"), "a direct has")
+            assert(not Conversation.guarantees({ has = "character_mage" }, "character_priest"), "a different character")
+            assert(not Conversation.guarantees({ done = "vault_heist" }, "character_priest"), "an unrelated condition")
+            assert(Conversation.guarantees({ all = { { done = "x" }, { has = "character_priest" } } }, "character_priest"),
                 "an `all` holds only if every member does, so one member requiring the priest is enough")
-            assert(not Conversation.guarantees({ any = { { has = "priest" }, { done = "x" } } }, "priest"),
+            assert(not Conversation.guarantees({ any = { { has = "character_priest" }, { done = "x" } } }, "character_priest"),
                 "an `any` can hold via the other branch, so it guarantees nothing")
-            assert(Conversation.guarantees({ any = { { has = "priest" }, { has = "priest", done = "x" } } }, "priest"),
+            assert(Conversation.guarantees({ any = { { has = "character_priest" }, { has = "character_priest", done = "x" } } }, "character_priest"),
                 "an `any` whose every branch requires the priest does guarantee them")
         end,
     },
@@ -194,24 +194,24 @@ return {
         name = "resolve drops a gated block and re-points a goto that aimed into it",
         fn = function()
             local def = {
-                cast = { "knight", { id = "priest", when = { has = "priest" } } },
+                cast = { "character_knight", { id = "character_priest", when = { has = "character_priest" } } },
                 script = {
-                    { "knight", "one", id = "start", goto = "banter" },
-                    { when = { has = "priest" }, script = {
-                        { "priest", "two", id = "banter" },
-                        { "knight", "three" },
+                    { "character_knight", "one", id = "start", goto = "banter" },
+                    { when = { has = "character_priest" }, script = {
+                        { "character_priest", "two", id = "banter" },
+                        { "character_knight", "three" },
                     } },
-                    { "knight", "four", id = "tail" },
+                    { "character_knight", "four", id = "tail" },
                 },
             }
 
-            local withPriest = Conversation.resolve(def, { roster = { priest = true }, quests = {}, prestige = 1 })
+            local withPriest = Conversation.resolve(def, { roster = { character_priest = true }, quests = {}, prestige = 1 })
             assert(#withPriest.cast == 2, "the priest is on stage when recruited")
             assert(#withPriest.script == 4, "every line plays")
             assert(withPriest.script[1].goto == "banter", "the goto is left alone")
 
             local without = Conversation.resolve(def, { roster = {}, quests = {}, prestige = 1 })
-            assert(#without.cast == 1 and without.cast[1] == "knight", "the priest is off stage")
+            assert(#without.cast == 1 and without.cast[1] == "character_knight", "the priest is off stage")
             assert(#without.script == 2, "the whole banter block leaves, not just the priest's line")
             assert(without.script[2][2] == "four", "the surviving lines keep their order")
             assert(without.script[1].goto == "tail",
@@ -222,10 +222,10 @@ return {
         name = "resolve redirects to 'end' when nothing survives after the dropped node",
         fn = function()
             local def = {
-                cast = { "knight", { id = "priest", when = { has = "priest" } } },
+                cast = { "character_knight", { id = "character_priest", when = { has = "character_priest" } } },
                 script = {
-                    { "knight", "one", goto = "last", choices = { { "go", goto = "last" } } },
-                    { when = { has = "priest" }, script = { { "priest", "two", id = "last" } } },
+                    { "character_knight", "one", goto = "last", choices = { { "go", goto = "last" } } },
+                    { when = { has = "character_priest" }, script = { { "character_priest", "two", id = "last" } } },
                 },
             }
             local r = Conversation.resolve(def, { roster = {}, quests = {}, prestige = 1 })
@@ -239,11 +239,11 @@ return {
         name = "resolve gives a synthetic id to a surviving redirect target that lacks one",
         fn = function()
             local def = {
-                cast = { "knight", { id = "priest", when = { has = "priest" } } },
+                cast = { "character_knight", { id = "character_priest", when = { has = "character_priest" } } },
                 script = {
-                    { "knight", "one", goto = "gone" },
-                    { when = { has = "priest" }, script = { { "priest", "two", id = "gone" } } },
-                    { "knight", "three" }, -- no id of its own, but must be jumpable to
+                    { "character_knight", "one", goto = "gone" },
+                    { when = { has = "character_priest" }, script = { { "character_priest", "two", id = "gone" } } },
+                    { "character_knight", "three" }, -- no id of its own, but must be jumpable to
                 },
             }
             local r = Conversation.resolve(def, { roster = {}, quests = {}, prestige = 1 })
@@ -256,11 +256,11 @@ return {
         name = "a nested block cannot escape a dropped parent",
         fn = function()
             local def = {
-                cast = { "knight", { id = "priest", when = { has = "priest" } } },
+                cast = { "character_knight", { id = "character_priest", when = { has = "character_priest" } } },
                 script = {
-                    { when = { has = "priest" }, script = {
-                        { "priest", "outer" },
-                        { when = { prestige = 1 }, script = { { "priest", "inner" } } },
+                    { when = { has = "character_priest" }, script = {
+                        { "character_priest", "outer" },
+                        { when = { prestige = 1 }, script = { { "character_priest", "inner" } } },
                     } },
                 },
             }
@@ -272,12 +272,12 @@ return {
         name = "context reads roster, completed quests and prestige off a player",
         fn = function()
             local ctx = Conversation.context({
-                roster = { { id = "knight" }, { id = "priest" } },
+                roster = { { id = "character_knight" }, { id = "character_priest" } },
                 completedQuests = { vault_heist = true },
                 prestige = 4,
             })
-            assert(ctx.roster.knight and ctx.roster.priest, "roster ids are flattened to a set")
-            assert(ctx.roster.mage == nil, "an absent character is absent")
+            assert(ctx.roster.character_knight and ctx.roster.character_priest, "roster ids are flattened to a set")
+            assert(ctx.roster.character_mage == nil, "an absent character is absent")
             assert(ctx.quests.vault_heist == true and ctx.prestige == 4, "quests and prestige carry over")
             local empty = Conversation.context(nil)
             assert(next(empty.roster) == nil and empty.prestige == 1, "no player is an empty context")
@@ -301,15 +301,15 @@ return {
     {
         name = "speaker resolves name (English source) + portrait path from a blueprint",
         fn = function()
-            local who = Conversation.speaker("knight")
-            assert(who.name == Character.defs.knight.name, "should read the blueprint name in the source language")
-            assert(who.portrait == Character.defs.knight.portrait, "should read the blueprint portrait path")
+            local who = Conversation.speaker("character_knight")
+            assert(who.name == Character.defs.character_knight.name, "should read the blueprint name in the source language")
+            assert(who.portrait == Character.defs.character_knight.portrait, "should read the blueprint portrait path")
         end,
     },
     {
         name = "speaker honors an explicit name/portrait override and falls back to the id",
         fn = function()
-            local o = Conversation.speaker("knight", { name = "Sir Nobody", portrait = "x.png" })
+            local o = Conversation.speaker("character_knight", { name = "Sir Nobody", portrait = "x.png" })
             assert(o.name == "Sir Nobody" and o.portrait == "x.png", "overrides should win")
             local u = Conversation.speaker("not_a_real_id")
             assert(u.name == "not_a_real_id" and u.portrait == nil, "unknown speaker falls back to its id")

@@ -19,7 +19,8 @@
 -- single body are not fights a single spell gets to end.
 return {
     name = "Polymorph",
-    description = "Turn a foe into a pig: it can move, and nothing else. Bosses are unmoved.",
+    description = "Turns a foe into a pig: it can move, and nothing else. Bosses are unmoved.",
+    flavor = "You do not have to beat the champion if the champion is livestock.",
     sprite = "assets/items/ability_polymorph.png",
     type = "ability",
     tags = { "arcane", "magical", "illusion", "utility" },
@@ -39,7 +40,7 @@ return {
                 fx.log("action", string.format("%s is unmoved.", t.char.name or "The target"))
                 return
             end
-            fx.applyStatus(t, "polymorph")
+            fx.applyStatus(t, "status_polymorph")
         end,
     },
 }

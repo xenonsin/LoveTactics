@@ -11,12 +11,12 @@ return {
     requiredPrestige = 1,
     map = {
         biome = "castle",
-        encounters = { min = 5, max = 8, always = { "elite" } },
+        encounters = { min = 5, max = 8, always = { "encounter_elite" } },
         objective = {
             name = "The Reading Room",
             composition = function(ctx)
-                local list = { "champion" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "bandit" end
+                local list = { "character_champion" }
+                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_bandit" end
                 return list
             end,
             win = { type = "killAll" },

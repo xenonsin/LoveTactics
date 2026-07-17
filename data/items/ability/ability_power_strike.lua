@@ -4,7 +4,8 @@
 -- both hurts and buys tempo. The disciplined cousin of the War Hammer: the same stun, off any blade.
 return {
     name = "Power Strike",
-    description = "A heavy blow that damages and stuns. Requires an adjacent melee weapon.",
+    description = "Deals damage and inflicts Stun. Requires an adjacent melee weapon.",
+    flavor = "The disciplined cousin of the war hammer: the same stun, off any blade at all.",
     sprite = "assets/items/ability_power_strike.png",
     type = "ability",
     tags = { "impact", "physical" },
@@ -20,7 +21,7 @@ return {
         requiresAdjacent = { type = "weapon", tag = "melee" }, -- a melee weapon must sit adjacent in the grid
         effect = function(fx)
             fx.damage(fx.target)
-            fx.applyStatus(fx.target, "stun")
+            fx.applyStatus(fx.target, "status_stun")
         end,
     },
 }

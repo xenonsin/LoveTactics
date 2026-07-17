@@ -5,7 +5,8 @@
 -- frees a unit that has already stepped clear, or buys a turn to move.
 return {
     name = "Cure",
-    description = "Cleanse an ally of all debuffs.",
+    description = "Cleanses an ally of all debuffs.",
+    flavor = "The Cathedral's daily work, and the reason anyone tolerates its sermons.",
     sprite = "assets/items/ability_cure.png",
     type = "ability",
     tags = { "holy", "restorative" },

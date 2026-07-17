@@ -8,7 +8,8 @@
 -- pick their own cells below, and off-map picks are harmlessly skipped by fx.unitAt / placeHazard.
 return {
     name = "Meteor Storm",
-    description = "Call down six meteors on random tiles in a wide zone, each leaving fire.",
+    description = "Calls six meteors onto random tiles in a wide zone, each leaving fire.",
+    flavor = "You choose the zone. The sky chooses the tiles, and the sky is not consulted twice.",
     sprite = "assets/items/ability_meteor_storm.png",
     type = "ability",
     tags = { "fire", "magical" },

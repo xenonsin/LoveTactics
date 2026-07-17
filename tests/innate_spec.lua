@@ -24,10 +24,10 @@ return {
     {
         name = "the Archer fields a free wolf at the opening bell (Wolf Companion)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 2, 2) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, { unit("character_bandit", 8, 8) })
             local wolves = 0
             for _, u in ipairs(c.units) do
-                if u.alive and u.summoner and u.char.id == "wolf_grunt" then wolves = wolves + 1 end
+                if u.alive and u.summoner and u.char.id == "character_wolf_grunt" then wolves = wolves + 1 end
             end
             assert(wolves == 1, "one wolf stands beside the archer at combat start, got " .. wolves)
             -- Free: the archer's mana pool was not reserved against it.
@@ -40,8 +40,8 @@ return {
         fn = function()
             -- Knight beside a mage; a bandit strikes the mage.
             local c = Combat.new(arena(8, 8),
-                { unit("knight", 2, 2), unit("mage", 3, 2) },
-                { unit("bandit", 3, 3) })
+                { unit("character_knight", 2, 2), unit("character_mage", 3, 2) },
+                { unit("character_bandit", 3, 3) })
             local knight, mage, bandit = c.units[1], c.units[2], c.units[3]
             local kHp0, mHp0 = knight.char.stats.health.current, mage.char.stats.health.current
 
@@ -59,11 +59,11 @@ return {
     {
         name = "the Mage's Overchannel casts through health when mana runs dry",
         fn = function()
-            local mage = Character.instantiate("mage")
+            local mage = Character.instantiate("character_mage")
             mage.inventory = {}
             Character.addItem(mage, Item.instantiate("ability_fireball"))          -- cell 1
-            Character.addItem(mage, Item.instantiate("sig_overflowing_focus"))     -- the Overchannel relic
-            local c = Combat.new(arena(8, 8), { { char = mage, x = 1, y = 1 } }, { unit("bandit", 1, 3) })
+            Character.addItem(mage, Item.instantiate("utility_overflowing_focus"))     -- the Overchannel relic
+            local c = Combat.new(arena(8, 8), { { char = mage, x = 1, y = 1 } }, { unit("character_bandit", 1, 3) })
             local u = c.units[1]
             local fireball = mage.inventory[1]
             local cost = fireball.activeAbility.cost.amount
@@ -82,8 +82,8 @@ return {
         name = "the Priest's Sanctified Presence mends an adjacent ally each tick",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("priest", 2, 2), unit("knight", 3, 2) },
-                { unit("bandit", 8, 8) })
+                { unit("character_priest", 2, 2), unit("character_knight", 3, 2) },
+                { unit("character_bandit", 8, 8) })
             local priest, knight = c.units[1], c.units[2]
             -- Wound the knight so there's room to heal.
             knight.char.stats.health.current = knight.char.stats.health.current - 20
@@ -99,12 +99,12 @@ return {
         name = "an item grants the same innate to anyone (traits are items)",
         fn = function()
             -- A knight carrying the Companion Whistle fields a wolf, exactly as the archer does innately.
-            local knight = Character.instantiate("knight")
-            Character.addItem(knight, Item.instantiate("companion_whistle"))
-            local c = Combat.new(arena(8, 8), { { char = knight, x = 2, y = 2 } }, { unit("bandit", 8, 8) })
+            local knight = Character.instantiate("character_knight")
+            Character.addItem(knight, Item.instantiate("utility_companion_whistle"))
+            local c = Combat.new(arena(8, 8), { { char = knight, x = 2, y = 2 } }, { unit("character_bandit", 8, 8) })
             local wolves = 0
             for _, u in ipairs(c.units) do
-                if u.alive and u.char.id == "wolf_grunt" then wolves = wolves + 1 end
+                if u.alive and u.char.id == "character_wolf_grunt" then wolves = wolves + 1 end
             end
             assert(wolves == 1, "the whistle summons a wolf for its carrier too")
         end,

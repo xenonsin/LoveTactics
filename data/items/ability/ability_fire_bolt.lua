@@ -3,7 +3,8 @@
 -- ice delays, fire lingers. Scales with magic.
 return {
     name = "Fire Bolt",
-    description = "Sear a foe with flame, leaving it Burning.",
+    description = "Sears a foe and inflicts Burn.",
+    flavor = "Where ice delays, fire lingers. The Arcanum teaches both and prefers this one.",
     sprite = "assets/items/ability_fire_bolt.png",
     type = "ability",
     tags = { "fire", "magical" },
@@ -19,7 +20,7 @@ return {
         damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- per-hit damage = power + the caster's MagicDamage, minus MagicDefense
         effect = function(fx)
             fx.damage(fx.target)
-            fx.applyStatus(fx.target, "burn")
+            fx.applyStatus(fx.target, "status_burn")
         end,
     },
 }

@@ -40,7 +40,7 @@ return {
         fn = function()
             -- Archer (movement 4, less 1 for its leather armor = 3) walks (1,1)->(1,4),
             -- crossing a spike trap parked at (1,3).
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
             Trap.place(c, 1, 3, "spike_trap", "enemy")
             local archer = c.units[1]
             local hp0 = archer.char.stats.health.current
@@ -56,7 +56,7 @@ return {
         name = "a unit killed by a trap en route stops on the tile it fell on",
         fn = function()
             -- One hit point left: the spike trap at (1,3) finishes the archer halfway to (1,4).
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
             Trap.place(c, 1, 3, "spike_trap", "enemy")
             local archer = c.units[1]
             archer.char.stats.health.current = 1
@@ -71,7 +71,7 @@ return {
     {
         name = "a unit does not trigger its own side's trap",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
             Trap.place(c, 1, 3, "spike_trap", "party") -- friendly trap
             local archer = c.units[1]
             local hp0 = archer.char.stats.health.current
@@ -85,7 +85,7 @@ return {
     {
         name = "a snare trap applies root to the victim instead of dealing damage",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
             Trap.place(c, 1, 3, "snare_trap", "enemy")
             local archer = c.units[1]
             local hp0 = archer.char.stats.health.current
@@ -93,13 +93,13 @@ return {
 
             assert(Combat.moveUnit(c, archer, 1, 4), "walk onto/over the snare")
             assert(archer.char.stats.health.current == hp0, "a snare deals no damage")
-            assert(Status.has(archer, "root"), "the snare rooted the victim")
+            assert(Status.has(archer, "status_root"), "the snare rooted the victim")
         end,
     },
     {
         name = "damaging a revealed trap destroys it and runs onDestroy",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
             Trap.defs.test_boom = { name = "Boom", health = 5,
                 onDestroy = function(ctx) ctx.combat._boomed = true end }
             local trap = Trap.place(c, 4, 4, "test_boom", "enemy")
@@ -118,9 +118,9 @@ return {
         fn = function()
             -- Enemy trap at (4,4). A knight carrying a Trap Sense Charm (detectRadius 2) reveals it
             -- only when close enough; the owning side always sees its own trap.
-            local scout = Character.instantiate("knight")
+            local scout = Character.instantiate("character_knight")
             scout.inventory = {} -- controlled grid: just the detector (no starting gear, no innate relic)
-            assert(Character.addItem(scout, Item.instantiate("trap_sense")), "equip the detector")
+            assert(Character.addItem(scout, Item.instantiate("utility_trap_sense")), "equip the detector")
 
             local c = Combat.new(arena(8, 8), { unit(scout, 4, 7) }, {})
             Trap.place(c, 4, 4, "spike_trap", "enemy")
@@ -136,7 +136,7 @@ return {
     {
         name = "a trap cannot be placed on an impassable tile (Trap.place refuses)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
             c.arena.tiles[3][3].walkable = false -- turn (3,3) into a solid obstacle
             assert(Trap.place(c, 3, 3, "spike_trap", "enemy") == nil, "placement on a wall is refused")
             assert(Trap.at(c, 3, 3) == nil, "no trap was created on the impassable tile")
@@ -148,7 +148,7 @@ return {
         fn = function()
             -- Knight (mana 20) with the Spike Trap ability aims at a solid obstacle in range: the
             -- cast is rejected before any cost is paid and the turn stays open.
-            local caster = Character.instantiate("knight")
+            local caster = Character.instantiate("character_knight")
             caster.inventory = {} -- controlled grid: only the trap ability (no innate relic or starting gear)
     Character.addItem(caster, Item.instantiate("ability_spike_trap"))
             local c = Combat.new(arena(8, 8), { unit(caster, 3, 3) }, {})
@@ -168,7 +168,7 @@ return {
     {
         name = "a trap cannot be placed on a tile a unit occupies (Trap.place refuses)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, { unit("bandit", 5, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, { unit("character_bandit", 5, 5) })
             assert(Trap.place(c, 4, 4, "spike_trap", "enemy") == nil, "can't place under the knight")
             assert(Trap.place(c, 5, 5, "spike_trap", "party") == nil, "can't place under the bandit")
             assert(Trap.at(c, 4, 4) == nil and Trap.at(c, 5, 5) == nil, "no trap on an occupied tile")
@@ -180,10 +180,10 @@ return {
         fn = function()
             -- Knight with the Spike Trap ability aims at the bandit's own tile (2 away, in range 3):
             -- rejected before any cost, since a trap can't be summoned onto an occupied tile.
-            local caster = Character.instantiate("knight")
+            local caster = Character.instantiate("character_knight")
             caster.inventory = {} -- controlled grid: only the trap ability (no innate relic or starting gear)
     Character.addItem(caster, Item.instantiate("ability_spike_trap"))
-            local c = Combat.new(arena(8, 8), { unit(caster, 3, 3) }, { unit("bandit", 3, 5) })
+            local c = Combat.new(arena(8, 8), { unit(caster, 3, 3) }, { unit("character_bandit", 3, 5) })
             local u = c.units[1]
             local ability = u.char.inventory[#u.char.inventory]
             openTurn(c, u)
@@ -207,7 +207,7 @@ return {
             -- Snare: a status trap reports the status it applies and no damage.
             local snare = Trap.preview("snare_trap")
             assert(snare and snare.damage == 0, "a snare deals no damage")
-            assert(#snare.statuses == 1 and snare.statuses[1].id == "root", "the snare previews a root status")
+            assert(#snare.statuses == 1 and snare.statuses[1].id == "status_root", "the snare previews a root status")
 
             assert(Trap.preview("no_such_trap") == nil, "an unknown trap id previews nothing")
         end,
@@ -223,7 +223,7 @@ return {
         name = "a forged Spike Trap stabs harder: the ability scales trap.amount by its upgrade level",
         fn = function()
             -- A +5 Spike Trap ability places a trap carrying amount = base 18 + level 5 = 23.
-            local caster = Character.instantiate("knight")
+            local caster = Character.instantiate("character_knight")
             caster.inventory = {}
             Character.addItem(caster, Item.instantiate("ability_spike_trap", 1, 5))
             local c = Combat.new(arena(8, 8), { unit(caster, 3, 3) }, {})
@@ -249,12 +249,12 @@ return {
         fn = function()
             -- Authored: arena.traps is consumed by Combat.new.
             local authored = arena(8, 8, { { id = "spike_trap", x = 5, y = 5, side = "enemy" } })
-            local c = Combat.new(authored, { unit("knight", 1, 1) }, {})
+            local c = Combat.new(authored, { unit("character_knight", 1, 1) }, {})
             assert(#c.traps == 1 and c.traps[1].x == 5 and c.traps[1].side == "enemy",
                 "the authored trap is loaded into combat")
 
             -- Summoned: a unit uses the Spike Trap ability (target = "tile") on an empty cell.
-            local caster = Character.instantiate("knight") -- mana 20 >= ability cost 8
+            local caster = Character.instantiate("character_knight") -- mana 20 >= ability cost 8
             caster.inventory = {} -- controlled grid: only the trap ability (no innate relic or starting gear)
     Character.addItem(caster, Item.instantiate("ability_spike_trap"))
             local c2 = Combat.new(arena(8, 8), { unit(caster, 3, 3) }, {})

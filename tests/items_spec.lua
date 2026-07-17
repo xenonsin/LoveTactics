@@ -25,7 +25,7 @@ end
 -- `items` fills the grid in order. Isolates each mechanic from a blueprint's incidental kit.
 local function mkunit(x, y, opts)
     opts = opts or {}
-    local char = Character.instantiate(opts.id or "bandit")
+    local char = Character.instantiate(opts.id or "character_bandit")
     char.traits = {}
     char.inventory = {}
     for k, v in pairs(opts.stats or {}) do
@@ -55,13 +55,13 @@ return {
         name = "Iron Fist adds flat Power to the bare fist, and nothing to a crafted weapon",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { mkunit(2, 2, { stats = { damage = 0 }, items = { "iron_fist" } }) },
+                { mkunit(2, 2, { stats = { damage = 0 }, items = { "utility_iron_fist" } }) },
                 { mkunit(2, 3, { stats = { defense = 0, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
             -- Unarmed Power 2 + damage 0 + Iron Fist +4 = 6, against defense 0.
             assert(punch(c, hero, foe) == 6, "iron fist should push the fist to 6 damage")
             -- A crafted weapon is untouched by the fist bonus (identity check on char.unarmed).
-            local sword = Item.instantiate("iron_sword") -- power 6 + damage 0 = 6, NOT 10
+            local sword = Item.instantiate("weapon_iron_sword") -- power 6 + damage 0 = 6, NOT 10
             assert(Combat.computeDamage(c, hero, foe, sword) == 6, "iron fist must not buff a weapon")
         end,
     },
@@ -69,7 +69,7 @@ return {
         name = "Shadow Fist lengthens the fist's reach by a tile",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { mkunit(2, 2, { stats = { damage = 0 }, items = { "shadow_fist" } }) },
+                { mkunit(2, 2, { stats = { damage = 0 }, items = { "utility_shadow_fist" } }) },
                 { mkunit(4, 2, { stats = { defense = 0, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
             local ab = hero.char.unarmed.activeAbility
@@ -84,7 +84,7 @@ return {
         name = "Swift Fist makes the bare strike land twice",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { mkunit(2, 2, { stats = { damage = 0 }, items = { "swift_fist" } }) },
+                { mkunit(2, 2, { stats = { damage = 0 }, items = { "utility_swift_fist" } }) },
                 { mkunit(2, 3, { stats = { defense = 0, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
             -- Two hits of Power 2 each = 4 total.
@@ -95,11 +95,11 @@ return {
         name = "Drunken Fist only adds Power while the striker is Drunk",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { mkunit(2, 2, { stats = { damage = 0 }, items = { "drunken_fist" } }) },
+                { mkunit(2, 2, { stats = { damage = 0 }, items = { "utility_drunken_fist" } }) },
                 { mkunit(2, 3, { stats = { defense = 0, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
             assert(punch(c, hero, foe) == 2, "sober: just the bare fist's Power 2")
-            Status.apply(c, hero, "drunk") -- +3 Damage (statBonus) and +6 drunk fist Power
+            Status.apply(c, hero, "status_drunk") -- +3 Damage (statBonus) and +6 drunk fist Power
             -- base = damage 2 + damage(0 + drunk 3) + drunkDamage 6 = 11.
             assert(punch(c, hero, foe) == 11, "drunk: fist swells to 11 damage, got")
         end,
@@ -108,7 +108,7 @@ return {
         name = "Toughness raises the health ceiling a heal can reach",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { mkunit(2, 2, { stats = { health = 100 }, items = { "toughness" } }) },
+                { mkunit(2, 2, { stats = { health = 100 }, items = { "utility_toughness" } }) },
                 { mkunit(5, 5, {}) })
             local hero = c.units[1]
             assert(Combat.unreservedMax(hero.char, "health") == 120, "toughness lifts the cap to 120")
@@ -121,7 +121,7 @@ return {
         name = "Penetrating Strike lands raw, ignoring the target's armor",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { mkunit(2, 2, { stats = { damage = 0 }, items = { "iron_sword", "ability_penetrating_strike" } }) },
+                { mkunit(2, 2, { stats = { damage = 0 }, items = { "weapon_iron_sword", "ability_penetrating_strike" } }) },
                 { mkunit(2, 3, { stats = { defense = 100, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
             local pen = hero.char.inventory[2]
@@ -141,7 +141,7 @@ return {
             openTurn(c, hero)
             assert(Combat.useItem(c, hero, hero.char.inventory[1], hero.x, hero.y), "cast Fury on self")
             assert(hero.char.stats.health.current == 1, "Fury spends the caster down to 1 HP")
-            assert(Status.has(hero, "fury"), "the Fury status is active")
+            assert(Status.has(hero, "status_fury"), "the Fury status is active")
         end,
     },
     {
@@ -149,7 +149,7 @@ return {
         fn = function()
             local c = Combat.new(arena(6, 6),
                 { mkunit(2, 2, { stats = { damage = 0, health = 100 },
-                                 items = { "iron_sword", "vampiric_strike" } }) },
+                                 items = { "weapon_iron_sword", "utility_vampiric_strike" } }) },
                 { mkunit(2, 3, { stats = { defense = 0, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
             hero.char.stats.health.current = 50 -- leave room for the lifesteal heal to show
@@ -181,13 +181,13 @@ return {
                 { mkunit(2, 2, { stats = { health = 100, damage = 0 } }) },
                 { mkunit(2, 3, { stats = { defense = 0, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
-            Status.apply(c, hero, "fury")
+            Status.apply(c, hero, "status_fury")
             hero.char.stats.health.current = 1
 
             -- Bank damage: a sword strike of Power 6 against defense 0.
-            local dealt = Combat.dealDamage(c, hero, foe, Item.instantiate("iron_sword"))
+            local dealt = Combat.dealDamage(c, hero, foe, Item.instantiate("weapon_iron_sword"))
             assert(dealt == 6, "the strike lands for 6")
-            assert(Status.get(hero, "fury").recorded == 6, "Fury banks the 6 damage dealt")
+            assert(Status.get(hero, "status_fury").recorded == 6, "Fury banks the 6 damage dealt")
 
             -- A lethal blow cannot fell it while raging: it holds at 1 HP.
             Combat.dealFlatDamage(c, hero, 9999, { "physical" }, "a lethal blow")
@@ -195,7 +195,7 @@ return {
 
             -- When the window closes it heals for half of what it banked (floor(6*0.5) = 3).
             Status.tick(c, 99)
-            assert(not Status.has(hero, "fury"), "the Fury window has closed")
+            assert(not Status.has(hero, "status_fury"), "the Fury window has closed")
             assert(hero.char.stats.health.current == 1 + 3, "on expiry Fury heals half the banked damage")
         end,
     },
@@ -203,14 +203,14 @@ return {
         name = "Thorns turns a share of a melee blow back on the attacker",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { mkunit(2, 2, { stats = { health = 200, defense = 0 }, items = { "spike_mail" } }) },
+                { mkunit(2, 2, { stats = { health = 200, defense = 0 }, items = { "armor_spike_mail" } }) },
                 { mkunit(2, 3, { stats = { health = 100, damage = 30, defense = 0 } }) })
             local wearer, foe = c.units[1], c.units[2]
             local foeHp0 = foe.char.stats.health.current
             -- The foe strikes the spiked wearer; capture what actually landed, then check the reflect.
             -- The foe carries 0 defense, so the reflected hit isn't itself mitigated (it would be, in
             -- general -- the spikes bite armor too) and lands at the full 40% share.
-            local dealt = Combat.dealDamage(c, foe, wearer, Item.instantiate("iron_sword"))
+            local dealt = Combat.dealDamage(c, foe, wearer, Item.instantiate("weapon_iron_sword"))
             local reflected = foeHp0 - foe.char.stats.health.current
             assert(reflected == math.floor(dealt * 40 / 100), "thorns returns 40% of the blow")
             assert(reflected > 0, "the reflection actually bit")
@@ -220,7 +220,7 @@ return {
         name = "Second Wind catches the first lethal blow and rises at half health",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { mkunit(2, 2, { stats = { health = 100 }, items = { "second_wind" } }) },
+                { mkunit(2, 2, { stats = { health = 100 }, items = { "utility_second_wind" } }) },
                 { mkunit(5, 5, {}) })
             local hero = c.units[1]
             Combat.dealFlatDamage(c, hero, 9999, { "physical" }, "a killing blow")
@@ -253,7 +253,7 @@ return {
                 { mkunit(4, 5, {}), mkunit(6, 5, {}) }, -- [1] decoy-near, [2] the taunter
                 { mkunit(5, 5, { stats = { stamina = 50 } }) })
             local other, taunter, enemy = c.units[1], c.units[2], c.units[3]
-            local st = Status.apply(c, enemy, "taunt")
+            local st = Status.apply(c, enemy, "status_taunt")
             st.taunter = taunter
             local plan = Combat.planEnemyAction(c, enemy)
             assert(plan.item, "the taunted enemy takes an attack action")
@@ -272,7 +272,7 @@ return {
             -- Aim the tile between the two foes; the diamond around it catches both.
             assert(Combat.useItem(c, knight, knight.char.inventory[1], 4, 4), "shout at the crowd")
             for _, foe in ipairs({ foeA, foeB }) do
-                local st = Status.get(foe, "taunt")
+                local st = Status.get(foe, "status_taunt")
                 assert(st, "each nearby foe is taunted")
                 assert(st.taunter == knight, "the taunt points back at the shouter")
             end
@@ -282,7 +282,7 @@ return {
         name = "the Spear thrust spits the two tiles directly in front",
         fn = function()
             local c = Combat.new(arena(8, 6),
-                { mkunit(2, 3, { stats = { damage = 0, stamina = 50 }, items = { "iron_spear" } }) },
+                { mkunit(2, 3, { stats = { damage = 0, stamina = 50 }, items = { "weapon_iron_spear" } }) },
                 { mkunit(3, 3, { stats = { defense = 0, health = 100 } }),
                   mkunit(4, 3, { stats = { defense = 0, health = 100 } }) })
             local hero, near, far = c.units[1], c.units[2], c.units[3]

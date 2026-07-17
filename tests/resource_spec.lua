@@ -41,7 +41,7 @@ return {
     {
         name = "stamina regenerates proportional to elapsed ticks; mana does not",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             knight.char.stats.stamina.current = 20 -- max 60
             knight.char.stats.mana.current = 5     -- max 20
@@ -54,7 +54,7 @@ return {
     {
         name = "stamina regen clamps at max",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("archer", 1, 1) }, { unit("bandit", 6, 6) })
+            local c = Combat.new(arena(6, 6), { unit("character_archer", 1, 1) }, { unit("character_bandit", 6, 6) })
             local archer = c.units[1]
             archer.char.stats.stamina.current = archer.char.stats.stamina.max - 1
             Combat.regenerate(c, 10) -- archer regen 2 * 10 = 20, but only 1 short of max
@@ -64,7 +64,7 @@ return {
     {
         name = "restoreResource clamps to max and returns the real delta",
         fn = function()
-            local knight = Character.instantiate("knight")
+            local knight = Character.instantiate("character_knight")
             knight.stats.stamina.current = 55 -- max 60
             assert(Combat.restoreResource(knight, "stamina", 10) == 5, "returns the clamped delta")
             assert(knight.stats.stamina.current == 60, "capped at max")
@@ -75,10 +75,10 @@ return {
     {
         name = "battle start refills stamina but leaves mana (mana persists between battles)",
         fn = function()
-            local knight = Character.instantiate("knight")
+            local knight = Character.instantiate("character_knight")
             knight.stats.stamina.current = 10 -- carried-over depletion
             knight.stats.mana.current = 3
-            Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("bandit", 6, 6) })
+            Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("character_bandit", 6, 6) })
             assert(knight.stats.stamina.current == knight.stats.stamina.max, "stamina refilled to max")
             assert(knight.stats.mana.current == 3, "mana persists (not refilled)")
         end,
@@ -86,9 +86,9 @@ return {
     {
         name = "Focus wait-behavior restores mana and ends the turn behind the next unit",
         fn = function()
-            local priest = Character.instantiate("priest")
+            local priest = Character.instantiate("character_priest")
             priest.stats.mana.current = 10 -- max 70; focus_stone restores 12
-            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("bandit", 6, 6) })
+            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("character_bandit", 6, 6) })
             local pu, bandit = c.units[1], c.units[2]
             local focusSpeed = Combat.waitBehavior(pu).speed
             assert(Combat.waitBehavior(pu).kind == "focus", "focus stone swaps Wait -> Focus")
@@ -105,11 +105,11 @@ return {
     {
         name = "Parasitic Staff deals damage and refunds mana to the wielder on hit",
         fn = function()
-            local priest = Character.instantiate("priest")
+            local priest = Character.instantiate("character_priest")
             priest.stats.mana.current = 10 -- max 70
-            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("bandit", 2, 1) })
+            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("character_bandit", 2, 1) })
             local pu, bandit = c.units[1], c.units[2]
-            local staff = itemNamed(pu.char, "parasitic_staff")
+            local staff = itemNamed(pu.char, "weapon_parasitic_staff")
             assert(staff, "priest carries the parasitic staff")
             local staBefore = pu.char.stats.stamina.current
             openTurn(c, pu)
@@ -122,8 +122,8 @@ return {
     {
         name = "Defend applies a temporary +defense that expires at the unit's next turn",
         fn = function()
-            local archer = Character.instantiate("archer")
-            local c = Combat.new(arena(6, 6), { unit(archer, 1, 1) }, { unit("bandit", 6, 6) })
+            local archer = Character.instantiate("character_archer")
+            local c = Combat.new(arena(6, 6), { unit(archer, 1, 1) }, { unit("character_bandit", 6, 6) })
             local au = c.units[1]
             local brace = Combat.waitBehavior(au)
             assert(brace.kind == "defend", "buckler swaps Wait -> Defend")
@@ -133,13 +133,13 @@ return {
             local before = Combat.mitigatedDamage(au, 50, { "physical" })
             openTurn(c, au)
             assert(Combat.defend(c, au), "defend succeeds")
-            assert(Status.has(au, "defending"), "the Defending status is applied")
+            assert(Status.has(au, "status_defending"), "the Defending status is applied")
             assert(Combat.mitigatedDamage(au, 50, { "physical" }) == before - brace.defense,
                 "braced defense matches the shield's tuned amount")
 
             -- The status self-expires at the start of the unit's next turn.
             Status.onTurnStart(c, au)
-            assert(not Status.has(au, "defending"), "Defending clears at the next turn start")
+            assert(not Status.has(au, "status_defending"), "Defending clears at the next turn start")
             assert(Combat.mitigatedDamage(au, 50, { "physical" }) == before, "defense back to base")
         end,
     },

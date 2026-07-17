@@ -4,7 +4,8 @@
 -- allowOccupied) so you may center it on a clustered enemy.
 return {
     name = "Blizzard",
-    description = "A storm of ice over an area: damages and Freezes everyone within.",
+    description = "Deals ice damage and inflicts Frozen on everyone in the area, friend and foe.",
+    flavor = "A storm does not check whose line it is falling on. Neither does the mage who called it.",
     sprite = "assets/items/ability_blizzard.png",
     type = "ability",
     tags = { "ice", "magical" },
@@ -23,7 +24,7 @@ return {
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 fx.damage(u)
-                fx.applyStatus(u, "freeze", { magnitude = fx.amount })
+                fx.applyStatus(u, "status_freeze", { magnitude = fx.amount })
             end
         end,
     },

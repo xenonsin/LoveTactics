@@ -8,7 +8,8 @@
 -- Combat.abilityReserve.
 return {
     name = "Haste",
-    description = "Rush an ally up the turn order and halve its ability and movement costs for a while.",
+    description = "Rushes an ally up the turn order and halves its ability and movement costs for a while.",
+    flavor = "The Arcanum's kindest spell, and the one it least enjoys being asked for.",
     sprite = "assets/items/ability_haste.png",
     type = "ability",
     tags = { "support", "magical" },
@@ -20,7 +21,7 @@ return {
         cost = { stat = "mana", amount = 12 },
         effect = function(fx)
             fx.hasten(fx.target, 0.5)
-            fx.applyStatus(fx.target, "hasted")
+            fx.applyStatus(fx.target, "status_hasted")
         end,
     },
 }

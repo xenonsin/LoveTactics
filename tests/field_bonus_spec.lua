@@ -60,7 +60,7 @@ return {
         name = "abilityRange adds the standing tile's range bonus to the ability base",
         fn = function()
             local c = Combat.new(arena(6, 1, { { x = 3, y = 1, bonus = { range = 1 } } }),
-                { unit("archer", 3, 1) }, {})
+                { unit("character_archer", 3, 1) }, {})
             local u = c.units[1]
             local ab = { range = 3 }
             assert(Combat.abilityRange(c, u, ab) == 4, "on high ground base 3 becomes 4")
@@ -73,19 +73,19 @@ return {
         fn = function()
             -- Archer's bow is range 3; a foe 4 tiles away is out of reach on open ground...
             local flat = Combat.new(arena(6, 1),
-                { unit("archer", 1, 1) }, { unit("bandit", 5, 1) })
+                { unit("character_archer", 1, 1) }, { unit("character_bandit", 5, 1) })
             local a = flat.units[1]
             openTurn(flat, a)
-            assert(Combat.useItem(flat, a, itemById(a.char, "iron_bow"), 5, 1) == false,
+            assert(Combat.useItem(flat, a, itemById(a.char, "weapon_iron_bow"), 5, 1) == false,
                 "range 3 can't hit a foe 4 tiles off on flat ground")
 
             -- ...but from a +1-range tile the same shot lands.
             local high = Combat.new(arena(6, 1, { { x = 1, y = 1, bonus = { range = 1 } } }),
-                { unit("archer", 1, 1) }, { unit("bandit", 5, 1) })
+                { unit("character_archer", 1, 1) }, { unit("character_bandit", 5, 1) })
             local ah, foe = high.units[1], high.units[2]
             openTurn(high, ah)
             local hp0 = foe.char.stats.health.current
-            assert(Combat.useItem(high, ah, itemById(ah.char, "iron_bow"), 5, 1),
+            assert(Combat.useItem(high, ah, itemById(ah.char, "weapon_iron_bow"), 5, 1),
                 "high ground extends the bow to reach the 4-tile foe")
             assert(foe.char.stats.health.current < hp0, "the extended shot dealt damage")
         end,
@@ -95,7 +95,7 @@ return {
         fn = function()
             -- Fireball is range 3; from a +1 tile the mage can target a foe 4 tiles away.
             local c = Combat.new(arena(8, 1, { { x = 1, y = 1, bonus = { range = 1 } } }),
-                { unit("mage", 1, 1) }, { unit("bandit", 5, 1) })
+                { unit("character_mage", 1, 1) }, { unit("character_bandit", 5, 1) })
             local mage = c.units[1]
             local targets = Combat.abilityTargets(c, mage, itemById(mage.char, "ability_fireball"))
             assert(#targets == 1 and targets[1] == c.units[2], "the +1 range brings the far foe in range")
@@ -106,7 +106,7 @@ return {
             assert(ar["6,1"] == nil, "but not to distance 5")
 
             -- On plain ground the same base reach stops a tile shorter.
-            local flat = Combat.new(arena(8, 1), { unit("mage", 1, 1) }, {})
+            local flat = Combat.new(arena(8, 1), { unit("character_mage", 1, 1) }, {})
             local arFlat = Combat.attackReach(flat, flat.units[1], 3, {}, false)
             assert(arFlat["4,1"] and arFlat["5,1"] == nil, "flat-ground reach is the plain base 3")
         end,
@@ -115,14 +115,14 @@ return {
         name = "a placed field object grants the same range buff as terrain (the generic path)",
         fn = function()
             -- Plain arena, no high ground -- the buff comes purely from a placed object on the tile.
-            local c = Combat.new(arena(6, 1), { unit("archer", 1, 1) }, { unit("bandit", 5, 1) })
+            local c = Combat.new(arena(6, 1), { unit("character_archer", 1, 1) }, { unit("character_bandit", 5, 1) })
             local a = c.units[1]
             openTurn(c, a)
-            assert(Combat.useItem(c, a, itemById(a.char, "iron_bow"), 5, 1) == false,
+            assert(Combat.useItem(c, a, itemById(a.char, "weapon_iron_bow"), 5, 1) == false,
                 "no buff yet: the 4-tile foe is out of range")
 
             c.fieldObjects = { { x = 1, y = 1, bonus = { range = 1 } } } -- e.g. a vantage totem
-            assert(Combat.useItem(c, a, itemById(a.char, "iron_bow"), 5, 1),
+            assert(Combat.useItem(c, a, itemById(a.char, "weapon_iron_bow"), 5, 1),
                 "the placed object's +1 range lets the shot reach, exactly like terrain")
         end,
     },
@@ -130,14 +130,14 @@ return {
         name = "the enemy AI uses its high-ground range to strike from farther",
         fn = function()
             local function bowman(x, y)
-                local ch = Character.instantiate("archer")
-                ch.inventory = { itemById(ch, "iron_bow") } -- strip the trap kit; bow-only plan
+                local ch = Character.instantiate("character_archer")
+                ch.inventory = { itemById(ch, "weapon_iron_bow") } -- strip the trap kit; bow-only plan
                 return unit(ch, x, y)
             end
 
             -- Enemy on a +1 tile, party 4 tiles away: it opens with a shot in place (range 3 -> 4).
             local c = Combat.new(arena(8, 1, { { x = 1, y = 1, bonus = { range = 1 } } }),
-                { unit("knight", 5, 1) }, { bowman(1, 1) })
+                { unit("character_knight", 5, 1) }, { bowman(1, 1) })
             local plan = Combat.planEnemyAction(c, c.units[2])
             assert(plan.item and not plan.move, "high ground lets it fire without repositioning")
             assert(plan.tx == 5 and plan.ty == 1, "it targets the 4-tile-away knight")

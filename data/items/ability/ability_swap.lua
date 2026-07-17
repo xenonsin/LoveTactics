@@ -4,7 +4,8 @@
 -- as real as walking onto one.
 return {
     name = "Swap",
-    description = "Trade places with a foe within range.",
+    description = "Trades places with a foe within range. Both spring whatever waits on the tile.",
+    flavor = "An escape and a disruption at once, and the Undercroft charges for only one of them.",
     sprite = "assets/items/ability_swap.png",
     type = "ability",
     tags = { "guile", "utility" },

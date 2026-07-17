@@ -10,7 +10,8 @@
 -- data/items/ability/ability_sacred_banner.lua (Blessing) and ability_renewal_banner.lua (Regeneration).
 return {
     name = "Rally Banner",
-    description = "Plant a banner that inspires nearby allies, raising their Damage and Defense while it stands.",
+    description = "Plants a destructible banner that Inspires nearby allies while it stands.",
+    flavor = "It fights by standing. Plant it where the line will hold, not where it is breaking.",
     sprite = "assets/items/ability_rally_banner.png",
     type = "ability",
     tags = { "banner", "rally" },
@@ -24,7 +25,7 @@ return {
         support = true, -- a friendly cast: reads green, and the AI treats it so
         cost = { stat = "stamina", amount = 12 },
         effect = function(fx)
-            local banner = fx.summon("banner", fx.tx, fx.ty, { control = "none", timeless = true })
+            local banner = fx.summon("character_banner", fx.tx, fx.ty, { control = "none", timeless = true })
             if banner and banner.alive then
                 -- The rally IS the ground, not the banner: lay the 3x3 square of Rally zone
                 -- (data/hazards/hazard_rally.lua) and hand each tile to the banner as its owner, so the

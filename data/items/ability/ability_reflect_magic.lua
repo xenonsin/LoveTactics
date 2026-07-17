@@ -14,7 +14,8 @@
 -- which is exactly the bluff the ward is for.
 return {
     name = "Reflect Magic",
-    description = "Mirror an ally for a time: single-target spells rebound onto the caster.",
+    description = "Mirrors an ally for a time: single-target spells rebound onto the caster.",
+    flavor = "Against a mage who then declines to cast at it, it bought nothing. That is the bluff.",
     sprite = "assets/items/ability_reflect_magic.png",
     type = "ability",
     tags = { "arcane", "protective" },
@@ -28,7 +29,7 @@ return {
         speed = 8,
         cost = { stat = "mana", amount = 22 },
         effect = function(fx)
-            fx.applyStatus(fx.target, "reflect_magic")
+            fx.applyStatus(fx.target, "status_reflect_magic")
         end,
     },
 }

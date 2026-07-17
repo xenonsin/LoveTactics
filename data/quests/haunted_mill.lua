@@ -10,15 +10,15 @@ return {
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {
         biome = "forest",
-        encounters = { min = 6, max = 9, always = { "elite" } },
+        encounters = { min = 6, max = 9, always = { "encounter_elite" } },
         objective = {
             name = "The Miller's Ghost",
             composition = function(ctx)
-                local list = { "miller_ghost" }
-                if (ctx.prestige or 1) >= 2 then list[#list + 1] = "wolf_grunt" end
+                local list = { "character_miller_ghost" }
+                if (ctx.prestige or 1) >= 2 then list[#list + 1] = "character_wolf_grunt" end
                 return list
             end,
-            win = { type = "assassinate", target = "miller_ghost" },
+            win = { type = "assassinate", target = "character_miller_ghost" },
         },
         keyCount = 2,
     },

@@ -21,7 +21,7 @@
 --   * onDeath(ctx)       -- the bearer dropped
 --
 -- Two things carry traits, and both flow through Trait.attach:
---   * a character blueprint  -- `traits = { "wrath_rising" }` on data/characters/<id>.lua
+--   * a character blueprint  -- `traits = { "trait_wrath_rising" }` on data/characters/<id>.lua
 --   * an ITEM in the 3x3 grid -- `traits = { ... }` on the item blueprint
 -- The second is what makes a general's relic worth taking: the mail lifted off Wrath's body carries
 -- Wrath's own rule, so the knight who wears it hits harder the more they are hit. Drop it in the
@@ -363,11 +363,11 @@ end
 --     reach = "melee"           -- the attacker must stand adjacent
 --          | "ranged",          -- ...must stand further off, and within our own weapon's reach
 --     requiresTag = "physical", -- optional: only that school of blow provokes it
---     requiresStatus = "defending", -- optional: only while the bearer holds that status
+--     requiresStatus = "status_defending", -- optional: only while the bearer holds that status
 --     requiresArmed = true,     -- optional: only when the trait armed itself at combat start
 --     answersReactions = true,  -- optional: it answers even a blow that is itself an answer
 --     reflect = true,           -- optional: it throws `magnitude`% of the blow back, not a weapon swing
---     applies = "stun",         -- optional: it lands this status rather than damage
+--     applies = "status_stun",         -- optional: it lands this status rather than damage
 --   }
 --
 -- Free gates only: it never spends the reflex's `cost` (the hook calls ctx.pay() last for that, and

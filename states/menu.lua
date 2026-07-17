@@ -150,7 +150,7 @@ local function startMockBattle()
     local pool = randomizablePool()
     local taken = {}
     local party = {}
-    for _, id in ipairs({ "knight", "mage", "archer", "priest" }) do
+    for _, id in ipairs({ "character_knight", "character_mage", "character_archer", "character_priest" }) do
         local char = Character.instantiate(id)
         randomizeLoadout(char, pool, taken)
         party[#party + 1] = char
@@ -162,7 +162,7 @@ local function startMockBattle()
         party = party,
         quest = { map = { biome = "castle", objective = {
             name = "Mock Battle",
-            composition = function() return { "bandit", "bandit", "champion" } end,
+            composition = function() return { "character_bandit", "character_bandit", "character_champion" } end,
             win = { type = "killAll" },
         } } },
         -- No hub/quest to return to: send both outcomes back to the menu.

@@ -48,7 +48,7 @@ return {
     {
         name = "a hazard may be placed on an occupied tile but not on a wall; a repeat refreshes it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
             -- Occupied tile: unlike a trap, a hazard is meant to be stood in.
             assert(Hazard.place(c, 4, 4, "hazard_rain"), "a hazard can sit on an occupied tile")
             c.arena.tiles[3][3].walkable = false
@@ -67,14 +67,14 @@ return {
         name = "walking onto a fire hazard applies Burn, which then sears as the clock runs",
         fn = function()
             -- Archer (movement 4, less 1 for leather = 3) walks (1,1)->(1,4) across fire at (1,3).
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
             Hazard.place(c, 1, 3, "hazard_fire")
             local archer = c.units[1]
             local hp0 = archer.char.stats.health.current
             openTurn(c, archer)
 
             assert(Combat.moveUnit(c, archer, 1, 4), "the move across the fire succeeds")
-            assert(Status.has(archer, "burn"), "entering the fire applied Burn")
+            assert(Status.has(archer, "status_burn"), "entering the fire applied Burn")
             assert(archer.char.stats.health.current == hp0, "Burn deals no damage on entry -- it needs time")
 
             -- Burn carries the flames out of the fire (it declares `lingers`) and bites on elapsed
@@ -86,62 +86,62 @@ return {
     {
         name = "crossing several fire tiles refreshes Burn rather than stacking a second instance",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
             Hazard.place(c, 1, 2, "hazard_fire")
             Hazard.place(c, 1, 3, "hazard_fire")
             local archer = c.units[1]
             openTurn(c, archer)
 
             assert(Combat.moveUnit(c, archer, 1, 4), "walk across both fire tiles")
-            assert(countStatus(archer, "burn") == 1, "only one Burn instance despite crossing two fire tiles")
+            assert(countStatus(archer, "status_burn") == 1, "only one Burn instance despite crossing two fire tiles")
         end,
     },
     {
         name = "a hazard summoned onto a unit affects it immediately (Fireball-on-foe path)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
             local knight = c.units[1]
             assert(Hazard.place(c, 4, 4, "hazard_heal"), "drop a sanctuary under the knight")
-            assert(Status.has(knight, "regen"), "standing where it was summoned granted Regeneration at once")
+            assert(Status.has(knight, "status_regen"), "standing where it was summoned granted Regeneration at once")
         end,
     },
     {
         name = "sanctuary Regeneration ends the moment its unit leaves the hallowed ground",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
             local knight = c.units[1]
             -- A 3x1 strip of sanctuary; the knight starts on the middle tile.
             Hazard.place(c, 3, 4, "hazard_heal")
             Hazard.place(c, 4, 4, "hazard_heal")
-            assert(Status.has(knight, "regen"), "standing in the sanctuary grants Regeneration")
+            assert(Status.has(knight, "status_regen"), "standing in the sanctuary grants Regeneration")
 
             -- Sidestep to the adjacent sanctuary tile: still hallowed, so the blessing holds.
             openTurn(c, knight)
             assert(Combat.moveUnit(c, knight, 3, 4), "the knight steps to the neighboring sanctuary tile")
-            assert(Status.has(knight, "regen"), "moving within the zone keeps Regeneration")
+            assert(Status.has(knight, "status_regen"), "moving within the zone keeps Regeneration")
 
             -- Step off onto ordinary ground: the blessing ends on the very beat it leaves.
             openTurn(c, knight)
             assert(Combat.moveUnit(c, knight, 2, 4), "the knight steps off the hallowed ground")
-            assert(not Status.has(knight, "regen"), "leaving the sanctuary ends Regeneration at once")
+            assert(not Status.has(knight, "status_regen"), "leaving the sanctuary ends Regeneration at once")
         end,
     },
     {
         name = "a source-less Regeneration (a spell/potion buff) is not an aura and survives moving",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
             local knight = c.units[1]
-            Status.apply(c, knight, "regen") -- no `source`: a plain buff, not tied to any tile
+            Status.apply(c, knight, "status_regen") -- no `source`: a plain buff, not tied to any tile
             openTurn(c, knight)
             assert(Combat.moveUnit(c, knight, 3, 4), "the knight walks across open ground")
-            assert(Status.has(knight, "regen"), "a source-less Regeneration lingers, unaffected by leaving")
+            assert(Status.has(knight, "status_regen"), "a source-less Regeneration lingers, unaffected by leaving")
         end,
     },
     {
         name = "a sanctuary blesses only its caster's side; a foe standing in it gains nothing",
         fn = function()
             -- The priest consecrates its own tile: the 3x3 blast also covers the bandit at (3,4).
-            local c = Combat.new(arena(8, 8), { unit("priest", 3, 3) }, { unit("bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 3, 3) }, { unit("character_bandit", 3, 4) })
             local priest, bandit = c.units[1], c.units[2]
             local sanctuary = findItem(priest.char, "ability_sanctuary")
             assert(sanctuary, "the priest carries Sanctuary")
@@ -149,44 +149,44 @@ return {
 
             assert(Combat.useItem(c, priest, sanctuary, 3, 3), "Sanctuary lands on the priest's own tile")
             assert(Hazard.at(c, 3, 4, "hazard_heal"), "hallowed ground covers the bandit's tile too")
-            assert(Status.has(priest, "regen"), "the caster is blessed by its own sanctuary")
-            assert(not Status.has(bandit, "regen"), "the foe standing in it gains no Regeneration")
+            assert(Status.has(priest, "status_regen"), "the caster is blessed by its own sanctuary")
+            assert(not Status.has(bandit, "status_regen"), "the foe standing in it gains no Regeneration")
         end,
     },
     {
         name = "an enemy walking onto the party's sanctuary is not healed, but onto its own it is",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 4, 1) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 1) })
             local bandit = c.units[2]
             Hazard.place(c, 4, 3, "hazard_heal", { side = "party" })
             Hazard.place(c, 4, 5, "hazard_heal", { side = "enemy" })
             openTurn(c, bandit)
 
             assert(Combat.moveUnit(c, bandit, 4, 3), "the bandit walks onto the party's sanctuary")
-            assert(not Status.has(bandit, "regen"), "the party's hallowed ground does not mend a foe")
+            assert(not Status.has(bandit, "status_regen"), "the party's hallowed ground does not mend a foe")
 
             openTurn(c, bandit)
             assert(Combat.moveUnit(c, bandit, 4, 5), "the bandit walks onto its own sanctuary")
-            assert(Status.has(bandit, "regen"), "its own hallowed ground mends it")
+            assert(Status.has(bandit, "status_regen"), "its own hallowed ground mends it")
         end,
     },
     {
         name = "an unowned (arena-authored) sanctuary blesses whoever stands in it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 4, 4) }, { unit("bandit", 5, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, { unit("character_bandit", 5, 5) })
             local knight, bandit = c.units[1], c.units[2]
             Hazard.place(c, 4, 4, "hazard_heal") -- no side: hallowed ground that was always there
             Hazard.place(c, 5, 5, "hazard_heal")
-            assert(Status.has(knight, "regen") and Status.has(bandit, "regen"),
+            assert(Status.has(knight, "status_regen") and Status.has(bandit, "status_regen"),
                 "with no owner to take a side, it mends both")
         end,
     },
     {
         name = "Pilgrim's Sandals hallow every tile walked, blessing the wearer and sparing a foe",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("priest", 4, 4) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 4, 4) }, { unit("character_bandit", 8, 8) })
             local priest, bandit = c.units[1], c.units[2]
-            Character.addItem(priest.char, Item.instantiate("pilgrims_sandals"))
+            Character.addItem(priest.char, Item.instantiate("utility_pilgrims_sandals"))
             openTurn(c, priest)
 
             assert(Combat.moveUnit(c, priest, 2, 4), "the priest walks two tiles west")
@@ -194,21 +194,21 @@ return {
             assert(Hazard.at(c, 2, 4, "hazard_heal"), "so is the tile it stopped on")
             assert(not Hazard.at(c, 4, 4, "hazard_heal"), "but not the tile it started on -- it crossed no ground to get there")
             -- The passive self-heal falls out of the trail: the wearer stands in its own last print.
-            assert(Status.has(priest, "regen"), "standing in its own footprint mends the wearer")
+            assert(Status.has(priest, "status_regen"), "standing in its own footprint mends the wearer")
 
             -- The trail is sided with the wearer, so the foe following it down gains nothing.
             openTurn(c, bandit)
             bandit.x, bandit.y = 3, 3
             assert(Combat.moveUnit(c, bandit, 3, 4), "the bandit steps onto the priest's footprint")
-            assert(not Status.has(bandit, "regen"), "a foe walking the priest's trail is not mended by it")
+            assert(not Status.has(bandit, "status_regen"), "a foe walking the priest's trail is not mended by it")
         end,
     },
     {
         name = "a trail is pressed by feet: a blink onto open ground leaves none",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("priest", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 4, 4) }, {})
             local priest = c.units[1]
-            Character.addItem(priest.char, Item.instantiate("pilgrims_sandals"))
+            Character.addItem(priest.char, Item.instantiate("utility_pilgrims_sandals"))
             priest.x, priest.y = 6, 6
             Combat.enterTile(c, priest, 6, 6) -- no `reason`: a blink crosses no ground
             assert(not Hazard.at(c, 6, 6, "hazard_heal"), "a blink leaves no footprint")
@@ -218,15 +218,15 @@ return {
         name = "Wet makes a lightning hit deal more damage (and the preview shares the same math)",
         fn = function()
             -- Mage's Jolt (tags lightning+magical) against a knight, before and after soaking it.
-            local c = Combat.new(arena(8, 8), { unit("mage", 1, 1) }, { unit("knight", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_knight", 1, 2) })
             local mage, knight = c.units[1], c.units[2]
             local jolt = findItem(mage.char, "ability_jolt")
             assert(jolt, "the mage carries Jolt")
 
             local before = Combat.computeDamage(c, mage, knight, jolt)
-            Status.apply(c, knight, "wet")
+            Status.apply(c, knight, "status_wet")
             local after = Combat.computeDamage(c, mage, knight, jolt)
-            local bonus = Status.defs.wet.vulnerable.lightning
+            local bonus = Status.defs.status_wet.vulnerable.lightning
             assert(after == before + bonus,
                 string.format("Wet adds %d lightning damage (%d -> %d)", bonus, before, after))
         end,
@@ -234,7 +234,7 @@ return {
     {
         name = "Regeneration restores health as the clock runs, at its per-turn magnitude",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
             local knight = c.units[1]
             local hp = knight.char.stats.health
             hp.current = hp.max - 20 -- wound it so a heal has room
@@ -242,12 +242,12 @@ return {
             -- duration (a zone's Regeneration would instead last exactly as long as the unit stands in
             -- it). The duration is generous so a whole turn's worth of ticks falls inside its life --
             -- what is measured here is the per-turn -> per-tick conversion.
-            Status.apply(c, knight, "regen", { duration = 20 })
+            Status.apply(c, knight, "status_regen", { duration = 20 })
 
             local before = hp.current
             Status.tick(c, Status.TICKS_PER_TURN) -- one turn's worth of ticks
             assert(hp.current > before, "Regeneration mended health as time passed")
-            assert(hp.current == before + Status.defs.regen.magnitude,
+            assert(hp.current == before + Status.defs.status_regen.magnitude,
                 "a turn's worth of ticks mends exactly its per-turn magnitude")
         end,
     },
@@ -255,13 +255,13 @@ return {
         name = "a water-tagged cast douses fire in its footprint (direct and via the Rain spell)",
         fn = function()
             -- Direct: Hazard.douse clears a dousable hazard on the given cells.
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
             Hazard.place(c, 5, 5, "hazard_fire")
             assert(Hazard.douse(c, { { x = 5, y = 5 } }, { "water" }) == 1, "water doused the fire")
             assert(Hazard.at(c, 5, 5, "hazard_fire") == nil, "the fire is gone")
 
             -- Via a cast: the mage's Rain (water-tagged AoE) both douses fire and lays down rain.
-            local c2 = Combat.new(arena(8, 8), { unit("mage", 3, 3) }, {})
+            local c2 = Combat.new(arena(8, 8), { unit("character_mage", 3, 3) }, {})
             local mage = c2.units[1]
             local rain = findItem(mage.char, "ability_rain")
             assert(rain, "the mage carries Rain")
@@ -276,7 +276,7 @@ return {
     {
         name = "fire spreads to an adjacent burnable tile on tick, but not onto plain ground",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
             c.arena.tiles[2][3].tags = { "burnable" } -- (3,2) is forest-like; (1,2) stays plain ground
             Hazard.place(c, 2, 2, "hazard_fire")
 
@@ -288,7 +288,7 @@ return {
     {
         name = "tileBias reads negative under fire, positive under sanctuary, zero under rain",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
             Hazard.place(c, 1, 1, "hazard_fire")
             Hazard.place(c, 2, 2, "hazard_heal")
             Hazard.place(c, 3, 3, "hazard_rain")
@@ -301,7 +301,7 @@ return {
     {
         name = "tileBias only rewards a sanctuary's owning side, but fire burns whoever stands in it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
             Hazard.place(c, 2, 2, "hazard_heal", { side = "party" })
             Hazard.place(c, 4, 4, "hazard_fire", { side = "party" })
             assert(Hazard.tileBias(c, 2, 2, "party") > 0, "the party seeks its own sanctuary")
@@ -314,9 +314,9 @@ return {
         fn = function()
             -- The two closest advance tiles (5,4) and (4,5) tie on distance, so ownership decides:
             -- only the enemy's own hallowed ground scores a bias, so it must take that tile.
-            local enemyChar = Character.instantiate("bandit")
+            local enemyChar = Character.instantiate("character_bandit")
             enemyChar.inventory = {}
-            local c = Combat.new(arena(8, 8), { unit("knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
             local enemy = c.units[2]
             enemy.char.stats.movement = 1
             Hazard.place(c, 4, 5, "hazard_heal", { side = "party" })
@@ -333,9 +333,9 @@ return {
         fn = function()
             -- Movement-1 enemy at (4,4), foe at (7,7): the two closest advance tiles (5,4) and (4,5)
             -- tie on distance, so the hazard bias decides. Fire on (5,4) -> it takes (4,5).
-            local enemyChar = Character.instantiate("bandit")
+            local enemyChar = Character.instantiate("character_bandit")
             enemyChar.inventory = {} -- strip kit so only the range-1 unarmed remains (forces an advance)
-            local c = Combat.new(arena(8, 8), { unit("knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
             local enemy = c.units[2]
             enemy.char.stats.movement = 1
             Hazard.place(c, 5, 4, "hazard_fire")
@@ -349,9 +349,9 @@ return {
     {
         name = "the enemy AI steps toward a sanctuary when its two best advance tiles otherwise tie",
         fn = function()
-            local enemyChar = Character.instantiate("bandit")
+            local enemyChar = Character.instantiate("character_bandit")
             enemyChar.inventory = {}
-            local c = Combat.new(arena(8, 8), { unit("knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
             local enemy = c.units[2]
             enemy.char.stats.movement = 1
             Hazard.place(c, 5, 4, "hazard_heal")
@@ -365,7 +365,7 @@ return {
     {
         name = "casting Fireball leaves a Fire hazard across its blast (and still damages foes)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("mage", 3, 1) }, { unit("bandit", 3, 3) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 3, 1) }, { unit("character_bandit", 3, 3) })
             local mage, bandit = c.units[1], c.units[2]
             local fireball = findItem(mage.char, "ability_fireball")
             assert(fireball, "the mage carries Fireball")
@@ -383,10 +383,10 @@ return {
     {
         name = "Sanctuary scales its heal and lifespan with the item's upgrade level (from the item, in the tooltip)",
         fn = function()
-            local priest = Character.instantiate("priest")
+            local priest = Character.instantiate("character_priest")
             priest.inventory = {}
             Character.addItem(priest, Item.instantiate("ability_sanctuary", 1, 4))
-            local c = Combat.new(arena(8, 8), { unit(priest, 3, 3) }, { unit("bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit(priest, 3, 3) }, { unit("character_bandit", 8, 8) })
             local caster = c.units[1]
             caster.char.stats.mana.current = caster.char.stats.mana.max
             local sanct = findItem(caster.char, "ability_sanctuary")
@@ -395,7 +395,7 @@ return {
             -- The tooltip dry run quotes the level-scaled lifespan and heal the item hands the hazard.
             local out = Combat.abilityOutput(caster, sanct)
             assert(out.hazard == "hazard_heal", "the tooltip names the ground it lays")
-            assert(out.hazardDuration == 8, "lifespan = base 4 + level 4 = 8, got " .. tostring(out.hazardDuration))
+            assert(out.hazardDuration == 19, "lifespan = base 15 + level 4 = 19, got " .. tostring(out.hazardDuration))
             assert(out.hazardAmount == 12, "heal = base 8 + level 4 = 12, got " .. tostring(out.hazardAmount))
 
             -- And the live cast grants the caster a Regeneration of that scaled magnitude (un-ticked
@@ -405,7 +405,7 @@ return {
             assert(Combat.useItem(c, caster, sanct, 3, 3), "Sanctuary lands on the priest's tile")
             local hz = Hazard.at(c, 3, 3, "hazard_heal")
             assert(hz and hz.amount == 12, "the placed hazard carries the scaled heal magnitude")
-            local reg = Status.get(caster, "regen")
+            local reg = Status.get(caster, "status_regen")
             assert(reg and reg.magnitude == 12, "the blessing heals for the scaled magnitude (12), not 8")
         end,
     },
@@ -414,10 +414,10 @@ return {
         fn = function()
             -- Sanctuary previewed at heal 15: it grants Regeneration whose per-turn magnitude is that.
             local hp = Hazard.preview("hazard_heal", 15)
-            assert(hp and #hp.statuses == 1 and hp.statuses[1].id == "regen", "it previews the Regeneration it grants")
+            assert(hp and #hp.statuses == 1 and hp.statuses[1].id == "status_regen", "it previews the Regeneration it grants")
             assert(hp.statuses[1].magnitude == 15, "and quotes the scaled per-turn magnitude, got " .. tostring(hp.statuses[1].magnitude))
             -- With no amount it falls back to the status's own blueprint magnitude.
-            assert(Hazard.preview("hazard_heal").statuses[1].magnitude == Status.defs.regen.magnitude,
+            assert(Hazard.preview("hazard_heal").statuses[1].magnitude == Status.defs.status_regen.magnitude,
                 "no amount -> regen's blueprint magnitude")
             assert(Hazard.preview("no_such_hazard") == nil, "an unknown hazard previews nothing")
         end,
@@ -428,7 +428,7 @@ return {
             for _, id in ipairs({ "hazard_fire", "hazard_rain", "hazard_heal" }) do
                 assert(Hazard.defs[id], "hazard def loaded: " .. id)
             end
-            assert(Status.defs.wet and Status.defs.regen, "wet + regen statuses loaded")
+            assert(Status.defs.status_wet and Status.defs.status_regen, "wet + regen statuses loaded")
             for _, id in ipairs({ "ability_rain", "ability_sanctuary" }) do
                 local it = Item.instantiate(id)
                 assert(it and it.activeAbility, "ability loaded: " .. id)

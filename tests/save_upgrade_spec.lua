@@ -11,15 +11,15 @@ return {
         fn = function()
             local player = Player.new()
             -- Drop a +3 sword into the first roster member's first grid cell.
-            player.roster[1].inventory[1] = Item.instantiate("iron_sword", 1, 3)
+            player.roster[1].inventory[1] = Item.instantiate("weapon_iron_sword", 1, 3)
 
             local restored = Save.restore(Save.snapshot(player))
             assert(restored, "the snapshot restores")
             local item = restored.roster[1].inventory[1]
-            assert(item.id == "iron_sword", "the sword survives")
+            assert(item.id == "weapon_iron_sword", "the sword survives")
             assert(item.level == 3, "its +3 level survives, got " .. tostring(item.level))
             -- And the level is re-baked, not just stored: its damage reflects the upgrade.
-            local base = Item.instantiate("iron_sword")
+            local base = Item.instantiate("weapon_iron_sword")
             assert(item.activeAbility.damage > base.activeAbility.damage, "the restored item is actually stronger")
         end,
     },
@@ -27,18 +27,18 @@ return {
         name = "a save round trip preserves forging materials",
         fn = function()
             local player = Player.new()
-            player.materials = { iron_scrap = 7, steel_ingot = 2 }
+            player.materials = { material_iron_scrap = 7, material_steel_ingot = 2 }
 
             local restored = Save.restore(Save.snapshot(player))
-            assert(restored.materials.iron_scrap == 7, "iron scrap survives")
-            assert(restored.materials.steel_ingot == 2, "steel ingots survive")
+            assert(restored.materials.material_iron_scrap == 7, "iron scrap survives")
+            assert(restored.materials.material_steel_ingot == 2, "steel ingots survive")
         end,
     },
     {
         name = "a stash item's level round-trips too",
         fn = function()
             local player = Player.new()
-            player.stash = { Item.instantiate("chainmail", 1, 2) }
+            player.stash = { Item.instantiate("armor_chainmail", 1, 2) }
 
             local restored = Save.restore(Save.snapshot(player))
             assert(restored.stash[1].level == 2, "the stashed +2 armor keeps its level")
@@ -48,10 +48,10 @@ return {
         name = "consumable recipe tiers round-trip, and an id no longer in data/ is dropped",
         fn = function()
             local player = Player.new()
-            player.recipes = { acid_bomb = 3, ghost_tonic = 2 } -- ghost_tonic is not a real item id
+            player.recipes = { consumable_acid_bomb = 3, ghost_tonic = 2 } -- ghost_tonic is not a real item id
 
             local restored = Save.restore(Save.snapshot(player))
-            assert(restored.recipes.acid_bomb == 3, "the acid_bomb recipe tier survives")
+            assert(restored.recipes.consumable_acid_bomb == 3, "the acid_bomb recipe tier survives")
             assert(restored.recipes.ghost_tonic == nil, "a tier for a vanished item is dropped")
         end,
     },
@@ -60,7 +60,7 @@ return {
         fn = function()
             local player = Player.new()
             -- Pin a second weapon in cell 4 as the first roster member's default action.
-            player.roster[1].inventory[4] = Item.instantiate("iron_bow")
+            player.roster[1].inventory[4] = Item.instantiate("weapon_iron_bow")
             player.roster[1].defaultActionSlot = 4
 
             local snap = Save.snapshot(player)

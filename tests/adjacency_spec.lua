@@ -65,7 +65,7 @@ return {
         name = "Omnislash damage scales per adjacent weapon, and the preview matches the live cast",
         fn = function()
             -- Base cast: no adjacent weapons -> 1x power.
-            local c0 = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 4) })
+            local c0 = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k0 = c0.units[1]
             equip(k0.char, { [5] = "ability_omnislash" })
             k0.char.stats.stamina.current = 99
@@ -75,9 +75,9 @@ return {
 
             -- Two adjacent weapons -> 3x power (1x base + 1x each). Every weapon adds `power` (6)
             -- pre-mitigation, so two weapons is exactly +12 damage over the base cast.
-            local c2 = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 4) })
+            local c2 = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k2, b2 = c2.units[1], c2.units[2]
-            equip(k2.char, { [5] = "ability_omnislash", [4] = "iron_sword", [6] = "iron_sword" })
+            equip(k2.char, { [5] = "ability_omnislash", [4] = "weapon_iron_sword", [6] = "weapon_iron_sword" })
             k2.char.stats.stamina.current = 99
             openTurn(c2, k2)
 
@@ -94,7 +94,7 @@ return {
     {
         name = "Rain of Arrows requires an adjacent bow to fire, then hits its 3x3 area",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 5) })
             local k = c.units[1]
             equip(k.char, { [5] = "ability_rain_of_arrows" })
             k.char.stats.stamina.current = 99
@@ -106,7 +106,7 @@ return {
             assert(reason == "requires adjacent bow", "reason names the requirement, got " .. tostring(reason))
 
             -- Slot a bow adjacent to the ability: now it fires.
-            k.char.inventory[4] = Item.instantiate("iron_bow")
+            k.char.inventory[4] = Item.instantiate("weapon_iron_bow")
             assert(Combat.adjacencyMet(k.char, k.char.inventory[5]) == true, "an adjacent bow satisfies it")
             local ok2, r2 = Combat.useItem(c, k, k.char.inventory[5], 3, 5)
             assert(ok2, "the volley fires with an adjacent bow")
@@ -116,7 +116,7 @@ return {
     {
         name = "itemBlockReason names why an ability can't be activated (the gate the UI grays on)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 5) })
             local k = c.units[1]
             equip(k.char, { [5] = "ability_rain_of_arrows" })
             k.char.stats.stamina.current = 99
@@ -134,7 +134,7 @@ return {
 
             -- Bow in place, so only the cost can stop it. An empty pool blocks it on cost instead,
             -- naming the resource that fell short.
-            k.char.inventory[4] = Item.instantiate("iron_bow")
+            k.char.inventory[4] = Item.instantiate("weapon_iron_bow")
             assert(Combat.itemBlockReason(k, rain) == nil, "an adjacent bow unblocks the volley")
             k.char.stats.stamina.current = 0
             local broke = Combat.itemBlockReason(k, rain)
@@ -142,7 +142,7 @@ return {
                 "an empty pool blocks it on cost")
 
             -- A passive item is inert, not blocked -- it never grays out.
-            assert(Combat.itemBlockReason(k, Item.instantiate("leather_armor")) == nil,
+            assert(Combat.itemBlockReason(k, Item.instantiate("armor_leather_armor")) == nil,
                 "a passive item reports no block reason")
         end,
     },
@@ -151,26 +151,26 @@ return {
         fn = function()
             -- Augmented: sword adjacent to the Fire Stone. The target has fire resist 3, so the
             -- fire tag being applied shaves 3 off the hit; and Burn is inflicted.
-            local c = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k, b = c.units[1], c.units[2]
-            equip(k.char, { [5] = "fire_stone", [4] = "iron_sword" })
+            equip(k.char, { [5] = "utility_fire_stone", [4] = "weapon_iron_sword" })
             k.char.stats.stamina.current = 99
             b.resist = { fire = 3 }
             openTurn(c, k)
             local ok, r = Combat.useItem(c, k, k.char.inventory[4], 3, 4)
             assert(ok, "the infused sword strikes")
-            assert(Status.has(b, "burn"), "an adjacent Fire Stone sets the target alight")
+            assert(Status.has(b, "status_burn"), "an adjacent Fire Stone sets the target alight")
 
             -- Control: identical sword + target, but no Fire Stone adjacent -> no fire tag, no Burn.
-            local cc = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 4) })
+            local cc = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
             local kk, bb = cc.units[1], cc.units[2]
-            equip(kk.char, { [1] = "iron_sword" })
+            equip(kk.char, { [1] = "weapon_iron_sword" })
             kk.char.stats.stamina.current = 99
             bb.resist = { fire = 3 }
             openTurn(cc, kk)
             local ok2, r2 = Combat.useItem(cc, kk, kk.char.inventory[1], 3, 4)
             assert(ok2, "the control sword strikes")
-            assert(not Status.has(bb, "burn"), "no adjacent Fire Stone -> no Burn")
+            assert(not Status.has(bb, "status_burn"), "no adjacent Fire Stone -> no Burn")
             assert(r.damageDealt == r2.damageDealt - 3,
                 "the fire tag applies: fire resist 3 shaves 3 off the infused hit ("
                 .. r.damageDealt .. " vs " .. r2.damageDealt .. ")")
@@ -180,39 +180,39 @@ return {
         name = "a water-tagged weapon and a non-adjacent weapon both resist the Fire Stone aura",
         fn = function()
             -- Water weapon adjacent to the Fire Stone: exempt from the infusion.
-            local cw = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 4) })
+            local cw = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
             local kw, bw = cw.units[1], cw.units[2]
             kw.char.inventory = {}
-            kw.char.inventory[5] = Item.instantiate("fire_stone")
-            local wsword = Item.instantiate("iron_sword")
+            kw.char.inventory[5] = Item.instantiate("utility_fire_stone")
+            local wsword = Item.instantiate("weapon_iron_sword")
             wsword.tags[#wsword.tags + 1] = "water"
             kw.char.inventory[4] = wsword
             kw.char.stats.stamina.current = 99
             openTurn(cw, kw)
             assert(Combat.useItem(cw, kw, kw.char.inventory[4], 3, 4), "the water sword strikes")
-            assert(not Status.has(bw, "burn"), "a water-tagged weapon resists the infusion")
+            assert(not Status.has(bw, "status_burn"), "a water-tagged weapon resists the infusion")
 
             -- Sword NOT adjacent to the Fire Stone (opposite corner): no infusion.
-            local cn = Combat.new(arena(8, 8), { unit("knight", 3, 3) }, { unit("bandit", 3, 4) })
+            local cn = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
             local kn, bn = cn.units[1], cn.units[2]
-            equip(kn.char, { [1] = "fire_stone", [9] = "iron_sword" })
+            equip(kn.char, { [1] = "utility_fire_stone", [9] = "weapon_iron_sword" })
             kn.char.stats.stamina.current = 99
             openTurn(cn, kn)
             assert(Combat.useItem(cn, kn, kn.char.inventory[9], 3, 4), "the distant sword strikes")
-            assert(not Status.has(bn, "burn"), "a non-adjacent weapon is not infused")
+            assert(not Status.has(bn, "status_burn"), "a non-adjacent weapon is not infused")
         end,
     },
     {
         name = "adjacencyLinks reports aura / boost / requirement relationships (and none when apart)",
         fn = function()
-            local knight = Character.instantiate("knight")
+            local knight = Character.instantiate("character_knight")
             knight.inventory = {}
-            knight.inventory[5] = Item.instantiate("fire_stone")           -- aura source (center)
-            knight.inventory[4] = Item.instantiate("iron_sword")           -- infused neighbor
+            knight.inventory[5] = Item.instantiate("utility_fire_stone")           -- aura source (center)
+            knight.inventory[4] = Item.instantiate("weapon_iron_sword")           -- infused neighbor
             knight.inventory[1] = Item.instantiate("ability_omnislash")    -- scales off weapons
-            knight.inventory[2] = Item.instantiate("iron_sword")           -- feeds Omnislash
+            knight.inventory[2] = Item.instantiate("weapon_iron_sword")           -- feeds Omnislash
             knight.inventory[7] = Item.instantiate("ability_rain_of_arrows") -- needs a bow
-            knight.inventory[8] = Item.instantiate("iron_bow")                  -- satisfies the requirement
+            knight.inventory[8] = Item.instantiate("weapon_iron_bow")                  -- satisfies the requirement
 
             local links = Combat.adjacencyLinks(knight)
             assert(hasLink(links, 5, 4, "aura"), "Fire Stone (5) auras the adjacent sword (4)")
@@ -220,10 +220,10 @@ return {
             assert(hasLink(links, 7, 8, "requirement"), "Rain of Arrows (7) requirement met by the bow (8)")
 
             -- Items placed apart form no relationship.
-            local apart = Character.instantiate("knight")
+            local apart = Character.instantiate("character_knight")
             apart.inventory = {}
-            apart.inventory[1] = Item.instantiate("fire_stone")
-            apart.inventory[9] = Item.instantiate("iron_sword")
+            apart.inventory[1] = Item.instantiate("utility_fire_stone")
+            apart.inventory[9] = Item.instantiate("weapon_iron_sword")
             assert(#Combat.adjacencyLinks(apart) == 0, "opposite-corner items are not adjacent")
         end,
     },

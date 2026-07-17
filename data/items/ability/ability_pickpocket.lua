@@ -6,7 +6,8 @@
 -- instead (unbounded), so a successful theft is never wasted.
 return {
     name = "Pickpocket",
-    description = "Steal an item from an adjacent foe. If your grid is full, it goes to your stash.",
+    description = "Steals an item from an adjacent foe. If your grid is full, it goes to your stash.",
+    flavor = "The Undercroft's entrance exam. Everyone passes, which is what worries people.",
     sprite = "assets/items/ability_pickpocket.png",
     type = "ability",
     tags = { "thievery", "utility" },

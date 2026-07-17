@@ -8,7 +8,8 @@
 -- the turn (there is nothing to raise), so hold it until the field is bloodied.
 return {
     name = "Raise Dead",
-    description = "Raise every corpse in the area as a zombie that fights for you (but obeys no orders).",
+    description = "Raises every corpse in the area as a zombie that fights for you, but obeys no orders.",
+    flavor = "Hold it until the field is bloodied. The Arcanum notes there is no lecture attached.",
     sprite = "assets/items/ability_raise_dead.png",
     type = "ability",
     tags = { "dark", "magical" },
@@ -25,7 +26,7 @@ return {
         aoe = { radius = 1, shape = "square" }, -- sweeps a 3x3 for bodies
         effect = function(fx)
             for _, corpse in ipairs(fx.corpsesIn()) do
-                fx.raise(corpse, "zombie", { duration = 30 })
+                fx.raise(corpse, "character_zombie", { duration = 30 })
             end
         end,
     },

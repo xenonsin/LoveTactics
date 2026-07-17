@@ -74,10 +74,10 @@ return {
             local p = Player.new()
             p.party = {}
             for i = 1, Player.MAX_PARTY do
-                assert(Player.addToParty(p, p.roster[i] or Character.instantiate("knight")),
+                assert(Player.addToParty(p, p.roster[i] or Character.instantiate("character_knight")),
                     "add " .. i .. " within the cap should succeed")
             end
-            assert(not Player.addToParty(p, Character.instantiate("knight")),
+            assert(not Player.addToParty(p, Character.instantiate("character_knight")),
                 "adding past MAX_PARTY must fail")
             assert(#p.party == Player.MAX_PARTY, "party overfilled")
         end,
@@ -187,7 +187,7 @@ return {
         name = "equipDelta keeps only the flat stats the focus sheet shows",
         fn = function()
             -- iron_plate: bonus = { defense = 13, movement = -2 }, plus a resist bag.
-            local delta = Party.equipDelta(Item.instantiate("iron_plate"))
+            local delta = Party.equipDelta(Item.instantiate("armor_iron_plate"))
             assert(delta.defense == 13, "defense bonus surfaced")
             assert(delta.movement == -2, "negative movement bonus surfaced")
             -- Resistances aren't flat stat rows, so they never leak into the delta.
@@ -197,7 +197,7 @@ return {
     {
         name = "equipDelta is empty for an item with no bonus, or for nil",
         fn = function()
-            assert(next(Party.equipDelta(Item.instantiate("iron_sword"))) == nil, "no bonus -> empty")
+            assert(next(Party.equipDelta(Item.instantiate("weapon_iron_sword"))) == nil, "no bonus -> empty")
             assert(next(Party.equipDelta(nil)) == nil, "nil item -> empty")
         end,
     },

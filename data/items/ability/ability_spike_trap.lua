@@ -3,7 +3,8 @@
 -- coordinates to the effect as fx.tx / fx.ty, which fx.placeTrap turns into an owned trap.
 return {
     name = "Spike Trap",
-    description = "Summon a hidden spike trap on a nearby tile.",
+    description = "Places a hidden spike trap on a nearby tile.",
+    flavor = "The Undercroft's idea of leaving a note.",
     sprite = "assets/items/ability_spike_trap.png",
     type = "ability",
     tags = { "trap", "utility" },

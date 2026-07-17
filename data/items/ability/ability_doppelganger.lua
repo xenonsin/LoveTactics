@@ -14,7 +14,8 @@
 -- Envy. See docs/story.md.
 return {
     name = "Doppelganger",
-    description = "Conjure a duplicate of yourself. It fights with your kit, but dies to a single hit.",
+    description = "Conjures a duplicate of yourself. It fights with your kit and dies to a single hit.",
+    flavor = "The Arcanum's sin is Pride, and this is a spell whose answer to every problem is another of you.",
     sprite = "assets/items/ability_doppelganger.png",
     type = "ability",
     tags = { "summon", "illusion" },

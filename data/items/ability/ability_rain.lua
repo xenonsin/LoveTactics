@@ -5,7 +5,8 @@
 -- (target = "tile", allowOccupied): aim at any walkable cell in range, occupied or not.
 return {
     name = "Rain",
-    description = "Summon a downpour over an area, soaking those within (Wet: +lightning damage).",
+    description = "Soaks an area, inflicting Wet on those within. Douses fire.",
+    flavor = "The setup for a Jolt, and the Arcanum's one concession to patience.",
     sprite = "assets/items/ability_rain.png",
     type = "ability",
     tags = { "water", "magical" },
@@ -19,7 +20,7 @@ return {
         effect = function(fx)
             -- A more-forged spell keeps the downpour up longer: base 5 ticks, +1 per upgrade level.
             for _, c in ipairs(fx.aoeCells()) do
-                fx.placeHazard(c.x, c.y, "hazard_rain", { duration = 5 + fx.level })
+                fx.placeHazard(c.x, c.y, "hazard_rain", { duration = 15 + fx.level })
             end
         end,
     },

@@ -338,13 +338,13 @@ end
 -- `unarmedBonus.damage` from passive "fist" items carried in the grid (Iron Fist), plus
 -- `unarmedBonus.drunkDamage` while the unit is Drunk (Drunken Fist). 0 for any crafted weapon --
 -- an identity check against the hidden unarmed instance keeps the bonus off real blades. The
--- companion range/extra-hit halves live in Combat.abilityRange and data/items/weapon/unarmed.lua.
+-- companion range/extra-hit halves live in Combat.abilityRange and data/items/weapon/weapon_unarmed.lua.
 local function unarmedDamageBonus(user, item)
     if not (user and item and item == user.char.unarmed) then return 0 end
     local ub = user.unarmedBonus
     if not ub then return 0 end
     local bonus = ub.damage or 0
-    if ub.drunkDamage and Status.has(user, "drunk") then bonus = bonus + ub.drunkDamage end
+    if ub.drunkDamage and Status.has(user, "status_drunk") then bonus = bonus + ub.drunkDamage end
     return bonus
 end
 
@@ -763,9 +763,9 @@ Combat.SANCTIFY_HEAL = 1
 -- Is `u` warded by a Sanctified Presence this tick? True if it bears the trait itself (the priest is
 -- its own font) or stands orthogonally adjacent to a living ally that does.
 local function nearSanctifier(combat, u)
-    if Trait.has(u, "sanctified_presence") then return true end
+    if Trait.has(u, "trait_sanctified_presence") then return true end
     for _, o in ipairs(combat.units) do
-        if o.alive and o ~= u and o.side == u.side and Trait.has(o, "sanctified_presence")
+        if o.alive and o ~= u and o.side == u.side and Trait.has(o, "trait_sanctified_presence")
             and manhattan(o.x, o.y, u.x, u.y) == 1 then
             return true
         end
@@ -783,7 +783,7 @@ function Combat.regenerate(combat, elapsed)
         if u.alive then
             Combat.restoreResource(u.char, "stamina", flatStat(u, "staminaRegen") * elapsed)
             -- Quiet heals (no per-tick log line, like stamina): the badge/aura is the tell, not the log.
-            if Trait.has(u, "arcane_reservoir") then
+            if Trait.has(u, "trait_arcane_reservoir") then
                 Combat.restoreResource(u.char, "mana", Combat.ARCANE_REGEN * elapsed)
             end
             if nearSanctifier(combat, u) then
@@ -1071,7 +1071,7 @@ end
 
 -- Focus: end the turn without attacking, restoring mana instead. Costs more of the timeline than
 -- a plain wait (behavior.speed, or Combat.FOCUS_SPEED). The mana-recovery half of the wait swap
--- granted by a focus item (data/items/utility/focus_stone.lua).
+-- granted by a focus item (data/items/utility/utility_focus_stone.lua).
 function Combat.focus(combat, unit)
     if not unit.alive then return false, "dead" end
     local behavior = Combat.waitBehavior(unit)
@@ -1084,23 +1084,23 @@ end
 
 -- Defend: end the turn without attacking, gaining the Defending status (a temporary +defense that
 -- lasts until this unit's next turn). Costs behavior.speed of the timeline (or Combat.DEFEND_SPEED).
--- The wait swap granted by a shield item (data/items/armor/buckler.lua).
+-- The wait swap granted by a shield item (data/items/armor/armor_buckler.lua).
 function Combat.defend(combat, unit)
     if not unit.alive then return false, "dead" end
     local behavior = Combat.waitBehavior(unit)
     -- The shield tunes the brace size through waitBehavior.defense (already resolved to this shield's
     -- upgrade level); it rides in as the Defending status's magnitude. nil falls back to the status
     -- def's own magnitude, so a defend item that names no amount still braces.
-    Status.apply(combat, unit, "defending", { magnitude = behavior.defense })
+    Status.apply(combat, unit, "status_defending", { magnitude = behavior.defense })
     Combat.logEvent(combat, "defend", string.format("%s takes a defensive stance.", unitName(unit)))
     -- A tower shield covers the line, not just the man holding it: `waitBehavior.covers` braces every
     -- ADJACENT ALLY too, for that (smaller) amount. Only the largest shields declare it -- see
-    -- data/items/armor/oathkeeper_shield.lua -- and it is what makes bracing a formation decision
+    -- data/items/armor/armor_oathkeeper_shield.lua -- and it is what makes bracing a formation decision
     -- rather than a private one: where you stand when you plant decides who else gets the wall.
     if behavior.covers then
         for _, ally in ipairs(Combat.unitsNear(combat, unit.x, unit.y, 1)) do
             if ally ~= unit and ally.side == unit.side then
-                Status.apply(combat, ally, "defending", { magnitude = behavior.covers })
+                Status.apply(combat, ally, "status_defending", { magnitude = behavior.covers })
                 Combat.logEvent(combat, "defend",
                     string.format("%s is covered by the wall.", unitName(ally)))
             end
@@ -1116,7 +1116,7 @@ end
 -- timeline, and it keeps firing on each step through range until that stamina runs dry. Setting the
 -- stance costs behavior.speed (deliberately steep -- a whole turn spent watching, no move-and-shoot).
 -- The stance lapses when the bearer's own next turn opens (Combat.startTurn). The wait swap granted by
--- a sentry item (data/items/utility/overwatch_scope.lua).
+-- a sentry item (data/items/utility/utility_overwatch_scope.lua).
 function Combat.overwatch(combat, unit)
     if not unit.alive then return false, "dead" end
     local behavior = Combat.waitBehavior(unit)
@@ -1918,7 +1918,7 @@ function Combat.mitigatedDamage(target, base, tags, opts)
 end
 
 -- A decoy that is gone stops being a lie. Its deployment wrote a fake "moves to (x, y)" line into
--- the log (data/items/utility/decoy.lua) and kept a handle on it; rewrite that entry IN PLACE, so
+-- the log (data/items/utility/utility_decoy.lua) and kept a handle on it; rewrite that entry IN PLACE, so
 -- re-reading the log tells the truth about what really happened on that turn. A no-op for a decoy
 -- whose line has already aged out of the log, and for any unit that isn't a decoy.
 local function correctDecoyRecord(decoy)
@@ -1937,8 +1937,8 @@ local function unmaskDecoy(combat, decoy)
     local caster = decoy.decoyOf
     Combat.logEvent(combat, "death", string.format("%s's decoy is destroyed.", unitName(caster)))
     correctDecoyRecord(decoy)
-    if caster.alive and Status.has(caster, "invisible") then
-        Status.remove(combat, caster, "invisible")
+    if caster.alive and Status.has(caster, "status_invisible") then
+        Status.remove(combat, caster, "status_invisible")
         Combat.logEvent(combat, "status", string.format("%s is revealed!", unitName(caster)))
     end
 end
@@ -2797,7 +2797,7 @@ end
 -- name). A capability read, not a dispatched hook -- there is no "onSpend" trait event, so the cost
 -- path consults this directly (documented as the one trait that works this way).
 function Combat.canOverchannel(unit)
-    return Trait.has(unit, "overchannel")
+    return Trait.has(unit, "trait_overchannel")
 end
 
 -- ---------------------------------------------------------------------------
@@ -2860,7 +2860,7 @@ end
 -- from a different pocket: Overchannel spends life it cannot get back, this spends stock it can.
 -- True only when a mana draught is actually in the satchel, so an empty alchemist is blocked normally.
 function Combat.canDrawOnPotion(unit)
-    return Trait.has(unit, "alchemists_reservoir")
+    return Trait.has(unit, "trait_alchemists_reservoir")
         and Combat.carriedRestorative(unit, "mana") ~= nil
 end
 
@@ -3485,7 +3485,7 @@ function Combat.useItem(combat, unit, item, tx, ty)
     if ab.channel and ab.channel > 0 then
         if ab.consumesItem then item.quantity = math.max(0, (item.quantity or 1) - 1) end
         unit.channel = { item = item, ab = ab, tx = tx, ty = ty }
-        Status.apply(combat, unit, "channeling", { duration = ab.channel + 1 })
+        Status.apply(combat, unit, "status_channeling", { duration = ab.channel + 1 })
         -- The wind-up is an action too: a cast beat on begin-channel, then a second when it resolves
         -- (resolveCast, turns later). So a channeled spell reads both as it is loosed and as it lands.
         Combat.pushFx(combat, { type = "cast", unit = unit, tx = tx, ty = ty,
@@ -3937,7 +3937,7 @@ function Combat.resolveChannel(combat, unit)
     local pending = unit.channel
     if not pending then return false end
     unit.channel = nil
-    Status.remove(combat, unit, "channeling")
+    Status.remove(combat, unit, "status_channeling")
     Combat.logEvent(combat, "action",
         string.format("%s's %s resolves.", unitName(unit), pending.item.name or "channel"))
     return resolveCast(combat, unit, pending.item, pending.ab, pending.tx, pending.ty, true)
@@ -3950,7 +3950,7 @@ end
 function Combat.interruptChannel(combat, unit, reason)
     if not unit.channel then return false end
     unit.channel = nil
-    Status.remove(combat, unit, "channeling")
+    Status.remove(combat, unit, "status_channeling")
     Combat.logEvent(combat, "status",
         string.format("%s's channel is interrupted (%s)!", unitName(unit), reason or "disrupted"))
     return true
@@ -4066,7 +4066,7 @@ function Combat.planEnemyAction(combat, unit)
     -- Taunt overrides everything: a taunted unit must go for the taunter with its default weapon and
     -- nothing else. Strike it if it is already in reach; otherwise close to a tile that can hit it and
     -- swing; otherwise shamble toward it. The taunter is a foe (opposite side) by construction.
-    local taunt = Status.get(unit, "taunt")
+    local taunt = Status.get(unit, "status_taunt")
     if taunt and taunt.taunter and taunt.taunter.alive and taunt.taunter.side ~= unit.side then
         local tt = taunt.taunter
         local weapon = Combat.defaultWeapon(unit.char)

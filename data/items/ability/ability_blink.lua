@@ -9,7 +9,8 @@
 -- no initiative and never sits in the ability cycle -- it is a stance the mage steps into and out of.
 return {
     name = "Blink",
-    description = "Toggle: your movement becomes a 5-tile teleport, paid in mana per jump.",
+    description = "Toggle: your movement becomes a teleport, paid in mana per jump.",
+    flavor = "The Arcanum regards walking as a confession.",
     sprite = "assets/items/ability_blink.png",
     type = "ability",
     tags = { "arcane" },

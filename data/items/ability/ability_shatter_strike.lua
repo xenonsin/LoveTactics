@@ -4,7 +4,8 @@
 -- Requires an adjacent melee weapon in the grid.
 return {
     name = "Shatter Strike",
-    description = "A heavy blow. Doubles its damage against a frozen or stunned foe, shattering the effect. Requires an adjacent melee weapon.",
+    description = "Doubles damage against a Frozen or Stunned foe, consuming it. Needs a melee weapon adjacent.",
+    flavor = "A finisher, not a way to keep a foe held. You only get to spend the ice once.",
     sprite = "assets/items/ability_shatter_strike.png",
     type = "ability",
     tags = { "crush", "physical" },
@@ -21,10 +22,10 @@ return {
         effect = function(fx)
             local t = fx.target
             if not t then return end
-            if fx.hasStatus(t, "freeze") or fx.hasStatus(t, "stun") then
+            if fx.hasStatus(t, "status_freeze") or fx.hasStatus(t, "status_stun") then
                 fx.damage(t, { amount = fx.amount * 2 })
-                fx.clearStatus(t, "freeze")
-                fx.clearStatus(t, "stun")
+                fx.clearStatus(t, "status_freeze")
+                fx.clearStatus(t, "status_stun")
             else
                 fx.damage(t)
             end

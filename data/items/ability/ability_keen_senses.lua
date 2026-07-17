@@ -12,16 +12,17 @@
 -- letting them be swarmed empties the pool they wanted for healing. The choice of when to stop
 -- countering isn't offered -- the choice was made when you walked them into range.
 --
--- Kin to data/items/utility/duelists_reflex.lua and reprisal_quiver.lua, which package a reflex the
+-- Kin to data/items/utility/utility_duelists_reflex.lua and reprisal_quiver.lua, which package a reflex the
 -- same way; this one is sold as an ability because that is the shelf a priest shops from.
 return {
     name = "Keen Senses",
-    description = "Triggered: when attacked, strike first for stamina -- before the blow lands. Fell them and it never lands at all.",
+    description = "Triggered: when attacked, strike first for stamina, before the blow lands.",
+    flavor = "The choice of when to stop countering is never offered. It was made when you walked into range.",
     sprite = "assets/items/ability_keen_senses.png",
     type = "ability",
     tags = { "holy", "reaction" },
     class = "priest",
     price = 320,
     repRank = 3,
-    traits = { "keen_senses" },
+    traits = { "trait_keen_senses" },
 }

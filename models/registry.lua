@@ -2,13 +2,14 @@
 -- each and returns a table keyed by id (the filename without extension).
 --
 --   local defs = Registry.load("data/items", "data.items")
---   -- data/items/iron_sword.lua         ->  defs.iron_sword
---   -- data/items/weapon/iron_sword.lua  ->  defs.iron_sword  (subfolders are transparent)
+--   -- data/items/weapon/weapon_iron_sword.lua  ->  defs.weapon_iron_sword
+--   -- data/status/status_burn.lua              ->  defs.status_burn
 --
 -- The scan recurses into subfolders so a folder can be organised into type
 -- buckets (data/items/weapon/, data/items/armor/, ...) without changing ids:
--- the key is always the bare filename, and only the require path follows the
--- nesting. Ids must stay unique across the whole tree.
+-- the key is always the bare filename -- prefix included, since the prefix IS
+-- part of the id -- and only the require path follows the nesting. Ids must
+-- stay unique across the whole tree.
 --
 -- Uses love.filesystem, which is rooted at the launched project.
 

@@ -39,7 +39,7 @@ spell whose answer to every problem is a second copy of the caster is Pride. `ph
 
 ## The Demon Lord
 
-**The Hollow Crown** (`data/characters/demon_lord.lua`) has no sin of its own. The seven were its
+**The Hollow Crown** (`data/characters/character_demon_lord.lua`) has no sin of its own. The seven were its
 appetites, and the whole game is spent taking them off it one at a time. Its stats are those of
 something that has not needed to fight in a long while: an enormous health pool and almost nothing
 behind it. Every threat in the final battle is borrowed — its trait `hollow_crown` puts the generals you
@@ -48,7 +48,7 @@ already killed back on as its health falls past 75%, 50%, and 25%.
 The shades are summons, bound to the Crown. Kill it and they go with it, which is what keeps the
 `assassinate` objective resolvable.
 
-> **Authoring note:** `data/traits/hollow_crown.lua` has a `shades` list. Today it names
+> **Authoring note:** `data/traits/trait_hollow_crown.lua` has a `shades` list. Today it names
 > `general_wrath` and falls back on `warlord` / `champion` for the six generals that do not exist yet.
 > **That list is the fight.** As each general is written, put it there.
 
@@ -113,12 +113,12 @@ trait, and a quest. Nothing in `models/` should need to change.
 
 Read these together — they are one idea spread across the layers:
 
-- `data/traits/wrath_rising.lua` — the rule. `onDamaged` banks a damage bonus via `ctx.addBonus`.
-- `data/status/wrath.lua` — the tell. Grants **nothing**; it exists so the player can watch the badge
+- `data/traits/trait_wrath_rising.lua` — the rule. `onDamaged` banks a damage bonus via `ctx.addBonus`.
+- `data/status/status_wrath.lua` — the tell. Grants **nothing**; it exists so the player can watch the badge
   climb and understand, before it is too late, that they are the one sharpening her.
-- `data/characters/general_wrath.lua` — modest opening stats, deliberately soft to magic. A Warlord hits
+- `data/characters/character_general_wrath.lua` — modest opening stats, deliberately soft to magic. A Warlord hits
   harder on turn one. The danger is not what she starts as.
-- `data/items/armor/mail_of_the_unappeased.lua` — the relic, carrying `traits = { "wrath_rising" }`.
+- `data/items/armor/armor_mail_of_the_unappeased.lua` — the relic, carrying `traits = { "trait_wrath_rising" }`.
 
 The status is not the mechanic. A `statBonus` there would double-count the trait's own `addBonus`, and a
 status cannot scale its bonus by magnitude anyway (`Status.statBonus` reads a static def table).

@@ -5,7 +5,8 @@
 -- Axes swing this innately -- their own attack IS a cleave (see data/items/weapon/crimson_greataxe).
 return {
     name = "Cleave",
-    description = "A wide swing that carves a 3x1 arc in front of you. Requires an adjacent melee weapon.",
+    description = "Carves the three tiles in front of you. Requires an adjacent melee weapon.",
+    flavor = "A cleave needs an edge to swing. The Colosseum sells the edge separately.",
     sprite = "assets/items/ability_cleave.png",
     type = "ability",
     tags = { "slash", "physical" },

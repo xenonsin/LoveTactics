@@ -31,14 +31,14 @@ return {
     {
         name = "a barrier stands for as many hits as it was granted, then is spent",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
-            Status.apply(c, bandit, "physical_barrier", { magnitude = 3 })
+            Status.apply(c, bandit, "status_physical_barrier", { magnitude = 3 })
 
             for i = 1, 3 do
                 assert(Combat.dealFlatDamage(c, bandit, 30, { "physical" }, "test") == 0,
                     "hit " .. i .. " is swallowed")
-                assert(Status.has(bandit, "physical_barrier") == (i < 3),
+                assert(Status.has(bandit, "status_physical_barrier") == (i < 3),
                     "the ward stands until its last charge is spent")
             end
             assert(Combat.dealFlatDamage(c, bandit, 30, { "physical" }, "test") > 0,
@@ -62,14 +62,14 @@ return {
     {
         name = "Reflect Magic turns a single-target spell back on its caster, and spares an area one",
         fn = function()
-            local caster = armed("mage", { "ability_fire_bolt", "ability_fireball" })
+            local caster = armed("character_mage", { "ability_fire_bolt", "ability_fireball" })
             -- A BARE knight: the blueprint's own kit carries Parry, whose counter-swing would land on
             -- the mage and be indistinguishable here from a reflection. The mirror is what's on trial.
-            local c = Combat.new(arena(10, 10), { { char = armed("knight", {}), x = 5, y = 4 } },
+            local c = Combat.new(arena(10, 10), { { char = armed("character_knight", {}), x = 5, y = 4 } },
                 { { char = caster, x = 5, y = 5 } })
             local knight, mage = c.units[1], c.units[2]
 
-            Status.apply(c, knight, "reflect_magic")
+            Status.apply(c, knight, "status_reflect_magic")
             local mageHp = mage.char.stats.health.current
             local knightHp = knight.char.stats.health.current
 
@@ -100,13 +100,13 @@ return {
         fn = function()
             -- Bare bodies on both sides: a blueprint's stock reflex (the knight's Parry) would answer
             -- the swing and muddy what the assertion is actually measuring.
-            local c = Combat.new(arena(8, 8), { { char = armed("knight", { "iron_sword" }), x = 1, y = 1 } },
-                { { char = armed("bandit", {}), x = 1, y = 2 } })
+            local c = Combat.new(arena(8, 8), { { char = armed("character_knight", { "weapon_iron_sword" }), x = 1, y = 1 } },
+                { { char = armed("character_bandit", {}), x = 1, y = 2 } })
             local knight, bandit = c.units[1], c.units[2]
             -- Both sides mirrored: the first mirror to catch the blow is the one that throws it, and
             -- the return must not bounce back and forth forever.
-            Status.apply(c, knight, "reflect_physical")
-            Status.apply(c, bandit, "reflect_physical")
+            Status.apply(c, knight, "status_reflect_physical")
+            Status.apply(c, bandit, "status_reflect_physical")
 
             local knightHp = knight.char.stats.health.current
             Combat.dealDamage(c, knight, bandit, Combat.defaultWeapon(knight.char))
@@ -117,8 +117,8 @@ return {
     {
         name = "Counter Magic unravels a spell for mana, then must recharge",
         fn = function()
-            local caster = armed("mage", { "ability_fire_bolt" })
-            local target = armed("mage", { "counter_magic" }) -- a mage has the mana to run it
+            local caster = armed("character_mage", { "ability_fire_bolt" })
+            local target = armed("character_mage", { "utility_counter_magic" }) -- a mage has the mana to run it
             local c = Combat.new(arena(8, 8), { { char = target, x = 5, y = 4 } },
                 { { char = caster, x = 5, y = 5 } })
             local warded, attacker = c.units[1], c.units[2]
@@ -140,32 +140,32 @@ return {
     {
         name = "Sleep shoves the sleeper down the order, and any hit wakes it and refunds the rest",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
             local bandit = c.units[2]
             bandit.char.stats.magicDefense = 0
             local before = bandit.initiative
 
-            local s = Status.apply(c, bandit, "sleep")
+            local s = Status.apply(c, bandit, "status_sleep")
             assert(bandit.initiative == before + s.remaining, "the sleeper is shoved by what it sleeps")
 
             -- Any damage at all wakes it and hands back the time it had not served.
             Combat.dealFlatDamage(c, bandit, 5, { "physical" }, "test")
-            assert(not Status.has(bandit, "sleep"), "the blow wakes it")
+            assert(not Status.has(bandit, "status_sleep"), "the blow wakes it")
             assert(bandit.initiative == before, "and gives back every unserved tick")
         end,
     },
     {
         name = "a natural sleep refunds nothing: the sleeper genuinely waited",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 1, 1) }, { unit("bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
             local bandit = c.units[2]
             bandit.char.stats.magicDefense = 0
             local before = bandit.initiative
-            local s = Status.apply(c, bandit, "sleep")
+            local s = Status.apply(c, bandit, "status_sleep")
             local shove = s.remaining
 
             Status.tick(c, shove) -- the whole window elapses
-            assert(not Status.has(bandit, "sleep"), "the sleep runs out on its own")
+            assert(not Status.has(bandit, "status_sleep"), "the sleep runs out on its own")
             assert(bandit.initiative == before + shove,
                 "and the shove stands -- a served sentence is not refunded")
         end,
@@ -173,12 +173,12 @@ return {
     {
         name = "the Skeptic's Harness denies its wearer magic, but not a potion or a blade",
         fn = function()
-            local char = armed("knight", { "skeptics_harness", "ability_fire_bolt", "iron_sword",
-                                           "healing_potion" })
-            local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("bandit", 4, 4) })
+            local char = armed("character_knight", { "armor_skeptics_harness", "ability_fire_bolt", "weapon_iron_sword",
+                                           "consumable_healing_potion" })
+            local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
 
-            assert(Status.has(knight, "magic_denied"), "the harness lays its denial at the bell")
+            assert(Status.has(knight, "status_magic_denied"), "the harness lays its denial at the bell")
             local spell, sword, potion = char.inventory[2], char.inventory[3], char.inventory[4]
             assert(Combat.itemBlockReason(knight, spell), "a spell is refused")
             assert(Combat.itemBlockReason(knight, spell).kind == "denied", "and says why")
@@ -189,12 +189,12 @@ return {
     {
         name = "the denial is not a debuff: a Panacea cannot wash it off and keep the armor",
         fn = function()
-            local char = armed("knight", { "skeptics_harness", "ability_fire_bolt" })
-            local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("bandit", 4, 4) })
+            local char = armed("character_knight", { "armor_skeptics_harness", "ability_fire_bolt" })
+            local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
 
             Combat.cleanse(c, knight)
-            assert(Status.has(knight, "magic_denied"), "a cleanse does not lift a conviction")
+            assert(Status.has(knight, "status_magic_denied"), "a cleanse does not lift a conviction")
             assert(Combat.itemBlockReason(knight, char.inventory[2]), "the spell is still refused")
         end,
     },
@@ -205,8 +205,8 @@ return {
             a.tiles[1][2] = { type = "water", moveCost = 3, walkable = false, sightCost = 0 }
             a.tiles[2][2] = { type = "bog", moveCost = 2, walkable = true, sightCost = 0 }
 
-            local char = armed("knight", { "zephyr_striders" })
-            local c = Combat.new(a, { { char = char, x = 1, y = 1 } }, { unit("bandit", 8, 8) })
+            local char = armed("character_knight", { "utility_zephyr_striders" })
+            local c = Combat.new(a, { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             assert(Combat.isFlying(knight), "the wearer is airborne")
 
@@ -231,8 +231,8 @@ return {
     {
         name = "the Survivor's Reflex drinks a healing potion when a blow leaves its bearer bloodied",
         fn = function()
-            local char = armed("knight", { "survivors_reflex", "healing_potion" })
-            local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("bandit", 4, 4) })
+            local char = armed("character_knight", { "utility_survivors_reflex", "consumable_healing_potion" })
+            local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
             local potion = char.inventory[2]
             local stock = potion.quantity
@@ -250,8 +250,8 @@ return {
     {
         name = "the Alchemist's Reservoir casts a spell out of a flask when the mana runs dry",
         fn = function()
-            local char = armed("mage", { "alchemists_reservoir", "azure_draught", "ability_fire_bolt" })
-            local c = Combat.new(arena(8, 8), { { char = char, x = 5, y = 4 } }, { unit("bandit", 5, 5) })
+            local char = armed("character_mage", { "utility_alchemists_reservoir", "consumable_mana_potion", "ability_fire_bolt" })
+            local c = Combat.new(arena(8, 8), { { char = char, x = 5, y = 4 } }, { unit("character_bandit", 5, 5) })
             local mage, bandit = c.units[1], c.units[2]
             local flask, spell = char.inventory[2], char.inventory[3]
             mage.char.stats.mana.current = 0 -- bone dry
@@ -267,8 +267,8 @@ return {
     {
         name = "with no flask left, the Reservoir blocks the cast like any other empty pool",
         fn = function()
-            local char = armed("mage", { "alchemists_reservoir", "ability_fire_bolt" })
-            local c = Combat.new(arena(8, 8), { { char = char, x = 5, y = 4 } }, { unit("bandit", 5, 5) })
+            local char = armed("character_mage", { "utility_alchemists_reservoir", "ability_fire_bolt" })
+            local c = Combat.new(arena(8, 8), { { char = char, x = 5, y = 4 } }, { unit("character_bandit", 5, 5) })
             local mage = c.units[1]
             mage.char.stats.mana.current = 0
 
@@ -279,12 +279,12 @@ return {
     {
         name = "the Resonance Prism sharpens adjacent magic, and only magic",
         fn = function()
-            local char = Character.instantiate("mage")
+            local char = Character.instantiate("character_mage")
             char.inventory = {}
             -- Cells 1 and 3 flank the prism in cell 2 (row-major 3x3; 1,2,3 is the top row).
             char.inventory[1] = Item.instantiate("ability_fire_bolt") -- magical
-            char.inventory[2] = Item.instantiate("resonance_prism")
-            char.inventory[3] = Item.instantiate("iron_sword")        -- not magical
+            char.inventory[2] = Item.instantiate("utility_resonance_prism")
+            char.inventory[3] = Item.instantiate("weapon_iron_sword")        -- not magical
 
             local bolt, sword = char.inventory[1], char.inventory[3]
             local prism = char.inventory[2]
@@ -295,8 +295,8 @@ return {
     {
         name = "Adrenal Surge pulls its bearer's next turn sooner when it is hit",
         fn = function()
-            local char = armed("knight", { "adrenal_surge" })
-            local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("bandit", 4, 4) })
+            local char = armed("character_knight", { "utility_adrenal_surge" })
+            local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
             knight.initiative = 20
 

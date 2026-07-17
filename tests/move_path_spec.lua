@@ -53,7 +53,7 @@ return {
     {
         name = "planMoveVia accepts a straight contiguous route and sums its terrain cost",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("knight", 2, 2) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2) }, {})
             local u = c.units[1]
             setBudget(u, 6)
             openTurn(c, u)
@@ -69,7 +69,7 @@ return {
     {
         name = "a steered detour is allowed within budget and costs more than the shortest path",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("knight", 2, 2) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2) }, {})
             local u = c.units[1]
             setBudget(u, 6)
             openTurn(c, u)
@@ -89,7 +89,7 @@ return {
     {
         name = "planMoveVia rejects a route that breaks contiguity, doubles back, or leaves the origin",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("knight", 2, 2) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2) }, {})
             local u = c.units[1]
             setBudget(u, 6)
             openTurn(c, u)
@@ -109,7 +109,7 @@ return {
         fn = function()
             -- An ally sits at (3,2), blocking a straight walk east.
             local c = Combat.new(arena(6, 6),
-                { unit("knight", 2, 2), unit("archer", 3, 2) }, {})
+                { unit("character_knight", 2, 2), unit("character_archer", 3, 2) }, {})
             local u = c.units[1]
             setBudget(u, 6)
             openTurn(c, u)
@@ -133,7 +133,7 @@ return {
     {
         name = "a steered plan drives beginMove/stepMove along its exact route to the destination",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("knight", 2, 2) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2) }, {})
             local u = c.units[1]
             setBudget(u, 6)
             openTurn(c, u)

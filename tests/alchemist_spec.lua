@@ -38,17 +38,17 @@ return {
         name = "Alchemic Mastery adds its amountBonus to an adjacent consumable's hit (preview and live)",
         fn = function()
             -- Foe two tiles east, so the radius-1 burst never reaches the caster's own tile.
-            local c = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 4, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 4, 2) })
             local k, bandit = c.units[1], c.units[2]
 
             -- No charm beside the bomb: the plain hit.
-            equip(k.char, { [5] = "fire_bomb" })
+            equip(k.char, { [5] = "consumable_fire_bomb" })
             local plain = Combat.previewAbility(c, k, k.char.inventory[5], 4, 2)
             local plainDmg = plain.entries[bandit].damage
             assert(plainDmg > 5, "the plain bomb already lands well above the floor, got " .. plainDmg)
 
             -- Alchemic Mastery (amountBonus 5) in the adjacent cell: exactly +5 on the same hit.
-            equip(k.char, { [5] = "fire_bomb", [4] = "alchemic_mastery" })
+            equip(k.char, { [5] = "consumable_fire_bomb", [4] = "utility_alchemic_mastery" })
             local boosted = Combat.previewAbility(c, k, k.char.inventory[5], 4, 2)
             assert(boosted.entries[bandit].damage == plainDmg + 5,
                 "Mastery adds its amountBonus to the preview, got " .. boosted.entries[bandit].damage)
@@ -66,9 +66,9 @@ return {
         name = "Everflask spares an adjacent consumable's stack; without it the stack is spent",
         fn = function()
             -- Control: a bomb with no Everflask beside it decrements as usual.
-            local c = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 4, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 4, 2) })
             local k = c.units[1]
-            equip(k.char, { [5] = "fire_bomb" })
+            equip(k.char, { [5] = "consumable_fire_bomb" })
             k.char.inventory[5].quantity = 3
             k.char.stats.stamina.current = 99
             openTurn(c, k)
@@ -76,9 +76,9 @@ return {
             assert(k.char.inventory[5].quantity == 2, "a bomb with no Everflask is spent (3 -> 2)")
 
             -- With an Everflask in the adjacent cell, the same throw leaves the stack untouched.
-            local c2 = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 4, 2) })
+            local c2 = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 4, 2) })
             local k2 = c2.units[1]
-            equip(k2.char, { [5] = "fire_bomb", [4] = "everflask" })
+            equip(k2.char, { [5] = "consumable_fire_bomb", [4] = "utility_everflask" })
             k2.char.inventory[5].quantity = 3
             k2.char.stats.stamina.current = 99
             openTurn(c2, k2)
@@ -91,15 +91,15 @@ return {
         name = "Long-Fuse Reagent extends an adjacent consumable's range (bonus + a foe it now reaches)",
         fn = function()
             -- A foe four tiles away: one past the bomb's base range of 3.
-            local c = Combat.new(arena(10, 4), { unit("knight", 2, 2) }, { unit("bandit", 6, 2) })
+            local c = Combat.new(arena(10, 4), { unit("character_knight", 2, 2) }, { unit("character_bandit", 6, 2) })
             local k, bandit = c.units[1], c.units[2]
 
-            equip(k.char, { [5] = "fire_bomb" })
+            equip(k.char, { [5] = "consumable_fire_bomb" })
             assert(Combat.adjacencyRangeBonus(k.char, k.char.inventory[5]) == 0, "no charm -> no bonus")
             assert(not contains(Combat.abilityTargets(c, k, k.char.inventory[5]), bandit),
                 "the far foe is out of the plain bomb's reach")
 
-            equip(k.char, { [5] = "fire_bomb", [4] = "long_fuse_reagent" })
+            equip(k.char, { [5] = "consumable_fire_bomb", [4] = "utility_long_fuse_reagent" })
             assert(Combat.adjacencyRangeBonus(k.char, k.char.inventory[5]) == 1,
                 "the Reagent grants +1 range to the adjacent bomb")
             assert(contains(Combat.abilityTargets(c, k, k.char.inventory[5]), bandit),
@@ -109,14 +109,14 @@ return {
     {
         name = "Acid strips armor: a hit lands harder while it clings, and Cure/Panacea restores it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 3, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 3, 2) })
             local atk, target = c.units[1], c.units[2]
             atk.char.stats.damage = 20 -- well above the floor, so the whole armor swing is visible
             target.char.stats.defense = 10
-            local sword = Item.instantiate("iron_sword")
+            local sword = Item.instantiate("weapon_iron_sword")
 
             local before = Combat.computeDamage(c, atk, target, sword)
-            Status.apply(c, target, "acid") -- statBonus defense -6
+            Status.apply(c, target, "status_acid") -- statBonus defense -6
             local corroded = Combat.computeDamage(c, atk, target, sword)
             assert(corroded == before + 6, "Acid's -6 defense adds 6 to the hit, got "
                 .. corroded .. " vs " .. before)
@@ -129,15 +129,15 @@ return {
     {
         name = "Disarmed refuses a crafted weapon but not a potion, an ability, or the bare fists",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 3, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 3, 2) })
             local k = c.units[1]
-            equip(k.char, { [5] = "iron_sword", [6] = "fire_bomb" })
+            equip(k.char, { [5] = "weapon_iron_sword", [6] = "consumable_fire_bomb" })
             k.char.stats.stamina.current = 99
             local sword, bomb, fists = k.char.inventory[5], k.char.inventory[6], k.char.unarmed
 
             assert(Combat.itemBlockReason(k, sword) == nil, "the sword is usable before the disarm")
 
-            Status.apply(c, k, "disarmed")
+            Status.apply(c, k, "status_disarmed")
             local blocked = Combat.itemBlockReason(k, sword)
             assert(blocked and blocked.reason == "disarmed", "the crafted weapon is refused while disarmed")
             assert(Combat.itemBlockReason(k, bomb) == nil, "a stamina consumable is untouched by disarm")
@@ -148,14 +148,14 @@ return {
     {
         name = "Envenom infuses an adjacent weapon: it gains the poison tag and inflicts Poison on a hit",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("knight", 2, 2) }, { unit("bandit", 3, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 3, 2) })
             local k, bandit = c.units[1], c.units[2]
-            equip(k.char, { [5] = "iron_sword", [4] = "envenom" })
+            equip(k.char, { [5] = "weapon_iron_sword", [4] = "utility_envenom" })
             k.char.stats.stamina.current = 99
             openTurn(c, k)
 
             assert(Combat.useItem(c, k, k.char.inventory[5], 3, 2), "the envenomed sword strikes")
-            assert(Status.get(bandit, "poison"), "the struck foe is left Poisoned by the Envenom aura")
+            assert(Status.get(bandit, "status_poison"), "the struck foe is left Poisoned by the Envenom aura")
         end,
     },
 }

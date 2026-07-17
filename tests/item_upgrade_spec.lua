@@ -12,10 +12,10 @@ return {
     {
         name = "a +n weapon's Power resolves to that level's tuned value, and the name gains a suffix",
         fn = function()
-            local curve = Item.defs.iron_sword.activeAbility.damage -- the per-level list, 0..MAX_LEVEL
+            local curve = Item.defs.weapon_iron_sword.activeAbility.damage -- the per-level list, 0..MAX_LEVEL
             assert(type(curve) == "table", "iron_sword Power is authored as a per-level table")
-            local base = Item.instantiate("iron_sword")            -- level 0
-            local up3 = Item.instantiate("iron_sword", 1, 3)       -- +3
+            local base = Item.instantiate("weapon_iron_sword")            -- level 0
+            local up3 = Item.instantiate("weapon_iron_sword", 1, 3)       -- +3
             assert(base.activeAbility.damage == curve[1], "level 0 resolves the first table entry")
             assert(up3.activeAbility.damage == curve[4], "+3 resolves the level-3 entry (index 4)")
             assert(up3.activeAbility.damage > base.activeAbility.damage, "and it is stronger than the base")
@@ -26,9 +26,9 @@ return {
     {
         name = "a +n armor's defense and resists resolve to their level's tuned values",
         fn = function()
-            local dcurve = Item.defs.chainmail.bonus.defense
-            local rcurve = Item.defs.chainmail.resist.slash
-            local up2 = Item.instantiate("chainmail", 1, 2)
+            local dcurve = Item.defs.armor_chainmail.bonus.defense
+            local rcurve = Item.defs.armor_chainmail.resist.slash
+            local up2 = Item.instantiate("armor_chainmail", 1, 2)
             assert(up2.bonus.defense == dcurve[3], "+2 defense is the level-2 entry (index 3)")
             assert(up2.resist.slash == rcurve[3], "+2 slash resist is the level-2 entry")
             assert(up2.bonus.movement == -1, "a flat magnitude (the movement penalty) does not scale")
@@ -37,10 +37,10 @@ return {
     {
         name = "a shield's Defend brace-defense is tunable and scales with its upgrade level",
         fn = function()
-            local curve = Item.defs.buckler.waitBehavior.defense
+            local curve = Item.defs.armor_buckler.waitBehavior.defense
             assert(type(curve) == "table", "the buckler's brace defense is authored as a per-level table")
-            local base = Item.instantiate("buckler")       -- level 0
-            local up3 = Item.instantiate("buckler", 1, 3)   -- +3
+            local base = Item.instantiate("armor_buckler")       -- level 0
+            local up3 = Item.instantiate("armor_buckler", 1, 3)   -- +3
             assert(base.waitBehavior.defense == curve[1], "level 0 braces the first table entry")
             assert(up3.waitBehavior.defense == curve[4], "+3 braces the level-3 entry (index 4)")
             assert(up3.waitBehavior.defense > base.waitBehavior.defense, "a forged shield braces harder")
@@ -50,8 +50,8 @@ return {
         name = "the level clamps to MAX_LEVEL (10) and a short table holds at its last entry",
         fn = function()
             assert(Item.MAX_LEVEL == 10, "the ceiling is ten")
-            local curve = Item.defs.iron_sword.activeAbility.damage
-            local maxed = Item.instantiate("iron_sword", 1, 99) -- asks past the ceiling
+            local curve = Item.defs.weapon_iron_sword.activeAbility.damage
+            local maxed = Item.instantiate("weapon_iron_sword", 1, 99) -- asks past the ceiling
             assert(maxed.level == 10, "the level is clamped to MAX_LEVEL")
             assert(maxed.activeAbility.damage == curve[#curve], "and Power reads the final tuned entry")
         end,
@@ -59,11 +59,11 @@ return {
     {
         name = "primaryStat leads with the defining magnitude at the current level, with its label",
         fn = function()
-            local v, label = Item.primaryStat(Item.instantiate("iron_sword", 1, 2))
-            assert(label == "Damage" and v == Item.defs.iron_sword.activeAbility.damage[3],
+            local v, label = Item.primaryStat(Item.instantiate("weapon_iron_sword", 1, 2))
+            assert(label == "Damage" and v == Item.defs.weapon_iron_sword.activeAbility.damage[3],
                 "a blade leads with its leveled Damage")
-            local dv, dlabel = Item.primaryStat(Item.instantiate("leather_armor"))
-            assert(dlabel == "Defense" and dv == Item.defs.leather_armor.bonus.defense[1],
+            local dv, dlabel = Item.primaryStat(Item.instantiate("armor_leather_armor"))
+            assert(dlabel == "Defense" and dv == Item.defs.armor_leather_armor.bonus.defense[1],
                 "armor leads with its defense")
         end,
     },
@@ -73,7 +73,7 @@ return {
             local spell = Item.instantiate("ability_fireball")
             assert(Item.isUpgradable(spell), "an ability can be upgraded (at its vendor)")
             assert(not Blacksmith.canForge(spell), "but not at the blacksmith")
-            local sword = Item.instantiate("iron_sword")
+            local sword = Item.instantiate("weapon_iron_sword")
             assert(Blacksmith.canForge(sword), "a weapon is forged at the blacksmith")
         end,
     },
@@ -82,12 +82,12 @@ return {
         fn = function()
             local player = Player.new()
             player.gold = 1000
-            player.materials = { iron_scrap = 10 }
-            local sword = Item.instantiate("iron_sword")
+            player.materials = { material_iron_scrap = 10 }
+            local sword = Item.instantiate("weapon_iron_sword")
 
             local cost = Blacksmith.upgradeCost(sword)
             local gold0 = player.gold
-            local mat0 = player.materials.iron_scrap
+            local mat0 = player.materials.material_iron_scrap
             local matId = next(cost.materials)
 
             local up = Blacksmith.upgrade(player, sword)
@@ -102,7 +102,7 @@ return {
             local player = Player.new()
             player.gold = 0
             player.materials = {}
-            local sword = Item.instantiate("iron_sword")
+            local sword = Item.instantiate("weapon_iron_sword")
             local up, reason = Blacksmith.upgrade(player, sword)
             assert(up == nil and (reason == "gold" or reason == "materials"), "the forge refuses, got " .. tostring(reason))
             assert(player.gold == 0, "and charges nothing")
@@ -138,10 +138,10 @@ return {
             assert(Vendor.priceFor(100, 4) == 300, "+4 is triple the base")
             assert(Vendor.priceFor(nil, 3) == nil, "a never-sold item has no price at any tier")
             -- Sell value is half the leveled shelf price, so a refined consumable is worth more.
-            local base = Item.instantiate("acid_bomb")      -- +0
-            local up2 = Item.instantiate("acid_bomb", 1, 2) -- +2
+            local base = Item.instantiate("consumable_acid_bomb")      -- +0
+            local up2 = Item.instantiate("consumable_acid_bomb", 1, 2) -- +2
             assert(Vendor.sellValue(up2) > Vendor.sellValue(base), "a +2 consumable sells for more than a +0")
-            assert(Vendor.sellValue(up2) == math.floor(Vendor.priceFor(Item.defs.acid_bomb.price, 2) * 0.5),
+            assert(Vendor.sellValue(up2) == math.floor(Vendor.priceFor(Item.defs.consumable_acid_bomb.price, 2) * 0.5),
                 "sell value is half the leveled shelf price")
         end,
     },
@@ -150,22 +150,22 @@ return {
         fn = function()
             local player = Player.new()
             player.gold = 1000
-            assert(Player.recipeLevel(player, "acid_bomb") == 0, "the recipe starts at tier 0")
+            assert(Player.recipeLevel(player, "consumable_acid_bomb") == 0, "the recipe starts at tier 0")
 
             local cost = Vendor.recipeUpgradeCost(0, 1)
-            local level = Vendor.upgradeRecipe(player, "alchemist", "acid_bomb")
+            local level = Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb")
             assert(level == 1, "the recipe rises to +1, got " .. tostring(level))
-            assert(Player.recipeLevel(player, "acid_bomb") == 1, "the tier is stored on the player")
+            assert(Player.recipeLevel(player, "consumable_acid_bomb") == 1, "the tier is stored on the player")
             assert(player.gold == 1000 - cost.gold, "gold was spent (60), no materials")
 
             -- The shelf now lists acid_bomb at the raised tier and its scaled price (repRank 2 -> shown
             -- at higher standing). A purchase would instantiate at this level.
             local found
             for _, e in ipairs(Vendor.stock("alchemist", 4, player.recipes)) do
-                if e.id == "acid_bomb" then found = e end
+                if e.id == "consumable_acid_bomb" then found = e end
             end
             assert(found and found.level == 1, "the shelf lists the refined tier")
-            assert(found.price == Vendor.priceFor(Item.defs.acid_bomb.price, 1), "and at the scaled price")
+            assert(found.price == Vendor.priceFor(Item.defs.consumable_acid_bomb.price, 1), "and at the scaled price")
         end,
     },
     {
@@ -174,21 +174,21 @@ return {
             local player = Player.new()
             player.gold = 1000
             -- Rank 1 (no reputation) unlocks +1/+2; +3 is locked until the standing is earned.
-            assert(Vendor.upgradeRecipe(player, "alchemist", "acid_bomb") == 1)
-            assert(Vendor.upgradeRecipe(player, "alchemist", "acid_bomb") == 2)
-            local up3, reason = Vendor.upgradeRecipe(player, "alchemist", "acid_bomb")
+            assert(Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb") == 1)
+            assert(Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb") == 2)
+            local up3, reason = Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb")
             assert(up3 == nil and reason == "locked", "+3 is locked at rank 1, got " .. tostring(reason))
 
             -- Wrong bench: a vendor that doesn't sell acid can't refine its recipe.
-            local wrong, why = Vendor.upgradeRecipe(player, "arcanum", "acid_bomb")
+            local wrong, why = Vendor.upgradeRecipe(player, "arcanum", "consumable_acid_bomb")
             assert(wrong == nil and why == "class", "the mage vendor won't refine acid, got " .. tostring(why))
 
             -- Broke: no gold, nothing charged, tier unchanged.
             player.gold = 0
             player.recipes = {}
-            local poor, r = Vendor.upgradeRecipe(player, "alchemist", "acid_bomb")
+            local poor, r = Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb")
             assert(poor == nil and r == "gold", "no gold -> refused, got " .. tostring(r))
-            assert(player.gold == 0 and Player.recipeLevel(player, "acid_bomb") == 0, "and nothing changed")
+            assert(player.gold == 0 and Player.recipeLevel(player, "consumable_acid_bomb") == 0, "and nothing changed")
         end,
     },
 }

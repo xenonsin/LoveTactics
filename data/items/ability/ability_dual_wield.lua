@@ -54,7 +54,8 @@ end
 
 return {
     name = "Dual Wield",
-    description = "Swing two adjacent melee weapons at one foe -- each its own blow. Speed cost is theirs, summed.",
+    description = "Swings two adjacent melee weapons at one foe, each its own blow, for their summed speed.",
+    flavor = "A grid built around this hits like everything in it at once, which the Undercroft calls elegance.",
     sprite = "assets/items/ability_dual_wield.png",
     type = "ability",
     tags = { "guile", "physical" },

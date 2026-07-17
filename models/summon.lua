@@ -15,8 +15,8 @@
 --   * summonRemaining -- ticks left before it fades on its own (from opts.duration). Absent on an
 --                 indefinite summon, which stands until it is killed. See Summon.tick.
 --
---   Summon.spawn(combat, caster, "wolf_grunt", x, y, { scaling = { health = 2 }, amount = 10 })
---   Summon.spawn(combat, caster, "fire_elemental", x, y, { duration = 24 })  -- fades on a timer
+--   Summon.spawn(combat, caster, "character_wolf_grunt", x, y, { scaling = { health = 2 }, amount = 10 })
+--   Summon.spawn(combat, caster, "character_fire_elemental", x, y, { duration = 24 })  -- fades on a timer
 --   Summon.copy(combat, caster, x, y, { fragile = true, control = "none", decoy = true })
 --
 -- Being an ordinary unit cuts both ways: a summon ARRIVES on its tile (Combat.enterTile), so an
@@ -111,8 +111,8 @@ end
 -- Summon the character blueprint `charId` onto (x, y), sustained by `summoner`.
 -- opts = {
 --   stats    = { health = 60 },       -- flat overrides of the blueprint's stats
---   items    = { "fangs" },           -- replaces the blueprint's startingItems entirely
---   traits   = { "blood_price" },     -- innate traits the CALL binds to the creature (see below)
+--   items    = { "weapon_fangs" },           -- replaces the blueprint's startingItems entirely
+--   traits   = { "trait_blood_price" },     -- innate traits the CALL binds to the creature (see below)
 --   scaling  = { health = 2 },        -- per-stat multipliers of `amount`, added on top
 --   amount   = 10,                    -- the ability's summon power (fx.amount)
 --   duration = 24,                    -- ticks it stands before fading; omit for an indefinite summon
@@ -207,7 +207,7 @@ function Summon.copy(combat, summoner, x, y, opts)
     -- path unmasks the caster), and a trap under it does exactly that.
     if opts.decoy then unit.decoyOf = summoner end
     -- A decoy must be indistinguishable from the real thing, so it announces nothing; the ability
-    -- fakes a move line of its own (data/items/utility/decoy.lua).
+    -- fakes a move line of its own (data/items/utility/utility_decoy.lua).
     if not opts.decoy then
         Combat.logEvent(combat, "system",
             string.format("%s conjures a double.", summoner.char.name or "Unit"))

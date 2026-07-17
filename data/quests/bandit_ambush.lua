@@ -11,7 +11,7 @@ return {
     rewardRep = 20,
     rewardPrestige = 1,
     -- Forging stock, spent at the Blacksmith to level up gear (models/material.lua).
-    rewardMaterials = { iron_scrap = 3 },
+    rewardMaterials = { material_iron_scrap = 3 },
     requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {
@@ -22,11 +22,11 @@ return {
         objective = {
             name = "Bandit Chief",
             composition = function(ctx)
-                local list = { "bandit_chief" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "bandit" end
+                local list = { "character_bandit_chief" }
+                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_bandit" end
                 return list
             end,
-            win = { type = "assassinate", target = "bandit_chief" },
+            win = { type = "assassinate", target = "character_bandit_chief" },
         },
         keyCount = 0,
     },

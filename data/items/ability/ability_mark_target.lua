@@ -3,7 +3,8 @@
 -- setup, not a strike. Requires an adjacent ranged weapon in the grid.
 return {
     name = "Mark Target",
-    description = "Paint a foe: its defense and magic defense drop. Requires an adjacent ranged weapon.",
+    description = "Inflicts Mark: the foe's defense and magic defense drop. Needs an adjacent ranged weapon.",
+    flavor = "Setup, not a strike. The Lodge has never once confused the two.",
     sprite = "assets/items/ability_mark_target.png",
     type = "ability",
     tags = { "utility" },
@@ -18,7 +19,7 @@ return {
         cost = { stat = "stamina", amount = 4 },
         requiresAdjacent = { type = "weapon", tag = "ranged" },
         effect = function(fx)
-            fx.applyStatus(fx.target, "mark")
+            fx.applyStatus(fx.target, "status_mark")
         end,
     },
 }

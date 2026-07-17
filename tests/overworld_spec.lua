@@ -216,13 +216,13 @@ return {
                 cols = 41, rows = 29, seed = 4, biome = "forest",
                 encounterCount = { min = 6, max = 9 },
                 encounters = { { kind = "combat", weight = 1 } },
-                alwaysEncounters = { { id = "elite", kind = "elite", name = "Phoenix" } },
+                alwaysEncounters = { { id = "encounter_elite", kind = "elite", name = "Phoenix" } },
             })
             local found = false
             for y = 1, grid.rows do
                 for x = 1, grid.cols do
                     local c = grid:get(x, y)
-                    if c.encounter and c.encounter.id == "elite" then found = true end
+                    if c.encounter and c.encounter.id == "encounter_elite" then found = true end
                 end
             end
             assert(found, "guaranteed elite was not placed")

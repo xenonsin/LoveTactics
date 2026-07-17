@@ -4,7 +4,8 @@
 -- firmer ground (the enemy AI reads the sand as hostile and steps around it). A ground-target area cast.
 return {
     name = "Quicksand",
-    description = "Churn an area into quicksand: units within move and act at double the time cost.",
+    description = "Churns an area into quicksand: units within move and act at double the time cost.",
+    flavor = "Pure denial. The Arcanum counts making someone go around as a kind of victory.",
     sprite = "assets/items/ability_quicksand.png",
     type = "ability",
     tags = { "earth", "magical" },
@@ -21,7 +22,7 @@ return {
         effect = function(fx)
             -- A more-forged spell bogs the ground down longer: base 8 ticks, +1 per upgrade level.
             for _, c in ipairs(fx.aoeCells()) do
-                fx.placeHazard(c.x, c.y, "hazard_quicksand", { duration = 8 + fx.level })
+                fx.placeHazard(c.x, c.y, "hazard_quicksand", { duration = 20 + fx.level })
             end
         end,
     },

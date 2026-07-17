@@ -4,7 +4,8 @@
 -- disarm a soldier. Sight-gated, so cover shields a mage from being hushed across the board.
 return {
     name = "Silence",
-    description = "Seal a foe's mana: they cannot cast mana abilities for a time.",
+    description = "Inflicts Silenced: the foe cannot cast mana abilities for a time.",
+    flavor = "It gags a caster. It does not disarm a soldier, and the Cathedral knows the difference.",
     sprite = "assets/items/ability_silence.png",
     type = "ability",
     tags = { "holy" },
@@ -18,7 +19,7 @@ return {
         speed = 4,
         cost = { stat = "mana", amount = 14 },
         effect = function(fx)
-            fx.applyStatus(fx.target, "silenced")
+            fx.applyStatus(fx.target, "status_silenced")
         end,
     },
 }

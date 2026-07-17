@@ -30,7 +30,7 @@ return {
         name = "get() uses the current language, falls back to inline English, and is identity in English",
         fn = function()
             local saved = Locale.current
-            local key, english = "line.wrath_intro.1", "So. Fresh blood ..."
+            local key, english = "line.conversation_wrath_intro.1", "So. Fresh blood ..."
             Locale.set("ja")
             assert(Locale.get(key, english) == Locale.raw(key, "ja"), "ja cell should win over the fallback")
             assert(Locale.get("line.does.not.exist", english) == english, "an untranslated id falls back to English")
@@ -53,8 +53,8 @@ return {
     {
         name = "key builders and languages() report the shared schema and columns",
         fn = function()
-            assert(Locale.key.line("wrath_intro", 3) == "line.wrath_intro.3", "line key")
-            assert(Locale.key.title("wrath_intro") == "title.wrath_intro", "title key")
+            assert(Locale.key.line("conversation_wrath_intro", 3) == "line.conversation_wrath_intro.3", "line key")
+            assert(Locale.key.title("conversation_wrath_intro") == "title.conversation_wrath_intro", "title key")
             assert(Locale.key.name("colosseum") == "name.colosseum", "name key")
             local langs = {}
             for _, l in ipairs(Locale.languages()) do langs[l] = true end

@@ -5,7 +5,8 @@
 -- summon it into a crowd and let the rot do the work.
 return {
     name = "Summon Homunculus",
-    description = "Bind a frail homunculus to the field for a time, one at a time. Reserves a fifth of your maximum mana while it lives.",
+    description = "Binds a frail homunculus for a time. One at a time; reserves a fifth of your max mana.",
+    flavor = "Cheap, expendable, and rotting the entire time. The Crucible built it that way deliberately.",
     sprite = "assets/items/ability_summon_homunculus.png",
     type = "ability",
     tags = { "summon", "poison" },
@@ -18,7 +19,7 @@ return {
         speed = 6,
         reserve = { stat = "mana", percent = 0.2 },
         effect = function(fx)
-            fx.summon("homunculus", fx.tx, fx.ty, {
+            fx.summon("character_homunculus", fx.tx, fx.ty, {
                 scaling = { health = 1, damage = 0.5 },
                 amount = 8 + fx.level, -- base 8, +1 per upgrade level
                 duration = 24,

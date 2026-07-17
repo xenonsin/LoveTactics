@@ -5,7 +5,8 @@
 -- place. Contrast Shadow Step (blink TO a foe): this blinks AWAY after striking. Scales with attack.
 return {
     name = "Shadow Strike",
-    description = "Strike an adjacent foe, then blink back to where your turn began.",
+    description = "Strikes an adjacent foe, then blinks back to where your turn began.",
+    flavor = "Move up, cut, and be elsewhere. Nobody in the Undercroft calls that cowardice.",
     sprite = "assets/items/ability_shadow_strike.png",
     type = "ability",
     tags = { "guile", "physical" },

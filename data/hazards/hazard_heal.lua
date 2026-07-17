@@ -8,7 +8,7 @@ return {
     description = "Hallowed ground: grants Regeneration to allies who stand within.",
     sprite = "assets/hazards/sanctuary.png",
     tags = { "holy" },
-    duration = 4,
+    duration = 15, -- ticks the hallowed ground lingers: ~3 turns at Status.TICKS_PER_TURN
     disposition = "friendly", -- a hurt unit of the caster's side will step onto it
     onEnter = function(ctx)
         if not ctx.isAlly(ctx.unit) then return end
@@ -16,6 +16,6 @@ return {
         -- Sanctuary as its source automatically, and ends the moment the unit steps off the hallowed
         -- ground or the ground itself fades. ctx.amount (the Sanctuary item's level-scaled heal) sets
         -- how much it mends; nil falls back to regen's own.
-        ctx.applyStatus(ctx.unit, "regen", { magnitude = ctx.amount })
+        ctx.applyStatus(ctx.unit, "status_regen", { magnitude = ctx.amount })
     end,
 }

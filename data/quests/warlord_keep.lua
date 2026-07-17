@@ -10,15 +10,15 @@ return {
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {
         biome = "castle",
-        encounters = { min = 10, max = 14, always = { "elite", "elite" } },
+        encounters = { min = 10, max = 14, always = { "encounter_elite", "encounter_elite" } },
         objective = {
             name = "The Warlord",
             composition = function(ctx)
-                local list = { "warlord" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "champion" end
+                local list = { "character_warlord" }
+                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_champion" end
                 return list
             end,
-            win = { type = "assassinate", target = "warlord" },
+            win = { type = "assassinate", target = "character_warlord" },
         },
         keyCount = 2,
     },
