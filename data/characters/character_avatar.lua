@@ -10,8 +10,8 @@
 -- states/prologue.lua's begin).
 return {
     name = "Stranger",
-    sprite = "assets/chars/avatar_f.png", -- default; overridden by the chosen gender at creation
-    portrait = "assets/portraits/avatar_f.png",
+    sprite = "assets/chars/avatar_1.png", -- default; overridden by the chosen body at creation
+    portrait = "assets/portraits/avatar_1.png",
     stats = {
         health = 90, mana = 10, stamina = 60,
         staminaRegen = 2,

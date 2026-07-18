@@ -1,18 +1,18 @@
 -- The prologue: Act 0, the first-time experience (see docs/story.md, "The three acts"). A linear
--- sequence of beats -- scenes, tutorial battles, an overworld leg, the name prompt, the debut bout --
--- that ends by opening the hub (Act 1). It builds the party through play: the created avatar starts
--- alone, Rowan (the knight) is sworn in the burning village, and Saber (the gladiator) is bested on
--- the Colosseum's sand and joins.
+-- sequence of beats -- scenes, tutorial battles, an overworld leg, the debut bout -- that ends by
+-- opening the hub (Act 1). It builds the party through play: the created avatar starts alone, Rowan
+-- (the knight) is sworn in the burning village, and Saber (the gladiator) is bested on the
+-- Colosseum's sand and joins. The avatar's body and NAME are both chosen before this state runs
+-- (states/character_creation.lua); `begin` reads them off Player.active.
 --
 -- Structure: `beats` is an ordered list of thunks. `next` runs the next one; each beat eventually
--- calls `next` again (a scene on its onDone, the name prompt on submit, an `action` immediately). The
--- two beats that leave this state -- a battle (states.battle) and the overworld (states.game) -- can't
--- call `next` from here, so on their win they set `pendingAdvance` and switch back; `enter` sees the
--- flag and advances. A loss drops to the menu (the run is lost).
+-- calls `next` again (a scene on its onDone, an `action` immediately). The two beats that leave this
+-- state -- a battle (states.battle) and the overworld (states.game) -- can't call `next` from here, so
+-- on their win they set `pendingAdvance` and switch back; `enter` sees the flag and advances. A loss
+-- drops to the menu (the run is lost).
 --
--- This state is only ever the *visible* one during the name prompt (it hosts the widget) and, dimmed,
--- behind a conversation overlay; a battle or the overworld take over the screen themselves. So its own
--- draw is a plain backdrop plus, in name mode, the name-entry widget.
+-- This state is only ever visible dimmed, behind a conversation overlay; a battle or the overworld
+-- take over the screen themselves. So its own draw is a plain backdrop and it takes no input.
 
 local State = require("states")
 local Scale = require("scale")
@@ -25,9 +25,15 @@ local prologue = {}
 -- Beat content
 -- ---------------------------------------------------------------------------
 
--- The village defense: three weak demons, avatar + Rowan. The first fight anyone sees.
+-- The village defense: three weak demons, avatar + Rowan. The first fight anyone sees -- so it is
+-- also the one that teaches the game. `tutorial` hands states/battle.lua a lesson to enforce
+-- (data/tutorials/village.lua): Rowan speaks over her own head, the board accepts only the action she
+-- just asked for, and she runs her own authored turns rather than the player's hands. That lesson
+-- names exact tiles, so `layout` pins the board it was authored against instead of rolling one.
 local VILLAGE_MAP = {
     biome = "forest",
+    layout = "tutorial_village",
+    tutorial = "village",
     objective = {
         name = "Defend the Village",
         composition = function() return { "character_demon_grunt", "character_demon_grunt", "character_demon_grunt" } end,
@@ -35,6 +41,10 @@ local VILLAGE_MAP = {
     },
     keyCount = 0,
 }
+
+-- Exported so tests/prologue_spec.lua can pin the tutorial wiring rather than trust a pair of ids
+-- typed into two different files.
+prologue.VILLAGE_MAP = VILLAGE_MAP
 
 -- The flight to the capital: a short, real overworld leg (states.game) in the forest, introducing the
 -- map and its encounter kinds, with a bandit ambush as the objective.
@@ -79,6 +89,7 @@ function prologue.runBattle(map, onWinExtra)
         party = p.party,
         stash = p.stash,
         quest = { map = map },
+        tutorial = map.tutorial, -- nil for every fight but the village one
         onWin = function()
             if onWinExtra then onWinExtra() end
             prologue.resume()
@@ -105,20 +116,6 @@ local function completeArenaDebut()
     Quest.complete(Player.active, quest)
 end
 
--- Open the name-entry widget; on submit, write the typed name onto the avatar instance and advance.
-function prologue.startNameEntry()
-    prologue.mode = "name"
-    prologue.nameWidget = require("ui.name_entry").new({
-        prompt = "The crowd waits. What name will they roar?",
-        onSubmit = function(name)
-            if prologue.avatar then prologue.avatar.name = name end
-            prologue.mode = nil
-            prologue.nameWidget = nil
-            prologue.next()
-        end,
-    })
-end
-
 -- ---------------------------------------------------------------------------
 -- Beat thunk builders
 -- ---------------------------------------------------------------------------
@@ -139,10 +136,6 @@ local function overworld(quest)
     return function() prologue.runOverworld(quest) end
 end
 
-local function nameEntry()
-    return function() prologue.startNameEntry() end
-end
-
 -- ---------------------------------------------------------------------------
 -- Sequencer
 -- ---------------------------------------------------------------------------
@@ -157,7 +150,6 @@ local function buildBeats()
         overworld(FLIGHT_QUEST),
         scene("prologue_arrival"),
         scene("prologue_arena"),
-        nameEntry(),
         battle(require("models.quest").defs["arena_debut"].map, function()
             completeArenaDebut()
             Player.recruit(Player.active, "character_saber") -- bested, then kept
@@ -172,20 +164,22 @@ function prologue.next()
     if beat then beat() else State.switch(require("states.hub")) end
 end
 
--- First entry of a New Game: build the avatar from the chosen gender, reset the roster/party to just
--- the avatar (the party is earned through play), and start the beats.
+-- First entry of a New Game: build the avatar from the body and name chosen at character creation,
+-- reset the roster/party to just the avatar (the party is earned through play), and start the beats.
 function prologue.begin()
     local p = Player.active
     local avatar = Character.instantiate("character_avatar")
-    local male = p and p.gender == "M"
-    avatar.sprite = male and "assets/chars/avatar_m.png" or "assets/chars/avatar_f.png"
-    avatar.portrait = male and "assets/portraits/avatar_m.png" or "assets/portraits/avatar_f.png"
+    local body = (p and p.body == 2) and 2 or 1 -- body 1 is the default if creation was skipped
+    avatar.sprite = "assets/chars/avatar_" .. body .. ".png"
+    avatar.portrait = "assets/portraits/avatar_" .. body .. ".png"
+    -- The name is typed at creation, so the avatar is named before the first line is spoken --
+    -- Rowan is sworn to you and has to be able to say it. Falls back to the blueprint's "Stranger".
+    if p and p.name then avatar.name = p.name end
     prologue.avatar = avatar
     p.roster = { avatar }
     p.party = { avatar }
     prologue.beats = buildBeats()
     prologue.cursor = 0
-    prologue.mode = nil
     prologue.next()
 end
 
@@ -201,47 +195,16 @@ function prologue.enter()
 end
 
 -- ---------------------------------------------------------------------------
--- Callbacks (only interactive during the name prompt; a plain backdrop otherwise)
+-- Callbacks
 -- ---------------------------------------------------------------------------
 
-function prologue.update(dt)
-    if prologue.mode == "name" and prologue.nameWidget then prologue.nameWidget:update(dt) end
-end
-
+-- This state never owns interactive UI of its own: every beat either plays a conversation overlay
+-- (which takes input itself) or hands the screen to a battle/the overworld. So all it draws is the
+-- backdrop those overlays sit against, and it takes no input.
 function prologue.draw()
-    -- A plain dark backdrop. During a scene this sits (dimmed) behind the conversation overlay; the
-    -- name prompt draws its own full screen on top. Battles and the overworld own the screen themselves.
     love.graphics.setColor(0.06, 0.06, 0.09)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
-    if prologue.mode == "name" and prologue.nameWidget then
-        prologue.nameWidget:draw()
-    end
     love.graphics.setColor(1, 1, 1)
-end
-
-function prologue.keypressed(key)
-    if prologue.mode == "name" and prologue.nameWidget then prologue.nameWidget:keypressed(key) end
-end
-
-function prologue.textinput(t)
-    if prologue.mode == "name" and prologue.nameWidget then prologue.nameWidget:textinput(t) end
-end
-
-function prologue.mousemoved(x, y)
-    if prologue.mode == "name" and prologue.nameWidget then prologue.nameWidget:mousemoved(x, y) end
-end
-
-function prologue.mousepressed(x, y, button)
-    if prologue.mode == "name" and prologue.nameWidget then prologue.nameWidget:mousepressed(x, y, button) end
-end
-
-function prologue:cursorKind(x, y)
-    if prologue.mode == "name" and prologue.nameWidget then return prologue.nameWidget:cursorKind(x, y) end
-    return "arrow"
-end
-
-function prologue.gamepadpressed(joystick, button)
-    if prologue.mode == "name" and prologue.nameWidget then prologue.nameWidget:gamepadpressed(joystick, button) end
 end
 
 return prologue

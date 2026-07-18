@@ -127,13 +127,11 @@ end
 
 -- An entry's (a node's or a choice's) display text. The author writes only inline English; the
 -- extraction tool stamps a stable `tag`, and translations live under "line.<conv>.<tag>". At runtime
--- the current language's translation (keyed by that id) is used, falling back to the inline English.
+-- the current language's translation (keyed by that id) is used, falling back to the inline English,
+-- with `{name}` substituted after. The rule itself lives in Locale.text -- the tutorial's speech
+-- bubble renders authored lines too, and both must resolve them identically.
 function Dialogue:textOf(entry)
-    if not entry then return "" end
-    if entry.tag ~= nil then
-        return Locale.get(Locale.key.line(self.convId, entry.tag), entry.text or "")
-    end
-    return entry.text or ""
+    return Locale.text(self.convId, entry)
 end
 
 -- Begin (or restart) the current node: reset the typewriter and any choice selection.

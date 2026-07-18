@@ -167,12 +167,22 @@ end
 -- { procedural, curated_1, ... }, so curated maps are mixed in rather than always
 -- preferred, and a fresh procedural map stays a live outcome. Deterministic off the
 -- seed (curated entries are sorted by id so the pick is stable across runs).
+--
+-- Two escapes from the pool, for a fight authored against a specific board (the prologue's
+-- tutorial): `spec.layout` names one outright, and a layout marked `fixed` is excluded from the
+-- random pool -- otherwise dropping a scripted map into data/arenas/ would make ordinary fights of
+-- its biome roll it, and its authored coordinates mean nothing outside the scene that wrote them.
 function Arena.pickLayout(spec, partyCount, enemyCount)
+    local forced = spec.layout and Arena.defs[spec.layout]
+    if forced then return hydrateLayout(forced) end
+
     local rng = love.math.newRandomGenerator(spec.seed or os.time())
 
     local curated = {}
     for id, def in pairs(Arena.defs) do
-        if def.biome == spec.biome then curated[#curated + 1] = { id = id, def = def } end
+        if def.biome == spec.biome and not def.fixed then
+            curated[#curated + 1] = { id = id, def = def }
+        end
     end
     table.sort(curated, function(a, b) return a.id < b.id end)
 

@@ -8,10 +8,12 @@ local Player = require("models.player")
 local Quest = require("models.quest")
 local Conversation = require("models.conversation")
 
--- Every conversation the prologue plays, in order.
+-- Every conversation the prologue plays, in order. `tutorial_village` is not played as a scene --
+-- it is the village fight's speech-bubble text (models/tutorial.lua) -- but it lives in the same
+-- folder and must resolve like any other.
 local PROLOGUE_SCENES = {
     "prologue_intro", "prologue_flee", "prologue_arrival",
-    "prologue_arena", "prologue_victory",
+    "prologue_arena", "prologue_victory", "tutorial_village",
 }
 
 return {
@@ -48,7 +50,7 @@ return {
         name = "the avatar can be named, and the name is what the roster shows",
         fn = function()
             local avatar = Character.instantiate("character_avatar")
-            avatar.name = "Wend" -- what prologue.startNameEntry writes on submit
+            avatar.name = "Wend" -- what prologue.begin copies off Player.active.name
             assert(avatar.name == "Wend", "the typed name lands on the instance")
         end,
     },
@@ -62,6 +64,30 @@ return {
             for _, id in ipairs(list) do if id == "character_saber" then hasSaber = true end end
             assert(hasSaber, "the debut objective fields Saber")
             assert(def.map.objective.win.type == "killAll", "the debut is a killAll bout")
+        end,
+    },
+    {
+        name = "the village fight fields the tutorial, on the board the tutorial was authored for",
+        fn = function()
+            local prologue = require("states.prologue")
+            local map = prologue.VILLAGE_MAP
+            assert(map.tutorial == "village", "the first fight runs the village lesson")
+            assert(map.layout == "tutorial_village", "on a pinned board, not a rolled one")
+            assert(require("models.tutorial").defs[map.tutorial], "the named tutorial exists")
+            assert(require("models.arena").defs[map.layout], "the named board exists")
+        end,
+    },
+    {
+        name = "the avatar leads the party and Rowan follows -- the order the tutorial's spawns assume",
+        fn = function()
+            -- data/arenas/tutorial_village.lua binds partySpawns in party order, so the avatar takes
+            -- slot 1 and Rowan slot 2. The whole lesson's authored cells rest on that pairing.
+            local p = Player.new()
+            p.roster = { Character.instantiate("character_avatar") } -- mirrors prologue.begin
+            p.party = { p.roster[1] }
+            Player.recruit(p, "character_knight")
+            assert(p.party[1].id == "character_avatar", "the avatar holds the first spawn")
+            assert(p.party[2].id == "character_knight", "Rowan holds the second")
         end,
     },
     {

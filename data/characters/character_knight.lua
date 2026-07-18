@@ -1,7 +1,9 @@
 -- Rowan, the knight companion (diligence) and the player's FIRST recruit -- she rallies to defend
 -- the burning village, fights at your shoulder, and when it is ash she swears her broken oath anew
 -- to you (states/prologue.lua). She is the foil to sloth, whose general is the oath abandoned; Rowan
--- is the oath kept. See docs/story.md, "The other seven": a woman, a grounded gender-neutral name,
+-- is the oath kept. The oath makes her the player's bodyguard and mentor: she guards the body she
+-- swore to and teaches the trade she already knows, so hers is the voice that warns and explains and
+-- the body that steps in front. See docs/story.md, "The other seven": a woman, a gender-neutral name,
 -- the virtue shown in how she fights (the wall that holds its post), never labeled. Keeps the
 -- blueprint id `character_knight`; only her display name is a proper one now.
 return {

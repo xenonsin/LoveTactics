@@ -79,4 +79,32 @@ Locale.key = {
     name = function(id) return "name." .. id end,
 }
 
+-- Substitute the runtime tokens an authored line may carry. Only one so far: `{name}`, the name the
+-- player typed at character creation, so a companion can address the avatar directly (Rowan is sworn
+-- to you and calls you by it from the first scene). Runs AFTER localization on purpose -- the token
+-- travels through the translated string, so a translator moves it to wherever their grammar wants
+-- it. An unset name falls back to the avatar blueprint's "Stranger".
+--
+-- Lives here, beside the key schema, because it is the OTHER half of the text-resolution rule and
+-- more than one surface renders authored lines now (the dialogue box and the tutorial's speech
+-- bubble). A second copy of the token spelling is exactly the drift docs/localization.md warns about.
+-- Required lazily so this module stays a plain data require under the headless tests.
+function Locale.substitute(text)
+    if not text:find("{name}", 1, true) then return text end
+    local p = require("models.player").active
+    return (text:gsub("{name}", (p and p.name) or "Stranger"))
+end
+
+-- An authored entry's display text: the current language's translation (keyed by the stable `tag`
+-- the extraction tool stamped) falling back to the inline English, with runtime tokens substituted.
+-- `entry` is a conversation node or choice. Accepts both the authored shape -- { "speaker", "text" },
+-- where the line is positional -- and the normalized `text =` one, since callers reach it from either
+-- side of ui/dialogue.lua's normalization (the same `n.text or n[2]` the extraction tool reads).
+function Locale.text(convId, entry)
+    if not entry then return "" end
+    local english = entry.text or entry[2] or ""
+    if entry.tag == nil then return Locale.substitute(english) end
+    return Locale.substitute(Locale.get(Locale.key.line(convId, entry.tag), english))
+end
+
 return Locale

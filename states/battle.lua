@@ -31,6 +31,9 @@ local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local Status = require("models.status")
 local EncounterModel = require("models.encounter")
+local Tutorial = require("models.tutorial")
+local TutorialPrompt = require("ui.tutorial_prompt")
+local CoachBubble = require("ui.coach_bubble")
 
 local battle = {}
 
@@ -116,6 +119,10 @@ end
 -- blueprint; the objective tile reads the quest's `map.objective`.
 local function specFor(opts, partyIds, seed)
     local spec = { biome = opts.biome, party = partyIds, seed = seed }
+    -- A quest may name the exact board to fight on instead of rolling one (the prologue's tutorial,
+    -- whose lesson is authored against specific tiles). Nil everywhere else, so ordinary fights keep
+    -- their random pick. See Arena.pickLayout.
+    spec.layout = opts.quest and opts.quest.map and opts.quest.map.layout
     local enc = opts.encounter or {}
     if enc.kind == "objective" then
         local obj = (opts.quest and opts.quest.map and opts.quest.map.objective) or {}
@@ -163,6 +170,32 @@ local function lose()
     if battle.onLoss then battle.onLoss() end
 end
 
+-- Narrow one of the overlay sets to what a running tutorial permits, or hand it back untouched when
+-- no tutorial is running (every ordinary battle). `kind` is "move" or "attack".
+--
+-- This is the whole shape of the guided battle's gate, and it is deliberately a FILTER over the sets
+-- rather than a veto on clicks: confirm, armedActionAt, tryDefaultAction and actionPreviewFor all key
+-- off these same sets, so a tile the lesson didn't ask for simply isn't a legal action anywhere.
+-- Highlight, cursor glyph, preview tooltip and click agree for free, on mouse, keyboard and pad
+-- alike, with no per-path conditionals. See models/tutorial.lua.
+-- The ordered list and the keyed set are filtered INDEPENDENTLY, not one from the other: the keyed
+-- sets deliberately span more ground than the lists they accompany (attackReach covers targets
+-- standing inside the blue move band, which threatCells omits so the two overlays don't stack), so
+-- rebuilding one from the other would quietly drop legal targets.
+local function narrow(kind, cells, keyed)
+    if not battle.tutorial then return cells, keyed end
+    local keptCells, keptKeyed = {}, {}
+    for _, c in ipairs(cells) do
+        if Tutorial.allowsCell(battle.tutorial, kind, c.x, c.y) then
+            keptCells[#keptCells + 1] = c
+        end
+    end
+    for k, cell in pairs(keyed) do
+        if Tutorial.allowsCell(battle.tutorial, kind, cell.x, cell.y) then keptKeyed[k] = cell end
+    end
+    return keptCells, keptKeyed
+end
+
 -- Reachable tiles for the current unit (blue move highlights + move validity). A rooted unit
 -- (a movement-blocking status) can't move this turn, so its reachable set is empty -- it can
 -- still attack from where it stands.
@@ -187,7 +220,7 @@ local function computeReachable(unit)
     for _, node in pairs(battle.reachable) do
         cells[#cells + 1] = { x = node.x, y = node.y }
     end
-    battle.moveCells = cells
+    battle.moveCells, battle.reachable = narrow("move", cells, battle.reachable)
 end
 
 -- The route the current unit will walk to the cursor tile: `battle.movePath = { cells, cost }`, or
@@ -319,7 +352,7 @@ local function computeRange(unit, item)
             battle.rangeReach[k] = cell
         end
     end
-    battle.rangeCells = cells
+    battle.rangeCells, battle.rangeReach = narrow("attack", cells, battle.rangeReach)
 end
 
 -- The blast footprint an AoE ability would cover if fired at cell (cx, cy): the cells
@@ -378,7 +411,7 @@ local function computeThreat(unit)
             end
         end
     end
-    battle.threatCells = cells
+    battle.threatCells, battle.attackReach = narrow("attack", cells, battle.attackReach)
 end
 
 -- The reach a single unit threatens THIS turn with its default weapon: its walk-and-strike band,
@@ -464,6 +497,10 @@ end
 -- battle.defaultAction/defaultSupport (computeThreat set them just before). A default the unit can't
 -- afford right now, or a bare-handed unit with no ability at all, simply starts disarmed (move mode).
 local function armDefaultAction(current)
+    -- A tutorial step whose whole lesson is "ready your weapon" has to start with it sheathed --
+    -- otherwise the step is satisfied before the player touches anything, and the click it is asking
+    -- for would disarm instead of arm.
+    if battle.tutorial and Tutorial.suppressesAutoArm(battle.tutorial) then return end
     local action = battle.defaultAction
     if not (action and action.activeAbility) then return end
     if Combat.itemBlockReason(current, action) then return end
@@ -480,6 +517,19 @@ end
 local function beginTurn()
     local current = Combat.startTurn(battle.combat)
     battle.current = current
+    -- Square a running lesson with a board that moved on: a step whose target died (to Rowan's own
+    -- strike, a trap, an overwatch shot) is skipped, and a step whose actor died abandons the lesson
+    -- outright. The latter is the one that matters -- Combat.evaluate only calls a loss when EVERY
+    -- party unit is down, so the avatar can fall while Rowan fights on, and without this the gate
+    -- would hold a fight nobody could play.
+    if battle.tutorial then
+        Tutorial.reconcile(battle.tutorial, function(charId)
+            for _, u in ipairs(battle.combat.units) do
+                if u.alive and u.char.id == charId then return true end
+            end
+            return false
+        end)
+    end
     battle.mode = "move"
     battle.armedItem = nil
     battle.hoverItem = nil
@@ -569,6 +619,35 @@ local function notify(text)
     battle.notice = { text = text, life = NOTICE_LIFE }
 end
 
+-- Is a running tutorial refusing this kind of action right now? Announces the lesson's nudge through
+-- the same notice banner every other refusal uses, so a dead click always explains itself. Always
+-- false in an ordinary battle (no tutorial), and false again once the lesson finishes -- the gate
+-- must never outlive it. Guards the discrete verbs; the cell-based ones are refused structurally by
+-- `narrow` above.
+local function tutorialRefuses(kind)
+    if not battle.tutorial or Tutorial.allows(battle.tutorial, kind) then return false end
+    -- The nudge goes through the mentor's own panel rather than the generic notice banner: she is
+    -- already on screen saying what to do, so the correction belongs in her mouth, and the banner
+    -- would land on top of her panel besides. Ages out on its own timer (battle.update), after which
+    -- the panel falls back to the step's standing instruction.
+    battle.tutorialNudge = { text = Tutorial.nudge(battle.tutorial), life = NOTICE_LIFE }
+    return true
+end
+
+-- Tell a running tutorial that `unit` just committed an action, so it can advance to the next step
+-- when that was the one being asked for. Called at the handful of points where an action actually
+-- resolves rather than in advanceTurn, because that is where the target is still known: a strike
+-- that kills leaves nothing on the cell for a later lookup to find.
+--
+-- Events that don't match the current step are ignored by the model, so this can be called freely --
+-- there is no need to work out here whether the lesson cares.
+local function observeAction(kind, unit, x, y, targetId, itemId)
+    if not battle.tutorial then return end
+    Tutorial.observe(battle.tutorial, {
+        kind = kind, actor = unit.char.id, x = x, y = y, target = targetId, item = itemId,
+    })
+end
+
 -- Refuse `item` for `unit` if anything blocks it, announcing the reason. Returns true when the
 -- action was blocked (the caller should bail), false when it may proceed.
 local function refuseIfBlocked(unit, item)
@@ -649,6 +728,13 @@ end
 local function armItem(item)
     local current = battle.current
     if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
+    if tutorialRefuses("arm") then return end
+    -- A step that names an item admits only that one: "ready your sword" is not satisfied by the
+    -- torch. Same nudge, same banner-free path as the coarse refusal above.
+    if battle.tutorial and item and not Tutorial.allowsItem(battle.tutorial, item.id) then
+        battle.tutorialNudge = { text = Tutorial.nudge(battle.tutorial), life = NOTICE_LIFE }
+        return
+    end
     if item and item.moveBehavior and item.moveBehavior.mode == "teleport" then
         toggleBlink(current)
         return
@@ -665,6 +751,10 @@ local function armItem(item)
     -- Friendly abilities (heal / buff) highlight green; offensive strikes and trap placements red.
     battle.armedSupport = Combat.isSupportAbility(item.activeAbility)
     battle.armedTile = item.activeAbility.target == "tile" -- tile-target (e.g. summon a trap)
+    -- Observed BEFORE the range is built: arming may complete a tutorial step, and computeRange
+    -- narrows against whatever step is current -- so the strike band that this arming just unlocked
+    -- has to be computed under the NEW step, not the arm step that is now finished.
+    observeAction("arm", current, current.x, current.y, nil, item.id)
     computeRange(current, item)
 end
 
@@ -680,6 +770,7 @@ end
 local function cycleAbilityItem()
     local current = battle.current
     if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
+    if tutorialRefuses("arm") then return end
     local items = Combat.abilityItems(current.char)
     if #items == 0 then return end
     local idx = 0
@@ -706,8 +797,14 @@ local function tryDefaultAction(unit, tx, ty)
     -- requirement. Bail before moving (unarmed is free and requires nothing, so this only guards
     -- real weapons), and say why -- this click aimed at a foe, so a silent no-op reads as a bug.
     if refuseIfBlocked(unit, weapon) then return end
+    -- Who is being struck, read before the blow lands: a lethal hit clears the cell, and the tutorial
+    -- needs the id to know whether this was the demon it asked for.
+    local victim = Combat.unitAt(battle.combat, tx, ty)
     local function strike()
-        if Combat.useItem(battle.combat, unit, weapon, tx, ty) then advanceTurn() end
+        if Combat.useItem(battle.combat, unit, weapon, tx, ty) then
+            observeAction("attack", unit, tx, ty, victim and victim.char.id)
+            advanceTurn()
+        end
     end
     if entry.fromX ~= unit.x or entry.fromY ~= unit.y then
         if Combat.hasMoved(battle.combat) then return end -- can't move twice in a turn
@@ -973,7 +1070,15 @@ local function confirm()
                 -- lethal trap has no turn left to take.
                 local mp = movePathTo(cx, cy)
                 startWalk(current, cx, cy, function()
-                    if current.alive then computeThreat(current) computeDanger() else advanceTurn() end
+                    if not current.alive then advanceTurn() return end
+                    -- A bare move does not end the turn, so it never reaches advanceTurn -- the
+                    -- tutorial hears about it here instead. Observed BEFORE the bands are rebuilt so
+                    -- they come back narrowed for the step this move just unlocked. Note the move
+                    -- band is deliberately NOT recomputed: startWalk cleared it, and a unit gets one
+                    -- move per turn.
+                    observeAction("move", current, current.x, current.y)
+                    computeThreat(current)
+                    computeDanger()
                 end, mp and mp.cells)
             end
         end
@@ -987,6 +1092,11 @@ local function confirm()
             if Combat.hasMoved(battle.combat) then return end
             startWalk(current, plan.x, plan.y, function()
                 if not current.alive then advanceTurn() return end
+                -- Same bare move as the move-mode branch, and it reaches here far more often than
+                -- that one does: armDefaultAction arms the default weapon at the start of every turn,
+                -- so a plain "walk onto that tile" is normally a reposition in armed mode. The
+                -- tutorial has to hear about it from both paths or its move lesson never completes.
+                observeAction("move", current, current.x, current.y)
                 computeThreat(current) computeDanger() computeRange(current, item)
             end, plan.cells)
             return
@@ -996,8 +1106,12 @@ local function confirm()
         -- hasn't moved yet), following the steered route when one is drawn, then cast from where the
         -- approach left off. rangeReach spans the whole armed reach.
         local entry = plan.entry
+        local victim = Combat.unitAt(battle.combat, cx, cy) -- read before the cast clears the cell
         local function cast()
-            if Combat.useItem(battle.combat, current, item, cx, cy) then advanceTurn() end
+            if Combat.useItem(battle.combat, current, item, cx, cy) then
+                observeAction("attack", current, cx, cy, victim and victim.char.id)
+                advanceTurn()
+            end
         end
         if entry.fromX ~= current.x or entry.fromY ~= current.y then
             if Combat.hasMoved(battle.combat) then return end -- can't move twice in a turn
@@ -1016,12 +1130,39 @@ end
 local function waitTurn()
     local current = battle.current
     if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
+    if tutorialRefuses("wait") then return end
     local kind = Combat.waitBehavior(current).kind
     local action = (kind == "focus" and Combat.focus)
         or (kind == "defend" and Combat.defend)
         or (kind == "overwatch" and Combat.overwatch)
         or Combat.wait
-    if action(battle.combat, current) then advanceTurn() end
+    if action(battle.combat, current) then
+        observeAction("wait", current, current.x, current.y)
+        advanceTurn()
+    end
+end
+
+-- A tutorial's authored turn for this unit, translated into the same { move, item, tx, ty } plan
+-- shape planEnemyAction returns -- so a hand-scripted mentor and an ordinary enemy travel the exact
+-- same walk-then-act path below, with no second execution route to keep in step.
+--
+-- Returns nil (and the caller falls back to the AI) when the unit isn't scripted, when its queue has
+-- run dry, or when the authored strike cell no longer holds a living foe. That last case is why the
+-- weapon lookup lives here rather than in models/tutorial.lua: the lesson is pure data and knows
+-- nothing of the board, so the check for whether its script still makes sense belongs on this side.
+local function scriptedAction(unit)
+    if not battle.tutorial then return nil end
+    local entry = Tutorial.scriptFor(battle.tutorial, unit.char.id)
+    if not entry then return nil end
+    local act = { move = entry.move }
+    if entry.strike then
+        local target = Combat.unitAt(battle.combat, entry.strike.x, entry.strike.y)
+        if target and target.alive and target.side ~= unit.side then
+            act.item = Combat.defaultWeapon(unit.char)
+            act.tx, act.ty = entry.strike.x, entry.strike.y
+        end
+    end
+    return act
 end
 
 -- Resolve a turn the player doesn't drive: an AI unit plans and acts, while an inert one (a decoy,
@@ -1035,7 +1176,7 @@ local function executeEnemyAction()
         advanceTurn()
         return
     end
-    local act = Combat.planEnemyAction(battle.combat, current)
+    local act = scriptedAction(current) or Combat.planEnemyAction(battle.combat, current)
     -- The plan aims from the tile the unit walks to, so the action waits for the walk to finish.
     local function act_()
         if not current.alive then advanceTurn() return end -- cut down on the approach
@@ -1098,6 +1239,17 @@ local function refreshView()
     local current = battle.current
     if not current then return end
     local isParty = Combat.isPlayerControlled(current) and not battle.over
+
+    -- Hold the weapon sheathed for as long as a tutorial step is asking the player to draw it. The
+    -- guard in armDefaultAction only covers the START of a turn, and the arming lesson is reached
+    -- MID-turn (the move that precedes it doesn't end the turn) -- by which point the turn-start
+    -- auto-arm has long since drawn the sword, and the click being taught would sheathe it instead.
+    -- Checked every frame rather than at the one advancement point, so it holds no matter which
+    -- path arrives at the step. Arming clears the step before the next frame, so this never fights
+    -- the player's own click.
+    if battle.tutorial and battle.armedItem and Tutorial.suppressesAutoArm(battle.tutorial) then
+        cancelArm()
+    end
 
     -- Keep the steerable move-route preview fresh. It runs in move mode AND armed mode: while an
     -- item is armed the player steers the same Advance-Wars route to a chosen stand tile, then aims
@@ -1422,6 +1574,12 @@ function battle.enter(self, opts)
         partyById[char.id] = char
     end
 
+    -- A guided fight (the prologue's village defense) runs a lesson over the top of the ordinary
+    -- battle: it speaks over one unit's head, narrows the board to the action it is asking for, and
+    -- drives the units it names itself. Nil in every other battle, which is what every hook below
+    -- tests for. See models/tutorial.lua.
+    battle.tutorial = opts.tutorial and Tutorial.new(opts.tutorial) or nil
+
     local seed = os.time() + math.floor(((love.timer and love.timer.getTime()) or 0) * 1000) % 100000
     local ctx = { prestige = opts.prestige or 1, biome = opts.biome, quest = opts.quest }
     battle.arena = Arena.build(ctx, specFor(opts, partyIds, seed))
@@ -1429,7 +1587,14 @@ function battle.enter(self, opts)
     -- Combat unit lists: { char = <instance>, x, y }.
     battle.partyUnits, battle.enemyUnits = {}, {}
     for _, u in ipairs(battle.arena.party) do
-        battle.partyUnits[#battle.partyUnits + 1] = { char = partyById[u.id], x = u.x, y = u.y }
+        -- A tutorial may take a party member out of the player's hands (the mentor demonstrating the
+        -- lesson she just gave). Combat.new already honours a per-unit control override on the party
+        -- side -- the same seam escorted allies use -- so she stays a party unit for the objective
+        -- and the turn order, and simply isn't player-controlled.
+        battle.partyUnits[#battle.partyUnits + 1] = {
+            char = partyById[u.id], x = u.x, y = u.y,
+            control = battle.tutorial and Tutorial.controlFor(battle.tutorial, u.id) or nil,
+        }
     end
     -- Escorted allies fight on the party's side but are not the player's characters (they
     -- are not in partyById), so they get fresh instances and run themselves. A `protect`
@@ -1486,6 +1651,11 @@ function battle.update(dt)
         battle.notice.life = battle.notice.life - dt
         if battle.notice.life <= 0 then battle.notice = nil end
     end
+    -- Same for the tutorial's correction, which rides in the mentor's panel instead of the banner.
+    if battle.tutorialNudge then
+        battle.tutorialNudge.life = battle.tutorialNudge.life - dt
+        if battle.tutorialNudge.life <= 0 then battle.tutorialNudge = nil end
+    end
     if walking() then
         updateWalk(dt) -- a walk holds the AI clock: whoever is on their feet finishes first
     elseif battle.pendingAdvance then
@@ -1526,6 +1696,86 @@ function battle.update(dt)
     battle.panel:update(dt)
 end
 
+-- Resolve a tutorial step's anchor -- the thing its coaching is pointing at -- to a rect in the
+-- logical 1280x720 space, plus the region the bubble is allowed to live in. Three kinds, because the
+-- lesson points at three different sorts of thing:
+--
+--   cell -- a board tile (the one to step onto)
+--   unit -- a living character by id, nearest the acting unit when several answer to it (three demon
+--           grunts share an id; the one being taught about is the one within reach)
+--   item -- a slot in the combat panel's 3x3 grid, found by item id in the acting unit's inventory
+--
+-- Returns nil when the anchor names something that isn't on screen right now (an item the unit is
+-- not carrying, a character already dead), so the bubble simply doesn't draw rather than pointing
+-- at empty space.
+local function coachTarget(anchor)
+    if not anchor then return nil end
+    local map = battle.map
+    if anchor.kind == "cell" then
+        local px, py = map:cellToPixel(anchor.x, anchor.y)
+        return { x = px, y = py, w = map.size, h = map.size }, "board"
+    elseif anchor.kind == "unit" then
+        local best, bestDist
+        for _, u in ipairs(battle.combat.units) do
+            if u.alive and u.char.id == anchor.char then
+                local d = battle.current
+                    and (math.abs(u.x - battle.current.x) + math.abs(u.y - battle.current.y)) or 0
+                if not bestDist or d < bestDist then best, bestDist = u, d end
+            end
+        end
+        if not best then return nil end
+        local px, py = map:cellToPixel(best.x, best.y)
+        return { x = px, y = py, w = map.size, h = map.size }, "board"
+    elseif anchor.kind == "item" then
+        local current = battle.current
+        if not (current and Combat.isPlayerControlled(current)) then return nil end
+        for slot = 1, Character.MAX_INVENTORY do
+            local item = current.char.inventory[slot]
+            if item and item.id == anchor.id then
+                local sx, sy, sw, sh = battle.panel:slotRect(slot)
+                return { x = sx, y = sy, w = sw, h = sh }, "panel"
+            end
+        end
+    end
+    return nil
+end
+
+-- The interface half of the tutorial: a bubble pinned to the thing the current step is about. Kept
+-- separate from the mentor's panel on purpose -- see data/tutorials/village.lua for why the fiction
+-- and the instruction are not allowed to share a mouth.
+function battle.drawCoach()
+    local coach = Tutorial.coach(battle.tutorial)
+    if not coach then return end
+    local rect, region = coachTarget(coach.anchor)
+    if not rect then return end
+    -- A bubble over the board is kept clear of both columns; one over the panel may use the panel's
+    -- full width, since that is the only place it can go.
+    -- A bubble over the board is kept clear of both columns and prefers a flank, so it doesn't park
+    -- on top of the lane the lesson is about; one over the panel has no room beside a slot in a
+    -- 320px column, so it goes above.
+    local bounds = region == "panel"
+        and { x = Scale.WIDTH - PANEL_W + 4, y = 4, w = PANEL_W - 8, h = Scale.HEIGHT - 8 }
+        or { x = LEFT_W + 8, y = BOARD_TOP - 4,
+             w = Scale.WIDTH - PANEL_W - LEFT_W - 16, h = Scale.HEIGHT - BOARD_TOP }
+    -- Every living body on the board, so the bubble can settle where it hides the fewest of them.
+    -- Only for a board anchor: over the panel there is nowhere else to go anyway.
+    local avoid
+    if region == "board" then
+        avoid = {}
+        for _, u in ipairs(battle.combat.units) do
+            if u.alive then
+                local ux, uy = battle.map:cellToPixel(u.x, u.y)
+                avoid[#avoid + 1] = { x = ux, y = uy, w = battle.map.size, h = battle.map.size }
+            end
+        end
+    end
+    CoachBubble.draw(coach.text, rect, {
+        bounds = bounds,
+        prefer = region == "panel" and "above" or "side",
+        avoid = avoid,
+    })
+end
+
 function battle.draw()
     love.graphics.setColor(0.04, 0.05, 0.07)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
@@ -1536,6 +1786,21 @@ function battle.draw()
     battle.panel:draw()
     battle.drawHud()
     battle.log:draw()
+    -- The tutorial's instruction panel shares the gutter under the board with the combat log, and is
+    -- drawn after it: a lesson the player is mid-way through outranks a log they can toggle back.
+    if battle.tutorial then
+        local prompt = Tutorial.narration(battle.tutorial)
+        -- A live correction displaces the mentor's standing line until it ages out. She scolds; the
+        -- coach bubble below goes on saying which thing to click.
+        if prompt and battle.tutorialNudge then
+            prompt = { speaker = prompt.speaker, text = battle.tutorialNudge.text, alert = true }
+        end
+        TutorialPrompt.draw(battle.combat, prompt, {
+            leftMargin = LEFT_W, rightMargin = PANEL_W,
+            boardBottom = battle.map.originY + battle.arena.rows * battle.map.size,
+        })
+        battle.drawCoach()
+    end
     battle.drawNotice()
 
     -- Status tooltip, drawn last so it sits above both the board and the panel. The panel is on
@@ -1756,7 +2021,14 @@ function battle.drawHud()
     -- B cancel) in gamepad mode, so the gamepad player never reads a "Click" they can't do.
     local pad = InputMode.isGamepad()
     local hint
-    if battle.current and Combat.isPlayerControlled(battle.current) and not battle.over then
+    local lesson = battle.tutorial and Tutorial.step(battle.tutorial)
+    if lesson and battle.current and Combat.isPlayerControlled(battle.current) and not battle.over then
+        -- Under a lesson the ordinary hint is worse than useless: it lists items and Wait alongside
+        -- the move, three of which the gate is about to refuse. And the instruction is already on
+        -- screen twice over -- Rowan's panel and the coach bubble pinned to the thing itself. So this
+        -- line simply stands down rather than repeating one of them a third time.
+        hint = ""
+    elseif battle.current and Combat.isPlayerControlled(battle.current) and not battle.over then
         if battle.mode == "armed" then
             local verb
             -- A tile cast places something -- a trap, a summoned creature -- so name it rather than
@@ -1822,7 +2094,8 @@ function battle.keypressed(key)
     elseif key == "tab" or key == "kp0" or key == "0" or key == "space" then
         waitTurn()
     elseif key == "escape" then
-        if battle.mode == "armed" then cancelArm() else lose() end
+        if battle.mode == "armed" then cancelArm()
+        elseif not tutorialRefuses("forfeit") then lose() end
     elseif KEYPAD_SLOT[key] then
         armSlot(KEYPAD_SLOT[key]) -- numpad, mapped by physical position to the 3x3 item grid
     elseif key:match("^[1-9]$") then
@@ -1851,9 +2124,10 @@ function battle.gamepadpressed(joystick, button)
     elseif button == "x" then
         waitTurn()
     elseif button == "b" then
-        if battle.mode == "armed" then cancelArm() else lose() end
+        if battle.mode == "armed" then cancelArm()
+        elseif not tutorialRefuses("forfeit") then lose() end
     elseif button == "back" then
-        lose()
+        if not tutorialRefuses("forfeit") then lose() end
     elseif button == "y" then
         cycleAbilityItem()
     else
@@ -1885,7 +2159,7 @@ end
 
 function battle.mousepressed(x, y, button)
     if button == 1 and pointIn(forfeitButton, x, y) then
-        lose()
+        if not tutorialRefuses("forfeit") then lose() end
         return
     end
     if button == 1 and pointIn(logButton, x, y) then

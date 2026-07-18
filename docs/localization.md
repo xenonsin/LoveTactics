@@ -99,6 +99,13 @@ the `-- EN:` comment crutch, and makes gaps visible, at negligible cost now.
 Callers are **unchanged** — `ui/dialogue.lua` and `models/conversation.lua` already go through
 `Locale.get`. This is a format swap behind a stable seam.
 
+### Runtime tokens
+
+A dialogue line may carry `{name}` — the name the player typed at character creation. It is
+substituted in `ui/dialogue.lua:textOf` **after** `Locale.get` returns, so the token travels through
+the translated string and a translator is free to move it wherever their grammar needs it. Keep the
+braces and the spelling exactly; a dropped token silently prints nothing useful.
+
 ## Extraction tool
 
 `tools/extract_strings.lua` (`extract-strings`):

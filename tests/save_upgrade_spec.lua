@@ -1,6 +1,6 @@
 -- Tests that a save round-trips its schema through Save.snapshot -> Save.restore (models/save):
 -- item upgrade levels, forging materials, recipe tiers, the pinned default action, and the created
--- avatar (player gender + a per-character display name). Pure: no disk. Headless.
+-- avatar (player body/name + a per-character display name). Pure: no disk. Headless.
 
 local Save = require("models.save")
 local Player = require("models.player")
@@ -8,16 +8,19 @@ local Item = require("models.item")
 
 return {
     {
-        name = "the created avatar's gender and typed name round-trip",
+        name = "the created avatar's body and typed name round-trip",
         fn = function()
             local player = Player.new()
-            player.gender = "F"
-            -- The avatar's typed name is a per-character override on the instance, not on the player.
+            player.body = 2
+            -- The name is banked on the player at creation AND copied onto the avatar instance, which
+            -- is what the roster and dialogue read. Both survive.
+            player.name = "Wend"
             player.roster[1].name = "Wend"
 
             local restored = Save.restore(Save.snapshot(player))
             assert(restored, "the snapshot restores")
-            assert(restored.gender == "F", "the chosen gender survives, got " .. tostring(restored.gender))
+            assert(restored.body == 2, "the chosen body survives, got " .. tostring(restored.body))
+            assert(restored.name == "Wend", "the typed name survives on the player, got " .. tostring(restored.name))
             assert(restored.roster[1].name == "Wend",
                 "the avatar's typed name survives, got " .. tostring(restored.roster[1].name))
         end,

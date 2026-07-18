@@ -6,8 +6,8 @@ return {
 
     script = {
         { "elder", "Fire on the eastern fields -- demons, real ones, not a soldier's tale! Run, child, run!", tag = 1 },
-        { "character_knight", "No one runs while I can hold a blade. Stranger -- you have the look of a fighter. Stand with me.", tag = 2 },
+        { "character_knight", "{name}. Behind me, and stay there. This is the part of the oath I have been waiting to keep.", tag = 2 },
         { "elder", "They serve the Demon Lord. If the capital falls after us, there is nowhere left to run to.", tag = 3 },
-        { "character_knight", "Then we hold this lane. Move when I move, strike what I strike. Now -- they come.", tag = 4 },
+        { "character_knight", "Then we hold this lane. You have watched me drill this a hundred times, {name} -- now you do it. Move when I move, strike what I strike.", tag = 4 },
     },
 }

@@ -24,7 +24,9 @@ Save.FILE = "save.lua"
 -- Bump when the *schema* changes shape (not when game content changes). A save whose
 -- version doesn't match is discarded rather than half-read into a broken player.
 -- v2: the created avatar -- player.gender + a per-character display name (char.name) override.
-Save.VERSION = 2
+-- v3: gender ("F"/"M") became body (1/2), and the name moved to creation, so it is stored on the
+--     player too (player.name) rather than only on the avatar instance.
+Save.VERSION = 3
 
 -- ---------------------------------------------------------------------------
 -- Serialization
@@ -170,7 +172,8 @@ function Save.snapshot(player)
         version = Save.VERSION,
         gold = player.gold,
         prestige = player.prestige,
-        gender = player.gender, -- the created avatar's gender ("F"/"M"); nil before character creation
+        body = player.body, -- the created avatar's body (1/2); nil before character creation
+        name = player.name, -- the name typed at creation (also on the avatar instance)
         reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,
@@ -266,7 +269,8 @@ function Save.restore(snap)
     return {
         gold = snap.gold or 0,
         prestige = snap.prestige or 1,
-        gender = snap.gender, -- nil for a save made before character creation set it
+        body = snap.body, -- nil for a save made before character creation set it
+        name = snap.name,
         reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,

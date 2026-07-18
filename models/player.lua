@@ -150,10 +150,12 @@ function Player.new()
     local player = {
         gold = Player.defaults.gold,
         prestige = Player.defaults.prestige,
-        -- The created avatar's gender ("F"/"M"), chosen at character creation
-        -- (states/character_creation.lua). nil until then. The avatar's typed NAME lives on the
-        -- avatar character instance (char.name), not here -- see Save.snapshotCharacter.
-        gender = nil,
+        -- The created avatar's body (1 or 2 -- which sprite set, not a gender) and typed name, both
+        -- chosen at character creation (states/character_creation.lua); nil until then. The name is
+        -- also copied onto the avatar instance (char.name), which is what the roster and dialogue
+        -- read -- see Save.snapshotCharacter.
+        body = nil,
+        name = nil,
         roster = roster,
         party = {},
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)

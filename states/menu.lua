@@ -200,7 +200,7 @@ local function buildMenu()
         label = "New Game",
         action = function()
             Player.start(true) -- discards any save
-            -- Character creation (pick the avatar's gender) opens a New Game; it hands off to the
+            -- Character creation (pick the avatar's body, then name it) opens a New Game; it hands off to the
             -- prologue -- for now, straight to the hub. See states/character_creation.lua.
             State.switch(require("states.character_creation"))
         end,

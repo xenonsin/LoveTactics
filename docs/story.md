@@ -95,9 +95,18 @@ let the Guild say the rest aloud when it opens the board — the Crown is only e
 seven, and unmade one at a time it is hollow.
 
 You do not play one of the seven. The protagonist is a made character — a survivor of the village,
-no class of their own, growing into whatever they are cast as (`Growth.NEUTRAL_CLASS`). They begin
-nameless: the arena gives them their name, when the announcer asks it on the sand. That is why
-`arena_debut` has always promised *"win it, and they will remember your name."*
+no class of their own, growing into whatever they are cast as (`Growth.NEUTRAL_CLASS`). The player
+picks their **body** (1 or 2 — a sprite set, never a gender label) and types their **name** at
+character creation, before the first line is spoken (`states/character_creation.lua`).
+
+The name is asked there rather than on the sand because **Rowan is already sworn to you when the
+prologue opens** — she is the player's bodyguard and mentor, and she has to be able to say your
+name in the burning village. A companion who knows you cannot call you "stranger." The arena
+therefore names nobody; `arena_debut` still promises *"win it, and they will remember your name"* —
+the crowd learning a name you already had is the promise, not the naming itself.
+
+A line can address the avatar with the **`{name}` token**, substituted at display time in
+`ui/dialogue.lua` (after localization, so a translator may move it where their grammar wants it).
 
 ## The other seven
 
@@ -131,7 +140,10 @@ Companions are earned near the head of their vendor's line, each on its own — 
 so no ordering can strand the endgame. Two are earned in the prologue, one per pattern:
 
 - **Sworn beside you.** The knight fights at your shoulder in the burning village and stays when it
-  is ash. An oath abandoned is sloth's general; an oath re-sworn to a stranger is the knight.
+  is ash. An oath abandoned is sloth's general; an oath re-sworn to a stranger is the knight. What
+  the oath makes her is the player's **bodyguard and mentor** — she guards the body she swore to and
+  teaches the trade she already knows, so hers is the voice that warns, explains, and steps in front.
+  That is a role, not a label: it shows in where she stands and what she says, never in a title.
 - **Bested, then kept.** The first bout on the Colosseum's sand is against the house's own
   gatekeeper — a gladiator who has watched the arena and its patron, *Ira*, eat fighter after
   fighter, and who will not be eaten. She fights every newcomer looking for the pair who can beat
