@@ -1,5 +1,11 @@
+-- Rowan, the knight companion (diligence) and the player's FIRST recruit -- she rallies to defend
+-- the burning village, fights at your shoulder, and when it is ash she swears her broken oath anew
+-- to you (states/prologue.lua). She is the foil to sloth, whose general is the oath abandoned; Rowan
+-- is the oath kept. See docs/story.md, "The other seven": a woman, a grounded gender-neutral name,
+-- the virtue shown in how she fights (the wall that holds its post), never labeled. Keeps the
+-- blueprint id `character_knight`; only her display name is a proper one now.
 return {
-    name = "Knight",
+    name = "Rowan",
     sprite = "assets/chars/knight.png",
     portrait = "assets/portraits/knight.png", -- large VN portrait for conversations (falls back if missing)
     -- Innate growth class: the fallback (and tie-break) for the level-up growth system when this

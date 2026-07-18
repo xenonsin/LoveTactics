@@ -115,6 +115,27 @@ function Player.removeFromParty(player, char)
     return false
 end
 
+-- Gain a companion. The one path by which the player ADDS a character to the roster after the
+-- starting party -- a prologue recruit (the knight sworn in the village, the gladiator bested on the
+-- sand), and how a class line's main companion joins. Instantiates a fresh copy from the blueprint,
+-- refuses a duplicate of one already owned, and levels the newcomer up to the company's current
+-- prestige so a late recruit is not a level-1 liability (Player.syncLevels is idempotent for the
+-- rest). Unless `opts.rosterOnly`, the recruit is also deployed to the active party when there is
+-- room -- a full party leaves them on the bench, not un-recruited. Returns the instance, or nil if
+-- the id was already on the roster. Persistence is the caller's call (like addToParty, unlike
+-- Quest.complete), so a recruit granted mid-prologue is saved at the next real save point.
+function Player.recruit(player, charId, opts)
+    player.roster = player.roster or {}
+    for _, char in ipairs(player.roster) do
+        if char.id == charId then return nil end
+    end
+    local char = Character.instantiate(charId)
+    player.roster[#player.roster + 1] = char
+    Player.syncLevels(player)
+    if not (opts and opts.rosterOnly) then Player.addToParty(player, char) end
+    return char
+end
+
 -- Build fresh mutable player state for a new game. Party members reference the
 -- same instances held in the roster, so a character is instantiated once.
 function Player.new()
@@ -129,6 +150,10 @@ function Player.new()
     local player = {
         gold = Player.defaults.gold,
         prestige = Player.defaults.prestige,
+        -- The created avatar's gender ("F"/"M"), chosen at character creation
+        -- (states/character_creation.lua). nil until then. The avatar's typed NAME lives on the
+        -- avatar character instance (char.name), not here -- see Save.snapshotCharacter.
+        gender = nil,
         roster = roster,
         party = {},
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)

@@ -45,10 +45,16 @@ local function openLoadout()
 end
 
 -- prestige defaults to 1 when a quest is launched without it (e.g. dev/test).
-function game.enter(self, quest, prestige, player)
+--
+-- `onComplete` (optional) reroutes the objective-win: when set, clearing the objective calls it
+-- INSTEAD of the normal pay-out-and-return-to-hub flow. The prologue uses this to run its flight leg
+-- as a real overworld traversal and then hand control back to its own sequencer (states/prologue.lua)
+-- rather than ending at the hub. A normal board quest passes no onComplete and behaves as before.
+function game.enter(self, quest, prestige, player, onComplete)
     game.quest = quest
     game.prestige = prestige or 1
     game.player = player -- kept so combat encounters can deploy the active party
+    game.onComplete = onComplete
     local mp = quest and quest.map or {}
 
     -- Dynamic encounter selection: build the eligible weighted pool for this
@@ -105,6 +111,13 @@ function game:openEncounter(cell)
                 game.activePanel = nil
                 if kind == "objective" then
                     game.complete = true
+                    -- Prologue (or any scripted caller) reroute: hand the cleared objective back to
+                    -- its sequencer instead of paying out and going home. No reward, no save -- the
+                    -- prologue is not a board quest.
+                    if game.onComplete then
+                        game.onComplete()
+                        return
+                    end
                     -- The single payout seam: gold, prestige, and sponsor reputation are
                     -- granted here, once, and the game saves. Losing the quest (onLoss)
                     -- pays nothing, so a wipe costs the run.

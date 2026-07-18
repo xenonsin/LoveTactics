@@ -106,6 +106,34 @@ return {
         end,
     },
     {
+        name = "recruit adds a new companion to roster and party, and refuses a duplicate",
+        fn = function()
+            local p = Player.new()
+            p.party = {}
+            local before = #p.roster
+            local saber = Player.recruit(p, "character_saber")
+            assert(saber, "a first recruit returns the instance")
+            assert(saber.id == "character_saber", "the recruited id is right")
+            assert(#p.roster == before + 1, "the recruit joined the roster")
+            assert(p.party[#p.party] == saber, "the recruit was deployed to the party")
+            -- Recruiting the same blueprint again is refused (one copy of a named companion).
+            assert(Player.recruit(p, "character_saber") == nil, "a duplicate recruit is refused")
+            assert(#p.roster == before + 1, "a refused recruit does not grow the roster")
+        end,
+    },
+    {
+        name = "recruit with rosterOnly benches the newcomer instead of deploying",
+        fn = function()
+            local p = Player.new()
+            p.party = {}
+            local saber = Player.recruit(p, "character_saber", { rosterOnly = true })
+            assert(saber, "the recruit still joins the roster")
+            for _, m in ipairs(p.party) do
+                assert(m ~= saber, "rosterOnly must not deploy to the party")
+            end
+        end,
+    },
+    {
         name = "a chosen party survives a save/load round trip by identity",
         fn = function()
             local p = Player.new()

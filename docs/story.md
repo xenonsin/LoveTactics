@@ -75,6 +75,74 @@ fragment you have earned. Watching that count climb is the last stretch of the g
 > entirely different mechanic that happens to share the word. `the_gate_below` sets `keyCount = 0`.
 > Do not lock the last door twice.
 
+## The three acts
+
+The seven-general arc above is the middle of a three-act shape, not the whole of it.
+
+- **Act 0 — the prologue.** A village on the capital's outskirts, and the demons that burn it. It
+  is the tutorial and the reason to care at once: the antagonist named, the first companion earned,
+  the road to the city walked. It ends when the hub opens and the Adventurers' Guild sets the board
+  in front of you. Linear by design — the overworld's locked doors and dead-end ambushes stay
+  holstered until Act 1.
+- **Act 1 — the seven.** This document. Open-ended: seven vendor lines, seven companions, seven
+  generals, in whatever order standing allows.
+- **Act 2 — the Gate Below.** `the_gate_below` and the Hollow Crown.
+
+The Crown re-summons the generals you have killed as its health falls (see *The Demon Lord*) —
+which is the whole reason the middle act is a general hunt and not a fetch list. **That logic has
+to be spoken, or it isn't there.** Plant the Demon Lord as a named threat in the burning village;
+let the Guild say the rest aloud when it opens the board — the Crown is only ever as strong as its
+seven, and unmade one at a time it is hollow.
+
+You do not play one of the seven. The protagonist is a made character — a survivor of the village,
+no class of their own, growing into whatever they are cast as (`Growth.NEUTRAL_CLASS`). They begin
+nameless: the arena gives them their name, when the announcer asks it on the sand. That is why
+`arena_debut` has always promised *"win it, and they will remember your name."*
+
+## The other seven
+
+Every general has a foil, and the foils are your party. Seven **main** companions, one per class,
+each the heavenly virtue that answers its class's sin — and the answer is mechanical before it is
+thematic. Ira grows on the blows she takes; her foil is the fighter who wins without trading them.
+A general and her foil are the same wound with two answers, and the companion is the answer the
+general refused.
+
+| Class | General's sin | The companion answers with |
+|---|---|---|
+| fighter | wrath — *Ira* | patience — burst and restraint; win without trading blows |
+| knight | sloth — the oath abandoned | diligence — the oath kept; the wall that holds its post |
+| rogue | greed | charity — takes from the rich and keeps none of it |
+| hunter | gluttony | temperance — the hunt that knows when to stop |
+| mage | pride | humility — answers a spell with a ward, not a bigger spell |
+| priest | lust | devotion — gives what is offered, refuses what is not |
+| alchemist | envy | kindness — grants others' power instead of coveting it |
+
+**The virtue is the spine, never the label.** A sin gets to be a personified abstraction — *Ira,
+the Unappeased*. A virtue does not; it is a person with an ordinary name, and the virtue shows in
+how they fight and what they will not do, never in what they are called. A companion named for her
+virtue is the exact mistake this section exists to forbid.
+
+**Every companion is a woman, and so is every general** — the whole war of appetite and answer is
+fought between women. Companions carry **gender-neutral** names (Rowan the knight, Saber the
+gladiator); generals keep the Latin sin-register (*Ira*). The virtue is buried in the name, not
+stamped on it: *Saber* is a blade, and in another tongue (*ṣabr*) it is patience itself.
+
+Companions are earned near the head of their vendor's line, each on its own — never behind another,
+so no ordering can strand the endgame. Two are earned in the prologue, one per pattern:
+
+- **Sworn beside you.** The knight fights at your shoulder in the burning village and stays when it
+  is ash. An oath abandoned is sloth's general; an oath re-sworn to a stranger is the knight.
+- **Bested, then kept.** The first bout on the Colosseum's sand is against the house's own
+  gatekeeper — a gladiator who has watched the arena and its patron, *Ira*, eat fighter after
+  fighter, and who will not be eaten. She fights every newcomer looking for the pair who can beat
+  her, because Ira is not a thing you walk up to alone. Beat her and she is yours, and her quarrel
+  — the patron beneath the sand — is the Colosseum line you are standing at the foot of. You best a
+  fighter in sport at the start of that line and kill one in earnest at its end; that rhyme is the
+  point.
+
+Like the generals, the six companions past the knight and the gladiator are not yet written. The
+same discipline applies: author one end to end and copy its shape.
+
 ## Authoring the remaining six lines
 
 ### The line

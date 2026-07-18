@@ -1,11 +1,41 @@
--- Tests that the v2 save schema round-trips item upgrade levels and forging materials (models/save).
--- Pure: exercises Save.snapshot -> Save.restore without touching disk. Headless.
+-- Tests that a save round-trips its schema through Save.snapshot -> Save.restore (models/save):
+-- item upgrade levels, forging materials, recipe tiers, the pinned default action, and the created
+-- avatar (player gender + a per-character display name). Pure: no disk. Headless.
 
 local Save = require("models.save")
 local Player = require("models.player")
 local Item = require("models.item")
 
 return {
+    {
+        name = "the created avatar's gender and typed name round-trip",
+        fn = function()
+            local player = Player.new()
+            player.gender = "F"
+            -- The avatar's typed name is a per-character override on the instance, not on the player.
+            player.roster[1].name = "Wend"
+
+            local restored = Save.restore(Save.snapshot(player))
+            assert(restored, "the snapshot restores")
+            assert(restored.gender == "F", "the chosen gender survives, got " .. tostring(restored.gender))
+            assert(restored.roster[1].name == "Wend",
+                "the avatar's typed name survives, got " .. tostring(restored.roster[1].name))
+        end,
+    },
+    {
+        name = "a character showing its blueprint name stores no override (clean diff)",
+        fn = function()
+            local player = Player.new()
+            local snap = Save.snapshot(player)
+            -- roster[1] never got a custom name, so its snapshot must not carry one.
+            assert(snap.roster[1].name == nil, "an un-renamed character must not persist a name override")
+            -- ...and it still loads back to its blueprint name.
+            local restored = Save.restore(snap)
+            local Character = require("models.character")
+            assert(restored.roster[1].name == Character.defs[restored.roster[1].id].name,
+                "an un-renamed character keeps its blueprint name")
+        end,
+    },
     {
         name = "a save round trip preserves a forged item's +n level",
         fn = function()

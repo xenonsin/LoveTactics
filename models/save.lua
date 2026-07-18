@@ -23,10 +23,8 @@ Save.FILE = "save.lua"
 
 -- Bump when the *schema* changes shape (not when game content changes). A save whose
 -- version doesn't match is discarded rather than half-read into a broken player.
--- v2: item upgrade levels + the materials the forge spends.
--- v3: per-character progression -- level, class-usage tally, and accumulated stat growth.
--- v4: consumable recipe tiers (item id -> level; every purchase comes at that tier).
-Save.VERSION = 4
+-- v2: the created avatar -- player.gender + a per-character display name (char.name) override.
+Save.VERSION = 2
 
 -- ---------------------------------------------------------------------------
 -- Serialization
@@ -102,6 +100,12 @@ local function snapshotCharacter(char)
 
     local snap = { id = char.id, inventory = inventory }
 
+    -- A custom display name overrides the blueprint's -- the created avatar wears the name the
+    -- player typed at the arena, while every other character shows its blueprint name. Stored only
+    -- when it differs, so an ordinary recruit diffs clean.
+    local bp = Character.defs[char.id]
+    if char.name and char.name ~= (bp and bp.name) then snap.name = char.name end
+
     -- The player's pinned default action (a grid cell index, set in the Loadout screen). Optional --
     -- omitted when unset, so a character that never chose one diffs clean and loads back to the auto
     -- pick. See Combat.defaultAction.
@@ -166,6 +170,7 @@ function Save.snapshot(player)
         version = Save.VERSION,
         gold = player.gold,
         prestige = player.prestige,
+        gender = player.gender, -- the created avatar's gender ("F"/"M"); nil before character creation
         reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,
@@ -209,6 +214,8 @@ local function restoreCharacter(snap)
     -- nil on a save that never pinned one = the auto pick. Fall back to the legacy defaultWeaponSlot
     -- key so a save from before the default-weapon -> default-action rename keeps its pin.
     char.defaultActionSlot = snap.defaultActionSlot or snap.defaultWeaponSlot
+    -- A saved custom display name (the created avatar's) overrides the blueprint name instantiate set.
+    if snap.name then char.name = snap.name end
     return char
 end
 
@@ -259,6 +266,7 @@ function Save.restore(snap)
     return {
         gold = snap.gold or 0,
         prestige = snap.prestige or 1,
+        gender = snap.gender, -- nil for a save made before character creation set it
         reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,
