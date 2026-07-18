@@ -182,7 +182,7 @@ return {
         end,
     },
     {
-        name = "Pilgrim's Sandals hallow every tile walked, blessing the wearer and sparing a foe",
+        name = "Pilgrim's Sandals hallow every tile LEFT, mend the wearer by the walking, and spare a foe",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_priest", 4, 4) }, { unit("character_bandit", 8, 8) })
             local priest, bandit = c.units[1], c.units[2]
@@ -190,17 +190,142 @@ return {
             openTurn(c, priest)
 
             assert(Combat.moveUnit(c, priest, 2, 4), "the priest walks two tiles west")
-            assert(Hazard.at(c, 3, 4, "hazard_heal"), "the tile crossed en route is left hallowed")
-            assert(Hazard.at(c, 2, 4, "hazard_heal"), "so is the tile it stopped on")
-            assert(not Hazard.at(c, 4, 4, "hazard_heal"), "but not the tile it started on -- it crossed no ground to get there")
-            -- The passive self-heal falls out of the trail: the wearer stands in its own last print.
-            assert(Status.has(priest, "status_regen"), "standing in its own footprint mends the wearer")
+            assert(Hazard.at(c, 4, 4, "hazard_heal"), "the tile it set off from is left hallowed")
+            assert(Hazard.at(c, 3, 4, "hazard_heal"), "and the tile it crossed en route")
+            assert(not Hazard.at(c, 2, 4, "hazard_heal"), "but NOT the tile it is standing on -- a trail is laid behind")
+            -- The self-heal no longer falls out of standing in a print (there is none underfoot now):
+            -- it is applied straight to the wearer by the walking, and is not zone-bound.
+            local regen = Status.get(priest, "status_regen")
+            assert(regen, "the walking itself mends the wearer")
+            assert(regen.source == nil, "and does so on its own clock, not as a zone-bound blessing")
 
             -- The trail is sided with the wearer, so the foe following it down gains nothing.
             openTurn(c, bandit)
             bandit.x, bandit.y = 3, 3
             assert(Combat.moveUnit(c, bandit, 3, 4), "the bandit steps onto the priest's footprint")
             assert(not Status.has(bandit, "status_regen"), "a foe walking the priest's trail is not mended by it")
+        end,
+    },
+    {
+        name = "the sandals' mending holds while the wearer walks and runs out when it stops",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 4, 4) }, {})
+            local priest = c.units[1]
+            Character.addItem(priest.char, Item.instantiate("utility_pilgrims_sandals"))
+            openTurn(c, priest)
+            assert(Combat.moveUnit(c, priest, 3, 4), "the priest takes a step")
+
+            local granted = Status.get(priest, "status_regen").remaining
+            Status.tick(c, 4) -- time passes without a step
+            assert(Status.get(priest, "status_regen").remaining < granted, "standing still, the blessing ages")
+
+            openTurn(c, priest)
+            assert(Combat.moveUnit(c, priest, 2, 4), "another step")
+            assert(Status.get(priest, "status_regen").remaining == granted,
+                "and walking refreshes it to full -- the walking is the sacrament")
+
+            Status.tick(c, granted)
+            assert(not Status.has(priest, "status_regen"), "a pilgrim who stops long enough stops mending")
+        end,
+    },
+    {
+        name = "Cinderstride Boots burn the tile behind them, leaving the wearer a step ahead of its own fire",
+        fn = function()
+            -- A knight rather than the mage whose shelf sells these: the mage's nine starting slots are
+            -- full, and anyone may carry anything (docs/classes.md) -- the shelf is not an equip gate.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_knight", 4, 4), unit("character_priest", 6, 6) },
+                { unit("character_bandit", 8, 8) })
+            local wearer, ally, bandit = c.units[1], c.units[2], c.units[3]
+            Character.addItem(wearer.char, Item.instantiate("utility_cinderstride_boots"))
+            openTurn(c, wearer)
+
+            assert(Combat.moveUnit(c, wearer, 2, 4), "the wearer walks two tiles west")
+            -- The trail is offset one tile back from the sandals': it starts where the walk started and
+            -- stops one short of where it ended.
+            assert(Hazard.at(c, 4, 4, "hazard_fire"), "the tile it set off from is left burning")
+            assert(Hazard.at(c, 3, 4, "hazard_fire"), "and the tile it crossed en route")
+            assert(not Hazard.at(c, 2, 4, "hazard_fire"), "but NOT the tile it is standing on")
+            -- Which is the whole mechanism: ordinary unsided fire, and a wearer never on it.
+            assert(not Status.has(wearer, "status_burn"), "so the wearer never burns in its own trail")
+
+            -- Real fire, so it is not sided: a companion following the trail catches it. This is the
+            -- item's cost, not a bug -- see the blueprint's comment.
+            openTurn(c, ally)
+            ally.x, ally.y = 3, 3
+            assert(Combat.moveUnit(c, ally, 3, 4), "an ally follows the wearer's trail")
+            assert(Status.has(ally, "status_burn"), "the trail burns the wearer's own side as readily")
+
+            -- The fire is not spent by burning the ally: it stays lit for the next unit across it.
+            ally.x, ally.y = 6, 6
+            openTurn(c, bandit)
+            bandit.x, bandit.y = 3, 3
+            assert(Combat.moveUnit(c, bandit, 3, 4), "the bandit crosses the same tile")
+            assert(Status.has(bandit, "status_burn"), "and a foe crossing it is Burned")
+        end,
+    },
+    {
+        name = "a trail laid behind needs a tile to have come from: a blink leaves none",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
+            local knight = c.units[1]
+            Character.addItem(knight.char, Item.instantiate("utility_cinderstride_boots"))
+            knight.x, knight.y = 6, 6
+            -- A walk's reason with no origin: the guard that keeps a trail from lighting the tile a
+            -- blinking unit happens to be standing on.
+            Combat.enterTile(c, knight, 6, 6, "walk")
+            assert(not Hazard.at(c, 6, 6, "hazard_fire"), "nothing is set alight with nowhere walked from")
+        end,
+    },
+    {
+        name = "the wearer doubling back into its own fire is burned like anyone else",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
+            local wearer = c.units[1]
+            Character.addItem(wearer.char, Item.instantiate("utility_cinderstride_boots"))
+            openTurn(c, wearer)
+            assert(Combat.moveUnit(c, wearer, 2, 4), "the wearer walks west, burning 4,4 and 3,4 behind it")
+
+            openTurn(c, wearer)
+            assert(Combat.moveUnit(c, wearer, 4, 4), "then walks back over the ground it just lit")
+            assert(Status.has(wearer, "status_burn"),
+                "there is no immunity here -- only position, and it gave that up")
+        end,
+    },
+    {
+        name = "Caltrop Greaves sow a trap on each tile LEFT -- one per tile, and never against their own side",
+        fn = function()
+            local Trap = require("models.trap")
+            -- A knight, for the same reason as the Cinderstride case above: the archer who shops this
+            -- shelf starts with all nine slots full, and class never gates who may carry what.
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, { unit("character_bandit", 8, 8) })
+            local wearer, bandit = c.units[1], c.units[2]
+            Character.addItem(wearer.char, Item.instantiate("utility_caltrop_greaves"))
+            openTurn(c, wearer)
+
+            assert(Combat.moveUnit(c, wearer, 2, 4), "the wearer walks two tiles west")
+            local dropped = Trap.at(c, 4, 4)
+            assert(dropped and dropped.id == "caltrops", "the tile it set off from is left strewn")
+            assert(Trap.at(c, 3, 4), "and the tile it crossed en route")
+            assert(not Trap.at(c, 2, 4), "but NOT the tile it is standing on -- a trail is laid behind")
+            assert(dropped.side == "party", "the caltrops are sided to the wearer")
+
+            -- Pacing the same ground does not heap a second caltrop on the pile.
+            openTurn(c, wearer)
+            assert(Combat.moveUnit(c, wearer, 4, 4), "the wearer walks back east over its own caltrops")
+            local n = 0
+            for _, t in ipairs(c.traps) do if t.alive and t.x == 3 and t.y == 4 then n = n + 1 end end
+            assert(n == 1, "one caltrop per tile, however often it is crossed -- got " .. n)
+            assert(wearer.char.stats.health.current == wearer.char.stats.health.max,
+                "and the wearer crosses its own field unharmed")
+
+            -- A foe pays for the tile, and the caltrop is spent doing it.
+            openTurn(c, bandit)
+            bandit.x, bandit.y = 3, 3
+            local hp = bandit.char.stats.health.current
+            assert(Combat.moveUnit(c, bandit, 3, 4), "the bandit steps into the field")
+            assert(bandit.char.stats.health.current < hp, "the caltrops prick it")
+            assert(not Trap.at(c, 3, 4), "and are spent on the one foe they bit")
         end,
     },
     {

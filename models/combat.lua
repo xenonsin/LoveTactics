@@ -864,16 +864,62 @@ function Combat.ignoresTraps(unit)
 end
 
 -- Leave behind whatever ground `unit`'s kit paints on a tile it crosses (Pilgrim's Sandals hallow
--- every print they make). A `trail = { hazard, duration }` on any item in the 3x3 grid -- the same
--- inventory scan as Combat.ignoresTraps above -- drops that hazard on the tile, sided with the wearer
--- so an ally-only zone can never serve the foe walking through it. Called from Combat.enterTile on a
--- ground crossing only: footprints are pressed by feet, so a blink or a swap leaves none.
-function Combat.layTrail(combat, unit)
+-- every print they make). A `trail = { hazard, duration }` or `trail = { trap = ... }` on any item in
+-- the 3x3 grid -- the same inventory scan as Combat.ignoresTraps above -- drops that ground on the
+-- tile, sided with the wearer so an ally-only zone, or a trap, can never serve the foe walking
+-- through it. Called from Combat.enterTile on a ground crossing only: footprints are pressed by feet,
+-- so a blink or a swap leaves none.
+--
+-- The two kinds of ground a trail can leave are the two kinds this game has, and which one an item
+-- picks says what its footprints ARE:
+--   hazard -- ground that CHANGES while it lasts: a puddle, a bed of cinders. Ages out on the clock,
+--             cannot be destroyed, fires for everyone who crosses it until it fades.
+--   trap   -- an OBJECT left lying there: caltrops. No duration at all, hidden from the enemy unless
+--             they carry a detector, breakable, and spent on the one foe it bites.
+-- A trail lays only ONE trap per tile: a wearer pacing the same corridor would otherwise heap a fresh
+-- caltrop on the pile every crossing, since traps -- unlike hazards, which dedupe by refreshing -- have
+-- no notion of an identical one already being here.
+--
+-- A trail is always laid BEHIND: on the tile the unit just LEFT (`fromX, fromY`), never the one it is
+-- standing on. One rule, no per-item choice, and it is what lets a trail be something the wearer could
+-- not survive standing in -- the Cinderstride Boots leave real, unsided, spreading fire and need no
+-- immunity of any kind, because the wearer is simply never on it. It stays one step ahead of its own
+-- ground. Walk back over what you left and you take it exactly as anyone else would: the protection is
+-- position, and it is given up by turning around.
+--
+-- The corollary is that a trail can no longer do anything FOR its wearer through the ground -- you
+-- cannot stand in your own print any more. `selfStatus = { id, duration }` is the honest way to say
+-- what the walking does to the walker: a status applied straight to the unit, refreshed on every tile
+-- it crosses, so it holds while it keeps moving and fades once it stops. The Pilgrim's Sandals' mending
+-- is that (see the blueprint) -- it used to fall out of standing in the hallowed tile, and now it is
+-- stated rather than implied.
+--
+-- Laying behind needs a tile to have come FROM, so the ground half lays nothing when the caller hands
+-- over no origin -- a summon's arrival, a blink. Same rule the trail already obeys through `reason`:
+-- ground is pressed by feet, and a unit that crossed nothing left nothing. `selfStatus` does not read
+-- the origin: Combat.enterTile has already established that a real crossing happened, and the walking
+-- is what blesses the walker, not the tile it came off.
+--
+-- A trail lays only ONE trap per tile: a wearer pacing the same corridor would otherwise heap a fresh
+-- caltrop on the pile every crossing, since traps -- unlike hazards, which dedupe by refreshing -- have
+-- no notion of an identical one already being here.
+function Combat.layTrail(combat, unit, fromX, fromY)
     if not (unit and unit.char) then return end
     for _, item in ipairs(Character.eachItem(unit.char)) do
         local trail = item.trail
-        if trail and trail.hazard then
-            Hazard.place(combat, unit.x, unit.y, trail.hazard, { side = unit.side, duration = trail.duration })
+        if trail then
+            if trail.selfStatus then
+                Status.apply(combat, unit, trail.selfStatus.id, { duration = trail.selfStatus.duration })
+            end
+            if fromX and fromY then
+                if trail.hazard then
+                    Hazard.place(combat, fromX, fromY, trail.hazard,
+                        { side = unit.side, duration = trail.duration })
+                end
+                if trail.trap and not Trap.at(combat, fromX, fromY) then
+                    Trap.place(combat, fromX, fromY, trail.trap, unit.side)
+                end
+            end
         end
     end
 end
@@ -1403,6 +1449,11 @@ end
 --   "walk"   -- it stepped here itself, one metered tile of its move (Combat.stepMove)
 --   "forced" -- it was shoved, pulled, or trampled here (knockback / pull / charge)
 --   nil      -- it did not cross the ground at all: a blink, a swap, or a summon's arrival
+-- `fromX, fromY` is the tile it came FROM, and only a real ground crossing has one: the two call sites
+-- that walk or shove a unit off one tile and onto another (Combat.stepMove, shoveStep) pass it, and
+-- every other caller leaves it nil because there is no honest answer -- a blink came from nowhere it
+-- can be said to have crossed. Read by Combat.layTrail alone, for an item that lays its ground on the
+-- tile it just vacated rather than the one it is standing on.
 -- Traps, hazards, and auras deliberately ignore `reason` -- the ground does not care how you came to
 -- stand on it. Only the two effects of CROSSING it read `reason`, and both take "walk" or "forced"
 -- alike: Status.onEnterTile, so that Bleed costs a unit blood for every tile it crosses under its own
@@ -1412,7 +1463,7 @@ end
 --
 -- The unit must already stand on (x, y) when this is called: a trap may kill it, and the death path
 -- reads its position. Callers move it first, then announce the arrival.
-function Combat.enterTile(combat, unit, x, y, reason)
+function Combat.enterTile(combat, unit, x, y, reason, fromX, fromY)
     local trap = Trap.at(combat, x, y)
     -- Feather Boots walk over any trap unharmed. The guard sits at this one chokepoint, so the wearer
     -- is spared whether it strode onto the trap, was shoved onto it, or was conjured on top of one --
@@ -1423,7 +1474,7 @@ function Combat.enterTile(combat, unit, x, y, reason)
     -- decides what to keep -- otherwise the wearer's own blessing would be stripped on the very tile
     -- that just granted it. Placing fires the fresh hazard's onEnter for the occupant, and the
     -- Hazard.onEnter pass below reaches it a second time: a refresh, which neither stacks nor logs.
-    if unit.alive and (reason == "walk" or reason == "forced") then Combat.layTrail(combat, unit) end
+    if unit.alive and (reason == "walk" or reason == "forced") then Combat.layTrail(combat, unit, fromX, fromY) end
     -- The censer's cloud keeps up with the bearer, and unlike the trail above it does so however the
     -- bearer arrived: `reason` is not read, because smoke is carried rather than pressed by feet, so a
     -- blink brings it along. Laid before the reap pass below for the same reason the trail is -- the
@@ -1552,8 +1603,9 @@ function Combat.stepMove(combat, walk)
     if not walk.unit.alive or walk.index >= #walk.path then return false end
     walk.index = walk.index + 1
     local tile = walk.path[walk.index]
+    local fromX, fromY = walk.unit.x, walk.unit.y -- the tile being vacated, for a trail laid behind
     walk.unit.x, walk.unit.y = tile.x, tile.y
-    Combat.enterTile(combat, walk.unit, tile.x, tile.y, "walk")
+    Combat.enterTile(combat, walk.unit, tile.x, tile.y, "walk", fromX, fromY)
     -- A unit walking into an opposing Overwatch stance's firing line is shot for it. Only a walk
     -- triggers this (not a knockback or a summon appearing), so it lives here rather than in enterTile.
     Combat.triggerOverwatch(combat, walk.unit)
@@ -1607,8 +1659,9 @@ end
 local function shoveStep(combat, unit, dx, dy)
     local nx, ny = unit.x + dx, unit.y + dy
     if not canShoveInto(combat, nx, ny) then return false end
+    local fromX, fromY = unit.x, unit.y -- as Combat.stepMove: the vacated tile a trail lays behind on
     unit.x, unit.y = nx, ny
-    Combat.enterTile(combat, unit, nx, ny, "forced")
+    Combat.enterTile(combat, unit, nx, ny, "forced", fromX, fromY)
     -- Being knocked off your feet shatters a channel you were winding up. Idempotent, so a
     -- multi-tile slide (knockback/pull/charge all route here) only fizzles the channel once.
     if unit.channel then Combat.interruptChannel(combat, unit, "knocked off balance") end
