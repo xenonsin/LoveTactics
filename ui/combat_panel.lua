@@ -394,6 +394,23 @@ function CombatPanel:slotRect(index)
         self.gridY + row * (SLOT_H + SLOT_GAP), SLOT_W, SLOT_H
 end
 
+-- The turn-order card `unit` currently occupies, as x, y, w, h -- or nil when it has no card on
+-- screen (dead, or scrolled out of the strip). Reads the same entryLayout the strip draws from, and
+-- honours the eased slot a sliding card is animating through, so a caller pointing at a card points
+-- at where it actually IS mid-slide rather than where it will settle.
+--
+-- Exists for the tutorial's coaching bubble (states/battle.lua's `turn` anchor): a lesson about the
+-- initiative timeline has to be able to point AT the timeline, and specifically at the one card that
+-- just moved. Preview ghosts are skipped -- they are hypotheticals, not anybody's turn.
+function CombatPanel:cardRect(unit)
+    for _, e in ipairs(self:entryLayout()) do
+        if not e.entry.preview and e.entry.unit == unit then
+            return e.x, self.cardY[e.entry.unit] or e.y, e.w, e.h
+        end
+    end
+    return nil
+end
+
 function CombatPanel:slotIndexAt(px, py)
     for i = 1, COLS * ROWS do
         local sx, sy, sw, sh = self:slotRect(i)
@@ -766,17 +783,26 @@ function CombatPanel:drawPoolBars(unit, rx, rw, topY, alpha)
         end
     end
 
-    local barH, labelW = 9, 22
+    -- Each row is marked with its pool's glyph (heart / gem / drop) just after the HP/MP/SP tag, the
+    -- same shape the cost badges price a cast in -- so a spend badge and the bar it drains from carry
+    -- one mark between them. Both are tinted alike, and the label stays: the letters open the row,
+    -- the glyph closes it against the bar it fills. It sits in a fixed column, not tight against the
+    -- text, so the three marks line up with each other down the stack.
+    local barH, glyphW, glyphGap, labelW = 9, 7, 5, 22
     love.graphics.setFont(self.smallFont)
     local valueColW = 2
     for _, r in ipairs(rows) do valueColW = math.max(valueColW, self.smallFont:getWidth(r.text) + 2) end
     for i, r in ipairs(rows) do
         local rowY = topY + (i - 1) * 13
         local c = barColor(r.res, unit)
-        love.graphics.setColor(c[1] * 0.6 + 0.28, c[2] * 0.6 + 0.28, c[3] * 0.6 + 0.28, 0.95 * alpha)
+        -- The tag/glyph tint: the bar's colour lifted toward white so it stays legible at 9px.
+        local tr, tg, tb = c[1] * 0.6 + 0.28, c[2] * 0.6 + 0.28, c[3] * 0.6 + 0.28
+        love.graphics.setColor(tr, tg, tb, 0.95 * alpha)
         love.graphics.print(BAR_LABELS[r.res.key], rx, rowY + (barH - self.smallFont:getHeight()) / 2)
-        local barX = rx + labelW
-        local barW = rw - labelW - valueColW - 6
+        local glyph = Glyphs.RESOURCE[r.res.key]
+        if glyph then glyph(rx + labelW, rowY, glyphW, barH, tr, tg, tb, 0.95 * alpha) end
+        local barX = rx + labelW + glyphW + glyphGap
+        local barW = rw - (barX - rx) - valueColW - 6
         drawResourceBar(barX, rowY, barW, barH, r.cur, r.effMax, c, r.delta, r.lethal, r.reserved, alpha)
         love.graphics.setColor(0.94, 0.95, 0.98, alpha)
         love.graphics.printf(r.text, rx + rw - valueColW, rowY + (barH - self.smallFont:getHeight()) / 2,
@@ -932,50 +958,11 @@ function CombatPanel:drawSummonRing(x, y, w, h, r, g, b, a)
     love.graphics.circle("fill", cx, cy, math.min(w, h) * 0.16)
 end
 
--- The resource glyphs: one shape per pool a cost can be paid in. A cost badge is tinted by its
--- resource, but that tint is spent the moment the actor can't afford the cast -- every short badge
--- goes WARN red at once -- so the SHAPE has to carry which pool is short on its own. Each fills the
--- box it's handed, like every other badge glyph here.
-
--- Mana: a cut gem, point up and point down. The arcane pool, and the oldest of the three marks.
-function CombatPanel:drawManaGem(x, y, w, h, r, g, b, a)
-    love.graphics.setColor(r, g, b, a or 1)
-    local cx, cy, rx, ry = x + w / 2, y + h / 2, w / 2, h / 2
-    love.graphics.polygon("fill", cx, cy - ry, cx + rx, cy, cx, cy + ry, cx - rx, cy)
-end
-
--- Stamina: a drop of sweat -- a round body under a point. Exertion, the bodily counterpart to the
--- gem's arcane. A bolt is the usual mark for this pool elsewhere, but not here: drawBrokenLink below
--- is two diagonal strokes drawn red, and it stacks on the same slot right under this badge, so a red
--- bolt beside it would be a coin flip. The body is a circle rather than a polygon because the drop's
--- whole read is that its bottom is round where the gem's is sharp.
-function CombatPanel:drawStaminaDrop(x, y, w, h, r, g, b, a)
-    love.graphics.setColor(r, g, b, a or 1)
-    local cx, rr = x + w / 2, w * 0.42
-    local by = y + h - rr
-    love.graphics.polygon("fill", cx, y, cx + rr, by, cx - rr, by)
-    love.graphics.circle("fill", cx, by, rr)
-end
-
--- Health: a heart, the universal mark, which is what frees the drop above to read as sweat rather
--- than blood. Two lobes over a point: the lobed TOP is what tells it from the drop's single point
--- once both are forced red and the tint stops helping.
-function CombatPanel:drawHealthHeart(x, y, w, h, r, g, b, a)
-    love.graphics.setColor(r, g, b, a or 1)
-    local rr = w * 0.26
-    local cx, ly = x + w / 2, y + rr + h * 0.06
-    love.graphics.circle("fill", cx - rr * 0.92, ly, rr)
-    love.graphics.circle("fill", cx + rr * 0.92, ly, rr)
-    love.graphics.polygon("fill", cx - rr * 1.84, ly, cx + rr * 1.84, ly, cx, y + h)
-end
-
--- Which glyph prices which pool. A cost badge names its resource as its icon kind, so an unknown
--- stat (a mod's own pool) still gets a mark -- the gem, the generic "some resource" shape.
-local RES_GLYPH = {
-    mana    = CombatPanel.drawManaGem,
-    stamina = CombatPanel.drawStaminaDrop,
-    health  = CombatPanel.drawHealthHeart,
-}
+-- The resource glyphs live in ui/glyphs.lua: the pool bars below and ui/tile_tooltip.lua mark their
+-- HP/MP/SP rows with the same three shapes, so a pool reads the same wherever it's quoted. A cost
+-- badge names its resource as its icon kind, so an unknown stat (a mod's own pool) still gets a mark
+-- -- the gem, the generic "some resource" shape.
+local RES_GLYPH = Glyphs.RESOURCE
 
 -- Two stubs with a gap between them: a "broken link" glyph marking an adjacency requirement the
 -- grid doesn't satisfy (a met one is drawn as a solid connector line over the grid instead).
@@ -1026,8 +1013,8 @@ function CombatPanel:drawBadgeAt(bx, by, iconKind, amount, color, a)
     elseif iconKind == "ring" then
         self:drawSummonRing(ix, iy, iconW, 10, color[1], color[2], color[3], a)
     else -- a cost: `iconKind` is the resource it's paid in, and each pool has its own shape
-        local glyph = RES_GLYPH[iconKind] or CombatPanel.drawManaGem
-        glyph(self, ix, iy, iconW, 10, color[1], color[2], color[3], a)
+        local glyph = RES_GLYPH[iconKind] or Glyphs.manaGem
+        glyph(ix, iy, iconW, 10, color[1], color[2], color[3], a)
     end
 
     love.graphics.setColor(0.96, 0.96, 0.98, a or 1)

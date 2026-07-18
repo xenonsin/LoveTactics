@@ -57,6 +57,7 @@ local VALUE = { 0.90, 0.91, 0.95 }
 local DESC = { 0.80, 0.82, 0.88 }
 
 local GLYPH_GAP = 4 -- between a row's glyph and the value it marks (matches ui/item_tooltip.lua)
+local BAR_GLYPH_W = 7 -- the resource mark ahead of a pool bar's HP/MP/SP tag
 
 -- Resource pools shown as labeled bars, in draw order. Health has no fixed colour: it's filled with
 -- the unit's SIDE colour (blue ally / red foe) like the board token's bar and the turn card's, so
@@ -168,7 +169,7 @@ local function appendUnit(blocks, unit, preview)
             -- touching `max`, so the bar reads against the ceiling while still drawing the locked
             -- slice at its far end -- the pool you have, and the pool you've committed.
             local reserved = Combat.reservedAmount(char, r.stat)
-            local block = { kind = "bar", label = r.label,
+            local block = { kind = "bar", label = r.label, stat = r.stat,
                 cur = res.current or 0, max = res.max - reserved, color = r.color or sideCol }
             if reserved > 0 then
                 block.reserved = reserved
@@ -274,7 +275,7 @@ local function buildBlocks(info)
         if trap.health and trap.maxHealth then
             -- Side-coloured like a unit's HP bar: same rule everywhere, and it keeps the bar clear of
             -- the amber slice a pending strike paints on it.
-            local block = { kind = "bar", label = "HP", cur = trap.health,
+            local block = { kind = "bar", label = "HP", stat = "health", cur = trap.health,
                 max = trap.maxHealth, color = sideCol }
             -- A pending trap strike previews the HP it would knock off (info.preview.damage).
             if info.preview and (info.preview.damage or 0) > 0 then
@@ -403,8 +404,16 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             ty = ty + bodyH + 3
         elseif b.kind == "bar" then
             love.graphics.setFont(small)
+            -- The pool's own mark just after its HP/MP/SP tag -- the same heart / gem / drop the turn
+            -- strip and the cost badges use, tinted like the label rather than the bar so the row
+            -- reads as one caption. `b.stat` is absent only for a pool with no shape of its own.
             love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
             love.graphics.print(b.label, bx + pad, ty)
+            local glyph = b.stat and Glyphs.RESOURCE[b.stat]
+            if glyph then
+                glyph(bx + pad + small:getWidth(b.label) + GLYPH_GAP, ty + 2,
+                    BAR_GLYPH_W, bodyH - 4, MUTED[1], MUTED[2], MUTED[3], 1)
+            end
             -- Value text: plain "cur / max", or "cur -> after / max" when a preview delta applies.
             -- `b.max` is the ceiling (max less anything reserved); a reservation appends its size.
             local curN = math.floor(b.cur + 0.5)
