@@ -25,18 +25,27 @@ local prologue = {}
 -- Beat content
 -- ---------------------------------------------------------------------------
 
--- The village defense: three weak demons, avatar + Rowan. The first fight anyone sees -- so it is
--- also the one that teaches the game. `tutorial` hands states/battle.lua a lesson to enforce
+-- The village defense: three imps, avatar + Rowan. The first fight anyone sees -- so it is also the
+-- one that teaches the game. `tutorial` hands states/battle.lua a lesson to enforce
 -- (data/tutorials/village.lua): Rowan speaks over her own head, the board accepts only the action she
--- just asked for, and she runs her own authored turns rather than the player's hands. That lesson
--- names exact tiles, so `layout` pins the board it was authored against instead of rolling one.
+-- just asked for, and she and the imps run authored turns rather than the AI's. That lesson names
+-- exact tiles, so `layout` pins the board it was authored against instead of rolling one.
+--
+-- Five imps, and the Demon Grunt the lesson walks on itself partway through (the tutorial's `spawn`,
+-- which is why it is absent from this composition). Imps rather than grunts for the teaching because
+-- an imp dies to exactly one sword blow and a pair of them to one Clear Out -- see
+-- data/characters/character_demon_imp.lua, where those numbers are pinned. The grunt is the step up:
+-- it takes several blows, and the lesson deliberately ends with it still standing.
 local VILLAGE_MAP = {
     biome = "forest",
     layout = "tutorial_village",
     tutorial = "village",
     objective = {
         name = "Defend the Village",
-        composition = function() return { "character_demon_grunt", "character_demon_grunt", "character_demon_grunt" } end,
+        composition = function()
+            return { "character_demon_imp", "character_demon_imp", "character_demon_imp",
+                     "character_demon_imp", "character_demon_imp" }
+        end,
         win = { type = "killAll" },
     },
     keyCount = 0,
@@ -50,6 +59,11 @@ prologue.VILLAGE_MAP = VILLAGE_MAP
 -- map and its encounter kinds, with a bandit ambush as the objective.
 local FLIGHT_QUEST = {
     name = "The Road to the Capital",
+    -- A scene played over the map the instant it appears (states/game.lua fields it on enter). The
+    -- overworld is the one screen the prologue hands over with no explanation at all -- markers, fog,
+    -- a road -- so Rowan names the aftermath and the errand while the player is looking straight at
+    -- it. See data/conversations/prologue_ruins.lua for why it is here and not a beat earlier.
+    opening = "prologue_ruins",
     map = {
         biome = "forest",
         encounters = { min = 2, max = 3 },
@@ -90,6 +104,9 @@ function prologue.runBattle(map, onWinExtra)
         stash = p.stash,
         quest = { map = map },
         tutorial = map.tutorial, -- nil for every fight but the village one
+        -- A scene played over the board when this fight opens (states/battle.lua). Any map may name
+        -- one; the village's comes from its lesson instead, which is why this is usually nil.
+        opening = map.opening,
         onWin = function()
             if onWinExtra then onWinExtra() end
             prologue.resume()

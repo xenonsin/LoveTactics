@@ -34,7 +34,7 @@ return {
             assert(relic.traits and relic.traits[1] == "trait_oathward", "and it carries the Knight's Oathward")
             assert(knight.traits == nil, "the character no longer carries a `traits` property")
             -- The positional grid placed the surrounding items exactly where authored.
-            assert(knight.inventory[1].id == "weapon_iron_sword", "cell 1 holds the authored weapon")
+            assert(knight.inventory[1].id == "weapon_iron_mace", "cell 1 holds the authored weapon")
             assert(knight.inventory[2].id == "armor_chainmail", "cell 2 holds the authored armor")
 
             -- A boss is delivered its rule the same way.

@@ -195,14 +195,13 @@ meaning anything. Being *dragged* bleeds (a mace shove costs the victim two tile
 **blinking does not**, which is exactly the premium a blink should command. See `Combat.enterTile`'s
 `reason` argument.
 
-**Parry / Riposte** (`sword`). Every sword answers a melee blow. The two reflexes differ in kind:
+**Parry / Riposte** (`sword`). Every sword answers a blow it can reach. The two reflexes differ in kind:
 
-- `parry` (`data/traits/trait_parry.lua`) — a **trade**: take the hit, then answer it. 4 stamina, 20-tick
-  cooldown.
+- `parry` (`data/traits/trait_parry.lua`) — a **trade**: take the hit, then answer it.
 - `riposte` (`data/traits/trait_riposte.lua`) — **not** a trade: the blow is turned aside so it deals
-  nothing *and* is answered. 6 stamina, 16-tick cooldown, and the only reflex in the game that both
-  negates and counters. It fires pre-mitigation from `Trait.tryRiposte` (beside Dodge and Smoke
-  Screen), because a hook only ever fires on a blow that already landed.
+  nothing *and* is answered. The only reflex in the game that both negates and counters. It fires
+  pre-mitigation from `Trait.tryRiposte` (beside Dodge and Smoke Screen), because a hook only ever
+  fires on a blow that already landed.
 
 A sword carries **one** of them, never both — `weapon_riposte_blade` swaps parry out for riposte, and that
 swap is the whole of what its price buys. Both decline to answer a blow that is itself a reaction
@@ -210,13 +209,34 @@ swap is the whole of what its price buys. Both decline to answer a blow that is 
 
 ### Pricing a triggered reflex
 
-Every triggered reflex — `parry`, `riposte`, and the priest's `keen_senses` — is priced in **both** a
-`cost = { stat, amount }` and a `magnitude` cooldown, paid through `payCost` in `models/trait.lua`
-(hooks reach it as `ctx.pay()`). The two are different levers and a reflex wants both: the cooldown
-paces answers **within** an exchange, the stamina bounds them **across** a battle. Cost is always the
-**last** gate — check suppression, range and cooldown first, or a reflex that then declines has
-silently billed its bearer. A def with no `cost` is free (the passive reflexes — `dodge`,
-`melee_counter`, `ranged_counter` — still are).
+**Reach is the gate, and the only one.** A defender answers a blow struck from a tile some weapon in
+their grid can reach back at — `Combat.answeringWeapon`, which honours each weapon's `minRange` dead
+zone as well as its range. Nothing recharges; there are no cooldowns on anything that answers with a
+blow. That is deliberate and it is the point: the answer to *"why didn't I get countered?"* has to be
+a fact the player can see on the board before committing, not a hidden timer. An archer cannot answer
+a foe in its face, and closing that distance is the counter to a counter.
+
+Two consequences fall out of this rather than being tuned in:
+
+- **An answer is a swing, so it costs what a swing costs** — the answering weapon's own
+  `activeAbility.cost`, read by `Trait.answerCost`. A dagger answers for 4, an iron sword for 8, a
+  greatsword for 16. Nobody maintains a second table, and the greatsword's "must not also parry" rule
+  above holds by economics instead of by exception.
+- **Each answer in a round costs double the last** (capped at ×8), reset when the bearer next acts.
+  This is what paces answers *within* an exchange now that the cooldowns are gone, and it does it in a
+  pool the player can watch drain rather than a clock they cannot see. Stand in a doorway against
+  three foes and you answer the first at price, the second at double, the third at quadruple — and
+  then you are out.
+
+A reflex that does **not** swing — `thorns` reflecting a share of the blow off its spikes,
+`shield_bash` landing a stun — has no weapon in the motion to read a price off, so it pays its own
+declared `cost` instead (escalated the same way). Cost is always the **last** gate: check suppression,
+reach and friendly fire first, or a reflex that then declines has silently billed its bearer.
+
+Cooldowns still exist and are still the right tool for reflexes that **negate** a blow rather than
+answer it — `dodge`, `smoke_screen`, `counter_magic` — plus the non-combat reflexes (`cleansing_ward`,
+`opportunist`, the `oathward` redirect). Those are mitigations, not a second beat in an exchange, and
+a free always-on mitigation would be untouchable.
 
 ## Adding a weapon
 

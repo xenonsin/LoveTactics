@@ -79,20 +79,62 @@ Locale.key = {
     name = function(id) return "name." .. id end,
 }
 
--- Substitute the runtime tokens an authored line may carry. Only one so far: `{name}`, the name the
--- player typed at character creation, so a companion can address the avatar directly (Rowan is sworn
--- to you and calls you by it from the first scene). Runs AFTER localization on purpose -- the token
--- travels through the translated string, so a translator moves it to wherever their grammar wants
--- it. An unset name falls back to the avatar blueprint's "Stranger".
+-- What `{select}` stands for on each device: the button that acts on whatever the cursor is over.
+--
+-- These are KEY CAPS, not words. An instruction that says "Click" is a lie on two of this project's
+-- three supported inputs -- but writing a verb for each ("Click" / "Hit Enter on" / "Press A on")
+-- only produces three sentences saying the same picture, and the awkward one is always somebody's.
+-- A drawn key reads instantly, needs no grammar, and survives translation untouched: the noun after
+-- it is the whole sentence a translator has to think about.
+--
+-- ui/coach_bubble.lua renders this as a pill; anything printing plain text gets the label inline as
+-- a graceful fallback, so a surface that cannot draw a key never prints a raw `{select}`.
+--
+-- THE MOUSE IS NOT IN THIS TABLE, and that is the point of the split. "Click" is not a key -- drawn
+-- as a cap it invents a button nobody owns, and a player who goes looking for it on their mouse has
+-- been handed a puzzle by the one thing on screen whose whole job was to be unambiguous. A pad's A
+-- and a keyboard's Enter really are labelled buttons, and a picture of them beats any sentence. So
+-- the two devices with something to draw get the cap, and the mouse gets the plain English verb it
+-- has always had.
+local SELECT_KEY = {
+    keyboard = "Enter",
+    gamepad = "A",
+}
+
+-- What the mouse says instead, written into the sentence like any other word.
+local SELECT_WORD = "Click"
+
+-- The key cap for the device in the player's hands, or nil when it has no button worth drawing
+-- (the mouse). A nil here is what tells the caller to render words rather than a pill.
+function Locale.selectKey()
+    return SELECT_KEY[require("input_mode").current]
+end
+
+-- Substitute the runtime tokens an authored line may carry:
+--
+--   {name}   -- the name the player typed at character creation, so a companion can address the
+--               avatar directly (Rowan is sworn to you and calls you by it from the first scene).
+--               An unset name falls back to the avatar blueprint's "Stranger".
+--   {select} -- the confirm verb for the device in the player's hands RIGHT NOW (see above). It
+--               re-resolves on every draw, so a player who puts down the mouse and picks up a pad
+--               mid-lesson sees the instruction change under them rather than being told to click.
+--
+-- Runs AFTER localization on purpose -- the tokens travel through the translated string, so a
+-- translator moves them to wherever their grammar wants them.
 --
 -- Lives here, beside the key schema, because it is the OTHER half of the text-resolution rule and
 -- more than one surface renders authored lines now (the dialogue box and the tutorial's speech
 -- bubble). A second copy of the token spelling is exactly the drift docs/localization.md warns about.
 -- Required lazily so this module stays a plain data require under the headless tests.
 function Locale.substitute(text)
-    if not text:find("{name}", 1, true) then return text end
-    local p = require("models.player").active
-    return (text:gsub("{name}", (p and p.name) or "Stranger"))
+    if text:find("{name}", 1, true) then
+        local p = require("models.player").active
+        text = text:gsub("{name}", (p and p.name) or "Stranger")
+    end
+    if text:find("{select}", 1, true) then
+        text = text:gsub("{select}", Locale.selectKey() or SELECT_WORD)
+    end
+    return text
 end
 
 -- An authored entry's display text: the current language's translation (keyed by the stable `tag`
@@ -100,11 +142,34 @@ end
 -- `entry` is a conversation node or choice. Accepts both the authored shape -- { "speaker", "text" },
 -- where the line is positional -- and the normalized `text =` one, since callers reach it from either
 -- side of ui/dialogue.lua's normalization (the same `n.text or n[2]` the extraction tool reads).
-function Locale.text(convId, entry)
+local function localized(convId, entry)
     if not entry then return "" end
     local english = entry.text or entry[2] or ""
-    if entry.tag == nil then return Locale.substitute(english) end
-    return Locale.substitute(Locale.get(Locale.key.line(convId, entry.tag), english))
+    if entry.tag == nil then return english end
+    return Locale.get(Locale.key.line(convId, entry.tag), english)
+end
+
+function Locale.text(convId, entry)
+    return Locale.substitute(localized(convId, entry))
+end
+
+-- A coaching line, resolved for the device in the player's hands. Returns `text, key`:
+--
+--   gamepad   "{select} on the imp to strike it."  ->  "on the imp to strike it.", "A"
+--   keyboard                                       ->  "on the imp to strike it.", "Enter"
+--   mouse                                          ->  "Click on the imp to strike it.", nil
+--
+-- Two shapes because the devices genuinely differ (see SELECT_KEY): a pad and a keyboard have a
+-- labelled button, so the token is lifted OUT of the sentence for ui/coach_bubble.lua to draw as a
+-- pill; a mouse does not, so the verb stays in the sentence as ordinary words and there is no cap.
+--
+-- A line that does not open with the token comes back whole, and Locale.substitute has already
+-- turned any inner `{select}` into its label -- so nothing ever prints a raw token.
+function Locale.coachLine(convId, entry)
+    local raw = localized(convId, entry)
+    local key = Locale.selectKey()
+    if not key then return Locale.substitute(raw), nil end
+    return Locale.substitute((raw:gsub("^%s*{select}%s*", ""))), key
 end
 
 return Locale

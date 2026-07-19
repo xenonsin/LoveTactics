@@ -324,14 +324,19 @@ A trait that **retaliates** — answers a blow with one of its own — declares 
 rather than re-checking the same five conditions in its hook:
 
 ```lua
-counter = { reach = "melee" },   -- see Trait.mayCounter in models/trait.lua for every field
+counter = {},                    -- see Trait.mayCounter in models/trait.lua for every field
 onDamaged = function(ctx)
-    if not ctx.mayCounter() then return end   -- the gates: reach, side, cooldown, suppression, ...
+    if not ctx.mayCounter() then return end   -- the gates: reach, side, suppression, ...
     if not ctx.pay() then return end          -- last, so a reflex that declines is never billed
     ctx.basicAttack(ctx.attacker)
-    ctx.setCooldown("<id>", ctx.def.magnitude)
 end,
 ```
+
+An empty `counter = {}` is the normal case and means *"I answer anything a weapon in my grid can reach
+back at"* — reach is the whole gate (see **Pricing a triggered reflex** in `docs/weapons.md`). Add
+`reach = "melee"` only for a reflex that is adjacent by its nature, like spikes on armor. Do **not**
+set a cooldown: `ctx.pay()` prices the answer as a swing and doubles it for each answer already thrown
+this round, which is what paces it.
 
 Declaring it is what puts the reflex on the player's **hover preview**: `Trait.counterPreview` reads
 the same rule to warn them, before they commit the turn, that this swing will be answered and by what

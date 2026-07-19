@@ -54,6 +54,34 @@ end
 
 return {
     {
+        name = "every scene something opens with is a scene that exists",
+        fn = function()
+            -- A battle, an overworld leg or a lesson can name a conversation to play over itself
+            -- (states/battle.lua's openingConversation, states/game.lua's quest opening). A typo
+            -- there fails SILENTLY -- Conversation.play asserts, but only on the one launch that
+            -- reaches it, which for an encounter blueprint might be a rare roll on a late map. So
+            -- every declared opening is checked here instead, where it costs nothing.
+            local Encounter = require("models.encounter")
+            local Tutorial = require("models.tutorial")
+            local Registry = require("models.registry")
+
+            local function check(id, where)
+                assert(Conversation.defs[id],
+                    where .. " opens with a conversation that does not exist: " .. tostring(id))
+            end
+            for id, def in pairs(Encounter.defs or {}) do
+                if def.opening then check(def.opening, "encounter '" .. id .. "'") end
+            end
+            for id, def in pairs(Tutorial.defs or {}) do
+                if def.opening then check(def.opening, "tutorial '" .. id .. "'") end
+            end
+            -- Quest maps name theirs through the same field (states/prologue.lua passes it along).
+            for id, def in pairs(Registry.load("data/quests", "data.quests") or {}) do
+                if def.map and def.map.opening then check(def.map.opening, "quest '" .. id .. "'") end
+            end
+        end,
+    },
+    {
         name = "every conversation is structurally valid and its ids are stamped + in the en template",
         fn = function()
             local count = 0

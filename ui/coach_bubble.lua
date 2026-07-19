@@ -20,10 +20,24 @@ local Scale = require("scale")
 
 local CoachBubble = {}
 
-local font
+local font, keyFont
 local function fonts()
     font = font or love.graphics.newFont(13)
-    return font
+    keyFont = keyFont or love.graphics.newFont(12)
+    return font, keyFont
+end
+
+-- The key cap: a drawn button standing where an instruction would otherwise have to pick a verb.
+-- Sits in its own column at the bubble's left, vertically centred against the words, so a wrapped
+-- three-line instruction still reads as "<this button> <do this>" rather than losing the key in a
+-- paragraph. Sized off its own label, since "Click" is four times the width of "A".
+local KEY_PAD = 6   -- inside the cap, around its label
+local KEY_GAP = 8   -- cap -> the words
+local KEY_FILL = { 0.20, 0.18, 0.14, 1 }
+
+local function keyCapWidth(key, kf)
+    if not key then return 0 end
+    return kf:getWidth(key) + KEY_PAD * 2 + KEY_GAP
 end
 
 -- The prompt's one accent: the ring around the target and the bubble's edge and text all share it,
@@ -52,7 +66,9 @@ function CoachBubble.draw(text, rect, opts)
     if not (text and rect) then return end
     opts = opts or {}
     local bounds = opts.bounds or { x = 0, y = 0, w = Scale.WIDTH, h = Scale.HEIGHT }
-    local f = fonts()
+    local f, kf = fonts()
+    local key = opts.key
+    local capW = keyCapWidth(key, kf)
 
     time = time + love.timer.getDelta()
     local pulse = 0.5 + 0.5 * math.sin(time * PULSE_SPEED)
@@ -62,10 +78,12 @@ function CoachBubble.draw(text, rect, opts)
     -- narrower box is what spills text past the border: getWrap only reports where it would break at
     -- the width it was given. The extra pixel absorbs the rounding between measured and rendered
     -- advance widths, which is enough to push a final glyph over the edge on its own.
-    local wrapW, lines = f:getWrap(text, MAX_W - PAD * 2)
-    local w = math.min(MAX_W, math.ceil(wrapW) + 1 + PAD * 2)
-    local innerW = w - PAD * 2
-    local h = PAD * 2 + #lines * f:getHeight()
+    -- The key cap claims its column first; the words wrap in whatever is left.
+    local wrapW, lines = f:getWrap(text, MAX_W - PAD * 2 - capW)
+    local w = math.min(MAX_W, math.ceil(wrapW) + 1 + PAD * 2 + capW)
+    local innerW = w - PAD * 2 - capW
+    local textH = #lines * f:getHeight()
+    local h = PAD * 2 + math.max(textH, key and (kf:getHeight() + KEY_PAD * 2) or 0)
 
     -- Placement. The bubble is a prompt laid over a board the player is being taught to READ, so
     -- where it lands matters: parked above a tile in a crowded lane it hides the very unit the next
@@ -178,9 +196,30 @@ function CoachBubble.draw(text, rect, opts)
     love.graphics.line(bx1, by1, tipX, tipY, bx2, by2)
     love.graphics.setLineWidth(1)
 
+    -- The key cap, drawn as a button: dark plate, gold edge, gold label. Same gold as the ring and
+    -- the bubble's own border, so it reads as part of the one "look here" idea rather than a fourth
+    -- colour. It pulses with the border for the same reason.
+    if key then
+        local capH = kf:getHeight() + KEY_PAD * 2
+        local capX, capY = x + PAD, y + (h - capH) / 2
+        local capBoxW = kf:getWidth(key) + KEY_PAD * 2
+        love.graphics.setColor(KEY_FILL[1], KEY_FILL[2], KEY_FILL[3], KEY_FILL[4])
+        love.graphics.rectangle("fill", capX, capY, capBoxW, capH, 4, 4)
+        love.graphics.setColor(GOLD[1], GOLD[2], GOLD[3], 0.7 + 0.3 * pulse)
+        love.graphics.setLineWidth(1.5)
+        love.graphics.rectangle("line", capX, capY, capBoxW, capH, 4, 4)
+        love.graphics.setLineWidth(1)
+        love.graphics.setFont(kf)
+        love.graphics.setColor(1.0, 0.90, 0.60)
+        love.graphics.printf(key, capX, capY + KEY_PAD, capBoxW, "center")
+    end
+
+    -- The words. Left-aligned when a cap sits beside them (centred text next to a fixed pill reads as
+    -- a layout accident); centred when the bubble is words alone.
     love.graphics.setFont(f)
     love.graphics.setColor(0.98, 0.91, 0.72)
-    love.graphics.printf(text, x + PAD, y + PAD, innerW, "center")
+    local textY = y + (h - textH) / 2
+    love.graphics.printf(text, x + PAD + capW, textY, innerW, key and "left" or "center")
     love.graphics.setColor(1, 1, 1)
 end
 

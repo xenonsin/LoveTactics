@@ -26,12 +26,14 @@ local ItemTooltip = require("ui.item_tooltip")
 local TileTooltip = require("ui.tile_tooltip")
 local ActionPreview = require("ui.action_preview")
 local Character = require("models.character")
+local Item = require("models.item")
 local Combat = require("models.combat")
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local Status = require("models.status")
 local EncounterModel = require("models.encounter")
 local Tutorial = require("models.tutorial")
+local Conversation = require("models.conversation")
 local TutorialPrompt = require("ui.tutorial_prompt")
 local CoachBubble = require("ui.coach_bubble")
 
@@ -46,6 +48,14 @@ local PANEL_W = CombatPanel.WIDTH
 -- tooltips (see drawLeftColumn). The board is centred in the gap between the two columns.
 -- Slimmer than the right panel (it only holds buttons + a tooltip), to give the board room.
 local LEFT_W = 264
+
+-- The gutter under the board: the free strip between the left button column and the combat panel,
+-- below the last row of tiles. Mirrors ui/tutorial_prompt.lua's own PAD/GAP/BOTTOM so the mentor's
+-- panel and a conversation's text box land in exactly the same rect -- one speaks during the lesson
+-- and the other before it, and they should not sit an inch apart while doing it.
+local GUTTER_PAD = 16    -- inset from the columns on either side
+local GUTTER_GAP = 8     -- between the board's bottom edge and the box
+local GUTTER_BOTTOM = 12 -- between the box and the bottom of the screen
 local BOARD_TILE = 60 -- on-screen tile size (< the arena's logical 64), for breathing room
 local BOARD_TOP = 104 -- fixed board top (below the 3-line HUD); the freed bottom holds the log
 local AI_DELAY = 0.35 -- seconds between enemy actions, so each move is watchable
@@ -468,25 +478,22 @@ end
 -- enemy POSITIONS that threaten it, so a tile the cursor lands on can trace a red line back to each
 -- foe. Recomputed on turn hand-off and after any walk (an enemy's reachable set shifts as units
 -- move) -- never per frame. Decoys (control "none") never advance, so they raise no threat.
+--
+-- The union itself is Combat.threatMap, shared with the AI: what the player reads as "where it is
+-- dangerous to stand" is the very question a unit weighing a tile to stand on asks, and the two must
+-- not be allowed to drift apart -- an overlay that promises a tile is safe while the AI prices it as
+-- exposed teaches the player a rule the game isn't playing.
 local function computeDanger()
-    local cells, sources = {}, {}
-    for _, u in ipairs(battle.combat.units) do
-        if u.alive and u.side ~= "party" and u.control ~= "none" then
-            local weapon = Combat.defaultWeapon(u.char)
-            local ab = weapon and weapon.activeAbility
-            local range = (ab and ab.range) or 1
-            local reach = Combat.attackReach(battle.combat, u, range,
-                Combat.reachable(battle.combat, u), ab and ab.requiresSight, Combat.abilityMinRange(ab))
-            for k, cell in pairs(reach) do
-                if not cells[k] then cells[k] = { x = cell.x, y = cell.y } end
-                local src = sources[k]
-                if not src then src = {} sources[k] = src end
-                src[#src + 1] = { x = u.x, y = u.y }
-            end
-        end
+    -- A lesson step may ask for a clean board (Tutorial.hidesDanger). Emptying the sets here rather
+    -- than at each draw site is what makes that one decision instead of four: the purple move-band
+    -- split, the red threat lines and the "Threats" survey all read these, so they all go quiet
+    -- together and none of them can be forgotten.
+    if battle.tutorial and Tutorial.hidesDanger(battle.tutorial) then
+        battle.dangerCells, battle.dangerSources = {}, {}
+        battle.inspectFor = nil
+        return
     end
-    battle.dangerCells = cells
-    battle.dangerSources = sources
+    battle.dangerCells, battle.dangerSources = Combat.threatMap(battle.combat, "party")
     battle.inspectFor = nil -- board changed: a lingering hover preview is rebuilt on the next frame
 end
 
@@ -572,10 +579,40 @@ local function beginTurn()
     end
 end
 
+-- Walk on the reinforcements a lesson step calls for -- the village fight's demon grunt, arriving
+-- the moment the Clear Out that cleared the imps has finished resolving. Combat.addUnit is the same seam
+-- a summon arrives through, so the newcomer joins the turn order, the board and every query with no
+-- further wiring; it gets a script key off its spawn cell exactly like the units placed at start.
+--
+-- Claimed once from the lesson rather than checked against the board, because a spawned unit can
+-- die: "is it already here?" has no honest answer, so the lesson remembers instead.
+local function spawnReinforcements()
+    local spawns = battle.tutorial and Tutorial.claimSpawn(battle.tutorial)
+    if not spawns then return end
+    for _, s in ipairs(spawns) do
+        local unit = Combat.addUnit(battle.combat, Character.instantiate(s.char), "enemy", s.x, s.y)
+        unit.scriptKey = s.x .. "," .. s.y
+        -- A reinforcement may name where it lands in the ORDER as well as on the board. Combat.addUnit
+        -- gives an arrival its natural initiative, which drops it wherever its own speed says -- fine
+        -- for a summon, but a scripted arrival is a beat in a scene, and a beat has to fall in the
+        -- right place. The village grunt claims 0 so it acts at once: its charge, Rowan's answer and
+        -- the player's turn have to happen in that order or the lesson between them makes no sense.
+        if s.initiative then unit.initiative = s.initiative end
+        Combat.logEvent(battle.combat, "action",
+            string.format("%s joins the fight!", unit.char.name or "A demon"))
+    end
+end
+
 -- The real hand-off, run once an action's reactions have played: resolve the objective, else start
 -- the next unit's turn.
 local function resolveAdvance()
     battle.pendingAdvance = nil
+    -- A lesson may owe this fight a body, and it is owed BEFORE the objective is judged. The village
+    -- Clear Out kills the last two imps, and an empty enemy side is a victory (Combat.evaluate) -- so
+    -- without this the battle would be won a beat before the reinforcement that the remaining three
+    -- steps are entirely about. Fielded here rather than from refreshView so it cannot lose a race
+    -- with the very check it exists to forestall.
+    spawnReinforcements()
     local result = Combat.evaluate(battle.combat)
     if result == "win" then win() return
     elseif result == "loss" then lose() return end
@@ -632,6 +669,35 @@ local function tutorialRefuses(kind)
     -- the panel falls back to the step's standing instruction.
     battle.tutorialNudge = { text = Tutorial.nudge(battle.tutorial), life = NOTICE_LIFE }
     return true
+end
+
+-- Hand over the item the current lesson step gives the player -- the mentor passing on a battle art
+-- mid-fight, because an ability lesson is unteachable to someone carrying only a sword.
+--
+-- Idempotent (it checks the grid before adding), so it can run every frame from refreshView: the
+-- gift lands the instant the step becomes current no matter which path advanced to it, and there is
+-- no single advancement point to keep in step with. It goes to the step's ACTOR -- the unit being
+-- taught -- and stays in that character's grid after the battle: the art is genuinely theirs now.
+local function grantLessonItem()
+    local id = battle.tutorial and Tutorial.grant(battle.tutorial)
+    if not id then return end
+    local actorId = Tutorial.step(battle.tutorial).actor
+    for _, u in ipairs(battle.combat.units) do
+        if u.alive and u.char.id == actorId then
+            for _, held in ipairs(Character.eachItem(u.char)) do
+                if held.id == id then return end -- already handed over
+            end
+            -- A full grid simply refuses, and the step's own gate then refuses the arming that
+            -- follows: better a lesson that stalls visibly than one that silently drops the gift.
+            --
+            -- Deliberately SILENT: no notice banner. The gift is already announced twice over -- the
+            -- mentor is mid-sentence handing it to you, and the coach bubble is pinned to the slot it
+            -- landed in -- and a third announcement lands in the gutter the mentor's own panel
+            -- occupies, clipping the line that is doing the announcing.
+            Character.addItem(u.char, Item.instantiate(id))
+            return
+        end
+    end
 end
 
 -- Tell a running tutorial that `unit` just committed an action, so it can advance to the next step
@@ -704,6 +770,28 @@ local function updateWalk(dt)
     end
     battle.walk = nil
     if w.onDone then w.onDone() end
+end
+
+-- Is the lesson TALKING TO THE PLAYER right now -- the step's actor holding the turn, with nothing
+-- mid-resolution? Both halves of the tutorial's UI hang off this, and they hang off the SAME answer
+-- on purpose: an instruction and the voice giving it should not be able to disagree about whether
+-- they are being addressed to anyone.
+--
+-- It is false during the mentor's own turns, the enemies', and the walk a click has already started.
+-- Everything the lesson says is something to DO, and a standing instruction left up through a beat
+-- the player cannot act in reads as a prompt the game is ignoring.
+local function lessonAddressesPlayer()
+    if not (battle.tutorial and battle.lessonOpen) then return false end
+    -- A conversation owns the screen while it plays. The lesson's own UI would otherwise draw
+    -- UNDERNEATH it -- the coach bubble on the board and the mentor's panel in the gutter the
+    -- dialogue box occupies -- which is two of her talking at once, in two different registers.
+    -- (The village opening only escapes this by accident: Rowan holds the first turn, so the lesson
+    -- has not opened yet. Anything that changed the turn order would expose it.)
+    if Conversation.active then return false end
+    if battle.over or busy() then return false end
+    local step, current = Tutorial.step(battle.tutorial), battle.current
+    if not (step and current) then return false end
+    return Combat.isPlayerControlled(current) and current.char.id == step.actor
 end
 
 local function cancelArm()
@@ -802,7 +890,7 @@ local function tryDefaultAction(unit, tx, ty)
     local victim = Combat.unitAt(battle.combat, tx, ty)
     local function strike()
         if Combat.useItem(battle.combat, unit, weapon, tx, ty) then
-            observeAction("attack", unit, tx, ty, victim and victim.char.id)
+            observeAction("attack", unit, tx, ty, victim and victim.char.id, weapon.id)
             advanceTurn()
         end
     end
@@ -1109,7 +1197,10 @@ local function confirm()
         local victim = Combat.unitAt(battle.combat, cx, cy) -- read before the cast clears the cell
         local function cast()
             if Combat.useItem(battle.combat, current, item, cx, cy) then
-                observeAction("attack", current, cx, cy, victim and victim.char.id)
+                -- The item rides along so a lesson can ask for a strike with a NAMED ability rather
+                -- than any blow at all -- the village lesson's Clear Out, which is aimed at the caster's
+                -- own tile and so cannot be pinned by its victim (see data/tutorials/village.lua).
+                observeAction("attack", current, cx, cy, victim and victim.char.id, item.id)
                 advanceTurn()
             end
         end
@@ -1152,7 +1243,7 @@ end
 -- nothing of the board, so the check for whether its script still makes sense belongs on this side.
 local function scriptedAction(unit)
     if not battle.tutorial then return nil end
-    local entry = Tutorial.scriptFor(battle.tutorial, unit.char.id)
+    local entry = Tutorial.scriptFor(battle.tutorial, unit.scriptKey or unit.char.id)
     if not entry then return nil end
     local act = { move = entry.move }
     if entry.strike then
@@ -1160,6 +1251,23 @@ local function scriptedAction(unit)
         if target and target.alive and target.side ~= unit.side then
             act.item = Combat.defaultWeapon(unit.char)
             act.tx, act.ty = entry.strike.x, entry.strike.y
+        end
+    elseif entry.guard then
+        -- A standing order rather than an authored cell: cut down whatever is at your elbow, and
+        -- never take a step. It is the mentor's whole part in the fight (data/tutorials/village.lua),
+        -- and it is here rather than in the lesson data because WHICH foe is adjacent on any given
+        -- turn is a fact about the board, which that file is not allowed to know.
+        --
+        -- The no-step half is what makes it safe: an AI ally would advance, and every tile she might
+        -- advance to is one the choreography needs empty. Standing still, she can only ever take what
+        -- walks into her -- which is exactly the body the lesson meant her to have.
+        for _, other in ipairs(battle.combat.units) do
+            if other.alive and other.side ~= unit.side
+                and math.abs(other.x - unit.x) + math.abs(other.y - unit.y) == 1 then
+                act.item = Combat.defaultWeapon(unit.char)
+                act.tx, act.ty = other.x, other.y
+                break
+            end
         end
     end
     return act
@@ -1239,6 +1347,18 @@ local function refreshView()
     local current = battle.current
     if not current then return end
     local isParty = Combat.isPlayerControlled(current) and not battle.over
+
+    -- A lesson holds its tongue until the student's first turn. Everything before that -- the opening
+    -- conversation, and the mentor's own demonstration kill -- belongs to her, and an instruction
+    -- panel telling the player what to click while they have no turn to click it in is noise laid
+    -- over the one beat that is asking them to watch. Latched rather than tested per frame, so it
+    -- never blinks off again during the enemies' turns once the lesson is genuinely under way.
+    if isParty then battle.lessonOpen = true end
+
+    -- Before anything reads the grid: a lesson step may be handing the player the very item the next
+    -- steps are about, and the item panel drawn this frame has to already show it. (Reinforcements
+    -- are NOT fielded here -- they land in resolveAdvance, ahead of the objective check.)
+    grantLessonItem()
 
     -- Hold the weapon sheathed for as long as a tutorial step is asking the player to draw it. The
     -- guard in armDefaultAction only covers the START of a turn, and the arming lesson is reached
@@ -1558,6 +1678,29 @@ end
 -- State callbacks
 -- ---------------------------------------------------------------------------
 
+-- The conversation this battle opens with, played over the board before a turn resolves -- or nil for
+-- a fight that just starts. ANY battle may have one; the tutorial was only the first caller.
+--
+-- Three sources, in order, because they answer different questions:
+--
+--   opts.opening        -- this particular launch. Whoever switched to the battle said so: a quest
+--                          map naming a scene for its objective fight, a story beat, a scripted duel.
+--   the ENCOUNTER def   -- this KIND of fight, wherever it turns up. `opening` on an encounter
+--                          blueprint (data/encounters/*.lua) fires every time that encounter is
+--                          engaged, on any map, with no plumbing through the overworld -- the cell
+--                          carries the id and the blueprint is looked up right here.
+--   the lesson          -- a guided fight's own opening (data/tutorials/*.lua's `opening`).
+--
+-- First one wins, so a specific launch can override the generic encounter, which can in turn say
+-- something a lesson does not.
+local function openingConversation(opts)
+    if opts.opening then return opts.opening end
+    local enc = opts.encounter
+    local def = enc and enc.id and EncounterModel.get(enc.id)
+    if def and def.opening then return def.opening end
+    return battle.tutorial and Tutorial.opening(battle.tutorial) or nil
+end
+
 function battle.enter(self, opts)
     opts = opts or {}
     battle.onWin = opts.onWin
@@ -1579,6 +1722,7 @@ function battle.enter(self, opts)
     -- drives the units it names itself. Nil in every other battle, which is what every hook below
     -- tests for. See models/tutorial.lua.
     battle.tutorial = opts.tutorial and Tutorial.new(opts.tutorial) or nil
+    battle.lessonOpen = battle.tutorial == nil -- see refreshView: a lesson stays quiet until it is the student's turn
 
     local seed = os.time() + math.floor(((love.timer and love.timer.getTime()) or 0) * 1000) % 100000
     local ctx = { prestige = opts.prestige or 1, biome = opts.biome, quest = opts.quest }
@@ -1609,6 +1753,13 @@ function battle.enter(self, opts)
     end
 
     battle.combat = Combat.new(battle.arena, battle.partyUnits, battle.enemyUnits)
+    -- A scripted lesson addresses units by name (Tutorial.scriptFor). A party member answers to its
+    -- character id, which is unique within a party; an enemy answers to the CELL IT SPAWNED ON,
+    -- because a lesson may field several of one blueprint and three identical imps would otherwise
+    -- share -- and race for -- a single queue. Stamped here, the one moment x/y still hold the spawn.
+    for _, u in ipairs(battle.combat.units) do
+        u.scriptKey = (u.side == "party") and u.char.id or (u.x .. "," .. u.y)
+    end
     -- The player's stash, by reference: Combat.steal appends here when a party thief's own 3x3 grid
     -- has no room, so the item is the player's the moment it's lifted, win or lose.
     battle.combat.stash = opts.stash
@@ -1640,6 +1791,35 @@ function battle.enter(self, opts)
 
     beginTurn()
     refreshView()
+
+    -- Last, once the board is fully built: the fight may open with a scene played OVER it. A
+    -- conversation is a global overlay on a frozen state (see main.lua), so the lane, the party and
+    -- every enemy on it sit there behind the box, and not a single turn resolves until the player
+    -- dismisses it themselves. That is the whole reason it is fielded here rather than as a beat
+    -- before the battle: said on a black screen it would be backstory, and said over the board it is
+    -- the fight being pointed at.
+    -- `overScene` and the box are asked for HERE rather than declared by the scene, because both are
+    -- true of every conversation that plays over a board and of no scene inherently. The board is the
+    -- thing behind it and the thing it is about: a full-screen bust would stand on the party, and a
+    -- full-WIDTH text box would reach across the button column and the combat panel both.
+    --
+    -- So the words go in the free gutter under the board -- the same rect the mentor's own panel
+    -- occupies (ui/tutorial_prompt.lua), with the same insets, so a lesson's speech and a scene's
+    -- speech land in exactly the same place rather than one inch apart.
+    local opening = openingConversation(opts)
+    if opening then
+        local boardBottom = battle.map.originY + battle.arena.rows * battle.map.size
+        local x = LEFT_W + GUTTER_PAD
+        local y = boardBottom + GUTTER_GAP
+        Conversation.play(opening, nil, nil, {
+            overScene = true,
+            box = {
+                x = x, y = y,
+                w = Scale.WIDTH - PANEL_W - GUTTER_PAD - x,
+                h = Scale.HEIGHT - GUTTER_BOTTOM - y,
+            },
+        })
+    end
 end
 
 function battle.update(dt)
@@ -1736,6 +1916,18 @@ local function coachTarget(anchor)
                 return { x = sx, y = sy, w = sw, h = sh }, "panel"
             end
         end
+    elseif anchor.kind == "turn" then
+        -- A card in the turn order. The one anchor that points at the INTERFACE rather than at the
+        -- battlefield, and it earns that: the initiative timeline is the only system in the game a
+        -- player cannot learn by looking at the board, so the lesson about it has to point at the
+        -- strip itself -- at the avatar's own card for the resource bars it carries, and at a
+        -- stunned foe's for the slot it just slid down to.
+        for _, u in ipairs(battle.combat.units) do
+            if u.alive and u.char.id == anchor.char then
+                local cx, cy, cw, ch = battle.panel:cardRect(u)
+                if cx then return { x = cx, y = cy, w = cw, h = ch }, "panel" end
+            end
+        end
     end
     return nil
 end
@@ -1744,6 +1936,7 @@ end
 -- separate from the mentor's panel on purpose -- see data/tutorials/village.lua for why the fiction
 -- and the instruction are not allowed to share a mouth.
 function battle.drawCoach()
+    if not lessonAddressesPlayer() then return end
     local coach = Tutorial.coach(battle.tutorial)
     if not coach then return end
     local rect, region = coachTarget(coach.anchor)
@@ -1773,6 +1966,7 @@ function battle.drawCoach()
         bounds = bounds,
         prefer = region == "panel" and "above" or "side",
         avoid = avoid,
+        key = coach.key, -- the button to press, drawn as a cap rather than written into the sentence
     })
 end
 
@@ -1788,7 +1982,9 @@ function battle.draw()
     battle.log:draw()
     -- The tutorial's instruction panel shares the gutter under the board with the combat log, and is
     -- drawn after it: a lesson the player is mid-way through outranks a log they can toggle back.
-    if battle.tutorial then
+    -- Same rule as the coach bubble: the mentor's direction is a direction, so it waits for a turn
+    -- the player can follow it in. She goes quiet while she and the demons take theirs.
+    if lessonAddressesPlayer() then
         local prompt = Tutorial.narration(battle.tutorial)
         -- A live correction displaces the mentor's standing line until it ages out. She scolds; the
         -- coach bubble below goes on saying which thing to click.

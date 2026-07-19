@@ -64,6 +64,10 @@ function Dialogue.new(def, onComplete, convId)
     self.done = false
     -- Title is authored inline (English) and localized under the stable id "title.<conv>".
     self.title = def.title and Locale.get(Locale.key.title(convId), def.title) or nil
+    -- Played over a LIVE scene rather than against a backdrop -- a battle mid-turn, frozen behind it
+    -- (see the village lesson's `opening`). The scene behind is the subject of the conversation, so
+    -- this trades the full-screen VN staging for a text box that keeps it visible. See :draw.
+    self.overScene = def.overScene == true
 
     self.titleFont = uiFont(22)
     self.nameFont = uiFont(20)
@@ -71,11 +75,18 @@ function Dialogue.new(def, onComplete, convId)
     self.choiceFont = uiFont(19)
     self.fallbackFont = uiFont(64)
 
-    -- Box rect, spanning the width along the bottom.
-    self.boxX = BOX_MARGIN
-    self.boxW = Scale.WIDTH - BOX_MARGIN * 2
-    self.boxH = BOX_H
-    self.boxY = Scale.HEIGHT - BOX_H - BOX_BOTTOM_GAP
+    -- Box rect: a wide bar along the bottom of the SCREEN by default, or wherever the caller put it.
+    --
+    -- An override exists because a full-width bar is only right when the whole screen is the scene's.
+    -- Over a battle it reaches across the left button column and the combat panel both, covering two
+    -- pieces of interface that have nothing to do with the conversation -- so states/battle.lua hands
+    -- in the free gutter UNDER THE BOARD instead, the same rect its mentor panel already lives in
+    -- (ui/tutorial_prompt.lua). The box then sits centred under the board, framed by the columns.
+    local box = def.box
+    self.boxX = box and box.x or BOX_MARGIN
+    self.boxW = box and box.w or (Scale.WIDTH - BOX_MARGIN * 2)
+    self.boxH = box and box.h or BOX_H
+    self.boxY = box and box.y or (Scale.HEIGHT - BOX_H - BOX_BOTTOM_GAP)
 
     -- Normalize the positional script into { by, text, id, goto, name, portrait, choices } nodes so
     -- the rest of the widget reads named fields regardless of how the scene was authored.
@@ -310,22 +321,36 @@ function Dialogue:drawPortrait(member, active)
 end
 
 function Dialogue:draw()
-    -- Slight dim over the frozen screen behind, so the portraits and text read.
-    love.graphics.setColor(0, 0, 0, 0.4)
+    -- Dim the frozen screen behind so the text reads. An OVER-SCENE conversation dims far less: what
+    -- is behind it is not a backdrop to be pushed away, it is the thing being talked about.
+    love.graphics.setColor(0, 0, 0, self.overScene and 0.18 or 0.4)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
     local node = self:currentNode()
     local activeId = node and node.by
 
     -- Cast: inactive members first, the active speaker last so it sits on top.
-    for _, member in ipairs(self.cast) do
-        if member.id ~= activeId then self:drawPortrait(member, false) end
-    end
+    --
+    -- Skipped entirely over a live scene. A bottom-anchored VN bust is nearly half the screen tall
+    -- and stands in the middle of it, which is exactly where a battlefield keeps its battle -- the
+    -- first cut of the village opening put Rowan's portrait squarely over the party and the two imps
+    -- the scene is pointing at. The name plate on the text box already says who is speaking, which is
+    -- the same way the in-battle mentor panel identifies her (ui/tutorial_prompt.lua).
+    --
+    -- Only the BATTLE opening uses this mode. A scene over the overworld keeps the ordinary staging
+    -- (prologue_ruins) -- a fogged map is not a board being read tile by tile, and the story scenes
+    -- either side of it are staged that way, so it would be the odd one out.
     local activeMember = activeId and self.castById[activeId]
-    if activeMember then self:drawPortrait(activeMember, true) end
+    if not self.overScene then
+        for _, member in ipairs(self.cast) do
+            if member.id ~= activeId then self:drawPortrait(member, false) end
+        end
+        if activeMember then self:drawPortrait(activeMember, true) end
+    end
 
-    -- Scene title, top-left.
-    if self.title then
+    -- Scene title, top-left -- suppressed over a live scene, where that corner belongs to whatever
+    -- is already running (the battle keeps its own controls there).
+    if self.title and not self.overScene then
         love.graphics.setFont(self.titleFont)
         love.graphics.setColor(0.95, 0.85, 0.55)
         love.graphics.print(self.title, 40, 28)

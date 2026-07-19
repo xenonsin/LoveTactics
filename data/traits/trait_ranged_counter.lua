@@ -1,23 +1,23 @@
--- Ranged Counter: the archer's answer to a shot. When a foe strikes from RANGE -- from a tile that
--- is not adjacent -- the bearer returns fire with its default weapon, provided that weapon is itself
--- ranged and the attacker stands within its reach. Then the reflex recharges for a spell.
+-- Ranged Counter: the archer's answer to a shot. When a foe strikes from a tile the bearer's bow can
+-- cover, the bearer returns fire.
 --
--- The mirror of melee_counter: that one answers an adjacent blow, this one answers a distant one. A
--- bearer whose default weapon is a blade (range 1) can never fire back, so this trait sits inert on a
--- melee unit -- it wants a bow. Free (no resource, no turn) and only on a survived hit.
+-- Under the reach rule this needs no special casing at all: it declares no `reach`, so it answers
+-- whatever a weapon in the grid can reach back at, and Combat.answeringWeapon does the rest. On an
+-- archer that means the bow's band -- and NOT the tile right in front of them, because a bow's
+-- `minRange` dead zone bars the point-blank answer. Closing on an archer is how you shut its counter
+-- off; that is the rule this whole system is built to make visible.
 --
--- The `counter` rule declares what provokes it -- a distant blow, answerable only with a weapon that
--- reaches back -- and ctx.mayCounter (models/trait.lua) checks it, so the hover preview can warn the
--- player of this answer through the same rules that fire it.
+-- Free of the timeline (no turn spent) but not of the pool: priced as a swing by Trait.answerCost, so
+-- returning fire costs what firing costs, doubled for each answer already thrown this round. Only on a
+-- survived hit.
 return {
     name = "Ranged Counter",
-    description = "When shot from range, fire back with a ranged weapon. Then it must recharge.",
-    magnitude = 10, -- cooldown ticks after a counter
-    counter = { reach = "ranged", answersReactions = true },
+    description = "When shot from range, spend a shot's stamina to fire back.",
+    counter = { answersReactions = true },
     onDamaged = function(ctx)
         if not ctx.mayCounter() then return end
+        if not ctx.pay() then return end
         ctx.log("action", string.format("%s returns fire!", (ctx.unit.char and ctx.unit.char.name) or "Unit"))
         ctx.basicAttack(ctx.attacker)
-        ctx.setCooldown("trait_ranged_counter", ctx.def.magnitude)
     end,
 }

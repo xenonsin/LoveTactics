@@ -292,7 +292,7 @@ return {
 
     -- ---------------------------------------------------------------- sword: parry / riposte
     {
-        name = "a sword answers a melee blow, then must recover its guard",
+        name = "a sword answers every melee blow it can afford, at a doubling price",
         fn = function()
             local defender = plainChar("character_bandit")
             give(defender, "weapon_iron_sword")
@@ -306,14 +306,15 @@ return {
             Combat.dealFlatDamage(c, d, 5, { "physical" }, "test", a)
             assert(hp(a) < before, "the defender answered the blow")
 
-            -- On cooldown now: a second blow inside the window goes unanswered.
+            -- Nothing is recharging, so a second blow in the same round is answered too. What bounds
+            -- it is the price, not a timer.
             local mid = hp(a)
             Combat.dealFlatDamage(c, d, 5, { "physical" }, "test", a)
-            assert(hp(a) == mid, "the guard is still recovering, so no second answer")
+            assert(hp(a) < mid, "and answers the next one as well -- no guard to recover")
         end,
     },
     {
-        name = "a parry is paid for in stamina, and an exhausted swordsman simply eats the blow",
+        name = "a parry costs what the sword costs to swing, and an exhausted swordsman eats the blow",
         fn = function()
             local defender = plainChar("character_bandit")
             give(defender, "weapon_iron_sword")
@@ -321,18 +322,22 @@ return {
             give(attacker, "weapon_iron_sword")
             local c = Combat.new(arena(8, 8), { unit(defender, 3, 3) }, { unit(attacker, 3, 4) })
             local d, a = c.units[1], c.units[2]
+            -- An answer IS a swing, so it is billed the swing's own price -- no second number to tune.
+            local swing = Combat.defaultWeapon(d.char).activeAbility.cost.amount
 
             local stamina = Combat.resource(d.char, "stamina")
             Combat.dealFlatDamage(c, d, 5, { "physical" }, "test", a)
-            assert(Combat.resource(d.char, "stamina") == stamina - 4, "a parry costs 4 stamina")
+            assert(Combat.resource(d.char, "stamina") == stamina - swing,
+                "a parry costs exactly what swinging the sword costs")
 
-            -- Empty the pool and clear the guard: the cooldown is no longer what is stopping them.
-            d.char.stats.stamina.current = 3 -- one short
-            Combat.tickCooldowns(c, 99) -- the real recharge clock; setCooldown(.., 0) would NOT clear it
+            -- Empty the pool: stamina is now the only thing that can stop a parry.
+            d.char.stats.stamina.current = swing - 1
+            d.answersThisRound = 0
             local before = hp(a)
             Combat.dealFlatDamage(c, d, 5, { "physical" }, "test", a)
             assert(hp(a) == before, "no stamina, no parry")
-            assert(d.char.stats.stamina.current == 3, "and the answer that never came bills nothing")
+            assert(d.char.stats.stamina.current == swing - 1,
+                "and the answer that never came bills nothing")
         end,
     },
     {
@@ -344,20 +349,23 @@ return {
             give(attacker, "weapon_iron_sword")
             local c = Combat.new(arena(8, 8), { unit(duelist, 3, 3) }, { unit(attacker, 3, 4) })
             local d, a = c.units[1], c.units[2]
+            local swing = Combat.defaultWeapon(d.char).activeAbility.cost.amount
 
             local stamina = Combat.resource(d.char, "stamina")
             local before = hp(d)
             Combat.dealFlatDamage(c, d, 8, { "physical" }, "test", a)
             assert(hp(d) == before, "the blow is turned aside entirely")
-            assert(Combat.resource(d.char, "stamina") == stamina - 6, "a riposte costs 6 stamina")
+            assert(Combat.resource(d.char, "stamina") == stamina - swing,
+                "and a riposte, like a parry, costs a swing")
 
-            -- Spent and off cooldown: the blade no longer negates anything, which is the whole point
-            -- of pricing it -- a duelist in a doorway can now be worn down rather than waited out.
-            d.char.stats.stamina.current = 5 -- one short
-            Combat.tickCooldowns(c, 99) -- the real recharge clock; setCooldown(.., 0) would NOT clear it
+            -- Spent: the blade no longer negates anything, which is the whole point of pricing it --
+            -- a duelist in a doorway can be worn down rather than waited out.
+            d.char.stats.stamina.current = swing - 1
+            d.answersThisRound = 0
             Combat.dealFlatDamage(c, d, 8, { "physical" }, "test", a)
             assert(hp(d) < before, "an exhausted guard stops nothing")
-            assert(d.char.stats.stamina.current == 5, "and bills nothing for the guard it never raised")
+            assert(d.char.stats.stamina.current == swing - 1,
+                "and bills nothing for the guard it never raised")
         end,
     },
     {

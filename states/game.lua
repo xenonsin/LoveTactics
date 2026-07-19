@@ -87,6 +87,15 @@ function game.enter(self, quest, prestige, player, onComplete)
         -- Fog-of-war radius from the active party (a torch-carrier widens it).
         visionRadius = Player.visionRadius(player),
     })
+
+    -- Last, once the map exists: a quest may open with a scene played OVER it. A conversation is a
+    -- global overlay on a frozen state (main.lua), so the road, the markers and the fog sit there
+    -- behind the box and nothing moves until the player dismisses it.
+    --
+    -- Fielded from `enter`, which is exactly once per leg -- returning from a battle deliberately
+    -- skips this function (see the file header), so a won encounter never replays the scene.
+    local opening = quest and quest.opening
+    if opening then require("models.conversation").play(opening) end
 end
 
 -- Engaging an encounter. Combat kinds (combat / elite / objective) drop into the

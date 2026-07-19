@@ -72,7 +72,7 @@ return {
 
             -- Reading the preview must cost the defender nothing at all.
             assert(Combat.resource(b.char, "stamina") == stamina, "the preview spends no stamina")
-            assert(not Combat.onCooldown(b, "trait_parry"), "and burns no cooldown")
+            assert((b.answersThisRound or 0) == 0, "and does not tally as an answer thrown")
             assert(k.char.stats.health.current == knightHP, "and lands no damage")
 
             Combat.useItem(c, k, weapon, b.x, b.y)
@@ -99,23 +99,33 @@ return {
         end,
     },
     {
-        name = "a reflex that can't be paid for, or is still recharging, is never promised",
+        -- Stamina is the only thing that can silence a reflex now, so it is the only thing the promise
+        -- has to weigh -- and it must weigh the ESCALATED price, not the base one, or the panel would
+        -- promise a third answer the exchange then refuses.
+        name = "a reflex that can't be paid for is never promised, at whatever the price has climbed to",
         fn = function()
             local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
             local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
+            local swing = Combat.defaultWeapon(b.char).activeAbility.cost.amount
 
-            b.char.stats.stamina.current = 3 -- one short of a parry's 4
+            b.char.stats.stamina.current = swing - 1
             assert(soleCounter(c, k, b) == nil, "an exhausted swordsman is promised no answer")
 
-            b.char.stats.stamina.current = 40
-            assert(soleCounter(c, k, b), "with stamina back, the answer is on again")
+            b.char.stats.stamina.current = swing
+            local promised = soleCounter(c, k, b)
+            assert(promised, "with a swing's worth back, the answer is on again")
+            assert(promised.cost and promised.cost.amount == swing,
+                "and the promise names what answering will cost")
 
-            Combat.setCooldown(b, "trait_parry", 20)
-            assert(soleCounter(c, k, b) == nil, "a guard still recovering answers nothing")
-            Combat.tickCooldowns(c, 20)
-            assert(soleCounter(c, k, b), "recovered, it answers again")
+            -- Two answers already thrown this round: the next is priced at quadruple, which this pool
+            -- cannot reach even though the base price sits right there in it.
+            b.answersThisRound = 2
+            assert(soleCounter(c, k, b) == nil, "an answer priced beyond the pool is never promised")
+            b.char.stats.stamina.current = swing * 4
+            local dearer = soleCounter(c, k, b)
+            assert(dearer and dearer.cost.amount == swing * 4, "and the promise quotes the escalated price")
         end,
     },
     {

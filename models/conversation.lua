@@ -35,13 +35,43 @@ Conversation.active = nil
 -- localized under the stable-id key "name.<id>" (Locale.get), falling back to the blueprint's English
 -- name, then the id. The portrait is returned as a PATH string (or nil); the widget loads it through
 -- models/sprite.lua (tolerant of missing art), so this stays free of love.graphics and headless-safe.
+-- The player's own character, as it exists at RUNTIME rather than in the blueprint -- or nil outside
+-- a game. Its name was typed at character creation and its portrait chosen with the body, and both
+-- are written onto the instance (states/prologue.lua); the blueprint knows neither.
+local function avatarInstance()
+    local ok, Player = pcall(require, "models.player")
+    if not ok then return nil end
+    for _, c in ipairs((Player.active and Player.active.roster) or {}) do
+        if c.id == "character_avatar" then return c end
+    end
+    return nil
+end
+
 function Conversation.speaker(id, override)
     override = override or {}
     local def = Character.defs[id] or Vendor.defs[id]
+    local portrait = override.portrait or (def and (def.portrait or def.sprite)) or nil
+
+    -- The avatar is the one speaker no blueprint can name. Its `name` field says "Stranger", which is
+    -- true of the roster only until the player is asked -- and by the time anybody is speaking, they
+    -- have typed one and Rowan has been using it since the first scene. A name plate reading
+    -- "Stranger" while the other speaker says "Ash" in the same breath is the tell.
+    --
+    -- Deliberately NOT localized on the way out, unlike every other name here: it is the player's
+    -- text, not ours, and there is nothing to translate it to. The portrait comes off the instance
+    -- for the same reason -- the body was chosen at creation, so the blueprint's is the wrong one
+    -- half the time.
+    if id == "character_avatar" and not override.name then
+        local me = avatarInstance()
+        if me and me.name then
+            return { name = me.name, portrait = override.portrait or me.portrait or portrait }
+        end
+    end
+
     local base = override.name or (def and def.name)
     return {
         name = base and Locale.get(Locale.key.name(id), base) or id,
-        portrait = override.portrait or (def and (def.portrait or def.sprite)) or nil,
+        portrait = portrait,
     }
 end
 
@@ -236,7 +266,12 @@ function Conversation.resolve(def, ctx)
         end
     end
 
-    return { title = def.title, cast = cast, script = script }
+    -- Presentation flags ride along with the resolved scene. `overScene` says this conversation is
+    -- played on top of something live and still worth looking at -- a battle mid-turn, frozen behind
+    -- it -- so ui/dialogue.lua drops the full-screen staging that would cover it. Carried explicitly
+    -- rather than by copying `def`, because everything else here is deliberately rebuilt: a resolved
+    -- scene is a filtered snapshot, not the blueprint.
+    return { title = def.title, cast = cast, script = script, overScene = def.overScene }
 end
 
 -- Index (1-based) of the script node carrying `id`, or nil if none does.
@@ -271,11 +306,25 @@ end
 -- The scene is resolved against `ctx` first (defaulting to the active player), so the cast and
 -- script handed to the widget already reflect who has been recruited and what has been done.
 -- Pass an explicit ctx (from `Conversation.context`) to preview a scene for another save state.
-function Conversation.play(id, onDone, ctx)
+-- `opts.overScene` forces the compact staging (no busts, no title, barely any dim -- see
+-- ui/dialogue.lua) regardless of what the scene itself asked for.
+--
+-- It is an argument rather than only a field on the blueprint because the staging is a property of
+-- WHERE a scene is playing, not of the scene. The same conversation over a black backdrop wants the
+-- full visual-novel treatment and over a battlefield wants none of it: a bottom-anchored bust is half
+-- the screen tall and stands exactly where the board keeps its board. So states/battle.lua asks for
+-- it on everything it plays, and a scene written for the middle of a fight does not have to remember
+-- to declare it -- or be wrong the first time somebody plays it somewhere else.
+function Conversation.play(id, onDone, ctx, opts)
     local def = Conversation.defs[id]
     assert(def, "unknown conversation id: " .. tostring(id))
     local Player = require("models.player")
     local resolved = Conversation.resolve(def, ctx or Conversation.context(Player.active))
+    if opts and opts.overScene then resolved.overScene = true end
+    -- `opts.box` puts the text box somewhere other than the bottom of the screen -- the free gutter
+    -- under a battle's board, say. Same reasoning as overScene: where the words fit is a fact about
+    -- the screen behind them, and only the caller knows its own layout.
+    if opts and opts.box then resolved.box = opts.box end
     local Dialogue = require("ui.dialogue")
     Conversation.active = Dialogue.new(resolved, function()
         Conversation.active = nil

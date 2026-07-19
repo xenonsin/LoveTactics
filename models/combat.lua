@@ -277,6 +277,39 @@ function Combat.defaultWeapon(char)
     return char.unarmed
 end
 
+-- The weapon `unit` would ANSWER with against a blow struck from `dist` tiles away, or nil when
+-- nothing in hand reaches that far. Unlike Combat.defaultWeapon -- which takes the first weapon in
+-- slot order, and so answers a bowshot with a sword when the sword happens to sort first -- this asks
+-- the question a counter actually asks: "can I reach back from where I stand?". A unit carrying both
+-- a sword and a bow answers an adjacent blow with the sword and a distant one with the bow, whichever
+-- order the grid holds them in, because reach is the whole gate on answering now (see Trait.mayCounter).
+--
+-- `minRange` is honoured here and nowhere else in the reach math: an archer cannot answer a foe
+-- standing on top of it. That dead zone is what makes closing the distance on an archer the correct
+-- play rather than a wash, so it has to bind the answer as well as the aimed shot.
+--
+-- Falls back to the hidden unarmed weapon only for a unit carrying NO weapon at all -- never as a
+-- second chance for an armed one. An archer with a foe in its face does not drop the bow to throw a
+-- punch: the dead zone has to actually cost it the answer, or closing the distance buys nothing and
+-- the rule teaches nobody anything.
+function Combat.answeringWeapon(combat, unit, dist)
+    local function reaches(item)
+        local ab = item and item.activeAbility
+        return ab ~= nil
+            and dist >= Combat.abilityMinRange(ab)
+            and dist <= Combat.abilityRange(combat, unit, ab)
+    end
+    local armed = false
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        if item.type == "weapon" and item.activeAbility then
+            armed = true
+            if reaches(item) then return item end
+        end
+    end
+    if not armed and reaches(unit.char.unarmed) then return unit.char.unarmed end
+    return nil
+end
+
 -- The character's player-chosen DEFAULT ACTION: the ability used by the click-to-use basic action
 -- and the effective-range band shown on its turn. Unlike defaultWeapon this can be ANY ability item
 -- (a spell, a heal, a consumable), pinned in the Loadout screen via `char.defaultActionSlot`.
@@ -582,6 +615,10 @@ function Combat.addUnit(combat, char, side, x, y, opts)
         summoned = opts.summoned,
         summonRemaining = opts.duration, -- nil for an indefinite summon; ticks down in rebase
         timeless = opts.timeless, -- stands outside the initiative timeline (Combat.inTimeline)
+        -- Where this unit was put down. The AI's leashed postures measure from it (models/ai.lua:
+        -- a `guard` holds a radius around its anchor, a `holdGround` never leaves it), so it has to
+        -- be the tile it STARTED on and not wherever it happens to stand now.
+        anchorX = x, anchorY = y,
     }
     unit.index = #combat.units + 1
     combat.units[unit.index] = unit
@@ -616,6 +653,7 @@ function Combat.new(arena, partyUnits, enemyUnits)
                 -- Side implies control, except where the caller overrides it: an escorted
                 -- ally fights on the party's side but runs itself (control = "ai"/"none").
                 control = u.control or ((side == "party") and "player" or "ai"),
+                anchorX = u.x, anchorY = u.y, -- start tile; the leashed AI postures measure from it
             }
             unit.index = #combat.units + 1
             combat.units[unit.index] = unit
@@ -785,6 +823,9 @@ end
 -- Mana regenerated per tick by an Arcane Reservoir bearer -- the lone exception to "mana never
 -- regenerates". Everyone else's rate is zero, so the global rule holds; the trait is what bends it.
 Combat.ARCANE_REGEN = 1
+-- Stamina per tick for a character whose blueprint declares no `staminaRegen` (see Combat.regenerate).
+-- The party's own sheets declare 1-3; this is the floor an unstated one falls back to.
+Combat.DEFAULT_STAMINA_REGEN = 1
 -- Health an adjacent Sanctified Presence restores per tick, to each ally it wards (and to the priest).
 Combat.SANCTIFY_HEAL = 1
 
@@ -809,7 +850,14 @@ function Combat.regenerate(combat, elapsed)
     if not elapsed or elapsed <= 0 then return end
     for _, u in ipairs(combat.units) do
         if u.alive then
-            Combat.restoreResource(u.char, "stamina", flatStat(u, "staminaRegen") * elapsed)
+            -- A blueprint that never mentions staminaRegen gets the baseline rather than zero. Most
+            -- enemy characters don't declare one, and since answering a blow is now paid for in
+            -- stamina and nothing else (see Trait.answerCost), a silent zero would hand every one of
+            -- them a strictly finite number of counters per battle that nobody authored. An explicit
+            -- 0 is still honoured -- that is a real authoring choice, and the specs rely on it.
+            local rate = flatStat(u, "staminaRegen")
+            if u.char.stats.staminaRegen == nil then rate = rate + Combat.DEFAULT_STAMINA_REGEN end
+            Combat.restoreResource(u.char, "stamina", rate * elapsed)
             -- Quiet heals (no per-tick log line, like stamina): the badge/aura is the tell, not the log.
             if Trait.has(u, "trait_arcane_reservoir") then
                 Combat.restoreResource(u.char, "mana", Combat.ARCANE_REGEN * elapsed)
@@ -1097,6 +1145,12 @@ function Combat.startTurn(combat)
     -- An Overwatch stance is a one-turn watch: it lapses the moment its holder comes back around to
     -- act, so the unit chooses anew each turn whether to hold the line again.
     if unit then unit.overwatch = nil end
+    -- Answers are paced by an escalating price rather than a cooldown (see Trait.answerCost): each
+    -- answer since the bearer last acted costs double the one before it, and coming back around to
+    -- act is what clears the tally. So a unit surrounded by three foes answers the first blow at
+    -- price, the second at double and the third at quadruple, and runs itself dry holding the
+    -- doorway -- the job the old per-trait recharge did, but visible in a pool the player can watch.
+    if unit then unit.answersThisRound = 0 end
     if unit then Status.onTurnStart(combat, unit) end
     return unit
 end
@@ -1438,6 +1492,38 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRa
         end
     end
     return out
+end
+
+-- Every tile some living unit hostile to `side` could reach-and-strike this turn with its default
+-- weapon, unioned across those units. Returns two keyed sets:
+--   cells   -- "x,y" -> { x, y }              the threatened tiles themselves
+--   sources -- "x,y" -> { { x, y }, ... }     where each threat is standing, so a tile can trace back
+--
+-- Two callers read this and they want opposite things from it, which is exactly why it lives here
+-- rather than in either of them: the battle state paints the party's danger zone purple (side =
+-- "party"), and the AI asks how exposed a tile it is thinking of standing on would be (side = its
+-- own). A `control == "none"` decoy never advances and so threatens nothing.
+--
+-- `skip` optionally excludes one unit -- the AI passes itself, since a unit is not a danger to its
+-- own footing and would otherwise price every tile it can reach as threatened.
+function Combat.threatMap(combat, side, skip)
+    local cells, sources = {}, {}
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.side ~= side and u.control ~= "none" and u ~= skip then
+            local weapon = Combat.defaultWeapon(u.char)
+            local ab = weapon and weapon.activeAbility
+            local range = ((ab and ab.range) or 1) + Combat.adjacencyRangeBonus(u.char, weapon)
+            local reach = Combat.attackReach(combat, u, range, Combat.reachable(combat, u),
+                ab and ab.requiresSight, Combat.abilityMinRange(ab))
+            for k, cell in pairs(reach) do
+                if not cells[k] then cells[k] = { x = cell.x, y = cell.y } end
+                local src = sources[k]
+                if not src then src = {} sources[k] = src end
+                src[#src + 1] = { x = u.x, y = u.y }
+            end
+        end
+    end
+    return cells, sources
 end
 
 -- Everything a unit sets off by arriving on (x, y): an opposing trap on the tile triggers, and any
@@ -2920,10 +3006,16 @@ function Combat.abilityTargets(combat, unit, item)
 end
 
 -- Does this ability read as friendly (green preview) rather than hostile (red)? Ally/self targets
--- are supportive; enemy strikes and tile-targeted trap placements are hostile. A tile/area cast that
--- lays down a friendly effect (a Sanctuary hazard) opts in explicitly with `support = true`.
+-- are supportive; enemy strikes and tile-targeted trap placements are hostile.
+--
+-- `support` overrides the guess in BOTH directions, and both directions are used: a tile/area cast
+-- that lays down a friendly effect (a Sanctuary hazard) opts IN with `support = true`, and a
+-- self-targeted blow opts OUT with `support = false` -- a Clear Out is aimed at your own tile because
+-- that is where the spin is centred, not because it is a kindness (see ability_clear_out.lua).
 function Combat.isSupportAbility(ab)
-    return ab ~= nil and (ab.target == "ally" or ab.target == "self" or ab.support == true)
+    if ab == nil then return false end
+    if ab.support ~= nil then return ab.support end
+    return ab.target == "ally" or ab.target == "self"
 end
 
 local function resourceValue(char, stat)

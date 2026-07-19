@@ -101,10 +101,36 @@ Callers are **unchanged** — `ui/dialogue.lua` and `models/conversation.lua` al
 
 ### Runtime tokens
 
-A dialogue line may carry `{name}` — the name the player typed at character creation. It is
-substituted in `ui/dialogue.lua:textOf` **after** `Locale.get` returns, so the token travels through
-the translated string and a translator is free to move it wherever their grammar needs it. Keep the
-braces and the spelling exactly; a dropped token silently prints nothing useful.
+An authored line may carry these. Both are substituted by `Locale.substitute` **after** `Locale.get`
+returns, so a token travels through the translated string and a translator is free to move it
+wherever their grammar needs it. Keep the braces and the spelling exactly; a dropped token silently
+prints nothing useful.
+
+| Token | Becomes | Notes |
+|---|---|---|
+| `{name}` | The name the player typed at character creation | Falls back to the avatar blueprint's "Stranger" |
+| `{select}` | The button to press. Keyboard/gamepad resolve to a drawn key cap (`Enter`, `A`); the mouse has no key to draw, so it becomes the plain word `Click` | Re-resolves every draw |
+
+`{select}` exists because this project supports **mouse, keyboard and gamepad equally**, so an
+instruction that says "Click" is wrong on two of them. Any line that tells the player to *do*
+something — the tutorial's coaching bubbles are the current callers — must use it rather than naming
+a device. `tests/tutorial_spec.lua` fails the build over a coaching line that hard-codes "click".
+
+It is written as a **sentence opener**, reading straight into a preposition, as in
+`"{select} on the imp to move in range."` So the same line resolves two ways:
+
+```
+keyboard / gamepad   [Enter]  on the imp to move in range.     ← key drawn as a cap
+mouse                Click on the imp to move in range.        ← words, no cap
+```
+
+The mouse is the deliberate exception. "Click" is **not a key** — drawn as a cap it invents a button
+nobody owns, and a player who goes looking for it on their mouse has been handed a puzzle by the one
+thing on screen whose job was to be unambiguous. `Locale.selectKey()` returns `nil` there, and a nil
+is what tells a caller to render words instead of a pill (`Locale.coachLine` → `ui/coach_bubble.lua`).
+
+A line that needs the token mid-sentence will get a stray capital — reword it, or add a lowercase
+companion token the day a language genuinely needs one.
 
 ## Extraction tool
 

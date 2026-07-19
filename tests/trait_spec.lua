@@ -333,25 +333,36 @@ return {
         end,
     },
     {
-        name = "Keen Senses recovers its guard between answers, like every other reflex",
+        -- No reflex recharges any more. What stops a priest answering a whole flurry is that each
+        -- answer in a round costs double the last, so the pool prices them out -- and a priest's pool
+        -- is wanted for casting besides.
+        name = "Keen Senses answers again and again, at double the price each time, until it can't",
         fn = function()
             local priest = charWithTraits("character_priest", { "trait_keen_senses" })
             Character.addItem(priest, Item.instantiate("weapon_parasitic_staff"))
             local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("character_bandit", 2, 1) })
             local p, b = c.units[1], c.units[2]
+            local swing = Item.instantiate("weapon_parasitic_staff").activeAbility.cost.amount
 
+            local before = Combat.resource(p.char, "stamina")
             Combat.dealFlatDamage(c, p, 6, nil, nil, b)
+            assert(Combat.resource(p.char, "stamina") == before - swing, "the first answer costs one swing")
+
+            -- A second attack in the same round is still answered -- the old contract refused it --
+            -- but it costs twice as much.
+            before = Combat.resource(p.char, "stamina")
             local banditHP = b.char.stats.health.current
-            local stamina = Combat.resource(p.char, "stamina")
-
-            -- A second attack inside the 12-tick window finds the sense spent, not merely unaffordable.
             Combat.dealFlatDamage(c, p, 6, nil, nil, b)
-            assert(b.char.stats.health.current == banditHP, "no second answer while it recharges")
-            assert(Combat.resource(p.char, "stamina") == stamina, "and a reflex on cooldown costs nothing")
+            assert(b.char.stats.health.current < banditHP, "a second answer comes, unlike under a cooldown")
+            assert(Combat.resource(p.char, "stamina") == before - swing * 2, "at double the price")
 
-            Combat.tickCooldowns(c, 99) -- the real recharge clock; setCooldown(.., 0) would NOT clear it
+            -- The third is priced beyond what a priest has left, so the blow simply lands.
+            before = Combat.resource(p.char, "stamina")
+            banditHP = b.char.stats.health.current
+            assert(before < swing * 4, "the fixture's pool must be short of a third answer")
             Combat.dealFlatDamage(c, p, 6, nil, nil, b)
-            assert(b.char.stats.health.current < banditHP, "recovered, it answers again")
+            assert(b.char.stats.health.current == banditHP, "the third answer prices itself out")
+            assert(Combat.resource(p.char, "stamina") == before, "and declining costs nothing")
         end,
     },
     {

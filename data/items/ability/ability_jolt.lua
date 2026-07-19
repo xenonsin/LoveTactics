@@ -14,7 +14,13 @@ return {
         target = "enemy",
         range = 3,
         requiresSight = true, -- a bolt needs a clear line: terrain cover blocks it
-        speed = 3,
+        -- Slower than a sword swing, and that is the price of what it buys. A Jolt does almost no
+        -- damage; what it sells is TEMPO -- five ticks off the target's next turn -- and an ability
+        -- that hands you the initiative should cost some of your own to throw. (It is also what makes
+        -- the prologue's closing beat land: the caster comes back around just BEHIND the ally the
+        -- stun bought a turn for, so the ally swings first and the player still lands the last blow.
+        -- See data/tutorials/village.lua.)
+        speed = 4,
         cost = { stat = "mana", amount = 10 },
         damage = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 }, -- balances both the hit AND the stun delay below
         effect = function(fx)

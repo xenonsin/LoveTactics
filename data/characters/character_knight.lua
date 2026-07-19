@@ -24,15 +24,26 @@ return {
     -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. The
     -- build-around is the Sworn Aegis relic in the center (data/items/armor/armor_sworn_aegis.lua):
     -- a bound item -- never moved, stowed, sold, or stolen, only forged -- that carries the Knight's
-    -- Oathward guard. Frontline steel around it: sword for the melee strike, chainmail for all-round
-    -- defense (only -1 movement so it keeps pace), a potion to self-mend under fire, and the party's
-    -- torch (its overworld vision -- see Player.visionRadius).
+    -- Oathward guard. Frontline steel around it: chainmail for all-round defense (only -1 movement so
+    -- it keeps pace), a potion to self-mend under fire, and the party's torch (its overworld vision
+    -- -- see Player.visionRadius).
+    --
+    -- The MACE rather than a sword, and it is characterisation rather than loadout trivia. A mace
+    -- hits and then SHOVES, two tiles straight back (data/items/weapon/weapon_iron_mace.lua) -- it is
+    -- the knight's shelf precisely because displacement is the wall's trade and not wrath's
+    -- (docs/classes.md). Rowan does not kill you, she decides where you stand, and every fight she is
+    -- in reads that way from the first swing. The prologue is built on it: she shoves the demon grunt
+    -- off the player and opens the gap the Jolt is taught in (data/tutorials/village.lua).
+    --
+    -- She gives up Parry for it -- the sword's free answer to an adjacent blow. That is the trade the
+    -- weapon families exist to make (docs/weapons.md), and it costs her nothing in the village fight,
+    -- where the imps spit from two tiles away and there is no blow to answer.
     startingItems = {
-        "weapon_iron_sword", "armor_chainmail",       "consumable_healing_potion",
-        "utility_torch",      "armor_sworn_aegis", false,
+        "weapon_iron_mace",  "armor_chainmail",   "consumable_healing_potion",
+        "utility_torch",     "armor_sworn_aegis", false,
         false,        false,             false,
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
-    defaultAction = "weapon_iron_sword",
+    defaultAction = "weapon_iron_mace",
 }

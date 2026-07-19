@@ -24,6 +24,16 @@ local function unit(charOrId, x, y)
     return { char = char, x = x, y = y }
 end
 
+-- The two cases below measure the CLOCK against a known ability speed, so they need a unit whose
+-- weapon speed they can state. `character_knight` used to be that by accident -- Rowan carried a
+-- sword (speed 3) -- until the prologue gave her an iron mace (speed 4), which silently changed the
+-- arithmetic of tests that were never about her. The sword goes in explicitly now.
+local function swordsman(x, y)
+    local char = Character.instantiate("character_knight")
+    char.inventory[1] = Item.instantiate("weapon_iron_sword")
+    return { char = char, x = x, y = y }
+end
+
 local function openTurn(c, u)
     c.turn = { unit = u, moved = false, moveCost = 0 }
 end
@@ -49,7 +59,7 @@ return {
             -- Knight (chainmail drops movement to 2, iron_sword speed 3) rooted, bandit parked far so
             -- the cost shows as elapsed clock. It cannot move, but can still attack -- and pays the
             -- full move cost.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { swordsman(3, 3) }, { unit("character_bandit", 3, 4) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, bandit.initiative = 0, 100
             Status.apply(c, knight, "status_root")
@@ -110,7 +120,7 @@ return {
         fn = function()
             -- The bandit is rooted; the knight acts, advancing the clock by its turn cost, which
             -- should count the bandit's root down by the same amount via Combat.rebase -> Status.tick.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { swordsman(3, 3) }, { unit("character_bandit", 3, 4) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, bandit.initiative = 0, 100
             Status.apply(c, bandit, "status_root") -- duration 6

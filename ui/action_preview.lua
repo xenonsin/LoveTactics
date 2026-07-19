@@ -137,6 +137,15 @@ local function buildCounterBlocks(action)
     if c.lethal then
         blocks[#blocks + 1] = { kind = "note", text = "Would defeat you!", color = LETHAL }
     end
+    -- What answering costs THEM. An answer is priced as a swing and doubles with each one already
+    -- thrown this round (Trait.answerCost), so this row is the other half of the trade the player is
+    -- weighing: a defender who answers three times has spent a swing, then two, then four, and is
+    -- that much less able to act on their own turn. Wearing a guard down is a plan you can only make
+    -- if the panel tells you what the guard costs.
+    if c.cost then
+        blocks[#blocks + 1] = { kind = "stat", label = "Costs them",
+            value = c.cost.amount .. " " .. c.cost.stat, valueColor = MUTED }
+    end
     return blocks
 end
 

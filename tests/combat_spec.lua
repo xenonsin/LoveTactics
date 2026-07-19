@@ -19,6 +19,20 @@ local function arena(cols, rows, objective)
     return { cols = cols, rows = rows, tiles = tiles, objective = objective or { type = "killAll" } }
 end
 
+-- "A melee unit carrying an iron sword" -- what almost every fixture below actually wants.
+--
+-- It used to be spelled `character_knight`, which WAS one by coincidence: Rowan's blueprint happened
+-- to carry a sword. When the prologue gave her an iron mace instead (see
+-- data/characters/character_knight.lua -- displacement is the knight's trade), thirteen tests about
+-- initiative, damage scaling and default-weapon selection changed their answers overnight, none of
+-- which have anything to do with her. So the sword is put here ON PURPOSE now: these tests describe
+-- the unit they need instead of borrowing whoever happens to be equipped that way this month.
+local function swordsman()
+    local char = Character.instantiate("character_knight")
+    char.inventory[1] = Item.instantiate("weapon_iron_sword")
+    return char
+end
+
 -- A { char, x, y } spawn entry. Accepts a blueprint id or a prebuilt character instance.
 local function unit(charOrId, x, y)
     local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
@@ -51,11 +65,11 @@ return {
         name = "initiative is the average ability speed minus the speed stat (higher speed acts sooner)",
         fn = function()
             -- Knight: avg(iron_sword 3, healing_potion 2) - speed 3 = 2.5 - 3 = -0.5.
-            local knight = Character.instantiate("character_knight")
+            local knight = swordsman()
             assert(Combat.initiative(knight) == -0.5, "knight initiative should be -0.5")
 
             -- No ability items -> DEFAULT_SPEED - speed fallback (5 - 3 = 2).
-            local bare = Character.instantiate("character_knight")
+            local bare = swordsman()
             bare.inventory = {}
             assert(Combat.initiative(bare) == Combat.DEFAULT_SPEED - 3, "bare char -> DEFAULT_SPEED - speed")
 
@@ -66,7 +80,7 @@ return {
     {
         name = "the current unit sits at 0, and ending a turn rebases the next unit to 0",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 3, 3) }, { unit("character_bandit", 3, 4) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, knight.speed = 0, 3
             bandit.initiative, bandit.speed = 2, 4
@@ -104,7 +118,7 @@ return {
 
             -- Occupied destination is rejected.
             local occ = Combat.new(arena(8, 8),
-                { unit("character_archer", 2, 2), unit("character_knight", 2, 3) }, {})
+                { unit("character_archer", 2, 2), unit(swordsman(), 2, 3) }, {})
             openTurn(occ, occ.units[1])
             assert(Combat.moveUnit(occ, occ.units[1], 2, 3) == false, "cannot move onto a unit")
         end,
@@ -144,7 +158,7 @@ return {
     {
         name = "useItem attacks: range, resource cost, speed, and damage all apply",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 3, 3) }, { unit("character_bandit", 3, 4) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, bandit.initiative = 0, 100 -- keep bandit far so the cost shows as elapsed
             knight.char.stats.staminaRegen = 0 -- isolate the spend from tick-proportional regen
@@ -173,7 +187,7 @@ return {
     {
         name = "a lethal hit marks the target dead",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 3, 3) }, { unit("character_bandit", 3, 4) })
             local knight, bandit = c.units[1], c.units[2]
             bandit.char.stats.health.current = 3
             assert(Combat.useItem(c, knight, knight.char.inventory[1], 3, 4), "attack lands")
@@ -185,7 +199,7 @@ return {
         name = "a spent consumable keeps its (now empty) slot and can't be reused",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_mage", 3, 3), unit("character_knight", 3, 4) }, {})
+                { unit("character_mage", 3, 3), unit(swordsman(), 3, 4) }, {})
             local mage, knight = c.units[1], c.units[2]
             local potion = mage.char.inventory[1]
             assert(potion.name == "Healing Potion", "mage carries the potion")
@@ -215,7 +229,7 @@ return {
             local d = Combat.dealDamage(c, c.units[1], c.units[2], sword, {})
             assert(d == 1, "damage floors at 1, got " .. d)
 
-            local knight = Character.instantiate("character_knight")
+            local knight = swordsman()
             knight.stats.health.current = 90
             local healed = Combat.applyHeal(c, { char = knight }, 30)
             assert(healed == 10, "heal capped at max (90 -> 100), got " .. healed)
@@ -248,7 +262,7 @@ return {
             assert(dSlash < dPierce, "slash-resisting armor mitigates the sword more than the bow")
 
             -- No armor: full power + stat, minus defense, no tag mitigation.
-            local uc = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local uc = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1) }, { unit("character_bandit", 1, 2) })
             local du = Combat.dealDamage(uc, uc.units[1], uc.units[2], uc.units[1].char.inventory[1], {})
             assert(du == 14, "un-resisted attack does full 6 + 14 - 6 = 14, got " .. du)
         end,
@@ -282,7 +296,7 @@ return {
     {
         name = "abilityOutput previews raw damage/heal/status with no board target",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1), unit("character_mage", 2, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1), unit("character_mage", 2, 1) }, {})
             local knight, mage = c.units[1], c.units[2]
 
             -- Iron Sword: power 6 + knight damage 14 = 20 (the stand-in has no defense).
@@ -313,17 +327,17 @@ return {
     {
         name = "evaluate resolves killAll, party wipe, and assassinate",
         fn = function()
-            local kill = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local kill = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1) }, { unit("character_bandit", 1, 2) })
             assert(Combat.evaluate(kill) == nil, "ongoing while both sides live")
             kill.units[2].alive = false
             assert(Combat.evaluate(kill) == "win", "all enemies dead -> win")
 
-            local wipe = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local wipe = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1) }, { unit("character_bandit", 1, 2) })
             wipe.units[1].alive = false
             assert(Combat.evaluate(wipe) == "loss", "party wiped -> loss")
 
             local hunt = Combat.new(arena(8, 8, { type = "assassinate", target = "character_bandit_chief" }),
-                { unit("character_knight", 1, 1) },
+                { unit(swordsman(), 1, 1) },
                 { unit("character_bandit_chief", 1, 2), unit("character_bandit", 1, 3) })
             assert(Combat.evaluate(hunt) == nil, "target still alive")
             hunt.units[2].alive = false -- chief falls; a lesser bandit still stands
@@ -333,7 +347,7 @@ return {
     {
         name = "previewOrder reorders only the named unit without mutating state",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 7) }, { unit("character_wolf_grunt", 4, 2) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 4, 7) }, { unit("character_wolf_grunt", 4, 2) })
             local knight, wolf = c.units[1], c.units[2]
             wolf.initiative, knight.initiative = 0, 0.5 -- wolf current
 
@@ -352,7 +366,7 @@ return {
     {
         name = "previewTimeline keeps the actor's real slot and adds a ghost at its new initiative",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 7) }, { unit("character_wolf_grunt", 4, 2) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 4, 7) }, { unit("character_wolf_grunt", 4, 2) })
             local knight, wolf = c.units[1], c.units[2]
             wolf.initiative, knight.initiative = 0, 0.5
 
@@ -443,7 +457,7 @@ return {
         fn = function()
             -- Two party units tied at initiative 2 with equal speed; previewing the first one
             -- waiting to the second's initiative must place its ghost behind the (real) second.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1), unit("character_archer", 2, 2) }, {})
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1), unit("character_archer", 2, 2) }, {})
             local knight, archer = c.units[1], c.units[2]
             knight.initiative, archer.initiative = 2, 2
             knight.speed, archer.speed = 5, 5 -- equal, so spawn index decides knight-before-archer
@@ -460,7 +474,7 @@ return {
             -- A ghost projected far down the timeline must sort purely by its initiative -- a
             -- guard-rail against a comparator that isn't a valid weak order (which corrupts sort).
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 1, 1), unit("character_mage", 2, 1), unit("character_archer", 3, 1) },
+                { unit(swordsman(), 1, 1), unit("character_mage", 2, 1), unit("character_archer", 3, 1) },
                 { unit("character_bandit", 1, 8), unit("character_bandit", 2, 8), unit("character_bandit_chief", 3, 8) })
             c.units[1].initiative = 1.5 -- knight
             c.units[2].initiative = 1.0 -- mage
@@ -479,7 +493,7 @@ return {
     {
         name = "speed breaks a tie in turn order (the faster unit acts first)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1) }, { unit("character_bandit", 1, 2) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, bandit.initiative = 0, 0 -- exact tie
             knight.speed, bandit.speed = 3, 7           -- bandit is faster
@@ -490,13 +504,13 @@ return {
         name = "planEnemyAction attacks in range, else steps toward the nearest party unit",
         fn = function()
             -- Bandit adjacent to the knight: it should attack in place (iron_sword range 1).
-            local adj = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, { unit("character_bandit", 4, 5) })
+            local adj = Combat.new(arena(8, 8), { unit(swordsman(), 4, 4) }, { unit("character_bandit", 4, 5) })
             local act = Combat.planEnemyAction(adj, adj.units[2])
             assert(act.item and not act.move, "adjacent bandit attacks without moving")
             assert(act.tx == 4 and act.ty == 4, "targets the knight's tile")
 
             -- Bandit far away (can't reach striking distance): it should move, closing the gap.
-            local far = Combat.new(arena(8, 8), { unit("character_knight", 4, 8) }, { unit("character_bandit", 4, 1) })
+            local far = Combat.new(arena(8, 8), { unit(swordsman(), 4, 8) }, { unit("character_bandit", 4, 1) })
             local bandit = far.units[2]
             local move = Combat.planEnemyAction(far, bandit)
             assert(move.move and not move.item, "far bandit moves without attacking")
@@ -513,7 +527,7 @@ return {
         name = "planEnemyAction moves then attacks when a foe is one step out of range",
         fn = function()
             -- Bandit two tiles from the knight (iron_sword range 1): move adjacent, then strike.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, { unit("character_bandit", 4, 6) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 4, 4) }, { unit("character_bandit", 4, 6) })
             local act = Combat.planEnemyAction(c, c.units[2])
             assert(act.move, "bandit moves to close the gap")
             assert(math.abs(act.move.x - 4) + math.abs(act.move.y - 4) == 1, "lands adjacent")
@@ -524,7 +538,7 @@ return {
         name = "move then attack folds the move cost and the ability speed into one turn",
         fn = function()
             -- Knight (movement 3, iron_sword speed 3) steps 2 tiles then strikes the bandit.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 6) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 3, 3) }, { unit("character_bandit", 3, 6) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, bandit.initiative = 0, 100 -- bandit far so the cost shows as elapsed
             local sword = knight.char.inventory[1]
@@ -566,7 +580,7 @@ return {
         name = "a unit walks THROUGH an ally but not onto it; an enemy still blocks the corridor",
         fn = function()
             -- 6x1 corridor, archer (movement budget 3) at x=1 with a friendly at x=2 boxing it in.
-            local c = Combat.new(arena(6, 1), { unit("character_archer", 1, 1), unit("character_knight", 2, 1) }, {})
+            local c = Combat.new(arena(6, 1), { unit("character_archer", 1, 1), unit(swordsman(), 2, 1) }, {})
             local archer = c.units[1]
             openTurn(c, archer)
 
@@ -594,7 +608,7 @@ return {
     {
         name = "wait delays the actor to just after the next unit (nextInit + 1)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 7) }, { unit("character_wolf_grunt", 4, 2) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 4, 7) }, { unit("character_wolf_grunt", 4, 2) })
             local knight, wolf = c.units[1], c.units[2]
             wolf.initiative, knight.initiative = 0, 3 -- wolf current, knight next at 3
 
@@ -606,7 +620,7 @@ return {
             assert(Combat.currentUnit(c) == knight, "knight acts next")
 
             -- Last unit standing: no one to delay past, so wait falls back to a WAIT_COST bump.
-            local solo = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local solo = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1) }, {})
             local k = solo.units[1]
             Combat.startTurn(solo)
             assert(Combat.wait(solo, k), "a lone unit can still wait")
@@ -618,7 +632,7 @@ return {
         name = "moving then waiting still pays the move cost (delay floors at the move cost)",
         fn = function()
             -- Move cost decides: the next unit is close, so the move cost (3) sets the landing.
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, { unit("character_knight", 6, 6) })
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, { unit(swordsman(), 6, 6) })
             local archer, other = c.units[1], c.units[2]
             archer.initiative, other.initiative = 0, 1
             openTurn(c, archer)
@@ -631,7 +645,7 @@ return {
             assert(archer.initiative == 2, "the move cost dominates (3), landing archer at 3 - 1")
 
             -- Delay decides: a 1-tile move can't push past a far-ahead next unit.
-            local c2 = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, { unit("character_knight", 6, 6) })
+            local c2 = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, { unit(swordsman(), 6, 6) })
             local a2, k2 = c2.units[1], c2.units[2]
             a2.initiative, k2.initiative = 0, 10
             openTurn(c2, a2)
@@ -645,7 +659,7 @@ return {
         name = "every character carries a hidden unarmed weapon, overridable by blueprint",
         fn = function()
             -- Default: the generic unarmed item, kept OUT of inventory (never in the 9 slots).
-            local knight = Character.instantiate("character_knight")
+            local knight = swordsman()
             assert(knight.unarmed and knight.unarmed.id == "weapon_unarmed", "default unarmed attached")
             for _, it in ipairs(knight.inventory) do
                 assert(it.id ~= "weapon_unarmed", "unarmed must never sit in inventory")
@@ -665,7 +679,7 @@ return {
         name = "defaultWeapon picks the first inventory weapon, else the unarmed fallback",
         fn = function()
             -- Knight: iron_sword is the first (and only) weapon -> it is the default attack.
-            local knight = Character.instantiate("character_knight")
+            local knight = swordsman()
             assert(Combat.defaultWeapon(knight).name == "Iron Sword", "first weapon wins")
 
             -- No weapon in inventory -> the hidden unarmed weapon.
@@ -682,7 +696,7 @@ return {
         name = "defaultActionSlot pins any ability as the default action, with safe fallbacks",
         fn = function()
             -- Knight carries iron_sword in slot 1; add a bow in a later slot as a second option.
-            local knight = Character.instantiate("character_knight")
+            local knight = swordsman()
             local bow = Item.instantiate("weapon_iron_bow")
             knight.inventory[3] = bow
             assert(Combat.defaultAction(knight).name == "Iron Sword", "no pin -> first grid weapon wins")
@@ -726,7 +740,7 @@ return {
         fn = function()
             -- A melee (range 1) fighter with room to move: its reach should extend past its own
             -- one-tile ring to everywhere it could walk-then-strike this turn.
-            local c = Combat.new(arena(10, 10), { unit("character_knight", 2, 2) }, { unit("character_bandit", 9, 9) })
+            local c = Combat.new(arena(10, 10), { unit(swordsman(), 2, 2) }, { unit("character_bandit", 9, 9) })
             local knight = c.units[1]
             local reachable = Combat.reachable(c, knight)
             local reach = Combat.attackReach(c, knight, 1, reachable, false, 0)
@@ -762,7 +776,7 @@ return {
         fn = function()
             -- Knight (chainmail drops movement to 2) alone: it can walk to (4,6) (cost 2) and,
             -- with a range-1 weapon, threaten (4,7) -- a tile it cannot itself stand on this turn.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 4, 4) }, {})
             local knight = c.units[1]
             local reach = Combat.reachable(c, knight)
             local ar = Combat.attackReach(c, knight, 1, reach)
@@ -813,7 +827,7 @@ return {
         name = "a melee weapon still strikes adjacent (no minRange regression)",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 4, 4) }, { unit("character_bandit", 5, 4) })
+                { unit(swordsman(), 4, 4) }, { unit("character_bandit", 5, 4) })
             local knight, bandit = c.units[1], c.units[2]
             local sword = Item.instantiate("weapon_iron_sword") -- range 1, no minRange
             openTurn(c, knight)
@@ -840,7 +854,7 @@ return {
         fn = function()
             -- Rogue opens its turn at (1,1), moves up beside a bandit at (3,1), strikes, and snaps
             -- back to (1,1) -- the tile Combat.startTurn pinned as the turn's origin.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 3, 1) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1) }, { unit("character_bandit", 3, 1) })
             local rogue, bandit = c.units[1], c.units[2]
             rogue.char.inventory = { Item.instantiate("ability_shadow_strike") }
             local strike = rogue.char.inventory[1]
@@ -859,7 +873,7 @@ return {
     {
         name = "Shadow Strike stays put when the caster never left its origin tile",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 1) }, { unit("character_bandit", 3, 1) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 2, 1) }, { unit("character_bandit", 3, 1) })
             local rogue, bandit = c.units[1], c.units[2]
             rogue.char.inventory = { Item.instantiate("ability_shadow_strike") }
             local strike = rogue.char.inventory[1]
@@ -875,7 +889,7 @@ return {
         fn = function()
             local Status = require("models.status")
             local c = Combat.new(arena(8, 8),
-                { unit("character_mage", 1, 1), unit("character_knight", 5, 5) }, { unit("character_bandit", 1, 3), unit("character_bandit", 5, 6) })
+                { unit("character_mage", 1, 1), unit(swordsman(), 5, 5) }, { unit("character_bandit", 1, 3), unit("character_bandit", 5, 6) })
             local mage, rogue, bandit1, bandit2 = c.units[1], c.units[2], c.units[3], c.units[4]
 
             mage.char.inventory = { Item.instantiate("ability_tangling_roots") }
@@ -1138,7 +1152,7 @@ return {
         fn = function()
             -- Rogue at (1,1), foe adjacent at (2,1), far foe pins the rebase so the clock reads the cost.
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 1, 1) }, { unit("character_bandit", 2, 1), unit("character_bandit", 8, 8) })
+                { unit(swordsman(), 1, 1) }, { unit("character_bandit", 2, 1), unit("character_bandit", 8, 8) })
             local rogue, bandit, far = c.units[1], c.units[2], c.units[3]
 
             -- Dual Wield at grid centre (5), two 1h melee weapons in the adjacent middle row (4, 6):
@@ -1180,7 +1194,7 @@ return {
     {
         name = "Dual Wield is gated: it needs two qualifying weapons, and 2h ones only count once forged to +5",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 2, 1) })
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1) }, { unit("character_bandit", 2, 1) })
             local rogue, bandit = c.units[1], c.units[2]
             local dual = Item.instantiate("ability_dual_wield")
             rogue.char.inventory = {}
@@ -1205,7 +1219,7 @@ return {
         name = "Dual Wield swings a third weapon only once forged to +10",
         fn = function()
             local function armedCount(level)
-                local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 2, 1) })
+                local c = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1) }, { unit("character_bandit", 2, 1) })
                 local rogue, bandit = c.units[1], c.units[2]
                 local dual = Item.instantiate("ability_dual_wield", 1, level)
                 rogue.char.inventory = {}
@@ -1228,7 +1242,7 @@ return {
     {
         name = "the timeline preview reads Dual Wield's summed weapon speed, not its nominal speed",
         fn = function()
-            local knight = Character.instantiate("character_knight")
+            local knight = swordsman()
             knight.inventory = {}
             local dual = Item.instantiate("ability_dual_wield") -- nominal speed 4
             knight.inventory[5] = dual
@@ -1254,7 +1268,7 @@ return {
         name = "Dual Wield's connector lines point only to the weapons it will swing (capped, level-gated)",
         fn = function()
             local function boostTargets(level)
-                local knight = Character.instantiate("character_knight")
+                local knight = swordsman()
                 knight.inventory = {}
                 knight.inventory[5] = Item.instantiate("ability_dual_wield", 1, level)
                 knight.inventory[2] = Item.instantiate("weapon_iron_sword")

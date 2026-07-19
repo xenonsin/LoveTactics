@@ -55,50 +55,89 @@ local function reactionsSuppressed(unit)
     return unit and require("models.status").disablesReactions(unit)
 end
 
--- Pay `def`'s reflex cost out of `unit`, or report that it cannot be paid. Every triggered reflex in
--- the game is priced the same way -- a `cost = { stat, amount }` on the trait def, paid on each firing,
--- on top of the `magnitude` cooldown that follows it -- so a defender answers only while their pool
--- lasts, and only as often as their guard recovers. A def with no cost is free and always "pays".
---
--- The two gates are deliberately different levers and every reflex wants both: the cooldown paces
--- answers WITHIN an exchange (you cannot parry twice in one flurry), while the cost bounds them ACROSS
--- a battle (a swordsman who spends the fight countering has nothing left to swing with). Free reflexes
--- on a timer alone made standing in a doorway strictly correct; this is what prices that choice.
+-- Pay a resolved `cost = { stat, amount }` out of `unit`, or report that it cannot be paid. A nil
+-- cost is free and always "pays".
 --
 -- Mutates on success, so it must be the LAST gate a reflex checks -- never call it before the cheap
--- refusals (suppression, range, cooldown), or a reflex that then declines has quietly billed its
+-- refusals (suppression, reach, friendly fire), or a reflex that then declines has quietly billed its
 -- bearer for nothing. Callers: Trait.tryRiposte/tryPreempt below, and `ctx.pay` for a hook-driven
--- reflex (data/traits/parry.lua) that prices itself from its own data file.
+-- reflex (data/traits/trait_parry.lua).
 --
 -- Split in two so the counter PREVIEW (Trait.counterPreview) can ask the same question without
 -- spending anything: canPay answers it, payCost answers it and bills. A reflex canPay says yes to is
 -- one payCost will let through, so what the tooltip promises is what the exchange delivers.
-local function canPay(unit, def)
-    local cost = def and def.cost
+local function canPay(unit, cost)
     if not cost then return true end
     return require("models.combat").resource(unit.char, cost.stat) >= cost.amount
 end
 
-local function payCost(unit, def)
-    if not canPay(unit, def) then return false end
-    local cost = def and def.cost
+local function payCost(unit, cost)
+    if not canPay(unit, cost) then return false end
     if cost then require("models.combat").drainResource(unit.char, cost.stat, cost.amount) end
     return true
 end
 
--- Manhattan distance between two units -- how every reflex below tells a melee blow (1) from a
--- distant one, since a counter's whole question is "could they reach me, and can I reach back?".
+-- Manhattan distance between two units -- how every reflex below measures a blow, since a counter's
+-- whole question is "could they reach me, and can I reach back?".
 local function distance(a, b)
     return math.abs(a.x - b.x) + math.abs(a.y - b.y)
 end
 
--- The effective reach of `unit`'s default weapon from where it stands, or 0 with nothing in hand.
+-- The effective reach of `unit`'s longest weapon from where it stands, or 0 with nothing in hand.
+-- Reported for display and for the AI's threat math; the live gate is Combat.answeringWeapon, which
+-- also honours each weapon's dead zone.
 local function weaponReach(combat, unit)
     local Combat = require("models.combat")
-    local weapon = Combat.defaultWeapon(unit.char)
-    local ab = weapon and weapon.activeAbility
-    if not ab then return 0 end
-    return Combat.abilityRange(combat, unit, ab)
+    local best = 0
+    local function consider(item)
+        local ab = item and item.activeAbility
+        if ab then best = math.max(best, Combat.abilityRange(combat, unit, ab)) end
+    end
+    for _, item in ipairs(require("models.character").eachItem(unit.char)) do
+        if item.type == "weapon" then consider(item) end
+    end
+    if best == 0 then consider(unit.char.unarmed) end
+    return best
+end
+
+-- How steeply an answer's price climbs with each one already thrown since the bearer last acted:
+-- 1st at price, 2nd at double, 3rd at quadruple, capped so the number stays a number. This is the
+-- whole of what paces answers WITHIN an exchange now that the per-trait cooldowns are gone -- and it
+-- does the job in a currency the player can see draining, rather than a hidden timer. The tally is
+-- cleared in Combat.startTurn.
+Trait.ANSWER_ESCALATION_CAP = 8
+
+-- What answering a blow from `dist` tiles away costs `unit`, or nil when the answer is free.
+--
+-- The rule is "an answer is a swing, and a swing costs what a swing costs": a reflex that throws the
+-- bearer's own weapon back is billed that weapon's own `activeAbility.cost`, so a dagger answers for
+-- 4 and a greatsword for 16 without anyone hand-tuning a second table. That is also what keeps
+-- docs/weapons.md's "a greatsword must not also parry" true by economics rather than by exception.
+--
+-- A reflex that does NOT swing -- thorns throwing a share of the blow back off its spikes, a shield
+-- bash landing a stun -- is billed whatever its own def declares instead, which is usually nothing:
+-- there is no weapon in the motion to price.
+--
+-- Either way the tally of answers already thrown this round doubles it (see above).
+function Trait.answerCost(combat, unit, trait, dist)
+    local Combat = require("models.combat")
+    local rule = trait and trait.def and trait.def.counter
+    local base
+    if rule and (rule.reflect or rule.applies) then
+        base = trait.def.cost -- not a swing: it costs what it says it costs, if anything
+    else
+        local weapon = Combat.answeringWeapon(combat, unit, dist)
+        base = weapon and weapon.activeAbility and weapon.activeAbility.cost
+    end
+    if not base then return nil end
+    local thrown = unit.answersThisRound or 0
+    local multiplier = math.min(2 ^ thrown, Trait.ANSWER_ESCALATION_CAP)
+    return { stat = base.stat, amount = math.floor(base.amount * multiplier) }
+end
+
+-- Record that `unit` has thrown an answer, so the next one this round costs double (Trait.answerCost).
+local function tallyAnswer(unit)
+    unit.answersThisRound = (unit.answersThisRound or 0) + 1
 end
 
 -- Does a standing evade reflex (the Dodge trait) let `unit` slip a would-be PHYSICAL hit? Mirrors
@@ -175,10 +214,10 @@ local function riposteTrait(combat, unit, attacker, tags, area)
     -- Answer attacks, not answers: never riposte something that is itself a reaction, or two duelists
     -- would trade parries forever (see Trait.isReacting).
     if Trait.isReacting(attacker) then return nil end
-    local Combat = require("models.combat")
     for _, t in ipairs(unit.traits) do
-        -- Cost last, so a blade already on cooldown is never weighed against a pool it needn't spend.
-        if t.def.deflectsMelee and not Combat.onCooldown(unit, t.id) and canPay(unit, t.def) then
+        -- Cost last, so a blade that couldn't answer anyway is never weighed against a pool it
+        -- needn't spend.
+        if t.def.deflectsMelee and canPay(unit, Trait.answerCost(combat, unit, t, 1)) then
             return t
         end
     end
@@ -189,8 +228,8 @@ function Trait.tryRiposte(combat, unit, attacker, tags, area)
     local t = riposteTrait(combat, unit, attacker, tags, area)
     if not t then return false end
     local Combat = require("models.combat")
-    payCost(unit, t.def) -- the predicate already checked it can be paid
-    Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
+    payCost(unit, Trait.answerCost(combat, unit, t, 1)) -- the predicate already checked it can be paid
+    tallyAnswer(unit)
     Combat.logEvent(combat, "action",
         string.format("%s turns the blow aside and ripostes!",
             (unit.char and unit.char.name) or "Unit"))
@@ -204,7 +243,7 @@ function Trait.tryRiposte(combat, unit, attacker, tags, area)
     -- Combat.beginBeat). Set here rather than in `dispatch`, since a riposte fires from the
     -- pre-mitigation path rather than through a hook -- the same reason `_reacting` is local.
     Combat.beginBeat(combat)
-    local weapon = Combat.defaultWeapon(unit.char)
+    local weapon = Combat.answeringWeapon(combat, unit, 1)
     if weapon then Combat.dealDamage(combat, unit, attacker, weapon) end
     Combat.endBeat(combat)
     unit._reacting.riposte = was
@@ -242,12 +281,14 @@ local function preemptTrait(combat, unit, attacker, area)
     -- other until one pool ran dry.
     if Trait.isReacting(attacker) then return nil end
     local Combat = require("models.combat")
-    local reach = weaponReach(combat, unit)
-    if reach == 0 then return nil end -- nothing in hand to answer with
-    if distance(attacker, unit) > reach then return nil end -- sensed, but out of reach
+    local dist = distance(attacker, unit)
+    -- Sensed, but nothing in hand that reaches back from here (a bow's dead zone counts: an archer
+    -- cannot answer a foe standing on top of it).
+    if not Combat.answeringWeapon(combat, unit, dist) then return nil end
     for _, t in ipairs(unit.traits) do
-        -- Cost last, so a sense already spent is never weighed against a pool it needn't spend.
-        if t.def.preemptsAttack and not Combat.onCooldown(unit, t.id) and canPay(unit, t.def) then
+        -- Cost last, so a sense that couldn't answer anyway is never weighed against a pool it
+        -- needn't spend.
+        if t.def.preemptsAttack and canPay(unit, Trait.answerCost(combat, unit, t, dist)) then
             return t
         end
     end
@@ -258,8 +299,9 @@ function Trait.tryPreempt(combat, unit, attacker, area)
     local t = preemptTrait(combat, unit, attacker, area)
     if not t then return false end
     local Combat = require("models.combat")
-    payCost(unit, t.def) -- the predicate already checked it can be paid
-    Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
+    local dist = distance(attacker, unit)
+    payCost(unit, Trait.answerCost(combat, unit, t, dist)) -- the predicate already checked it can be paid
+    tallyAnswer(unit)
     Combat.logEvent(combat, "action",
         string.format("%s sees it coming and strikes first!",
             (unit.char and unit.char.name) or "Unit"))
@@ -272,7 +314,7 @@ function Trait.tryPreempt(combat, unit, attacker, area)
     -- Deliberately NO beginBeat, unlike every other reflex: those answer a blow and so
     -- animate a beat after it, while this one PRECEDES the blow. Staying on the current beat
     -- is what makes the view play it first (see Combat.pushFx).
-    Combat.dealDamage(combat, unit, attacker, Combat.defaultWeapon(unit.char))
+    Combat.dealDamage(combat, unit, attacker, Combat.answeringWeapon(combat, unit, dist))
     unit._reacting.preempt = was
     return not attacker.alive -- felled them: the blow they were throwing never arrives
 end
@@ -298,8 +340,8 @@ function Trait.tryCounterMagic(combat, unit, attacker, tags)
     local Combat = require("models.combat")
     for _, t in ipairs(unit.traits) do
         -- Cost last, so a counter already on cooldown is never weighed against mana it needn't spend.
-        if t.def.countersSpell and not Combat.onCooldown(unit, t.id) and canPay(unit, t.def) then
-            payCost(unit, t.def)
+        if t.def.countersSpell and not Combat.onCooldown(unit, t.id) and canPay(unit, t.def.cost) then
+            payCost(unit, t.def.cost)
             Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
             Combat.logEvent(combat, "action", string.format("%s unravels %s's spell!",
                 (unit.char and unit.char.name) or "Unit", (attacker.char and attacker.char.name) or "the caster"))
@@ -360,8 +402,10 @@ end
 -- instead of spelling the same five conditions out again. The rule:
 --
 --   counter = {
---     reach = "melee"           -- the attacker must stand adjacent
---          | "ranged",          -- ...must stand further off, and within our own weapon's reach
+--     reach = "melee",          -- OPTIONAL: adjacent only, whatever the bearer's weapons reach.
+--                               -- For a reflex that is adjacent by its nature -- spikes on armor,
+--                               -- a shield shoved into someone. Omit it and the default applies:
+--                               -- you answer whatever a weapon in your grid can reach back at.
 --     requiresTag = "physical", -- optional: only that school of blow provokes it
 --     requiresStatus = "status_defending", -- optional: only while the bearer holds that status
 --     requiresArmed = true,     -- optional: only when the trait armed itself at combat start
@@ -397,17 +441,14 @@ function Trait.mayCounter(combat, unit, trait, attacker, tags, area)
     -- answersReactions -- a shorter cooldown buys a wider guard.
     if not rule.answersReactions and Trait.isReacting(attacker) then return false end
     local Combat = require("models.combat")
-    -- Keyed on the trait's own id, so two counters on one bearer hold independent timers.
-    if Combat.onCooldown(unit, trait.id) then return false end
+    -- Reach is the gate, and the only one. Can something in your grid reach back at the tile the blow
+    -- came from? Then you answer it; otherwise you don't, and the reason is a fact on the board rather
+    -- than a timer nobody can see. A swordsman answers the foe beside them and not the archer four
+    -- tiles off; the archer answers the bowman across the field and not the brawler in their face
+    -- (Combat.answeringWeapon honours each weapon's dead zone).
     local dist = distance(attacker, unit)
-    if rule.reach == "ranged" then
-        if dist <= 1 then return false end -- an adjacent blow is a melee reflex's business
-        local reach = weaponReach(combat, unit)
-        if reach <= 1 or dist > reach then return false end -- no bow in hand, or they shot from beyond it
-    elseif dist ~= 1 then
-        return false -- melee: the attacker must have struck from an adjacent tile
-    end
-    return true
+    if rule.reach == "melee" then return dist == 1 end
+    return Combat.answeringWeapon(combat, unit, dist) ~= nil
 end
 
 -- What `target` would throw BACK at `attacker` for a blow struck right now, as an ordered list of
@@ -437,10 +478,14 @@ function Trait.counterPreview(combat, target, attacker, opts)
         attacker = setmetatable({ x = opts.fromX, y = opts.fromY }, { __index = attacker })
     end
 
-    -- What the bearer's default weapon would do to the attacker, post-mitigation: the answer every
+    -- The distance the answer is thrown across: which weapon answers, and so what it does and what
+    -- it costs, both hang off it.
+    local dist = math.abs(attacker.x - target.x) + math.abs(attacker.y - target.y)
+
+    -- What the weapon that can reach back would do to the attacker, post-mitigation: the answer every
     -- reflex but a reflecting one throws (ctx.basicAttack / the model-side counters all swing it).
     local function weaponBack()
-        local weapon = Combat.defaultWeapon(target.char)
+        local weapon = Combat.answeringWeapon(combat, target, dist)
         if not weapon then return 0 end
         return Combat.computeDamage(combat, target, attacker, weapon)
     end
@@ -454,9 +499,13 @@ function Trait.counterPreview(combat, target, attacker, opts)
     end
 
     local rt = riposteTrait(combat, target, attacker, opts.tags, opts.area)
-    if rt then entry(rt.name, weaponBack(), { deflects = true }) end
+    if rt then
+        entry(rt.name, weaponBack(), { deflects = true, cost = Trait.answerCost(combat, target, rt, dist) })
+    end
     local pt = preemptTrait(combat, target, attacker, opts.area)
-    if pt then entry(pt.name, weaponBack(), { first = true }) end
+    if pt then
+        entry(pt.name, weaponBack(), { first = true, cost = Trait.answerCost(combat, target, pt, dist) })
+    end
 
     -- A riposte turns the blow aside entirely, and a blow that never lands provokes no on-hit hook --
     -- nor does one that kills (Trait.onDamaged is not called on the killing blow). Nor does one that
@@ -466,19 +515,20 @@ function Trait.counterPreview(combat, target, attacker, opts)
     -- fire before the blow lands, so a stun that only exists once it has landed cannot pre-empt them.
     if rt or opts.lethal or opts.suppressed then return out end
     for _, t in ipairs(target.traits or {}) do
-        if Trait.mayCounter(combat, target, t, attacker, opts.tags, opts.area) and canPay(target, t.def) then
+        local cost = Trait.answerCost(combat, target, t, dist)
+        if Trait.mayCounter(combat, target, t, attacker, opts.tags, opts.area) and canPay(target, cost) then
             local rule = t.def.counter
             if rule.applies then
                 local def = Status.defs[rule.applies]
-                entry(t.name, 0, { status = (def and def.name) or rule.applies })
+                entry(t.name, 0, { status = (def and def.name) or rule.applies, cost = cost })
             elseif rule.reflect then
                 local share = math.floor((opts.damage or 0) * (t.def.magnitude or 0) / 100)
                 -- Below a full point of reflection the spikes don't bite at all (data/traits/thorns.lua).
                 if share >= 1 then
-                    entry(t.name, Combat.mitigatedDamage(attacker, share, { "physical" }))
+                    entry(t.name, Combat.mitigatedDamage(attacker, share, { "physical" }), { cost = cost })
                 end
             else
-                entry(t.name, weaponBack())
+                entry(t.name, weaponBack(), { cost = cost })
             end
         end
     end
@@ -560,19 +610,16 @@ local function ctxFor(combat, unit, trait, event)
         -- stop that from looping.
         basicAttack = function(target)
             if not target then return 0 end
-            local weapon = Combat.defaultWeapon(unit.char)
+            -- Whichever weapon in the grid reaches THAT far, not whichever sorts first: a counter
+            -- thrown across four tiles is a bowshot even when a sword sits in the top-left slot.
+            local weapon = Combat.answeringWeapon(combat, unit, distance(unit, target))
             if not weapon then return 0 end
             return Combat.dealDamage(combat, unit, target, weapon)
         end,
-        -- The effective reach of the bearer's default weapon from where it stands (base range plus any
-        -- high-ground field bonus). A ranged counter reads this to tell a bow (>1) from a blade, and to
-        -- check the attacker is within answering distance. 0 for a unit with no weapon at all.
-        weaponRange = function()
-            local weapon = Combat.defaultWeapon(unit.char)
-            local ab = weapon and weapon.activeAbility
-            if not ab then return 0 end
-            return Combat.abilityRange(combat, unit, ab)
-        end,
+        -- The effective reach of the bearer's longest weapon from where it stands (base range plus any
+        -- high-ground field bonus). 0 for a unit with no weapon at all. Reported for display; the live
+        -- gate a reflex runs is Combat.answeringWeapon, which also honours each weapon's dead zone.
+        weaponRange = function() return weaponReach(combat, unit) end,
         -- Summon a creature, sustained by the bearer -- and, when the trait came off an ITEM, hold that
         -- item's `activeSummon` claim with it, exactly as `fx.summon` does for an ability's own cast
         -- (see Combat.useItem). One rule, however the item summons: while the creature a relic put on
@@ -598,11 +645,24 @@ local function ctxFor(combat, unit, trait, event)
         -- recharges from Combat.rebase alongside status durations.
         onCooldown = function(key) return Combat.onCooldown(unit, key) end,
         setCooldown = function(key, ticks) Combat.setCooldown(unit, key, ticks) end,
-        -- Pay this trait's own declared `cost` (see payCost), returning false when the bearer cannot
-        -- afford it -- at which point the hook must decline and answer nothing. Call it LAST, after
-        -- every free refusal (cooldown, range, friendly fire), so a reflex that declines is never
-        -- billed. Free for a def that declares no cost.
-        pay = function() return payCost(unit, trait.def) end,
+        -- Pay for this firing, returning false when the bearer cannot afford it -- at which point the
+        -- hook must decline and answer nothing. Call it LAST, after every free refusal (reach,
+        -- friendly fire), so a reflex that declines is never billed.
+        --
+        -- A RETALIATION (one with a `counter` rule, answering a known attacker) is priced by
+        -- Trait.answerCost: what the swing that answers costs, doubled for each answer already thrown
+        -- this round. Everything else pays its own declared `cost`, which is usually nothing.
+        -- Tallying the answer is part of paying for it, so the next one this round costs more.
+        pay = function()
+            local e = event or {}
+            local isAnswer = trait.def.counter ~= nil and e.attacker ~= nil
+            local cost = isAnswer
+                and Trait.answerCost(combat, unit, trait, distance(e.attacker, unit))
+                or trait.def.cost
+            if not payCost(unit, cost) then return false end
+            if isAnswer then tallyAnswer(unit) end
+            return true
+        end,
         -- A free tile beside (x, y), or nil when the spot is hemmed in. What a hook calls before it
         -- summons or copies, because a body needs ground to stand on.
         openTileNear = function(x, y) return Combat.openTileNear(combat, x, y) end,

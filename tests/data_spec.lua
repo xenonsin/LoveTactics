@@ -70,9 +70,9 @@ return {
         name = "starting inventory built from def item ids",
         fn = function()
             local c = Character.instantiate("character_knight")
-            -- Iron Sword, Chainmail, Healing Potion, Torch, and the bound Sworn Aegis relic (cell 5).
+            -- Iron Mace, Chainmail, Healing Potion, Torch, and the bound Sworn Aegis relic (cell 5).
             assert(#c.inventory == 5, "expected 5 starting items, got " .. #c.inventory)
-            assert(c.inventory[1].name == "Iron Sword", "first item")
+            assert(c.inventory[1].name == "Iron Mace", "first item")
             assert(c.inventory[5].id == "armor_sworn_aegis", "the signature relic sits in the center")
         end,
     },

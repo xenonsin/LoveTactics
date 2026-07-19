@@ -1054,15 +1054,20 @@ function CombatPanel:drawItemGrid()
         -- toggles teleport movement rather than arming a cast.
         local isBlink = item and item.moveBehavior ~= nil
         local usable = item and (item.activeAbility ~= nil or isBlink) and isPartyTurn and not blocked
-        -- A triggered reflex (a Riposte Blade's parry) that has fired and is still recovering. Not a
-        -- blockReason: nothing here is being cast, so there is no arm to refuse -- the slot simply
-        -- cannot answer yet, and says so with the recovery clock below.
+        -- A triggered reflex that has fired and is still recovering. Not a blockReason: nothing here
+        -- is being cast, so there is no arm to refuse -- the slot simply cannot answer yet.
         local cooling = item and self.view.current and Combat.itemCooldown(self.view.current, item)
+        -- ...but a recovering reflex may only speak for the WHOLE slot when the slot has nothing else
+        -- to offer. Grey out a sword because its parry is recharging and the panel tells a flat lie:
+        -- the sword is right there and swinging it is legal. Counters no longer recharge at all
+        -- (models/trait.lua prices an answer instead of timing it), so in practice only passive
+        -- utilities reach this branch -- the guard is here so it stays that way.
+        local inert = cooling and not usable
 
         if item then
-            -- Grayer than an ordinary idle slot: a recovering reflex is inert in a way a merely
-            -- passive one isn't, so it must not read as ready at a glance.
-            local dim = cooling and 0.3 or ((not usable) and 0.45 or 1)
+            -- Grayer than an ordinary idle slot: a reflex-only item that is recovering is inert in a
+            -- way a merely passive one isn't, so it must not read as ready at a glance.
+            local dim = inert and 0.3 or ((not usable) and 0.45 or 1)
             local ab = item.activeAbility
 
             -- Icon fills the slot; the badges and name overlay its corners/bottom.
@@ -1088,7 +1093,7 @@ function CombatPanel:drawItemGrid()
             -- tucked in a corner because the clock is the whole story of a recovering slot -- it is
             -- what the eye should land on, not a footnote to the art behind it. Red, like every other
             -- badge that says "not yet".
-            if cooling then
+            if inert then
                 local cwx, cwy = sx + 1, sy + 1
                 local cww, cwh = sw - 2, sh - NAME_H - 1
                 drawCooldownSweep(cwx, cwy, cww, cwh, cooling.remaining / cooling.total)
@@ -1096,6 +1101,15 @@ function CombatPanel:drawItemGrid()
                 local bw, bh = self:badgeSize(left)
                 self:drawBadgeAt(cwx + (cww - bw) / 2, cwy + (cwh - bh) / 2,
                     "hourglass", left, WARN_COLOR, 1)
+            elseif cooling then
+                -- Recovering, but the slot can still ACT: the clock is news about one reflex on the
+                -- item, not a verdict on the item, so it rides in a corner badge like every other
+                -- qualifier instead of covering the art. Red under the gold speed badge -- the same
+                -- hourglass, because both are ticks, and the colour carries the difference between
+                -- "this is how long it takes" and "this is how long until".
+                local left = math.max(0, math.ceil(cooling.remaining))
+                self:drawBadge(sx, sy, sw, "right", "hourglass", left, WARN_COLOR, 1,
+                    (ab and ab.speed) and 1 or 0)
             end
 
             -- Name band overlaid along the bottom, single line scaled to fit.
