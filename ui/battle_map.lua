@@ -182,6 +182,7 @@ end
 
 function BattleMap:draw()
     self:drawTiles()
+    self:drawObjective() -- the ground a reach/hold objective is won on, under everything else
     self:drawHazards() -- area effects wash the ground under the interaction highlights
     self:drawOverlays()
     self:drawMovePath() -- the actor's steered walk route, an arrow over the blue move wash
@@ -191,6 +192,39 @@ function BattleMap:draw()
     self:drawHighlights()
     self:drawUnitInfo() -- HP bars + turn numbers + status badges sit above the highlight fills
     self:drawCursor()
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- Objective ground (self.overlays.objective): the tiles a `reach` or `hold` objective is won on,
+-- resolved per board by Arena.resolveRegion. Drawn UNDER the hazards and interaction highlights --
+-- it is a property of the terrain, not a thing the current action is doing, and it must never
+-- outshout the move/range wash a player is actually steering by.
+--
+-- `self.overlays.objectiveHeld` is the live control read for a `hold` (nil for `reach`): amber while
+-- the ground is contested or empty, green while the count is actually running. That distinction is
+-- the entire mechanic -- standing on the tiles is not the same as holding them, since an enemy boot
+-- on any of them stops the clock -- so it has to be visible without opening a panel.
+function BattleMap:drawObjective()
+    local cells = self.overlays and self.overlays.objective
+    if not cells or #cells == 0 then return end
+    local s = self.size
+    local held = self.overlays.objectiveHeld
+    -- Amber by default: a `reach` goal has no held state and reads as a destination.
+    local r, g, b = 0.95, 0.75, 0.30
+    if held == true then r, g, b = 0.40, 0.85, 0.50 end -- counting: green
+
+    -- A slow pulse, so the marked ground reads as live rather than as another terrain type. Shares
+    -- self.time with the current-unit highlight, which is already ticking in update().
+    local pulse = 0.16 + 0.06 * math.sin((self.time or 0) * 2.2)
+    for _, c in ipairs(cells) do
+        local wx, wy = self:cellToPixel(c.x, c.y)
+        love.graphics.setColor(r, g, b, pulse)
+        love.graphics.rectangle("fill", wx + 1, wy + 1, s - 2, s - 2, 3, 3)
+        love.graphics.setColor(r, g, b, 0.70)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 3, 3)
+        love.graphics.setLineWidth(1)
+    end
     love.graphics.setColor(1, 1, 1)
 end
 

@@ -743,6 +743,10 @@ function Combat.rebase(combat)
         if Combat.inTimeline(u) then u.initiative = u.initiative - minInit end
     end
     combat.clock = combat.clock + minInit
+    -- Bank the same elapsed time toward a `hold` objective, if the party held the ground across it.
+    -- Here rather than in Combat.evaluate because this is the only place that knows how much time
+    -- passed; evaluate runs per action and cannot tell a long one from a short one.
+    Combat.accrueHold(combat, minInit)
     -- Re-lay every censer's smoke around its bearer BEFORE the zone cycle below. This is the half that
     -- movement cannot cover: Combat.enterTile keeps the cloud under a bearer that walks, but a bearer
     -- that never moves needs its ground to still be there when Hazard.tick asks who is standing in
@@ -4509,6 +4513,49 @@ end
 -- character (usually an escorted ally, see Arena.build's `spec.allies`) whose death fails
 -- the battle whatever the win type is. That is what expresses an escort -- "survive 8
 -- turns, and the caravan must live" -- without exit tiles or pathing.
+-- An objective's `turns` in the ticks the clock actually counts.
+--
+-- Worth stating plainly, because it was wrong: `combat.clock` accumulates elapsed INITIATIVE (see
+-- Combat.rebase), not turns, and `survive` compared a field named `turns` straight against it. So
+-- "survive 8 turns" ended after 8 ticks -- under two turns at Status.TICKS_PER_TURN -- and every
+-- quest that used it was roughly five times shorter than it read. Objectives now convert, so the
+-- three time-based win types agree on what a turn is and a designer's number means what it says.
+local function turnsToTicks(turns)
+    if not turns then return math.huge end
+    return turns * Status.TICKS_PER_TURN
+end
+
+-- Is a living unit of `side` standing on any of `tiles` (the resolved ground of a `reach` or
+-- `hold` objective -- see Arena.resolveRegion)? The one reader both tile objectives share.
+function Combat.occupies(combat, tiles, side)
+    for _, t in ipairs(tiles or {}) do
+        for _, u in ipairs(combat.units) do
+            if u.alive and u.side == side and u.x == t.x and u.y == t.y then return true end
+        end
+    end
+    return false
+end
+
+-- Does the party CONTROL the objective ground right now? Standing on it is not enough: an enemy
+-- with a boot on any of the same tiles contests it and the count stops. That is what makes `hold`
+-- a fight over ground rather than a stopwatch you start by walking somewhere.
+function Combat.holdsGround(combat, tiles)
+    if not tiles or #tiles == 0 then return false end
+    if Combat.occupies(combat, tiles, "enemy") then return false end
+    return Combat.occupies(combat, tiles, "party")
+end
+
+-- Bank the ticks that just elapsed toward a `hold` objective, when the party held the ground for
+-- them. Called from Combat.rebase, which is the only place that knows how much time passed --
+-- Combat.evaluate runs after every action and would have no idea how long any of them took.
+function Combat.accrueHold(combat, elapsed)
+    local obj = combat.objective
+    if not obj or obj.type ~= "hold" then return end
+    if Combat.holdsGround(combat, obj.tiles) then
+        combat.heldTicks = (combat.heldTicks or 0) + (elapsed or 0)
+    end
+end
+
 function Combat.evaluate(combat)
     if Combat.aliveCount(combat, "party") == 0 then return "loss" end
 
@@ -4518,7 +4565,16 @@ function Combat.evaluate(combat)
         return "loss"
     end
 
-    if obj.type == "assassinate" then
+    if obj.type == "reach" then
+        -- Any body across the line ends it. Deliberately not "every" body: the point of an
+        -- extraction is getting THROUGH, and a rule that waits for stragglers turns the whole
+        -- thing back into a killAll with extra walking.
+        if Combat.occupies(combat, obj.tiles, "party") then return "win" end
+        return nil
+    elseif obj.type == "hold" then
+        if (combat.heldTicks or 0) >= turnsToTicks(obj.turns) then return "win" end
+        return nil
+    elseif obj.type == "assassinate" then
         for _, u in ipairs(combat.units) do
             -- A summoned duplicate shares its origin's `char.id`, so it would otherwise read as the
             -- mark still standing. Only the real thing counts.
@@ -4528,7 +4584,7 @@ function Combat.evaluate(combat)
         end
         return "win"
     elseif obj.type == "survive" then
-        if combat.clock >= (obj.turns or math.huge) then return "win" end
+        if combat.clock >= turnsToTicks(obj.turns) then return "win" end
         return nil
     else -- killAll (default)
         if Combat.aliveCount(combat, "enemy") == 0 then return "win" end

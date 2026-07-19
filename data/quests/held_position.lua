@@ -3,9 +3,9 @@
 --
 -- A garrison that will not stand down. Their post has no wall left behind it and no purpose left in
 -- front of it, and they are still there, because the doctrine says hold until relieved and nobody has
--- come to relieve them. The player is sent to hold it WITH them for a while -- a `survive` objective,
--- which is the closest the engine can currently say "hold this ground" (see the debt note in
--- docs/story.md: a real `hold` win type is wanted and does not exist).
+-- come to relieve them. The player is sent to hold it WITH them -- a `hold` objective, which is the
+-- knight's entire thesis finally sayable: standing on the ground is not enough, an enemy boot on any
+-- of it stops the count, and you win by DECIDING WHERE TO STAND rather than by killing faster.
 --
 -- The unease this plants is the one the line needs early: Rowan defends their refusal far too hard,
 -- and hears herself do it. Diligence with no mercy in it looks exactly like this, and it is the first
@@ -30,7 +30,8 @@ return {
                 for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_demon_imp" end
                 return list
             end,
-            win = { type = "survive", turns = 8 },
+            -- `region` defaults to "center" for a hold; named here because this board IS the post.
+            win = { type = "hold", region = "center", turns = 6 },
         },
         keyCount = 1,
     },

@@ -37,7 +37,11 @@ return {
                 list[#list + 1] = "character_demon_grunt"
                 return list
             end,
-            win = { type = "killAll" },
+            -- `reach`: the point is getting THROUGH the ruin to the gate, not clearing it. Acedia's
+            -- company holds the ground between, and fighting all of them is the expensive way to
+            -- cross -- which is the right shape for the quest where the player learns the gate was
+            -- opened from the inside.
+            win = { type = "reach", region = "far" },
         },
         keyCount = 2,
     },

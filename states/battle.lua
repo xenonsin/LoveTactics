@@ -114,6 +114,10 @@ local function objectiveText(obj)
     local text
     if obj.type == "survive" then
         text = "Objective: survive " .. (obj.turns or "?") .. " turns"
+    elseif obj.type == "reach" then
+        text = "Objective: get anyone to the far side"
+    elseif obj.type == "hold" then
+        text = "Objective: hold the marked ground for " .. (obj.turns or "?") .. " turns"
     elseif obj.type == "assassinate" then
         text = "Objective: defeat " .. charName(obj.target)
     else
@@ -1717,6 +1721,17 @@ local function refreshView()
     overlays.channelAoe = channelAoe
 
     overlays.hpPreview = bannerPreview -- per-unit incoming damage/heal, for on-board HP bars
+
+    -- The ground a `reach` or `hold` objective is fought over (Arena.resolveRegion). Painted for the
+    -- whole battle, not just while something is armed: an objective tile nobody can see is an
+    -- objective nobody can play, and the HUD line above promises "the marked ground".
+    local obj = battle.combat.objective
+    if obj and obj.tiles and #obj.tiles > 0 then
+        overlays.objective = obj.tiles
+        -- `hold` also needs its progress legible, so the wash reports whether the count is running.
+        overlays.objectiveHeld = (obj.type == "hold") and Combat.holdsGround(battle.combat, obj.tiles) or nil
+    end
+
     battle.map:setOverlays(overlays)
 end
 

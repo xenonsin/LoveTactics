@@ -75,9 +75,84 @@ function Arena.resolveComposition(composition, ctx)
     return { "character_bandit" }
 end
 
-local function normalizeObjective(obj)
+-- Is (x, y) ground a unit can stand on? Reads the layout's type strings through TILE_PROPS,
+-- which is the same table hydrateTiles expands -- so a region can never hand out a tile that
+-- an objective is then unable to be satisfied on.
+local function walkableAt(layout, x, y)
+    if x < 1 or y < 1 or x > layout.cols or y > layout.rows then return false end
+    local t = (layout.tiles[y] and layout.tiles[y][x]) or "ground"
+    local props = Arena.TILE_PROPS[t] or Arena.TILE_PROPS.ground
+    return props.walkable
+end
+
+-- Objective REGIONS: a symbolic patch of ground an objective is pointed at, resolved against
+-- the board once it exists.
+--
+-- This indirection is the whole reason `reach` and `hold` can be used by an ordinary quest. Quest
+-- boards are GENERATED per run (Arena.generateLayout, off the quest's biome and a seed), so a
+-- blueprint cannot name coordinates -- there is no board yet when it is written, and the one it
+-- gets will be different next time. It names a SHAPE instead, and the arena finds it.
+--
+-- A curated arena that does know its own geometry can skip all of this and author
+-- `win = { type = "reach", tiles = { { x = 3, y = 1 } } }` outright; an explicit `tiles` list is
+-- never overwritten.
+Arena.OBJECTIVE_REGIONS = {
+    -- The far edge -- the side of the board the party did not land on. What crossing means.
+    far = function(layout)
+        local sum, n = 0, 0
+        for _, s in ipairs(layout.partySpawns or {}) do sum, n = sum + s.y, n + 1 end
+        -- Measured off the party's own spawns rather than hardcoding a row, so the region is
+        -- still correct if a curated arena seats the party at the top instead of the bottom.
+        local avg = (n > 0) and (sum / n) or layout.rows
+        local goalY = (avg > layout.rows / 2) and 1 or layout.rows
+        local tiles = {}
+        for x = 1, layout.cols do
+            if walkableAt(layout, x, goalY) then tiles[#tiles + 1] = { x = x, y = goalY } end
+        end
+        return tiles
+    end,
+    -- The middle ground: the 2x2 at the board's heart, which is the ground two lines meet over.
+    center = function(layout)
+        local cx, cy = math.floor(layout.cols / 2), math.floor(layout.rows / 2)
+        local tiles = {}
+        for y = cy, cy + 1 do
+            for x = cx, cx + 1 do
+                if walkableAt(layout, x, y) then tiles[#tiles + 1] = { x = x, y = y } end
+            end
+        end
+        return tiles
+    end,
+}
+
+-- Resolve a region name to concrete tiles, widening the search if the board's scatter happened
+-- to bury the whole patch under obstacles. An objective with no reachable tile is unwinnable, and
+-- a generated board is allowed to be unlucky -- so this never returns empty while ANY walkable
+-- tile exists.
+function Arena.resolveRegion(name, layout)
+    local region = Arena.OBJECTIVE_REGIONS[name] or Arena.OBJECTIVE_REGIONS.center
+    local tiles = region(layout)
+    if #tiles > 0 then return tiles end
+
+    for y = 1, layout.rows do
+        for x = 1, layout.cols do
+            if walkableAt(layout, x, y) then return { { x = x, y = y } } end
+        end
+    end
+    return {}
+end
+
+-- Copy the objective and, for the tile-based win types, stamp the ground onto it. Copied rather
+-- than mutated: `spec.objective` comes straight off an immutable quest blueprint, and writing
+-- resolved tiles into it would leak one run's board into the next (tests/quest_spec.lua pins that).
+local function normalizeObjective(obj, layout)
     if not obj or not obj.type then return { type = DEFAULT_OBJECTIVE.type } end
-    return obj
+
+    local out = {}
+    for k, v in pairs(obj) do out[k] = v end
+    if (out.type == "reach" or out.type == "hold") and not out.tiles then
+        out.tiles = Arena.resolveRegion(out.region or (out.type == "reach" and "far" or "center"), layout)
+    end
+    return out
 end
 
 -- ---------------------------------------------------------------------------
@@ -263,7 +338,7 @@ function Arena.build(ctx, spec)
         allies = bindUnits(allyIds, layout.partySpawns, #partyIds),
         enemies = bindUnits(enemyIds, layout.enemySpawns),
         traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
-        objective = normalizeObjective(spec.objective),
+        objective = normalizeObjective(spec.objective, layout),
         seed = layout.seed,
     }
 end
