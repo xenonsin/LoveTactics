@@ -4,6 +4,10 @@ return {
     portrait = "assets/portraits/priest.png", -- large VN portrait for conversations (falls back if missing)
     -- Innate growth class: the fallback/tie-break for the level-up growth system (models/growth.lua).
     class = "priest",
+    -- Reads his allies before his enemies (models/ai.lua): mending outranks swinging, and he keeps
+    -- out of reach while he does it. The Heal in his grid carries its own rule, so most of this
+    -- posture's work is the footwork rather than the choice of spell.
+    archetype = "support",
     stats = {
         health = 70, mana = 70, stamina = 40, -- resource stats
         staminaRegen = 1, -- stamina recovered per elapsed tick (a flat stat, not a resource)

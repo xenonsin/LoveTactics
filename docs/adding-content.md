@@ -343,6 +343,140 @@ the same rule to warn them, before they commit the turn, that this swing will be
 (`ui/action_preview.lua`). A retaliation that hand-rolls its gates instead still fires — it just fires
 as a surprise, which is a bug in a tactics game.
 
+## Tactical AI: archetypes and item-borne rules
+
+How a unit behaves when nobody is driving it lives in `models/ai.lua`, layered so that each layer
+answers one question and none of them has to answer all three:
+
+| Layer | Question | Authored as |
+| --- | --- | --- |
+| **Posture** | Do I engage at all, and where do I want to be? | `archetype` on a character blueprint |
+| **Rules** | What *kind* of thing am I trying to do? | an `ai` block on an item, a blueprint, or the player's Tactics tab |
+| **Scoring** | Which tile / item / target executes that? | nothing — it is not authored |
+
+**Do not try to author the third one.** The scorer already weighs damage, kills, friendly fire,
+counter-risk, hazards and exposure over every reachable tile; a rule that tries to describe *where to
+stand* is fighting it. Say what you want done and let it find the execution.
+
+### Give a character a posture
+
+```lua
+archetype = "skirmish",   -- one of AI.POSTURES; omit for `aggressive`
+```
+
+| Posture | Behavior |
+| --- | --- |
+| `aggressive` | Closes and hits the best thing it can reach. The default, and what every enemy did before postures existed. |
+| `defensive` | Holds until a foe is in its reach or it takes a hit, then commits. Lets a map have quiet corners the player opens when they choose. |
+| `holdGround` | Never leaves its start tile. A sentry, a throne-room boss. |
+| `guard` | Pursues within `leash` tiles of where it started, then walks home. A patrol the player can bait. |
+| `skirmish` | Prices being reachable dearly — the archer/mage posture. Will not close to take a shot it could take from range. |
+| `support` | Reads allies before enemies. |
+| `objective` | Goes for whoever the objective names (`protect` charge, `assassinate` mark); falls back to `aggressive` when it names nobody. |
+
+### Put behavior on an item
+
+This is the one to reach for. A rule authored on an ability travels **with** it: drop the item into
+any NPC's grid and it gets the tactics too, with no edit to that character's blueprint.
+
+```lua
+activeAbility = {
+    target = "ally", range = 3,
+    healing = { 24, 26, 29 },
+    ai = { priority = "urgent", act = "support", targetPref = "lowest_hp",
+           when = { subject = "any_ally", test = "hp_pct_below", value = 0.5 } },
+    effect = function(fx) fx.heal(fx.target, fx.amount) end,
+}
+```
+
+A rule that names no `item` on an item's own block means *this item* — and it will only ever fire
+**this** item, never whatever else is to hand. If the item is unaffordable or out of stock the rule is
+skipped entirely and the next one gets the turn.
+
+| Field | Meaning |
+| --- | --- |
+| `priority` | A **name**, not a number — see the scale below. The primary sort, because three sources contribute to one list and none can see the others. |
+| `when` | `{ subject, test, value }` — see the vocabulary below. Omit for an unconditional rule. |
+| `act` | `attack` / `support` / `cast` / `retreat` / `wait` (`AI.ACTIONS`). |
+| `item` | Which item to use. Omit for "anything in the kit". On an item's own block this is implicit and means *this item*; elsewhere it is an **id string** (`"ability_heal"`). |
+| `targetPref` | `nearest` / `lowest_hp` / `most_wounded` / `lethal` / `self` / `objective`. A **bias, not a filter** — a lethal blow elsewhere still wins. |
+
+An `item` is named by **id, not by grid slot** — deliberately, even though `defaultActionSlot` (the
+other per-character player setting) is a slot. The two mean different things: pinning a default action
+means "whatever I keep in this cell", while a tactics rule means "cast Heal". Since the Loadout tab
+exists to rearrange the grid for adjacency auras, a slot-based rule would silently repoint itself
+every time the player optimised their layout.
+
+If the named item isn't in the character's grid (stowed, sold, spent), the rule goes **dormant** — it
+is skipped and the next rule takes the turn. It does *not* fall back to the whole kit, because
+"cast Heal" quietly becoming "cast anything" is the worst thing losing an item could do. The Tactics
+tab marks such a row *not carried*.
+| `whenFn` | `function(ctx) -> bool` escape hatch. NPC-only: it cannot be saved or drawn, so the player-facing Tactics tab never shows a rule that uses it. |
+
+**Subjects** resolve to a list of units: `self`, `any_foe`, `any_ally`, `nearest_foe`, `nearest_ally`,
+`foe_lowest_hp`, `ally_lowest_hp`, `objective_unit`.
+
+**Tests** answer for that list: `always` / `exists`, `hp_pct_below`, `hp_pct_above`, `has_status`,
+`lacks_status`, `within`, `in_reach`, `count_at_least`.
+
+Both are closed sets (`AI.SUBJECTS`, `AI.TESTS`). A typo **raises** rather than quietly evaluating to
+true — a misspelled rule that always fires looks exactly like working behavior until a battle goes
+strange. `tests/ai_spec.lua` sweeps every shipped item and character to catch it before then.
+
+### Priority
+
+Authored as a name (`AI.PRIORITY`), because `priority = 20` tells a later reader nothing about what
+the rule is *for*, and two authors picking numbers independently have no way to agree:
+
+| Name | When to use it |
+| --- | --- |
+| `emergency` | I am about to die. Drink the potion, break off — do not trade blows. |
+| `urgent` | Someone *else* is about to die, or a chance appears that will not come round again. |
+| `high` | Worth doing before the ordinary business of the turn: the expensive spell, the opening gambit. |
+| `normal` | The ordinary business of the turn. **Posture defaults live here**, so a rule at `normal` competes with "attack whatever is in reach" and wins only on the source ranking. |
+| `low` | Do this if nothing better presented itself. |
+| `fallback` | The floor. Reposition, regroup, idle. |
+
+A raw number is still accepted for the rare rule that must slot *between* two levels; the gaps in the
+scale mean doing so never forces a renumbering. It will still describe itself by the band it lands in.
+
+### Rule order
+
+Sources merge into one list, sorted by `priority`, then by source, then by declaration order:
+
+1. **player** — `char.aiRules`, from the Loadout screen's Tactics tab
+2. **item** — `ability.ai`
+3. **character** — `ai` on the blueprint, for behavior specific to one body
+4. **posture** — the archetype's defaults
+
+The list is scanned strictly top to bottom and the **first rule that matches and can be executed wins
+outright**. Scoring never overrules the list; it only chooses among the candidates that rule admitted.
+That is what makes a list debuggable — "rule 3 fired because 1 and 2 didn't" — and it is why
+`plan.reason` names the winning rule. Read it (`AI.explain`) before tuning anything.
+
+A rule with `enabled = false` is skipped by the merge but kept in the list — that is how the player
+switches a row off to see what the list does without it. Only an explicit `false` counts, so no
+authored data file has to say `enabled = true`.
+
+### The player's side: the Tactics tab
+
+The second tab on the Loadout panel (`ui/tactics_editor.lua`) writes `char.aiRules`, `char.archetype`
+and `char.autoBattle`. It shows **only** the player's own rules — item- and posture-supplied rules are
+content rather than settings, and a list mixing the two would make the delete key a lie.
+
+`autoBattle` is what makes any of it run for a party member: with it on, the unit acts on its own turn
+instead of waiting for input, and **any** input during the think-pause hands control straight back
+(`reclaimAutoTurn` in `states/battle.lua`). Off, the rules sit dormant — which is also the state an
+AI-controlled ally ignores, since it was never waiting for input to begin with.
+
+All three settings persist through `models/save.lua`, written only when set so an untouched character
+still diffs clean. `archetype` stores an explicit `false` when the player *clears* a blueprint's
+archetype, because "never set" and "deliberately cleared" must not both be `nil`.
+
+> Adding a field to a **character** blueprint means adding it to `Character.instantiate` too — it
+> copies field by field, so an unnamed field reads back `nil` at runtime and fails silently. Item
+> blueprints are deep-copied wholesale, so an `ai` block on an ability needs no such edit.
+
 ## Scale a combat encounter's roster
 
 A `combat` / `elite` encounter fields its enemies in the battle arena via `composition`, a
@@ -389,10 +523,15 @@ objective = {
 ```
 
 That expresses "clear the ambush, and the caravan must survive" — or, with `survive`, "hold eight
-turns and keep the charge alive" — with no exit-tile or pathing machinery. `Combat.planEnemyAction`
-targets by `unit.side`, so an ally never turns on the party. `Arena.build` seats allies on party
-spawn points *after* the party, falling back to a procedural layout if a curated arena hasn't
-authored enough of them.
+turns and keep the charge alive" — with no exit-tile or pathing machinery. The AI targets by
+`unit.side`, so an ally never turns on the party. `Arena.build` seats allies on party spawn points
+*after* the party, falling back to a procedural layout if a curated arena hasn't authored enough of
+them.
+
+Give an escortee an `archetype` (see **Tactical AI** above) — a non-combatant charge wants
+`defensive` or `holdGround`, or it will trot off toward the nearest raider and get itself killed. On
+the other side, an enemy with `archetype = "objective"` hunts the charge specifically rather than the
+nearest body, which is what makes an escort map play like one.
 
 True "escort to an exit tile" is not implemented; it would need exit tiles in `models/arena.lua`.
 

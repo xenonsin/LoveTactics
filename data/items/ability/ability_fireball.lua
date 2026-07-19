@@ -24,6 +24,14 @@ return {
         -- Bursts on impact: a 1-tile radius around the aimed cell, corners included (a 3x3 square).
         -- The targeting UI reads this to paint the affected tiles red before you commit.
         aoe = { radius = 1, shape = "square" },
+        -- Worth the mana and the two-turn wind-up only when there is more than one body to catch.
+        -- `high` puts it ahead of the ordinary business of the turn but behind the heals, so a mage
+        -- that is itself dying still drinks its potion first. WHERE to aim is deliberately not
+        -- stated here: the scorer already sums the blast over everyone it catches and prices
+        -- friendly fire at more than enemy damage, so it finds the cluster -- and declines the one
+        -- that includes its own side -- without a rule having to describe either.
+        ai = { priority = "high", act = "attack",
+               when = { subject = "any_foe", test = "count_at_least", value = 2 } },
         effect = function(fx)
             -- Sweep every unit caught in the blast -- allies included, so mind your own line.
             -- fx.aoeUnits reads the `aoe` above, so the hit set always matches the red footprint.

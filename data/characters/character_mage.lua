@@ -4,6 +4,10 @@ return {
     portrait = "assets/portraits/mage.png", -- large VN portrait for conversations (falls back if missing)
     -- Innate growth class: the fallback/tie-break for the level-up growth system (models/growth.lua).
     class = "mage",
+    -- 60 health and 4 defense, standing next to a swordsman, is a corpse. Left to herself she keeps
+    -- her distance (models/ai.lua); the Fireball in her grid carries its own rule about when the
+    -- wind-up is worth paying for.
+    archetype = "skirmish",
     stats = {
         health = 60, mana = 80, stamina = 40, -- resource stats
         staminaRegen = 1, -- stamina recovered per elapsed tick (a flat stat, not a resource)

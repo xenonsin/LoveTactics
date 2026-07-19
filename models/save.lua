@@ -113,6 +113,21 @@ local function snapshotCharacter(char)
     -- pick. See Combat.defaultAction.
     if char.defaultActionSlot then snap.defaultActionSlot = char.defaultActionSlot end
 
+    -- Player-authored tactics (ui/tactics_editor.lua): the gambit list, the posture backing it, and
+    -- whether the unit runs itself. All three are optional and are written ONLY when set, so a
+    -- character who never opened the Tactics tab diffs clean -- the same rule defaultActionSlot above
+    -- follows, and the reason an empty list is dropped rather than stored as `{}`.
+    --
+    -- Purely additive, so Save.VERSION deliberately does NOT move: a version bump discards the whole
+    -- save, and no existing field changed shape. An older save simply loads with no tactics, which is
+    -- exactly what it had.
+    if char.aiRules and #char.aiRules > 0 then snap.aiRules = char.aiRules end
+    -- The archetype is normally the blueprint's, and re-derived by instantiate; only a player
+    -- OVERRIDE is worth storing, or every save would carry a copy of content it already has.
+    local bpArchetype = bp and bp.archetype
+    if char.archetype ~= bpArchetype then snap.archetype = char.archetype or false end
+    if char.autoBattle then snap.autoBattle = true end
+
     -- Progression (models/growth.lua). Level defaults back to 1 on load, so omit it while unleveled to
     -- keep an early-game save diffing clean; the same for an empty tally / no accumulated growth.
     if char.level and char.level > 1 then snap.level = char.level end
@@ -219,6 +234,13 @@ local function restoreCharacter(snap)
     char.defaultActionSlot = snap.defaultActionSlot or snap.defaultWeaponSlot
     -- A saved custom display name (the created avatar's) overrides the blueprint name instantiate set.
     if snap.name then char.name = snap.name end
+
+    -- Player-authored tactics. `archetype` is stored as `false` when the player cleared a blueprint's
+    -- archetype back to the default, which has to be distinguishable from "not saved" -- so the
+    -- absent case leaves whatever instantiate derived, and the explicit false clears it.
+    if snap.aiRules then char.aiRules = snap.aiRules end
+    if snap.archetype ~= nil then char.archetype = snap.archetype or nil end
+    if snap.autoBattle then char.autoBattle = true end
     return char
 end
 

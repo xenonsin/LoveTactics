@@ -155,10 +155,10 @@ quest's `map.objective` (`composition` + `win = { type, target }`).
 
 ### Combat subsystems
 
-`models/combat.lua` owns the rules; six sibling modules layer on top of it. Each is required by
+`models/combat.lua` owns the rules; seven sibling modules layer on top of it. Each is required by
 `combat.lua` at load time and reaches *back* into it through a **lazy require inside its
 functions**, so the dependency stays one-way and no require cycle forms. Follow that shape when
-adding a seventh.
+adding an eighth.
 
 | Module | Lives in | What it adds |
 |---|---|---|
@@ -168,6 +168,21 @@ adding a seventh.
 | `models/summon.lua` | `combat.units` | characters placed on the field mid-battle |
 | `models/transform.lua` | `unit.char` | exchanges a unit's body for another character's (polymorph, wild shape) |
 | `models/trait.lua` | `unit.traits` | standing reactions: combat start, damage survived, cast, death |
+| `models/ai.lua` | — (pure) | what a unit does with its turn when nobody is driving it |
+
+**The AI is three layers, not one.** `models/ai.lua` answers three different questions with three
+mechanisms, and collapsing them loses whichever one you drop: a **posture** (`char.archetype`) decides
+whether to engage and how to move; an ordered **rule list** decides what *kind* of thing to do; and a
+**scorer** picks the tile, item and target that execute it. Rules are hard — the list is scanned top
+to bottom and the first executable match wins outright — while scoring is soft, and only ranks the
+candidates that rule already admitted. Inverting that would make the list meaningless, and the list is
+what a content author (and, via the Tactics tab, the player) actually writes.
+
+The scorer is cheap because it does not compute anything new: `Combat.previewAbility` already dry-runs
+an ability's real `effect(fx)`, and `Trait.counterPreview` already answers what would be thrown back
+from a tile the attacker hasn't walked to yet. Previews memoise by *(item, aim cell)* — they don't
+depend on where the caster stands — while counter-risk genuinely does, so it is budgeted to a
+shortlist. Every plan carries a `reason` naming the rule that won; see `AI.explain`.
 
 **Transform vs. summon.** Both put a character blueprint into a fight, and they are not variants of
 each other. A summon adds a *second unit* — two bodies, two turns, two health bars. A transform swaps

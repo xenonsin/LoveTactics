@@ -21,6 +21,7 @@
 --   local panel = Party.new({ player = player, onClose = fn })
 
 local InventoryGrid = require("ui.inventory_grid")
+local TacticsEditor = require("ui.tactics_editor")
 local PoolGrid = require("ui.pool_grid")
 local AdjacencyLinks = require("ui.adjacency_links")
 local CloseButton = require("ui.close_button")
@@ -69,7 +70,24 @@ local LEGEND = {
 
 -- Navigable regions, left to right. The focus sheet is skipped as a stop -- it has no interactive
 -- cells -- so a single cursor flows Rail <-> Grid <-> Stash by pushing left/right at a column edge.
+-- `filters` is appended only when the host supplies a filter strip (see opts.filters); it is not a
+-- left/right stop but a Tab one, like the rule editor's own internal regions.
 local REGIONS = { "rail", "grid", "pool" }
+
+-- The tabs. `loadout` is the original screen, unchanged; `tactics` swaps the grid/stash columns for
+-- the rule editor (ui/tactics_editor.lua), and the optional `stats` tab (opts.stats -- the debug
+-- character editor) swaps them for the blueprint field editor. The portrait rail stays up in ALL of
+-- them, so switching character works the same way whichever tab is open -- a tab is a view of one
+-- member, not a different screen. Segment pattern follows ui/panels/shop.lua's Buy/Sell/Upgrade
+-- selector.
+--
+-- `tactics` and `stats` are both COLUMN EDITORS: one widget claiming the whole area right of the
+-- rail, driven through a common interface (see Party:columnEditor). Everything below branches on
+-- "is there a column editor" rather than on the tab's name, so a third one costs a table entry
+-- rather than another dozen `mode == "..."` tests.
+local MODE_LABEL = { loadout = "Loadout", tactics = "Tactics", stats = "Stats" }
+local MODE_H = 28
+local FILTER_H = 24
 
 -- Semantic prompt-glyph tints, kept across input modes (the glyph text changes A<->Enter, the
 -- meaning doesn't): confirm reads green, cancel/close red.
@@ -114,6 +132,18 @@ function Party.new(opts)
     self.player = opts.player
     self.title = opts.title or "Loadout"
 
+    -- Opt-in extras, all off for the shipped Loadout screen (states/hub.lua, states/game.lua):
+    --   stats    add the blueprint field editor tab (states/debug_editor.lua)
+    --   persist  false to skip the Player.save() on close -- a synthetic player must never be able
+    --            to overwrite the real save
+    --   filters  a chip strip above the stash; see Party:drawFilters
+    self.modes = { "loadout", "tactics" }
+    if opts.stats then self.modes[#self.modes + 1] = "stats" end
+    self.persist = opts.persist ~= false
+    self.filters = opts.filters
+    self.onFilterChanged = opts.onFilterChanged
+    self.filterCursor = 1
+
     self.titleFont = love.graphics.newFont(28)
     self.headFont = love.graphics.newFont(18)
     self.bodyFont = love.graphics.newFont(15)
@@ -134,8 +164,15 @@ function Party.new(opts)
     self.quantityPopup = nil
     self.mx, self.my = 0, 0
 
+    self.mode = "loadout"
+
     -- Layout: rail (left) | focus sheet | member grid | stash pool.
-    local contentY = self.boxY + 96
+    --
+    -- The tab strip claims a band under the title, so `contentY` is derived from it rather than being
+    -- a hand-tuned constant -- every column below hangs off this one number, and moving the strip
+    -- must not require finding four other offsets.
+    self.modeY = self.boxY + 60
+    local contentY = self.modeY + MODE_H + 14
     local bottom = self.boxY + BOX_H - 40
     self.railX = self.boxX + 24
     self.railY = contentY
@@ -155,16 +192,81 @@ function Party.new(opts)
 
     local poolX = self.grid.x + self.grid.gridW + 24
     self.poolHeaderY = contentY
+
+    -- The filter strip claims a band between the stash header and the grid itself, so the pool's top
+    -- is derived from it rather than hand-tuned -- the same reasoning as `contentY` and the tab strip.
+    local poolTop = contentY + 24
+    if self.filters then
+        self.filterRects = {}
+        local fw = (self.boxX + BOX_W - 24 - poolX)
+        for i in ipairs(self.filters) do
+            self.filterRects[i] = { x = poolX, y = poolTop + (i - 1) * (FILTER_H + 4), w = fw, h = FILTER_H }
+        end
+        poolTop = poolTop + #self.filters * (FILTER_H + 4) + 6
+    end
+
     self.pool = PoolGrid.new({
         x = poolX,
-        y = contentY + 24,
+        y = poolTop,
         w = self.boxX + BOX_W - 24 - poolX,
-        h = bottom - (contentY + 24),
+        h = bottom - poolTop,
     })
     self.pool:setItems(self.player and self.player.stash or {})
 
+    -- Tab segments, sized to the label rather than to a share of the box: two words centred over a
+    -- 1160px panel would read as a header, not as something you can click.
+    self.segRects = {}
+    local segW = 130
+    for i, m in ipairs(self.modes) do
+        self.segRects[m] = { x = self.railX + (i - 1) * (segW + 6), y = self.modeY, w = segW, h = MODE_H }
+    end
+
+    -- Both column editors get the SAME rect: they are alternative views of the area right of the
+    -- rail, and one of them being wider than the other would read as the panel resizing on a tab
+    -- change.
+    local column = {
+        x = self.focusX, y = contentY,
+        w = self.boxX + BOX_W - 24 - self.focusX,
+        h = bottom - contentY,
+        char = self.chars[self.charIndex],
+        fonts = { head = self.headFont, body = self.bodyFont, small = self.smallFont, tiny = self.tinyFont },
+    }
+    self.editors = { tactics = TacticsEditor.new(column) }
+    if opts.stats then
+        -- Required lazily: the stat editor is debug-only content, and the shipped Loadout screen
+        -- should not pay to load it.
+        column.onEditName = opts.onEditName
+        self.editors.stats = require("ui.stat_editor").new(column)
+    end
+    -- Kept for the existing call sites that name the rule editor directly.
+    self.tactics = self.editors.tactics
+
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
     return self
+end
+
+-- The widget owning the whole area right of the rail on the current tab, or nil on `loadout` (where
+-- the focus sheet / grid / stash share it instead). Every branch that used to ask `mode == "tactics"`
+-- asks this instead, so the `stats` tab -- and any later one -- routes without new branches.
+function Party:columnEditor()
+    return self.editors[self.mode]
+end
+
+function Party:setMode(mode)
+    if self.mode == mode then return end
+    -- Never carry a held item across a tab switch: the hand would still be full on a screen with
+    -- nowhere to put it down, and the item would read as lost.
+    self.grid:cancelPickup()
+    self.pool:cancelPickup()
+    self.drag = nil
+    self.mode = mode
+    self:setFocus(self:columnEditor() and "editor" or "grid")
+end
+
+function Party:cycleMode(delta)
+    local index = 1
+    for i, m in ipairs(self.modes) do if m == self.mode then index = i end end
+    self:setMode(self.modes[(index - 1 + delta) % #self.modes + 1])
 end
 
 function Party:setMsg(text, ok)
@@ -172,6 +274,15 @@ function Party:setMsg(text, ok)
 end
 
 function Party:close()
+    -- Persist on the way out, as ui/panels/shop.lua and ui/panels/blacksmith.lua already do. This
+    -- screen never used to save at all -- loadout edits (and the default-action star) survived only
+    -- until the next unrelated save point. That was survivable when the whole screen was item
+    -- placement; it is not once a player has spent minutes writing a rule list, so the save lands
+    -- here and covers both.
+    --
+    -- `persist` is false for a host driving a SYNTHETIC player (the debug character editor), where
+    -- saving would write a fabricated roster over the player's real one.
+    if self.persist and self.player and Player.save then Player.save() end
     if self.onClose then self.onClose() end
 end
 
@@ -183,7 +294,7 @@ function Party:switchChar(delta)
     if #self.chars == 0 then return end
     self.charIndex = (self.charIndex - 1 + delta) % #self.chars + 1
     self.railCursor = self.charIndex
-    self.grid:setChar(self:currentChar())
+    self:setEditedChar()
     self.pool:cancelPickup()
     self.drag = nil
     self:railScrollToFocus()
@@ -193,8 +304,16 @@ function Party:focusChar(i)
     if not self.chars[i] then return end
     self.charIndex = i
     self.railCursor = i
-    self.grid:setChar(self:currentChar())
+    self:setEditedChar()
     self:railScrollToFocus()
+end
+
+-- Point every per-member widget at the focused character. One writer, so a newly added editor can't
+-- be left showing the previous member on half the tabs.
+function Party:setEditedChar()
+    local char = self:currentChar()
+    self.grid:setChar(char)
+    for _, editor in pairs(self.editors) do editor:setChar(char) end
 end
 
 -- Single writer for the focused region, keeping the pool's cursor-highlight flag in sync (PoolGrid
@@ -205,10 +324,37 @@ function Party:setFocus(region)
 end
 
 -- Region-cycle fallback (Tab / Y): advance through REGIONS and drop any in-progress pickup.
+--
+-- On the Tactics tab there are only two stops that matter -- the rail and the editor -- and the
+-- editor has its own internal rules/fields split, so Tab hands off INTO it rather than past it.
+-- Cycling out of the editor only happens from its first region, which is what keeps Tab feeling like
+-- one continuous walk rather than two nested loops fighting for the key.
 function Party:cycleFocus(delta)
+    local editor = self:columnEditor()
+    if editor then
+        if self.focus == "editor" then
+            if editor:isFirstRegion() then
+                editor:cycleRegion()
+            else
+                editor:resetRegion()
+                self:setFocus("rail")
+            end
+        else
+            self:setFocus("editor")
+        end
+        return
+    end
+
+    -- The stash filter strip is a Tab stop rather than a left/right one: inside it, left/right
+    -- CHANGES a filter's value (as in the rule editor's field column), so it has no free horizontal
+    -- axis to cross a region boundary on.
+    local regions = REGIONS
+    if self.filters then
+        regions = { "rail", "grid", "pool", "filters" }
+    end
     local idx = 1
-    for i, r in ipairs(REGIONS) do if r == self.focus then idx = i break end end
-    self:setFocus(REGIONS[(idx - 1 + delta) % #REGIONS + 1])
+    for i, r in ipairs(regions) do if r == self.focus then idx = i break end end
+    self:setFocus(regions[(idx - 1 + delta) % #regions + 1])
     self.grid:cancelPickup()
     self.pool:cancelPickup()
     self.drag = nil
@@ -500,12 +646,36 @@ end
 -- (and does not also move within it); otherwise the focused widget moves its own cursor.
 function Party:navigate(dc, dr)
     local region = self.focus
+    if region == "editor" then
+        -- The editor owns both axes: left/right cycles a field's value rather than crossing regions,
+        -- so the only way back out is Tab. Pushing left from its first region crosses to the rail,
+        -- which keeps the rail reachable without a modifier.
+        local editor = self:columnEditor()
+        if dc == -1 and editor:isFirstRegion() then self:setFocus("rail") return end
+        editor:navigate(dc, dr)
+        return
+    end
+    if region == "filters" then
+        -- Same shape as the editor's field column: up/down picks a filter, left/right cycles its
+        -- value. Pushing left leaves for the stash, which is what the strip filters.
+        if dc == -1 then self:setFocus("pool") return end
+        if dr ~= 0 then
+            self.filterCursor = math.max(1, math.min(#self.filters, self.filterCursor + dr))
+        elseif dc ~= 0 then
+            self:cycleFilter(self.filterCursor, dc)
+        end
+        return
+    end
     if dc ~= 0 then
         local col, cols
         if region == "grid" then
             col, cols = (self.grid.cursor - 1) % Character.COLS, Character.COLS
         elseif region == "pool" then
             col, cols = (self.pool.cursor - 1) % self.pool.cols, self.pool.cols
+        elseif region == "rail" and self:columnEditor() then
+            -- A column-editor tab has no grid to cross into; the rail's right edge lands in the editor.
+            if dc == 1 then self:setFocus("editor") return end
+            col, cols = 0, 1
         else -- rail is a single column
             col, cols = 0, 1
         end
@@ -524,6 +694,14 @@ end
 -- Confirm (A / Enter) on the focused region. On the rail this is where cross-member GIVE is
 -- reached on a pad: a held item goes to the cursored portrait; empty-handed, it focuses them.
 function Party:confirm()
+    if self.focus == "editor" then
+        self:columnEditor():confirm()
+        return
+    end
+    if self.focus == "filters" then
+        self:cycleFilter(self.filterCursor, 1)
+        return
+    end
     if self.focus == "rail" then
         if self.grid.picked then
             self:giveGridItemToMember(self.grid.picked, self.railCursor)
@@ -537,6 +715,59 @@ function Party:confirm()
     else
         self:activateGrid(self.grid.cursor)
     end
+end
+
+-- ---------------------------------------------------------------------------
+-- Stash filters (optional; supplied by the host, see opts.filters)
+-- ---------------------------------------------------------------------------
+--
+-- A filter is { label = "Type", options = { "All", "weapon", ... }, index = 1 }. The panel owns the
+-- cursor and the cycling; the HOST owns what a filter means -- it rebuilds the backing stash list in
+-- `onFilterChanged` and the pool is refreshed from it.
+--
+-- Filtering deliberately happens in that backing list rather than as a view over PoolGrid: every
+-- transfer path here indexes the stash directly (see Party:placeIntoGrid), so a pool showing a
+-- filtered subset at different indices would hand out the wrong item.
+
+function Party:cycleFilter(i, delta)
+    local filter = self.filters and self.filters[i]
+    if not filter then return end
+    filter.index = (filter.index - 1 + delta) % #filter.options + 1
+    self.pool:cancelPickup()
+    if self.onFilterChanged then self.onFilterChanged(self.filters) end
+    self:refreshStash()
+    -- The list just changed length under the cursor; put it somewhere that exists.
+    self.pool.cursor = math.max(1, math.min(math.max(1, self.pool:count()), self.pool.cursor))
+end
+
+function Party:filterIndexAt(x, y)
+    for i, r in ipairs(self.filterRects or {}) do
+        if pointIn(r, x, y) then return i end
+    end
+    return nil
+end
+
+function Party:drawFilters()
+    if not self.filters then return end
+    love.graphics.setFont(self.tinyFont)
+    for i, filter in ipairs(self.filters) do
+        local r = self.filterRects[i]
+        local active = (self.focus == "filters" and self.filterCursor == i)
+        love.graphics.setColor(active and 0.24 or 0.16, active and 0.27 or 0.17, active and 0.36 or 0.22)
+        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 4, 4)
+        love.graphics.setColor(active and 0.95 or 0.35, active and 0.85 or 0.38, active and 0.55 or 0.48)
+        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 4, 4)
+
+        love.graphics.setColor(0.62, 0.65, 0.74)
+        love.graphics.print(filter.label, r.x + 8, r.y + (r.h - self.tinyFont:getHeight()) / 2)
+
+        -- Arrows flank the value, so the strip reads as something you cycle rather than a label.
+        local value = filter.options[filter.index]
+        love.graphics.setColor(0.88, 0.90, 0.95)
+        love.graphics.printf("< " .. tostring(value) .. " >", r.x, r.y + (r.h - self.tinyFont:getHeight()) / 2,
+            r.w - 10, "right")
+    end
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- ---------------------------------------------------------------------------
@@ -664,10 +895,17 @@ function Party:draw()
     love.graphics.setColor(0.95, 0.85, 0.55)
     love.graphics.printf(self.title, self.boxX, self.boxY + 18, BOX_W, "center")
 
+    self:drawModeSelector()
     self:drawRail()
-    self:drawFocus()
-    self:drawMemberGrid()
-    self:drawPool()
+    local editor = self:columnEditor()
+    if editor then
+        editor:draw()
+    else
+        self:drawFocus()
+        self:drawMemberGrid()
+        self:drawFilters()
+        self:drawPool()
+    end
 
     self:drawFooter()
     self.closeButton:draw()
@@ -862,6 +1100,31 @@ function Party:drawMemberGrid()
     love.graphics.print("Default action (click the star to set)", self.grid.x + 36, ly)
 end
 
+-- Loadout / Tactics segmented tabs, mirroring ui/panels/shop.lua's mode selector: filled + outlined
+-- when active, flat when not.
+function Party:drawModeSelector()
+    love.graphics.setFont(self.smallFont)
+    for _, m in ipairs(self.modes) do
+        local r = self.segRects[m]
+        local active = (self.mode == m)
+        if active then
+            love.graphics.setColor(0.26, 0.30, 0.40)
+            love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
+            love.graphics.setColor(0.95, 0.85, 0.55)
+            love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
+        else
+            love.graphics.setColor(0.16, 0.17, 0.22)
+            love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
+            love.graphics.setColor(0.35, 0.38, 0.48)
+            love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
+        end
+        love.graphics.setColor(active and 0.98 or 0.62, active and 0.88 or 0.65,
+            active and 0.58 or 0.74)
+        love.graphics.printf(MODE_LABEL[m], r.x, r.y + (r.h - self.smallFont:getHeight()) / 2, r.w, "center")
+    end
+    love.graphics.setColor(1, 1, 1)
+end
+
 function Party:drawPool()
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(0.75, 0.78, 0.86)
@@ -882,6 +1145,14 @@ end
 -- Context-sensitive control hints, keyed on the focused region and whether an item is in hand -- so
 -- the confirm button's meaning (Pick up / Place / Give / Stow) is always spelt out. The glyphs match
 -- the device last used (pad buttons vs. keyboard keys); mouse falls back to the keyboard set.
+-- "1/2", or "1/2/3" once the Stats tab is on. Derived from the tab list rather than spelled out, so a
+-- hint that promises two number keys can't outlive the panel growing a third.
+function Party:tabGlyph()
+    local keys = {}
+    for i in ipairs(self.modes) do keys[i] = tostring(i) end
+    return table.concat(keys, "/")
+end
+
 function Party:drawPromptBar()
     local pad = InputMode.isGamepad()
     local confirmGlyph = pad and "A" or "Enter"
@@ -891,6 +1162,20 @@ function Party:drawPromptBar()
 
     local segments = {}
     local function add(glyph, label, color) segments[#segments + 1] = { glyph = glyph, label = label, color = color } end
+
+    local editor = self:columnEditor()
+    if editor then
+        if self.focus == "editor" then
+            for _, seg in ipairs(editor:prompts()) do segments[#segments + 1] = seg end
+        else
+            add(confirmGlyph, "Select", PROMPT_GO)
+        end
+        add(cancelGlyph, "Close", PROMPT_NO)
+        add(pad and "LT/RT" or self:tabGlyph(), "Tab")
+        add(switchGlyph, "Switch")
+        ButtonPrompt.draw(segments, self.boxX, self.boxY + BOX_H - 30, BOX_W, { align = "center" })
+        return
+    end
 
     local held = self.grid.picked or self.pool.picked
     if held then
@@ -909,6 +1194,7 @@ function Party:drawPromptBar()
         add(cancelGlyph, "Close", PROMPT_NO)
         add(regionGlyph, "Region")
         add(switchGlyph, "Switch")
+        add(pad and "LT/RT" or self:tabGlyph(), "Tab")
         -- Set-default-action control, shown only when an ability cell is focused (it's the only place
         -- pinning does anything). Matches the star badge drawn on the grid cell.
         if self.focus == "grid" and self.grid:isActionCell(self.grid.cursor) then
@@ -977,6 +1263,7 @@ end
 -- leaves); with keyboard/gamepad it sits at the active region's cursor cell. Out of combat there is
 -- no acting unit, so `actor` is nil: ItemTooltip shows the item's static stats.
 function Party:drawActiveTooltip()
+    if self:columnEditor() then return end -- an editor labels its own fields; no item is on show
     if InputMode.isMouse() then
         -- The star badge under the pointer wins over the item tooltip (they'd otherwise stack in the
         -- cell's top-right corner), naming what a click there does.
@@ -1017,7 +1304,14 @@ end
 function Party:cursorKind(x, y)
     if self.quantityPopup then return self.quantityPopup:cursorKind(x, y) end
     if self.closeButton:contains(x, y) then return "hand" end
-    if self:railIndexAt(x, y) or self.grid:indexAt(x, y) or self.pool:contains(x, y) then return "hand" end
+    if self:railIndexAt(x, y) then return "hand" end
+    for _, m in pairs(self.segRects) do
+        if pointIn(m, x, y) then return "hand" end
+    end
+    local editor = self:columnEditor()
+    if editor then return editor:cursorKind(x, y) end
+    if self:filterIndexAt(x, y) then return "hand" end
+    if self.grid:indexAt(x, y) or self.pool:contains(x, y) then return "hand" end
     return "arrow"
 end
 
@@ -1025,6 +1319,8 @@ function Party:mousemoved(x, y)
     self.mx, self.my = x, y
     if self.quantityPopup then self.quantityPopup:mousemoved(x, y) return end
     self.closeButton:mousemoved(x, y)
+    local editor = self:columnEditor()
+    if editor then editor:mousemoved(x, y) return end
     self.grid:mousemoved(x, y)
     self.pool:mousemoved(x, y)
     local drag = self.drag
@@ -1040,6 +1336,15 @@ function Party:wheelmoved(_, dy)
     if dy == 0 then return end
     if self.quantityPopup then self.quantityPopup:wheelmoved(dy) return end
     local x, y = Scale.toGame(love.mouse.getPosition())
+    local editor = self:columnEditor()
+    if editor then
+        if editor:contains(x, y) then editor:wheelmoved(dy)
+        elseif self:railContains(x, y) then
+            local maxOff = math.max(0, #self.chars - self.railVisible)
+            self.railOffset = math.max(0, math.min(maxOff, self.railOffset - dy))
+        end
+        return
+    end
     if self.pool:contains(x, y) then
         self.pool:wheelmoved(dy)
         self.pool:mousemoved(x, y)
@@ -1054,12 +1359,20 @@ function Party:mousepressed(x, y, button)
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then self:close() return end
 
+    for _, m in ipairs(self.modes) do
+        if pointIn(self.segRects[m], x, y) then self:setMode(m) return end
+    end
+
     local empty = not (self.grid.picked or self.pool.picked)
 
     local ri = self:railIndexAt(x, y)
     if ri then
         self:setFocus("rail")
         self.railCursor = ri
+        if self:columnEditor() then
+            self:focusChar(ri)
+            return
+        end
         if self.grid.picked then
             self:giveGridItemToMember(self.grid.picked, ri)
         elseif self.pool.picked then
@@ -1067,6 +1380,27 @@ function Party:mousepressed(x, y, button)
         else
             self:focusChar(ri)
         end
+        return
+    end
+
+    local editor = self:columnEditor()
+    if editor then
+        if editor:mousepressed(x, y) then
+            self:setFocus("editor")
+            return
+        end
+        if not pointIn({ x = self.boxX, y = self.boxY, w = BOX_W, h = BOX_H }, x, y) then self:close() end
+        return
+    end
+
+    local fi = self:filterIndexAt(x, y)
+    if fi then
+        self:setFocus("filters")
+        self.filterCursor = fi
+        -- Left half steps back, right half steps forward -- the "< value >" the strip draws is the
+        -- affordance, so both arrows have to actually be clickable.
+        local r = self.filterRects[fi]
+        self:cycleFilter(fi, (x < r.x + r.w / 2) and -1 or 1)
         return
     end
 
@@ -1125,30 +1459,57 @@ end
 
 function Party:keypressed(key)
     if self.quantityPopup then self.quantityPopup:keypressed(key) return end
+    -- Number keys jump straight to a tab, in the order the strip shows them.
+    for i, m in ipairs(self.modes) do
+        if key == tostring(i) then self:setMode(m) return end
+    end
+
+    local editor = self:columnEditor()
     if key == "escape" then
         self.drag = nil
-        if not (self.grid:cancelPickup() or self.pool:cancelPickup()) then self:close() end
+        local caught = (editor and editor:cancel())
+            or self.grid:cancelPickup() or self.pool:cancelPickup()
+        if not caught then self:close() end
     elseif key == "tab" then
         self:cycleFocus(1)
     elseif key == "q" then
         self:switchChar(-1)
     elseif key == "e" then
         self:switchChar(1)
-    elseif key == "left" or key == "a" then self:navigate(-1, 0)
-    elseif key == "right" or key == "d" then self:navigate(1, 0)
-    elseif key == "up" or key == "w" then self:navigate(0, -1)
-    elseif key == "down" or key == "s" then self:navigate(0, 1)
+    -- On a column-editor tab, A/D/W/S are not navigation: they are letters, and the arrows are the
+    -- canonical path there because left/right CHANGES a value rather than moving a cursor -- a stray
+    -- "a" nudging a priority band (or a stat) would be baffling.
+    elseif key == "left" or (key == "a" and not editor) then self:navigate(-1, 0)
+    elseif key == "right" or (key == "d" and not editor) then self:navigate(1, 0)
+    elseif key == "up" or (key == "w" and not editor) then self:navigate(0, -1)
+    elseif key == "down" or (key == "s" and not editor) then self:navigate(0, 1)
     elseif key == "f" then
-        if self.focus == "grid" then self.grid:setDefaultAt(self.grid.cursor) end
+        if editor and self.focus == "editor" then
+            if editor.toggleEnabled then editor:toggleEnabled(editor.cursor) end
+        elseif self.focus == "grid" then
+            self.grid:setDefaultAt(self.grid.cursor)
+        end
+    elseif key == "delete" or key == "backspace" then
+        if editor and self.focus == "editor" and editor.removeRule then
+            editor:removeRule(editor.cursor)
+        end
     elseif key == "return" or key == "kpenter" or key == "space" then self:confirm()
     end
 end
 
 function Party:gamepadpressed(joystick, button)
     if self.quantityPopup then self.quantityPopup:gamepadpressed(joystick, button) return end
+    -- Triggers switch tab, shoulders switch character. The shoulders were already the character
+    -- switch and moving them would break a habit for the sake of a new feature.
+    if button == "triggerleft" then self:cycleMode(-1) return end
+    if button == "triggerright" then self:cycleMode(1) return end
+
+    local editor = self:columnEditor()
     if button == "b" then
         self.drag = nil
-        if not (self.grid:cancelPickup() or self.pool:cancelPickup()) then self:close() end
+        local caught = (editor and editor:cancel())
+            or self.grid:cancelPickup() or self.pool:cancelPickup()
+        if not caught then self:close() end
     elseif button == "y" then
         self:cycleFocus(1)
     elseif button == "leftshoulder" then
@@ -1160,7 +1521,15 @@ function Party:gamepadpressed(joystick, button)
     elseif button == "dpup" then self:navigate(0, -1)
     elseif button == "dpdown" then self:navigate(0, 1)
     elseif button == "x" then
-        if self.focus == "grid" then self.grid:setDefaultAt(self.grid.cursor) end
+        if editor and self.focus == "editor" then
+            if editor.toggleEnabled then editor:toggleEnabled(editor.cursor) end
+        elseif self.focus == "grid" then
+            self.grid:setDefaultAt(self.grid.cursor)
+        end
+    elseif button == "back" then
+        if editor and self.focus == "editor" and editor.removeRule then
+            editor:removeRule(editor.cursor)
+        end
     elseif button == "a" then self:confirm()
     end
 end

@@ -5,6 +5,9 @@ return {
     -- Innate growth class: the fallback/tie-break for the level-up growth system (models/growth.lua).
     -- The archer is a hunter (the bow's shelf), so an unused archer grows toward ranged stats.
     class = "hunter",
+    -- A bow is only a bow at range: closed down, she is a light-armored body holding a stick. Left to
+    -- herself she kites (models/ai.lua), giving up ground to keep the shot she is built around.
+    archetype = "skirmish",
     stats = {
         health = 75, mana = 15, stamina = 90, -- resource stats
         staminaRegen = 2, -- stamina recovered per elapsed tick (a flat stat, not a resource)

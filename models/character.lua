@@ -251,6 +251,16 @@ function Character.instantiate(id, progress)
         -- A general/boss blueprint sets `boss = true`; carried through so an ability can refuse to work
         -- on one (Coup de Grace won't execute a boss, Charm won't turn it). Nil for an ordinary unit.
         boss = def.boss,
+        -- How this body fights when nobody is driving it (models/ai.lua): the posture that decides
+        -- whether it engages and how it moves, plus any blueprint-authored rules layered over the
+        -- posture's defaults. Both optional -- a character that names neither plays as `aggressive`,
+        -- which is what every enemy in the game did before postures existed.
+        --
+        -- Copied EXPLICITLY, like everything else on this table. Character.instantiate builds the
+        -- runtime character field by field rather than cloning the blueprint, so a new field that
+        -- isn't named here reads back nil at runtime and fails silently (docs/adding-content.md).
+        archetype = def.archetype,
+        ai = def.ai,
         level = (progress and progress.level) or 1,
         classUse = (progress and progress.classUse) or {},
         growth = (progress and progress.growth) or {},
