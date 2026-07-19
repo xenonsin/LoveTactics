@@ -244,6 +244,12 @@ function Character.instantiate(id, progress)
         -- Large VN portrait for conversations (ui/dialogue.lua); optional -- Sprite.load is tolerant,
         -- so a character with no `portrait` (or missing art) falls back to the letter-box placeholder.
         portrait = Sprite.load(def.portrait),
+        -- The art PATHS the two fields above were loaded from. Sprite.load hands back an image object
+        -- (or a placeholder) that no longer knows where it came from, so a tool that has only the
+        -- runtime character -- the debug editor writing a blueprint back to data/characters/ -- would
+        -- otherwise have no way to name the art again.
+        spritePath = def.sprite,
+        portraitPath = def.portrait,
         stats = stats,
         -- Progression state (models/growth.lua): innate growth class (fallback/tie-break), the level
         -- (tracks player prestige), the per-class cast tally, and the accumulated stat growth.

@@ -208,6 +208,10 @@ local function buildMenu()
 
     if DEBUG then
         items[#items + 1] = { label = "Mock Battle (debug)", action = startMockBattle }
+        items[#items + 1] = {
+            label = "Character Editor (debug)",
+            action = function() State.switch(require("states.debug_editor")) end,
+        }
         items[#items + 1] = { label = "Extract Strings (debug)", action = runExtractStrings }
     end
 
