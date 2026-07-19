@@ -72,6 +72,45 @@ return {
     opening  = "prologue_village",
     speaker  = "character_knight",     -- whose panel and portrait carry the narrative half
     scripted = { "character_knight" }, -- Rowan runs her authored turns, not the player's hands
+    -- THE TURN ORDER IS AUTHORED, like everything else here. See Tutorial.startInitiative /
+    -- Tutorial.paceTurn for the mechanism; this is why it exists.
+    --
+    -- Left to initiative the sequence above does not come out, and cannot be made to. Rowan swings a
+    -- mace and the avatar a sword, so his turns come round faster than hers -- which means the
+    -- student cycles twice for each of her demonstrations, and every beat where she is supposed to
+    -- act FIRST lands second instead. It cost the lesson two of them: her opening kill (the whole
+    -- reason the scene above is played) and her standing guard, which is the only thing that ever
+    -- clears the third imp off her flank. Nudging one beat straight just bent another, because
+    -- initiative is a running total: change a number anywhere and everything after it shifts.
+    --
+    -- The fight, turn by turn, by script key. Position sets each unit's starting tick and the gap to
+    -- its next appearance sets what its turn costs it (Tutorial.startInitiative / Tutorial.paceTurn).
+    -- The two vanguards are deliberately absent: they die on the opening pass, and a unit the list
+    -- never names is seated behind the whole lesson.
+    --
+    -- IT IS A PLAN, NOT A CAGE, and one entry proves it. The grunt is listed TWICE, and the second
+    -- turn is one it must never actually take: it is there so that when the player casts the Jolt the
+    -- grunt is genuinely the next card up -- a real turn, about to happen, with a wounded party in
+    -- front of it -- and so that the stun has something to shove. The stun adds to the initiative
+    -- this list handed it, the card slides below both party members, and the two turns that buys are
+    -- exactly the two it takes to kill it. Freeze the order outright and that beat teaches nothing;
+    -- leave the order to initiative and it never lines up at all.
+    pace = {
+        order = {
+            "character_knight",  -- her demonstration: cross the lane, cut the vanguard down
+            "character_avatar",  -- 1. the same, in one click
+            "4,2", "6,2",        -- the second wave closes and spits
+            "7,3",               -- ...and the third takes the long way to her flank
+            "character_knight",  -- her post answers it
+            "character_avatar",  -- 2-4. advance, ready, Clear Out -- and the grunt walks on
+            "6,1",               -- it charges, and the avatar's sword parries unbidden
+            "character_knight",  -- her mace answers, and shoves it two tiles clear
+            "character_avatar",  -- 5-6. ready the Jolt and throw it
+            "6,1",               -- the turn the STUN takes away from it (see above)
+            "character_knight",  -- the blow that stun bought her
+            "character_avatar",  -- 7. and the killing stroke is the player's
+        },
+    },
 
     -- One player action per step; the step completes when that action resolves. Ordered.
     steps = {
@@ -199,7 +238,13 @@ return {
         -- about. Tutorial.awaitsSpawn is what holds that win open for exactly one beat.
         { line = "spark", coach = "spark_hint", actor = "character_avatar", nudge = "nudge",
           grant = "ability_jolt",
-          spawn = { { char = "character_demon_grunt", x = 6, y = 1, initiative = 0 } },
+          -- -1, not 0, and the sign is load-bearing: the grunt must act BEFORE the mentor, whose own
+          -- next turn is the shove that answers this charge. At 0 it merely tied with her, and a tie
+          -- between two party-and-enemy units goes to the party -- so she threw the shove at an empty
+          -- cell a beat early, the grunt was never driven back, and every step after it was aimed at
+          -- a body standing somewhere else. A seat ahead of the whole board says "acts next" outright;
+          -- the next rebase normalizes it away.
+          spawn = { { char = "character_demon_grunt", x = 6, y = 1, initiative = -1 } },
           gate = { kind = "arm", item = "ability_jolt", approach = {} },
           anchor = { kind = "item", id = "ability_jolt" } },
 
@@ -222,7 +267,13 @@ return {
         -- then takes over from -- the first fight ends on the player's hand, or it was never theirs.
         -- ...and this one DOES walk. Rowan's shove put the grunt two tiles out, which is what made
         -- the Jolt a ranged throw -- and it means the closing sword stroke has ground to cover again.
-        -- (6,3) is the near side of where the shove left it: one step, then the blow, in one click.
+        --
+        -- (6,2) is that tile, and reading why takes both of Rowan's blows. Her first shove drives the
+        -- grunt from (6,4) to (6,2). Her second lands on it there and shoves AGAIN -- but the board
+        -- ends at row 1, so it travels one cell into the top edge and stops at (6,1), taking the
+        -- collision damage the closing arithmetic counts. That is what frees (6,2): the cell the grunt
+        -- was standing on a moment ago, directly beneath it, with Rowan behind at (6,3) and the near
+        -- side left open. One step from where the Clear Out left the avatar, then the blow, in one click.
         { line = "finish", coach = "finish_hint", actor = "character_avatar", nudge = "nudge",
           gate = { kind = "attack", target = "character_demon_grunt", item = "weapon_iron_sword",
                    approach = { { x = 6, y = 2 } } },
@@ -262,10 +313,20 @@ return {
             -- as a move-and-strike rather than a guard precisely because the WALK is half of what she
             -- is showing -- the player is about to be asked for the same two things in one click.
             { move = { x = 6, y = 6 }, strike = { x = 6, y = 5 } },
-            -- ...then she holds the ground she took. Two guards rather than one because which of her
-            -- turns the third imp arrives on depends on the initiative order: whichever it is, the
-            -- guard that finds it takes it, and the other passes harmlessly.
-            { guard = true },
+            -- ...then she holds the ground she took, for as many turns as the imps are the fight.
+            -- `through = 4` is what makes that a post rather than a turn: the entry is offered again
+            -- every turn of hers until the lesson passes step 4 (the Clear Out), so it cannot be spent
+            -- early on an empty board and cannot outlive the phase it belongs to. See
+            -- Tutorial.scriptFor.
+            --
+            -- Counting turns here instead was the original bug and could not have been made to work.
+            -- WHICH of her turns the third imp arrives on depends on the initiative order, and this
+            -- file is not allowed to know it -- so a single guard could come up one turn early, find
+            -- nothing, and be spent, leaving the imp alive at her elbow for the rest of the fight
+            -- while she walked off to the shove. Doubling it only moved the problem: the spare would
+            -- then eat the shove's own turn on a board with nothing left to guard, which is precisely
+            -- how the doubled shove below went wrong. The post lasts as long as the phase does.
+            { guard = true, through = 4 },
             -- The shove, twice over -- and the repeat is the safety net, not a second blow. Whichever
             -- of these two turns finds the grunt standing on (6,4) swings the mace at it; the other
             -- finds an empty cell and holds (scriptedAction only strikes a living foe). It cannot

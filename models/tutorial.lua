@@ -36,7 +36,8 @@ Tutorial.KINDS = { "move", "attack", "arm", "wait", "forfeit" }
 function Tutorial.new(id)
     local def = Tutorial.defs[id]
     if not def then return nil end
-    return { id = id, def = def, index = 1, cursors = {}, spawned = {}, abandoned = false }
+    -- `beats` counts each unit's own turns taken, for the authored pacing (Tutorial.paceTurn).
+    return { id = id, def = def, index = 1, cursors = {}, spawned = {}, beats = {}, abandoned = false }
 end
 
 function Tutorial.step(t)
@@ -138,6 +139,80 @@ end
 -- what turns a fight that starts into a fight that is introduced.
 function Tutorial.opening(t)
     return t and not t.abandoned and t.def.opening or nil
+end
+
+-- ---------------------------------------------------------------------------
+-- Pacing: the lesson's own timeline
+-- ---------------------------------------------------------------------------
+--
+-- A guided fight is a CHOREOGRAPHY, and its turn order is part of what is authored -- not something
+-- to be hoped for. Left to itself the order falls out of gear: the village's mentor swings a mace
+-- and the student a sword, so he cycles ahead of her, and her demonstrations land after the beats
+-- they are meant to teach. Every attempt to nudge that from outside moved the problem somewhere
+-- else in the sequence, because initiative is a running total and a nudge anywhere shifts the rest.
+--
+-- So the lesson states the turn order outright, as ONE list of script keys in the order they act
+-- (`pace.order`), and both halves of the timeline are read off it:
+--
+--   * a unit's STARTING initiative is where it first appears (first = 0, then 1, 2, ...)
+--   * a unit's turn COSTS it the gap to its next appearance -- "your next turn is N ticks out"
+--
+-- Anything on the board and absent from the list sits behind all of it (Tutorial.OFF): the two
+-- vanguards, who die on the opening pass and are never meant to take a turn at all.
+--
+-- Crucially the list is a PLAN, not a cage. It decides where each unit lands; everything the fight
+-- then does to a unit still counts on top -- which is the whole reason to pace the fight this way
+-- rather than script the order outright. Step 6 teaches the turn order by MOVING it: the grunt is
+-- listed for a turn it never actually takes, because the Jolt's stun adds to the initiative this
+-- gave it and shoves it past both party turns. The player watches the card slide out of a slot the
+-- lesson deliberately put it in, and the two turns that buys are the two that kill it.
+
+-- Where an unpaced unit sits: behind everything the lesson has authored, and far enough back that it
+-- never surfaces during the lesson at all.
+Tutorial.OFF = 99
+
+-- Does this lesson seat the fight on the timeline itself? False for one content to take the order
+-- initiative hands it, which leaves every unit's starting tick alone.
+function Tutorial.paces(t)
+    local pace = t and not t.abandoned and t.def.pace
+    return pace ~= nil and pace.order ~= nil
+end
+
+-- The starting initiative for `key`: its first appearance in the authored order, or Tutorial.OFF for
+-- a unit the order never names.
+function Tutorial.startInitiative(t, key)
+    if not Tutorial.paces(t) then return nil end
+    for i, k in ipairs(t.def.pace.order) do
+        if k == key then return i - 1 end
+    end
+    return Tutorial.OFF
+end
+
+-- What the turn `key` just took costs it: the gap between its own place in the authored order and
+-- its next one. Tutorial.OFF once it has no appearances left.
+--
+-- Counted per UNIT -- how many of its own turns it has taken -- rather than against a running count
+-- of the fight's turns, and that is the load-bearing choice. A shared counter assumes the fight is
+-- following the plan, and this plan is deliberately not always followed: the grunt is listed for a
+-- turn the stun takes away from it. Miss one entry against a shared counter and every unit after it
+-- reads the wrong row -- the mentor drew her own next slot twice and took two turns in a row. A
+-- unit's own gaps are the same however the fight deviates around it.
+--
+-- Goes quiet once the lesson is done, like the scripts and the gates: the fight has to finish as an
+-- ordinary battle, on the ordinary clock.
+function Tutorial.paceTurn(t, key)
+    if not t or Tutorial.done(t) or not Tutorial.paces(t) then return nil end
+    local taken = (t.beats[key] or 0) + 1
+    t.beats[key] = taken
+    local seen, from = 0, nil
+    for i, k in ipairs(t.def.pace.order) do
+        if k == key then
+            seen = seen + 1
+            if seen == taken then from = i
+            elseif from then return i - from end
+        end
+    end
+    return Tutorial.OFF
 end
 
 -- The reinforcements this step walks onto the board, as a list of { char, x, y } -- or nil. Claimed
@@ -328,13 +403,37 @@ end
 -- attention through the rest of the fight would be worse than no script at all -- so the mentor is
 -- handed back to the ordinary AI and joins in. Same principle as the gates: nothing the lesson
 -- imposed may outlive it.
+-- An entry carrying `through` is a STANDING ORDER rather than a single turn: it is offered again on
+-- every turn of its unit until the lesson has moved past that step, and only then stepped over. The
+-- ordinary entry beside it is spent by being used once.
+--
+-- It exists because the two obvious ways to spend a guard are both wrong, and the choreography is
+-- caught between them. A guard consumed whichever turn it comes up is spent on an empty board when
+-- the foe it was posted for has not arrived yet -- which is exactly how the village's third imp used
+-- to survive the lesson, with the mentor walking off to the next entry while it stood at her elbow.
+-- A guard consumed only when it finds nobody is worse: the grunt is deliberately walked to a cell
+-- OUTSIDE her reach, so she would hold that post forever and never throw the shove the ending is
+-- counted from.
+--
+-- Neither turn counts nor adjacency can answer it, because the thing the post actually lasts for is a
+-- PHASE OF THE LESSON -- "hold the line while the imps are the fight" -- and the lesson's own step
+-- index is the one honest measure of that. So the entry names the step it lasts through, and stops
+-- being a guess about initiative order.
+local function standing(entry) return entry ~= nil and entry.through ~= nil end
+
 function Tutorial.scriptFor(t, key)
     if not t or Tutorial.done(t) then return nil end
     local queue = t.def.script and t.def.script[key]
     if not queue then return nil end
-    local i = (t.cursors[key] or 0) + 1
-    t.cursors[key] = i
-    return queue[i]
+    local i, entry = t.cursors[key] or 0, nil
+    repeat
+        i = i + 1
+        entry = queue[i]
+    until not (standing(entry) and t.index > entry.through) -- expired post: step over it
+    -- A standing order is not spent by being used, so the cursor is left sitting BEFORE it and the
+    -- next turn offers it again. Anything else advances past it as usual.
+    t.cursors[key] = standing(entry) and (i - 1) or i
+    return entry
 end
 
 -- Reconcile the lesson with a board that has moved on. `isAlive(charId)` answers whether any living

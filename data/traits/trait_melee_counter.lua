@@ -3,7 +3,11 @@
 -- adjacent by its nature, so it declares `reach = "melee"` rather than taking the default "answer
 -- anything you can reach back at".
 --
--- "Melee" is read from where the attacker stood at the moment of the hit. The counter re-enters the
+-- "Melee" is read from the board as it stands once the whole action has resolved, not mid-effect: a
+-- mace that lands its blow and then shoves the bearer two tiles back is answered by nothing, because
+-- by the time the answer is thrown there is no one in reach to throw it at (Combat.beginAnswers). The
+-- hover preview weighs the same shove, so the panel never promises a counter the mace shoves out of
+-- range of. The counter re-enters the
 -- damage core and can trip the target's OWN counter, which the dispatch guards in models/trait.lua
 -- (unit._reacting + MAX_DEPTH) keep from looping.
 --

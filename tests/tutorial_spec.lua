@@ -44,6 +44,201 @@ local function atStep(n)
     return t
 end
 
+-- ---------------------------------------------------------------------------
+-- Playing the lesson for real
+-- ---------------------------------------------------------------------------
+--
+-- Everything below drives the village fight the way states/battle.lua drives it -- real arena, real
+-- Combat, real initiative -- rather than reading the lesson data and trusting it.
+--
+-- That distinction is the whole point. The two failures this exists to catch were both invisible to
+-- every check that read one file at a time: the mentor lost the opening turn to a tie-break in
+-- models/combat.lua, and her standing guard was spent one turn early on an empty board, leaving the
+-- third imp alive at her elbow for the rest of the fight. Neither is a fact about the lesson or about
+-- combat -- each lives in the seam between them, and only a played turn order shows it.
+--
+-- The animation is the only thing dropped: a walk resolves in a loop instead of a tile per frame.
+
+local function livingById(combat, charId)
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.char.id == charId then return u end
+    end
+    return nil
+end
+
+local function heldItem(char, itemId)
+    for _, item in ipairs(Character.eachItem(char)) do
+        if item.id == itemId then return item end
+    end
+    return nil
+end
+
+local function walkTo(combat, unit, x, y)
+    if unit.x == x and unit.y == y then return true end
+    local plan = Combat.planMove(combat, unit, x, y)
+    if not plan then return false end
+    local walk = Combat.beginMove(combat, plan)
+    while Combat.stepMove(combat, walk) do end
+    return unit.x == x and unit.y == y
+end
+
+-- states/battle.lua's scriptedAction and executeEnemyAction, collapsed: pop the unit's authored turn,
+-- walk it, and swing if the entry names a living foe (or, for a post, if one is at its elbow).
+local function runScripted(combat, t, unit)
+    local entry = Tutorial.scriptFor(t, unit.scriptKey or unit.char.id)
+    if not entry then Combat.pass(combat, unit) return end
+    if entry.move then walkTo(combat, unit, entry.move.x, entry.move.y) end
+    local tx, ty
+    if entry.strike then
+        local foe = Combat.unitAt(combat, entry.strike.x, entry.strike.y)
+        if foe and foe.side ~= unit.side then tx, ty = entry.strike.x, entry.strike.y end
+    elseif entry.guard then
+        for _, other in ipairs(combat.units) do
+            if other.alive and other.side ~= unit.side
+                and math.abs(other.x - unit.x) + math.abs(other.y - unit.y) == 1 then
+                tx, ty = other.x, other.y
+                break
+            end
+        end
+    end
+    if tx and Combat.useItem(combat, unit, Combat.defaultWeapon(unit.char), tx, ty) then return end
+    Combat.pass(combat, unit)
+end
+
+-- The player's turn, played as the lesson's own happy path: do exactly what the current step asks
+-- for, and keep going while the next step is still part of this turn (a move and an arm end nothing;
+-- a strike does).
+local function runPlayer(combat, t, unit, stopAt, refusals)
+    while true do
+        local step = Tutorial.step(t)
+        if not step or t.index >= stopAt then break end
+        -- The gift lands the instant its step becomes current (grantLessonItem), which is mid-turn
+        -- for the Clear Out -- so it is applied here rather than once per turn.
+        local gift = Tutorial.grant(t)
+        if gift and not heldItem(unit.char, gift) then
+            Character.addItem(unit.char, Item.instantiate(gift))
+        end
+        local gate = step.gate
+        if gate.kind == "move" then
+            local cell = gate.cells[1]
+            assert(walkTo(combat, unit, cell.x, cell.y),
+                "the lesson's move step names a tile the avatar cannot reach: "
+                .. cell.x .. "," .. cell.y)
+            Tutorial.observe(t, { kind = "move", actor = unit.char.id, x = cell.x, y = cell.y })
+        elseif gate.kind == "arm" then
+            Tutorial.observe(t, { kind = "arm", actor = unit.char.id, item = gate.item })
+        elseif gate.kind == "attack" then
+            if gate.approach and gate.approach[1] then
+                local cell = gate.approach[1]
+                assert(walkTo(combat, unit, cell.x, cell.y),
+                    "the lesson's approach tile is unreachable: " .. cell.x .. "," .. cell.y)
+            end
+            local tx, ty
+            if gate.cells then
+                tx, ty = gate.cells[1].x, gate.cells[1].y
+            else
+                local foe = livingById(combat, gate.target)
+                assert(foe, "the lesson asks for a strike on a body that is not on the board: "
+                    .. tostring(gate.target))
+                tx, ty = foe.x, foe.y
+            end
+            local item = heldItem(unit.char, gate.item)
+            assert(item, "the avatar does not hold what the lesson asks them to swing: "
+                .. tostring(gate.item))
+            -- A refused strike is recorded rather than raised: it is almost always a SYMPTOM of the
+            -- fight having drifted out of its authored order (a body standing somewhere the step did
+            -- not put it), and the order assertion downstream names that far more usefully than an
+            -- abort here would.
+            if not Combat.useItem(combat, unit, item, tx, ty) then
+                refusals[#refusals + 1] = gate.item .. " at step " .. t.index
+                break
+            end
+            Tutorial.observe(t, { kind = "attack", actor = unit.char.id, target = gate.target,
+                                  item = gate.item, x = tx, y = ty })
+            break -- a strike ends the turn
+        else
+            break -- wait/forfeit: not on the village's happy path
+        end
+    end
+    if combat.turn and combat.turn.unit == unit and unit.alive then Combat.pass(combat, unit) end
+end
+
+-- Build the fight exactly as states/battle.lua's enter does, then play it until step `stopAt` is the
+-- current one. Returns the lesson and the board, for the caller to make assertions about.
+local function playVillage(stopAt)
+    local t = Tutorial.new(TUTORIAL)
+    local arena = Arena.build({ prestige = 1, biome = "forest" },
+        { layout = ARENA, biome = "forest",
+          party = { "character_avatar", "character_knight" },
+          composition = function()
+              return { "character_demon_imp", "character_demon_imp", "character_demon_imp",
+                       "character_demon_imp", "character_demon_imp" }
+          end })
+    local party, enemies = {}, {}
+    for _, u in ipairs(arena.party) do
+        party[#party + 1] = { char = Character.instantiate(u.id), x = u.x, y = u.y,
+                              control = Tutorial.controlFor(t, u.id) }
+    end
+    for _, u in ipairs(arena.enemies) do
+        enemies[#enemies + 1] = { char = Character.instantiate(u.id), x = u.x, y = u.y }
+    end
+    local combat = Combat.new(arena, party, enemies)
+    for _, u in ipairs(combat.units) do
+        u.scriptKey = (u.side == "party") and u.char.id or (u.x .. "," .. u.y)
+    end
+    -- The lesson's authored seating, applied as states/battle.lua applies it.
+    if Tutorial.paces(t) then
+        for _, u in ipairs(combat.units) do
+            u.initiative = Tutorial.startInitiative(t, u.scriptKey)
+        end
+        Combat.rebase(combat)
+    end
+
+    local isAlive = function(charId) return livingById(combat, charId) ~= nil end
+    local order = {}    -- the sequence of turns actually taken, for the caller to pin
+    local refusals = {} -- steps whose own action the board would not accept
+    -- Bounded so a lesson that stops making progress fails as a test rather than hanging the suite.
+    for _ = 1, 60 do
+        if t.index >= stopAt then break end
+        local current = Combat.startTurn(combat)
+        if not current then break end
+        Tutorial.reconcile(t, isAlive)
+        if Tutorial.done(t) then break end
+        order[#order + 1] = current.scriptKey
+        if os.getenv("TRACE") then
+            local at = {}
+            for _, u in ipairs(combat.units) do
+                if u.alive then
+                    at[#at + 1] = string.format("%s=%s", u.char.id:gsub("character_", ""),
+                        tostring(u.initiative))
+                end
+            end
+            print(string.format("  %-16s step=%d | %s", tostring(current.scriptKey), t.index,
+                table.concat(at, " ")))
+        end
+
+        if current.control == "player" then
+            runPlayer(combat, t, current, stopAt, refusals)
+        else
+            runScripted(combat, t, current)
+        end
+        -- The lesson's own reinforcements, claimed where resolveAdvance claims them: after the
+        -- action, ahead of the objective check, so the fight is not won before the grunt lands.
+        for _, s in ipairs(Tutorial.claimSpawn(t) or {}) do
+            local spawned = Combat.addUnit(combat, Character.instantiate(s.char), "enemy", s.x, s.y)
+            spawned.scriptKey = s.x .. "," .. s.y
+            if s.initiative then spawned.initiative = s.initiative end
+        end
+        -- states/battle.lua's pacedTurn, run at the same moment: once the turn has ended.
+        local cost = Tutorial.paceTurn(t, current.scriptKey)
+        if cost then
+            current.initiative = cost
+            Combat.rebase(combat)
+        end
+    end
+    return t, combat, order, refusals
+end
+
 return {
     {
         name = "every step resolves both a narrative line and a coaching line",
@@ -489,8 +684,20 @@ return {
             local queue = def.script["character_knight"]
             assert(queue and #queue > 0, "Rowan has authored turns")
             for i = 1, #queue do
-                assert(Tutorial.scriptFor(t, "character_knight") == queue[i],
-                    "Rowan's turn " .. i .. " is the authored one, in order")
+                local entry = queue[i]
+                if entry.through then
+                    -- A standing order is HELD, not spent: it comes up again on the next turn, and
+                    -- only retires once the lesson passes the step it is posted through. Retired by
+                    -- hand here so this walk still covers the whole queue in order.
+                    assert(Tutorial.scriptFor(t, "character_knight") == entry,
+                        "Rowan's post is offered on the turn it comes up")
+                    assert(Tutorial.scriptFor(t, "character_knight") == entry,
+                        "Rowan's post is still hers next turn -- a post is not spent by standing it")
+                    t.index = entry.through + 1
+                else
+                    assert(Tutorial.scriptFor(t, "character_knight") == entry,
+                        "Rowan's turn " .. i .. " is the authored one, in order")
+                end
             end
             -- Dry queue -> nil, which is how the battle state hands her back to the ordinary AI.
             assert(Tutorial.scriptFor(t, "character_knight") == nil,
@@ -505,6 +712,122 @@ return {
             local t = Tutorial.new(TUTORIAL)
             assert(Tutorial.controlFor(t, "character_knight") == "ai", "Rowan runs herself")
             assert(Tutorial.controlFor(t, "character_avatar") == nil, "the avatar stays the player's")
+        end,
+    },
+    {
+        name = "the lesson seats the whole opening itself, mentor first",
+        fn = function()
+            -- The opening of the whole game is an ORDER: Rowan crosses the lane and cuts down her
+            -- imp, and only THEN is the player asked to do the same. It is authored rather than
+            -- rolled, because gear decides it otherwise and gear is tuned for the fiction -- her
+            -- mace is slower than his sword, so left alone the student acts first and the beat he is
+            -- meant to be copying has not happened yet.
+            local t = Tutorial.new(TUTORIAL)
+            assert(Tutorial.paces(t), "the village lesson no longer seats its own turn order")
+
+            -- Position in `pace.order` IS the starting tick, so the opening pass reads straight off
+            -- the data -- and the mentor is at the front of it.
+            local seats = Tutorial.defs[TUTORIAL].pace.order
+            assert(seats[1] == "character_knight",
+                "the student is seated ahead of the demonstration: " .. tostring(seats[1]))
+            local seen = {}
+            for i, k in ipairs(seats) do
+                if not seen[k] then -- a unit is seated by its FIRST appearance
+                    seen[k] = true
+                    assert(Tutorial.startInitiative(t, k) == i - 1,
+                        k .. " is not seated where the lesson puts it")
+                end
+            end
+            -- Anything the lesson did not seat sits out of the way rather than cutting in. The two
+            -- vanguards are the case: they die on the opening pass and never take a turn.
+            assert(Tutorial.startInitiative(t, "4,5") == Tutorial.OFF,
+                "a vanguard is seated in the opening order it is supposed to die during")
+
+            -- ...and the pacing goes quiet with the lesson, like the scripts and the gates: the
+            -- grunt fight at the end has to finish on the ordinary clock.
+            assert(Tutorial.paceTurn(t, "character_knight") ~= nil, "the mentor is paced during the lesson")
+            t.index = #Tutorial.defs[TUTORIAL].steps + 1
+            assert(Tutorial.done(t), "the lesson is over")
+            assert(Tutorial.paceTurn(t, "character_knight") == nil,
+                "the lesson's timeline outlived the lesson")
+        end,
+    },
+    {
+        name = "played through, the mentor's post clears her flank before the grunt lands",
+        fn = function()
+            -- The lesson played for real, up to the beat the grunt walks on (step 5). By then the
+            -- imps must all be gone -- the player's two to the Clear Out, and the third to the mentor's
+            -- standing guard, which is the one the board cannot be trusted to deliver on its own.
+            --
+            -- The regression: that third imp takes the long way round to her flank, and WHICH of her
+            -- turns it arrives on falls out of the initiative order. A guard spent by turn count came
+            -- up one turn early, found an empty elbow, and was gone -- leaving a live imp beside her
+            -- for the rest of the fight and an uncounted body in a finale whose damage column is
+            -- spent to the point.
+            local t, combat, order = playVillage(5)
+            if os.getenv("TRACE") then print("  ORDER: " .. table.concat(order, " -> ")) end
+
+            assert(t.index == 5, "the lesson stalled before the grunt's beat, at step " .. t.index)
+            for _, u in ipairs(combat.units) do
+                assert(not (u.alive and u.char.id == "character_demon_imp"),
+                    "an imp is still standing when the grunt is due, at ("
+                    .. u.x .. "," .. u.y .. ") -- the mentor's flank was never cleared")
+            end
+
+            -- She cleared it without leaving her post: every tile she might have advanced to is one
+            -- the rest of the choreography needs empty.
+            local rowan = livingById(combat, "character_knight")
+            assert(rowan, "the mentor did not survive her own demonstration")
+            assert(rowan.x == 6 and rowan.y == 6,
+                "the mentor wandered off her post to (" .. rowan.x .. "," .. rowan.y .. ")")
+
+            -- ...and the post RETIRES with the phase it belonged to. The imps are done, so her next
+            -- authored turn must be the shove at the grunt's cell -- not another turn of standing
+            -- guard on an empty board, which is the failure the doubled entry used to cause.
+            local nextTurn = Tutorial.scriptFor(t, "character_knight")
+            assert(nextTurn and nextTurn.strike and nextTurn.strike.x == 6 and nextTurn.strike.y == 4,
+                "the mentor's post outlived the imps instead of retiring into the shove")
+        end,
+    },
+    {
+        name = "the whole fight plays in the one order the lesson authored, and the player lands the last blow",
+        fn = function()
+            -- The lesson end to end, as a sequence of turns. This is the guard the choreography
+            -- actually wants: every comment in data/tutorials/village.lua describes an ORDER, the
+            -- damage column under `spawn` is counted against it to the point, and until this ran
+            -- nothing checked that the fight came out in that order at all -- which is how the
+            -- mentor came to lose both of her demonstrations to a tie-break nobody had looked at.
+            local def = Tutorial.defs[TUTORIAL]
+            local t, combat, order, refusals = playVillage(#def.steps + 1)
+            if os.getenv("TRACE") then print("  ORDER: " .. table.concat(order, " -> ")) end
+
+            assert(#refusals == 0, "the board refused a step's own action: "
+                .. table.concat(refusals, ", "))
+            assert(table.concat(order, " ") == table.concat({
+                "character_knight",  -- her demonstration: cross the lane, cut down the vanguard
+                "character_avatar",  -- 1. the same, in one click
+                "4,2", "6,2",        -- the second wave closes and spits
+                "7,3",               -- ...and the third takes the long way to her flank
+                "character_knight",  -- her post answers it
+                "character_avatar",  -- 2-4. advance, ready, Clear Out -- and the grunt walks on
+                "6,1",               -- it charges, and the avatar's sword parries unbidden
+                "character_knight",  -- her mace answers, and shoves it two tiles clear
+                "character_avatar",  -- 5-6. ready the Jolt and throw it: the stun slides its card
+                "character_knight",  -- the turn that stun bought her
+                "character_avatar",  -- 7. and the killing blow is the player's
+            }, " "), "the fight did not play in the authored order:\n  got:  "
+                .. table.concat(order, " -> "))
+            assert(Tutorial.done(t), "the lesson did not reach its last step, stopping at " .. t.index)
+
+            -- The stun has to have MOVED something for step 6 to have taught anything: the grunt is
+            -- shoved below both of them, and the two turns that buys are the two that kill it.
+            -- Pinned as a consequence of the order above -- two party turns between its turn and its
+            -- death -- because that is the thing the player actually sees.
+            local grunt = livingById(combat, "character_demon_grunt")
+            assert(not grunt, "the grunt outlived the lesson")
+            for _, u in ipairs(combat.units) do
+                assert(u.alive or u.side == "enemy", "the lesson cost the player a unit: " .. u.char.id)
+            end
         end,
     },
     {

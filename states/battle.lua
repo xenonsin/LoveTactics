@@ -562,6 +562,19 @@ local function beginTurn()
         computeReachable(current)
         computeThreat(current)
         armDefaultAction(current) -- start with the default action armed (its range shown by default)
+        -- Auto-battle: a player unit the player has asked to run itself (the Tactics tab's switch)
+        -- gets the AI's think-pause instead of waiting for input. The overlays above are computed
+        -- FIRST and deliberately so -- the board still shows this unit's reach and danger while it
+        -- thinks, because the player is watching it play and needs to see what it is looking at.
+        --
+        -- `autoPending` rather than a mode flag: any input during the pause cancels it and hands the
+        -- turn straight back (see battle.keypressed / mousepressed). That is what makes the feature
+        -- safe to hand a player -- it can always be taken back, on the turn it matters, without
+        -- opening a menu.
+        if current.char.autoBattle then
+            battle.aiTimer = AI_DELAY
+            battle.autoPending = current
+        end
         -- Snap the cursor to the new actor for keyboard/pad play. But if the mouse is the live device
         -- and still resting on a board cell, keep the cursor under it instead -- so a target the player
         -- was already hovering stays aimed and its action preview appears at once, without a mouse jiggle.
@@ -603,6 +616,27 @@ local function spawnReinforcements()
     end
 end
 
+-- Charge `unit`'s just-ended turn what the LESSON says it costs, rather than the move-plus-action
+-- total the combat model already billed. A guided fight's turn order is authored (see `pace` in
+-- data/tutorials/village.lua), and this is the half that holds it: without it the order drifts apart
+-- again on the second pass, because a mace and a sword do not come round at the same rate.
+--
+-- Applied here, after the model has ended and rebased the turn, so it overwrites a settled number in
+-- a settled frame -- "your next turn is N ticks out" -- and rebases again to seat everyone. Doing it
+-- from inside the combat model would mean teaching endTurn about lessons; doing it here keeps the
+-- model unaware that a tutorial exists.
+--
+-- Deliberately NOT a freeze on the timeline. The authored cost decides where a unit lands; anything
+-- the fight does to it afterwards still counts -- which is what leaves the Jolt's stun free to shove
+-- the grunt's card down the strip, the one place the lesson teaches the turn order by moving it.
+local function pacedTurn(unit)
+    if not (unit and battle.tutorial) then return end
+    local cost = Tutorial.paceTurn(battle.tutorial, unit.scriptKey or unit.char.id)
+    if not cost then return end
+    unit.initiative = cost
+    Combat.rebase(battle.combat)
+end
+
 -- The real hand-off, run once an action's reactions have played: resolve the objective, else start
 -- the next unit's turn.
 local function resolveAdvance()
@@ -624,6 +658,7 @@ end
 -- battle.fx:busy both clear). An action that raised no cues and left nothing animating -- a bare move,
 -- a wait, a pass -- resolves at once, so non-combat turns stay snappy.
 local function advanceTurn()
+    pacedTurn(battle.current)
     local events = Combat.drainFx(battle.combat)
     if events then battle.fx:ingest(events, battle.current) end
     if events or battle.fx:busy() then
@@ -785,8 +820,9 @@ local function lessonAddressesPlayer()
     -- A conversation owns the screen while it plays. The lesson's own UI would otherwise draw
     -- UNDERNEATH it -- the coach bubble on the board and the mentor's panel in the gutter the
     -- dialogue box occupies -- which is two of her talking at once, in two different registers.
-    -- (The village opening only escapes this by accident: Rowan holds the first turn, so the lesson
-    -- has not opened yet. Anything that changed the turn order would expose it.)
+    -- (The village opening would escape it anyway -- Rowan holds the first turn by the lesson's own
+    -- `leads`, so nothing has opened yet -- but that is a fact about one lesson's turn order, and
+    -- this has to hold for any scene played over any board.)
     if Conversation.active then return false end
     if battle.over or busy() then return false end
     local step, current = Tutorial.step(battle.tutorial), battle.current
@@ -1261,6 +1297,11 @@ local function scriptedAction(unit)
         -- The no-step half is what makes it safe: an AI ally would advance, and every tile she might
         -- advance to is one the choreography needs empty. Standing still, she can only ever take what
         -- walks into her -- which is exactly the body the lesson meant her to have.
+        --
+        -- Finding nobody is a HOLD, not a wasted entry: no item is set, so the caller passes the turn
+        -- (below), and the post itself is a standing order the lesson does not spend on an empty
+        -- board -- it is offered again next turn and retired by step, not by turn count. See
+        -- Tutorial.scriptFor and `through` in data/tutorials/village.lua.
         for _, other in ipairs(battle.combat.units) do
             if other.alive and other.side ~= unit.side
                 and math.abs(other.x - unit.x) + math.abs(other.y - unit.y) == 1 then
@@ -1278,7 +1319,12 @@ end
 -- from the far side of the board it is indistinguishable from a real, cautious unit.
 local function executeEnemyAction()
     local current = battle.current
-    if not current or Combat.isPlayerControlled(current) then return end
+    -- A player-controlled unit reaches here only through auto-battle, and only while its pause is
+    -- still standing -- `autoPending` is cleared the instant the player touches anything, which is
+    -- what makes taking the turn back immediate rather than queued behind this call.
+    local auto = battle.autoPending == current
+    if not current or (Combat.isPlayerControlled(current) and not auto) then return end
+    battle.autoPending = nil
     if current.control == "none" then
         Combat.pass(battle.combat, current)
         advanceTurn()
@@ -1760,6 +1806,18 @@ function battle.enter(self, opts)
     for _, u in ipairs(battle.combat.units) do
         u.scriptKey = (u.side == "party") and u.char.id or (u.x .. "," .. u.y)
     end
+    -- A guided fight's turn order is authored, not hoped for: the lesson seats every unit on the
+    -- timeline itself (Tutorial.startInitiative). Gear decides the order otherwise, and gear is
+    -- tuned for the fiction -- the mentor's mace is slower than the student's sword, so left alone
+    -- she cycles behind the very player she is demonstrating to. Rebased afterwards, per
+    -- Combat.new's own convention; the seating is not elapsed time, so the clock goes back to 0.
+    if Tutorial.paces(battle.tutorial) then
+        for _, u in ipairs(battle.combat.units) do
+            u.initiative = Tutorial.startInitiative(battle.tutorial, u.scriptKey)
+        end
+        Combat.rebase(battle.combat)
+        battle.combat.clock = 0
+    end
     -- The player's stash, by reference: Combat.steal appends here when a party thief's own 3x3 grid
     -- has no room, so the item is the player's the moment it's lifted, win or lose.
     battle.combat.stash = opts.stash
@@ -1861,10 +1919,13 @@ function battle.update(dt)
                 advanceTurn()
             end
         end
-    elseif not battle.over and battle.current and not Combat.isPlayerControlled(battle.current) then
+    elseif not battle.over and battle.current
+        and (not Combat.isPlayerControlled(battle.current) or battle.autoPending == battle.current) then
         -- Hold the enemy's think-pause until the turn-strip cards have settled, so a fast chain of
         -- AI turns never resolves out from under the card animation (the card would otherwise pop to
         -- full size mid-slide). The player's own turn isn't gated -- input is already held elsewhere.
+        -- An auto-battling player unit rides the same clock, so it reads on screen exactly like any
+        -- other unit taking its turn.
         if battle.panel:cardsSettled() then
             battle.aiTimer = (battle.aiTimer or 0) - dt
             if battle.aiTimer <= 0 then executeEnemyAction() end
@@ -2258,7 +2319,22 @@ function battle.drawHud()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- Cancel a pending auto-battle turn and hand the unit back to the player. Called from every input
+-- entry point: the promise the Tactics tab makes is "press anything to take over", and a promise that
+-- only holds for some keys is worse than not making it. Returns true when a turn was reclaimed, but
+-- the input still falls through and does its normal job -- the player who clicked a tile to interrupt
+-- meant to click that tile.
+local function reclaimAutoTurn()
+    if not battle.autoPending then return false end
+    battle.autoPending = nil
+    battle.aiTimer = nil
+    Combat.logEvent(battle.combat, "info",
+        (battle.current and battle.current.char.name or "Unit") .. " -- control taken back")
+    return true
+end
+
 function battle.keypressed(key)
+    reclaimAutoTurn()
     if key == "f5" then
         Arena.save(battle.arena, (battle.arena.biome or "arena") .. "_" .. os.time())
         return
@@ -2302,6 +2378,7 @@ function battle.keypressed(key)
 end
 
 function battle.gamepadpressed(joystick, button)
+    reclaimAutoTurn()
     if button == "leftshoulder" then -- toggle the combat log (allowed even when the battle is over)
         battle.log:toggle()
         return
@@ -2354,6 +2431,7 @@ function battle.wheelmoved(dx, dy)
 end
 
 function battle.mousepressed(x, y, button)
+    reclaimAutoTurn()
     if button == 1 and pointIn(forfeitButton, x, y) then
         if not tutorialRefuses("forfeit") then lose() end
         return

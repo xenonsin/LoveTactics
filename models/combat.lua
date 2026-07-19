@@ -1754,6 +1754,24 @@ local function shoveStep(combat, unit, dx, dy)
     return true
 end
 
+-- Where a shove would COME TO REST: the tile Combat.knockback below would leave `target` on, without
+-- moving anything. Pure, so the hover preview can weigh what a blow leaves standing where -- an answer
+-- is gated on reach, and a mace that shoves its target two tiles back is answered from the far tile
+-- (see Combat.previewCounters). Walks the same lane by the same rule as the live shove; it does not
+-- model a trap or hazard on the way killing the target, which only ever makes the preview's promised
+-- counter more likely, never less.
+function Combat.knockbackTile(combat, source, target, distance)
+    if not (source and target) then return target and target.x, target and target.y end
+    local dx, dy = signDominant(target.x - source.x, target.y - source.y)
+    local x, y = target.x, target.y
+    if dx == 0 and dy == 0 then return x, y end
+    for _ = 1, (distance or 1) do
+        if not canShoveInto(combat, x + dx, y + dy) then break end
+        x, y = x + dx, y + dy
+    end
+    return x, y
+end
+
 -- Knock `target` up to `distance` tiles directly away from `source`. The direction is fixed at the
 -- start (a straight line, however far it travels). A shove barred by the map edge, impassable
 -- terrain, or another unit stops there and hurts EVERYONE involved -- the target and, if there was
@@ -2267,7 +2285,14 @@ function Combat.tryRedirect(combat, target, base, tags)
         if g.alive and g.guard and g ~= target and g.side == target.side
             and manhattan(g.x, g.y, target.x, target.y) == 1 then
             local kind = g.guard.kind
-            if kind == "oathward" and not Combat.onCooldown(g, "oathward") then
+            -- A DECLARED guard names the one unit it is for (data/traits/trait_oathward_declared.lua):
+            -- it guards that ally absolutely and everyone else not at all. An undeclared guard has no
+            -- `ward` and covers whoever is standing beside it, which is the innate Oathward. The
+            -- narrower promise is the stronger one -- the declared form waives its cooldown -- and that
+            -- trade is the knight's whole arc (docs/story.md, "Her three oaths").
+            if g.guard.ward and g.guard.ward ~= target then
+                -- sworn to someone else: this blow is not theirs to take
+            elseif kind == "oathward" and not Combat.onCooldown(g, "oathward") then
                 Combat.setCooldown(g, "oathward", g.guard.cooldown or 6)
                 Combat.logEvent(combat, "action",
                     string.format("%s takes the blow for %s!", unitName(g), unitName(target)))
@@ -2283,6 +2308,75 @@ function Combat.tryRedirect(combat, target, base, tags)
         end
     end
     return nil
+end
+
+-- ---------------------------------------------------------------------------
+-- Held answers
+--
+-- A reaction answers a FINISHED action, never a half-applied one -- the same rule Trait.onCast already
+-- runs by. It matters because an ability is a sequence: the mace lands its blow and THEN shoves the
+-- target two tiles back, and the counter belongs to the board that stands when the whole swing is over,
+-- not the one that stood mid-effect. Dispatched inline, a counter is thrown from a tile its bearer no
+-- longer occupies -- a brawler answering in melee someone who is now three squares away.
+--
+-- So while a cast is resolving, an on-hit answer is HELD rather than thrown (Combat.beginAnswers around
+-- the effect, Combat.endAnswers after it), and the flush re-asks every gate against the board as it
+-- finally stands. Nothing else moves: the exchange still resolves in one uninterrupted pass, and a blow
+-- struck outside a cast (a trap, a hazard tick, a counter's own free swing) holds nothing and dispatches
+-- where it always did.
+--
+-- Two consequences worth naming, both wanted:
+--   * a target the same effect goes on to KILL answers nothing -- the flush skips the fallen, exactly as
+--     the inline dispatch never reached a corpse;
+--   * a counter thrown during the flush finds the hold already popped, so ITS answer dispatches inline
+--     (the swing is not a cast) -- the recursion guards in models/trait.lua are unchanged.
+local function dispatchAnswer(combat, held)
+    Trait.onDamaged(combat, held.unit, held)
+    -- The statuses riding the survivor get the same news, for the ones a blow is supposed to BREAK
+    -- (Sleep). After the traits, so a reflex that answers the blow is not robbed of its trigger by the
+    -- very hit that wakes its bearer -- the order the inline dispatch ran in, carried across the hold.
+    if held.wakes then Status.onDamaged(combat, held.unit, held.amount, held.tags) end
+end
+
+-- Open a hold: every answer provoked from here until the matching endAnswers waits for the action to
+-- finish. Nested, because an effect can drive a sub-strike that opens one of its own.
+function Combat.beginAnswers(combat)
+    if not combat then return end
+    local holds = combat._answerHolds
+    if not holds then holds = {}; combat._answerHolds = holds end
+    holds[#holds + 1] = {}
+end
+
+-- Close the innermost hold and throw what it caught, in the order the blows landed. The hold is popped
+-- BEFORE the flush so an answer's own blow is dispatched normally rather than caught by the hold it is
+-- draining, which would never drain.
+function Combat.endAnswers(combat)
+    local holds = combat and combat._answerHolds
+    local held = holds and table.remove(holds)
+    if not held then return end
+    for _, a in ipairs(held) do
+        if a.unit.alive then dispatchAnswer(combat, a) end
+    end
+end
+
+local function raiseAnswer(combat, unit, info)
+    info.unit = unit
+    -- What was true at the MOMENT OF THE HIT, carried along because a held answer is thrown after it
+    -- has stopped being true (see Trait.mayCounter, which reads this back):
+    --   * `answering` -- was the blow itself an answer? The flag it comes off only stands for the
+    --     flight of the swing that set it, so by flush time a riposte has long since put it back down.
+    --     Without the snapshot a held reflex reads every riposte as a fresh attack and answers it, and
+    --     two duelists volley forever -- the exact bug `answersReactions` exists to prevent.
+    --   * the two tiles the blow was struck ACROSS -- what a reflecting reflex is judged by, since
+    --     spikes bite the fist at the instant it lands and not wherever a later shove leaves anyone.
+    info.at = {
+        answering = Trait.isReacting(info.attacker),
+        ux = unit.x, uy = unit.y,
+        ax = info.attacker and info.attacker.x, ay = info.attacker and info.attacker.y,
+    }
+    local holds = combat and combat._answerHolds
+    local top = holds and holds[#holds]
+    if top then top[#top + 1] = info else dispatchAnswer(combat, info) end
 end
 
 function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opts)
@@ -2375,7 +2469,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         Combat.logEvent(combat, "action",
             string.format("%s refuses to fall!", unitName(target)))
         inflictCarried()
-        Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
+        raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
             area = opts and opts.area })
         return dmg
     end
@@ -2387,25 +2481,24 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- (never a fragile shape, which the check above already excluded from the death path).
         if not target.fragile and Trait.trySurvive(combat, target) then
             inflictCarried()
-            Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
+            raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
             area = opts and opts.area })
             return dmg
         end
         hp.current = 0
         killUnit(combat, target)
     else
-        -- Reaction traits fire here and nowhere else: AFTER mitigation, so a hook reads the damage
+        -- Reaction traits are raised here and nowhere else: AFTER mitigation, so a hook reads the damage
         -- that actually landed, and only on a SURVIVOR, so the blow that kills you grants no rage and
         -- a boss's health-threshold phase can never trigger on a corpse. Nothing in the damage
         -- PREVIEW reaches this function (previewAbility routes through Combat.computeDamage), so a
-        -- hovered target never quietly advances a trait.
+        -- hovered target never quietly advances a trait. Raised, not necessarily thrown on this line:
+        -- inside a resolving cast the answer waits for the effect to finish (see Combat.beginAnswers).
         inflictCarried()
-        Trait.onDamaged(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
-            area = opts and opts.area })
-        -- ...and the statuses riding the survivor get the same news, for the ones a blow is supposed
-        -- to BREAK (Sleep). Fired after the traits, so a reflex that answers the blow is not robbed of
-        -- its trigger by the very hit that wakes its bearer.
-        Status.onDamaged(combat, target, dmg, tags)
+        -- ...and the statuses riding the survivor get the same news (`wakes`), for the ones a blow is
+        -- supposed to BREAK (Sleep) -- raised together so the hold cannot separate them.
+        raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
+            area = opts and opts.area, wakes = true })
     end
     return dmg
 end
@@ -2760,7 +2853,17 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         summon = function() return previewStandIn() end,
         copy = function() return previewStandIn() end,
         copyOf = function() return previewStandIn() end,
-        knockback = function() return 0, false end,
+        -- Inert like the rest, but it records WHERE the shove would leave its target, because that is
+        -- the tile the target's own answer would be thrown from -- and a counter is gated on reach.
+        -- Without this the hover promises a parry the mace then shoves out of range of (see
+        -- Combat.previewCounters); with it, the panel and the live exchange agree.
+        knockback = function(tgt, distance)
+            if tgt then
+                local e = entryFor(tgt)
+                e.restsX, e.restsY = Combat.knockbackTile(combat, unit, tgt, distance or 1)
+            end
+            return 0, false
+        end,
         pull = function() return false end,
         teleportUser = function() return false end,
         charge = function() return 0 end,
@@ -2828,6 +2931,10 @@ function Combat.previewCounters(combat, unit, item, target, opts)
         -- the hover would warn of a parry that the hammer then never provokes.
         suppressed = entry and entry.suppressesCounters,
         fromX = opts.fromX, fromY = opts.fromY,
+        -- Where the blow LEAVES its target, when it also shoves one (the mace, Water Ball). An answer
+        -- waits for the action to finish (Combat.beginAnswers), so it is thrown from the tile the shove
+        -- left the target on -- and a brawler shoved out of melee has nothing left to answer with.
+        toX = entry and entry.restsX, toY = entry and entry.restsY,
     })
     return (#list > 0) and list or nil
 end
@@ -4189,6 +4296,9 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
             string.format("%s %s %s.", unitName(unit), verb, item.name or "an item"))
     end
 
+    -- Hold what the effect provokes until the effect is done provoking it (see Combat.beginAnswers):
+    -- a blow that shoves its target away answers from where the shove left it, not from where it landed.
+    Combat.beginAnswers(combat)
     if ab.effect then ab.effect(fx) end
 
     -- Water quenches fire: a cast carrying the "water" tag douses any dousable hazard across its
@@ -4210,7 +4320,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
 
     -- The cast has fully resolved (effect, then the water/fire interaction). A reaction trait sees a
     -- finished action, never a half-applied one -- and fires before the turn is charged, so a
-    -- counter-cast is not billed to the initiative of the unit that provoked it.
+    -- counter-cast is not billed to the initiative of the unit that provoked it. The on-hit answers the
+    -- cast provoked are thrown first, in the order the blows landed, and then the on-cast ones -- the
+    -- same order they ran in when the answers were still inline.
+    Combat.endAnswers(combat)
     Trait.onCast(combat, unit, { item = item, ability = ab, tx = tx, ty = ty })
 
     -- Tally a class-tagged action toward the actor's growth (models/growth.lua). A weapon strike, a
@@ -4362,145 +4475,14 @@ end
 --   { move = { x, y } | nil, item = <item>, tx, ty }   -- attack (optionally after moving)
 --   { move = { x, y } }                                -- reposition only
 --   { wait = true }                                    -- nothing useful to do
--- Priority: attack from the current tile > move to a tile that lets an ability hit a party
--- unit > step toward the nearest foe > wait. Pure (no love, no mutation) so it stays testable.
+--
+-- The decision itself lives in models/ai.lua -- posture, rule list, and a scored search over
+-- (stand tile, item, target). This stays as the entry point because it is the name the battle
+-- state and the tutorial's scripted overrides already call, and the descriptor shape it returns
+-- is the contract between the two. Required lazily: ai.lua reaches back into this module for
+-- reach, targeting and previews, so a require at the top of either file would close a cycle.
 function Combat.planEnemyAction(combat, unit)
-    -- Can this unit see `other` as a foe at all? An Invisible unit is off the AI's board entirely:
-    -- it isn't chased, attacked, or approached. (A decoy, however, is a perfectly ordinary foe.)
-    local function isFoe(other)
-        return other.alive and other.side ~= unit.side and not Status.untargetable(other)
-    end
-
-    -- Taunt overrides everything: a taunted unit must go for the taunter with its default weapon and
-    -- nothing else. Strike it if it is already in reach; otherwise close to a tile that can hit it and
-    -- swing; otherwise shamble toward it. The taunter is a foe (opposite side) by construction.
-    local taunt = Status.get(unit, "status_taunt")
-    if taunt and taunt.taunter and taunt.taunter.alive and taunt.taunter.side ~= unit.side then
-        local tt = taunt.taunter
-        local weapon = Combat.defaultWeapon(unit.char)
-        if weapon then
-            local ab = weapon.activeAbility
-            for _, t in ipairs(Combat.abilityTargets(combat, unit, weapon)) do
-                if t.x == tt.x and t.y == tt.y then
-                    return { item = weapon, tx = tt.x, ty = tt.y }
-                end
-            end
-            local minRange = Combat.abilityMinRange(ab)
-            local best
-            for _, node in pairs(Combat.reachable(combat, unit)) do
-                local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
-                    + Combat.adjacencyRangeBonus(unit.char, weapon)
-                local d = manhattan(node.x, node.y, tt.x, tt.y)
-                if d <= range and d >= minRange
-                    and (not (ab and ab.requiresSight) or Combat.hasLineOfSight(combat, node.x, node.y, tt.x, tt.y))
-                    and (not best or node.steps < best.steps) then
-                    best = { x = node.x, y = node.y, steps = node.steps }
-                end
-            end
-            if best then return { move = { x = best.x, y = best.y }, item = weapon, tx = tt.x, ty = tt.y } end
-        end
-        -- Out of reach even after moving: step as close to the taunter as the turn allows.
-        local dest
-        for _, node in pairs(Combat.reachable(combat, unit)) do
-            local d = manhattan(node.x, node.y, tt.x, tt.y)
-            if not dest or d < dest.dist or (d == dest.dist and node.steps < dest.steps) then
-                dest = { x = node.x, y = node.y, dist = d, steps = node.steps }
-            end
-        end
-        if dest and dest.dist < manhattan(unit.x, unit.y, tt.x, tt.y) then
-            return { move = { x = dest.x, y = dest.y } }
-        end
-        return { wait = true }
-    end
-
-    -- Nearest living party unit (the foe we path toward / attack).
-    local target, bestDist
-    for _, u in ipairs(combat.units) do
-        if isFoe(u) then
-            local d = manhattan(unit.x, unit.y, u.x, u.y)
-            if not bestDist or d < bestDist then target, bestDist = u, d end
-        end
-    end
-    if not target then return { wait = true } end
-
-    -- Only consider abilities the unit can actually activate right now -- affordable, in stock, and
-    -- with any adjacency requirement met (else the plan would waste the turn on an item useItem
-    -- rejects).
-    local items = {}
-    for _, item in ipairs(Combat.abilityItems(unit.char)) do
-        if not Combat.itemBlockReason(unit, item) then
-            items[#items + 1] = item
-        end
-    end
-    -- Always-available basic attack: append the hidden unarmed weapon last (it is free, so it
-    -- can't be filtered out above). A unit with an affordable weapon still prefers it -- the
-    -- weapon sorts first here -- but one that can't pay for any ability can still punch.
-    if unit.char.unarmed then items[#items + 1] = unit.char.unarmed end
-
-    -- 1. Attack from where we stand, if any ability already reaches a foe (nearest target).
-    for _, item in ipairs(items) do
-        local hit, hitDist
-        for _, t in ipairs(Combat.abilityTargets(combat, unit, item)) do
-            if t.side ~= unit.side then
-                local d = manhattan(unit.x, unit.y, t.x, t.y)
-                if not hitDist or d < hitDist then hit, hitDist = t, d end
-            end
-        end
-        if hit then return { item = item, tx = hit.x, ty = hit.y } end
-    end
-
-    -- 2. Move to a reachable tile from which an ability can hit a foe. Prefer the fewest steps, then
-    -- (tie) the tile with the friendlier hazard footing -- so the AI won't end its turn in fire when
-    -- an equally-quick safe tile hits the same foe -- then the nearest foe. Hazard.tileBias is 0 on a
-    -- hazard-free tile, so this reduces to the old steps/dist ordering when nothing is burning; it is
-    -- scored from `unit.side` so a sanctuary the party consecrated holds no draw for the enemy.
-    local reachable = Combat.reachable(combat, unit)
-    local best
-    for _, node in pairs(reachable) do
-        local nodeBias = Hazard.tileBias(combat, node.x, node.y, unit.side)
-        for _, item in ipairs(items) do
-            local ab = item.activeAbility
-            local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
-                + Combat.adjacencyRangeBonus(unit.char, item)
-            local minRange = Combat.abilityMinRange(ab)
-            for _, p in ipairs(combat.units) do
-                if isFoe(p)
-                    and manhattan(node.x, node.y, p.x, p.y) <= range
-                    and manhattan(node.x, node.y, p.x, p.y) >= minRange
-                    and (not (ab and ab.requiresSight)
-                         or Combat.hasLineOfSight(combat, node.x, node.y, p.x, p.y)) then
-                    local d = manhattan(node.x, node.y, p.x, p.y)
-                    if not best or node.steps < best.steps
-                        or (node.steps == best.steps and nodeBias > best.bias)
-                        or (node.steps == best.steps and nodeBias == best.bias and d < best.dist) then
-                        best = { x = node.x, y = node.y, item = item, tx = p.x, ty = p.y,
-                                 steps = node.steps, dist = d, bias = nodeBias }
-                    end
-                end
-            end
-        end
-    end
-    if best then
-        return { move = { x = best.x, y = best.y }, item = best.item, tx = best.tx, ty = best.ty }
-    end
-
-    -- 3. No attack possible: step to the reachable tile closest to the target, preferring (on a tie)
-    -- the friendlier hazard footing -- so a wounded unit steps onto its own sanctuary and away from
-    -- fire -- then fewer steps. Only move if it strictly closes the gap, to avoid pacing in place.
-    local dest
-    for _, node in pairs(reachable) do
-        local d = manhattan(node.x, node.y, target.x, target.y)
-        local nodeBias = Hazard.tileBias(combat, node.x, node.y, unit.side)
-        if not dest or d < dest.dist
-            or (d == dest.dist and nodeBias > dest.bias)
-            or (d == dest.dist and nodeBias == dest.bias and node.steps < dest.steps) then
-            dest = { x = node.x, y = node.y, dist = d, steps = node.steps, bias = nodeBias }
-        end
-    end
-    if dest and dest.dist < bestDist then
-        return { move = { x = dest.x, y = dest.y } }
-    end
-    return { wait = true }
+    return require("models.ai").plan(combat, unit)
 end
 
 -- ---------------------------------------------------------------------------

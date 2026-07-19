@@ -326,4 +326,89 @@ return {
                 "and the riposte lands exactly what the panel promised")
         end,
     },
+    {
+        -- The control for the two shove cases below: with nothing displacing anyone, a brawler struck
+        -- from the next tile answers. If this one ever fails, the fixture is broken and not the rule.
+        name = "a brawler answers a blow struck from the tile beside it",
+        fn = function()
+            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local brawler = fighter("character_knight", { "trait_melee_counter" }, { "weapon_iron_mace" })
+            local c = Combat.new(arena(6, 6), { unit(knight, 2, 1) }, { unit(brawler, 3, 1) })
+            local k, b = c.units[1], c.units[2]
+            local knightHP = k.char.stats.health.current
+
+            local counter, weapon = soleCounter(c, k, b)
+            assert(counter and counter.name == "Melee Counter", "the reflex answers: " .. tostring(counter and counter.name))
+            assert(counter.damage > 0, "with the mace it swings back")
+
+            Combat.useItem(c, k, weapon, b.x, b.y)
+            assert(knightHP - k.char.stats.health.current == counter.damage,
+                "and the live counter deals exactly what the panel promised")
+        end,
+    },
+    {
+        -- The rule this whole hold exists for: an answer belongs to the board the action LEAVES, not
+        -- the one it passed through. The mace wounds and then shoves two tiles, so by the time the
+        -- brawler would answer there is no one within reach of a fist -- and the panel must not have
+        -- promised otherwise.
+        name = "a blow that shoves its target out of melee is answered by nothing",
+        fn = function()
+            local knight = fighter("character_knight", {}, { "weapon_iron_mace" })
+            local brawler = fighter("character_knight", { "trait_melee_counter" }, { "weapon_iron_mace" })
+            local c = Combat.new(arena(6, 6), { unit(knight, 2, 1) }, { unit(brawler, 3, 1) })
+            local k, b = c.units[1], c.units[2]
+            local knightHP = k.char.stats.health.current
+
+            local counter, weapon = soleCounter(c, k, b)
+            assert(not counter, "the panel promises no answer the shove would carry out of range")
+
+            Combat.useItem(c, k, weapon, b.x, b.y)
+            assert(b.x == 5 and b.y == 1, "the mace drove it two tiles back, as it should")
+            assert(k.char.stats.health.current == knightHP, "and nothing answered from out there")
+        end,
+    },
+    {
+        -- ...and the other half of the same rule: a shove that goes NOWHERE changes nothing. Backed
+        -- against the board edge the brawler is still standing where it was struck, so it answers --
+        -- which is what keeps the fix from degrading into "a mace is never countered".
+        name = "a shove barred by the board edge leaves the brawler in reach, and it answers",
+        fn = function()
+            local knight = fighter("character_knight", {}, { "weapon_iron_mace" })
+            local brawler = fighter("character_knight", { "trait_melee_counter" }, { "weapon_iron_mace" })
+            local c = Combat.new(arena(6, 6), { unit(knight, 2, 1) }, { unit(brawler, 1, 1) })
+            local k, b = c.units[1], c.units[2]
+            local knightHP = k.char.stats.health.current
+
+            local counter, weapon = soleCounter(c, k, b)
+            assert(counter and counter.name == "Melee Counter", "pinned against the edge, it still answers")
+
+            Combat.useItem(c, k, weapon, b.x, b.y)
+            assert(b.x == 1 and b.y == 1, "the shove had nowhere to go")
+            assert(knightHP - k.char.stats.health.current == counter.damage,
+                "so the counter lands exactly what the panel promised")
+        end,
+    },
+    {
+        -- The line the rule above is really drawn along. Thorns don't reach back for anyone -- they bite
+        -- the fist at the instant it lands -- so a shove that comes AFTER the blow cannot carry their
+        -- bearer out of a bite already taken. Break this and "a counter needs reach" quietly becomes
+        -- "a mace is immune to armor spikes".
+        name = "spikes bite the mace that shoved them: a reflecting reflex is the contact, not a swing",
+        fn = function()
+            local knight = fighter("character_knight", {}, { "weapon_iron_mace" })
+            local thorny = fighter("character_knight", { "trait_thorns" }, { "weapon_iron_mace" })
+            local c = Combat.new(arena(6, 6), { unit(knight, 2, 1) }, { unit(thorny, 3, 1) })
+            local k, b = c.units[1], c.units[2]
+            local knightHP = k.char.stats.health.current
+
+            local counter, weapon = soleCounter(c, k, b)
+            assert(counter and counter.name == "Thorns", "the panel promises the bite: " .. tostring(counter and counter.name))
+            assert(counter.damage > 0, "with a share of the blow thrown back")
+
+            Combat.useItem(c, k, weapon, b.x, b.y)
+            assert(b.x == 5 and b.y == 1, "the mace still drove it two tiles back")
+            assert(knightHP - k.char.stats.health.current == counter.damage,
+                "and the spikes still bit for exactly what the panel promised")
+        end,
+    },
 }

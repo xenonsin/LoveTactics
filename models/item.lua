@@ -147,6 +147,18 @@ local ABILITY_MAGNITUDES = {
     { "hits", "Hits" },
 }
 
+-- An ability's SECONDARY magnitudes: authored, tuned per level exactly like the headline above, but
+-- never the headline itself. A spell whose payload is not its damage needs somewhere to put the
+-- payload's number, and deriving it from the damage (which is what Jolt used to do) welds two stats
+-- that want different curves together -- a Jolt is deliberately a feeble hit selling TEMPO, so the
+-- delay it buys has no business being pinned to how little it hurts.
+--
+-- Excluded from ABILITY_MAGNITUDES on purpose: `primaryStat` leads the tooltip with the number that
+-- says what the item IS, and for an offensive spell that is still its damage.
+local ABILITY_SECONDARY_MAGNITUDES = {
+    "stun", -- ticks a Jolt adds to its target's initiative (data/items/ability/ability_jolt.lua)
+}
+
 -- The `waitBehavior` payoffs that scale with the granting item's level -- what the swapped Wait pays
 -- out: defend's brace (`defense`) and the share it lends adjacent allies (`covers`), focus's mana,
 -- overwatch's per-shot stamina.
@@ -161,6 +173,9 @@ local function eachMagnitude(item, fn)
     if ab then
         for _, m in ipairs(ABILITY_MAGNITUDES) do
             local key = m[1]
+            if ab[key] ~= nil then fn(ab[key], function(x) ab[key] = x end) end
+        end
+        for _, key in ipairs(ABILITY_SECONDARY_MAGNITUDES) do
             if ab[key] ~= nil then fn(ab[key], function(x) ab[key] = x end) end
         end
     end

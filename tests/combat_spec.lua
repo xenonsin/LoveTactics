@@ -313,11 +313,19 @@ return {
             local hpOut = Combat.abilityOutput(mage, Item.instantiate("consumable_healing_potion"))
             assert(hpOut.heal == 30 and hpOut.damage == 0, "potion previews a 30 heal")
 
-            -- Jolt: light magical hit (4 + 18 = 22) PLUS a stun whose magnitude scales with Power.
-            local jOut = Combat.abilityOutput(mage, Item.instantiate("ability_jolt"))
+            -- Jolt: light magical hit (4 + 18 = 22) PLUS a stun carrying its OWN authored magnitude.
+            -- The two are deliberately independent -- the spell is built to barely hurt and to sell
+            -- tempo, so the delay it buys is tuned on its own axis rather than read off the damage
+            -- roll (which used to cap the one thing the spell is for). Read off the blueprint rather
+            -- than typed in, so re-tuning the curve does not come here to be re-typed.
+            local jolt = Item.instantiate("ability_jolt")
+            local jOut = Combat.abilityOutput(mage, jolt)
             assert(jOut.damage == 22, "jolt preview = 4 + 18 = 22, got " .. jOut.damage)
             assert(#jOut.statuses == 1 and jOut.statuses[1].id == "status_stun", "jolt applies stun")
-            assert(jOut.statuses[1].opts.magnitude == 4, "stun magnitude scales with Power (4)")
+            assert(jOut.statuses[1].opts.magnitude == jolt.activeAbility.stun,
+                "the stun previews its own authored magnitude, not the damage roll")
+            assert(jolt.activeAbility.stun ~= jOut.damage,
+                "the stun is welded to the damage again -- the two are meant to scale apart")
 
             -- A passive item (no active ability) previews nothing.
             assert(Combat.abilityOutput(knight, Item.instantiate("armor_leather_armor")) == nil,

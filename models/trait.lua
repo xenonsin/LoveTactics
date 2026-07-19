@@ -425,7 +425,13 @@ end
 -- turn aside, and no thread back to the thrower to answer along. Without this a bomb lobbed into a
 -- huddle is answered once per body caught, which prices the cheapest consumable in the game as if it
 -- were five duels at once -- and reads as nonsense besides, a swordsman parrying an explosion.
-function Trait.mayCounter(combat, unit, trait, attacker, tags, area)
+-- `at` carries what was true at the MOMENT OF THE HIT, for an answer that is thrown later (a held one
+-- -- see Combat.beginAnswers): `at.answering` is the Trait.isReacting(attacker) read, which cannot be
+-- taken afterwards because the flag only stands for the flight of the swing that set it; `at.ux/uy` and
+-- `at.ax/ay` are the two tiles the blow was struck across, which a REFLECTING reflex is judged by (see
+-- below). nil asks the board as it stands, which is what the hover preview wants: it weighs a blow
+-- nobody has thrown yet.
+function Trait.mayCounter(combat, unit, trait, attacker, tags, area, at)
     local rule = trait and trait.def and trait.def.counter
     if not rule or not unit or not attacker or not attacker.alive then return false end
     if area then return false end
@@ -439,14 +445,32 @@ function Trait.mayCounter(combat, unit, trait, attacker, tags, area)
     -- A reflex that answers ATTACKS but not ANSWERS: without this, two swordsmen volley counters at
     -- each other on every exchange (see Trait.isReacting). The hungrier reflexes opt out by declaring
     -- answersReactions -- a shorter cooldown buys a wider guard.
-    if not rule.answersReactions and Trait.isReacting(attacker) then return false end
+    local answering = at and at.answering
+    if answering == nil then answering = Trait.isReacting(attacker) end
+    if not rule.answersReactions and answering then return false end
     local Combat = require("models.combat")
     -- Reach is the gate, and the only one. Can something in your grid reach back at the tile the blow
     -- came from? Then you answer it; otherwise you don't, and the reason is a fact on the board rather
     -- than a timer nobody can see. A swordsman answers the foe beside them and not the archer four
     -- tiles off; the archer answers the bowman across the field and not the brawler in their face
     -- (Combat.answeringWeapon honours each weapon's dead zone).
-    local dist = distance(attacker, unit)
+    --
+    -- Asked of the board as it stands when the answer is actually thrown, which for an on-hit reflex is
+    -- once the whole action has resolved (Combat.beginAnswers) -- so a blow that wounds and then SHOVES
+    -- is measured from where it left its target, and a brawler knocked out of melee answers nothing.
+    --
+    -- With one exception, and it is the exception that says what the rule is really about: a REFLECTING
+    -- reflex is not a swing thrown back, it is the CONTACT itself. Spikes bite the fist that struck them
+    -- at the instant it struck, so they are judged by the two tiles the blow was struck across, and a
+    -- shove that comes afterwards cannot carry their bearer out of a bite already taken. Everything else
+    -- here answers by MOVING -- reaching, swinging, shoving a shield forward -- and needs somewhere to
+    -- reach from and something still in reach.
+    local dist
+    if rule.reflect and at and at.ux then
+        dist = math.abs((at.ax or attacker.x) - at.ux) + math.abs((at.ay or attacker.y) - at.uy)
+    else
+        dist = distance(attacker, unit)
+    end
     if rule.reach == "melee" then return dist == 1 end
     return Combat.answeringWeapon(combat, unit, dist) ~= nil
 end
@@ -464,7 +488,9 @@ end
 -- fire BEFORE the blow lands, so they answer even a lethal one.
 --
 -- `opts.fromX/fromY` weighs the blow as if thrown from that tile rather than the one the attacker
--- stands on, for a strike that walks into reach first (see Combat.previewCounters).
+-- stands on, for a strike that walks into reach first (see Combat.previewCounters). `opts.toX/toY` is
+-- the mirror of it on the other side: the tile the blow LEAVES its target on, for one that shoves as
+-- well as wounds.
 function Trait.counterPreview(combat, target, attacker, opts)
     opts = opts or {}
     local out = {}
@@ -477,17 +503,29 @@ function Trait.counterPreview(combat, target, attacker, opts)
     if opts.fromX and (opts.fromX ~= attacker.x or opts.fromY ~= attacker.y) then
         attacker = setmetatable({ x = opts.fromX, y = opts.fromY }, { __index = attacker })
     end
+    -- ...and the same for the TARGET, for a blow that also SHOVES the one it hits (a mace, a Water
+    -- Ball). An on-hit answer waits for the whole action to finish before it is thrown
+    -- (Combat.beginAnswers), so it is thrown from wherever the shove left its bearer standing -- and a
+    -- brawler driven two tiles back has nothing in reach to answer with. Only the on-hit reflexes move:
+    -- the two model-side ones below fire BEFORE the blow lands, and so before anything has shoved
+    -- anyone, which is why `target` itself stays where it stands.
+    local held = target
+    if opts.toX and (opts.toX ~= target.x or opts.toY ~= target.y) then
+        held = setmetatable({ x = opts.toX, y = opts.toY }, { __index = target })
+    end
 
     -- The distance the answer is thrown across: which weapon answers, and so what it does and what
-    -- it costs, both hang off it.
-    local dist = math.abs(attacker.x - target.x) + math.abs(attacker.y - target.y)
+    -- it costs, both hang off it. Two of them, for the two moments an answer can come at: as the blow
+    -- lands (the model-side reflexes) and after it has fully resolved (everything held).
+    local function spanTo(u) return math.abs(attacker.x - u.x) + math.abs(attacker.y - u.y) end
+    local dist, heldDist = spanTo(target), spanTo(held)
 
     -- What the weapon that can reach back would do to the attacker, post-mitigation: the answer every
     -- reflex but a reflecting one throws (ctx.basicAttack / the model-side counters all swing it).
-    local function weaponBack()
-        local weapon = Combat.answeringWeapon(combat, target, dist)
+    local function weaponBack(from, span)
+        local weapon = Combat.answeringWeapon(combat, from or target, span or dist)
         if not weapon then return 0 end
-        return Combat.computeDamage(combat, target, attacker, weapon)
+        return Combat.computeDamage(combat, from or target, attacker, weapon)
     end
     local function entry(name, damage, extra)
         local e = extra or {}
@@ -515,8 +553,14 @@ function Trait.counterPreview(combat, target, attacker, opts)
     -- fire before the blow lands, so a stun that only exists once it has landed cannot pre-empt them.
     if rt or opts.lethal or opts.suppressed then return out end
     for _, t in ipairs(target.traits or {}) do
-        local cost = Trait.answerCost(combat, target, t, dist)
-        if Trait.mayCounter(combat, target, t, attacker, opts.tags, opts.area) and canPay(target, cost) then
+        -- A reflecting reflex is the contact and not a swing, so it is weighed where the blow LANDED;
+        -- everything else answers by moving, and is weighed from wherever the action left its bearer
+        -- standing (see Trait.mayCounter, which draws the same line on the live blow).
+        local reflects = t.def.counter and t.def.counter.reflect
+        local from, span = held, heldDist
+        if reflects then from, span = target, dist end
+        local cost = Trait.answerCost(combat, from, t, span)
+        if Trait.mayCounter(combat, from, t, attacker, opts.tags, opts.area) and canPay(target, cost) then
             local rule = t.def.counter
             if rule.applies then
                 local def = Status.defs[rule.applies]
@@ -528,7 +572,7 @@ function Trait.counterPreview(combat, target, attacker, opts)
                     entry(t.name, Combat.mitigatedDamage(attacker, share, { "physical" }), { cost = cost })
                 end
             else
-                entry(t.name, weaponBack(), { cost = cost })
+                entry(t.name, weaponBack(from, span), { cost = cost })
             end
         end
     end
@@ -567,7 +611,7 @@ local function ctxFor(combat, unit, trait, event)
         -- reflex still calls ctx.pay() last.
         mayCounter = function()
             local e = event or {}
-            return Trait.mayCounter(combat, unit, trait, e.attacker, e.tags, e.area)
+            return Trait.mayCounter(combat, unit, trait, e.attacker, e.tags, e.area, e.at)
         end,
 
         damage = function(tgt, amount, tags)

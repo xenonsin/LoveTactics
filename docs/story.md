@@ -7,6 +7,9 @@ been quietly serving the whole time. Kill all seven generals and the Gate Below 
 This document is the bible for that arc, and the template for finishing it. **Wrath is authored end to
 end; the other six are not.** Copy its shape.
 
+**Sloth is designed but not built** — see *The Bastion* below. Every word of it is still a plan: no
+quest, character, trait, or item named in that section exists on disk yet.
+
 ## The seven
 
 Every vendor in `data/vendors/` declares a `sin`. Every vendor's rank-4 item (800 gold, unlocked at 200
@@ -154,6 +157,168 @@ so no ordering can strand the endgame. Two are earned in the prologue, one per p
 
 Like the generals, the six companions past the knight and the gladiator are not yet written. The
 same discipline applies: author one end to end and copy its shape.
+
+## The Bastion: sloth, designed
+
+Nothing in this section exists yet. It is the second line worked out end to end, and it is written
+down because it is load-bearing for the other five: it is where the *vendor is quietly serving its
+sin* claim at the top of this file first becomes a scene instead of a promise.
+
+### The Watch
+
+The Bastion is not a shop that sells shields. It is the order that mans the line — a chain of warded
+posts holding the demons out, each held by a knight sworn for life. **"Hold until relieved" is not a
+battlefield formula. It is a vigil**, phrased that way because the thing on the other side never stops
+pushing. The order's whole moral architecture rests on knights staying at posts that will kill them.
+
+### Acedia, and what she did
+
+She held the greatest post on the line and she was the order's living emblem — the doctrine is named
+for her.
+
+The Bastion wrote her post off. Rather than pay what her own oath cost, **she negotiated**: her life
+and her company's lives, for the gate. No siege crisis, no last stand, no desperate hour. A deal. The
+land beyond the fort — the towns the post existed to stand in front of — bought it.
+
+**Her company said yes.** That is the mass version of the sin and the important half: she did not
+merely set down her own oath, she took a whole company's with her, and every one of them chose it. The
+price of the bargain was becoming what they had sworn to fight, and they took the terms anyway.
+Corruption was the fee, not a misfortune. They are still a company, still disciplined, still wearing
+the Bastion's forms in something else's service, and they are what meets the player at the end of the
+line. They kept every part of the oath except the part that cost anything.
+
+A plain coward is too small to be a general. The sin is not the cowardice — it is the **thirty years
+spent making the cowardice true**. She cannot hold *I was afraid to die*, so she built a doctrine over
+it: no post is worth holding, relief never comes, the line was always a fiction. And then she went and
+made it so. She walks the Watch telling knights exactly what she needs to be true, with the authority
+of her name, and they set their shields down. The line is emptying because the woman who broke first
+has to keep being right.
+
+### The martyr
+
+**Her name is on the Oathkeeper Shield, and the Bastion honors it.**
+`data/items/armor/armor_oathkeeper_shield.lua` already ships the line — *"every Oathkeeper bears the
+name of a knight who set theirs down; the Bastion keeps the list long, and reads it aloud."* The order
+reads *set down* as **laid down**: died at the post. A roll of martyrs. The true reading is the other
+one, and the Bastion recites a list of deserters as a list of saints. **The item needs no rewrite.**
+
+So the doctrine that sends knights to die at their posts is sanctified by a woman who negotiated and
+walked out, and thirty years of deaths in her name were deaths for a fiction — a fiction which is also
+the only thing keeping the line manned.
+
+Which arms her with the one argument the player cannot easily answer, and it is an *acedia* argument
+because it counsels doing nothing: *every knight on that line holds because of my name. Take it from
+them and the Watch empties tonight. I do more for it as a lie than I ever did with a shield.*
+
+**The Bastion knows.** Not ignorance — a decision. The leadership found out, weighed a hard truth
+against a useful saint, and took the easier one. The order that preaches holding took the path of
+least resistance about its own founder. That is the vendor serving its sin, and it is what the player
+walks into at slot 8.
+
+### Rowan, the same wound answered the other way
+
+She was a squire on the relief column sent to Acedia's post, and it was ordered to turn back. She has
+spent her life since being the relief that comes — which is why she rallies to a burning village that
+is not hers, swears herself to a stranger, and stands in front of the body she swore to. She is
+compulsively the arrival that failed to happen.
+
+**She idolizes Acedia.** She swore on her name; every knight does. Her guilt is that she failed to
+reach *her*.
+
+The line's engine is that this survives each reveal until it doesn't, and the drama is watching her
+defend the icon with progressively worse arguments. The fact that ends it: **Acedia opened the gate
+before the relief was ever due.** There was no window to miss and no battle to arrive at. Rowan is
+innocent, and she does not want to be — if she could not have come in time, there was nothing to come
+*for*, and the martyr falls. She would rather be guilty. That refusal is slot 7 and it is the best
+beat in the line.
+
+The rank-4 shield names the general in its file comment, so the **player can connect it several quests
+before Rowan does**. The gap is worth more than a simultaneous reveal; do not close it.
+
+### Her three oaths
+
+Rowan's growth is an oath revised twice, and the mechanical change *is* the character change:
+
+1. **"Hold until relieved."** Inherited, doctrinal, recited flatly. It outsources the decision to stop
+   to whoever controls the relief — which is the trap Acedia's whole career is built out of.
+2. **"I will be the relief."** Sworn in the ash of the prologue village. An inversion, and still wrong:
+   an unlimited promise means she never chooses where she is needed, only that she is always running.
+   Acedia stopped deciding by stopping; Rowan stopped deciding by never stopping.
+3. **The oath with a decision in it.** Not owed to an order, an icon, or a name — only to the person in
+   front of her. Earned at slot 8, and the reason it cannot be sworn to a name is that the name turned
+   out to be Acedia's.
+
+`data/traits/trait_oathward.lua` is oath 2 exactly: `onCombatStart` sets `unit.guard` unconditionally,
+for whatever ally happens to be adjacent, on a cooldown. Reflexive, undiscriminating, thin.
+
+**Oathward Declared** is oath 3: she *names* a ward at combat start. Stronger redirect, no cooldown,
+that unit only — and nobody else gets anything. She can no longer be everywhere, and the player
+chooses who she is for, every fight. When she eventually names someone other than `{name}`, that is
+the arc closing, not a betrayal.
+
+It is also the refutation of Acedia executed in a verb. Acedia's trait swears the player's party into
+pairs they did not choose and punishes them for the arrangement — a rigged demonstration that imposed
+bonds are a trap, run on your own units, by someone who needs the board to agree with her. Rowan walks
+in having picked. *No post can be chosen* against *I chose this one*.
+
+Two engine costs, neither large, both real: an in-place trait swap on a `bound` item (the Sworn Aegis
+can never be replaced by a better shield — that is the point of it), and a combat-start target prompt
+that works on mouse, keyboard, and gamepad like everything else in `ui/`. The cheap fallback is
+auto-declaring the lowest-health ally, which keeps the mechanic and loses the choice — and the choice
+is the character.
+
+### The ten slots
+
+Ten per line, not four. The four-quest shape cannot fill the ladder: the Colosseum's non-repeatable
+quests total 85 reputation, rank 3 needs 100, and `blood_in_the_sand` — the grind meant to bridge
+Champion to Legend — is itself gated at rank 3. **The authored template is a soft-lock**, and the
+Wrath line needs six new quests before anything copies it.
+
+The intended fix is to make standing a **count of distinct completed quests per sponsor** rather than
+accumulated `rewardRep` points, which is what `docs/classes.md` already claims under Known debt and
+the code has never done (`Player.addReputation`, `Vendor.rankFor`). Then `ranks = { 0, 3, 6, 9 }`,
+rank 4 lands on the ninth, and slot 10 is the general gated behind it — preserving the rule that the
+standing which puts the rank-4 item on the shelf is the standing that lets you face what it was
+warning about. Repeatables must not count, or the grind walks back in.
+
+| # | Slot | Rank | The Bastion's ten | What it costs Rowan |
+|---|---|---|---|---|
+| 1 | Introduction | 1 | **The Relief Column** — `protect` a supply train | recites the doctrine, names Acedia with reverence |
+| 2 | The recruit | 1 | **The Ones Who Turned Back** — her old column's officers | admits she was the relief that never arrived |
+| 3 | Complication | 1 | **Held Position** — `hold`; a garrison that will not stand down | first unease: is this what the icon makes? |
+| 4 | Escalation | 2 | **The Long List** — `assassinate` a forsworn knight | the knight says something about Acedia; Rowan gets angry |
+| 5 | The discovery | 2 | **What Greywatch Kept** — `reach`; the ruin | the gate was opened from inside — *she was betrayed* |
+| 6 | Grind | 2 | **Muster** — `repeatable` bounty work | lines get shorter each repeat |
+| 7 | **The turn** | 3 | **The Order That Was Given** — the archive | the gate opened before relief was due; she refuses absolution |
+| 8 | The break | 3 | **The Bastion Knows** — the terms, under seal | nothing left to say; the Aegis is re-sworn here |
+| 9 | The approach | 3 | **The Forty-First Day** — her company, alive | — |
+| 10 | The general | 4 | **The Unrelieved** — `assassinate` | — |
+
+The Aegis is re-sworn at 8, not after 10: the player needs Oathward Declared in hand for 9 and 10 or
+the arc lands in a cutscene instead of on the board.
+
+**Ten slots against three win types will read as the same quest seventy times.** The objective
+resolver (`models/combat.lua`, `states/battle.lua`) knows `killAll`, `assassinate`, and `survive`. It
+wants `protect` (a named unit lives), `reach` (get a unit to a tile), and `hold` (control tiles for n
+turns) before the quests are written, not after. `hold` is the knight's entire thesis and is currently
+unsayable.
+
+Slots 7 and 8 are what a four-quest line never had room for, and they are the ones that make the claim
+at the top of this file true. Every other line owes the same pair.
+
+### The relic
+
+**The Forsworn Pike** — a spear, no `class`, no `price`, carrying Acedia's trait. It differs in type
+from Wrath's armor, as the seven keys require. Worn, it swears the bearer's party to each other:
+bolstered together, punished apart. Strong, and it makes the party immobile — the same trap it was
+when she carried it.
+
+`gateHint = "past the gate that was opened from within"`.
+
+Three other unbuyable items across the ten, and no more, or the 3×3 grid drowns: a **Relief Horn** at
+slot 1 (swap places with an adjacent ally; their Wait becomes Defend), a **Greywatch Muster Roll** at
+slot 5 (grid bonus scaling with adjacent allies), and one from slot 8. All carry `class = "knight"`
+with no `price` — unbuyable, and still tallying toward knight growth (see `docs/classes.md`).
 
 ## Authoring the remaining six lines
 
