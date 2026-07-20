@@ -1799,14 +1799,47 @@ function Combat.stepMove(combat, walk)
     return true
 end
 
+-- Walk a plan out to its end, right now. `capture` asks for the route back as it was actually taken:
+-- a list of { x, y, fromX, fromY, fx } , one entry per tile entered, each carrying the cues that tile
+-- raised as the unit arrived on it.
+--
+-- That list is what lets the model finish a move before anything is drawn. The traps, hazards and
+-- overwatch shots a walk sets off all resolve here in one go; batching their cues per tile means a
+-- view can still play the walk back a tile at a time and have each trap go off on the tile that
+-- holds it, without the model's own progress being metered by a frame clock.
+--
+-- The route ends where the unit ended, which is short of the destination when something on the way
+-- killed it. One loop rather than two, so the flat-out walk and the watched one cannot drift apart.
+local function walkOut(combat, plan, capture)
+    local walk = Combat.beginMove(combat, plan)
+    local unit = plan.unit
+    local steps = capture and {} or nil
+    while true do
+        local fromX, fromY = unit.x, unit.y
+        if not Combat.stepMove(combat, walk) then break end
+        if capture then
+            steps[#steps + 1] = { x = unit.x, y = unit.y, fromX = fromX, fromY = fromY,
+                                  fx = Combat.drainFx(combat) }
+        end
+    end
+    return steps
+end
+
+-- Walk `plan` out and hand back the route for a view to replay. See walkOut. Note this DRAINS the
+-- cue queue as it goes -- the cues live in the returned steps instead, and the caller is expected to
+-- feed them to its animation controller. Callers that just want the move to happen want moveUnit.
+function Combat.runMove(combat, plan)
+    return walkOut(combat, plan, true), combat.turn.moveCost
+end
+
 -- Move a unit to (x, y) if reachable this turn, all in one go. The headless equivalent of the
 -- battle state's watchable walk (planMove -> beginMove -> stepMove per tile): same legality gate,
--- same traps sprung, same initiative owed. Returns ok plus the move initiative it charged.
+-- same traps sprung, same initiative owed. Leaves the cue queue alone, so a headless caller that
+-- never drains is unaffected. Returns ok plus the move initiative it charged.
 function Combat.moveUnit(combat, unit, x, y)
     local plan, reason = Combat.planMove(combat, unit, x, y)
     if not plan then return false, reason end
-    local walk = Combat.beginMove(combat, plan)
-    while Combat.stepMove(combat, walk) do end
+    walkOut(combat, plan, false)
     return true, combat.turn.moveCost
 end
 

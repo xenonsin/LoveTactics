@@ -251,4 +251,78 @@ return {
                     .. table.concat(offenders, "\n  "))
         end,
     },
+
+    -- -----------------------------------------------------------------------
+    -- The model finishes before the view starts
+    --
+    -- A move used to be pushed forward one tile per frame by the battle state's clock, which made
+    -- the model's progress a function of the frame rate. Combat.runMove resolves the whole walk at
+    -- once and hands back the route for a view to replay at whatever pace it likes.
+    -- -----------------------------------------------------------------------
+    {
+        name = "runMove and moveUnit leave the board in the same place",
+        fn = function()
+            local function board()
+                local c = Combat.new(arena(8, 8, 3), { unit("character_knight", 4, 8) }, {})
+                c.turn = { unit = c.units[1], moved = false, moveCost = 0 }
+                return c, c.units[1]
+            end
+
+            local flat, flatUnit = board()
+            local okFlat, costFlat = Combat.moveUnit(flat, flatUnit, 4, 6)
+            assert(okFlat, "the flat-out move should be legal")
+
+            local watched, watchedUnit = board()
+            local plan = Combat.planMove(watched, watchedUnit, 4, 6)
+            assert(plan, "the same move should plan")
+            local steps, costWatched = Combat.runMove(watched, plan)
+
+            assert(watchedUnit.x == flatUnit.x and watchedUnit.y == flatUnit.y,
+                "both routes should end on the same tile")
+            assert(costWatched == costFlat, "and cost the same initiative")
+            assert(watchedUnit.char.stats.health.current == flatUnit.char.stats.health.current,
+                "and arrive in the same condition")
+        end,
+    },
+    {
+        name = "the captured route is the tiles walked, in the order the feet took them",
+        fn = function()
+            local c = Combat.new(arena(8, 8, 3), { unit("character_knight", 4, 8) }, {})
+            local u = c.units[1]
+            c.turn = { unit = u, moved = false, moveCost = 0 }
+
+            local plan = Combat.planMove(c, u, 4, 6)
+            local startX, startY = u.x, u.y
+            local steps = Combat.runMove(c, plan)
+
+            assert(#steps == #plan.path - 1,
+                "one step per tile entered, the origin not being one (" .. #steps .. ")")
+            assert(steps[1].fromX == startX and steps[1].fromY == startY,
+                "the first step leaves the tile the unit was standing on")
+            assert(steps[#steps].x == u.x and steps[#steps].y == u.y,
+                "the last step lands where the unit ended")
+
+            -- Each step continues from the one before it, one tile at a time.
+            for i = 2, #steps do
+                local prev, this = steps[i - 1], steps[i]
+                assert(this.fromX == prev.x and this.fromY == prev.y,
+                    "step " .. i .. " should start where step " .. (i - 1) .. " finished")
+                assert(math.abs(this.x - this.fromX) + math.abs(this.y - this.fromY) == 1,
+                    "every step crosses exactly one tile")
+            end
+        end,
+    },
+    {
+        -- The reason the cues are captured per step rather than in one heap: a view replaying the
+        -- route has to be able to set each tile's trap off ON that tile.
+        name = "the walk drains its cues into the steps, not into the queue behind it",
+        fn = function()
+            local c = Combat.new(arena(8, 8, 3), { unit("character_knight", 4, 8) }, {})
+            local u = c.units[1]
+            c.turn = { unit = u, moved = false, moveCost = 0 }
+            Combat.runMove(c, Combat.planMove(c, u, 4, 6))
+            assert(Combat.drainFx(c) == nil,
+                "runMove should leave nothing behind in the cue queue")
+        end,
+    },
 }

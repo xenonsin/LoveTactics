@@ -795,29 +795,41 @@ local function startWalk(unit, x, y, onDone, cells)
     local plan = cells and Combat.planMoveVia(battle.combat, unit, cells)
     plan = plan or Combat.planMove(battle.combat, unit, x, y)
     if not plan then return false end
-    battle.walk = { handle = Combat.beginMove(battle.combat, plan), timer = 0, onDone = onDone, unit = unit }
+    -- The move happens HERE, all of it: every tile entered, every trap sprung, every overwatch shot
+    -- taken. What comes back is the route as it was walked, with each tile's cues attached, and what
+    -- battle.walk holds from this point on is a playback position -- not a handle the frame clock
+    -- uses to push the model forward one tile at a time. The model is finished before the first
+    -- frame of the walk is drawn.
+    local steps = Combat.runMove(battle.combat, plan)
+    battle.walk = { steps = steps, i = 0, timer = 0, onDone = onDone, unit = unit }
     battle.reachable, battle.moveCells = {}, {}
     battle.threatCells, battle.attackReach = {}, {}
     battle.movePath = nil
     return true
 end
 
--- One tile per MOVE_STEP seconds, then hand off to the walk's onDone. The first step lands at once
--- (the unit is already standing on the origin); every step after rests on the tile it just entered,
--- so a trap that fires or a hazard that bites is on screen long enough to see.
+-- Replay one tile of the captured route per MOVE_STEP seconds, then hand off to the walk's onDone.
+-- The first step lands at once (the unit is already standing on the origin); every step after rests
+-- on the tile it entered, so a trap that fired or a hazard that bit is on screen long enough to see.
+--
+-- Nothing here touches the model -- it finished the whole walk back in startWalk. This only decides
+-- when each tile's cues are allowed to be seen, which is why a route the model resolved in one call
+-- still reads at a walking pace.
 local function updateWalk(dt)
     local w = battle.walk
     w.timer = w.timer - dt
     if w.timer > 0 then return end
-    local u = w.unit
-    local fromX, fromY = u.x, u.y -- cell the unit is leaving, captured before the step commits
-    if Combat.stepMove(battle.combat, w.handle) then
+    w.i = w.i + 1
+    local step = w.steps[w.i]
+    if step then
         w.timer = MOVE_STEP
-        -- Slide the sprite across the tile it just entered rather than snapping (a surviving unit).
-        if u.alive then battle.fx:setSlide(u, fromX, fromY, MOVE_STEP) end
+        -- Slide the sprite from the tile it left to the tile this step lands on. Both are named:
+        -- the unit's model position is already the END of the route, so it cannot stand in for
+        -- "where this step arrives" the way it can for a single step (see CombatFx:setSlide).
+        battle.fx:setSlide(w.unit, step.fromX, step.fromY, MOVE_STEP, nil, step.x, step.y)
         -- A trap that sprang, a hazard that bit, an overwatch shot -- float its number on arrival.
         -- No actor leans in: this is damage taken while walking, not a strike the unit made.
-        battle.fx:ingest(Combat.drainFx(battle.combat), nil)
+        battle.fx:ingest(step.fx, nil)
         return
     end
     battle.walk = nil
