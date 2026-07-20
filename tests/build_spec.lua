@@ -162,11 +162,117 @@ return {
         end,
     },
     {
-        name = "the card details ride along so a build can be listed before it is fought",
+        -- The id is what stops a player being matched against themselves; the name is only for the
+        -- card. They are separate fields because over Steam the id wants to be an account, not a
+        -- display name somebody can change or share.
+        name = "a build knows who made it, so it can be kept away from them",
         fn = function()
-            local decoded = roundTrip({ authoredKnight() }, { name = "Keno", prestige = 7 })
-            assert(decoded.name == "Keno", "the author's name")
-            assert(decoded.prestige == 7, "and what they had climbed to")
+            local decoded = roundTrip({ authoredKnight() },
+                { author = { id = "steam:76561198000000000", name = "Keno" }, prestige = 7 })
+            assert(decoded.author.id == "steam:76561198000000000", "the author's stable id")
+            assert(decoded.author.name == "Keno", "and their display name")
+            assert(decoded.prestige == 7, "prestige rides along for the card")
+        end,
+    },
+
+    -- -----------------------------------------------------------------------
+    -- Normalization
+    --
+    -- The only fairness rule: everyone is rebuilt at one level with gear clamped to one ceiling.
+    -- There is no prestige bracket, so what a build must NOT carry onto the board is how long its
+    -- author has been playing.
+    -- -----------------------------------------------------------------------
+    {
+        name = "a long-played team arrives at the duelling level, not the one it had climbed to",
+        fn = function()
+            local veteran = authoredKnight()
+            veteran.level = 40
+            veteran.classUse = { fighter = 30 }
+
+            local chars = assert(Build.restore(roundTrip({ veteran })))
+            assert(chars[1].level == Build.NORMAL_LEVEL,
+                "expected level " .. Build.NORMAL_LEVEL .. ", got " .. tostring(chars[1].level))
+        end,
+    },
+    {
+        name = "an over-forged weapon is clamped, and lesser gear is left as its owner brought it",
+        fn = function()
+            local char = Character.instantiate("character_knight")
+            char.inventory = {}
+            char.inventory[1] = Item.instantiate("weapon_iron_sword", 1, Item.MAX_LEVEL)
+            char.inventory[2] = Item.instantiate("weapon_iron_sword", 1, 1)
+
+            local back = assert(Build.restore(roundTrip({ char })))[1]
+            assert(back.inventory[1].level == Build.NORMAL_ITEM_LEVEL,
+                "a +10 blade should come down to +" .. Build.NORMAL_ITEM_LEVEL
+                    .. ", got +" .. tostring(back.inventory[1].level))
+            assert(back.inventory[2].level == 1,
+                "a +1 blade is a choice, not a shortfall to be topped up")
+        end,
+    },
+    {
+        -- Levels are erased; HOW the character was played is not. The class tally decides which
+        -- growth table the rebuild climbs, so two identical blueprints played differently should
+        -- arrive at the same level as different characters.
+        name = "the class tally survives normalization, so how you played still shows",
+        fn = function()
+            local function played(tally)
+                local c = Character.instantiate("character_knight")
+                c.level, c.classUse = 30, tally
+                return assert(Build.restore(roundTrip({ c })))[1]
+            end
+            local brawler = played({ fighter = 25 })
+            local scholar = played({ mage = 25 })
+
+            assert(brawler.level == scholar.level, "both arrive at the duelling level")
+            local a, b = brawler.stats, scholar.stats
+            local differs = a.damage ~= b.damage or a.magicDamage ~= b.magicDamage
+                or a.defense ~= b.defense or a.magicDefense ~= b.magicDefense
+            assert(differs, "a knight played as a mage should not rebuild identically to a brawler")
+        end,
+    },
+    {
+        -- Normalization and cross-machine agreement are the same mechanism: growth is RNG-free and
+        -- dominantClass settles ties by name, so (id, classUse, level) is a complete description.
+        name = "normalizing the same build twice produces the same character",
+        fn = function()
+            local snap = roundTrip({ authoredKnight() })
+            local a = assert(Build.restore(snap))[1]
+            local b = assert(Build.restore(snap))[1]
+            for _, stat in ipairs({ "damage", "magicDamage", "defense", "magicDefense", "movement" }) do
+                assert(a.stats[stat] == b.stats[stat],
+                    stat .. " should rebuild identically (" .. tostring(a.stats[stat])
+                        .. " vs " .. tostring(b.stats[stat]) .. ")")
+            end
+            assert(a.stats.health.max == b.stats.health.max, "and so should the pools")
+        end,
+    },
+    {
+        -- The local player's own team gets the identical treatment, or "normalized" would only mean
+        -- "the opponent was weakened".
+        name = "your own party is flattened on the same terms as the build it faces",
+        fn = function()
+            local mine = Character.instantiate("character_knight")
+            mine.level, mine.classUse = 40, { fighter = 30 }
+            mine.inventory = {}
+            mine.inventory[1] = Item.instantiate("weapon_iron_sword", 1, Item.MAX_LEVEL)
+
+            local flat = Build.normalizeParty({ mine })
+            assert(flat[1].level == Build.NORMAL_LEVEL, "same level as the opponent")
+            assert(flat[1].inventory[1].level == Build.NORMAL_ITEM_LEVEL, "same gear ceiling")
+
+            -- And it is genuinely the same code path: an identical character on either side of the
+            -- board should come out identical.
+            local theirs = assert(Build.restore(roundTrip({ (function()
+                local c = Character.instantiate("character_knight")
+                c.level, c.classUse = 40, { fighter = 30 }
+                c.inventory = {}
+                c.inventory[1] = Item.instantiate("weapon_iron_sword", 1, Item.MAX_LEVEL)
+                return c
+            end)() })))[1]
+            assert(flat[1].stats.damage == theirs.stats.damage,
+                "the same character should not fight better from one side of the board")
+            assert(flat[1].stats.health.max == theirs.stats.health.max, "nor be tougher")
         end,
     },
 }
