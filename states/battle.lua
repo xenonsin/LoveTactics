@@ -664,9 +664,18 @@ end
 -- hold the hand-off while those reactions read (battle.update runs resolveAdvance once the beat and
 -- battle.fx:busy both clear). An action that raised no cues and left nothing animating -- a bare move,
 -- a wait, a pass -- resolves at once, so non-combat turns stay snappy.
-local function advanceTurn()
+-- `carried` is a cue list an action raised BEFORE the walk that replays its approach -- held back
+-- since (see holdLanding) so the blow does not land on screen ahead of the feet that carried it.
+local function advanceTurn(carried)
     pacedTurn(battle.current)
     local events = Combat.drainFx(battle.combat)
+    if carried then
+        battle.fx:hold(carried, -1) -- the approach has finished; the blow may be seen now
+        if events then
+            for _, e in ipairs(events) do carried[#carried + 1] = e end
+        end
+        events = carried
+    end
     if events then battle.fx:ingest(events, battle.current) end
     if events or battle.fx:busy() then
         battle.pendingAdvance = { hold = IMPACT_PAUSE }
@@ -834,6 +843,23 @@ local function updateWalk(dt)
     end
     battle.walk = nil
     if w.onDone then w.onDone() end
+end
+
+-- Take everything the action just resolved and keep it off the screen until the walk replaying its
+-- approach has finished.
+--
+-- CombatFx already does this for the second and later beats of an exchange, and for the same reason
+-- its comment gives: the model settles the whole thing before any of it is seen, so a bar would
+-- drain and a corpse drop ahead of the blow that earned it. That used to leave the FIRST beat alone
+-- because a cast resolved at the moment the view was handed it -- which stopped being true when the
+-- approach started being walked after the strike had already landed. Without this a unit's health
+-- visibly falls while its attacker is still three tiles away.
+--
+-- Returns the held list, to be handed to advanceTurn when the feet stop.
+local function holdLanding()
+    local events = Combat.drainFx(battle.combat)
+    if events then battle.fx:hold(events, 1) end
+    return events
 end
 
 -- Is the lesson TALKING TO THE PLAYER right now -- the step's actor holding the turn, with nothing
@@ -1271,9 +1297,20 @@ local function confirm()
         end
         if entry.fromX ~= current.x or entry.fromY ~= current.y then
             if Combat.hasMoved(battle.combat) then return end -- can't move twice in a turn
-            startWalk(current, entry.fromX, entry.fromY, function()
-                if current.alive then cast() else advanceTurn() end
-            end, plan.cells)
+            if not startWalk(current, entry.fromX, entry.fromY, nil, plan.cells) then return end
+            -- The approach is already spent: startWalk walked it in the model, so the unit is
+            -- standing on the entry tile and the blow lands NOW, before a frame of the walk is
+            -- drawn. Its cues stay in the queue while the route replays -- advanceTurn drains them
+            -- when the feet stop, so the impact still reads after the approach rather than during
+            -- it. Nothing about the exchange is decided by how long the animation took.
+            local landed = current.alive and Combat.useItem(battle.combat, current, item, cx, cy)
+            local blow = holdLanding()
+            battle.walk.onDone = function()
+                if landed then
+                    observeAction("attack", current, cx, cy, victim and victim.char.id, item.id)
+                end
+                advanceTurn(blow)
+            end
         else
             cast()
         end
@@ -1370,7 +1407,22 @@ local function executeEnemyAction()
         if not acted then Combat.pass(battle.combat, current) end
         advanceTurn()
     end
-    if act.move and startWalk(current, act.move.x, act.move.y, act_) then return end
+    -- With an approach, the walk and the action both resolve against the model here, in that order,
+    -- and only the playback is left for the clock -- the same shape the player's strike takes above.
+    -- Without one, there is nothing to replay and act_ resolves inline as it always did.
+    if act.move and startWalk(current, act.move.x, act.move.y, nil) then
+        if current.alive then
+            local acted = act.item
+                and Combat.useItem(battle.combat, current, act.item, act.tx, act.ty)
+            -- Reposition-only, nothing to do, or an item use that unexpectedly failed: pass so the
+            -- turn always ends (paying the real move cost) and never soft-locks on this unit.
+            if not acted then Combat.pass(battle.combat, current) end
+        end
+        -- A unit cut down on the approach raised nothing here and just hands the turn on.
+        local blow = holdLanding()
+        battle.walk.onDone = function() advanceTurn(blow) end
+        return
+    end
     act_()
 end
 
