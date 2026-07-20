@@ -84,6 +84,30 @@ return {
         end,
     },
     {
+        -- Cost an afternoon. The command line says "join", the factory tested for "guest", so the
+        -- joiner opened a HOST transport -- and on Windows a second bind to the same port succeeds
+        -- rather than erroring, so both windows sat listening, each waiting for the other, with
+        -- nothing on screen to say why. Anything that is not explicitly the host now joins, so a
+        -- mismatched name produces a connection refused (which says what is wrong) rather than a
+        -- silent stalemate.
+        name = "only an explicit host listens; every other role joins",
+        fn = function()
+            local factory = Transport.kinds.localhost
+            assert(factory, "the localhost transport should exist in a development build")
+
+            local host = factory({ role = "host", port = 51520 })
+            assert(host.kind == "host", "'host' listens")
+            host:close()
+
+            for _, role in ipairs({ "guest", "join", "client", "", nil }) do
+                local t = factory({ role = role, port = 51521 })
+                assert(t.kind == "guest",
+                    "role " .. tostring(role) .. " should join, not listen")
+                t:close()
+            end
+        end,
+    },
+    {
         name = "a development build has the development transports",
         fn = function()
             withDebug(true, function()

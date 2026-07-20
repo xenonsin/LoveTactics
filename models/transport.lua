@@ -66,6 +66,21 @@ Transport.kinds.loopback = Debug.only(function()
     return a
 end)
 
+-- Two windows on one machine, over localhost TCP. `opts.role` is "host" or "guest".
+-- Development only, for the same reason: it exists so the protocol can be driven against a real
+-- socket without two Steam accounts and two PCs.
+-- Anything that is not explicitly the host joins. Written this way round deliberately: the failure
+-- mode when a role name does not match is that BOTH peers listen, and on Windows a second bind to
+-- the same port succeeds rather than erroring, so the two sit waiting for each other with nothing
+-- to show for it. Defaulting to "guest" makes a typo produce a connection refused -- which says
+-- what is wrong -- instead of a silent stalemate.
+Transport.kinds.localhost = Debug.only(function(opts)
+    local Socket = require("models.transport_socket")
+    opts = opts or {}
+    if opts.role == "host" then return Socket.host(opts.port) end
+    return Socket.join(opts.port)
+end)
+
 -- Is `name` available in this build? The panel asks before offering a button, so a release never
 -- shows a door it cannot open.
 function Transport.available(name)
