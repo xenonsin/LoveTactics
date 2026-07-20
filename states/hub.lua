@@ -44,7 +44,9 @@ function hub.enter()
     Player.restore(hub.player)
     activePanel = nil
     background = Sprite.load("assets/hub/city.png")
-    map = BuildingMap.new(Building.list(hub.player.prestige), {
+    -- The whole player, not just their prestige: some doors are opened by a quest rather than by
+    -- getting richer (Building.list).
+    map = BuildingMap.new(Building.list(hub.player), {
         onActivate = openPanel,
     })
 

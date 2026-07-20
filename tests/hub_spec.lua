@@ -39,9 +39,39 @@ return {
         name = "Building.list computes locked from prestige",
         fn = function()
             for _, b in ipairs(Building.list(1)) do
-                assert(b.locked == (1 < b.unlockPrestige),
-                    b.id .. " locked flag wrong at prestige 1")
+                -- A quest-gated door is a separate question, asked below; a bare prestige number
+                -- cannot answer it, so those are locked here whatever their threshold.
+                if not b.unlockQuest then
+                    assert(b.locked == (1 < b.unlockPrestige),
+                        b.id .. " locked flag wrong at prestige 1")
+                end
             end
+        end,
+    },
+    {
+        -- Some doors are opened by a story rather than by getting richer: the Dueling Grounds are
+        -- there because you once stood on the sand, not because you can afford them.
+        name = "a quest-gated building stays shut until that quest is done",
+        fn = function()
+            local function findIn(list, id)
+                for _, b in ipairs(list) do
+                    if b.id == id then return b end
+                end
+            end
+
+            local before = findIn(Building.list({ prestige = 9, completedQuests = {} }), "dueling_grounds")
+            assert(before, "the dueling grounds should be listed even while shut")
+            assert(before.locked, "no amount of prestige should open a quest-gated door")
+
+            local after = findIn(
+                Building.list({ prestige = 1, completedQuests = { arena_debut = true } }),
+                "dueling_grounds")
+            assert(not after.locked, "finishing the debut should open it, at any prestige")
+
+            -- And a bare prestige number -- what every older caller passes -- cannot open one,
+            -- because it has no way to know.
+            assert(findIn(Building.list(9), "dueling_grounds").locked,
+                "a prestige number alone should never open a quest gate")
         end,
     },
     {

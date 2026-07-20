@@ -189,6 +189,10 @@ function Save.snapshot(player)
         prestige = player.prestige,
         body = player.body, -- the created avatar's body (1/2); nil before character creation
         name = player.name, -- the name typed at creation (also on the avatar instance)
+        -- Who this player is to other players (Player.authorId). Persisted rather than re-minted,
+        -- or every load would look like a new person and a player could be matched against the
+        -- build their own previous session published. Nil on a save that never needed one.
+        authorId = player.authorId,
         reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,
@@ -304,6 +308,7 @@ function Save.restore(snap)
         prestige = snap.prestige or 1,
         body = snap.body, -- nil for a save made before character creation set it
         name = snap.name,
+        authorId = snap.authorId, -- nil on an older save; Player.authorId mints one on demand
         reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,
