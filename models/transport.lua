@@ -61,6 +61,15 @@ end
 -- ones are spliced in only for a development build.
 Transport.kinds = {}
 
+-- Steam. Registered UNCONDITIONALLY -- it is the only way a shipped game finds an opponent, so it
+-- must exist in a release build. Whether it can actually open is a separate question, answered by
+-- the transport itself: with no luasteam, no Steam client or no peer, it comes back closed with a
+-- reason, which is a far better failure than a menu that silently has no multiplayer in it.
+Transport.kinds.steam = function(opts)
+    local Steam = require("models.transport_steam")
+    return Steam.new(opts)
+end
+
 Transport.kinds.loopback = Debug.only(function()
     local a = Transport.loopback()
     return a
