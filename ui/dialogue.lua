@@ -43,6 +43,10 @@ local BOX_H = 150
 local BOX_BOTTOM_GAP = 24
 local PORTRAIT_H = 470 -- target portrait height; scaled down to fit its slot width if needed
 local REVEAL_CPS = 45  -- typewriter speed, characters per second
+-- Over a live scene there is no room for a full VN cast, so the speaker is shown as a single small
+-- bust at the box's left end, with the name plate above it and the line indented past both.
+local SIDE_PORTRAIT_W = 118
+local SIDE_PAD = 16
 
 -- Greyed (inactive) portrait tint and its letter-box fallback fill; active is full colour.
 local INACTIVE_TINT = { 0.34, 0.35, 0.42 }
@@ -320,6 +324,37 @@ function Dialogue:drawPortrait(member, active)
     end
 end
 
+-- The over-scene speaker's bust, standing at the LEFT end of the text box and rising over its top
+-- edge, visual-novel style -- the same framing as the in-battle mentor panel (ui/tutorial_prompt.lua),
+-- mirrored to the left so it sits under the name plate rather than across the box from it.
+--
+-- Bottom-anchored and drawn IN FRONT of the box: behind it the opaque fill swallows everything but a
+-- sliver of head. Real art gets the full height; the letter fallback is held inside the box instead,
+-- because a blank rectangle overflowing the panel reads as a stray box, not as someone leaning in.
+function Dialogue:drawSideBust(member)
+    local cx = self.boxX + SIDE_PAD + SIDE_PORTRAIT_W / 2
+    local baseY = self.boxY + self.boxH - 8
+    local image = member.image
+    if type(image) == "userdata" then
+        local sw, sh = image:getDimensions()
+        local scale = math.min((self.boxH + 78) / sh, SIDE_PORTRAIT_W / sw)
+        love.graphics.setColor(ACTIVE_TINT[1], ACTIVE_TINT[2], ACTIVE_TINT[3])
+        love.graphics.draw(image, cx, baseY, 0, scale, scale, sw / 2, sh)
+        return
+    end
+    local w, h = SIDE_PORTRAIT_W, self.boxH - 16
+    love.graphics.setColor(FALLBACK_ACTIVE[1] * 0.7, FALLBACK_ACTIVE[2] * 0.7, FALLBACK_ACTIVE[3] * 0.7)
+    love.graphics.rectangle("fill", cx - w / 2, baseY - h, w, h, 8, 8)
+    love.graphics.setColor(0.5, 0.55, 0.7)
+    love.graphics.rectangle("line", cx - w / 2, baseY - h, w, h, 8, 8)
+    love.graphics.setFont(self.fallbackFont)
+    love.graphics.setColor(0.92, 0.92, 0.96)
+    -- First CHARACTER of the name (not first byte) -- a multibyte glyph must not be cut apart.
+    local name = member.name or "?"
+    local initial = name:sub(1, (utf8.offset(name, 2) or (#name + 1)) - 1)
+    love.graphics.printf(initial, cx - w / 2, baseY - h / 2 - self.fallbackFont:getHeight() / 2, w, "center")
+end
+
 function Dialogue:draw()
     -- Dim the frozen screen behind so the text reads. An OVER-SCENE conversation dims far less: what
     -- is behind it is not a backdrop to be pushed away, it is the thing being talked about.
@@ -331,11 +366,12 @@ function Dialogue:draw()
 
     -- Cast: inactive members first, the active speaker last so it sits on top.
     --
-    -- Skipped entirely over a live scene. A bottom-anchored VN bust is nearly half the screen tall
-    -- and stands in the middle of it, which is exactly where a battlefield keeps its battle -- the
-    -- first cut of the village opening put Rowan's portrait squarely over the party and the two imps
-    -- the scene is pointing at. The name plate on the text box already says who is speaking, which is
-    -- the same way the in-battle mentor panel identifies her (ui/tutorial_prompt.lua).
+    -- Skipped over a live scene, which shows the speaker as a small bust inside the box instead. A
+    -- bottom-anchored VN bust is nearly half the screen tall and stands in the middle of it, which is
+    -- exactly where a battlefield keeps its battle -- the first cut of the village opening put
+    -- Rowan's portrait squarely over the party and the two imps the scene is pointing at. So the
+    -- speaker moves into the box's left end, under the name plate, the way the in-battle mentor
+    -- panel frames her (ui/tutorial_prompt.lua).
     --
     -- Only the BATTLE opening uses this mode. A scene over the overworld keeps the ordinary staging
     -- (prologue_ruins) -- a fogged map is not a board being read tile by tile, and the story scenes
@@ -362,6 +398,9 @@ function Dialogue:draw()
     love.graphics.setColor(0.5, 0.55, 0.7)
     love.graphics.rectangle("line", self.boxX, self.boxY, self.boxW, self.boxH, 10, 10)
 
+    -- Over a live scene, the speaker instead stands at the box's left end (see :drawSideBust).
+    if self.overScene and activeMember then self:drawSideBust(activeMember) end
+
     -- Speaker name plate, sitting on the top edge of the box near the active speaker's slot.
     local speakerName = (activeMember and activeMember.name)
         or (node and node.name)
@@ -369,8 +408,15 @@ function Dialogue:draw()
     if speakerName then
         love.graphics.setFont(self.nameFont)
         local plateW = self.nameFont:getWidth(speakerName) + 36
-        local plateX = (activeMember and activeMember.centerX or self.boxX + 120) - plateW / 2
-        plateX = math.max(self.boxX, math.min(plateX, self.boxX + self.boxW - plateW))
+        -- Over a live scene the plate is pinned to the LEFT end of the box, over the side bust it
+        -- names -- there is no portrait slot out on the screen for it to point at.
+        local plateX
+        if self.overScene then
+            plateX = self.boxX + 22
+        else
+            plateX = (activeMember and activeMember.centerX or self.boxX + 120) - plateW / 2
+            plateX = math.max(self.boxX, math.min(plateX, self.boxX + self.boxW - plateW))
+        end
         local plateY = self.boxY - 20
         love.graphics.setColor(0.20, 0.34, 0.62)
         love.graphics.rectangle("fill", plateX, plateY, plateW, 32, 6, 6)
@@ -386,7 +432,12 @@ function Dialogue:draw()
     love.graphics.setFont(self.textFont)
     love.graphics.setColor(0.9, 0.9, 0.94)
     local textX = self.boxX + 28
-    love.graphics.printf(shown, textX, self.boxY + 22, self.boxW - 56, "left")
+    local textW = self.boxW - 56
+    if self.overScene then -- clear the side bust standing at the left end
+        textX = self.boxX + SIDE_PAD * 2 + SIDE_PORTRAIT_W
+        textW = self.boxX + self.boxW - 28 - textX
+    end
+    love.graphics.printf(shown, textX, self.boxY + 22, textW, "left")
 
     -- Branching choices, listed on the right side of the box once the line is out.
     self.choiceRects = nil
