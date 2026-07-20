@@ -440,9 +440,12 @@ local function computeInspect(unit)
     if not unit then return end
     local reachable = Status.blocksMove(unit) and {} or Combat.reachable(battle.combat, unit)
     local moveKeys = {}
-    for k, node in pairs(reachable) do
+    -- Only highlights, so the order is nobody's business but the renderer's -- taken in board order
+    -- anyway, because one rule about how the reachable set is walked is easier to keep than a rule
+    -- with an exception in it (Combat.reachableList).
+    for _, node in ipairs(Combat.reachableList(battle.combat, unit, reachable)) do
         battle.inspectMoveCells[#battle.inspectMoveCells + 1] = { x = node.x, y = node.y }
-        moveKeys[k] = true
+        moveKeys[node.x .. "," .. node.y] = true
     end
     local weapon = Combat.defaultWeapon(unit.char)
     local ab = weapon and weapon.activeAbility

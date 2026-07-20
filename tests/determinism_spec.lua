@@ -9,6 +9,9 @@
 -- Pure logic, runs headless.
 
 local Combat = require("models.combat")
+local Character = require("models.character")
+local Item = require("models.item")
+local AI = require("models.ai")
 
 local function arena(cols, rows, seed)
     local tiles = {}
@@ -19,6 +22,17 @@ local function arena(cols, rows, seed)
         end
     end
     return { cols = cols, rows = rows, tiles = tiles, objective = { type = "killAll" }, seed = seed }
+end
+
+-- A { char, x, y } spawn entry, stripped of the innate signature relic and its trait the way
+-- ai_spec's fixture is: a companion summon would add units these cases never asked for.
+local function unit(charOrId, x, y)
+    local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
+    char.traits = {}
+    for i = 1, Character.MAX_INVENTORY do
+        if char.inventory[i] and char.inventory[i].bound then char.inventory[i] = nil end
+    end
+    return { char = char, x = x, y = y }
 end
 
 local function draws(fn, count, n)
@@ -131,6 +145,110 @@ return {
 
             -- ...and releasing the pin hands the battle back to its own sequence.
             assert(Combat.roll(c, 10) ~= nil, "the battle keeps rolling once the pin is released")
+        end,
+    },
+
+    -- -----------------------------------------------------------------------
+    -- Iteration order
+    --
+    -- The reachable set is keyed "x,y", and several scans over it keep the first candidate on a tie.
+    -- pairs() would make those ties depend on string hash order -- stable within one build, promised
+    -- by nothing across two machines. Combat.reachableList fixes the order to the board's.
+    -- -----------------------------------------------------------------------
+    {
+        name = "reachableList walks the board top-left to bottom-right, and loses nobody on the way",
+        fn = function()
+            local c = Combat.new(arena(8, 8, 1), { unit("character_knight", 4, 4) }, {})
+            local u = c.units[1]
+            local map = Combat.reachable(c, u)
+            local list = Combat.reachableList(c, u, map)
+
+            local count = 0
+            for _ in pairs(map) do count = count + 1 end
+            assert(#list == count, "the list should hold every reachable tile (" .. #list .. " vs " .. count .. ")")
+            assert(#list > 4, "a knight in the open should reach a good few tiles")
+
+            for i = 2, #list do
+                local a, b = list[i - 1], list[i]
+                assert(a.y < b.y or (a.y == b.y and a.x < b.x),
+                    "tiles should ascend by row then column, but " .. a.x .. "," .. a.y
+                        .. " preceded " .. b.x .. "," .. b.y)
+            end
+        end,
+    },
+    {
+        -- Same kind of check, same limits: it pins that the answer holds still, not that it is
+        -- pinned to the BOARD's order. fromX/fromY says which tile the blow is thrown from, which
+        -- decides field bonuses, traps and overwatch, so drift here moves the fight.
+        name = "an equal-cost tie over where to strike from is settled the same way every time",
+        fn = function()
+            local answers = {}
+            for i = 1, 12 do
+                local c = Combat.new(arena(8, 8, 1), { unit("character_knight", 4, 4) }, {})
+                local reach = Combat.attackReach(c, c.units[1], 1)
+                local cell = reach["4,6"] -- the reachable/threat sets are keyed "x,y"
+                assert(cell, "a knight should be able to threaten 4,6 after moving")
+                answers[i] = cell.fromX .. "," .. cell.fromY
+            end
+            for i = 2, #answers do
+                assert(answers[i] == answers[1],
+                    "the striking tile drifted between runs: " .. answers[1] .. " then " .. answers[i])
+            end
+        end,
+    },
+    {
+        -- A stability check, not an order check -- see the structural case below for why. Repeating
+        -- in one process cannot expose key-order dependence (a build hashes the same strings the
+        -- same way every time), but it does catch nondeterminism that varies run to run: a stray
+        -- math.random, a clock read, anything reaching outside the seed.
+        name = "an approach with nothing to separate the candidate tiles still lands somewhere fixed",
+        fn = function()
+            local plans = {}
+            for i = 1, 12 do
+                local knight = Character.instantiate("character_knight")
+                knight.traits = {}
+                knight.inventory[1] = Item.instantiate("weapon_iron_sword")
+                local bandit = Character.instantiate("character_bandit")
+                bandit.traits = {}
+
+                local c = Combat.new(arena(8, 8, 1),
+                    { { char = knight, x = 4, y = 8 } }, { { char = bandit, x = 4, y = 1 } })
+                local plan = AI.plan(c, c.units[2])
+                plans[i] = plan.move and (plan.move.x .. "," .. plan.move.y) or "stay"
+            end
+            for i = 2, #plans do
+                assert(plans[i] == plans[1],
+                    "the same board planned two different approaches: " .. plans[1] .. " then " .. plans[i])
+            end
+        end,
+    },
+    {
+        -- The real guard, and the reason it is written against the source rather than the behaviour:
+        -- key-order dependence CANNOT be observed from inside one process. A build hashes "4,6" to
+        -- the same bucket every time, so a scan that reads pairs(Combat.reachable(...)) answers
+        -- identically all day here and can still disagree with the same code on another machine --
+        -- which is exactly the bug that would surface as a mid-duel desync and nothing earlier.
+        --
+        -- So the invariant is stated where it can be checked: nobody iterates the reachable set with
+        -- pairs. Use Combat.reachableList when the order can decide anything; index the map when you
+        -- only want a lookup.
+        name = "nothing scans the reachable set in key order",
+        fn = function()
+            local offenders = {}
+            for _, path in ipairs({ "models/combat.lua", "models/ai.lua", "states/battle.lua" }) do
+                local src = assert(love.filesystem.read(path), "should be able to read " .. path)
+                local line = 0
+                for text in (src .. "\n"):gmatch("(.-)\r?\n") do
+                    line = line + 1
+                    if text:find("pairs%s*%(%s*Combat%.reachable%s*%(")
+                        or text:find("pairs%s*%(%s*reachable%s*%)") then
+                        offenders[#offenders + 1] = path .. ":" .. line .. " -> " .. text:gsub("^%s+", "")
+                    end
+                end
+            end
+            assert(#offenders == 0,
+                "reachable sets must be walked through Combat.reachableList:\n  "
+                    .. table.concat(offenders, "\n  "))
         end,
     },
 }

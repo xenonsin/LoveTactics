@@ -652,7 +652,9 @@ local function fallbackMove(ctx, mode)
     -- not skirmishing, it is abstaining. Kiting is expressed in the EXPOSURE weight when it HAS a
     -- shot; the walk itself is an ordinary approach.
     local best
-    for _, node in pairs(Combat.reachable(combat, unit)) do
+    -- Board order, not key order: distance, hazard bias and steps can all tie at once, and then the
+    -- scan's first-wins is the whole decision. See Combat.reachableList.
+    for _, node in ipairs(Combat.reachableList(combat, unit)) do
         if not (mode == "leash" and manhattan(node.x, node.y, anchorX, anchorY) > leash) then
             local d = manhattan(node.x, node.y, goal.x, goal.y)
             local bias = Hazard.tileBias(combat, node.x, node.y, unit.side)
@@ -667,7 +669,7 @@ local function fallbackMove(ctx, mode)
     -- Off the leash and unable to get closer to anything: go home.
     if mode == "leash" and manhattan(unit.x, unit.y, anchorX, anchorY) > leash then
         local home
-        for _, node in pairs(Combat.reachable(combat, unit)) do
+        for _, node in ipairs(Combat.reachableList(combat, unit)) do
             local d = manhattan(node.x, node.y, anchorX, anchorY)
             if not home or d < home.d then home = { x = node.x, y = node.y, d = d } end
         end
@@ -708,7 +710,7 @@ function AI.preempt(combat, unit)
         end
         local minRange = Combat.abilityMinRange(ab)
         local best
-        for _, node in pairs(Combat.reachable(combat, unit)) do
+        for _, node in ipairs(Combat.reachableList(combat, unit)) do
             local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
                 + Combat.adjacencyRangeBonus(unit.char, weapon)
             local d = manhattan(node.x, node.y, tt.x, tt.y)
@@ -726,7 +728,7 @@ function AI.preempt(combat, unit)
 
     -- Out of reach even after moving: shamble toward the taunter.
     local dest
-    for _, node in pairs(Combat.reachable(combat, unit)) do
+    for _, node in ipairs(Combat.reachableList(combat, unit)) do
         local d = manhattan(node.x, node.y, tt.x, tt.y)
         if not dest or d < dest.dist or (d == dest.dist and node.steps < dest.steps) then
             dest = { x = node.x, y = node.y, dist = d, steps = node.steps }
@@ -953,7 +955,7 @@ function AI.plan(combat, unit)
     -- Stand tiles: always where I am, plus everywhere I could walk to unless the posture is rooted.
     local tiles = { { x = unit.x, y = unit.y, steps = 0 } }
     if not posture.rooted then
-        for _, node in pairs(Combat.reachable(combat, unit)) do
+        for _, node in ipairs(Combat.reachableList(combat, unit)) do
             tiles[#tiles + 1] = { x = node.x, y = node.y, steps = node.steps }
         end
     end
@@ -1007,13 +1009,23 @@ function AI.plan(combat, unit)
                     -- Ties are broken toward standing still, then by board position, so that an
                     -- otherwise even choice is made the same way every run. A comparator that left
                     -- ties genuinely unordered would make this module's tests flap.
+                    --
+                    -- The item is part of that ordering and not an afterthought: two candidates can
+                    -- agree on tile, target and score and still be different weapons ("hit him from
+                    -- here" with either of two swords that happen to price the same). Leaving those
+                    -- level would hand the choice to table.sort's treatment of equal elements, and
+                    -- the unit would draw a different blade depending on what order the pool was
+                    -- built in -- unnoticeable in one process, and a disagreement between two.
                     local function better(a, b)
                         if a.score ~= b.score then return a.score > b.score end
                         if a.steps ~= b.steps then return a.steps < b.steps end
                         if a.x ~= b.x then return a.x < b.x end
                         if a.y ~= b.y then return a.y < b.y end
                         if a.tx ~= b.tx then return a.tx < b.tx end
-                        return a.ty < b.ty
+                        if a.ty ~= b.ty then return a.ty < b.ty end
+                        local ai = (a.item and a.item.id) or ""
+                        local bi = (b.item and b.item.id) or ""
+                        return ai < bi
                     end
                     table.sort(pool, better)
 

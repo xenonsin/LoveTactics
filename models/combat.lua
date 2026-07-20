@@ -1508,6 +1508,29 @@ function Combat.reachable(combat, unit)
     return out
 end
 
+-- The reachable set as a LIST in fixed board order (top-left to bottom-right), for the callers that
+-- SCAN it hunting a best tile.
+--
+-- Those scans keep the first candidate on a tie ("closest, then fewest steps" leaves two mirror
+-- tiles genuinely even, which on a symmetric board is ordinary rather than rare), so whatever order
+-- they are handed IS the tie-break. pairs() over "x,y" keys gives an order that holds still within
+-- one build and is promised by nothing across two -- so the same unit, in the same position, could
+-- walk somewhere else on another machine. Iterate this wherever the order can decide anything;
+-- index the map directly when all you want is a lookup.
+--
+-- Pass `reachable` to reuse a set already computed rather than walking the graph twice.
+function Combat.reachableList(combat, unit, reachable)
+    local out = {}
+    for _, node in pairs(reachable or Combat.reachable(combat, unit)) do
+        out[#out + 1] = node
+    end
+    table.sort(out, function(a, b)
+        if a.y ~= b.y then return a.y < b.y end
+        return a.x < b.x
+    end)
+    return out
+end
+
 -- Every cell a unit could strike THIS turn with a `range`-reach weapon: for the origin tile
 -- and each tile it can move to, the Manhattan diamond of radius `range`, clamped to the arena.
 -- Returns `{ [key] = { x, y, fromX, fromY, moveCost } }`, where from/moveCost is the CHEAPEST
@@ -1525,9 +1548,12 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRa
     minRange = minRange or 0
     reachable = reachable or Combat.reachable(combat, unit)
 
-    -- Stand tiles: the origin (cost 0) plus every reachable move tile.
+    -- Stand tiles: the origin (cost 0) plus every reachable move tile, in board order -- the cheapest
+    -- stand wins a cell below, and equal-cost stands are settled by that order rather than by however
+    -- the set happened to be keyed (see Combat.reachableList; `fromX/fromY` decides which tile the
+    -- blow is thrown from, so an unstable answer here moves the fight).
     local stands = { { x = unit.x, y = unit.y, cost = 0 } }
-    for _, node in pairs(reachable) do
+    for _, node in ipairs(Combat.reachableList(combat, unit, reachable)) do
         stands[#stands + 1] = { x = node.x, y = node.y, cost = node.cost }
     end
 
