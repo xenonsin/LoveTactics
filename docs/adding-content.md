@@ -589,6 +589,13 @@ extends a unit's reach by a tile. `Combat.fieldBonus(combat, x, y)` aggregates t
 range highlights, enemy planning), so a unit atop high ground both threatens and can strike one
 tile farther, and the overlay shows it.
 
+The `range` bonus is the one key that is **not** granted unconditionally: `Combat.fieldRangeBonus`
+hands it only to an ability that declares `requiresSight`. A vantage buys a longer sightline, so it
+lengthens what travels along one — an arrow, a bolt, a thrown flask — and leaves a sword, a mace and
+a spear at their own reach. (Without that gate a range-1 blade on a mountain struck two tiles away,
+through whoever stood between.) Every reader of the bonus goes through that one helper, so the gate,
+the highlights and the AI can never disagree about how far a weapon reaches.
+
 The mechanism is deliberately generic so **placed objects** (a future vantage totem, a shrine) can
 grant the same buffs: `fieldBonus` also folds in `combat.fieldObjects`, a list of
 `{ x, y, bonus = { range = 1 } }`. Drop objects into that list and any `bonus` key they carry

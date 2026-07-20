@@ -307,12 +307,12 @@ end
 
 -- Can `unit`, standing on (sx, sy), legally land `ab` / `item` on the target cell (tx, ty)? The same
 -- per-stand-tile test Combat.attackReach applies -- base range + the item's grid-adjacency bonus +
--- the stand tile's own field range bonus, clamped below by the ability's min range and gated on line
+-- the stand tile's own field range bonus (a sighted ability only), clamped below by the min range and gated on line
 -- of sight when it needs it -- pulled out so a SPECIFIC stand tile (the steered route's endpoint) can
 -- be checked, not just the cheapest one attackReach records. Combat.useItem re-validates on confirm.
 local function standCanHit(unit, ab, item, sx, sy, tx, ty)
     local r = (ab.range or 1) + Combat.adjacencyRangeBonus(unit.char, item)
-        + (Combat.fieldBonus(battle.combat, sx, sy).range or 0)
+        + Combat.fieldRangeBonus(battle.combat, ab.requiresSight, sx, sy)
     local d = math.abs(sx - tx) + math.abs(sy - ty)
     if d < Combat.abilityMinRange(ab) or d > r then return false end
     if ab.requiresSight and not Combat.hasLineOfSight(battle.combat, sx, sy, tx, ty) then return false end
@@ -714,13 +714,23 @@ end
 -- mid-fight, because an ability lesson is unteachable to someone carrying only a sword.
 --
 -- Idempotent (it checks the grid before adding), so it can run every frame from refreshView: the
--- gift lands the instant the step becomes current no matter which path advanced to it, and there is
--- no single advancement point to keep in step with. It goes to the step's ACTOR -- the unit being
--- taught -- and stays in that character's grid after the battle: the art is genuinely theirs now.
+-- gift lands as soon as it is due no matter which path advanced to the step, and there is no single
+-- advancement point to keep in step with. It goes to the step's ACTOR -- the unit being taught --
+-- and stays in that character's grid after the battle: the art is genuinely theirs now.
+--
+-- Held back until the actor actually HOLDS the turn, which is the one thing being every-frame does
+-- not give for free. A step can become current partway through somebody else's turn -- the mentor's
+-- own strike advances the lesson -- and the item would then appear in the panel mid-swing, several
+-- seconds before the hand that receives it can do anything with it, reading as a slot filling
+-- itself. Waiting costs nothing (the step is already waiting on that turn) and puts the gift where
+-- the fiction puts it: she passes it over when it is your move.
 local function grantLessonItem()
     local id = battle.tutorial and Tutorial.grant(battle.tutorial)
     if not id then return end
     local actorId = Tutorial.step(battle.tutorial).actor
+    if not (battle.current and battle.current.alive and battle.current.char.id == actorId) then
+        return
+    end
     for _, u in ipairs(battle.combat.units) do
         if u.alive and u.char.id == actorId then
             for _, held in ipairs(Character.eachItem(u.char)) do

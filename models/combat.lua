@@ -415,10 +415,30 @@ function Combat.fieldBonus(combat, x, y)
     return out
 end
 
+-- The share of a tile's `range` field bonus an ability is actually entitled to. High ground is a
+-- VANTAGE: it buys you a longer sightline, so it lengthens the things that travel along one -- an
+-- arrow, a bolt, a thrown flask, everything that already declares `requiresSight`. It does nothing
+-- for a blade. Standing on a rock does not make your arm longer, and without this gate a range-1
+-- sword on a mountain reached two tiles and stabbed straight THROUGH the ally in between, which is
+-- what sent someone looking for a range bug.
+--
+-- `requiresSight` is the gate rather than "base range > 1" on purpose: it is already the flag that
+-- means "this is a shot with a line to trace", so a reach weapon (a spear held at arm's length) is
+-- correctly left out -- its two tiles are anatomy, not trajectory.
+--
+-- One helper for all three readers of the bonus (Combat.abilityRange, Combat.attackReach, and the
+-- battle state's per-stand-tile standCanHit), because a highlight that disagreed with the gate would
+-- read as exactly the bug this fixes.
+function Combat.fieldRangeBonus(combat, requiresSight, x, y)
+    if not requiresSight then return 0 end
+    return Combat.fieldBonus(combat, x, y).range or 0
+end
+
 -- Effective range of ability `ab` for `unit` acting from tile (x, y) -- the ability's base range
--- plus any `range` field bonus that tile grants (high ground, a vantage object). Defaults to the
--- unit's current tile. The single source of truth for reach, so a positional buff extends
--- targeting, the threat/range highlights, and the enemy AI's planning alike.
+-- plus whatever `range` field bonus that tile grants a SIGHTED ability (high ground, a vantage
+-- object -- see Combat.fieldRangeBonus; a melee swing gets none of it). Defaults to the unit's
+-- current tile. The single source of truth for reach, so a positional buff extends targeting, the
+-- threat/range highlights, and the enemy AI's planning alike.
 function Combat.abilityRange(combat, unit, ab, x, y)
     local base = (ab and ab.range) or 1
     -- A "fist" item (Shadow Fist) that lengthens the bare-handed strike: add its range only when
@@ -427,7 +447,8 @@ function Combat.abilityRange(combat, unit, ab, x, y)
         and unit.char.unarmed and ab == unit.char.unarmed.activeAbility then
         base = base + unit.unarmedBonus.range
     end
-    local range = base + (Combat.fieldBonus(combat, x or unit.x, y or unit.y).range or 0)
+    local range = base + Combat.fieldRangeBonus(combat, ab and ab.requiresSight,
+        x or unit.x, y or unit.y)
     -- A range-cutting debuff (Blind) shortens the reach, but never below 1: a blinded unit is groping
     -- in the dark, not disarmed, so it can still strike an adjacent foe.
     if unit then range = range - Status.rangeMalus(unit) end
@@ -1455,8 +1476,8 @@ end
 -- One structure serves both the red default-attack (threat) highlight -- its keys, minus the
 -- move set, are the "beyond movement" band -- and click-to-attack (move to `from`, then strike).
 -- `range` is the weapon's BASE range; each stand tile's `range` field bonus (high ground, a
--- vantage object) extends the reach from that tile, matching what Combat.useItem allows once the
--- unit stands there. `reachable` defaults to Combat.reachable(combat, unit); the battle state
+-- vantage object) extends the reach from that tile FOR A SIGHTED ability only (Combat.fieldRangeBonus,
+-- which `requiresSight` gates), matching what Combat.useItem allows once the unit stands there. `reachable` defaults to Combat.reachable(combat, unit); the battle state
 -- passes its live set so a unit that has already moved only threatens from where it now stands.
 -- `requiresSight` (the default weapon's `ab.requiresSight`) drops any target cell a stand tile has
 -- no clear line to, so a bow's red reach stops at terrain cover.
@@ -1473,7 +1494,7 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRa
 
     local out = {}
     for _, s in ipairs(stands) do
-        local r = range + (Combat.fieldBonus(combat, s.x, s.y).range or 0)
+        local r = range + Combat.fieldRangeBonus(combat, requiresSight, s.x, s.y)
         for dx = -r, r do
             for dy = -r, r do
                 local d = math.abs(dx) + math.abs(dy)

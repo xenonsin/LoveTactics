@@ -139,7 +139,11 @@ local function appendTerrain(blocks, info, asHead)
     for _, stat in ipairs({ "range", "damage", "magicDamage", "defense", "magicDefense", "movement" }) do
         local amount = info.bonus and info.bonus[stat]
         if amount and amount ~= 0 then
-            blocks[#blocks + 1] = { kind = "stat", label = titleCase(stat) .. " bonus",
+            -- Reach from a vantage is a SIGHTLINE, so it lengthens shots and nothing else (see
+            -- Combat.fieldRangeBonus). Say so on the tile, or a melee player reads "+1 Range" as a
+            -- promise the swing won't keep.
+            local label = stat == "range" and "Range bonus (ranged)" or (titleCase(stat) .. " bonus")
+            blocks[#blocks + 1] = { kind = "stat", label = label,
                 value = (amount > 0 and "+" or "") .. tostring(amount),
                 valueColor = amount > 0 and { 0.55, 0.85, 0.55 } or ENEMY_COLOR }
         end

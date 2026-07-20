@@ -57,15 +57,44 @@ return {
         end,
     },
     {
-        name = "abilityRange adds the standing tile's range bonus to the ability base",
+        name = "abilityRange adds the standing tile's range bonus to a SIGHTED ability's base",
         fn = function()
             local c = Combat.new(arena(6, 1, { { x = 3, y = 1, bonus = { range = 1 } } }),
                 { unit("character_archer", 3, 1) }, {})
             local u = c.units[1]
-            local ab = { range = 3 }
+            local ab = { range = 3, requiresSight = true }
             assert(Combat.abilityRange(c, u, ab) == 4, "on high ground base 3 becomes 4")
             assert(Combat.abilityRange(c, u, ab, 1, 1) == 3, "off it the range is the plain base 3")
-            assert(Combat.abilityRange(c, u, { range = nil }) == 1 + 1, "a range-less ability defaults to 1 (+bonus)")
+            assert(Combat.abilityRange(c, u, { range = nil, requiresSight = true }) == 1 + 1,
+                "a range-less sighted ability defaults to 1 (+bonus)")
+        end,
+    },
+    {
+        -- The bug this gate exists for: a range-1 sword swung from a mountain reached two tiles and
+        -- struck a foe standing on the far side of an ally. High ground is a sightline, not a longer arm.
+        name = "high ground does NOT lengthen a melee swing (no sight, no vantage)",
+        fn = function()
+            local high = { { x = 3, y = 1, bonus = { range = 1 } } }
+            local c = Combat.new(arena(6, 1, high), { unit("character_archer", 3, 1) }, {})
+            local u = c.units[1]
+            assert(Combat.abilityRange(c, u, { range = 1 }) == 1, "a melee ability keeps its own reach")
+            assert(Combat.abilityRange(c, u, { range = 2 }) == 2, "so does a reach weapon (a spear)")
+
+            -- ...and the reach overlay agrees, so the highlight can't promise a swing the gate refuses.
+            local ar = Combat.attackReach(c, u, 1, {}, false)
+            assert(ar["2,1"] and ar["1,1"] == nil, "melee reach from high ground is still one tile")
+
+            -- The whole board case: sword-wielder on the mountain, ally between, foe two tiles off.
+            local board = Combat.new(arena(6, 1, { { x = 3, y = 1, bonus = { range = 1 } } }),
+                { unit("character_knight", 3, 1), unit("character_knight", 2, 1) },
+                { unit("character_bandit", 1, 1) })
+            local k, foe = board.units[1], board.units[3]
+            local sword = itemById(k.char, "weapon_iron_sword") or Combat.defaultAction(k.char)
+            openTurn(board, k)
+            local hp0 = foe.char.stats.health.current
+            assert(Combat.useItem(board, k, sword, foe.x, foe.y) == false,
+                "the swing is refused: the foe is two tiles off, behind an ally")
+            assert(foe.char.stats.health.current == hp0, "and nothing was dealt")
         end,
     },
     {
@@ -101,13 +130,14 @@ return {
             assert(#targets == 1 and targets[1] == c.units[2], "the +1 range brings the far foe in range")
 
             -- attackReach from the same high-ground origin (empty reachable) extends by one tile.
-            local ar = Combat.attackReach(c, mage, 3, {}, false)
+            -- requiresSight = true both traces the line AND claims the vantage (fireball is a shot).
+            local ar = Combat.attackReach(c, mage, 3, {}, true)
             assert(ar["5,1"], "reach extends to distance 4 from high ground")
             assert(ar["6,1"] == nil, "but not to distance 5")
 
             -- On plain ground the same base reach stops a tile shorter.
             local flat = Combat.new(arena(8, 1), { unit("character_mage", 1, 1) }, {})
-            local arFlat = Combat.attackReach(flat, flat.units[1], 3, {}, false)
+            local arFlat = Combat.attackReach(flat, flat.units[1], 3, {}, true)
             assert(arFlat["4,1"] and arFlat["5,1"] == nil, "flat-ground reach is the plain base 3")
         end,
     },
