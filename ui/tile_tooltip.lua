@@ -16,6 +16,7 @@ local Combat = require("models.combat")
 local Trap = require("models.trap")
 local Colors = require("ui.colors")
 local Glyphs = require("ui.glyphs")
+local PoolCallout = require("ui.pool_callout")
 
 local TileTooltip = {}
 
@@ -152,8 +153,9 @@ end
 
 -- Append a unit occupant's readout: name (as the title), side, resource pools, and combat stats.
 -- `preview` (optional, a Combat.previewAbility entry for this unit) makes the HP bar show the
--- damage/heal an aimed ability would do: a red "to be lost" segment (or green "to be gained"), with
--- the numeric label reading "cur -> after / max".
+-- damage/heal an aimed ability would do: an amber "to be lost" segment (or green "to be gained"),
+-- with the value it would settle at quoted by a floating callout pill (ui/pool_callout.lua) -- the
+-- same blueprint the acting card's pool stack uses, so one preview reads the same on both surfaces.
 local function appendUnit(blocks, unit, preview)
     local char = unit.char
     local sideCol = unit.side == "party" and PARTY_COLOR or ENEMY_COLOR
@@ -328,7 +330,9 @@ local function measureBlocks(blocks, innerW, body)
             h = h + b.lines * bodyH + 2
         elseif b.kind == "sep" then h = h + 8
         elseif b.kind == "head" then h = h + bodyH + 3
-        elseif b.kind == "bar" then h = h + bodyH + barH + 4
+        -- A previewed pool reserves a lane above its row for the callout pill, so the projection
+        -- floats in space made for it instead of over the row's own "cur / max".
+        elseif b.kind == "bar" then h = h + bodyH + barH + 4 + (b.delta and (PoolCallout.H + GLYPH_GAP) or 0)
         else h = h + bodyH + 1 end -- stat
     end
     return h + 9 -- bottom pad
@@ -385,6 +389,10 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", bx, by, w, h, 6, 6)
 
+    -- Pool projections are collected while the rows are drawn and floated after them, so a pill
+    -- always layers over the box rather than under the row below it.
+    local callouts = PoolCallout.new()
+
     local ty = by + pad
     for _, b in ipairs(blocks) do
         if b.kind == "title" then
@@ -407,6 +415,9 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             love.graphics.print(b.text, bx + pad, ty)
             ty = ty + bodyH + 3
         elseif b.kind == "bar" then
+            -- Step past the lane measureBlocks reserved for this row's callout pill (if any).
+            if b.delta then ty = ty + PoolCallout.H + GLYPH_GAP end
+            local rowTop = ty
             love.graphics.setFont(small)
             -- The pool's own mark just after its HP/MP/SP tag -- the same heart / gem / drop the turn
             -- strip and the cost badges use, tinted like the label rather than the bar so the row
@@ -418,14 +429,12 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
                 glyph(bx + pad + small:getWidth(b.label) + GLYPH_GAP, ty + 2,
                     BAR_GLYPH_W, bodyH - 4, MUTED[1], MUTED[2], MUTED[3], 1)
             end
-            -- Value text: plain "cur / max", or "cur -> after / max" when a preview delta applies.
-            -- `b.max` is the ceiling (max less anything reserved); a reservation appends its size.
+            -- Value text stays "cur / max" no matter what is aimed: the projection is quoted by the
+            -- floating callout instead, so the numbers under the cursor hold still while the aim
+            -- moves. `b.max` is the ceiling (max less anything reserved); a reservation appends its
+            -- size.
             local curN = math.floor(b.cur + 0.5)
             local valueText = curN .. " / " .. b.max
-            if b.delta then
-                local after = math.max(0, math.min(b.max, b.cur + b.delta))
-                valueText = curN .. " -> " .. math.floor(after + 0.5) .. " / " .. b.max
-            end
             if b.reserved then valueText = valueText .. " (" .. b.reserved .. " res.)" end
             love.graphics.setColor(VALUE[1], VALUE[2], VALUE[3], 1)
             love.graphics.printf(valueText, bx + pad, ty, innerW, "right")
@@ -448,6 +457,15 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
                 -- lost slice can't be red -- an enemy's HP bar is red, and red-on-red reads as nothing.
                 local afterVal = math.max(0, math.min(b.max, b.cur + b.delta))
                 local afterRatio = math.max(0, math.min(1, afterVal / scale))
+                -- Queue the projection for the floating pass: the same pill the acting card's pool
+                -- stack wears (ui/pool_callout.lua), anchored on the edge the pending slice ends at.
+                callouts:add({
+                    anchorX = bx + pad + innerW * afterRatio, anchorY = barY, barH = barH,
+                    aboveY = rowTop,
+                    key = b.stat, text = tostring(math.floor(afterVal + 0.5)),
+                    color = (b.delta > 0 and Colors.HEALING)
+                        or (b.lethal and Colors.LETHAL) or Colors.PENDING,
+                })
                 if b.delta < 0 then
                     local loseCol = b.lethal and Colors.LETHAL or Colors.PENDING
                     love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
@@ -494,6 +512,9 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             ty = ty + bodyH + 1
         end
     end
+
+    -- Clamped to the box's inner edges, so a pill on a nearly-full pool can't hang off the tooltip.
+    callouts:draw(bx + 6, bx + w - 6)
 
     love.graphics.setColor(1, 1, 1)
     -- Report the drawn box so the caller can anchor a companion panel (the action preview) to it.

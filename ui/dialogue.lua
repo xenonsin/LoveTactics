@@ -324,15 +324,22 @@ function Dialogue:drawPortrait(member, active)
     end
 end
 
--- The over-scene speaker's bust, standing at the LEFT end of the text box and rising over its top
+-- Left edge of the over-scene bust's column. Everything else in the box (the line, the name plate,
+-- the footer hints, the choice list) stops short of it, so one place decides where that column is.
+function Dialogue:sideBustLeft()
+    return self.boxX + self.boxW - SIDE_PAD - SIDE_PORTRAIT_W
+end
+
+-- The over-scene speaker's bust, standing at the RIGHT end of the text box and rising over its top
 -- edge, visual-novel style -- the same framing as the in-battle mentor panel (ui/tutorial_prompt.lua),
--- mirrored to the left so it sits under the name plate rather than across the box from it.
+-- and the side Fire Emblem puts its speaker on: the line reads out from the left margin toward the
+-- face, instead of the eye having to jump the portrait to reach the first word.
 --
 -- Bottom-anchored and drawn IN FRONT of the box: behind it the opaque fill swallows everything but a
 -- sliver of head. Real art gets the full height; the letter fallback is held inside the box instead,
 -- because a blank rectangle overflowing the panel reads as a stray box, not as someone leaning in.
 function Dialogue:drawSideBust(member)
-    local cx = self.boxX + SIDE_PAD + SIDE_PORTRAIT_W / 2
+    local cx = self:sideBustLeft() + SIDE_PORTRAIT_W / 2
     local baseY = self.boxY + self.boxH - 8
     local image = member.image
     if type(image) == "userdata" then
@@ -408,11 +415,12 @@ function Dialogue:draw()
     if speakerName then
         love.graphics.setFont(self.nameFont)
         local plateW = self.nameFont:getWidth(speakerName) + 36
-        -- Over a live scene the plate is pinned to the LEFT end of the box, over the side bust it
+        -- Over a live scene the plate is pinned to the RIGHT end of the box, over the side bust it
         -- names -- there is no portrait slot out on the screen for it to point at.
         local plateX
         if self.overScene then
-            plateX = self.boxX + 22
+            plateX = self:sideBustLeft() + SIDE_PORTRAIT_W / 2 - plateW / 2
+            plateX = math.min(plateX, self.boxX + self.boxW - plateW - 6)
         else
             plateX = (activeMember and activeMember.centerX or self.boxX + 120) - plateW / 2
             plateX = math.max(self.boxX, math.min(plateX, self.boxX + self.boxW - plateW))
@@ -433,9 +441,8 @@ function Dialogue:draw()
     love.graphics.setColor(0.9, 0.9, 0.94)
     local textX = self.boxX + 28
     local textW = self.boxW - 56
-    if self.overScene then -- clear the side bust standing at the left end
-        textX = self.boxX + SIDE_PAD * 2 + SIDE_PORTRAIT_W
-        textW = self.boxX + self.boxW - 28 - textX
+    if self.overScene then -- stop short of the side bust standing at the right end
+        textW = self:sideBustLeft() - SIDE_PAD - textX
     end
     love.graphics.printf(shown, textX, self.boxY + 22, textW, "left")
 
@@ -447,7 +454,8 @@ function Dialogue:draw()
         love.graphics.setFont(self.choiceFont)
         local cw = 360
         local ch = 34
-        local cx = self.boxX + self.boxW - cw - 24
+        local right = self.overScene and (self:sideBustLeft() - SIDE_PAD) or (self.boxX + self.boxW - 24)
+        local cx = right - cw
         local startY = self.boxY - 12 - #choices * (ch + 8)
         for i, choice in ipairs(choices) do
             local cy = startY + (i - 1) * (ch + 8)
@@ -473,7 +481,9 @@ function Dialogue:draw()
             and { { glyph = "A", label = "Advance" }, { glyph = "B", label = "Skip" } }
             or { { glyph = "Click", label = "Advance" }, { glyph = "Esc", label = "Skip" } }
     end
-    ButtonPrompt.draw(segs, self.boxX, self.boxY + self.boxH - 26, self.boxW - 24, { align = "right" })
+    -- Right-aligned in the box, but pulled in ahead of the side bust when one stands at that end.
+    local hintW = self.overScene and (self:sideBustLeft() - SIDE_PAD - self.boxX) or (self.boxW - 24)
+    ButtonPrompt.draw(segs, self.boxX, self.boxY + self.boxH - 26, hintW, { align = "right" })
 
     love.graphics.setColor(1, 1, 1)
 end
