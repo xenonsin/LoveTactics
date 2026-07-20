@@ -21,6 +21,12 @@ function love.load(args)
     end
 
     Scale.resize(love.graphics.getDimensions())
+    if args and args[1] == "shot" then
+        love.filesystem.setIdentity("lovetactics_verify")
+        print("SAVEDIR: " .. love.filesystem.getSaveDirectory())
+        State.switch(require("states.debug_editor"))
+        return
+    end
     State.switch(require("states.menu"))
 end
 
@@ -164,6 +170,26 @@ love.gamepadaxis = function(joystick, axis, value)
     if Conversation.active then return end
     local state = State.current
     if state and state.gamepadaxis then return state.gamepadaxis(joystick, axis, value) end
+end
+
+do
+    local baseDraw, frame = love.draw, 0
+    love.draw = function()
+        baseDraw()
+        if not love.filesystem.getIdentity():match("verify") then return end
+        frame = frame + 1
+        if frame == 2 then
+            local ed = require("states.debug_editor")
+            ed.mousepressed(913, 171, 1)  -- Type: weapon
+            ed.mousepressed(973, 171, 1)  -- Type: armor
+            ed.mousepressed(1149, 195, 1) -- Class: mage
+            ed.mousemoved(1149, 195, 0, 0)
+        elseif frame == 4 then
+            love.graphics.captureScreenshot("shot.png")
+        elseif frame == 8 then
+            love.event.quit(0)
+        end
+    end
 end
 
 forwardMouse("mousepressed")

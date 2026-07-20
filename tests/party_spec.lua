@@ -229,4 +229,44 @@ return {
             assert(next(Party.equipDelta(nil)) == nil, "nil item -> empty")
         end,
     },
+    {
+        -- `rewardCharacter` is how a class line's main companion is earned (docs/story.md, "The other
+        -- seven"). Before it existed, Player.recruit had exactly two callers, both hard-coded in
+        -- states/prologue.lua, and no quest could grant anybody.
+        name = "a quest's rewardCharacter recruits, and reports who joined",
+        fn = function()
+            local Quest = require("models.quest")
+            local player = Player.new()
+            player.completedQuests = {}
+            local before = #player.roster
+
+            local reward = Quest.complete(player, {
+                id = "test_recruit_quest", rewardGold = 0,
+                rewardCharacter = "character_saber",
+            })
+            assert(reward, "a fresh quest pays out")
+            assert(reward.recruited, "the summary must name who joined, for the reward panel")
+            assert(reward.recruited.id == "character_saber", "the right companion joined")
+            assert(#player.roster == before + 1, "the roster grew by exactly one")
+        end,
+    },
+    {
+        -- A repeatable quest skips Quest.complete's double-payout guard, so the duplicate refusal has
+        -- to hold inside Player.recruit or a grind quest mints a second copy of a companion.
+        name = "a companion already owned is not recruited twice",
+        fn = function()
+            local Quest = require("models.quest")
+            local player = Player.new()
+            player.completedQuests = {}
+            Player.recruit(player, "character_saber")
+            local before = #player.roster
+
+            local reward = Quest.complete(player, {
+                id = "test_repeat_recruit", repeatable = true, rewardGold = 0,
+                rewardCharacter = "character_saber",
+            })
+            assert(reward.recruited == nil, "an already-owned companion reports no recruit")
+            assert(#player.roster == before, "and the roster does not grow")
+        end,
+    },
 }

@@ -36,12 +36,13 @@ local player
 local panel, nameEntry
 local pendingRename -- the character a rename will land on, nil when naming a NEW character
 
--- The stash filters the panel draws. `index` is the panel's to move; the option lists are ours.
+-- The stash filters the panel draws. `selected` is the panel's to toggle; the option lists are ours.
 local filters
 
-local function currentFilterValue(i)
-    local f = filters[i]
-    return f.options[f.index]
+-- An empty selection is "no restriction", so an untouched strip shows the whole catalog.
+local function accepts(i, value)
+    local selected = filters[i].selected
+    return next(selected) == nil or (value ~= nil and selected[value]) or false
 end
 
 -- Rebuild the catalog in place -- SAME table identity, because PoolGrid holds a reference to it
@@ -52,13 +53,9 @@ end
 -- infinite: give a sword away and it is back before you look for it again. Sorted by id so the grid
 -- does not reshuffle under the cursor between restocks.
 local function restock()
-    local wantType, wantClass = currentFilterValue(1), currentFilterValue(2)
-
     local ids = {}
     for id, def in pairs(Item.defs) do
-        local typeOk = (wantType == "All") or (def.type == wantType)
-        local classOk = (wantClass == "All") or (Item.classOf(def) == wantClass)
-        if typeOk and classOk then ids[#ids + 1] = id end
+        if accepts(1, def.type) and accepts(2, Item.classOf(def)) then ids[#ids + 1] = id end
     end
     table.sort(ids)
 
@@ -170,17 +167,13 @@ function editor.enter()
         player.roster[#player.roster + 1] = Character.instantiate(id)
     end
 
-    local types = { "All", "weapon", "armor", "consumable", "ability", "utility" }
-    local classes = { "All" }
-    do
-        local names = {}
-        for c in pairs(Item.CLASSES) do names[#names + 1] = c end
-        table.sort(names)
-        for _, c in ipairs(names) do classes[#classes + 1] = c end
-    end
+    local types = { "weapon", "armor", "consumable", "ability", "utility" }
+    local classes = {}
+    for c in pairs(Item.CLASSES) do classes[#classes + 1] = c end
+    table.sort(classes)
     filters = {
-        { label = "Type", options = types, index = 1 },
-        { label = "Class", options = classes, index = 1 },
+        { label = "Type", options = types, selected = {} },
+        { label = "Class", options = classes, selected = {} },
     }
 
     editor.status, editor.statusTimer = nil, 0

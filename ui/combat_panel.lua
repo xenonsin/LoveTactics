@@ -48,6 +48,16 @@ local COLS, ROWS = 3, 3
 -- height (see drawBadgeAt). Named because badgeSize measures a badge the same way, for a caller that
 -- must place one itself.
 local BADGE_PAD_X, BADGE_ICON_W, BADGE_GAP, BADGE_H = 5, 9, 3, 18
+-- A pool-preview CALLOUT: the projected change to one bar, quoted as a floating pill that points at
+-- the level the bar will settle at. Replaces the old inline "cur -> after / max" arrow text, which
+-- made the value column jump about every time the aim moved. The pill floats over the card in its own
+-- pass (drawPoolCallouts), so two pools changing at once stack clear of each other instead of
+-- colliding inside the 13px row pitch the bars are packed at.
+local CALLOUT_H = 16
+local CALLOUT_PAD_X = 5
+local CALLOUT_ICON_W = 7
+local CALLOUT_GAP = 3   -- clearance kept between the pill and the bar, and between two stacked pills
+local CALLOUT_TIP = 5   -- height of the caret sitting on the bar at the projected level
 local SCROLL_STEP = 1 -- turn-strip entries per wheel notch (entries are tall; one reads best)
 local CARD_SPEED = 12 -- exponential ease rate of a card sliding to its new slot as the order reshuffles
 local PROM_SPEED = 14 -- ease rate of a card's prominence (slim <-> tall current) as the turn passes
@@ -211,6 +221,7 @@ function CombatPanel.new(combat, opts)
     self.hoverIndex = nil
     self.hoverUnit = nil
     self.scroll = 0 -- turn-strip entries scrolled off the bottom (0 = the actor is at the bottom)
+    self.poolCallouts = {} -- pool projections queued by drawPoolBars, floated after the cards
     -- Turn-strip animation (fed by update): each card's eased Y so it slides to its new slot as the
     -- order reshuffles, plus the bookkeeping to fade a just-fallen unit's card out in place.
     self.cardY = {}       -- unit -> eased Y
@@ -564,6 +575,7 @@ function CombatPanel:entryLayout()
 end
 
 function CombatPanel:drawTurnStrip()
+    self.poolCallouts = {} -- refilled by drawPoolBars below, then floated over the cards at the end
     self:drawActivePanel() -- the frame tying the acting card to the grid, drawn behind the cards
     for _, e in ipairs(self:entryLayout()) do
         local y = e.y
@@ -586,6 +598,7 @@ function CombatPanel:drawTurnStrip()
         love.graphics.rectangle("fill", self.x + 8, dc.y, self.w - 16, dc.h, 6, 6)
     end
     self:drawScrollBar()
+    self:drawPoolCallouts() -- last, so a projection floats clear over the card it belongs to
 end
 
 -- Draw one turn-strip card at (its left is self.x + 8) row-top `y`, applying the struck unit's hit
@@ -746,9 +759,10 @@ function CombatPanel:drawInitiative(entry, ex, ew, ey)
 end
 
 -- The acting unit's full pool stack (HP/MP/SP, each max>0), stacked from topY: a colour-tinted
--- HP/MP/SP tag, the bar, and the value ("cur / max", or "cur -> after / max" under a preview) in a
--- shared right-hand column so the three rows align. This detail is the current card's alone -- slim
--- cards show just a thin HP bar -- so the numbers only appear where an action budget is being read.
+-- HP/MP/SP tag, the bar, and the value ("cur / max") in a shared right-hand column so the three rows
+-- align. This detail is the current card's alone -- slim cards show just a thin HP bar -- so the
+-- numbers only appear where an action budget is being read. What an aimed action would leave behind
+-- is quoted separately, by the floating callouts (drawPoolCallouts).
 function CombatPanel:drawPoolBars(unit, rx, rw, topY, alpha)
     alpha = alpha or 1
     local pv = self.view.preview and self.view.preview[unit]
@@ -769,16 +783,14 @@ function CombatPanel:drawPoolBars(unit, rx, rw, topY, alpha)
             -- unreservedMax folds in char.maxBonus; adding the reserved amount back recovers the full max.
             local reserved = Combat.reservedAmount(unit.char, res.key)
             local effMax = Combat.unreservedMax(unit.char, res.key) + reserved
+            -- The value column stays "cur / max" no matter what is aimed: the projection is quoted by
+            -- the floating callout instead, so the numbers under the cursor hold still.
             local curN, maxN = math.floor(stat.current + 0.5), math.floor(effMax + 0.5)
             local text = curN .. " / " .. maxN
-            if delta ~= 0 then
-                local after = math.max(0, math.min(effMax, stat.current + delta))
-                text = curN .. " -> " .. math.floor(after + 0.5) .. " / " .. maxN
-            end
             -- The HP bar fill drains from the lagging shown value; the numeric label stays the true
             -- current so it reads the real number the instant a hit lands.
             local barCur = res.key == "health" and self:shownHealth(unit) or stat.current
-            rows[#rows + 1] = { res = res, cur = barCur, effMax = effMax,
+            rows[#rows + 1] = { res = res, cur = barCur, trueCur = stat.current, effMax = effMax,
                 delta = delta, lethal = lethal, reserved = reserved, text = text }
         end
     end
@@ -804,10 +816,113 @@ function CombatPanel:drawPoolBars(unit, rx, rw, topY, alpha)
         local barX = rx + labelW + glyphW + glyphGap
         local barW = rw - (barX - rx) - valueColW - 6
         drawResourceBar(barX, rowY, barW, barH, r.cur, r.effMax, c, r.delta, r.lethal, r.reserved, alpha)
+        -- Queue this row's projection for the floating pass. Anchored at the level the bar will
+        -- SETTLE at (the after ratio), which is exactly the edge the pending slice ends on, so the
+        -- pill points at the line the fill is about to move to.
+        if r.delta ~= 0 and r.effMax > 0 and alpha > 0.5 then
+            local afterRatio = math.max(0, math.min(1, (r.cur + r.delta) / r.effMax))
+            -- The pill quotes the pool's NEW value, not the size of the change: what a player decides
+            -- on is what they will be left with. The direction is carried by the colour and by which
+            -- side of the fill the tick lands on, so the number itself needn't be signed. Read off the
+            -- true current, never the lagging bar value, so it never quotes a figure mid-drain.
+            local after = math.max(0, math.min(r.effMax, r.trueCur + r.delta))
+            self.poolCallouts[#self.poolCallouts + 1] = {
+                anchorX = barX + barW * afterRatio, anchorY = rowY, barH = barH,
+                key = r.res.key, alpha = alpha,
+                text = tostring(math.floor(after + 0.5)),
+                color = (r.delta > 0 and Colors.HEALING) or (r.lethal and Colors.LETHAL) or Colors.PENDING,
+            }
+        end
         love.graphics.setColor(0.94, 0.95, 0.98, alpha)
         love.graphics.printf(r.text, rx + rw - valueColW, rowY + (barH - self.smallFont:getHeight()) / 2,
             valueColW, "right")
     end
+end
+
+-- The box a callout's pill fills, so the placement pass can test it for overlap before drawing it.
+function CombatPanel:calloutSize(text)
+    return CALLOUT_PAD_X * 2 + CALLOUT_ICON_W + 3 + self.smallFont:getWidth(text), CALLOUT_H
+end
+
+-- Draw every queued pool projection as a floating pill, after the cards so it layers over them.
+--
+-- Preferred spot is directly above its bar, centred on the level the bar will settle at. Two pools
+-- changing at once (a spell that costs mana AND heals) would collide there -- the rows are only 13px
+-- apart while a pill is 16px tall -- so each pill is pushed UP until it clears every one already
+-- placed, and a leader runs back down to its own bar. That way the pills never smear over each other
+-- and each still says which bar it belongs to.
+function CombatPanel:drawPoolCallouts()
+    local list = self.poolCallouts
+    if #list == 0 then return end
+    love.graphics.setFont(self.smallFont)
+    -- Bottom-most bar first: the lowest row keeps the spot nearest its own bar, and rows above it
+    -- stack further up, so the leaders never cross.
+    table.sort(list, function(a, b) return a.anchorY > b.anchorY end)
+    local clampL, clampR = self.x + 10, self.x + self.w - 10
+    local placed = {}
+    for _, c in ipairs(list) do
+        local w, h = self:calloutSize(c.text)
+        local x = math.max(clampL, math.min(c.anchorX - w / 2, clampR - w))
+        local y = c.anchorY - CALLOUT_TIP - CALLOUT_GAP - h
+        local moved = true
+        while moved do
+            moved = false
+            for _, p in ipairs(placed) do
+                if x < p.x + p.w + CALLOUT_GAP and p.x < x + w + CALLOUT_GAP
+                    and y < p.y + p.h + CALLOUT_GAP and p.y < y + h + CALLOUT_GAP then
+                    y = p.y - CALLOUT_GAP - h
+                    moved = true
+                end
+            end
+        end
+        placed[#placed + 1] = { x = x, y = y, w = w, h = h, c = c }
+    end
+    -- Every marker and leader first, then every pill: a pill pushed high has to reach past the pills
+    -- below it to get to its bar, and that leader must pass BEHIND them rather than ruling a line
+    -- across their faces.
+    for _, p in ipairs(placed) do self:drawCalloutMark(p.x, p.y, p.w, p.h, p.c) end
+    for _, p in ipairs(placed) do self:drawCalloutPill(p.x, p.y, p.w, p.h, p.c) end
+end
+
+-- A callout's marker: the tick sitting on the bar at the projected level, plus the leader running up
+-- to wherever the pill ended up.
+function CombatPanel:drawCalloutMark(x, y, w, h, c)
+    local col, a = c.color, c.alpha
+    local ax, ay = c.anchorX, c.anchorY
+    -- The leader attaches at the point nearest the anchor, so a pill clamped to the card edge still
+    -- leans toward the bar level it speaks for rather than pointing off into space.
+    local sx = math.max(x + 5, math.min(ax, x + w - 5))
+
+    -- The mark runs THROUGH the bar, not just up to it: the rows are packed 13px apart, so a caret
+    -- resting in the 4px gap above a bar sits as close to the bar overhead as to its own. A tick
+    -- cutting the full bar height can only belong to the bar it cuts.
+    --
+    -- Laid down over a dark halo first, because the tick lands exactly on the boundary of the slice
+    -- it marks -- and a PENDING slice is white, the same white the tick would otherwise be. Without
+    -- the halo the one mark that matters most disappears into the very thing it points at.
+    love.graphics.setColor(0.04, 0.05, 0.08, 0.85 * a)
+    love.graphics.setLineWidth(3)
+    love.graphics.line(ax, ay - CALLOUT_TIP, ax, ay + c.barH)
+    love.graphics.setColor(col[1], col[2], col[3], 0.9 * a)
+    love.graphics.setLineWidth(1)
+    love.graphics.line(ax, ay, ax, ay + c.barH)
+    love.graphics.polygon("fill", ax, ay, ax - 4, ay - CALLOUT_TIP, ax + 4, ay - CALLOUT_TIP)
+    love.graphics.line(ax, ay - CALLOUT_TIP, sx, y + h)
+end
+
+-- The pill itself: the pool's own glyph (the same mark the bar and the cost badges wear) and the
+-- signed amount, tinted by what the change IS -- white pending, amber lethal, green healing.
+function CombatPanel:drawCalloutPill(x, y, w, h, c)
+    local col, a = c.color, c.alpha
+    love.graphics.setColor(0.06, 0.07, 0.10, 0.92 * a)
+    love.graphics.rectangle("fill", x, y, w, h, 4, 4)
+    love.graphics.setColor(col[1], col[2], col[3], 0.75 * a)
+    love.graphics.rectangle("line", x, y, w, h, 4, 4)
+
+    local glyph = Glyphs.RESOURCE[c.key] or Glyphs.manaGem
+    glyph(x + CALLOUT_PAD_X, y + (h - 10) / 2, CALLOUT_ICON_W, 10, col[1], col[2], col[3], a)
+    love.graphics.setColor(col[1], col[2], col[3], a)
+    love.graphics.print(c.text, x + CALLOUT_PAD_X + CALLOUT_ICON_W + 3, y + 2)
 end
 
 function CombatPanel:drawEntry(entry, ey, num, h, alpha)

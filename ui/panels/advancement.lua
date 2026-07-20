@@ -115,7 +115,17 @@ function Advancement:draw()
     love.graphics.setColor(0.85, 0.88, 0.94)
     love.graphics.printf(self:rewardLine(), self.boxX + 24, self.boxY + 66, BOX_W - 48, "center")
 
-    if self.reward.rankedUp then
+    -- A companion who just joined outranks every other line on this panel: gold and standing change
+    -- what you can buy, a recruit changes who you field. Drawn above the standing line and in the
+    -- brightest colour the box uses, and the two never collide -- a quest that earns a companion is
+    -- the head of its vendor's line, so it is not also the one that ranks you up.
+    local joined = self.reward.recruited
+    if joined then
+        love.graphics.setFont(self.bodyFont)
+        love.graphics.setColor(0.6, 0.95, 0.7)
+        love.graphics.printf(tostring(joined.name or "A companion") .. " joins the company",
+            self.boxX + 24, self.boxY + 92, BOX_W - 48, "center")
+    elseif self.reward.rankedUp then
         love.graphics.setFont(self.bodyFont)
         love.graphics.setColor(0.95, 0.82, 0.4)
         love.graphics.printf("New standing: " .. tostring(self.reward.rankName),

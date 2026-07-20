@@ -87,7 +87,6 @@ local REGIONS = { "rail", "grid", "pool" }
 -- rather than another dozen `mode == "..."` tests.
 local MODE_LABEL = { loadout = "Loadout", tactics = "Tactics", stats = "Stats" }
 local MODE_H = 28
-local FILTER_H = 24
 
 -- Semantic prompt-glyph tints, kept across input modes (the glyph text changes A<->Enter, the
 -- meaning doesn't): confirm reads green, cancel/close red.
@@ -197,12 +196,7 @@ function Party.new(opts)
     -- is derived from it rather than hand-tuned -- the same reasoning as `contentY` and the tab strip.
     local poolTop = contentY + 24
     if self.filters then
-        self.filterRects = {}
-        local fw = (self.boxX + BOX_W - 24 - poolX)
-        for i in ipairs(self.filters) do
-            self.filterRects[i] = { x = poolX, y = poolTop + (i - 1) * (FILTER_H + 4), w = fw, h = FILTER_H }
-        end
-        poolTop = poolTop + #self.filters * (FILTER_H + 4) + 6
+        poolTop = self:layoutFilters(poolX, poolTop, self.boxX + BOX_W - 24 - poolX) + 6
     end
 
     self.pool = PoolGrid.new({
@@ -656,14 +650,12 @@ function Party:navigate(dc, dr)
         return
     end
     if region == "filters" then
-        -- Same shape as the editor's field column: up/down picks a filter, left/right cycles its
-        -- value. Pushing left leaves for the stash, which is what the strip filters.
-        if dc == -1 then self:setFocus("pool") return end
-        if dr ~= 0 then
-            self.filterCursor = math.max(1, math.min(#self.filters, self.filterCursor + dr))
-        elseif dc ~= 0 then
-            self:cycleFilter(self.filterCursor, dc)
-        end
+        -- The chips are a small grid of their own, so all four directions just move the cursor and
+        -- confirm toggles. Pushing left off the first chip in a row leaves for the stash, which is
+        -- what the strip filters.
+        local chip = self.filterChips[self.filterCursor]
+        if dc == -1 and chip and chip.col == 1 then self:setFocus("pool") return end
+        self:moveFilterCursor(dc, dr)
         return
     end
     if dc ~= 0 then
@@ -699,7 +691,7 @@ function Party:confirm()
         return
     end
     if self.focus == "filters" then
-        self:cycleFilter(self.filterCursor, 1)
+        self:toggleFilter(self.filterCursor)
         return
     end
     if self.focus == "rail" then
@@ -721,18 +713,72 @@ end
 -- Stash filters (optional; supplied by the host, see opts.filters)
 -- ---------------------------------------------------------------------------
 --
--- A filter is { label = "Type", options = { "All", "weapon", ... }, index = 1 }. The panel owns the
--- cursor and the cycling; the HOST owns what a filter means -- it rebuilds the backing stash list in
--- `onFilterChanged` and the pool is refreshed from it.
+-- A filter is { label = "Type", options = { "weapon", ... }, selected = {} }. Every option is its
+-- own TOGGLE chip rather than a step in a cycler: the two questions the stash asks ("which types?",
+-- "which classes?") are answered by picking a handful, and a cycler makes that a hunt through a list
+-- that only ever shows one answer at a time. `selected` is a set of option -> true; EMPTY means no
+-- restriction, so an untouched strip shows the whole stash and there is no separate "All" entry to
+-- keep in sync with the chips.
+--
+-- The panel owns the chips, the cursor, and the toggling; the HOST owns what a filter means -- it
+-- rebuilds the backing stash list in `onFilterChanged` and the pool is refreshed from it.
 --
 -- Filtering deliberately happens in that backing list rather than as a view over PoolGrid: every
 -- transfer path here indexes the stash directly (see Party:placeIntoGrid), so a pool showing a
 -- filtered subset at different indices would hand out the wrong item.
 
-function Party:cycleFilter(i, delta)
-    local filter = self.filters and self.filters[i]
-    if not filter then return end
-    filter.index = (filter.index - 1 + delta) % #filter.options + 1
+local CHIP_H = 20
+local CHIP_GAP = 4
+local CHIP_PAD = 8
+
+-- Flow every group's chips into the band, wrapping at `w`, and record the grid they landed on
+-- (row/col per chip) so keyboard and pad navigation can walk the ragged rows. Returns the y the band
+-- ends at. Each group's label sits inline at the left of its first row, so the strip stays two short
+-- blocks rather than a stack of headers eating the stash's height.
+function Party:layoutFilters(x, y, w)
+    love.graphics.setFont(self.tinyFont)
+    local labelW = 0
+    for _, filter in ipairs(self.filters) do
+        labelW = math.max(labelW, self.tinyFont:getWidth(filter.label) + 10)
+    end
+
+    self.filterLabelX = x
+    self.filterChips = {}
+    local chipX0 = x + labelW
+    local cx, cy, row, col = chipX0, y, 1, 0
+
+    for gi, filter in ipairs(self.filters) do
+        filter.selected = filter.selected or {}
+        if gi > 1 then -- each group starts its own row
+            if col > 0 then cy = cy + CHIP_H + CHIP_GAP; row = row + 1 end
+            cx, col = chipX0, 0
+        end
+        filter.labelY = cy
+        for _, option in ipairs(filter.options) do
+            local cw = self.tinyFont:getWidth(option) + CHIP_PAD * 2
+            if col > 0 and cx + cw > x + w then
+                cx, cy, col, row = chipX0, cy + CHIP_H + CHIP_GAP, 0, row + 1
+            end
+            col = col + 1
+            self.filterChips[#self.filterChips + 1] = {
+                group = gi, option = option, row = row, col = col,
+                x = cx, y = cy, w = cw, h = CHIP_H,
+            }
+            cx = cx + cw + CHIP_GAP
+        end
+    end
+
+    self.filterCursor = 1
+    return cy + CHIP_H
+end
+
+-- Flip one chip on or off. Toggling never touches the others: a stash filtered to "weapon + armor"
+-- is a normal thing to want, and reaching it must not cost a trip through a cycler.
+function Party:toggleFilter(i)
+    local chip = self.filterChips and self.filterChips[i]
+    if not chip then return end
+    local filter = self.filters[chip.group]
+    filter.selected[chip.option] = (not filter.selected[chip.option]) or nil
     self.pool:cancelPickup()
     if self.onFilterChanged then self.onFilterChanged(self.filters) end
     self:refreshStash()
@@ -740,8 +786,39 @@ function Party:cycleFilter(i, delta)
     self.pool.cursor = math.max(1, math.min(math.max(1, self.pool:count()), self.pool.cursor))
 end
 
+-- The chip nearest `chip` horizontally in row `row`, or nil if that row is off the strip. Rows are
+-- ragged (chips are label-width), so "the same column" would skip about; centre distance doesn't.
+function Party:filterChipInRow(row, chip)
+    local best, bestDist
+    local cx = chip.x + chip.w / 2
+    for _, other in ipairs(self.filterChips) do
+        if other.row == row then
+            local d = math.abs((other.x + other.w / 2) - cx)
+            if not bestDist or d < bestDist then best, bestDist = other, d end
+        end
+    end
+    return best
+end
+
+function Party:moveFilterCursor(dc, dr)
+    local chip = self.filterChips[self.filterCursor]
+    if not chip then return end
+    local target
+    if dr ~= 0 then
+        target = self:filterChipInRow(chip.row + dr, chip)
+    else
+        for _, other in ipairs(self.filterChips) do
+            if other.row == chip.row and other.col == chip.col + dc then target = other end
+        end
+    end
+    if not target then return end
+    for i, other in ipairs(self.filterChips) do
+        if other == target then self.filterCursor = i return end
+    end
+end
+
 function Party:filterIndexAt(x, y)
-    for i, r in ipairs(self.filterRects or {}) do
+    for i, r in ipairs(self.filterChips or {}) do
         if pointIn(r, x, y) then return i end
     end
     return nil
@@ -750,22 +827,37 @@ end
 function Party:drawFilters()
     if not self.filters then return end
     love.graphics.setFont(self.tinyFont)
-    for i, filter in ipairs(self.filters) do
-        local r = self.filterRects[i]
-        local active = (self.focus == "filters" and self.filterCursor == i)
-        love.graphics.setColor(active and 0.24 or 0.16, active and 0.27 or 0.17, active and 0.36 or 0.22)
-        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 4, 4)
-        love.graphics.setColor(active and 0.95 or 0.35, active and 0.85 or 0.38, active and 0.55 or 0.48)
-        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 4, 4)
+    local th = self.tinyFont:getHeight()
 
+    for _, filter in ipairs(self.filters) do
         love.graphics.setColor(0.62, 0.65, 0.74)
-        love.graphics.print(filter.label, r.x + 8, r.y + (r.h - self.tinyFont:getHeight()) / 2)
+        love.graphics.print(filter.label, self.filterLabelX, filter.labelY + (CHIP_H - th) / 2)
+    end
 
-        -- Arrows flank the value, so the strip reads as something you cycle rather than a label.
-        local value = filter.options[filter.index]
-        love.graphics.setColor(0.88, 0.90, 0.95)
-        love.graphics.printf("< " .. tostring(value) .. " >", r.x, r.y + (r.h - self.tinyFont:getHeight()) / 2,
-            r.w - 10, "right")
+    for i, chip in ipairs(self.filterChips) do
+        local on = self.filters[chip.group].selected[chip.option]
+        local cursored = (self.focus == "filters" and self.filterCursor == i)
+
+        -- On reads as a lit chip, off as a hollow one; the cursor is a separate ring, so a focused
+        -- chip still says whether it is selected.
+        if on then
+            love.graphics.setColor(0.26, 0.34, 0.50)
+        else
+            love.graphics.setColor(0.15, 0.16, 0.21)
+        end
+        love.graphics.rectangle("fill", chip.x, chip.y, chip.w, chip.h, 4, 4)
+        love.graphics.setColor(on and 0.55 or 0.30, on and 0.70 or 0.33, on and 0.92 or 0.41)
+        love.graphics.rectangle("line", chip.x, chip.y, chip.w, chip.h, 4, 4)
+
+        if cursored then
+            love.graphics.setColor(0.95, 0.85, 0.55)
+            love.graphics.setLineWidth(2)
+            love.graphics.rectangle("line", chip.x - 2, chip.y - 2, chip.w + 4, chip.h + 4, 5, 5)
+            love.graphics.setLineWidth(1)
+        end
+
+        love.graphics.setColor(on and 0.95 or 0.66, on and 0.96 or 0.68, on and 1 or 0.76)
+        love.graphics.printf(chip.option, chip.x, chip.y + (CHIP_H - th) / 2, chip.w, "center")
     end
     love.graphics.setColor(1, 1, 1)
 end
@@ -1397,10 +1489,7 @@ function Party:mousepressed(x, y, button)
     if fi then
         self:setFocus("filters")
         self.filterCursor = fi
-        -- Left half steps back, right half steps forward -- the "< value >" the strip draws is the
-        -- affordance, so both arrows have to actually be clickable.
-        local r = self.filterRects[fi]
-        self:cycleFilter(fi, (x < r.x + r.w / 2) and -1 or 1)
+        self:toggleFilter(fi)
         return
     end
 

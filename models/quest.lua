@@ -99,6 +99,12 @@ function Quest.available(player)
                 rewardRep = def.rewardRep or 0,
                 rewardPrestige = def.rewardPrestige or 0,
                 rewardItems = def.rewardItems, -- item ids granted on completion (a general's relic)
+                -- A character id who JOINS on completion. This is how a class line's main companion
+                -- is earned (docs/story.md, "The other seven": each companion is earned near the head
+                -- of their vendor's line, never behind another, so no ordering can strand the
+                -- endgame). Surfaced on the board entry so the quest can advertise it -- a companion
+                -- is the strongest reward in the game and must not arrive as a surprise.
+                rewardCharacter = def.rewardCharacter,
                 sponsor = def.sponsor,
                 sponsorName = sponsor and sponsor.name or "Unsponsored",
                 repeatable = def.repeatable,
@@ -168,6 +174,18 @@ function Quest.complete(player, quest)
         received[#received + 1] = Player.grantItem(player, itemId)
     end
 
+    -- The companion, if this quest is the one that earns them. Player.recruit instantiates a fresh
+    -- copy, levels them to the company's current prestige so a late recruit is not a liability, and
+    -- REFUSES a duplicate by returning nil -- so a repeatable quest (which skips the double-payout
+    -- guard above) can never mint a second copy of the same character.
+    --
+    -- Deliberately after the item grants: a companion who arrives holding their own signature relic
+    -- should have it in hand before any UI reads the summary.
+    local recruited
+    if quest.rewardCharacter then
+        recruited = Player.recruit(player, quest.rewardCharacter)
+    end
+
     -- Forging materials: `rewardMaterials = { material_steel_ingot = 3 }` accrues into the player's stock
     -- (models/material.lua), the raw metal the Blacksmith spends on upgrades. Guarded by the same
     -- double-payout check at the top, so a re-cleared tile can't mint a second haul.
@@ -186,6 +204,10 @@ function Quest.complete(player, quest)
         rep = rep,
         received = received, -- item instances, for the reward panel to name
         materials = materials, -- { id = count } granted, for the reward panel to name
+        -- The companion instance that just joined, or nil (including when they were already owned).
+        -- The reward panel should announce this LOUDEST -- it is the only reward that changes who
+        -- the player is fielding.
+        recruited = recruited,
         advancement = advancement, -- roster members that leveled up, for the advancement overlay
         sponsor = quest.sponsor,
         -- True when this quest pushed the player up a rank -- the moment new stock appears

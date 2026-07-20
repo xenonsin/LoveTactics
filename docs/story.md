@@ -4,8 +4,15 @@ The endgame is not bolted onto the progression loop — it *is* the progression 
 end. Each of the seven class vendors sells you gear, ranks you up, and walks you toward the sin it has
 been quietly serving the whole time. Kill all seven generals and the Gate Below opens.
 
-This document is the bible for that arc, and the template for finishing it. **Wrath is authored end to
-end; the other six are not.** Copy its shape.
+This document is the bible for that arc, and the template for finishing it.
+
+**Sloth is the reference line** — ten quests, twenty-three scenes, built. Copy its shape, and copy the
+way it was authored: premise first, then how each quest bears on the companion *and* on the sin, then
+the objective, then the unique item. Doing that caught a slot that duplicated an existing quest and a
+slot whose premise could not survive the question *"why is this a fight?"*.
+
+**Wrath is four quests of ten, and its line is soft-locked** — see *The Colosseum* below, where the
+remaining six are specified along with what Ira and Saber actually are.
 
 **Sloth is built.** All ten quests, the characters, the traits, the items and twenty-three scenes are
 on disk — see *The Bastion* below. It is the reference line, and the only one whose quests play a
@@ -365,11 +372,186 @@ slot 1 (swap places with an adjacent ally; their Wait becomes Defend), a **Greyw
 slot 5 (grid bonus scaling with adjacent allies), and one from slot 8. All carry `class = "knight"`
 with no `price` — unbuyable, and still tallying toward knight growth (see `docs/classes.md`).
 
+## The Colosseum: wrath, designed
+
+Four quests of this line ship; the other six are unwritten, and the section below is the spec. It is
+the third line worked out end to end, and it exists to prove the *vendor is quietly serving its sin*
+claim a second time in a completely different register: the Bastion serves sloth by **declining to
+notice**, and the Colosseum serves wrath by **selling tickets to it**.
+
+**The line is currently soft-locked and that is a shipping bug, not a design note.** `arena_debut`
+pays 25 reputation and `warlord_keep` pays 60 — 85 total. `blood_in_the_sand` gates at rank 3 (100)
+and `general_wrath` at rank 4 (200). There is no way to earn the fifteen points that unlock the grind
+that earns the rest. Six more quests is the fix, which is the same reason the Bastion has ten.
+
+### The league and the stables
+
+The Colosseum is a venue and a league; it is not the fighters. The real powers are the **stables** —
+houses with rosters, records, and dynasties, who put teams on the sand against each other. This is the
+Roman shape and it should stay: a *ludus* under a *lanista*, competing school against school. What a
+vendor's patronage actually buys the player is a stable's backing, which is why the shelf is the
+shelf.
+
+The player arrives with **no house**. That matters: they are the only team on the sand with nothing
+behind it, and it is the entire reason the line's companion will sign with them.
+
+### The Perennial, and what it manufactures
+
+*(Name provisional — it wants to sound like an institution a champion would be proud to wear, not a
+villain's lair.)*
+
+The reigning stable, champions for longer than anyone finds strange. Other houses recruit, buy and
+train. **This one produces.** It takes children and makes instruments, and it has been winning for a
+very long time because its product does not feel anything.
+
+That is the sin, and it is a business rather than a person: **wrath is not a woman here, it is a
+house that discovered rage outperforms morale.** Ira is not the Perennial's victim. She is its
+masterpiece.
+
+### Ira, and the one thing that ever reached her
+
+Blind from birth. Raised in the program: no fear response, no pain response, no attachment — nothing
+that could interfere with the work. She was superb, and she felt nothing about it, and that was the
+specification.
+
+Then something got through, and what got through was **anger**.
+
+Not joy, not grief, not love. The first sensation of her life was rage — overwhelming, and *hers*, and
+the only evidence ever placed in her hands that there was a person inside the instrument. **She has
+been chasing it since.** Not for revenge. Because it is the only proof she exists.
+
+**What triggered it should stay small and bureaucratic, never operatic.** A handler assigned to her
+broke protocol — talked to her, described things to her, gave her a name. The first attachment of her
+life. The stable noticed, and **reassigned them.** Not a murder. A form.
+
+She has never learned where they went, whether they are alive, or whether they think of her. Which is
+crueller than a death and is the mechanical heart of the sin: **there is no one to be paid by.** No
+grave to visit, no throat to cut, no confession that would settle it. The debt cannot be closed
+because there is no debtor, so the only thing she can still do about it is feel it — and the only way
+to feel anything is to be hit.
+
+**Her rule is that, and it is already half-built.** `data/traits/trait_wrath_rising.lua` currently
+banks a bonus `onDamaged`; it wants rewriting so damage scales as her **health falls**. The
+difference is characterisation, not tuning: the threshold for sensation is that high. She has to be
+nearly destroyed before anything reaches her. She is not most dangerous when winning — she is most
+*awake* when dying, and she goes looking for it.
+
+Her kit should also be immune to fear, charm, and pain-based effects. Not because she is strong.
+Because **nothing gets in.** The immunities are the tragedy, not the power.
+
+### The house that cannot admit what it built
+
+The Perennial does not fear Ira and does not appease her. It **schedules** her, and it cannot afford
+to say what she is, because saying it means saying what the program is.
+
+That is the vendor serving its sin, and it is uglier than the Bastion's version. The Bastion took the
+easy path about something that had already happened. The Colosseum is **still running the intake**.
+
+### Saber, the same machine answered the other way
+
+She came out of the same program, and the conditioning **failed on her**. She kept flinching, kept
+caring about the wrong things, felt everything they were trying to burn out. So she was washed out
+and put to ordinary use — a fighter, not an instrument.
+
+Which means she has spent her life being told that feeling is a defect, and her virtue is not
+temperament but **the discipline she invented to survive having emotions in a place that punished
+them.** She could not stop feeling, so she learned to hold. That is patience, earned rather than
+possessed, and it is exactly the answer Ira refused.
+
+**She escaped, and she kept fighting anyway, because she loves it.** Not the killing — the craft, the
+read, the moment. The sport was never what was wrong. She fights for whoever books her, house to
+house, a free agent of the sand.
+
+**What she stopped for.** Ordered to execute helpless people to pad a card, she put the sword down in
+front of a paying crowd — and the house had someone else finish it while she stood there. **The
+people died anyway.** Her one great moral act saved no one and cost her the card, her name, and any
+house that wanted a reliable name on a contract. She has never known whether it was courage or vanity.
+
+**Her flaw, and it is not sullenness.** She loves the thing that makes Iras. Every superb bout she
+gives the crowd is an argument that the arena is fine — she is the acceptable face of it, the free
+agent who proves you can do this cleanly. The machine that built Ira exists because the sport sells.
+She tells herself the two are separable. They are not, and the back half of the line is where she has
+to hold that.
+
+**Her relationship to Ira is recognition, not love, and they were never partners.** Saber is not
+grieving a friend; she is looking at the version of herself the process completed, and she is the only
+person in the building who understands that the thing under the sand is a *manufactured woman* rather
+than a monster.
+
+### What the line does to her
+
+Saber's whole identity is one sentence: **I do not kill people who cannot choose.**
+
+Ira cannot choose. Blind from birth, raised into numbness, handed exactly one feeling and no equipment
+for any other. In the only sense this story recognises, she is **the most helpless person in the
+building** — and Saber has to kill her anyway.
+
+The line ends by requiring her to break the rule she is built out of, and the cost is that **it is
+still right**. That is not a twist. It is a price.
+
+**The turn (slot 7) is the fact that kills Saber's hope of freeing her:** there is no third state. The
+program did not leave one. Freedom, for Ira, is a return to the numbness — she is not choosing rage
+over peace, she is choosing existence over nothing, and she has already tried the alternative for
+twenty years. Somewhere in that scene Ira is briefly reachable, and what surfaces is neither a monster
+nor a plea:
+
+> *I know what you're offering. I had it. There was no one in it.*
+
+**She must never ask to die.** That would let Saber off. She wants to keep feeling, right to the end,
+and Saber has to do it to her regardless.
+
+### Her ability, and why it is the whole line in arithmetic
+
+> **Ira scales as her own health falls. Saber scales with her target's health.**
+
+Saber hits hardest against a target at **full** health and falls off as they weaken: she ends things
+in one motion or not at all. Deliberately *not* an accumulate-by-idling design — dead turns are not
+patience, they are downtime. This is patience as a verb: pick the moment, commit, done.
+
+The two of them are **mathematically opposed on the same axis**, and every bout from the debut onward
+is teaching the player the lesson the general will examine them on. Ira wants a long trade because
+every blow wakes her up; Saber is worthless in a long trade and devastating on the opening.
+
+**Her second relic, late in the line:** one strike per battle at full value regardless of the target's
+health, **whenever she chooses**. v1 lets the arithmetic pick her moment; v2 gives her the moment.
+*Patience becomes a choice of when* — the same move as Rowan's declared ward, in a different idiom,
+with no downtime anywhere in it.
+
+She currently has **no signature item and no trait at all** (`data/characters/character_saber.lua` is
+a greatsword, a potion, and seven empty cells). Both relics are new work.
+
+### The ten slots
+
+| # | Slot | Rank | The Colosseum's ten | What it costs Saber |
+|---|---|---|---|---|
+| 1 | Introduction | 1 | **Debut on the Sand** — beat the hired veteran; she signs with the only house that isn't one | nothing yet; she is enjoying herself |
+| 2 | The recruit | 1 | the card padded with slaughter — what the house actually sells | says nothing about why she knows |
+| 3 | Complication | 1 | stable against stable, the sport at its best | the player learns why she loves it |
+| 4 | Escalation | 2 | the Perennial's roster, met as opponents | she recognises the training and won't say so |
+| 5 | The discovery | 2 | the intake — the program, not its output | admits she came out of it |
+| 6 | Grind | 2 | **Blood in the Sand** — `repeatable`; the player is on the card now | implicates them both |
+| 7 | **The turn** | 3 | Ira, briefly reachable — there is no third state | the hope dies |
+| 8 | The break | 3 | she stops deferring and names the day | second relic; patience becomes a choice |
+| 9 | The approach | 3 | the stable cornered, and what it does rather than confess | — |
+| 10 | The general | 4 | **The Unappeased** — `assassinate` | she kills someone who cannot choose |
+
+`arena_debut`, `warlord_keep`, `blood_in_the_sand` and `general_wrath` exist and map onto 1, 3-ish, 6
+and 10; the rest is new. Slot 7 needs Ira to speak **without being a fight**, and the only seam for
+antagonist dialogue is currently attached to a battle (`map.objective.opening`) — that is a small
+engine question, not a design one.
+
+### The relic
+
+**Mail of the Unappeased** already ships, carrying her rule, and needs updating alongside the trait
+rewrite. `gateHint = "beneath the sand, where the roaring was loudest"` is written and correct.
+
 ## Authoring the remaining six lines
 
 ### The line
 
-The reputation ladder (0 / 40 / 100 / 200) doubles as the chapter clock. Wrath's line, as authored:
+The reputation ladder (0 / 40 / 100 / 200) doubles as the chapter clock. Wrath's line **as currently
+on disk** — four quests, and see *The Colosseum* above for why that is a soft-lock and what the ten
+should be:
 
 1. `arena_debut` — the introduction, prestige 1
 2. `warlord_keep` — the escalation, prestige 3
