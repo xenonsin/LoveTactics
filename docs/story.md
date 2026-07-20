@@ -542,8 +542,41 @@ engine question, not a design one.
 
 ### The relic
 
-**Mail of the Unappeased** already ships, carrying her rule, and needs updating alongside the trait
-rewrite. `gateHint = "beneath the sand, where the roaring was loudest"` is written and correct.
+**Mail of the Unappeased** ships, carrying her rule, and its text tracks the trait.
+`gateHint = "beneath the sand, where the roaring was loudest"` is written and correct.
+
+### What is built, and what is not
+
+**Built:** the arithmetic on both sides — `trait_wrath_rising` (health curve + per-blow contact term)
+and `weapon_first_motion` (Saber's bound signature, scaling with the *target's* health), covered by
+tests in `tests/trait_spec.lua` and `tests/weapon_spec.lua`. Slot 1 (`arena_debut`) is rebuilt
+premise-first and grants Saber through the quest's own `rewardCharacter`.
+
+**Not built:** slots 2–5 and 7–9 (six new quests), Saber's second relic, and every scene past the
+debut.
+
+### Open questions, deliberately unresolved
+
+Three things are placeholders, and the line should not go much further before they are settled —
+slots 2–4 are where the player meets the house properly, and all three land there.
+
+1. **The stable's name.** "The Perennial" throughout this section is a placeholder. It wants to sound
+   like an institution a champion would be proud to wear, not a villain's lair.
+2. **Ira's handler** — the one who broke protocol, gave her a name, and was *reassigned by form*. Who
+   they were and what the paperwork said. This is load-bearing rather than colour: it is the reason
+   nothing can settle her, because there is no debtor and no grave, only a filing decision.
+3. **Slot 7's seam.** The turn needs Ira to speak *without being a fight*, and every antagonist
+   seam that exists is attached to a battle (`map.objective.opening`, `states/battle.lua`'s
+   `openingConversation`). A quest-level `opening` plays over the overworld and could carry it, but
+   the scene wants staging closer to a hub panel. Small engine question, unanswered.
+
+### One rejected option, and why
+
+Her rule feeds **damage only**, never defense or speed. Making the blow-count term raise her survivability
+would punish the player twice for the same mistake — grinding her down is already the losing line, and
+a boss who also grows tankier as you do it gives them no readable way out. The fight has to stay
+legible: one number climbing, one lesson (*end it fast or do not start*), and a counterplay the player
+has been holding since the debut bout.
 
 ## Authoring the remaining six lines
 
