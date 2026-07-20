@@ -10,9 +10,11 @@ local hintFont = love.graphics.newFont(16)
 
 local widget
 
--- Debug menu entries (jump into a battle, run string extraction) for development. Flip this off for
--- a release build and the extra buttons disappear.
-local DEBUG = true
+-- Debug menu entries (jump into a battle, run string extraction) for development. Reads the one
+-- build-wide switch (models/debug.lua) rather than keeping its own copy: the same flag now decides
+-- whether a debug-only network transport exists, and two booleans that mean "is this a dev build"
+-- is one of them shipped wrong.
+local DEBUG = require("models.debug").enabled
 
 -- Debug: the pool the mock battle rolls loadouts from -- every shoppable item, i.e. everything a
 -- player could actually end up holding. Excluded: natural weapons (a beast's fangs are its body, not
