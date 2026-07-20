@@ -196,9 +196,16 @@ end
 -- is already the destination cell. A walk drives one per tile and paces itself, so its slide is not
 -- gated; a `gate` slide (a forced rush covering several tiles at once) instead holds the turn hand-off
 -- until it finishes, so the rush reads before the turn passes.
-function CombatFx:setSlide(unit, fromX, fromY, dur, gate)
+-- `toX`/`toY` name the tile the slide ARRIVES on, and default to where the model already put the
+-- unit -- which is the whole story for a single step or a forced rush. A replayed walk is the case
+-- that needs them said out loud: the model finished the entire route before the first frame was
+-- drawn, so the sprite is crossing from one middle-of-the-route tile to the next while unit.x/unit.y
+-- already read as the far end. Without a stated destination every step would be measured against
+-- that far end and the sprite would snap there on the first one.
+function CombatFx:setSlide(unit, fromX, fromY, dur, gate, toX, toY)
     local r = self:reaction(unit)
     r.slideFromX, r.slideFromY = fromX, fromY
+    r.slideToX, r.slideToY = toX, toY
     r.slideT, r.slideDur = dur, dur
     r.slideGate = gate or nil
 end
@@ -243,7 +250,10 @@ function CombatFx:update(dt)
         if r.flashT then r.flashT = r.flashT - dt; if r.flashT <= 0 then r.flashT = nil end end
         if r.slideT then
             r.slideT = r.slideT - dt
-            if r.slideT <= 0 then r.slideT = nil; r.slideDur = nil; r.slideGate = nil end
+            if r.slideT <= 0 then
+                r.slideT = nil; r.slideDur = nil; r.slideGate = nil
+                r.slideToX, r.slideToY = nil, nil
+            end
         end
         if r.dying then
             r.dying = r.dying - dt
@@ -309,8 +319,14 @@ function CombatFx:spriteState(unit, size)
     local offX, offY = 0, 0
     if r.slideT and r.slideDur then
         local e = easeOut(1 - r.slideT / r.slideDur)
-        offX = offX + (r.slideFromX - unit.x) * size * (1 - e)
-        offY = offY + (r.slideFromY - unit.y) * size * (1 - e)
+        -- Where the step lands, which is usually just where the unit already is. The offset is the
+        -- gap between the eased point along this step and the model's tile: interpolate from -> to,
+        -- then measure that back against unit.x/unit.y (see setSlide). With to == unit.x this is
+        -- exactly the old (from - unit.x) * (1 - e).
+        local toX = r.slideToX or unit.x
+        local toY = r.slideToY or unit.y
+        offX = offX + ((r.slideFromX - toX) * (1 - e) + (toX - unit.x)) * size
+        offY = offY + ((r.slideFromY - toY) * (1 - e) + (toY - unit.y)) * size
     end
     if r.lungeT then
         local s = math.sin((1 - r.lungeT / LUNGE_TIME) * math.pi) -- 0 at ends, 1 mid: out and back

@@ -149,6 +149,16 @@ local function specFor(opts, partyIds, seed)
         spec.allies = def and def.allies
         spec.objective = def and def.objective
     end
+    -- A fight against somebody's team rather than a roll of the encounter table: a stored build, or
+    -- another player. The far side arrives as live character instances, so THEIR ids are the
+    -- composition -- the arena seats exactly those bodies, in that order, and battle.enter binds the
+    -- instances it was handed onto those spawns. Overrides whatever the quest or encounter asked
+    -- for, because the opponent is no longer this game's to choose.
+    if opts.enemyChars then
+        local ids = {}
+        for i, char in ipairs(opts.enemyChars) do ids[i] = char.id end
+        spec.composition = ids
+    end
     return spec
 end
 
@@ -440,9 +450,12 @@ local function computeInspect(unit)
     if not unit then return end
     local reachable = Status.blocksMove(unit) and {} or Combat.reachable(battle.combat, unit)
     local moveKeys = {}
-    for k, node in pairs(reachable) do
+    -- Only highlights, so the order is nobody's business but the renderer's -- taken in board order
+    -- anyway, because one rule about how the reachable set is walked is easier to keep than a rule
+    -- with an exception in it (Combat.reachableList).
+    for _, node in ipairs(Combat.reachableList(battle.combat, unit, reachable)) do
         battle.inspectMoveCells[#battle.inspectMoveCells + 1] = { x = node.x, y = node.y }
-        moveKeys[k] = true
+        moveKeys[node.x .. "," .. node.y] = true
     end
     local weapon = Combat.defaultWeapon(unit.char)
     local ab = weapon and weapon.activeAbility
@@ -661,9 +674,18 @@ end
 -- hold the hand-off while those reactions read (battle.update runs resolveAdvance once the beat and
 -- battle.fx:busy both clear). An action that raised no cues and left nothing animating -- a bare move,
 -- a wait, a pass -- resolves at once, so non-combat turns stay snappy.
-local function advanceTurn()
+-- `carried` is a cue list an action raised BEFORE the walk that replays its approach -- held back
+-- since (see holdLanding) so the blow does not land on screen ahead of the feet that carried it.
+local function advanceTurn(carried)
     pacedTurn(battle.current)
     local events = Combat.drainFx(battle.combat)
+    if carried then
+        battle.fx:hold(carried, -1) -- the approach has finished; the blow may be seen now
+        if events then
+            for _, e in ipairs(events) do carried[#carried + 1] = e end
+        end
+        events = carried
+    end
     if events then battle.fx:ingest(events, battle.current) end
     if events or battle.fx:busy() then
         battle.pendingAdvance = { hold = IMPACT_PAUSE }
@@ -792,33 +814,62 @@ local function startWalk(unit, x, y, onDone, cells)
     local plan = cells and Combat.planMoveVia(battle.combat, unit, cells)
     plan = plan or Combat.planMove(battle.combat, unit, x, y)
     if not plan then return false end
-    battle.walk = { handle = Combat.beginMove(battle.combat, plan), timer = 0, onDone = onDone, unit = unit }
+    -- The move happens HERE, all of it: every tile entered, every trap sprung, every overwatch shot
+    -- taken. What comes back is the route as it was walked, with each tile's cues attached, and what
+    -- battle.walk holds from this point on is a playback position -- not a handle the frame clock
+    -- uses to push the model forward one tile at a time. The model is finished before the first
+    -- frame of the walk is drawn.
+    local steps = Combat.runMove(battle.combat, plan)
+    battle.walk = { steps = steps, i = 0, timer = 0, onDone = onDone, unit = unit }
     battle.reachable, battle.moveCells = {}, {}
     battle.threatCells, battle.attackReach = {}, {}
     battle.movePath = nil
     return true
 end
 
--- One tile per MOVE_STEP seconds, then hand off to the walk's onDone. The first step lands at once
--- (the unit is already standing on the origin); every step after rests on the tile it just entered,
--- so a trap that fires or a hazard that bites is on screen long enough to see.
+-- Replay one tile of the captured route per MOVE_STEP seconds, then hand off to the walk's onDone.
+-- The first step lands at once (the unit is already standing on the origin); every step after rests
+-- on the tile it entered, so a trap that fired or a hazard that bit is on screen long enough to see.
+--
+-- Nothing here touches the model -- it finished the whole walk back in startWalk. This only decides
+-- when each tile's cues are allowed to be seen, which is why a route the model resolved in one call
+-- still reads at a walking pace.
 local function updateWalk(dt)
     local w = battle.walk
     w.timer = w.timer - dt
     if w.timer > 0 then return end
-    local u = w.unit
-    local fromX, fromY = u.x, u.y -- cell the unit is leaving, captured before the step commits
-    if Combat.stepMove(battle.combat, w.handle) then
+    w.i = w.i + 1
+    local step = w.steps[w.i]
+    if step then
         w.timer = MOVE_STEP
-        -- Slide the sprite across the tile it just entered rather than snapping (a surviving unit).
-        if u.alive then battle.fx:setSlide(u, fromX, fromY, MOVE_STEP) end
+        -- Slide the sprite from the tile it left to the tile this step lands on. Both are named:
+        -- the unit's model position is already the END of the route, so it cannot stand in for
+        -- "where this step arrives" the way it can for a single step (see CombatFx:setSlide).
+        battle.fx:setSlide(w.unit, step.fromX, step.fromY, MOVE_STEP, nil, step.x, step.y)
         -- A trap that sprang, a hazard that bit, an overwatch shot -- float its number on arrival.
         -- No actor leans in: this is damage taken while walking, not a strike the unit made.
-        battle.fx:ingest(Combat.drainFx(battle.combat), nil)
+        battle.fx:ingest(step.fx, nil)
         return
     end
     battle.walk = nil
     if w.onDone then w.onDone() end
+end
+
+-- Take everything the action just resolved and keep it off the screen until the walk replaying its
+-- approach has finished.
+--
+-- CombatFx already does this for the second and later beats of an exchange, and for the same reason
+-- its comment gives: the model settles the whole thing before any of it is seen, so a bar would
+-- drain and a corpse drop ahead of the blow that earned it. That used to leave the FIRST beat alone
+-- because a cast resolved at the moment the view was handed it -- which stopped being true when the
+-- approach started being walked after the strike had already landed. Without this a unit's health
+-- visibly falls while its attacker is still three tiles away.
+--
+-- Returns the held list, to be handed to advanceTurn when the feet stop.
+local function holdLanding()
+    local events = Combat.drainFx(battle.combat)
+    if events then battle.fx:hold(events, 1) end
+    return events
 end
 
 -- Is the lesson TALKING TO THE PLAYER right now -- the step's actor holding the turn, with nothing
@@ -1256,9 +1307,20 @@ local function confirm()
         end
         if entry.fromX ~= current.x or entry.fromY ~= current.y then
             if Combat.hasMoved(battle.combat) then return end -- can't move twice in a turn
-            startWalk(current, entry.fromX, entry.fromY, function()
-                if current.alive then cast() else advanceTurn() end
-            end, plan.cells)
+            if not startWalk(current, entry.fromX, entry.fromY, nil, plan.cells) then return end
+            -- The approach is already spent: startWalk walked it in the model, so the unit is
+            -- standing on the entry tile and the blow lands NOW, before a frame of the walk is
+            -- drawn. Its cues stay in the queue while the route replays -- advanceTurn drains them
+            -- when the feet stop, so the impact still reads after the approach rather than during
+            -- it. Nothing about the exchange is decided by how long the animation took.
+            local landed = current.alive and Combat.useItem(battle.combat, current, item, cx, cy)
+            local blow = holdLanding()
+            battle.walk.onDone = function()
+                if landed then
+                    observeAction("attack", current, cx, cy, victim and victim.char.id, item.id)
+                end
+                advanceTurn(blow)
+            end
         else
             cast()
         end
@@ -1338,6 +1400,13 @@ local function executeEnemyAction()
     -- what makes taking the turn back immediate rather than queued behind this call.
     local auto = battle.autoPending == current
     if not current or (Combat.isPlayerControlled(current) and not auto) then return end
+    -- A unit somebody ELSE is driving. Its turn arrives over the wire as a command, so this machine
+    -- must not decide anything for it -- and the guard has to be explicit, because
+    -- Combat.isPlayerControlled is false for a remote unit exactly as it is for an AI one, which
+    -- means without this line both peers would cheerfully AI-drive the opponent's whole army and
+    -- each watch a different battle. Summons inherit their summoner's control, so a remote
+    -- summoner's wolf falls through the same hole; it is caught here too.
+    if current.control == "remote" then return end
     battle.autoPending = nil
     if current.control == "none" then
         Combat.pass(battle.combat, current)
@@ -1355,7 +1424,22 @@ local function executeEnemyAction()
         if not acted then Combat.pass(battle.combat, current) end
         advanceTurn()
     end
-    if act.move and startWalk(current, act.move.x, act.move.y, act_) then return end
+    -- With an approach, the walk and the action both resolve against the model here, in that order,
+    -- and only the playback is left for the clock -- the same shape the player's strike takes above.
+    -- Without one, there is nothing to replay and act_ resolves inline as it always did.
+    if act.move and startWalk(current, act.move.x, act.move.y, nil) then
+        if current.alive then
+            local acted = act.item
+                and Combat.useItem(battle.combat, current, act.item, act.tx, act.ty)
+            -- Reposition-only, nothing to do, or an item use that unexpectedly failed: pass so the
+            -- turn always ends (paying the real move cost) and never soft-locks on this unit.
+            if not acted then Combat.pass(battle.combat, current) end
+        end
+        -- A unit cut down on the approach raised nothing here and just hands the turn on.
+        local blow = holdLanding()
+        battle.walk.onDone = function() advanceTurn(blow) end
+        return
+    end
     act_()
 end
 
@@ -1780,13 +1864,14 @@ function battle.enter(self, opts)
     battle.over = false
     battle.showInitiative = true -- initiative numbers on the turn order (F6 toggles)
 
-    -- Active party instances (from the player), keyed by id for spawn lookup.
+    -- Active party instances (from the player). Matched to their spawns by POSITION rather than by
+    -- id: Arena.build binds ids to spawn points in the order it is given them (bindUnits), so index
+    -- i of the arena's party is index i of this list. Keying by char.id instead would collapse two
+    -- of the same blueprint onto one instance -- which the player's own roster cannot do today, but
+    -- a team assembled from a build can, and silently fielding one knight twice is a hard bug to see.
     local party = opts.party or {}
-    local partyIds, partyById = {}, {}
-    for i, char in ipairs(party) do
-        partyIds[i] = char.id
-        partyById[char.id] = char
-    end
+    local partyIds = {}
+    for i, char in ipairs(party) do partyIds[i] = char.id end
 
     -- A guided fight (the prologue's village defense) runs a lesson over the top of the ordinary
     -- battle: it speaks over one unit's head, narrows the board to the action it is asking for, and
@@ -1795,19 +1880,22 @@ function battle.enter(self, opts)
     battle.tutorial = opts.tutorial and Tutorial.new(opts.tutorial) or nil
     battle.lessonOpen = battle.tutorial == nil -- see refreshView: a lesson stays quiet until it is the student's turn
 
-    local seed = os.time() + math.floor(((love.timer and love.timer.getTime()) or 0) * 1000) % 100000
+    -- The board is reproducible from this number alone, so whoever starts the fight owns it: an
+    -- ordinary battle rolls a fresh one, a replayed bug report passes the one it recorded, and two
+    -- players in the same duel are handed the same seed and build the same ground from it.
+    local seed = opts.seed or Arena.randomSeed()
     local ctx = { prestige = opts.prestige or 1, biome = opts.biome, quest = opts.quest }
     battle.arena = Arena.build(ctx, specFor(opts, partyIds, seed))
 
     -- Combat unit lists: { char = <instance>, x, y }.
     battle.partyUnits, battle.enemyUnits = {}, {}
-    for _, u in ipairs(battle.arena.party) do
+    for i, u in ipairs(battle.arena.party) do
         -- A tutorial may take a party member out of the player's hands (the mentor demonstrating the
         -- lesson she just gave). Combat.new already honours a per-unit control override on the party
         -- side -- the same seam escorted allies use -- so she stays a party unit for the objective
         -- and the turn order, and simply isn't player-controlled.
         battle.partyUnits[#battle.partyUnits + 1] = {
-            char = partyById[u.id], x = u.x, y = u.y,
+            char = party[i], x = u.x, y = u.y,
             control = battle.tutorial and Tutorial.controlFor(battle.tutorial, u.id) or nil,
         }
     end
@@ -1818,9 +1906,18 @@ function battle.enter(self, opts)
         battle.partyUnits[#battle.partyUnits + 1] =
             { char = Character.instantiate(u.id), x = u.x, y = u.y, control = "ai" }
     end
-    for _, u in ipairs(battle.arena.enemies) do
-        battle.enemyUnits[#battle.enemyUnits + 1] =
-            { char = Character.instantiate(u.id), x = u.x, y = u.y }
+    -- The far side is normally minted fresh from blueprint ids. `opts.enemyChars` hands over live
+    -- instances instead -- a stored build's team, carrying the levelling, the gear placement and
+    -- above all the aiRules its author wrote (models/build.lua). Bound by position, the same way the
+    -- party is, because specFor made those characters' ids the composition the arena was seated from.
+    -- Control stays the default for the enemy side, which is what makes their author's gambits the
+    -- thing actually driving them: AI.rulesFor reads char.aiRules first.
+    local enemyChars = opts.enemyChars
+    for i, u in ipairs(battle.arena.enemies) do
+        battle.enemyUnits[#battle.enemyUnits + 1] = {
+            char = (enemyChars and enemyChars[i]) or Character.instantiate(u.id),
+            x = u.x, y = u.y,
+        }
     end
 
     battle.combat = Combat.new(battle.arena, battle.partyUnits, battle.enemyUnits)
@@ -1944,7 +2041,11 @@ function battle.update(dt)
                 advanceTurn()
             end
         end
-    elseif not battle.over and battle.current
+    -- `control ~= "remote"`: a unit the other player drives has no think-pause to run down, because
+    -- nothing here is going to think for it. Its turn arrives as a command. executeEnemyAction
+    -- refuses one too, so this is belt and braces -- but a countdown that never fires anything is
+    -- the kind of thing that reads as a hang, and the second guard costs a comparison.
+    elseif not battle.over and battle.current and battle.current.control ~= "remote"
         and (not Combat.isPlayerControlled(battle.current) or battle.autoPending == battle.current) then
         -- Hold the enemy's think-pause until the turn-strip cards have settled, so a fast chain of
         -- AI turns never resolves out from under the card animation (the card would otherwise pop to

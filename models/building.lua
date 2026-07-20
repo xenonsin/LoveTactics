@@ -4,18 +4,33 @@
 -- annotating each entry with `locked` so the city can grow as prestige climbs.
 
 local Registry = require("models.registry")
+local Player = require("models.player")
 
 local Building = {}
 
 Building.defs = Registry.load("data/buildings", "data.buildings")
 
--- Ordered list of buildings for the given player prestige. Each entry is a
--- fresh copy of the def (blueprints stay untouched) plus `id` and `locked`.
-function Building.list(prestige)
-    prestige = prestige or 1
+-- Ordered list of buildings for a player. Each entry is a fresh copy of the def (blueprints stay
+-- untouched) plus `id` and `locked`.
+--
+-- Accepts either the player table or, as it always did, a bare prestige number -- a building gated
+-- only on prestige has nothing to ask a player about, and the callers that pass a number are not
+-- wrong. A `unlockQuest` gate needs the player, so a def that names one is treated as locked when
+-- all that was handed over is a number.
+--
+-- Two kinds of gate, ANDed: `unlockPrestige` is the city growing as the company does, and
+-- `unlockQuest` is a door a particular story opens -- the dueling grounds do not appear because you
+-- got richer, they appear because you fought on the sand once.
+function Building.list(playerOrPrestige)
+    local player = type(playerOrPrestige) == "table" and playerOrPrestige or nil
+    local prestige = player and player.prestige or playerOrPrestige or 1
 
     local list = {}
     for id, def in pairs(Building.defs) do
+        local locked = prestige < (def.unlockPrestige or 1)
+        if def.unlockQuest then
+            locked = locked or not (player and Player.hasCompleted(player, def.unlockQuest))
+        end
         list[#list + 1] = {
             id = id,
             name = def.name,
@@ -27,7 +42,8 @@ function Building.list(prestige)
             panel = def.panel,
             vendor = def.vendor, -- vendor id for shop buildings; nil otherwise
             unlockPrestige = def.unlockPrestige or 1,
-            locked = prestige < (def.unlockPrestige or 1),
+            unlockQuest = def.unlockQuest, -- quest id that opens this door, or nil
+            locked = locked,
         }
     end
 

@@ -53,10 +53,46 @@ local Character = require("models.character")
 
 local Combat = {}
 
--- Random source, indirected so the headless tests can stub it (this module is pure Lua -- see the
--- header: not even love.math -- and math.random's global state would make a spec order-dependent).
--- Called as Combat.random(n) -> 1..n. Only Combat.steal uses it today.
-Combat.random = math.random
+-- Random source, in two layers, because two callers want different things from it.
+--
+-- `combat.rng` is the real one: a generator seeded off the arena and installed by Combat.new, so
+-- every draw a battle makes is a function of that battle's seed. The same seed replays the same
+-- fight -- which is what lets a bug report be reproduced, and what lets two machines run one duel
+-- without quietly drifting apart.
+--
+-- `Combat.random` is the module-level source, kept because a spec needs to force a particular draw
+-- ("steal takes the SECOND item") from outside, before any combat exists to reach into. Replacing
+-- it OUTRANKS the per-battle generator: a caller that reached in and pinned the module's source
+-- meant it. Left alone it is plain math.random -- the fallback for a combat built without a seed
+-- (a scripted board names its layout outright and needs none).
+--
+-- Draw with Combat.roll(combat, n) -> 1..n, never by calling either source directly.
+local DEFAULT_RANDOM = math.random
+Combat.random = DEFAULT_RANDOM
+
+-- A pure-Lua Park-Miller generator (16807 / 2^31-1) using Schrage's trick, which keeps every
+-- intermediate product under 2^31 so the arithmetic stays exact in a double and yields the same
+-- stream on every platform we ship. love.math is deliberately not used: this module is pure Lua
+-- (see the header) and has to load headless.
+function Combat.newRandom(seed)
+    local state = math.floor(math.abs(seed or 1)) % 2147483646 + 1
+    return function(n)
+        local hi = math.floor(state / 127773)
+        local lo = state % 127773
+        state = 16807 * lo - 2836 * hi
+        if state <= 0 then state = state + 2147483647 end
+        if not n or n <= 1 then return 1 end
+        return (state % n) + 1
+    end
+end
+
+-- One draw in 1..n for this battle. See the comment above for which of the two sources answers.
+function Combat.roll(combat, n)
+    n = n or 1
+    if Combat.random ~= DEFAULT_RANDOM then return Combat.random(n) end
+    if combat and combat.rng then return combat.rng(n) end
+    return Combat.random(n)
+end
 
 -- Ability-speed fallback for a unit that carries no ability item at all.
 Combat.DEFAULT_SPEED = 5
@@ -657,6 +693,13 @@ function Combat.new(arena, partyUnits, enemyUnits)
         arena = arena,
         objective = (arena and arena.objective) or { type = "killAll" },
         units = {},
+        -- The side the local player is running, and so the side "win" and "loss" are spoken from.
+        -- Always the party in campaign play; a duel sets it per machine, which is how one board
+        -- reads as a victory to one player and a defeat to the other.
+        playerSide = "party",
+        -- This battle's own draw sequence, a function of the seed that built the board. Absent for
+        -- a combat with no seeded arena (a scripted layout), which falls back to Combat.random.
+        rng = (arena and arena.seed) and Combat.newRandom(arena.seed) or nil,
         clock = 0,      -- accumulated elapsed initiative (drives `survive`)
         turnCount = 0,  -- number of actions taken
         turn = nil,     -- the in-progress turn: { unit, moved, moveCost } (see startTurn)
@@ -685,11 +728,13 @@ function Combat.new(arena, partyUnits, enemyUnits)
             -- clear them BEFORE the refill or a stale one would cap stamina below its max. A summon
             -- claim (Combat.activeSummon) is the same kind of leftover: the wolf that was still
             -- standing at the last blow is not on this field, so its horn is free to blow again.
-            if side == "party" then
-                Combat.releaseClaims(unit.char)
-                local st = unit.char.stats.stamina
-                if type(st) == "table" then st.current = st.max end
-            end
+            -- Every side, for the same reason the refill below is: a leftover reservation or summon
+            -- claim belongs to whatever battle made it, and the only reason this was ever written as
+            -- the party's business is that the party was the only side reusing instances that had
+            -- been anywhere. Clearing nothing on a freshly instantiated enemy costs nothing.
+            Combat.releaseClaims(unit.char)
+            local st = unit.char.stats.stamina
+            if type(st) == "table" then st.current = st.max end
         end
     end
     addSide(partyUnits, "party")
@@ -706,11 +751,16 @@ function Combat.new(arena, partyUnits, enemyUnits)
     -- the BASE max before maxBonus existed, so a fresh battle's stamina pool includes the bonus.
     -- Mana is deliberately left where it stood (it persists between battles); the extra mana ceiling
     -- is headroom to recover into, exactly like the extra health ceiling.
+    -- Every unit, not just the party's. This reads to its full EFFECTIVE ceiling, so it is only a
+    -- no-op for the other side while no enemy carries a stamina maxBonus -- none does today, and
+    -- Endurance's own promise is "refills to its full effective ceiling at the start of each
+    -- battle", which was never meant to be a promise made to the party alone. The narrow rule was
+    -- an accident that cost nothing while every enemy was instantiated fresh at full stamina; it
+    -- stops costing nothing the moment the far side of the board is somebody's real roster, which
+    -- is a duel -- those units would take the field already short of wind.
     for _, unit in ipairs(combat.units) do
-        if unit.side == "party" then
-            local st = unit.char.stats.stamina
-            if type(st) == "table" then st.current = Combat.unreservedMax(unit.char, "stamina") end
-        end
+        local st = unit.char.stats.stamina
+        if type(st) == "table" then st.current = Combat.unreservedMax(unit.char, "stamina") end
     end
 
     -- Authored traps: arena.traps is a list of { id, x, y, side } (side defaults to "enemy",
@@ -1469,6 +1519,29 @@ function Combat.reachable(combat, unit)
     return out
 end
 
+-- The reachable set as a LIST in fixed board order (top-left to bottom-right), for the callers that
+-- SCAN it hunting a best tile.
+--
+-- Those scans keep the first candidate on a tie ("closest, then fewest steps" leaves two mirror
+-- tiles genuinely even, which on a symmetric board is ordinary rather than rare), so whatever order
+-- they are handed IS the tie-break. pairs() over "x,y" keys gives an order that holds still within
+-- one build and is promised by nothing across two -- so the same unit, in the same position, could
+-- walk somewhere else on another machine. Iterate this wherever the order can decide anything;
+-- index the map directly when all you want is a lookup.
+--
+-- Pass `reachable` to reuse a set already computed rather than walking the graph twice.
+function Combat.reachableList(combat, unit, reachable)
+    local out = {}
+    for _, node in pairs(reachable or Combat.reachable(combat, unit)) do
+        out[#out + 1] = node
+    end
+    table.sort(out, function(a, b)
+        if a.y ~= b.y then return a.y < b.y end
+        return a.x < b.x
+    end)
+    return out
+end
+
 -- Every cell a unit could strike THIS turn with a `range`-reach weapon: for the origin tile
 -- and each tile it can move to, the Manhattan diamond of radius `range`, clamped to the arena.
 -- Returns `{ [key] = { x, y, fromX, fromY, moveCost } }`, where from/moveCost is the CHEAPEST
@@ -1486,9 +1559,12 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRa
     minRange = minRange or 0
     reachable = reachable or Combat.reachable(combat, unit)
 
-    -- Stand tiles: the origin (cost 0) plus every reachable move tile.
+    -- Stand tiles: the origin (cost 0) plus every reachable move tile, in board order -- the cheapest
+    -- stand wins a cell below, and equal-cost stands are settled by that order rather than by however
+    -- the set happened to be keyed (see Combat.reachableList; `fromX/fromY` decides which tile the
+    -- blow is thrown from, so an unstable answer here moves the fight).
     local stands = { { x = unit.x, y = unit.y, cost = 0 } }
-    for _, node in pairs(reachable) do
+    for _, node in ipairs(Combat.reachableList(combat, unit, reachable)) do
         stands[#stands + 1] = { x = node.x, y = node.y, cost = node.cost }
     end
 
@@ -1723,14 +1799,47 @@ function Combat.stepMove(combat, walk)
     return true
 end
 
+-- Walk a plan out to its end, right now. `capture` asks for the route back as it was actually taken:
+-- a list of { x, y, fromX, fromY, fx } , one entry per tile entered, each carrying the cues that tile
+-- raised as the unit arrived on it.
+--
+-- That list is what lets the model finish a move before anything is drawn. The traps, hazards and
+-- overwatch shots a walk sets off all resolve here in one go; batching their cues per tile means a
+-- view can still play the walk back a tile at a time and have each trap go off on the tile that
+-- holds it, without the model's own progress being metered by a frame clock.
+--
+-- The route ends where the unit ended, which is short of the destination when something on the way
+-- killed it. One loop rather than two, so the flat-out walk and the watched one cannot drift apart.
+local function walkOut(combat, plan, capture)
+    local walk = Combat.beginMove(combat, plan)
+    local unit = plan.unit
+    local steps = capture and {} or nil
+    while true do
+        local fromX, fromY = unit.x, unit.y
+        if not Combat.stepMove(combat, walk) then break end
+        if capture then
+            steps[#steps + 1] = { x = unit.x, y = unit.y, fromX = fromX, fromY = fromY,
+                                  fx = Combat.drainFx(combat) }
+        end
+    end
+    return steps
+end
+
+-- Walk `plan` out and hand back the route for a view to replay. See walkOut. Note this DRAINS the
+-- cue queue as it goes -- the cues live in the returned steps instead, and the caller is expected to
+-- feed them to its animation controller. Callers that just want the move to happen want moveUnit.
+function Combat.runMove(combat, plan)
+    return walkOut(combat, plan, true), combat.turn.moveCost
+end
+
 -- Move a unit to (x, y) if reachable this turn, all in one go. The headless equivalent of the
 -- battle state's watchable walk (planMove -> beginMove -> stepMove per tile): same legality gate,
--- same traps sprung, same initiative owed. Returns ok plus the move initiative it charged.
+-- same traps sprung, same initiative owed. Leaves the cue queue alone, so a headless caller that
+-- never drains is unaffected. Returns ok plus the move initiative it charged.
 function Combat.moveUnit(combat, unit, x, y)
     local plan, reason = Combat.planMove(combat, unit, x, y)
     if not plan then return false, reason end
-    local walk = Combat.beginMove(combat, plan)
-    while Combat.stepMove(combat, walk) do end
+    walkOut(combat, plan, false)
     return true, combat.turn.moveCost
 end
 
@@ -3772,7 +3881,7 @@ function Combat.steal(combat, thief, victim)
         return nil
     end
 
-    local item = pool[Combat.random(#pool)]
+    local item = pool[Combat.roll(combat, #pool)]
     Character.removeItem(victim.char, item)
     Combat.logEvent(combat, "action", string.format("%s steals %s from %s.",
         unitName(thief), item.name or "an item", unitName(victim)))
@@ -3816,7 +3925,7 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
         aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty, user) end,
         aoeCells = function() return Combat.aoeCells(combat, ab, tx, ty, user) end,
         hasStatus = function(t, id) return t ~= nil and Status.has(t, id) end,
-        random = function(n) return Combat.random(n or 1) end,
+        random = function(n) return Combat.roll(combat, n or 1) end,
         log = function(kind, text) return Combat.logEvent(combat, kind, text) end,
         restore = function(t, stat, amount)
             if not t then return 0 end
@@ -4273,9 +4382,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
             tgt.initiative = tgt.initiative * (1 - (fraction or 0.5))
             return tgt.initiative
         end,
-        -- A random integer in 1..n, drawn from the model's indirected source (so a spec can stub it).
-        -- What a scattershot ability rolls to pick its tiles (Meteor Storm), and any future dice.
-        random = function(n) return Combat.random(n or 1) end,
+        -- A random integer in 1..n, drawn from this battle's own sequence (see Combat.roll), so a
+        -- scattershot ability scatters the same way on a replay -- and identically on two machines
+        -- watching one fight. What Meteor Storm rolls to pick its tiles, and any future dice.
+        random = function(n) return Combat.roll(combat, n or 1) end,
         -- Strip every debuff from a unit (Cure). Returns the number removed.
         cleanse = function(tgt)
             if not tgt then return 0 end
@@ -4577,10 +4687,39 @@ function Combat.accrueHold(combat, elapsed)
     end
 end
 
-function Combat.evaluate(combat)
-    if Combat.aliveCount(combat, "party") == 0 then return "loss" end
+-- The side across the board. Two sides is the game; this exists so the rules below can be written
+-- from a point of view instead of from the party's, and is not a step toward N-sided combat.
+Combat.OPPOSING = { party = "enemy", enemy = "party" }
+
+-- Has `side` won, lost, or neither? Returns "win", "loss", or nil for a fight still in progress.
+--
+-- Being wiped out is a loss for anyone, and killAll reads across the board, so those two rules --
+-- the whole of a duel -- are genuinely symmetric and answer for either side.
+--
+-- The authored objectives are not, and are not pretending to be: `reach`, `hold`, `assassinate`,
+-- `survive` and `protect` are written FOR the party by a quest, and asking whether the enemy has
+-- achieved the party's objective is a question with no meaning. Campaign play only ever asks about
+-- the party; a duel only ever uses killAll. If an objective is ever authored to be contested, this
+-- is where it would have to grow a per-side statement of it.
+function Combat.outcomeFor(combat, side)
+    side = side or "party"
+    local foe = Combat.OPPOSING[side] or "enemy"
+
+    if Combat.aliveCount(combat, side) == 0 then return "loss" end
 
     local obj = combat.objective or { type = "killAll" }
+
+    -- Everything below this line is an objective a quest wrote for the party: a column to escort, a
+    -- mark to kill, ground to hold. The other side is not pursuing its own version of it -- its job
+    -- is to stop the party -- so its standing is exactly the party's, mirrored. Stated once here
+    -- rather than threaded through every branch, because the branches themselves genuinely are
+    -- about the party and reading them that way is correct.
+    if side ~= "party" and obj.type ~= "killAll" then
+        local theirs = Combat.outcomeFor(combat, "party")
+        if theirs == "win" then return "loss" end
+        if theirs == "loss" then return "win" end
+        return nil
+    end
 
     if obj.protect and not Combat.isProtectedAlive(combat, obj.protect) then
         return "loss"
@@ -4624,9 +4763,17 @@ function Combat.evaluate(combat)
         if combat.clock >= turnsToTicks(obj.turns) then return "win" end
         return nil
     else -- killAll (default)
-        if Combat.aliveCount(combat, "enemy") == 0 then return "win" end
+        if Combat.aliveCount(combat, foe) == 0 then return "win" end
         return nil
     end
+end
+
+-- The fight's standing as the player sees it. `combat.playerSide` is the side the local player is
+-- running -- "party" in every campaign battle, and in a duel the side this machine is holding, so
+-- the same board reads as a win to one player and a loss to the other while the state underneath
+-- them stays identical.
+function Combat.evaluate(combat)
+    return Combat.outcomeFor(combat, combat.playerSide or "party")
 end
 
 return Combat

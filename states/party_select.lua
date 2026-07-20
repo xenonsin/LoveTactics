@@ -38,15 +38,26 @@ local embarkButton = { x = Scale.WIDTH - 200, y = 656, w = 160, h = 46 }
 local quest, prestige, player, chars
 local cursor, offset, gridRowsVisible, gridX
 local message
+-- What this screen is FOR this time round. The picking is the same job whoever is asking -- a
+-- roster, four slots, and the same three-input handling -- so a caller that commits somewhere other
+-- than the overworld supplies its own ending rather than getting a second copy of the screen. Empty
+-- for the quest flow, which keeps every default below.
+local mode
 
 local function rectContains(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
-function ps.enter(_, q, pr, pl)
+-- `opts` (optional) re-points the screen without changing how it picks:
+--   title, subtitle   -- what it says it is for
+--   embarkLabel       -- the commit button's word ("Embark", "Send Build", ...)
+--   onEmbark(player)  -- what committing means; defaults to entering the overworld with `quest`
+--   onBack()          -- defaults to the hub
+function ps.enter(_, q, pr, pl, opts)
     quest = q
     prestige = pr or 1
     player = pl or Player.active
+    mode = opts or {}
     chars = (player and player.roster) or {}
     cursor = 1
     offset = 0
@@ -88,11 +99,15 @@ local function embark()
         message = "Select at least one member to deploy."
         return
     end
+    -- Saved before handing over either way: the chosen party is a real change to the player whether
+    -- it is about to walk into a quest or be frozen into a build.
     Player.save()
+    if mode.onEmbark then return mode.onEmbark(player) end
     State.switch(require("states.game"), quest, prestige, player)
 end
 
 local function goBack()
+    if mode.onBack then return mode.onBack() end
     State.switch(require("states.hub"))
 end
 
@@ -166,12 +181,16 @@ function ps.draw()
 
     love.graphics.setFont(titleFont)
     love.graphics.setColor(0.95, 0.85, 0.55)
-    love.graphics.printf("Choose Your Party", 0, 28, Scale.WIDTH, "center")
-    if quest then
+    love.graphics.printf(mode.title or "Choose Your Party", 0, 28, Scale.WIDTH, "center")
+    -- A quest names itself and its difficulty; any other caller says its own piece instead.
+    local subtitle = mode.subtitle
+    if not subtitle and quest then
+        subtitle = (quest.name or "") .. "   -   Difficulty " .. tostring(quest.difficulty or "?")
+    end
+    if subtitle then
         love.graphics.setFont(bodyFont)
         love.graphics.setColor(0.7, 0.74, 0.82)
-        love.graphics.printf((quest.name or "") .. "   -   Difficulty " .. tostring(quest.difficulty or "?"),
-            0, 64, Scale.WIDTH, "center")
+        love.graphics.printf(subtitle, 0, 64, Scale.WIDTH, "center")
     end
 
     -- Deploy slots.
@@ -224,14 +243,16 @@ function ps.draw()
 
     -- Buttons.
     ps.drawButton(backButton, "Back", false)
-    ps.drawButton(embarkButton, "Embark", #player.party > 0)
+    ps.drawButton(embarkButton, mode.embarkLabel or "Embark", #player.party > 0)
 
     love.graphics.setFont(smallFont)
     love.graphics.setColor(0.5, 0.55, 0.65)
     -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
+    local commit = mode.embarkLabel or "Embark"
     local hint = InputMode.isGamepad()
-        and "D-pad: move  |  A: add/remove  |  Start: Embark  |  B: Back"
-        or "Click a member to add/remove  |  Arrows + Space: toggle  |  Enter: Embark  |  Esc: Back"
+        and ("D-pad: move  |  A: add/remove  |  Start: " .. commit .. "  |  B: Back")
+        or ("Click a member to add/remove  |  Arrows + Space: toggle  |  Enter: " .. commit
+            .. "  |  Esc: Back")
     love.graphics.printf(hint, 0, Scale.HEIGHT - 24, Scale.WIDTH, "center")
 
     love.graphics.setColor(1, 1, 1)

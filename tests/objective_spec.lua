@@ -202,4 +202,60 @@ return {
                 "the escort posture walks for the exit")
         end,
     },
+
+    -- -----------------------------------------------------------------------
+    -- Point of view
+    --
+    -- Combat.evaluate answers for the side the local player is running. It used to be able to speak
+    -- only for the party, which is fine while the party is always ours and never enough for a duel,
+    -- where the same board has to read as a win to one player and a loss to the other.
+    -- -----------------------------------------------------------------------
+    {
+        name = "a wipe is a loss for whoever was wiped, and killAll reads from either chair",
+        fn = function()
+            local partyDown = fakeCombat({ unit("party", 1, 8, false), unit("enemy", 1, 1) },
+                { type = "killAll" })
+            assert(Combat.outcomeFor(partyDown, "party") == "loss", "the wiped party lost")
+            assert(Combat.outcomeFor(partyDown, "enemy") == "win", "the side still standing won")
+
+            local enemyDown = fakeCombat({ unit("party", 1, 8), unit("enemy", 1, 1, false) },
+                { type = "killAll" })
+            assert(Combat.outcomeFor(enemyDown, "party") == "win", "the party cleared the board")
+            assert(Combat.outcomeFor(enemyDown, "enemy") == "loss", "the cleared side lost")
+
+            local ongoing = fakeCombat({ unit("party", 1, 8), unit("enemy", 1, 1) }, { type = "killAll" })
+            assert(Combat.outcomeFor(ongoing, "party") == nil, "a live fight is undecided")
+            assert(Combat.outcomeFor(ongoing, "enemy") == nil, "undecided from both chairs")
+        end,
+    },
+    {
+        name = "evaluate speaks for combat.playerSide, and still defaults to the party",
+        fn = function()
+            local c = fakeCombat({ unit("party", 1, 8), unit("enemy", 1, 1, false) }, { type = "killAll" })
+            assert(Combat.evaluate(c) == "win", "with no side named it answers for the party")
+
+            c.playerSide = "enemy"
+            assert(Combat.evaluate(c) == "loss", "holding the enemy side, that board is a defeat")
+
+            c.playerSide = "party"
+            assert(Combat.evaluate(c) == "win", "and back again")
+        end,
+    },
+    {
+        -- An authored objective belongs to the party; the other side's job is only to stop it. So
+        -- its standing is the party's, mirrored -- not its own separate pursuit of the same goal.
+        name = "an authored objective reads to the other side as the mirror of the party's",
+        fn = function()
+            local walker = named("party", 1, 1, "character_knight")
+            local won = fakeCombat({ walker, unit("enemy", 5, 5) },
+                { type = "reach", tiles = { { x = 1, y = 1 } } })
+            assert(Combat.outcomeFor(won, "party") == "win", "the party reached the ground")
+            assert(Combat.outcomeFor(won, "enemy") == "loss", "so the side meant to stop it failed")
+
+            local open = fakeCombat({ named("party", 4, 4, "character_knight"), unit("enemy", 5, 5) },
+                { type = "reach", tiles = { { x = 1, y = 1 } } })
+            assert(Combat.outcomeFor(open, "party") == nil, "still walking")
+            assert(Combat.outcomeFor(open, "enemy") == nil, "still stopping them")
+        end,
+    },
 }

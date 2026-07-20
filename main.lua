@@ -21,6 +21,26 @@ function love.load(args)
     end
 
     Scale.resize(love.graphics.getDimensions())
+
+    -- Two-window duel harness, for developing the netplay protocol against a real socket:
+    --   love . duel host [auto]      (window 1, listens)
+    --   love . duel join [auto]      (window 2, connects)
+    -- `auto` makes each side play itself, so a whole duel can be run and the two fingerprints
+    -- compared without a human at each window.
+    --
+    -- Development only. Gated here on models/debug.lua, and the transport it needs is registered
+    -- only for a debug build (models/transport.lua), so a release cannot reach it either way. A
+    -- shipped game matches through Steam.
+    if args and args[1] == "duel" then
+        if not require("models.debug").enabled then
+            print("the duel harness is available in development builds only")
+            love.event.quit(1)
+            return
+        end
+        State.switch(require("states.duel_debug"), args[2] or "host", args[3], tonumber(args[4]))
+        return
+    end
+
     if args and args[1] == "shot" then
         love.filesystem.setIdentity("lovetactics_verify")
         print("SAVEDIR: " .. love.filesystem.getSaveDirectory())

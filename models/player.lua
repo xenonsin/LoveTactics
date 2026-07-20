@@ -156,6 +156,11 @@ function Player.new()
         -- read -- see Save.snapshotCharacter.
         body = nil,
         name = nil,
+        -- Who this player IS to other players, as opposed to what they call themselves. Builds are
+        -- attributed with it so a player is never matched against their own team (models/builds.lua),
+        -- and `name` cannot do that job: it is typed at creation, changeable, and two people will
+        -- pick the same one. Generated once and then persisted -- see Player.authorId.
+        authorId = nil,
         roster = roster,
         party = {},
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
@@ -239,6 +244,23 @@ end
 
 function Player.hasCompleted(player, questId)
     return (player.completedQuests or {})[questId] == true
+end
+
+-- This player's identity to OTHER players, minted on first use and kept from then on.
+--
+-- Lazy rather than assigned at Player.new so a save made before this existed grows one the first
+-- time it is needed, instead of every old save losing its attribution.
+--
+-- The "local:" prefix is doing real work. When Steam is wired in the id should become the account
+-- id, which is authoritative in a way a number this machine invented can never be -- so the two are
+-- distinguishable on sight, and a build published under a local id is recognisable as one that
+-- predates a real account rather than being silently trusted as one.
+function Player.authorId(player)
+    if not player.authorId then
+        local rand = (love and love.math and love.math.random) or math.random
+        player.authorId = string.format("local:%x%x", os.time(), rand(1, 2 ^ 30))
+    end
+    return player.authorId
 end
 
 -- ---------------------------------------------------------------------------

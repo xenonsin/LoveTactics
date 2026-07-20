@@ -189,6 +189,10 @@ function Save.snapshot(player)
         prestige = player.prestige,
         body = player.body, -- the created avatar's body (1/2); nil before character creation
         name = player.name, -- the name typed at creation (also on the avatar instance)
+        -- Who this player is to other players (Player.authorId). Persisted rather than re-minted,
+        -- or every load would look like a new person and a player could be matched against the
+        -- build their own previous session published. Nil on a save that never needed one.
+        authorId = player.authorId,
         reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,
@@ -244,6 +248,17 @@ local function restoreCharacter(snap)
     return char
 end
 
+-- Shared with models/build.lua, which freezes a party and its authored tactics for someone else to
+-- fight (see that module's header). A build is the same question this file already answers -- what
+-- of a character is worth writing down, and how does it come back -- so it reuses these rather than
+-- keeping a second opinion about it. Two definitions of "a character on disk" would drift, and the
+-- one that drifted would be the one nobody tested.
+Save.snapshotCharacter = snapshotCharacter
+Save.restoreCharacter = restoreCharacter
+Save.encode = encode
+Save.decode = decode
+Save.known = known
+
 -- Rebuild mutable player state from a snapshot. Returns nil if the snapshot is unusable
 -- (wrong version, malformed), letting the caller fall back to a fresh game.
 function Save.restore(snap)
@@ -293,6 +308,7 @@ function Save.restore(snap)
         prestige = snap.prestige or 1,
         body = snap.body, -- nil for a save made before character creation set it
         name = snap.name,
+        authorId = snap.authorId, -- nil on an older save; Player.authorId mints one on demand
         reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,

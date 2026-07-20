@@ -130,4 +130,39 @@ return {
                 and layout.enemySpawns[1].y == a.enemies[1].y, "spawn positions should round-trip")
         end,
     },
+    {
+        -- A board built off the clock cannot be produced again, so the bug it contains cannot be
+        -- shown to anyone -- and two machines building the same fight would quietly disagree about
+        -- the ground. Generating without a seed is a programming error and has to say so.
+        name = "generating a board without a seed is an error, not a silent roll of the clock",
+        fn = function()
+            local ok, err = pcall(Arena.generateLayout, { biome = "__test_void", party = 2, enemies = 2 })
+            assert(not ok, "an unseeded generateLayout should raise")
+            assert(tostring(err):find("seed"), "the error should name the seed: " .. tostring(err))
+
+            local pickOk, pickErr = pcall(Arena.pickLayout, { biome = "__test_void" }, 2, 2)
+            assert(not pickOk, "an unseeded pickLayout should raise")
+            assert(tostring(pickErr):find("seed"), "the error should name the seed: " .. tostring(pickErr))
+        end,
+    },
+    {
+        name = "Arena.randomSeed is the one deliberate way to ask for a board nobody has seen",
+        fn = function()
+            local seed = Arena.randomSeed()
+            assert(type(seed) == "number", "randomSeed should produce a number")
+            -- It has to satisfy the gate it exists to satisfy.
+            local layout = Arena.generateLayout({ biome = "__test_void", seed = seed,
+                party = 2, enemies = 2 })
+            assert(layout and layout.tiles, "a randomSeed board should build")
+        end,
+    },
+    {
+        -- A forced layout is authored ground, so it needs no seed to reproduce -- the escape the
+        -- tutorial's scripted board takes.
+        name = "a forced layout needs no seed",
+        fn = function()
+            local ok = pcall(Arena.pickLayout, { biome = "forest", layout = "tutorial_village" }, 2, 3)
+            assert(ok, "naming a layout outright should not require a seed")
+        end,
+    },
 }

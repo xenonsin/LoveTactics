@@ -68,6 +68,21 @@ return {
             -- A tie that includes the innate class resolves to it.
             knight.classUse = { mage = 3, knight = 3 }
             assert(Growth.dominantClass(knight) == "knight", "the innate class breaks a tie it is in")
+
+            -- A tie between two classes the character was NOT born into leaves that rule unfired,
+            -- and the tally is a keyed table -- so without a stated tie-break the winner is whichever
+            -- key the hash happened to yield. That decides which growth table the level-up applies,
+            -- so the same character could come out of the same level with different stats. Settled
+            -- by name: not because alphabetical order means anything, but because it is an answer.
+            knight.classUse = { mage = 4, fighter = 4 }
+            assert(Growth.dominantClass(knight) == "fighter",
+                "a tie outside the innate class settles by name")
+
+            -- Stated the other way round, so the assertion cannot pass by luck of insertion order.
+            local other = Character.instantiate("character_knight")
+            other.classUse = { fighter = 4, mage = 4 }
+            assert(Growth.dominantClass(other) == "fighter",
+                "the same tie settles the same way whichever was tallied first")
         end,
     },
     {
