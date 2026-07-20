@@ -196,27 +196,61 @@ return {
         end,
     },
     {
-        name = "wrath_rising banks a damage bonus per hit survived, and shows it as a badge",
+        -- Her rule is the threshold of SENSATION, not a tally of blows: she was raised to feel
+        -- nothing, and the only thing that reaches her is being close to gone (docs/story.md, "The
+        -- Colosseum"). So the bonus is a function of missing health, and hitting her once for forty
+        -- differs from hitting her forty times for one by exactly what it should.
+        name = "wrath_rising scales with how close to death it is, and shows it as a badge",
         fn = function()
             local ira = Character.instantiate("character_general_wrath")
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit(ira, 5, 5) })
             local boss = c.units[2]
+            local peak = Trait.defs.trait_wrath_rising.magnitude -- worth this much at death's door
+            local hp = boss.char.stats.health
+            -- Her grid already grants damage of its own (the Unappeased Heart), so the rule's
+            -- contribution is measured against that baseline rather than against zero.
+            local rested = boss.bonus.damage or 0
 
-            local baseDamage = boss.bonus.damage or 0
-            local gain = Trait.defs.trait_wrath_rising.magnitude
+            -- Halfway down: half the curve.
+            hp.current = math.floor(hp.max / 2) + 1
+            Combat.dealFlatDamage(c, boss, 1, nil, "test")
+            assert(boss.alive, "she is nowhere near dead")
+            local half = (boss.bonus.damage or 0) - rested
+            assert(half >= math.floor(peak * 0.45) and half <= math.floor(peak * 0.55),
+                "at about half health she should carry about half the curve, got " .. tostring(half))
 
-            for i = 1, 3 do
-                Combat.dealFlatDamage(c, boss, 10, nil, "test")
-                assert(boss.alive, "260 health should survive three light hits")
-                assert(boss.bonus.damage == baseDamage + gain * i,
-                    "each survived hit should add exactly one gain")
-            end
+            -- Nearly gone: nearly all of it, and strictly more than at half.
+            hp.current = math.floor(hp.max * 0.1) + 1
+            Combat.dealFlatDamage(c, boss, 1, nil, "test")
+            assert((boss.bonus.damage or 0) - rested > half,
+                "closer to death is strictly worse for whoever put her there")
 
             local badge = Status.get(boss, "status_wrath")
             assert(badge, "the wrath badge should be visible on the general")
-            assert(badge.magnitude == gain * 3, "the badge should read the total banked")
+            assert(badge.magnitude == (boss.bonus.damage or 0) - rested,
+                "the badge should read what the rule has added, not her resting kit")
             assert(not badge.def.statBonus,
                 "the badge must grant nothing: the trait already added the damage")
+        end,
+    },
+    {
+        -- Nothing she has ever felt has gone away. A rage a potion could soothe would be a mood
+        -- rather than a self, so the bonus only ever climbs.
+        name = "wrath_rising never cools: healing her does not take the rage back",
+        fn = function()
+            local ira = Character.instantiate("character_general_wrath")
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit(ira, 5, 5) })
+            local boss = c.units[2]
+            local hp = boss.char.stats.health
+
+            hp.current = math.floor(hp.max * 0.2)
+            Combat.dealFlatDamage(c, boss, 1, nil, "test")
+            local banked = boss.bonus.damage
+            assert(banked and banked > 0, "nearly dead, she is carrying the curve")
+
+            hp.current = hp.max -- mended, whatever the fiction of it
+            Combat.dealFlatDamage(c, boss, 1, nil, "test")
+            assert(boss.bonus.damage == banked, "the bonus must not fall back with her health")
         end,
     },
     {
@@ -240,9 +274,15 @@ return {
             assert(u.traits[1].item and u.traits[1].item.id == "armor_mail_of_the_unappeased",
                 "the trait should remember which item granted it")
 
+            -- Hit hard enough to actually be in danger: the rule answers how close to death the
+            -- wearer is, so a scratch correctly buys nothing. That is the trap the relic is --
+            -- it only pays out once you want what she wanted.
             local base = u.bonus.damage or 0
-            Combat.dealFlatDamage(c2, u, 12, nil, "test")
-            assert(u.bonus.damage > base, "the wearer now grows on damage taken, exactly as she did")
+            local hp = u.char.stats.health
+            hp.current = math.floor(hp.max * 0.25)
+            Combat.dealFlatDamage(c2, u, 1, nil, "test")
+            assert(u.bonus.damage and u.bonus.damage > base,
+                "the wearer now sharpens as they bleed out, exactly as she did")
         end,
     },
     {

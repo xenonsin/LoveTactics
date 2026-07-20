@@ -179,8 +179,11 @@ function Quest.complete(player, quest)
     -- REFUSES a duplicate by returning nil -- so a repeatable quest (which skips the double-payout
     -- guard above) can never mint a second copy of the same character.
     --
-    -- Deliberately after the item grants: a companion who arrives holding their own signature relic
-    -- should have it in hand before any UI reads the summary.
+    -- Deliberately LAST of the grants, and after Player.addPrestige above. A companion earned by a
+    -- quest did not fight it, so they must not appear in that quest's advancement list -- they join
+    -- already synced to the new level (Player.recruit -> Player.syncLevels) rather than showing up as
+    -- someone who levelled. It also means a recruit who arrives holding their own signature relic has
+    -- it in hand before any UI reads the summary.
     local recruited
     if quest.rewardCharacter then
         recruited = Player.recruit(player, quest.rewardCharacter)

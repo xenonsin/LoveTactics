@@ -183,6 +183,14 @@ return {
     ["line.bastion_what_the_bastion_knows_outro.7"] = { en = "I swore to you in the ash and I never asked you whether you wanted it.", ja = "" },  -- TODO
     ["line.bastion_what_the_bastion_knows_outro.8"] = { en = "I would have sworn it to anyone burning that night. Anyone at all. That is not devotion, that is a reflex with a nice sentence on it, and I have been calling it my honour for a year.", ja = "" },  -- TODO
     ["line.bastion_what_the_bastion_knows_outro.9"] = { en = "So. Again, and properly this time. Not to an order. Not to a name off a shield. To you -- because I have looked at you and chosen, and I could have chosen otherwise.", ja = "" },  -- TODO
+    ["line.colosseum_debut_confront.1"] = { en = "Opening bout! On the sand -- nobody, no house, no record.", ja = "" },  -- TODO
+    ["line.colosseum_debut_confront.2"] = { en = "And against them, on hire from no one in particular: Saber.", ja = "" },  -- TODO
+    ["line.colosseum_debut_confront.3"] = { en = "On hire from whoever paid, thank you. It's a living.", ja = "" },  -- TODO
+    ["line.colosseum_debut_confront.4"] = { en = "Right. You've not done this before, so -- two things, free, because I'd rather it was a bout than a mess.", ja = "" },  -- TODO
+    ["line.colosseum_debut_confront.5"] = { en = "One. The crowd is not on your side and it is not against you. It does not know you exist yet. Stop listening to it.", ja = "" },  -- TODO
+    ["line.colosseum_debut_confront.6"] = { en = "Two.", ja = "" },  -- TODO
+    ["line.colosseum_debut_confront.7"] = { en = "Everyone your size opens careful. Feels each other out, three or four exchanges, learns the range.", ja = "" },  -- TODO
+    ["line.colosseum_debut_confront.8"] = { en = "I don't.", ja = "" },  -- TODO
     ["line.conversation_wrath_intro.1"] = { en = "So. Fresh blood for the sand. The crowd does love a debut -- win or die.", ja = "ほう、砂場に新しい血か。観衆はデビュー戦が大好きだ――勝つか、死ぬかだ。" },
     ["line.conversation_wrath_intro.2"] = { en = "We came to fight, not to be entertainment.", ja = "戦いに来た。見世物になりに来たわけじゃない。" },
     ["line.conversation_wrath_intro.3"] = { en = "Here they are the same thing. Tell me -- why should the arena remember your name?", ja = "ここでは同じことさ。言ってみろ――なぜ闘技場がお前の名を覚えるべきなのか?" },
@@ -271,6 +279,7 @@ return {
     ["title.bastion_turned_back_outro"] = { en = "The Water", ja = "" },  -- TODO
     ["title.bastion_what_the_bastion_knows_intro"] = { en = "A Question", ja = "" },  -- TODO
     ["title.bastion_what_the_bastion_knows_outro"] = { en = "A Useful Saint", ja = "" },  -- TODO
+    ["title.colosseum_debut_confront"] = { en = "The Card's Opener", ja = "" },  -- TODO
     ["title.conversation_wrath_intro"] = { en = "Debut on the Sand", ja = "砂上のデビュー" },
     ["title.prologue_arena"] = { en = "Debut on the Sand", ja = "" },  -- TODO
     ["title.prologue_arrival"] = { en = "The Capital", ja = "" },  -- TODO

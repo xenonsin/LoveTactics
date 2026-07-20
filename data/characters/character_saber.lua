@@ -28,10 +28,14 @@ return {
         movement = 3,
         speed = 4, -- quick for a greatsword: she picks her moment
     },
+    -- The First Motion is the build-around, `bound` in the centre exactly as Rowan's Aegis is
+    -- (data/items/weapon/weapon_first_motion.lua). It is the counterplay to Ira stated as arithmetic:
+    -- Ira scales as her own health falls, Saber scales with her target's. A player who fields Saber
+    -- has been holding the answer to the general since the debut bout.
     startingItems = {
-        "weapon_iron_greatsword", "consumable_healing_potion", false,
-        false,                    false,                       false,
-        false,                    false,                       false,
+        false, "consumable_healing_potion", false,
+        false, "weapon_first_motion",       false,
+        false, false,                       false,
     },
-    defaultAction = "weapon_iron_greatsword",
+    defaultAction = "weapon_first_motion",
 }

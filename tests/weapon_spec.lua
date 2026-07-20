@@ -526,6 +526,40 @@ return {
         end,
     },
     {
+        -- Saber's rule, and the counterplay to Ira stated as arithmetic (docs/story.md, "The
+        -- Colosseum"): Ira scales as her OWN health falls, this scales with its TARGET's. The two are
+        -- opposed on one axis, so a long trade wakes her up and wastes Saber entirely.
+        --
+        -- Deliberately not an accumulate-by-idling design: dead turns are downtime, not patience.
+        -- The reward is for reading the board and picking a fresh target, never for abstaining.
+        name = "the First Motion pays for opening a fight, not for finishing one",
+        fn = function()
+            local function swing(targetHpFraction)
+                local saber = plainChar("character_saber")
+                local blade = give(saber, "weapon_first_motion")
+                local mark = plainChar("character_champion")
+                local c = Combat.new(arena(8, 8), { unit(saber, 3, 3) }, { unit(mark, 3, 4) })
+                local her, foe = c.units[1], c.units[2]
+
+                local php = foe.char.stats.health
+                php.current = math.max(1, math.floor(php.max * targetHpFraction))
+                local before = hp(foe)
+
+                openTurn(c, her)
+                assert(Combat.useItem(c, her, blade, 3, 4), "the wind-up starts")
+                -- A greatsword channels a turn before it lands (docs/weapons.md); drive it home.
+                Combat.resolveChannel(c, her)
+                return before - hp(foe)
+            end
+
+            local whole = swing(1.0)
+            local wounded = swing(0.25)
+            assert(whole > wounded,
+                "a target at full health should be worth strictly more, got " .. whole .. " vs " .. wounded)
+            assert(wounded > 0, "and a swing into a wounded target is still an ordinary heavy hit")
+        end,
+    },
+    {
         name = "the Kingsblood Dagger puts half a swing again through a wound already open",
         fn = function()
             local rogue = plainChar("character_bandit")

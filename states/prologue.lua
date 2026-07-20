@@ -167,10 +167,11 @@ local function buildBeats()
         overworld(FLIGHT_QUEST),
         scene("prologue_arrival"),
         scene("prologue_arena"),
-        battle(require("models.quest").defs["arena_debut"].map, function()
-            completeArenaDebut()
-            Player.recruit(Player.active, "character_saber") -- bested, then kept
-        end),
+        -- Bested, then kept. The recruit rides on the quest's own `rewardCharacter` now
+        -- (data/quests/arena_debut.lua), granted by Quest.complete like any other reward, so the
+        -- blueprint is the single source of truth for who this bout is worth rather than a line of
+        -- prologue script that a board-taken version of the quest would never run.
+        battle(require("models.quest").defs["arena_debut"].map, completeArenaDebut),
         scene("prologue_victory"),
     }
 end

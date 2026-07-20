@@ -1,10 +1,11 @@
 -- Lifted off Ira's body, and it kept her rule. `traits` on an item reach whoever carries it in their
--- 3x3 grid (models/trait.lua): every hit the wearer walks away from is added to their next blow. You
--- fought that mechanic; now you are it. That is the payment for a general, and the shape every one of
+-- 3x3 grid (models/trait.lua): the nearer the wearer is to death, the harder they hit. You fought
+-- that mechanic; now you are it. That is the payment for a general, and the shape every one of
 -- the seven relics takes -- kill a sin, wear it.
 --
--- It is a trap dressed as a reward, exactly as it was when she wore it. The rage only pays out if you
--- are being hit, and armor this thin means you will be.
+-- It is a trap dressed as a reward, exactly as it was when she wore it. The payout only arrives when
+-- you are nearly dead, and armor this thin means you will get there. It asks you to want what she
+-- wanted, and the reason she wanted it is that nothing else ever reached her.
 --
 -- No `class` and no `price`: no vendor stocks it, no shelf can replace it. There is one.
 --
@@ -14,7 +15,7 @@
 -- stashing it, wearing it, or losing it can never cost you the endgame.
 return {
     name = "Mail of the Unappeased",
-    description = "Every wound you survive is added to your next blow.",
+    description = "The nearer you are to death, the harder you hit.",
     flavor = "Ira's mail, still warm. Scratched inside the collar: \"beneath the sand, where the " ..
         "roaring was loudest\".",
     sprite = "assets/items/mail_of_the_unappeased.png",

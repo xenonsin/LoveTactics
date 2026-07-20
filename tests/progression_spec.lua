@@ -642,9 +642,18 @@ return {
             end
             assert(quest and quest.rewardPrestige > 0, "arena_debut should grant prestige")
 
+            -- The company as it stood when the prestige landed. arena_debut also carries a
+            -- `rewardCharacter` (Saber is bested and kept), and she joins AFTER the level-ups are
+            -- computed -- she did not earn this quest's prestige, and Player.recruit syncs her to the
+            -- new level on the way in. So advancement covers the roster that fought, not the roster
+            -- that walks home.
+            local fought = #p.roster
+
             local reward = Quest.complete(p, quest)
             assert(reward.advancement, "the reward carries an advancement list")
-            assert(#reward.advancement == #p.roster, "prestige leveled the whole company")
+            assert(#reward.advancement == fought, "prestige leveled the whole company")
+            assert(reward.recruited and #p.roster == fought + 1,
+                "and the bout's real reward joined on top of it")
         end,
     },
     {
