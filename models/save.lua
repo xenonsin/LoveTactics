@@ -244,6 +244,17 @@ local function restoreCharacter(snap)
     return char
 end
 
+-- Shared with models/build.lua, which freezes a party and its authored tactics for someone else to
+-- fight (see that module's header). A build is the same question this file already answers -- what
+-- of a character is worth writing down, and how does it come back -- so it reuses these rather than
+-- keeping a second opinion about it. Two definitions of "a character on disk" would drift, and the
+-- one that drifted would be the one nobody tested.
+Save.snapshotCharacter = snapshotCharacter
+Save.restoreCharacter = restoreCharacter
+Save.encode = encode
+Save.decode = decode
+Save.known = known
+
 -- Rebuild mutable player state from a snapshot. Returns nil if the snapshot is unusable
 -- (wrong version, malformed), letting the caller fall back to a fresh game.
 function Save.restore(snap)
