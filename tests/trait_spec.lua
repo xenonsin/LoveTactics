@@ -205,18 +205,20 @@ return {
             local ira = Character.instantiate("character_general_wrath")
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit(ira, 5, 5) })
             local boss = c.units[2]
-            local peak = Trait.defs.trait_wrath_rising.magnitude -- worth this much at death's door
+            local def = Trait.defs.trait_wrath_rising
+            local peak, perBlow = def.magnitude, def.perBlow
             local hp = boss.char.stats.health
             -- Her grid already grants damage of its own (the Unappeased Heart), so the rule's
             -- contribution is measured against that baseline rather than against zero.
             local rested = boss.bonus.damage or 0
 
-            -- Halfway down: half the curve.
+            -- Halfway down: half the health curve, plus the one blow it took to read it.
             hp.current = math.floor(hp.max / 2) + 1
             Combat.dealFlatDamage(c, boss, 1, nil, "test")
             assert(boss.alive, "she is nowhere near dead")
             local half = (boss.bonus.damage or 0) - rested
-            assert(half >= math.floor(peak * 0.45) and half <= math.floor(peak * 0.55),
+            local wantHalf = math.floor(peak * 0.5) + perBlow
+            assert(half >= wantHalf - 1 and half <= wantHalf + 1,
                 "at about half health she should carry about half the curve, got " .. tostring(half))
 
             -- Nearly gone: nearly all of it, and strictly more than at half.
@@ -231,6 +233,32 @@ return {
                 "the badge should read what the rule has added, not her resting kit")
             assert(not badge.def.statBonus,
                 "the badge must grant nothing: the trait already added the damage")
+        end,
+    },
+    {
+        -- The hole the blow-count term exists to close: without it, a party chipping her through her
+        -- own armour barely moves the health curve while very much fighting her, and her mitigation
+        -- would be quietly protecting them from her rule. What reaches her is CONTACT -- a blow that
+        -- glances off is still someone touching her.
+        name = "wrath_rising counts a blow that did nothing at all",
+        fn = function()
+            local ira = Character.instantiate("character_general_wrath")
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit(ira, 5, 5) })
+            local boss = c.units[2]
+            local rested = boss.bonus.damage or 0
+            local perBlow = Trait.defs.trait_wrath_rising.perBlow
+
+            -- The smallest blow the engine will deliver (mitigation floors at 1, so nothing ever
+            -- lands for literally nothing). Against 260 health that is far too little to move the
+            -- health term off zero, so whatever she gains here is the contact alone.
+            local hp = boss.char.stats.health
+            local before = hp.current
+            Combat.dealFlatDamage(c, boss, 0, nil, "test")
+            assert(before - hp.current <= 1, "the blow should be worth a point of health at most")
+            assert(math.floor(Trait.defs.trait_wrath_rising.magnitude * (1 - hp.current / hp.max)) == 0,
+                "and far too little for the health curve to notice")
+            assert((boss.bonus.damage or 0) - rested == perBlow,
+                "yet it still sharpened her by exactly one blow's worth")
         end,
     },
     {
