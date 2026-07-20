@@ -38,8 +38,15 @@ end
 function Growth.dominantClass(char)
     local best, bestCount = nil, 0
     for class, count in pairs(char.classUse or {}) do
-        -- Strict `>` keeps the first-seen leader on a tie; the innate class breaks a genuine tie below.
-        if count > bestCount then best, bestCount = class, count end
+        -- A tie settles by name. The innate class breaks a genuine tie below, but only when it is
+        -- itself one of the leaders -- two OTHER classes level with each other leave that check
+        -- unfired, and "first-seen" over pairs() is not an answer: the order holds still within one
+        -- build and is promised by nothing across two. This picks the growth table a level-up
+        -- applies, so an unstable reading is the same character with different stats on another
+        -- machine, which is also how a normalized duel roster would fail to agree with itself.
+        if count > bestCount or (count == bestCount and best and class < best) then
+            best, bestCount = class, count
+        end
     end
     -- A tie (or no casts): prefer the character's own innate class if it is itself among the leaders,
     -- otherwise use it as the declared fallback.

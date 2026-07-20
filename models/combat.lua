@@ -693,6 +693,10 @@ function Combat.new(arena, partyUnits, enemyUnits)
         arena = arena,
         objective = (arena and arena.objective) or { type = "killAll" },
         units = {},
+        -- The side the local player is running, and so the side "win" and "loss" are spoken from.
+        -- Always the party in campaign play; a duel sets it per machine, which is how one board
+        -- reads as a victory to one player and a defeat to the other.
+        playerSide = "party",
         -- This battle's own draw sequence, a function of the seed that built the board. Absent for
         -- a combat with no seeded arena (a scripted layout), which falls back to Combat.random.
         rng = (arena and arena.seed) and Combat.newRandom(arena.seed) or nil,
@@ -724,11 +728,13 @@ function Combat.new(arena, partyUnits, enemyUnits)
             -- clear them BEFORE the refill or a stale one would cap stamina below its max. A summon
             -- claim (Combat.activeSummon) is the same kind of leftover: the wolf that was still
             -- standing at the last blow is not on this field, so its horn is free to blow again.
-            if side == "party" then
-                Combat.releaseClaims(unit.char)
-                local st = unit.char.stats.stamina
-                if type(st) == "table" then st.current = st.max end
-            end
+            -- Every side, for the same reason the refill below is: a leftover reservation or summon
+            -- claim belongs to whatever battle made it, and the only reason this was ever written as
+            -- the party's business is that the party was the only side reusing instances that had
+            -- been anywhere. Clearing nothing on a freshly instantiated enemy costs nothing.
+            Combat.releaseClaims(unit.char)
+            local st = unit.char.stats.stamina
+            if type(st) == "table" then st.current = st.max end
         end
     end
     addSide(partyUnits, "party")
@@ -745,11 +751,16 @@ function Combat.new(arena, partyUnits, enemyUnits)
     -- the BASE max before maxBonus existed, so a fresh battle's stamina pool includes the bonus.
     -- Mana is deliberately left where it stood (it persists between battles); the extra mana ceiling
     -- is headroom to recover into, exactly like the extra health ceiling.
+    -- Every unit, not just the party's. This reads to its full EFFECTIVE ceiling, so it is only a
+    -- no-op for the other side while no enemy carries a stamina maxBonus -- none does today, and
+    -- Endurance's own promise is "refills to its full effective ceiling at the start of each
+    -- battle", which was never meant to be a promise made to the party alone. The narrow rule was
+    -- an accident that cost nothing while every enemy was instantiated fresh at full stamina; it
+    -- stops costing nothing the moment the far side of the board is somebody's real roster, which
+    -- is a duel -- those units would take the field already short of wind.
     for _, unit in ipairs(combat.units) do
-        if unit.side == "party" then
-            local st = unit.char.stats.stamina
-            if type(st) == "table" then st.current = Combat.unreservedMax(unit.char, "stamina") end
-        end
+        local st = unit.char.stats.stamina
+        if type(st) == "table" then st.current = Combat.unreservedMax(unit.char, "stamina") end
     end
 
     -- Authored traps: arena.traps is a list of { id, x, y, side } (side defaults to "enemy",
@@ -4643,10 +4654,39 @@ function Combat.accrueHold(combat, elapsed)
     end
 end
 
-function Combat.evaluate(combat)
-    if Combat.aliveCount(combat, "party") == 0 then return "loss" end
+-- The side across the board. Two sides is the game; this exists so the rules below can be written
+-- from a point of view instead of from the party's, and is not a step toward N-sided combat.
+Combat.OPPOSING = { party = "enemy", enemy = "party" }
+
+-- Has `side` won, lost, or neither? Returns "win", "loss", or nil for a fight still in progress.
+--
+-- Being wiped out is a loss for anyone, and killAll reads across the board, so those two rules --
+-- the whole of a duel -- are genuinely symmetric and answer for either side.
+--
+-- The authored objectives are not, and are not pretending to be: `reach`, `hold`, `assassinate`,
+-- `survive` and `protect` are written FOR the party by a quest, and asking whether the enemy has
+-- achieved the party's objective is a question with no meaning. Campaign play only ever asks about
+-- the party; a duel only ever uses killAll. If an objective is ever authored to be contested, this
+-- is where it would have to grow a per-side statement of it.
+function Combat.outcomeFor(combat, side)
+    side = side or "party"
+    local foe = Combat.OPPOSING[side] or "enemy"
+
+    if Combat.aliveCount(combat, side) == 0 then return "loss" end
 
     local obj = combat.objective or { type = "killAll" }
+
+    -- Everything below this line is an objective a quest wrote for the party: a column to escort, a
+    -- mark to kill, ground to hold. The other side is not pursuing its own version of it -- its job
+    -- is to stop the party -- so its standing is exactly the party's, mirrored. Stated once here
+    -- rather than threaded through every branch, because the branches themselves genuinely are
+    -- about the party and reading them that way is correct.
+    if side ~= "party" and obj.type ~= "killAll" then
+        local theirs = Combat.outcomeFor(combat, "party")
+        if theirs == "win" then return "loss" end
+        if theirs == "loss" then return "win" end
+        return nil
+    end
 
     if obj.protect and not Combat.isProtectedAlive(combat, obj.protect) then
         return "loss"
@@ -4690,9 +4730,17 @@ function Combat.evaluate(combat)
         if combat.clock >= turnsToTicks(obj.turns) then return "win" end
         return nil
     else -- killAll (default)
-        if Combat.aliveCount(combat, "enemy") == 0 then return "win" end
+        if Combat.aliveCount(combat, foe) == 0 then return "win" end
         return nil
     end
+end
+
+-- The fight's standing as the player sees it. `combat.playerSide` is the side the local player is
+-- running -- "party" in every campaign battle, and in a duel the side this machine is holding, so
+-- the same board reads as a win to one player and a loss to the other while the state underneath
+-- them stays identical.
+function Combat.evaluate(combat)
+    return Combat.outcomeFor(combat, combat.playerSide or "party")
 end
 
 return Combat
