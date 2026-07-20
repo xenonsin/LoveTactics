@@ -149,6 +149,16 @@ local function specFor(opts, partyIds, seed)
         spec.allies = def and def.allies
         spec.objective = def and def.objective
     end
+    -- A fight against somebody's team rather than a roll of the encounter table: a stored build, or
+    -- another player. The far side arrives as live character instances, so THEIR ids are the
+    -- composition -- the arena seats exactly those bodies, in that order, and battle.enter binds the
+    -- instances it was handed onto those spawns. Overrides whatever the quest or encounter asked
+    -- for, because the opponent is no longer this game's to choose.
+    if opts.enemyChars then
+        local ids = {}
+        for i, char in ipairs(opts.enemyChars) do ids[i] = char.id end
+        spec.composition = ids
+    end
     return spec
 end
 
@@ -1847,13 +1857,14 @@ function battle.enter(self, opts)
     battle.over = false
     battle.showInitiative = true -- initiative numbers on the turn order (F6 toggles)
 
-    -- Active party instances (from the player), keyed by id for spawn lookup.
+    -- Active party instances (from the player). Matched to their spawns by POSITION rather than by
+    -- id: Arena.build binds ids to spawn points in the order it is given them (bindUnits), so index
+    -- i of the arena's party is index i of this list. Keying by char.id instead would collapse two
+    -- of the same blueprint onto one instance -- which the player's own roster cannot do today, but
+    -- a team assembled from a build can, and silently fielding one knight twice is a hard bug to see.
     local party = opts.party or {}
-    local partyIds, partyById = {}, {}
-    for i, char in ipairs(party) do
-        partyIds[i] = char.id
-        partyById[char.id] = char
-    end
+    local partyIds = {}
+    for i, char in ipairs(party) do partyIds[i] = char.id end
 
     -- A guided fight (the prologue's village defense) runs a lesson over the top of the ordinary
     -- battle: it speaks over one unit's head, narrows the board to the action it is asking for, and
@@ -1871,13 +1882,13 @@ function battle.enter(self, opts)
 
     -- Combat unit lists: { char = <instance>, x, y }.
     battle.partyUnits, battle.enemyUnits = {}, {}
-    for _, u in ipairs(battle.arena.party) do
+    for i, u in ipairs(battle.arena.party) do
         -- A tutorial may take a party member out of the player's hands (the mentor demonstrating the
         -- lesson she just gave). Combat.new already honours a per-unit control override on the party
         -- side -- the same seam escorted allies use -- so she stays a party unit for the objective
         -- and the turn order, and simply isn't player-controlled.
         battle.partyUnits[#battle.partyUnits + 1] = {
-            char = partyById[u.id], x = u.x, y = u.y,
+            char = party[i], x = u.x, y = u.y,
             control = battle.tutorial and Tutorial.controlFor(battle.tutorial, u.id) or nil,
         }
     end
@@ -1888,9 +1899,18 @@ function battle.enter(self, opts)
         battle.partyUnits[#battle.partyUnits + 1] =
             { char = Character.instantiate(u.id), x = u.x, y = u.y, control = "ai" }
     end
-    for _, u in ipairs(battle.arena.enemies) do
-        battle.enemyUnits[#battle.enemyUnits + 1] =
-            { char = Character.instantiate(u.id), x = u.x, y = u.y }
+    -- The far side is normally minted fresh from blueprint ids. `opts.enemyChars` hands over live
+    -- instances instead -- a stored build's team, carrying the levelling, the gear placement and
+    -- above all the aiRules its author wrote (models/build.lua). Bound by position, the same way the
+    -- party is, because specFor made those characters' ids the composition the arena was seated from.
+    -- Control stays the default for the enemy side, which is what makes their author's gambits the
+    -- thing actually driving them: AI.rulesFor reads char.aiRules first.
+    local enemyChars = opts.enemyChars
+    for i, u in ipairs(battle.arena.enemies) do
+        battle.enemyUnits[#battle.enemyUnits + 1] = {
+            char = (enemyChars and enemyChars[i]) or Character.instantiate(u.id),
+            x = u.x, y = u.y,
+        }
     end
 
     battle.combat = Combat.new(battle.arena, battle.partyUnits, battle.enemyUnits)
