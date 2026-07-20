@@ -1795,7 +1795,10 @@ function battle.enter(self, opts)
     battle.tutorial = opts.tutorial and Tutorial.new(opts.tutorial) or nil
     battle.lessonOpen = battle.tutorial == nil -- see refreshView: a lesson stays quiet until it is the student's turn
 
-    local seed = os.time() + math.floor(((love.timer and love.timer.getTime()) or 0) * 1000) % 100000
+    -- The board is reproducible from this number alone, so whoever starts the fight owns it: an
+    -- ordinary battle rolls a fresh one, a replayed bug report passes the one it recorded, and two
+    -- players in the same duel are handed the same seed and build the same ground from it.
+    local seed = opts.seed or Arena.randomSeed()
     local ctx = { prestige = opts.prestige or 1, biome = opts.biome, quest = opts.quest }
     battle.arena = Arena.build(ctx, specFor(opts, partyIds, seed))
 

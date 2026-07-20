@@ -181,13 +181,32 @@ local function placeUnits(rowList, count, cols, occupied)
     return spawns
 end
 
+-- A deliberately fresh seed, for a caller that wants a board it has never seen. The one place the
+-- clock is allowed to pick, so "this arena came from nowhere" is a greppable decision rather than
+-- something that happens by omission.
+function Arena.randomSeed()
+    return os.time() + math.floor(((love.timer and love.timer.getTime()) or 0) * 1000) % 100000
+end
+
+-- Every generated board has to be reproducible from a seed its caller chose: a bug report replays,
+-- and two machines building the same fight from the same number get the same ground underfoot. A
+-- clock fallback here would hand back a board that looks perfectly correct and cannot be produced
+-- again -- the failure that hides longest -- so a missing seed is a programming error, not a roll.
+local function requireSeed(seed, who)
+    if not seed then
+        error(who .. " needs a seed; pass one through the spec, or Arena.randomSeed() if a"
+            .. " board nobody has seen is actually what you want", 3)
+    end
+    return seed
+end
+
 -- Procedurally generate a layout: all `ground`, with a few `forest`/`mountain`/`obstacle`
 -- tiles scattered across the middle rows (never on a spawn tile). Deterministic off
--- `params.seed`. `params.party` / `params.enemies` are unit *counts*.
+-- `params.seed` (required -- see requireSeed). `params.party` / `params.enemies` are unit *counts*.
 function Arena.generateLayout(params)
     params = params or {}
     local cols, rows = Arena.COLS, Arena.ROWS
-    local rng = love.math.newRandomGenerator(params.seed or os.time())
+    local rng = love.math.newRandomGenerator(requireSeed(params.seed, "Arena.generateLayout"))
 
     local tiles = {}
     for y = 1, rows do
@@ -251,7 +270,7 @@ function Arena.pickLayout(spec, partyCount, enemyCount)
     local forced = spec.layout and Arena.defs[spec.layout]
     if forced then return hydrateLayout(forced) end
 
-    local rng = love.math.newRandomGenerator(spec.seed or os.time())
+    local rng = love.math.newRandomGenerator(requireSeed(spec.seed, "Arena.pickLayout"))
 
     local curated = {}
     for id, def in pairs(Arena.defs) do
@@ -339,7 +358,10 @@ function Arena.build(ctx, spec)
         enemies = bindUnits(enemyIds, layout.enemySpawns),
         traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
         objective = normalizeObjective(spec.objective, layout),
-        seed = layout.seed,
+        -- The seed the caller chose, not whatever the layout happened to record: it is what the
+        -- battle's own draw sequence is built from (Combat.new), so it has to be the authoritative
+        -- number even when a curated layout was picked and generated nothing.
+        seed = spec.seed or layout.seed,
     }
 end
 

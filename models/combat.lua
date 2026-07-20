@@ -53,10 +53,46 @@ local Character = require("models.character")
 
 local Combat = {}
 
--- Random source, indirected so the headless tests can stub it (this module is pure Lua -- see the
--- header: not even love.math -- and math.random's global state would make a spec order-dependent).
--- Called as Combat.random(n) -> 1..n. Only Combat.steal uses it today.
-Combat.random = math.random
+-- Random source, in two layers, because two callers want different things from it.
+--
+-- `combat.rng` is the real one: a generator seeded off the arena and installed by Combat.new, so
+-- every draw a battle makes is a function of that battle's seed. The same seed replays the same
+-- fight -- which is what lets a bug report be reproduced, and what lets two machines run one duel
+-- without quietly drifting apart.
+--
+-- `Combat.random` is the module-level source, kept because a spec needs to force a particular draw
+-- ("steal takes the SECOND item") from outside, before any combat exists to reach into. Replacing
+-- it OUTRANKS the per-battle generator: a caller that reached in and pinned the module's source
+-- meant it. Left alone it is plain math.random -- the fallback for a combat built without a seed
+-- (a scripted board names its layout outright and needs none).
+--
+-- Draw with Combat.roll(combat, n) -> 1..n, never by calling either source directly.
+local DEFAULT_RANDOM = math.random
+Combat.random = DEFAULT_RANDOM
+
+-- A pure-Lua Park-Miller generator (16807 / 2^31-1) using Schrage's trick, which keeps every
+-- intermediate product under 2^31 so the arithmetic stays exact in a double and yields the same
+-- stream on every platform we ship. love.math is deliberately not used: this module is pure Lua
+-- (see the header) and has to load headless.
+function Combat.newRandom(seed)
+    local state = math.floor(math.abs(seed or 1)) % 2147483646 + 1
+    return function(n)
+        local hi = math.floor(state / 127773)
+        local lo = state % 127773
+        state = 16807 * lo - 2836 * hi
+        if state <= 0 then state = state + 2147483647 end
+        if not n or n <= 1 then return 1 end
+        return (state % n) + 1
+    end
+end
+
+-- One draw in 1..n for this battle. See the comment above for which of the two sources answers.
+function Combat.roll(combat, n)
+    n = n or 1
+    if Combat.random ~= DEFAULT_RANDOM then return Combat.random(n) end
+    if combat and combat.rng then return combat.rng(n) end
+    return Combat.random(n)
+end
 
 -- Ability-speed fallback for a unit that carries no ability item at all.
 Combat.DEFAULT_SPEED = 5
@@ -657,6 +693,9 @@ function Combat.new(arena, partyUnits, enemyUnits)
         arena = arena,
         objective = (arena and arena.objective) or { type = "killAll" },
         units = {},
+        -- This battle's own draw sequence, a function of the seed that built the board. Absent for
+        -- a combat with no seeded arena (a scripted layout), which falls back to Combat.random.
+        rng = (arena and arena.seed) and Combat.newRandom(arena.seed) or nil,
         clock = 0,      -- accumulated elapsed initiative (drives `survive`)
         turnCount = 0,  -- number of actions taken
         turn = nil,     -- the in-progress turn: { unit, moved, moveCost } (see startTurn)
@@ -3772,7 +3811,7 @@ function Combat.steal(combat, thief, victim)
         return nil
     end
 
-    local item = pool[Combat.random(#pool)]
+    local item = pool[Combat.roll(combat, #pool)]
     Character.removeItem(victim.char, item)
     Combat.logEvent(combat, "action", string.format("%s steals %s from %s.",
         unitName(thief), item.name or "an item", unitName(victim)))
@@ -3816,7 +3855,7 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
         aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty, user) end,
         aoeCells = function() return Combat.aoeCells(combat, ab, tx, ty, user) end,
         hasStatus = function(t, id) return t ~= nil and Status.has(t, id) end,
-        random = function(n) return Combat.random(n or 1) end,
+        random = function(n) return Combat.roll(combat, n or 1) end,
         log = function(kind, text) return Combat.logEvent(combat, kind, text) end,
         restore = function(t, stat, amount)
             if not t then return 0 end
@@ -4273,9 +4312,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
             tgt.initiative = tgt.initiative * (1 - (fraction or 0.5))
             return tgt.initiative
         end,
-        -- A random integer in 1..n, drawn from the model's indirected source (so a spec can stub it).
-        -- What a scattershot ability rolls to pick its tiles (Meteor Storm), and any future dice.
-        random = function(n) return Combat.random(n or 1) end,
+        -- A random integer in 1..n, drawn from this battle's own sequence (see Combat.roll), so a
+        -- scattershot ability scatters the same way on a replay -- and identically on two machines
+        -- watching one fight. What Meteor Storm rolls to pick its tiles, and any future dice.
+        random = function(n) return Combat.roll(combat, n or 1) end,
         -- Strip every debuff from a unit (Cure). Returns the number removed.
         cleanse = function(tgt)
             if not tgt then return 0 end
