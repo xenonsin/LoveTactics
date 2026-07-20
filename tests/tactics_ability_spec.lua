@@ -114,7 +114,7 @@ return {
     {
         name = "Smoke Bomb negates the first attack and blinks the bearer clear, then is spent",
         fn = function()
-            local bearer = withGrid("character_knight", { "utility_smoke_bomb" })
+            local bearer = withGrid("character_knight", { "consumable_smoke_bomb" })
             local c = Combat.new(arena(8, 8), { unit(bearer, 3, 3) }, { unit("character_bandit", 2, 3) })
             local b = c.units[1]
             local attacker = Combat.unitAt(c, 2, 3)
