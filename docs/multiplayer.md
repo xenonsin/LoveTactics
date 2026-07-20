@@ -45,9 +45,11 @@ Each instrument has a blind spot the others cover; `tests/netplay_spec.lua`'s he
 
 ### Binaries are not vendored
 
-Three files are needed beside the executable before any Steam path can work. **None are in this
-repository**, and nothing breaks without them — `models/steam.lua` reports "not available" with a
-reason and the game runs normally, with asynchronous build PvP fully playable.
+Three files are needed beside the executable before any Steam path can work. **All three are
+gitignored** — they are large, platform-specific and separately licensed, and the app id is a local
+development detail rather than a property of the game. Nothing breaks without them:
+`models/steam.lua` reports "not available" with a reason, the game runs normally, and asynchronous
+build PvP needs no Steam at all.
 
 | file | where from |
 |---|---|
@@ -56,6 +58,13 @@ reason and the game runs normally, with asynchronous build PvP fully playable.
 | `steam_appid.txt` | created by hand; your App ID |
 
 Plus the Steam client running.
+
+A note on `steam_api64.dll`: almost every Steam game ships one, so there is very likely a copy
+already on any development machine. Fine for a local experiment — but the version is not visible
+from the file (Valve versions it on its own scheme, not the SDK's), and a mismatch close enough to
+*load* while being subtly wrong at the ABI will look like a protocol bug rather than a binary
+problem. If Steam behaves strangely, suspect the DLL before the netcode. For a release build, take
+it from the Steamworks SDK you are licensed under.
 
 ### The Steam invite flow is not written
 

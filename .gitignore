@@ -15,3 +15,19 @@ desktop.ini
 
 # Logs
 *.log
+
+# Steam native binaries and the local app id. Not committed on purpose: they are large,
+# platform-specific, and licensed separately (steam_api64.dll comes from the Steamworks SDK), and
+# steam_appid.txt is a local development detail rather than a property of the game.
+#
+# The game runs perfectly well without them -- models/steam.lua reports "not available" with a
+# reason, and asynchronous build PvP needs no Steam at all. See docs/multiplayer.md for where each
+# one comes from.
+luasteam.dll
+luasteam.so
+luasteam.dylib
+steam_api.dll
+steam_api64.dll
+libsteam_api.so
+libsteam_api.dylib
+steam_appid.txt
