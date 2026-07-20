@@ -36,8 +36,14 @@ SteamTransport.SEND_RELIABLE = 8
 
 -- Four functions over a peer's SteamID. Everything above this is plain Lua and is specced.
 local function steamApi()
-    local ok, steam = pcall(require, "luasteam")
-    if not ok or not steam then return nil, "luasteam is not available in this build" end
+    -- Through the bootstrap rather than a bare require: the DLL sits beside the .love where LOVE's
+    -- package.cpath does not look, and Steam has to be Init()ed before any interface answers. Both
+    -- are handled once, in models/steam.lua.
+    local Steam = require("models.steam")
+    local ok, why = Steam.init()
+    if not ok then return nil, why end
+
+    local steam = Steam.api
     local messages = steam.networkingMessages
     if not messages then return nil, "this luasteam build has no networkingMessages" end
 
@@ -54,7 +60,7 @@ local function steamApi()
         end,
         -- A peer that messages us first opens a session we have to accept before anything flows.
         accept = function(peer) return messages.acceptSessionWithUser(peer) end,
-        runCallbacks = function() if steam.runCallbacks then steam.runCallbacks() end end,
+        runCallbacks = function() Steam.runCallbacks() end,
     }
 end
 
