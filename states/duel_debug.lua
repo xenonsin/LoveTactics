@@ -96,6 +96,11 @@ function duel.enter(_, role, mode, port)
     log("starting as " .. duel.role .. " (drives " .. duel.side .. ")"
         .. (duel.auto and ", auto" or ""))
 
+    -- "real" hands the session to states/battle.lua instead of driving this harness's own little
+    -- board. That is the integration the harness exists to prove: the same protocol, the same
+    -- commands, but resolved by the actual game rather than by a test rig that might flatter it.
+    duel.real = (mode == "real")
+
     local transport, why = Transport.open("localhost", { role = duel.role, port = port })
     if not transport then
         duel.status = "no transport: " .. tostring(why)
@@ -119,6 +124,11 @@ function duel.enter(_, role, mode, port)
         onReady = function(remote)
             duel.status = "connected -- they drive " .. tostring(remote.side)
             log("handshake agreed")
+            if duel.real then
+                log("handing the duel to states/battle.lua")
+                duel.handOff = true
+                return
+            end
             Combat.startTurn(duel.combat)
         end,
         onCommand = function(cmd, n)
@@ -169,6 +179,41 @@ local function take(cmd)
 end
 
 function duel.update(dt)
+    -- Hand over to the real battle once both sides have agreed. Done from update rather than inside
+    -- onReady so the state switch does not happen underneath the session's own message loop.
+    if duel.handOff then
+        duel.handOff = nil
+        local Character = require("models.character")
+        -- Both peers build the SAME two teams in the same order -- that is what the shared seed and
+        -- the handshake are for. Host drives the party, guest the enemy.
+        local function team(ids)
+            local out = {}
+            for i, id in ipairs(ids) do
+                local c = Character.instantiate(id)
+                c.traits = {}
+                out[i] = c
+            end
+            return out
+        end
+        local State = require("states")
+        State.switch(require("states.battle"), {
+            encounter = { kind = "objective" }, biome = "castle", prestige = 1,
+            seed = SEED,
+            party = team({ "character_knight", "character_archer" }),
+            enemyChars = team({ "character_bandit", "character_mage" }),
+            playerSide = duel.side,
+            session = duel.session,
+            autoPilot = true, -- nobody is at either keyboard; see battle.autoPilot
+            netLog = log,     -- so the two windows' turn logs can be compared afterwards
+            quest = { map = { biome = "castle", objective = {
+                name = "Duel", win = { type = "killAll" },
+            } } },
+            onWin = function() love.event.quit(0) end,
+            onLoss = function() love.event.quit(0) end,
+        })
+        return
+    end
+
     if duel.session then duel.session:update() end
     if duel.transport and duel.transport.status and duel.session
         and duel.session.state == "handshake" then

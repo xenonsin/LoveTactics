@@ -253,6 +253,30 @@ return {
         end,
     },
     {
+        -- Found by two windows, not by any spec: both peers hashed the same TURN but at different
+        -- MOMENTS in it. The sender fingerprinted inside the action; the receiver fingerprinted
+        -- after handing the turn on -- and handing it on starts the next unit's turn, which the
+        -- sender had not begun. Every single command reported a desync.
+        --
+        -- The rule this pins: a fingerprint is taken with the acting unit still up, its move spent,
+        -- before the turn passes. Both sides measure there or neither does.
+        name = "a fingerprint taken before the turn passes differs from one taken after",
+        fn = function()
+            local c = duel()
+            local unit = openTurn(c)
+            Command.apply(c, unit, { kind = "wait" })
+            local duringTurn = StateHash.of(c)
+
+            -- Handing the turn on is what the sender has NOT done yet when it measures.
+            openTurn(c)
+            local afterHandOff = StateHash.of(c)
+
+            assert(duringTurn ~= afterHandOff,
+                "starting the next unit's turn changes the board -- so the two peers must not "
+                    .. "straddle that moment when they fingerprint")
+        end,
+    },
+    {
         name = "a well-formed command survives the trip as data",
         fn = function()
             local Save = require("models.save")

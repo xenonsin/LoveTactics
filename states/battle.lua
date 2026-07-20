@@ -28,6 +28,7 @@ local ActionPreview = require("ui.action_preview")
 local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
+local Command = require("models.command") -- the vocabulary a live duel speaks (models/netplay.lua)
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local Status = require("models.status")
@@ -674,6 +675,30 @@ end
 -- hold the hand-off while those reactions read (battle.update runs resolveAdvance once the beat and
 -- battle.fx:busy both clear). An action that raised no cues and left nothing animating -- a bare move,
 -- a wait, a pass -- resolves at once, so non-combat turns stay snappy.
+-- Tell the other machine what this one just did, and check the two boards still agree.
+--
+-- Called once per completed turn, whoever took it -- ours OR theirs. Both peers fingerprint the same
+-- turn number and compare, so a divergence is caught on the turn that caused it, while the command
+-- responsible is still the one everybody is looking at. Nil in every single-player battle, which is
+-- what the guard is for.
+-- Declared here and defined further down, once the pieces it leans on exist (advanceTurn, notify,
+-- holdLanding). battle.enter hands it to the session as the remote-turn hook, and enter runs long
+-- after this file has finished loading, so the forward declaration is enough -- whereas defining it
+-- up here would have captured three globals that happen to be nil.
+local netApplyRemote
+
+local function netFinishTurn(cmd)
+    local session = battle.session
+    if not session or not session:isPlaying() then return end
+    -- Only a turn WE took is announced; a remote one already came from them.
+    if cmd then session:submit(cmd) end
+    session:report(session.turn, battle.combat)
+    if battle.netLog then
+        battle.netLog(string.format("sent #%d %s hash %s", session.turn, tostring(cmd and cmd.kind),
+            require("models.state_hash").digestOf(battle.combat)))
+    end
+end
+
 -- `carried` is a cue list an action raised BEFORE the walk that replays its approach -- held back
 -- since (see holdLanding) so the blow does not land on screen ahead of the feet that carried it.
 local function advanceTurn(carried)
@@ -870,6 +895,66 @@ local function holdLanding()
     local events = Combat.drainFx(battle.combat)
     if events then battle.fx:hold(events, 1) end
     return events
+end
+
+-- Which grid cell `item` sits in for `unit`. A networked command names an item by CELL rather than
+-- by id, because an id is ambiguous -- a character can carry two of the same blueprint at different
+-- upgrade levels -- while the cell is both what the player clicked and the same on the far machine,
+-- which rebuilt this character from the same snapshot. See models/command.lua.
+local function slotOf(unit, item)
+    local inv = unit and unit.char and unit.char.inventory
+    if not (inv and item) then return nil end
+    for cell = 1, Character.MAX_INVENTORY do
+        if inv[cell] == item then return cell end
+    end
+    return nil
+end
+
+-- Apply a turn the other player took, and play it back here. (Forward-declared above.)
+--
+-- Deliberately the same shape as our own approach-and-strike: Command.apply resolves the whole thing
+-- against the model at once and hands back the route, then the walk replays it while the blow's cues
+-- are held until the feet stop. So a remote turn reads exactly like a local one -- the opponent's
+-- unit walks rather than teleporting, and its strike lands when it arrives.
+--
+-- A refusal here is serious. The command was legal on their board, so if it is not legal on ours the
+-- two have already diverged; the fingerprint exchange would catch it a moment later anyway, and
+-- saying so now names the command that did it.
+function netApplyRemote(cmd)
+    local current = battle.combat.turn and battle.combat.turn.unit
+    if not current then
+        if battle.netLog then battle.netLog("remote cmd arrived with no unit up -- dropped") end
+        return
+    end
+    local res, err = Command.apply(battle.combat, current, cmd)
+    if not res then
+        notify("Out of step with the other player.")
+        if battle.session then battle.session:close("refused a remote command: " .. tostring(err)) end
+        return
+    end
+    -- Fingerprint BEFORE handing the turn on, because that is where the sender fingerprints too
+    -- (netFinishTurn runs inside the action, ahead of advanceTurn). Both peers must measure the same
+    -- MOMENT in a turn, not just the same turn: advanceTurn starts the next unit's turn, so a peer
+    -- that hashed afterwards would include a turn the other had not begun and report a desync on
+    -- every single command. Which is exactly what it did.
+    if battle.session then
+        battle.session:report(battle.session.turn, battle.combat)
+        if battle.netLog then
+            battle.netLog(string.format("recv #%d %s hash %s", battle.session.turn,
+                tostring(cmd.kind), require("models.state_hash").digestOf(battle.combat)))
+        end
+    end
+
+    local blow = holdLanding()
+    if res.moved and #res.moved > 0 then
+        battle.reachable, battle.moveCells = {}, {}
+        battle.threatCells, battle.attackReach = {}, {}
+        battle.movePath = nil
+        battle.walk = { steps = res.moved, i = 0, timer = 0, unit = current,
+                        onDone = function() advanceTurn(blow) end }
+    else
+        advanceTurn(blow)
+    end
 end
 
 -- Is the lesson TALKING TO THE PLAYER right now -- the step's actor holding the turn, with nothing
@@ -1249,6 +1334,7 @@ local function confirm()
                 if Combat.blink(battle.combat, current, cx, cy) then
                     battle.reachable, battle.moveCells = {}, {}
                     battle.threatCells, battle.attackReach = {}, {}
+                    netFinishTurn({ kind = "blink", x = cx, y = cy })
                     if current.alive then computeThreat(current) computeDanger() else advanceTurn() end
                 end
             else
@@ -1258,6 +1344,7 @@ local function confirm()
                 -- this turn so the player can still arm an item or wait. A unit that walked into a
                 -- lethal trap has no turn left to take.
                 local mp = movePathTo(cx, cy)
+                netFinishTurn({ kind = "move", x = cx, y = cy, path = mp and mp.cells })
                 startWalk(current, cx, cy, function()
                     if not current.alive then advanceTurn() return end
                     -- A bare move does not end the turn, so it never reaches advanceTurn -- the
@@ -1279,6 +1366,7 @@ local function confirm()
         -- stay armed, refreshing the range from the tile it now stands on (one move per turn).
         if plan.kind == "move" then
             if Combat.hasMoved(battle.combat) then return end
+            netFinishTurn({ kind = "move", x = plan.x, y = plan.y, path = plan.cells })
             startWalk(current, plan.x, plan.y, function()
                 if not current.alive then advanceTurn() return end
                 -- Same bare move as the move-mode branch, and it reaches here far more often than
@@ -1297,7 +1385,9 @@ local function confirm()
         local entry = plan.entry
         local victim = Combat.unitAt(battle.combat, cx, cy) -- read before the cast clears the cell
         local function cast()
+            local cell = slotOf(current, item)
             if Combat.useItem(battle.combat, current, item, cx, cy) then
+                netFinishTurn({ kind = "use", cell = cell, tx = cx, ty = cy })
                 -- The item rides along so a lesson can ask for a strike with a NAMED ability rather
                 -- than any blow at all -- the village lesson's Clear Out, which is aimed at the caster's
                 -- own tile and so cannot be pinned by its victim (see data/tutorials/village.lua).
@@ -1315,6 +1405,12 @@ local function confirm()
             -- it. Nothing about the exchange is decided by how long the animation took.
             local landed = current.alive and Combat.useItem(battle.combat, current, item, cx, cy)
             local blow = holdLanding()
+            -- Announced now, not when the animation finishes: the model already resolved the whole
+            -- turn, and the peer should be told at once rather than after our playback -- their
+            -- window has its own walk to watch.
+            netFinishTurn({ kind = "use", cell = slotOf(current, item),
+                            tx = cx, ty = cy, path = plan.cells,
+                            x = entry.fromX, y = entry.fromY })
             battle.walk.onDone = function()
                 if landed then
                     observeAction("attack", current, cx, cy, victim and victim.char.id, item.id)
@@ -1341,6 +1437,7 @@ local function waitTurn()
         or Combat.wait
     if action(battle.combat, current) then
         observeAction("wait", current, current.x, current.y)
+        netFinishTurn({ kind = "wait" })
         advanceTurn()
     end
 end
@@ -1877,6 +1974,38 @@ function battle.enter(self, opts)
     -- battle: it speaks over one unit's head, narrows the board to the action it is asking for, and
     -- drives the units it names itself. Nil in every other battle, which is what every hook below
     -- tests for. See models/tutorial.lua.
+    -- A live duel. Nil in every other battle, which is what every netplay hook tests for. The
+    -- session is built by whoever set the duel up (it owns the transport and the handshake); this
+    -- state only speaks turns to it.
+    -- Debug-only: take this side's turns automatically. It exists so a duel can be driven from two
+    -- windows with nobody at either keyboard (states/duel_debug.lua), which is the only way to prove
+    -- the netplay wiring without two people. Refused outright in a release build.
+    battle.autoPilot = opts.autoPilot and require("models.debug").enabled or nil
+    battle.autoPilotTimer = 0
+    battle.netLog = opts.netLog -- optional: where a duel's turn/hash trace goes (debug harness)
+
+    battle.session = opts.session
+    if battle.session then
+        battle.session.onCommand = function(cmd) netApplyRemote(cmd) end
+        battle.session.onDesync = function(n, mine, theirs)
+            notify("Desynchronised on turn " .. tostring(n) .. " -- the duel cannot continue.")
+            -- Through the model's own log, which the panel reads. (An earlier version called a
+            -- method the log does not have, so the one path that reports a desync crashed on the
+            -- first real one -- the error handler failing exactly when it was needed.)
+            Combat.logEvent(battle.combat, "system",
+                "Desync on turn " .. tostring(n) .. ": " .. tostring(mine) .. " vs " .. tostring(theirs))
+            if battle.netLog then
+                battle.netLog("DESYNC turn " .. tostring(n) .. " mine=" .. tostring(mine)
+                    .. " theirs=" .. tostring(theirs))
+            end
+            battle.over = true
+        end
+        battle.session.onClosed = function(reason)
+            notify("Duel ended: " .. tostring(reason))
+            battle.over = true
+        end
+    end
+
     battle.tutorial = opts.tutorial and Tutorial.new(opts.tutorial) or nil
     battle.lessonOpen = battle.tutorial == nil -- see refreshView: a lesson stays quiet until it is the student's turn
 
@@ -1921,6 +2050,19 @@ function battle.enter(self, opts)
     end
 
     battle.combat = Combat.new(battle.arena, battle.partyUnits, battle.enemyUnits)
+
+    -- Which side THIS machine is holding. "party" in every campaign battle -- and in a duel, the
+    -- side this player drives, which is the enemy side for whoever joined. Everything else follows
+    -- from it: win and loss are spoken from here (Combat.evaluate), the local player commands these
+    -- units, and the far side becomes "remote" so nothing here decides anything for them.
+    --
+    -- Only applied when there is a session. Without one, an enemy is an enemy and the AI runs it.
+    battle.combat.playerSide = opts.playerSide or "party"
+    if battle.session then
+        for _, unit in ipairs(battle.combat.units) do
+            unit.control = (unit.side == battle.combat.playerSide) and "player" or "remote"
+        end
+    end
     -- A scripted lesson addresses units by name (Tutorial.scriptFor). A party member answers to its
     -- character id, which is unique within a party; an enemy answers to the CELL IT SPAWNED ON,
     -- because a lesson may field several of one blueprint and three identical imps would otherwise
@@ -1972,6 +2114,21 @@ function battle.enter(self, opts)
     beginTurn()
     refreshView()
 
+    -- Fingerprint the board BEFORE a single turn is taken, as turn 0.
+    --
+    -- Two peers that disagree about the opening position disagree about everything after it, and a
+    -- mismatch discovered on turn 1 is indistinguishable from one caused by the first command. This
+    -- separates the two questions: if turn 0 differs, the fight was never the same fight, and the
+    -- fault is in setup -- the rosters, the seed, the content -- rather than in anything either
+    -- player did.
+    if battle.session then
+        battle.session:report(0, battle.combat)
+        if battle.netLog then
+            battle.netLog("opening board hash "
+                .. require("models.state_hash").digestOf(battle.combat))
+        end
+    end
+
     -- Last, once the board is fully built: the fight may open with a scene played OVER it. A
     -- conversation is a global overlay on a frozen state (see main.lua), so the lane, the party and
     -- every enemy on it sit there behind the box, and not a single turn resolves until the player
@@ -2003,6 +2160,22 @@ function battle.enter(self, opts)
 end
 
 function battle.update(dt)
+    -- Drain the duel before anything else, so a turn the other player took is applied at the top of
+    -- the frame rather than a frame late. It hands remote commands over through onCommand, and it is
+    -- gated behind the same `busy()` the local player's input is: a remote turn must not land in the
+    -- middle of a walk that is still playing back, or two turns would animate over each other.
+    if battle.session and not busy() then battle.session:update() end
+
+    -- Debug autopilot: wait out this side's turns so a two-window duel runs with nobody driving.
+    if battle.autoPilot and not battle.over and not busy() and battle.current
+        and Combat.isPlayerControlled(battle.current) then
+        battle.autoPilotTimer = battle.autoPilotTimer + dt
+        if battle.autoPilotTimer >= 0.4 then
+            battle.autoPilotTimer = 0
+            waitTurn()
+        end
+    end
+
     battle.map:update(dt)
     battle.fx:update(dt)
     -- Age out a refusal notice. Independent of the turn/animation clock: it is UI chrome about a

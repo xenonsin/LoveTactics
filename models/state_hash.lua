@@ -58,7 +58,11 @@ local function unitsOf(combat)
         out[i] = {
             id = u.char and u.char.id,
             side = u.side,
-            control = u.control,
+            -- `control` is deliberately NOT here. It says who drives this unit ON THIS MACHINE, and
+            -- in a duel it is necessarily opposite between the two peers: each sees its own units as
+            -- "player" and the other's as "remote". Hashing it reports a desync on turn one of every
+            -- duel -- which is exactly what it did, the first time two windows ran the real battle
+            -- against each other. `side` is the shared fact and is hashed; `control` is local.
             x = u.x, y = u.y,
             alive = u.alive and true or false,
             summoned = u.summoned and true or false,

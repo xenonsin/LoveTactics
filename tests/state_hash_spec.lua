@@ -85,6 +85,32 @@ return {
         end,
     },
     {
+        -- The same category, and it cost a real duel to find. Each peer sees its OWN units as
+        -- "player" and the opponent's as "remote", so control is necessarily opposite between them.
+        -- Hashing it desyncs turn one of every duel. `side` is the shared fact; `control` is local.
+        --
+        -- Two simulations in one process could never have caught this: they share a playerSide, so
+        -- their control values agree. It took two windows.
+        name = "who drives a unit is a local fact, not a disagreement about the board",
+        fn = function()
+            local a, b = pair()
+            for _, u in ipairs(a.units) do
+                u.control = (u.side == "party") and "player" or "remote"
+            end
+            for _, u in ipairs(b.units) do
+                u.control = (u.side == "party") and "remote" or "player"
+            end
+            a.playerSide, b.playerSide = "party", "enemy"
+
+            assert(StateHash.of(a) == StateHash.of(b),
+                "two peers holding opposite sides of one board still see the same board")
+
+            -- But the SIDE a unit fights on is shared, and must still register.
+            b.units[1].side = "enemy"
+            assert(StateHash.of(a) ~= StateHash.of(b), "changing sides is a real change")
+        end,
+    },
+    {
         -- Same reasoning: the fx queue is a list of things still to be DRAWN. One peer may have
         -- drained it a frame earlier than the other without either being wrong about the fight.
         name = "pending animation cues are not part of the state",
