@@ -449,12 +449,21 @@ function Overworld:placeObjectiveAndGates(params)
             end
         end
     end
-    local band, want = maxDist * 0.7, maxDist * 0.8
-    local pick, pickErr
-    for _, e in ipairs(deadEnds) do
-        if e.d >= band then
-            local err = math.abs(e.d - want)
-            if not pickErr or err < pickErr then pickErr = err; pick = e.cell end
+    -- On an ASCENT map the objective is the PEAK: the farthest dead-end there is, not a comfortable
+    -- one in the top band. The marathon this band exists to avoid is exactly what a climb is for --
+    -- the road has to run out, and the thing at the end of it has to be the last thing.
+    local pick, pickScore
+    if params.ascent then
+        for _, e in ipairs(deadEnds) do -- score is distance: take the highest
+            if not pickScore or e.d > pickScore then pickScore = e.d; pick = e.cell end
+        end
+    else
+        local band, want = maxDist * 0.7, maxDist * 0.8
+        for _, e in ipairs(deadEnds) do -- score is error against the band: take the lowest
+            if e.d >= band then
+                local err = math.abs(e.d - want)
+                if not pickScore or err < pickScore then pickScore = err; pick = e.cell end
+            end
         end
     end
     objective = pick or objective
@@ -580,6 +589,52 @@ function Overworld:placeEncounters(params)
 
     local placed = {}
     local next_ = 1
+
+    -- ASCENT maps (`params.ascent`): the guaranteed encounters are a ROUTE, not a set. Laid out in
+    -- authored order by distance from the start, so `always = { pickets, pickets, line, line, breach }`
+    -- is met bottom-to-top -- the outer ring first, the thing leaning on the gate last, and the
+    -- objective beyond all of them at the farthest point (see placeObjectiveAndGates).
+    --
+    -- Off by default: ordinary maps want their guaranteed encounters scattered, and a fixed running
+    -- order would make every quest that uses `always` read as a corridor.
+    if params.ascent and #always > 0 then
+        local dist = self:bfsDistances(self.start)
+        local byDist = {}
+        for _, c in ipairs(cands) do
+            if dist[cellKey(c)] then byDist[#byDist + 1] = c end
+        end
+        table.sort(byDist, function(a, b)
+            local da, db = dist[cellKey(a)], dist[cellKey(b)]
+            if da ~= db then return da < db end
+            -- Stable tie-break, so a given seed still reproduces its map exactly.
+            if a.y ~= b.y then return a.y < b.y end
+            return a.x < b.x
+        end)
+
+        -- Walk outward, taking the first tile far enough from the last marker. Spacing is a
+        -- preference, not a requirement: a short trail that cannot honour it still gets every
+        -- authored encounter rather than silently dropping the top of the climb.
+        local i = 1
+        for _, e in ipairs(always) do
+            local chosen
+            for j = i, #byDist do
+                local c = byDist[j]
+                local last = placed[#placed]
+                if not last or (math.abs(last.x - c.x) + math.abs(last.y - c.y)) >= 3 then
+                    chosen, i = c, j + 1
+                    break
+                end
+            end
+            chosen = chosen or byDist[i]
+            if chosen then
+                i = i + 1
+                chosen.encounter = { kind = e.kind, id = e.id, name = e.name }
+                placed[#placed + 1] = chosen
+            end
+        end
+        self.encounterCount = #placed
+        return
+    end
 
     -- Guaranteed specific encounters first (placed even if a little close).
     for _, e in ipairs(always) do

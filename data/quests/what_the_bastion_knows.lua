@@ -12,11 +12,26 @@
 -- one was worth: an oath sworn to an order or an icon is worth what this page is worth. Given HERE
 -- rather than after the general, so the declared guard is in hand for slots 9 and 10 -- otherwise the
 -- arc resolves in dialogue instead of on the board.
+-- WIP -- THIS SLOT HAS NOT BEEN THROUGH THE PREMISE PASS.
+--
+-- Slots 1 and 2 were rebuilt premise-first: what is actually happening, how it bears on Rowan AND on
+-- sloth, what the objective is, and which unique item carries the narrative. Doing that to slot 1
+-- turned up a duplicated quest with no logistics under its fiction; doing it to slot 2 turned up a
+-- premise that could not survive the question "why is this a fight?" and had to be replaced
+-- outright. Assume the same of this file until it has had the same pass.
+--
+-- Known stale here: scenes and items below were authored against the OLD slot-2 backstory (three
+-- officers who turned a relief column around -- they do not exist any more; slot 2 is now the
+-- nineteen who refused Acedia's terms and were struck off the rolls), and the timeline moved from
+-- thirty years to fifteen. Text may still lean on beats that have been rewritten upstream.
+
 return {
     name = "What the Bastion Knows",
     description = "Rowan wants to ask the order a question. The order would rather she did not.",
     difficulty = "Hard",
     sponsor = "bastion",
+    intro = "bastion_what_the_bastion_knows_intro",
+    outro = "bastion_what_the_bastion_knows_outro",
     rewardGold = 320,
     rewardRep = 30,
     rewardPrestige = 2,

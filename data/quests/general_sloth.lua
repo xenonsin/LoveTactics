@@ -15,13 +15,28 @@
 --
 -- She offers to relieve Rowan before it starts -- stand down, you have done enough, no one is coming
 -- and no one ever was. It is the identical offer she has made to every knight she has emptied off the
--- line for thirty years, and it looks exactly like the one thing Rowan has wanted since Greywatch.
+-- line for fifteen years, and it looks exactly like the one thing Rowan has wanted since Greywatch.
+-- WIP -- THIS SLOT HAS NOT BEEN THROUGH THE PREMISE PASS.
+--
+-- Slots 1 and 2 were rebuilt premise-first: what is actually happening, how it bears on Rowan AND on
+-- sloth, what the objective is, and which unique item carries the narrative. Doing that to slot 1
+-- turned up a duplicated quest with no logistics under its fiction; doing it to slot 2 turned up a
+-- premise that could not survive the question "why is this a fight?" and had to be replaced
+-- outright. Assume the same of this file until it has had the same pass.
+--
+-- Known stale here: scenes and items below were authored against the OLD slot-2 backstory (three
+-- officers who turned a relief column around -- they do not exist any more; slot 2 is now the
+-- nineteen who refused Acedia's terms and were struck off the rolls), and the timeline moved from
+-- thirty years to fifteen. Text may still lean on beats that have been rewritten upstream.
+
 return {
     name = "The Unrelieved",
-    description = "The Bastion has a founder, and it has been reading her name aloud for thirty " ..
+    description = "The Bastion has a founder, and it has been reading her name aloud for fifteen " ..
         "years. Go and find out why she is still able to hear it.",
     difficulty = "Hard",
     sponsor = "bastion",
+    intro = "bastion_general_sloth_intro",
+    outro = "bastion_general_sloth_outro",
     rewardGold = 500,
     rewardRep = 80,
     rewardPrestige = 3,
@@ -42,6 +57,7 @@ return {
                 return list
             end,
             win = { type = "assassinate", target = "character_general_sloth" },
+            opening = "bastion_general_sloth_confront",
         },
         keyCount = 2,
     },

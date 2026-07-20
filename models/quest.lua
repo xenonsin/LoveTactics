@@ -116,6 +116,10 @@ function Quest.available(player)
                 -- ui/panels/quest_board.lua and states/game.lua for the Conversation.play seams.
                 intro = def.intro,
                 outro = def.outro,
+                -- A scene played over the overworld once the leg is generated (states/game.lua's
+                -- `enter`). Distinct from `intro`, which plays over the hub before party select:
+                -- this one has the road and the fog sitting behind it.
+                opening = def.opening,
             }
         end
     end

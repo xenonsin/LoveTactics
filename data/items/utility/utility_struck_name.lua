@@ -24,7 +24,7 @@ return {
     name = "The Struck Name",
     description = "Names one ally at the start of battle. Every blow on them is taken by you instead.",
     flavor = "A page from the muster record, and a seal at the foot of it. The order read her name " ..
-        "aloud for thirty years off the front of every shield it sold.",
+        "aloud for fifteen years off the front of every shield it sold.",
     sprite = "assets/items/struck_name.png",
     type = "utility",
     tags = { "charm" },

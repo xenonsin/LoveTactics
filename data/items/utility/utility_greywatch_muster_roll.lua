@@ -12,7 +12,7 @@
 return {
     name = "Greywatch Muster Roll",
     description = "Opens each battle with bonus defense for every ally already standing beside you.",
-    flavor = "Forty-one names, and the order read them out for thirty years as though it knew what " ..
+    flavor = "Forty-one names, and the order read them out for fifteen years as though it knew what " ..
         "the number counted.",
     sprite = "assets/items/greywatch_muster_roll.png",
     type = "utility",

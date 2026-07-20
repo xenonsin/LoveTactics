@@ -4,7 +4,7 @@
 -- Acedia held the greatest post on the Watch and was the order's living emblem -- the doctrine is
 -- named for her. When the Bastion wrote her post off she did not hold and she did not die: she
 -- NEGOTIATED, her life and her company's for the gate, and the land beyond it paid. The sin is not
--- the cowardice. It is the thirty years since, spent making the cowardice true -- walking the line
+-- the cowardice. It is the fifteen years since, spent making the cowardice true -- walking the line
 -- telling knights that no post is worth holding, with the authority of a name the order still reads
 -- aloud off every Oathkeeper Shield as a martyr's.
 --

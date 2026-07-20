@@ -13,12 +13,28 @@
 -- The rank-4 shield has been naming this general in its file comment since the player could afford
 -- it, so most players will have connected Acedia to the general several quests ago. Rowan has not.
 -- Do not close that gap early; watching her not see it is worth more than a shared reveal.
+-- WIP -- THIS SLOT HAS NOT BEEN THROUGH THE PREMISE PASS.
+--
+-- Slots 1 and 2 were rebuilt premise-first: what is actually happening, how it bears on Rowan AND on
+-- sloth, what the objective is, and which unique item carries the narrative. Doing that to slot 1
+-- turned up a duplicated quest with no logistics under its fiction; doing it to slot 2 turned up a
+-- premise that could not survive the question "why is this a fight?" and had to be replaced
+-- outright. Assume the same of this file until it has had the same pass.
+--
+-- Known stale here: scenes and items below were authored against the OLD slot-2 backstory (three
+-- officers who turned a relief column around -- they do not exist any more; slot 2 is now the
+-- nineteen who refused Acedia's terms and were struck off the rolls), and the timeline moved from
+-- thirty years to fifteen. Text may still lean on beats that have been rewritten upstream.
+
 return {
     name = "The Order That Was Given",
     description = "The Bastion's archive keeps everything, including the things it stopped reading. " ..
         "Rowan wants the file on Greywatch.",
     difficulty = "Hard",
     sponsor = "bastion",
+    intro = "bastion_the_order_given_intro",
+    outro = "bastion_the_order_given_outro",
+    rewardItems = { "utility_relief_order" },
     rewardGold = 300,
     rewardRep = 30,
     rewardPrestige = 2,

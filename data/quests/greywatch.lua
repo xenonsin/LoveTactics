@@ -12,12 +12,27 @@
 --
 -- The reward is the roll (data/items/utility/utility_greywatch_muster_roll.lua): a rule that pays for
 -- standing beside people, taken off the wall of a place where nobody did.
+-- WIP -- THIS SLOT HAS NOT BEEN THROUGH THE PREMISE PASS.
+--
+-- Slots 1 and 2 were rebuilt premise-first: what is actually happening, how it bears on Rowan AND on
+-- sloth, what the objective is, and which unique item carries the narrative. Doing that to slot 1
+-- turned up a duplicated quest with no logistics under its fiction; doing it to slot 2 turned up a
+-- premise that could not survive the question "why is this a fight?" and had to be replaced
+-- outright. Assume the same of this file until it has had the same pass.
+--
+-- Known stale here: scenes and items below were authored against the OLD slot-2 backstory (three
+-- officers who turned a relief column around -- they do not exist any more; slot 2 is now the
+-- nineteen who refused Acedia's terms and were struck off the rolls), and the timeline moved from
+-- thirty years to fifteen. Text may still lean on beats that have been rewritten upstream.
+
 return {
     name = "What Greywatch Kept",
-    description = "The fort the doctrine is named after has been empty for thirty years. Rowan " ..
+    description = "The fort the doctrine is named after has been empty for fifteen years. Rowan " ..
         "would like to walk it.",
     difficulty = "Normal",
     sponsor = "bastion",
+    intro = "bastion_greywatch_intro",
+    outro = "bastion_greywatch_outro",
     rewardGold = 220,
     rewardRep = 25,
     rewardPrestige = 2,

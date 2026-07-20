@@ -76,6 +76,10 @@ function game.enter(self, quest, prestige, player, onComplete)
         encounterCount = { min = encSpec.min or 6, max = encSpec.max or encSpec.min or 6 },
         encounters = EncounterModel.pool(ctx),
         alwaysEncounters = always,
+        -- A climb rather than a region: guaranteed encounters laid out in authored order by distance
+        -- from the start, and the objective on the farthest dead-end there is. See
+        -- Overworld:placeEncounters and :placeObjectiveAndGates.
+        ascent = mp.ascent,
         seed = os.time() + math.floor(((love.timer and love.timer.getTime()) or 0) * 1000) % 100000,
     }
 
@@ -108,6 +112,11 @@ function game:openEncounter(cell)
             encounter = cell.encounter,
             biome = mp.biome,
             quest = game.quest,
+            -- The objective's own scene, played over the board with the general standing on it
+            -- (states/battle.lua's openingConversation). This is the ONLY seam an antagonist can
+            -- speak from: `intro` plays over the hub before the party is even picked, and by the
+            -- time `outro` runs the target of an `assassinate` is dead.
+            opening = kind == "objective" and mp.objective and mp.objective.opening or nil,
             prestige = game.prestige,
             party = game.player and game.player.party or {},
             -- The player's stash, by reference: an item stolen mid-battle by a thief with a full

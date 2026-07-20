@@ -229,6 +229,51 @@ return {
         end,
     },
     {
+        -- An ascent is a route, not a region: the authored order of `alwaysEncounters` has to survive
+        -- placement, or "pickets, then the line, then the breach camp" is just three encounters in a
+        -- bag. Distance from the start is what "further up the mountain" means on a generated map.
+        name = "an ascent lays its guaranteed encounters out in authored order, climbing",
+        fn = function()
+            local ids = { "encounter_siege_pickets", "encounter_siege_line", "encounter_siege_breach" }
+            for _, seed in ipairs({ 3, 17, 91, 404 }) do
+                local grid = Overworld.generate({
+                    cols = 41, rows = 29, seed = seed, biome = "castle", ascent = true,
+                    encounterCount = { min = 3, max = 3 }, keyCount = 0,
+                    objective = { name = "The Gate" },
+                    encounters = { { kind = "combat", weight = 1 } },
+                    alwaysEncounters = {
+                        { id = ids[1], kind = "combat", name = "Pickets" },
+                        { id = ids[2], kind = "combat", name = "Line" },
+                        { id = ids[3], kind = "elite", name = "Breach" },
+                    },
+                })
+
+                -- Same key the generator uses internally (models/overworld.lua's cellKey).
+                local function key(x, y) return y * 100000 + x end
+                local dist = grid:bfsDistances(grid.start)
+                local at = {}
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local c = grid:get(x, y)
+                        if c.encounter and c.encounter.id then at[c.encounter.id] = dist[key(x, y)] end
+                    end
+                end
+
+                for i = 1, #ids do
+                    assert(at[ids[i]], "seed " .. seed .. ": " .. ids[i] .. " was not placed")
+                end
+                assert(at[ids[1]] <= at[ids[2]] and at[ids[2]] <= at[ids[3]],
+                    "seed " .. seed .. ": the climb must run outward from the start, got "
+                    .. at[ids[1]] .. " / " .. at[ids[2]] .. " / " .. at[ids[3]])
+
+                -- ...and the peak is beyond all of it.
+                local objd = dist[key(grid.objective.x, grid.objective.y)]
+                assert(objd and objd > at[ids[3]],
+                    "seed " .. seed .. ": the objective must sit past the last encounter on the road")
+            end
+        end,
+    },
+    {
         name = "a fill buffer frames the map without shrinking the play area",
         fn = function()
             -- The grid is inflated by 2*margin so the trail region keeps the

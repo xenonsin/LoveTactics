@@ -5,7 +5,7 @@
 -- It is a trap dressed as a reward, exactly as it was when she carried it -- and its trap is the
 -- opposite of the Mail of the Unappeased's. The mail only pays if you are being hit. This only pays
 -- if you make the enemy CLUMP, and a clumped enemy is a wall, so the pike rewards you for producing
--- precisely the stuck, immobile board its owner spent thirty years arguing the world already was.
+-- precisely the stuck, immobile board its owner spent fifteen years arguing the world already was.
 --
 -- A spear, so it owes the spear contract (docs/weapons.md): the two-tile line is the family's
 -- defining trait and this keeps it. It differs in TYPE from Wrath's armor on purpose -- the seven

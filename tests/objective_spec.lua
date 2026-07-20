@@ -16,6 +16,13 @@ local function unit(side, x, y, alive)
     return { side = side, x = x, y = y, alive = alive ~= false, char = { stats = { health = { current = 10 } } } }
 end
 
+-- The same, carrying a blueprint id -- what `who`, `protect` and `assassinate` all match on.
+local function named(side, x, y, id)
+    local u = unit(side, x, y)
+    u.char.id = id
+    return u
+end
+
 -- A flat layout with no obstacles and the party seated on the bottom rows, which is what
 -- Arena.generateLayout produces.
 local function flatLayout(cols, rows)
@@ -143,6 +150,56 @@ return {
             local goal = { { x = 3, y = 1 } }
             local combat = fakeCombat({ unit("party", 3, 1, false) }, { type = "reach", tiles = goal })
             assert(Combat.evaluate(combat) == "loss", "the wipe check comes first, whatever the objective")
+        end,
+    },
+    {
+        -- An escort is a reach whose ARRIVAL matters, not whose breakthrough does. Without `who`,
+        -- the player wins by sprinting a scout across and leaving the wagons standing in the road.
+        name = "an escorted reach is won only by the body the objective names",
+        fn = function()
+            local goal = { { x = 3, y = 1 } }
+            local scout = named("party", 3, 8, "character_knight")
+            local driver = named("party", 4, 8, "character_caravan_driver")
+            local combat = fakeCombat({ scout, driver },
+                { type = "reach", tiles = goal, who = "character_caravan_driver" })
+
+            scout.x, scout.y = 3, 1
+            assert(Combat.evaluate(combat) == nil, "the escort is not finished by whoever got there first")
+
+            driver.x, driver.y = 3, 1
+            assert(Combat.evaluate(combat) == "win", "the named charge across the line ends it")
+        end,
+    },
+    {
+        name = "a summoned duplicate cannot finish an escort for the charge it copies",
+        fn = function()
+            local goal = { { x = 3, y = 1 } }
+            local fake = named("party", 3, 1, "character_caravan_driver")
+            fake.summoned = true
+            local combat = fakeCombat({ fake, named("party", 4, 8, "character_caravan_driver") },
+                { type = "reach", tiles = goal, who = "character_caravan_driver" })
+            assert(Combat.evaluate(combat) == nil,
+                "a summon sharing the charge's id must not deliver the column for it")
+        end,
+    },
+    {
+        -- The positional handle an escortee walks on. `objectiveUnit` cannot serve here: a column is
+        -- not closing on a body, it is closing on the exit.
+        name = "an escort reads the objective's ground, and falls back when there is none",
+        fn = function()
+            local AI = require("models.ai")
+            -- Seated hard left so the two candidate tiles are not equidistant (a tie would make the
+            -- assertion depend on list order rather than on distance).
+            local walker = named("party", 2, 8, "character_caravan_driver")
+
+            local combat = fakeCombat({ walker }, { type = "reach", tiles = { { x = 9, y = 1 }, { x = 1, y = 1 } } })
+            local tile = AI.objectiveTile(combat, walker)
+            assert(tile and tile.x == 1 and tile.y == 1, "it walks at the NEAREST tile of the ground")
+
+            assert(AI.objectiveTile(fakeCombat({ walker }, { type = "killAll" }), walker) == nil,
+                "an objective naming no ground gives no tile, so `advance` falls back to approach")
+            assert(AI.POSTURES.escort and AI.POSTURES.escort.move == "advance",
+                "the escort posture walks for the exit")
         end,
     },
 }

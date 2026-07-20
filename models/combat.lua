@@ -4566,6 +4566,22 @@ function Combat.evaluate(combat)
     end
 
     if obj.type == "reach" then
+        -- `who` names the ONE body that has to make it -- an escorted column, whose arrival is the
+        -- whole job. Without it, an escort degenerates into a footrace the player wins by sprinting
+        -- a scout across the line and leaving the wagons standing in the road.
+        --
+        -- Summons are excluded for the same reason `protect` and `assassinate` exclude them: a
+        -- duplicate sharing the charge's `char.id` must not be able to finish the escort for it.
+        if obj.who then
+            for _, u in ipairs(combat.units) do
+                if u.alive and u.side == "party" and u.char.id == obj.who and not u.summoned then
+                    for _, t in ipairs(obj.tiles or {}) do
+                        if u.x == t.x and u.y == t.y then return "win" end
+                    end
+                end
+            end
+            return nil
+        end
         -- Any body across the line ends it. Deliberately not "every" body: the point of an
         -- extraction is getting THROUGH, and a rule that waits for stragglers turns the whole
         -- thing back into a killAll with extra walking.

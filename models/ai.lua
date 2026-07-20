@@ -398,6 +398,19 @@ AI.POSTURES = {
         engage = function() return true end,
     },
 
+    -- Walks for the exit and fights only what gets in the way. The escortee's posture: it swings at
+    -- whatever is already in reach (ATTACK_RULE fires before `move` is ever consulted), and spends
+    -- every other turn closing on the ground the objective names.
+    --
+    -- The opposite of `defensive`, which is the other half of an escort's design space: a defensive
+    -- charge is a thing you stand around, an advancing one is a clock you cannot pause. Slot 1 of the
+    -- Bastion's line uses both -- the column presses on up the mountain, and digs in at the gate.
+    escort = {
+        rules = { SUPPORT_RULE, ATTACK_RULE },
+        move = "advance",
+        engage = function() return true end,
+    },
+
     -- Plays the map rather than the bodies: goes for whoever the objective names, and falls back to
     -- ordinary aggression on a map whose objective has no unit to point at (a plain killAll).
     objective = {
@@ -430,6 +443,23 @@ function AI.objectiveUnit(combat, unit)
         if u.alive and u.char.id == id and not u.summoned and u.side ~= unit.side then return u end
     end
     return nil
+end
+
+-- The nearest tile of the ground the objective names -- a `reach` or `hold` region's resolved
+-- `tiles` (Arena.resolveRegion). This is the positional handle an escort needs and `objectiveUnit`
+-- cannot give: a wagon column is not walking toward a body, it is walking toward the exit.
+--
+-- Nil when the objective names no ground (killAll, assassinate), which is what makes the `advance`
+-- mode fall back to ordinary approach instead of freezing.
+function AI.objectiveTile(combat, unit)
+    local obj = combat.objective
+    if not obj or not obj.tiles or #obj.tiles == 0 then return nil end
+    local best, bestD
+    for _, t in ipairs(obj.tiles) do
+        local d = manhattan(unit.x, unit.y, t.x, t.y)
+        if not bestD or d < bestD then best, bestD = t, d end
+    end
+    return best
 end
 
 -- ---------------------------------------------------------------------------
@@ -600,6 +630,11 @@ local function fallbackMove(ctx, mode)
     local goal
     if mode == "objective" then
         goal = AI.objectiveUnit(combat, unit) or nearest(ctx, foes(ctx))
+    elseif mode == "advance" then
+        -- Toward the exit, not toward the fight. An escorted column is trying to LEAVE, and every
+        -- turn it spends walking is a turn the party has to keep the road ahead of it clear. Falls
+        -- back to approach on an objective that names no ground, so the posture is never inert.
+        goal = AI.objectiveTile(combat, unit) or nearest(ctx, foes(ctx))
     elseif mode == "regroup" then
         -- Toward the ally most in need of me, not toward the fight.
         goal = weakest(allies(ctx)) or nearest(ctx, foes(ctx))

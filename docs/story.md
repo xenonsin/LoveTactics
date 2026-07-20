@@ -7,8 +7,16 @@ been quietly serving the whole time. Kill all seven generals and the Gate Below 
 This document is the bible for that arc, and the template for finishing it. **Wrath is authored end to
 end; the other six are not.** Copy its shape.
 
-**Sloth is designed but not built** — see *The Bastion* below. Every word of it is still a plan: no
-quest, character, trait, or item named in that section exists on disk yet.
+**Sloth is built.** All ten quests, the characters, the traits, the items and twenty-three scenes are
+on disk — see *The Bastion* below. It is the reference line, and the only one whose quests play a
+conversation at all: `intro` (over the hub), `outro` (over the final battle frame) and an objective
+`opening` (over the board, the one seam an antagonist can speak from).
+
+**Slots 1 and 2 have been through a premise pass; slots 3–10 have not**, and each of those files
+carries a `WIP` banner saying so. The pass is: state what is actually happening, how it bears on
+Rowan *and* on sloth, what the objective is, and which unique item carries the narrative. It is worth
+doing properly — it caught a slot 1 that duplicated an existing quest outright, and a slot 2 whose
+premise could not survive the question *"why is this a fight?"*.
 
 ## The seven
 
@@ -160,9 +168,21 @@ same discipline applies: author one end to end and copy its shape.
 
 ## The Bastion: sloth, designed
 
-Nothing in this section exists yet. It is the second line worked out end to end, and it is written
-down because it is load-bearing for the other five: it is where the *vendor is quietly serving its
-sin* claim at the top of this file first becomes a scene instead of a promise.
+This is the second line worked out end to end, and it is load-bearing for the other five: it is where
+the *vendor is quietly serving its sin* claim at the top of this file stops being a promise and
+becomes a scene.
+
+**The timeline is fifteen years, not thirty.** Rowan was a sixteen-year-old squire when Greywatch
+fell and is thirty-one now; thirty put her the wrong side of fifty. Every file was moved.
+
+**The arithmetic of the gate**, which is laid across three quests for the player to do before Rowan
+ever does: **sixty** knights held Greywatch. When Acedia opened it and put the terms to her garrison,
+**forty-one took them** and became her company. **Nineteen refused**, walked out with nothing, and the
+Bastion would not have them back — nineteen knights returning with that story ends the martyr, and
+the martyr is the only thing keeping the line manned. So the order struck them off and they turned to
+the road. Slot 2 gives the player the nineteen (*The Names He Kept*); slot 5 gives them the
+forty-one (*Greywatch Muster Roll*), which the order recites as a roll of martyrs; slot 9 says what
+the forty-one actually counts. Nobody does the sum for the player.
 
 ### The Watch
 
@@ -187,7 +207,7 @@ Corruption was the fee, not a misfortune. They are still a company, still discip
 the Bastion's forms in something else's service, and they are what meets the player at the end of the
 line. They kept every part of the oath except the part that cost anything.
 
-A plain coward is too small to be a general. The sin is not the cowardice — it is the **thirty years
+A plain coward is too small to be a general. The sin is not the cowardice — it is the **fifteen years
 spent making the cowardice true**. She cannot hold *I was afraid to die*, so she built a doctrine over
 it: no post is worth holding, relief never comes, the line was always a fiction. And then she went and
 made it so. She walks the Watch telling knights exactly what she needs to be true, with the authority
@@ -203,7 +223,7 @@ reads *set down* as **laid down**: died at the post. A roll of martyrs. The true
 one, and the Bastion recites a list of deserters as a list of saints. **The item needs no rewrite.**
 
 So the doctrine that sends knights to die at their posts is sanctified by a woman who negotiated and
-walked out, and thirty years of deaths in her name were deaths for a fiction — a fiction which is also
+walked out, and fifteen years of deaths in her name were deaths for a fiction — a fiction which is also
 the only thing keeping the line manned.
 
 Which arms her with the one argument the player cannot easily answer, and it is an *acedia* argument
@@ -235,15 +255,40 @@ beat in the line.
 The rank-4 shield names the general in its file comment, so the **player can connect it several quests
 before Rowan does**. The gap is worth more than a simultaneous reveal; do not close it.
 
-### Her three oaths
+### Her oath
 
-Rowan's growth is an oath revised twice, and the mechanical change *is* the character change:
+The vow that carries the line is the one she swore **to the player**, not the one the Bastion issued
+her. "Hold until relieved" reads as procedure, because that is what it is — and the order's inability
+to tell a regulation from a vow *is* the sin. Rowan recites it flat at slot 1, the way you recite
+something you were handed.
 
-1. **"Hold until relieved."** Inherited, doctrinal, recited flatly. It outsources the decision to stop
-   to whoever controls the relief — which is the trap Acedia's whole career is built out of.
-2. **"I will be the relief."** Sworn in the ash of the prologue village. An inversion, and still wrong:
-   an unlimited promise means she never chooses where she is needed, only that she is always running.
-   Acedia stopped deciding by stopping; Rowan stopped deciding by never stopping.
+Her own is two words, sworn in the ash of the prologue village (`data/conversations/prologue_flee.lua`):
+
+> **We shall hold.**
+
+The whole load is on the **we**. She does not promise to protect the player; she promises they are not
+holding alone — the order's grammar, made plural. Its flaw is inside it: **she decided you were a "we"
+without asking.** She would have said it to anyone burning that night, and you were never consulted.
+It is also an apology aimed at the wrong person — she failed to reach Greywatch, so she is early for
+you forever.
+
+Oath two is **the same two words, meant at someone**. The wording never changes; what changes is that
+she now *names* who she means by it, every fight — the first time she chooses rather than reflexes.
+When she eventually names someone other than the player, that is the arc closing, not a betrayal.
+
+The mechanics already say this and need no changes: `data/traits/trait_oathward.lua` sets `unit.guard`
+**unconditionally, for whatever ally happens to be adjacent**, on a cooldown — undiscriminating by
+design, which is the tell that oath one was never really about *you*. `trait_oathward_declared` is
+stronger, uncooldowned, and one named unit only.
+
+This is also what makes Acedia the exact inverse rather than a generic villain, and the code already
+says so: `trait_unrelieved` **swears the party into pairs nobody chose** and bites whoever ends a turn
+apart. Her entire mechanic is a forced *we* — a rigged demonstration that imposed bonds are a trap,
+run on your own units. Rowan's *we* is offered; Acedia's is imposed. Same word, opposite authorship.
+
+And her company said yes. **Forty-one people said "we" and then left** — that is slot 9, and it is the
+strongest possible attack on the vow, because it is her own sentence in someone else's mouth, kept in
+form and broken in substance.
 3. **The oath with a decision in it.** Not owed to an order, an icon, or a name — only to the person in
    front of her. Earned at slot 8, and the reason it cannot be sworn to a name is that the name turned
    out to be Acedia's.
