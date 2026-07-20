@@ -1400,6 +1400,13 @@ local function executeEnemyAction()
     -- what makes taking the turn back immediate rather than queued behind this call.
     local auto = battle.autoPending == current
     if not current or (Combat.isPlayerControlled(current) and not auto) then return end
+    -- A unit somebody ELSE is driving. Its turn arrives over the wire as a command, so this machine
+    -- must not decide anything for it -- and the guard has to be explicit, because
+    -- Combat.isPlayerControlled is false for a remote unit exactly as it is for an AI one, which
+    -- means without this line both peers would cheerfully AI-drive the opponent's whole army and
+    -- each watch a different battle. Summons inherit their summoner's control, so a remote
+    -- summoner's wolf falls through the same hole; it is caught here too.
+    if current.control == "remote" then return end
     battle.autoPending = nil
     if current.control == "none" then
         Combat.pass(battle.combat, current)
@@ -2034,7 +2041,11 @@ function battle.update(dt)
                 advanceTurn()
             end
         end
-    elseif not battle.over and battle.current
+    -- `control ~= "remote"`: a unit the other player drives has no think-pause to run down, because
+    -- nothing here is going to think for it. Its turn arrives as a command. executeEnemyAction
+    -- refuses one too, so this is belt and braces -- but a countdown that never fires anything is
+    -- the kind of thing that reads as a hang, and the second guard costs a comparison.
+    elseif not battle.over and battle.current and battle.current.control ~= "remote"
         and (not Combat.isPlayerControlled(battle.current) or battle.autoPending == battle.current) then
         -- Hold the enemy's think-pause until the turn-strip cards have settled, so a fast chain of
         -- AI turns never resolves out from under the card animation (the card would otherwise pop to

@@ -219,6 +219,40 @@ return {
         end,
     },
     {
+        -- The single highest-risk line in the whole feature, per the plan, so it is checked at the
+        -- source as well as by behaviour. Combat.isPlayerControlled is false for a remote unit
+        -- exactly as it is for an AI one, so an AI-driving path that tests only that would drive the
+        -- OPPONENT'S army -- on both machines, each watching a different battle. Nothing about that
+        -- failure is loud: both peers keep running, and only the fingerprints disagree.
+        name = "nothing in the battle state may AI-drive a unit somebody else is driving",
+        fn = function()
+            local src = assert(love.filesystem.read("states/battle.lua"))
+
+            -- Both places that can start a turn for a non-player unit must name "remote" explicitly.
+            --
+            -- COMMENTS ARE STRIPPED FIRST, and that is not fussiness: the first version of this
+            -- check counted them, so the comment EXPLAINING the guard satisfied the assertion, and
+            -- deleting the guard itself left the suite green. A structural test that can be
+            -- satisfied by prose about the code is worse than no structural test, because it reads
+            -- like one that works.
+            local guarded = 0
+            for line in (src .. "\n"):gmatch("(.-)\r?\n") do
+                local code = line:gsub("%-%-.*$", "")
+                if code:find('control%s*[~=]=%s*"remote"') then guarded = guarded + 1 end
+            end
+            assert(guarded >= 2,
+                "expected the AI entry point AND its think-pause to guard on remote control, found "
+                    .. guarded)
+
+            -- And the value has to be one Combat refuses to call player-controlled, or input would
+            -- be handed to the local player for the opponent's units.
+            local Combat = require("models.combat")
+            assert(not Combat.isPlayerControlled({ control = "remote" }),
+                "a remote unit is not the local player's to command")
+            assert(Combat.isPlayerControlled({ control = "player" }), "but their own units are")
+        end,
+    },
+    {
         name = "a well-formed command survives the trip as data",
         fn = function()
             local Save = require("models.save")
