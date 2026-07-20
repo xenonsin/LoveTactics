@@ -248,6 +248,30 @@ return {
         end,
     },
     {
+        -- Summons take their power from the level of the item that calls them (every summon ability
+        -- reads fx.level -- `amount = 8 + fx.level` and a `scaling` table on top), so they need no
+        -- normalization rule of their own: clamping the relic clamps what it calls. This checks the
+        -- link that makes that true, because a bound relic is re-seated during restore
+        -- (Character.ensureBoundItems) and could easily have come back at its forged level.
+        name = "a summoning relic is clamped like any other item, so what it calls is clamped too",
+        fn = function()
+            local char = Character.instantiate("character_knight")
+            char.inventory = {}
+            char.inventory[1] = Item.instantiate("utility_wolfsong_horn", 1, Item.MAX_LEVEL)
+
+            local back = assert(Build.restore(roundTrip({ char })))[1]
+            local horn
+            for cell = 1, Character.MAX_INVENTORY do
+                local it = back.inventory[cell]
+                if it and it.id == "utility_wolfsong_horn" then horn = it break end
+            end
+            assert(horn, "the horn should survive the round trip")
+            assert((horn.level or 0) <= Build.NORMAL_ITEM_LEVEL,
+                "a +" .. Item.MAX_LEVEL .. " horn should not call a +" .. Item.MAX_LEVEL
+                    .. " spirit into a duel; got +" .. tostring(horn.level))
+        end,
+    },
+    {
         -- The local player's own team gets the identical treatment, or "normalized" would only mean
         -- "the opponent was weakened".
         name = "your own party is flattened on the same terms as the build it faces",
