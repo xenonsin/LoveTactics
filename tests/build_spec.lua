@@ -211,24 +211,60 @@ return {
         end,
     },
     {
-        -- Levels are erased; HOW the character was played is not. The class tally decides which
-        -- growth table the rebuild climbs, so two identical blueprints played differently should
-        -- arrive at the same level as different characters.
-        name = "the class tally survives normalization, so how you played still shows",
+        -- Levels are erased; HOW the character was played is carried, and decides which growth table
+        -- the rebuild climbs. Tested at an EXPLICIT level rather than the configured one, because
+        -- the two say different things and only one of them is about this mechanism.
+        --
+        -- Note what the configured level implies. At Build.NORMAL_LEVEL = 1 there is no climb at
+        -- all, so no growth is applied and the tally -- though it still travels intact -- changes
+        -- nothing: every duellist's knight is the blueprint knight. That is a real consequence of
+        -- normalizing to the floor, and a deliberate one: it says a duel is about who you brought
+        -- and what you gave them, not about how you have been playing them. Raise NORMAL_LEVEL and
+        -- playstyle starts to show, by exactly this mechanism.
+        name = "the class tally decides the rebuild's growth, wherever the duelling level is set",
+        fn = function()
+            local function played(tally, level)
+                local c = Character.instantiate("character_knight")
+                c.level, c.classUse = 30, tally
+                return assert(Build.restore(roundTrip({ c }), { level = level }))[1]
+            end
+
+            local brawler = played({ fighter = 25 }, 12)
+            local scholar = played({ mage = 25 }, 12)
+            assert(brawler.level == scholar.level, "both arrive at the level asked for")
+            local a, b = brawler.stats, scholar.stats
+            local differs = a.damage ~= b.damage or a.magicDamage ~= b.magicDamage
+                or a.defense ~= b.defense or a.magicDefense ~= b.magicDefense
+            assert(differs,
+                "climbing to 12, a knight played as a mage should not rebuild like a brawler")
+
+            -- The tally survives the trip regardless, so raising the duelling level is a one-line
+            -- change rather than a data migration.
+            local carried = roundTrip({ (function()
+                local c = Character.instantiate("character_knight")
+                c.level, c.classUse = 30, { mage = 25 }
+                return c
+            end)() })
+            assert(carried.party[1].classUse and carried.party[1].classUse.mage == 25,
+                "the tally itself always travels, whatever the level erases")
+        end,
+    },
+    {
+        -- The consequence of the current setting, asserted rather than left implied: at level 1
+        -- everyone's knight is the same knight, and the fight is decided entirely by choices.
+        name = "at the configured duelling level, two histories rebuild to the same body",
         fn = function()
             local function played(tally)
                 local c = Character.instantiate("character_knight")
                 c.level, c.classUse = 30, tally
                 return assert(Build.restore(roundTrip({ c })))[1]
             end
-            local brawler = played({ fighter = 25 })
-            local scholar = played({ mage = 25 })
-
-            assert(brawler.level == scholar.level, "both arrive at the duelling level")
-            local a, b = brawler.stats, scholar.stats
-            local differs = a.damage ~= b.damage or a.magicDamage ~= b.magicDamage
-                or a.defense ~= b.defense or a.magicDefense ~= b.magicDefense
-            assert(differs, "a knight played as a mage should not rebuild identically to a brawler")
+            local a, b = played({ fighter = 25 }).stats, played({ mage = 25 }).stats
+            if Build.NORMAL_LEVEL == 1 then
+                assert(a.damage == b.damage and a.magicDamage == b.magicDamage
+                    and a.defense == b.defense and a.magicDefense == b.magicDefense,
+                    "at level 1 there is no growth to differ by")
+            end
         end,
     },
     {

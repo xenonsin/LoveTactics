@@ -44,12 +44,18 @@ local Build = {}
 
 -- The level every duelist's characters are rebuilt at. Character level tracks prestige one-for-one
 -- (Player.syncLevels), so this is "the prestige everyone fights at".
-Build.NORMAL_LEVEL = 10
+--
+-- Set to the floor deliberately: a duel is decided by WHO you brought, what you gave them, where it
+-- sits in the grid and the tactics you wrote -- not by how far up the curve either player has
+-- climbed. Starting everyone at the bottom is the strongest possible statement of that, and it also
+-- makes a duel legible, since both teams read at numbers a player already knows.
+Build.NORMAL_LEVEL = 1
 
 -- The ceiling an upgraded item is clamped to. Below it a weapon keeps the level its owner forged it
--- to -- bringing worse gear is a real choice and normalization should not quietly undo it -- and
--- above it, a long grind stops being the argument. Items run 0..Item.MAX_LEVEL (10).
-Build.NORMAL_ITEM_LEVEL = 5
+-- to -- bringing worse gear is a real choice and normalization should not quietly undo it. Items run
+-- 0..Item.MAX_LEVEL (10), so this leaves the forge out of the argument almost entirely: gear is
+-- WHICH items you chose and where you placed them, not how many materials you fed them.
+Build.NORMAL_ITEM_LEVEL = 1
 
 -- Bumped when the SHAPE changes in a way an older reader would misread. Unlike the save file, a
 -- build travels between machines, so a version it does not recognise is refused rather than

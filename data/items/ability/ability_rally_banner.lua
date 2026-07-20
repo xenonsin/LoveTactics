@@ -25,7 +25,14 @@ return {
         support = true, -- a friendly cast: reads green, and the AI treats it so
         cost = { stat = "stamina", amount = 12 },
         effect = function(fx)
-            local banner = fx.summon("character_banner", fx.tx, fx.ty, { control = "none", timeless = true })
+            -- The item's UPGRADE LEVEL makes the standard harder to knock over: +3 health per level
+            -- on top of the blueprint's base. A banner never strikes and never moves, so how long it
+            -- STANDS is the only thing forging it could buy -- and standing longer is exactly what a
+            -- rally is worth. `amount` is the level itself, so a level-0 banner is the base body.
+            local banner = fx.summon("character_banner", fx.tx, fx.ty, {
+                control = "none", timeless = true,
+                scaling = { health = 3 }, amount = fx.level,
+            })
             if banner and banner.alive then
                 -- The rally IS the ground, not the banner: lay the 3x3 square of Rally zone
                 -- (data/hazards/hazard_rally.lua) and hand each tile to the banner as its owner, so the

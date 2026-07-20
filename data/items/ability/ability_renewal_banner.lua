@@ -21,7 +21,13 @@ return {
         support = true,
         cost = { stat = "mana", amount = 16 },
         effect = function(fx)
-            local banner = fx.summon("character_banner", fx.tx, fx.ty, { control = "none", timeless = true })
+            -- Forging the standard buys it staying power: +3 health per upgrade level over the
+            -- blueprint's base. See ability_rally_banner.lua -- a banner neither moves nor strikes,
+            -- so how long it stands is the only thing an upgrade could mean.
+            local banner = fx.summon("character_banner", fx.tx, fx.ty, {
+                control = "none", timeless = true,
+                scaling = { health = 3 }, amount = fx.level,
+            })
             if banner and banner.alive then
                 -- The 3x3 of Renewing Ground the standard holds open; see ability_rally_banner.lua.
                 for dy = -1, 1 do
