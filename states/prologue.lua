@@ -102,6 +102,11 @@ local FLIGHT_QUEST = {
         },
         objective = {
             name = "The Demon Champion",
+            -- A scene played over the board when the boss fight opens (states/game.lua wires the
+            -- objective's `opening` through to states/battle.lua). Rowan and the avatar exchange the
+            -- last words before the first foe the game frames as a BOSS, with the champion already
+            -- standing on the lane behind the text -- see data/conversations/flight_champion.lua.
+            opening = "flight_champion",
             composition = function()
                 return { "character_demon_champion", "character_demon_imp", "character_demon_imp" }
             end,
@@ -203,9 +208,11 @@ local function buildBeats()
         action(function() Player.recruit(Player.active, "character_knight") end), -- Rowan joins for the fight
         battle(VILLAGE_MAP),
         -- The oath is sworn once the village is held, and "[Rowan has joined your Party]" lands at the
-        -- end of the "Ashes" scene that follows -- folded on there by Conversation.drainJoins, because
-        -- her recruit two beats up queued it (models/conversation.lua). Every companion is announced
-        -- this way, so the prologue does not special-case its first one.
+        -- end of this "Ashes" scene -- folded on by Conversation.drainJoins, because her recruit two
+        -- beats up queued it (models/conversation.lua). It survives the battle in between because that
+        -- fight's tutorial opening plays with `deferJoins` (states/battle.lua): an over-the-board scene
+        -- refuses the banner and holds it for the next full scene, which is this one. Every companion is
+        -- announced this way, so the prologue does not special-case its first one.
         scene("prologue_flee"),
         overworld(FLIGHT_QUEST),
         -- The flight ends at the capital's gate, and the prologue with it: prologue.next past the last

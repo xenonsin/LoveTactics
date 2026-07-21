@@ -214,6 +214,11 @@ return {
     ["line.conversation_wrath_intro.7"] = { en = "Honor. The crowd will cheer it and forget it by morning.", ja = "誇りか。観衆は歓声を上げ、朝には忘れるだろう。" },
     ["line.conversation_wrath_intro.8"] = { en = "Then let us be quick about it. The Light is watching, even here.", ja = "では手短に済ませよう。光はここでも見ておられる。" },
     ["line.conversation_wrath_intro.9"] = { en = "Watching, and unimpressed. Open the gate.", ja = "見ていて、しかも呆れているがな。門を開けろ。" },
+    ["line.flight_champion.1"] = { en = "Stop here, {name}. That one at the head of them is no imp -- it has a name where they carry none, and it leads this whole raiding party. This is the thing that has been walking the road behind us.", ja = "" },  -- TODO
+    ["line.flight_champion.2"] = { en = "It's between us and the capital.", ja = "" },  -- TODO
+    ["line.flight_champion.3"] = { en = "It is. And it will not fall to the swarm-work that served against the rest -- it takes blows the grunts could not, and the imps beside it only want to keep us busy while it reaches you.", ja = "" },  -- TODO
+    ["line.flight_champion.4"] = { en = "Then we cut it down and the imps stop mattering.", ja = "" },  -- TODO
+    ["line.flight_champion.5"] = { en = "Just so. Put it down and the road opens. Stay off its reach, let it come onto our line, and we end this at the gate rather than inside it. Ready when you are.", ja = "" },  -- TODO
     ["line.flight_event_shrine.1"] = { en = "A wayside shrine, still standing where everything around it burned.", ja = "" },  -- TODO
     ["line.flight_event_shrine.2"] = { en = "Someone tended it to the last. It feels wrong to walk straight past. Choose...", ja = "" },  -- TODO
     ["line.flight_event_shrine.3"] = { en = "Kneel and pray for the road ahead.", ja = "" },  -- TODO
@@ -331,6 +336,7 @@ return {
     ["title.cathedral_general_lust_confront"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
     ["title.colosseum_debut_confront"] = { en = "The Card's Opener", ja = "" },  -- TODO
     ["title.conversation_wrath_intro"] = { en = "Debut on the Sand", ja = "砂上のデビュー" },
+    ["title.flight_champion"] = { en = "The Champion", ja = "" },  -- TODO
     ["title.flight_event_shrine"] = { en = "The Roadside Shrine", ja = "" },  -- TODO
     ["title.flight_event_survivor"] = { en = "A Voice from the Brush", ja = "" },  -- TODO
     ["title.prologue_arrival"] = { en = "The Capital", ja = "" },  -- TODO

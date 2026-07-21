@@ -195,6 +195,33 @@ function Status.resistedDuration(unit, id, duration)
     return math.floor(duration * ward * dr + 0.5)
 end
 
+-- The ticks a fresh application of status `id` (with `opts`) would ADD to `unit`'s initiative -- the
+-- shove DOWN the turn order a hard-control status lands (Stun, Freeze, Sleep). Positive = a later turn.
+-- 0 for a status that doesn't touch initiative, or one so resisted it wouldn't land at all. Pure: it
+-- counts nothing and spends nothing, so the timeline PREVIEW (states/battle.lua) can float a ghost of
+-- the delayed target's next turn WITHOUT running the effect, reading the same number the live shove
+-- lands by.
+--
+-- A def opts in with `shovesInitiative`, naming the field the shove reads: "magnitude" (Stun/Freeze --
+-- a fixed delay, tunable per cast via opts) or "duration" (Sleep, whose shove IS its resisted remaining
+-- -- see status_sleep.lua's "THE ONE NUMBER"). Keep this agreeing with the def's own onApply: the two
+-- are the preview and the live halves of one delay.
+function Status.initiativeShove(unit, id, opts)
+    opts = opts or {}
+    local def = Status.defs[id]
+    local src = def and def.shovesInitiative
+    if not src then return 0 end
+    if src == "duration" then
+        -- Sleep: the shove is exactly the ticks the ward and diminishing returns let it buy -- below a
+        -- single tick it doesn't land, and shoves nothing (mirrors the < 1 refusal in Status.apply).
+        local effective = Status.resistedDuration(unit, id, opts.duration or def.duration or 0)
+        return (effective and effective >= 1) and effective or 0
+    end
+    -- "magnitude": a fixed delay, the opts value winning (Jolt/Thunder Storm tune the stun size) over
+    -- the def's default. Stun/Freeze aren't resistible, so this is the whole shove.
+    return opts.magnitude or def.magnitude or 0
+end
+
 -- Build a fresh status instance from a blueprint id. `opts` may override duration/magnitude.
 function Status.instantiate(id, opts)
     opts = opts or {}

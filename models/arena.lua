@@ -368,6 +368,19 @@ local function bindAllies(allyIds, spec, layout)
     for _, t in ipairs(Arena.resolveRegion(anchor, layout)) do
         if not taken[key(t.x, t.y)] then anchorTiles[#anchorTiles + 1] = t end
     end
+    -- Seat the protected units from the middle of the region outward rather than from its left
+    -- edge: a `rally`/`center` region resolves to a whole row (x = 1..cols) in board order, and
+    -- taking them in order would jam the survivors into the corner. Order by distance from the
+    -- region's own center column (ties resolve left-first for determinism) so a screened unit
+    -- stands mid-line, where the party's spawns actually bracket it.
+    local cx = 0
+    for _, t in ipairs(anchorTiles) do cx = cx + t.x end
+    cx = (#anchorTiles > 0) and (cx / #anchorTiles) or 0
+    table.sort(anchorTiles, function(a, b)
+        local da, db = math.abs(a.x - cx), math.abs(b.x - cx)
+        if da ~= db then return da < db end
+        return a.x < b.x
+    end)
 
     local units, anchored, rest = {}, 0, 0
     for _, id in ipairs(allyIds) do

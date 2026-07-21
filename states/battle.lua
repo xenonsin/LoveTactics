@@ -82,6 +82,10 @@ local logButton = { x = 16, y = 60, w = 130, h = 36 }
 -- Toggles the danger overlay that paints EVERY enemy's reach-and-strike range purple across the
 -- whole board (also T / gamepad left-stick), so the player can survey all threats at once.
 local rangesButton = { x = 16, y = 104, w = 130, h = 36 }
+-- Abandons the battle outright and drops straight to the main menu (no result, no reward) -- the
+-- escape hatch a player wants when they mean to stop playing, distinct from Forfeit (which concedes
+-- the fight as a loss and hands control back to whatever launched it).
+local menuButton = { x = 16, y = 148, w = 130, h = 36 }
 
 -- The 3x3 item grid mapped onto the number KEYPAD by physical position: kp7 is the top-left slot,
 -- kp3 the bottom-right, matching the grid's row-major layout so the keys sit where the slots do.
@@ -122,7 +126,7 @@ local function objectiveText(obj)
     if obj.type == "survive" then
         text = "Objective: survive"
     elseif obj.type == "defend" then
-        text = "Objective: keep the survivors alive"
+        text = "Objective: clear every wave"
     elseif obj.type == "reach" then
         text = "Objective: get anyone to the far side"
     elseif obj.type == "hold" then
@@ -138,17 +142,33 @@ local function objectiveText(obj)
     return text
 end
 
--- The remaining time on a timed objective, in TICKS, or nil for one that has no clock. `survive` and
--- `defend` count down the elapsed clock; `hold` counts only the ticks the party actually held the
--- ground (Combat.accrueHold), so its number stalls whenever the post is contested.
+-- The remaining time on a timed objective, in TICKS, or nil for one that has no clock. `survive`
+-- counts down the elapsed clock; `hold` counts only the ticks the party actually held the ground
+-- (Combat.accrueHold), so its number stalls whenever the post is contested. `defend` is NOT here: it
+-- is wave-based, not timed, and reports its progress as a wave tally instead (objectiveWaves).
 local function objectiveRemaining(obj, combat)
     if not obj then return nil end
-    if obj.type == "survive" or obj.type == "defend" then
+    if obj.type == "survive" then
         return math.max(0, math.ceil((obj.duration or 0) - (combat.clock or 0)))
     elseif obj.type == "hold" then
         return math.max(0, math.ceil((obj.duration or 0) - (combat.heldTicks or 0)))
     end
     return nil
+end
+
+-- Wave progress for a wave-based `defend`: how many waves have walked on out of the total the fight
+-- fields. The opening composition is wave 1; each `objective.waves` entry is another, counted arrived
+-- once the clock passes its `at` tick (the same reckoning Combat.allWavesArrived uses to judge the
+-- win). Returns (arrived, total), or nil for any objective that is not a defend.
+local function objectiveWaves(obj, combat)
+    if not obj or obj.type ~= "defend" then return nil end
+    local waves = obj.waves or {}
+    local clock = (combat and combat.clock) or 0
+    local arrived = 1 -- the opening set is always on the board
+    for _, w in ipairs(waves) do
+        if clock >= (w.at or 0) then arrived = arrived + 1 end
+    end
+    return arrived, 1 + #waves
 end
 
 -- Draw the objective line, and for a timed one append its remaining ticks as "<hourglass> N" on the
@@ -158,22 +178,35 @@ end
 -- player is never shown.
 function battle.drawObjective(x, y, w)
     love.graphics.setFont(hudFont)
-    local text = objectiveText(battle.arena.objective)
+    local obj = battle.arena.objective
+    local text = objectiveText(obj)
     local textW = hudFont:getWidth(text)
-    local remaining = objectiveRemaining(battle.arena.objective, battle.combat)
+
+    -- The trailing read-out is one of two things: a tick countdown (survive/hold), worn with the
+    -- hourglass because it is measured in ticks, OR a wave tally (the wave-based defend), drawn as
+    -- plain text and NOT the hourglass -- the hourglass is the game's mark for ticks alone.
+    local remaining = objectiveRemaining(obj, battle.combat)
+    local wArrived, wTotal = objectiveWaves(obj, battle.combat)
     local gw, gap, numGap = 11, 12, 5
-    local label = remaining and tostring(remaining) or nil
-    local clockW = label and (gap + gw + numGap + hudFont:getWidth(label)) or 0
-    local sx = x + (w - (textW + clockW)) / 2
+    local col = { 0.95, 0.85, 0.35 }
+    local clockLabel = remaining and tostring(remaining) or nil
+    local waveLabel = wArrived and ("Wave " .. wArrived .. "/" .. wTotal) or nil
+
+    local tailW = 0
+    if clockLabel then tailW = gap + gw + numGap + hudFont:getWidth(clockLabel)
+    elseif waveLabel then tailW = gap + hudFont:getWidth(waveLabel) end
+    local sx = x + (w - (textW + tailW)) / 2
 
     love.graphics.setColor(0.85, 0.85, 0.9)
     love.graphics.print(text, sx, y)
-    if label then
+    if clockLabel then
         local cx = sx + textW + gap
-        local col = { 0.95, 0.85, 0.35 }
         Glyphs.hourglass(cx, y + 2, gw, hudFont:getHeight() - 4, col[1], col[2], col[3], 1)
         love.graphics.setColor(col[1], col[2], col[3])
-        love.graphics.print(label, cx + gw + numGap, y)
+        love.graphics.print(clockLabel, cx + gw + numGap, y)
+    elseif waveLabel then
+        love.graphics.setColor(col[1], col[2], col[3])
+        love.graphics.print(waveLabel, sx + textW + gap, y)
     end
     love.graphics.setColor(1, 1, 1)
 end
@@ -748,38 +781,32 @@ local function spawnReinforcements()
     end
 end
 
--- An empty, walkable tile the enemy side can walk on for a reinforcement to land on: an unused
--- original enemy spawn first, else any free tile on the enemy's edge rows. Nil only if the whole
--- edge is packed, in which case that wave unit is simply skipped.
-local function freeEnemyTile()
+-- Where a single wave unit lands, given the edge Combat.waveEdges resolved for it. For the default
+-- (behind the enemy line) an unused ORIGINAL enemy spawn is preferred -- reserves filling the holes
+-- the opening formation left -- before falling back to the resolved edge. A wave that names a side
+-- skips straight to that edge. Nil only when there is nowhere to stand, in which case the caller
+-- skips that unit rather than stacking it. Which side a wave comes from lives in models/combat.lua
+-- (Combat.resolveWaveEdge): pure, board-state logic that the headless tests can reach.
+local function waveTile(from, edge)
     local arena, combat = battle.arena, battle.combat
-    local function tryTile(x, y)
-        local row = arena.tiles[y]
-        local cell = row and row[x]
-        if cell and cell.walkable and not Combat.unitAt(combat, x, y) then return x, y end
-        return nil
-    end
-    for _, e in ipairs(arena.enemies or {}) do
-        local x, y = tryTile(e.x, e.y)
-        if x then return x, y end
-    end
-    -- Which edge the enemies came from, so the wave arrives from behind their line, not the party's.
-    local sum, n = 0, 0
-    for _, e in ipairs(arena.enemies or {}) do sum, n = sum + e.y, n + 1 end
-    local fromTop = n == 0 or (sum / n) <= arena.rows / 2
-    local rows = fromTop and { 1, 2, 3 } or { arena.rows, arena.rows - 1, arena.rows - 2 }
-    for _, y in ipairs(rows) do
-        for x = 1, arena.cols do
-            local rx, ry = tryTile(x, y)
-            if rx then return rx, ry end
+    if from == nil or from == "back" then
+        for _, e in ipairs(arena.enemies or {}) do
+            local row = arena.tiles[e.y]
+            local cell = row and row[e.x]
+            if cell and cell.walkable and not Combat.unitAt(combat, e.x, e.y) then
+                return e.x, e.y
+            end
         end
     end
-    return nil
+    return Combat.freeEdgeTile(combat, edge)
 end
 
 -- Walk on any reinforcement WAVES whose tick has come (objective.waves = { { at = <ticks>,
--- composition = ids|fn }, ... }). `at` is a mark on the SAME clock the win conditions read, so a wave
--- and a "survive" duration are quoted in one unit -- ticks -- the player already sees everywhere.
+-- composition = ids|fn, from = <edge descriptor> }, ... }). `at` is a mark on the SAME clock the win
+-- conditions read, so a wave and a "survive" duration are quoted in one unit -- ticks -- the player
+-- already sees everywhere. `from` says which SIDE the wave walks on from (default: behind the enemy
+-- line; see Combat.resolveWaveEdge for the top/bottom/left/right/random/flank/open/surround forms),
+-- resolved against the live board so the dynamic modes react to how the fight has developed.
 -- Each wave fires once; a unit with nowhere to stand is skipped rather than stacked. This is the
 -- generic cousin of spawnReinforcements, which serves the authored tutorial; both arrive through
 -- Combat.addUnit, so a newcomer joins the turn order, the board and every query with no further wiring.
@@ -789,13 +816,19 @@ local function spawnWaves()
     if not waves then return end
     battle.wavesFired = battle.wavesFired or {}
     local clock = battle.combat.clock or 0
+    local ctx = battle.encounterCtx or {}
     for i, wave in ipairs(waves) do
         if not battle.wavesFired[i] and clock >= (wave.at or 0) then
             battle.wavesFired[i] = true
             local ids = wave.composition
-            if type(ids) == "function" then ids = ids(battle.encounterCtx or {}) end
-            for _, id in ipairs(ids or {}) do
-                local x, y = freeEnemyTile()
+            if type(ids) == "function" then ids = ids(ctx) end
+            ids = ids or {}
+            -- Resolve every unit's arrival edge up front (once), so `surround` can spread the wave
+            -- and `flank`/`open` read one consistent snapshot of the board rather than shifting as
+            -- earlier arrivals of the same wave fill tiles.
+            local edges = Combat.waveEdges(battle.combat, wave.from, #ids, ctx)
+            for j, id in ipairs(ids) do
+                local x, y = waveTile(wave.from, edges[j])
                 if x then
                     local unit = Combat.addUnit(battle.combat, Character.instantiate(id), "enemy", x, y)
                     Combat.logEvent(battle.combat, "action",
@@ -1897,16 +1930,9 @@ local function refreshView()
     for _, g in ipairs(ghosts or {}) do
         specs[#specs + 1] = { unit = current, initiative = g.initiative, label = g.label }
     end
-    local entries = Combat.buildTimeline(battle.combat, specs)
-    -- Anchor the acting unit at rank 1 on the strip until the UI actually hands off. The model charges
-    -- its initiative and rebases the instant it acts (endTurn, inside useItem) -- a beat before
-    -- resolveAdvance switches battle.current -- so buildTimeline would otherwise re-rank the current card
-    -- and slide it upward mid-attack, while its damage still reads. Move its real entry to the front.
-    for i, e in ipairs(entries) do
-        if e.unit == current and not e.preview then
-            table.remove(entries, i); table.insert(entries, 1, e); break
-        end
-    end
+    -- The timeline is built lower down, once the hovered action is known: a cast that shoves an enemy's
+    -- initiative (a stun/freeze/sleep) adds a ghost of THAT unit's delayed turn to `specs` too, and the
+    -- action preview is only resolved after the range overlays below.
 
     -- Board highlights: the acting unit always, plus whichever unit the timeline is hovering.
     local overlays = { move = {}, range = {} }
@@ -2105,6 +2131,36 @@ local function refreshView()
         if #spend > 0 then bannerPreview = { [current] = { spend = spend } } end
     end
 
+    -- A target whose initiative the hovered action would shift (a stun/freeze/sleep shoving it later, a
+    -- hasten pulling an ally earlier) gets its OWN preview ghost, so the strip shows where the hit lands
+    -- its turn -- the same "you are here now / you would move to here" the actor's own aim ghost shows.
+    -- Skipped when the blow would fell the target (a corpse takes no turn) or when the shift is a
+    -- sub-tick sliver, and never for the actor itself (its own slot is the actor ghost above).
+    if battle.hoverAction and battle.hoverAction.entries then
+        for tgt, e in pairs(battle.hoverAction.entries) do
+            if e.initiativeAfter and not e.lethal and tgt ~= current
+                and math.abs(e.initiativeAfter - tgt.initiative) > 0.5 then
+                local delayed = e.initiativeAfter > tgt.initiative
+                local label = e.initiativeCause
+                    and (delayed and ("delayed by " .. e.initiativeCause) or (e.initiativeCause .. " frees it"))
+                    or (delayed and "delayed to here" or "rushed forward")
+                specs[#specs + 1] = { unit = tgt, initiative = e.initiativeAfter, label = label }
+            end
+        end
+    end
+
+    -- Now the strip: the live order plus every ghost gathered above (the actor's aim, in-progress
+    -- channels, and any shoved target). Anchor the acting unit at rank 1 until the UI actually hands
+    -- off -- the model charges its initiative and rebases the instant it acts (endTurn, inside useItem),
+    -- a beat before resolveAdvance switches battle.current, so buildTimeline would otherwise re-rank the
+    -- current card and slide it upward mid-attack while its damage still reads.
+    local entries = Combat.buildTimeline(battle.combat, specs)
+    for i, e in ipairs(entries) do
+        if e.unit == current and not e.preview then
+            table.remove(entries, i); table.insert(entries, 1, e); break
+        end
+    end
+
     battle.panel:setView({
         order = entries, current = current, isPartyTurn = isParty,
         items = Combat.isPlayerControlled(current) and current.char.inventory or {},
@@ -2145,7 +2201,14 @@ local function refreshView()
     -- whole battle, not just while something is armed: an objective tile nobody can see is an
     -- objective nobody can play, and the HUD line above promises "the marked ground".
     local obj = battle.combat.objective
-    if obj and obj.tiles and #obj.tiles > 0 then
+    if obj and obj.type == "defend" and obj.protect then
+        -- A defend fight is fought over the survivors, not the ground: mark exactly the tiles the
+        -- protectees stand on (read live, since they move) rather than the whole anchor row. The
+        -- anchor region still lives in obj.tiles for enemy pathing -- it just isn't what the HUD
+        -- washes. Falls through to nothing if they've all fallen (the loss is already sealed).
+        local protectedTiles = Combat.protectedTiles(battle.combat, obj.protect)
+        if #protectedTiles > 0 then overlays.objective = protectedTiles end
+    elseif obj and obj.tiles and #obj.tiles > 0 then
         overlays.objective = obj.tiles
         -- `hold` also needs its progress legible, so the wash reports whether the count is running.
         overlays.objectiveHeld = (obj.type == "hold") and Combat.holdsGround(battle.combat, obj.tiles) or nil
@@ -2390,6 +2453,11 @@ function battle.enter(self, opts)
         local y = boardBottom + GUTTER_GAP
         Conversation.play(opening, nil, nil, {
             overScene = true,
+            -- Don't fold a queued party-join banner onto this scene: an opening plays over a frozen
+            -- board mid-fight, which is the wrong surface for a "[<name> has joined your Party]" line.
+            -- Holding it lets the join land in the next full scene instead -- e.g. Rowan, recruited to
+            -- fight the village battle, is announced in the "Ashes" scene after it (models/conversation).
+            deferJoins = true,
             box = {
                 x = x, y = y,
                 w = Scale.WIDTH - PANEL_W - GUTTER_PAD - x,
@@ -2811,6 +2879,17 @@ function battle.drawHud()
     love.graphics.printf(rangesOn and "Threats ✓" or "Threats",
         rangesButton.x, rangesButton.y + rangesButton.h / 2 - 8, rangesButton.w, "center")
 
+    -- Exit-to-main-menu button. Neutral grey so it reads as "leave", not as an action taken in the
+    -- fight (the reddish Forfeit is the in-fight concede).
+    love.graphics.setColor(0.16, 0.17, 0.20)
+    love.graphics.rectangle("fill", menuButton.x, menuButton.y, menuButton.w, menuButton.h, 6, 6)
+    love.graphics.setColor(0.45, 0.48, 0.55)
+    love.graphics.rectangle("line", menuButton.x, menuButton.y, menuButton.w, menuButton.h, 6, 6)
+    love.graphics.setColor(0.80, 0.83, 0.88)
+    love.graphics.setFont(hudFont)
+    love.graphics.printf("Main Menu", menuButton.x, menuButton.y + menuButton.h / 2 - 8,
+        menuButton.w, "center")
+
     -- Encounter name + objective, centred over the battlefield region.
     love.graphics.setFont(titleFont)
     love.graphics.setColor(0.95, 0.85, 0.55)
@@ -3007,6 +3086,13 @@ function battle.mousepressed(x, y, button)
         battle.showEnemyRanges = not battle.showEnemyRanges
         return
     end
+    if button == 1 and pointIn(menuButton, x, y) then
+        -- Leaving the fight for good: release the party's between-battle claims (no win/lose path
+        -- runs to do it) so nothing follows the units back out, then drop to the main menu.
+        releaseParty()
+        require("states.init").switch(require("states.menu"))
+        return
+    end
     -- A click inside the open log panel is consumed by it (it must not fall through to a
     -- move/attack on the battlefield beneath).
     if battle.log:contains(x, y) then return end
@@ -3025,6 +3111,7 @@ function battle.cursorKind()
     if battle.summary then return battle.summary:cursorKind(mx, my) end
     -- Off the board: the clickable UI wants a pointing hand.
     if pointIn(forfeitButton, mx, my) or pointIn(logButton, mx, my) or pointIn(rangesButton, mx, my)
+        or pointIn(menuButton, mx, my)
         or battle.log:contains(mx, my) or battle.panel:contains(mx, my) then
         return "hand"
     end

@@ -9,6 +9,7 @@ return {
     description = "Iced over: delayed, and takes extra damage from crush and fire.",
     color = { 0.55, 0.80, 0.95 }, -- badge tint (glacier blue)
     magnitude = 5,                -- ticks added to the target's initiative (the freeze delay)
+    shovesInitiative = "magnitude", -- the delay the aim preview quotes (Status.initiativeShove); == onApply's shove
     -- A generous window so the crush/fire vulnerability actually survives the caster's own turn: a
     -- slow AoE freeze (Blizzard, speed 5) advances the clock several ticks the moment it resolves, and
     -- a 5-tick badge would wear off before anyone could exploit it. The delay above lands regardless

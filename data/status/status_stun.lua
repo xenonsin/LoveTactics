@@ -7,6 +7,7 @@ return {
     description = "Shoved down the turn order, delaying the target's next turn.",
     color = { 0.95, 0.85, 0.35 }, -- badge tint (gold)
     magnitude = 5,                -- ticks added to the target's initiative
+    shovesInitiative = "magnitude", -- the delay the aim preview quotes (Status.initiativeShove); == onApply's shove
     duration = 5,                 -- ticks the badge lingers
     debuff = true,                -- removable by Cure
     interruptsChannel = true,     -- a stunned caster drops whatever spell it was channeling

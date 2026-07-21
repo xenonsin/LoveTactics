@@ -54,6 +54,44 @@ return {
         end,
     },
     {
+        name = "Status.initiativeShove reports the delay a hard-control status lands (0 for the rest)",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local bandit = c.units[2]
+            -- Stun/Freeze: a fixed shove, the opts value winning over the def default.
+            assert(Status.initiativeShove(bandit, "status_stun") == 5, "stun's default shove is its magnitude")
+            assert(Status.initiativeShove(bandit, "status_stun", { magnitude = 10 }) == 10, "opts tunes the shove")
+            assert(Status.initiativeShove(bandit, "status_freeze") == 5, "freeze shoves by its magnitude too")
+            -- A status that doesn't touch initiative shoves nothing at all.
+            assert(Status.initiativeShove(bandit, "status_bleed") == 0, "a bleed is no delay")
+            -- Sleep reads its shove off the (resisted) duration -- the same number onApply uses.
+            local sleepShove = Status.initiativeShove(bandit, "status_sleep")
+            assert(sleepShove > 0, "sleep shoves down the order")
+            assert(sleepShove == Status.resistedDuration(bandit, "status_sleep", 14),
+                "sleep's shove is its resisted remaining, got " .. sleepShove)
+        end,
+    },
+    {
+        name = "previewAbility projects a stunned target's delayed turn onto the timeline",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local mage, bandit = c.units[1], c.units[2]
+            mage.char.inventory[1] = Item.instantiate("ability_jolt")
+            bandit.initiative = 2
+
+            local preview = Combat.previewAbility(c, mage, mage.char.inventory[1], bandit.x, bandit.y)
+            local e = preview.entries[bandit]
+            assert(e, "the bandit is an affected target")
+            assert(not e.lethal, "a Jolt doesn't fell a healthy bandit (so the ghost is worth showing)")
+            -- Jolt's base stun is 10 (its per-level `stun` curve at level 0), carried on the hit.
+            assert(e.initiativeAfter == bandit.initiative + 10,
+                "the ghost lands at initiative + stun, got " .. tostring(e.initiativeAfter))
+            assert(e.initiativeCause == "Stun", "the ghost is labelled by its cause")
+            -- Pure: previewing the shove never touched the live initiative.
+            assert(bandit.initiative == 2, "the dry run left the bandit's real initiative alone")
+        end,
+    },
+    {
         name = "root blocks movement and charges the full move cost at end of turn",
         fn = function()
             -- Knight (chainmail drops movement to 2, iron_sword speed 3) rooted, bandit parked far so

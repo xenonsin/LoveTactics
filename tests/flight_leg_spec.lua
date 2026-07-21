@@ -95,29 +95,41 @@ return {
 
     -- ----- the `defend` objective (models/combat.lua) -----
     {
-        name = "defend: outlast the tick duration with the protectee alive is a win; its death is a loss",
+        name = "defend: clear every wave with the protectee alive is a win; a lull before a wave is not; its death is a loss",
         fn = function()
-            local obj = { type = "defend", duration = 15, protect = "character_survivor" }
+            local obj = {
+                type = "defend",
+                protect = "character_survivor",
+                waves = { { at = 10, composition = function() return { "character_demon_imp" } end } },
+            }
             local c = Combat.new(flatArena(8, 8, obj),
                 { unit("character_knight", 1, 1), unit("character_survivor", 2, 2) },
                 { unit("character_bandit", 6, 6) })
-            assert(Combat.evaluate(c) == nil, "ongoing before the clock passes the duration")
-            c.clock = 15 -- ticks, the unit the clock counts
-            assert(Combat.evaluate(c) == "win", "outlasting the duration with the survivor alive wins")
+            assert(Combat.evaluate(c) == nil, "ongoing while a demon still stands")
+
+            -- Board cleared, but the wave at tick 10 has not arrived: a lull, NOT a premature win.
+            c.units[3].alive = false
+            c.clock = 5
+            assert(Combat.evaluate(c) == nil, "a clear board before the last wave has arrived is not a win")
+
+            -- The wave's tick has passed (spawnWaves would have walked it on) and the board is clear.
+            c.clock = 10
+            assert(Combat.evaluate(c) == "win", "every wave arrived and every demon down wins the defend")
 
             local dead = Combat.new(flatArena(8, 8, obj),
                 { unit("character_knight", 1, 1), unit("character_survivor", 2, 2) },
                 { unit("character_bandit", 6, 6) })
             dead.units[2].alive = false -- the survivor falls
-            assert(Combat.evaluate(dead) == "loss", "the protectee dying fails the defend, clock or no clock")
+            assert(Combat.evaluate(dead) == "loss", "the protectee dying fails the defend, waves or no waves")
         end,
     },
     {
-        name = "timed objectives and waves are authored in ticks, not turns",
+        name = "the defend is wave-based (no duration clock) and its waves are authored in ticks, not turns",
         fn = function()
             local defend = Encounter.get("encounter_survivors_defend")
             assert(defend.objective.turns == nil, "no `turns` field survives on the objective")
-            assert(type(defend.objective.duration) == "number", "the defend duration is a tick count")
+            assert(defend.objective.duration == nil, "the wave-based defend carries no tick duration")
+            assert(#defend.objective.waves >= 1, "it fields reinforcement waves")
             for _, wave in ipairs(defend.objective.waves) do
                 assert(wave.turn == nil, "no `turn` field survives on a wave")
                 assert(type(wave.at) == "number", "a wave arrives at a tick mark")

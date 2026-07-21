@@ -367,7 +367,12 @@ function Conversation.play(id, onDone, ctx, opts)
     local resolved = Conversation.resolve(def, ctx or Conversation.context(Player.active))
     -- Any companion recruited since the last scene gets a "[<name> has joined your Party]" banner
     -- appended here (Conversation.drainJoins), so the join shows up in the scene that follows it.
-    Conversation.drainJoins(resolved)
+    -- `opts.deferJoins` holds the queue instead: a conversation staged over a frozen battle board (a
+    -- fight's opening scene, states/battle.lua) is an in-fight overlay, not the roster beat where a
+    -- join belongs -- so it lets the banner fall through to the next full scene. The prologue relies
+    -- on this: Rowan is recruited before the village fight so she can fight in it, and the join waits
+    -- out the tutorial's opening to land in the "Ashes" scene after (states/prologue.lua).
+    if not (opts and opts.deferJoins) then Conversation.drainJoins(resolved) end
     if opts and opts.overScene then resolved.overScene = true end
     -- `opts.box` puts the text box somewhere other than the bottom of the screen -- the free gutter
     -- under a battle's board, say. Same reasoning as overScene: where the words fit is a fact about

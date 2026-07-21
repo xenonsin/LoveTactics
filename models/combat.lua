@@ -1090,6 +1090,155 @@ function Combat.openTileNear(combat, x, y)
     return nil
 end
 
+-- ---------------------------------------------------------------------------
+-- Reinforcement edges: which side of the board a wave walks on from.
+-- ---------------------------------------------------------------------------
+-- A reinforcement wave (objective.waves; walked on by states/battle.lua) can name the edge it
+-- arrives from. The default keeps every existing encounter unchanged -- reserves come in from behind
+-- the enemy's opening line -- but a wave's `from` descriptor can send them at any side, and its
+-- DYNAMIC forms read the live board, so the same fight throws its reinforcements at whichever flank
+-- the battle has actually opened up rather than always down the top of the screen.
+--
+--   nil / "back"                  -- behind the enemy's opening line (legacy default, unchanged)
+--   "top" / "bottom" / "left" / "right"  -- that edge, always
+--   "random"                      -- a seeded edge (Combat.roll), reproducible from the arena seed
+--   "flank"                       -- the edge nearest the living party's centre of mass, so reserves
+--                                    close in beside/behind the party instead of the far line
+--   "open"                        -- the emptiest edge, so a large wave always has room to land
+--   "surround" / "all"            -- units spread across the edges at once, closing a ring
+--   function(combat, ctx) -> edge -- a fully authored condition (e.g. the side the healer is on)
+
+Combat.EDGES = { "top", "bottom", "left", "right" }
+
+-- Ordered candidate tiles along `edge`: the outermost line first, then inward up to `depth` lines.
+-- Every walkable cell regardless of who currently stands on it (the caller drops occupied ones), so
+-- this stays a pure question about the ground. `depth` lets a packed front spill a line deeper.
+function Combat.edgeTiles(combat, edge, depth)
+    local arena = combat.arena
+    if not (arena and arena.tiles) then return {} end
+    depth = depth or 3
+    local cols, rows = arena.cols, arena.rows
+    local function walkable(x, y)
+        local row = arena.tiles[y]
+        local cell = row and row[x]
+        return cell and cell.walkable
+    end
+    local vertical = (edge == "top" or edge == "bottom")   -- edge runs along a row (top/bottom) vs a column
+    local span  = vertical and cols or rows                -- cells strung along the edge itself
+    local lines = vertical and rows or cols                -- how far inward we can step
+    local near  = (edge == "top" or edge == "left")        -- does this edge start at line 1?
+    local first = near and 1 or lines
+    local step  = near and 1 or -1
+    local out = {}
+    for d = 0, depth - 1 do
+        local line = first + step * d
+        if line >= 1 and line <= lines then
+            for i = 1, span do
+                local x = vertical and i or line
+                local y = vertical and line or i
+                if walkable(x, y) then out[#out + 1] = { x = x, y = y } end
+            end
+        end
+    end
+    return out
+end
+
+-- A free walkable tile for a reinforcement arriving from `edge`: the outermost open cell on that
+-- side, spilling inward when the front line is packed. Nil when the whole edge is full, in which case
+-- the caller skips that arrival rather than stacking it onto an occupied tile.
+function Combat.freeEdgeTile(combat, edge)
+    for _, t in ipairs(Combat.edgeTiles(combat, edge, 3)) do
+        if not Combat.unitAt(combat, t.x, t.y) then return t.x, t.y end
+    end
+    return nil
+end
+
+-- The edge the enemy formation opened against, read off the arena's AUTHORED enemy spawns rather
+-- than the live units (a defend fight may already have cleared them) so a default wave still arrives
+-- from behind where the enemy line stood. Top vs bottom only: that is the axis openings are seated on.
+function Combat.enemyHomeEdge(combat)
+    local spawns = (combat.arena and combat.arena.enemies) or {}
+    local sum, n = 0, 0
+    for _, e in ipairs(spawns) do sum, n = sum + e.y, n + 1 end
+    local rows = (combat.arena and combat.arena.rows) or 8
+    local fromTop = (n == 0) or (sum / n) <= rows / 2
+    return fromTop and "top" or "bottom"
+end
+
+-- How many free (walkable, empty) tiles a wave would find on `edge` right now -- how much room it
+-- has to land. Two lines deep, matching where freeEdgeTile actually seats arrivals.
+function Combat.edgeOpenness(combat, edge)
+    local free = 0
+    for _, t in ipairs(Combat.edgeTiles(combat, edge, 2)) do
+        if not Combat.unitAt(combat, t.x, t.y) then free = free + 1 end
+    end
+    return free
+end
+
+-- The living party's centre of mass, or nil if none stand. Flanking waves aim at it.
+local function partyCentroid(combat)
+    local sx, sy, n = 0, 0, 0
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.side == "party" then sx, sy, n = sx + u.x, sy + u.y, n + 1 end
+    end
+    if n == 0 then return nil end
+    return sx / n, sy / n
+end
+
+-- The edge a point has drifted closest to. Used by `flank` to bring reserves in beside the party.
+local function nearestEdge(combat, px, py)
+    local cols = (combat.arena and combat.arena.cols) or 8
+    local rows = (combat.arena and combat.arena.rows) or 8
+    local dist = { top = py - 1, bottom = rows - py, left = px - 1, right = cols - px }
+    local best, bestD = "top", math.huge
+    for _, e in ipairs(Combat.EDGES) do
+        if dist[e] < bestD then best, bestD = e, dist[e] end
+    end
+    return best
+end
+
+-- Resolve a wave's `from` descriptor to a concrete edge, reading live board state for the dynamic
+-- forms. See the section header for the descriptors. An unrecognised name falls back to the enemy's
+-- home edge, so a typo degrades to the default rather than erroring mid-battle.
+function Combat.resolveWaveEdge(combat, from, ctx)
+    if type(from) == "function" then from = from(combat, ctx or {}) end
+    if from == nil or from == "back" then return Combat.enemyHomeEdge(combat) end
+    if from == "top" or from == "bottom" or from == "left" or from == "right" then return from end
+    if from == "random" then return Combat.EDGES[Combat.roll(combat, #Combat.EDGES)] end
+    if from == "flank" then
+        local px, py = partyCentroid(combat)
+        if not px then return Combat.enemyHomeEdge(combat) end
+        return nearestEdge(combat, px, py)
+    end
+    if from == "open" then
+        local best, bestFree = Combat.enemyHomeEdge(combat), -1
+        for _, e in ipairs(Combat.EDGES) do
+            local f = Combat.edgeOpenness(combat, e)
+            if f > bestFree then best, bestFree = e, f end
+        end
+        return best
+    end
+    return Combat.enemyHomeEdge(combat)
+end
+
+-- Assign an edge to each of `count` units in a wave. Most modes give every unit the same edge;
+-- `surround`/`all` distributes them across the sides (the emptiest first, then cycling) so a wave
+-- closes in from several directions at once. Returns a list of edge names, length `count`.
+function Combat.waveEdges(combat, from, count, ctx)
+    local edges = {}
+    if from ~= "surround" and from ~= "all" then
+        local edge = Combat.resolveWaveEdge(combat, from, ctx)
+        for i = 1, count do edges[i] = edge end
+        return edges
+    end
+    local order = { "top", "bottom", "left", "right" }
+    table.sort(order, function(a, b)
+        return Combat.edgeOpenness(combat, a) > Combat.edgeOpenness(combat, b)
+    end)
+    for i = 1, count do edges[i] = order[((i - 1) % #order) + 1] end
+    return edges
+end
+
 -- Does `unit` cross traps unharmed? True when it carries any item tagged "ignore traps" (Feather
 -- Boots). Mirrors the "detect traps" inventory scan in models/trap.lua: a passive keyed off an item
 -- sitting in the 3x3 grid, never an equip slot. Read by Combat.enterTile to skip the trap trigger.
@@ -3081,6 +3230,19 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         end
         return e
     end
+    -- Project where a target's turn MOVES when this cast shifts its initiative -- a stun/freeze/sleep
+    -- shoving it later. states/battle.lua reads entry.initiativeAfter to float a preview slot of the
+    -- target's next turn on the timeline (the same "you would move to here" ghost the actor's own aim
+    -- shows). Accumulates, so two shoves in one cast stack; inert to the unit itself (a dry run never
+    -- mutates initiative). `initiativeCause` names the driver, for the ghost's label. 0-shove statuses
+    -- (a bleed, a barrier) record nothing, so only a genuine delay paints a slot.
+    local function shoveInitiative(tgt, id, opts)
+        local shove = Status.initiativeShove(tgt, id, opts)
+        if shove == 0 then return end
+        local e = entryFor(tgt)
+        e.initiativeAfter = (e.initiativeAfter or tgt.initiative) + shove
+        e.initiativeCause = Status.defs[id] and Status.defs[id].name
+    end
     local auraTags, auraStatuses, auraMods = adjacencyAura(unit.char, item)
     -- Fold in a neighboring Alchemic Mastery charm's magnitude bonus (and any frenzy) exactly as
     -- Combat.useItem does, so the previewed number matches the hit the player is about to land.
@@ -3141,6 +3303,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
                 -- sniffed out of e.statuses afterwards -- a stun applied the ordinary way, on the line
                 -- AFTER the damage, does NOT suppress anything, and the two must not be confused.
                 if cdef and cdef.disablesReactions then e.suppressesCounters = true end
+                -- A carried stun/freeze shoves the target down the order the moment the blow lands, so
+                -- project its delayed turn onto the timeline (Jolt, Ice Bolt inflict this way).
+                shoveInitiative(tgt, carriedId, carryOpts)
             end
             if d > 0 then
                 for _, st in ipairs(auraStatuses) do
@@ -3168,6 +3333,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
             if not tgt then return nil end
             local e = entryFor(tgt)
             e.statuses[#e.statuses + 1] = { id = id, def = Status.defs[id], opts = opts }
+            -- A directly-applied stun/freeze/sleep shoves the target's turn later; project it onto the
+            -- timeline (Thunder Storm, Blizzard, and Sleep apply through this path rather than a hit).
+            shoveInitiative(tgt, id, opts)
             return nil
         end,
         -- Read-only, so the dry run may answer truthfully; the mutating ones are inert.
@@ -3212,7 +3380,15 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         teleportUser = function() return false end,
         charge = function() return 0 end,
         steal = function() return nil end,
-        hasten = function() return 0 end,
+        -- Inert to the unit, but records where the pull would land its turn: a hasten cuts the target's
+        -- current initiative, so its next turn slides EARLIER on the strip (Haste on an ally). No cause
+        -- name -- the ghost reads "rushed forward" rather than a status.
+        hasten = function(tgt, fraction)
+            if not tgt then return 0 end
+            local e = entryFor(tgt)
+            e.initiativeAfter = (e.initiativeAfter or tgt.initiative) * (1 - (fraction or 0.5))
+            return e.initiativeAfter
+        end,
         -- Board-mutating helpers are inert in a dry run; the read-only ones may answer truthfully.
         random = function() return 1 end,
         cleanse = function() return 0 end,
@@ -4924,6 +5100,21 @@ function Combat.isProtectedAlive(combat, charId)
     return false
 end
 
+-- The tiles the living protectees stand on RIGHT NOW -- what a `defend` HUD marks. Unlike a
+-- `reach`/`hold` objective's fixed ground, the thing a defend fight is fought over is a unit, and
+-- units move: this reads their current cells so the wash follows the survivors rather than the
+-- anchor region they happened to spawn on. Excludes summons for the same reason isProtectedAlive
+-- does -- an impersonating duplicate is not the charge.
+function Combat.protectedTiles(combat, charId)
+    local tiles = {}
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.side == "party" and u.char.id == charId and not u.summoned then
+            tiles[#tiles + 1] = { x = u.x, y = u.y }
+        end
+    end
+    return tiles
+end
+
 -- Resolve the arena objective to "win" / "loss" / nil. A total party wipe is always a
 -- loss. Called after each action so the battle state can fire onWin/onLoss.
 --
@@ -4967,6 +5158,19 @@ function Combat.accrueHold(combat, elapsed)
     if Combat.holdsGround(combat, obj.tiles) then
         combat.heldTicks = (combat.heldTicks or 0) + (elapsed or 0)
     end
+end
+
+-- Have all of a wave-based `defend` fight's reinforcement waves walked on? A wave arrives once the
+-- clock passes its `at` tick (states/battle.lua spawnWaves runs BEFORE this fight is judged, so the
+-- moment the clock reaches the mark the bodies are already on the board). "All arrived" is therefore
+-- just the clock reaching the last wave's tick. Combined with a cleared board it is the wave-based
+-- win: no victory is awarded in the quiet before the next wave lands. No waves at all reads as arrived,
+-- so a defend with only its opening set wins the moment that set falls.
+function Combat.allWavesArrived(combat, obj)
+    for _, w in ipairs((obj and obj.waves) or {}) do
+        if (combat.clock or 0) < (w.at or 0) then return false end
+    end
+    return true
 end
 
 -- The side across the board. Two sides is the game; this exists so the rules below can be written
@@ -5041,13 +5245,20 @@ function Combat.outcomeFor(combat, side)
             end
         end
         return "win"
-    elseif obj.type == "survive" or obj.type == "defend" then
-        -- `defend` is `survive` with a body to keep alive: the outlast condition is identical (win
-        -- once the clock passes the tick `duration`), and the protectee is enforced by the
-        -- `obj.protect` loss clause above -- so the two share this branch. They differ only in what
-        -- the HUD says (states/battle.lua objectiveText) and where the protected unit stands
-        -- (models/arena.lua).
+    elseif obj.type == "survive" then
+        -- Outlast a clock: win once the elapsed ticks pass the authored `duration`. The consecrated
+        -- rite in data/quests/rite_of_ashes.lua is the live user.
         if combat.clock >= (obj.duration or math.huge) then return "win" end
+        return nil
+    elseif obj.type == "defend" then
+        -- A WAVE-based hold with a body to keep alive: win once every demon is defeated -- the whole
+        -- board cleared AND every authored reinforcement wave already arrived (so a lull between the
+        -- opening kill and the next wave landing is not a premature victory). The protectee is enforced
+        -- by the `obj.protect` loss clause above; its death fails the fight whatever the board looks
+        -- like. Unlike `survive` there is no clock to outlast -- the fight ends when the demons do.
+        if Combat.allWavesArrived(combat, obj) and Combat.aliveCount(combat, foe) == 0 then
+            return "win"
+        end
         return nil
     else -- killAll (default)
         if Combat.aliveCount(combat, foe) == 0 then return "win" end

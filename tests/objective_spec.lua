@@ -1,6 +1,7 @@
 -- The tile-based win types (`reach`, `hold`) and the tick-counted time-based ones (`survive`,
--- `defend`, `hold`), whose `duration` is a count of ticks -- the unit the clock keeps and the HUD
--- quotes. See Combat.evaluate and Arena.resolveRegion.
+-- `hold`), whose `duration` is a count of ticks -- the unit the clock keeps and the HUD quotes.
+-- (`defend` is wave-based, not timed: it wins by clearing every wave -- see tests/flight_leg_spec.lua.)
+-- See Combat.evaluate and Arena.resolveRegion.
 
 local Arena = require("models.arena")
 local Combat = require("models.combat")
