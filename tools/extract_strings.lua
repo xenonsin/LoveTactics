@@ -79,11 +79,41 @@ local function serializeWhen(when)
     return "{ " .. table.concat(parts, ", ") .. " }"
 end
 
--- Serialize one choice: { "<text>", tag = N, goto = ".." }
+-- Serialize a choice's `effect` -- the declarative outcome applied when the choice is committed
+-- (models/story_effect.lua). Pure data, like `when`, which is what lets it survive this round trip.
+-- Keys emitted in a stable order so re-stamping a file produces no spurious diff; an unknown key is a
+-- loud error rather than a silent drop.
+local EFFECT_KEYS = { "grant", "gold", "heal", "maxHpCost", "restore", "flag" }
+local function serializeEffect(effect)
+    local parts = {}
+    for _, key in ipairs(EFFECT_KEYS) do
+        local v = effect[key]
+        if v ~= nil then
+            if key == "grant" and type(v) == "table" then
+                local ids = {}
+                for _, id in ipairs(v) do ids[#ids + 1] = q(id) end
+                parts[#parts + 1] = key .. " = { " .. table.concat(ids, ", ") .. " }"
+            elseif type(v) == "number" or type(v) == "boolean" then
+                parts[#parts + 1] = key .. " = " .. tostring(v)
+            else
+                parts[#parts + 1] = key .. " = " .. q(v)
+            end
+        end
+    end
+    for key in pairs(effect) do
+        local known = false
+        for _, k in ipairs(EFFECT_KEYS) do if k == key then known = true break end end
+        assert(known, "cannot serialize unknown `effect` key '" .. tostring(key) .. "'")
+    end
+    return "{ " .. table.concat(parts, ", ") .. " }"
+end
+
+-- Serialize one choice: { "<text>", tag = N, goto = "..", effect = { .. } }
 local function serializeChoice(c)
     local parts = { q(choiceText(c) or "") }
     if c.tag ~= nil then parts[#parts + 1] = "tag = " .. c.tag end
     if c.goto then parts[#parts + 1] = "goto = " .. q(c.goto) end
+    if c.effect then parts[#parts + 1] = "effect = " .. serializeEffect(c.effect) end
     return "{ " .. table.concat(parts, ", ") .. " }"
 end
 

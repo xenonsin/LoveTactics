@@ -142,9 +142,16 @@ local function buildCounterBlocks(action)
     -- weighing: a defender who answers three times has spent a swing, then two, then four, and is
     -- that much less able to act on their own turn. Wearing a guard down is a plan you can only make
     -- if the panel tells you what the guard costs.
+    -- A list, since the weapon answering may draw on two pools (Trait.answerCost) -- joined onto one
+    -- line rather than given a row each, so a dual-cost guard doesn't stretch a box the stack has to
+    -- fit several of.
     if c.cost then
+        local parts = {}
+        for _, cost in ipairs(c.cost) do
+            parts[#parts + 1] = cost.amount .. " " .. cost.stat
+        end
         blocks[#blocks + 1] = { kind = "stat", label = "Costs them",
-            value = c.cost.amount .. " " .. c.cost.stat, valueColor = MUTED }
+            value = table.concat(parts, " + "), valueColor = MUTED }
     end
     return blocks
 end

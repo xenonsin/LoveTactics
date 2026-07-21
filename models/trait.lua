@@ -66,14 +66,24 @@ end
 -- Split in two so the counter PREVIEW (Trait.counterPreview) can ask the same question without
 -- spending anything: canPay answers it, payCost answers it and bills. A reflex canPay says yes to is
 -- one payCost will let through, so what the tooltip promises is what the exchange delivers.
+-- Both take a cost in EITHER shape -- a lone `{ stat, amount }` (a trait def's own price) or a list
+-- of them (what Trait.answerCost quotes, since the weapon being thrown back may draw on two pools).
+-- Normalized through Item.costList so the shapes are unpacked in one place, and an answer is all-or
+-- -nothing: a reflex that cannot cover every pool declines rather than paying for part of a swing.
 local function canPay(unit, cost)
-    if not cost then return true end
-    return require("models.combat").resource(unit.char, cost.stat) >= cost.amount
+    local Combat = require("models.combat")
+    for _, c in ipairs(require("models.item").costList(cost)) do
+        if Combat.resource(unit.char, c.stat) < c.amount then return false end
+    end
+    return true
 end
 
 local function payCost(unit, cost)
     if not canPay(unit, cost) then return false end
-    if cost then require("models.combat").drainResource(unit.char, cost.stat, cost.amount) end
+    local Combat = require("models.combat")
+    for _, c in ipairs(require("models.item").costList(cost)) do
+        Combat.drainResource(unit.char, c.stat, c.amount)
+    end
     return true
 end
 
@@ -119,6 +129,10 @@ Trait.ANSWER_ESCALATION_CAP = 8
 -- there is no weapon in the motion to price.
 --
 -- Either way the tally of answers already thrown this round doubles it (see above).
+--
+-- Returns a LIST of `{ stat, amount }` (nil when the answer is free), because the weapon thrown back
+-- may draw on more than one pool -- a crescent blade answers in mana AND stamina, and the escalation
+-- falls on both, so the pools it drains are the pools its answer costs.
 function Trait.answerCost(combat, unit, trait, dist)
     local Combat = require("models.combat")
     local rule = trait and trait.def and trait.def.counter
@@ -129,10 +143,12 @@ function Trait.answerCost(combat, unit, trait, dist)
         local weapon = Combat.answeringWeapon(combat, unit, dist)
         base = weapon and weapon.activeAbility and weapon.activeAbility.cost
     end
-    if not base then return nil end
+    local costs = require("models.item").costList(base)
+    if #costs == 0 then return nil end
     local thrown = unit.answersThisRound or 0
     local multiplier = math.min(2 ^ thrown, Trait.ANSWER_ESCALATION_CAP)
-    return { stat = base.stat, amount = math.floor(base.amount * multiplier) }
+    for _, c in ipairs(costs) do c.amount = math.floor(c.amount * multiplier) end
+    return costs
 end
 
 -- Record that `unit` has thrown an answer, so the next one this round costs double (Trait.answerCost).
@@ -689,6 +705,15 @@ local function ctxFor(combat, unit, trait, event)
         -- recharges from Combat.rebase alongside status durations.
         onCooldown = function(key) return Combat.onCooldown(unit, key) end,
         setCooldown = function(key, ticks) Combat.setCooldown(unit, key, ticks) end,
+        -- The bearer's running count of an in-battle event (blows landed, hits taken, ...): what a
+        -- REACTIVE signature gates its payoff on. A trait-driven ultimate declares its own `unlock` on
+        -- its def and opens its hook with `if not ctx.unlockMet() then return end`, then calls
+        -- `ctx.unlockConsume()` once it fires -- the reaction-side mirror of the active signature's
+        -- Combat.itemBlockReason gate and Combat.unlockConsume. Keyed by the trait, so its baseline
+        -- never collides with an item signature's (Combat.unlockReady / unlockSpend).
+        tally = function(event) return Combat.tallyCount(unit, event) end,
+        unlockMet = function() return Combat.unlockReady(unit, trait.def.unlock, trait, combat) end,
+        unlockConsume = function() return Combat.unlockSpend(unit, trait.def.unlock, trait) end,
         -- Pay for this firing, returning false when the bearer cannot afford it -- at which point the
         -- hook must decline and answer nothing. Call it LAST, after every free refusal (reach,
         -- friendly fire), so a reflex that declines is never billed.

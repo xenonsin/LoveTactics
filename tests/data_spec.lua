@@ -51,7 +51,7 @@ return {
         name = "resource stats split into { max, current }",
         fn = function()
             local c = Character.instantiate("character_knight")
-            assert(c.stats.health.max == 100 and c.stats.health.current == 100, "health")
+            assert(c.stats.health.max == 70 and c.stats.health.current == 70, "health")
             assert(c.stats.mana.max == 20, "mana max")
             assert(c.stats.stamina.current == 60, "stamina current")
         end,
@@ -70,7 +70,8 @@ return {
         name = "starting inventory built from def item ids",
         fn = function()
             local c = Character.instantiate("character_knight")
-            -- Iron Mace, Chainmail, Healing Potion, Torch, and the bound Sworn Aegis relic (cell 5).
+            -- Iron Mace, Chainmail, Healing Potion, Torch, and the bound Sworn Aegis relic (cell 5),
+            -- which carries both her guard and her unlock-gated signature answer.
             assert(#c.inventory == 5, "expected 5 starting items, got " .. #c.inventory)
             assert(c.inventory[1].name == "Iron Mace", "first item")
             assert(c.inventory[5].id == "armor_sworn_aegis", "the signature relic sits in the center")
@@ -158,7 +159,7 @@ return {
         fn = function()
             local c = Character.instantiate("character_knight")
             c.stats.health.current = 1
-            assert(Character.defs.character_knight.stats.health == 100, "blueprint health mutated")
+            assert(Character.defs.character_knight.stats.health == 70, "blueprint health mutated")
             assert(type(Character.defs.character_knight.stats.health) == "number", "blueprint stat became a table")
         end,
     },

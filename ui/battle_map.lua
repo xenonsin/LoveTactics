@@ -1,4 +1,4 @@
--- Battle arena renderer + input, driven by a models/arena.lua arena and a live
+﻿-- Battle arena renderer + input, driven by a models/arena.lua arena and a live
 -- models/combat.lua instance. Like ui/overworld_map.lua it supports mouse + keyboard +
 -- gamepad. The whole 8x8 grid fits on screen (no camera); a tile cursor can be moved with
 -- any input source, and the owning state (states/battle.lua) interprets confirm presses.
@@ -588,7 +588,7 @@ function BattleMap:drawUnits()
                 end
             else
                 -- Token fallback: colored disc with the unit's initial, in the unit's side colour.
-                local c = Colors.side(u.side)
+                local c = Colors.unit(u)
                 love.graphics.setColor(c[1] * tint, c[2] * tint, c[3] * tint, a)
                 love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.32)
                 love.graphics.setFont(self.font)
@@ -609,6 +609,25 @@ function BattleMap:drawUnits()
     end
 end
 
+-- The tile-top-left a unit's READOUTS hang off: its cell, carried along by whatever slide it is in the
+-- middle of. A body being shoved or walked across the board takes its HP bar, turn number and status
+-- badges with it -- measured from the model's cell alone they would snap to the destination tile on the
+-- first frame and sit there while the sprite was still travelling, the readouts arriving before the
+-- unit does.
+--
+-- The SLIDE only, not the whole spriteState the sprite gets (drawUnits): a bar that inherited the hit
+-- shake or the attack lunge would jitter, and these are things you read rather than watch. Same choice,
+-- for the same reason, as the damage floaters (CombatFx:drawFloaters).
+--
+-- Shared by the readout draws and the badge hover hit-test (statusAt), so a tooltip lands on the badge
+-- actually under the cursor rather than on where it will eventually come to rest.
+function BattleMap:unitOrigin(u)
+    local wx, wy = self:cellToPixel(u.x, u.y)
+    if not self.fx then return wx, wy end
+    local sx, sy = self.fx:slideOffset(u, self.size)
+    return wx + sx, wy + sy
+end
+
 -- HP bars + turn-order numbers, drawn last (above highlights) so they're never tinted.
 function BattleMap:drawUnitInfo()
     if not self.combat then return end
@@ -626,7 +645,7 @@ function BattleMap:drawUnitInfo()
     for i, u in ipairs(order) do orderIndex[u] = i end
     for _, u in ipairs(self.combat.units) do
         if u.alive then
-            local wx, wy = self:cellToPixel(u.x, u.y)
+            local wx, wy = self:unitOrigin(u)
             self:drawHpBar(u, wx, wy)
             self:drawTurnNumber(orderIndex[u], wx, wy)
             self:drawStatusBadges(u, wx, wy)
@@ -693,7 +712,7 @@ function BattleMap:statusAt(px, py)
     if not self.combat then return nil end
     for _, u in ipairs(self.combat.units) do
         if u.alive then
-            local wx, wy = self:cellToPixel(u.x, u.y)
+            local wx, wy = self:unitOrigin(u)
             for _, r in ipairs(self:statusBadgeRects(u, wx, wy)) do
                 if r.st and px >= r.x and px <= r.x + r.w and py >= r.y and py <= r.y + r.h then
                     return r.st
@@ -711,7 +730,7 @@ end
 function BattleMap:drawHpBar(u, wx, wy)
     local s = self.size
     local hp = u.char.stats.health
-    local side = Colors.side(u.side)
+    local side = Colors.unit(u)
     -- The shown value lags the model so the bar drains smoothly toward the new HP after a hit; the
     -- aimed-action preview slice below still projects off the true current HP.
     local shown = (self.fx and self.fx:displayHp(u)) or (hp and hp.current) or 0
@@ -843,3 +862,5 @@ function BattleMap:mousepressed(x, y, button)
 end
 
 return BattleMap
+
+

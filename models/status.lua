@@ -539,7 +539,9 @@ function Status.apply(combat, unit, id, opts)
         local ic = def.interruptsChannel
         if ic and unit.channel then
             local Combat = require("models.combat")
-            if ic == true or (ic == "mana" and unit.channel.ab.cost and unit.channel.ab.cost.stat == "mana") then
+            -- ANY mana in the channel's price counts: a working half-paid in stamina is still an
+            -- incantation, and silence gags it (see Item.costs -- a cast may draw on several pools).
+            if ic == true or (ic == "mana" and require("models.item").costsStat(unit.channel.ab, "mana")) then
                 Combat.interruptChannel(combat, unit, def.name or id)
             end
         end

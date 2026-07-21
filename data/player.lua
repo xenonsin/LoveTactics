@@ -9,18 +9,9 @@ return {
     startingParty = { "character_knight", "character_mage", "character_archer", "character_priest" }, -- character ids
     -- Items the player owns that nobody is carrying. The stash is unbounded; move gear between it
     -- and a character's 3x3 grid in the Loadout panel. A pickpocket whose grid is full pockets its
-    -- loot in here too. These are the pieces the starting loadouts have no room for.
-    startingStash = { -- item ids
-        "utility_boots_of_speed",
-        "weapon_iron_mace",
-        "utility_decoy",
-        "ability_pickpocket",
-        "ability_haste",
-        "ability_push",
-        "ability_pull",
-        "ability_doppelganger",
-        "ability_blink",
-    },
+    -- loot in here too. A new game starts with an EMPTY stash -- the first items the player owns are
+    -- the ones the prologue's chests hand over, so the Loadout screen is introduced with just that loot.
+    startingStash = {}, -- item ids
     -- Forging stock the player starts with, so the Blacksmith is usable before the first quest pays
     -- out materials (see models/material.lua). Enough for a couple of early upgrades.
     startingMaterials = { -- material id -> count

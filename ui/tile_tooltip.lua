@@ -104,7 +104,7 @@ end
 local function accentFor(info)
     local unit = info.unit
     if unit and unit.char then
-        return unit.side == "party" and PARTY_COLOR or ENEMY_COLOR
+        return Colors.unit(unit)
     end
     if info.trap then
         return info.trap.side == "party" and PARTY_COLOR or ENEMY_COLOR
@@ -158,10 +158,14 @@ end
 -- same blueprint the acting card's pool stack uses, so one preview reads the same on both surfaces.
 local function appendUnit(blocks, unit, preview)
     local char = unit.char
-    local sideCol = unit.side == "party" and PARTY_COLOR or ENEMY_COLOR
+    local sideCol = Colors.unit(unit)
+    -- An ally we don't command reads as its own thing ("Ally (auto)"), matching the green the board
+    -- token wears for it, so a survivor isn't taken for a party member you can order about.
+    local uncommanded = unit.side == "party" and (unit.control == "ai" or unit.control == "none")
+    local sideLabel = unit.side == "party" and (uncommanded and "Ally (auto)" or "Ally") or "Enemy"
     blocks[#blocks + 1] = { kind = "title", text = (char.name or "Unit"), color = sideCol }
     blocks[#blocks + 1] = { kind = "stat", label = "Side",
-        value = unit.side == "party" and "Ally" or "Enemy", valueColor = sideCol }
+        value = sideLabel, valueColor = sideCol }
 
     -- Net change to the health pool the aimed ability would cause (damage negative, heal positive).
     local hpDelta = 0

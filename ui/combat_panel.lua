@@ -23,6 +23,7 @@
 
 local Scale = require("scale")
 local Combat = require("models.combat")
+local Item = require("models.item") -- for Item.costs: a cast may draw on more than one pool
 local AdjacencyLinks = require("ui.adjacency_links")
 local StatusBadge = require("ui.status_badge")
 local Glyphs = require("ui.glyphs")
@@ -75,7 +76,7 @@ local RESOURCES = {
 
 -- The fill colour for `unit`'s `key` pool -- the side colour for health, the pool's own otherwise.
 local function barColor(res, unit)
-    return res.color or Colors.side(unit.side)
+    return res.color or Colors.unit(unit)
 end
 
 -- Short tag drawn beside each turn-strip bar (tinted with the pool colour), so a bar reads without
@@ -721,7 +722,7 @@ function CombatPanel:drawPortrait(unit, px, py, ps, a)
         local scale = math.min(ps / sw, ps / sh)
         love.graphics.draw(sprite, px + ps / 2, py + ps / 2, 0, scale, scale, sw / 2, sh / 2)
     else
-        local c = Colors.side(unit.side)
+        local c = Colors.unit(unit)
         love.graphics.setColor(c[1] * 0.8, c[2] * 0.8, c[3] * 0.8, a)
         love.graphics.rectangle("fill", px, py, ps, ps, 4, 4)
         local big = ps >= 48
@@ -883,7 +884,7 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     else fr, fg, fb = lerp(0.29, 0.36, p), lerp(0.17, 0.20, p), lerp(0.17, 0.20, p) end
     love.graphics.setColor(fr, fg, fb, lerp(0.72, 1, p) * ca)
     love.graphics.rectangle("fill", ex, dy, ew, dh, 6, 6)
-    local sc = Colors.side(unit.side)
+    local sc = Colors.unit(unit)
     local br, bg, bb, ba = sc[1] * 0.9, sc[2] * 0.9, sc[3] * 0.9, 0.35
     love.graphics.setLineWidth(1)
     love.graphics.setColor(lerp(br, 0.95, p), lerp(bg, 0.85, p), lerp(bb, 0.55, p), lerp(ba, 1, p) * ca)
@@ -939,7 +940,7 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
         local delta = pv and ((pv.heal or 0) - (pv.damage or 0)) or 0
         local reserved = Combat.reservedAmount(unit.char, "health")
         local effMax = Combat.unreservedMax(unit.char, "health") + reserved
-        drawResourceBar(rx, dy + 22, rw, 6, self:shownHealth(unit), effMax, Colors.side(unit.side),
+        drawResourceBar(rx, dy + 22, rw, 6, self:shownHealth(unit), effMax, Colors.unit(unit),
             delta, pv and pv.lethal, reserved, (1 - p) * ca)
     end
     if p > 0.02 then
@@ -983,6 +984,19 @@ function CombatPanel:drawSummonRing(x, y, w, h, r, g, b, a)
     love.graphics.circle("line", cx, cy, math.min(w, h) * 0.46)
     love.graphics.setLineWidth(1)
     love.graphics.circle("fill", cx, cy, math.min(w, h) * 0.16)
+end
+
+-- A four-point star: the mark of a SIGNATURE ability still charging toward its in-battle unlock
+-- (land N blows, heal N times, weather a hit). Told apart from the padlock beside it -- a reserve is
+-- a resource locked AWAY, a sigil is a move not yet EARNED -- and from the hourglass, which is ticks.
+-- Its badge label is the progress toward the requirement (3/5).
+function CombatPanel:drawSigil(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local cx, cy = x + w / 2, y + h / 2
+    local o, i = math.min(w, h) * 0.5, math.min(w, h) * 0.19
+    love.graphics.polygon("fill",
+        cx, cy - o, cx + i, cy - i, cx + o, cy, cx + i, cy + i,
+        cx, cy + o, cx - i, cy + i, cx - o, cy, cx - i, cy - i)
 end
 
 -- The resource glyphs live in ui/glyphs.lua: the pool bars below and ui/tile_tooltip.lua mark their
@@ -1039,6 +1053,8 @@ function CombatPanel:drawBadgeAt(bx, by, iconKind, amount, color, a)
         self:drawBrokenLink(ix, iy, iconW, 10, color[1], color[2], color[3], a)
     elseif iconKind == "ring" then
         self:drawSummonRing(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+    elseif iconKind == "sigil" then
+        self:drawSigil(ix, iy, iconW, 10, color[1], color[2], color[3], a)
     else -- a cost: `iconKind` is the resource it's paid in, and each pool has its own shape
         local glyph = RES_GLYPH[iconKind] or Glyphs.manaGem
         glyph(ix, iy, iconW, 10, color[1], color[2], color[3], a)
@@ -1050,8 +1066,18 @@ end
 
 function CombatPanel:drawItemGrid()
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.7, 0.72, 0.8)
-    love.graphics.printf("Actions", self.x, self.gridY - 16, self.w, "center")
+    -- The header is normally "Actions"; while a chargeable signature is aimed it becomes its wind-up
+    -- read-out instead, in the gold the timeline wears (this IS a count of ticks): the extra poured in
+    -- out of the cap, and the total wind-up before it lands. Wheel / +- / bumpers tune it (battle.lua).
+    local wu = self.view.armedWindup
+    if wu then
+        love.graphics.setColor(SPEED_COLOR[1], SPEED_COLOR[2], SPEED_COLOR[3])
+        love.graphics.printf(string.format("Wind-up +%d/%d  (lands in %d)", wu.extra, wu.max, wu.base + wu.extra),
+            self.x, self.gridY - 16, self.w, "center")
+    else
+        love.graphics.setColor(0.7, 0.72, 0.8)
+        love.graphics.printf("Actions", self.x, self.gridY - 16, self.w, "center")
+    end
 
     local isPartyTurn = self.view.isPartyTurn
     local items = self.view.items or {}
@@ -1173,10 +1199,13 @@ function CombatPanel:drawItemGrid()
             -- alpha, so it reads as the reason the slot is grayed out.
             if ab then
                 local row = 0
-                if ab.cost then
-                    local short = blocked and blocked.kind == "cost"
-                    local c = short and WARN_COLOR or (RES_COLOR[ab.cost.stat] or COST_FALLBACK)
-                    self:drawBadge(sx, sy, sw, "left", ab.cost.stat, ab.cost.amount, c, short and 1 or dim, row)
+                -- A badge per pool the cast draws on, stacked in authored order, so a weapon paid for
+                -- in two shows two. Only the pool that is actually short flips to red -- with two
+                -- badges up, reddening both would blame a pool the caster can well afford.
+                for _, cost in ipairs(Item.costs(ab)) do
+                    local short = blocked and blocked.kind == "cost" and blocked.stat == cost.stat
+                    local c = short and WARN_COLOR or (RES_COLOR[cost.stat] or COST_FALLBACK)
+                    self:drawBadge(sx, sy, sw, "left", cost.stat, cost.amount, c, short and 1 or dim, row)
                     row = row + 1
                 end
                 -- A reservation is a cost too -- paid on the cast, then locked away for as long as
@@ -1211,6 +1240,14 @@ function CombatPanel:drawItemGrid()
                     local label = left and math.max(0, math.ceil(left)) or "Active"
                     self:drawBadge(sx, sy, sw, "left", "ring", label, WARN_COLOR, 1, row)
                 end
+                -- A signature still charging toward its in-battle requirement: a star badge under the
+                -- cost badges shows the progress (3/5), red like every other "not yet". The hover
+                -- tooltip spells the requirement out ("Weather 4 blows (3/5)").
+                if blocked and blocked.kind == "locked" then
+                    local label = (blocked.total and blocked.total > 0)
+                        and ((blocked.cur or 0) .. "/" .. blocked.total) or "Locked"
+                    self:drawBadge(sx, sy, sw, "left", "sigil", label, WARN_COLOR, 1, row)
+                end
             end
         end
 
@@ -1225,9 +1262,14 @@ function CombatPanel:drawItemGrid()
             end
         elseif blinkOn then love.graphics.setColor(0.60, 0.45, 0.95) -- Blink toggled on (violet)
         elseif usable and self.hoverIndex == i then love.graphics.setColor(0.95, 0.85, 0.55)
+        -- A signature that has met its requirement and is ready to unleash: an amber border set apart
+        -- from an ordinary usable slot's blue, so the eye catches the moment it comes online.
+        elseif usable and item and item.activeAbility and item.activeAbility.unlock then
+            love.graphics.setColor(0.95, 0.72, 0.28)
         elseif usable then love.graphics.setColor(0.4, 0.6, 0.85)
         else love.graphics.setColor(0.35, 0.37, 0.45) end
-        love.graphics.setLineWidth(armed and 2 or 1)
+        local readySig = usable and item and item.activeAbility and item.activeAbility.unlock
+        love.graphics.setLineWidth((armed or readySig) and 2 or 1)
         love.graphics.rectangle("line", sx, sy, sw, sh, 5, 5)
         love.graphics.setLineWidth(1)
     end

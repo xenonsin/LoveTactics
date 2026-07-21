@@ -7,7 +7,7 @@ return {
     name = "Fire Elemental",
     sprite = "assets/chars/fire_elemental.png",
     stats = {
-        health = 30, mana = 0, stamina = 60,
+        health = 22, mana = 0, stamina = 60,
         staminaRegen = 2,
         damage = 4, magicDamage = 14,
         defense = 2, magicDefense = 10,

@@ -9,7 +9,7 @@ return {
     -- herself she kites (models/ai.lua), giving up ground to keep the shot she is built around.
     archetype = "skirmish",
     stats = {
-        health = 75, mana = 15, stamina = 90, -- resource stats
+        health = 52, mana = 15, stamina = 90, -- resource stats
         staminaRegen = 2, -- stamina recovered per elapsed tick (a flat stat, not a resource)
         damage = 16, magicDamage = 3,          -- flat stats
         defense = 7, magicDefense = 5,

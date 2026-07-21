@@ -23,7 +23,7 @@ return {
                 for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_wolf_grunt" end
                 return list
             end,
-            win = { type = "survive", turns = 8 },
+            win = { type = "survive", duration = 40 }, -- TICKS to outlast, not turns (the clock's unit)
         },
         keyCount = 1,
     },

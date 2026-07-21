@@ -325,6 +325,12 @@ function Conversation.play(id, onDone, ctx, opts)
     -- under a battle's board, say. Same reasoning as overScene: where the words fit is a fact about
     -- the screen behind them, and only the caller knows its own layout.
     if opts and opts.box then resolved.box = opts.box end
+    -- A narrative event's choices may carry an `effect` (grant loot, a story flag, a tradeoff). Route
+    -- them to StoryEffect against the live player, unless the caller supplied its own handler. Scenes
+    -- with no effects never fire this, so ordinary conversations are unaffected.
+    resolved.onEffect = (opts and opts.onEffect) or function(effect)
+        require("models.story_effect").apply(effect, Player.active)
+    end
     local Dialogue = require("ui.dialogue")
     Conversation.active = Dialogue.new(resolved, function()
         Conversation.active = nil

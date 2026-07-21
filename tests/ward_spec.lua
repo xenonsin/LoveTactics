@@ -242,7 +242,9 @@ return {
             assert(potion.quantity == stock, "a light hit leaves the flask alone")
 
             -- A blow that takes it under the threshold does.
-            Combat.dealFlatDamage(c, knight, 70, { "physical" }, "test", nil, { raw = true })
+            -- Raw, and enough to land under the reflex's 0.4 share of a 70-point pool (the poke
+            -- above was mitigated to 1, so the bearer is standing at 69 going into this).
+            Combat.dealFlatDamage(c, knight, 45, { "physical" }, "test", nil, { raw = true })
             assert(potion.quantity == stock - 1, "the flask is opened on reflex")
             assert(knight.char.stats.health.current > 0, "and the knight is still standing")
         end,

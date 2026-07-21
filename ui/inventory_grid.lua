@@ -90,6 +90,7 @@ function InventoryGrid.new(opts)
     self.hover = nil      -- mouse-hover cell, or nil
     self.nameFont = love.graphics.newFont(11)
     self.bigFont = love.graphics.newFont(22)
+    self.countFont = love.graphics.newFont(12)
     self.gridW = COLS * self.slot + (COLS - 1) * self.gap
     self.gridH = ROWS * self.slot + (ROWS - 1) * self.gap
     return self
@@ -286,6 +287,23 @@ function InventoryGrid:draw()
         if item and Item.isBound(item) then
             local sx, sy = self:slotRect(i)
             drawLock(sx + 13, sy + 13)
+        end
+    end
+
+    -- Stack count, top-left of any cell holding more than one of a stackable consumable (mirrors the
+    -- "xN" badge on the stash's pool_grid). Placed opposite the top-right star and over a dark pill so
+    -- it reads over the icon; a stacking consumable is never a bound relic, so it won't meet the lock.
+    for i = 1, COLS * ROWS do
+        local item = inv[i]
+        if item and (item.quantity or 1) > 1 then
+            local sx, sy = self:slotRect(i)
+            local label = "x" .. item.quantity
+            love.graphics.setFont(self.countFont)
+            local w = self.countFont:getWidth(label)
+            love.graphics.setColor(0, 0, 0, 0.6)
+            love.graphics.rectangle("fill", sx + 3, sy + 3, w + 8, 16, 4, 4)
+            love.graphics.setColor(0.90, 0.91, 0.96)
+            love.graphics.print(label, sx + 7, sy + 4)
         end
     end
 

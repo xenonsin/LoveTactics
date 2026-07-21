@@ -37,6 +37,9 @@ local Tutorial = require("models.tutorial")
 local Conversation = require("models.conversation")
 local TutorialPrompt = require("ui.tutorial_prompt")
 local CoachBubble = require("ui.coach_bubble")
+local Glyphs = require("ui.glyphs")
+local Spoils = require("models.spoils")
+local BattleSummary = require("ui.panels.battle_summary")
 
 local battle = {}
 
@@ -113,12 +116,17 @@ end
 -- whatever the win type is, so it reads as a second clause rather than replacing the first.
 local function objectiveText(obj)
     local text
+    -- Timed objectives (survive/defend/hold) name the GOAL only; the remaining time is drawn as a
+    -- live tick countdown beside the hourglass glyph (drawObjectiveClock), because "ticks" is the unit
+    -- the whole game is quoted in and "turns" is not a thing the player is ever shown.
     if obj.type == "survive" then
-        text = "Objective: survive " .. (obj.turns or "?") .. " turns"
+        text = "Objective: survive"
+    elseif obj.type == "defend" then
+        text = "Objective: keep the survivors alive"
     elseif obj.type == "reach" then
         text = "Objective: get anyone to the far side"
     elseif obj.type == "hold" then
-        text = "Objective: hold the marked ground for " .. (obj.turns or "?") .. " turns"
+        text = "Objective: hold the marked ground"
     elseif obj.type == "assassinate" then
         text = "Objective: defeat " .. charName(obj.target)
     else
@@ -128,6 +136,46 @@ local function objectiveText(obj)
         text = text .. " -- " .. charName(obj.protect) .. " must survive"
     end
     return text
+end
+
+-- The remaining time on a timed objective, in TICKS, or nil for one that has no clock. `survive` and
+-- `defend` count down the elapsed clock; `hold` counts only the ticks the party actually held the
+-- ground (Combat.accrueHold), so its number stalls whenever the post is contested.
+local function objectiveRemaining(obj, combat)
+    if not obj then return nil end
+    if obj.type == "survive" or obj.type == "defend" then
+        return math.max(0, math.ceil((obj.duration or 0) - (combat.clock or 0)))
+    elseif obj.type == "hold" then
+        return math.max(0, math.ceil((obj.duration or 0) - (combat.heldTicks or 0)))
+    end
+    return nil
+end
+
+-- Draw the objective line, and for a timed one append its remaining ticks as "<hourglass> N" on the
+-- same line -- the text and the clock centred together as one group. The hourglass is the game's mark
+-- for "measured in ticks" (ui/glyphs.lua), worn wherever a duration is quoted, so the countdown reads
+-- in the same unit as the turn-order strip and every cost badge rather than in "turns", which the
+-- player is never shown.
+function battle.drawObjective(x, y, w)
+    love.graphics.setFont(hudFont)
+    local text = objectiveText(battle.arena.objective)
+    local textW = hudFont:getWidth(text)
+    local remaining = objectiveRemaining(battle.arena.objective, battle.combat)
+    local gw, gap, numGap = 11, 12, 5
+    local label = remaining and tostring(remaining) or nil
+    local clockW = label and (gap + gw + numGap + hudFont:getWidth(label)) or 0
+    local sx = x + (w - (textW + clockW)) / 2
+
+    love.graphics.setColor(0.85, 0.85, 0.9)
+    love.graphics.print(text, sx, y)
+    if label then
+        local cx = sx + textW + gap
+        local col = { 0.95, 0.85, 0.35 }
+        Glyphs.hourglass(cx, y + 2, gw, hudFont:getHeight() - 4, col[1], col[2], col[3], 1)
+        love.graphics.setColor(col[1], col[2], col[3])
+        love.graphics.print(label, cx + gw + numGap, y)
+    end
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- Resolve the encounter's composition spec + objective. Placed encounters read their
@@ -179,12 +227,66 @@ local function releaseParty()
     end
 end
 
+-- Hand a decided fight to its summary overlay, then let the player choose how to leave it -- the
+-- state's own onWin/onLoss/onRetry is deferred until a panel button is pressed. A win offers one button
+-- ("Continue") and rolls the combat/elite spoils the panel reveals and passes to onWin; an objective
+-- win carries none (its reward flows through the hub's Company Advancement). A defeat offers "Try Again"
+-- (onRetry, restart this fight) and, when there is a hub to abandon to, "Return to Hub" (onLoss). A
+-- netplay duel keeps the immediate callback and shows no panel: it has no campaign player to reward and
+-- the harness owns the handoff.
+local function finishBattle(result)
+    if battle.session then
+        local cb = result == "win" and battle.onWin or battle.onLoss
+        if cb then cb() end
+        return
+    end
+
+    local spoils
+    if result == "win" then
+        local kind = battle.encounter and battle.encounter.kind
+        if kind == "combat" or kind == "elite" then
+            spoils = Spoils.roll({
+                enemyUnits = battle.enemyUnits,
+                prestige = battle.prestige,
+                kind = kind,
+                rewardGold = battle.encounter.rewardGold,
+                loot = battle.encounter.loot,
+            })
+        end
+    end
+
+    -- Wrap each state callback so pressing its button clears the overlay before handing control on.
+    local function action(label, fn, arg)
+        return { label = label, onSelect = function()
+            battle.summary = nil
+            if fn then fn(arg) end
+        end }
+    end
+
+    local actions = {}
+    if result == "win" then
+        actions[#actions + 1] = action("Continue", battle.onWin, spoils)
+    else
+        if battle.onRetry then actions[#actions + 1] = action("Try Again", battle.onRetry) end
+        if battle.onLoss then actions[#actions + 1] = action("Return to Hub", battle.onLoss) end
+        -- A decided fight must always offer a way out, even if a launcher wired neither exit.
+        if #actions == 0 then actions[#actions + 1] = action("Continue", nil) end
+    end
+
+    battle.summary = BattleSummary.new({
+        result = result,
+        spoils = spoils,
+        encounter = battle.encounter,
+        actions = actions,
+    })
+end
+
 local function win()
     battle.over = true
     battle.walk = nil -- nobody finishes their stroll once the battle is decided
     Combat.logEvent(battle.combat, "system", "Victory!")
     releaseParty()
-    if battle.onWin then battle.onWin() end
+    finishBattle("win")
 end
 
 local function lose()
@@ -192,7 +294,7 @@ local function lose()
     battle.walk = nil
     Combat.logEvent(battle.combat, "system", "Defeat.")
     releaseParty()
-    if battle.onLoss then battle.onLoss() end
+    finishBattle("loss")
 end
 
 -- Narrow one of the overlay sets to what a running tutorial permits, or hand it back untouched when
@@ -521,6 +623,13 @@ end
 -- act, click the item (or Esc) to disarm and move freely, or click a different item to switch. Reads
 -- battle.defaultAction/defaultSupport (computeThreat set them just before). A default the unit can't
 -- afford right now, or a bare-handed unit with no ability at all, simply starts disarmed (move mode).
+-- The wind-up a chargeable signature opens (and floors) at: its `windup.min` (a signature swing is
+-- always at least this deep a commitment, never the bare base), or 0 for an item with no wind-up.
+local function windupFloor(item)
+    local wu = item and item.activeAbility and item.activeAbility.windup
+    return (wu and wu.min) or 0
+end
+
 local function armDefaultAction(current)
     -- A tutorial step whose whole lesson is "ready your weapon" has to start with it sheathed --
     -- otherwise the step is satisfied before the player touches anything, and the click it is asking
@@ -530,6 +639,7 @@ local function armDefaultAction(current)
     if not (action and action.activeAbility) then return end
     if Combat.itemBlockReason(current, action) then return end
     battle.armedItem = action
+    battle.windup = windupFloor(action) -- a chargeable signature (First Motion) opens at its floor, not +0
     battle.mode = "armed"
     battle.armedSupport = battle.defaultSupport
     battle.armedTile = action.activeAbility.target == "tile"
@@ -557,6 +667,7 @@ local function beginTurn()
     end
     battle.mode = "move"
     battle.armedItem = nil
+    battle.windup = 0 -- a chargeable wind-up never carries its depth across turns
     battle.hoverItem = nil
     battle.notice = nil -- a refusal belonged to the turn it was refused on
     battle.rangeCells = {}
@@ -634,6 +745,64 @@ local function spawnReinforcements()
     end
 end
 
+-- An empty, walkable tile the enemy side can walk on for a reinforcement to land on: an unused
+-- original enemy spawn first, else any free tile on the enemy's edge rows. Nil only if the whole
+-- edge is packed, in which case that wave unit is simply skipped.
+local function freeEnemyTile()
+    local arena, combat = battle.arena, battle.combat
+    local function tryTile(x, y)
+        local row = arena.tiles[y]
+        local cell = row and row[x]
+        if cell and cell.walkable and not Combat.unitAt(combat, x, y) then return x, y end
+        return nil
+    end
+    for _, e in ipairs(arena.enemies or {}) do
+        local x, y = tryTile(e.x, e.y)
+        if x then return x, y end
+    end
+    -- Which edge the enemies came from, so the wave arrives from behind their line, not the party's.
+    local sum, n = 0, 0
+    for _, e in ipairs(arena.enemies or {}) do sum, n = sum + e.y, n + 1 end
+    local fromTop = n == 0 or (sum / n) <= arena.rows / 2
+    local rows = fromTop and { 1, 2, 3 } or { arena.rows, arena.rows - 1, arena.rows - 2 }
+    for _, y in ipairs(rows) do
+        for x = 1, arena.cols do
+            local rx, ry = tryTile(x, y)
+            if rx then return rx, ry end
+        end
+    end
+    return nil
+end
+
+-- Walk on any reinforcement WAVES whose tick has come (objective.waves = { { at = <ticks>,
+-- composition = ids|fn }, ... }). `at` is a mark on the SAME clock the win conditions read, so a wave
+-- and a "survive" duration are quoted in one unit -- ticks -- the player already sees everywhere.
+-- Each wave fires once; a unit with nowhere to stand is skipped rather than stacked. This is the
+-- generic cousin of spawnReinforcements, which serves the authored tutorial; both arrive through
+-- Combat.addUnit, so a newcomer joins the turn order, the board and every query with no further wiring.
+local function spawnWaves()
+    local obj = battle.combat and battle.combat.objective
+    local waves = obj and obj.waves
+    if not waves then return end
+    battle.wavesFired = battle.wavesFired or {}
+    local clock = battle.combat.clock or 0
+    for i, wave in ipairs(waves) do
+        if not battle.wavesFired[i] and clock >= (wave.at or 0) then
+            battle.wavesFired[i] = true
+            local ids = wave.composition
+            if type(ids) == "function" then ids = ids(battle.encounterCtx or {}) end
+            for _, id in ipairs(ids or {}) do
+                local x, y = freeEnemyTile()
+                if x then
+                    local unit = Combat.addUnit(battle.combat, Character.instantiate(id), "enemy", x, y)
+                    Combat.logEvent(battle.combat, "action",
+                        string.format("%s joins the fight!", unit.char.name or "A demon"))
+                end
+            end
+        end
+    end
+end
+
 -- Charge `unit`'s just-ended turn what the LESSON says it costs, rather than the move-plus-action
 -- total the combat model already billed. A guided fight's turn order is authored (see `pace` in
 -- data/tutorials/village.lua), and this is the half that holds it: without it the order drifts apart
@@ -665,6 +834,7 @@ local function resolveAdvance()
     -- steps are entirely about. Fielded here rather than from refreshView so it cannot lose a race
     -- with the very check it exists to forestall.
     spawnReinforcements()
+    spawnWaves() -- timed enemy reinforcements (objective.waves), before the objective is judged
     local result = Combat.evaluate(battle.combat)
     if result == "win" then win() return
     elseif result == "loss" then lose() return end
@@ -893,7 +1063,13 @@ end
 -- Returns the held list, to be handed to advanceTurn when the feet stop.
 local function holdLanding()
     local events = Combat.drainFx(battle.combat)
-    if events then battle.fx:hold(events, 1) end
+    if events then
+        battle.fx:hold(events, 1)
+        -- The same argument, for position rather than health: a blow that shoves has ALREADY moved its
+        -- target in the model, so without this the victim stands on its knocked-back tile all through
+        -- the approach and then snaps home to be shoved again once the feet stop.
+        battle.fx:pinSlides(events)
+    end
     return events
 end
 
@@ -983,6 +1159,26 @@ end
 local function cancelArm()
     battle.mode = "move"
     battle.armedItem = nil
+    battle.windup = 0
+end
+
+-- Adjust the extra wind-up the player is pouring into an armed CHARGEABLE channel (Saber's signature),
+-- clamped to the ability's own `[windup.min, windup.max]` -- it can be deepened toward the cap and
+-- shallowed back to the FLOOR, never below (a signature swing is always a commitment). A no-op (returns
+-- false) unless the armed item actually has a wind-up to deepen, so the same key/wheel/bumper falls
+-- through to its ordinary job otherwise. Announced each step so the player reads the depth and the
+-- resolve time it buys without a fixed HUD.
+local function adjustWindup(delta)
+    local item = battle.mode == "armed" and battle.armedItem
+    local wu = item and item.activeAbility and item.activeAbility.windup
+    if not wu then return false end
+    local before = battle.windup or 0
+    battle.windup = math.max(wu.min or 0, math.min(wu.max or 0, before + delta))
+    if battle.windup ~= before then
+        local ticks = (item.activeAbility.channel or 0) + battle.windup
+        notify(string.format("Wind-up +%d -- lands in %d", battle.windup, ticks))
+    end
+    return true
 end
 
 -- Toggle a Blink (moveBehavior) item on or off for `unit`. A free, turn-neutral flip: it spends
@@ -1021,6 +1217,7 @@ local function armItem(item)
     -- an outright click on the slot has to answer for itself.
     if refuseIfBlocked(current, item) then return end
     battle.armedItem = item
+    battle.windup = windupFloor(item) -- a chargeable signature opens at its floor, not +0
     battle.mode = "armed"
     -- Friendly abilities (heal / buff) highlight green; offensive strikes and trap placements red.
     battle.armedSupport = Combat.isSupportAbility(item.activeAbility)
@@ -1384,10 +1581,13 @@ local function confirm()
         -- approach left off. rangeReach spans the whole armed reach.
         local entry = plan.entry
         local victim = Combat.unitAt(battle.combat, cx, cy) -- read before the cast clears the cell
+        -- The extra wind-up poured into a chargeable signature (nil for every other ability), sent with
+        -- the command so the peer resolves the same depth. Combat.useItem clamps it either way.
+        local wu = (item.activeAbility.windup and (battle.windup or 0)) or nil
         local function cast()
             local cell = slotOf(current, item)
-            if Combat.useItem(battle.combat, current, item, cx, cy) then
-                netFinishTurn({ kind = "use", cell = cell, tx = cx, ty = cy })
+            if Combat.useItem(battle.combat, current, item, cx, cy, wu) then
+                netFinishTurn({ kind = "use", cell = cell, tx = cx, ty = cy, windup = wu })
                 -- The item rides along so a lesson can ask for a strike with a NAMED ability rather
                 -- than any blow at all -- the village lesson's Clear Out, which is aimed at the caster's
                 -- own tile and so cannot be pinned by its victim (see data/tutorials/village.lua).
@@ -1403,14 +1603,14 @@ local function confirm()
             -- drawn. Its cues stay in the queue while the route replays -- advanceTurn drains them
             -- when the feet stop, so the impact still reads after the approach rather than during
             -- it. Nothing about the exchange is decided by how long the animation took.
-            local landed = current.alive and Combat.useItem(battle.combat, current, item, cx, cy)
+            local landed = current.alive and Combat.useItem(battle.combat, current, item, cx, cy, wu)
             local blow = holdLanding()
             -- Announced now, not when the animation finishes: the model already resolved the whole
             -- turn, and the peer should be told at once rather than after our playback -- their
             -- window has its own walk to watch.
             netFinishTurn({ kind = "use", cell = slotOf(current, item),
                             tx = cx, ty = cy, path = plan.cells,
-                            x = entry.fromX, y = entry.fromY })
+                            x = entry.fromX, y = entry.fromY, windup = wu })
             battle.walk.onDone = function()
                 if landed then
                     observeAction("attack", current, cx, cy, victim and victim.char.id, item.id)
@@ -1550,10 +1750,14 @@ end
 -- the spell's own, and the move cost is deferred past the resolution (models/combat.lua useItem's
 -- channel branch). So `pendingMove` sits out of the resolve slot and lands in the follow-up instead --
 -- walking moves the ghost the player regains control at, never the one the blast lands at.
-local function abilityGhosts(unit, item, pendingMove)
+local function abilityGhosts(unit, item, pendingMove, windup)
     local a = item.activeAbility
     if a.channel then
-        local resolve = a.channel
+        -- The resolve slot moves with the chosen wind-up: a deeper hold on a chargeable signature
+        -- (First Motion) is a longer tell, so the turn-order strip shows its blast landing that much
+        -- later -- and, past it, the slot the caster regains control at. `windup` is the extra ticks
+        -- being previewed (the armed depth, or a hovered item's floor); 0 for an ordinary channel.
+        local resolve = a.channel + (windup or 0)
         return {
             { initiative = resolve, label = "channel resolves here" },
             { initiative = resolve + pendingMove + Combat.actionSpeed(unit, a, item),
@@ -1635,7 +1839,9 @@ local function refreshView()
             -- swap with its own speed cost -- so the ghost lands on the same slot the action will.
             ghosts = { { initiative = Combat.waitInitiative(battle.combat, current) } }
         elseif battle.hoverItem and battle.hoverItem.activeAbility then
-            ghosts = abilityGhosts(current, battle.hoverItem, pendingMove)
+            -- A hovered (not yet armed) chargeable signature previews at its FLOOR -- where it would
+            -- land if armed, which opens at windup.min.
+            ghosts = abilityGhosts(current, battle.hoverItem, pendingMove, windupFloor(battle.hoverItem))
         elseif battle.mode == "armed" and battle.armedItem then
             -- Project a landing slot only when the cursor is actually aimed at a cell the armed item
             -- can act on: a valid cast target lands the ability's time-cost ghost(s); a reachable tile
@@ -1647,7 +1853,9 @@ local function refreshView()
                 -- landing slot owes that approach's initiative on top of any move already spent this
                 -- turn (plan.entry.moveCost is a raw path cost -- convert it, don't add it straight).
                 local approach = Combat.moveInitiative(current, (plan.entry and plan.entry.moveCost) or 0)
-                ghosts = abilityGhosts(current, battle.armedItem, pendingMove + approach)
+                -- The armed depth (battle.windup) rides into the ghost, so tuning the wind-up slides
+                -- the channel's resolve slot along the strip live. 0 for a non-chargeable armed item.
+                ghosts = abilityGhosts(current, battle.armedItem, pendingMove + approach, battle.windup)
             elseif plan and plan.kind == "move" then
                 local w = moveGhostInitiative(current)
                 if w then ghosts = { { initiative = w } } end
@@ -1700,7 +1908,14 @@ local function refreshView()
     -- Board highlights: the acting unit always, plus whichever unit the timeline is hovering.
     local overlays = { move = {}, range = {} }
     local hoverAbility = battle.hoverItem and battle.hoverItem.activeAbility
-    if isParty and ((battle.mode == "armed" and battle.armedItem) or hoverAbility) then
+    -- The bands belong to a turn that can still be steered. The instant an action commits, the model
+    -- has already charged the initiative and the hand-off is only waiting on the blow to finish
+    -- reading (battle.pendingAdvance) -- so a move band and an attack range left up through it invite
+    -- a second order that will not be taken. They go now, with the click, rather than when the last
+    -- damage number fades. The unit marker, hover and the "Threats" survey below are unaffected: those
+    -- describe the board, not what this unit may still do.
+    local steerable = battle.pendingAdvance == nil
+    if steerable and isParty and ((battle.mode == "armed" and battle.armedItem) or hoverAbility) then
         -- Armed (the turn-start default, or an explicitly armed item), or previewing a hovered ability
         -- slot: show the EFFECTIVE range -- the movement band PLUS the action's reach beyond it, so the
         -- player reads where the unit can step and where it can act from there. Aiming a cell that needs
@@ -1772,7 +1987,7 @@ local function refreshView()
                 end
             end
         end
-    elseif isParty then
+    elseif steerable and isParty then
         -- Hovering a unit previews ITS reach instead of the actor's (Fire Emblem / Triangle
         -- Strategy): the hovered unit's own movement (orange) + attack range (crimson) REPLACE the
         -- actor's blue/red/purple overlays until the cursor leaves it. Cached against the unit it was
@@ -1821,7 +2036,9 @@ local function refreshView()
     -- survey only fills in the danger BEYOND where the actor can step.
     if battle.showEnemyRanges then
         local moveKeys = {}
-        if isParty and battle.mode == "move" then
+        -- Only carve the move band out of the survey while that band is actually drawn -- once the
+        -- turn has committed it isn't, and subtracting it would punch holes in the danger picture.
+        if steerable and isParty and battle.mode == "move" then
             for _, c in ipairs(battle.moveCells or {}) do moveKeys[c.x .. "," .. c.y] = true end
         end
         local ranges = {}
@@ -1890,6 +2107,14 @@ local function refreshView()
         items = Combat.isPlayerControlled(current) and current.char.inventory or {},
         itemOwner = Combat.isPlayerControlled(current) and current.char or nil, -- for adjacency link lines
         armedItem = battle.armedItem,
+        -- The chargeable wind-up being tuned on the armed signature (nil unless one is armed), so the
+        -- actions header can read out its depth and the resolve time it buys.
+        armedWindup = (battle.armedItem and battle.armedItem.activeAbility
+            and battle.armedItem.activeAbility.windup) and {
+                extra = battle.windup or 0,
+                max = battle.armedItem.activeAbility.windup.max or 0,
+                base = battle.armedItem.activeAbility.channel or 0,
+            } or nil,
         showInitiative = battle.showInitiative,
         preview = bannerPreview,
     })
@@ -1956,8 +2181,15 @@ end
 function battle.enter(self, opts)
     opts = opts or {}
     battle.onWin = opts.onWin
+    -- The defeat panel's two exits (either may be nil). onLoss is "Return to Hub" -- give the fight up
+    -- and end the quest; onRetry is "Try Again" -- restart this same fight. The launcher decides which
+    -- exist: an overworld fight has both, a tutorial fight has only onRetry (no hub to abandon to yet).
+    -- See states/game.lua and states/prologue.lua.
     battle.onLoss = opts.onLoss
+    battle.onRetry = opts.onRetry
     battle.encounter = opts.encounter or { kind = "combat", name = "Battle" }
+    battle.prestige = opts.prestige or 1 -- the company's prestige, used to roll the victory spoils
+    battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided
     battle.over = false
     battle.showInitiative = true -- initiative numbers on the turn order (F6 toggles)
 
@@ -2089,6 +2321,11 @@ function battle.enter(self, opts)
     -- floaters, HP drain, sprite reactions and card jiggle/fade all read the same state.
     battle.fx = CombatFx.new()
     battle.pendingAdvance = nil
+    -- Timed reinforcements (objective.waves): which waves have already walked on, and the context a
+    -- wave's `composition(ctx)` scales itself against. Reset per battle so a replayed fight starts
+    -- with every wave still pending. See spawnWaves.
+    battle.wavesFired = {}
+    battle.encounterCtx = ctx
     battle.map = BattleMap.new(battle.arena,
         { combat = battle.combat, leftMargin = LEFT_W, rightMargin = PANEL_W,
           tileSize = BOARD_TILE, topMargin = BOARD_TOP })
@@ -2160,6 +2397,10 @@ function battle.enter(self, opts)
 end
 
 function battle.update(dt)
+    -- The victory/defeat overlay animates over the frozen board (map/fx still tick below so the frame
+    -- keeps breathing behind it).
+    if battle.summary then battle.summary:update(dt) end
+
     -- Drain the duel before anything else, so a turn the other player took is applied at the top of
     -- the frame rather than a frame late. It hands remote commands over through onCommand, and it is
     -- gated behind the same `busy()` the local player's input is: a remote turn must not land in the
@@ -2386,6 +2627,10 @@ function battle.draw()
             end
         end
     end
+
+    -- The victory/defeat overlay owns the frame once the fight is decided: drawn last, over the
+    -- frozen board, HUD and every tooltip.
+    if battle.summary then battle.summary:draw() end
 end
 
 -- The refusal notice: why the last activation was turned down (see notify). A red-rimmed banner
@@ -2568,9 +2813,7 @@ function battle.drawHud()
     love.graphics.setColor(0.95, 0.85, 0.55)
     love.graphics.printf(battle.encounter.name or "Battle", boardX, 20, boardW, "center")
 
-    love.graphics.setFont(hudFont)
-    love.graphics.setColor(0.85, 0.85, 0.9)
-    love.graphics.printf(objectiveText(battle.arena.objective), boardX, 52, boardW, "center")
+    battle.drawObjective(boardX, 52, boardW)
 
     -- Contextual control hint, worded for the device last used: mouse/keyboard phrasing ("Click...")
     -- by default, pad-button phrasing (D-pad cursor + face buttons: A confirm, Y switch, X wait,
@@ -2633,6 +2876,7 @@ local function reclaimAutoTurn()
 end
 
 function battle.keypressed(key)
+    if battle.summary then battle.summary:keypressed(key); return end
     reclaimAutoTurn()
     if key == "f5" then
         Arena.save(battle.arena, (battle.arena.biome or "arena") .. "_" .. os.time())
@@ -2671,19 +2915,28 @@ function battle.keypressed(key)
         armSlot(KEYPAD_SLOT[key]) -- numpad, mapped by physical position to the 3x3 item grid
     elseif key:match("^[1-9]$") then
         armSlot(tonumber(key))
+    elseif (key == "-" or key == "kp-") and adjustWindup(-1) then
+        -- shallower wind-up on a chargeable signature (else falls through to the map)
+    elseif (key == "=" or key == "kp+") and adjustWindup(1) then
+        -- deeper wind-up (more damage, a longer breakable tell)
     else
         battle.map:keypressed(key)
     end
 end
 
 function battle.gamepadpressed(joystick, button)
+    if battle.summary then battle.summary:gamepadpressed(joystick, button); return end
     reclaimAutoTurn()
-    if button == "leftshoulder" then -- toggle the combat log (allowed even when the battle is over)
+    if button == "leftshoulder" then
+        -- While aiming a chargeable signature the bumpers tune its wind-up depth; otherwise the left
+        -- bumper toggles the combat log as usual (allowed even when the battle is over).
+        if battle.mode == "armed" and adjustWindup(-1) then return end
         battle.log:toggle()
         return
     end
-    if button == "rightshoulder" then -- page the turn-order strip, wrapping back to the actor
-        battle.panel:cyclePage()
+    if button == "rightshoulder" then
+        if battle.mode == "armed" and adjustWindup(1) then return end
+        battle.panel:cyclePage() -- page the turn-order strip, wrapping back to the actor
         return
     end
     if button == "leftstick" then -- toggle the all-enemy-attack-ranges danger overlay
@@ -2709,6 +2962,7 @@ end
 
 function battle.mousemoved(x, y, dx, dy)
     battle.mouseX, battle.mouseY = x, y -- drives the status tooltip (board + panel hit-tests)
+    if battle.summary then battle.summary:mousemoved(x, y); return end
     -- Hovering the panel's Wait button previews the delay slot on the timeline.
     local overPanel = battle.panel:mousemoved(x, y)
     battle.hoverWait = battle.panel.waitHover and battle.current
@@ -2722,14 +2976,21 @@ end
 -- first when the cursor is inside it, so its own history still scrolls; contains() is false while
 -- the log is closed, so a wheel over the board falls through to the strip.
 function battle.wheelmoved(dx, dy)
+    if battle.summary then return end -- the overlay has no scroll of its own; swallow it
     if battle.mouseX and battle.log:contains(battle.mouseX, battle.mouseY) then
         battle.log:wheelmoved(dx, dy)
         return
     end
+    -- While aiming a chargeable signature the wheel tunes its wind-up depth (more ticks, more
+    -- damage); with nothing chargeable armed it falls through to scrolling the turn-order strip.
+    if dy ~= 0 and adjustWindup(dy > 0 and 1 or -1) then return end
     battle.panel:wheelmoved(dx, dy)
 end
 
 function battle.mousepressed(x, y, button)
+    -- The summary overlay swallows every click while it is up (it sits over the forfeit/log buttons
+    -- and the board, which mousepressed does NOT gate on battle.over).
+    if battle.summary then battle.summary:mousepressed(x, y, button); return end
     reclaimAutoTurn()
     if button == 1 and pointIn(forfeitButton, x, y) then
         if not tutorialRefuses("forfeit") then lose() end
@@ -2758,6 +3019,7 @@ end
 function battle.cursorKind()
     local mx, my = battle.mouseX, battle.mouseY
     if not mx then return "arrow" end
+    if battle.summary then return battle.summary:cursorKind(mx, my) end
     -- Off the board: the clickable UI wants a pointing hand.
     if pointIn(forfeitButton, mx, my) or pointIn(logButton, mx, my) or pointIn(rangesButton, mx, my)
         or battle.log:contains(mx, my) or battle.panel:contains(mx, my) then

@@ -231,8 +231,8 @@ end
 
 function Pvp:keypressed(key)
     if key == "escape" then self:close()
-    elseif key == "up" or key == "left" then self:moveCursor(-1)
-    elseif key == "down" or key == "right" then self:moveCursor(1)
+    elseif key == "up" or key == "left" or key == "w" or key == "a" then self:moveCursor(-1)
+    elseif key == "down" or key == "right" or key == "s" or key == "d" then self:moveCursor(1)
     elseif key == "return" or key == "kpenter" or key == "space" then
         self:activate(self.buttons[self.cursor].key)
     end

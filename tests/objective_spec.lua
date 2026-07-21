@@ -1,9 +1,9 @@
--- The tile-based win types (`reach`, `hold`) and the turns-to-ticks conversion the three
--- time-based objectives now share. See Combat.evaluate and Arena.resolveRegion.
+-- The tile-based win types (`reach`, `hold`) and the tick-counted time-based ones (`survive`,
+-- `defend`, `hold`), whose `duration` is a count of ticks -- the unit the clock keeps and the HUD
+-- quotes. See Combat.evaluate and Arena.resolveRegion.
 
 local Arena = require("models.arena")
 local Combat = require("models.combat")
-local Status = require("models.status")
 
 -- A bare combat-like table is enough for Combat.evaluate: it reads units, objective, clock and
 -- heldTicks and nothing else. Building a real Combat here would drag in a board, an AI and a
@@ -56,6 +56,27 @@ return {
             layout.partySpawns = { { x = 1, y = 1 }, { x = 2, y = 1 } }
             local tiles = Arena.resolveRegion("far", layout)
             assert(tiles[1].y == 8, "party at the top makes row 8 the far edge, got " .. tiles[1].y)
+        end,
+    },
+    {
+        name = "the rally region sits just ahead of the party's line, not mid-board",
+        fn = function()
+            -- Party on the bottom rows (rows 8): rally steps two rows toward the centre -> row 6, close
+            -- enough for the party to interpose (unlike `center`, which the enemy reaches first).
+            local tiles = Arena.resolveRegion("rally", flatLayout(8, 8))
+            assert(#tiles == 8, "a clear rally row should offer every column, got " .. #tiles)
+            for _, t in ipairs(tiles) do
+                assert(t.y == 6, "party at the bottom (row 8) makes row 6 the rally line, got " .. t.y)
+            end
+        end,
+    },
+    {
+        name = "the rally region flips inward when the party spawns at the top instead",
+        fn = function()
+            local layout = flatLayout(8, 8)
+            layout.partySpawns = { { x = 1, y = 1 }, { x = 2, y = 1 } }
+            local tiles = Arena.resolveRegion("rally", layout)
+            assert(tiles[1].y == 3, "party at the top (row 1) steps rally inward to row 3, got " .. tiles[1].y)
         end,
     },
     {
@@ -117,7 +138,7 @@ return {
         name = "hold banks only the ticks the ground was actually held",
         fn = function()
             local ground = { { x = 4, y = 4 } }
-            local combat = fakeCombat({ unit("party", 1, 1), unit("enemy", 9, 9) }, { type = "hold", tiles = ground, turns = 2 })
+            local combat = fakeCombat({ unit("party", 1, 1), unit("enemy", 9, 9) }, { type = "hold", tiles = ground, duration = 10 })
 
             Combat.accrueHold(combat, 5) -- nobody on it: banks nothing
             assert(combat.heldTicks == 0, "time off the ground must not count, got " .. combat.heldTicks)
@@ -125,23 +146,23 @@ return {
             combat.units[1].x, combat.units[1].y = 4, 4
             Combat.accrueHold(combat, 5)
             assert(combat.heldTicks == 5, "time on the ground counts, got " .. combat.heldTicks)
-            assert(Combat.evaluate(combat) == nil, "2 turns is 10 ticks; 5 is not there yet")
+            assert(Combat.evaluate(combat) == nil, "the duration is 10 ticks; 5 is not there yet")
 
             Combat.accrueHold(combat, 5)
-            assert(Combat.evaluate(combat) == "win", "10 banked ticks is the 2 turns asked for")
+            assert(Combat.evaluate(combat) == "win", "10 banked ticks is the duration asked for")
         end,
     },
     {
-        name = "objective turns are turns, not raw initiative ticks",
+        name = "a timed objective counts its duration in ticks, the clock's own unit",
         fn = function()
-            -- The bug this conversion fixes: `survive` compared a field named `turns` straight
-            -- against a TICK clock, so every quest using it ended about five times early.
-            local combat = fakeCombat({ unit("party", 1, 1) }, { type = "survive", turns = 3 })
-            combat.clock = 3
-            assert(Combat.evaluate(combat) == nil, "3 ticks is not 3 turns")
+            -- `duration` is quoted in the same unit `combat.clock` accumulates (elapsed initiative),
+            -- so a designer's number means the ticks it says and the HUD countdown reads the same.
+            local combat = fakeCombat({ unit("party", 1, 1) }, { type = "survive", duration = 15 })
+            combat.clock = 14
+            assert(Combat.evaluate(combat) == nil, "one tick short of the duration is not done")
 
-            combat.clock = 3 * Status.TICKS_PER_TURN
-            assert(Combat.evaluate(combat) == "win", "3 turns' worth of ticks ends it")
+            combat.clock = 15
+            assert(Combat.evaluate(combat) == "win", "the clock reaching the tick duration ends it")
         end,
     },
     {

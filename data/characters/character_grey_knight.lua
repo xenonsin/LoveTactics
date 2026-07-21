@@ -12,7 +12,7 @@
 --   The word `forsworn` should first reach the player at slot 4, out of a captain's own mouth.
 --
 --   The leash. `guard` (leash 4) instead of the forsworn knight's default aggression. His statline
---   is built for the prestige-3+ encounters and slot 1 runs at prestige 1 beside a 120hp Breachward,
+--   is built for the prestige-3+ encounters and slot 1 runs at prestige 1 beside an 84hp Breachward,
 --   so an aggressive one turns the introduction into the hardest board in the early game. Leashed,
 --   he holds the gate: unmistakably present, unmistakably not demon rabble, and the player chooses
 --   whether to open that fight or go around him for the mark. Present, not pivotal.
@@ -25,7 +25,7 @@ return {
     class = "knight",
     archetype = "guard",
     stats = {
-        health = 90, mana = 0, stamina = 50,
+        health = 62, mana = 0, stamina = 50,
         staminaRegen = 2,
         damage = 15, magicDamage = 0,
         defense = 14, magicDefense = 6,

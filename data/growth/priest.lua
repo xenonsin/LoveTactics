@@ -3,6 +3,6 @@
 return {
     mana = 5,
     magicDamage = 2,
-    health = 6,
+    health = 3,
     magicDefense = 2,
 }

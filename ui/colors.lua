@@ -23,6 +23,9 @@ local Colors = {
     -- Faction. Also the health-bar fill, on the board and in the HUD.
     PARTY   = { 0.40, 0.70, 1.00 },
     ENEMY   = { 0.95, 0.35, 0.32 },
+    -- An ally that fights on our side but ISN'T ours to command -- a rescued survivor, an escort, a
+    -- raised body. Green so it never reads as a controllable party member (blue) nor as a foe (red).
+    ALLY    = { 0.40, 0.82, 0.45 },
 
     -- Resource pools (health comes from the faction colours above).
     MANA    = { 0.62, 0.42, 0.95 },
@@ -44,6 +47,19 @@ local Colors = {
 -- The side colour for a "party"/"enemy" side string -- the unit's identity everywhere it's drawn.
 function Colors.side(side)
     return side == "party" and Colors.PARTY or Colors.ENEMY
+end
+
+-- A unit's display colour. Side gives the base (blue ours / red theirs), but a unit that stands on
+-- our side WITHOUT being under our command -- an AI-run escort or survivor, a raised body, a decoy
+-- (control "ai"/"none") -- reads GREEN, so "can I move this one?" is legible at a glance and a
+-- neutral is never mistaken for a party member. A "remote" opponent's unit is not ours, so it keeps
+-- its side colour. Falls back to Colors.side for anything that isn't a unit table.
+function Colors.unit(unit)
+    if type(unit) ~= "table" then return Colors.side(unit) end
+    if unit.side == "party" and (unit.control == "ai" or unit.control == "none") then
+        return Colors.ALLY
+    end
+    return Colors.side(unit.side)
 end
 
 -- `color` darkened toward empty by `ratio` (1 = full, 0 = empty), as r, g, b. Lets a health bar

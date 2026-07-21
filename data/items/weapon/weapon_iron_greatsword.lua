@@ -25,7 +25,7 @@ return {
         range = 1,
         minRange = 1,          -- must pick a neighbor (a facing); never the wielder's own tile
         speed = 7,             -- ponderous: you pay for the damage in turn order
-        channel = 1,           -- winds up one turn before it lands; hard control breaks the wind-up
+        channel = 2,           -- winds up two ticks before it lands; hard control breaks the wind-up
         cost = { stat = "stamina", amount = 16 },
         damage = { 24, 27, 29, 32, 34, 37, 39, 42, 44, 47, 50 },
         effect = function(fx)

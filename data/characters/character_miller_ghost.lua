@@ -4,7 +4,7 @@ return {
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/miller_ghost.png",
     stats = {
-        health = 140, mana = 60, stamina = 50,
+        health = 98, mana = 60, stamina = 50,
         damage = 8, magicDamage = 22,
         defense = 8, magicDefense = 14,
         movement = 4,

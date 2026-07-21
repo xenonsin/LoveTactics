@@ -60,4 +60,24 @@ return {
             end
         end,
     },
+    {
+        -- A conditional/signature ability (unlock- or windup-gated) is a separate effect from the item
+        -- it rides on -- the shield's guard is not its sweep -- so it must carry its OWN description,
+        -- rendered under the ability heading beside the "Weather N blows" gate. Without it the player
+        -- sees the requirement and the cost but never learns what earning it does (docs/item-text.md).
+        name = "a conditional/signature ability spells out what it does",
+        fn = function()
+            for _, it in ipairs(eachItem()) do
+                local ab = it.def.activeAbility
+                if ab and (ab.unlock or ab.windup) then
+                    assert(type(ab.description) == "string" and ab.description ~= "",
+                        it.id .. "'s signature ability declares no description -- say what earning it"
+                            .. " DOES, under its heading (docs/item-text.md)")
+                    assert(#ab.description <= DESC_MAX,
+                        it.id .. "'s ability description is " .. #ab.description .. " chars (max "
+                            .. DESC_MAX .. ") -- one mechanical sentence (docs/item-text.md)")
+                end
+            end
+        end,
+    },
 }

@@ -74,6 +74,46 @@ function Item.archetype(item)
     return nil
 end
 
+-- An ability's declared resource costs, ALWAYS as a list of `{ stat, amount }` -- empty for a free
+-- ability. `activeAbility.cost` may be authored either way:
+--
+--   cost = { stat = "stamina", amount = 8 }                     -- one pool (the common case)
+--   cost = { { stat = "mana", amount = 4 },                     -- several pools, all paid together
+--            { stat = "stamina", amount = 5 } }
+--
+-- The single form is sugar, not a second shape: everything downstream of here prices, gates, spends
+-- and draws a LIST, so a weapon that draws on two pools can never be affordable in one place and
+-- unaffordable in another. Distinguished by looking for `stat` on the table itself -- a list never
+-- carries one. Returns a fresh list, so callers may sort or scale it in place.
+--
+-- Costs are per-pool and never merged: two entries naming the same stat would be an authoring slip,
+-- and are left alone rather than quietly summed, so the mistake stays visible in the tooltip.
+function Item.costs(ab)
+    return Item.costList(ab and ab.cost)
+end
+
+-- The same normalization for a BARE cost value rather than an ability's -- a trait def's own `cost`,
+-- or the price Trait.answerCost quotes for a swing. Both shapes reach the pay path from there too,
+-- so they are unpacked by the same three lines and there is exactly one place that knows what a
+-- cost may look like.
+function Item.costList(cost)
+    if not cost then return {} end
+    if cost.stat then return { { stat = cost.stat, amount = cost.amount } } end
+    local out = {}
+    for i, c in ipairs(cost) do out[i] = { stat = c.stat, amount = c.amount } end
+    return out
+end
+
+-- Does `ab` draw on `stat`? The membership question the sorcery/silence gates ask ("is any part of
+-- this paid for in mana?"), asked once so a dual-cost spell counts as sorcery on the strength of its
+-- mana half rather than on whichever pool happened to be authored first.
+function Item.costsStat(ab, stat)
+    for _, c in ipairs(Item.costs(ab)) do
+        if c.stat == stat then return true end
+    end
+    return false
+end
+
 -- Stacking: only consumables occupy a single inventory slot as a countable stack (a bundle of
 -- health potions with a finite number of uses). Every other type is one-per-slot. A stack can
 -- grow up to `maxStack` (the blueprint may override Item.DEFAULT_MAX_STACK), so "limited uses"

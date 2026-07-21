@@ -467,7 +467,14 @@ function Shop:drawDetail()
         if ab.target then statLine("Target", TARGET_LABEL[ab.target] or ab.target) end
         statLine("Range", tostring(ab.range or 1))
         if ab.speed then statLine("Speed", tostring(ab.speed)) end
-        if ab.cost then statLine("Cost", ab.cost.amount .. " " .. ab.cost.stat) end
+        -- One line however many pools it draws on: the shelf is comparing weapons, not budgeting a
+        -- turn, so "4 mana + 5 stamina" is the useful shape here (the in-battle tooltip splits them).
+        local costs = Item.costs(ab)
+        if #costs > 0 then
+            local parts = {}
+            for _, c in ipairs(costs) do parts[#parts + 1] = c.amount .. " " .. c.stat end
+            statLine("Cost", table.concat(parts, " + "))
+        end
     end
 
     -- The transaction line for this mode.

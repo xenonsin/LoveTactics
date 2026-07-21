@@ -7,6 +7,7 @@ local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
 local Trap = require("models.trap")
+local Wall = require("models.wall")
 
 -- A flat, all-walkable arena (mirrors tests/combat_spec.lua). `blocked` lists {x, y} cells made
 -- impassable, standing in for a wall the shove can slam a unit into.
@@ -42,6 +43,30 @@ return {
             assert(moved == 2, "it travels the full distance over open ground")
             assert(not collided, "nothing was in the way")
             assert(bandit.x == 6 and bandit.y == 4, "pushed two tiles along the line from the attacker")
+        end,
+    },
+    {
+        name = "a shove raises a held slide cue from the tile the target was struck on",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 4) }, { unit("character_bandit", 4, 4) })
+            local knight, bandit = c.units[1], c.units[2]
+            Combat.knockback(c, knight, bandit, 2)
+
+            local slide
+            for _, e in ipairs(Combat.drainFx(c) or {}) do
+                if e.type == "slide" and e.unit == bandit then slide = e end
+            end
+            assert(slide, "the view is told to glide the body, not to snap it across the lane")
+            assert(slide.fromX == 4 and slide.fromY == 4, "it departs the tile the blow landed on")
+            assert(slide.hold, "and waits there long enough for the damage number to read")
+
+            -- A shove that never got going has nothing to glide.
+            local c2 = Combat.new(arena(8, 8, { { x = 5, y = 4 } }),
+                { unit("character_knight", 3, 4) }, { unit("character_bandit", 4, 4) })
+            Combat.knockback(c2, c2.units[1], c2.units[2], 2)
+            for _, e in ipairs(Combat.drainFx(c2) or {}) do
+                assert(e.type ~= "slide", "blocked at the outset: the body never left its tile")
+            end
         end,
     },
     {
@@ -98,6 +123,41 @@ return {
             assert(boar.x == 5, "the blocker holds its ground")
             assert(hp(bandit) < banditHP, "the shoved unit takes the impact")
             assert(hp(boar) < boarHP, "and so does what it slammed into")
+        end,
+    },
+    {
+        name = "a shove denied more travel lands harder",
+        fn = function()
+            -- Measured on a wall rather than a body: a wall has no armor between the blow and the
+            -- number, so what it loses IS the impact. One shove is stopped on its last tile of
+            -- travel, the other has three tiles' worth of momentum with nowhere to put it.
+            local function slam(distance)
+                local c = Combat.new(arena(8, 8),
+                    { unit("character_knight", 3, 4) }, { unit("character_bandit", 5, 4) })
+                local wall = Wall.place(c, 6, 4, "illusory_wall", { health = 100 })
+                Combat.knockback(c, c.units[1], c.units[2], distance, { amount = 10 })
+                return 100 - wall.health
+            end
+
+            local spent, robbed = slam(1), slam(3)
+            assert(spent == 10, "a shove with one tile left in it deals the plain amount, got " .. spent)
+            assert(robbed == 20, "three tiles of denied travel double it, got " .. robbed)
+        end,
+    },
+    {
+        name = "a shove into a conjured wall tears the wall down too",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 4) }, { unit("character_bandit", 5, 4) })
+            local wall = Wall.place(c, 6, 4, "illusory_wall")
+            assert(wall, "the wall stands in the shove's lane")
+            local bandit = c.units[2]
+            local before, wallHP = hp(bandit), wall.health
+
+            local moved, collided = Combat.knockback(c, c.units[1], bandit, 2, { amount = 3 })
+            assert(moved == 0 and collided, "the wall bars the very first step")
+            assert(bandit.x == 5, "so the bandit does not budge")
+            assert(hp(bandit) < before, "it takes the impact")
+            assert(wall.health < wallHP or not wall.alive, "and the wall takes it right back")
         end,
     },
     {

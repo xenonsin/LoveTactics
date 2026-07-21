@@ -14,7 +14,7 @@ return {
     sprite = "assets/chars/bastion_sworn.png",
     class = "knight",
     stats = {
-        health = 105, mana = 0, stamina = 50,
+        health = 74, mana = 0, stamina = 50,
         staminaRegen = 2,
         damage = 14, magicDamage = 0,
         defense = 16, magicDefense = 8,

@@ -19,7 +19,7 @@ return {
     archetype = "escort",
     sprite = "assets/chars/caravan_master.png",
     stats = {
-        health = 55, mana = 0, stamina = 30,
+        health = 38, mana = 0, stamina = 30,
         staminaRegen = 1,
         damage = 4, magicDamage = 0,
         defense = 3, magicDefense = 2,

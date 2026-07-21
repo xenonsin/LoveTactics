@@ -25,6 +25,7 @@ local KIND_TEXT = {
     elite = "A fearsome foe lurks here. Great risk, great reward.",
     town = "A safe waystation. Rest and resupply.",
     treasure = "An unguarded cache sits here. Claim what's inside.",
+    rest = "Your party makes camp. Rest, and mend what the road cost you.",
     objective = "Your quarry awaits. Defeat it to complete the quest.",
 }
 
@@ -32,6 +33,7 @@ local KIND_TEXT = {
 local RESOLVE_LABEL = {
     town = "Enter",
     treasure = "Open",
+    rest = "Rest",
 }
 
 function Encounter.new(opts)

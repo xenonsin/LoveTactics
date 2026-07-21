@@ -13,7 +13,7 @@ return {
     sprite = "assets/chars/avatar_1.png", -- default; overridden by the chosen body at creation
     portrait = "assets/portraits/avatar_1.png",
     stats = {
-        health = 90, mana = 10, stamina = 60,
+        health = 62, mana = 10, stamina = 60,
         staminaRegen = 2,
         damage = 12, magicDamage = 4,
         defense = 8, magicDefense = 6,

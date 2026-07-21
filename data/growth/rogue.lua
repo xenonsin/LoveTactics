@@ -4,5 +4,5 @@ return {
     speed = 1,
     damage = 2,
     stamina = 3,
-    health = 5,
+    health = 3,
 }

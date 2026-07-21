@@ -1,7 +1,8 @@
 -- A heavy blunt weapon: it hits, then it SHOVES. fx.knockback drives the target two tiles straight
 -- back along the line from the wielder; if a wall, the board edge, or another unit stops it short,
--- everything involved in the collision takes the Power as impact damage. Slow (speed 4) and dear in
--- stamina -- you buy the displacement, not the damage.
+-- everything involved in the collision takes impact damage -- the Power, and more of it the more
+-- travel the shove was robbed of (a foe pinned flat against a wall eats the worst). Slow (speed 4)
+-- and dear in stamina -- you buy the displacement, not the damage.
 return {
     name = "Iron Mace",
     description = "Drives the target back two tiles. A collision hurts everyone in it.",

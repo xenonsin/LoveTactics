@@ -85,6 +85,15 @@ return {
             -- The knight answers with its iron sword, which costs 8 stamina to swing.
             local swing = Combat.defaultWeapon(knight.char).activeAbility.cost.amount
 
+            -- Both are propped up so the exchange below can run its full length. Four blows is more
+            -- than either pool covers otherwise -- the knight's answers alone come to a bandit's
+            -- whole 42 -- and a corpse neither swings nor parries, so the price of the fourth answer
+            -- would read as zero for the wrong reason. This is a test about what an ANSWER costs.
+            for _, u in ipairs({ knight, bandit }) do
+                u.char.stats.health.max = 999
+                u.char.stats.health.current = 999
+            end
+
             local before = stamina(knight)
             Combat.dealDamage(c, bandit, knight, weapon)
             assert(stamina(knight) == before - swing, "the first answer costs one swing")
@@ -104,6 +113,7 @@ return {
             assert(knight.answersThisRound == 0, "taking a turn clears the tally")
 
             knight.char.stats.stamina.current = knight.char.stats.stamina.max
+            knight.char.stats.health.current = knight.char.stats.health.max
             before = stamina(knight)
             Combat.dealDamage(c, bandit, knight, weapon)
             assert(stamina(knight) == before - swing, "so the next answer is back to one swing")

@@ -8,7 +8,7 @@ return {
     name = "Homunculus",
     sprite = "assets/chars/homunculus.png",
     stats = {
-        health = 24, mana = 0, stamina = 45,
+        health = 18, mana = 0, stamina = 45,
         staminaRegen = 2,
         damage = 5, magicDamage = 0,
         defense = 2, magicDefense = 3,

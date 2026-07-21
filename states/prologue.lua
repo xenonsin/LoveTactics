@@ -9,7 +9,8 @@
 -- calls `next` again (a scene on its onDone, an `action` immediately). The two beats that leave this
 -- state -- a battle (states.battle) and the overworld (states.game) -- can't call `next` from here, so
 -- on their win they set `pendingAdvance` and switch back; `enter` sees the flag and advances. A loss
--- drops to the menu (the run is lost).
+-- does NOT end the run (Act 0 is played before the hub): it restarts the fight it lost from a pre-fight
+-- snapshot (see prologue.runBattle / states.game's tutorial retry).
 --
 -- This state is only ever visible dimmed, behind a conversation overlay; a battle or the overworld
 -- take over the screen themselves. So its own draw is a plain backdrop and it takes no input.
@@ -17,6 +18,7 @@
 local State = require("states")
 local Scale = require("scale")
 local Player = require("models.player")
+local Save = require("models.save")
 local Character = require("models.character")
 
 local prologue = {}
@@ -57,6 +59,13 @@ prologue.VILLAGE_MAP = VILLAGE_MAP
 
 -- The flight to the capital: a short, real overworld leg (states.game) in the forest, introducing the
 -- map and its encounter kinds, with a bandit ambush as the objective.
+-- The flight is where the overworld teaches itself. `tutorial = "flight"` turns states/game.lua's
+-- coach flow on (the move/loadout/equip bubbles and the Loadout button that stays hidden until the
+-- first chest is opened); `layout = "tutorial_flight"` pins a HAND-AUTHORED map
+-- (data/overworld/tutorial_flight.lua) rather than rolling one, so the chest is always the first thing
+-- ahead and the sequence below is walked in exactly this order -- lessons and fights interleaved, the
+-- rest on the doorstep of the mini-boss, and the boss itself at the end of the trail. The `always` list
+-- is still the single source of each stop's content; the layout only fixes where each one sits.
 local FLIGHT_QUEST = {
     name = "The Road to the Capital",
     -- A scene played over the map the instant it appears (states/game.lua fields it on enter). The
@@ -66,15 +75,42 @@ local FLIGHT_QUEST = {
     opening = "prologue_ruins",
     map = {
         biome = "forest",
-        encounters = { min = 2, max = 3 },
+        tutorial = "flight",
+        layout = "tutorial_flight", -- authored, not generated (see data/overworld/tutorial_flight.lua)
+        encounters = {
+            -- The route stops, in walking order -- the layout's numbered cells (1..7) host these by
+            -- index. A treasure to teach loot + the loadout panel, story events between the fights, the
+            -- two combat-objective lessons (defend, then extract), a last chest, and a rest so the
+            -- champion is fought fresh. Each entry may carry a payload (a treasure's exact `loot`, an
+            -- event's `conversation`); see states/game.lua.
+            always = {
+                { id = "encounter_treasure", loot = {
+                    "weapon_iron_bow",
+                    "consumable_mana_potion", "consumable_mana_potion",
+                    "consumable_healing_potion", "consumable_healing_potion", "consumable_healing_potion",
+                } },
+                { id = "encounter_event", conversation = "flight_event_shrine" },
+                "encounter_survivors_defend",
+                { id = "encounter_event", conversation = "flight_event_survivor" },
+                "encounter_survivors_extract",
+                "encounter_treasure", -- a plain later chest (its blueprint's default loot)
+                "encounter_rest",
+            },
+        },
         objective = {
-            name = "Ambush on the Road",
-            composition = function() return { "character_bandit", "character_bandit" } end,
-            win = { type = "killAll" },
+            name = "The Demon Champion",
+            composition = function()
+                return { "character_demon_champion", "character_demon_imp", "character_demon_imp" }
+            end,
+            win = { type = "assassinate", target = "character_demon_champion" },
         },
         keyCount = 0,
     },
 }
+
+-- Exported so tests/flight_leg_spec.lua can pin the tutorial route rather than trust ids typed across
+-- several files (the same reason VILLAGE_MAP is exported above).
+prologue.FLIGHT_QUEST = FLIGHT_QUEST
 
 -- ---------------------------------------------------------------------------
 -- Beat runners
@@ -86,16 +122,16 @@ function prologue.resume()
     State.switch(prologue)
 end
 
--- A total-party wipe (or forfeit) ends the run: back to the menu.
-local function onLoss()
-    State.switch(require("states.menu"))
-end
-
 -- Launch an objective battle with the live party. `onWinExtra` (optional) runs once on victory,
 -- before advancing -- how the debut recruits Saber and banks its reward.
+--
+-- A wipe (or forfeit) no longer ends the run: Act 0 is played before the player ever reaches the hub,
+-- so a loss restarts THIS same fight from a snapshot taken just before it, with a whole party. The
+-- snapshot is in-memory only (no disk save); resources are refilled again on the retry.
 function prologue.runBattle(map, onWinExtra)
     local p = Player.active
     Player.restore(p) -- each tutorial fight opens fresh; attrition is not the lesson here
+    local retrySnapshot = Save.snapshot(p)
     State.switch(require("states.battle"), {
         encounter = { kind = "objective" },
         biome = map.biome,
@@ -111,7 +147,18 @@ function prologue.runBattle(map, onWinExtra)
             if onWinExtra then onWinExtra() end
             prologue.resume()
         end,
-        onLoss = onLoss,
+        -- The defeat panel's "Try Again": restart this same fight from the pre-fight snapshot. There is
+        -- no "Return to Hub" here (no onLoss) -- Act 0 runs before the hub exists, so retrying is the
+        -- only way out and a tutorial loss never ends the run.
+        onRetry = function()
+            local fresh = Save.restore(retrySnapshot)
+            if fresh then
+                -- Copy the restored fields onto Player.active in place, so every reference to the live
+                -- player (this state's `p`, and states/game.lua's) carries the fresh roster/party.
+                for k, v in pairs(fresh) do Player.active[k] = v end
+            end
+            prologue.runBattle(map, onWinExtra) -- retry the same fight (re-restores resources)
+        end,
     })
 end
 

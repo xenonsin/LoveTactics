@@ -8,7 +8,13 @@ local menu = {}
 local titleFont = love.graphics.newFont(48)
 local hintFont = love.graphics.newFont(16)
 
+-- Two independent menus: the main one (centered, the shipped screen) and, in a dev build, a compact
+-- debug column pinned to the top-left corner. They are separate widgets so debug entries can never
+-- grow the main list past the bottom of the screen, and so adding one doesn't shift the real menu.
+-- `focus` names which of the two keyboard/gamepad drives; Tab swaps, hovering either one claims it.
 local widget
+local debugWidget
+local focus = "main"
 
 -- Debug menu entries (jump into a battle, run string extraction) for development. Reads the one
 -- build-wide switch (models/debug.lua) rather than keeping its own copy: the same flag now decides
@@ -208,15 +214,6 @@ local function buildMenu()
         end,
     }
 
-    if DEBUG then
-        items[#items + 1] = { label = "Mock Battle (debug)", action = startMockBattle }
-        items[#items + 1] = {
-            label = "Character Editor (debug)",
-            action = function() State.switch(require("states.debug_editor")) end,
-        }
-        items[#items + 1] = { label = "Extract Strings (debug)", action = runExtractStrings }
-    end
-
     items[#items + 1] = {
         label = "Exit To Desktop",
         action = function() love.event.quit() end,
@@ -225,12 +222,54 @@ local function buildMenu()
     return Menu.new(items, { startY = 280 })
 end
 
+-- The dev-build corner column. Small buttons in their own left-hand gutter, clear of the title and
+-- of the centered main menu; nil in a shipping build, and every caller below tolerates that.
+local DEBUG_BUTTON_W = 220
+local DEBUG_MARGIN = 16
+
+local function buildDebugMenu()
+    if not DEBUG then return nil end
+    return Menu.new({
+        { label = "Mock Battle", action = startMockBattle },
+        { label = "Character Editor", action = function() State.switch(require("states.debug_editor")) end },
+        { label = "Extract Strings", action = runExtractStrings },
+    }, {
+        buttonWidth = DEBUG_BUTTON_W,
+        buttonHeight = 34,
+        spacing = 8,
+        startY = DEBUG_MARGIN + 22, -- below the "Debug" caption
+        centerX = DEBUG_MARGIN + DEBUG_BUTTON_W / 2,
+        font = hintFont,
+    })
+end
+
+-- The widget keyboard and gamepad currently drive.
+local function focused()
+    if focus == "debug" and debugWidget then return debugWidget end
+    return widget
+end
+
+-- Focus is exclusive: exactly one column carries the highlight, so it always reads as the row
+-- Enter will press.
+local function setFocus(which)
+    focus = which
+    widget:setFocused(focus == "main")
+    if debugWidget then debugWidget:setFocused(focus == "debug") end
+end
+
 function menu.enter()
     widget = buildMenu()
+    debugWidget = buildDebugMenu()
+    setFocus("main")
 end
 
 function menu.update(dt)
-    widget:update(dt)
+    -- Only the focused widget gets update(): it polls the analog stick, and two menus polling it
+    -- would move both selections at once. The other still needs its rectangles laid out.
+    focused():update(dt)
+    if debugWidget then
+        (focus == "debug" and widget or debugWidget):layout()
+    end
     if menu.statusTimer and menu.statusTimer > 0 then
         menu.statusTimer = menu.statusTimer - dt
     end
@@ -250,6 +289,13 @@ function menu.draw()
 
     widget:draw()
 
+    if debugWidget then
+        love.graphics.setFont(hintFont)
+        love.graphics.setColor(0.5, 0.55, 0.7)
+        love.graphics.print("Debug", DEBUG_MARGIN, DEBUG_MARGIN)
+        debugWidget:draw()
+    end
+
     if Player.hasSave() then
         love.graphics.setFont(hintFont)
         love.graphics.setColor(0.5, 0.55, 0.7)
@@ -265,25 +311,44 @@ function menu.draw()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- Hovering a column claims focus, so the highlight the mouse leaves behind is the one the keyboard
+-- picks up from.
 function menu.mousemoved(x, y)
-    widget:mousemoved(x, y)
+    if debugWidget and debugWidget:mouseOverItem(x, y) then
+        setFocus("debug")
+        debugWidget:mousemoved(x, y)
+    elseif widget:mouseOverItem(x, y) then
+        setFocus("main")
+        widget:mousemoved(x, y)
+    end
 end
 
 -- Hand over a menu button, arrow elsewhere (see ui/cursor.lua).
 function menu:cursorKind(x, y)
-    return widget:mouseOverItem(x, y) and "hand" or "arrow"
+    if widget:mouseOverItem(x, y) then return "hand" end
+    if debugWidget and debugWidget:mouseOverItem(x, y) then return "hand" end
+    return "arrow"
 end
 
 function menu.mousepressed(x, y, button)
     widget:mousepressed(x, y, button)
+    if debugWidget then debugWidget:mousepressed(x, y, button) end
 end
 
 function menu.keypressed(key)
-    widget:keypressed(key)
+    if key == "tab" and debugWidget then
+        setFocus(focus == "main" and "debug" or "main")
+        return
+    end
+    focused():keypressed(key)
 end
 
 function menu.gamepadpressed(joystick, button)
-    widget:gamepadpressed(joystick, button)
+    if (button == "leftshoulder" or button == "rightshoulder") and debugWidget then
+        setFocus(focus == "main" and "debug" or "main")
+        return
+    end
+    focused():gamepadpressed(joystick, button)
 end
 
 return menu

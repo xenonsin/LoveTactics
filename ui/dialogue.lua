@@ -20,7 +20,9 @@ local InputMode = require("input_mode")
 local Sprite = require("models.sprite")
 local Conversation = require("models.conversation")
 local Locale = require("models.locale")
+local Item = require("models.item")
 local ButtonPrompt = require("ui.button_prompt")
+local ItemTooltip = require("ui.item_tooltip")
 local utf8 = require("utf8") -- the typewriter reveals whole CHARACTERS, not bytes (CJK is multibyte)
 
 local Dialogue = {}
@@ -61,10 +63,50 @@ local function castEntry(raw)
     return type(raw) == "table" and raw or { id = raw }
 end
 
+-- Tints for a choice's outcome line: a gain reads green, a price reads red.
+local GAIN_COLOR = { 0.60, 0.86, 0.52 }
+local COST_COLOR = { 0.95, 0.55, 0.50 }
+
+-- Describe what committing a choice's `effect` hands over, so the option can SAY what it grants
+-- before it's picked (loot on the road is otherwise a blind gamble). Items are instantiated once,
+-- here, so the label has the real item name and a hover can show its full tooltip; gold / heal /
+-- restore / a max-HP cost read as short tinted lines. Returns nil for a choice that grants nothing.
+local function rewardOf(effect)
+    if not effect then return nil end
+    local reward = { lines = {}, items = {} }
+    if effect.grant then
+        local ids = type(effect.grant) == "table" and effect.grant or { effect.grant }
+        for _, id in ipairs(ids) do
+            local ok, item = pcall(Item.instantiate, id)
+            if ok and item then
+                reward.items[#reward.items + 1] = item
+                reward.lines[#reward.lines + 1] = { text = item.name or id, color = GAIN_COLOR }
+            end
+        end
+    end
+    if effect.gold then
+        reward.lines[#reward.lines + 1] = { text = "+" .. effect.gold .. " gold", color = GAIN_COLOR }
+    end
+    if effect.heal then
+        reward.lines[#reward.lines + 1] = { text = "+" .. effect.heal .. " HP", color = GAIN_COLOR }
+    end
+    if effect.restore then
+        reward.lines[#reward.lines + 1] = { text = "Rest: fully restored", color = GAIN_COLOR }
+    end
+    if effect.maxHpCost then
+        reward.lines[#reward.lines + 1] = { text = "-" .. effect.maxHpCost .. " max HP", color = COST_COLOR }
+    end
+    if #reward.lines == 0 then return nil end
+    return reward
+end
+
 function Dialogue.new(def, onComplete, convId)
     local self = setmetatable({}, Dialogue)
     self.convId = convId
     self.onComplete = onComplete
+    -- Fired once with a choice's `effect` when that choice is committed (models/conversation.lua
+    -- wires it to StoryEffect.apply against the active player). Nil for scenes with no effects.
+    self.onEffect = def.onEffect
     self.done = false
     -- Title is authored inline (English) and localized under the stable id "title.<conv>".
     self.title = def.title and Locale.get(Locale.key.title(convId), def.title) or nil
@@ -77,6 +119,7 @@ function Dialogue.new(def, onComplete, convId)
     self.nameFont = uiFont(20)
     self.textFont = uiFont(22)
     self.choiceFont = uiFont(19)
+    self.rewardFont = uiFont(14) -- the smaller "what you'll get" line under a choice
     self.fallbackFont = uiFont(64)
 
     -- Box rect: a wide bar along the bottom of the SCREEN by default, or wherever the caller put it.
@@ -108,7 +151,11 @@ function Dialogue.new(def, onComplete, convId)
         if raw.choices then
             node.choices = {}
             for j, c in ipairs(raw.choices) do
-                node.choices[j] = { text = c.text or c[1] or "", tag = c.tag, goto = c.goto }
+                -- `effect` is a declarative side-effect applied when this choice is committed
+                -- (grant an item, restore, set a story flag -- see models/story_effect.lua). It is
+                -- carried through untouched; the applier lives outside this widget.
+                node.choices[j] = { text = c.text or c[1] or "", tag = c.tag, goto = c.goto,
+                                    effect = c.effect, reward = rewardOf(c.effect) }
             end
         end
         self.script[i] = node
@@ -201,6 +248,9 @@ function Dialogue:confirm()
     local node = self:currentNode()
     if node and node.choices then
         local choice = node.choices[self.choiceSel]
+        -- Apply the choice's outcome (loot, story flag, a tradeoff) before following its branch,
+        -- so a scene that shows the reward on the next node has already granted it.
+        if choice and choice.effect and self.onEffect then self.onEffect(choice.effect) end
         self:advance(choice and choice.goto)
         return
     end
@@ -253,6 +303,7 @@ function Dialogue:gamepadpressed(joystick, button)
 end
 
 function Dialogue:mousemoved(x, y)
+    self.mouseX, self.mouseY = x, y
     -- Hover a choice option to highlight it, so mouse and keyboard stay in sync.
     if self:choicesActive() and self.choiceRects then
         for i, r in ipairs(self.choiceRects) do
@@ -446,27 +497,70 @@ function Dialogue:draw()
     end
     love.graphics.printf(shown, textX, self.boxY + 22, textW, "left")
 
-    -- Branching choices, listed on the right side of the box once the line is out.
+    -- Branching choices, listed on the right side of the box once the line is out. A choice whose
+    -- text wraps to several lines gets a taller box, and the stack is measured from those heights --
+    -- a fixed 34px slot clipped long options and let the next one overlap them (a two-line choice
+    -- would collide with the choice above it).
     self.choiceRects = nil
     if self:choicesActive() then
         self.choiceRects = {}
         local choices = node.choices
-        love.graphics.setFont(self.choiceFont)
         local cw = 360
-        local ch = 34
+        local textW = cw - 24
+        local lineH = self.choiceFont:getHeight()
+        local rewardH = self.rewardFont:getHeight()
+        local vpad = 7      -- padding above and below the text inside a choice box
+        local rewardGap = 3 -- between the choice text and its outcome line(s)
+        local gap = 8       -- vertical gap between stacked choices
         local right = self.overScene and (self:sideBustLeft() - SIDE_PAD) or (self.boxX + self.boxW - 24)
         local cx = right - cw
-        local startY = self.boxY - 12 - #choices * (ch + 8)
+        -- Measure each choice's wrapped height first (the option text PLUS any outcome lines), then
+        -- stack the whole block upward from the box's top edge so the tallest option still clears it.
+        local texts, heights, total = {}, {}, 0
         for i, choice in ipairs(choices) do
-            local cy = startY + (i - 1) * (ch + 8)
+            local text = self:textOf(choice)
+            local _, lines = self.choiceFont:getWrap(text, textW)
+            local h = math.max(1, #lines) * lineH
+            if choice.reward then h = h + rewardGap + #choice.reward.lines * rewardH end
+            h = h + vpad * 2
+            texts[i] = text
+            heights[i] = h
+            total = total + h + (i > 1 and gap or 0)
+        end
+        local cy = self.boxY - 12 - total
+        for i, choice in ipairs(choices) do
+            local ch = heights[i]
             local selected = i == self.choiceSel
             love.graphics.setColor(selected and 0.24 or 0.12, selected and 0.28 or 0.14, selected and 0.4 or 0.2, 0.95)
             love.graphics.rectangle("fill", cx, cy, cw, ch, 6, 6)
             love.graphics.setColor(selected and 0.7 or 0.4, selected and 0.78 or 0.45, selected and 0.95 or 0.6)
             love.graphics.rectangle("line", cx, cy, cw, ch, 6, 6)
+            love.graphics.setFont(self.choiceFont)
             love.graphics.setColor(selected and 1 or 0.8, selected and 1 or 0.8, selected and 1 or 0.85)
-            love.graphics.printf(self:textOf(choice), cx + 12, cy + 7, cw - 24, "left")
-            self.choiceRects[i] = { x = cx, y = cy, w = cw, h = ch }
+            local _, tlines = self.choiceFont:getWrap(texts[i], textW)
+            love.graphics.printf(texts[i], cx + 12, cy + vpad, textW, "left")
+            -- The outcome line(s): what committing this choice hands over (an item name, gold, HP...),
+            -- tinted green for a gain and red for a price. An item's full stats are one hover away.
+            if choice.reward then
+                love.graphics.setFont(self.rewardFont)
+                local ry = cy + vpad + math.max(1, #tlines) * lineH + rewardGap
+                for _, ln in ipairs(choice.reward.lines) do
+                    local c = ln.color
+                    love.graphics.setColor(c[1], c[2], c[3], selected and 1 or 0.85)
+                    love.graphics.printf(ln.text, cx + 12, ry, textW, "left")
+                    ry = ry + rewardH
+                end
+            end
+            self.choiceRects[i] = { x = cx, y = cy, w = cw, h = ch, reward = choice.reward }
+            cy = cy + ch + gap
+        end
+
+        -- Full item tooltip for the highlighted choice's reward (the first item, if it grants one).
+        -- Anchored just LEFT of the choice column so it doesn't cover the options, and driven by the
+        -- selection -- which mouse hover, keyboard and gamepad all move -- so it works three-input.
+        local sel = self.choiceRects[self.choiceSel]
+        if sel and sel.reward and sel.reward.items[1] then
+            ItemTooltip.draw(sel.reward.items[1], sel.x, sel.y, sel.x)
         end
     end
 

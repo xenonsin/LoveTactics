@@ -366,8 +366,16 @@ return {
         -- The grunt, from the cell it is walked on at. It closes on the avatar and swings -- and
         -- being swung at is the point of the beat as much as the damage is: an iron sword answers an
         -- adjacent blow (Parry), so the player's own weapon hits back without being asked, which is
-        -- the first time anyone sees that happen. It is also the first blow the party takes from
-        -- something that can actually hurt.
+        -- the first time anyone sees that happen.
+        --
+        -- IT IS ALSO THE FIRST BLOW THAT ACTUALLY HURTS, and that is load-bearing for the two steps
+        -- after it. Its Rending Claws take 20 off a 62-health avatar in one swing
+        -- (data/items/weapon/weapon_rending_claws.lua) -- a third of the bar, from a body that walked
+        -- on ten seconds ago and is the next card in the timeline. Steps 5 and 6 then ask the player
+        -- to empty their ENTIRE mana pool on a Jolt whose only effect is to push that card down the
+        -- order, and nobody spends everything they have to delay a thing that tickles. The grunt used
+        -- to swing a borrowed iron sword for 6, and the Jolt was a move the lesson had to insist on
+        -- rather than one the board asked for. The damage is the argument; the coaching only names it.
         --
         -- Scripted rather than left to its AI because everything after it is counted (see `spawn`):
         -- the parry, the Jolt and Rowan's blow have to land on a known body at a known cell.

@@ -46,6 +46,11 @@ function Menu.new(items, opts)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false  -- edge detection so a held stick moves one step
 
+    -- A screen showing two menus side by side (the main menu and its debug column) must show only
+    -- ONE highlighted row, or neither reads as the thing Enter will press. Unfocused menus keep
+    -- their selection but draw it flat; `setFocused` moves the highlight between them.
+    self.focused = true
+
     -- Scrolling. `maxVisible` caps how many rows are drawn at once; the rest scroll past.
     -- nil (the default) means "show everything", which is what a short fixed menu wants.
     self.maxVisible = opts.maxVisible
@@ -127,6 +132,10 @@ function Menu:moveSelection(delta)
     self:scrollToSelection()
 end
 
+function Menu:setFocused(focused)
+    self.focused = focused and true or false
+end
+
 function Menu:activate()
     local item = self.items[self.selected]
     if item and item.action then item.action() end
@@ -176,7 +185,7 @@ function Menu:draw()
     love.graphics.setFont(self.font)
     for i, item in ipairs(self.items) do
         if item.x then
-            local active = (i == self.selected)
+            local active = (i == self.selected) and self.focused
 
             if active then
                 love.graphics.setColor(0.35, 0.40, 0.55)

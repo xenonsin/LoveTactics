@@ -186,6 +186,15 @@ local function buildBlocks(item, actor, innerW)
         blocks[#blocks + 1] = { kind = "sep" }
         blocks[#blocks + 1] = { kind = "head", text = item.name or "Active Ability" }
 
+        -- What the ability DOES, in prose, sat right under its heading -- above the stat rows and the
+        -- unlock gate. An item's top `description` speaks for the item as a whole (a shield's passive
+        -- guard); a signature's conditional payoff is its own effect and needs saying where the player
+        -- is looking when they read "Weather 4 blows". Optional: a plain spell whose whole item IS the
+        -- ability lets the top description carry it and omits this (docs/item-text.md).
+        if ab.description and ab.description ~= "" then
+            blocks[#blocks + 1] = { kind = "desc", text = ab.description }
+        end
+
         -- Ability output beyond the headline Power (drawn up top): a healing ability shows its heal
         -- amount, plus any status it applies. A dry-run against a zero-defense stand-in tells damage
         -- from heal and surfaces the statuses; with no actor (an Armory hover) it runs against a
@@ -303,12 +312,14 @@ local function buildBlocks(item, actor, innerW)
                 value = tostring(ab.channel) }
             blocks[#blocks + 1] = { kind = "note", text = "Winds up before it fires; disrupted by hard control or forced movement" }
         end
-        if ab.cost then
-            -- Price the cast for THIS actor: a cost-reducing status (Haste) is already folded into
-            -- Combat.abilityCost, so the tooltip quotes what will actually be paid.
-            local cost = (actor and Combat.abilityCost(actor, ab)) or ab.cost
-            local short = blocked and blocked.kind == "cost"
-            blocks[#blocks + 1] = { kind = "stat", label = "Cost",
+        -- Price the cast for THIS actor: a cost-reducing status (Haste) is already folded into
+        -- Combat.abilityCosts, so the tooltip quotes what will actually be paid. A cast drawing on
+        -- two pools gets a row each: they are two separate demands on two separate bars, and the
+        -- one that is actually short has to be able to turn red on its own.
+        local costs = actor and Combat.abilityCosts(actor, ab) or Item.costs(ab)
+        for i, cost in ipairs(costs) do
+            local short = blocked and blocked.kind == "cost" and blocked.stat == cost.stat
+            blocks[#blocks + 1] = { kind = "stat", label = i == 1 and "Cost" or "",
                 value = cost.amount .. " " .. titleCase(cost.stat),
                 valueColor = short and WARN or RES_COLOR[cost.stat] }
         end
@@ -334,6 +345,12 @@ local function buildBlocks(item, actor, innerW)
         end
         if ab.consumesItem then
             blocks[#blocks + 1] = { kind = "note", text = "Consumed on use" }
+        end
+        -- A signature ability names its in-battle requirement even when it is ready, so the mechanic
+        -- reads at a glance. While it is still locked the `warn` below carries the same requirement WITH
+        -- its progress, so this note steps aside to avoid saying it twice.
+        if ab.unlock and not blocked then
+            blocks[#blocks + 1] = { kind = "note", text = "Signature -- " .. (ab.unlock.text or "charges as you fight") }
         end
         -- Why this can't be cast right now, closing the ability section it applies to.
         if blocked then

@@ -9,7 +9,7 @@ return {
     -- posture's work is the footwork rather than the choice of spell.
     archetype = "support",
     stats = {
-        health = 70, mana = 70, stamina = 40, -- resource stats
+        health = 50, mana = 70, stamina = 40, -- resource stats
         staminaRegen = 1, -- stamina recovered per elapsed tick (a flat stat, not a resource)
         damage = 5, magicDamage = 12,          -- flat stats
         defense = 6, magicDefense = 11,

@@ -6,7 +6,7 @@ return {
     name = "Lightning Elemental",
     sprite = "assets/chars/lightning_elemental.png",
     stats = {
-        health = 24, mana = 0, stamina = 60,
+        health = 18, mana = 0, stamina = 60,
         staminaRegen = 2,
         damage = 4, magicDamage = 16,
         defense = 2, magicDefense = 8,

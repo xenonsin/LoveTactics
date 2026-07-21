@@ -4,5 +4,5 @@ return {
     magicDamage = 3,
     mana = 5,
     magicDefense = 1,
-    health = 4,
+    health = 2,
 }

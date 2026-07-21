@@ -86,9 +86,9 @@ return {
             local dflt = Arena.build({ prestige = 1 }, proceduralSpec())
             assert(dflt.objective.type == "killAll", "missing objective should default to killAll")
             local surv = Arena.build({ prestige = 1 },
-                proceduralSpec({ objective = { type = "survive", turns = 5 } }))
-            assert(surv.objective.type == "survive" and surv.objective.turns == 5,
-                "explicit objective should pass through")
+                proceduralSpec({ objective = { type = "survive", duration = 25 } }))
+            assert(surv.objective.type == "survive" and surv.objective.duration == 25,
+                "explicit objective (tick duration) should pass through")
         end,
     },
     {

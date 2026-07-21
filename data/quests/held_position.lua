@@ -47,7 +47,8 @@ return {
                 return list
             end,
             -- `region` defaults to "center" for a hold; named here because this board IS the post.
-            win = { type = "hold", region = "center", turns = 6 },
+            -- `duration` is in TICKS (the unit the clock counts and the HUD quotes), not turns.
+            win = { type = "hold", region = "center", duration = 30 },
         },
         keyCount = 1,
     },

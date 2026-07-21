@@ -8,6 +8,16 @@
 -- version: the lesson's last lesson is the turn order, so the grunt has to survive a parry, a mace,
 -- and a Jolt still standing and still dangerous -- and then fall to exactly one blow each from Rowan
 -- and the player, which is what the Jolt's stun buys them. Re-tune this and that beat stops landing.
+--
+-- WHICH IS WHY IT IS THE ONE BODY THE HEALTH REBALANCE SKIPPED. Every other character in data/characters/
+-- had its pool cut to roughly 0.7 of what it was, to bring the hits-to-kill down across the game; this
+-- one could not go with them. Its health is not a balance number at all -- it is the SUM of five
+-- authored blows, and the blows did not change, because only health was rescaled. Cut it to 46 with
+-- everything else and the choreography kills it on Rowan's second swing, a full beat before the
+-- player's own finishing stroke, which is the one thing the whole prologue is built to hand them.
+-- So it stays at 66 and is deliberately the sturdiest common enemy in the game. In the siege
+-- encounters that field it in packs (data/encounters/encounter_siege_*.lua) that reads as the horde's
+-- heavy rather than as an oversight, which is the one place the exemption is actually visible.
 return {
     name = "Demon Grunt",
     sprite = "assets/chars/demon_grunt.png",
@@ -18,5 +28,10 @@ return {
         movement = 3,
         speed = 2,
     },
-    startingItems = { "weapon_iron_sword" },
+    -- Its body IS its weapon, and that weapon is the point of the thing (see the file). It used to
+    -- carry a borrowed iron sword, which cost the prologue twice over: a 6-damage swing at a 62-health
+    -- avatar is not a reason to spend a whole mana pool delaying its turn, and the sword's Parry came
+    -- along with it, so the blows that end the lesson all answered back.
+    startingItems = { "weapon_rending_claws" },
+    defaultAction = "weapon_rending_claws",
 }

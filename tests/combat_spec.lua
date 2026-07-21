@@ -204,12 +204,14 @@ return {
             local potion = mage.char.inventory[1]
             assert(potion.name == "Healing Potion", "mage carries the potion")
 
-            knight.char.stats.health.current = 50
+            -- Wounded far enough below its 70 max that the whole flask lands without capping --
+            -- the cap is the NEXT test's business, and this one is about the slot.
+            knight.char.stats.health.current = 30
             local invBefore = #mage.char.inventory
             local ok, res = Combat.useItem(c, mage, potion, 3, 4) -- heal adjacent ally
             assert(ok, "healing an ally should succeed")
             assert(res.healed == 30, "flat 30 heal, got " .. res.healed)
-            assert(knight.char.stats.health.current == 80, "ally healed 50 -> 80")
+            assert(knight.char.stats.health.current == 60, "ally healed 30 -> 60")
             -- The single-use potion is now spent (quantity 0) but its slot is KEPT.
             assert(#mage.char.inventory == invBefore, "empty stack keeps its inventory slot")
             assert(potion.quantity == 0, "stack is spent")
@@ -230,10 +232,10 @@ return {
             assert(d == 1, "damage floors at 1, got " .. d)
 
             local knight = swordsman()
-            knight.stats.health.current = 90
+            knight.stats.health.current = 60
             local healed = Combat.applyHeal(c, { char = knight }, 30)
-            assert(healed == 10, "heal capped at max (90 -> 100), got " .. healed)
-            assert(knight.stats.health.current == 100, "HP capped at max")
+            assert(healed == 10, "heal capped at max (60 -> 70), got " .. healed)
+            assert(knight.stats.health.current == 70, "HP capped at max")
         end,
     },
     {
@@ -285,12 +287,14 @@ return {
             -- (data/traits/parry.lua) on the way, which has nothing to do with effect composition.
             local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 5) }, { unit("character_bandit", 2, 3) })
             local mage = c.units[1]
-            mage.char.stats.health.current = 40
+            -- Wounded to 10 of its 42 max, so the full drain lands as healing rather than capping:
+            -- this is a test about effect composition, not about the ceiling.
+            mage.char.stats.health.current = 10
             local ok, res = Combat.useItem(c, mage, wand, 2, 3)
             assert(ok, "ranged drain should succeed")
             assert(res.damageDealt == 20, "wand power 5 + 18 magicDmg - 3 magicDef = 20")
             assert(res.healed == 20, "lifesteal heals the amount dealt")
-            assert(mage.char.stats.health.current == 60, "40 + 20 = 60")
+            assert(mage.char.stats.health.current == 30, "10 + 20 = 30")
         end,
     },
     {
@@ -713,8 +717,9 @@ return {
             knight.defaultActionSlot = 3
             assert(Combat.defaultAction(knight) == bow, "a pinned slot beats grid order")
 
-            -- A pin at an empty cell is stale -> fall back to the first-weapon scan.
-            knight.defaultActionSlot = 5
+            -- A pin at an empty cell is stale -> fall back to the first-weapon scan. (Cell 5 holds the
+            -- bound Sworn Aegis, which now carries the knight's signature active, so slot 6 is the empty one.)
+            knight.defaultActionSlot = 6
             assert(Combat.defaultAction(knight).name == "Iron Sword", "a pin on an empty cell falls back")
 
             -- Unlike the default weapon, ANY ability can be the default action: pin a non-weapon
@@ -927,7 +932,7 @@ return {
             local mage, b1, b2 = c.units[1], c.units[2], c.units[3]
             mage.char.inventory = { Item.instantiate("ability_fireball") }
             local fireball = mage.char.inventory[1]
-            assert(fireball.activeAbility.channel == 2, "fireball carries a channel wind-up (deep-copied from data)")
+            assert(fireball.activeAbility.channel == 4, "fireball carries a channel wind-up (deep-copied from data)")
             mage.initiative, b1.initiative, b2.initiative = 0, 1, 2
             local mana0 = poolOf(mage, "mana")
             local hp1, hp2 = b1.char.stats.health.current, b2.char.stats.health.current
@@ -967,7 +972,8 @@ return {
             assert(mage.channel == nil, "the pending spell is cleared")
             assert(not Status.has(mage, "status_channeling"), "the Channeling badge is gone")
             -- endTurn charged ab.speed (4): mage 0->4, rebase by min(4,1,9)=1 -> 3. Had it (wrongly)
-            -- charged the channel (2), mage would sit at 1. So 3 proves the recovery cost is speed.
+            -- charged the channel (4), mage would sit at 3 by coincidence of a different sum -- but the
+            -- ladder above is built so only ab.speed lands on 3.
             assert(mage.initiative == 3, "resolution charges ab.speed (mage at 3), not the channel wind-up")
             assert(Combat.currentUnit(c) == other, "the once-1 unit rebased to 0 and now acts")
         end,
@@ -986,26 +992,27 @@ return {
             mage.initiative, other.initiative = 0, 0
             mage.speed, other.speed = 0, 0
 
-            -- Walk 3 tiles, then channel an empty tile in range. The wind-up is the spell's own 2 --
+            -- Walk 3 tiles, then channel an empty tile in range. The wind-up is the spell's own 4 --
             -- the walk stays out of it.
             openTurn(c, mage)
             c.turn.moveCost = 3
             assert(Combat.useItem(c, mage, fireball, 2, 4), "the channel begins")
             assert(mage.initiative == fireball.activeAbility.channel,
-                "the blast lands at the wind-up (2), not the wind-up plus the 3 tiles walked; got "
+                "the blast lands at the wind-up (4), not the wind-up plus the 3 tiles walked; got "
                     .. mage.initiative)
             assert(Combat.moveDebt(mage) == 3, "the 3 tiles walked are banked as a debt")
 
             -- The follow-up ghost owns the deferred move, so the strip projects the real next slot.
             local ghost = Combat.channelGhosts(c)[1]
-            assert(ghost.initiative == 2 + 3 + speed,
+            assert(ghost.initiative == fireball.activeAbility.channel + 3 + speed,
                 "the follow-up ghost = resolution + the walk + the cast's speed; got " .. ghost.initiative)
 
             -- Resolving settles the debt: the caster's next turn lands at walk + wind-up + speed -- the
             -- same tick the old stacked model gave it. Only the resolution slot moved earlier.
             openTurn(c, mage)
             assert(Combat.resolveChannel(c, mage), "the channel resolves")
-            assert(mage.initiative == 2 + 3 + speed, "resolution charges the deferred walk on top of speed")
+            assert(mage.initiative == fireball.activeAbility.channel + 3 + speed,
+                "resolution charges the deferred walk on top of speed")
             assert(Combat.moveDebt(mage) == 0, "the debt is settled, and never charged twice")
         end,
     },

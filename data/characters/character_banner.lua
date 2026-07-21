@@ -15,7 +15,7 @@ return {
     name = "Banner",
     sprite = "assets/chars/banner.png",
     stats = {
-        health = 45, mana = 0, stamina = 0,
+        health = 32, mana = 0, stamina = 0,
         damage = 0, magicDamage = 0,
         defense = 5, magicDefense = 5,
         movement = 0, -- planted: it never moves

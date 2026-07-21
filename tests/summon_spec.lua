@@ -485,10 +485,10 @@ return {
                 assert(Combat.resolveChannel(c, caster), "and forms once wound up")
                 return Combat.unitAt(c, 3, 2).char.stats.health.max
             end
-            -- Fire elemental base health 30, scaling health = 1 per point, amount = 12 + level.
-            local base = fireElementalHealthAt(0)   -- 30 + 12
-            local forged = fireElementalHealthAt(6) -- 30 + 18
-            assert(base == 42, "a +0 fire elemental has 30 base + 12 amount = 42 health, got " .. base)
+            -- Fire elemental base health 22, scaling health = 1 per point, amount = 12 + level.
+            local base = fireElementalHealthAt(0)   -- 22 + 12
+            local forged = fireElementalHealthAt(6) -- 22 + 18
+            assert(base == 34, "a +0 fire elemental has 22 base + 12 amount = 34 health, got " .. base)
             assert(forged == base + 6, "a +6 fire elemental gains +6 health (amount 18 vs 12), got " .. forged)
         end,
     },

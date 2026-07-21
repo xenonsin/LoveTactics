@@ -6,7 +6,9 @@
 -- differ between two machines may.
 --
 --   { kind = "move",    x, y, path = { {x,y}, ... } }   -- path optional: a steered route
---   { kind = "use",     cell, tx, ty }                  -- cell is an INVENTORY SLOT, not an item id
+--   { kind = "use",     cell, tx, ty, windup }          -- cell is an INVENTORY SLOT, not an item id;
+--                                                        --   windup optional: extra ticks poured into
+--                                                        --   a chargeable wind-up (Saber's signature)
 --   { kind = "wait" }
 --   { kind = "blink",   x, y }
 --   { kind = "forfeit" }
@@ -63,6 +65,12 @@ function Command.wellFormed(cmd)
     elseif cmd.kind == "use" then
         if not isCell(cmd.cell) then return false, "use needs an inventory cell 1.." .. Character.MAX_INVENTORY end
         if not (isCoord(cmd.tx) and isCoord(cmd.ty)) then return false, "use needs whole tx,ty" end
+        -- windup is optional (only a chargeable channel carries one); when present it must be a whole
+        -- non-negative count. Combat.useItem clamps it to the ability's own `windup.max` regardless, so
+        -- a peer can never deepen a wind-up past what the blueprint allows -- this only rejects garbage.
+        if cmd.windup ~= nil and not (isCoord(cmd.windup) and cmd.windup >= 0) then
+            return false, "use windup must be a whole count >= 0"
+        end
     end
     return true
 end
@@ -176,7 +184,7 @@ function Command.apply(combat, unit, cmd)
         if not unit.alive then return result end -- cut down on the approach
         local item, reason = Command.itemFor(unit, cmd)
         if not item then return nil, reason end
-        result.acted = Combat.useItem(combat, unit, item, cmd.tx, cmd.ty) and true or false
+        result.acted = Combat.useItem(combat, unit, item, cmd.tx, cmd.ty, cmd.windup) and true or false
         if not result.acted then
             -- The turn still has to end, or a peer would sit forever on a unit that did nothing.
             Combat.pass(combat, unit)

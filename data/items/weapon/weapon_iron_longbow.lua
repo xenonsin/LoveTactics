@@ -30,7 +30,7 @@ return {
         minRange = 2,  -- the point-blank band a bow of any length has: no shot at an adjacent foe
         requiresSight = true, -- an arrow needs a clear arc; terrain cover blocks the shot
         speed = 4,     -- heavier than a bow's 2: a full draw is not a snap shot
-        channel = 1,   -- the draw. The shot resolves on the archer's next turn; hard control breaks it
+        channel = 2,   -- the draw, two ticks of it. Hard control breaks it before the shot looses
         cost = { stat = "stamina", amount = 9 },
         -- Roughly double the iron bow, which is what the spent turn is worth: over two turns the
         -- longbow lands one shot where the bow lands two, so the trade is reach and one heavy arrow

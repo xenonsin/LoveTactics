@@ -92,9 +92,15 @@ function CoachBubble.draw(text, rect, opts)
     -- Each candidate is taken only if the whole box fits inside `bounds`; the last is a guaranteed
     -- fallback, clamped.
     local cx, cy = rect.x + rect.w / 2, rect.y + rect.h / 2
-    local order = (opts.prefer == "above")
-        and { "above", "below", "right", "left" }
-        or { "right", "left", "above", "below" }
+    -- The preferred side leads; the rest follow as fallbacks. A board anchor (no `prefer`) tries the
+    -- flanks first (empty ground beside a lane), while a panel/HUD anchor names the side it wants.
+    local PREFER_ORDER = {
+        above = { "above", "below", "right", "left" },
+        below = { "below", "above", "right", "left" },
+        right = { "right", "left", "above", "below" },
+        left  = { "left", "right", "above", "below" },
+    }
+    local order = PREFER_ORDER[opts.prefer] or { "right", "left", "above", "below" }
 
     local function horizontalSide(side) return side == "right" or side == "left" end
 

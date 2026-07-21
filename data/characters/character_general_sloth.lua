@@ -25,7 +25,7 @@ return {
     sprite = "assets/chars/general_sloth.png",
     portrait = "assets/portraits/general_sloth.png", -- large VN portrait for conversations (falls back if missing)
     stats = {
-        health = 340, mana = 40, stamina = 90,
+        health = 240, mana = 40, stamina = 90,
         staminaRegen = 2,
         damage = 12, magicDamage = 0, -- poor, and it never climbs: the clock is the weapon
         defense = 22, magicDefense = 16, -- no soft answer the way Ira is soft to magic

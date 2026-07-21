@@ -269,6 +269,9 @@ return {
             assert(ok, "Meteor Storm begins channeling")
             assert(resolved, "the wound-up storm resolves")
             assert(Hazard.at(c, 4, 4, "hazard_fire"), "a meteor left fire on (4,4)")
+            -- Each impact bursts over the 3x3 block around it, so the corners of that block burn too.
+            assert(Hazard.at(c, 3, 3, "hazard_fire"), "the burst spread fire to (3,3)")
+            assert(Hazard.at(c, 5, 5, "hazard_fire"), "and to (5,5)")
             assert(knight.char.stats.health.current < hp0, "the foe under a strike took damage")
         end,
     },

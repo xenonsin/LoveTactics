@@ -132,6 +132,84 @@ function Overworld.generate(params)
     return self
 end
 
+-- ---------------------------------------------------------------------------
+-- Authored maps
+-- ---------------------------------------------------------------------------
+
+-- Char -> tile type for an authored map's ASCII `map`. The role chars (S / X / 1..9)
+-- all stand on trail, so they are resolved to "path" below rather than listed here.
+local LAYOUT_TILE = {
+    ["#"] = "forest", ["."] = "path", ["="] = "bridge", ["~"] = "water",
+    [","] = "grass",  ["^"] = "rock",
+}
+
+-- Build a HAND-AUTHORED overworld from data/overworld/<id>.lua instead of carving a maze. The layout is
+-- an ASCII `map` (rows of equal-length strings) plus a biome; see data/overworld/tutorial_flight.lua for
+-- the legend. `S` fixes the start, `X` the objective, and each digit `1..9` is a route stop: the Nth
+-- stop is handed the Nth `params.alwaysEncounters` entry, so the geometry fixes WHERE each stop sits
+-- while the quest stays the single source of WHAT it is (id / loot / conversation).
+--
+-- The result is an ordinary Overworld: same object shape and methods as generate(), so states/game.lua,
+-- the renderer, fog and movement are none the wiser. Used by the prologue's flight leg, whose tutorial
+-- choreography needs a fixed trail (the chest first, the boss last) rather than a roll that could
+-- reorder the stops or crowd the opening.
+function Overworld.fromLayout(params)
+    local layout = params.layoutDef or require("data.overworld." .. params.layout)
+    local self = setmetatable({}, Overworld)
+    self.size = params.tileSize or layout.tileSize or 32
+    self.biome = params.biome or layout.biome
+    local biomeDef = Biome.get(self.biome)
+    self.tilesetId = biomeDef.tileset
+    self.tilesetDef = Tileset.get(self.tilesetId)
+    self.margin = 0
+    self.spacing = 1
+    self.originX, self.originY = 0, 0
+    self.keyIds = {}
+    self.gateCells = {}
+
+    local grid = layout.map
+    self.rows = #grid
+    self.cols = #grid[1]
+    self.cells = {}
+    local routeCells = {}
+    for y = 1, self.rows do
+        self.cells[y] = {}
+        local row = grid[y]
+        assert(#row == self.cols,
+            "authored layout row " .. y .. " is " .. #row .. " wide, expected " .. self.cols)
+        for x = 1, self.cols do
+            local ch = row:sub(x, x)
+            local cell = { x = x, y = y, tile = LAYOUT_TILE[ch] or "path" }
+            self.cells[y][x] = cell
+            if ch == "S" then
+                self.start = { x = x, y = y }
+            elseif ch == "X" then
+                self.objective = { x = x, y = y }
+                cell.encounter = { kind = "objective",
+                    name = params.objective and params.objective.name or "Objective" }
+            elseif ch:match("%d") then
+                routeCells[tonumber(ch)] = cell
+            end
+        end
+    end
+
+    assert(self.start, "authored layout has no start (S)")
+    assert(self.objective, "authored layout has no objective (X)")
+
+    -- Zip the quest's guaranteed encounters onto the numbered route cells, in order.
+    local always = params.alwaysEncounters or {}
+    for i, e in ipairs(always) do
+        local cell = routeCells[i]
+        if cell then
+            cell.encounter = { kind = e.kind, id = e.id, name = e.name,
+                loot = e.loot, conversation = e.conversation }
+        end
+    end
+    self.encounterCount = #always
+
+    return self
+end
+
 function Overworld:inBounds(x, y)
     return x >= 1 and y >= 1 and x <= self.cols and y <= self.rows
 end
@@ -628,7 +706,8 @@ function Overworld:placeEncounters(params)
             chosen = chosen or byDist[i]
             if chosen then
                 i = i + 1
-                chosen.encounter = { kind = e.kind, id = e.id, name = e.name }
+                chosen.encounter = { kind = e.kind, id = e.id, name = e.name,
+                                     loot = e.loot, conversation = e.conversation }
                 placed[#placed + 1] = chosen
             end
         end
@@ -641,7 +720,8 @@ function Overworld:placeEncounters(params)
         local c = cands[next_]
         next_ = next_ + 1
         if c then
-            c.encounter = { kind = e.kind, id = e.id, name = e.name }
+            c.encounter = { kind = e.kind, id = e.id, name = e.name,
+                            loot = e.loot, conversation = e.conversation }
             placed[#placed + 1] = c
         end
     end

@@ -130,13 +130,21 @@ function Party.new(opts)
     self.onClose = opts.onClose
     self.player = opts.player
     self.title = opts.title or "Loadout"
+    -- Fired once whenever a stash item is equipped onto a member (a click/confirm or a drag that
+    -- lands in the grid). The flight tutorial uses it to clear the "equip an item" coach the moment
+    -- the lesson is done, rather than waiting for the panel to close.
+    self.onEquip = opts.onEquip
 
-    -- Opt-in extras, all off for the shipped Loadout screen (states/hub.lua, states/game.lua):
-    --   stats    add the blueprint field editor tab (states/debug_editor.lua)
+    -- Opt-in / opt-out extras, at their shipped defaults for the Loadout screen (states/hub.lua,
+    -- states/game.lua):
+    --   stats    (opt-in) add the blueprint field editor tab (states/debug_editor.lua)
+    --   tactics  (opt-out, default on) the rule-editor tab; the flight tutorial passes false so the
+    --            Tactics tab stays hidden until the player has reached the hub city and it is taught
     --   persist  false to skip the Player.save() on close -- a synthetic player must never be able
     --            to overwrite the real save
     --   filters  a chip strip above the stash; see Party:drawFilters
-    self.modes = { "loadout", "tactics" }
+    self.modes = { "loadout" }
+    if opts.tactics ~= false then self.modes[#self.modes + 1] = "tactics" end
     if opts.stats then self.modes[#self.modes + 1] = "stats" end
     self.persist = opts.persist ~= false
     self.filters = opts.filters
@@ -414,6 +422,20 @@ function Party:refreshStash()
     self.pool:refresh()
 end
 
+-- A screen-space rect over the stash's FIRST ROW OF ITEMS, for the overworld tutorial to pin its
+-- "equip an item" coach bubble to (states/game.lua). The stash is where the just-found loot lands and
+-- where an equip begins, so it is the thing to point at. Framed to the items actually present (not the
+-- pool's full width), so a half-empty stash still centres the bubble over the loot rather than the
+-- empty cells to its right. Nil-guarded for a frame before layout has run.
+function Party:coachAnchor()
+    local p = self.pool
+    if not p then return nil end
+    local x, y, w, h = p:cellRect(1) -- top-left cell, where the first item sits
+    local inRow = math.min(math.max(p:count(), 1), p.cols)
+    local lastX = p:cellRect(inRow) -- x of the last filled cell in the first row
+    return { x = x, y = y, w = (lastX + w) - x, h = h }
+end
+
 -- STASH -> current grid cell. Index into the pool maps 1:1 to the stash, since the pool was fed
 -- player.stash directly.
 function Party:placeIntoGrid(stashIndex, cell)
@@ -426,6 +448,7 @@ function Party:placeIntoGrid(stashIndex, cell)
     char.inventory[cell] = incoming
     if displaced then Player.addToStash(self.player, displaced) end
     self:refreshStash()
+    if self.onEquip then self.onEquip() end -- a stash item just moved onto a member
 end
 
 function Party:stashIndexOf(item)
@@ -493,7 +516,8 @@ function Party:commitStashToGrid(stashItem, cell, count)
         end
     end
 
-    stashItem.quantity = stashItem.quantity - (count - remaining)
+    local moved = count - remaining
+    stashItem.quantity = stashItem.quantity - moved
     if stashItem.quantity <= 0 then
         local index = self:stashIndexOf(stashItem)
         if index then Player.takeFromStash(self.player, index) end
@@ -501,6 +525,7 @@ function Party:commitStashToGrid(stashItem, cell, count)
 
     self.pool:cancelPickup()
     self:refreshStash()
+    if moved > 0 and self.onEquip then self.onEquip() end -- some of the stack reached the grid
 end
 
 function Party:openQuantityPopup(stashItem, cell)

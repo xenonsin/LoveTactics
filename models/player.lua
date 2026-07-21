@@ -88,11 +88,18 @@ function Player.addToStash(player, item)
 end
 
 -- Instantiate `itemId` and put it in the stash. The one path by which the player is GIVEN an item
--- rather than buying it: a quest's `rewardItems` (models/quest.lua), which is how a general's relic
--- reaches the bag. Returns the instance, so a caller can name it in a reward summary.
+-- rather than buying it: a quest's `rewardItems` (models/quest.lua), a chest, an event choice. This
+-- keeps it the single place a "received an item" notification can hook (Player.onItemGranted),
+-- without a purchase or an inventory reshuffle -- which go through addToStash -- ever firing it.
+-- Returns the instance, so a caller can name it in a reward summary.
+--
+-- `Player.onItemGranted` is an optional observer (item -> ()) the UI layer sets once at startup
+-- (main.lua wires it to ui/notification.lua). Nil in headless tests, so grantItem stays pure there.
+Player.onItemGranted = nil
 function Player.grantItem(player, itemId)
     local item = Item.instantiate(itemId)
     Player.addToStash(player, item)
+    if Player.onItemGranted then Player.onItemGranted(item) end
     return item
 end
 

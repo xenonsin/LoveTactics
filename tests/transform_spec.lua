@@ -35,14 +35,14 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
-            knight.char.stats.health.current = 61 -- take a wound first
+            knight.char.stats.health.current = 43 -- take a wound first
 
             Transform.apply(c, knight, "character_pig")
             assert(knight.char.id == "character_pig", "the knight is wearing a pig")
             -- The pool is the continuous thing: a pigged knight has a KNIGHT's health, not a pig's.
             -- This is the rule that stops polymorph being an execute.
-            assert(knight.char.stats.health.max == 100, "the original's max health came across")
-            assert(knight.char.stats.health.current == 61, "and its current, wound included")
+            assert(knight.char.stats.health.max == 70, "the original's max health came across")
+            assert(knight.char.stats.health.current == 43, "and its current, wound included")
             assert(knight.char.stats.movement == 4, "but the pig's own flat stats apply")
         end,
     },

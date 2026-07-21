@@ -464,8 +464,9 @@ return {
 
             assert(#c.units == 2, "no shades before the first threshold")
 
-            -- 600 health; ~186 lands after its 14 defense, leaving it near 69%: one threshold crossed.
-            Combat.dealFlatDamage(c, boss, 200, nil, "test")
+            -- 420 health; 120 lands after its 20 defense (14 of its own plus what it wears), leaving
+            -- it at 71%: one threshold crossed.
+            Combat.dealFlatDamage(c, boss, 140, nil, "test")
             assert(boss.alive, "it should still be standing")
             assert(#c.units == 3, "crossing 75% should call up exactly one shade")
 
@@ -474,7 +475,8 @@ return {
             assert(shade.side == "enemy", "and fights on its side")
 
             -- One enormous blow can cross two thresholds at once, and owes a shade for each.
-            Combat.dealFlatDamage(c, boss, 300, nil, "test")
+            -- 210 lands, taking it from 300 to 90: past 50% (210) and 25% (105) in one blow.
+            Combat.dealFlatDamage(c, boss, 230, nil, "test")
             assert(boss.alive, "still alive at ~21%")
             assert(#c.units == 5, "a blow past both 50% and 25% should call up two more")
 

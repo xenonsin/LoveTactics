@@ -3,7 +3,7 @@
 -- most-used class. List only the stats that grow; health/mana/stamina land on the resource's `.max`.
 -- See data/growth/ for the full set and docs/adding-content.md for the growth system.
 return {
-    health = 12,
+    health = 6,
     defense = 2,
     magicDefense = 1,
     damage = 1,

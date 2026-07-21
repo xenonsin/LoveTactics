@@ -116,7 +116,9 @@ return {
             b.char.stats.stamina.current = swing
             local promised = soleCounter(c, k, b)
             assert(promised, "with a swing's worth back, the answer is on again")
-            assert(promised.cost and promised.cost.amount == swing,
+            -- A LIST of pools, since the answering weapon may draw on several (Trait.answerCost); an
+            -- iron sword names exactly one, and the promise quotes it.
+            assert(promised.cost and #promised.cost == 1 and promised.cost[1].amount == swing,
                 "and the promise names what answering will cost")
 
             -- Two answers already thrown this round: the next is priced at quadruple, which this pool
@@ -125,7 +127,7 @@ return {
             assert(soleCounter(c, k, b) == nil, "an answer priced beyond the pool is never promised")
             b.char.stats.stamina.current = swing * 4
             local dearer = soleCounter(c, k, b)
-            assert(dearer and dearer.cost.amount == swing * 4, "and the promise quotes the escalated price")
+            assert(dearer and dearer.cost[1].amount == swing * 4, "and the promise quotes the escalated price")
         end,
     },
     {

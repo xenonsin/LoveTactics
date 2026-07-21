@@ -1,4 +1,4 @@
--- Combat animation controller. The combat model (models/combat.lua) resolves an action instantly
+﻿-- Combat animation controller. The combat model (models/combat.lua) resolves an action instantly
 -- and headlessly; it only records small plain-data cues (Combat.pushFx -> combat.fx). This view-side
 -- controller turns a drained cue list into the reactions that make an exchange legible: a damage
 -- number floats up, the struck unit shakes + flashes and its HP bar drains smoothly, the attacker
@@ -38,6 +38,9 @@ local BEAT_GAP    = 0.38    -- pause between an exchange's beats: a counter land
 local HP_SPEED    = 9        -- exponential drain rate of the shown HP toward the real value
 local CARD_SHAKE_MAG = 5     -- px the struck unit's turn-strip card rumbles (synced to the sprite shake)
 local CHARGE_STEP = 0.12     -- seconds per tile a forced rush (Charge) slides -- brisker than a walk step
+local SHOVE_HOLD  = 0.22     -- a shove (knockback) stands its ground this long before travelling, so the
+                             -- blow's damage number reads over the tile the target was struck ON. Matched
+                             -- to FLASH_TIME: the hit finishes flashing, then the body goes.
 
 local function easeOut(t) return 1 - (1 - t) * (1 - t) end
 
@@ -92,6 +95,7 @@ function CombatFx:ingest(events, actor)
             -- batch, while a counter-striker leans off its own cue's `attacker` inside playBeat.
             self.pending[#self.pending + 1] = { t = (i - 1) * BEAT_GAP, events = byBeat[b] }
             self:hold(byBeat[b], 1)
+            self:pinSlides(byBeat[b])
         end
     end
 end
@@ -107,6 +111,30 @@ function CombatFx:hold(events, delta)
         if e.type == "damage" or e.type == "heal" or e.type == "death" then
             local n = (self.held[e.unit] or 0) + delta
             self.held[e.unit] = n > 0 and n or nil
+        end
+    end
+end
+
+-- The positional twin of :hold, for the shoves a withheld cue list is sitting on. A knockback is
+-- resolved in the model the instant the exchange is, so the target's unit.x/unit.y ALREADY read as the
+-- far tile while the cue that shoves it there waits its turn -- for BEAT_GAP if it is a counter, or for
+-- a whole approach walk if the blow was carried (states/battle.lua holdLanding). Left alone the board
+-- draws the body standing on its destination for that entire wait, and then the cue plays and yanks it
+-- back to its origin to glide across a second time: it teleports, THEN animates.
+--
+-- So the sprite is pinned to its origin here, the moment we learn a shove is coming, with an unbounded
+-- hold. When the cue finally plays, playBeat's ordinary forcedSlide re-arms it from that same origin --
+-- seamless, since that is where the sprite already stands -- and it travels exactly once.
+--
+-- Deliberately ungated (unlike a live forced slide): a pin is a unit standing still, and must never be
+-- a reason the turn hand-off waits. Only the real slide that follows it gates.
+function CombatFx:pinSlides(events)
+    for _, e in ipairs(events) do
+        if e.type == "slide" then
+            local dist = math.abs(e.fromX - e.unit.x) + math.abs(e.fromY - e.unit.y)
+            if dist > 0 then
+                self:setSlide(e.unit, e.fromX, e.fromY, dist * CHARGE_STEP, false, nil, nil, math.huge)
+            end
         end
     end
 end
@@ -137,7 +165,10 @@ function CombatFx:playBeat(events, actor)
         elseif e.type == "heal" then
             self:floatText(e.unit, "+" .. tostring(e.amount), { 0.55, 0.95, 0.60 })
         elseif e.type == "slide" then
-            self:forcedSlide(e.unit, e.fromX, e.fromY)
+            -- If this cue was pinned while it waited (see :pinSlides) the sprite is already sitting on
+            -- its origin tile, so arming the real slide here picks up exactly where the pin left off
+            -- rather than jumping back to it.
+            self:forcedSlide(e.unit, e.fromX, e.fromY, e.hold and SHOVE_HOLD or nil)
         elseif e.type == "death" then
             self:reaction(e.unit).dying = DEATH_TIME
         end
@@ -202,21 +233,27 @@ end
 -- drawn, so the sprite is crossing from one middle-of-the-route tile to the next while unit.x/unit.y
 -- already read as the far end. Without a stated destination every step would be measured against
 -- that far end and the sprite would snap there on the first one.
-function CombatFx:setSlide(unit, fromX, fromY, dur, gate, toX, toY)
+-- `delay` holds the sprite still on its ORIGIN tile that long before the travel begins (see
+-- SHOVE_HOLD). The unit is pinned by the same offset the slide starts from, so a held slide simply
+-- looks like a unit that has not moved yet -- which is the point: the damage it was just dealt floats
+-- over the tile it was standing on, and only then is it thrown.
+function CombatFx:setSlide(unit, fromX, fromY, dur, gate, toX, toY, delay)
     local r = self:reaction(unit)
     r.slideFromX, r.slideFromY = fromX, fromY
     r.slideToX, r.slideToY = toX, toY
     r.slideT, r.slideDur = dur, dur
     r.slideGate = gate or nil
+    r.slideHold = (delay and delay > 0) and delay or nil
 end
 
--- A forced multi-tile slide (Charge): `unit` glides from (fromX, fromY) to where the model already
--- put it, over a duration scaled to the tiles crossed so a longer drive takes longer. Gated, so the
--- rush finishes before the turn hands off.
-function CombatFx:forcedSlide(unit, fromX, fromY)
+-- A forced multi-tile slide (Charge, knockback): `unit` glides from (fromX, fromY) to where the model
+-- already put it, over a duration scaled to the tiles crossed so a longer drive takes longer. Gated,
+-- so the rush finishes before the turn hands off. `delay` (a shove) stalls the start; a charge, whose
+-- damage lands at the END of the run, takes none and leaves at once.
+function CombatFx:forcedSlide(unit, fromX, fromY, delay)
     local dist = math.abs(fromX - unit.x) + math.abs(fromY - unit.y)
     if dist == 0 then return end
-    self:setSlide(unit, fromX, fromY, dist * CHARGE_STEP, true)
+    self:setSlide(unit, fromX, fromY, dist * CHARGE_STEP, true, nil, nil, delay)
 end
 
 -- ---------------------------------------------------------------------------
@@ -248,7 +285,12 @@ function CombatFx:update(dt)
         if r.castT then r.castT = r.castT - dt; if r.castT <= 0 then r.castT = nil end end
         if r.shakeT then r.shakeT = r.shakeT - dt; if r.shakeT <= 0 then r.shakeT = nil end end
         if r.flashT then r.flashT = r.flashT - dt; if r.flashT <= 0 then r.flashT = nil end end
-        if r.slideT then
+        if r.slideHold then
+            -- Held at the origin: burn the stall down first, and leave slideT untouched so the sprite
+            -- keeps drawing on the tile it started from.
+            r.slideHold = r.slideHold - dt
+            if r.slideHold <= 0 then r.slideHold = nil end
+        elseif r.slideT then
             r.slideT = r.slideT - dt
             if r.slideT <= 0 then
                 r.slideT = nil; r.slideDur = nil; r.slideGate = nil
@@ -313,21 +355,29 @@ end
 
 -- Sprite draw modifiers for `unit` at tile size `size`: pixel offset (walk slide + attack lunge +
 -- hit shake), a 0..1 white/red flash, and a 0..1 death fade (0 = untouched, 1 = fully faded out).
+-- Pixel offset of `unit`'s in-flight slide from the tile the model has it on, or 0,0 when it is not
+-- travelling. Split out from spriteState because the damage numbers need this ONE part of the sprite's
+-- displacement and none of the rest: a floater rides along with a shoved body, but must not inherit
+-- the hit shake or the attack lunge (a number that jitters is a number you can't read).
+function CombatFx:slideOffset(unit, size)
+    local r = self.units[unit]
+    if not (r and r.slideT and r.slideDur) then return 0, 0 end
+    -- Held at the origin (a shove waiting on its damage number): no progress yet, e pins to 0.
+    local e = r.slideHold and 0 or easeOut(1 - r.slideT / r.slideDur)
+    -- Where the step lands, which is usually just where the unit already is. The offset is the
+    -- gap between the eased point along this step and the model's tile: interpolate from -> to,
+    -- then measure that back against unit.x/unit.y (see setSlide). With to == unit.x this is
+    -- exactly the old (from - unit.x) * (1 - e).
+    local toX = r.slideToX or unit.x
+    local toY = r.slideToY or unit.y
+    return ((r.slideFromX - toX) * (1 - e) + (toX - unit.x)) * size,
+           ((r.slideFromY - toY) * (1 - e) + (toY - unit.y)) * size
+end
+
 function CombatFx:spriteState(unit, size)
     local r = self.units[unit]
     if not r then return 0, 0, 0, 0 end
-    local offX, offY = 0, 0
-    if r.slideT and r.slideDur then
-        local e = easeOut(1 - r.slideT / r.slideDur)
-        -- Where the step lands, which is usually just where the unit already is. The offset is the
-        -- gap between the eased point along this step and the model's tile: interpolate from -> to,
-        -- then measure that back against unit.x/unit.y (see setSlide). With to == unit.x this is
-        -- exactly the old (from - unit.x) * (1 - e).
-        local toX = r.slideToX or unit.x
-        local toY = r.slideToY or unit.y
-        offX = offX + ((r.slideFromX - toX) * (1 - e) + (toX - unit.x)) * size
-        offY = offY + ((r.slideFromY - toY) * (1 - e) + (toY - unit.y)) * size
-    end
+    local offX, offY = self:slideOffset(unit, size)
     if r.lungeT then
         local s = math.sin((1 - r.lungeT / LUNGE_TIME) * math.pi) -- 0 at ends, 1 mid: out and back
         offX = offX + r.lungeDx * LUNGE_DIST * size * s
@@ -403,6 +453,10 @@ function CombatFx:drawFloaters(map)
     for _, f in ipairs(self.floaters) do
         local u = f.unit
         local wx, wy = map:cellToPixel(u.x, u.y)
+        -- Ride the unit's slide: a number floating off a shoved body stays over the body, and stays
+        -- over the tile it was STRUCK on for as long as the shove is held there (see setSlide).
+        local sx, sy = self:slideOffset(u, size)
+        wx, wy = wx + sx, wy + sy
         local p = f.age / f.life
         local a = 1 - p * p -- hold, then fade toward the end
         local font = f.big and self.bigFont or self.font
@@ -419,3 +473,5 @@ function CombatFx:drawFloaters(map)
 end
 
 return CombatFx
+
+

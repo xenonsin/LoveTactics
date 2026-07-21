@@ -200,6 +200,20 @@ return {
     ["line.conversation_wrath_intro.7"] = { en = "Honor. The crowd will cheer it and forget it by morning.", ja = "誇りか。観衆は歓声を上げ、朝には忘れるだろう。" },
     ["line.conversation_wrath_intro.8"] = { en = "Then let us be quick about it. The Light is watching, even here.", ja = "では手短に済ませよう。光はここでも見ておられる。" },
     ["line.conversation_wrath_intro.9"] = { en = "Watching, and unimpressed. Open the gate.", ja = "見ていて、しかも呆れているがな。門を開けろ。" },
+    ["line.flight_event_shrine.1"] = { en = "A wayside shrine, still standing where everything around it burned.", ja = "" },  -- TODO
+    ["line.flight_event_shrine.2"] = { en = "Someone tended it to the last. It feels wrong to walk straight past. Choose...", ja = "" },  -- TODO
+    ["line.flight_event_shrine.3"] = { en = "Kneel and pray for the road ahead.", ja = "" },  -- TODO
+    ["line.flight_event_shrine.4"] = { en = "Take the traveller's offering left at its foot.", ja = "" },  -- TODO
+    ["line.flight_event_shrine.5"] = { en = "...steadier. Whatever waits up the road, my hands are steadier for it.", ja = "" },  -- TODO
+    ["line.flight_event_shrine.6"] = { en = "Flasks, wrapped against the damp -- left for whoever came after. That is us now. Carry them.", ja = "" },  -- TODO
+    ["line.flight_event_shrine.7"] = { en = "The capital, then. Keep moving.", ja = "" },  -- TODO
+    ["line.flight_event_survivor.1"] = { en = "Hold. Someone's in the brush -- hurt, and trying not to be heard.", ja = "" },  -- TODO
+    ["line.flight_event_survivor.2"] = { en = "Easy. We're not with the things that did this. Choose...", ja = "" },  -- TODO
+    ["line.flight_event_survivor.3"] = { en = "Ask which way the demons went.", ja = "" },  -- TODO
+    ["line.flight_event_survivor.4"] = { en = "Share what little we carry, and press on.", ja = "" },  -- TODO
+    ["line.flight_event_survivor.5"] = { en = "...north, along the ridge, in numbers. Good. We take the low road, then.", ja = "" },  -- TODO
+    ["line.flight_event_survivor.6"] = { en = "They pressed a torch on us for the kindness -- said the low road is dark by dusk. Take it.", ja = "" },  -- TODO
+    ["line.flight_event_survivor.7"] = { en = "Go carefully. The capital's walls still stand -- reach them.", ja = "" },  -- TODO
     ["line.prologue_arena.1"] = { en = "Fresh blood! The crowd does love a debut -- win or die, they'll remember it either way.", ja = "" },  -- TODO
     ["line.prologue_arrival.1"] = { en = "Refugees. The city's full and the coin's thin. Want to eat? The Colosseum pays anyone who can bleed for a crowd.", ja = "" },  -- TODO
     ["line.prologue_arrival.2"] = { en = "Sport, for coin. It is not the war we came to fight.", ja = "" },  -- TODO
@@ -229,6 +243,9 @@ return {
     ["line.prologue_village.1"] = { en = "Look at it, {name}. The mill, the eastern row, the well we drew from this morning -- all of it, inside a night.", ja = "" },  -- TODO
     ["line.prologue_village.2"] = { en = "This is not a raid. The Demon Lord's army empties whole valleys like this and moves on before the ash is cold.", ja = "" },  -- TODO
     ["line.prologue_village.3"] = { en = "Two of them have seen us, and they will not come to you. Watch how I take mine.", ja = "" },  -- TODO
+    ["line.tutorial_flight.1"] = { en = "Walk to the chest ahead -- use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
+    ["line.tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
+    ["line.tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
     ["line.tutorial_village.1"] = { en = "Like that. Now yours, {name} -- close the ground and put it down.", ja = "" },  -- TODO
     ["line.tutorial_village.10"] = { en = "{select} on the lit tile to move there.", ja = "" },  -- TODO
     ["line.tutorial_village.11"] = { en = "{select} on Clear Out in your grid to ready it.", ja = "" },  -- TODO
@@ -281,6 +298,8 @@ return {
     ["title.bastion_what_the_bastion_knows_outro"] = { en = "A Useful Saint", ja = "" },  -- TODO
     ["title.colosseum_debut_confront"] = { en = "The Card's Opener", ja = "" },  -- TODO
     ["title.conversation_wrath_intro"] = { en = "Debut on the Sand", ja = "砂上のデビュー" },
+    ["title.flight_event_shrine"] = { en = "The Roadside Shrine", ja = "" },  -- TODO
+    ["title.flight_event_survivor"] = { en = "A Voice from the Brush", ja = "" },  -- TODO
     ["title.prologue_arena"] = { en = "Debut on the Sand", ja = "" },  -- TODO
     ["title.prologue_arrival"] = { en = "The Capital", ja = "" },  -- TODO
     ["title.prologue_flee"] = { en = "Ashes", ja = "" },  -- TODO
@@ -288,5 +307,6 @@ return {
     ["title.prologue_ruins"] = { en = "The Road", ja = "" },  -- TODO
     ["title.prologue_victory"] = { en = "The Gatekeeper", ja = "" },  -- TODO
     ["title.prologue_village"] = { en = "The Lane", ja = "" },  -- TODO
+    ["title.tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO
 }

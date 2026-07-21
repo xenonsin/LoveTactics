@@ -92,6 +92,7 @@ not a weapon, it is a `+n`. That is what the forge is for. Every named weapon th
 |---|---|---|
 | `weapon_riposte_blade` | sword | Swaps Parry for **Riposte** — the blow is *negated*, not traded, and answered anyway. |
 | `weapon_demon_bane` | sword | Its blows carry the `holy` tag, which demonic flesh resists in the negative. |
+| `weapon_crescent_blade` | sword | Looses the cut instead of landing it: a **3-tile line** of `magical` damage down the aimed direction, so the blade never reaches what it kills and armor never gets a say. Paid for out of **two pools at once** (see below) — the first weapon in the game that is. |
 | `weapon_butchers_wedge` | axe | **`frenzy`**: every extra body in the arc raises what all of them take. Poor against one foe — the crowd is its damage stat. |
 | `weapon_crimson_greataxe` | axe | **`lifesteal`**: drinks a third of everything the arc opens, so it heals most when most outnumbered. |
 | `weapon_kingsblood_dagger` | dagger | Half the swing again through a foe **already bleeding**, and its own wound runs deeper (5, not 3). It takes what is already open. |
@@ -140,6 +141,35 @@ it for free. Prefer one over hand-rolling the same logic in an `effect`.
 | `requiresSight` | Needs a clear line (`Combat.hasLineOfSight`); terrain cover blocks it. |
 | `requiresAdjacent = { type, tag }` | Only usable with a matching item beside it in the 3×3 grid. |
 | `consumesItem` | Spends one of the stack on use. |
+
+### Paying for a cast out of more than one pool
+
+`activeAbility.cost` may name **one** pool or **several**, and the two forms are the same field:
+
+```lua
+cost = { stat = "stamina", amount = 8 }        -- one pool (nearly everything)
+cost = { { stat = "mana",    amount = 4 },     -- several, ALL paid on every use
+         { stat = "stamina", amount = 6 } }
+```
+
+`Item.costs` normalizes both to a list, and everything downstream — pricing (`Combat.abilityCosts`),
+the affordability gate (`costBlock`), the spend (`Combat.spendCosts`), the answer price
+(`Trait.answerCost`) and all four places the UI draws a cost — iterates that list. So a multi-pool
+weapon cannot be affordable in one place and unaffordable in another, and no data file needs to know
+which shape it is written in.
+
+Three consequences worth knowing, all of which fall out rather than being special-cased:
+
+- **It is all-or-nothing.** Every pool must cover its share or the cast is refused, and the message
+  names the first that fell short. A weapon spending mana and stamina is stopped by an empty arm as
+  surely as by an empty head.
+- **Any mana in the price makes it sorcery.** `Combat.isMagicItem`, the silence gate, and the
+  Silence-interrupts-a-channel rule all ask "does this draw on mana *at all*", so a half-stamina
+  working is still gagged by a Silence.
+- **An answer costs both.** Since an answer is billed the answering weapon's own `cost`
+  (`Trait.answerCost`), a `weapon_crescent_blade` parry drains mana and stamina together, with the
+  round's escalation applied to each. A blade that guards a doorway on two pools empties faster than
+  one that guards it on one — which is the price of the reach.
 
 `frenzy` and `lifesteal` both fold in at a single funnel — `castAmount` and `adjacencyAura`
 respectively (`models/combat.lua`) — which is what keeps the number a tooltip promises identical to

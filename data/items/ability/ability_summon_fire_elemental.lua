@@ -20,7 +20,7 @@ return {
         target = "tile",
         range = 2,
         speed = 6,
-        channel = 2, -- the binding is now WOUND UP: two ticks of incantation before the elemental forms
+        channel = 4, -- the binding is now WOUND UP: four ticks of incantation before the elemental forms
         reserve = { stat = "mana", percent = 0.25 },
         effect = function(fx)
             local elem = fx.summon("character_fire_elemental", fx.tx, fx.ty, {

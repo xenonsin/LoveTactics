@@ -50,6 +50,7 @@ local Transform = require("models.transform")
 local Trait = require("models.trait")
 local Wall = require("models.wall")
 local Character = require("models.character")
+local Item = require("models.item") -- for Item.costs: the one place an ability's costs are normalized
 
 local Combat = {}
 
@@ -385,11 +386,23 @@ function Combat.initiative(char)
         -- DEFAULT_SPEED), so a bare unit's timing matches its always-available basic attack.
         avg = (char.unarmed and char.unarmed.activeAbility.speed) or Combat.DEFAULT_SPEED
     else
-        local sum = 0
+        local sum, n = 0, 0
         for _, item in ipairs(items) do
-            sum = sum + (item.activeAbility.speed or Combat.DEFAULT_SPEED)
+            -- A signature gated behind an in-battle requirement (an `unlock`) is not a move the unit
+            -- can make at the start, so it doesn't set the OPENING tempo -- carrying a locked ultimate
+            -- never silently slows a unit's first turn. An always-available ability counts as before.
+            if not item.activeAbility.unlock then
+                sum = sum + (item.activeAbility.speed or Combat.DEFAULT_SPEED)
+                n = n + 1
+            end
         end
-        avg = sum / #items
+        -- Everything it carries is a locked signature: fall back to the unarmed basic-attack tempo,
+        -- the same floor a unit with no ability items at all uses.
+        if n == 0 then
+            avg = (char.unarmed and char.unarmed.activeAbility.speed) or Combat.DEFAULT_SPEED
+        else
+            avg = sum / n
+        end
     end
     return avg - Combat.speed(char)
 end
@@ -895,6 +908,109 @@ function Combat.itemCooldown(unit, item)
     return best
 end
 
+-- ---------------------------------------------------------------------------
+-- Per-unit event tallies & signature unlocks. A signature ability may gate itself behind a
+-- requirement fulfilled DURING the battle -- land N blows, heal N times, take N hits, live to a
+-- later turn -- rather than (or as well as) a resource cost. Each qualifying event is counted here
+-- on the unit that caused it, cumulative for the battle; the unit wrapper is rebuilt each
+-- Combat.new, so every tally starts at 0 and resets for free. Read by Combat.unlockMet to open a
+-- locked ability, and by the item grid to show its progress. The event names are a small vocabulary
+-- an ability's `unlock.event` draws from, tallied at the seams where each already passes:
+--   hitDealt / damageDealt  -- landed a damaging blow          (Combat.dealDamage)
+--   hitTaken / damageTaken  -- ate a blow and lived            (raiseAnswer)
+--   kill                    -- felled a foe                    (Combat.dealFlatDamage kill branch)
+--   allyDown                -- an ally of this unit fell        (killUnit)
+--   healDone                -- mended someone                  (the cast's fx.heal)
+--   cast                    -- committed to an ability         (Combat.useItem)
+--   turnTaken               -- began a turn                    (Combat.startTurn)
+-- ---------------------------------------------------------------------------
+
+-- Add `n` (default 1) to `unit`'s running count of `event`. Nil-safe on both the unit and its
+-- lazily-created table, so a seam can call it without checking whether the unit tracks anything yet.
+function Combat.tally(unit, event, n)
+    if not unit then return end
+    unit.tally = unit.tally or {}
+    unit.tally[event] = (unit.tally[event] or 0) + (n or 1)
+end
+
+-- How many of `event` `unit` has racked up this battle (0 if none).
+function Combat.tallyCount(unit, event)
+    return (unit and unit.tally and unit.tally[event]) or 0
+end
+
+-- Verb fragments for the auto-generated lock label, when an unlock declares no `text` of its own.
+local UNLOCK_LABELS = {
+    hitDealt = "Land", damageDealt = "Deal", hitTaken = "Weather", damageTaken = "Soak",
+    kill = "Fell", allyDown = "Lose", healDone = "Mend", cast = "Cast", turnTaken = "Hold",
+}
+
+-- Evaluate a raw `unlock` descriptor for `unit`, with per-`key` baseline bookkeeping. `key` is
+-- whatever OWNS the unlock -- an item instance for an active signature (gated through
+-- Combat.itemBlockReason), a trait instance for a reactive one (gated from its hook via ctx.unlockMet)
+-- -- so the two never share a baseline. Returns `met`, plus the current/target counts for a progress
+-- badge (nil counts for a board-state `when` predicate, which is a yes/no rather than a tally). Pure:
+-- safe for the item scan, previews and the AI. A nil unlock is always met. `combat` is optional --
+-- only a `when` predicate reading the board needs it; count-based unlocks ignore it.
+function Combat.unlockReady(unit, unlock, key, combat)
+    if not unlock then return true end
+    -- A `once` signature that has already opened stays open the rest of the battle.
+    if unlock.once and unit and unit.unlockOpen and unit.unlockOpen[key] then return true, 1, 1 end
+    -- A board-state predicate (HP threshold, an adjacent foe): not a count, just a yes/no.
+    if unlock.when then
+        return unlock.when(unit, combat) and true or false
+    end
+    local count = unlock.count or 1
+    local base = (unit and unit.unlockBase and unit.unlockBase[key]) or 0
+    local progress = math.max(0, Combat.tallyCount(unit, unlock.event) - base)
+    return progress >= count, math.min(progress, count), count
+end
+
+-- Has `unit` met the unlock requirement on `item`'s ability? Thin wrapper over Combat.unlockReady
+-- keyed by the item instance -- the read Combat.itemBlockReason and the grid badge use.
+function Combat.unlockMet(unit, item, combat)
+    local ab = item and item.activeAbility
+    return Combat.unlockReady(unit, ab and ab.unlock, item, combat)
+end
+
+-- The label a locked ability's grid badge and tooltip show, with progress. Uses the unlock's own
+-- `text` when given, else builds one from the event verb and count. Returns `label, met`.
+function Combat.unlockLabel(unit, item, combat)
+    local ab = item and item.activeAbility
+    local unlock = ab and ab.unlock
+    if not unlock then return nil, true end
+    local met, cur, total = Combat.unlockMet(unit, item, combat)
+    local base = unlock.text
+    if not base then
+        if unlock.when then base = "Not ready"
+        else base = string.format("%s %d", UNLOCK_LABELS[unlock.event] or unlock.event, unlock.count or 1) end
+    end
+    if total then return string.format("%s (%d/%d)", base, cur or 0, total), met end
+    return base, met
+end
+
+-- Fire-time bookkeeping for a raw unlock, keyed like Combat.unlockReady: a repeatable unlock
+-- rebaselines to the current tally (so the requirement must be met AGAIN before the next use -- the
+-- recharge feel), while a `once` unlock latches open for the rest of the battle. A `when`-gated or
+-- absent unlock needs nothing. The shared core of Combat.unlockConsume (and ctx.unlockConsume).
+function Combat.unlockSpend(unit, unlock, key)
+    if not unlock or unlock.when then return end
+    if unlock.once then
+        unit.unlockOpen = unit.unlockOpen or {}
+        unit.unlockOpen[key] = true
+    else
+        unit.unlockBase = unit.unlockBase or {}
+        unit.unlockBase[key] = Combat.tallyCount(unit, unlock.event)
+    end
+end
+
+-- Re-lock (or latch open) an active signature after `unit` commits to using `item`. Keyed by the
+-- item instance. Called from Combat.useItem after the cost is paid, so it never fires on a refused
+-- or previewed action.
+function Combat.unlockConsume(unit, item)
+    local ab = item and item.activeAbility
+    Combat.unlockSpend(unit, ab and ab.unlock, item)
+end
+
 -- Mana regenerated per tick by an Arcane Reservoir bearer -- the lone exception to "mana never
 -- regenerates". Everyone else's rate is zero, so the global rule holds; the trait is what bends it.
 Combat.ARCANE_REGEN = 1
@@ -1226,6 +1342,10 @@ function Combat.startTurn(combat)
     -- price, the second at double and the third at quadruple, and runs itself dry holding the
     -- doorway -- the job the old per-trait recharge did, but visible in a pool the player can watch.
     if unit then unit.answersThisRound = 0 end
+    -- Coming around to act is a `turnTaken` -- what a signature gated "not on turn 1" or on outlasting
+    -- the opening counts (see Combat.tally). Counted before the turn's own actions, so its own cast
+    -- can't be the turn that unlocked it.
+    if unit then Combat.tally(unit, "turnTaken", 1) end
     if unit then Status.onTurnStart(combat, unit) end
     return unit
 end
@@ -1862,15 +1982,17 @@ local function signDominant(dx, dy)
     return stepToward(0, 0, dx, dy)
 end
 
--- Can `unit` be shoved onto (x, y)? Returns ok, blocker -- where a nil blocker on a failed step
--- means the way is barred by the map itself (an edge, or impassable terrain).
+-- Can `unit` be shoved onto (x, y)? Returns ok, blocker, kind -- where `kind` is "unit" or "wall"
+-- and a nil blocker on a failed step means the way is barred by the map itself (an edge, or
+-- impassable terrain), which is unbreakable and so takes nothing back.
 local function canShoveInto(combat, x, y)
     local row = combat.arena and combat.arena.tiles and combat.arena.tiles[y]
     local cell = row and row[x]
     if not (cell and cell.walkable) then return false, nil end
-    if Wall.blocksAt(combat, x, y) then return false, nil end -- a conjured wall bars the shove
+    -- A conjured wall bars the shove -- and, unlike the terrain, it can be slammed apart.
+    if Wall.blocksAt(combat, x, y) then return false, Wall.at(combat, x, y), "wall" end
     local blocker = Combat.unitAt(combat, x, y)
-    if blocker then return false, blocker end
+    if blocker then return false, blocker, "unit" end
     return true, nil
 end
 
@@ -1906,10 +2028,34 @@ function Combat.knockbackTile(combat, source, target, distance)
     return x, y
 end
 
+-- Close out a shove: raise the cue that glides `target` from (oX, oY) to wherever this pass left it,
+-- and hand `moved` straight back so every exit from the loop below can return through here. `hold`
+-- asks the view to keep the target on its ORIGIN tile for a moment before it travels -- the blow that
+-- shoved it has already pushed its damage cue, and a body that leaves instantly drags the number off
+-- the tile where the hit landed. So: the number reads, THEN the target is thrown. Nothing to slide
+-- when the shove never got going (moved == 0) or when the trip killed it (the death fade plays where
+-- it fell, and a corpse does not glide).
+local function shoveDone(combat, target, oX, oY, moved)
+    if moved > 0 and target.alive then
+        Combat.pushFx(combat, { type = "slide", unit = target, fromX = oX, fromY = oY, hold = true })
+    end
+    return moved
+end
+
+-- How hard a stopped shove lands: the impact carries the momentum that had nowhere to go. A shove
+-- halted with a single tile left in it deals the plain `amount`; every FURTHER tile it was denied
+-- adds half as much again, so a body driven three tiles into a wall it never left hits at double.
+-- Rounded down, and never below the base -- an already-spent shove still bruises.
+local function impactDamage(amount, unspent)
+    if unspent <= 1 then return amount end
+    return math.floor(amount * (1 + 0.5 * (unspent - 1)))
+end
+
 -- Knock `target` up to `distance` tiles directly away from `source`. The direction is fixed at the
 -- start (a straight line, however far it travels). A shove barred by the map edge, impassable
--- terrain, or another unit stops there and hurts EVERYONE involved -- the target and, if there was
--- one, whatever it slammed into. Returns (tilesMoved, collided).
+-- terrain, a conjured wall, or another unit stops there and hurts EVERYONE involved -- the target,
+-- harder the more travel it was robbed of, and whatever it slammed into if that can be hurt at all
+-- (a unit or a wall; bare terrain shrugs it off). Returns (tilesMoved, collided).
 function Combat.knockback(combat, source, target, distance, opts)
     opts = opts or {}
     if not (target and target.alive) then return 0, false end
@@ -1917,27 +2063,43 @@ function Combat.knockback(combat, source, target, distance, opts)
     local dx, dy = signDominant(target.x - source.x, target.y - source.y)
     if dx == 0 and dy == 0 then return 0, false end
 
+    -- Where the shove starts, so the view can glide the target out of it rather than snapping it
+    -- across the lane (the model resolves the whole slide in this one atomic pass).
+    local oX, oY = target.x, target.y
+    local total = distance or 1
     local moved = 0
-    for _ = 1, (distance or 1) do
-        local ok, blocker = canShoveInto(combat, target.x + dx, target.y + dy)
+    for _ = 1, total do
+        local ok, blocker, kind = canShoveInto(combat, target.x + dx, target.y + dy)
         if not ok then
+            local hit = impactDamage(amount, total - moved)
             Combat.logEvent(combat, "damage",
                 string.format("%s slams into %s.", unitName(target),
-                    blocker and unitName(blocker) or "an obstacle"))
-            Combat.dealFlatDamage(combat, target, amount, { "physical", "impact" }, "the impact")
-            if blocker and blocker.alive then
-                Combat.dealFlatDamage(combat, blocker, amount, { "physical", "impact" }, "the impact")
+                    (kind == "unit" and unitName(blocker))
+                        or (kind == "wall" and (blocker.name or "a wall"))
+                        or "an obstacle"))
+            -- The collision reads as its own beat, landing a moment after the blow that shoved the
+            -- target into the obstacle. A pinned shove (moved == 0) never slides the body, so without
+            -- this the impact's damage number would pile onto the strike's on the very same tile and
+            -- the two would blur into one unreadable figure. Beat 1, like a counter (see pushFx).
+            Combat.beginBeat(combat)
+            Combat.dealFlatDamage(combat, target, hit, { "physical", "impact" }, "the impact")
+            -- Whatever stopped it takes the same blow back, each in its own currency.
+            if kind == "unit" and blocker.alive then
+                Combat.dealFlatDamage(combat, blocker, hit, { "physical", "impact" }, "the impact")
+            elseif kind == "wall" and blocker.alive then
+                Wall.damage(combat, blocker, hit)
             end
-            return moved, true
+            Combat.endBeat(combat)
+            return shoveDone(combat, target, oX, oY, moved), true
         end
         shoveStep(combat, target, dx, dy)
         moved = moved + 1
         Combat.logEvent(combat, "move",
             string.format("%s is knocked back to (%d, %d).", unitName(target), target.x, target.y))
         -- A trap or hazard on the tile it was driven onto may have finished it; stop the slide.
-        if not target.alive then return moved, false end
+        if not target.alive then return shoveDone(combat, target, oX, oY, moved), false end
     end
-    return moved, false
+    return shoveDone(combat, target, oX, oY, moved), false
 end
 
 -- Drag `target` toward `source` until it stands adjacent. Needs a clear line of sight (you can't
@@ -2398,6 +2560,15 @@ local function killUnit(combat, target)
         if u.alive and u.summoner == target then Combat.dismiss(combat, u) end
     end
 
+    -- Every surviving ally of the fallen banks an `allyDown` -- what a signature that answers a
+    -- comrade's death gates on (Combat.tally). A summon/decoy leaving the field is not a comrade lost,
+    -- so only a real fallen combatant (one that leaves a corpse) sends the news.
+    if not target.summoned and not target.decoyOf then
+        for _, u in ipairs(combat.units) do
+            if u.alive and u ~= target and u.side == target.side then Combat.tally(u, "allyDown", 1) end
+        end
+    end
+
     -- Ground the dead unit was holding open goes with it: cut down a banner and its square stops being
     -- hallowed on this beat. The statuses it was granting are not stripped here -- Hazard.reap ends
     -- those the moment it finds no zone underfoot, so a zone that vanishes and a unit that walks away
@@ -2495,6 +2666,15 @@ end
 
 local function raiseAnswer(combat, unit, info)
     info.unit = unit
+    -- Surviving a blow banks it toward any signature the survivor gates on being struck (Combat.tally).
+    -- This is the one choke every survive branch funnels through (preventsDeath, Second Wind, and the
+    -- ordinary case), and the killing blow never reaches it -- so a wound survived counts and a fatal
+    -- one does not. `damageTaken` counts any survived source (a burn, a trap); `hitTaken` only a real
+    -- blow with a known attacker, which is what "weather N blows" means.
+    if (info.amount or 0) > 0 then
+        Combat.tally(unit, "damageTaken", info.amount)
+        if info.attacker then Combat.tally(unit, "hitTaken", 1) end
+    end
     -- What was true at the MOMENT OF THE HIT, carried along because a held answer is thrown after it
     -- has stopped being true (see Trait.mayCounter, which reads this back):
     --   * `answering` -- was the blow itself an answer? The flag it comes off only stands for the
@@ -2620,6 +2800,9 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
             return dmg
         end
         hp.current = 0
+        -- The felling blow banks a `kill` toward any signature the attacker gates on kills. Only a
+        -- real attack passes an attacker; a trap or a burn tick fells with none and tallies nothing.
+        if attacker then Combat.tally(attacker, "kill", 1) end
         killUnit(combat, target)
     else
         -- Reaction traits are raised here and nowhere else: AFTER mitigation, so a hook reads the damage
@@ -2717,6 +2900,12 @@ function Combat.dealDamage(combat, user, target, item, opts)
     -- Let the attacker's statuses record what they just did (Fury banks damage dealt to heal from
     -- later). Fired here, where the attacker is known, only for a survived-or-not real hit.
     Status.onDealDamage(combat, user, dealt)
+    -- ...and bank the blow toward any signature the attacker gates on landing hits (Combat.tally).
+    -- Only a blow that drew blood counts, so a whiffed 0-damage swing advances nothing.
+    if dealt > 0 then
+        Combat.tally(user, "hitDealt", 1)
+        Combat.tally(user, "damageDealt", dealt)
+    end
     return dealt
 end
 
@@ -3442,6 +3631,16 @@ function Combat.spendCost(combat, unit, cost)
     spendResource(char, cost.stat, cost.amount)
 end
 
+-- Pay ALL of `ab`'s costs for `unit`, in authored order. The one spend path useItem / strikeTrap /
+-- strikeWall call, so a multi-pool cast can never be half-paid: costBlock has already cleared every
+-- entry by the time anything gets here, and each goes through Combat.spendCost above, so drawing on
+-- two pools loses none of what paying for one does (Overchannel, the Reservoir flask).
+function Combat.spendCosts(combat, unit, ab)
+    for _, cost in ipairs(Combat.abilityCosts(unit, ab)) do
+        Combat.spendCost(combat, unit, cost)
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- Blink (teleport movement)
 --
@@ -3651,9 +3850,22 @@ end
 -- a cost-modifying status can never be visible in one place and missing in another. A RESERVATION
 -- (ab.reserve) is not a cost and is deliberately not scaled: see Combat.abilityReserve.
 function Combat.abilityCost(unit, ab)
-    if not ab or not ab.cost then return nil end
+    return Combat.abilityCosts(unit, ab)[1]
+end
+
+-- EVERY pool ability `ab` draws on for `unit`, in authored order, each scaled by the unit's status
+-- cost multiplier (Haste halves it). Empty for a free ability. This is the real source of truth --
+-- `Combat.abilityCost` above is the first entry, kept for the callers that only ever ask about a
+-- single-pool swing (see Trait.answerCost, which prices a whole list of its own).
+--
+-- Most weapons name one pool. A few spend two at once -- the crescent blade pays for its beam in
+-- mana AND the swing that carries it in stamina -- and they are priced, gated, spent and drawn the
+-- same way a one-pool cast is, because everything below iterates rather than reading `cost.stat`.
+function Combat.abilityCosts(unit, ab)
     local mult = Status.costMultiplier(unit)
-    return { stat = ab.cost.stat, amount = math.floor(ab.cost.amount * mult + 0.5) }
+    local out = Item.costs(ab)
+    for _, c in ipairs(out) do c.amount = math.floor(c.amount * mult + 0.5) end
+    return out
 end
 
 -- Everything a cast takes out of `unit`'s own pools, in the order Combat.useItem takes it: the
@@ -3666,8 +3878,9 @@ end
 -- place and missing from the other.
 function Combat.abilitySpend(unit, ab)
     local out = {}
-    local cost = Combat.abilityCost(unit, ab)
-    if cost then out[#out + 1] = { kind = "cost", stat = cost.stat, amount = cost.amount } end
+    for _, cost in ipairs(Combat.abilityCosts(unit, ab)) do
+        out[#out + 1] = { kind = "cost", stat = cost.stat, amount = cost.amount }
+    end
     local reserve = Combat.abilityReserve(unit, ab)
     if reserve then out[#out + 1] = { kind = "reserve", stat = reserve.stat, amount = reserve.amount } end
     return out
@@ -3677,29 +3890,35 @@ end
 -- as an itemBlockReason entry, or nil when it can. Shared by Combat.canAfford (which only wants the
 -- yes/no) and Combat.itemBlockReason (which wants to say which pool fell short, and by how much).
 local function costBlock(unit, ab)
-    local cost = Combat.abilityCost(unit, ab)
-    if cost and resourceValue(unit.char, cost.stat) < cost.amount then
-        -- An Overchannel mage isn't blocked for low mana: it pays the shortfall in health, so long as
-        -- it has the blood to spare (never a lethal self-cost). Only then does the low pool gate it.
-        local paidInBlood = false
-        if cost.stat == "mana" and Combat.canOverchannel(unit) then
-            local shortfall = cost.amount - resourceValue(unit.char, "mana")
-            if resourceValue(unit.char, "health") > shortfall then paidInBlood = true end
-        end
-        -- Nor is an Alchemist's Reservoir caster with a mana draught still in stock: spendCost will
-        -- open it on the way through. Weighed against what the flask actually holds, so a thimble of
-        -- mana against a great working still reports "not enough mana" rather than promising a cast
-        -- the spend path would then have to refuse -- this gate and that one must agree.
-        local paidInStock = false
-        if cost.stat == "mana" and not paidInBlood and Combat.canDrawOnPotion(unit) then
-            local flask = Combat.carriedRestorative(unit, "mana")
-            local pours = (flask.activeAbility.restore or 0)
-            if resourceValue(unit.char, "mana") + pours >= cost.amount then paidInStock = true end
-        end
-        if not paidInBlood and not paidInStock then
-            return { kind = "cost", stat = cost.stat, reason = "insufficient " .. cost.stat,
-                text = string.format("Not enough %s (have %d)", cost.stat,
-                    math.floor(resourceValue(unit.char, cost.stat))) }
+    -- Every pool the cast draws on has to be payable, so a dual-cost weapon with the mana for its
+    -- beam but no stamina for the swing is refused exactly as if the mana were what ran out. The
+    -- FIRST authored pool that falls short is the one reported, so the message names a single
+    -- shortfall the player can act on rather than listing everything at once.
+    local costs = Combat.abilityCosts(unit, ab)
+    for _, cost in ipairs(costs) do
+        if resourceValue(unit.char, cost.stat) < cost.amount then
+            -- An Overchannel mage isn't blocked for low mana: it pays the shortfall in health, so long as
+            -- it has the blood to spare (never a lethal self-cost). Only then does the low pool gate it.
+            local paidInBlood = false
+            if cost.stat == "mana" and Combat.canOverchannel(unit) then
+                local shortfall = cost.amount - resourceValue(unit.char, "mana")
+                if resourceValue(unit.char, "health") > shortfall then paidInBlood = true end
+            end
+            -- Nor is an Alchemist's Reservoir caster with a mana draught still in stock: spendCost will
+            -- open it on the way through. Weighed against what the flask actually holds, so a thimble of
+            -- mana against a great working still reports "not enough mana" rather than promising a cast
+            -- the spend path would then have to refuse -- this gate and that one must agree.
+            local paidInStock = false
+            if cost.stat == "mana" and not paidInBlood and Combat.canDrawOnPotion(unit) then
+                local flask = Combat.carriedRestorative(unit, "mana")
+                local pours = (flask.activeAbility.restore or 0)
+                if resourceValue(unit.char, "mana") + pours >= cost.amount then paidInStock = true end
+            end
+            if not paidInBlood and not paidInStock then
+                return { kind = "cost", stat = cost.stat, reason = "insufficient " .. cost.stat,
+                    text = string.format("Not enough %s (have %d)", cost.stat,
+                        math.floor(resourceValue(unit.char, cost.stat))) }
+            end
         end
     end
     -- A reservation is spent like a cost and then locked away, so the caster must hold it now (and
@@ -3708,7 +3927,9 @@ local function costBlock(unit, ab)
     local res = Combat.abilityReserve(unit, ab)
     if res then
         local available = resourceValue(unit.char, res.stat)
-        if cost and cost.stat == res.stat then available = available - cost.amount end
+        for _, cost in ipairs(costs) do
+            if cost.stat == res.stat then available = available - cost.amount end
+        end
         if not canReserveFrom(available, res.stat, res.amount) then
             return { kind = "reserve", stat = res.stat, reason = "insufficient " .. res.stat,
                 text = string.format("Not enough %s to reserve %d (have %d)", res.stat, res.amount,
@@ -3736,7 +3957,9 @@ function Combat.isMagicItem(item)
     if hasTag(item.tags, "magical") then return true end
     local ab = item.activeAbility
     if ab and ab.tags and hasTag(ab.tags, "magical") then return true end
-    return ab ~= nil and ab.cost ~= nil and ab.cost.stat == "mana"
+    -- ANY mana in the price makes it sorcery, not just a wholly mana-paid cast: a crescent blade
+    -- that spends stamina on the swing is still working magic with the other hand.
+    return Item.costsStat(ab, "mana")
 end
 
 -- Is this a consuming item whose stack is spent (quantity 0)? A depleted consumable KEEPS its
@@ -3812,7 +4035,9 @@ function Combat.itemBlockReason(unit, item)
 
     -- Silenced: a mana cost can't be paid, so a mana ability is refused (one drawing on stamina or
     -- health still fires). Checked before affordability so the note reads "silenced", not "no mana".
-    if ab.cost and ab.cost.stat == "mana" and Status.silenced(unit) then
+    -- A cast drawing on mana AMONG other pools is refused whole: silence stops the working, and the
+    -- stamina half of a crescent blade's price does not buy a partial one.
+    if Item.costsStat(ab, "mana") and Status.silenced(unit) then
         return { kind = "silenced", reason = "silenced", text = "Silenced -- cannot cast mana abilities" }
     end
 
@@ -3850,6 +4075,21 @@ function Combat.itemBlockReason(unit, item)
         if not ok then
             return { kind = "requirement", reason = text or "unusable",
                 text = text or "Cannot be used right now" }
+        end
+    end
+    -- A signature gated behind an in-battle requirement (land N blows, heal N times, weather a hit)
+    -- stays locked until the tally is met -- Combat.unlockMet reads the per-unit counters the seams
+    -- bank, and an ability with no `unlock` is always met. Kept LAST among the gates: a locked
+    -- signature that is ALSO unaffordable or silenced is told the more fixable thing first, and only
+    -- once nothing else stands in the way does the slot read "still charging". `progress` rides along
+    -- so the grid badge can draw the fraction without re-deriving it.
+    if ab.unlock and unit then
+        local met, cur, total = Combat.unlockMet(unit, item)
+        if not met then
+            local label = Combat.unlockLabel(unit, item)
+            return { kind = "locked", reason = "locked", text = label,
+                cur = cur, total = total,
+                progress = (total and total > 0) and ((cur or 0) / total) or 0 }
         end
     end
     return nil
@@ -3973,7 +4213,7 @@ end
 -- item if it's a consumable. Returns (true, result) or (false, reason). `result` is
 -- { damageDealt, healed } aggregated across the effect's helper calls. A channeled ability
 -- instead winds up here and resolves later via Combat.resolveChannel (see the channel branch).
-function Combat.useItem(combat, unit, item, tx, ty)
+function Combat.useItem(combat, unit, item, tx, ty, windup)
     if not unit.alive then return false, "dead" end
     local ab = item.activeAbility
     if not ab then return false, "no ability" end
@@ -4014,8 +4254,14 @@ function Combat.useItem(combat, unit, item, tx, ty)
     -- Affordability was settled by itemBlockReason above (nothing has been spent since), so the
     -- cast is committed from here: pay the cost. The reservation isn't taken until the effect
     -- produces the summon that holds it (below).
-    local cost = Combat.abilityCost(unit, ab)
-    if cost then Combat.spendCost(combat, unit, cost) end
+    Combat.spendCosts(combat, unit, ab)
+
+    -- The cast is now committed (never a preview or a refused arm reaches here). Bank it toward any
+    -- signature gated on casting, and settle a fired signature's own unlock -- re-locking a repeatable
+    -- one to the current tally, or latching a `once` one open. Both run at commit, so a channel that
+    -- winds up now (and lands later) still counts and re-locks exactly once.
+    Combat.tally(unit, "cast", 1)
+    Combat.unlockConsume(unit, item)
 
     -- A channeled ability (a large AOE spell) doesn't resolve now: the caster winds up for
     -- `ab.channel` ticks, during which every other unit gets to act and may walk out of the
@@ -4032,16 +4278,30 @@ function Combat.useItem(combat, unit, item, tx, ty)
     -- side: the debt lands on the resolving turn, so the caster's NEXT action comes at the same tick
     -- either way and only the resolution slot moves earlier.
     if ab.channel and ab.channel > 0 then
+        -- A chargeable wind-up (Saber's signature): the caster may pour EXTRA ticks into the swing
+        -- beyond the base `channel`, up to `ab.windup.max`, and the effect reads how deep it was held
+        -- (fx.windup) to scale its blow. A longer wind-up is a longer, breakable tell -- the extra
+        -- ticks land on both the "channeling" badge's duration and the initiative the turn bills, so
+        -- the resolution slot itself moves later and every foe gets those turns to walk clear or
+        -- shatter it. Clamped here so a bad `windup` from anywhere (a stale network command, a bug)
+        -- can never stretch the tell past what the ability allows.
+        -- Clamp to the ability's own [min, max]: `min` is a floor a chargeable signature always pays
+        -- (First Motion cannot be loosed at +0 -- see its `windup`), `max` the cap. A missing/short
+        -- `windup` (a stale command, an AI cast, an old peer) is raised to the floor rather than refused.
+        local lo = (ab.windup and ab.windup.min) or 0
+        local hi = (ab.windup and ab.windup.max) or 0
+        local extra = math.max(lo, math.min(math.floor(windup or lo), hi))
+        local ticks = ab.channel + extra
         if ab.consumesItem then item.quantity = math.max(0, (item.quantity or 1) - 1) end
-        unit.channel = { item = item, ab = ab, tx = tx, ty = ty }
-        Status.apply(combat, unit, "status_channeling", { duration = ab.channel + 1 })
+        unit.channel = { item = item, ab = ab, tx = tx, ty = ty, windup = extra }
+        Status.apply(combat, unit, "status_channeling", { duration = ticks + 1 })
         -- The wind-up is an action too: a cast beat on begin-channel, then a second when it resolves
         -- (resolveCast, turns later). So a channeled spell reads both as it is loosed and as it lands.
         Combat.pushFx(combat, { type = "cast", unit = unit, tx = tx, ty = ty,
             support = Combat.isSupportAbility(ab) })
         Combat.logEvent(combat, "action",
             string.format("%s begins channeling %s.", unitName(unit), item.name or "an ability"))
-        endTurn(combat, unit, ab.channel, true)
+        endTurn(combat, unit, ticks, true)
         return true, { channeling = true }
     end
 
@@ -4130,7 +4390,7 @@ end
 -- calls it turns later). `target` and `reserve` are derived HERE, not at cast-start, so a channel reads
 -- the LIVE board -- a foe that stepped out of the blast is simply gone from fx.aoeUnits(). `alreadyConsumed`
 -- is set by the channel path (which spent the stack at cast-start) so the stack isn't decremented twice.
-function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
+function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
     local target = Combat.unitAt(combat, tx, ty)
     local reserve = Combat.abilityReserve(unit, ab)
 
@@ -4165,6 +4425,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
         -- The item's upgrade level (0..N). What a summon/hazard/trap/wall scales off: the stronger the
         -- forged item, the tougher the creature it calls and the harder/longer-lived the ground it lays.
         level = item.level or 0,
+        -- The EXTRA wind-up ticks poured into a chargeable channel (0 for everything else). Saber's
+        -- signature reads it to scale the blow: patience made arithmetic -- the longer she held the
+        -- edge, the harder it lands (see the ability's effect and Combat.useItem's channel branch).
+        windup = windup or 0,
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.
@@ -4216,6 +4480,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed)
             if not tgt then return 0 end
             local h = Combat.applyHeal(combat, tgt, amount)
             result.healed = result.healed + h
+            -- A mend that actually restored something banks a `healDone` on the CASTER (applyHeal
+            -- itself knows only the patient) -- what a mercy signature gated on healing counts. An
+            -- AoE mend that lands on three allies is three, which is what "heal N times" reads as.
+            if h > 0 then Combat.tally(unit, "healDone", 1) end
             return h
         end,
         -- Restore a resource (e.g. the parasitic staff refunding mana to fx.user on hit).
@@ -4496,7 +4764,7 @@ function Combat.resolveChannel(combat, unit)
     Status.remove(combat, unit, "status_channeling")
     Combat.logEvent(combat, "action",
         string.format("%s's %s resolves.", unitName(unit), pending.item.name or "channel"))
-    return resolveCast(combat, unit, pending.item, pending.ab, pending.tx, pending.ty, true)
+    return resolveCast(combat, unit, pending.item, pending.ab, pending.tx, pending.ty, true, pending.windup)
 end
 
 -- Cancel a channel in progress: drop the pending payload and the badge, and log the fizzle. A hard
@@ -4535,8 +4803,7 @@ function Combat.strikeTrap(combat, unit, weapon, x, y)
     if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, x, y) then
         return false, "no line of sight"
     end
-    local cost = Combat.abilityCost(unit, ab)
-    if cost then Combat.spendCost(combat, unit, cost) end
+    Combat.spendCosts(combat, unit, ab)
 
     -- Damage the trap by the weapon's attack stat (magical weapons use magicDamage). Traps have
     -- no defense, so this is the raw stat, floored.
@@ -4567,8 +4834,7 @@ function Combat.strikeWall(combat, unit, weapon, x, y)
     if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, x, y) then
         return false, "no line of sight"
     end
-    local cost = Combat.abilityCost(unit, ab)
-    if cost then Combat.spendCost(combat, unit, cost) end
+    Combat.spendCosts(combat, unit, ab)
 
     Combat.logEvent(combat, "trap", string.format("%s strikes %s.", unitName(unit), wall.name or "a wall"))
     Combat.pushFx(combat, { type = "cast", unit = unit, tx = x, ty = y, support = false })
@@ -4642,19 +4908,14 @@ end
 --
 -- `obj.protect` is a *composable* loss condition, not a win type: it names a party-side
 -- character (usually an escorted ally, see Arena.build's `spec.allies`) whose death fails
--- the battle whatever the win type is. That is what expresses an escort -- "survive 8
--- turns, and the caravan must live" -- without exit tiles or pathing.
--- An objective's `turns` in the ticks the clock actually counts.
+-- the battle whatever the win type is. That is what expresses an escort -- "hold for a while,
+-- and the caravan must live" -- without exit tiles or pathing.
 --
--- Worth stating plainly, because it was wrong: `combat.clock` accumulates elapsed INITIATIVE (see
--- Combat.rebase), not turns, and `survive` compared a field named `turns` straight against it. So
--- "survive 8 turns" ended after 8 ticks -- under two turns at Status.TICKS_PER_TURN -- and every
--- quest that used it was roughly five times shorter than it read. Objectives now convert, so the
--- three time-based win types agree on what a turn is and a designer's number means what it says.
-local function turnsToTicks(turns)
-    if not turns then return math.huge end
-    return turns * Status.TICKS_PER_TURN
-end
+-- TIME IS TICKS, EVERYWHERE. A timed objective's `duration` is a count of ticks -- the same unit
+-- `combat.clock` accumulates (elapsed INITIATIVE, see Combat.rebase) and the same unit the HUD quotes
+-- beside the hourglass glyph. "Turns" is not a concept the player is ever shown, so it is not one an
+-- objective is authored in either: a designer writes the tick count directly and the number on screen
+-- is the number they wrote. (Status.TICKS_PER_TURN exists only for per-turn regen rates, not here.)
 
 -- Is a living unit of `side` standing on any of `tiles` (the resolved ground of a `reach` or
 -- `hold` objective -- see Arena.resolveRegion)? The one reader both tile objectives share.
@@ -4748,7 +5009,7 @@ function Combat.outcomeFor(combat, side)
         if Combat.occupies(combat, obj.tiles, "party") then return "win" end
         return nil
     elseif obj.type == "hold" then
-        if (combat.heldTicks or 0) >= turnsToTicks(obj.turns) then return "win" end
+        if (combat.heldTicks or 0) >= (obj.duration or math.huge) then return "win" end
         return nil
     elseif obj.type == "assassinate" then
         for _, u in ipairs(combat.units) do
@@ -4759,8 +5020,13 @@ function Combat.outcomeFor(combat, side)
             end
         end
         return "win"
-    elseif obj.type == "survive" then
-        if combat.clock >= turnsToTicks(obj.turns) then return "win" end
+    elseif obj.type == "survive" or obj.type == "defend" then
+        -- `defend` is `survive` with a body to keep alive: the outlast condition is identical (win
+        -- once the clock passes the tick `duration`), and the protectee is enforced by the
+        -- `obj.protect` loss clause above -- so the two share this branch. They differ only in what
+        -- the HUD says (states/battle.lua objectiveText) and where the protected unit stands
+        -- (models/arena.lua).
+        if combat.clock >= (obj.duration or math.huge) then return "win" end
         return nil
     else -- killAll (default)
         if Combat.aliveCount(combat, foe) == 0 then return "win" end

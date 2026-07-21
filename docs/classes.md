@@ -79,7 +79,7 @@ the knight carries the blade. The Cathedral's one sword is forged for somebody e
 | Class | Cluster | Weapons |
 |---|---|---|
 | `fighter` | axe + hammer + greatsword | `weapon_iron_axe`, `weapon_butchers_wedge`, `weapon_crimson_greataxe`, `weapon_iron_hammer`, `weapon_iron_greatsword` |
-| `knight` | sword + spear + mace | `weapon_iron_sword`, `weapon_riposte_blade`, `weapon_demon_bane`, `weapon_iron_spear`, `weapon_iron_mace` |
+| `knight` | sword + spear + mace | `weapon_iron_sword`, `weapon_riposte_blade`, `weapon_demon_bane`, `weapon_crescent_blade`, `weapon_iron_spear`, `weapon_iron_mace` |
 | `rogue` | dagger | `weapon_iron_dagger`, `weapon_kingsblood_dagger`, `weapon_cutpurse_knife` |
 | `hunter` | bow + longbow | `weapon_iron_bow`, `weapon_iron_longbow`, `weapon_hornbow_of_the_hunt` |
 | `mage` | wand + staff | `weapon_wand`, `weapon_staff`, `weapon_emberwand` |

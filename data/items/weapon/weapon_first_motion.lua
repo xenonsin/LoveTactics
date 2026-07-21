@@ -26,9 +26,13 @@
 -- signature convention (compare data/items/armor/armor_sworn_aegis.lua). `class = "fighter"` with no
 -- `price`: unbuyable, and still tallying toward fighter growth (docs/classes.md).
 --
--- Her SECOND relic, late in the line, removes the falloff for one strike per battle at a moment the
--- player chooses -- patience becoming a choice of when rather than a sum the arithmetic does for her.
--- That one is unwritten.
+-- Patience is also a knob the player turns, not only a sum the arithmetic does for her: she may HOLD
+-- the wind-up longer for more (`windup`, below). Each extra tick she pours in lands as more damage,
+-- and a deeper wind-up is a longer, breakable tell -- hard control or a shove shatters a channel and
+-- wastes the whole swing (Combat.interruptChannel), and every extra tick is a turn her foes get to walk
+-- out of reach. The reward is for holding the edge exactly as long as the board lets her. The depth is
+-- chosen at cast (wheel / + - / bumpers, states/battle.lua) and travels with the networked command
+-- (models/command.lua) so both duellists resolve the same blow; Combat.useItem clamps it to windup.max.
 return {
     name = "The First Motion",
     description = "Winds up, then lands. Hits hardest against a target at full health.",
@@ -44,12 +48,18 @@ return {
     bound = true,
     class = "fighter",
     activeAbility = {
+        description = "Hold the wind-up longer to strike harder; hardest against a full-health foe.",
         target = "tile",       -- aim an adjacent tile: it sets the facing the blow falls on
         allowOccupied = true,
         range = 1,
         minRange = 1,
         speed = 6,             -- ponderous, but a shade quicker than an iron greatsword
-        channel = 1,           -- winds up one turn before it lands; hard control breaks the wind-up
+        channel = 2,           -- the BASE wind-up: two ticks before it lands; hard control breaks it
+        -- ...and she pours between two and five MORE ticks in, chosen at cast, for more damage. The
+        -- `min` is the floor: a signature swing is always a real commitment, never the bare base -- she
+        -- cannot loose it below +2. (Combat.useItem clamps to [min, max]; states/battle.lua opens at min
+        -- and previews the resolve slot for the chosen depth on the turn-order strip.)
+        windup = { min = 2, max = 5 },
         cost = { stat = "stamina", amount = 15 },
         damage = { 22, 24, 27, 29, 32, 34, 37, 39, 42, 44, 47 },
         effect = function(fx)
@@ -62,7 +72,11 @@ return {
             local hp = fx.target.char.stats.health
             local frac = (hp.max and hp.max > 0) and ((hp.current or 0) / hp.max) or 1
             local opening = math.floor(fx.amount * 0.6 * frac)
-            fx.damage(fx.target, { amount = fx.amount + opening })
+            -- Patience made arithmetic she controls: each extra wind-up tick she chose to hold adds a
+            -- share of the swing (fx.windup, from Combat.useItem's channel branch). A snap swing is an
+            -- ordinary heavy greatsword blow; a deep hold into a fresh target is devastating.
+            local held = math.floor(fx.amount * 0.4 * (fx.windup or 0))
+            fx.damage(fx.target, { amount = fx.amount + opening + held })
         end,
     },
 }

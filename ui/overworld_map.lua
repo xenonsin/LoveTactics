@@ -259,12 +259,96 @@ function OverworldMap:visualCell()
     return self.px, self.py
 end
 
+-- The player token's rect in SCREEN space (logical 1280x720), for pinning a coach bubble to it. The
+-- map draws under a camera translate of -floor(camX), -floor(camY) (see :draw), so a cell's screen
+-- position is its world pixel minus that same floored offset. Uses the eased visual cell so the ring
+-- rides with the token as it slides.
+function OverworldMap:tokenRect()
+    local wx, wy = self.grid:cellToPixel(self:visualCell())
+    local s = self.grid.size
+    return { x = wx - math.floor(self.camX or 0), y = wy - math.floor(self.camY or 0), w = s, h = s }
+end
+
 local function markerColor(kind)
     if kind == "objective" then return 0.95, 0.75, 0.20 end
     if kind == "elite" then return 0.95, 0.55, 0.15 end
     if kind == "town" then return 0.85, 0.85, 0.90 end
     if kind == "treasure" then return 0.35, 0.80, 0.55 end
+    if kind == "event" then return 0.60, 0.60, 0.95 end   -- a story stop, not a fight
+    if kind == "rest" then return 0.45, 0.80, 0.80 end     -- a safe breather
     return 0.85, 0.25, 0.25 -- combat
+end
+
+-- Per-kind marker glyphs, so an encounter reads by its SHAPE and not only its colour -- and no two
+-- kinds share the old catch-all "?". Each draws a small vector mark into the box (x, y, w, h) it is
+-- handed, the way ui/glyphs.lua does; the caller sets the base colour, and a mark shades its own
+-- detail off it. Unknown kinds fall back to the crossed-swords combat mark.
+local MarkerIcon = {}
+
+-- Crossed swords: two blades on the diagonal. Ordinary combat.
+function MarkerIcon.combat(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.setLineWidth(2)
+    love.graphics.line(x, y + h, x + w, y)
+    love.graphics.line(x, y, x + w, y + h)
+    love.graphics.setLineWidth(1)
+end
+
+-- A five-point star: a tougher fight than the rank and file.
+function MarkerIcon.elite(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    local cx, cy = x + w / 2, y + h / 2
+    local R, ri = w / 2, w / 5
+    local pts = {}
+    for i = 0, 9 do
+        local ang = -math.pi / 2 + i * math.pi / 5
+        local rad = (i % 2 == 0) and R or ri
+        pts[#pts + 1] = cx + math.cos(ang) * rad
+        pts[#pts + 1] = cy + math.sin(ang) * rad
+    end
+    love.graphics.polygon("fill", pts)
+end
+
+-- A planted pennant: the quest's goal.
+function MarkerIcon.objective(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.setLineWidth(2)
+    love.graphics.line(x + w * 0.22, y, x + w * 0.22, y + h)
+    love.graphics.setLineWidth(1)
+    love.graphics.polygon("fill", x + w * 0.22, y, x + w, y + h * 0.22, x + w * 0.22, y + h * 0.44)
+end
+
+-- A speech bubble: a scene to talk through, not a fight to win.
+function MarkerIcon.event(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.rectangle("fill", x, y, w, h * 0.72, 3, 3)
+    love.graphics.polygon("fill", x + w * 0.24, y + h * 0.72, x + w * 0.5, y + h * 0.72, x + w * 0.26, y + h)
+end
+
+-- A treasure chest: a body under a banded lid, with a dark latch.
+function MarkerIcon.treasure(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.rectangle("fill", x, y + h * 0.30, w, h * 0.70, 2, 2)
+    love.graphics.rectangle("fill", x, y + h * 0.12, w, h * 0.26, 3, 3)
+    love.graphics.setColor(r * 0.4, g * 0.4, b * 0.4, a)
+    love.graphics.rectangle("fill", x + w * 0.42, y + h * 0.30, w * 0.16, h * 0.38)
+end
+
+-- A tent: a safe camp to rest at.
+function MarkerIcon.rest(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.polygon("fill", x + w / 2, y, x, y + h, x + w, y + h)
+    love.graphics.setColor(r * 0.35, g * 0.35, b * 0.35, a)
+    love.graphics.polygon("fill", x + w / 2, y + h * 0.38, x + w * 0.34, y + h, x + w * 0.66, y + h)
+end
+
+-- A house: a roof over a doored body. A friendly town.
+function MarkerIcon.town(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.polygon("fill", x + w / 2, y, x, y + h * 0.45, x + w, y + h * 0.45)
+    love.graphics.rectangle("fill", x + w * 0.15, y + h * 0.45, w * 0.7, h * 0.55)
+    love.graphics.setColor(r * 0.35, g * 0.35, b * 0.35, a)
+    love.graphics.rectangle("fill", x + w * 0.4, y + h * 0.6, w * 0.2, h * 0.4)
 end
 
 function OverworldMap:draw()
@@ -341,15 +425,19 @@ function OverworldMap:drawMarkers()
             end
 
             if c.encounter then
-                local r, g, b = markerColor(c.encounter.kind)
+                local kind = c.encounter.kind
+                local r, g, b = markerColor(kind)
                 local a = c.cleared and 0.3 or 1
                 love.graphics.setColor(r, g, b, a)
                 love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
                 love.graphics.setColor(r, g, b, a * 0.35)
                 love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
-                local label = c.encounter.kind == "objective" and "!" or "?"
-                love.graphics.setColor(1, 1, 1, a)
-                love.graphics.printf(label, wx, wy + s / 2 - 8, s, "center")
+                -- Colour still encodes the kind on the box; the icon draws it in white on top so the
+                -- SHAPE reads even where two kinds sit close in hue (event violet vs a red combat).
+                local icon = MarkerIcon[kind] or MarkerIcon.combat
+                local pad = s * 0.28
+                icon(wx + pad, wy + pad, s - pad * 2, s - pad * 2, 1, 1, 1, a)
+                love.graphics.setColor(1, 1, 1)
             end
         end
     end

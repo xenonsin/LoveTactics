@@ -417,6 +417,84 @@ return {
     -- Each rank-4 weapon must do something its plain iron counterpart does not -- not merely hit for a
     -- bigger number. These lock in that extra.
     {
+        name = "the Crescent Blade cuts three tiles down the line, and cuts with magic rather than edge",
+        fn = function()
+            local hero = plainChar("character_knight")
+            local blade = give(hero, "weapon_crescent_blade")
+            local c = Combat.new(arena(8, 8), { unit(hero, 3, 1) },
+                { unit(plainChar("character_bandit"), 3, 2),
+                  unit(plainChar("character_bandit"), 3, 3),
+                  unit(plainChar("character_bandit"), 3, 4),
+                  unit(plainChar("character_bandit"), 3, 5) })
+            local k = c.units[1]
+            local near, mid, far, beyond = c.units[2], c.units[3], c.units[4], c.units[5]
+
+            -- Routed by magic rather than muscle, and turned by Magic Defense rather than armor --
+            -- the thing that makes it worth carrying past an iron sword. Read cumulatively, as the
+            -- wand's case above is: each line moves one stat off the line before it. Headroom is
+            -- bought first (+10 Magic Damage) so the mitigation below can't floor out.
+            local base = Combat.computeDamage(c, k, near, blade)
+            k.char.stats.damage = k.char.stats.damage + 50
+            assert(Combat.computeDamage(c, k, near, blade) == base,
+                "the crescent ignores the wielder's Damage stat")
+            k.char.stats.magicDamage = k.char.stats.magicDamage + 10
+            assert(Combat.computeDamage(c, k, near, blade) == base + 10,
+                "and scales off Magic Damage")
+            near.char.stats.defense = near.char.stats.defense + 5
+            assert(Combat.computeDamage(c, k, near, blade) == base + 10,
+                "armor does nothing about it")
+            near.char.stats.magicDefense = near.char.stats.magicDefense + 5
+            assert(Combat.computeDamage(c, k, near, blade) == base + 5,
+                "Magic Defense is what turns it")
+            k.char.stats.damage = k.char.stats.damage - 50
+            k.char.stats.magicDamage = k.char.stats.magicDamage - 10
+            near.char.stats.defense = near.char.stats.defense - 5
+            near.char.stats.magicDefense = near.char.stats.magicDefense - 5
+
+            local before = { hp(near), hp(mid), hp(far), hp(beyond) }
+            openTurn(c, k)
+            assert(Combat.useItem(c, k, blade, 3, 2), "the arc is loosed down the column")
+            assert(hp(near) < before[1], "the first tile of the line is cut")
+            assert(hp(mid) < before[2], "the second too -- past what a sword could reach")
+            assert(hp(far) < before[3], "and the third, which is the whole of what it buys")
+            assert(hp(beyond) == before[4], "the fourth stands outside the arc: the line is 3, not endless")
+        end,
+    },
+    {
+        name = "the Crescent Blade is paid for out of BOTH pools, and either one empty refuses the swing",
+        fn = function()
+            local hero = plainChar("character_knight")
+            local blade = give(hero, "weapon_crescent_blade")
+            local c = Combat.new(arena(8, 8), { unit(hero, 3, 1) }, { unit(plainChar("character_bandit"), 3, 2) })
+            local k = c.units[1]
+            local ab = blade.activeAbility
+
+            local costs = Combat.abilityCosts(k, ab)
+            assert(#costs == 2, "the blade names two pools, not one")
+            local byStat = {}
+            for _, cost in ipairs(costs) do byStat[cost.stat] = cost.amount end
+            assert(byStat.mana and byStat.stamina, "mana for the crescent, stamina for the arm")
+
+            -- Both pools full: the swing is affordable, and it draws down BOTH.
+            k.char.stats.mana.current = byStat.mana
+            k.char.stats.stamina.current = byStat.stamina
+            assert(Combat.canAfford(k, ab), "with both pools covered, the swing is on")
+            openTurn(c, k)
+            assert(Combat.useItem(c, k, blade, 3, 2), "and it resolves")
+            assert(k.char.stats.mana.current == 0, "the mana half was spent")
+            assert(k.char.stats.stamina.current == 0, "and the stamina half with it -- not one or the other")
+
+            -- Either pool short refuses it. The second is the case a single-cost engine would have
+            -- missed entirely: plenty of mana, no arm to throw the arc with.
+            k.char.stats.mana.current = 0
+            k.char.stats.stamina.current = byStat.stamina
+            assert(not Combat.canAfford(k, ab), "no mana, no crescent")
+            k.char.stats.mana.current = byStat.mana
+            k.char.stats.stamina.current = byStat.stamina - 1
+            assert(not Combat.canAfford(k, ab), "and no stamina, no swing to carry it")
+        end,
+    },
+    {
         name = "frenzy: each body past the first in the arc raises what EVERY one of them takes",
         fn = function()
             -- The keyword's reference user. One body is a plain cleave; three is the same swing landing

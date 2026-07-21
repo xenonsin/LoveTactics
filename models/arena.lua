@@ -122,6 +122,22 @@ Arena.OBJECTIVE_REGIONS = {
         end
         return tiles
     end,
+    -- Just ahead of the party's own line -- the row two steps toward mid-board from where the party
+    -- lands. A protected unit anchored here stands close enough for the party to interpose on turn 1
+    -- (unlike `center`, which the enemy reaches first). Measured off the party's spawns like `far`, so
+    -- it still points inward if a curated map seats the party at the top instead of the bottom.
+    rally = function(layout)
+        local sum, n = 0, 0
+        for _, s in ipairs(layout.partySpawns or {}) do sum, n = sum + s.y, n + 1 end
+        local avg = (n > 0) and (sum / n) or layout.rows
+        local dir = (avg > layout.rows / 2) and -1 or 1 -- step toward the center
+        local goalY = math.max(1, math.min(layout.rows, math.floor(avg + dir * 2 + 0.5)))
+        local tiles = {}
+        for x = 1, layout.cols do
+            if walkableAt(layout, x, goalY) then tiles[#tiles + 1] = { x = x, y = goalY } end
+        end
+        return tiles
+    end,
 }
 
 -- Resolve a region name to concrete tiles, widening the search if the board's scatter happened
@@ -151,6 +167,11 @@ local function normalizeObjective(obj, layout)
     for k, v in pairs(obj) do out[k] = v end
     if (out.type == "reach" or out.type == "hold") and not out.tiles then
         out.tiles = Arena.resolveRegion(out.region or (out.type == "reach" and "far" or "center"), layout)
+    end
+    -- A `defend` objective is anchored to a region too (where the protected unit stands), so the HUD
+    -- can mark that ground and an enemy's `objectiveTile` has a handle to path toward.
+    if out.type == "defend" and not out.tiles then
+        out.tiles = Arena.resolveRegion(out.anchor or "center", layout)
     end
     return out
 end
@@ -323,6 +344,46 @@ local function bindUnits(ids, spawns, offset)
     return units
 end
 
+-- Seat the party's escort/allies. Normally they claim party spawn points after the party itself.
+-- But an objective may ANCHOR the thing it protects to a region of the board -- "defend the
+-- survivors in the middle" -- in which case every ally matching `objective.protect` is placed on the
+-- resolved region (mid-map) and the rest fall back to party spawns. This is the seam that lets a
+-- defended unit (or an inert "object") stand somewhere other than beside the party.
+local function bindAllies(allyIds, spec, layout)
+    local party = spec.party or {}
+    local obj = spec.objective
+    local anchor = obj and obj.anchor
+    local protectId = obj and obj.protect
+    if not (anchor and protectId) then
+        return bindUnits(allyIds, layout.partySpawns, #party)
+    end
+
+    -- Region tiles that no unit already stands on, so an anchored survivor never shares a cell.
+    local taken = {}
+    for i = 1, #party do
+        local sp = layout.partySpawns[i]
+        if sp then taken[key(sp.x, sp.y)] = true end
+    end
+    local anchorTiles = {}
+    for _, t in ipairs(Arena.resolveRegion(anchor, layout)) do
+        if not taken[key(t.x, t.y)] then anchorTiles[#anchorTiles + 1] = t end
+    end
+
+    local units, anchored, rest = {}, 0, 0
+    for _, id in ipairs(allyIds) do
+        if id == protectId and anchorTiles[anchored + 1] then
+            anchored = anchored + 1
+            local t = anchorTiles[anchored]
+            units[#units + 1] = { id = id, x = t.x, y = t.y }
+        else
+            rest = rest + 1
+            local sp = layout.partySpawns[#party + rest]
+            if sp then units[#units + 1] = { id = id, x = sp.x, y = sp.y } end
+        end
+    end
+    return units
+end
+
 -- Build a fully populated arena from a context + spec. See the module header for the
 -- spec shape. Deterministic when `spec.seed` is set.
 --
@@ -354,7 +415,7 @@ function Arena.build(ctx, spec)
         biome = spec.biome or layout.biome,
         tiles = hydrateTiles(layout),
         party = bindUnits(partyIds, layout.partySpawns),
-        allies = bindUnits(allyIds, layout.partySpawns, #partyIds),
+        allies = bindAllies(allyIds, spec, layout),
         enemies = bindUnits(enemyIds, layout.enemySpawns),
         traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
         objective = normalizeObjective(spec.objective, layout),

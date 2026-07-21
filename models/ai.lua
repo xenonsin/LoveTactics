@@ -679,7 +679,7 @@ local function fallbackMove(ctx, mode)
     end
 
     if best and best.d < here then
-        return { move = { x = best.x, y = best.y }, reason = mode .. ": closing on " .. (goal.char.name or "target") }
+        return { move = { x = best.x, y = best.y }, reason = mode .. ": closing on " .. ((goal.char and goal.char.name) or "target") }
     end
     return nil
 end
