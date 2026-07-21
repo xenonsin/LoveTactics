@@ -5,6 +5,7 @@ return {
     y = 530,
     w = 270,
     h = 140,
-    panel = nil, -- placeholder until designed
+    panel = "shop",
+    vendor = "market", -- the general store: classless traveler's supplies (data/vendors/market.lua)
     unlockPrestige = 1,
 }

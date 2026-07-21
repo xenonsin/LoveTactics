@@ -120,10 +120,40 @@ are the design: *a knight you keep casting Fireball with grows into a battlemage
 
 Two consequences worth holding on to:
 
-- **A `price` with no `class` is a build failure** (`tests/progression_spec.lua`) — unbuyable dead data.
-  The reverse is fine and meaningful: `class` with no `price` says "this tallies here, but nobody sells
-  it." `armor_sworn_aegis`, the knight's bound relic, is the other one.
+- **A `price` with no `class` is a *general good*, not a build failure** — it goes on the general
+  store's shelf (see below). What `tests/progression_spec.lua` still forbids is a price that *nothing*
+  stocks: a classless priced item must actually appear in the Market's stock. The reverse — `class`
+  with no `price` — is fine and meaningful: it says "this tallies here, but nobody sells it."
+  `armor_sworn_aegis`, the knight's bound relic, is one of those.
 - **The weapon floor counts *sellable* weapons**, since a shelf you cannot buy from is not a shelf.
+
+### The general store
+
+There is an eighth vendor that is not a class shelf: the **Market** (`data/vendors/market.lua`,
+`general = true`). It sells two things:
+
+1. **The classless priced goods** — the mundane supplies no sin claims: a torch, the `Boots of Speed`.
+   An item lands here by having a `price` and **no `class`**; `models/vendor.lua` (`Vendor.sells`)
+   derives that stock exactly the way a class vendor derives its own, so a classless priced blueprint
+   is all it takes.
+2. **Resold potions** — anything bearing a tag in the Market's `stockTags` (today, `potion`), whatever
+   house brews it. A healing potion is an alchemist item *and* a Market item; it appears on both
+   shelves. This is the one place the shelves overlap on purpose.
+
+It has no sin and a single reputation rung: nobody quests for the grocer's favour, so every ware is
+available from the first visit — `Vendor.stock` ignores `repRank` for a general store, so even a
+rank-2 alchemist Panacea is simply on the shelf. Two rules keep the resale from eroding the class shelf
+it borrows from:
+
+- **A resale is not a re-home.** The potion keeps its `class`, so it still *grows the alchemist's tally*
+  and still *refines only at the alchemist* — `Vendor.canRefineHere` lets a consumable be honed at its
+  own house alone, never at a shop that merely resells it. The Market's Upgrade tab is empty of potions.
+- **The Market sells no weapons and no abilities.** Those carry identity; the general store carries
+  supplies and the potions everyone drinks. Its stock is classless gear plus resold consumables, and
+  `Vendor.canUpgradeHere` refuses to hone anything here.
+
+`tests/class_spec.lua` skips the general store in its family-cluster sweep (it is not a class shelf),
+and `tests/progression_spec.lua` pins the whole arrangement.
 
 ### Monk, and why there is no fist weapon
 

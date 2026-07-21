@@ -154,7 +154,9 @@ function Shop:refresh()
         -- raises the tier every future purchase comes at (Vendor.upgradeRecipe / Player.recipeLevel).
         for _, entry in ipairs(Vendor.stock(self.vendorId, self.rank, self.player.recipes)) do
             local sample = entry.type == "consumable" and Item.instantiate(entry.id, nil, entry.level)
-            if sample and Item.isUpgradable(sample) then
+            -- Only the bench that refines a consumable lists it: the Market resells potions but hones
+            -- none, so a resold potion never shows here (Vendor.canRefineHere).
+            if sample and Vendor.canRefineHere(self.vendorId, sample) then
                 local cost = Vendor.recipeUpgradeCost(entry.level, self.rank)
                 local tail = cost and (cost.locked and "locked" or (cost.gold .. "g")) or "max"
                 self.rows[#self.rows + 1] = {

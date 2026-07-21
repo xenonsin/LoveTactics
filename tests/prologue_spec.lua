@@ -8,12 +8,13 @@ local Player = require("models.player")
 local Quest = require("models.quest")
 local Conversation = require("models.conversation")
 
--- Every conversation the prologue plays, in order. `tutorial_village` is not played as a scene --
--- it is the village fight's speech-bubble text (models/tutorial.lua) -- but it lives in the same
--- folder and must resolve like any other.
+-- Every conversation the prologue's opening leg plays, plus the ones the hub stages on the first
+-- visit (the arrival and the Quest Board flier) and the debut's victory scene. `tutorial_village` is
+-- not played as a scene -- it is the village fight's speech-bubble text (models/tutorial.lua) -- but
+-- it lives in the same folder and must resolve like any other. See states/hub.lua for the arrival.
 local PROLOGUE_SCENES = {
     "prologue_intro", "prologue_flee", "prologue_arrival",
-    "prologue_arena", "prologue_victory", "tutorial_village",
+    "prologue_flier", "prologue_victory", "tutorial_village",
 }
 
 return {

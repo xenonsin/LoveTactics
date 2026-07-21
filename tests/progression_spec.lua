@@ -207,14 +207,73 @@ return {
         end,
     },
     {
-        name = "every item names a known class, or none at all",
+        name = "every priced item has a shelf: a class vendor, or the general store",
         fn = function()
+            -- The union of every general store's stock (the Market). A priced item with no class is
+            -- not dead data any more -- it belongs to the general shelf. Built market-id-agnostically
+            -- so this stays true if the general store is ever renamed or a second one is added.
+            local generalStock = {}
+            for vid, vdef in pairs(Vendor.defs) do
+                if vdef.general then
+                    for _, e in ipairs(Vendor.stock(vid, #vdef.ranks)) do generalStock[e.id] = true end
+                end
+            end
+
             for id, def in pairs(Item.defs) do
                 if def.class then
                     assert(Item.CLASSES[def.class], id .. " has unknown class '" .. def.class .. "'")
+                elseif def.price then
+                    -- Priced but classless: a general good. Some general store must actually stock it,
+                    -- or it is unbuyable dead data after all.
+                    assert(generalStock[id], id .. " has a price but no class, and no general store stocks it")
                 end
-                -- A priced item nobody stocks would be unbuyable dead data.
-                if def.price then assert(def.class, id .. " has a price but no class to sell it") end
+            end
+        end,
+    },
+    {
+        name = "the general store stocks classless goods and resells potions, gating nothing on standing",
+        fn = function()
+            local market = Vendor.stock("market", 1)
+            assert(#market > 0, "the Market should stock something")
+
+            local function hasTag(id, want)
+                for _, tag in ipairs(Item.defs[id].tags or {}) do
+                    if tag == want then return true end
+                end
+                return false
+            end
+
+            local ids = {}
+            for _, entry in ipairs(market) do
+                ids[entry.id] = true
+                assert(entry.price, entry.id .. " is for sale with no price")
+                -- Every ware is either a classless good or a potion resold from some house.
+                assert(Item.defs[entry.id].class == nil or hasTag(entry.id, "potion"),
+                    entry.id .. " is on the general shelf but is neither classless nor a potion")
+                -- The Market keeps no ladder, so nothing it sells is ever rank-locked -- not even a
+                -- Panacea, which needs rank 2 at the alchemist.
+                assert(not entry.locked, entry.id .. " should never be standing-locked at the Market")
+            end
+
+            assert(ids.utility_torch, "the torch is a classless good the Market should sell")
+            assert(ids.utility_boots_of_speed, "the boots of speed are classless and belong on the shelf")
+            assert(ids.consumable_healing_potion, "the Market resells the healing potion")
+            assert(ids.consumable_panacea, "a rank-2 alchemist potion is still un-gated at the Market")
+
+            -- Reselling does not re-home: the potion keeps its class and still sells at the alchemist.
+            assert(Item.defs.consumable_healing_potion.class == "alchemist",
+                "the healing potion is still an alchemist item")
+            local atAlchemist = false
+            for _, entry in ipairs(Vendor.stock("alchemist", 4)) do
+                if entry.id == "consumable_healing_potion" then atAlchemist = true end
+            end
+            assert(atAlchemist, "the alchemist still stocks the potions it brews")
+
+            -- But the Market refines nothing: it resells potions, it does not hone their recipes.
+            for _, entry in ipairs(market) do
+                local sample = Item.instantiate(entry.id, nil, entry.level)
+                assert(not Vendor.canRefineHere("market", sample),
+                    entry.id .. " must not be refinable at the Market -- that stays at its house")
             end
         end,
     },

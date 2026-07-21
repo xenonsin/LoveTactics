@@ -285,6 +285,9 @@ local function win()
     battle.over = true
     battle.walk = nil -- nobody finishes their stroll once the battle is decided
     Combat.logEvent(battle.combat, "system", "Victory!")
+    -- A won fight is not a lost life: any party member who fell is carried out to the overworld at a
+    -- sliver of health rather than staying down. Only on a win -- a defeat costs the run outright.
+    Combat.reviveFallenParty(battle.combat)
     releaseParty()
     finishBattle("win")
 end

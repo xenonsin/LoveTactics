@@ -214,14 +214,28 @@ return {
     ["line.flight_event_survivor.5"] = { en = "...north, along the ridge, in numbers. Good. We take the low road, then.", ja = "" },  -- TODO
     ["line.flight_event_survivor.6"] = { en = "They pressed a torch on us for the kindness -- said the low road is dark by dusk. Take it.", ja = "" },  -- TODO
     ["line.flight_event_survivor.7"] = { en = "Go carefully. The capital's walls still stand -- reach them.", ja = "" },  -- TODO
-    ["line.prologue_arena.1"] = { en = "Fresh blood! The crowd does love a debut -- win or die, they'll remember it either way.", ja = "" },  -- TODO
-    ["line.prologue_arrival.1"] = { en = "Refugees. The city's full and the coin's thin. Want to eat? The Colosseum pays anyone who can bleed for a crowd.", ja = "" },  -- TODO
-    ["line.prologue_arrival.2"] = { en = "Sport, for coin. It is not the war we came to fight.", ja = "" },  -- TODO
-    ["line.prologue_arrival.3"] = { en = "It's the war you can afford today. Gate's that way. Try not to die on the sand.", ja = "" },  -- TODO
+    ["line.prologue_arrival.1"] = { en = "There it is. Walls still standing, gates still shut. The capital.", ja = "" },  -- TODO
+    ["line.prologue_arrival.10"] = { en = "It's been like this for weeks. The demons push, a village burns, and everyone still breathing runs for the capital. The city's fit to burst, work's gone dry, and food with it.", ja = "" },  -- TODO
+    ["line.prologue_arrival.11"] = { en = "But coin still moves for those who can hold a blade. Register with the Adventurers' Guild -- the quest board takes anyone who'll take a contract. Pays a good deal better than queuing for bread.", ja = "" },  -- TODO
+    ["line.prologue_arrival.12"] = { en = "Work that pays. That, we can do.", ja = "" },  -- TODO
+    ["line.prologue_arrival.13"] = { en = "The board, then. We'll want coin before we want anything else.", ja = "" },  -- TODO
+    ["line.prologue_arrival.2"] = { en = "The Bastion holds this wall. If anywhere is still holding, {name}, it is behind these stones.", ja = "" },  -- TODO
+    ["line.prologue_arrival.3"] = { en = "More of them. Third column through the gate since morning -- where are we meant to put them all?", ja = "" },  -- TODO
+    ["line.prologue_arrival.4"] = { en = "Not under my roof, that's certain. Barely bread enough for the mouths already inside.", ja = "" },  -- TODO
+    ["line.prologue_arrival.5"] = { en = "You there -- off the road, with the others. Nobody passes until they're processed. Names, and where you've run from.", ja = "" },  -- TODO
+    ["line.prologue_arrival.6"] = { en = "Papers, a token, a seal, anything to say who you are. No? Then you'll wait like the rest of them until I say oth--", ja = "" },  -- TODO
+    ["line.prologue_arrival.7"] = { en = "...That plate. That's Bastion steel. You're a sworn knight of the Order?", ja = "" },  -- TODO
+    ["line.prologue_arrival.8"] = { en = "I held the eastern wall. The wall is ash now. I brought out who I could.", ja = "" },  -- TODO
+    ["line.prologue_arrival.9"] = { en = "Forgive me, ser. We don't see many of the Order come through on foot these days. Pass -- you, and the ones at your back.", ja = "" },  -- TODO
     ["line.prologue_flee.1"] = { en = "It's gone. All of it. My oath was to this ground, and the ground is ash.", ja = "" },  -- TODO
     ["line.prologue_flee.2"] = { en = "So I swear a new one, and not to ground this time. To you.", ja = "" },  -- TODO
     ["line.prologue_flee.3"] = { en = "We shall hold.", ja = "" },  -- TODO
     ["line.prologue_flee.4"] = { en = "To the capital, then. Its walls still stand... for now.", ja = "" },  -- TODO
+    ["line.prologue_flier.1"] = { en = "Bounties, escorts, standing contracts... half of these want a company three times our size.", ja = "" },  -- TODO
+    ["line.prologue_flier.2"] = { en = "This one doesn't.", ja = "" },  -- TODO
+    ["line.prologue_flier.3"] = { en = "The Colosseum. They pay for a debut bout -- a single fight, on the sand, in front of a crowd. Win or lose, the purse is posted the same.", ja = "" },  -- TODO
+    ["line.prologue_flier.4"] = { en = "A blood sport.", ja = "" },  -- TODO
+    ["line.prologue_flier.5"] = { en = "A paying one, and it asks only two on the field. It is not the war we came to fight, {name}... but it is the coin we can earn today. Take it, and we eat.", ja = "" },  -- TODO
     ["line.prologue_intro.1"] = { en = "Fire on the eastern fields -- demons, real ones, not a soldier's tale! Run, child, run!", ja = "" },  -- TODO
     ["line.prologue_intro.2"] = { en = "{name}. Behind me, and stay there. This is the part of the oath I have been waiting to keep.", ja = "" },  -- TODO
     ["line.prologue_intro.3"] = { en = "They serve the Demon Lord. If the capital falls after us, there is nowhere left to run to.", ja = "" },  -- TODO
@@ -300,9 +314,9 @@ return {
     ["title.conversation_wrath_intro"] = { en = "Debut on the Sand", ja = "砂上のデビュー" },
     ["title.flight_event_shrine"] = { en = "The Roadside Shrine", ja = "" },  -- TODO
     ["title.flight_event_survivor"] = { en = "A Voice from the Brush", ja = "" },  -- TODO
-    ["title.prologue_arena"] = { en = "Debut on the Sand", ja = "" },  -- TODO
     ["title.prologue_arrival"] = { en = "The Capital", ja = "" },  -- TODO
     ["title.prologue_flee"] = { en = "Ashes", ja = "" },  -- TODO
+    ["title.prologue_flier"] = { en = "The Board", ja = "" },  -- TODO
     ["title.prologue_intro"] = { en = "The Village", ja = "" },  -- TODO
     ["title.prologue_ruins"] = { en = "The Road", ja = "" },  -- TODO
     ["title.prologue_victory"] = { en = "The Gatekeeper", ja = "" },  -- TODO

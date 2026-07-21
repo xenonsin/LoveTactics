@@ -1308,4 +1308,55 @@ return {
             assert(not to10[8], "the bow is still excluded")
         end,
     },
+    {
+        name = "reviveFallenParty carries a fallen party member out at 20% health on a win",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit(swordsman(), 3, 3), unit(swordsman(), 4, 3) },
+                { unit("character_bandit", 3, 5) })
+            local fallen, standing = c.units[1], c.units[2]
+            fallen.char.stats.health.max = 62
+
+            -- Knock the first party member down; the second walks away untouched.
+            fallen.alive, fallen.corpse = false, true
+            fallen.char.stats.health.current = 0
+            local standingHp = standing.char.stats.health.current
+
+            Combat.reviveFallenParty(c)
+
+            assert(fallen.alive, "the fallen member is back on their feet")
+            assert(not fallen.corpse, "the corpse flag is cleared")
+            assert(fallen.char.stats.health.current == 12,
+                "restored to floor(62 * 0.2) = 12, got " .. fallen.char.stats.health.current)
+            assert(standing.char.stats.health.current == standingHp,
+                "a survivor's health is left exactly as the battle left it")
+        end,
+    },
+    {
+        name = "reviveFallenParty never restores enemies, summons, or below 1 HP",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit(swordsman(), 3, 3) }, { unit("character_bandit", 3, 5) })
+            local ally, enemy = c.units[1], c.units[2]
+
+            -- A tiny-pool member (20% floors to 0) still walks out at the 1-HP minimum.
+            ally.alive, ally.corpse = false, true
+            ally.char.stats.health.max, ally.char.stats.health.current = 3, 0
+
+            -- A fallen enemy stays down -- only the party is carried out.
+            enemy.alive, enemy.corpse = false, true
+            enemy.char.stats.health.current = 0
+
+            -- A downed party-side summon leaves no body (no corpse), so it is untouched.
+            local summon = { side = "party", alive = false, summoned = true,
+                char = { stats = { health = { max = 40, current = 0 } } } }
+            c.units[#c.units + 1] = summon
+
+            Combat.reviveFallenParty(c)
+
+            assert(ally.char.stats.health.current == 1, "floored to the 1-HP minimum")
+            assert(not enemy.alive and enemy.char.stats.health.current == 0, "the enemy stays fallen")
+            assert(not summon.alive and summon.char.stats.health.current == 0, "the summon is left down")
+        end,
+    },
 }

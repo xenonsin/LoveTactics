@@ -6,6 +6,14 @@
 --
 -- Stock is *derived, not authored*: a vendor sells every priced item whose `class` matches its
 -- own. Adding data/items/<slot>/<id>.lua with the right class puts it on that vendor's shelf.
+--
+-- One vendor is different: a `general = true` store (the Market) is the shelf for CLASSLESS priced
+-- goods -- mundane traveler's supplies no sin claims (a torch, the boots of speed). A priced item
+-- with no class used to be unbuyable dead data; the general store is where it now belongs. It ALSO
+-- resells any item bearing one of its `stockTags` (the Market carries every `potion`, whichever house
+-- brews it) -- so a class item can appear on two shelves, its own and the Market's. That is a resale,
+-- not a re-home: the potion keeps its class, still grows and refines at the alchemist. See the stock
+-- derivation below and docs/classes.md ("The general store").
 
 local Registry = require("models.registry")
 local Item = require("models.item")
@@ -72,6 +80,24 @@ function Vendor.priceFor(base, level)
     return base and math.floor(base * (1 + 0.5 * (level or 0)) + 0.5)
 end
 
+-- Whether `def` (a vendor blueprint) stocks `item`. A class vendor sells its own class; a general
+-- store sells the classless goods AND resells anything bearing one of its `stockTags` (the Market
+-- carries every `potion`, whatever its class). One rule, so the shop, the sell-back, and the refine
+-- gate all agree on what a shelf holds. Takes the def rather than an id so stock can call it in a loop.
+function Vendor.sells(def, item)
+    if not def or not item then return false end
+    if def.general then
+        if Item.classOf(item) == nil then return true end
+        for _, want in ipairs(def.stockTags or {}) do
+            for _, tag in ipairs(item.tags or {}) do
+                if tag == want then return true end
+            end
+        end
+        return false
+    end
+    return Item.classOf(item) == def.class
+end
+
 -- Every item this vendor could ever sell, in shelf order (cheapest first). Rank-gated
 -- items are included; `locked` marks the ones the player has not earned yet, so the shop
 -- can show them greyed out -- seeing what reputation buys is the point of the ladder.
@@ -88,8 +114,11 @@ function Vendor.stock(vendorId, rank, recipes)
 
     local stock = {}
     for id, item in pairs(Item.defs) do
-        if item.price and Item.classOf(item) == def.class then
-            local repRank = item.repRank or 1
+        if item.price and Vendor.sells(def, item) then
+            -- The general store keeps no reputation ladder, so it gates nothing on standing: an item
+            -- that needs rank 2 at its own house (a Panacea) is simply on the shelf here. Class vendors
+            -- honour the item's repRank as before.
+            local repRank = def.general and 1 or (item.repRank or 1)
             local level = (recipes and recipes[id]) or 0
             stock[#stock + 1] = {
                 id = id,
@@ -140,6 +169,10 @@ end
 function Vendor.canUpgradeHere(vendorId, item)
     local def = Vendor.defs[vendorId]
     if not def or not item or not Item.isUpgradable(item) then return false end
+    -- The general store hones nothing per instance (it sells no abilities); guarding here keeps a
+    -- classless ability from matching its nil class by accident. Consumables it sells still refine
+    -- per-type via Vendor.upgradeRecipe, whose classless == classless match is intended.
+    if def.general then return false end
     if item.type == "ability" then return Item.classOf(item) == def.class end
     return false
 end
@@ -203,16 +236,27 @@ function Vendor.recipeUpgradeCost(level, rank)
     }
 end
 
--- Refine the recipe for consumable `itemId` one tier at `vendorId`: verify this vendor sells that
--- consumable and it is upgradable, that the next tier is rank-unlocked, and that the gold is there;
--- spend the gold and bump Player.recipeLevel. Returns the new tier, or nil + a reason ("class" |
--- "max level" | "locked" | "gold"). ("class" here means "this vendor doesn't sell that consumable".)
+-- Whether `vendorId` is the bench that REFINES consumable `item` (per-type, via Vendor.upgradeRecipe).
+-- Only its brewer's own house refines a consumable -- its `class` vendor -- never a shop that merely
+-- resells it: the Market carries potions but you hone the recipe at the alchemist, where it grows. So
+-- the general store refines only genuinely classless consumables (of which there are none today). The
+-- one rule the shop's Upgrade list and upgradeRecipe both read, so a listed row can always be bought.
+function Vendor.canRefineHere(vendorId, item)
+    local def = Vendor.defs[vendorId]
+    if not def or not item or item.type ~= "consumable" or not Item.isUpgradable(item) then
+        return false
+    end
+    return Item.classOf(item) == def.class
+end
+
+-- Refine the recipe for consumable `itemId` one tier at `vendorId`: verify this vendor is the bench
+-- that refines it (Vendor.canRefineHere), that the next tier is rank-unlocked, and that the gold is
+-- there; spend the gold and bump Player.recipeLevel. Returns the new tier, or nil + a reason ("class"
+-- | "max level" | "locked" | "gold"). ("class" here means "not the bench that refines this".)
 function Vendor.upgradeRecipe(player, vendorId, itemId)
     local Player = require("models.player")
-    local def = Vendor.defs[vendorId]
     local item = Item.defs[itemId] and Item.instantiate(itemId)
-    if not def or not item or item.type ~= "consumable"
-        or Item.classOf(item) ~= def.class or not Item.isUpgradable(item) then
+    if not Vendor.canRefineHere(vendorId, item) then
         return nil, "class"
     end
     local rank = Vendor.rankFor(vendorId, Player.reputation(player, vendorId))

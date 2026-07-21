@@ -41,6 +41,12 @@ return {
     -- Bested, then kept (docs/story.md, "The other seven"). Player.recruit refuses a duplicate, so
     -- this is safe on any path that reaches Quest.complete more than once.
     rewardCharacter = "character_saber",
+    -- The victory scene, played over the frozen final frame before the hub opens (states/game.lua's
+    -- objective-win path). Saber is already recruited by the time it runs -- Quest.complete grants
+    -- `rewardCharacter` before the outro fires -- so she speaks the lines that make her joining land,
+    -- and the Guild envoy opens the board on the rest of the game. This is the prologue's old closing
+    -- beat, now carried by the quest that earns it rather than by prologue script.
+    outro = "prologue_victory",
     map = {
         biome = "castle",
         encounters = { min = 2, max = 4 }, -- map size scales with this (models/overworld.lua)

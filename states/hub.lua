@@ -9,6 +9,9 @@ local Player = require("models.player")
 local Building = require("models.building")
 local Sprite = require("models.sprite")
 local BuildingMap = require("ui.building_map")
+local CoachBubble = require("ui.coach_bubble")
+local Conversation = require("models.conversation")
+local Locale = require("models.locale")
 local Scale = require("scale")
 
 local hub = {}
@@ -19,9 +22,24 @@ local map           -- BuildingMap widget
 local background    -- love Image, or a path string if the asset is missing
 local activePanel   -- the open pop-up panel, or nil
 
+-- The building the first-visit tutorial points the newcomer at: the Adventurers' Guild board, where
+-- the guard's advice (data/conversations/prologue_arrival.lua) sends them for work.
+local INTRO_BUILDING = "quest_board"
+
+-- The hotspot rect of the building the intro coaches, read off the live map, or nil. The coach bubble
+-- anchors to this (ui/coach_bubble.lua).
+local function introBuildingRect()
+    for _, b in ipairs(map and map.buildings or {}) do
+        if b.id == INTRO_BUILDING then
+            return { x = b.x, y = b.y, w = b.w, h = b.h }
+        end
+    end
+    return nil
+end
+
 -- Open the pop-up panel for a building. Buildings name a module under
 -- ui/panels/; anything without one falls back to the generic placeholder.
-local function openPanel(building)
+local function launchPanel(building)
     local moduleName = building.panel or "placeholder"
     local ok, PanelModule = pcall(require, "ui.panels." .. moduleName)
     if not ok then
@@ -34,6 +52,20 @@ local function openPanel(building)
         vendor = building.vendor, -- vendor id, for buildings that are shops
         onClose = function() activePanel = nil end,
     })
+end
+
+-- Activation seam handed to the building map. In free play it opens the clicked building's panel.
+-- During the first-visit coaching (hubIntro == "coach") it does two things instead: it refuses every
+-- door but the coached one, and when that one is opened it plays the flier scene (Rowan spotting the
+-- Colosseum's contract) BEFORE the board appears -- then clears the flag, so the coaching runs once.
+local function openPanel(building)
+    if hub.player and hub.player.hubIntro == "coach" then
+        if building.id ~= INTRO_BUILDING then return end
+        hub.player.hubIntro = nil -- the lesson is spent the moment the board is opened
+        Conversation.play("prologue_flier", function() launchPanel(building) end)
+        return
+    end
+    launchPanel(building)
 end
 
 function hub.enter()
@@ -49,6 +81,17 @@ function hub.enter()
     map = BuildingMap.new(Building.list(hub.player), {
         onActivate = openPanel,
     })
+
+    -- First arrival at the capital (New Game only; the prologue set this flag -- states/prologue.lua).
+    -- The guard scene plays over the city the player is now looking at, and on its close the intro
+    -- moves to its coaching stage, where the Quest Board is the only door that opens (see openPanel and
+    -- hub.draw). A loaded save never carries this flag, so its hub opens straight to free play.
+    if hub.player.hubIntro == "arrival" then
+        Conversation.play("prologue_arrival", function()
+            hub.player.hubIntro = "coach"
+        end)
+        return -- nothing else opens over the arrival; there is no pending summary on a first visit
+    end
 
     -- Just back from a won quest? Surface the reward + the company's level-ups, then clear the handoff
     -- so it shows once (states/game.lua stashed it on the player before switching here).
@@ -90,6 +133,19 @@ function hub.draw()
     love.graphics.printf("The Hub", 0, 24, screenW, "center")
 
     map:draw()
+
+    -- The first-visit coach: a bubble pinned to the Quest Board while the intro is on its coaching
+    -- stage and nothing is open over the city. Same widget the battle tutorial uses (ui/coach_bubble),
+    -- so "click" stays device-honest -- a key cap for pad/keyboard, the plain verb for the mouse.
+    if hub.player and hub.player.hubIntro == "coach" and not activePanel then
+        local rect = introBuildingRect()
+        if rect then
+            local key = Locale.selectKey() -- "Enter" / "A", or nil on the mouse
+            local text = key and "the Quest Board to find work."
+                or "Click the Quest Board to find work."
+            CoachBubble.draw(text, rect, { prefer = "below", key = key })
+        end
+    end
 
     if activePanel then
         activePanel:draw()

@@ -3012,6 +3012,27 @@ function Combat.reanimate(combat, corpse, fraction)
     return true
 end
 
+-- Between-battle mercy, spent from the victory seam (states/battle.lua's win): a party member who
+-- fell in a fight the company still WON is not lost -- they pick themselves up and walk out to the
+-- overworld at a sliver of health (`fraction` of max, default 20%). Only the player's own fallen are
+-- eligible: a summon or decoy leaves no body (no `corpse`), and each real fallen roster member is
+-- restored on the shared char instance the overworld reads, so the recovery persists past the battle.
+-- HP is floored to 20% of the base max (`stats.health.max`), never below 1, since the battle-only
+-- ceiling bonuses (unreservedMax's maxBonus) are gone by the time the party is back on the map.
+function Combat.reviveFallenParty(combat, fraction)
+    fraction = fraction or 0.2
+    for _, u in ipairs(combat.units) do
+        if u.side == "party" and not u.alive and u.corpse
+            and not u.summoned and not u.decoyOf then
+            local hp = u.char.stats.health
+            hp.current = math.max(1, math.floor((hp.max or 0) * fraction))
+            u.alive = true
+            u.corpse = false
+            u.statuses = {}
+        end
+    end
+end
+
 -- Raise a corpse as a zombie: consume the body (it can't be revived or raised again) and put a fresh
 -- `charId` creature on `caster`'s side where it lay, AI-run (yours in allegiance but not in command)
 -- and sustained by the caster. Returns the new unit (which may already be dead if its tile is deadly).

@@ -1,9 +1,12 @@
 -- The prologue: Act 0, the first-time experience (see docs/story.md, "The three acts"). A linear
--- sequence of beats -- scenes, tutorial battles, an overworld leg, the debut bout -- that ends by
--- opening the hub (Act 1). It builds the party through play: the created avatar starts alone, Rowan
--- (the knight) is sworn in the burning village, and Saber (the gladiator) is bested on the
--- Colosseum's sand and joins. The avatar's body and NAME are both chosen before this state runs
--- (states/character_creation.lua); `begin` reads them off Player.active.
+-- sequence of beats -- scenes, tutorial battles, an overworld leg -- that ends by opening the hub
+-- (Act 1) at the capital's gate. It builds the party through play: the created avatar starts alone,
+-- and Rowan (the knight) is sworn in the burning village. The third companion, Saber, is NOT recruited
+-- here: the Colosseum debut that bests her is now the hub's own first-visit beat, taken from the Quest
+-- Board like any other quest (data/quests/arena_debut.lua carries the recruit and the victory scene as
+-- its reward and `outro`). See states/hub.lua, which owns the arrival. The avatar's body and NAME are
+-- both chosen before this state runs (states/character_creation.lua); `begin` reads them off
+-- Player.active, and sets the flag the hub reads to know this is the first time through its gate.
 --
 -- Structure: `beats` is an ordered list of thunks. `next` runs the next one; each beat eventually
 -- calls `next` again (a scene on its onDone, an `action` immediately). The two beats that leave this
@@ -169,17 +172,6 @@ function prologue.runOverworld(quest)
     State.switch(require("states.game"), quest, p.prestige, p, prologue.resume)
 end
 
--- Mark the debut quest complete (banks its gold/rep/prestige and takes it off the board), using a
--- copy that carries the id Quest.complete needs.
-local function completeArenaDebut()
-    local Quest = require("models.quest")
-    local def = Quest.defs["arena_debut"]
-    if not def then return end
-    local quest = { id = "arena_debut" }
-    for k, v in pairs(def) do if quest[k] == nil then quest[k] = v end end
-    Quest.complete(Player.active, quest)
-end
-
 -- ---------------------------------------------------------------------------
 -- Beat thunk builders
 -- ---------------------------------------------------------------------------
@@ -212,14 +204,12 @@ local function buildBeats()
         battle(VILLAGE_MAP),
         scene("prologue_flee"),
         overworld(FLIGHT_QUEST),
-        scene("prologue_arrival"),
-        scene("prologue_arena"),
-        -- Bested, then kept. The recruit rides on the quest's own `rewardCharacter` now
-        -- (data/quests/arena_debut.lua), granted by Quest.complete like any other reward, so the
-        -- blueprint is the single source of truth for who this bout is worth rather than a line of
-        -- prologue script that a board-taken version of the quest would never run.
-        battle(require("models.quest").defs["arena_debut"].map, completeArenaDebut),
-        scene("prologue_victory"),
+        -- The flight ends at the capital's gate, and the prologue with it: prologue.next past the last
+        -- beat opens the hub. The arrival is the hub's to stage now (states/hub.lua reads the hubIntro
+        -- flag begin() set): the guard scene plays over the city, the Quest Board is coached, and the
+        -- Colosseum debut is taken from the board -- arena_debut carries the Saber recruit
+        -- (`rewardCharacter`) and the victory scene (`outro = prologue_victory`), so the climax and the
+        -- companion are the quest's own reward rather than a line of script a board-taken run would skip.
     }
 end
 
@@ -243,6 +233,10 @@ function prologue.begin()
     prologue.avatar = avatar
     p.roster = { avatar }
     p.party = { avatar }
+    -- The hub reads this on the first visit to stage the arrival (the guard scene over the city) and
+    -- coach the Quest Board (states/hub.lua). Set only for a New Game -- a loaded save never runs this
+    -- state, so its hub opens straight to free play with no flag to see.
+    p.hubIntro = "arrival"
     prologue.beats = buildBeats()
     prologue.cursor = 0
     prologue.next()

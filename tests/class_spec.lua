@@ -132,17 +132,21 @@ return {
             -- derives its stock (Vendor.stock reads `class`, it is never authored) cannot drift apart
             -- from the table above.
             for id, def in pairs(Vendor.defs) do
-                local families = CONTRACT[def.class] and CONTRACT[def.class].families
-                assert(families, id .. " sells for unknown class '" .. tostring(def.class) .. "'")
-                local allowed = {}
-                for _, family in ipairs(families) do allowed[family] = true end
-                for _, entry in ipairs(Vendor.stock(id, 4)) do
-                    local blueprint = Item.defs[entry.id]
-                    if blueprint.type == "weapon" then
-                        local family = Item.archetype(blueprint)
-                        assert(allowed[family],
-                            id .. " stocks " .. entry.id .. " (" .. tostring(family) .. "), which the "
-                                .. def.class .. " shelf does not claim")
+                -- The general store (the Market) is not a class shelf: it sells classless goods and
+                -- no weapons at all, so the family-cluster contract does not apply to it.
+                if not def.general then
+                    local families = CONTRACT[def.class] and CONTRACT[def.class].families
+                    assert(families, id .. " sells for unknown class '" .. tostring(def.class) .. "'")
+                    local allowed = {}
+                    for _, family in ipairs(families) do allowed[family] = true end
+                    for _, entry in ipairs(Vendor.stock(id, 4)) do
+                        local blueprint = Item.defs[entry.id]
+                        if blueprint.type == "weapon" then
+                            local family = Item.archetype(blueprint)
+                            assert(allowed[family],
+                                id .. " stocks " .. entry.id .. " (" .. tostring(family) .. "), which the "
+                                    .. def.class .. " shelf does not claim")
+                        end
                     end
                 end
             end
