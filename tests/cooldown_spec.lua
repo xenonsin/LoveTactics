@@ -177,21 +177,18 @@ return {
     {
         -- Which weapon answers is a question of reach, not of slot order: the old code took whichever
         -- weapon sorted first in the grid and so answered a bowshot with a sword.
-        name = "a unit holding both a sword and a bow answers each blow with the weapon that reaches",
+        name = "a sword's Parry answers only within the blade's reach -- a bow in the grid does not lend it range",
         fn = function()
-            -- One reflex, and it declares no reach of its own: the sword's Parry, which under the
-            -- reach rule answers anything a weapon in the grid can reach back at.
+            -- The sword's Parry is a WEAPON-borne reflex: it is bound to the sword's own band, and a bow
+            -- sharing the grid cannot lend the blade its range ("how can the bow parry?"). So an adjacent
+            -- blow is cut back at and a distant one is not -- answering from three tiles off is a bowman's
+            -- job, and needs a reflex built for it (the Reprisal Quiver below), not the blade.
             local char = Character.instantiate("character_knight")
-            char.inventory[1] = Item.instantiate("weapon_iron_sword") -- sorts first: range 1, grants Parry
+            char.inventory[1] = Item.instantiate("weapon_iron_sword") -- range 1, grants Parry
             char.inventory[2] = Item.instantiate("weapon_iron_bow")   -- range 3, dead zone 2
             local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } },
                 { unit("character_bandit", 1, 2), unit("character_bandit", 1, 4) })
             local hero, near, far = c.units[1], c.units[2], c.units[3]
-
-            assert(Combat.answeringWeapon(c, hero, 1).id == "weapon_iron_sword",
-                "an adjacent blow is answered with the blade")
-            assert(Combat.answeringWeapon(c, hero, 3).id == "weapon_iron_bow",
-                "and one from three tiles off with the bow, whatever order the grid holds them in")
 
             local nearHp = near.char.stats.health.current
             Combat.dealDamage(c, near, hero, Combat.defaultWeapon(near.char))
@@ -199,7 +196,18 @@ return {
 
             local farHp = far.char.stats.health.current
             Combat.dealDamage(c, far, hero, Combat.defaultWeapon(far.char))
-            assert(far.char.stats.health.current < farHp, "and the distant one is shot back at")
+            assert(far.char.stats.health.current == farHp,
+                "but a blow from three tiles off is beyond the blade -- the bow does not parry")
+
+            -- Give the same grid a Reprisal Quiver -- a UTILITY that grants Ranged Counter, which owns
+            -- no weapon of its own and so answers with whatever bow the grid holds. NOW the distant blow
+            -- is shot back at, and it is the quiver's reflex doing it, not the sword's Parry.
+            char.inventory[3] = Item.instantiate("utility_reprisal_quiver")
+            Trait.attach(hero)
+            farHp = far.char.stats.health.current
+            Combat.dealDamage(c, far, hero, Combat.defaultWeapon(far.char))
+            assert(far.char.stats.health.current < farHp,
+                "the quiver's Ranged Counter answers from bow range, as a utility built for it should")
         end,
     },
     {

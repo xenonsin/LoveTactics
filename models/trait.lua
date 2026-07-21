@@ -465,11 +465,19 @@ function Trait.mayCounter(combat, unit, trait, attacker, tags, area, at)
     if answering == nil then answering = Trait.isReacting(attacker) end
     if not rule.answersReactions and answering then return false end
     local Combat = require("models.combat")
-    -- Reach is the gate, and the only one. Can something in your grid reach back at the tile the blow
-    -- came from? Then you answer it; otherwise you don't, and the reason is a fact on the board rather
-    -- than a timer nobody can see. A swordsman answers the foe beside them and not the archer four
-    -- tiles off; the archer answers the bowman across the field and not the brawler in their face
-    -- (Combat.answeringWeapon honours each weapon's dead zone).
+    -- Reach is the gate, and the only one. Can the bearer reach back at the tile the blow came from?
+    -- Then you answer it; otherwise you don't, and the reason is a fact on the board rather than a
+    -- timer nobody can see. A swordsman answers the foe beside them and not the archer four tiles off;
+    -- the archer answers the bowman across the field and not the brawler in their face.
+    --
+    -- WHICH weapon's reach that is depends on where the reflex came from:
+    --   * A counter carried by a WEAPON (Parry, on the sword itself) answers only within THAT weapon's
+    --     band. Parry is the sword's reach and the sword's alone -- a bow sharing the grid does not lend
+    --     the blade two tiles ("how can the bow parry?"). A spear's Parry reaches its two, a knife's its
+    --     one, because the reach is the granting weapon's, not the longest thing in the grid.
+    --   * A counter granted by a UTILITY owns no weapon of its own (the Reprisal Quiver's Ranged
+    --     Counter), so it answers with whatever weapon in the grid can reach back -- which is the whole
+    --     point of that item. Combat.answeringWeapon honours each weapon's dead zone for it.
     --
     -- Asked of the board as it stands when the answer is actually thrown, which for an on-hit reflex is
     -- once the whole action has resolved (Combat.beginAnswers) -- so a blow that wounds and then SHOVES
@@ -488,6 +496,14 @@ function Trait.mayCounter(combat, unit, trait, attacker, tags, area, at)
         dist = distance(attacker, unit)
     end
     if rule.reach == "melee" then return dist == 1 end
+    -- A weapon-borne reflex is bound to its own weapon's reach; only a reflex with no weapon of its own
+    -- falls back to "whatever in the grid reaches" (see the note above).
+    local weapon = trait.item
+    local ab = weapon and weapon.type == "weapon" and weapon.activeAbility
+    if ab then
+        return dist >= Combat.abilityMinRange(ab)
+            and dist <= Combat.abilityRange(combat, unit, ab)
+    end
     return Combat.answeringWeapon(combat, unit, dist) ~= nil
 end
 

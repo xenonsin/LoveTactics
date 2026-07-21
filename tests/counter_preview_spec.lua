@@ -232,6 +232,29 @@ return {
         end,
     },
     {
+        -- The reported bug: an imp spits from two tiles (Cinder Spit, range 2) and a swordsman parried
+        -- it -- which a range-1 blade must never reach. Parry is the sword's own reach, so it does not;
+        -- and adding a bow to the grid does not lend the blade the range either ("how can the bow
+        -- parry?"). The whole point of the imp keeping its distance (weapon_cinder_spit.lua) rides on this.
+        name = "a two-tile spit is beyond the blade -- neither a sword nor a sword-and-bow parries it",
+        fn = function()
+            for _, grid in ipairs({ { "weapon_iron_sword" }, { "weapon_iron_sword", "weapon_iron_longbow" } }) do
+                local knight = fighter("character_knight", {}, grid)
+                local imp = fighter("character_demon_imp", {}, {}) -- carries its Cinder Spit (range 2)
+                local c = Combat.new(arena(8, 8), { unit(knight, 1, 1) }, { unit(imp, 3, 1) })
+                local k, i = c.units[1], c.units[2]
+                k.char.stats.health.current = 999 -- survive so the on-hit reflex is actually reached
+                local impHP = i.char.stats.health.current
+
+                assert(soleCounter(c, i, k) == nil, "the panel promises no parry to a two-tile spit")
+
+                Combat.useItem(c, i, Combat.defaultWeapon(i.char), k.x, k.y)
+                assert(i.char.stats.health.current == impHP,
+                    "and none is thrown: a blade cannot answer what it cannot reach")
+            end
+        end,
+    },
+    {
         name = "counterPreview walks the same gates the live reflex does",
         fn = function()
             -- mayCounter is the single rule both the hover panel and the onDamaged hooks read, so a

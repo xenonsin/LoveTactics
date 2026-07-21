@@ -14,10 +14,12 @@
 -- board before committing, which is the whole reason the timer went away -- "why didn't I get
 -- countered?" must have an answer you can point at.
 --
--- The `counter` rule declares no `reach`, so the default applies: the bearer answers anything a weapon
--- in their grid can reach back at. On a swordsman that is the tile beside them. On a swordsman also
--- carrying a bow it is the bow's band too -- deliberately, since the question this system asks is
--- "can you reach back", not "which slot sorted first".
+-- The `counter` rule declares no `reach`, so the default applies: the bearer answers within the reach
+-- of the WEAPON THAT CARRIES the Parry -- the sword's own band, and nothing else's. On an iron sword
+-- that is the tile beside them; on a spear that also carries it, its two. A bow sharing the grid does
+-- NOT lend the blade its range -- Parry is the blade's answer, and a bow cannot parry (Trait.mayCounter
+-- binds a weapon-borne reflex to its granting weapon). Answering with "whatever in the grid reaches"
+-- is the job of a utility built for it, like the Reprisal Quiver's Ranged Counter, not of the sword.
 return {
     name = "Parry",
     description = "When struck by a foe your weapon can reach, spend a swing's stamina to turn the blow and cut back.",

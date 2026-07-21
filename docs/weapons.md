@@ -239,10 +239,14 @@ swap is the whole of what its price buys. Both decline to answer a blow that is 
 
 ### Pricing a triggered reflex
 
-**Reach is the gate, and the only one.** A defender answers a blow struck from a tile some weapon in
-their grid can reach back at — `Combat.answeringWeapon`, which honours each weapon's `minRange` dead
-zone as well as its range. Nothing recharges; there are no cooldowns on anything that answers with a
-blow. That is deliberate and it is the point: the answer to *"why didn't I get countered?"* has to be
+**Reach is the gate, and the only one.** A defender answers a blow struck from a tile it can reach back
+at. *Which* reach depends on where the reflex came from: a **weapon-borne** counter — the sword's Parry —
+answers only within *its own weapon's* band, so a bow sharing the grid does not lend the blade two
+tiles (*"how can the bow parry?"*). A counter granted by a **utility** with no weapon of its own — the
+Reprisal Quiver's Ranged Counter — answers with whatever weapon in the grid can reach, via
+`Combat.answeringWeapon`, which honours each weapon's `minRange` dead zone as well as its range. Both
+paths gate on `Trait.mayCounter`. Nothing recharges; there are no cooldowns on anything that answers
+with a blow. That is deliberate and it is the point: the answer to *"why didn't I get countered?"* has to be
 a fact the player can see on the board before committing, not a hidden timer. An archer cannot answer
 a foe in its face, and closing that distance is the counter to a counter.
 
