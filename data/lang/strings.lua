@@ -183,6 +183,20 @@ return {
     ["line.bastion_what_the_bastion_knows_outro.7"] = { en = "I swore to you in the ash and I never asked you whether you wanted it.", ja = "" },  -- TODO
     ["line.bastion_what_the_bastion_knows_outro.8"] = { en = "I would have sworn it to anyone burning that night. Anyone at all. That is not devotion, that is a reflex with a nice sentence on it, and I have been calling it my honour for a year.", ja = "" },  -- TODO
     ["line.bastion_what_the_bastion_knows_outro.9"] = { en = "So. Again, and properly this time. Not to an order. Not to a name off a shield. To you -- because I have looked at you and chosen, and I could have chosen otherwise.", ja = "" },  -- TODO
+    ["line.cathedral_fallen_confessor_confront.1"] = { en = "The one before you wore our cloth. Confessor. Anointed. She knows the charge.", ja = "" },  -- TODO
+    ["line.cathedral_fallen_confessor_confront.2"] = { en = "She sheltered what was ours to reclaim, and would not give it back. That is theft from the faith. Purge her, and be paid.", ja = "" },  -- TODO
+    ["line.cathedral_fallen_confessor_confront.3"] = { en = "They were children. The faith did not ask them. It has never once asked.", ja = "" },  -- TODO
+    ["line.cathedral_fallen_confessor_confront.4"] = { en = "And now it sends you to take me. I understand. Take is the only verb they were ever taught.", ja = "" },  -- TODO
+    ["line.cathedral_fallen_confessor_confront.5"] = { en = "I will not step aside, and I will not strike first. Come, then.", ja = "" },  -- TODO
+    ["line.cathedral_fallen_confessor_confront.6"] = { en = "Take what you can. You will find I have already given it away.", ja = "" },  -- TODO
+    ["line.cathedral_general_lust_confront.1"] = { en = "You came back. In their colors, a blade at your back. I could take the blade. I could take them.", ja = "" },  -- TODO
+    ["line.cathedral_general_lust_confront.2"] = { en = "Not you. I have never once been able to take you. You know why.", ja = "" },  -- TODO
+    ["line.cathedral_general_lust_confront.3"] = { en = "There is nothing left in there to hold. They emptied you, sister, the same as me. I kept what I took. You gave yours away, so that no one ever could.", ja = "" },  -- TODO
+    ["line.cathedral_general_lust_confront.4"] = { en = "So let me give, for once. The one thing you never let yourself want back.", ja = "" },  -- TODO
+    ["line.cathedral_general_lust_confront.5"] = { en = "I know the name you were born with -- before the cloth, before they renamed you for a virtue you could be worked to death inside. Kneel, and it is yours again.", ja = "" },  -- TODO
+    ["line.cathedral_general_lust_confront.6"] = { en = "...", ja = "" },  -- TODO
+    ["line.cathedral_general_lust_confront.7"] = { en = "That name is not yours to give. Taking it back from your hand would only be one more theft.", ja = "" },  -- TODO
+    ["line.cathedral_general_lust_confront.8"] = { en = "I know what I am called. I gave it to myself. And that, I am keeping.", ja = "" },  -- TODO
     ["line.colosseum_debut_confront.1"] = { en = "Opening bout! On the sand -- nobody, no house, no record.", ja = "" },  -- TODO
     ["line.colosseum_debut_confront.2"] = { en = "And against them, on hire from no one in particular: Saber.", ja = "" },  -- TODO
     ["line.colosseum_debut_confront.3"] = { en = "On hire from whoever paid, thank you. It's a living.", ja = "" },  -- TODO
@@ -276,9 +290,12 @@ return {
     ["line.tutorial_village.8"] = { en = "Not that, {name}. Do as I showed you.", ja = "" },  -- TODO
     ["line.tutorial_village.9"] = { en = "{select} on the imp to move in range and attack with your weapon.", ja = "" },  -- TODO
     ["name.bastion"] = { en = "The Bastion", ja = "" },  -- TODO
+    ["name.cathedral"] = { en = "The Cathedral", ja = "" },  -- TODO
+    ["name.character_amana"] = { en = "Amana", ja = "" },  -- TODO
     ["name.character_avatar"] = { en = "Stranger", ja = "" },  -- TODO
     ["name.character_caravan_master"] = { en = "Caravan Master", ja = "" },  -- TODO
     ["name.character_forsworn_captain"] = { en = "Forsworn Captain", ja = "" },  -- TODO
+    ["name.character_general_lust"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
     ["name.character_general_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
     ["name.character_greywatch_captain"] = { en = "Road-Captain", ja = "" },  -- TODO
     ["name.character_knight"] = { en = "Rowan", ja = "" },  -- TODO
@@ -310,6 +327,8 @@ return {
     ["title.bastion_turned_back_outro"] = { en = "The Water", ja = "" },  -- TODO
     ["title.bastion_what_the_bastion_knows_intro"] = { en = "A Question", ja = "" },  -- TODO
     ["title.bastion_what_the_bastion_knows_outro"] = { en = "A Useful Saint", ja = "" },  -- TODO
+    ["title.cathedral_fallen_confessor_confront"] = { en = "The Fallen Confessor", ja = "" },  -- TODO
+    ["title.cathedral_general_lust_confront"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
     ["title.colosseum_debut_confront"] = { en = "The Card's Opener", ja = "" },  -- TODO
     ["title.conversation_wrath_intro"] = { en = "Debut on the Sand", ja = "砂上のデビュー" },
     ["title.flight_event_shrine"] = { en = "The Roadside Shrine", ja = "" },  -- TODO
