@@ -489,13 +489,21 @@ function Dialogue:draw()
     local byteEnd = (chars >= self.textLen) and #self.fullText or ((utf8.offset(self.fullText, chars + 1) or 1) - 1)
     local shown = self.fullText:sub(1, byteEnd)
     love.graphics.setFont(self.textFont)
-    love.graphics.setColor(0.9, 0.9, 0.94)
     local textX = self.boxX + 28
     local textW = self.boxW - 56
     if self.overScene then -- stop short of the side bust standing at the right end
         textW = self:sideBustLeft() - SIDE_PAD - textX
     end
-    love.graphics.printf(shown, textX, self.boxY + 22, textW, "left")
+    if node and node.system then
+        -- A system banner -- a party join, "[<name> has joined your Party]". It has no speaker (so no
+        -- portrait and no name plate were drawn), and reads as an announcement rather than a spoken
+        -- line: centred in the box and in the party accent, the same gold the recruit toast used.
+        love.graphics.setColor(0.95, 0.85, 0.55)
+        love.graphics.printf(shown, textX, self.boxY + self.boxH / 2 - self.textFont:getHeight() / 2, textW, "center")
+    else
+        love.graphics.setColor(0.9, 0.9, 0.94)
+        love.graphics.printf(shown, textX, self.boxY + 22, textW, "left")
+    end
 
     -- Branching choices, listed on the right side of the box once the line is out. A choice whose
     -- text wraps to several lines gets a taller box, and the stack is measured from those heights --

@@ -202,6 +202,10 @@ local function buildBeats()
         scene("prologue_intro"),
         action(function() Player.recruit(Player.active, "character_knight") end), -- Rowan joins for the fight
         battle(VILLAGE_MAP),
+        -- The oath is sworn once the village is held, and "[Rowan has joined your Party]" lands at the
+        -- end of the "Ashes" scene that follows -- folded on there by Conversation.drainJoins, because
+        -- her recruit two beats up queued it (models/conversation.lua). Every companion is announced
+        -- this way, so the prologue does not special-case its first one.
         scene("prologue_flee"),
         overworld(FLIGHT_QUEST),
         -- The flight ends at the capital's gate, and the prologue with it: prologue.next past the last

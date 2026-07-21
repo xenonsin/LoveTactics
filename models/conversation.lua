@@ -29,6 +29,51 @@ Conversation.defs = Registry.load("data/conversations", "data.conversations")
 -- The overlay currently playing (a ui/dialogue.lua instance), or nil. main.lua reads this.
 Conversation.active = nil
 
+-- Companions recruited but not yet announced in a conversation. Player.recruit appends to this and
+-- the next scene to play folds each onto its end as a "[<name> has joined your Party]" banner, then
+-- clears the list. This is what puts a join IN the scene it belongs to -- the oath in "Ashes", Saber's
+-- turn in "The Gatekeeper", a vendor line's outro -- rather than only in a toast off to one side. It
+-- holds for EVERY companion without the author remembering to script it, because every recruit runs
+-- through Player.recruit and every recruit is immediately followed by its scene (states/game.lua plays
+-- the quest `outro` straight after Quest.complete; the prologue plays "Ashes" after the village). Held
+-- as display data (name/portrait), never the instance, so it stays load-safe and pins nothing.
+Conversation.pendingJoins = {}
+
+-- Record a freshly recruited companion for announcement in the next conversation. `character` is an
+-- instance or a blueprint (either carries name/portrait/sprite). A nil (a refused duplicate recruit,
+-- Player.recruit returning nil) is a no-op, so a repeatable quest never re-announces someone owned.
+function Conversation.noteJoin(character)
+    if not character then return end
+    Conversation.pendingJoins[#Conversation.pendingJoins + 1] = {
+        id = character.id,
+        name = character.name,
+        portrait = character.portrait or character.sprite,
+    }
+end
+
+-- Fold every pending join onto the END of a resolved scene as a `system` banner node -- no speaker,
+-- rendered centred in the party accent by ui/dialogue.lua -- and drain the queue, so a join is
+-- announced exactly once, in the first scene after it happened. Placed last so the newcomer's own
+-- lines land before the party-roster line does.
+--
+-- The banner text is a plain English literal, not a tagged/localized line: these nodes are INJECTED
+-- at runtime, so tools/extract_strings.lua never sees them to stamp a tag, and the grid it regenerates
+-- would drop any hand-added key. That matches the surface it replaces -- the recruit toast was English
+-- too -- and every other injected/label string in the UI.
+function Conversation.drainJoins(resolved)
+    if #Conversation.pendingJoins == 0 then return resolved end
+    resolved.script = resolved.script or {}
+    for _, join in ipairs(Conversation.pendingJoins) do
+        resolved.script[#resolved.script + 1] = {
+            system = true,
+            portrait = join.portrait,
+            text = "[" .. (join.name or "A companion") .. " has joined your Party]",
+        }
+    end
+    for i = #Conversation.pendingJoins, 1, -1 do Conversation.pendingJoins[i] = nil end
+    return resolved
+end
+
 -- Resolve a speaker id to its display identity: { name, portrait }. Looks the id up as a
 -- character then a vendor blueprint; `override` (a cast entry or a node) may supply its own
 -- `name`/`portrait` for a speaker that isn't an entity (a narrator) or to relabel one. The name is
@@ -320,6 +365,9 @@ function Conversation.play(id, onDone, ctx, opts)
     assert(def, "unknown conversation id: " .. tostring(id))
     local Player = require("models.player")
     local resolved = Conversation.resolve(def, ctx or Conversation.context(Player.active))
+    -- Any companion recruited since the last scene gets a "[<name> has joined your Party]" banner
+    -- appended here (Conversation.drainJoins), so the join shows up in the scene that follows it.
+    Conversation.drainJoins(resolved)
     if opts and opts.overScene then resolved.overScene = true end
     -- `opts.box` puts the text box somewhere other than the bottom of the screen -- the free gutter
     -- under a battle's board, say. Same reasoning as overScene: where the words fit is a fact about

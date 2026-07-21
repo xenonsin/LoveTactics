@@ -140,6 +140,10 @@ function Player.recruit(player, charId, opts)
     player.roster[#player.roster + 1] = char
     Player.syncLevels(player)
     if not (opts and opts.rosterOnly) then Player.addToParty(player, char) end
+    -- Announce the newcomer in the next conversation to play: "[<name> has joined your Party]" folded
+    -- onto the end of that scene (models/conversation.lua). Required lazily so this stays the low-level
+    -- model it is -- the queue is display-only data, and a scene always follows a recruit.
+    require("models.conversation").noteJoin(char)
     return char
 end
 
