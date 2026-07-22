@@ -171,8 +171,11 @@ so no ordering can strand the endgame. Two are earned in the prologue, one per p
   fighter in sport at the start of that line and kill one in earnest at its end; that rhyme is the
   point.
 
-Like the generals, the six companions past the knight and the gladiator are not yet written. The
-same discipline applies: author one end to end and copy its shape.
+All seven companions now have blueprints on disk — Rowan (knight), Saber (gladiator), Amana (priest),
+Gyeom (mage), Kaya (hunter), Ren (alchemist) and Clem (rogue) — each with its signature relic and its
+recruit and finale scenes. What is not yet built is the *middle* of every line: slots 3–9, the
+second-form finale mechanics, and the second relics. The same discipline applies: author one end to end
+and copy its shape. See each line's *What is built, and what is not* for the exact state.
 
 ## The Bastion: sloth, designed
 
@@ -905,28 +908,27 @@ are deferred, flagged as new work.
 
 ### What is built, and what is not
 
-**Built (scaffolding):** the `hunters_lodge` building + vendor (`sin = "gluttony"`), `growth/hunter`,
-the rank-4 foreshadow relic `weapon_hornbow_of_the_hunt`, the *wild-game* beast roster
-(`character_stag_beast`, `character_boar`, `character_wolf_alpha`, `character_dire_bear` — these stay
-ordinary animals, the honest bounties), the `fx.heal(fx.user)` exemplar (`weapon_parasitic_staff`),
-and slot 1 (`sacred_stag`).
+**Built:** the `hunters_lodge` building + vendor (`sin = "gluttony"`), `growth/hunter`, the rank-4
+foreshadow relic `weapon_hornbow_of_the_hunt`, the *wild-game* beast roster (`character_stag_beast`,
+`character_boar`, `character_wolf_alpha`, `character_dire_bear` — ordinary animals, the honest
+bounties), and the `fx.heal(fx.user)` exemplar (`weapon_parasitic_staff`). Both characters —
+`character_kaya` (temperance hunter, Wolfsong Horn centered, recruited as a **guide** so no
+`boss = true` — nothing fights her) and `character_general_gluttony` (**Gula**, `boss = true`). Gula's
+rule `trait_ravenous` (the shipped heal-on-hit half, `onCast`) on her **Maw of the Unfed** relic
+(rank-4 drop, `noSteal`, `gateHint = "at the heart of the wood the hunt hollowed out"`), plus her
+`weapon_gralloch_knife` (heal-on-hit inline). Kaya's Wolfsong Horn was already forged. Three of the ten
+quests — slot 1 (`sacred_stag`), the recruit slot 2 (`the_guide`, a `survive` guide-join,
+`rewardCharacter = "character_kaya"`), slot 5 (`the_silent_wood`), and slot 10 (`general_gluttony`,
+rank-4 gated, drops the Maw + `gateHint`). `general_gluttony` is in `the_gate_below` `requiredQuests`.
+Four conversations — `vendor_hunters_lodge_intro`, `hunters_lodge_the_guide_confront`, `kaya_joins`,
+`hunters_lodge_general_gluttony_confront`. Coverage in `tests/gluttony_spec.lua`.
 
-**Not built:** `character_kaya` (temperance hunter, Wolfsong Horn centered — recruited as a guide, so
-unlike Amana she is **not** fought as an enemy objective and needs no `boss = true`) and
-`character_general_gluttony` (**Gula**, `boss = true`); a **`character_turned_hunter`** beast
-blueprint — a former Grand Hunter gone under, the *named* horror distinct from the wild-game roster
-(it is the "beast that wore a name" at slot 5 and the wardens of the deep wood at slot 9), built to
-share **Gula's phase-two design language** so the cycle reads at a glance; the traits (the
-heal-on-hit appetite on the general's relic, and Kaya's temperance/immunity on the horn); the
-temperance fold-in on `utility_wolfsong_horn`; the general's **Maw of the Unfed** relic + gralloch
-grid weapon; the recruit quest (slot 2, a survive/co-op guide-join) with
-`rewardCharacter = "character_kaya"` and
-`general_gluttony` (rank-4 gated, drops the Maw + `gateHint`); adding `general_gluttony` to
-`the_gate_below` requiredQuests and Gula to `trait_hollow_crown` shades; the three conversations
-(`vendor_hunters_lodge_intro`, the recruit meeting + its `outro` where Kaya agrees to guide, the
-general confront), then `tools/extract_strings.lua`; and a `tests/*_spec.lua` mirroring
-`tests/devotion_spec.lua`. Deferred further: mid-line slots 3–9, the two-phase transform, and the
-devour-the-fallen finale mechanic.
+**Not built:** a **`character_turned_hunter`** beast blueprint (the *named* former Grand Hunter, distinct
+from the wild-game roster — the "beast that wore a name" at slot 5 and the wardens at slot 9), built to
+share Gula's phase-two design language; Kaya's **temperance-immunity** fold-in on the Horn (moot until
+the general's devour mechanic it answers exists); the **devour-the-fallen** finale mechanic and the
+**two-phase transform** into the beast; and the six mid-line quests and scenes — slots 3, 4, 6, 7, 8, 9
+(slot 7 is the *speak-without-a-fight* seam shared with the other lines).
 
 ## The Crucible: envy, designed
 
@@ -1101,22 +1103,27 @@ design, not drift: state it, do not smooth it.
 
 ### What is built, and what is not
 
-**Built (scaffolding):** the `alchemist` building + vendor (`sin = "envy"`, opens last at prestige 4),
+**Built:** the `alchemist` building + vendor (`sin = "envy"`, opens last at prestige 4),
 `growth/alchemist`, the rank-4 foreshadow relic `utility_philosophers_stone` (the fragile imitation, its
-comment the boss spec), and the homunculus exemplar (`character_homunculus`,
-`ability_summon_homunculus`). The copy and transform engines both ship (`Summon.copyOf`,
-`models/transform.lua`), and `requiresSight` is precedented on the Stone.
+comment the boss spec), and the homunculus exemplar (`character_homunculus`, `ability_summon_homunculus`);
+the copy and transform engines ship (`Summon.copyOf`, `models/transform.lua`). Both characters —
+`character_ren` (kindness alchemist, `boss = true` at her recruit per the Amana pattern) and
+`character_general_envy` (**Livia**, `boss = true`). Livia's rule `trait_covetous_reflection` (the
+shipped phase-one copy, `onCombatStart` copies your strongest, *not fragile*) on her **Envious Glass**
+relic (rank-4 drop, `noSteal`, `gateHint = "below the vats, where the shapeless envy the shaped"`).
+Ren's signature `utility_aqua_vitae` (bound, `unlock = { event = "healDone", count = 3 }`, grants the
+party a copy of its strongest — the benevolent inversion of the Glass). Three of the ten quests — the
+recruit slot 2 (`crucible_the_counterfeiter`, `rewardCharacter = "character_ren"`, `killAll`), slot 5
+(`the_vats`), and slot 10 (`general_envy`, rank-4 gated, drops the Glass + `gateHint`). `general_envy`
+is in `the_gate_below` `requiredQuests`. Four conversations — `vendor_alchemist_intro`,
+`crucible_the_counterfeiter_confront`, `ren_joins`, `crucible_general_envy_confront`. Coverage in
+`tests/envy_spec.lua`.
 
-**Not built:** `character_ren` (kindness alchemist, `class = "alchemist"`; fought only at the recruit,
-so `boss = true` there per the Amana pattern) and `character_general_envy` (**Livia**, `boss = true`);
-the three new mechanics (the **Envious Pall** trait, the **Covet** buff-strip over the shipped cleanse,
-and the **Grudge** `noHeal` status); a `character_blank_homunculus` for the Counterfeit Host; the
-traits and relics (the Glass carrying the copy rule, the Aqua Vitae carrying Ren's gild); all ten quests
-including the recruit (`rewardCharacter = "character_ren"`) and `general_envy` (rank-4 gated, drops the
-Glass + `gateHint`); adding `general_envy` to `the_gate_below` `requiredQuests` and Livia to
-`trait_hollow_crown` shades; the conversations (`vendor_alchemist_intro`, the recruit meeting + its
-`outro`, the general confront), then `tools/extract_strings.lua`; and a `tests/*_spec.lua` mirroring
-`tests/devotion_spec.lua`. Deferred further: mid-line slots 3–9 and the phase-two mechanics.
+**Not built:** the three phase-two mechanics (the **Envious Pall** trait, the **Covet** buff-strip over
+the shipped cleanse, and the **Grudge** `noHeal` status); a `character_blank_homunculus` for the
+Counterfeit Host; the **two-phase transform** (the borrowed shape sloughing off); Ren's second,
+receive-in-return form of the Aqua Vitae; and the six mid-line quests and scenes — slots 3, 4, 6, 7, 8, 9
+(slot 7 is the *speak-without-a-fight* seam).
 
 ## The Arcanum: pride, designed
 
@@ -1298,22 +1305,465 @@ deferred, flagged as new work.
 
 ### What is built, and what is not
 
-**Built (scaffolding):** the `arcanum` building + vendor (`sin = "pride"`), `growth/mage`, the rank-4
-foreshadow relic `utility_codex_of_hubris`, the Pride exemplar spell `ability_doppelganger`
-(`Summon.copy`), and slot 1 (`grimoire_ruins`).
+**Built:** the `arcanum` building + vendor (`sin = "pride"`), `growth/mage`, the rank-4 foreshadow relic
+`utility_codex_of_hubris`, and the Pride exemplar spell `ability_doppelganger` (`Summon.copy`). Both
+characters — `character_gyeom` (humility mage, the Ledger centered, `boss = true` at her recruit like
+Amana and Saber) and `character_general_pride` (**Sublimitas**, `boss = true`). Both traits —
+Sublimitas's `trait_perfect_recall` (the `onCast` answer on the Codex Unanswered, shipped as a
+counter-magic reflex; the full learn-and-recast is deferred) and Gyeom's `trait_ledger_diligence`
+(bank-per-action + the four-cast Release on the Ledger). The relics — `utility_codex_unanswered`
+(rank-4 drop, carries `trait_perfect_recall`, `gateHint = "where the shelves answer only themselves"`)
+and `utility_ledger` (Gyeom's bound signature, `unlock = { event = "cast", count = 4 }`). Four of the
+ten quests — slot 1 (`grimoire_ruins`), the recruit slot 2 (`arcanum_the_radical`,
+`rewardCharacter = "character_gyeom"`, `killAll`), slot 5 (`donor_roll`), and slot 10 (`general_pride`,
+rank-4 gated, drops the Codex + `gateHint`). Four conversations — `vendor_arcanum_intro`,
+`arcanum_the_radical_confront`, `gyeom_joins` (the join banner), and `arcanum_general_pride_confront`.
+`general_pride` is in `the_gate_below` `requiredQuests` **and** Sublimitas is in `trait_hollow_crown`
+`shades`. Coverage in `tests/pride_spec.lua` (Diligence banks and compounds; the Ledger releases at the
+fourth cast; Perfect Recall answers a spell and lets a sword through).
 
-**Not built:** `character_gyeom` (humility mage, the Ledger centered — recruited as an enemy objective,
-so `boss = true` like Amana and Saber) and `character_general_pride` (**Sublimitas**, `boss = true`);
-the traits (Sublimitas's `onCast` answer on the Codex Unanswered — shipping first as a counter-magic
-reflex, the full learn-and-recast deferred; Gyeom's suppress/bank/Release on the Ledger); the
-`status_pride` tell; the Codex Unanswered relic; the recruit quest (slot 2, `killAll`) with
-`rewardCharacter = "character_gyeom"` and `general_pride` (rank-4 gated, drops the Codex + `gateHint`);
-adding `general_pride` to `the_gate_below` `requiredQuests` (**already present**) and Sublimitas to
-`trait_hollow_crown` shades; the conversations (`vendor_arcanum_intro`, the recruit meeting + its
-`outro`/join, the general confront), then `tools/extract_strings.lua`; and a `tests/*_spec.lua`
-mirroring `tests/devotion_spec.lua`. Deferred further: mid-line slots 3–9, the two-phase transform, the
-raise-the-fallen finale mechanic, the full glance-and-recast mirror, and the cross-battle persistence
-relic.
+**Not built:** the `status_pride` tell; the two-phase transform (human Archmage → self-copying demon)
+and its phase-two kit (`ability_doppelganger` writ large + the raise-the-fallen necromancy finale
+mechanic); the full glance-and-recast mirror over the shipped counter-magic reflex; Gyeom's second
+relic (the cross-battle Diligence persistence, touching `models/save.lua`); and the six mid-line quests
+and scenes — slots 3, 4, 6, 7, 8, 9 (slot 7 is the *speak-without-a-fight* seam shared with the other
+lines).
+
+## The Undercroft: greed, designed
+
+The seventh line worked out end to end, and the last — the sin the other six were quietly funding all
+along. It proves *the vendor is quietly serving its sin* in the one register none of the others use, and
+that register is the **absence** of a register. The Bastion serves sloth by **declining to notice**; the
+Colosseum serves wrath by **selling tickets**; the Cathedral serves lust by **hiding it at the altar**;
+the Hunter's Lodge serves gluttony by **licensing the excess**; the Crucible serves envy by **preaching a
+philosophy that dissolves the crime**; the Arcanum serves pride by **standing above judgment**. Every one
+of those is a concealment or a justification — a thing done in the dark, or an argument for why the light
+is fine. **Greed needs neither.** The Undercroft serves greed by **being the way of the world** — the one
+rot that hides in nothing, because everyone was raised inside it and calls it common sense. *A debt is a
+debt. The market. Everyone has their price.* You do not purge this one. You were born owing it.
+
+The well is old and mostly moral rather than fantastical: **King Midas** (the touch that turns bread and
+daughter to dead gold — the power to *have* everything is the exact thing that makes having anything
+impossible); **Smaug and Thorin's dragon-sickness** (*The Hobbit* — the hoard counted and never spent,
+and the sickness that takes whoever sits on the gold); **Kaiji** (Fukumoto) and **Arlong Park** (*One
+Piece* — debt-slavery, and the freedom you are made to buy and never allowed to keep); **Scrooge and
+Marley** ("the chain I forged in life," link by link of cash-boxes and ledgers) and **Shylock's bond**
+(the pound of flesh — debt as ownership of a body, and unarguably lawful); and, for the shape of the
+thing at the summit, **Mammon** (Milton's demon of wealth, eyes forever down on the golden pavement) and
+**Dante's avaricious**, bound face-down in the dirt because in life they fixed on the earth. (The
+Crucible took the sewn eyes for envy; greed gets the face in the ground. As the other lines credit
+Claymore, Bloodborne, Golden Kamuy, Mononoke, FMA and Frieren, this one is Midas's and Marley's.)
+
+### The Bank, and what everyone already accepts
+
+An *undercroft* is the vaulted cellar beneath a great building, and the name is the structure. On top, in
+daylight, stands **the Bank** — a beloved, indispensable institution, name on the hospital and the
+library, the coin the city keeps and the credit the frontier runs on. Beneath it, "no sign, no door
+you'd notice," is the **Undercroft** the player actually ranks up through: the deniable firm of fixers
+and quiet killers the Bank keeps on retainer for the rare soul the law and the money cannot reach. The
+vendor's own word for its trade is *theft and quiet murder* — and that is the tail, not the body.
+
+Because the body is legal. The Bank makes the great money the way the great money is really made: it
+**buys the government** — lobbies for the statutes that make what it does lawful by construction, funds
+the crown's war against the demons and holds its debt — and it **makes owing it the natural order.** It
+does not pick your pocket in an alley; it holds the note on your house, your city's water, your king's
+campaign. Corruption is not its crime, it is its product, sold back to everyone as prudence and
+prosperity. (It funds the disaster it profits from — the note the Cathedral and Claymore's Organization
+already sound in this world.)
+
+**The great majority of the Bank's people are ordinary and sincere and believe every word of it** —
+which is the whole difficulty. There is no dungeon to expose and no secret to leak, because nothing is
+hidden. The rot is that everyone agrees, and the agreement is invisible to the people inside it. That is
+what makes greed the hardest of the seven to *name*: you cannot point at a crypt. You can only refuse to
+keep calling the water dry.
+
+Its casualty-list-read-as-an-honor-roll — the trick every line plays (the Bastion's martyrs, the
+Cathedral's ascended saints, the Lodge's named trophies, the Arcanum's donor roll) — is the register of
+**accounts settled in full**: the Bank's proud roll of debts cleared and depositors paid, which is a list
+of the indentured worked to death and the noncompliant quietly closed. It needs no more invention than
+the naming.
+
+### Aurea, the Ever-Owed — the greed at the summit
+
+Aurea is a **human who made a pact with the Demon Lord** (see *Every general is a fallen human*, below),
+and she was, first, a **debtor**: ruined and owned, the thing at the bottom of an institution like her
+own. She did not pact for power. She pacted **never to owe again — to be the one everyone owes, forever**
+— and the bargain's cruelty is Midas's exactly: everyone does, and she can keep or feel or spend none of
+it. She is the world's creditor and starves at her own table; like Smaug she counts a hoard she cannot
+use; being owed is the only sensation the pact left her, so she must keep calling it in, because every
+note collected is the only proof she is no longer the debtor she was. "Enough" is the thing the pact
+switched off.
+
+The name keeps the Latin sin-register (Ira, Luxuria, Gula, Acedia, Livia, Sublimitas) with the meaning
+buried rather than stamped: **Aurea**, from *aureus / aurum* — **golden, of gold** — the hoard's own
+substance worn as a name, and a real name at that (a saint's, which is the disguise: her human form is
+the city's beloved philanthropist, greed dressed in generosity's costume, the robber baron with his name
+on the almshouse). Epithet **the Ever-Owed** — everyone owes her, and the owing never ends.
+
+Her rule is the shipped foreshadow — the Kingsblood Dagger's *"lifts the kit out of your hands
+mid-fight"* — grown into a whole boss economy, and it is greed made a single number: **her gold.** She
+opens the fight rich, and that gold is her armor, her strength, and her fuel at once. **While she is rich
+she cannot be killed:** a blow is *paid off* — the damage comes out of her gold, not her flesh, the wealth
+buying off the wound — and she strikes like the tyrant she is. **Everything she does costs gold:** hiring
+**assassins** and **men-at-arms** onto the board, casting, and the **Golden Touch** itself. She digs her
+own grave to threaten you; every summon is survivability spent.
+
+The Golden Touch is how she claws it back — `fx.steal`, fantasy-skinned: her strike turns a unit's kit to
+gold and takes it into her purse, so *"taking your gear"* is now *how she stays alive*, and denying the
+gilding starves her. And the gold she spends, spills, or has stolen off her **drops as piles on the
+board** — the fight's tug-of-war: grab them to deny her refill and fuel your own side; she sends her
+bought men to reclaim them.
+
+**Drain her to zero and the ward is gone.** Only then does a blow reach her, and there is almost nothing
+behind the gold — a slow, soft mortal. The ruined debtor who pacted never to be poor dies **exactly as
+poor as she began**, which is the pact's cruelty cashed out in the win condition. The whole fight is one
+legible sentence — **make her poor, then break her** — over three levers: deny her gildings, hold the
+loose gold, out-drain her with Clem. It stays the clean side of the *Greed and Envy are not the same sin*
+line at the top of this file: Aurea takes the **thing** (your gear, turned to gold), where Livia's Covet
+takes the thing's **property** and would rather you had neither.
+
+**Killing her frees no one automatically.** The notes do not cancel themselves at her death; the laws she
+bought stay bought; the government still owes; the Bank crowns a new owner and the credit runs on. You
+cannot end a practice by killing its richest product, and you cannot kill an idea a whole realm calls
+common sense.
+
+### Clem, the same craft answered the other way
+
+Clem is a rogue whose craft is the Undercroft's own: she was its **finest blade** — the Bank's quiet hand
+when a debtor would not comply — until she broke on a contract she could not fulfil, and turned the whole
+craft around. She now infiltrates the Bank's holdings to **cancel debt**: burn the notes, forge the
+clean-slate writ, spirit the ruined away before the men come. The collector became the jubilee, and she is the only one
+who *can*, because she learned the machine from the enforcement side — she knows which note to burn,
+which magistrate is bought, where the true ledger is kept. She is **not the general's kin and shares no
+origin with her**; like Kaya to Gula and Ren to Livia, she is simply the one who would not keep calling
+it normal. She is a **witness who broke** (the Amana / Gyeom pattern), and the class used honestly.
+
+Her name keeps the companions' rule — gender-neutral, virtue buried and not stamped (the way *Saber* is
+patience, *Kaya* is enough, *Amana* is a trust, *Ren* is humaneness, *Gyeom* is humility): **Clem**, from
+*clementia* — **mercy, clemency, the power to release a debt or a sentence.** For an enforcer who became
+the jubilee, a name that is clemency worn as a plain nickname — hard as a blade on the tongue, mercy
+underneath — is the whole of her. (It is the one companion root drawn from Latin rather than the East;
+it reads as an ordinary English name and never as the generals' sin-register, so the split holds where it
+counts, on the screen — the way *Rowan* and *Saber* already do.)
+
+Her virtue is caritas in its real sense — *selfless love, giving with no ledger* — and it is greed-shaped:
+her whole life was transactions and blood, every life a price and every death a settled account, so
+**grace is the thing she cannot compute** — doing something for someone and not writing it down. Her
+debt-forgiving *is* caritas made literal: release, not redistribution, the clean inverse of a general who
+made even her own soul a deal.
+
+Her answer to Aurea is **not an immunity.** Greed is a contest over a resource, so the foil is a contest,
+not a switch — a deliberate departure from the other six companions' clean immunities (Amana's "not one
+of the made," Kaya's "nothing to eat," Gyeom's "shows nothing"), and worth stating outright the way the
+doc flags Ira and Livia as rule-exceptions. And the resource is **time.** Aurea **buys** it — every summon
+and every action is time she pays for out of her hoard, gold turned into presence on the board. Clem
+**mints** it and gives it away — every kill quickens the whole party (her signature, below), a tempo she
+keeps none of. The same economy, opposite direction: greed concentrates, charity distributes, exactly as
+Ren and Livia are one copy pointed at opposite beneficiaries.
+
+She is the party's **tempo**, not its shield. Aurea can gild Clem like anyone; Clem's edge is that her
+kills speed everyone while the tempo never stays with her — *that* is "keeps nothing," a playstyle rather
+than a trait flag. You could win the fight without her, only slower: a party that acts more drains the
+purse faster, and every hired blade Clem cuts down is gold Aurea already spent, wasted the instant it
+falls. And it is exactly why the Bank marked her — the one killer who turns a death into everyone's gain
+instead of a fee owed is living proof the whole engine runs in reverse, the idea the Bank cannot let
+circulate.
+
+Her quiet cost and question are the caritas beat in personal form, and they are distinct from Ren's (the
+giver who will not *receive*): Clem's trouble is not receiving, it is that she **forgives every debt but her
+own.** The ledger-mind persists — she is still trying to *pay off* what she did as the Bank's blade, and
+she is the one debtor she refuses to release, because she believes the lives she took can only be paid,
+never forgiven. The line makes her do the unbearable thing for a transaction-mind: **accept a gift she
+cannot repay** — to be forgiven for free, and to stop collecting on herself. Refusing your own jubilee is
+only the ledger wearing a hair shirt.
+
+### The line's rhyme, and the finale
+
+Every line has a rhyme; the Undercroft **opens and closes on what is owed.** At the head Clem cancels a
+stranger's debt and walks away wanting nothing for it — caritas shown, not preached, and the ledger
+proved optional. At the end Aurea — who holds every note in the city, and (the reveal) **Clem's own** —
+offers the one thing greed can give: her account, **closed.** *"You have never once been able to forgive
+your own debt. I hold it. Kneel, and I mark it paid."* It is a taking dressed as a gift, the exact move
+Luxuria makes offering Amana her name back: to let the monster be the one who *absolves* you is to be
+owned by the absolution, and so to owe her everything. Clem refuses — the refusal is a **choice of
+character,** not a mechanic — and does the thing she never could: she forgives **herself,** for free,
+needing no hand to clear it, and in the same motion burns the Bank's master ledger, the largest jubilee
+there is — every debt in the city cancelled at once. The one thing she keeps (the Kept-Trust beat,
+Amana's kept name) is not a possession: it is the party, `{name}` — one account she chooses to hold.
+*"I'll owe you this one. Not because you can call it. Because I want to."* The transaction-mind holding a
+single open account on purpose, which is love and not debt.
+
+That burning has to be **Clem's** act and not the kill's, because killing Aurea cancels nothing (see above)
+— which is what makes the freeing cost what it costs, and what leaves slot 9's scale standing: a new
+Bank, the bought laws, the way of the world.
+
+### The ten slots
+
+Ten against the four-rank ladder (`ranks = { 0, 40, 100, 200 }`; Cutpurse → Prowler → Shadow →
+Guildmaster), the general behind rank 4 — the same standing that puts the **Kingsblood Dagger** on the
+shelf, whose file comment is the spec. One shipped quest is reused (`vault_heist`); the rest are new. The
+middle makes the player **see** that the contracts all have one client, and trace it up to the summit —
+to the one fact Clem cannot yet face (slot 7): the debt is the pact, not the gold, so the kill frees no
+one; and the Bank holds her own note.
+
+| # | Slot | Rank | The Undercroft's ten | What it costs / reveals |
+|---|---|---|---|---|
+| 1 | Introduction | 1 | **The Vault Beneath** — `assassinate` *(ships, `vault_heist`)* | the job's no robbery — the "merchant prince" is in the Bank's ledger too; you were sent to *collect.* Everything here is owed to someone you haven't met |
+| 2 | The recruit | 1 | **[Clem]** — `killAll` | the Bank's own retired blade, now burning its writs, marked for it; bested, her plea reveals the machine; she joins |
+| 3 | Complication | 1 | **[title TBD]** — `protect`/`killAll` | a debtor "recruited" to work it off; the cut that never clears, shown |
+| 4 | Escalation | 2 | **[title TBD]** — `killAll` | the trace-up: the contracts all have one client — the outlaws are the establishment |
+| 5 | The discovery | 2 | **Accounts Settled in Full** — `reach`/`killAll` | the Bank's roll of debts cleared set against the indentured dead — a casualty list read as an honor roll |
+| 6 | Grind | 2 | **[Collection Work]** — `repeatable` | run the routes; the player *is* the hand the Bank hires |
+| 7 | **The turn** | 3 | *(no fight)* | killing Aurea cancels no notes — the debt is the pact; and the Bank holds Clem's own. Her hope dies: that she can simply *take* freedom back |
+| 8 | The break | 3 | *title TBD* — `assassinate` | Clem sets down her own debt; **second relic** (Borrowed Time keeps one kill's tempo for herself) |
+| 9 | The approach | 3 | **[title TBD]** — `assassinate` | the scale her death won't undo — a new Bank, the laws still bought |
+| 10 | The general | 4 | **Aurea, the Ever-Owed** — `assassinate` | two-phase; her **gold** is ward, strength and fuel — untouchable while rich, she buys off blows and hires blades with it; bankrupt her (deny gildings, hold the loose gold, out-drain with Clem) and she transforms, then falls. Drops the **Bottomless Purse** + `gateHint` |
+
+`vault_heist` exists and maps onto slot 1; the recruit (slot 2), the finale (slot 10), the recruit
+`outro` (Clem's terms — why she'll turn on the house that made her), and every mid-line scene are new. Slot
+7 needs the antagonist to **speak without a fight** — the same seam flagged for Wrath's, Lust's,
+Gluttony's, Envy's and Pride's slot 7. The rep-ladder soft-lock (the middle cannot earn enough points to
+reach the grind) is the same one the other lines carry and wants the same fix (standing as a **count of
+distinct completed quests**, `ranks = { 0, 3, 6, 9 }`).
+
+### The relic, and Clem's signature
+
+**The general's drop — the Bottomless Purse** (a purse that is never full — greed's own vessel, and a type
+of its own beside the armor / spear / mail / reliquary / bow / mirror / tome of the others). It carries
+the **Golden Touch** for whoever lifts it — worn, *you* now gild your foes and take their kit to gold,
+warded by the hoard you pile up and unable to stop taking, the same trap it was when she carried it.
+`noSteal`, no `class`, no `price`, `gateHint = "beneath the vault that was never full"`, written into its
+flavor and consumed by `the_gate_below`.
+
+**Clem's signature is Borrowed Time** (`weapon_borrowed_time.lua` — a blade, like Saber's, so the
+killer's own tool sits at her grid's centre; never a cleanse, which is the priest's verb, not the
+rogue's). *Time is money, and she gives it away.* It runs on two parts, the way Rowan's Aegis and Kaya's
+Horn do:
+
+- **The engine (a trait):** when a foe Clem downs falls, the **whole party gains Haste** — her lethality
+  is everyone's tempo. Haste is the Undercroft's own rogue verb already (`trait_opportunist`, on the
+  Opportunist's Charm), so it reads as an assassin's momentum, never a blessing. She keeps none of it: the
+  time is spent on the party.
+- **The active (conditional-unlock):** a **mercy-stroke** — an execute on a wounded foe (the assassin's
+  coup, and her name in a verb: *clementia → coup de grâce*) that secures the kill and so reliably lights
+  the engine. Charged on the shipped `kill` tally (`unlock = { event = "kill", count = N }` — no new seam,
+  unlike a bespoke "forgiven" event); the marquee grants a larger burst — extra Haste, or a free step —
+  across the party.
+
+Its second form, earned at slot 8, is the arc in a verb (Rowan's declared ward, Saber's chosen strike,
+Gyeom's persistence): the one who spends every kill on others may, **once, keep the tempo for herself.**
+The hardest thing she ever takes is a share of her own work.
+
+Two other unbuyables across the middle, no more (the 3×3 grid budget): a **Common Purse** at slot 5 (grid
+bonus scaling with adjacent allies, à la the Muster Roll — a share spread, not a hoard held) and one from
+slot 8. Both carry `class = "rogue"` with no `price` — unbuyable, still tallying toward rogue growth (see
+`docs/classes.md`).
+
+### The gold, in numbers
+
+Starting points for tuning, not gospel — but the shape *is* the design. Damage is dealt into her **gold,
+not her flesh**, one-for-one after her defense mitigates it, and only a gold pool at zero exposes the
+little that is behind it.
+
+| Quantity | Value | Why |
+|---|---|---|
+| Gold (the ward), phase 1 | **300** | the fight's real health bar — a party's several rounds of damage, offset by her refills; tune upward if a rank-4 party out-scales it |
+| True HP (exposed only at 0 gold) | **40** | almost nothing behind the money — a soft mortal, killable in a turn once broke |
+| Defense / magic defense | **14 / 12** | mitigates *before* gold absorbs; armour still matters |
+| Damage (personal) | **12** | low — she does not duel, she *buys* blades; her threat is the board she pays for |
+| Movement / speed | **3 / 4** | slow; a hoard does not chase — she sits on the purse |
+
+**Her every ability costs gold** (her basic weapon strike is free, so she is never fully harmless — just
+defanged and exposed once broke):
+
+| Action | Gold | Effect |
+|---|---|---|
+| **Golden Touch** (Gild) | **20** | begins turning a unit's kit to gold; if it *sets* (a turn later, undisrupted) the item is taken and its **worth (~40) added to her gold** — a landed gild turns a profit, a *denied* one is 20 poured out for nothing |
+| **Hire a man-at-arms** | **25** | a durable body onto the board (below) |
+| **Hire an assassin** | **40** | a fast striker onto the board (below) |
+| **Gilded Reign** (phase 2 only) | **50** | the Midas-horror gilds every adjacent unit at once — a mass theft, her panic-spend when cornered |
+
+So her gold only climbs if her gildings land and her piles are reclaimed. **Deny both and she cannot stay
+solvent** — which is the whole fight: protect your kit (starve the gilds), and reach the loose gold first.
+
+**Gold piles.** Every hired blade carries the gold she paid for it: kill one and that gold **spills as a
+pile** on its tile (man-at-arms ~15, assassin ~25). A party unit that steps onto a pile **banks it** (off
+the board, denied her); Aurea or a blade that reaches it first **reclaims it** (back into her gold). Clem's
+kills therefore pay twice — the party hastes (Borrowed Time) *and* fresh gold drops for you to bank — which
+is why cutting down her paid blades is never wasted, even as they respawn on her coin.
+
+**The two-phase, and the trap in it.** The first time her gold hits **0** she does not die — she transforms
+(the Midas-horror), **pulls every loose pile on the board into a fresh purse** (a base ~250, plus whatever
+gold you left lying around), and re-arms. Bankrupt her again and she falls. The board's lesson: **bank the
+piles before you break phase one**, or you hand the horror its second fortune. Greed punished for hoarding;
+the player punished for leaving money on the floor.
+
+**Her grid.** Centre: the **Bottomless Purse** (bound — it carries the gold ward and the Golden Touch).
+Beside it the **Kingsblood Dagger** (her own blade, its bleed her only free action) and the two hire-a-blade
+abilities (`ability_hire_men`, `ability_hire_assassin`). The dagger and the summon-ability frame ship; the
+gold ward, the gold-cost gating, the piles and the transform are the bespoke work.
+
+### The hired blades
+
+Her spending has to *matter*, so the two summons pull the party opposite ways — one walls you off the purse,
+one dives your drainers:
+
+- **Man-at-arms** (`character_man_at_arms`, ~25 gold) — slow, durable, modest damage: high HP and defense.
+  Bought to **wall the party off from Aurea** and to **reclaim gold piles** (its idle job is walking loose
+  gold home). Drops ~15 on death. Less a threat than a *cost you must pay* to reach her — and the coin you
+  get back for paying it.
+- **Assassin** (`character_hired_assassin`, ~40 gold) — fast, fragile, high-damage; **dives the backline**:
+  your archers, your drainers, Clem herself. The pricey blade she spends when she wants a *kill*, not a
+  wall. Drops ~25 on death. Killing one is a windfall — haste and a fat pile — but you must survive it first.
+
+Both are ordinary hired humans, not demons (`boss = false`, killable and lootable), and they are the
+**shipped-engine** half of the fight: ordinary summon abilities that happen to charge in gold rather than
+mana. They are the roster the player learns to prioritise — kill the assassin to stop the bleeding, kill the
+man-at-arms to open the road and bank its coin.
+
+### Aurea's play
+
+She is a coward who buys safety, and her AI has to read as exactly that — she never spends herself when she
+can spend a coin. In priority order:
+
+1. **Stay solvent.** Gold is her life; every other choice bends to keeping it above zero. Low and
+   threatened, she pulls back toward her piles and her men rather than trade blows.
+2. **Gild for profit.** Prefer the richest target in reach — most items, most worth — and re-gild an
+   already-gilded unit to *collect* (the two-step). A gild that will not pay (a lone, cheap, or
+   about-to-be-freed target) is not worth the 20.
+3. **Wall when pressured.** Party closing on her purse → hire a man-at-arms to body-block the lane. She
+   would always rather you kill a thing she paid for than reach her.
+4. **Cut the drain.** Hire an assassin at whoever empties her fastest — the backline, the drainer, Clem —
+   when she wants a kill rather than a wall.
+5. **Reclaim.** Idle gold on the board is unbearable to her: she or her men walk loose piles home whenever
+   it is safe.
+6. **Hold, don't chase.** Move 3 and a free dagger — she holds near her wealth and strikes in person only
+   when cornered.
+7. **Panic (broke / phase 2).** At the brink she empties the purse to survive: Gilded Reign into a crowd, a
+   flurry of hires, anything to re-ward before the killing blow.
+
+This is richer than the `ai` rule table (`priority/act/targetPref/when`, as on `character_general_lust`)
+can express on its own — spending gold by board-state is a decision the simple resolver does not make — so
+Aurea's play is part of the **bespoke** boss work, not a data-only `ai` block. The tell to preserve: she is
+never brave, only rich.
+
+### Aurea and the two systemic rules
+
+Aurea obeys both all-general rules (see *Every general is a fallen human*, below), and fits the first
+**cleanly** — a human who pacted, no exception needed (unlike Ira and Livia). **Human first form →
+demonic second:** the beloved philanthropist sheds into the **Midas-horror** — a thing of living gold that
+starves at its own hoard. Its **trigger is the gold itself:** the first time you **bankrupt** her she does
+not fall — she transforms, violently pulls every gold pile on the board into a fresh purse, and re-arms.
+Bankrupt her again and she dies.
+
+**The second finale mechanic** (parallel to Luxuria turning the blooded, Gula devouring the fallen, and
+Sublimitas raising them) is the **gold economy itself:** a purse that wards her, gates her every action,
+refills on the Golden Touch, and drops as board loot — the one general whose health you cannot swing at
+directly, only *empty.* This is a **bespoke finale subsystem** — real new engine, on the order of the
+Hollow Crown's custom trait (`trait_hollow_crown`), built over the shared two-phase-transform
+(`models/transform.lua`). It supersedes the engine table's "greed needs no engine" note: the bare
+take-a-thing (`fx.steal`) ships, but the gold *economy* around it does not. Flagged as new work.
+
+### Clem, statted
+
+A glass-cannon skirmisher — the fixer who must never be caught: high speed and damage, low health, on
+`rogue` growth (`speed +1, damage +2, stamina +3, health +3` a level). `boss = true` only at her recruit
+fight (slot 2), where she is the objective; a party member after, like Amana and Saber.
+
+Her 3×3 is built for the tempo loop — soften, kill, hand the speed to the team:
+
+- **Borrowed Time** (centre, bound) — the signature: haste-on-kill and the mercy-stroke (above).
+- **A poison dagger** (`weapon_envenomed_kris`) — the setup: bleed and poison soften a target into the band
+  where the mercy-stroke lands, so the kill that feeds the engine is one she *manufactures* rather than
+  waits for.
+- **Shadow Step / Shadow Strike** (`ability_shadow_step`, `ability_shadow_strike`) — the fixer's
+  infiltration and her reach: close on a wounded backliner and finish it, the assassin's engage.
+- **A way out** (`consumable_smoke_bomb` or `utility_feather_boots`) — she strikes into the middle of the
+  board and has to survive leaving it.
+
+The loop *is* the character: **poison to soften → mercy-stroke to kill → the whole party (her included)
+hastes → act again.** Remaining cells fill with rogue growth. Note the deliberate restraint — she carries
+the Opportunist's Charm's *tempo* fantasy but not the Charm itself; two haste engines stacked would spin the
+fight out, and Borrowed Time is the one that says who she is.
+
+### The scenes
+
+Four conversations carry the line, each a beat the chapter has already argued, staged:
+
+- **`vendor_undercroft_intro`** (first shop visit) — the fixer's front: no sign, no door you'd notice,
+  everything inside belonged to someone else. It sells *family* — *we look after our own* — over a floor
+  that owns everyone on it. If Clem is already recruited she cuts in, naming the lie she used to enforce.
+- **The recruit** (slot 2, a post-battle `outro`) — bested, Clem stays the player's hand, and her plea is
+  the reveal: the guild is the Bank's blade, the debt is the pact, and she was its finest edge until she
+  broke. She joins — the *"[Clem has joined your Party]"* banner (`Conversation.pendingJoins`).
+- **The turn** (slot 7, *no fight*) — Aurea speaks without a battle (the seam every line's slot 7 needs):
+  killing her cancels no notes, the debt is the pact and not the gold, and — the private cut — *the Bank
+  holds Clem's own.* Her hope dies, that she can simply take freedom back.
+- **The confront** (slot 10) — the finale from *the rhyme*: Aurea offers Clem her account closed; Clem
+  refuses, forgives herself, burns the master ledger, and keeps the one thing she chooses — `{name}`.
+  Staged over the general's battle frame.
+
+Slot 7's *speak-without-a-fight* is the shared engine question flagged across Wrath, Lust, Gluttony, Envy
+and Pride — a quest-level `opening` over the board, wanting staging closer to a hub panel.
+
+### Building the gold subsystem
+
+The one large piece, in dependency order — a note for whoever builds it, not a promise it ships:
+
+1. **The gold field + the ward.** Give the unit a `gold` pool (seeded from the Bottomless Purse). In the
+   damage path (`Combat.dealFlatDamage`), *after* mitigation, if `gold > 0` subtract the blow from gold
+   instead of health; only overflow past zero reaches HP. Gate it behind a trait/flag so none but Aurea
+   ever wards this way.
+2. **Gold as an ability cost.** Extend the cost check (`cost = { stat = "gold", amount = N }`, through
+   `Combat.itemBlockReason` / `useItem`) to read the `gold` pool — so *broke = greyed-out summons and gild*
+   falls straight out of the existing resource gate.
+3. **Gild's two-step refill.** Model the set the way the Kingsblood reads bleed: first cast applies
+   `status_gilded`; a second cast on an already-gilded target *takes* the item and adds its worth to gold.
+   Cure the status between and nothing is taken — which sidesteps the trap that `onExpire` fires on Cure
+   too (the reason the earlier "lien on a timer" was wrong).
+4. **The hired blades.** Ordinary summon abilities (`Summon`, shipped), charged in gold by step 2; their
+   blueprints (`character_man_at_arms`, `character_hired_assassin`) are plain humans.
+5. **Gold piles.** A board object modelled on hazards/zones (`models/hazard.lua`): dropped at a dying
+   blade's tile (`killUnit`), banked when a party unit ends its move on it, reclaimed when Aurea or a blade
+   does (a move-end check).
+6. **The transform.** On the first `gold == 0`, `Transform.apply` (ships) to the Midas-horror, pull every
+   pile into a fresh purse, and set the phase flag so the *second* zero is lethal.
+7. **Clem's Borrowed Time.** A kill-hook trait (the `kill` tally seam) that hastes the party, plus the
+   mercy-stroke active (`unlock = { event = "kill" }`). No new engine beyond the hook.
+
+Then the usual: `tools/extract_strings.lua`, and a `tests/*_spec.lua` mirroring `tests/devotion_spec.lua`
+that at minimum pins the ward redirect, the gold cost gate, and the haste-on-kill.
+
+### What is built, and what is not
+
+**Built:** the `undercroft` building + vendor (`sin = "greed"`), `growth/rogue`, the rank-4 foreshadow
+relic `weapon_kingsblood_dagger` (its comment the boss spec), the steal exemplar `ability_pickpocket`
+(`fx.steal`) with the `stealPriority` / Decoy-bait system around it, and the rogue kit that reads as
+greed (`weapon_cutpurse_knife`, `utility_opportunists_charm` / `trait_opportunist`, `utility_decoy`,
+`weapon_envenomed_kris`). Both characters — `character_clem` (caritas rogue, Borrowed Time centered,
+`boss = true` at her recruit) and `character_general_greed` (**Aurea**, `boss = true`). Aurea's rule
+ships as the **Golden Touch** — an `fx.steal` active on her **Bottomless Purse** relic (rank-4 drop,
+`noSteal`, `gateHint = "beneath the vault that was never full"`), the *take-a-thing* half of her design;
+greed's rule is an ability, not a trait, so the Purse carries the active rather than a passive. Clem's
+signature `weapon_borrowed_time` (bound, `unlock = { event = "kill", count = 3 }`, a mercy-stroke that
+hastes the whole party — the haste rides the active's effect, since the engine dispatches no `onKill`).
+Three of the ten quests — slot 1 (`vault_heist`), the recruit slot 2 (`undercroft_clem`,
+`rewardCharacter = "character_clem"`, `killAll`), slot 5 (`accounts_settled`), and slot 10
+(`general_greed`, rank-4 gated, drops the Purse + `gateHint`). `general_greed` is in `the_gate_below`
+`requiredQuests`. Four conversations — `vendor_undercroft_intro`, `undercroft_clem_confront`,
+`clem_joins`, `undercroft_general_greed_confront`. Coverage in `tests/greed_spec.lua`.
+
+**Not built:** above all the **bespoke gold subsystem** — the one large piece: a gold pool that *wards*
+Aurea (blows subtracted from gold, not HP, until zero), *gates* her every action (the Golden Touch and
+each hired-blade summon cost gold), *refills* on the Golden Touch, and *drops as gold-pile pickups* on
+the board, plus the **bankruptcy-triggered two-phase transform** (first zero → Midas-horror re-arms;
+second zero → death). New engine on the order of `trait_hollow_crown`, over `models/transform.lua`.
+Aurea is statted here as an ordinary single-phase general with a real HP pool rather than the
+gold-warded soft mortal the full design calls for. Also: her **hired-blade summons** (assassins,
+men-at-arms) as gold-cost abilities and their blueprints; Clem's fully-passive haste-on-any-kill and her
+**keep-the-tempo** slot-8 upgrade; the **Common Purse** unbuyable; and the six mid-line quests and scenes
+— slots 3, 4, 6, 7, 8, 9 (slot 7 is the *speak-without-a-fight* seam). Aurea is **not** in
+`trait_hollow_crown` `shades` (the curated firing trio stays Wrath, Sloth, Pride — see that trait).
 
 ## Every general is a fallen human, and every general fight has two phases
 

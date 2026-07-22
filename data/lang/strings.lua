@@ -221,6 +221,11 @@ return {
     ["line.cathedral_general_lust_confront.6"] = { en = "...", ja = "" },  -- TODO
     ["line.cathedral_general_lust_confront.7"] = { en = "That name is not yours to give. Taking it back from your hand would only be one more theft.", ja = "" },  -- TODO
     ["line.cathedral_general_lust_confront.8"] = { en = "I know what I am called. I gave it to myself. And that, I am keeping.", ja = "" },  -- TODO
+    ["line.clem_joins.1"] = { en = "You had me, and you didn't cash me in. Do you know how rare that is, down here? Nobody does a thing for nothing. That's the whole disease.", ja = "" },  -- TODO
+    ["line.clem_joins.2"] = { en = "The guild's the Bank's knife, and the Bank owns the government it bought the laws from. The debt isn't the gold -- it's the way everyone's been taught to think. I can't kill an idea. But I can burn the paper, and walk the ruined out.", ja = "" },  -- TODO
+    ["line.clem_joins.3"] = { en = "{name}. Every kill I take, I turn into everyone's tempo and keep none -- that's the only way I know to pay down what I did with the same hands. Let me spend it on your road. I'll cost you nothing.", ja = "" },  -- TODO
+    ["line.clem_joins.4"] = { en = "You'll cost us nothing, and we'll owe you plenty. Walk with us.", ja = "" },  -- TODO
+    ["line.clem_joins.5"] = { en = "...Owe me nothing. That's the point. But yes. Let's go.", ja = "" },  -- TODO
     ["line.colosseum_debut_confront.1"] = { en = "Opening bout! On the sand -- nobody, no house, no record.", ja = "" },  -- TODO
     ["line.colosseum_debut_confront.2"] = { en = "And against them, on hire from no one in particular: Saber.", ja = "" },  -- TODO
     ["line.colosseum_debut_confront.3"] = { en = "On hire from whoever paid, thank you. It's a living.", ja = "" },  -- TODO
@@ -238,6 +243,13 @@ return {
     ["line.conversation_wrath_intro.7"] = { en = "Honor. The crowd will cheer it and forget it by morning.", ja = "誇りか。観衆は歓声を上げ、朝には忘れるだろう。" },
     ["line.conversation_wrath_intro.8"] = { en = "Then let us be quick about it. The Light is watching, even here.", ja = "では手短に済ませよう。光はここでも見ておられる。" },
     ["line.conversation_wrath_intro.9"] = { en = "Watching, and unimpressed. Open the gate.", ja = "見ていて、しかも呆れているがな。門を開けろ。" },
+    ["line.crucible_general_envy_confront.1"] = { en = "There you are. Let me look at you -- all of you. Ah. That one. The strongest thing you brought. I will wear it now, and it will kill for me, and you will have to strike your own best to reach me.", ja = "" },  -- TODO
+    ["line.crucible_general_envy_confront.2"] = { en = "Ren. You spend yourself into others and call it a life. I spent everything to be able to wear any of you, and I am still no one inside. Tell me how it looks -- from in there. Tell me how you make it look like nothing.", ja = "" },  -- TODO
+    ["line.crucible_general_envy_confront.3"] = { en = "I would tell you. I would give it to you for free, if there were anyone in you to take it. That is the cruelty of what was done -- not that you are hollow, but that you would have received it, and cannot.", ja = "" },  -- TODO
+    ["line.crucible_general_envy_confront.4"] = { en = "So I will see you, at least. You are real enough to be ended. That is more than they ever gave you.", ja = "" },  -- TODO
+    ["line.crucible_the_counterfeiter_confront.1"] = { en = "The one you want has been forging clean-slate writs and stealing our reagents -- our discards, she calls them. She gives our craft away for nothing. Theft from the college. Bring her in.", ja = "" },  -- TODO
+    ["line.crucible_the_counterfeiter_confront.2"] = { en = "He calls them discards. Look at the one behind me -- eyes sewn shut, and still afraid. That is what 'a self is inventory' makes.", ja = "" },  -- TODO
+    ["line.crucible_the_counterfeiter_confront.3"] = { en = "I will not let you take her back to the vats. Come and try, if you were sent to. I would rather you saw this than believed him.", ja = "" },  -- TODO
     ["line.flight_champion.1"] = { en = "Stop here, {name}. That one at the head of them is no imp -- it has a name where they carry none, and it leads this whole raiding party. This is the thing that has been walking the road behind us.", ja = "" },  -- TODO
     ["line.flight_champion.2"] = { en = "It's between us and the capital.", ja = "" },  -- TODO
     ["line.flight_champion.3"] = { en = "It is. And it will not fall to the swarm-work that served against the rest -- it takes blows the grunts could not, and the imps beside it only want to keep us busy while it reaches you.", ja = "" },  -- TODO
@@ -262,6 +274,18 @@ return {
     ["line.gyeom_joins.3"] = { en = "{name}. You are the first outfit here that is not the Arcanum's hand. I do not need to be the greatest of anything. I only need to be a little more use tomorrow than I was today -- and I would rather spend that on your road than its shelves.", ja = "" },  -- TODO
     ["line.gyeom_joins.4"] = { en = "So take me on. I have a great deal left to learn, and I mean to.", ja = "" },  -- TODO
     ["line.gyeom_joins.5"] = { en = "Then keep whatever you keep. Walk with us.", ja = "" },  -- TODO
+    ["line.hunters_lodge_general_gluttony_confront.1"] = { en = "Another hunter, come to the heart of my wood. Good. I am always hungry, little sister, and you smell like one of us.", ja = "" },  -- TODO
+    ["line.hunters_lodge_general_gluttony_confront.2"] = { en = "Stay. Trade blows with me. Every one you land, I take back twofold -- and every one I land, I keep. Hunt me the long way, the way you were taught, and you will feed me until there is nothing of you left. There is no bottom to it. Take the crown, and you never have to stop.", ja = "" },  -- TODO
+    ["line.hunters_lodge_general_gluttony_confront.3"] = { en = "I know exactly what you are offering. I have always known. It is the one thing I have spent my life refusing.", ja = "" },  -- TODO
+    ["line.hunters_lodge_general_gluttony_confront.4"] = { en = "One shot. What the wood needs, and no more. Then I lay the bow down.", ja = "" },  -- TODO
+    ["line.hunters_lodge_the_guide_confront.1"] = { en = "The bounty led us this deep. The trees closed behind us -- and they are starving, all of them. Nothing out here is afraid of us.", ja = "" },  -- TODO
+    ["line.hunters_lodge_the_guide_confront.2"] = { en = "Because something upwind is eating the whole wood, and it has not left them enough. Stand your ground. The wolf and I will turn the mad ones back -- you only have to still be standing when they break.", ja = "" },  -- TODO
+    ["line.hunters_lodge_the_guide_confront.3"] = { en = "Hold. When it is quiet, we will talk about what you are really hunting.", ja = "" },  -- TODO
+    ["line.kaya_joins.1"] = { en = "You lived. Good. Most of the Lodge's people would not have -- they come out here to take, and the wood knows the difference.", ja = "" },  -- TODO
+    ["line.kaya_joins.2"] = { en = "The thing hollowing this place out was a hunter once. The greatest they ever had. Hunt the sacred long enough and you become it -- that is the honor they were saving for me, though none of them would say so.", ja = "" },  -- TODO
+    ["line.kaya_joins.3"] = { en = "{name}. I take only what I need, and it has kept me myself. But the wood I am part of is being devoured, and enough is the only thing that ever stops that kind of hunger. No outsider reaches the heart of it alone. I will lead you.", ja = "" },  -- TODO
+    ["line.kaya_joins.4"] = { en = "Then lead. We'll take only what the wood can spare.", ja = "" },  -- TODO
+    ["line.kaya_joins.5"] = { en = "See that you do. It is watching.", ja = "" },  -- TODO
     ["line.prologue_arrival.1"] = { en = "There it is. Walls still standing, gates still shut. The capital.", ja = "" },  -- TODO
     ["line.prologue_arrival.10"] = { en = "It's been like this for weeks. The demons push, a village burns, and everyone still breathing runs for the capital. The city's fit to burst, work's gone dry, and food with it.", ja = "" },  -- TODO
     ["line.prologue_arrival.11"] = { en = "But coin still moves for those who can hold a blade. Register with the Adventurers' Guild -- the quest board takes anyone who'll take a contract. Pays a good deal better than queuing for bread.", ja = "" },  -- TODO
@@ -306,6 +330,11 @@ return {
     ["line.prologue_village.1"] = { en = "Look at it, {name}. The mill, the eastern row, the well we drew from this morning -- all of it, inside a night.", ja = "" },  -- TODO
     ["line.prologue_village.2"] = { en = "This is not a raid. The Demon Lord's army empties whole valleys like this and moves on before the ash is cold.", ja = "" },  -- TODO
     ["line.prologue_village.3"] = { en = "Two of them have seen us, and they will not come to you. Watch how I take mine.", ja = "" },  -- TODO
+    ["line.ren_joins.1"] = { en = "You could have finished me and collected. You didn't. Good -- then you have already seen more than the college wants you to.", ja = "" },  -- TODO
+    ["line.ren_joins.2"] = { en = "They chase the oldest dream: to make a person from base matter. They keep failing, and the failures are people all the same. I can undo a little of it -- restore a discard, shield a batch marked for the vats. It is why they want me quiet.", ja = "" },  -- TODO
+    ["line.ren_joins.3"] = { en = "{name}. I do the Work the honest way -- I make the base noble by giving, and I keep nothing back. Let me give it to your road instead of their shelves. Take me on.", ja = "" },  -- TODO
+    ["line.ren_joins.4"] = { en = "Then give, and let us give something back to you for once.", ja = "" },  -- TODO
+    ["line.ren_joins.5"] = { en = "...That is not how it works. But walk on. There is much to mend.", ja = "" },  -- TODO
     ["line.tutorial_flight.1"] = { en = "Walk to the chest ahead -- use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
@@ -324,6 +353,20 @@ return {
     ["line.tutorial_village.7"] = { en = "There -- it is reeling, and you are not. That is what the spark bought you: a turn it does not get. Finish it, {name}.", ja = "" },  -- TODO
     ["line.tutorial_village.8"] = { en = "Not that, {name}. Do as I showed you.", ja = "" },  -- TODO
     ["line.tutorial_village.9"] = { en = "{select} on the imp to move in range and attack with your weapon.", ja = "" },  -- TODO
+    ["line.undercroft_clem_confront.1"] = { en = "That one there is ours -- was ours. Best hand we ever ran, and now she burns our writs and walks our debtors out the back. Theft, plain theft. Collect her.", ja = "" },  -- TODO
+    ["line.undercroft_clem_confront.2"] = { en = "Collect me. Listen to the word he uses. Everyone on this floor is a note to him -- including you, the second you can't pay.", ja = "" },  -- TODO
+    ["line.undercroft_clem_confront.3"] = { en = "I cut throats for that ledger for years. Now I burn it. If you were sent to bring me in, come on -- but you'll have seen what I am first.", ja = "" },  -- TODO
+    ["line.undercroft_general_greed_confront.1"] = { en = "My best blade, come home at last. I hold every note in this city, Clem. The almshouse, the crown's war -- and yours. You never could forgive your own debt. I can. Kneel, and I mark it paid.", ja = "" },  -- TODO
+    ["line.undercroft_general_greed_confront.2"] = { en = "Take my gold and you take everything I lift off them -- gild your friends, empty their hands, and you will never want again. It is the one thing I have that no one can call in. Be owed, instead of owing. Be free.", ja = "" },  -- TODO
+    ["line.undercroft_general_greed_confront.3"] = { en = "You'd absolve me, so I'd owe you the absolution forever. I know that trick. I taught it.", ja = "" },  -- TODO
+    ["line.undercroft_general_greed_confront.4"] = { en = "I don't need your hand to clear it. I'll forgive myself, for free -- and burn every note in your vault on the way out. The city's paid. Keep the crown that starves you.", ja = "" },  -- TODO
+    ["line.vendor_alchemist_intro.1"] = { en = "The Crucible. We refine your gear and brew your medicine, and we teach the one truth the others are too timid for: excellence is a substance, not a self. No one is born better. Anything can be transferred.", ja = "" },  -- TODO
+    ["line.vendor_alchemist_intro.2"] = { en = "Transferred from whom?", ja = "" },  -- TODO
+    ["line.vendor_alchemist_intro.3"] = { en = "From a source. Does a formula have feelings? A self is inventory, friend -- and we are the only ones honest enough to say so. Buy, and be improved.", ja = "" },  -- TODO
+    ["line.vendor_alchemist_intro.4"] = { en = "A self is not inventory. I have held the ones you decanted and dropped. There was someone in each of them.", ja = "" },  -- TODO
+    ["line.vendor_alchemist_intro.5"] = { en = "Ren. You could have been a Philosopher. Instead you give the Work away and weep over spoiled batches.", ja = "" },  -- TODO
+    ["line.vendor_alchemist_intro.6"] = { en = "They were not batches. Sell {name} the tinctures. Keep the philosophy.", ja = "" },  -- TODO
+    ["line.vendor_alchemist_intro.7"] = { en = "As you wish. The shelf is open. Improvement is only ever a purchase away.", ja = "" },  -- TODO
     ["line.vendor_arcanum_intro.1"] = { en = "The Arcanum. We win the wars the crown cannot and turn back the plagues its physicians can't name. Buy what you like -- everything on this shelf was earned by someone.", ja = "" },  -- TODO
     ["line.vendor_arcanum_intro.2"] = { en = "Earned by whom?", ja = "" },  -- TODO
     ["line.vendor_arcanum_intro.3"] = { en = "Does it matter, so long as it works? No one else can do what we do. That is the beginning and end of the question.", ja = "" },  -- TODO
@@ -349,27 +392,50 @@ return {
     ["line.vendor_colosseum_intro.4"] = { en = "And yet here you stand, veteran, shilling for a team with nothing behind it.", ja = "" },  -- TODO
     ["line.vendor_colosseum_intro.5"] = { en = "Nothing behind it is the only thing on this sand I have ever trusted. Sell them the good leathers, not the ones you move on the losers.", ja = "" },  -- TODO
     ["line.vendor_colosseum_intro.6"] = { en = "...The good leathers, then. Win loud, {name}. The crowd keeps a name, and a name is the only thing here I can't sell you -- you earn that one blow by blow.", ja = "" },  -- TODO
+    ["line.vendor_hunters_lodge_intro.1"] = { en = "The Lodge. We clear the beasts that would eat your children and feed your town on what's left -- honest work, honest coin. The board's always open. Take a bounty, take a trophy.", ja = "" },  -- TODO
+    ["line.vendor_hunters_lodge_intro.2"] = { en = "Always open. It never closes?", ja = "" },  -- TODO
+    ["line.vendor_hunters_lodge_intro.3"] = { en = "The wild always makes more game. That is the mercy of it -- there is always another beast worth killing. Rank up, and one day you'll be a Grand Hunter, and they'll carve your name on the wall.", ja = "" },  -- TODO
+    ["line.vendor_hunters_lodge_intro.4"] = { en = "I have read the names on that wall. Some of them I hunted.", ja = "" },  -- TODO
+    ["line.vendor_hunters_lodge_intro.5"] = { en = "...You take only what you need, girl. That is why we could never crown you. You were the finest tracker the wood ever grew.", ja = "" },  -- TODO
+    ["line.vendor_hunters_lodge_intro.6"] = { en = "It is why the wood never turned on me. Sell {name} the bows. Keep the crown.", ja = "" },  -- TODO
+    ["line.vendor_hunters_lodge_intro.7"] = { en = "As you like. The board's open. There's always another beast worth killing.", ja = "" },  -- TODO
     ["line.vendor_market_intro.1"] = { en = "Torches, boots, bread, and a potion or two the temples pretend they don't stock. Everything the road needs, {name}, and nothing it'll shrive you for wanting.", ja = "" },  -- TODO
     ["line.vendor_market_intro.2"] = { en = "And the price?", ja = "" },  -- TODO
     ["line.vendor_market_intro.3"] = { en = "Fair. That's the whole of the pitch. The seven houses up the hill sell you a name to become; I sell you what gets you to tomorrow to spend it. Come back whenever the road's been unkind.", ja = "" },  -- TODO
+    ["line.vendor_undercroft_intro.1"] = { en = "No sign, no door you'd notice. Good -- you found us anyway. The Undercroft looks after its own, friend. Debts, and the quiet murder of the people who won't pay them. Everything on this floor belonged to someone else once. That's just business.", ja = "" },  -- TODO
+    ["line.vendor_undercroft_intro.2"] = { en = "And the people it belonged to?", ja = "" },  -- TODO
+    ["line.vendor_undercroft_intro.3"] = { en = "Owed. Everyone's owed, up above -- your house, your city's water, your king's war. We just hold the note. A debt is a debt. That's not cruelty, that's the world.", ja = "" },  -- TODO
+    ["line.vendor_undercroft_intro.4"] = { en = "I used to say that word for word. I collected on it, too. That's the lie -- 'we look after our own,' over a floor that owns every soul on it.", ja = "" },  -- TODO
+    ["line.vendor_undercroft_intro.5"] = { en = "Clem. You were the best blade we ever ran. Then you started burning the paper.", ja = "" },  -- TODO
+    ["line.vendor_undercroft_intro.6"] = { en = "I started reading it. Sell {name} the kit. Keep the family.", ja = "" },  -- TODO
+    ["line.vendor_undercroft_intro.7"] = { en = "As you like. Floor's open. Everything's for sale -- and everything's owed.", ja = "" },  -- TODO
+    ["name.alchemist"] = { en = "The Crucible", ja = "" },  -- TODO
     ["name.arcanum"] = { en = "The Arcanum", ja = "" },  -- TODO
     ["name.bastion"] = { en = "The Bastion", ja = "" },  -- TODO
     ["name.cathedral"] = { en = "The Cathedral", ja = "" },  -- TODO
     ["name.character_amana"] = { en = "Amana", ja = "" },  -- TODO
     ["name.character_avatar"] = { en = "Stranger", ja = "" },  -- TODO
     ["name.character_caravan_master"] = { en = "Caravan Master", ja = "" },  -- TODO
+    ["name.character_clem"] = { en = "Clem", ja = "" },  -- TODO
     ["name.character_forsworn_captain"] = { en = "Forsworn Captain", ja = "" },  -- TODO
+    ["name.character_general_envy"] = { en = "Livia, the Unborn", ja = "" },  -- TODO
+    ["name.character_general_gluttony"] = { en = "Gula, the Unsated", ja = "" },  -- TODO
+    ["name.character_general_greed"] = { en = "Aurea, the Ever-Owed", ja = "" },  -- TODO
     ["name.character_general_lust"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
     ["name.character_general_pride"] = { en = "Sublimitas, the Unequalled", ja = "" },  -- TODO
     ["name.character_general_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
     ["name.character_greywatch_captain"] = { en = "Road-Captain", ja = "" },  -- TODO
     ["name.character_gyeom"] = { en = "Gyeom", ja = "" },  -- TODO
+    ["name.character_kaya"] = { en = "Kaya", ja = "" },  -- TODO
     ["name.character_knight"] = { en = "Rowan", ja = "" },  -- TODO
     ["name.character_mage"] = { en = "Mage", ja = "魔道士" },
     ["name.character_priest"] = { en = "Priest", ja = "僧侶" },
+    ["name.character_ren"] = { en = "Ren", ja = "" },  -- TODO
     ["name.character_saber"] = { en = "Saber", ja = "" },  -- TODO
     ["name.colosseum"] = { en = "The Colosseum", ja = "闘技場" },
+    ["name.hunters_lodge"] = { en = "Hunter's Lodge", ja = "" },  -- TODO
     ["name.market"] = { en = "The Market", ja = "" },  -- TODO
+    ["name.undercroft"] = { en = "The Undercroft", ja = "" },  -- TODO
     ["title.arcanum_general_pride_confront"] = { en = "The Unequalled", ja = "" },  -- TODO
     ["title.arcanum_the_radical_confront"] = { en = "The Radical", ja = "" },  -- TODO
     ["title.arena_debut_event"] = { en = "The Tout on the Concourse", ja = "" },  -- TODO
@@ -400,12 +466,18 @@ return {
     ["title.bastion_what_the_bastion_knows_outro"] = { en = "A Useful Saint", ja = "" },  -- TODO
     ["title.cathedral_fallen_confessor_confront"] = { en = "The Fallen Confessor", ja = "" },  -- TODO
     ["title.cathedral_general_lust_confront"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
+    ["title.clem_joins"] = { en = "For Free", ja = "" },  -- TODO
     ["title.colosseum_debut_confront"] = { en = "The Card's Opener", ja = "" },  -- TODO
     ["title.conversation_wrath_intro"] = { en = "Debut on the Sand", ja = "砂上のデビュー" },
+    ["title.crucible_general_envy_confront"] = { en = "The Unborn", ja = "" },  -- TODO
+    ["title.crucible_the_counterfeiter_confront"] = { en = "The Counterfeiter", ja = "" },  -- TODO
     ["title.flight_champion"] = { en = "The Champion", ja = "" },  -- TODO
     ["title.flight_event_shrine"] = { en = "The Roadside Shrine", ja = "" },  -- TODO
     ["title.flight_event_survivor"] = { en = "A Voice from the Brush", ja = "" },  -- TODO
     ["title.gyeom_joins"] = { en = "What She Kept", ja = "" },  -- TODO
+    ["title.hunters_lodge_general_gluttony_confront"] = { en = "The Unsated", ja = "" },  -- TODO
+    ["title.hunters_lodge_the_guide_confront"] = { en = "The Guide", ja = "" },  -- TODO
+    ["title.kaya_joins"] = { en = "Enough", ja = "" },  -- TODO
     ["title.prologue_arrival"] = { en = "The Capital", ja = "" },  -- TODO
     ["title.prologue_flee"] = { en = "Ashes", ja = "" },  -- TODO
     ["title.prologue_flier"] = { en = "The Board", ja = "" },  -- TODO
@@ -413,11 +485,17 @@ return {
     ["title.prologue_ruins"] = { en = "The Road", ja = "" },  -- TODO
     ["title.prologue_victory"] = { en = "The Gatekeeper", ja = "" },  -- TODO
     ["title.prologue_village"] = { en = "The Lane", ja = "" },  -- TODO
+    ["title.ren_joins"] = { en = "Given Away", ja = "" },  -- TODO
     ["title.tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO
+    ["title.undercroft_clem_confront"] = { en = "The Retired Blade", ja = "" },  -- TODO
+    ["title.undercroft_general_greed_confront"] = { en = "The Ever-Owed", ja = "" },  -- TODO
+    ["title.vendor_alchemist_intro"] = { en = "The Crucible", ja = "" },  -- TODO
     ["title.vendor_arcanum_intro"] = { en = "The Arcanum", ja = "" },  -- TODO
     ["title.vendor_bastion_intro"] = { en = "Those Who Hold", ja = "" },  -- TODO
     ["title.vendor_cathedral_intro"] = { en = "Arm Those Who Purge", ja = "" },  -- TODO
     ["title.vendor_colosseum_intro"] = { en = "The Shelf and the Sand", ja = "" },  -- TODO
+    ["title.vendor_hunters_lodge_intro"] = { en = "The Hunter's Lodge", ja = "" },  -- TODO
     ["title.vendor_market_intro"] = { en = "Everything the Road Needs", ja = "" },  -- TODO
+    ["title.vendor_undercroft_intro"] = { en = "The Undercroft", ja = "" },  -- TODO
 }

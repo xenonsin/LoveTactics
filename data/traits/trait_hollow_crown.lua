@@ -15,9 +15,10 @@ return {
     description = "As it fails, it wears the dead.",
     -- Fractions of max health. Each one crossed calls up the next name in `shades`.
     thresholds = { 0.75, 0.50, 0.25 },
-    -- The dead it reaches for, in order. As the remaining generals are authored, put them here --
-    -- this list IS the fight. Wrath, Sloth and Pride have been written; the Crown falls back on the
-    -- champions of the world above for the shapes it has not yet been given.
+    -- The dead it reaches for, in order. All seven generals are now authored, so any of them could
+    -- stand here; this curated trio is a deliberate choice, not a limit of what exists -- three
+    -- thresholds fire (75/50/25%), so only three names are ever worn, and these are the three whose
+    -- return argues the hardest.
     --
     -- Sloth second is deliberate. The Crown wearing Acedia at half health is her own thesis argued by
     -- the board: you already killed her, and here she is, and nothing you did stuck. That is the
