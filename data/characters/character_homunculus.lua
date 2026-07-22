@@ -16,4 +16,10 @@ return {
         speed = 5,
     },
     startingItems = { "weapon_homunculus_fists" },
+    -- Basic tactics (models/ai.lua): a body to rot a foe -- press the one closest to falling so the
+    -- Poison finishes what the claws start.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

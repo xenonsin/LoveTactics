@@ -161,7 +161,7 @@ return {
 
             Combat.useItem(c, hunter, char.inventory[1], 1, 1)
             local weapon = Combat.defaultWeapon(hunter.char)
-            assert(weapon and weapon.id == "weapon_fangs", "the wolf bites; it does not carry the hunter's bow")
+            assert(weapon and weapon.id == "weapon_wolf_fangs", "the wolf bites; it does not carry the hunter's bow")
         end,
     },
 }

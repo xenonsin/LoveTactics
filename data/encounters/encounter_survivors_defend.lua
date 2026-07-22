@@ -55,7 +55,8 @@ return {
             { at = 10, from = "flank", composition = function() return { "character_demon_imp", "character_demon_imp" } end },
             -- The encirclement closes: the late wave fans in from every open side at once.
             { at = 20, from = "surround", composition = function(ctx)
-                local list = { "character_demon_imp" }
+                local list = { "character_demon_imp", "character_demon_imp", "character_demon_imp",
+                               "character_demon_imp", "character_demon_imp" }
                 if (ctx.prestige or 1) >= 2 then list[#list + 1] = "character_demon_grunt" end
                 return list
             end },

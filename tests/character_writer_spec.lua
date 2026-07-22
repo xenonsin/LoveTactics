@@ -126,6 +126,9 @@ return {
         name = "editor-authored ai rules are promoted into the blueprint's ai block",
         fn = function()
             local char = Character.instantiate("character_archer")
+            -- The archer now ships its own basic tactics (data/characters/character_archer.lua); this
+            -- case is about promoting the PLAYER's editor rules, so start from a clean blueprint list.
+            char.ai = nil
             -- What the Tactics tab writes (ui/tactics_editor.lua edits char.aiRules).
             char.aiRules = {
                 { enabled = true, priority = "high", act = "attack",

@@ -24,6 +24,10 @@ return {
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_sloth.png",
     portrait = "assets/portraits/general_sloth.png", -- large VN portrait for conversations (falls back if missing)
+    -- She has never once had to chase (movement 2, "the clock is the weapon"). `defensive` holds her
+    -- where she stands until the fight reaches her, then commits -- which is exactly the `assassinate`
+    -- problem: the party must come to her through her sworn company (models/ai.lua).
+    archetype = "defensive",
     stats = {
         health = 240, mana = 40, stamina = 90,
         staminaRegen = 2,
@@ -41,5 +45,11 @@ return {
         false, false,                    false,
         false, "weapon_forsworn_pike",   "armor_oathkeeper_shield",
         false, false,                    false,
+    },
+    -- Basic tactics (models/ai.lua): once something is finally in reach, the pike takes the foe closest
+    -- to falling. Her real weapon is trait_unrelieved and the clock; this is only her idle swing.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
     },
 }

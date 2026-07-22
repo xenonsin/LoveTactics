@@ -29,4 +29,10 @@ return {
         false, "armor_hollow_crown", "utility_demonic_essence",
         false, false,              false,
     },
+    -- Basic tactics (models/ai.lua): the crown hunts the failing -- press the foe closest to falling
+    -- with whichever dead general's threat it is wearing this turn.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

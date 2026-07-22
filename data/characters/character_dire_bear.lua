@@ -24,4 +24,10 @@ return {
         speed = 2,
     },
     startingItems = { "weapon_great_claws", "utility_feral_instinct" },
+    -- Basic tactics (models/ai.lua): under auto-battle the anchor shape still knows a kill -- press the
+    -- foe closest to falling. The hunter driving the shape overrides this.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

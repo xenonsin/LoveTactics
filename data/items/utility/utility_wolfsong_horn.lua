@@ -1,31 +1,33 @@
--- The Archer's signature relic: the horn she was given the day the wolf first answered it. It carries
--- her innate companion (data/traits/wolf_companion.lua) -- a wolf fields itself at her side at the
--- opening bell, free of any mana reservation, distinct from the Summon Wolf ability any character can
--- carry. The trait now lives on this item and reaches her through the grid (models/trait.lua).
+-- Kaya's signature relic: the horn she was given the day the wolf first answered it. Two things ride on
+-- it, and the second is built on the first.
 --
--- `bound = true` (models/item.lua): never moved, stowed, given, sold, or stolen -- only forged. Her
--- blueprint sits it in the center of the loadout grid as the build-around.
+-- THE WOLF (passive, data/traits/trait_wolf_companion.lua): a wolf fields itself at her side at the
+-- opening bell, free of any mana reservation. It is summoned `noClaim`, so -- unlike a summon ABILITY --
+-- it does not lock this item's active; instead it is stashed on her as `unit.wolfCompanion`, which the
+-- howl below reads. It CANNOT be resummoned: one wolf, granted once. When it falls it is gone for the
+-- rest of the battle, and the horn falls silent with it.
 --
--- Beyond the free companion, the horn holds a TRUE call (activeAbility): a full-throated blast that
--- summons the Wolfsong Spirit (data/characters/wolfsong_spirit.lua) -- the great wolf behind the pack,
--- far fiercer than any grunt. It answers no reservation but a blood-price, and the price is charged
--- when the Spirit DIES, not when it is called: the call binds `blood_price` to the beast it raises
--- (data/traits/blood_price.lua), and that trait takes half the archer's remaining health the moment it
--- falls. The bargain is the HORN's, not the Spirit's -- the same body called by any other means owes
--- nothing, which is why the price is written here beside the call that strikes it.
+-- THE QUIETING HOWL (active, the build-up): the horn does not kill, it STOPS -- "the hunt that knows
+-- when to stop" turned on the enemy. It charges as the wolf draws blood (`unlock.event =
+-- "companionDamage"`, banked on the summoner in Combat.dealDamage), and it can only be sounded WHILE
+-- the wolf still stands (`unlock.when` reads `unit.wolfCompanion`). Sound it and every foe within two
+-- tiles of Kaya OR of her wolf is rooted where it stands. It re-locks after each use (a repeatable
+-- unlock), so a wolf that keeps biting can raise the howl again -- and a dead wolf can raise it never.
 --
--- Both calls share one throat. The companion holds the horn's `activeSummon` claim from the opening
--- bell (models/trait.lua), so the true call is refused for as long as the wolf at her side is alive,
--- and the Spirit holds it after that. One creature at a time, always: the horn opens the battle spent,
--- and only a dead wolf buys the right to sound it in earnest.
+-- The gating is the whole character of the relic: her control is only as alive as the bond is. It also
+-- plays straight against a heal-on-hit foe (Gula) -- rooting the ring lets a kiting archer break the
+-- long trade instead of feeding it, which is temperance read as tactics (docs/story.md, "The Hunter's
+-- Lodge").
 --
--- No `class`/`price`: no vendor stocks or buys it. Forged at the Blacksmith, its speed curve rising.
+-- `bound = true` (models/item.lua): never moved, stowed, given, sold, or stolen -- only forged. Kaya's
+-- blueprint sits it in the center of the loadout grid as the build-around. No `class`/`price`: no vendor
+-- stocks or buys it; forged at the Blacksmith, its speed curve rising.
 return {
     name = "Wolfsong Horn",
-    -- The blood price stays in the DESCRIPTION, not the flavor: it is a rule the player must know
-    -- before sounding the horn, and flavor is never load-bearing (docs/item-text.md).
-    description = "A wolf starts at your side. When it falls, the horn calls the Wolfsong Spirit; its death costs half your health.",
-    flavor = "Raised beside a wolf, and it still comes when the horn sounds. Only a dead wolf buys the right to sound it in earnest.",
+    -- The wolf-alive gate is a RULE the player must know, so it stays in the description, not the flavor
+    -- (docs/item-text.md): flavor is never load-bearing.
+    description = "A wolf starts at your side. Sound the horn while it lives to root every foe within two tiles of you or the wolf.",
+    flavor = "Raised beside a wolf, and it still comes when the horn sounds. What the horn calls, it calls but once.",
     sprite = "assets/items/sig_wolfsong_horn.png",
     type = "utility", -- a horn: `bound` (not the type) is what locks it in place
     tags = { "signature" },
@@ -33,19 +35,41 @@ return {
     traits = { "trait_wolf_companion" },
     bonus = { speed = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3 } }, -- levels 0..10
     activeAbility = {
-        target = "tile", -- aim an empty tile beside you; the spirit springs up there
+        description = "Roots every foe within two tiles of you or your wolf. Charges as the wolf draws blood; usable only while the wolf lives.",
+        target = "self", -- centred on Kaya; the effect also reaches around the wolf
         range = 1,
         speed = 6,
-        -- The call itself takes nothing: one spirit at a time (fx.summon stamps item.activeSummon),
-        -- scaled by the horn's forge level, and the blood_price it binds collects when the beast falls.
-        -- A spirit that dies on the tile it was called to (a trap, a fire) bills the archer immediately
-        -- -- it drew breath and lost it, which is exactly what the price is for.
+        unlock = {
+            event = "companionDamage", count = 40, text = "Wolf draws blood",
+            -- Only while the wolf still stands: it charges the horn by drawing blood, and it cannot be
+            -- resummoned, so a dead wolf silences the horn (trait_wolf_companion sets unit.wolfCompanion).
+            when = function(unit) local w = unit and unit.wolfCompanion; return (w and w.alive) or false end,
+        },
+        -- The howl's footprint: within two tiles of Kaya AND of her wolf. Declared here (not computed
+        -- inside the effect) so the red area-highlight the player sees and the foes the howl actually
+        -- roots are one and the same set (Combat.aoeCells de-dups the overlap and clamps to the board).
+        -- The wolf is alive whenever the howl can fire (the `when` gate), but the preview is honest even
+        -- mid-charge, so it is guarded here too.
+        aoe = {
+            cells = function(_, tx, ty, unit)
+                local out = {}
+                local function ring(cx, cy)
+                    for dx = -2, 2 do for dy = -2, 2 do out[#out + 1] = { x = cx + dx, y = cy + dy } end end
+                end
+                ring(tx, ty)
+                local wolf = unit and unit.wolfCompanion
+                if wolf and wolf.alive then ring(wolf.x, wolf.y) end
+                return out
+            end,
+        },
         effect = function(fx)
-            fx.summon("character_wolfsong_spirit", fx.tx, fx.ty, {
-                traits = { "trait_blood_price" },
-                scaling = { health = 2, damage = 0.5 },
-                amount = 8 + fx.level,
-            })
+            -- One truth with the preview: sweep the very footprint aoeCells drew, and root every foe on
+            -- it (allies and the wolf itself sit on those tiles too, so they are filtered out).
+            for _, u in ipairs(fx.aoeUnits()) do
+                if u.side ~= fx.user.side then
+                    fx.applyStatus(u, "status_root")
+                end
+            end
         end,
     },
 }

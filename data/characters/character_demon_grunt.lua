@@ -34,4 +34,9 @@ return {
     -- along with it, so the blows that end the lesson all answered back.
     startingItems = { "weapon_rending_claws" },
     defaultAction = "weapon_rending_claws",
+    -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

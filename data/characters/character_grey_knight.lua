@@ -38,4 +38,9 @@ return {
         false,               false,             false,
     },
     defaultAction = "weapon_iron_spear",
+    -- Basic tactics (models/ai.lua): a spearman charges a line. Held by his `guard` leash, he still
+    -- presses when two or more foes crowd into reach and lets the scorer find the skewer.
+    ai = {
+        { priority = "high", act = "attack", when = { subject = "any_foe", test = "count_at_least", value = 2 } },
+    },
 }

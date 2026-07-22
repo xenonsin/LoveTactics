@@ -35,7 +35,7 @@
 -- (models/command.lua) so both duellists resolve the same blow; Combat.useItem clamps it to windup.max.
 return {
     name = "The First Motion",
-    description = "Winds up, then lands. Hits hardest against a target at full health.",
+    description = "Winds up, drives through the tiles in front (a cone when forged). Bonus scales to +60% into a full-health foe.",
     flavor = "She was taught that a bout is won in the first exchange or not at all. It is the only " ..
         "thing they taught her that she kept.",
     sprite = "assets/items/first_motion.png",
@@ -48,8 +48,8 @@ return {
     bound = true,
     class = "fighter",
     activeAbility = {
-        description = "Hold the wind-up longer to strike harder; hardest against a full-health foe.",
-        target = "tile",       -- aim an adjacent tile: it sets the facing the blow falls on
+        description = "Hold the wind-up longer to strike harder; the health bonus scales to +60% of the swing against a full-health foe.",
+        target = "tile",       -- aim an adjacent tile: it sets the facing the blow drives along
         allowOccupied = true,
         range = 1,
         minRange = 1,
@@ -62,21 +62,39 @@ return {
         windup = { min = 2, max = 5 },
         cost = { stat = "stamina", amount = 15 },
         damage = { 22, 24, 27, 29, 32, 34, 37, 39, 42, 44, 47 },
+        -- The overhead blow doesn't stop at the first body: it drives THROUGH the tiles in front (the
+        -- aimed cell tx,ty and the ones beyond it), and the follow-through WIDENS as the blade is forged.
+        -- Both fields are per-level lists (models/item.lua bakes in this level's entry at instantiate, so
+        -- the preview footprint and the effect's fx.aoeUnits read one shape):
+        --   * levels 0-2: a straight line two tiles deep -- the aimed cell and the one behind it.
+        --   * levels 3-5: the same line, now three tiles deep -- the reach lengthens.
+        --   * levels 6-10: it OPENS INTO A CONE (Combat.aoeCells "cone"): a triangle three rows deep that
+        --     fans one tile wider each step out, so a full-forge swing sweeps a whole wedge of the front.
+        -- The reach number becomes the cone's DEPTH when the shape turns, and a depth-3 cone already
+        -- sweeps far more tiles than the length-3 line it grew from -- coverage only ever climbs.
+        -- Each body caught is scored on its OWN health below, so a fresh rank at the wide end of the
+        -- cone is worth as much as a fresh target at the tip.
+        aoe = {
+            shape  = { "line", "line", "line", "line", "line", "line", "cone", "cone", "cone", "cone", "cone" },
+            length = {   2,      2,      2,      3,      3,      3,      3,      3,      3,      3,      3    },
+        },
         effect = function(fx)
-            if not fx.target then return end
-            -- The opening: what the blow gains for finding its target whole. Read at the moment the
-            -- wind-up LANDS, not when it started -- so a foe who was healed out of danger while she
-            -- committed is worth more, and one the party softened in the meantime is worth less.
-            -- Taken off fx.amount rather than a flat number, so it climbs with the forge as the base
-            -- swing does.
-            local hp = fx.target.char.stats.health
-            local frac = (hp.max and hp.max > 0) and ((hp.current or 0) / hp.max) or 1
-            local opening = math.floor(fx.amount * 0.6 * frac)
-            -- Patience made arithmetic she controls: each extra wind-up tick she chose to hold adds a
-            -- share of the swing (fx.windup, from Combat.useItem's channel branch). A snap swing is an
-            -- ordinary heavy greatsword blow; a deep hold into a fresh target is devastating.
-            local held = math.floor(fx.amount * 0.4 * (fx.windup or 0))
-            fx.damage(fx.target, { amount = fx.amount + opening + held })
+            -- Every body the line passes through, near tile then far (fx.aoeUnits walks the footprint
+            -- against the LIVE board, so a foe who stepped clear during the wind-up simply isn't there).
+            for _, u in ipairs(fx.aoeUnits()) do
+                -- The opening: what the blow gains for finding THIS target whole. Read at the moment the
+                -- wind-up LANDS, not when it started -- so a foe healed out of danger while she committed
+                -- is worth more, and one the party softened in the meantime is worth less. Taken off
+                -- fx.amount rather than a flat number, so it climbs with the forge as the base swing does.
+                local hp = u.char.stats.health
+                local frac = (hp.max and hp.max > 0) and ((hp.current or 0) / hp.max) or 1
+                local opening = math.floor(fx.amount * 0.6 * frac)
+                -- Patience made arithmetic she controls: each extra wind-up tick she chose to hold adds a
+                -- share of the swing (fx.windup, from Combat.useItem's channel branch). A snap swing is an
+                -- ordinary heavy greatsword blow; a deep hold into a fresh target is devastating.
+                local held = math.floor(fx.amount * 0.4 * (fx.windup or 0))
+                fx.damage(u, { amount = fx.amount + opening + held })
+            end
         end,
     },
 }

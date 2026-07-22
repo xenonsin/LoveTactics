@@ -22,4 +22,10 @@ return {
         movement = 0,
         speed = 2,
     },
+    -- Basic tactics (models/ai.lua): rooted at the gate by `holdGround`, it still chooses its blow --
+    -- press whatever walks into reach that is closest to falling.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

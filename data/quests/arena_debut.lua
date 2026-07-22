@@ -16,8 +16,12 @@
 --
 -- WHY SHE SIGNS. Not because she was beaten; she has been beaten before. Because the party that did it
 -- is the only outfit on the sand that is not part of the machine, and what she wants is a team that
--- can go all the way to the thing under it. `rewardCharacter` is the data path for that (the prologue
--- runs Quest.complete through completeArenaDebut, so the recruit fires there like any other reward).
+-- can go all the way to the thing under it. `rewardCharacter` is the data path for that -- Quest.complete
+-- recruits her the moment the bout is won. But her ASKING is a scene, not a payout: the victory outro
+-- (the Gatekeeper) has her defer it, and `followUp` below walks the party off the sand into a short
+-- overworld leg where she catches them past the gate and puts the question. The join banner is held
+-- across the outro (states/game.lua defers it whenever a quest has a followUp) so it lands in that
+-- meeting rather than over the arena -- see data/conversations/arena_saber_joins.lua.
 --
 -- THE BOUT IS THE THESIS, TAUGHT AS A BEATING. Saber carries The First Motion
 -- (data/items/weapon/weapon_first_motion.lua), which hits hardest into a target at FULL health -- so
@@ -41,15 +45,61 @@ return {
     -- Bested, then kept (docs/story.md, "The other seven"). Player.recruit refuses a duplicate, so
     -- this is safe on any path that reaches Quest.complete more than once.
     rewardCharacter = "character_saber",
-    -- The victory scene, played over the frozen final frame before the hub opens (states/game.lua's
-    -- objective-win path). Saber is already recruited by the time it runs -- Quest.complete grants
-    -- `rewardCharacter` before the outro fires -- so she speaks the lines that make her joining land,
-    -- and the Guild envoy opens the board on the rest of the game. This is the prologue's old closing
-    -- beat, now carried by the quest that earns it rather than by prologue script.
+    -- The victory scene, played over the frozen final frame before the follow-up leg opens (states/game
+    -- .lua's objective-win path). Saber is already recruited by the time it runs -- Quest.complete grants
+    -- `rewardCharacter` before the outro fires -- but here she only acknowledges the loss and tells the
+    -- party to wait for her past the gate, and the Guild envoy opens the board on the rest of the game.
+    -- Her actual joining is the followUp meeting below; the banner is held for it (deferJoins).
     outro = "prologue_victory",
+    -- A short overworld leg played straight after the outro, before the hub: the party walks off the
+    -- sand and Saber catches them on the road out. It is an INLINE quest table (never on the Quest
+    -- Board -- only files under data/quests/ are listed), run as a scripted traversal -- states/game.lua
+    -- launches it with an onComplete that returns to the hub, so it pays out nothing of its own and
+    -- cannot be abandoned (`scripted` hides the Back button). Its single objective is a non-combat
+    -- `meet`: reaching the gate plays the join scene and ends the leg. See states/game.lua.
+    followUp = {
+        name = "Off the Sand",
+        map = {
+            biome = "castle",
+            scripted = true, -- a cutscene walk, not a board quest: no Back button, no abandon
+            -- One quiet breather on the way out, then the gate. No random bouts -- the climax was the
+            -- bout; this leg is the walk down from it.
+            encounters = {
+                min = 1, max = 1,
+                always = { { id = "encounter_rest" } },
+            },
+            objective = {
+                name = "The Gate Out",
+                -- A non-combat meeting: stepping onto the objective plays the scene and completes the
+                -- leg instead of dropping into a fight (states/game.lua's meet branch). Saber is already
+                -- on the roster, so this only stages the ask; the held join banner folds onto the scene.
+                meet = true,
+                conversation = "arena_saber_joins",
+            },
+            keyCount = 0,
+        },
+    },
     map = {
         biome = "castle",
-        encounters = { min = 2, max = 4 }, -- map size scales with this (models/overworld.lua)
+        -- The walk to the tunnel mouth is the undercard, not a maze to survive. A curated stop list
+        -- rather than a bare roll: one narrative scene that teaches the bout's thesis before the bout
+        -- (the mismatch, sold as entertainment), a couple of non-combat beats -- a found cache and a
+        -- moment to breathe before the veteran -- and a short warm-up. `always` pins the authored
+        -- three; min/max tops the card up with a scuffle or two from the castle pool (beast bouts are
+        -- ordinary arena fare). Map size scales with this AND the biome's density now (models/overworld.lua),
+        -- so a tight castle no longer sprawls into an empty warren for a handful of stops.
+        encounters = {
+            min = 5, max = 6,
+            always = {
+                -- The concourse scene: a booking man prices the nobody. Non-combat, and the one
+                -- narrative stop on the card (data/conversations/arena_debut_event.lua).
+                { id = "encounter_event", conversation = "arena_debut_event" },
+                -- An unclaimed kit from a bout that never happened -- a small find on the way in.
+                { id = "encounter_treasure" },
+                -- A last breath before the veteran, so the debut is fought fresh (Player.restore).
+                { id = "encounter_rest" },
+            },
+        },
         objective = {
             name = "The Card's Opener",
             -- Saber and one hand from the house that booked her -- a team, because everything on this

@@ -140,7 +140,7 @@ general refused.
 | knight | sloth — the oath abandoned | diligence — the oath kept; the wall that holds its post |
 | rogue | greed | charity — takes from the rich and keeps none of it |
 | hunter | gluttony | temperance — the hunt that knows when to stop |
-| mage | pride | humility — answers a spell with a ward, not a bigger spell |
+| mage | pride | humility — meets a spell with a better-practised self, not a bigger one; the mage who is never finished |
 | priest | lust | devotion — gives what is offered, refuses what is not |
 | alchemist | envy | kindness — grants others' power instead of coveting it |
 
@@ -151,8 +151,9 @@ virtue is the exact mistake this section exists to forbid.
 
 **Every companion is a woman, and so is every general** — the whole war of appetite and answer is
 fought between women. Companions carry **gender-neutral** names (Rowan the knight, Saber the
-gladiator); generals keep the Latin sin-register (*Ira*). The virtue is buried in the name, not
-stamped on it: *Saber* is a blade, and in another tongue (*ṣabr*) it is patience itself.
+gladiator, Kaya the hunter); generals keep the Latin sin-register (*Ira*). The virtue is buried in
+the name, not stamped on it: *Saber* is a blade, and in another tongue (*ṣabr*) it is patience
+itself; *Kaya* is an ordinary name that in another tongue (*kifāya*) is *enough* — temperance itself.
 
 Companions are earned near the head of their vendor's line, each on its own — never behind another,
 so no ordering can strand the endgame. Two are earned in the prologue, one per pattern:
@@ -577,6 +578,771 @@ would punish the player twice for the same mistake — grinding her down is alre
 a boss who also grows tankier as you do it gives them no readable way out. The fight has to stay
 legible: one number climbing, one lesson (*end it fast or do not start*), and a counterplay the player
 has been holding since the debut bout.
+
+## The Cathedral: lust, designed
+
+The fourth line worked out end to end, and it proves the *vendor is quietly serving its sin* claim in
+a third register. The Bastion serves sloth by **declining to notice**; the Colosseum serves wrath by
+**selling tickets**; the Cathedral serves lust by **hiding it at the altar** — a beloved, working
+faith with an atrocity buried at its top, known to almost no one.
+
+### The church, and what almost no one sees
+
+To nearly everyone the Cathedral is exactly what it appears: a **beloved, functioning church.**
+People attend, keep its feasts, and revere its **holy warriors** — the *anointed*, orphans and
+refugees it took in and raised into selfless soldiers who gladly die fighting demons. Taking in the
+frontier's orphans, its poor, and above all the **refugees the war itself produces** is a public,
+honored charity — the road out of poverty a family is proud to give a child to. (It is the devshirme
+in a cassock; and, like Claymore's Organization, the institution quietly profits from the disaster it
+fights.) Taken children are sorted onto two tracks: most are made **anointed** — soldiers, and
+**blooded**; a few are kept back as **acolytes** — clergy, and **never blooded.**
+
+**The great majority of the clergy, and every worshipper, are ordinary and sincere and know none of
+what follows.** This is not a mask over a dungeon. It is a real faith with a secret held by a small
+inner circle around its Saint. Most people are just normal — which is what makes the rot so hard to
+name and harder to prove.
+
+### The blooding
+
+The "holy" magic that makes an anointed is **Luxuria's demonic blood**, and the rite that puts it
+into a child — the **blooding** — kills many of them. Three outcomes, and the church has a face for
+each:
+
+- **It takes.** The child becomes an obedient super-soldier, seeded with the demon's blood and hers
+  to command at a word — and *unaware of it,* believing itself holy. These are the anointed the world
+  cheers.
+- **It takes wrong.** The child becomes a feral, half-made thing. The church hunts these and calls
+  them **demons from the wild** — the very "corruption" it hires the player to purge.
+- **It kills.** The body is carted off and **dumped in an unmarked pit.** The intake register writes
+  the child down as *ascended to the Light.* The roll of the church's glorious dead is its casualty
+  list, read as a roll of saints — the same trick the Bastion plays with its martyrs, and it needs no
+  more invention than that.
+
+### Luxuria, the Unbidden — the demon at the altar
+
+Luxuria is a **human who made a pact with the Demon Lord** (see *Every general is a fallen human*,
+below), gaining the power she now passes off as holiness. She did not rise through the Cathedral;
+she **infiltrated** it and took the seat of its most revered living **Saint** — the one who blesses,
+which is to say bloods, every soldier. Behind the beloved institution's back she has seeded the whole
+anointed order as a **sleeper army**, to turn on humanity when the Gate reopens. The demons do not
+only besiege the walls; the church has grown them a blade behind it and calls it holy.
+
+Her rule is **"takes what is not offered,"** and it is already half-built on disk. `trait_rapture`
+(`data/traits/trait_rapture.lua`) drinks the stamina and mana a target was **hoarding** and takes it
+into herself as health — so a party that husbands resources for the big turn feeds her the whole
+time. The counterplay is the sin read as tactics: **spend; let nothing sit unspent near her.** The
+finale adds a second half — she **turns the blooded**: a unit she has drained enough flips to her
+side (reusing `status_charm`), the "army turns on humankind" made playable. The one soul she can
+never touch is Amana, who **carries none of her blood** (see the foil, below). See *Engine work* in
+the plan and the drain-and-turn note; both are new work over the shipped Rapture.
+
+**Killing her frees nothing automatically.** The blooded stay blooded and hers; the sleeper army is a
+standing threat that survives into Act 2 (`the_gate_below` / the Hollow Crown). You cannot break ten
+thousand seedings from the outside.
+
+### Amana, the witness — the same sin answered the other way
+
+Amana is an **acolyte, not a soldier** — clergy track, **never blooded.** There was never any of
+Luxuria's blood in her to command, so there is nothing in her to turn: her immunity is not willpower
+and not a corruption she fought off, **she is simply not one of the made.** (This is the plainer, and
+better, version of the foil-immunity the Colosseum states for Saber, whose conditioning merely
+*failed*.) `trait_devotion_unbidden` makes charm and seizure **shed off her** for exactly that reason
+— no blood, nothing to seize.
+
+What sets her against the Cathedral is what she **saw** — what almost no one in the church ever
+learns. Close enough to the blooding rites (which few acolytes witness) to work out what they do to
+children, she found the feral failures hunted as "demons from the wild," and she found the **pits.**
+She could not unsee it, and when she began sheltering children marked for the blooding, the church
+branded her a **fallen** Confessor and sent the player to purge her. She is a **witness who broke, not
+a chosen one who resisted.**
+
+Her quieter cost is the mark of the house that raised her: taken as a child, **renamed for a virtue**
+(*Amana* — Arabic *amāna*, a trust returned intact — is the Cathedral's brand, not her name), taught
+to want **nothing** for herself. The line's quiet question is whether she can keep **one** thing
+without it being a theft. The answer is her birth-name, and the finale is where she keeps it.
+
+### The line's rhyme, and the finale
+
+Every line has a rhyme; the Cathedral **opens and closes on "refuses what is not offered."** At the
+head Amana refuses to let the faith **take** a stranger (the recruit fight). At the end Luxuria — who
+holds the intake rolls and knows the birth-name behind the cloth — offers Amana **her own self back,**
+*"Kneel, and it is yours again."* It is a taking dressed as a gift: to accept the name from the hand
+that dumps children in pits is to let the monster be the one who *gives* Amana a self, and so be owed.
+Amana refuses — and the refusal is a **choice of character,** not a mechanic. Her shipped lines carry
+it: *"That name is not yours to give… I gave it to myself. And that, I am keeping."*
+(`data/conversations/cathedral_general_lust_confront.lua` — **needs a rewrite**: it currently frames
+Luxuria as Amana's emptied cohort-sister, which the *outside demon* decision above has retired.)
+
+### The ten slots
+
+Ten against the four-rank ladder (`ranks = { 0, 40, 100, 200 }`; Penitent → Acolyte → Confessor →
+Saint), the general behind rank 4 — the same standing that puts the **Censer of Dawn** on the shelf,
+whose file comment is the spec. Reuses four shipped quests; six are new. Amana's plea at slot 2 tells
+the player *what* is happening; the middle makes them **see it** and trace it upward, to the one fact
+Amana cannot yet face (slot 7): the Saint she still believes in is the demon.
+
+| # | Slot | Rank | The Cathedral's ten | What it costs / reveals |
+|---|---|---|---|---|
+| 1 | Introduction | 1 | **The Haunted Mill** — `assassinate` | child ghosts scream clues about the church's sins; horror planted before it is understood |
+| 2 | The recruit | 1 | **The Fallen Confessor** — `killAll` | bested, Amana stays your hand and her **plea reveals the truth**; she joins |
+| 3 | Complication | 1 | **The Rite of Ashes** — `survive` | hold consecrated ground; why must the censer burn throughout? |
+| 4 | Escalation | 2 | **The Purge in the Fold** — `killAll` | the "corrupted" are **failed bloodings** — the church's own children |
+| 5 | The discovery | 2 | **The Roll of the Given** — `reach`/`killAll` | the register of "ascended saints" set against the **pit** — it is a casualty list |
+| 6 | Grind | 2 | **Cleansing Work** — `repeatable` | purge the failed bloodings; the player becomes the hand that buries the evidence |
+| 7 | **The turn** | 3 | *(no fight)* | **the Saint knew; the Saint is the demon** — Amana's last belief falls |
+| 8 | The break | 3 | *title TBD* — `assassinate` | the Kept-Trust beat: she keeps one thing for herself, and it is not a theft |
+| 9 | The approach | 3 | **The Saint Unmasked** — `assassinate` | the scale of what her death will **not** stop |
+| 10 | The general | 4 | **Luxuria, the Unbidden** — `assassinate` | two-phase (human Saint → demon); she turns your anointed escort; the sleepers remain |
+
+`haunted_mill`, `rite_of_ashes`, `fallen_confessor` and `general_lust` exist; slots 4–9, the recruit
+**plea** scene (a post-battle `outro`), and every mid-line scene are new. Slot 7 needs the antagonist
+to **speak without a fight** — the same seam flagged for Wrath's slot 7. The rep-ladder soft-lock
+(the middle can't earn enough points to reach the grind) is the same one the Colosseum has, and wants
+the same fix (standing as a **count of distinct completed quests**, `ranks = { 0, 3, 6, 9 }`).
+
+### The relic, and the other unbuyables
+
+**Reliquary of the Unbidden** (`utility_reliquary_unbidden.lua`, ships) — the vessel of Luxuria's
+blood, carrying `trait_rapture` for whoever lifts it, `gateHint` written. Two other unbuyables across
+the middle, no more (the 3×3 grid budget): an **intake register** at slot 5 (grid bonus scaling with
+adjacent allies, à la the Muster Roll) and one from slot 8. All carry `class = "priest"`, no `price`.
+
+### What is built, and what is not
+
+**Built:** both ends — `fallen_confessor` (recruit, `rewardCharacter = character_amana`) and
+`general_lust` (finale, rank-4, drops the Reliquary + `gateHint`); the characters; Amana's signature
+`utility_reliquary_kept_trust`; the traits `trait_rapture` / `trait_devotion_unbidden`; the two
+confront scenes; `tests/devotion_spec.lua`.
+
+**Not built:** slots 4–9 (six quests) and their scenes; the recruit **plea** `outro`; the
+`character_anointed` / `character_anointed_failed` / `character_child_ghost` blueprints; the
+finale kit rework (**drain-and-turn**, and the **two-phase transform**); and the finale-scene
+rewrite. See the plan for the authoring order.
+
+## The Hunter's Lodge: gluttony, designed
+
+The fifth line worked out end to end. It proves *the vendor is quietly serving its sin* in a fourth
+register. The Bastion serves sloth by **declining to notice**; the Colosseum serves wrath by
+**selling tickets**; the Cathedral serves lust by **hiding it at the altar**; the Hunter's Lodge
+serves gluttony two ways at once — it **licenses the excess as a cull** (pest work, population
+control, *the beast was dangerous*), and it **lionizes the hunter who never stops** as its greatest
+legend. Gluttony here is not a bottomless stomach; it is **waste** — killing far past need, for the
+trophy and the thrill, and leaving the rest to rot. The truest gluttony is *too much,* not merely
+*hungry.*
+
+### The Lodge, and what almost no one sees
+
+To nearly everyone the Lodge is exactly what it appears: a **genuinely useful guild.** It clears the
+real dangerous beasts, it feeds the town, it pays honest coin for hard, respected work, and **most of
+its hunters take only the bounties that need taking.** The rot is not the rank and file. It is the
+**thing the Lodge does to its greatest,** known to a small circle at the top, and it is the reason
+the **bounty board never closes.**
+
+**The Grand Hunters all turn into beasts.** Rank 4 — the title every tracker is raised to want — is a
+fattening. Hunt the sacred long enough, kill enough wardens of the deep wood, and the hunter
+*becomes* one: the apex predator at the center of the wild, the very thing the Lodge exists to hunt.
+And that is not the disaster it looks like. **It is the business model.** When the sacred beasts run
+low, the Lodge's own legends become the next game; the board never closes because the prey renews
+itself from the hunters' own ranks. The Lodge makes monsters the way a farm makes meat and calls the
+making an honor. Some of the wardens of the deep wood the player is sent to *cull* are the Grand
+Hunters of years past — trophies on the wall that used to have names. This is not a mask over a
+slaughterhouse; it is a respected craft that eats its own greatest and celebrates the eating, and
+that is what makes the rot so hard to name.
+
+### Gula, the cursed hunter — the appetite in the deep wood
+
+Gula was, once, exactly what the Lodge still worships: **the finest hunter the region ever produced,
+celebrated and real** — and she is the Grand Hunter turning *now,* the current head of the cull's
+own harvest. Every Grand Hunter turns, and most turn into a mere beast — powerful, mindless, the next
+year's game. Gula did not. She made a **pact with the Demon Lord** (see *Every general is a fallen
+human*, below), and so she did not merely turn; she became the **general** — the crowned apex of the
+apexes, keeping mind enough to go on hunting for the pleasure of it. What the bargain gave her was
+not more strength. It was **appetite:** it turned the *pleasure* of the kill into a compulsion that
+sates less each time and demands the next one sooner. She has killed her way through the whole deep
+wood since, and wasted nearly all of it — the thrill is the point, never the meat — and she is now
+mostly the beast at its center, exactly the fate the Lodge warns of, cultivates, and denies.
+(Bloodborne's rule made literal: *the more you hunt, the more beast you become;* Erysichthon, whom
+Famine ate alive for felling the sacred grove; Actaeon, the hunter run down as a stag by his own
+hounds.)
+
+Her rule is **"never stops,"** and she is the cheapest general on the board to build: **heal-on-hit**
+— every blow she lands feeds her, `fx.heal(fx.user)`, the mechanic already shipped on
+`weapon_parasitic_staff` (no new engine work). The counterplay is the sin read as tactics: **starve
+her.** Do not feed the long trade — burst her down, kill clean and fast, deny her the grind; a party
+that stands and swings turn after turn only fattens her. Temperance as tactics is the discipline to
+**stop feeding the hunt.**
+
+**Killing her frees nothing automatically.** The deep wood she stripped does not grow back, and the
+appetite is the Lodge's, not hers alone: kill Gula and the Lodge simply crowns its next Grand Hunter,
+who will in time make the wood its next beast. The cycle is institutional, and you cannot end a
+practice by killing one of its products — nor un-eat a forest.
+
+### Kaya, the one who stops — the wild's own answer
+
+Kaya is a hunter **intertwined with the deep wood.** She lives in it, not at the Lodge, and she hunts
+**for food, never for sport:** she takes only what she needs, wastes nothing, and the wild does not
+turn against her (the Ainu ethic of Golden Kamuy's Asirpa; Mononoke's San, who runs with wolves — as
+Kaya runs with the one on her Wolfsong Horn). Her name is Arabic *kifāya,* **sufficiency, "it is
+enough,"** the virtue buried and not stamped, the way *Saber* is patience and *Amana* is a trust
+(character_saber.lua, character_amana.lua). Same craft as Gula, opposite answer: gluttony never
+stops; temperance is **the hunt that knows when to stop.**
+
+She is **not Gula's kin, shares no origin with her, and is not the Lodge's outcast** — she is simply
+the wild's own hunter, the one who was never greedy. She joins the party as a **guide.** The Lodge's
+board pushes the player deeper and deeper after the "greatest game," and no outsider reaches the
+heart of the deep wood — where the beast the Lodge worships now ranges — without someone the wild
+knows. Kaya agrees to lead them, for her own reason: the thing devouring the wood is devouring the
+living world she is part of, and temperance is the only thing that ends gluttony. Her recruit quest
+is a **guide-join, not a purge** — she and her wolf turn back the wild that would swallow the player,
+and she takes them in. (No branded-fugitive beat; the Lodge and Kaya are not at open war — her
+quarrel is with the *sin,* the wanton devouring, not the guild's rank and file.)
+
+Her foil-immunity, stated as cleanly as Amana's *"simply not one of the made"*: Gula's hunger feeds
+on **excess** — on the hunter who takes more than the kill needs. **There is nothing on Kaya to
+eat.** She carries no surplus, holds nothing back, kills clean and for food alone; when Gula strikes
+her the hunger finds no purchase. Not willpower, not a corruption she fought off — she simply **wants
+for nothing,** and you cannot glut on that. This rides on her bound relic, not on her blueprint (a
+blueprint's own `traits` are never collected — models/trait.lua).
+
+And it is the same reason she is **the one hunter who will never turn.** The turning is the wage of
+excess — hunt the sacred past need and you become it — so a hunter who never takes past need is a
+Grand Hunter the curse cannot claim. Kaya is exactly the tracker the Lodge would love to crown, and
+she is proof the beast is a *choice,* not a fate: the honor they offer their greatest is the very
+thing she declines. (This is why the Lodge covets her and cannot make her; it is not open war, it is
+a door she keeps shut.)
+
+Her quiet cost and question are the temperance beat in personal form. She kills only for need, and
+the hardest thing the wood ever asks of her is a kill that is *not* for food: **Gula must die for the
+wild to live.** The question is whether taking that one life betrays the balance she keeps — and the
+answer is that **necessity, not appetite, is what temperance is for.** She takes the one shot that is
+needed, cleanly, and lays the bow down. That is why the last arrow at the finale is hers.
+
+### The line's rhyme, and the finale
+
+Every line has a rhyme; the Hunter's Lodge **opens and closes on "enough."** At the head Kaya is the
+guide who **kills only for what she needs** and passes up every trophy the board would pay for —
+restraint shown, not preached. At the end Gula, half-turned and never sated, **recognizes Kaya as a
+hunter of the same wild,** and offers her the pact's oldest promise: the hunt without end, the trophy
+without limit — *"take it, and you never have to stop again."* To accept is to become the beast. Kaya
+refuses — the refusal is a **choice of character,** not a mechanic — then looses **the one shot that
+is needed and no more,** and lays the bow down. She is the one who knows *enough.*
+
+### The ten slots
+
+Ten against the four-rank ladder (`ranks = { 0, 40, 100, 200 }`; Tracker → Stalker → Beastslayer →
+Grand Hunter), the general behind rank 4 — the same standing that puts the **Hornbow of the Hunt** on
+the shelf, whose file comment is the spec. One shipped quest is reused (`sacred_stag`); the rest are
+new. The middle makes the player **see** the board never closes and trace it inward, to the deep wood
+and the one fact Kaya cannot yet face (slot 7): the beasts she culls were hunters, the honor is a
+fattening, and the Lodge grows its own game from its own greatest.
+
+| # | Slot | Rank | The Lodge's ten | What it costs / reveals |
+|---|---|---|---|---|
+| 1 | Introduction | 1 | **The Sacred Stag** — `assassinate` *(ships)* | the Lodge wants the white stag's antlers; the herd calls it something else — unease planted before it is named |
+| 2 | The recruit | 1 | **[The Guide]** — `survive`/co-op | pushed deep after a bounty, the player is nearly swallowed by the wild; Kaya and her wolf turn it back, and she agrees to **guide** them toward the beast at the wood's heart. She joins (guide-join, not a purge) |
+| 3 | Complication | 1 | **[title TBD]** — `survive` | camped deeper in; hold through the night against the beasts Gula's spreading kills have driven mad and starving |
+| 4 | Escalation | 2 | **[title TBD]** — `killAll` | a "dangerous beast" bounty is a mother over her young / a beast that never threatened anyone — the cull is **manufactured** |
+| 5 | The discovery | 2 | **The Silent Wood** — `reach`/`killAll` | the bounty ledger against a wood gone quiet — a record of **extinction** — and one "beast" on the wall **wore a Grand Hunter's name:** the game is the guild's own |
+| 6 | Grind | 2 | **[Bounty Work]** — `repeatable` | clear the endless board; the player becomes the **hand that empties the wood** |
+| 7 | **The turn** | 3 | *(no fight)* | **the beast at the wood's heart is Gula,** and every Grand Hunter turns — the honor is a fattening, the Lodge farms its own; Kaya learns what the crown she'd be offered really is (there but for restraint) |
+| 8 | The break | 3 | *title TBD* — `assassinate` | the temperance beat: Kaya takes **one** shot and stops — stopping is not quitting |
+| 9 | The approach | 3 | **[title TBD]** — `assassinate` | into the deep wood; the scale of what her death will **not** undo — a wild already stripped |
+| 10 | The general | 4 | **Gula** — `assassinate` | two-phase (human huntress → the beast she became); she **devours the fallen** to heal; the stripped wild remains |
+
+`sacred_stag` exists; the recruit (slot 2), the finale (slot 10), the recruit `outro` (Kaya's terms
+— why she'll guide you), and every mid-line scene are new. Slot 7 needs the antagonist to **speak
+without a fight** — the same seam flagged for Wrath's and Lust's slot 7. The rep-ladder soft-lock
+(the middle cannot earn enough points to reach the grind) is the same one the other lines carry and
+wants the same fix (standing as a **count of distinct completed quests**).
+
+### The relic, and Kaya's signature
+
+**The general's drop — Maw of the Unfed** (parallel to the Reliquary of the Unbidden): a trophy taken
+from the warden Gula killed to begin her fall, now the vessel of her appetite — carrying the
+heal-on-hit trait for whoever lifts it, `noSteal`, no `class`, no `price`, `gateHint` written into
+its flavor and consumed by `the_gate_below`. Her grid weapon beside it is a **gralloch knife** (the
+gutting blade read as consumption — heal-on-hit), gluttony's reading of the hunter's kit the way the
+Censer of Ashes is lust's.
+
+**Kaya's signature is the Wolfsong Horn** (`utility_wolfsong_horn.lua`), and it is built. A wolf
+fields itself at her side at the opening bell (`trait_wolf_companion`) — one wolf, granted once and
+**never resummoned.** Riding on the same relic is her signature, the **Quieting Howl**: it does not
+kill, it *stops* — "the hunt that knows when to stop" turned on the enemy. The horn **charges as the
+wolf draws blood** (the summon's damage banks onto her, the new `companionDamage` tally) and can be
+sounded **only while the wolf still stands**; when it is, every foe within two tiles of Kaya *or* her
+wolf is **rooted**. A dead wolf silences the howl — her control is only as alive as the bond is — and
+it re-locks after each use, so a wolf that keeps biting can raise it again. (Built on the
+conditional-unlock signature system, as on Rowan's `armor_sworn_aegis`; a `when` + `count` gate keys
+it to a living, bloodied wolf — see `Combat.unlockReady`.)
+
+Read as tactics against Gula: rooting the ring lets a kiting archer break the long trade instead of
+feeding a heal-on-hit foe — temperance as the counter to gluttony.
+
+The wolves fight like a pack now: a wolf's bite **gives ground a tile and slips any melee counter**
+(`weapon_wolf_fangs`, the hit-and-run every wolf makes — companion, grunt, and alpha alike), which
+falls out of the answer-timing rule for free (a counter is thrown only once the swing has fully
+resolved, and re-checks reach; a wolf a tile away is out of it — `Combat.beginAnswers`).
+
+Still to fold in when the general is built: the **temperance trait** that makes Gula's hunger find no
+purchase on Kaya (*nothing to eat*), the way Amana's reliquary carries `trait_devotion_unbidden`. The
+earlier **Wolfsong Spirit true-call** (a blood-price summon) is retired from the horn; its blueprint
+(`character_wolfsong_spirit`) and `trait_blood_price` are shelved, kept for later reuse.
+
+### Gula and the two late rules
+
+Gula obeys both all-general rules (see *Every general is a fallen human*, below). **Human first form
+→ demonic second:** the human huntress sheds into the **beast she has been becoming** — the apex
+monster at the center of the deep wood, the thing the Lodge exists to hunt. Her transform is not just
+her own; it is the Lodge's whole engine shown once and live — **the turning every Grand Hunter
+undergoes,** here made a boss fight instead of a slow disappearance into the wood. Her beast form
+should share a **visual lineage** with the lesser turned hunters the mid-line meets — the shape the
+wild takes when a Grand Hunter goes under, Gula simply the apex of it — so the finale reads as *the
+biggest of a kind the player already fears,* not a one-off monster (uses the shared
+two-phase-transform subsystem, not yet built). **The second finale mechanic** (parallel to Luxuria
+turning the blooded): she **devours the fallen** — any downed unit adjacent to her, even her own
+hunters, is consumed to heal her toward full: gluttony that eats everything, including its own. Both
+are deferred, flagged as new work.
+
+### What is built, and what is not
+
+**Built (scaffolding):** the `hunters_lodge` building + vendor (`sin = "gluttony"`), `growth/hunter`,
+the rank-4 foreshadow relic `weapon_hornbow_of_the_hunt`, the *wild-game* beast roster
+(`character_stag_beast`, `character_boar`, `character_wolf_alpha`, `character_dire_bear` — these stay
+ordinary animals, the honest bounties), the `fx.heal(fx.user)` exemplar (`weapon_parasitic_staff`),
+and slot 1 (`sacred_stag`).
+
+**Not built:** `character_kaya` (temperance hunter, Wolfsong Horn centered — recruited as a guide, so
+unlike Amana she is **not** fought as an enemy objective and needs no `boss = true`) and
+`character_general_gluttony` (**Gula**, `boss = true`); a **`character_turned_hunter`** beast
+blueprint — a former Grand Hunter gone under, the *named* horror distinct from the wild-game roster
+(it is the "beast that wore a name" at slot 5 and the wardens of the deep wood at slot 9), built to
+share **Gula's phase-two design language** so the cycle reads at a glance; the traits (the
+heal-on-hit appetite on the general's relic, and Kaya's temperance/immunity on the horn); the
+temperance fold-in on `utility_wolfsong_horn`; the general's **Maw of the Unfed** relic + gralloch
+grid weapon; the recruit quest (slot 2, a survive/co-op guide-join) with
+`rewardCharacter = "character_kaya"` and
+`general_gluttony` (rank-4 gated, drops the Maw + `gateHint`); adding `general_gluttony` to
+`the_gate_below` requiredQuests and Gula to `trait_hollow_crown` shades; the three conversations
+(`vendor_hunters_lodge_intro`, the recruit meeting + its `outro` where Kaya agrees to guide, the
+general confront), then `tools/extract_strings.lua`; and a `tests/*_spec.lua` mirroring
+`tests/devotion_spec.lua`. Deferred further: mid-line slots 3–9, the two-phase transform, and the
+devour-the-fallen finale mechanic.
+
+## The Crucible: envy, designed
+
+The sixth line worked out end to end, and the last of the seven vendors to open (prestige 4 — *you do
+not envy until you have seen what the other six own*). It proves *the vendor is quietly serving its
+sin* in a register none of the others use. The Bastion serves sloth by **declining to notice**; the
+Colosseum serves wrath by **selling tickets**; the Cathedral serves lust by **hiding it at the
+altar**; the Hunter's Lodge serves gluttony by **licensing the excess as a cull**. The Crucible serves
+envy by **preaching a philosophy that dissolves the crime** — a comforting, popular teaching that makes
+the theft not-count before it is even seen.
+
+The well is unusually deep, and one touchstone is almost unfair for an alchemy game: **Fullmetal
+Alchemist's Envy** — a homunculus with no true form who wears others' shapes, sin incarnate, whose real
+self is a small wretched thing. The game already ships a `character_homunculus` on this very shelf;
+FMA's sins *are* homunculi. Around it: **Dante's Terrace of the Envious** (*Purgatorio* — the envious
+walk with their eyes sewn shut with iron wire, in stone-grey, because in life they could not bear to
+look on another's good); **Snow White's mirror** (*fairest of them all* — poison rather than be
+second); **Cain** (the first envy, the favored offering, the fratricide); and **The Thing** (perfect
+imitation, no original left).
+
+### The college, and what almost no one sees
+
+To nearly everyone the Crucible is exactly what it appears: a **genuinely useful college** — it refines
+gear and brews medicine (the game's refine and panacea live here), and most of its members do honest,
+respected work. The rot is not the rank and file. It is the **Great Work** at the top, known to a small
+circle.
+
+The alchemist's oldest dream is not gold. It is **making a person from base matter** — a homunculus
+with a soul. The college has chased it for generations and failed: the things come out **hollow** — they
+mimic, they wear faces, and there is *no one inside*. The comforting public philosophy is the cover:
+*"excellence is a substance, not a self; no one is born better; the self is a formula, and anything can
+be transferred."* That teaching is genuinely popular and genuinely consoling — and it is the exact
+license to keep making counterfeit people, because if a self is just inventory, a made one is as good as
+a born one and a failed one is only a spoiled batch. The **discards** — hollow, envious, eyes sewn shut —
+are dumped, and they are the *"corrupted things from the wild"* the player is hired to purge early. This
+is not a mask over a dungeon; it is a respected craft that cannot admit its product isn't people, and
+that denial is the sin.
+
+### Livia, the Unborn — the homunculus who wants to be real
+
+Livia is the college's masterpiece: the one homunculus that got far enough to **want**. What she wanted
+was the single thing that cannot be decanted into a flask — a *self*, a soul, to be *born* and not made.
+She did not pact for power. She pacted with the Demon Lord for **humanity** — and the bargain's cruelty
+(Ira's numbness, Gula's appetite) is exact: it gave her the power to **copy any human perfectly** —
+shape, skill, manner — and never once to *be* one. She can be anyone and is no one. **"Has no shape
+until it has seen yours"** is literal to the bone: she has no self, only the humans she wears, and she
+envies the one thing she can never counterfeit — an interior. She will settle for wearing yours.
+
+The name keeps the Latin sin-register (Ira, Luxuria, Gula, Acedia) with the meaning buried rather than
+stamped: **Livia**, from *lividus / livor* — **livid, the leaden blue-grey pallor of envy** (Rome's
+colour for it, not our green) and the bloodless colour of a corpse. For a hollow made thing with no
+blood of its own, "the leaden one" is the name and the complexion at once. Epithet **the Unborn** — a
+made thing that envies the born.
+
+### Her kit — covet, then spoil
+
+Envy has two motions and they are opposites, which is the whole sin: **COPY** is the aspiration (*I want
+to be you*); **LEVEL** is the spite (*and if I can't, no one is above me*). Every ability is one or the
+other, and both are **Ren's toolkit run backwards** — Ren gives, lifts, and mends; Livia takes, drags
+down, and blocks. A foil answered move for move.
+
+| Ability | Verb | What it does | Engine |
+|---|---|---|---|
+| **Covetous Reflection** | copy | `onCombatStart`, copies your **strongest** unit, not fragile — the rank-4 spec, pre-written on the shelf | ships (`Summon.copyOf`) |
+| **The Counterfeit Host** | copy | phase two: summons **blank homunculi**, each inert until it **sees** a unit of yours (line-of-sight — *you cannot covet what you cannot see*), then takes its shape and fights as a fragile copy | ships (summon + `copyOf` + `requiresSight`) |
+| **The Envious Pall** | level | drags whoever currently **towers** down toward your weakest — the exact inverse of Ren's gild | new trait, small |
+| **Covet** | take | strips a unit's **buffs and wears them herself**; if she already carries them, she **destroys** them (*would rather you had neither*) | new strip-variant over the shipped cleanse |
+| **Grudge** | spoil | lays **Grudged** on a unit: it **cannot be healed** while it holds | new `noHeal` status flag, checked in `Combat.heal` |
+
+Two phases (`models/transform.lua`, which now ships): **phase one** she wears a copy of your strongest
+and passes as one of you, with only a whisper of the Pall; **phase two** the borrowed shape **sloughs
+off** and the homunculus underneath is revealed — faceless, running-quicksilver, no one home (FMA's true
+form / the noppera-bō) — and the Host, Covet and Grudge all come online. The board fills with
+counterfeits of your own party, your healing dies, and your buffs walk over to the enemy.
+
+The counterplay is envy read as tactics, and it is Ren's kit that solves it: **make yourselves not
+worth copying and not worth robbing.** Do not let one unit tower (she copies it) and do not stack power
+into a pair (she covets it, then spoils it). Ren compresses the party *upward* — a flat, high,
+self-sufficient plateau — faster than the Pall can drag it *down*. When nothing towers, the Glass finds
+nothing to wear; Livia collapses into her own hollow shape, and *that* is the kill-window.
+
+### Ren, the honest alchemist — the same craft answered the other way
+
+Ren (from 仁, *rén / jin* — **humaneness, benevolence, the quality of being fully human**; the virtue
+buried and not stamped, the way *Saber* is patience and *Kaya* is sufficiency) is the alchemist who does
+the real Work the honest way. She is **not the college's outcast and shares no history with Livia** —
+like Kaya to Gula, she is simply the one who was never envious. She **refuses to make homunculi**; she
+makes the base noble by **spending herself to lift others**, and she can partly *undo* the college's
+counterfeiting — restore a discard, shield a batch marked for the vats — which is why the college wants
+her silenced.
+
+Her virtue is *"grants others' power instead of coveting it,"* and it is a clean mechanical inversion of
+Livia: the general copies your strongest **onto herself**; Ren copies your strongest **onto your
+weakest**, keeping nothing. Envy levels down; kindness levels up; same engine, opposite beneficiary.
+
+Her flaw is kindness's dark edge, and it is purely thematic (no shared past needed): **the giver who
+never receives stays forever above, needed by all and in no one's debt** — envy's own mirror, a quiet
+superiority. Being needed is her safety. The line makes her do the hardest thing for her: **receive.**
+
+### The line's rhyme, and the finale
+
+Every line has a rhyme; the Crucible opens and closes on **"has no shape of its own."** At the head Ren
+proves a self is made real by *giving* — she pours herself into a discard and a person comes back. At
+the end Livia, stripped to her hollow shape, does the one thing envy can never do: she **asks** — *how do
+you make it look like nothing?* — and Ren, whose whole virtue is giving power away for free, **would**.
+But a pact-hollowed homunculus can hold nothing; there is no one left in her to receive it.
+
+So the defeat is **not** FMA's (their Envy self-destructs in shame). Livia dies **seen.** The thing she
+spent everything to steal — a self, to be regarded as real — is the one thing Ren can give *without it
+being a theft*: Ren **sees her, names her as real,** treats the hollow thing as a someone. It is the
+human regard Livia could never counterfeit, handed over freely — and she dies anyway. That is the cost,
+and it is Ren's Kaya-beat: **kindness can grant regard; it cannot grant a soul.** You can see the hollow
+into dignity; you cannot fill it. Ren has to end her regardless, and carries that generosity has a
+floor — not because kindness failed, but because the pact left no one home to keep the gift.
+
+### The ten slots
+
+Ten against the four-rank ladder (`ranks = { 0, 40, 100, 200 }`; Puffer → Distiller → Transmuter →
+Philosopher), the general behind rank 4 — the same standing that puts the **Philosopher's Stone** on the
+shelf, whose file comment is the spec. Nothing of the line ships yet; all ten are new. The middle makes
+the player **see** the manufacture and trace it inward, to the vats and the one fact Ren cannot yet face
+(slot 7): the thing at the centre is not a monster but a made person who will never be real.
+
+| # | Slot | Rank | Objective | The Crucible's ten | What it costs / reveals |
+|---|---|---|---|---|---|
+| 1 | Introduction | 1 | `assassinate`/`killAll` | **The Runaway Reagent** — recover a stolen "ingredient" | it is a *person* — a discarded homunculus, eyes sewn shut; horror planted, unexplained |
+| 2 | The recruit | 1 | `killAll` | **The Counterfeiter** — Ren, branded a heretic for giving the Work away free and sheltering discards | bested, her plea reveals the manufacture; she joins; says nothing of Livia yet |
+| 3 | Complication | 1 | `protect` | **The Self-Made Master** — a patron wearing a bought quality, coming apart | proof of the lie: borrowed property **rots** — her honest method vindicated, and she pities him |
+| 4 | Escalation | 2 | `killAll` | **By the Dram** — buyers and enforcers wielding purchased gifts; the first blank homunculi | she sees the Work done brilliantly and hates that it *works* |
+| 5 | The discovery | 2 | `reach`/`killAll` | **The Vats** — the manufactory; the philosophy laid bare, the discards with sewn eyes | she was once *offered* perfection and refused to be perfected at another's cost |
+| 6 | Grind | 2 | `repeatable` | **Cleansing Work** — purge the failed homunculi | the player becomes the hand that buries the college's failures |
+| 7 | **The turn** | 3 | *(no fight)* | **Nobody Home** — Livia *is* the thesis: a made thing that will never be real; her death frees nothing, the *philosophy* is the engine | her hope dies — that kindness can *give* Livia a way out |
+| 8 | The break | 3 | `assassinate` | *title TBD* — second relic earned here | she stops giving reflexively; she learns to receive |
+| 9 | The approach | 3 | `assassinate` | **The Open Formula** — the college doesn't hide, it *proselytises*, and offers the player the tincture | the scale her death won't undo — every gift already sold, every discard already in the vat |
+| 10 | The general | 4 | `assassinate` | **Livia, the Unborn** — two-phase; copy, Pall, Host, Covet, Grudge | she ends someone she can only *see*, not *fill* |
+
+Slot 7 needs the antagonist to **speak without a fight** — the same seam flagged for Wrath's, Lust's
+and Gluttony's slot 7. The rep-ladder soft-lock is the same one the other lines carry and wants the same
+fix (standing as a **count of distinct completed quests**, `ranks = { 0, 3, 6, 9 }`).
+
+### The relic, and Ren's signature
+
+**The general's key — the Envious Glass** (a mirror — Snow White): differs in type from the others (a
+looking-glass, not armour or a spear). Worn, `onCombatStart` copies the **strongest enemy** onto your
+side, *not fragile* — the completed Great Work the shop only ever sold you a fragile imitation of
+(`utility_philosophers_stone` is the puffer's fake; its own comment promises *"it will point this very
+ability at your strongest, and it will not be fragile then"*). The same trap it was when she wore it:
+you fight in borrowed shapes and never your own. No `class`, no `price`; `gateHint` a fragment of the
+Gate Below's location.
+
+**Ren's signature — the Aqua Vitae** (the alchemists' *water of life*): a conditional-unlock signature
+(per the system on Rowan's Aegis and Kaya's Horn). It charges on a *"given"* tally — power and healing
+she has poured into allies — and when ready she **transmutes an ally**: copies your strongest onto a
+weaker unit, the benevolent inversion of the Glass. Its second form, earned at slot 8, is the arc in a
+verb: the one who only ever gave can, once, **be gilded in return** — the giver lets herself receive.
+
+**Unbuyables** across the line (the relic, the signature, and no more than two others — the 3×3 grid
+budget): an **intake ledger** at slot 5 and one from slot 8, both `class = "alchemist"` with no `price`
+(unbuyable, still tallying toward alchemist growth — see `docs/classes.md`).
+
+### Livia and the two systemic rules
+
+Livia obeys the **two-phase** rule cleanly and is arguably its most literal consumer — the homunculus
+that sheds a stolen human shape for the thing underneath is a transform, not a metaphor
+(`models/transform.lua`, which ships).
+
+She **breaks the *fallen human* rule on purpose, and is its second flagged exception.** Rule one is
+*every general was a human who pacted*; Ira is the standing exception — *a human made into a thing, who
+never chose.* Livia is the **exact inverse**: *a thing that wants to be human, who did choose* — she
+pacted, and for humanity rather than power. The two bracket the rule from opposite ends, and that is
+design, not drift: state it, do not smooth it.
+
+### What is built, and what is not
+
+**Built (scaffolding):** the `alchemist` building + vendor (`sin = "envy"`, opens last at prestige 4),
+`growth/alchemist`, the rank-4 foreshadow relic `utility_philosophers_stone` (the fragile imitation, its
+comment the boss spec), and the homunculus exemplar (`character_homunculus`,
+`ability_summon_homunculus`). The copy and transform engines both ship (`Summon.copyOf`,
+`models/transform.lua`), and `requiresSight` is precedented on the Stone.
+
+**Not built:** `character_ren` (kindness alchemist, `class = "alchemist"`; fought only at the recruit,
+so `boss = true` there per the Amana pattern) and `character_general_envy` (**Livia**, `boss = true`);
+the three new mechanics (the **Envious Pall** trait, the **Covet** buff-strip over the shipped cleanse,
+and the **Grudge** `noHeal` status); a `character_blank_homunculus` for the Counterfeit Host; the
+traits and relics (the Glass carrying the copy rule, the Aqua Vitae carrying Ren's gild); all ten quests
+including the recruit (`rewardCharacter = "character_ren"`) and `general_envy` (rank-4 gated, drops the
+Glass + `gateHint`); adding `general_envy` to `the_gate_below` `requiredQuests` and Livia to
+`trait_hollow_crown` shades; the conversations (`vendor_alchemist_intro`, the recruit meeting + its
+`outro`, the general confront), then `tools/extract_strings.lua`; and a `tests/*_spec.lua` mirroring
+`tests/devotion_spec.lua`. Deferred further: mid-line slots 3–9 and the phase-two mechanics.
+
+## The Arcanum: pride, designed
+
+The seventh line worked out end to end, and the last of the sins to get its chapter. It proves *the
+vendor is quietly serving its sin* in a register the other six do not use. The Bastion serves sloth by
+**declining to notice**; the Colosseum serves wrath by **selling tickets**; the Cathedral serves lust
+by **hiding it at the altar**; the Hunter's Lodge serves gluttony by **licensing the excess**; the
+Crucible serves envy by **coveting from below** — and the Arcanum serves pride by **standing above
+judgment.** Its rot is not buried in a crypt and it is not a secret held by a small circle. It is done
+in the open, and tolerated, because the Arcanum is simply **too useful to rein in.**
+
+The direct model is **Frieren** — *Fern and Frieren against the pride of the demons.* Aura the
+Guillotine weighs power on her scales, a contest of the mana a mage lets her *see*, and is certain the
+balance falls her way; Frieren beats her by having spent a century holding her true mana suppressed, so
+the proud demon fatally underestimates her and her own ability turns on her. That is this whole line:
+**pride that judges by the surface, humility that keeps its depth hidden, and the proud undone by the
+certainty of having measured you.** (As the other lines credit Claymore, Bloodborne, Golden Kamuy and
+Mononoke, this one is Frieren's.)
+
+### The Arcanum, and what it is allowed to do
+
+To nearly everyone the Arcanum is exactly what it appears — and more than the other houses ever were: a
+**genuinely indispensable institution.** It wins the realm's wars, breaks its sieges, turns back its
+plagues, and its great mages are **famous**, sought as consultants by the crown itself. There is no
+mask here and no hidden dungeon. Its masters practise **necromancy, blood magic, human and corpse
+experimentation, resurrection, and battlefield-flattening catastrophe** in the light, and the powerful
+**know**, and look away, because the results are worth more than the scruple. That is the sin, and it
+is worse than a secret: *no one else can do what we do, so nothing we do can be wrong.* Pride made
+institutional, and shared by everyone who benefits — a whole realm's blind eye, bought with usefulness.
+
+The great majority of the Arcanum's scholars are ordinary and sincere and take only the work that
+needs taking. The rot is not the rank and file; it is the **thing the celebrated do to reach the top,
+in full view,** and the reason no one stops them is that everyone above them is a customer.
+
+### The cost, catalogued
+
+Two prices are paid so the Arcanum can know everything. The first is its own: the **researchers**, the
+brilliant few driven ever deeper into forbidden work until their minds break — the deep stacks are full
+of them. The second is everyone else's: the **subjects** of the necromancy and the blood magic, the
+bodies the resurrections are practised on. Both are written down, and the register that hides them in
+plain sight is an **honor roll** — *"those who gave themselves to the work,"* a list of donors to
+knowledge, read as a roll of the noble dead. It is the same trick the Bastion plays with its martyrs,
+the Cathedral with its ascended saints, the Lodge with its named trophies: a casualty list recited as
+an honor. It needs no more invention than the naming.
+
+### Sublimitas, the Unequalled — the pride at the summit
+
+Sublimitas is a **human who made a pact with the Demon Lord** (see *Every general is a fallen human*,
+below), and the bargain's boon is **perfect comprehension**: she has only to *glance* at a working once
+to know its principles and cast it herself. She is, truly, the greatest mage of the age — celebrated,
+real, earned in her own eyes — and that is exactly the trap. **Perfection is a ceiling.** A mind that
+has decided there is nothing left for it to learn cannot be told anything, can admit no wrong, and will
+do **anything** to keep the summit it is certain it deserves. She is **Aura's pride**: she measures
+every mage by what they *show* her, weighs it against herself, and is sure the scale falls her way.
+
+Her rule is the shipped foreshadow — **"answers every spell with your own"** — and it is a `onCast`
+answer written against the wired hook (see *Authoring the remaining six lines*): whatever the party
+throws at her *where she can see it*, she has already mastered, and turns back. It is pride that can
+only ever answer **the visible.** She also brings a devastating **original** kit — catastrophe magic,
+and **necromancy that raises the fallen (yours or hers) as her thralls**, the second-form mechanic that
+parallels Luxuria turning the blooded and Gula devouring the fallen. Two-phase, per the all-general
+rule: the human Archmage sheds into a demon who **fills the board with copies of herself**
+(`ability_doppelganger` / `Summon.copy`, already shipped) — *the only necessary mind, made literal.*
+
+The counterplay is the sin read as tactics: **do not show her your hand.** A party of flashy nukers
+feeds the mirror; the spell you stake the fight on is the spell she gives back. What she cannot answer
+is the mage who never shows her anything worth taking.
+
+**Killing her frees nothing automatically.** The dead she raised do not lie back down at her death, the
+subjects do not return, and the appetite is the Arcanum's, not hers alone — kill Sublimitas and the
+house crowns its next Unequalled, because the realm still wants what only this place can do. You cannot
+end a practice by killing its finest product.
+
+### Gyeom, the same summit reached the other way
+
+Gyeom is **not a prodigy** — she is Fern. She showed no special gift; she simply worked, every day, on
+the one principle that she need only **do her best, not be the best,** and be a little better than
+yesterday. Years of that made her formidable, and she *still* holds that she has more to learn — which
+is the whole of her, the virtue buried and not stamped (Korean **謙**, *humility*, the I Ching's hexagram
+of Modesty, the way *Saber* is patience and *Kaya* is enough). And like **Frieren** she **conceals**:
+she keeps her true strength held down, never casts to impress, and so reads to any proud eye as a weak
+mage not worth measuring.
+
+She came up inside the Arcanum and would not adopt its one rationalization. She is the one who refused
+to call the human cost acceptable just because it was useful — she obstructed the work and sheltered
+those marked for it — so the crown-backed Arcanum branded her a **dangerous radical** and sent the
+player to bring her in. She is a **witness who broke**, but hers is the refusal of a collective excuse,
+not the exposure of a secret: everyone already knows, and she is the one who will not agree.
+
+Her **foil-immunity, stated as cleanly as Amana's "not one of the made" and Kaya's "nothing to eat":**
+Sublimitas answers and copies only what is **shown** — and *Gyeom shows nothing.* You can glance a
+spell; you cannot glance the ten thousand hours she never put on display. It is not willpower and not a
+corruption resisted — she simply does not fight to be seen.
+
+Her quiet cost and question are the humility beat in personal form. The Arcanum measures a mind by what
+it flashes in an instant, and beside Sublimitas her slow, hidden way looks like **mediocrity** — she
+has to hold, against genius itself, that the slope is worth more than the summit, and that what you
+keep back is worth more than what you show. The finale is where she keeps it, and reveals it.
+
+### The line's rhyme, and the finale
+
+Every line has a rhyme; the Arcanum **opens and closes on what is kept back.** At the head Gyeom meets
+a problem not with a bigger spell but with a better-practised self she does not show off — restraint
+and concealment as one gesture. At the end Sublimitas, certain to the last that one glance has measured
+her, offers the one thing pride can give: **completion.** *"You grind over a lifetime toward what I can
+hand you in an afternoon. Glance with me. Be finished. Be the greatest, and never strive again."* To
+accept is to stop — to trade the slope for the ceiling and become the next Unequalled.
+
+Gyeom refuses — the refusal is a **choice of character,** not a mechanic — and **releases what she
+never showed,** the reveal the proud eye never thought to wonder about (Frieren against the scales):
+*"You saw everything I showed you. You never once wondered what I kept."* And the campaign has been
+earning that line's mechanical truth all along: a diligently-fielded, concealed Gyeom is the depth the
+glance could not read. *The Unequalled measured everyone, and was undone by the one she was sure she
+had already measured; that certainty is her whole poverty.*
+
+### The ten slots
+
+Ten against the four-rank ladder (`ranks = { 0, 40, 100, 200 }`; Apprentice → Adept → Magus →
+Archmage), the general behind rank 4 — the same standing that puts the **Codex of Hubris** on the shelf,
+whose file comment is the spec. One shipped quest is reused (`grimoire_ruins`); the rest are new. The
+middle makes the player **see** what the realm excuses and trace it to the summit — to the one fact
+Gyeom will not yet weigh (slot 7): the greatest mage of the age is genuinely that great, and that is
+precisely why she can hear no objection.
+
+| # | Slot | Rank | The Arcanum's ten | What it costs / reveals |
+|---|---|---|---|---|
+| 1 | Introduction | 1 | **The Sunken Sanctum** — `killAll` *(ships, `grimoire_ruins`)* | the Arcanum wants its book back and cares nothing for the looters or the dead — it values knowing over people |
+| 2 | The recruit | 1 | **[The Radical]** — `killAll` | sent to bring in a "weak" branded mage; she lets the player think they have her, reveals she was never showing her hand — and stays it anyway; her plea reveals the cost the realm excuses; she joins |
+| 3 | Complication | 1 | **[title TBD]** — `survive`/`killAll` | a working the crown praised — and the subjects it was practised on; the cost the beneficiaries never see |
+| 4 | Escalation | 2 | **[title TBD]** — `killAll` | the inner circle's Adepts met mid-experiment; necromancy and blood magic firsthand |
+| 5 | The discovery | 2 | **The Donor Roll** — `reach`/`killAll` | the honor roll of "those who gave themselves to the work" set against what became of them — it is a casualty list |
+| 6 | Grind | 2 | **[Fetching Work]** — `repeatable` | the player fetches forbidden materials for the Arcanum, becoming the hand that feeds the next working |
+| 7 | **The turn** | 3 | *(no fight)* | Sublimitas glances a working and reproduces it flawlessly — she is **not a fraud**; that is why she never stops and hears no objection. She measures Gyeom at a glance and dismisses her, and Gyeom must not correct her |
+| 8 | The break | 3 | *title TBD* — `assassinate` | Gyeom chooses the slope over the summit, deliberately; **second relic** (practice that persists) — improvement becomes a stance |
+| 9 | The approach | 3 | **[title TBD]** — `assassinate` | the scale of what her death will **not** undo — the subjects do not return, and the Arcanum will crown a new Unequalled |
+| 10 | The general | 4 | **Sublimitas, the Unequalled** — `assassinate` | two-phase (human Archmage → self-copying demon); she answers what you show and raises your fallen — until Gyeom releases what was concealed; the work survives her |
+
+Slot 7 needs the antagonist to **speak without a fight** — the same seam flagged for Wrath's, Lust's,
+Gluttony's and Envy's slot 7. The rep-ladder soft-lock (the middle cannot earn enough points to reach
+the grind) is the same one the other lines carry and wants the same fix (standing as a **count of
+distinct completed quests**).
+
+### The relic, and Gyeom's signatures
+
+**The general's drop — the Codex Unanswered** (a tome, differing in type from the armor / spear / mail /
+reliquary / bow / glass of the others): the vessel of Sublimitas's rule, carrying **"answers every
+spell with your own"** for whoever lifts it — worn, *you* now turn back what your foes cast at you, the
+same trap it was for her. `noSteal`, no `class`, no `price`, `gateHint` written into its flavor and
+consumed by `the_gate_below` (`"where the shelves answer only themselves"`).
+
+**Gyeom's signature is the Ledger** (`utility_ledger.lua`) — a grimoire she writes herself, bound, in
+the grid's center: **concealment, and release.** She fights **suppressed** — her displayed magic reads
+low, so enemy targeting and the mirror alike treat her as negligible — while **every action she takes
+banks a small, permanent gain** (a stacking *Diligence*), so she peaks **late**, the exact inverse of
+Saber's one-motion front-load. It is a conditional-unlock signature, as on Rowan's `armor_sworn_aegis`
+and Kaya's `utility_wolfsong_horn`: after she has done her best enough times (`unlock = { event =
+"castMade", count = N }`), the **Release** opens — she drops the suppression and her accumulated power
+lands at once, on the enemy that dismissed her. The immunity is the concealment itself, and needs no
+second hook — she is read at her suppressed value, and a spell answered off her is answered off nothing.
+
+**Gyeom's second relic** (late, the stance, parallel to Saber's chosen strike and Rowan's declared
+ward): her practice **persists across battles** — Diligence carries forward, so a diligently-fielded
+Gyeom grows into a genuinely great mage over the campaign, *improve every day* made literal. The
+within-battle stacking is cheap; the cross-battle persistence touches `models/save.lua` and is new
+work, flagged below.
+
+Two or three other unbuyables across the middle, no more (the 3×3 grid budget), all `class = "mage"`
+with no `price` — unbuyable, still tallying toward mage growth (see `docs/classes.md`).
+
+### Sublimitas and the two late rules
+
+Sublimitas obeys both all-general rules (see *Every general is a fallen human*, below). **Human first
+form → demonic second:** the celebrated Archmage sheds into the demon the pact made of her, and the
+new form's signature is the shipped `ability_doppelganger` writ large — **she fills the board with
+copies of herself,** pride's answer to every problem being another of her. **The second finale
+mechanic** (parallel to Luxuria turning the blooded and Gula devouring the fallen): her **necromancy
+raises the fallen** — any downed unit, yours or her own, rises to her side and fights on. Both are
+deferred, flagged as new work.
+
+### What is built, and what is not
+
+**Built (scaffolding):** the `arcanum` building + vendor (`sin = "pride"`), `growth/mage`, the rank-4
+foreshadow relic `utility_codex_of_hubris`, the Pride exemplar spell `ability_doppelganger`
+(`Summon.copy`), and slot 1 (`grimoire_ruins`).
+
+**Not built:** `character_gyeom` (humility mage, the Ledger centered — recruited as an enemy objective,
+so `boss = true` like Amana and Saber) and `character_general_pride` (**Sublimitas**, `boss = true`);
+the traits (Sublimitas's `onCast` answer on the Codex Unanswered — shipping first as a counter-magic
+reflex, the full learn-and-recast deferred; Gyeom's suppress/bank/Release on the Ledger); the
+`status_pride` tell; the Codex Unanswered relic; the recruit quest (slot 2, `killAll`) with
+`rewardCharacter = "character_gyeom"` and `general_pride` (rank-4 gated, drops the Codex + `gateHint`);
+adding `general_pride` to `the_gate_below` `requiredQuests` (**already present**) and Sublimitas to
+`trait_hollow_crown` shades; the conversations (`vendor_arcanum_intro`, the recruit meeting + its
+`outro`/join, the general confront), then `tools/extract_strings.lua`; and a `tests/*_spec.lua`
+mirroring `tests/devotion_spec.lua`. Deferred further: mid-line slots 3–9, the two-phase transform, the
+raise-the-fallen finale mechanic, the full glance-and-recast mirror, and the cross-battle persistence
+relic.
+
+## Every general is a fallen human, and every general fight has two phases
+
+Two rules decided late, and they govern **all seven** generals — put here so the other lines inherit
+them:
+
+1. **Every general was a human who made a pact with the Demon Lord.** The sin is what the bargain made
+   of them; the Hollow Crown's seven appetites are seven people who said yes. Luxuria is written this
+   way (a human who pacted for demonic power, then infiltrated the Cathedral). Acedia fits cleanly —
+   she already *negotiated* a corrupting bargain. **Ira does not, as written** — the Colosseum chapter
+   makes her a *manufactured* woman who "never chose," and that is a deliberate, load-bearing part of
+   her tragedy. Leave the contradiction standing until it is resolved on purpose: either Ira is the
+   one general the rule spares, or her "pact" is the Perennial's, struck on her behalf. **Do not quietly
+   rewrite her to fit.** **Livia (Envy) is a second, deliberate exception, and Ira's exact inverse** — a
+   *thing that wants to be human and did choose* against Ira's *human made into a thing who never chose*.
+   The two bracket the rule from opposite ends on purpose; see *The Crucible* above. **Sublimitas
+   (Pride) fits cleanly** — a human who pacted for perfect comprehension and became certain of her own
+   summit; see *The Arcanum* above.
+
+2. **Every general fight is two-phase — a human first form, then a demonic second form with more
+   abilities.** The **reusable two-phase-transform subsystem** this wants now **ships** as
+   `models/transform.lua` (used so far only by polymorph — pig/bear): at a health threshold the general
+   swaps form (sprite/stats via `Transform.apply`), gains new traits/abilities, and optionally bursts.
+   It carries the continuity a threshold swap needs (the pools travel by reference; the shape's traits
+   re-attach) — build the general transform against it and against the health-threshold precedent in
+   `trait_hollow_crown` (which re-summons generals as the Crown's health falls past 75/50/25%). No
+   general consumes it yet; Luxuria and Livia are the first two (the beloved Saint sheds into her demon
+   shape; the homunculus sheds its stolen human one), with Sublimitas a natural third — the Archmage
+   sheds into the demon who fills the board with copies of herself.
 
 ## Authoring the remaining six lines
 

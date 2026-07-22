@@ -1,7 +1,7 @@
 -- Tests for the new tactical kit added on top of the summon/status/trait systems: the AoE control
--- bombs, the priest's Banish and Renewal, the banner aura, the Wolfsong Horn's blood-summon, and the
--- rule that a hard-controlled unit cannot react. Pure logic, runs headless. See tests/summon_spec.lua
--- for the fixture style these borrow.
+-- bombs, the priest's Banish and Renewal, the banner aura, the Wolfsong Horn's charged Quieting Howl
+-- and the wolf's hit-and-run bite, and the rule that a hard-controlled unit cannot react. Pure logic,
+-- runs headless. See tests/summon_spec.lua for the fixture style these borrow.
 
 local Character = require("models.character")
 local Item = require("models.item")
@@ -250,68 +250,87 @@ return {
         end,
     },
     {
-        name = "the Wolfsong Horn calls the Spirit for free, and bills half the archer's health when it dies",
+        name = "the Wolfsong Horn charges as the wolf draws blood, and only sounds while the wolf lives",
         fn = function()
-            local archer = Character.instantiate("character_archer")
-            local horn = itemNamed(archer, "utility_wolfsong_horn")
-            horn.traits = {} -- silence the free companion so it can't take the tile we summon onto
-            local c = Combat.new(arena(8, 8), { unit(archer, 2, 2) }, { unit("character_bandit", 8, 8) })
+            local c = Combat.new(arena(10, 10),
+                { unit("character_archer", 5, 5) },
+                { unit("character_bandit", 5, 9) }) -- prey for the wolf to bite
             local u = c.units[1]
-            u.char.stats.health.current = 74 -- a clean even number to halve
-            openTurn(c, u)
-
-            assert(Combat.useItem(c, u, itemNamed(u.char, "utility_wolfsong_horn"), 3, 2), "the horn sounds")
-            local spirit = Combat.unitAt(c, 3, 2)
-            assert(spirit and spirit.char.id == "character_wolfsong_spirit", "the Wolfsong Spirit answers")
-            assert(u.char.stats.health.current == 74, "the call itself costs her nothing")
-
-            Combat.dealFlatDamage(c, spirit, 9999, {}, "test")
-            assert(not spirit.alive, "the Spirit is cut down")
-            assert(u.char.stats.health.current == 37, "and its death takes half her remaining health, got "
-                .. u.char.stats.health.current)
-        end,
-    },
-    {
-        name = "a Spirit dismissed with its fallen archer bills nobody",
-        fn = function()
-            local archer = Character.instantiate("character_archer")
-            itemNamed(archer, "utility_wolfsong_horn").traits = {} -- no companion in the way
-            local c = Combat.new(arena(8, 8), { unit(archer, 2, 2) }, { unit("character_bandit", 8, 8) })
-            local u = c.units[1]
-            openTurn(c, u)
-            assert(Combat.useItem(c, u, itemNamed(u.char, "utility_wolfsong_horn"), 3, 2), "the horn sounds")
-            local spirit = Combat.unitAt(c, 3, 2)
-
-            Combat.dealFlatDamage(c, u, 9999, {}, "test")
-            assert(not u.alive and not spirit.alive, "the archer falls and the Spirit goes with her")
-            -- Her health is already 0, so the toll is invisible in the numbers: read the log instead.
-            -- A dismissal is not a death and never reaches the hook, so nothing was ever charged.
-            for _, entry in ipairs(c.log or {}) do
-                assert(not entry.text:find("blood%-price"),
-                    "she is not billed for the wolf that vanished with her: " .. entry.text)
-            end
-        end,
-    },
-    {
-        name = "the horn stays silent while the free companion still stands",
-        fn = function()
-            local archer = Character.instantiate("character_archer")
-            local c = Combat.new(arena(8, 8), { unit(archer, 2, 2) }, { unit("character_bandit", 8, 8) })
-            local u = c.units[1]
+            local wolf = u.wolfCompanion
+            assert(wolf and wolf.char.id == "character_wolf_grunt", "a wolf answers the horn at the opening bell")
             local horn = itemNamed(u.char, "utility_wolfsong_horn")
-            local wolf = Combat.activeSummon(horn)
-            assert(wolf and wolf.char.id == "character_wolf_grunt", "the companion holds the horn's claim from the bell")
 
+            -- Silent from the start: no blood drawn yet, so the howl is still locked.
             local blocked = Combat.itemBlockReason(u, horn)
-            assert(blocked and blocked.kind == "active", "so the true call is refused")
-            openTurn(c, u)
-            assert(not Combat.useItem(c, u, horn, 3, 2), "and the horn cannot be blown over a living wolf")
+            assert(blocked and blocked.kind == "locked", "the horn will not sound until the wolf has drawn blood")
 
+            -- The wolf's blow banks onto the archer that fields it (companionDamage routes to the summoner).
+            Combat.teleportUnit(c, wolf, 5, 8)
+            openTurn(c, wolf)
+            assert(Combat.useItem(c, wolf, itemNamed(wolf.char, "weapon_wolf_fangs"), 5, 9), "the wolf bites")
+            assert(Combat.tallyCount(u, "companionDamage") > 0, "and the archer's horn feels every drop it draws")
+
+            -- Brimmed AND the wolf alive: the howl is ready.
+            Combat.tally(u, "companionDamage", 40)
+            assert(Combat.itemBlockReason(u, horn) == nil, "brimmed over a living wolf, the horn is ready")
+
+            -- The wolf falls: it cannot be resummoned, and the horn falls silent with it.
             Combat.dealFlatDamage(c, wolf, 9999, {}, "test")
-            assert(Combat.activeSummon(horn) == nil, "the claim dies with the companion")
+            assert(not wolf.alive, "the wolf is cut down")
+            local silenced = Combat.itemBlockReason(u, horn)
+            assert(silenced and silenced.kind == "locked", "a dead wolf silences the horn, brimmed or not")
             openTurn(c, u)
-            assert(Combat.useItem(c, u, horn, 3, 2), "and only then does the Spirit answer")
-            assert(u.char.stats.health.current == u.char.stats.health.max, "at no cost up front")
+            assert(not Combat.useItem(c, u, horn, u.x, u.y), "and it will not sound without the wolf")
+        end,
+    },
+    {
+        name = "the Quieting Howl roots every foe within two tiles of Kaya or her wolf, and spares the distant",
+        fn = function()
+            local c = Combat.new(arena(16, 16),
+                { unit("character_archer", 5, 5) },
+                { unit("character_bandit", 5, 7),   -- two tiles from Kaya
+                  unit("character_bandit", 10, 11), -- one tile from where the wolf will stand
+                  unit("character_bandit", 1, 1) }) -- far from both
+            local u = c.units[1]
+            local wolf = u.wolfCompanion
+            Combat.teleportUnit(c, wolf, 10, 10)
+            local nearKaya, nearWolf, distant
+            for _, x in ipairs(c.units) do
+                if x.char.id == "character_bandit" then
+                    if x.x == 5 and x.y == 7 then nearKaya = x
+                    elseif x.x == 10 and x.y == 11 then nearWolf = x
+                    else distant = x end
+                end
+            end
+            Combat.tally(u, "companionDamage", 40)
+            openTurn(c, u)
+            assert(Combat.useItem(c, u, itemNamed(u.char, "utility_wolfsong_horn"), u.x, u.y), "the horn sounds")
+            assert(Status.has(nearKaya, "status_root"), "the foe near Kaya is rooted")
+            assert(Status.has(nearWolf, "status_root"), "the foe near the wolf is rooted")
+            assert(not Status.has(distant, "status_root"), "the distant foe is spared")
+        end,
+    },
+    {
+        name = "a wolf's bite gives ground and slips the melee counter",
+        fn = function()
+            -- Attacker: a party wolf. Defender: another wolf, which carries the melee counter (Feral Instinct).
+            local c = Combat.new(arena(10, 10),
+                { unit("character_wolf_grunt", 4, 4) },
+                { unit("character_wolf_grunt", 5, 4) })
+            local attacker = c.units[1]
+            local defender
+            for _, x in ipairs(c.units) do
+                if x ~= attacker and x.char.id == "character_wolf_grunt" then defender = x end
+            end
+            local hpBefore = attacker.char.stats.health.current
+            openTurn(c, attacker)
+            assert(Combat.useItem(c, attacker, itemNamed(attacker.char, "weapon_wolf_fangs"), 5, 4), "the wolf bites")
+            -- It stepped a tile straight back from the foe it bit...
+            assert(attacker.x == 3 and attacker.y == 4,
+                "the wolf gives ground, got " .. attacker.x .. "," .. attacker.y)
+            -- ...so the defender's held melee counter, re-checked against the final board, finds nothing in reach.
+            assert(attacker.char.stats.health.current == hpBefore, "the counter whiffs; the wolf is untouched")
+            assert(defender.char.stats.health.current < defender.char.stats.health.max, "the bite still landed")
         end,
     },
 }

@@ -28,4 +28,10 @@ return {
         false, "utility_unappeased_heart", "weapon_crimson_greataxe",
         false, false,                  false,
     },
+    -- Basic tactics (models/ai.lua): unappeased and rising, she swings the greataxe at the foe already
+    -- closest to falling -- press the wounded.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

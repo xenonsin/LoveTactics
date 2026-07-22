@@ -46,4 +46,10 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
     defaultAction = "weapon_iron_mace",
+    -- Basic tactics (models/ai.lua): the wall still knows a kill when it sees one -- under auto-battle
+    -- she turns the mace on the foe already closest to falling, and shoves it where the shove helps.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

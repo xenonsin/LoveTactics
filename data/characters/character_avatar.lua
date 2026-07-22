@@ -22,4 +22,11 @@ return {
     },
     startingItems = { "weapon_iron_sword" },
     defaultAction = "weapon_iron_sword",
+    -- Basic tactics (models/ai.lua): the starting instinct under auto-battle -- go finish the foe
+    -- already closest to falling before spreading damage around. The player overrides all of this from
+    -- the Tactics tab.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

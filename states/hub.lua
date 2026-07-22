@@ -54,10 +54,31 @@ local function launchPanel(building)
     })
 end
 
--- Activation seam handed to the building map. In free play it opens the clicked building's panel.
--- During the first-visit coaching (hubIntro == "coach") it does two things instead: it refuses every
--- door but the coached one, and when that one is opened it plays the flier scene (Rowan spotting the
--- Colosseum's contract) BEFORE the board appears -- then clears the flag, so the coaching runs once.
+-- A vendor's first-visit greeting. The first time a shop's door is opened, if that vendor has an
+-- intro conversation authored (data/conversations/vendor_<id>_intro.lua), play it BEFORE the shelf
+-- appears -- the shopkeeper greets the newcomer, and any recruited companion of that house speaks up
+-- (the scene gates those lines on `has`, so an unrecruited one is simply not on stage). The visit is
+-- then recorded and saved, so the greeting never repeats. A building that is not a shop, a vendor with
+-- no intro authored, or one already visited opens straight to its shelf.
+local function launchVendor(building)
+    local vendorId = building.vendor
+    if vendorId and not Player.hasVisitedVendor(hub.player, vendorId) then
+        local introId = "vendor_" .. vendorId .. "_intro"
+        if Conversation.defs[introId] then
+            Player.markVendorVisited(hub.player, vendorId)
+            Player.save()
+            Conversation.play(introId, function() launchPanel(building) end)
+            return
+        end
+    end
+    launchPanel(building)
+end
+
+-- Activation seam handed to the building map. In free play it opens the clicked building's panel
+-- (playing a vendor's one-time greeting first -- see launchVendor). During the first-visit coaching
+-- (hubIntro == "coach") it does two things instead: it refuses every door but the coached one, and
+-- when that one is opened it plays the flier scene (Rowan spotting the Colosseum's contract) BEFORE
+-- the board appears -- then clears the flag, so the coaching runs once.
 local function openPanel(building)
     if hub.player and hub.player.hubIntro == "coach" then
         if building.id ~= INTRO_BUILDING then return end
@@ -65,7 +86,7 @@ local function openPanel(building)
         Conversation.play("prologue_flier", function() launchPanel(building) end)
         return
     end
-    launchPanel(building)
+    launchVendor(building)
 end
 
 function hub.enter()

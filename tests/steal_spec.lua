@@ -79,7 +79,7 @@ return {
             withRandom(1, function()
                 assert(Combat.steal(c, c.units[1], wolf) == nil, "there is nothing to take")
             end)
-            assert(itemNamed(wolf.char, "weapon_fangs") ~= nil, "the wolf keeps its teeth")
+            assert(itemNamed(wolf.char, "weapon_wolf_fangs") ~= nil, "the wolf keeps its teeth")
         end,
     },
     {

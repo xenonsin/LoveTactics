@@ -31,4 +31,10 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
     defaultAction = "ability_fireball",
+    -- Basic tactics (models/ai.lua): a glass body breaks off when it is bloodied rather than standing
+    -- to trade. The Fireball in the grid carries its own rule for when the wind-up is worth paying, so
+    -- the one thing left to author here is self-preservation.
+    ai = {
+        { priority = "emergency", act = "retreat", when = { subject = "self", test = "hp_pct_below", value = 0.3 } },
+    },
 }

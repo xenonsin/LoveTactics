@@ -14,4 +14,10 @@ return {
         speed = 2,
     },
     startingItems = { "weapon_stone_fists" },
+    -- Basic tactics (models/ai.lua): the wall still finishes what it can reach -- press the foe closest
+    -- to falling.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

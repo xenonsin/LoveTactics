@@ -27,4 +27,11 @@ return {
     -- Its body IS its weapon, and that weapon deliberately keeps its distance (see the file).
     startingItems = { "weapon_cinder_spit" },
     defaultAction = "weapon_cinder_spit",
+    -- Basic tactics (models/ai.lua): even the runt spits at the softest thing standing. Press the foe
+    -- already closest to falling. (The prologue's scripted opening still drives the tutorial imps; this
+    -- is what they do once off the leash.)
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

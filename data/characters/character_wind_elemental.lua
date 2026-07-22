@@ -14,4 +14,9 @@ return {
         speed = 7,
     },
     startingItems = { "weapon_gale_fists" },
+    -- Basic tactics (models/ai.lua): the scout darts in on the weakest -- press the foe closest to falling.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

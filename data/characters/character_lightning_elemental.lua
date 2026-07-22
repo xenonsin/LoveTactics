@@ -14,4 +14,10 @@ return {
         speed = 6,
     },
     startingItems = { "weapon_storm_fists" },
+    -- Basic tactics (models/ai.lua): the glass cannon spends its jolt on the softest thing -- press the
+    -- foe closest to falling.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

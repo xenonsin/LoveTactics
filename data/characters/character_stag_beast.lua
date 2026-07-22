@@ -11,4 +11,9 @@ return {
         speed = 5,
     },
     startingItems = { "weapon_fangs", "utility_feral_instinct" },
+    -- Basic tactics (models/ai.lua): quick and fey, it darts to the kill -- press the foe closest to falling.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

@@ -27,4 +27,10 @@ return {
         false,               false,           false,
     },
     defaultAction = "weapon_iron_sword",
+    -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling,
+    -- ahead of the posture's ordinary "hit whatever is in reach".
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

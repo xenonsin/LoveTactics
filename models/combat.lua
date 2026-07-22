@@ -531,6 +531,9 @@ end
 --                           (a bolt punching through a row -- Powershot).
 --   * "front"            -- a `width`-wide arc PERPENDICULAR to the facing, centred on (tx, ty)
 --                           (a 3x1 sweep in front -- Cleave).
+--   * "cone"             -- a triangle fanning out from (tx, ty): `length` rows deep along the facing,
+--                           each row one tile wider to either side than the last (row 0 is the aimed
+--                           cell alone, row 1 is 3 wide, row 2 is 5 wide -- a widening follow-through).
 -- With no `aoe` (or radius 0) the footprint is just the target cell, so a single-target ability
 -- and an AoE one share one path; a directional shape with no `unit` (or a target on the caster)
 -- likewise falls back to the aimed cell. The single source of truth for BOTH what a cast hits
@@ -547,17 +550,39 @@ function Combat.aoeCells(combat, ab, tx, ty, unit)
         end
     end
 
+    -- A data-file footprint: cells too dynamic for radius/shape to describe (the Wolfsong Horn's howl
+    -- reaches around BOTH the caster and her wolf). The function owns the geometry and is handed the
+    -- caster for context; we still clamp to the board and de-dup here, so the preview highlight and
+    -- fx.aoeUnits sweep one and the same set.
+    if aoe and aoe.cells then
+        local seen = {}
+        for _, cell in ipairs(aoe.cells(combat, tx, ty, unit) or {}) do
+            local key = cell.x .. ":" .. cell.y
+            if not seen[key] then seen[key] = true; add(cell.x, cell.y) end
+        end
+        return cells
+    end
+
     local shape = aoe and aoe.shape
-    if shape == "line" or shape == "front" then
+    if shape == "line" or shape == "front" or shape == "cone" then
         local dx, dy = 0, 0
         if unit then dx, dy = stepToward(unit.x, unit.y, tx, ty) end
         if dx == 0 and dy == 0 then add(tx, ty) return cells end -- no facing: just the aimed cell
+        local px, py = -dy, dx -- the facing rotated 90 degrees: the perpendicular (widening) axis
         if shape == "line" then
             local length = (aoe and aoe.length) or 1
             for i = 0, length - 1 do add(tx + dx * i, ty + dy * i) end
+        elseif shape == "cone" then
+            -- Rows deep along the facing; row i spans perpendicular offsets [-i, i], so the fan widens
+            -- one tile each side per step out (Chebyshev cone). Duplicate cells can't occur -- each
+            -- (i, j) maps to a distinct cell -- so no de-dup is needed.
+            local length = (aoe and aoe.length) or 1
+            for i = 0, length - 1 do
+                local cx, cy = tx + dx * i, ty + dy * i
+                for j = -i, i do add(cx + px * j, cy + py * j) end
+            end
         else -- "front": a width-wide line perpendicular to the facing, centred on the aimed cell
             local width = (aoe and aoe.width) or 1
-            local px, py = -dy, dx -- rotate the facing 90 degrees for the perpendicular axis
             local half = math.floor(width / 2)
             for i = -half, half do add(tx + px * i, ty + py * i) end
         end
@@ -923,6 +948,7 @@ end
 --   healDone                -- mended someone                  (the cast's fx.heal)
 --   cast                    -- committed to an ability         (Combat.useItem)
 --   turnTaken               -- began a turn                    (Combat.startTurn)
+--   companionDamage         -- a summon of this unit drew blood (Combat.dealDamage)
 -- ---------------------------------------------------------------------------
 
 -- Add `n` (default 1) to `unit`'s running count of `event`. Nil-safe on both the unit and its
@@ -955,14 +981,18 @@ function Combat.unlockReady(unit, unlock, key, combat)
     if not unlock then return true end
     -- A `once` signature that has already opened stays open the rest of the battle.
     if unlock.once and unit and unit.unlockOpen and unit.unlockOpen[key] then return true, 1, 1 end
-    -- A board-state predicate (HP threshold, an adjacent foe): not a count, just a yes/no.
-    if unlock.when then
-        return unlock.when(unit, combat) and true or false
+    -- A board-state predicate (HP threshold, an adjacent foe, a living companion) gates the ability.
+    local gateOk = (not unlock.when) or (unlock.when(unit, combat) and true or false)
+    -- A pure `when` (no count) is the whole yes/no test. Alongside a `count` the gate must ALSO pass
+    -- for the charge to fire -- the Wolfsong Horn is charged by the wolf's blows AND only while the
+    -- wolf still stands.
+    if unlock.when and not unlock.count then
+        return gateOk
     end
     local count = unlock.count or 1
     local base = (unit and unit.unlockBase and unit.unlockBase[key]) or 0
     local progress = math.max(0, Combat.tallyCount(unit, unlock.event) - base)
-    return progress >= count, math.min(progress, count), count
+    return (gateOk and progress >= count), math.min(progress, count), count
 end
 
 -- Has `unit` met the unlock requirement on `item`'s ability? Thin wrapper over Combat.unlockReady
@@ -3054,6 +3084,9 @@ function Combat.dealDamage(combat, user, target, item, opts)
     if dealt > 0 then
         Combat.tally(user, "hitDealt", 1)
         Combat.tally(user, "damageDealt", dealt)
+        -- A summon's blow also banks onto its summoner, so a signature can charge off the deeds of the
+        -- creature it fields -- the Wolfsong Horn fills as Kaya's wolf draws blood (companionDamage).
+        if user.summoner then Combat.tally(user.summoner, "companionDamage", dealt) end
     end
     return dealt
 end
@@ -4821,6 +4854,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
         knockback = function(tgt, distance, opts)
             if not tgt then return 0 end
             return Combat.knockback(combat, unit, tgt, distance, opts)
+        end,
+        -- Give ground: shove the CASTER `distance` tiles straight away from `tgt`, harmlessly (no
+        -- collision damage, so backing into a wall simply doesn't move it). A hit-and-run attacker's
+        -- step-back after landing a blow -- out of reach before the answer is thrown (weapon_wolf_fangs).
+        retreat = function(tgt, distance)
+            if not tgt then return 0 end
+            return Combat.knockback(combat, tgt, unit, distance or 1, { amount = 0 })
         end,
         -- Drag a unit to a tile adjacent to the caster (needs line of sight).
         pull = function(tgt)

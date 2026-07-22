@@ -196,26 +196,68 @@ function Dialogue:textOf(entry)
     return Locale.text(self.convId, entry)
 end
 
--- Begin (or restart) the current node: reset the typewriter and any choice selection.
+-- The rectangle the spoken line is laid out in, as x, y, w, h -- the single source of truth for both
+-- pagination (:paginate) and drawing (:draw), so a page is measured against exactly the box it renders
+-- into. Over a live scene the width stops short of the side bust standing at the right end; the height
+-- stops short of the footer control hints along the bottom (drawn at boxH - 26).
+function Dialogue:textArea()
+    local x = self.boxX + 28
+    local w = self.boxW - 56
+    if self.overScene then w = self:sideBustLeft() - SIDE_PAD - x end
+    local y = self.boxY + 22
+    local h = self.boxH - (y - self.boxY) - 34 -- leave 8px above the footer hints at boxH - 26
+    return x, y, w, h
+end
+
+-- Split a node's line into pages that each fit the text box, so a long line reads out a page at a time
+-- (advanced with the same gesture as moving between nodes) instead of overflowing the bottom of the box
+-- and running under the footer hints. Wraps the whole line to the box width, then groups the wrapped
+-- rows into pages of as many rows as the box is tall. A line that already fits is a single page.
+function Dialogue:paginate(text)
+    local _, _, w, h = self:textArea()
+    local lineH = self.textFont:getHeight()
+    local maxLines = math.max(1, math.floor(h / lineH))
+    local _, rows = self.textFont:getWrap(text, w)
+    if #rows <= maxLines then return { text } end
+    local pages = {}
+    for i = 1, #rows, maxLines do
+        local group = {}
+        for j = i, math.min(i + maxLines - 1, #rows) do group[#group + 1] = rows[j] end
+        pages[#pages + 1] = table.concat(group, "\n")
+    end
+    return pages
+end
+
+-- Begin (or restart) the current node: paginate its line, show the first page, and reset any choice
+-- selection. The typewriter and the visible slice work on the CURRENT page (self.pageText), not the
+-- whole line, so a multi-page node reveals and advances one page at a time (see :confirm).
 function Dialogue:startNode()
     local node = self.script[self.index]
-    self.reveal = 0
-    self.revealDone = false
-    self.fullText = self:textOf(node)
-    self.textLen = utf8.len(self.fullText) or #self.fullText -- length in characters, for the reveal
+    self.pages = self:paginate(self:textOf(node))
+    self.page = 1
+    self:startPage()
     self.choiceSel = 1
     -- Precompute choice option rects for mouse hit-testing (built in draw when first shown).
     self.choiceRects = nil
+end
+
+-- (Re)start the typewriter on the current page.
+function Dialogue:startPage()
+    self.reveal = 0
+    self.revealDone = false
+    self.pageText = self.pages[self.page] or ""
+    self.textLen = utf8.len(self.pageText) or #self.pageText -- length in characters, for the reveal
 end
 
 function Dialogue:currentNode()
     return self.script[self.index]
 end
 
--- Whether the current node is waiting on a player choice (only once the line has fully revealed).
+-- Whether the current node is waiting on a player choice (only once the whole line -- its last page --
+-- has fully revealed, so the choices don't appear while an earlier page is still on screen).
 function Dialogue:choicesActive()
     local node = self:currentNode()
-    return self.revealDone and node and node.choices ~= nil
+    return self.revealDone and self.page >= #self.pages and node and node.choices ~= nil
 end
 
 -- Move to the next node (following `gotoLabel`), or finish the scene when there is none.
@@ -236,13 +278,19 @@ function Dialogue:finish()
 end
 
 -- The one "advance / confirm" gesture, shared by Enter/Space, gamepad A/Start, and a box click:
---   * mid-reveal      -> snap the typewriter to the full line (let the reader catch up)
+--   * mid-reveal      -> snap the typewriter to the full page (let the reader catch up)
+--   * more pages left -> turn to the next page of a long line
 --   * awaiting choice -> commit the highlighted choice (jump to its `goto`)
 --   * otherwise       -> advance past this node (following the node's own `goto`)
 function Dialogue:confirm()
     if not self.revealDone then
         self.reveal = self.textLen
         self.revealDone = true
+        return
+    end
+    if self.page < #self.pages then
+        self.page = self.page + 1
+        self:startPage()
         return
     end
     local node = self:currentNode()
@@ -483,17 +531,15 @@ function Dialogue:draw()
         love.graphics.printf(speakerName, plateX, plateY + 5, plateW, "center")
     end
 
-    -- The (revealed slice of the) line -- sliced on a CHARACTER boundary so a multibyte glyph is
-    -- never cut mid-sequence (which would be invalid UTF-8).
+    -- The (revealed slice of the) current PAGE -- sliced on a CHARACTER boundary so a multibyte glyph
+    -- is never cut mid-sequence (which would be invalid UTF-8). A long line is paginated in :startNode
+    -- to fit the box, so what is drawn here always sits inside it. Laid out in the same rect :paginate
+    -- measured against (:textArea), so a page never wraps to more rows than it was split for.
     local chars = math.floor(self.reveal)
-    local byteEnd = (chars >= self.textLen) and #self.fullText or ((utf8.offset(self.fullText, chars + 1) or 1) - 1)
-    local shown = self.fullText:sub(1, byteEnd)
+    local byteEnd = (chars >= self.textLen) and #self.pageText or ((utf8.offset(self.pageText, chars + 1) or 1) - 1)
+    local shown = self.pageText:sub(1, byteEnd)
     love.graphics.setFont(self.textFont)
-    local textX = self.boxX + 28
-    local textW = self.boxW - 56
-    if self.overScene then -- stop short of the side bust standing at the right end
-        textW = self:sideBustLeft() - SIDE_PAD - textX
-    end
+    local textX, textY, textW = self:textArea()
     if node and node.system then
         -- A system banner -- a party join, "[<name> has joined your Party]". It has no speaker (so no
         -- portrait and no name plate were drawn), and reads as an announcement rather than a spoken
@@ -502,7 +548,7 @@ function Dialogue:draw()
         love.graphics.printf(shown, textX, self.boxY + self.boxH / 2 - self.textFont:getHeight() / 2, textW, "center")
     else
         love.graphics.setColor(0.9, 0.9, 0.94)
-        love.graphics.printf(shown, textX, self.boxY + 22, textW, "left")
+        love.graphics.printf(shown, textX, textY, textW, "left")
     end
 
     -- Branching choices, listed on the right side of the box once the line is out. A choice whose

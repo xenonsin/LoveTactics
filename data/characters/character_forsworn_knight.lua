@@ -24,4 +24,10 @@ return {
         false,               false,             false,
     },
     defaultAction = "weapon_iron_spear",
+    -- Basic tactics (models/ai.lua): the spear is the whole job. Press hard whenever two or more foes
+    -- are on the board -- Acedia's oath makes the huddle, and the scorer finds the tile that skewers
+    -- two of it in a line.
+    ai = {
+        { priority = "high", act = "attack", when = { subject = "any_foe", test = "count_at_least", value = 2 } },
+    },
 }

@@ -6,7 +6,11 @@ return {
     rewardGold = 120,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 1,
+    -- Prestige 2, not 1: the Cathedral opens with the city (unlockPrestige 1), but the first-visit
+    -- board must show ONLY the Colosseum debut (data/quests/arena_debut.lua), the quest the arrival
+    -- coaching points at. The debut pays +1 prestige, so this Mill surfaces the moment it is done --
+    -- the tutorial stays a single unambiguous choice, and the Cathedral's line opens right after it.
+    requiredPrestige = 2,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {
         biome = "forest",

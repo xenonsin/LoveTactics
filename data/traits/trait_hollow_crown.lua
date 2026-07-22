@@ -15,14 +15,15 @@ return {
     description = "As it fails, it wears the dead.",
     -- Fractions of max health. Each one crossed calls up the next name in `shades`.
     thresholds = { 0.75, 0.50, 0.25 },
-    -- The dead it reaches for, in order. As the remaining five generals are authored, put them here --
-    -- this list IS the fight. Wrath and Sloth have been written; the Crown falls back on the champions
-    -- of the world above for the shapes it has not yet been given.
+    -- The dead it reaches for, in order. As the remaining generals are authored, put them here --
+    -- this list IS the fight. Wrath, Sloth and Pride have been written; the Crown falls back on the
+    -- champions of the world above for the shapes it has not yet been given.
     --
     -- Sloth second is deliberate. The Crown wearing Acedia at half health is her own thesis argued by
     -- the board: you already killed her, and here she is, and nothing you did stuck. That is the
-    -- argument the whole middle act is a rebuttal to (docs/story.md).
-    shades = { "character_general_wrath", "character_general_sloth", "character_champion" },
+    -- argument the whole middle act is a rebuttal to (docs/story.md). Pride third is its own argument:
+    -- the Unequalled put back on at a quarter health, certain to the last she has your measure.
+    shades = { "character_general_wrath", "character_general_sloth", "character_general_pride" },
     onDamaged = function(ctx)
         local hp = ctx.unit.char.stats.health
         local fraction = hp.current / hp.max

@@ -218,6 +218,17 @@ local function eachMagnitude(item, fn)
         for _, key in ipairs(ABILITY_SECONDARY_MAGNITUDES) do
             if ab[key] ~= nil then fn(ab[key], function(x) ab[key] = x end) end
         end
+        -- A directional blast footprint can widen with the forge: `shape` and `length` (and the
+        -- centred shapes' `width`/`radius`) may each be authored as a per-level list, resolved here
+        -- to this level's entry exactly as a numeric magnitude is. That lets a weapon open from a
+        -- straight line into a cone as it is forged (data/items/weapon/weapon_first_motion.lua), and
+        -- keeps the preview footprint and the effect's fx.aoeUnits reading one baked-in shape.
+        local aoe = ab.aoe
+        if aoe then
+            for _, key in ipairs({ "shape", "length", "width", "radius" }) do
+                if aoe[key] ~= nil then fn(aoe[key], function(x) aoe[key] = x end) end
+            end
+        end
     end
     if item.bonus then for k, v in pairs(item.bonus) do fn(v, function(x) item.bonus[k] = x end) end end
     if item.resist then for k, v in pairs(item.resist) do fn(v, function(x) item.resist[k] = x end) end end

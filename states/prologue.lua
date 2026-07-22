@@ -86,18 +86,32 @@ local FLIGHT_QUEST = {
             -- two combat-objective lessons (defend, then extract), a last chest, and a rest so the
             -- champion is fought fresh. Each entry may carry a payload (a treasure's exact `loot`, an
             -- event's `conversation`); see states/game.lua.
+            --
+            -- Every stop AFTER the first chest also hands over ONE class ability, so the road finishes
+            -- introducing the roster of classes the village opened: it taught fighter (Clear Out) and
+            -- mage (Jolt) by play, and stop 1 hands the bow (hunter); stops 2-7 cover the rest, one
+            -- basic mechanic apiece, delivered through whatever channel the stop already owns -- an
+            -- event's gift, a fight's spoils, a chest, the last rest. The class rides on WHICH ability,
+            -- never on who may hold it (docs/classes.md): this is a lesson, not an equip gate.
             always = {
+                -- Stop 1: the teaching chest -- the bow kit (hunter) and the potions that fill the grid.
                 { id = "encounter_treasure", loot = {
                     "weapon_iron_bow",
                     "consumable_mana_potion", "consumable_mana_potion",
                     "consumable_healing_potion", "consumable_healing_potion", "consumable_healing_potion",
                 } },
+                -- Stop 2: priest (Heal) -- the roadside shrine's mending rite, granted by the scene's choices.
                 { id = "encounter_event", conversation = "flight_event_shrine" },
-                "encounter_survivors_defend",
+                -- Stop 3: knight (Shout/Taunt) -- won holding the line for the survivors.
+                { id = "encounter_survivors_defend", loot = { "ability_shout" } },
+                -- Stop 4: alchemist (Disarm) -- a vial of solvent the survivor presses on you (scene choices).
                 { id = "encounter_event", conversation = "flight_event_survivor" },
-                "encounter_survivors_extract",
-                "encounter_treasure", -- a plain later chest (its blueprint's default loot)
-                "encounter_rest",
+                -- Stop 5: rogue (Pickpocket) -- lifted on the way out of the extraction.
+                { id = "encounter_survivors_extract", loot = { "ability_pickpocket" } },
+                -- Stop 6: mage (Fire Bolt) -- a spell tucked into a later chest.
+                { id = "encounter_treasure", loot = { "ability_fire_bolt" } },
+                -- Stop 7: fighter (Power Strike) -- the party sharpens for the gate on the last rest.
+                { id = "encounter_rest", loot = { "ability_power_strike" } },
             },
         },
         objective = {

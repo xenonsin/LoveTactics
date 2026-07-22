@@ -89,6 +89,33 @@ return {
         end,
     },
     {
+        name = "visited-vendor flags round-trip, so a first-visit intro stays played",
+        fn = function()
+            local player = Player.new()
+            assert(not Player.hasVisitedVendor(player, "colosseum"), "a fresh player has visited nobody")
+            Player.markVendorVisited(player, "colosseum")
+            assert(Player.hasVisitedVendor(player, "colosseum"), "marking a visit is remembered")
+
+            local restored = Save.restore(Save.snapshot(player))
+            assert(Player.hasVisitedVendor(restored, "colosseum"),
+                "a visited vendor stays visited across a save/load (its intro never replays)")
+            assert(not Player.hasVisitedVendor(restored, "cathedral"),
+                "a vendor never opened is still unvisited")
+        end,
+    },
+    {
+        name = "a save from before visited-vendor flags loads with none visited",
+        fn = function()
+            local player = Player.new()
+            local snap = Save.snapshot(player)
+            snap.visitedVendors = nil -- an older save carried no such field
+            local restored = Save.restore(snap)
+            assert(restored, "the older snapshot still restores")
+            assert(not Player.hasVisitedVendor(restored, "colosseum"),
+                "an absent field reads as unvisited, not a crash")
+        end,
+    },
+    {
         name = "a character's pinned default action slot round-trips (with legacy + empty fallbacks)",
         fn = function()
             local player = Player.new()

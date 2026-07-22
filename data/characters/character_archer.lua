@@ -32,4 +32,10 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
     defaultAction = "weapon_iron_bow",
+    -- Basic tactics (models/ai.lua): a hunter picks off the wounded. From the `skirmish` posture's
+    -- kept distance, spend the shot on the foe already closest to falling.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

@@ -64,12 +64,13 @@ local function backContains(x, y)
     return rectContains(backButton, x, y)
 end
 
--- The Back button (return to the hub) is hidden on the prologue's flight tutorial: the player has not
--- reached the city yet, and the leg is a scripted sequence, not a board quest one can abandon. On a
--- normal quest game.tutorial is nil, so it always shows. (A future pass renames it "Return to City"
--- and gates it behind an "abandon this quest?" warning -- see the button's click handler.)
+-- The Back button (return to the hub) is hidden on any scripted leg -- the prologue's flight tutorial
+-- (before the player has even reached the city) and the debut's aftermath walk (a cutscene the reward
+-- rides on, so it must not be abandonable). Both are scripted sequences, not board quests one can quit.
+-- On a normal quest game.tutorial and game.scripted are both nil, so the button always shows. (A future
+-- pass renames it "Return to City" and gates it behind an "abandon this quest?" warning.)
 local function backVisible()
-    return not game.tutorial
+    return not game.tutorial and not game.scripted
 end
 
 -- Open the Party screen over the overworld (same modal slot as the encounter panel).
@@ -167,6 +168,10 @@ function game.enter(self, quest, prestige, player, onComplete)
     -- so the panel is introduced only once there is loot to put in it. Both are inert on a normal
     -- board quest -- the button shows from the start and no bubble is ever drawn.
     game.tutorial = mp.tutorial
+    -- A scripted leg (the debut's aftermath walk) hides the Back button the same way the flight
+    -- tutorial does, without turning the coach on -- it is a cutscene the reward rides on, not a
+    -- board quest to abandon. See backVisible and arena_debut's followUp.
+    game.scripted = mp.scripted
     game.itemsVisible = (mp.tutorial ~= "flight")
     game.coach = nil
 
@@ -192,8 +197,35 @@ end
 -- battle arena; the non-combat kinds (town / treasure) keep the simple modal.
 function game:openEncounter(cell)
     local kind = cell.encounter.kind
+    local mp = game.quest and game.quest.map or {}
+
+    -- A non-combat "meeting" objective: reaching the tile plays a scene and ends the leg instead of
+    -- dropping into a fight. This is how the debut's aftermath walk finishes -- Saber catches the party
+    -- at the gate out and asks in (arena_debut's followUp -> arena_saber_joins). She is already on the
+    -- roster (the debut's rewardCharacter), and the join banner the arena outro held for this scene
+    -- folds onto it when it plays (Conversation.drainJoins). Completion routes exactly like a cleared
+    -- combat objective: a scripted caller's onComplete goes home, a board quest pays out and returns.
+    if kind == "objective" and mp.objective and mp.objective.meet then
+        cell.cleared = true
+        game.complete = true
+        local function finish()
+            if game.onComplete then
+                game.onComplete()
+                return
+            end
+            game.reward = Quest.complete(game.player, game.quest)
+            if game.player and game.reward then game.player.pendingSummary = game.reward end
+            State.switch(require("states.hub"))
+        end
+        if mp.objective.conversation then
+            require("models.conversation").play(mp.objective.conversation, finish)
+        else
+            finish()
+        end
+        return
+    end
+
     if kind == "combat" or kind == "elite" or kind == "objective" then
-        local mp = game.quest and game.quest.map or {}
         -- Tutorial leg only (the prologue's flight): snapshot the party BEFORE the fight so the defeat
         -- panel's "Try Again" can restart THIS same encounter with a whole party -- consumed potions and
         -- any downed member undone. In-memory only, no disk save. The cell is not yet marked `cleared`
@@ -237,11 +269,27 @@ function game:openEncounter(cell)
                     if game.player and game.reward then game.player.pendingSummary = game.reward end
                     -- An outro scene plays over the (frozen) final battle frame before returning to
                     -- the hub; the hub then opens the reward summary. No outro -> straight home.
-                    local function goHub() State.switch(require("states.hub")) end
+                    --
+                    -- A quest may also hand off to a short follow-up overworld leg BEFORE the hub -- the
+                    -- debut walks the party off the sand, where Saber catches them and asks in
+                    -- (arena_debut's inline `followUp`). It runs as a scripted traversal (launched with
+                    -- its own onComplete back to the hub), so it never lands on the board and pays out
+                    -- nothing itself. When there is a followUp the outro DEFERS its join banner: the
+                    -- recruit belongs to the meeting the leg ends on, not to the arena scene before it.
+                    local followUp = game.quest and game.quest.followUp
+                    local function goNext()
+                        if followUp then
+                            State.switch(require("states.game"), followUp, game.prestige, game.player,
+                                function() State.switch(require("states.hub")) end)
+                        else
+                            State.switch(require("states.hub"))
+                        end
+                    end
                     if game.quest and game.quest.outro then
-                        require("models.conversation").play(game.quest.outro, goHub)
+                        require("models.conversation").play(game.quest.outro, goNext, nil,
+                            followUp and { deferJoins = true } or nil)
                     else
-                        goHub()
+                        goNext()
                     end
                 else
                     -- A combat/elite win: grant the spoils the battle summary just revealed (gold +
@@ -330,6 +378,21 @@ function game:resolveNonCombat(cell)
     local enc = cell.encounter
     if enc.kind == "rest" then
         if game.player then Player.restore(game.player) end
+        -- A rest may also carry loot: the flight leg's last camp hands over a class ability before the
+        -- champion (states/prologue.lua). The grant is banked UP FRONT so dismissing the reveal can
+        -- never cost it, and the chest reveal is reused purely to SHOW the find -- its item card and
+        -- tooltip are where the new ability's mechanic is read, which is the whole point of the stop.
+        local loot = enc.loot or {}
+        if #loot > 0 and game.player then
+            for _, id in ipairs(loot) do Player.grantItem(game.player, id) end
+            game.activePanel = LootReveal.new({
+                encounter = enc,
+                loot = loot,
+                description = "The party makes camp and sorts its kit for the road ahead.",
+                onCollect = function() game.activePanel = nil end,
+                onCancel = function() game.activePanel = nil end,
+            })
+        end
     end
 end
 

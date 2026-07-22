@@ -61,9 +61,18 @@ end
 -- and floored at a playable minimum. Play-area caps of 45x31 become ~49x35 once
 -- the margin ring is added.
 local DIM_MAX_COLS, DIM_MAX_ROWS = 45, 31
-local function deriveDims(encounters, keyCount)
+-- Tight biomes need a physically smaller footprint. A biome's node `spacing` sets how much of the
+-- area is trail: a castle/underworld (spacing 2, 1-tile walls) packs roughly twice the corridor into
+-- the same rectangle as a forest (spacing 4, 3-tile-thick fill). Sizing on encounter count alone --
+-- as if every biome were as loose as the forest -- left tight biomes a vast, near-empty warren for
+-- only a handful of stops. So scale the span by sqrt(spacing / baseline): density ~ 1/spacing, so
+-- to hold encounter density constant the area scales with spacing and the linear span with its root.
+-- Normalized to the forest's spacing, so forest maps are unchanged.
+local BASELINE_SPACING = 4
+local function deriveDims(encounters, keyCount, spacing)
     local content = (encounters or 0) + (keyCount or 0)
-    local span = math.floor(5.5 * math.sqrt(content)) -- ~11 at content=4, ~22 at 16
+    local tightness = math.sqrt((spacing or BASELINE_SPACING) / BASELINE_SPACING)
+    local span = math.floor(5.5 * math.sqrt(content) * tightness) -- ~11 at content=4 (forest)
     local cols = math.max(17, math.min(DIM_MAX_COLS, 15 + span))
     local rows = math.max(13, math.min(DIM_MAX_ROWS, 13 + math.floor(span * 0.6)))
     if cols % 2 == 0 then cols = cols + 1 end
@@ -96,16 +105,18 @@ function Overworld.generate(params)
     -- fit the content. placeEncounters reuses this same number.
     self.encounterTarget = resolveCount(params.encounterCount, self.rng)
 
+    -- Corridor spacing is resolved before sizing so a tight biome gets a smaller footprint (deriveDims).
+    self.spacing = params.spacing or biomeDef.spacing or 4
+
     -- Play area: honour explicit cols/rows, otherwise scale with the encounters
     -- (and keys) so the map never sprawls into empty wandering. See deriveDims.
-    local dCols, dRows = deriveDims(self.encounterTarget, params.keyCount)
+    local dCols, dRows = deriveDims(self.encounterTarget, params.keyCount, self.spacing)
     local playCols = params.cols or dCols
     local playRows = params.rows or dRows
     self.cols = playCols + 2 * self.margin
     self.rows = playRows + 2 * self.margin
     self.tilesetId = biomeDef.tileset      -- which data/tilesets/<id> draws this map
     self.tilesetDef = Tileset.get(self.tilesetId) -- merged types + this biome's art
-    self.spacing = params.spacing or biomeDef.spacing or 4
     self.originX = 0
     self.originY = 0
     self.keyIds = {}

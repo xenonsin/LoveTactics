@@ -127,6 +127,50 @@ return {
         end,
     },
     {
+        name = "a cone footprint fans out `length` rows deep, one tile wider to each side per row",
+        fn = function()
+            local c = { arena = arena(8, 8) }
+            local ab = { aoe = { shape = "cone", length = 3 } }
+            local caster = { x = 2, y = 4 }
+
+            -- Facing east: row 0 is the aimed cell, row 1 is 3 wide, row 2 is 5 wide (1 + 3 + 5 = 9).
+            local cells = Combat.aoeCells(c, ab, 3, 4, caster)
+            assert(coversExactly(cells, {
+                { 3, 4 },                                  -- row 0: the tip
+                { 4, 3 }, { 4, 4 }, { 4, 5 },              -- row 1: three wide
+                { 5, 2 }, { 5, 3 }, { 5, 4 }, { 5, 5 }, { 5, 6 }, -- row 2: five wide
+            }), "an eastward cone fans out three rows deep")
+
+            -- A depth-1 cone is just the tip -- one row, one tile.
+            assert(coversExactly(Combat.aoeCells(c, { aoe = { shape = "cone", length = 1 } }, 3, 4, caster),
+                { { 3, 4 } }), "a depth-1 cone is only the aimed cell")
+
+            -- With no caster there is no facing, so the cone collapses to the aimed cell.
+            assert(coversExactly(Combat.aoeCells(c, ab, 3, 4), { { 3, 4 } }),
+                "no caster -> the cone is just the aimed cell")
+        end,
+    },
+    {
+        name = "The First Motion widens from a two-tile line into a cone as it is forged",
+        fn = function()
+            -- Aim from mid-board (row 4) so the widest cone row stays in bounds.
+            local caster = { x = 2, y = 4 }
+            local c = { arena = arena(8, 8) }
+            local function footprintAt(level)
+                local blade = Item.instantiate("weapon_first_motion", 1, level)
+                return Combat.aoeCells(c, blade.activeAbility, 3, 4, caster)
+            end
+            -- Un-forged: a straight line two tiles deep.
+            assert(coversExactly(footprintAt(0), { { 3, 4 }, { 4, 4 } }),
+                "at +0 the blow is a two-tile line")
+            -- Mid-forge: the same line, three tiles deep.
+            assert(coversExactly(footprintAt(3), { { 3, 4 }, { 4, 4 }, { 5, 4 } }),
+                "at +3 the line lengthens to three tiles")
+            -- Fully forged: it opens into a three-row cone (nine tiles).
+            assert(#footprintAt(10) == 9, "at +10 the swing is a nine-tile cone")
+        end,
+    },
+    {
         name = "a front footprint is a `width`-wide arc perpendicular to the facing, centred on the aimed cell",
         fn = function()
             local c = { arena = arena(8, 8) }
@@ -204,6 +248,34 @@ return {
                 assert(b.char.stats.health.current < before[b],
                     "the foe at (" .. b.x .. "," .. b.y .. ") is pierced by the line")
             end
+        end,
+    },
+    {
+        name = "a data-file footprint (the Wolfsong Horn's howl) rings both Kaya and her wolf, de-duped and clamped",
+        fn = function()
+            local c = Combat.new(arena(16, 16),
+                { unit("character_archer", 5, 5) }, { unit("character_bandit", 1, 15) })
+            local u = c.units[1]
+            local horn
+            for i = 1, Character.MAX_INVENTORY do
+                local it = u.char.inventory[i]
+                if it and it.id == "utility_wolfsong_horn" then horn = it end
+            end
+            local ab = horn.activeAbility
+
+            -- Wolf far from Kaya: two disjoint 5x5 rings, 25 + 25 cells.
+            Combat.teleportUnit(c, u.wolfCompanion, 11, 11)
+            assert(#Combat.aoeCells(c, ab, 5, 5, u) == 50,
+                "two disjoint rings cover 50 cells, got " .. #Combat.aoeCells(c, ab, 5, 5, u))
+
+            -- Wolf beside Kaya: the rings overlap, and the overlap is de-duped below 50.
+            Combat.teleportUnit(c, u.wolfCompanion, 6, 5)
+            assert(#Combat.aoeCells(c, ab, 5, 5, u) < 50, "the overlap between the two rings is de-duped")
+
+            -- A dead wolf leaves only Kaya's ring (it cannot be resummoned), and it clamps at the corner.
+            Combat.dealFlatDamage(c, u.wolfCompanion, 9999, {}, "test")
+            assert(#Combat.aoeCells(c, ab, 5, 5, u) == 25, "a dead wolf leaves only Kaya's ring")
+            assert(#Combat.aoeCells(c, ab, 1, 1, u) == 9, "and Kaya's ring clamps to the arena corner")
         end,
     },
 }

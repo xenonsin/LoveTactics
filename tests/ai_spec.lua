@@ -535,6 +535,35 @@ return {
         end,
     },
     {
+        name = "every character's authored ai block names a vocabulary that exists",
+        fn = function()
+            -- The blueprint half of the same sweep: a character `ai` rule with a typo'd subject raises
+            -- the first time that body takes an AI turn, which is mid-battle. Walk every shipped
+            -- blueprint so it raises here instead. (docs/adding-content.md promises this sweep.)
+            local checked = 0
+            for id, def in pairs(Character.defs) do
+                local rules = def.ai
+                if rules then
+                    if rules.act or rules.when or rules.whenFn then rules = { rules } end
+                    for _, rule in ipairs(rules) do
+                        checked = checked + 1
+                        if rule.when then
+                            assert(AI.SUBJECTS[rule.when.subject],
+                                id .. " names an unknown subject: " .. tostring(rule.when.subject))
+                            assert(AI.TESTS[rule.when.test],
+                                id .. " names an unknown test: " .. tostring(rule.when.test))
+                        end
+                        assert(AI.ACTIONS[rule.act or "attack"],
+                            id .. " names an unknown act: " .. tostring(rule.act))
+                        assert(pcall(AI.priorityOf, rule),
+                            id .. " names an unknown priority: " .. tostring(rule.priority))
+                    end
+                end
+            end
+            assert(checked > 0, "the sweep actually found some authored character rules")
+        end,
+    },
+    {
         name = "every archetype named in data/characters is a real posture",
         fn = function()
             local seen = 0

@@ -183,6 +183,14 @@ function Save.snapshot(player)
         if level and level > 0 then recipes[id] = level end
     end
 
+    -- Which vendors have played their first-visit intro (states/hub.lua). A set of ids; only the true
+    -- ones are stored. Purely additive, like aiRules -- Save.VERSION does not move, so an older save
+    -- loads with none visited (its shops simply greet the player once, which is harmless).
+    local visitedVendors = {}
+    for vendorId, seen in pairs(player.visitedVendors or {}) do
+        if seen then visitedVendors[vendorId] = true end
+    end
+
     return {
         version = Save.VERSION,
         gold = player.gold,
@@ -197,6 +205,7 @@ function Save.snapshot(player)
         completedQuests = completedQuests,
         materials = materials,
         recipes = recipes,
+        visitedVendors = visitedVendors,
         roster = roster,
         party = party,
         stash = stash,
@@ -303,6 +312,13 @@ function Save.restore(snap)
         if known(Item.defs, id) and level and level > 0 then recipes[id] = level end
     end
 
+    -- Visited-vendor flags (states/hub.lua's first-visit intros). A plain id set; nil on a save from
+    -- before this existed, which loads as empty -- its shops greet the player once, no harm done.
+    local visitedVendors = {}
+    for vendorId, seen in pairs(snap.visitedVendors or {}) do
+        if seen then visitedVendors[vendorId] = true end
+    end
+
     return {
         gold = snap.gold or 0,
         prestige = snap.prestige or 1,
@@ -313,6 +329,7 @@ function Save.restore(snap)
         completedQuests = completedQuests,
         materials = materials,
         recipes = recipes,
+        visitedVendors = visitedVendors,
         roster = roster,
         party = party,
         stash = stash,

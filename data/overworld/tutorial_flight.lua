@@ -14,6 +14,8 @@
 --         stays the single source of WHAT it is (id / loot / conversation).
 --
 --   1 chest (bow kit)   2 shrine event   3 defend   4 survivor event   5 extract   6 chest   7 rest
+--   Each stop past the chest also teaches a class via one ability (states/prologue.lua's FLIGHT_QUEST):
+--   2 priest (Heal)  3 knight (Shout)  4 alchemist (Disarm)  5 rogue (Pickpocket)  6 mage (Fire Bolt)  7 fighter (Power Strike)
 --
 -- Shape: five roughly-horizontal legs strung top-to-bottom, but deliberately NOT a rigid boustrophedon.
 -- The switchbacks turn on STAGGERED columns (not one fixed edge) and descend as short diagonal

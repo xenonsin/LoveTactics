@@ -33,4 +33,10 @@ return {
         false,               false,                 false,
     },
     defaultAction = "weapon_iron_sword",
+    -- Basic tactics (models/ai.lua): desperate men finish what they start. On the aggressive default
+    -- posture, press the foe already closest to falling.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
 }

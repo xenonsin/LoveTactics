@@ -706,8 +706,13 @@ local function ctxFor(combat, unit, trait, event)
         -- Claimed only for a creature that drew breath: one that dies on the tile it was called to
         -- (a trap, a fire) holds nothing, the same as an ability's summon. A trait on an item with no
         -- active ability of its own (the Hollow Crown) stamps a claim nothing ever reads.
+        -- `opts.noClaim` skips stamping the granting item's one-summon claim: a companion that must
+        -- NOT lock the item's own active out (the Wolfsong Horn's howl fires WHILE its wolf stands, the
+        -- opposite of a summon ability's one-at-a-time rule). The summoned unit is returned either way.
         summon = function(charId, px, py, opts)
-            return claim(Summon.spawn(combat, unit, charId, px, py, opts))
+            local summoned = Summon.spawn(combat, unit, charId, px, py, opts)
+            if not (opts and opts.noClaim) then claim(summoned) end
+            return summoned
         end,
         -- Take the shape of another unit: a copy of `target` on the bearer's side (Envy). Held like
         -- the summon above.

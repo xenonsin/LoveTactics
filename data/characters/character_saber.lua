@@ -38,4 +38,11 @@ return {
         false, false,                       false,
     },
     defaultAction = "weapon_first_motion",
+    ai = {
+        -- Basic tactics (models/ai.lua): lead with the First Motion. Its damage climbs with the
+        -- target's remaining health, so the scorer already points it at the freshest foe on its own --
+        -- the rule just makes the greatsword her opening move rather than a fallback.
+        { priority = "high", act = "attack", item = "weapon_first_motion",
+          when = { subject = "any_foe", test = "in_reach" } },
+    },
 }

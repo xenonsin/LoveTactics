@@ -7,8 +7,10 @@
 -- -- when whatever killed it is still on the field and its summoner is suddenly half of themselves.
 --
 -- Any summoning ability binds this to what it raises by naming it in the call's `traits`
--- (models/summon.lua) -- the Wolfsong Horn's true call is the first (data/items/utility/
--- sig_wolfsong_horn.lua). The price belongs to the ABILITY that struck the bargain, not to the
+-- (models/summon.lua). It is currently UNUSED -- the Wolfsong Horn's blood-summon that first carried
+-- it has been retired for the Quieting Howl (data/items/utility/utility_wolfsong_horn.lua), so this
+-- trait and character_wolfsong_spirit are shelved, kept as the generic call-bound-price pattern. The
+-- price belongs to the ABILITY that struck the bargain, not to the
 -- creature's blueprint: the same body called by some other means owes nothing. It lands on the
 -- creature all the same, because the creature is what knows it died. Trait.onDeath fires from killUnit
 -- before the field is unwound, so the summoner is still there to bill.

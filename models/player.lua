@@ -179,6 +179,7 @@ function Player.new()
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
+        visitedVendors = {},  -- vendor id -> true; a shop plays its intro scene the first time only (states/hub.lua)
     }
 
     for matId, count in pairs(Player.defaults.startingMaterials or {}) do
@@ -255,6 +256,23 @@ end
 
 function Player.hasCompleted(player, questId)
     return (player.completedQuests or {})[questId] == true
+end
+
+-- ---------------------------------------------------------------------------
+-- Vendor first-visit (the greeting scene each shop plays once; states/hub.lua)
+-- ---------------------------------------------------------------------------
+
+-- Whether the player has already opened this vendor's shop. The first time they do, the hub plays the
+-- vendor's intro conversation before the shelf appears; this flag is what keeps it to once, across a
+-- save/load (models/save.lua). Unknown vendors read as false (never visited).
+function Player.hasVisitedVendor(player, vendorId)
+    return (player.visitedVendors or {})[vendorId] == true
+end
+
+-- Record that the player has now opened this vendor's shop, so its intro never plays again.
+function Player.markVendorVisited(player, vendorId)
+    player.visitedVendors = player.visitedVendors or {}
+    player.visitedVendors[vendorId] = true
 end
 
 -- This player's identity to OTHER players, minted on first use and kept from then on.
