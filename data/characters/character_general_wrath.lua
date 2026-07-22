@@ -13,7 +13,7 @@ return {
     sprite = "assets/chars/general_wrath.png",
     portrait = "assets/portraits/general_wrath.png", -- large VN portrait for conversations (falls back if missing)
     stats = {
-        health = 180, mana = 0, stamina = 120,
+        health = 180, mana = 0, stamina = 30,
         damage = 18, magicDamage = 0, -- low, and rising
         defense = 12, magicDefense = 6, -- deliberately soft to magic: the burst answer is real
         movement = 4,

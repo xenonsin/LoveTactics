@@ -4,7 +4,7 @@ return {
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/stag.png",
     stats = {
-        health = 62, mana = 30, stamina = 60,
+        health = 62, mana = 30, stamina = 15,
         damage = 10, magicDamage = 12,
         defense = 7, magicDefense = 9,
         movement = 4,

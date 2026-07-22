@@ -33,7 +33,7 @@ return {
     sprite = "assets/chars/general_pride.png",
     portrait = "assets/portraits/general_pride.png", -- large VN portrait for conversations (falls back if missing)
     stats = {
-        health = 210, mana = 90, stamina = 60,
+        health = 210, mana = 90, stamina = 15,
         staminaRegen = 2,
         damage = 9, magicDamage = 18, -- the greatest mage of the age; her spells are the threat
         defense = 14, magicDefense = 20, -- warded against the magic her line traffics in

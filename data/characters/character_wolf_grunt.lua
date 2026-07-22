@@ -3,7 +3,7 @@ return {
     name = "Wolf",
     sprite = "assets/chars/wolf.png",
     stats = {
-        health = 28, mana = 0, stamina = 70,
+        health = 28, mana = 0, stamina = 18,
         damage = 10, magicDamage = 0,
         defense = 3, magicDefense = 2,
         movement = 5, -- fast, low health

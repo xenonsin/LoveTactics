@@ -4,7 +4,7 @@ return {
     name = "Champion",
     sprite = "assets/chars/champion.png",
     stats = {
-        health = 90, mana = 20, stamina = 70,
+        health = 90, mana = 20, stamina = 18,
         damage = 20, magicDamage = 6,
         defense = 12, magicDefense = 8,
         movement = 3,

@@ -33,7 +33,7 @@ return {
     boss = true,
     archetype = "aggressive", -- a glass-cannon skirmisher; she opens the wound and takes the kill
     stats = {
-        health = 54, mana = 0, stamina = 66,
+        health = 54, mana = 0, stamina = 17,
         staminaRegen = 3,
         damage = 18, magicDamage = 0, -- high, fragile: the fixer who must never be caught
         defense = 8, magicDefense = 8,

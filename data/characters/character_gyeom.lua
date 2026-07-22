@@ -36,7 +36,7 @@ return {
     class = "mage",
     boss = true,
     stats = {
-        health = 56, mana = 46, stamina = 40,
+        health = 56, mana = 46, stamina = 10,
         staminaRegen = 2,
         damage = 4, magicDamage = 6,    -- suppressed on purpose: she does not fight to be seen
         defense = 7, magicDefense = 11, -- warded against the magic her line traffics in

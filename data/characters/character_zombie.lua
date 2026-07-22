@@ -5,7 +5,7 @@ return {
     name = "Zombie",
     sprite = "assets/chars/zombie.png",
     stats = {
-        health = 24, mana = 0, stamina = 50,
+        health = 24, mana = 0, stamina = 13,
         staminaRegen = 1,
         damage = 9, magicDamage = 0,
         defense = 4, magicDefense = 2,

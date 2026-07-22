@@ -31,7 +31,7 @@ return {
     portrait = "assets/portraits/general_gluttony.png", -- large VN portrait for conversations (falls back if missing)
     archetype = "aggressive",
     stats = {
-        health = 240, mana = 20, stamina = 70,
+        health = 240, mana = 20, stamina = 18,
         staminaRegen = 3,
         damage = 20, magicDamage = 0, -- a beast: she hits in flesh, and every hit feeds her
         defense = 15, magicDefense = 8, -- warded in hide, thin against the magic she never learned

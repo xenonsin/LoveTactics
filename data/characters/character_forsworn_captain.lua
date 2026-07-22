@@ -10,7 +10,7 @@ return {
     sprite = "assets/chars/forsworn_captain.png",
     class = "knight",
     stats = {
-        health = 98, mana = 0, stamina = 60,
+        health = 98, mana = 0, stamina = 15,
         staminaRegen = 2,
         damage = 17, magicDamage = 0,
         defense = 20, magicDefense = 10,

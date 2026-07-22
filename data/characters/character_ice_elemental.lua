@@ -6,7 +6,7 @@ return {
     name = "Ice Elemental",
     sprite = "assets/chars/ice_elemental.png",
     stats = {
-        health = 30, mana = 0, stamina = 60,
+        health = 30, mana = 0, stamina = 15,
         staminaRegen = 2,
         damage = 4, magicDamage = 12,
         defense = 5, magicDefense = 12,

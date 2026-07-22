@@ -30,7 +30,7 @@ return {
     portrait = "assets/portraits/kaya.png", -- large VN portrait for conversations (falls back if missing)
     class = "hunter",
     stats = {
-        health = 66, mana = 20, stamina = 60,
+        health = 66, mana = 20, stamina = 15,
         staminaRegen = 2,
         damage = 16, magicDamage = 0, -- a clean shot, and no more than the shot needs
         defense = 8, magicDefense = 8,

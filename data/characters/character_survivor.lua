@@ -16,7 +16,7 @@ return {
     archetype = "holdGround",
     sprite = "assets/chars/caravan_master.png",
     stats = {
-        health = 24, mana = 0, stamina = 20,
+        health = 24, mana = 0, stamina = 5,
         staminaRegen = 1,
         damage = 3, magicDamage = 0,
         defense = 2, magicDefense = 1,

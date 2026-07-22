@@ -32,7 +32,7 @@ return {
     sprite = "assets/chars/general_lust.png",
     portrait = "assets/portraits/general_lust.png", -- large VN portrait for conversations (falls back if missing)
     stats = {
-        health = 200, mana = 60, stamina = 100,
+        health = 200, mana = 60, stamina = 25,
         staminaRegen = 2,
         damage = 14, magicDamage = 10, -- middling; the drink is what keeps her standing
         defense = 14, magicDefense = 14,

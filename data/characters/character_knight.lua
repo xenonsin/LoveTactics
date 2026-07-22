@@ -14,7 +14,7 @@ return {
     -- character has no cast history yet. See models/growth.lua and data/growth/<class>.lua.
     class = "knight",
     stats = {
-        health = 70, mana = 20, stamina = 60, -- resource stats
+        health = 70, mana = 20, stamina = 15, -- resource stats
         staminaRegen = 2, -- stamina recovered per elapsed tick (a flat stat, not a resource)
         damage = 14, magicDamage = 4,          -- flat stats
         defense = 10, magicDefense = 6,

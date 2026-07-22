@@ -22,7 +22,7 @@ return {
     name = "Demon Grunt",
     sprite = "assets/chars/demon_grunt.png",
     stats = {
-        health = 66, mana = 0, stamina = 40,
+        health = 66, mana = 0, stamina = 10,
         damage = 8, magicDamage = 0,
         defense = 4, magicDefense = 2,
         movement = 3,

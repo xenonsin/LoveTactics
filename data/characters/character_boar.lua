@@ -3,7 +3,7 @@ return {
     name = "Wild Boar",
     sprite = "assets/chars/boar.png",
     stats = {
-        health = 50, mana = 0, stamina = 40,
+        health = 50, mana = 0, stamina = 10,
         damage = 14, magicDamage = 0,
         defense = 8, magicDefense = 1,
         movement = 3,

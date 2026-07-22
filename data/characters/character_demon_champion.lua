@@ -12,7 +12,7 @@ return {
     boss = true,
     sprite = "assets/chars/demon_grunt.png",
     stats = {
-        health = 92, mana = 0, stamina = 60,
+        health = 92, mana = 0, stamina = 15,
         damage = 14, magicDamage = 0,
         defense = 8, magicDefense = 4,
         movement = 3,

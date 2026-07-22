@@ -6,7 +6,7 @@ return {
     name = "Wind Elemental",
     sprite = "assets/chars/wind_elemental.png",
     stats = {
-        health = 16, mana = 0, stamina = 60,
+        health = 16, mana = 0, stamina = 15,
         staminaRegen = 2,
         damage = 4, magicDamage = 10,
         defense = 2, magicDefense = 7,

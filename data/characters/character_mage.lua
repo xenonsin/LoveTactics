@@ -9,7 +9,7 @@ return {
     -- wind-up is worth paying for.
     archetype = "skirmish",
     stats = {
-        health = 42, mana = 80, stamina = 40, -- resource stats
+        health = 42, mana = 80, stamina = 10, -- resource stats
         staminaRegen = 1, -- stamina recovered per elapsed tick (a flat stat, not a resource)
         damage = 5, magicDamage = 18,          -- flat stats
         defense = 4, magicDefense = 12,

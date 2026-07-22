@@ -28,7 +28,7 @@ return {
     sprite = "assets/chars/general_envy.png",
     portrait = "assets/portraits/general_envy.png", -- large VN portrait for conversations (falls back if missing)
     stats = {
-        health = 200, mana = 80, stamina = 60,
+        health = 200, mana = 80, stamina = 15,
         staminaRegen = 2,
         damage = 12, magicDamage = 12, -- middling of herself; the copy she opens with is the threat
         defense = 12, magicDefense = 14,

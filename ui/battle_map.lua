@@ -643,12 +643,27 @@ function BattleMap:drawUnitInfo()
         end
     end
     for i, u in ipairs(order) do orderIndex[u] = i end
+    -- Remember each living unit's turn number so a just-felled unit keeps the number it held while its
+    -- death fade runs (it drops out of turnOrder the instant the model kills it -- see orderBy). Mirrors
+    -- the turn strip's dyingCards / lastLayout (ui/combat_panel.lua).
+    self.lastOrderIndex = self.lastOrderIndex or {}
+    for u, i in pairs(orderIndex) do self.lastOrderIndex[u] = i end
     for _, u in ipairs(self.combat.units) do
-        if u.alive then
+        -- A felled unit is alive=false in the model at once, but its HP bar and turn number must stay up
+        -- (draining / fading) until the blow that killed it has actually played -- otherwise they pop
+        -- away a beat before the damage animation, giving the death away. Keep drawing them while the fx
+        -- controller is fading the body out (deathFade) or still holds an unplayed killing blow
+        -- (awaiting), matching drawUnits and the turn strip; the fade dims them out with the body.
+        local fade = self.fx and self.fx:deathFade(u)
+        local awaiting = self.fx and self.fx:awaiting(u)
+        if u.alive or fade or awaiting then
             local wx, wy = self:unitOrigin(u)
-            self:drawHpBar(u, wx, wy)
-            self:drawTurnNumber(orderIndex[u], wx, wy)
-            self:drawStatusBadges(u, wx, wy)
+            local alpha = fade and (1 - fade) or 1
+            self:drawHpBar(u, wx, wy, alpha)
+            self:drawTurnNumber(orderIndex[u] or self.lastOrderIndex[u], wx, wy, alpha)
+            if u.alive then self:drawStatusBadges(u, wx, wy) end
+        elseif self.lastOrderIndex[u] then
+            self.lastOrderIndex[u] = nil -- fully gone: drop its stale number
         end
     end
 end
@@ -727,8 +742,10 @@ end
 -- red foe) -- with no ring on the token, this bar is what says whose unit this is. The hue is spent
 -- on the side, so how hurt the unit is reads from the bar's length, darkened toward empty by
 -- Colors.drain rather than shifting hue.
-function BattleMap:drawHpBar(u, wx, wy)
+-- `alpha` (default 1) fades the whole bar out with the body as a felled unit dies (drawUnitInfo).
+function BattleMap:drawHpBar(u, wx, wy, alpha)
     local s = self.size
+    local al = alpha or 1
     local hp = u.char.stats.health
     local side = Colors.unit(u)
     -- The shown value lags the model so the bar drains smoothly toward the new HP after a hit; the
@@ -737,7 +754,7 @@ function BattleMap:drawHpBar(u, wx, wy)
     local ratio = 0
     if hp and hp.max and hp.max > 0 then ratio = math.max(0, math.min(1, shown / hp.max)) end
     local bx, by, bw, bh = wx + 4, wy + s - 8, s - 8, 5
-    love.graphics.setColor(0, 0, 0, 0.6)
+    love.graphics.setColor(0, 0, 0, 0.6 * al)
     love.graphics.rectangle("fill", bx - 1, by - 1, bw + 2, bh + 2, 2, 2)
 
     -- Aimed-action preview: project the hovered cast's damage/heal onto this unit's HP bar so the
@@ -747,30 +764,33 @@ function BattleMap:drawHpBar(u, wx, wy)
     local delta = pv and ((pv.heal or 0) - (pv.damage or 0)) or 0
     if delta ~= 0 and hp and hp.max and hp.max > 0 then
         local afterRatio = math.max(0, math.min(1, (hp.current + delta) / hp.max))
-        love.graphics.setColor(Colors.drain(side, ratio))
+        local dr, dg, db = Colors.drain(side, ratio)
+        love.graphics.setColor(dr, dg, db, al)
         love.graphics.rectangle("fill", bx, by, bw * math.min(ratio, afterRatio), bh, 2, 2)
         if delta < 0 then -- the HP about to be lost: amber, since red would vanish on a foe's red bar
             local c = pv.lethal and Colors.LETHAL or Colors.PENDING
-            love.graphics.setColor(c[1], c[2], c[3], 0.95)
+            love.graphics.setColor(c[1], c[2], c[3], 0.95 * al)
             love.graphics.rectangle("fill", bx + bw * afterRatio, by, bw * (ratio - afterRatio), bh, 2, 2)
         else -- green slice for the HP about to be gained
             local c = Colors.HEALING
-            love.graphics.setColor(c[1], c[2], c[3], 0.9)
+            love.graphics.setColor(c[1], c[2], c[3], 0.9 * al)
             love.graphics.rectangle("fill", bx + bw * ratio, by, bw * (afterRatio - ratio), bh, 2, 2)
         end
     else
-        love.graphics.setColor(Colors.drain(side, ratio))
+        local dr, dg, db = Colors.drain(side, ratio)
+        love.graphics.setColor(dr, dg, db, al)
         love.graphics.rectangle("fill", bx, by, bw * ratio, bh, 2, 2)
     end
 end
 
 -- Turn-order number in the tile's top-left, with a dark backing for legibility.
-function BattleMap:drawTurnNumber(n, wx, wy)
+function BattleMap:drawTurnNumber(n, wx, wy, alpha)
     if not n then return end
-    love.graphics.setColor(0, 0, 0, 0.7)
+    local al = alpha or 1
+    love.graphics.setColor(0, 0, 0, 0.7 * al)
     love.graphics.rectangle("fill", wx + 1, wy + 1, 16, 15, 3, 3)
     love.graphics.setFont(self.numberFont)
-    love.graphics.setColor(0.98, 0.95, 0.7)
+    love.graphics.setColor(0.98, 0.95, 0.7, al)
     love.graphics.printf(tostring(n), wx + 1, wy + 1, 16, "center")
 end
 

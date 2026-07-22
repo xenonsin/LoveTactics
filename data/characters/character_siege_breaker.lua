@@ -15,7 +15,7 @@ return {
     archetype = "holdGround",
     sprite = "assets/chars/demon_grunt.png",
     stats = {
-        health = 84, mana = 0, stamina = 50,
+        health = 84, mana = 0, stamina = 13,
         staminaRegen = 2,
         damage = 16, magicDamage = 0,
         defense = 12, magicDefense = 6,

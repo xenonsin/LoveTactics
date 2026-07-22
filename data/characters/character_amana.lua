@@ -37,7 +37,7 @@ return {
     -- her up to punch. `support` reads the company's wounds before the enemy's throats (models/ai.lua).
     archetype = "support",
     stats = {
-        health = 62, mana = 40, stamina = 50,
+        health = 62, mana = 40, stamina = 13,
         staminaRegen = 2,
         damage = 5, magicDamage = 9,   -- feeble on purpose: she does not kill
         defense = 8, magicDefense = 13, -- warded against the magic her line traffics in

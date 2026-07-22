@@ -17,7 +17,7 @@ return {
     name = "Imp",
     sprite = "assets/chars/demon_imp.png",
     stats = {
-        health = 14, mana = 0, stamina = 30,
+        health = 14, mana = 0, stamina = 8,
         staminaRegen = 2,
         damage = 4, magicDamage = 7, -- it spits hellfire; the claws are for show
         defense = 2, magicDefense = 2,

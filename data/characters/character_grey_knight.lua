@@ -25,7 +25,7 @@ return {
     class = "knight",
     archetype = "guard",
     stats = {
-        health = 62, mana = 0, stamina = 50,
+        health = 62, mana = 0, stamina = 13,
         staminaRegen = 2,
         damage = 15, magicDamage = 0,
         defense = 14, magicDefense = 6,

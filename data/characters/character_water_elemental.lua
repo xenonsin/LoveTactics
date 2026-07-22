@@ -6,7 +6,7 @@ return {
     name = "Water Elemental",
     sprite = "assets/chars/water_elemental.png",
     stats = {
-        health = 28, mana = 0, stamina = 60,
+        health = 28, mana = 0, stamina = 15,
         staminaRegen = 2,
         damage = 4, magicDamage = 11,
         defense = 4, magicDefense = 9,

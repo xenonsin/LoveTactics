@@ -7,7 +7,7 @@ return {
     -- fire, rather than drifting into a swordsman's reach (`skirmish`, models/ai.lua).
     archetype = "skirmish",
     stats = {
-        health = 98, mana = 60, stamina = 50,
+        health = 98, mana = 60, stamina = 13,
         damage = 8, magicDamage = 22,
         defense = 8, magicDefense = 14,
         movement = 4,

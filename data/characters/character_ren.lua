@@ -29,7 +29,7 @@ return {
     boss = true,
     archetype = "support", -- she mends before she strikes (models/ai.lua)
     stats = {
-        health = 60, mana = 46, stamina = 44,
+        health = 60, mana = 46, stamina = 11,
         staminaRegen = 2,
         damage = 6, magicDamage = 8, -- she does not kill; she lifts
         defense = 8, magicDefense = 12,

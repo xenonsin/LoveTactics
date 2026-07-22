@@ -258,9 +258,9 @@ return {
     ["line.flight_event_shrine.1"] = { en = "A wayside shrine, still standing where everything around it burned.", ja = "" },  -- TODO
     ["line.flight_event_shrine.2"] = { en = "Someone tended it to the last -- and cut a healer's rite into the stone. It feels wrong to walk straight past. Choose...", ja = "" },  -- TODO
     ["line.flight_event_shrine.3"] = { en = "Kneel and learn the rite by heart.", ja = "" },  -- TODO
-    ["line.flight_event_shrine.4"] = { en = "Copy it down and press on.", ja = "" },  -- TODO
-    ["line.flight_event_shrine.5"] = { en = "...steadier. And I know now how to close a wound that is not my own.", ja = "" },  -- TODO
-    ["line.flight_event_shrine.6"] = { en = "A mending rite, left for whoever came after. That is us now. Carry it.", ja = "" },  -- TODO
+    ["line.flight_event_shrine.4"] = { en = "Tend our wounds and press on.", ja = "" },  -- TODO
+    ["line.flight_event_shrine.5"] = { en = "...there. It holds. I can set a wound to closing now, slow and sure -- even one that is not my own.", ja = "" },  -- TODO
+    ["line.flight_event_shrine.6"] = { en = "Patched, and the worse for wear behind us. The rite we leave for whoever comes after -- we've a road to make.", ja = "" },  -- TODO
     ["line.flight_event_shrine.7"] = { en = "The capital, then. Keep moving.", ja = "" },  -- TODO
     ["line.flight_event_survivor.1"] = { en = "Hold. Someone's in the brush -- hurt, and trying not to be heard.", ja = "" },  -- TODO
     ["line.flight_event_survivor.2"] = { en = "Easy. We're not with the things that did this. Choose...", ja = "" },  -- TODO

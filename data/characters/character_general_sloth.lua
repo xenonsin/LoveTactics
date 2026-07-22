@@ -29,7 +29,7 @@ return {
     -- problem: the party must come to her through her sworn company (models/ai.lua).
     archetype = "defensive",
     stats = {
-        health = 240, mana = 40, stamina = 90,
+        health = 240, mana = 40, stamina = 23,
         staminaRegen = 2,
         damage = 12, magicDamage = 0, -- poor, and it never climbs: the clock is the weapon
         defense = 22, magicDefense = 16, -- no soft answer the way Ira is soft to magic

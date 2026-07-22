@@ -12,7 +12,7 @@ return {
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/demon_lord.png",
     stats = {
-        health = 420, mana = 0, stamina = 100,
+        health = 420, mana = 0, stamina = 25,
         damage = 20, magicDamage = 20,
         defense = 14, magicDefense = 14,
         movement = 3,

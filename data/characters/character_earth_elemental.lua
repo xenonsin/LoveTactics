@@ -6,7 +6,7 @@ return {
     name = "Earth Elemental",
     sprite = "assets/chars/earth_elemental.png",
     stats = {
-        health = 42, mana = 0, stamina = 60,
+        health = 42, mana = 0, stamina = 15,
         staminaRegen = 2,
         damage = 12, magicDamage = 2,
         defense = 10, magicDefense = 6,

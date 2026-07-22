@@ -15,7 +15,7 @@ return {
     name = "Wolfsong Spirit",
     sprite = "assets/chars/wolfsong_spirit.png",
     stats = {
-        health = 62, mana = 0, stamina = 80,
+        health = 62, mana = 0, stamina = 20,
         damage = 22, magicDamage = 0,
         defense = 7, magicDefense = 6,
         movement = 6, -- fastest thing on four legs

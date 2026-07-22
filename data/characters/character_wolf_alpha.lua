@@ -4,7 +4,7 @@ return {
     name = "Alpha Wolf",
     sprite = "assets/chars/wolf_alpha.png",
     stats = {
-        health = 56, mana = 0, stamina = 80,
+        health = 56, mana = 0, stamina = 20,
         damage = 16, magicDamage = 0,
         defense = 6, magicDefense = 3,
         movement = 5,

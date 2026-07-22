@@ -21,7 +21,7 @@ return {
     class = "fighter",
     boss = true,
     stats = {
-        health = 84, mana = 0, stamina = 80,
+        health = 84, mana = 0, stamina = 20,
         staminaRegen = 2,
         damage = 22, magicDamage = 0,
         defense = 11, magicDefense = 6,
