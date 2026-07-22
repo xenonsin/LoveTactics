@@ -31,7 +31,7 @@ return {
     bonus = { defense = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
     resist = { physical = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
     -- Defend brace: the knight's core stance, its +defense climbing as the shield is forged.
-    waitBehavior = { kind = "defend", speed = 5, defense = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 } },
+    waitBehavior = { kind = "defend", speed = 3, defense = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 } },
     -- The oath's answer (see the header): locked until she has weathered four blows, then a sweep that
     -- strikes and shoves the whole adjacent ring. A self-centred area cast -- friend and self spared.
     activeAbility = {

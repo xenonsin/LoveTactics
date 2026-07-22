@@ -24,7 +24,7 @@ return {
     -- where you plant decides who else gets the wall, and a line of three behind one Oathkeeper is
     -- worth more than three bucklers scattered. The oath is not that you survive; it is that they do.
     waitBehavior = {
-        kind = "defend", speed = 4,
+        kind = "defend", speed = 2,
         defense = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
         covers = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 },
     },

@@ -99,11 +99,13 @@ end
 Combat.DEFAULT_SPEED = 5
 
 -- Initiative cost of the Focus / Defend wait-behaviors (see Combat.focus / Combat.defend) when
--- the granting item doesn't specify its own. Deliberately larger than a plain wait's near-zero
--- delay -- these actions trade a big chunk of the timeline for mana / a defense buff. Focus costs
--- the most: recovering mana for free should give up a real turn's worth of tempo.
+-- the granting item doesn't specify its own. Both cost more than a plain wait's near-zero delay.
+-- Focus costs the most (a real turn's worth of tempo): recovering mana for free should give up a
+-- whole turn. Defend is a cheap guard -- clearly less than an attack (DEFAULT_SPEED), clearly more
+-- than a Wait -- so bracing lands you back on the timeline soon to re-brace or reassess, rather
+-- than freezing you out for a full round (the brace itself lasts only until that next turn).
 Combat.FOCUS_SPEED = 10
-Combat.DEFEND_SPEED = 5
+Combat.DEFEND_SPEED = 3
 
 -- Line-of-sight block threshold: a line is obstructed once the summed `sightCost` of the tiles
 -- it crosses (endpoints excluded) REACHES this. Soft cover (forest, sightCost 1) only lowers a
