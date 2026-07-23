@@ -33,7 +33,7 @@ return {
     tags = { "holy", "magical" },
     class = "priest",
     price = 520,
-    repRank = 5,
+    repRank = 4,
     activeAbility = {
         -- A tile target, for the same reason Updraft is one: neither "ally" nor "enemy" describes what
         -- this spell is for, and the player picks which of the two readings above they are buying every

@@ -20,9 +20,11 @@ return {
     sprite = "assets/items/kingsblood_dagger.png",
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
+    -- Quest-only: a `class` with no `price` tallies toward rogue growth but sits on no shelf, and no
+    -- `price` also keeps it out of the random spoils pool (models/spoils.lua), which reads `price` as the
+    -- "is this ordinary stock?" marker. The Undercroft sells it back to you in fiction; in play it is a
+    -- thing you are given for doing the guild a service, which is the more Greedish arrangement anyway.
     class = "rogue",
-    price = 800,
-    repRank = 4,
     stealPriority = 2, -- a thief covets it above ordinary kit (below a Decoy's bait)
     activeAbility = {
         target = "enemy",

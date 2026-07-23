@@ -17,8 +17,12 @@ return {
     tags = { "greatsword", "slash", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    price = 760,
-    repRank = 4,
+    -- Rank 1: every family's base weapon is stocked from the first visit (docs/weapons.md), and the
+    -- greatsword's is no exception -- what gates it is the purse, not the standing. Dear for a rank-1
+    -- (five times an iron sword) because the heaviest hit in the game should be an early thing you save
+    -- toward rather than an early thing you are handed.
+    price = 300,
+    repRank = 1,
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the blow falls on
         allowOccupied = true,  -- the tile in front may hold a foe -- it's where the sword lands

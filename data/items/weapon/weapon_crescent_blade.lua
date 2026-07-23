@@ -37,7 +37,7 @@ return {
     traits = { "trait_parry" }, -- swords answer a melee blow (docs/weapons.md)
     class = "knight", -- a sword, so the Bastion's shelf -- the same rule that puts weapon_demon_bane there
     price = 260,
-    repRank = 3,
+    repRank = 4, -- above Demon Bane's 3; rank 4 is the vendor ceiling (data/vendors/)
     activeAbility = {
         target = "tile",      -- a direction, not a victim: the aimed tile sets the line the arc runs
         allowOccupied = true, -- the first tile may hold a foe; the crescent starts there and carries on

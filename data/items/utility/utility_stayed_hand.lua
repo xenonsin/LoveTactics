@@ -27,7 +27,7 @@ return {
     tags = { "holy" },
     class = "priest",
     price = 500,
-    repRank = 5,
+    repRank = 4,
     traits = { "trait_stayed_hand" },
     bonus = { magicDefense = { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6 } },
 }

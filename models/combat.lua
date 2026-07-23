@@ -1877,6 +1877,52 @@ function Combat.focus(combat, unit)
             end
         end
     end
+
+    -- The four fields below are the same idea as `covers`: a named staff tunes what its Focus DOES
+    -- rather than how much mana it gives back, declared on the item instead of hand-rolled per weapon.
+    -- Focus has no `effect` to hook (it is a wait swap, not a cast), so a staff whose extra lands on the
+    -- meditation has nowhere else to put it. Each is optional and they compose.
+
+    -- `status`: what the focuser gains for meditating (weapon_warding_staff's magical barrier).
+    if behavior.status then
+        Status.apply(combat, unit, behavior.status, { applier = unit })
+    end
+
+    -- `hazard`: ground laid under the focuser, in a square of `radius` (0 = the one tile they stand on).
+    -- Owned by them, as a censer's smoke is -- but NOT lifted when they move, because that lifting is
+    -- precisely what separates incense from a banner (docs/weapons.md). A staff plants; it does not carry.
+    if behavior.hazard then
+        local h = behavior.hazard
+        local r = h.radius or 0
+        for dy = -r, r do
+            for dx = -r, r do
+                Hazard.place(combat, unit.x + dx, unit.y + dy, h.id,
+                    { side = unit.side, amount = h.amount, duration = h.duration })
+            end
+        end
+    end
+
+    -- `afflicts`: what every ADJACENT ENEMY takes for standing beside the meditation. `covers` pointed
+    -- outward -- the one wait swap in the catalog that is hostile (weapon_gag_crook's silence).
+    if behavior.afflicts then
+        for _, foe in ipairs(Combat.unitsNear(combat, unit.x, unit.y, 1)) do
+            if foe ~= unit and foe.alive and foe.side ~= unit.side then
+                Status.apply(combat, foe, behavior.afflicts, { applier = unit })
+            end
+        end
+    end
+
+    -- `toll`: a resource the meditation SPENDS, for a staff that trades one pool for another
+    -- (weapon_overchannelled_staff buys its deeper mana with the focuser's own blood). Taken as a drain
+    -- rather than as damage: it is a toll, not a blow -- nothing mitigates it and it cannot kill.
+    if behavior.toll then
+        local paid = Combat.drainResource(unit.char, behavior.toll.stat, behavior.toll.amount or 0)
+        if paid > 0 then
+            Combat.logEvent(combat, "focus",
+                string.format("%s pays for it (-%d %s).", unitName(unit), paid, behavior.toll.stat), unit)
+        end
+    end
+
     endTurn(combat, unit, behavior.speed or Combat.FOCUS_SPEED)
     return true
 end
@@ -1905,6 +1951,34 @@ function Combat.defend(combat, unit)
             end
         end
     end
+
+    -- The two fields below are the Focus half's `status` / `coversStatus` read on this side of the wait
+    -- swap (see Combat.focus), and they exist for the same reason: bracing has no `effect` to hook, so a
+    -- named shield whose extra lands on the STANCE has nowhere else to put it. One rule, both halves.
+
+    -- `status`: what the brace grants the holder BESIDES the ordinary Defending -- a ward, a reflection,
+    -- a wound held in reserve. What separates the named shields from a bigger `defense` number.
+    if behavior.status then
+        Status.apply(combat, unit, behavior.status, { applier = unit })
+    end
+
+    -- `coversStatus`: the same thing handed to adjacent allies instead of, or as well as, the holder.
+    -- `covers` spreads the brace's SIZE; this spreads its KIND -- so a shield can plant a wall on the
+    -- line without the holder keeping any of it (armor_given_guard trades one for the other).
+    if behavior.coversStatus then
+        for _, ally in ipairs(Combat.unitsNear(combat, unit.x, unit.y, 1)) do
+            if ally ~= unit and ally.alive and ally.side == unit.side then
+                local st = Status.apply(combat, ally, behavior.coversStatus, { applier = unit })
+                -- The holder is the other end of any bond the granted status opens. Shared Burden reads
+                -- `.bonded` off its live instance to know who carries the half it takes away
+                -- (data/status/status_shared_burden.lua), and Status.instantiate keeps only its own
+                -- declared fields, so it has to be stamped here. Harmless on a status that never reads
+                -- it, and there is only one honest answer for a shield: whoever planted it.
+                if st then st.bonded = unit end
+            end
+        end
+    end
+
     endTurn(combat, unit, behavior.speed or Combat.DEFEND_SPEED)
     return true
 end
@@ -5572,6 +5646,18 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
         if ab.consumesItem then item.quantity = math.max(0, (item.quantity or 1) - 1) end
         unit.channel = { item = item, ab = ab, tx = tx, ty = ty, windup = extra }
         Status.apply(combat, unit, "status_channeling", { duration = ticks + 1 })
+        -- `channelStatus`: a status the caster gains ON COMMIT and carries through the wind-up, for the
+        -- one thing an `effect` cannot express -- an effect runs when the cast RESOLVES, and this has to
+        -- land on the beat the tell goes up, before the enemy's turn to punish it. Declared rather than
+        -- hooked, so the one weapon that wants it (weapon_held_breath: drawing makes the archer unseen)
+        -- needs no fx context built at a point in the turn where there is nothing to aim one at.
+        --
+        -- It rides the wind-up's own length, so a deeper draw hides longer -- and it is applied AFTER
+        -- `status_channeling`, so a status that interrupts channels cannot cancel the very cast it was
+        -- granted by.
+        if ab.channelStatus then
+            Status.apply(combat, unit, ab.channelStatus, { duration = ticks + 1 })
+        end
         -- The wind-up is an action too: a cast beat on begin-channel, then a second when it resolves
         -- (resolveCast, turns later). So a channeled spell reads both as it is loosed and as it lands.
         Combat.pushFx(combat, { type = "cast", unit = unit, tx = tx, ty = ty,
@@ -6225,8 +6311,22 @@ end
 -- commit -- the mana (and any consumable) spent to begin the channel are gone, NOT refunded, so an
 -- interrupt is a fully-wasted cast. Idempotent (a multi-tile knockback calls it once). Returns true if
 -- a channel was actually interrupted. `reason` is a short phrase for the log ("stunned", "displaced").
+-- `steadfast` on the channelling ability refuses the interruption outright: the wind-up rides out any
+-- hard control that lands on it (Stun, Freeze, a Silence on a mana channel). One weapon carries it --
+-- weapon_kingsfall -- and it is the whole of what that weapon buys, so the flag lives on the ABILITY
+-- rather than on the unit: a fighter is only unbreakable while swinging that particular greatsword, and
+-- picking up a second channelled item does not inherit it.
+--
+-- Note the control itself still lands in full. Kingsfall's bearer is stunned, shoved down the order, and
+-- swings anyway -- what it declines is the cancellation, never the status. That keeps the counterplay
+-- honest: a stun aimed at a Kingsfall is not wasted, it is only insufficient.
 function Combat.interruptChannel(combat, unit, reason)
     if not unit.channel then return false end
+    if unit.channel.ab and unit.channel.ab.steadfast then
+        Combat.logEvent(combat, "status",
+            string.format("%s does not falter (%s).", unitName(unit), reason or "disrupted"), unit)
+        return false
+    end
     unit.channel = nil
     Status.remove(combat, unit, "status_channeling")
     Combat.logEvent(combat, "status",

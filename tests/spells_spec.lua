@@ -61,7 +61,7 @@ return {
         end,
     },
     {
-        name = "Freeze delays the target and makes it vulnerable to crush and fire",
+        name = "Freeze delays the target and makes it vulnerable to impact and fire",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_knight", 1, 2) })
             local mage, knight = c.units[1], c.units[2]
@@ -69,11 +69,13 @@ return {
             Status.apply(c, knight, "status_freeze")
             assert(knight.initiative > init0, "Freeze shoved the knight down the turn order")
 
-            -- The crush/fire vulnerability lands on the damage math, exactly like Wet's lightning: a
-            -- crush hit against the Frozen knight lands harder than an untyped one Freeze doesn't cover.
-            local crush = Combat.mitigatedDamage(knight, 20, { "crush", "physical" })
+            -- The impact/fire vulnerability lands on the damage math, exactly like Wet's lightning: an
+            -- impact hit against the Frozen knight lands harder than an untyped one Freeze doesn't cover.
+            -- `impact` and not `crush`: the blunt tag every mace, hammer and censer in the game actually
+            -- carries, which is the whole point of the retag (see data/status/status_freeze.lua's header).
+            local impact = Combat.mitigatedDamage(knight, 20, { "impact", "physical" })
             local plain = Combat.mitigatedDamage(knight, 20, { "slash" })
-            assert(crush > plain, "a crush hit lands harder on a Frozen target than an untyped one")
+            assert(impact > plain, "an impact hit lands harder on a Frozen target than an untyped one")
         end,
     },
     {

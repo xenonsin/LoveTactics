@@ -127,10 +127,16 @@ return {
                         id .. ": a staff swaps Wait for Focus")
                 end,
                 sword = function(def, id)
-                    -- A counter-reaction, either the ordinary Parry or a blade that upgrades it.
+                    -- A counter-reaction: the ordinary Parry, a blade that upgrades it (Riposte), or any
+                    -- of the parry VARIANTS a named sword carries. Asked of the trait's blueprint rather
+                    -- than of a list of ids -- "does this trait answer a blow?" is the actual contract,
+                    -- and a whitelist would have to be edited every time a sword buys a new answer, which
+                    -- is a test that fails for the wrong reason. A trait answers if it declares a
+                    -- `counter` rule (Trait.mayCounter reads it) or negates outright (`deflectsMelee`).
                     local answers = false
                     for _, t in ipairs(def.traits or {}) do
-                        if t == "trait_parry" or t == "trait_riposte" or t == "trait_melee_counter" then answers = true end
+                        local tdef = Trait.defs[t]
+                        if tdef and (tdef.counter or tdef.deflectsMelee) then answers = true end
                     end
                     assert(answers, id .. ": a sword answers a melee blow")
                     assert((def.hands or 1) == 1, id .. ": a sword is one-handed")
@@ -163,6 +169,66 @@ return {
                     contract[family](ab, w.id)
                 end
                 if itemContract[family] then itemContract[family](w.def, w.id) end
+            end
+        end,
+    },
+    {
+        -- The roster rule from docs/weapons.md: ten weapons per shoppable family, five on a shelf and
+        -- five quest-only, with signatures and generals' relics outside the count. Asserted as a shape
+        -- rather than per-family so authoring an eleventh sword fails here rather than in a spreadsheet.
+        name = "every shoppable family carries ten weapons: five on a shelf, five quest-only",
+        fn = function()
+            -- Both halves of the catalog: `weapon`s plus the shields, which live in data/items/armor.
+            local roster = {}
+            for id, def in pairs(Item.defs) do
+                local family = Item.archetype(def)
+                -- `natural` is a creature's own body and `unarmed` is the player's single hidden fist;
+                -- neither is shoppable and neither owes a roster (docs/weapons.md).
+                if family and family ~= "natural" and family ~= "unarmed" then
+                    local excluded = false
+                    for _, tag in ipairs(def.tags or {}) do
+                        if tag == "signature" or tag == "relic" then excluded = true end
+                    end
+                    if not excluded then
+                        roster[family] = roster[family] or { shop = {}, quest = {} }
+                        local half = def.price and "shop" or "quest"
+                        table.insert(roster[family][half], id)
+                    end
+                end
+            end
+
+            local families = 0
+            for family, halves in pairs(roster) do
+                families = families + 1
+                assert(#halves.shop == 5, family .. " has " .. #halves.shop
+                    .. " shelf weapons, not 5: " .. table.concat(halves.shop, ", "))
+                assert(#halves.quest == 5, family .. " has " .. #halves.quest
+                    .. " quest-only weapons, not 5: " .. table.concat(halves.quest, ", "))
+                -- A quest weapon keeps its `class` (it is what the strike tallies toward for growth) but
+                -- must have no `repRank` either -- a rank with no price is dead data on no shelf.
+                for _, id in ipairs(halves.quest) do
+                    assert(Item.defs[id].class, id .. " is quest-only with no class to tally growth against")
+                    assert(not Item.defs[id].repRank, id .. " has a repRank but no price: it is on no shelf")
+                end
+            end
+            assert(families == 13, "expected 13 shoppable families, found " .. families)
+        end,
+    },
+    {
+        -- Rank 4 is the ceiling: every data/vendors/ table is four rungs long and the general quests
+        -- gate on rank 4 as "the highest standing". A repRank of 5 is unreachable stock.
+        name = "no item is ranked past the vendor ceiling",
+        fn = function()
+            local Registry = require("models.registry")
+            local vendors = Registry.load("data/vendors", "data.vendors")
+            local ceiling = 0
+            for _, def in pairs(vendors) do
+                ceiling = math.max(ceiling, #(def.ranks or {}))
+            end
+            assert(ceiling > 0, "the vendors declare some ranks at all")
+            for id, def in pairs(Item.defs) do
+                assert((def.repRank or 1) <= ceiling,
+                    id .. " is repRank " .. tostring(def.repRank) .. ", past the vendor ceiling of " .. ceiling)
             end
         end,
     },
@@ -939,6 +1005,135 @@ return {
             Status.apply(c, m, "status_freeze")
             assert(not Status.has(m, "status_burn"), "its bearer cannot burn")
             assert(not Status.has(m, "status_freeze"), "nor freeze")
+        end,
+    },
+    -- ---------------------------------------------------------------- the new engine keywords
+    -- Four mechanisms this catalog added, each pinned by the one weapon that spends it. They are engine
+    -- surface rather than data, so a regression here would silently flatten several weapons at once.
+    {
+        name = "steadfast: Kingsfall's wind-up survives the stun that would break any other greatsword",
+        fn = function()
+            -- The control still lands in full; only the cancellation is refused (docs/weapons.md).
+            local her = plainChar("character_knight")
+            local blade = give(her, "weapon_kingsfall")
+            local c = Combat.new(arena(8, 8), { unit(her, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
+            local k, foe = c.units[1], c.units[2]
+            k.char.stats.stamina.max, k.char.stats.stamina.current = 999, 999
+
+            openTurn(c, k)
+            assert(Combat.useItem(c, k, blade, 3, 4), "the wind-up starts")
+            assert(k.channel, "and it is channelling")
+            Status.apply(c, k, "status_stun", { applier = foe })
+            assert(Status.has(k, "status_stun"), "the stun landed in full -- it is not refused")
+            assert(k.channel, "but the wind-up did not break")
+
+            -- The control-breaks-a-channel rule is still live for everyone else.
+            local other = plainChar("character_knight")
+            local plain = give(other, "weapon_iron_greatsword")
+            local c2 = Combat.new(arena(8, 8), { unit(other, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
+            local o, foe2 = c2.units[1], c2.units[2]
+            o.char.stats.stamina.max, o.char.stats.stamina.current = 999, 999
+            openTurn(c2, o)
+            assert(Combat.useItem(c2, o, plain, 3, 4), "the plain greatsword winds up too")
+            Status.apply(c2, o, "status_stun", { applier = foe2 })
+            assert(not o.channel, "and an ordinary greatsword's wind-up IS shattered")
+        end,
+    },
+    {
+        name = "channelStatus: drawing the Held Breath hides the archer through the wind-up",
+        fn = function()
+            local archer = plainChar("character_archer")
+            local bow = give(archer, "weapon_held_breath")
+            local c = Combat.new(arena(10, 10), { unit(archer, 1, 1) }, { unit(plainChar("character_bandit"), 1, 6) })
+            local a = c.units[1]
+            a.char.stats.stamina.max, a.char.stats.stamina.current = 999, 999
+
+            assert(not Status.has(a, "status_invisible"), "it is visible before it draws")
+            openTurn(c, a)
+            assert(Combat.useItem(c, a, bow, 1, 6), "the draw begins")
+            assert(Status.has(a, "status_invisible"),
+                "and the archer is unseen on the very beat it committed -- the turn it had to survive")
+        end,
+    },
+    {
+        name = "a wait swap's status / toll / afflicts land on Focus",
+        fn = function()
+            -- `status`: the Warding Staff raises a ward as it meditates.
+            local mage = plainChar("character_mage")
+            give(mage, "weapon_warding_staff")
+            local c = Combat.new(arena(8, 8), { unit(mage, 1, 1) }, { unit(plainChar("character_bandit"), 8, 8) })
+            local m = c.units[1]
+            m.char.stats.mana.current = 0
+            openTurn(c, m)
+            assert(Combat.focus(c, m), "Focus resolves")
+            assert(m.char.stats.mana.current > 0, "and put mana back")
+            assert(Status.has(m, "status_magical_barrier"), "...and raised the ward with it")
+
+            -- `toll`: the Overchannelled Staff buys its deeper mana with the focuser's own blood.
+            local bled = plainChar("character_mage")
+            give(bled, "weapon_overchannelled_staff")
+            local c2 = Combat.new(arena(8, 8), { unit(bled, 1, 1) }, { unit(plainChar("character_bandit"), 8, 8) })
+            local b = c2.units[1]
+            b.char.stats.mana.current = 0
+            local hpBefore = hp(b)
+            openTurn(c2, b)
+            assert(Combat.focus(c2, b), "the deep Focus resolves")
+            assert(b.char.stats.mana.current > 0, "it returned mana")
+            assert(hp(b) < hpBefore, "and took health for it")
+
+            -- `afflicts`: `covers` pointed outward. The Gag-Crook cuts off adjacent ENEMIES only.
+            local priest = plainChar("character_priest")
+            give(priest, "weapon_gag_crook")
+            local c3 = Combat.new(arena(8, 8),
+                { unit(priest, 3, 3), unit(plainChar("character_mage"), 3, 2) },
+                { unit(plainChar("character_bandit"), 3, 4) })
+            local p, friend, foe = c3.units[1], c3.units[2], c3.units[3]
+            openTurn(c3, p)
+            assert(Combat.focus(c3, p), "the priest sits down")
+            assert(Status.has(foe, "status_magic_denied"), "the enemy beside it is cut off from magic")
+            assert(not Status.has(friend, "status_magic_denied"),
+                "and the ally beside it is not -- `afflicts` is the hostile half, not a zone")
+        end,
+    },
+    {
+        name = "coversStatus: the Given Guard lends its wall away and goes without it",
+        fn = function()
+            local knight = plainChar("character_knight")
+            give(knight, "armor_given_guard")
+            local c = Combat.new(arena(8, 8),
+                { unit(knight, 3, 3), unit(plainChar("character_mage"), 3, 4), unit(plainChar("character_mage"), 7, 7) },
+                { unit(plainChar("character_bandit"), 8, 8) })
+            local holder, beside, away = c.units[1], c.units[2], c.units[3]
+
+            assert(Combat.waitBehavior(holder).kind == "defend", "it is a shield")
+            openTurn(c, holder)
+            assert(Combat.defend(c, holder), "the wall is planted")
+
+            assert(Status.has(beside, "status_lent_guard"), "the ally beside it is wearing the knight's guard")
+            assert(Status.has(holder, "status_given_guard"), "and the knight is going without it")
+            assert(not Status.has(away, "status_lent_guard"), "an ally across the board gets nothing")
+        end,
+    },
+    {
+        name = "a wait swap's hazard is planted and left, not carried like incense",
+        fn = function()
+            -- The line that separates a staff from a censer (docs/weapons.md): a censer's cloud is lifted
+            -- and re-laid on every step, and this is not.
+            local mage = plainChar("character_mage")
+            give(mage, "weapon_graven_circle_staff")
+            local c = Combat.new(arena(8, 8), { unit(mage, 3, 3) }, { unit(plainChar("character_bandit"), 8, 8) })
+            local m = c.units[1]
+
+            openTurn(c, m)
+            assert(Combat.focus(c, m), "the sigils are cut")
+            assert(Hazard.at(c, 3, 3, "hazard_graven_circle"), "the ground under the mage is graven")
+
+            openTurn(c, m)
+            assert(Combat.moveUnit(c, m, 6, 3), "the mage walks away from its own circle")
+            assert(Hazard.at(c, 3, 3, "hazard_graven_circle"),
+                "the circle STAYS where it was cut -- a staff plants, it does not carry")
+            assert(not Hazard.at(c, 6, 3, "hazard_graven_circle"),
+                "and none of it followed: that lifting-and-relaying is the censer's mechanic, not this one")
         end,
     },
     {

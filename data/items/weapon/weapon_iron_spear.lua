@@ -13,7 +13,7 @@ return {
     hands = 2, -- a two-handed polearm (Dual Wield can pair it only once forged to +5)
     class = "knight", -- reach holds a line, and holding the line is the Bastion's whole trade (docs/classes.md)
     price = 140,
-    repRank = 2,
+    repRank = 1, -- a family's base weapon is always rank 1 (docs/weapons.md)
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the direction the thrust runs
         allowOccupied = true,  -- the first tile may hold a foe -- the thrust starts there and drives on

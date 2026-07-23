@@ -11,7 +11,7 @@ return {
     hands = 2, -- a two-handed maul (Dual Wield can pair it only once forged to +5)
     class = "fighter",
     price = 260,
-    repRank = 3,
+    repRank = 1, -- a family's base weapon is always rank 1 (docs/weapons.md)
     activeAbility = {
         target = "enemy",
         range = 1,

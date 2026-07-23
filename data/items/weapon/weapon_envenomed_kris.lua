@@ -20,7 +20,7 @@ return {
     tags = { "dagger", "pierce", "physical", "poison", "melee" },
     class = "alchemist",
     price = 210,
-    repRank = 2,
+    repRank = 4,
     activeAbility = {
         target = "enemy",
         range = 1,

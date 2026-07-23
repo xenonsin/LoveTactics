@@ -24,7 +24,7 @@ return {
     hands = 2, -- two-handed, like every bow
     class = "hunter",
     price = 800,
-    repRank = 4,
+    repRank = 4, -- the bow shelf's capstone
     activeAbility = {
         target = "enemy",
         range = 5, -- two tiles further than a plain bow

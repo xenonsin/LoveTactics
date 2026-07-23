@@ -28,7 +28,7 @@ return {
     tags = { "arcane" },
     class = "mage",
     price = 560,
-    repRank = 5,
+    repRank = 4,
     activeAbility = {
         target = "self",
         range = 0,

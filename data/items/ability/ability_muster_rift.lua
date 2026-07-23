@@ -29,7 +29,7 @@ return {
     tags = { "arcane" },
     class = "knight",
     price = 540,
-    repRank = 5,
+    repRank = 4,
     activeAbility = {
         target = "self",
         range = 0,

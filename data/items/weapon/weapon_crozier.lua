@@ -19,7 +19,7 @@ return {
     tags = { "staff", "magical", "melee" }, -- magical: routes through magicDamage / magicDefense
     class = "priest",
     price = 180,
-    repRank = 2,
+    repRank = 3,
     -- Both payoffs climb with the forge; `speed` deliberately does not (an upgrade never buys back
     -- tempo -- see models/item.lua's WAIT_BEHAVIOR_MAGNITUDES). `covers` is the smaller number: what
     -- the neighbour draws is always less than what the bearer keeps.

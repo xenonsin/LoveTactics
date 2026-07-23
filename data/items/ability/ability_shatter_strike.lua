@@ -8,7 +8,7 @@ return {
     flavor = "A finisher, not a way to keep a foe held. You only get to spend the ice once.",
     sprite = "assets/items/ability_shatter_strike.png",
     type = "ability",
-    tags = { "crush", "physical" },
+    tags = { "impact", "physical" }, -- `impact` is the blunt tag the game actually reads (see status_freeze)
     class = "fighter",
     price = 260,
     repRank = 2,

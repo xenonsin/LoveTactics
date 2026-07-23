@@ -28,7 +28,7 @@ return {
     tags = { "shield", "heavy" },
     class = "knight",
     price = 520,
-    repRank = 5,
+    repRank = 4,
     incense = { hazard = "hazard_shared_bulwark", radius = 1 },
     bonus = { defense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
     -- The family contract: a shield swaps its holder's Wait into Defend (docs/weapons.md, enforced by

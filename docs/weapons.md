@@ -67,6 +67,31 @@ Within that, each family's plain, undecorated weapon is named **`weapon_iron_<fa
 implementation: the mechanic and nothing else, the thing every other weapon in the family is
 measured against.
 
+**Every base weapon is `repRank = 1`.** A family's plain expression is stocked from the first visit and
+what gates it is the purse, not the standing — `weapon_iron_greatsword` is rank 1 at 300 gold, which is
+five times an iron sword and still on the shelf on day one.
+
+## The shape of a family: ten weapons, five and five
+
+Each of the thirteen shoppable families carries **ten** weapons, split down the middle:
+
+- **Five on the vendor's shelf** — `class` + `price` + `repRank`, climbing the shelf's ladder. Rank 4 is
+  the ceiling (every `data/vendors/` table is four rungs, and the general quests gate on rank 4 as "the
+  highest standing"), so a family reads 1-2-3-4-4 with its two capstones sharing the top rung.
+- **Five quest-only** — `class` and **no `price`**. The missing price is what makes it quest-only rather
+  than merely expensive: `models/spoils.lua` builds the random drop pool out of every priced item, so an
+  unpriced weapon can never fall out of a fight. The `class` stays, because it is also what the strike
+  tallies toward for growth. They are granted through a quest's `rewardItems`.
+
+**Signature and relic weapons do not count toward the ten.** A companion's signature (`weapon_first_motion`,
+`weapon_borrowed_time`, `armor_sworn_aegis`) and a general's relic (`weapon_forsworn_pike`,
+`weapon_gralloch_knife`) are tagged `signature` / `relic` and sit outside their family's roster entirely —
+so authoring the signatures still owed to Kaya, Ren and Gyeom cannot make a family overflow.
+
+The rank ladder is a property of a **shelf**, not of a family. The dagger family spans two vendors, so it
+climbs 1/3/4 on the rogue's and 1/4 on the alchemist's — and each of those starts at 1 because
+`tests/class_spec.lua` refuses a vendor that cannot arm a newcomer.
+
 The forged-metal families all follow it. `weapon_wand`, `weapon_staff`, `weapon_censer` and
 `armor_buckler` are the deliberate exceptions — a wand, a staff and a censer are foci rather than
 forged blades ("Iron Censer" would be lying about the object), and a buckler is a named kind of shield
@@ -86,58 +111,251 @@ class are different things that happen to share a word, and only the first is an
 
 The corollary of the contract: if a weapon's only claim over `iron_<family>` is bigger numbers, it is
 not a weapon, it is a `+n`. That is what the forge is for. Every named weapon therefore owes an
-**extra** — a mechanic its base counterpart does not have:
+**extra** — a mechanic its base counterpart does not have.
 
-| Weapon | Family | Its extra over the base |
+The rosters below are the whole catalog. **S** is a shelf weapon (with its `repRank`); **Q** is
+quest-only. Each family's base weapon is rank 1 and listed first; signature and relic weapons sit
+outside the count and are not listed here.
+
+### `sword` — knight
+| | Weapon | Its extra over the base |
 |---|---|---|
-| `weapon_riposte_blade` | sword | Swaps Parry for **Riposte** — the blow is *negated*, not traded, and answered anyway. |
-| `weapon_demon_bane` | sword | Its blows carry the `holy` tag, which demonic flesh resists in the negative. |
-| `weapon_crescent_blade` | sword | Looses the cut instead of landing it: a **3-tile line** of `magical` damage down the aimed direction, so the blade never reaches what it kills and armor never gets a say. Paid for out of **two pools at once** (see below) — the first weapon in the game that is. |
-| `weapon_butchers_wedge` | axe | **`frenzy`**: every extra body in the arc raises what all of them take. Poor against one foe — the crowd is its damage stat. |
-| `weapon_crimson_greataxe` | axe | **`lifesteal`**: drinks a third of everything the arc opens, so it heals most when most outnumbered. |
-| `weapon_kingsblood_dagger` | dagger | Half the swing again through a foe **already bleeding**, and its own wound runs deeper (5, not 3). It takes what is already open. |
-| `weapon_cutpurse_knife` | dagger | **Drains stamina** into the rogue. Stamina is what buys a foe's reflexes, so a few cuts in, its guard stops answering — for everyone. Worthless against a beast that had none. |
-| `weapon_hornbow_of_the_hunt` | bow | Every tile past the point-blank band adds a fifth of the shot. It wants the whole field between you and the kill. |
-| `weapon_parasitic_staff` | staff | Siphons mana on the **hit**, so Focus is its floor rather than its only recourse. |
-| `weapon_crozier` | staff | `waitBehavior.covers`: Focus also feeds mana to every **adjacent ally**. A mage's staff answers *my* mana ran out; this one answers the party's. |
-| `weapon_intercessors_staff` | staff | Names one ally at the start of battle, and every blow it lands **mends that ally** instead of the priest. Lifesteal pointed at somebody else — and the only healer in the game that heals by attacking. |
-| `weapon_emberwand` | wand | Its bolt **leaves the ground alight**. Asks where the enemy is willing to stand rather than how hard it can hit — and the fire is unsided, so it is a wall you must be willing to stand behind. |
-| `weapon_vitriol_wand` | wand | Lays **Acid** (−6 to both defenses). Declines to out-damage armor and removes it instead, so its damage stat is the rest of your party. Fire it first. |
-| `weapon_envenomed_kris` | dagger | Bleed **and** Poison. Bleed taxes moving, Poison taxes waiting — together they close the door that standing still used to open. |
-| `weapon_apothecarys_lancet` | dagger | The one dagger that **does not bleed** — it delivers Poison instead. A deviation, and deliberately so: Bleed is a question the victim answers by standing still, and Poison is not a question. |
-| `weapon_censer_of_ashes` | censer | A **hostile** cloud: it chokes the smoke instead of blessing it, so the walk toward the enemy is itself the attack. |
-| `armor_oathkeeper_shield` | shield | `waitBehavior.covers`: bracing also braces every **adjacent ally**. Where you plant decides who else gets the wall. |
-| `weapon_quarrys_answer` | bow | **Shoots back.** The first weapon-borne counter that is not a blade — so the reach rule reads inverted: it answers what a sword never can, and its own `minRange` is a dead zone for the reply. Close on it and the reflex switches off. |
-| `weapon_stillhunter` | bow | The only weapon carrying the **Overwatch** wait swap — the stance stops costing a grid cell (`utility_overwatch_scope`) and starts costing arrows: its curve is under iron's at every level. |
-| `weapon_hailfall_longbow` | longbow | Looses **five arrows on five random tiles** of a 2-radius spread instead of one aimed shaft. Buys coverage, gives up the promise — and hits your own line, since falling arrows are not aimed. |
-| `weapon_slipknife` | dagger | **Slipstep**: struck from any range, it arrives beside the attacker and cuts. The one reflex reach does not gate — what gates it is open ground next to whoever swung. |
-| `weapon_mailpiercer` | spear | The line lands **`raw`** (no defense, no resist) and the **far** tile is left **Halted**. A bad spear against the unarmoured, and increasingly good against a wall. |
-| `weapon_marching_standard` | spear | The thrust **plants a standard** — Rally ground for as long as the pole stands — when none of its own is up. Raised for free by a swing rather than by a turn, and it never silences the weapon that raised it (`noClaim`). |
-| `weapon_turning_year` | wand | **Alternates fire and frost**, each half setting up the other (Frozen is brittle to fire) — a two-cast combo one caster plays alone. Its bearer can neither Burn nor Freeze. |
-| `armor_bulwark_shield` | shield | A **reflex** rather than a stance: `trait_shield_shove` drives a melee attacker two tiles back. Deals nothing — the wall, the fire and the trap behind them do the talking. |
+| S1 | `weapon_iron_sword` | the base: parries, one-handed |
+| S2 | `weapon_riposte_blade` | Swaps Parry for **Riposte** — the blow is *negated*, not traded, and answered anyway. |
+| S3 | `weapon_demon_bane` | Its blows carry the `holy` tag, which demonic flesh resists in the negative. |
+| S4 | `weapon_crescent_blade` | Looses the cut instead of landing it: a **3-tile line** of `magical` damage down the aimed direction, so the blade never reaches what it kills and armor never gets a say. Paid for out of **two pools at once**. |
+| S4 | `weapon_duelists_edge` | Its parry **binds instead of cutting** (`status_duelbound`): whoever swung cannot walk away from the exchange. Deals nothing — it answers a skirmisher's whole plan. |
+| Q | `weapon_wardens_tongue` | Every parry also **braces the allies beside you**. `covers` spoken through a reflex: the enemy chooses when it fires. |
+| Q | `weapon_unclosing_edge` | Its parry deals nothing and opens a wound that **cannot be healed** (`status_unclosing_wound`). Takes the enemy healer off one body. |
+| Q | `weapon_sunderers_answer` | Its parry **silences every trait and reflex** the attacker carries (`status_sundered`). Unplugs one side of an answerer's duel. |
+| Q | `weapon_splitglass_saber` | Its parry cuts back **and raises Splitglass on the bearer** — answering is also warding, until the escalating price empties the pool. |
+| Q | `weapon_lending_blade` | The swing **moves armour**: `status_given_guard` off the target, `status_lent_guard` onto an ally beside you. Worthless fighting alone. |
 
-The two named shields are the axis worth reading together, and they are the same pattern the two axes
-and the two censers already set: one family, one base, two named items pulling it in opposite
-directions. The Oathkeeper spreads its brace outward to the line; the Bulwark keeps everything to
-itself and spends it on the one foe that closed.
+### `greatsword` — fighter
+| | Weapon | Its extra over the base |
+|---|---|---|
+| S1 | `weapon_iron_greatsword` | the base: channels 2, heaviest single-tile hit |
+| S2 | `weapon_headsmans_cleaver` | **Half the telegraph** (channel 1), and full weight only into a foe under half health. The closer to Saber's opener. |
+| S3 | `weapon_bellowing_edge` | The impact **taunts** every foe within two tiles onto you — the family's telegraph turned into a plan for the next one. |
+| S4 | `weapon_sealed_hour` | `status_sealed_hour`: all damage and healing on that body is **held, then settles at once**. Wastes the enemy healer; terrible for finishing. |
+| S4 | `weapon_avalanche` | The only greatsword whose wind-up **length is chosen**: two extra ticks widen the fall from one tile to a 3-wide arc. |
+| Q | `weapon_long_count` | Harder for **every turn taken this battle** (`turnTaken`). The deliberate opposite of the First Motion — it pays for outlasting a fight, not opening one. |
+| Q | `weapon_whitening` | The blow lands **`magical`**: the heaviest hit in the game, aimed at the stat plate armour never raised. |
+| Q | `weapon_the_stillness` | The landing tile becomes `hazard_stillness` — a hole in the enemy turn order that is a fact about a *square*, so nothing can cleanse it. |
+| Q | `weapon_kingsfall` | `steadfast`: **nothing breaks the wind-up.** The control still lands in full — only the cancellation is refused. |
+| Q | `weapon_given_hour` | The blow **hands the turn it cost to an adjacent ally** (`grantExtraAction`). The only weapon that gives burst to somebody else. |
+
+### `axe` — fighter
+| | Weapon | Its extra over the base |
+|---|---|---|
+| S1 | `weapon_iron_axe` | the base: cleaves a 3-wide front arc |
+| S2 | `weapon_tithe_axe` | Every body the arc opens **pays the company coin** (`Combat.bounty`). The crowd is the payroll. |
+| S3 | `weapon_butchers_wedge` | **`frenzy`**: every extra body in the arc raises what all of them take. Poor against one foe — the crowd is its damage stat. |
+| S4 | `weapon_crimson_greataxe` | **`lifesteal`**: drinks a third of everything the arc opens, so it heals most when most outnumbered. |
+| S4 | `weapon_splitting_maul` | The arc leaves everything **Conjoined** — each of them takes half of every wound the others suffer. Turns the party's single-target damage into area damage. |
+| Q | `weapon_reapers_due` | Harder for **every foe already killed this battle** — and an axe is the weapon that fills that counter fastest. |
+| Q | `weapon_carrion_axe` | The swing **eats corpses** in its arc and mends the wielder. Pays out of the dead, so it works on an empty swing. |
+| Q | `weapon_hollow_arc` | The arc lands **`magical`** *and* leaves `status_hollowed` — so it sets itself up, and makes your own knight's sword useless on those bodies. |
+| Q | `weapon_ledgemans_axe` | Knockback on the **outer two tiles only**: one swing splits a rank of three and leaves the centre standing alone. Manufactures a duel. |
+| Q | `weapon_wolfs_portion` | **Inverted frenzy** ⚠️: devastating into one body, falling off hard for every extra. The family's duel weapon, and a stated deviation. |
+
+### `spear` — knight
+| | Weapon | Its extra over the base |
+|---|---|---|
+| S1 | `weapon_iron_spear` | the base: skewers a 2-tile line |
+| S2 | `weapon_boar_spear` | The crossbar: the **near** tile is Rooted and cannot back off the point. |
+| S3 | `weapon_exposing_pike` | The line is left **Exposed** (+8 from every pierce hit) — and pierce is what every spear, bow and half the daggers already carry. Its damage stat is the party. |
+| S4 | `weapon_mailpiercer` | The line lands **`raw`** (no defense, no resist) and the **far** tile is left **Halted**. |
+| S4 | `weapon_marching_standard` | The thrust **plants a standard** — Rally ground for as long as the pole stands. Raised for free by a swing, and it never silences the weapon that raised it (`noClaim`). |
+| Q | `weapon_second_rank` | Reaches a **third tile while an ally stands directly behind you**. The pike drill as a weapon — the only item that reads the tile at your back. |
+| Q | `weapon_disarming_pike` | Both tiles are **Disarmed**: no weapon usable, bare fists still fine. Worthless against a beast, which is the honest reading of a disarm. |
+| Q | `weapon_knell_point` | The **far** tile is marked for death (`status_knell`). Must be thrust *through* somebody, so the enemy's own front rank gates it. |
+| Q | `weapon_tidesbreak` | Soaks the line (`water`, `status_wet`), drives it back a pace, and **the bearer steps into the gap** — the only weapon that advances its wielder. |
+| Q | `weapon_sworn_lance` | Both tiles are **sworn to each other**: either that ends a turn apart bleeds for it. Acedia's rule, taken off her — the line is what pairs them. |
+
+### `mace` — knight
+| | Weapon | Its extra over the base |
+|---|---|---|
+| S1 | `weapon_iron_mace` | the base: shoves 2 tiles, collisions hurt |
+| S2 | `weapon_bell_hammer` | One tile of shove, **double collision damage**. Worthless in the open, enormous against a wall. |
+| S3 | `weapon_wetstone_mace` | Lands `lightning` and leaves the target **Wet** — so its own second swing is worth six more. Self-comboing. |
+| S4 | `weapon_gathering_bell` | **Drags them toward you** instead of away. Everything the party prices around adjacency wants the enemy gathered. |
+| S4 | `weapon_long_fall` | **Four tiles** of shove and almost no damage. Pure board control; the party has to be built to collect. |
+| Q | `weapon_shepherds_crook` | Shoves an **ally** two tiles and deals nothing to anyone ⚠️. Movement is the scarcest thing in this game and nothing else gives it back. |
+| Q | `weapon_debt_bell` | The collision hits **everything adjacent to where they land**. The body is the ordnance; the aim decides who pays. |
+| Q | `weapon_rimebell` | The tiles they are **dragged across** freeze over. The only zone painted with somebody else's body. |
+| Q | `weapon_answering_bell` | Carries `trait_shield_shove`: **shoves whoever strikes it**. A body nobody can stay next to. |
+| Q | `weapon_suspension_mace` | `status_suspended` instead of a shove — displacement in **time**. Your party cannot touch it either. |
+
+### `hammer` — fighter
+| | Weapon | Its extra over the base |
+|---|---|---|
+| S1 | `weapon_iron_hammer` | the base: stuns, ponderous (speed 7) |
+| S2 | `weapon_tinkers_maul` | **Strips the brace and the wards** (Defending, both barriers, Splitglass) before it stuns. The can-opener for a shield wall. |
+| S3 | `weapon_frostfall_hammer` | **Freezes instead of stunning** — and Freeze is +6 to `impact`, which this hammer is. Its own second swing is the payoff. |
+| S4 | `weapon_sleepers_maul` | **Sleep** instead of a stun: far longer, and broken the moment anyone hits it. Asks the whole party not to. |
+| S4 | `weapon_slow_verdict` | **Speed 10**, the slowest swing in the game, for double stun duration. The family's bargain at full volume. |
+| Q | `weapon_anvil_of_the_ninth` | A huge stun that also leaves the **wielder Halted**. Halted still moves and still answers, which is where the dead beat goes. |
+| Q | `weapon_mired_maul` | The impact tile becomes `hazard_quicksand`: makes them late, then makes being late expensive. |
+| Q | `weapon_bellfounders_hammer` | The **only AoE stun** — full on the target, a shorter one on the ring. The axe's argument imported into the hammer's. |
+| Q | `weapon_unspent_blow` | **Banks** its stun; every third swing spends all three at once, `raw`. The hammer's answer to armour. |
+| Q | `weapon_tempo_debt` | No stun — it **re-opens your own turn** instead ⚠️. The family's trade run backwards. |
+
+### `dagger` — rogue / alchemist
+| | Weapon | Its extra over the base |
+|---|---|---|
+| S1 | `weapon_iron_dagger` | the base: quick, and it bleeds |
+| S1 | `weapon_apothecarys_lancet` | The one dagger that **does not bleed** — Poison instead. Bleed is a question the victim answers by standing still; Poison is not a question. |
+| S3 | `weapon_cutpurse_knife` | **Drains stamina** into the rogue. Stamina buys a foe's reflexes, so its guard stops answering — for everyone. |
+| S4 | `weapon_envenomed_kris` | Bleed **and** Poison. One taxes moving, the other taxes waiting. |
+| S4 | `weapon_throughline` | The thrust **carries into the tile behind**, scaling per adjacent dagger. A dagger that refuses to be single-target. |
+| Q | `weapon_kingsblood_dagger` | Half the swing again through a foe **already bleeding**, and its own wound runs deeper (5, not 3). |
+| Q | `weapon_slipknife` | **Slipstep**: struck from any range, it arrives beside the attacker and cuts. The one reflex reach does not gate. |
+| Q | `weapon_thin_place` | The strike lands **`magical`** and the Bleed stays **`raw`** — two different defenses in one swing, on one pool. |
+| Q | `weapon_nightjar` | A **kill** makes the rogue Unseen until its next turn. Kill, vanish, cross the field, kill. |
+| Q | `weapon_mired_kris` | Bleed **and Mired**: walking costs blood and acting costs double. There is no correct move left. |
+
+### `bow` — hunter
+| | Weapon | Its extra over the base |
+|---|---|---|
+| S1 | `weapon_iron_bow` | the base: ranged, `requiresSight`, `minRange` 2 |
+| S2 | `weapon_limning_bow` | Leaves the target **Limned** — targetable however well it hides. Stops the assassin vanishing afterwards. |
+| S3 | `weapon_stillhunter` | The only weapon carrying the **Overwatch** wait swap — the stance stops costing a grid cell and starts costing arrows. |
+| S4 | `weapon_quarrys_answer` | **Shoots back.** The reach rule inverted: its own `minRange` is a dead zone for the reply, so closing switches the reflex off. |
+| S4 | `weapon_hornbow_of_the_hunt` | Every tile past the point-blank band adds a fifth of the shot. It wants the whole field between you and the kill. |
+| Q | `weapon_witchlight_bow` | Leaves **lit ground** where the shaft lands: anti-stealth as area denial, and it outlives whoever was standing there. |
+| Q | `weapon_corvids_bow` | **Blinds**: the target's own abilities stop reaching. The only counter in the game to range as such. |
+| Q | `weapon_struck_ledger` | **Prices** the target — lit up, and worth coin when it falls. Its output is measured in the campaign layer. |
+| Q | `weapon_windward` | Hardest at the **edge of its dead zone**, falling off with distance ⚠️. The exact inverse of the Hornbow. |
+| Q | `weapon_unravelling_shaft` | Leaves `hazard_unravelling` under the target — the mage's setup, laid from the back line several turns early. |
+
+### `longbow` — hunter
+| | Weapon | Its extra over the base |
+|---|---|---|
+| S1 | `weapon_iron_longbow` | the base: channels, range 5, `minRange` 2 |
+| S2 | `weapon_wardens_longbow` | The **draw's depth is chosen** (`windup`) — up to three extra ticks, each adding a quarter of the shot. |
+| S3 | `weapon_piercing_draw` | The shaft runs a **3-tile line** and lands **`raw`**. The hunter's answer to heavy infantry in a corridor. |
+| S4 | `weapon_hailfall_longbow` | **Five arrows on five random tiles** of a 2-radius spread. Buys coverage, gives up the promise — and hits your own line. |
+| S4 | `weapon_long_silence` | **Silences** at five tiles. Not an interrupt — a way of deciding their *second* spell does not happen. |
+| Q | `weapon_held_breath` | `channelStatus`: **drawing makes the archer Unseen**, through the exact turn the enemy would have used to punish the draw. |
+| Q | `weapon_sunfall` | Lands burning and leaves `hazard_burning_halo` — the one zone that scorches *and* blinds, so a rank in it stops shooting. |
+| Q | `weapon_knell_shaft` | **Marks for death** at five tiles. Ignores the health bar entirely, and the answer is a cleanse — a turn their healer spends not healing. |
+| Q | `weapon_deadfall_bow` | The draw **arms a trap** instead of loosing. Resolves against a prediction rather than a body. |
+| Q | `weapon_last_word` | Far harder for **every ally who has fallen** (`allyDown`). The one weapon that gets stronger as the run goes wrong. |
+
+### `wand` — mage / alchemist
+| | Weapon | Its extra over the base |
+|---|---|---|
+| S1 | `weapon_wand` | the base: ranged magical, no `minRange` |
+| S2 | `weapon_emberwand` | Its bolt **leaves the ground alight**. Asks where the enemy is willing to stand — and the fire is unsided. |
+| S3 | `weapon_vitriol_wand` | Lays **Acid** (−6 to both defenses). Declines to out-damage armor and removes it instead. Fire it first. |
+| S4 | `weapon_turning_year` | **Alternates fire and frost**, each half setting up the other. Its bearer can neither Burn nor Freeze. |
+| S4 | `weapon_conductor` | **Arcs to every soaked body on the field.** Soaks nobody itself — it collects on the knight's Wetstone Mace and Tidesbreak. |
+| Q | `weapon_unravelling_wand` | The bolt is **`physical`** — no ward turns it — and leaves `status_unravelled` for every spell that follows. |
+| Q | `weapon_swineherds_wand` | **Polymorph**: it can walk, and it can do nothing else. The hardest single piece of control in the game. |
+| Q | `weapon_sealed_ward_wand` | Aimed at an **ally** ⚠️, deals nothing: seals them so the next single-target spell at them is refused outright. |
+| Q | `weapon_reflecting_wand` | Aimed at an **ally**: the next single-target spell at them **rebounds onto its caster**. The greedy read where the Sealed Ward is the safe one. |
+| Q | `weapon_second_utterance_wand` | Lets one ally's next **channelled** working resolve instantly. Deletes the telegraph a greatsword or longbow pays. |
+
+### `staff` — mage / priest
+| | Weapon | Its extra over the base |
+|---|---|---|
+| S1 | `weapon_staff` | the base: Wait → Focus |
+| S2 | `weapon_parasitic_staff` | Siphons mana on the **hit**, so Focus is its floor rather than its only recourse. |
+| S3 | `weapon_crozier` | `waitBehavior.covers`: Focus also feeds mana to every **adjacent ally**. A mage's staff answers *my* mana ran out; this one answers the party's. |
+| S4 | `weapon_intercessors_staff` | Names one ally at the start of battle, and every blow it lands **mends that ally**. The only healer in the game that heals by attacking. |
+| S4 | `weapon_warding_staff` | `waitBehavior.status`: Focus also raises a **Magical Barrier**. Answers the turn a mage is most likely to die on. |
+| Q | `weapon_graven_circle_staff` | `waitBehavior.hazard`: Focus **cuts sigils** into the ground. Gives a caster a position worth defending — and one they can be driven off. |
+| Q | `weapon_overchannelled_staff` | `waitBehavior.toll`: **double the mana, paid in blood.** Stops the mage running out of mana and starts it running out of health. |
+| Q | `weapon_iron_crook` | Its strike is **`physical`/`impact`** ⚠️ — no ward turns it and no silence stops it. The Arcanum's answer to being gagged. |
+| Q | `weapon_renewal_staff` | Focus lays `hazard_renewal`: mana for you, **health for whoever stands there**, including people who arrive later. |
+| Q | `weapon_gag_crook` | `waitBehavior.afflicts` — `covers` pointed **outward**: Focus cuts every adjacent enemy off from magic. The one hostile wait swap. |
+
+### `censer` — priest
+| | Weapon | Which cloud it walks |
+|---|---|---|
+| S1 | `weapon_censer` | the base: `hazard_incense`, allies Blessed |
+| S2 | `weapon_censer_of_the_mustered_field` | `hazard_muster` — allies braced *and* enemies open. The only zone that does both jobs from one square. |
+| S3 | `weapon_censer_of_ashes` | A **hostile** cloud (`hazard_choking`): it chokes the smoke instead of blessing it, so walking toward the enemy is itself the attack. |
+| S4 | `weapon_censer_of_cold_light` | `hazard_witchlight` — a walking lamp. Anti-stealth that does not have to target what it reveals. |
+| S4 | `weapon_censer_of_the_red_hour` | `hazard_bloodsong` — allies drink back what they deal. Rewards a priest who pushes into the melee. |
+| Q | `weapon_drowned_censer` | `hazard_rain` — the **unsided** one. Worth everything beside the Conductor and actively harmful beside a fire mage. |
+| Q | `weapon_censer_of_the_grasping_hollow` | `hazard_grasping_hollow` — ground that walks *and* holds. Nobody can disengage from the least threatening body on the board. |
+| Q | `weapon_censer_of_the_unravelling` | `hazard_unravelling` — a mobile amplifier for the party's mage, centred on a priest who is therefore always standing in it. |
+| Q | `weapon_sealed_censer` | `hazard_gagging_storm` — a carried anti-caster bubble that cannot be resisted or cleansed. Turns off your own mage too. |
+| Q | `weapon_censer_of_the_hollow_dark` | `hazard_darkness` — a walking wall against every `requiresSight` weapon, in both directions. Its strike is `dark`. |
+
+### `shield` — knight *(lives in `data/items/armor/`)*
+| | Weapon | Its extra over the base |
+|---|---|---|
+| S1 | `armor_buckler` | the base: Wait → Defend |
+| S2 | `armor_tower_shield` | The deepest brace on the shelf, and it **roots the holder**. A commitment to the square rather than the turn. |
+| S3 | `armor_bulwark_shield` | A **reflex** rather than a stance: `trait_shield_shove` drives a melee attacker two tiles back. Deals nothing — the wall, the fire and the trap behind them do the talking. |
+| S4 | `armor_oathkeeper_shield` | `waitBehavior.covers`: bracing also braces every **adjacent ally**. Where you plant decides who else gets the wall. |
+| S4 | `armor_shared_bulwark` | Lays `hazard_shared_bulwark`: covered **ground**, so allies who arrive later are covered too. |
+| Q | `armor_martyrs_shield` | `coversStatus`: bracing takes **half of every wound your neighbours suffer**. The furthest `covers` can be pushed. |
+| Q | `armor_reflecting_shield` | Bracing is a **mirror** — the next single-target physical blow rebounds. The shield-side pair to the Reflecting Wand. |
+| Q | `armor_given_guard` | Bracing **gives the guard away**: `lent_guard` to every ally, `given_guard` on yourself. The only shield that leaves the holder worse off. |
+| Q | `armor_kept_wound_shield` | Bracing **swallows** the next few blows and gives it all back at once. Converts an unsurvivable burst into a healing check. |
+| Q | `armor_aegis_unbidden` | The only shield that braces against **magic** (`status_aegis` + a `magical` resist). The family's blind spot, filled. |
 
 A good extra changes *how the weapon is played*, not how big its number is. The Hornbow inverts a bow's
 usual pull toward the edge of its band; the Wedge turns being surrounded from a danger into the point.
-Prefer that over a flat bonus.
+Prefer that over a flat bonus. ⚠️ marks a **deliberate deviation** from the family contract — each of
+those files says so in its own header, the way `weapon_riposte_blade` explains why it is the one sword
+that does not parry.
 
 Overlapping an existing charm is **fine** — a weapon may carry `lifesteal` natively even though the
 Vampiric Strike charm grants it, and may apply statuses on hit. They stack rather than compete (a
-Crimson Greataxe with a Vampiric Strike beside it drinks at 83%). The two axes above are the pattern
-worth copying: one family, one base, and two named weapons pulling it in opposite directions —
-`weapon_butchers_wedge` hits a crowd harder, `weapon_crimson_greataxe` lives through one.
+Crimson Greataxe with a Vampiric Strike beside it drinks at 83%).
 
-The two censers are that same pattern: `weapon_censer` blesses the ground it walks and
-`weapon_censer_of_ashes` chokes it. Both are the Cathedral's — the censer family belongs to one shelf
-and no other (see [classes.md](classes.md)) — so the family's two directions say something about *lust*
-rather than about two classes: the object never changes, only the voice it is swung in.
+**Pairs are the unit of design here, not weapons.** The pattern the two axes set — one family, one base,
+two named items pulling it in opposite directions — is now the whole catalog's shape, and the most useful
+ones cross shelves:
 
-`weapon_crozier` and `armor_oathkeeper_shield` are worth reading together too: both spend
-`waitBehavior.covers`, so one word means "and everyone beside you" on either half of the wait swap.
+- `armor_oathkeeper_shield` spreads its brace outward; `armor_bulwark_shield` keeps everything to itself
+  and spends it on the one foe that closed.
+- `weapon_censer` blesses the ground it walks and `weapon_censer_of_ashes` chokes it. Both are the
+  Cathedral's — the censer family belongs to one shelf and no other (see [classes.md](classes.md)) — so
+  the family's two directions say something about *lust* rather than about two classes: the object never
+  changes, only the voice it is swung in.
+- `weapon_crozier` and `armor_oathkeeper_shield` both spend `waitBehavior.covers`, so one word means "and
+  everyone beside you" on either half of the wait swap — and `weapon_gag_crook` is that word aimed at the
+  enemy instead.
+- `weapon_first_motion` pays for opening a fight and `weapon_long_count` for outlasting one; the same
+  arithmetic with the sign flipped, on a signature and a shelf weapon.
+- `weapon_hornbow_of_the_hunt` wants the whole field between you and the kill; `weapon_windward` wants
+  none of it.
+- `weapon_wetstone_mace` (knight) soaks and shocks alone, `weapon_tidesbreak` (knight) soaks a rank and
+  does nothing with it, `weapon_drowned_censer` (priest) soaks whatever it walks past, and
+  `weapon_conductor` (mage) soaks nobody and collects on all three. One combo, four shelves.
+- `weapon_sealed_hour` schedules a kill and `armor_kept_wound_shield` schedules a rescue, off the same
+  hold-it-then-settle machinery.
+
+### Weapons that change school
+
+A family's school is a default, not a law. Six weapons cross it deliberately, and each states so in its
+header. What they buy is the same in every case — the defense the target actually stacked stops
+applying — and what they cost is everything that half of the game brings with it.
+
+| Weapon | Family | Lands as | What it dodges | What it now fears |
+|---|---|---|---|---|
+| `weapon_crescent_blade` | sword | `magical` | armor, `resist physical` | Silence, wards, `resist magical` |
+| `weapon_whitening` | greatsword | `magical` | armor | as above |
+| `weapon_hollow_arc` | axe | `magical` | armor — and it applies `status_hollowed`, so it sets *itself* up | as above |
+| `weapon_thin_place` | dagger | `magical` strike, `raw` bleed | both, in one swing | a ward stops the stab but never the wound |
+| `weapon_unravelling_wand` | wand | `physical` | wards, barriers, `resist magical` | armor, `resist physical` |
+| `weapon_iron_crook` | staff | `physical`/`impact` | wards, and Silence entirely | armor |
+
+The line every one of them draws: what deviates is the school of the **wound**, never of the **work**. A
+Whitening still costs stamina and an Unravelling Wand still costs mana — so a Silence still gags the wand
+and never the greatsword, and `Combat.isMagicItem` keeps reading the price rather than the tags.
+
+The elemental tags are the softer version of the same move. `weapon_frostfall_hammer` (`ice`) freezes and
+then shatters its own ice, because Freeze is +6 against `impact`; `weapon_wetstone_mace` (`lightning`)
+soaks and then conducts; `weapon_sunfall` (`fire`) and `weapon_censer_of_the_hollow_dark` (`dark`) pick up
+whatever the target's armor happens to resist. A hit tag is free to declare and every one of them is a
+line in somebody's `resist` table.
 
 ## Keywords
 
@@ -155,6 +373,9 @@ it for free. Prefer one over hand-rolling the same logic in an `effect`.
 | `requiresSight` | Needs a clear line (`Combat.hasLineOfSight`); terrain cover blocks it. |
 | `requiresAdjacent = { type, tag }` | Only usable with a matching item beside it in the 3×3 grid. |
 | `consumesItem` | Spends one of the stack on use. |
+| `windup = { min, max }` | The channel's length is **chosen at cast**, between `min` and `max` extra ticks; the effect reads `fx.windup`. `weapon_avalanche` spends it on footprint, `weapon_wardens_longbow` on damage. |
+| `channelStatus = id` | A status the caster gains **on commit** and carries through the wind-up. The half an `effect` cannot reach — an effect runs when the cast resolves, and this has to land before the enemy's turn to punish the tell (`weapon_held_breath`). |
+| `steadfast` | The wind-up **cannot be interrupted**. The control still lands in full; only the cancellation is refused, so a stun aimed at it is insufficient rather than wasted (`weapon_kingsfall`). |
 
 ### What a neighbouring item can do to a cast
 
@@ -250,6 +471,22 @@ the grid and first-in-inventory wins. The payoff key (`mana` / `defense` / `stam
 `duration` / `amount`) scales with the item's upgrade level; `speed` deliberately does not, since an
 upgrade should never buy back tempo. `covers` spreads the payoff to adjacent allies and reads the same
 on both halves — a wall for `armor_oathkeeper_shield`, mana for `weapon_crozier`.
+
+A stance has no `effect` to hook, so a named staff or shield whose extra lands on the *meditation* or the
+*brace* has nowhere else to put it. Five more declarative keys cover that, and they read the same on both
+halves of the swap:
+
+| Key | Meaning | Where |
+|---|---|---|
+| `status` | What the swapper gains besides the ordinary payoff. | `weapon_warding_staff` (a ward), `armor_tower_shield` (a root — a *cost*, not a gift), `armor_aegis_unbidden` |
+| `coversStatus` | The same, handed to adjacent allies rather than the holder. `covers` spreads the payoff's **size**; this spreads its **kind**. | `armor_martyrs_shield`, `armor_given_guard` |
+| `afflicts` | `covers` pointed **outward**: applied to every adjacent *enemy*. The one hostile wait swap. | `weapon_gag_crook` |
+| `hazard = { id, radius, … }` | Ground laid under the swapper. It **plants and leaves it** — deliberately not `incense`, since a censer's cloud is lifted and re-laid on every step, and that lifting is exactly what separates the two families. | `weapon_graven_circle_staff`, `weapon_renewal_staff` |
+| `toll = { stat, amount }` | A resource the swap **spends**, for a stance that trades one pool for another. A drain, not damage: nothing mitigates it and it cannot kill. | `weapon_overchannelled_staff` |
+
+`toll` deliberately does *not* scale with the forge while its payoff does, so upgrading makes the bargain
+better rather than merely bigger — the decision a weapon asks should get easier to answer correctly, never
+harder.
 
 A swap is **not a weapon family**, and two of the four are granted by plain utility charms
 (`utility_focus_stone`, `utility_overwatch_scope`, `utility_hunting_horn`). Reach for a charm before a
@@ -365,9 +602,17 @@ a free always-on mitigation would be untouchable.
    are holding is a `+n` of the base weapon, and the forge already sells that. Reach for a keyword
    first; hand-roll in the `effect` only when no keyword fits.
 4. Author `damage` as a per-level curve over levels 0–10 (see `models/item.lua`'s
-   `Item.resolveLevel`); `class` + `repRank` + `price` decide which vendor shelf stocks it.
-5. Run `& "E:\LOVE\lovec.exe" . test` — the sweep in `tests/weapon_spec.lua` will tell you if you
+   `Item.resolveLevel`).
+5. Decide which half of the ten it is:
+   - **Shelf** — set `class`, `price` and `repRank` (1–4; rank 4 is the vendor ceiling).
+   - **Quest-only** — set `class` and **no `price`**. The missing price is the whole mechanism: it keeps
+     the weapon out of the spoils pool (`models/spoils.lua`), while `class` still tallies it toward
+     growth. Grant it from a quest's `rewardItems`.
+   - **A signature or a general's relic** — tag it `signature` / `relic`, and it sits outside the
+     family's ten entirely.
+6. Run `& "E:\LOVE\lovec.exe" . test` — the sweep in `tests/weapon_spec.lua` will tell you if you
    dropped the family's mechanic, and there is a case per named weapon pinning its extra.
 
 Deviating from the contract is fine when it is the point of the weapon — but say so in a comment,
-the way `weapon_riposte_blade` explains why it is the one sword that does not parry.
+the way `weapon_riposte_blade` explains why it is the one sword that does not parry. The catalog's
+current deviations are marked ⚠️ in the rosters above.

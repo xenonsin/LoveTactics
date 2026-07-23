@@ -29,7 +29,7 @@ return {
     tags = { "arcane", "magical" },
     class = "mage",
     price = 600,
-    repRank = 5,
+    repRank = 4,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

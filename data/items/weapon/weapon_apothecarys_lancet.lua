@@ -20,6 +20,12 @@ return {
     tags = { "dagger", "pierce", "physical", "poison", "melee" },
     class = "alchemist",
     price = 90,
+    -- Rank 1, and it must stay there: the Lancet is the ALCHEMIST shelf's entry weapon, and
+    -- tests/class_spec.lua refuses a vendor that cannot arm a newcomer. The rank ladder is a property of
+    -- a shelf, not of a family -- the dagger family spans two shelves, so it climbs 1/3/5 on the rogue's
+    -- (Iron Dagger, Cutpurse, Throughline) and 1/4 on the alchemist's (this, Envenomed Kris), and each
+    -- of those starts at 1 because `repRank` gates standing with one vendor rather than mastery of a
+    -- weapon type.
     repRank = 1,
     activeAbility = {
         target = "enemy",

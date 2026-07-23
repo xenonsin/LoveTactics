@@ -24,9 +24,11 @@ return {
     sprite = "assets/items/slipknife.png",
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
+    -- Quest-only: `class` with no `price`, so it tallies toward rogue growth but no vendor stocks it and
+    -- it can never fall out of the spoils pool (models/spoils.lua). Slipstep is a signature-grade reflex
+    -- -- the one counter in the game that distance does not gate -- and a thing that answers a bowshot by
+    -- appearing beside the archer should be earned rather than bought.
     class = "rogue",
-    price = 460,
-    repRank = 4,
     traits = { "trait_slipstep" }, -- the whole of the extra; see the file for why it costs what it costs
     activeAbility = {
         target = "enemy",

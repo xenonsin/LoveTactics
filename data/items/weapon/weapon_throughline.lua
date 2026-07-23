@@ -28,7 +28,7 @@ return {
     tags = { "dagger", "pierce", "physical" },
     class = "rogue",
     price = 340,
-    repRank = 3,
+    repRank = 4, -- the rogue shelf's top rung, now that the Kingsblood and Slipknife are quest-only
     activeAbility = {
         target = "enemy",
         range = 1,

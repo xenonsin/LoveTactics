@@ -15,7 +15,11 @@ return {
     flavor = "The stroke that opens a carcass to be dressed. On her it never stops at the carcass.",
     sprite = "assets/items/gralloch_knife.png",
     type = "weapon",
-    tags = { "dagger", "pierce", "physical", "melee" },
+    -- `relic`, like every general's weapon (armor_mail_of_the_unappeased, weapon_forsworn_pike): it says
+    -- in the data what this file's header has always said in prose, which is that this is Gula's and not
+    -- part of the dagger family's ten (docs/weapons.md). Nothing reads the tag mechanically -- it is what
+    -- keeps a sin's weapon out of a count of the shelf.
+    tags = { "dagger", "pierce", "physical", "melee", "relic" },
     activeAbility = {
         target = "enemy",
         range = 1,
