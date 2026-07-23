@@ -232,6 +232,9 @@ function Party.new(opts)
         h = bottom - contentY,
         char = self.chars[self.charIndex],
         fonts = { head = self.headFont, body = self.bodyFont, small = self.smallFont, tiny = self.tinyFont },
+        -- Which rule list the Tactics tab edits: the player's overlay in-game (nil -> the editor's own
+        -- default), or the blueprint's `ai` directly in the debug character editor. See ui/tactics_editor.
+        ownKey = opts.tacticsOwn,
     }
     self.editors = { tactics = TacticsEditor.new(column) }
     if opts.stats then

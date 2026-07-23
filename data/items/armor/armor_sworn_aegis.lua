@@ -36,7 +36,8 @@ return {
     -- strikes and shoves the whole adjacent ring. A self-centred area cast -- friend and self spared.
     activeAbility = {
         description = "Strikes every adjacent foe and shoves them two tiles back.",
-        target = "self",       -- centred on the wall itself; the aoe catches the ring around her
+        arget = "tile",       -- aim a nearby tile; the diamond around it is the shout's reach
+        allowOccupied = true,
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 14 },
@@ -46,8 +47,10 @@ return {
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 if u.side ~= fx.user.side then
-                    fx.damage(u)
-                    fx.knockback(u, 2, { amount = fx.amount }) -- two tiles back; a stopped shove bruises
+                    -- Two tiles back, folded INTO the blow (a stopped shove bruises). Riding on the
+                    -- strike rather than a separate step means a foe the blast KILLS is still thrown --
+                    -- see Combat.dealFlatDamage's `mortallyWounded` handling.
+                    fx.damage(u, { knockback = { distance = 2, amount = fx.amount } })
                 end
             end
         end,

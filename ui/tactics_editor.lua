@@ -1,9 +1,20 @@
 -- Tactics rule editor: the ordered gambit list for one character, plus a field editor for the
 -- selected rule. Lives on the Loadout panel's second tab (ui/panels/party.lua).
 --
--- It edits `char.aiRules` -- the PLAYER source that models/ai.lua merges above the item-borne and
--- posture-default rules. It never shows or edits those other sources: they are content, not settings,
--- and a list mixing "rules you wrote" with "rules your sword came with" would make the delete key a
+-- It edits the character's OWN rules -- the one channel that is theirs, as opposed to the rules their
+-- weapon came with (an item's `ai`) or the posture floor everyone stands on. That channel is stored
+-- two ways, and `opts.ownKey` chooses which end this instance owns:
+--
+--   "aiRules" (default, in-game)   the player's overlay. The character starts on its blueprint's own
+--                                  list (`char.ai`), which is shown here as inherited rows; the first
+--                                  edit SEEDS `char.aiRules` from that list (so nothing is lost) and
+--                                  from then on every change persists to the save. See models/ai.lua
+--                                  for why the overlay replaces the blueprint list rather than stacking.
+--   "ai" (the character editor)    edits the blueprint's `char.ai` directly, so a rule written here is
+--                                  written straight back out to data/characters/ (tools/write_character).
+--
+-- Either way it edits only that one channel; it never shows the item-borne or posture-default rules,
+-- because a list mixing "rules you wrote" with "rules your sword came with" would make the delete key a
 -- lie. What it does show is the archetype (which posture backs the list) and the auto-battle switch
 -- (whether the list ever runs at all), because a rule list with neither of those visible is a form
 -- with no submit button.
@@ -26,6 +37,22 @@ local InputMode = require("input_mode")
 
 local TacticsEditor = {}
 TacticsEditor.__index = TacticsEditor
+
+-- A rule is a flat table whose only nested member is `when`, so a one-level-deep copy is a full clone.
+-- Used to seed the player's overlay from the blueprint without either list aliasing the other's rules.
+local function copyRule(rule)
+    local out = {}
+    for k, v in pairs(rule) do
+        if type(v) == "table" then
+            local inner = {}
+            for k2, v2 in pairs(v) do inner[k2] = v2 end
+            out[k] = inner
+        else
+            out[k] = v
+        end
+    end
+    return out
+end
 
 -- Tall enough for the two stacked lines a row carries (the priority band, then the rule as a
 -- sentence) with the sentence's descenders clear of the row edge.
@@ -232,6 +259,9 @@ function TacticsEditor.new(opts)
     local self = setmetatable({}, TacticsEditor)
     self.x, self.y, self.w, self.h = opts.x, opts.y, opts.w, opts.h
     self.fonts = opts.fonts
+    -- Which stored list this instance owns: "aiRules" (the player's overlay, the default in-game) or
+    -- "ai" (the blueprint's own list, for the character editor). See the header.
+    self.ownKey = opts.ownKey or "aiRules"
     self.region = "rules"
     self.cursor = 1        -- row index; #rules + 1 is the "+ Add rule" row
     self.fieldCursor = 1
@@ -261,11 +291,44 @@ function TacticsEditor:setChar(char)
     self.scroll = 0
 end
 
+-- The list to DISPLAY and navigate. Read-only in spirit: opening the tab and moving the cursor must
+-- not take ownership, so an in-game character still on its blueprint list shows those rules without
+-- yet minting an overlay. When the character editor owns `char.ai`, that IS the list.
 function TacticsEditor:rules()
     local char = self.char
     if not char then return {} end
-    char.aiRules = char.aiRules or {}
+    if self.ownKey == "ai" then
+        char.ai = char.ai or {}
+        return char.ai
+    end
+    if char.aiRules then return char.aiRules end
+    return char.ai or {} -- inherited blueprint rules, shown but not yet owned
+end
+
+-- The list to MUTATE. Anything that changes a rule routes through here, and here is where the player
+-- takes ownership: the first edit to an inherited list copies the blueprint's rules into `aiRules`
+-- (so none are lost) and every edit after lands on that saved copy. Idempotent once seeded.
+function TacticsEditor:ownedRules()
+    local char = self.char
+    if not char then return {} end
+    if self.ownKey == "ai" then
+        char.ai = char.ai or {}
+        return char.ai
+    end
+    if char.aiRules == nil then
+        char.aiRules = {}
+        for _, rule in ipairs(char.ai or {}) do
+            char.aiRules[#char.aiRules + 1] = copyRule(rule)
+        end
+    end
     return char.aiRules
+end
+
+-- True when the rows on show are the blueprint's own and the player has not yet taken the list over --
+-- the only state in which editing has a side effect (minting the overlay) worth telling them about.
+function TacticsEditor:inherited()
+    return self.ownKey ~= "ai" and self.char and self.char.aiRules == nil
+        and #(self.char.ai or {}) > 0
 end
 
 function TacticsEditor:selectedRule()
@@ -281,7 +344,7 @@ end
 -- ---------------------------------------------------------------------------
 
 function TacticsEditor:addRule()
-    local rules = self:rules()
+    local rules = self:ownedRules()
     rules[#rules + 1] = AI.newRule()
     self.cursor = #rules
     self.fieldCursor = 1
@@ -289,7 +352,7 @@ function TacticsEditor:addRule()
 end
 
 function TacticsEditor:removeRule(index)
-    local rules = self:rules()
+    local rules = self:ownedRules()
     if not rules[index] then return false end
     table.remove(rules, index)
     self.cursor = math.max(1, math.min(#rules + 1, index))
@@ -298,7 +361,7 @@ function TacticsEditor:removeRule(index)
 end
 
 function TacticsEditor:toggleEnabled(index)
-    local rule = self:rules()[index]
+    local rule = self:ownedRules()[index]
     if not rule then return false end
     rule.enabled = rule.enabled == false
     return true
@@ -335,9 +398,11 @@ function TacticsEditor:navigate(dc, dr)
         if dr ~= 0 then
             if self.grabbed then
                 -- Carrying a row: up/down moves the ROW, not the cursor. The two must not both
-                -- happen, or the grabbed rule slides out from under the selection.
-                local to = math.max(1, math.min(#self:rules(), self.grabbed + dr))
-                self.grabbed = TacticsEditor.moveRule(self:rules(), self.grabbed, to)
+                -- happen, or the grabbed rule slides out from under the selection. The grab already
+                -- took ownership, so `ownedRules` is the same list `rules` shows.
+                local owned = self:ownedRules()
+                local to = math.max(1, math.min(#owned, self.grabbed + dr))
+                self.grabbed = TacticsEditor.moveRule(owned, self.grabbed, to)
                 self.cursor = self.grabbed
             else
                 self.cursor = math.max(1, math.min(self:rowCount(), self.cursor + dr))
@@ -364,7 +429,10 @@ function TacticsEditor:scrollToCursor()
 end
 
 function TacticsEditor:cycleField(dir)
-    local rule = self:selectedRule()
+    -- Editing a field's value is a mutation, so it reads from the OWNED list -- which seeds the
+    -- player's overlay from the blueprint on the first edit and returns the same rule the display is
+    -- pointing at (seeding preserves order, so the cursor still lands on it).
+    local rule = self:ownedRules()[self.cursor]
     if not rule then return end
     local fields = TacticsEditor.visibleFields(rule, self.char)
     local field = fields[self.fieldCursor]
@@ -384,7 +452,12 @@ function TacticsEditor:confirm()
         self:addRule()
         return
     end
-    self.grabbed = (self.grabbed == self.cursor) and nil or self.cursor
+    if self.grabbed == self.cursor then
+        self.grabbed = nil
+    else
+        self:ownedRules() -- grabbing a row to reorder is an edit; take ownership before the move
+        self.grabbed = self.cursor
+    end
 end
 
 function TacticsEditor:cancel()
@@ -429,7 +502,12 @@ function TacticsEditor:draw()
 
     love.graphics.setFont(f.small)
     setColor(C_DIM)
-    love.graphics.print("Rules (" .. #rules .. ") -- first match wins", self.x, self.y)
+    -- When the rows are still the blueprint's, say so and say what touching them does -- the one edit
+    -- with a side effect (minting the player's overlay) the player should not meet by surprise.
+    local header = self:inherited()
+        and ("Rules (" .. #rules .. ") -- from blueprint; editing makes them this character's own")
+        or ("Rules (" .. #rules .. ") -- first match wins")
+    love.graphics.print(header, self.x, self.y)
 
     self.rowRects = {}
     for i = 1, self:rowCount() do

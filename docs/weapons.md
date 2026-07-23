@@ -100,12 +100,26 @@ not a weapon, it is a `+n`. That is what the forge is for. Every named weapon th
 | `weapon_hornbow_of_the_hunt` | bow | Every tile past the point-blank band adds a fifth of the shot. It wants the whole field between you and the kill. |
 | `weapon_parasitic_staff` | staff | Siphons mana on the **hit**, so Focus is its floor rather than its only recourse. |
 | `weapon_crozier` | staff | `waitBehavior.covers`: Focus also feeds mana to every **adjacent ally**. A mage's staff answers *my* mana ran out; this one answers the party's. |
+| `weapon_intercessors_staff` | staff | Names one ally at the start of battle, and every blow it lands **mends that ally** instead of the priest. Lifesteal pointed at somebody else — and the only healer in the game that heals by attacking. |
 | `weapon_emberwand` | wand | Its bolt **leaves the ground alight**. Asks where the enemy is willing to stand rather than how hard it can hit — and the fire is unsided, so it is a wall you must be willing to stand behind. |
 | `weapon_vitriol_wand` | wand | Lays **Acid** (−6 to both defenses). Declines to out-damage armor and removes it instead, so its damage stat is the rest of your party. Fire it first. |
 | `weapon_envenomed_kris` | dagger | Bleed **and** Poison. Bleed taxes moving, Poison taxes waiting — together they close the door that standing still used to open. |
 | `weapon_apothecarys_lancet` | dagger | The one dagger that **does not bleed** — it delivers Poison instead. A deviation, and deliberately so: Bleed is a question the victim answers by standing still, and Poison is not a question. |
 | `weapon_censer_of_ashes` | censer | A **hostile** cloud: it chokes the smoke instead of blessing it, so the walk toward the enemy is itself the attack. |
 | `armor_oathkeeper_shield` | shield | `waitBehavior.covers`: bracing also braces every **adjacent ally**. Where you plant decides who else gets the wall. |
+| `weapon_quarrys_answer` | bow | **Shoots back.** The first weapon-borne counter that is not a blade — so the reach rule reads inverted: it answers what a sword never can, and its own `minRange` is a dead zone for the reply. Close on it and the reflex switches off. |
+| `weapon_stillhunter` | bow | The only weapon carrying the **Overwatch** wait swap — the stance stops costing a grid cell (`utility_overwatch_scope`) and starts costing arrows: its curve is under iron's at every level. |
+| `weapon_hailfall_longbow` | longbow | Looses **five arrows on five random tiles** of a 2-radius spread instead of one aimed shaft. Buys coverage, gives up the promise — and hits your own line, since falling arrows are not aimed. |
+| `weapon_slipknife` | dagger | **Slipstep**: struck from any range, it arrives beside the attacker and cuts. The one reflex reach does not gate — what gates it is open ground next to whoever swung. |
+| `weapon_mailpiercer` | spear | The line lands **`raw`** (no defense, no resist) and the **far** tile is left **Halted**. A bad spear against the unarmoured, and increasingly good against a wall. |
+| `weapon_marching_standard` | spear | The thrust **plants a standard** — Rally ground for as long as the pole stands — when none of its own is up. Raised for free by a swing rather than by a turn, and it never silences the weapon that raised it (`noClaim`). |
+| `weapon_turning_year` | wand | **Alternates fire and frost**, each half setting up the other (Frozen is brittle to fire) — a two-cast combo one caster plays alone. Its bearer can neither Burn nor Freeze. |
+| `armor_bulwark_shield` | shield | A **reflex** rather than a stance: `trait_shield_shove` drives a melee attacker two tiles back. Deals nothing — the wall, the fire and the trap behind them do the talking. |
+
+The two named shields are the axis worth reading together, and they are the same pattern the two axes
+and the two censers already set: one family, one base, two named items pulling it in opposite
+directions. The Oathkeeper spreads its brace outward to the line; the Bulwark keeps everything to
+itself and spends it on the one foe that closed.
 
 A good extra changes *how the weapon is played*, not how big its number is. The Hornbow inverts a bow's
 usual pull toward the edge of its band; the Wedge turns being surrounded from a danger into the point.
@@ -141,6 +155,45 @@ it for free. Prefer one over hand-rolling the same logic in an `effect`.
 | `requiresSight` | Needs a clear line (`Combat.hasLineOfSight`); terrain cover blocks it. |
 | `requiresAdjacent = { type, tag }` | Only usable with a matching item beside it in the 3×3 grid. |
 | `consumesItem` | Spends one of the stack on use. |
+
+### What a neighbouring item can do to a cast
+
+The keywords above are declared **on the ability**. The `aura` block is the mirror of them, declared on
+a *neighbour* — the same mechanics reached from the other side of the grid, so an item can sharpen a
+cast it does not own. `grantTags` / `requiresTags` / `exceptTags` / `status` / `amountBonus` /
+`rangeBonus` / `speedBonus` / `lifesteal` / `preserve` / `careful` / `twin`; the full contract lives in
+`data/items/consumable/consumable_fire_stone.lua` and the two kinds of item that carry one (the
+permanent **charm** and the spent **coating**) are in [classes.md](classes.md).
+
+Two of them are worth knowing here because they change what a cast *is* rather than what it is worth:
+
+- **`careful`** narrows `fx.aoeUnits` to the caster's enemies (`Combat.castUnits`), so a blast steps
+  over your own line. It does **not** narrow `aoeCells` — the sigil steers the blast, never the ground
+  it leaves behind, which is the same rule the banner/trail/incense family already runs on.
+- **`twin`** forks a single-target cast into one more body beside its target (`Combat.twinTarget`),
+  gated on the very `Combat.isSingleTarget` the counter rules read. The fork re-enters the same
+  `fx.damage` the first hit went through, so it inherits every aura tag, on-hit status and lifesteal
+  the original carried — and cannot fork again.
+
+`speedBonus` is folded into `Combat.actionSpeed`, the single reader the timeline ghost, the hover
+preview and the live `endTurn` all quote, and floored there at 1. **No arrangement of the grid may make
+an action free** — a zero-speed cast would let a unit act, keep initiative 0, and act forever, so the
+rule is made unreachable by arithmetic rather than by a warning.
+
+### The extra action
+
+`Combat.grantExtraAction(unit, n)` re-opens a turn instead of ending it. It is a fact about a *unit*,
+not a property of the ability that granted it, so an ability (`ability_surge`), a trait and a boss
+phase all reach for the same three lines.
+
+What it buys is **order, not time**. Every tick the surged action would have cost is banked as
+`Combat.tempoDebt` and paid in full when the unit finally stops, so acting twice lands you
+correspondingly further down the timeline — you have spent tomorrow's turn today. What the player
+gains is two actions with no enemy beat between them, which is what burst has always been for. It
+grants no second walk: the turn re-opens with the move already spent.
+
+That is the honest shape of "extra action" in a game with no action points. Initiative is the only
+currency here, and there is nothing else for it to cost.
 
 ### Paying for a cast out of more than one pool
 
@@ -192,11 +245,24 @@ it does. That is the actual shared idea behind these families — for a staff, a
 strike is the afterthought and the *having* is the weapon.
 
 **Wait swaps** (`staff`, `shield`). An item declaring `waitBehavior = { kind = "focus" | "defend" |
-"overwatch", … }` changes what its holder's Wait button does — `Combat.waitBehavior` scans the grid
-and first-in-inventory wins. The payoff key (`mana` / `defense` / `stamina` / `covers`) scales with the
-item's upgrade level; `speed` deliberately does not, since an upgrade should never buy back tempo.
-`covers` spreads the payoff to adjacent allies and reads the same on both halves — a wall for
-`armor_oathkeeper_shield`, mana for `weapon_crozier`.
+"overwatch" | "perform", … }` changes what its holder's Wait button does — `Combat.waitBehavior` scans
+the grid and first-in-inventory wins. The payoff key (`mana` / `defense` / `stamina` / `covers` /
+`duration` / `amount`) scales with the item's upgrade level; `speed` deliberately does not, since an
+upgrade should never buy back tempo. `covers` spreads the payoff to adjacent allies and reads the same
+on both halves — a wall for `armor_oathkeeper_shield`, mana for `weapon_crozier`.
+
+A swap is **not a weapon family**, and two of the four are granted by plain utility charms
+(`utility_focus_stone`, `utility_overwatch_scope`, `utility_hunting_horn`). Reach for a charm before a
+new archetype: a family owes a base weapon, a strike and a row in the table above, and none of that is
+worth authoring for a thing whose whole mechanic is that you are *not* swinging it.
+
+`perform` is the odd one and the only **cycle**: `Combat.perform` sounds the next air in the item's
+`songs` list on the bearer and every ally within `earshot`, then advances a cursor kept on the *unit*
+(so a horn handed to somebody else starts over). The other three do the same thing on every press; this
+does a different thing each time, in a fixed order — which is why the button names the next air rather
+than the verb, and why the whole cycle is listed in the tooltip. Reaching the air you want costs the
+turns spent walking through the ones you did not, and `earshot` does not scale with the forge for the
+same reason a censer's radius does not.
 
 **Incense** (`censer`). An item declaring `incense = { hazard, radius, amount }` lays that hazard in a
 square around its bearer, **owned by them**, and `Combat.layIncense` lifts the previous cloud by
@@ -266,6 +332,25 @@ A reflex that does **not** swing — `thorns` reflecting a share of the blow off
 `shield_bash` landing a stun — has no weapon in the motion to read a price off, so it pays its own
 declared `cost` instead (escalated the same way). Cost is always the **last** gate: check suppression,
 reach and friendly fire first, or a reflex that then declines has silently billed its bearer.
+
+### The one reflex that refuses the question: `closes`
+
+`counter = { closes = true }` (`weapon_slipknife`'s Slipstep) does not reach across the gap, it
+**crosses it** — the bearer arrives beside whoever struck it and swings from there. Distance stops
+gating, and three readers change together so the rule stays one rule:
+
+- **`Trait.mayCounter`** asks for open ground beside the attacker instead of a band. That is still a
+  fact the player can read off the board before committing — fight it from inside a press and the
+  knife has nowhere to appear — which is the whole point of having no timers here.
+- **`Trait.answerCost`** prices it at **one tile**, because that is where the swing is actually thrown
+  from. Without that, an answer to a bowshot across the field would be read off a weapon that never
+  swung, and across a gap nothing covers, off *no* weapon — i.e. free.
+- **`Trait.counterPreview`** weighs it at one tile for the same reason, so the hover warning quotes the
+  knife the player is about to eat rather than a dash.
+
+It is deliberately not a negation: it fires from the ordinary `onDamaged` hook, so the blow lands in
+full and a *killing* blow goes unanswered. What it buys is a cut and a position — including, half the
+time, standing in the open next to the thing that just shot you.
 
 Cooldowns still exist and are still the right tool for reflexes that **negate** a blow rather than
 answer it — `dodge`, `smoke_screen`, `counter_magic` — plus the non-combat reflexes (`cleansing_ward`,

@@ -150,7 +150,7 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 3, 2) })
             local k, bandit = c.units[1], c.units[2]
-            equip(k.char, { [5] = "weapon_iron_sword", [4] = "utility_envenom" })
+            equip(k.char, { [5] = "weapon_iron_sword", [4] = "consumable_envenom" })
             k.char.stats.stamina.current = 99
             openTurn(c, k)
 

@@ -59,6 +59,40 @@ return {
         end,
     },
     {
+        -- The bug this gate exists for: the range cut lived only in Combat.abilityRange (the gate
+        -- Combat.useItem checks) and not in Combat.attackReach (the band the red highlight, the
+        -- action-preview tooltip and the click plan are all built from). A blinded unit therefore saw
+        -- its FULL reach lit, hovered a foe two tiles past the cut, read a valid preview -- and the
+        -- click did nothing at all, because useItem refused it and battle.confirm dropped the reason.
+        -- Anything the band promises, the cast must accept.
+        name = "Blind shortens the attack-reach band too, so it can't light a shot useItem refuses",
+        fn = function()
+            local c = Combat.new(arena(8, 1), { unit("character_archer", 1, 1) },
+                { unit("character_bandit", 4, 1) })
+            local a, foe = c.units[1], c.units[2]
+            local bow = nil
+            for _, it in ipairs(a.char.inventory) do
+                if it.id == "weapon_iron_bow" then bow = it end
+            end
+            assert(bow and bow.activeAbility.range == 3, "the archer carries the range-3 bow")
+
+            -- Sighted, no movement budget: the band is exactly the bow's three tiles.
+            local ar = Combat.attackReach(c, a, 3, {}, true)
+            assert(ar["4,1"], "unblinded, the foe three tiles off is in the band")
+
+            Status.apply(c, a, "status_blind")
+            local blind = Combat.attackReach(c, a, 3, {}, true)
+            assert(blind["4,1"] == nil, "blinded, the band no longer reaches the 3-tile foe")
+            assert(blind["2,1"], "but it still covers the adjacent tile")
+
+            -- ...and the band and the gate say the same thing about that foe.
+            c.turn = { unit = a, moved = false, moveCost = 0 }
+            local hp0 = foe.char.stats.health.current
+            assert(Combat.useItem(c, a, bow, 4, 1) == false, "the blinded shot is refused")
+            assert(foe.char.stats.health.current == hp0, "and nothing was dealt")
+        end,
+    },
+    {
         name = "Charm reverts a unit's side and control when it expires",
         fn = function()
             local c = Combat.new(arena(6, 6), {}, { unit("character_bandit", 1, 1) })

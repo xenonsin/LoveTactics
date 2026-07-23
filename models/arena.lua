@@ -19,6 +19,7 @@
 --   --           party={{id,x,y}}, enemies={{id,x,y}}, objective, seed }
 
 local Registry = require("models.registry")
+local Prop = require("models.prop")
 
 local Arena = {}
 
@@ -157,10 +158,30 @@ function Arena.resolveRegion(name, layout)
     return {}
 end
 
+-- How often (in ticks) a reach fight's synthesized endless reinforcement tops the board back up, and
+-- how the trickle relates to the opening line (Arena.reachWaveFrom). A road you have to WALK across
+-- can't be won by clearing the field, so fresh enemies keep coming until the escort actually arrives.
+Arena.REACH_WAVE_PERIOD = 12
+
+-- Build the endless reinforcement a reach objective fights against, drawn from the SAME roster the
+-- opening line came from (`enemyIds`) so a demon road refills with demons and a forsworn ruin with
+-- forsworn -- no per-encounter authoring, no hardcoded ids. `maxAlive` holds the recurrence at the
+-- opening strength (it tops up toward that count rather than piling on), and the trickle is half the
+-- opening line, rounded up, walking in from all sides so it threatens the column's flanks, not just
+-- its front. Returns nil when there is no roster to draw from (nothing to reinforce with).
+local function reachWave(enemyIds)
+    if not enemyIds or #enemyIds == 0 then return nil end
+    local trickle = {}
+    for i = 1, math.max(1, math.ceil(#enemyIds / 2)) do trickle[i] = enemyIds[i] end
+    return { every = Arena.REACH_WAVE_PERIOD, composition = trickle,
+             from = "surround", maxAlive = #enemyIds }
+end
+
 -- Copy the objective and, for the tile-based win types, stamp the ground onto it. Copied rather
 -- than mutated: `spec.objective` comes straight off an immutable quest blueprint, and writing
 -- resolved tiles into it would leak one run's board into the next (tests/quest_spec.lua pins that).
-local function normalizeObjective(obj, layout)
+-- `enemyIds` is the resolved opening composition, the roster a synthesized reach wave draws from.
+local function normalizeObjective(obj, layout, enemyIds)
     if not obj or not obj.type then return { type = DEFAULT_OBJECTIVE.type } end
 
     local out = {}
@@ -172,6 +193,12 @@ local function normalizeObjective(obj, layout)
     -- can mark that ground and an enemy's `objectiveTile` has a handle to path toward.
     if out.type == "defend" and not out.tiles then
         out.tiles = Arena.resolveRegion(out.anchor or "center", layout)
+    end
+    -- A reach fight gets endless reinforcements unless it authored its own waves: crossing has to
+    -- stay a race under pressure, never a stroll across a board you already emptied.
+    if out.type == "reach" and not out.waves then
+        local wave = reachWave(enemyIds)
+        if wave then out.waves = { wave } end
     end
     return out
 end
@@ -256,9 +283,34 @@ function Arena.generateLayout(params)
     scatter("mountain", rng:random(1, 3))
     scatter("obstacle", rng:random(1, 3))
 
+    -- Props (models/prop.lua): standing furniture -- a powder keg, a supply crate -- drawn from the
+    -- biome's own pool, so a castle yard is littered with barrels and a forest trail with crates. Rolled
+    -- LAST, after every terrain scatter above, so adding this never shifted the rng draws the terrain
+    -- was already built from: a seed that produced a given board still produces that same board, now
+    -- with objects on it.
+    --
+    -- Placed on the same neutral middle band the terrain uses (rows 3..rows-2) and never on a spawn or
+    -- a tile that already holds something, so a prop can neither wall off a side nor bury a unit under
+    -- an object at the opening bell. A roll that finds no free tile is simply dropped -- a board that
+    -- happens to have no room for a barrel is a board with fewer barrels, not a retry loop.
+    local props = {}
+    for _, id in ipairs(Prop.roll(rng, params.biome, rng:random(Prop.SCATTER_MIN, Prop.SCATTER_MAX))) do
+        local tries = 0
+        while tries < 40 do
+            tries = tries + 1
+            local x, y = rng:random(1, cols), rng:random(3, rows - 2)
+            if tiles[y][x] == "ground" and not occupied[key(x, y)] then
+                occupied[key(x, y)] = true
+                props[#props + 1] = { id = id, x = x, y = y }
+                break
+            end
+        end
+    end
+
     return {
         cols = cols, rows = rows, tiles = tiles,
         partySpawns = partySpawns, enemySpawns = enemySpawns,
+        props = props,
         biome = params.biome, seed = params.seed,
     }
 end
@@ -273,6 +325,8 @@ local function hydrateLayout(def)
         partySpawns = def.partySpawns or {},
         enemySpawns = def.enemySpawns or {},
         traps = def.traps or {}, -- authored traps: { { id, x, y, side }, ... }
+        hazards = def.hazards or {}, -- authored hazards: { { id, x, y, side, duration }, ... } (Combat.new places them)
+        props = def.props or {}, -- authored props: { { id, x, y }, ... } (barrels/crates a curated map stands)
         biome = def.biome,
     }
 end
@@ -431,7 +485,9 @@ function Arena.build(ctx, spec)
         allies = bindAllies(allyIds, spec, layout),
         enemies = bindUnits(enemyIds, layout.enemySpawns),
         traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
-        objective = normalizeObjective(spec.objective, layout),
+        hazards = layout.hazards or {}, -- authored hazards (fire/rain/sanctuary) carried into combat (Combat.new places them)
+        props = layout.props or {}, -- scattered/authored props (barrels, crates) carried into combat (Combat.new places them)
+        objective = normalizeObjective(spec.objective, layout, enemyIds),
         -- The seed the caller chose, not whatever the layout happened to record: it is what the
         -- battle's own draw sequence is built from (Combat.new), so it has to be the authoritative
         -- number even when a curated layout was picked and generated nothing.
@@ -476,6 +532,17 @@ function Arena.serialize(arena)
         for _, t in ipairs(arena.traps) do
             out[#out + 1] = string.format("        { id = %q, x = %d, y = %d, side = %q },\n",
                 t.id, t.x, t.y, t.side or "enemy")
+        end
+        out[#out + 1] = "    },\n"
+    end
+
+    -- Props, if any: { id, x, y }. A generated board scatters these off its biome, so writing them out
+    -- is what lets a lucky arrangement of barrels be CAPTURED and hand-edited into a curated map --
+    -- the same reason the tiles themselves are serialized. Sideless, so there is nothing else to write.
+    if arena.props and #arena.props > 0 then
+        out[#out + 1] = "    props = {\n"
+        for _, p in ipairs(arena.props) do
+            out[#out + 1] = string.format("        { id = %q, x = %d, y = %d },\n", p.id, p.x, p.y)
         end
         out[#out + 1] = "    },\n"
     end

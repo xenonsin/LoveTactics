@@ -357,6 +357,99 @@ function Player.restore(player)
 end
 
 -- ---------------------------------------------------------------------------
+-- Consumables (out-of-combat use; the overworld "Use Items" panel)
+-- ---------------------------------------------------------------------------
+--
+-- Between battles a run's wounds carry (see Player.restore's note on attrition), and the only free
+-- mend before the hub is a Rest tile. A restorative draught is the paid alternative: drink one on the
+-- overworld to spend a flask from the satchel and top a member's pool back up. It pours the SAME
+-- magnitude the item pours in combat (Combat.restorativeStat / Combat.restoreResource -- the one
+-- classifier and the one refill helper both reflexes and casts use), but with no turn, no aim, and no
+-- combat object -- there is no tempo to trade out here, so the only cost is the flask itself.
+--
+-- Only draughts that restore a resource are offered: a bomb, a net, a smoke pot do nothing a road can
+-- feel, and Combat.restorativeStat returns nil for them, so they never reach this path. Combat is
+-- required lazily (it is a heavy model, and nothing here runs at load), which also sidesteps any
+-- load-order question about the two modules.
+
+-- What resource drinking `item` would restore out of combat ("health" | "mana" | "stamina"), or nil
+-- for a consumable that isn't a restorative. The single "what is in this flask" question, answered by
+-- the same reader combat uses so a new draught is picked up by both for free.
+function Player.restorativeStat(item)
+    return require("models.combat").restorativeStat(item)
+end
+
+-- Whether drinking `item` would actually do `char` any good right now: it must be an in-stock
+-- restorative whose matching pool is not already full. The guard the panel gates a use behind --
+-- pouring a Healing Potion into a member already at full HP is pure waste out here, with none of the
+-- tempo trade that can make an early quaff a real choice mid-fight.
+function Player.canUseConsumableOn(char, item)
+    local Combat = require("models.combat")
+    if not (item and item.type == "consumable") then return false end -- a Heal SPELL is not a draught
+    local stat = Combat.restorativeStat(item)
+    if not (char and stat) or Combat.isDepleted(item) then return false end
+    local res = char.stats and char.stats[stat]
+    if type(res) == "table" then
+        return res.current < Combat.unreservedMax(char, stat)
+    end
+    return true -- a plain-number stat has no ceiling to already be at
+end
+
+-- Drink one from `item`'s stack and pour its magnitude into `char`. Returns (amount, stat): `amount`
+-- is what actually landed (0 if the pool was full). The stack's `quantity` is decremented here;
+-- clearing an emptied stack from wherever it lived is Player.consumeRestorative's job (only the source
+-- list knows where the flask sat).
+function Player.useConsumableOn(char, item)
+    local Combat = require("models.combat")
+    local stat = Combat.restorativeStat(item)
+    if not (char and stat) then return 0, nil end
+    local ab = item.activeAbility
+    local amount = ab.healing or ab.restore or 0 -- already leveled to a scalar at instantiate
+    local restored = Combat.restoreResource(char, stat, amount)
+    item.quantity = math.max(0, (item.quantity or 1) - 1)
+    return restored, stat
+end
+
+-- Every restorative draught the party can reach out of combat, gathered from each ACTIVE member's grid
+-- and the shared stash into one list for the overworld panel. Each entry is
+-- { item = <instance>, where = "grid" | "stash", char = <member or nil> } -- `char` names the grid the
+-- flask sits in (nil for the stash) so an emptied stash stack can be dropped from the list. Order is
+-- party order then stash, each in grid/list order: stable, so the list doesn't reshuffle under the
+-- cursor between opens. A depleted stack (quantity 0) is skipped, as combat's out-of-stock gate does.
+function Player.partyRestoratives(player)
+    local Combat = require("models.combat")
+    local out = {}
+    local function consider(item, where, char)
+        -- Only actual draughts, never a Heal/Cure SPELL that happens to declare `healing`: a spell isn't
+        -- spent by drinking, and decrementing its (non-stack) quantity would corrupt it. Mirrors the
+        -- `type == "consumable"` guard on Combat.carriedRestorative.
+        if item and item.type == "consumable" and Combat.restorativeStat(item)
+            and not Combat.isDepleted(item) then
+            out[#out + 1] = { item = item, where = where, char = char }
+        end
+    end
+    for _, char in ipairs(player and player.party or {}) do
+        for _, item in ipairs(Character.eachItem(char)) do consider(item, "grid", char) end
+    end
+    for _, item in ipairs(player and player.stash or {}) do consider(item, "stash") end
+    return out
+end
+
+-- Use one gathered restorative `entry` (from Player.partyRestoratives) on `char`. Applies the draught,
+-- decrements the stack, and clears an emptied one from its source: a spent stash stack is removed from
+-- the list, while a spent GRID stack keeps its cell (combat leaves a depleted consumable in place so a
+-- restock merges back into it -- the loadout is where a player would clear it). Returns (amount, stat).
+function Player.consumeRestorative(player, entry, char)
+    local amount, stat = Player.useConsumableOn(char, entry.item)
+    if entry.item.quantity <= 0 and entry.where == "stash" then
+        for i, it in ipairs(player.stash or {}) do
+            if it == entry.item then table.remove(player.stash, i) break end
+        end
+    end
+    return amount, stat
+end
+
+-- ---------------------------------------------------------------------------
 -- Session lifecycle
 -- ---------------------------------------------------------------------------
 

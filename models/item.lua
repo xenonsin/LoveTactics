@@ -201,8 +201,13 @@ local ABILITY_SECONDARY_MAGNITUDES = {
 
 -- The `waitBehavior` payoffs that scale with the granting item's level -- what the swapped Wait pays
 -- out: defend's brace (`defense`) and the share it lends adjacent allies (`covers`), focus's mana,
--- overwatch's per-shot stamina.
-local WAIT_BEHAVIOR_MAGNITUDES = { "defense", "mana", "stamina", "covers" }
+-- overwatch's per-shot stamina, and perform's air (`duration` -- how long it holds -- and `amount`,
+-- the magnitude handed to whichever status the air lays).
+--
+-- Deliberately NOT here: `speed`, which is what the swap COSTS rather than what it pays (see below),
+-- and a perform's `earshot`, on the censer's principle -- an upgrade buys a longer, stronger song,
+-- never one that carries further.
+local WAIT_BEHAVIOR_MAGNITUDES = { "defense", "mana", "stamina", "covers", "duration", "amount" }
 
 -- Every place an item carries a scaling magnitude, as get/set pairs, so one walk resolves them all at
 -- instantiate. This is the definition of "a derived magnitude": an ability's damage/healing/etc.,
@@ -254,6 +259,11 @@ local function eachMagnitude(item, fn)
     if aura then
         if aura.amountBonus ~= nil then fn(aura.amountBonus, function(x) aura.amountBonus = x end) end
         if aura.rangeBonus ~= nil then fn(aura.rangeBonus, function(x) aura.rangeBonus = x end) end
+        -- The tempo discount (Quickened Sigil), authored as a negative curve. Every NUMERIC aura field
+        -- belongs here; the flags (`careful`, `twin`, `preserve`) do not, because there is no curve to
+        -- resolve on a boolean and an upgrade has nothing to buy on one.
+        if aura.speedBonus ~= nil then fn(aura.speedBonus, function(x) aura.speedBonus = x end) end
+        if aura.lifesteal ~= nil then fn(aura.lifesteal, function(x) aura.lifesteal = x end) end
         local st = aura.status
         if st and st.opts and st.opts.magnitude ~= nil then
             fn(st.opts.magnitude, function(x) st.opts.magnitude = x end)
@@ -290,7 +300,13 @@ function Item.primaryStat(item)
     if item.unarmedBonus then for k, v in pairs(item.unarmedBonus) do consider(v, "Fist " .. titleCase(k)) end end
     local aura = item.aura
     if aura then
-        if aura.status and aura.status.opts then consider(aura.status.opts.magnitude, titleCase(aura.status.id or "effect")) end
+        -- The status's own NAME, not its registry id: a header reading "STATUS_BURN" is the id leaking
+        -- into the tooltip, and the registry is the one place that word belongs. Falls back to the
+        -- title-cased id only for a status with no blueprint, which is a data error worth seeing.
+        if aura.status and aura.status.opts then
+            local def = require("models.status").defs[aura.status.id]
+            consider(aura.status.opts.magnitude, (def and def.name) or titleCase(aura.status.id or "effect"))
+        end
         consider(aura.amountBonus, "Aura Amount")
         consider(aura.rangeBonus, "Aura Range")
     end
@@ -353,6 +369,9 @@ function Item.instantiate(id, quantity, level)
         noCopy = def.noCopy,                   -- a summoned copy of the holder never carries this
         bound = def.bound,                     -- bound to its holder: never moved, stowed, sold, or stolen (a signature relic)
         traits = deepCopy(def.traits),         -- combat reactions granted to whoever carries it
+        manaShield = deepCopy(def.manaShield), -- { ratio }: wounds paid out of mana (Combat.soakIntoMana)
+        statusImmunity = deepCopy(def.statusImmunity), -- status ids this carrier simply cannot be given
+        phases = deepCopy(def.phases),         -- a boss relic's health-threshold script, read by trait_boss_phases
         class = def.class,                     -- which class vendor sells it; nil = sold by none
         price = def.price,                     -- vendor gold cost; nil means it is never sold
         repRank = def.repRank,                 -- vendor rank needed to unlock it (default 1)

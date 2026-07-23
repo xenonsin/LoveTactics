@@ -96,6 +96,42 @@ return {
         end,
     },
     {
+        -- A road you WALK across can't be won by clearing the field, so a reach objective is handed an
+        -- endless reinforcement drawn from its own opening roster (Arena.reachWave). See spawnWaves.
+        name = "a reach objective is dealt endless reinforcements from its own roster",
+        fn = function()
+            local arena = Arena.build({}, {
+                party = { "character_knight" },
+                composition = function() return { "character_bandit", "character_bandit", "character_bandit", "character_bandit" } end,
+                objective = { type = "reach", region = "far" }, seed = 3,
+            })
+            local waves = arena.objective.waves
+            assert(waves and #waves == 1, "a reach fight should carry one synthesized wave")
+            local w = waves[1]
+            assert(w.every == Arena.REACH_WAVE_PERIOD, "the wave recurs on the reach cadence")
+            assert(w.maxAlive == 4, "it tops the board up toward the opening strength of four")
+            assert(#w.composition == 2, "the trickle is half the opening line, rounded up")
+            assert(w.composition[1] == "character_bandit", "drawn from the encounter's own roster")
+        end,
+    },
+    {
+        name = "an authored reach wave is left alone, and non-reach fights get none",
+        fn = function()
+            local authored = { { at = 5, composition = { "character_bandit" } } }
+            local reach = Arena.build({}, {
+                party = { "character_knight" }, composition = function() return { "character_bandit" } end,
+                objective = { type = "reach", region = "far", waves = authored }, seed = 4,
+            })
+            assert(reach.objective.waves == authored, "an authored wave list is never overwritten")
+
+            local kill = Arena.build({}, {
+                party = { "character_knight" }, composition = function() return { "character_bandit" } end,
+                objective = { type = "killAll" }, seed = 4,
+            })
+            assert(kill.objective.waves == nil, "only reach fights get the endless-wave default")
+        end,
+    },
+    {
         name = "resolving an objective copies it rather than writing tiles into the blueprint",
         fn = function()
             -- The shape a quest blueprint hands over -- immutable, and reused next run.

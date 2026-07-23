@@ -182,6 +182,10 @@ function editor.enter()
         player = player,
         title = "Character Editor",
         stats = true,
+        -- The Tactics tab here edits the blueprint's OWN rule list (`char.ai`), so a rule authored in
+        -- the editor is written straight back to data/characters/ by S -- not stowed in a player
+        -- overlay that only a save file would ever hold.
+        tacticsOwn = "ai",
         persist = false, -- a synthetic player must never reach the save file
         filters = filters,
         onFilterChanged = restock,

@@ -254,6 +254,65 @@ return {
     },
 
     -- ---------------------------------------------------------------------
+    -- Merge & ownership: the blueprint's own rules and the player's overlay
+    -- ---------------------------------------------------------------------
+    {
+        name = "editing an inherited blueprint rule in-game seeds the player's overlay",
+        fn = function()
+            -- The mage ships with a blueprint ai rule and no overlay; the Tactics tab shows those rules
+            -- as inherited and takes ownership only when the player actually changes one.
+            local char = Character.instantiate("character_mage")
+            assert(char.ai and #char.ai > 0, "the blueprint ships with a rule")
+            assert(char.aiRules == nil, "and no player overlay yet")
+
+            local ed = Editor.new({ x = 0, y = 0, w = 800, h = 600, char = char, fonts = {} })
+            assert(char.aiRules == nil, "opening the tab and reading the list does not seed it")
+            assert(ed:inherited(), "the editor reports the rows are still the blueprint's")
+
+            -- Change the first rule's first field: the first edit copies the whole list into the overlay.
+            ed.region, ed.cursor, ed.fieldCursor = "fields", 1, 1
+            ed:cycleField(1)
+            assert(char.aiRules ~= nil, "the first edit mints the overlay")
+            assert(#char.aiRules == #char.ai,
+                "seeded with the whole blueprint list, so nothing inherited is lost")
+            assert(char.aiRules[1] ~= char.ai[1],
+                "and with independent copies, not aliases of the blueprint rules")
+            assert(not ed:inherited(), "the list is now the player's own")
+        end,
+    },
+    {
+        name = "the character editor (ownKey = 'ai') edits the blueprint's own list directly",
+        fn = function()
+            local char = Character.instantiate("character_mage")
+            local before = #char.ai
+            local ed = Editor.new({ x = 0, y = 0, w = 800, h = 600, char = char, fonts = {}, ownKey = "ai" })
+            assert(not ed:inherited(), "in the character editor the rules ARE the list, not an inheritance")
+            ed:addRule()
+            assert(#char.ai == before + 1, "a new rule lands on char.ai, ready to be written to data/")
+            assert(char.aiRules == nil, "and no player overlay is minted -- that channel is in-game only")
+        end,
+    },
+    {
+        name = "deleting every rule leaves the list owned-and-empty, not resurrected",
+        fn = function()
+            -- The trap the ownership-by-presence rule closes: if an emptied overlay read back as
+            -- un-owned, deleting your last rule would silently bring the blueprint's rules back.
+            local char = Character.instantiate("character_mage")
+            local ed = Editor.new({ x = 0, y = 0, w = 800, h = 600, char = char, fonts = {} })
+            ed:addRule() -- takes ownership (seeds from the blueprint) and appends one
+            while #char.aiRules > 0 do ed:removeRule(1) end
+            assert(char.aiRules ~= nil and #char.aiRules == 0, "the overlay is an empty table, not nil")
+            assert(not ed:inherited(), "so the blueprint rules do not come back as 'inherited'")
+
+            local merged = AI.rulesFor({ char = char })
+            for _, e in ipairs(merged) do
+                assert(e.rule ~= char.ai[1],
+                    "and the merge collects no character-source rule once the overlay owns the list")
+            end
+        end,
+    },
+
+    -- ---------------------------------------------------------------------
     -- Persistence
     -- ---------------------------------------------------------------------
     {
@@ -275,6 +334,20 @@ return {
             assert(back.aiRules[1].when.value == 0.35, "and its authored value")
             assert(back.autoBattle == true, "auto-battle came back")
             assert(back.archetype == "skirmish", "so did the archetype override")
+        end,
+    },
+    {
+        name = "an owned-but-emptied rule list survives the round trip instead of resurrecting the blueprint",
+        fn = function()
+            -- Ownership is carried by the list's EXISTENCE, so an empty overlay must save as `{}` and
+            -- load back non-nil -- the save-side half of the "deleting every rule" editor case above.
+            local p = Player.new()
+            local char = p.roster[1]
+            char.aiRules = {} -- the player took ownership, then deleted every rule
+            local restored = Save.restore(Save.snapshot(p))
+            local back = restored.roster[1]
+            assert(back.aiRules ~= nil, "the empty overlay is preserved as ownership, not dropped")
+            assert(#back.aiRules == 0, "and it is still empty")
         end,
     },
     {

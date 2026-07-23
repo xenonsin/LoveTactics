@@ -266,9 +266,9 @@ return {
     ["line.flight_event_survivor.2"] = { en = "Easy. We're not with the things that did this. Choose...", ja = "" },  -- TODO
     ["line.flight_event_survivor.3"] = { en = "Ask which way the demons went.", ja = "" },  -- TODO
     ["line.flight_event_survivor.4"] = { en = "Share what little we carry, and press on.", ja = "" },  -- TODO
-    ["line.flight_event_survivor.5"] = { en = "...north, along the ridge, in numbers. Good. We take the low road, then.", ja = "" },  -- TODO
-    ["line.flight_event_survivor.6"] = { en = "Nothing to spare but thanks -- and she gave that freely.", ja = "" },  -- TODO
-    ["line.flight_event_survivor.7"] = { en = "An apothecary, before the fires. She pressed a vial of solvent on you in kind -- splash it and a demon cannot grip its blade. Then the capital: reach the walls.", ja = "" },  -- TODO
+    ["line.flight_event_survivor.5"] = { en = "...north, along the ridge, in numbers. Good -- we take the low road. And she gave you the tell: where a demon's guard runs thin, if you mark it before the strike.", ja = "" },  -- TODO
+    ["line.flight_event_survivor.6"] = { en = "Nothing to spare but thanks -- and she gave that freely. A vial of solvent, pressed on you in kind: splash it and a demon cannot grip its blade.", ja = "" },  -- TODO
+    ["line.flight_event_survivor.7"] = { en = "An apothecary, before the fires. Then the capital: reach the walls.", ja = "" },  -- TODO
     ["line.gyeom_joins.1"] = { en = "You have me. Or you have what I let you see -- I have found that is usually enough.", ja = "" },  -- TODO
     ["line.gyeom_joins.2"] = { en = "The Arcanum wins the wars the crown cannot, and everyone above it looks away from the wing where the winning is grown. I looked. The register calls them donors to knowledge. I have read what became of them.", ja = "" },  -- TODO
     ["line.gyeom_joins.3"] = { en = "{name}. You are the first outfit here that is not the Arcanum's hand. I do not need to be the greatest of anything. I only need to be a little more use tomorrow than I was today -- and I would rather spend that on your road than its shelves.", ja = "" },  -- TODO

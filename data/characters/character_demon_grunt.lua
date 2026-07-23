@@ -22,7 +22,13 @@ return {
     name = "Demon Grunt",
     sprite = "assets/chars/demon_grunt.png",
     stats = {
-        health = 66, mana = 0, stamina = 10,
+        -- Stamina is 15, not the ~0.25 cut the scarcity pass would give it (which was 10). Its Rending
+        -- Claws cost 12 to swing (below), so a 10-stamina grunt could never attack at all -- it would be
+        -- the one common enemy that stands there inert, and the prologue's parry beat (which depends on
+        -- the grunt actually landing a blow for the avatar's sword to answer) would silently break. 15 is
+        -- one clean swing with a sliver to spare, matching its bigger sibling the Demon Champion; keep it
+        -- at least the claw's cost. See data/tutorials/village.lua's closing arithmetic.
+        health = 66, mana = 0, stamina = 15,
         damage = 8, magicDamage = 0,
         defense = 4, magicDefense = 2,
         movement = 3,

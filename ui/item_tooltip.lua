@@ -417,6 +417,23 @@ local function buildBlocks(item, actor, innerW)
         elseif wb.kind == "overwatch" then
             blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Overwatch" }
             blocks[#blocks + 1] = { kind = "note", text = "Overwatch ends your turn to fire on the first foe that moves into range." }
+        elseif wb.kind == "perform" then
+            blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Perform" }
+            -- The whole cycle, in order, because the ORDER is the cost: reaching the air you want means
+            -- spending the turns to walk through the ones you did not. A tooltip that listed only the
+            -- next air would hide the actual decision the item asks for.
+            for i, song in ipairs(wb.songs or {}) do
+                blocks[#blocks + 1] = { kind = "stat", label = (i == 1 and "Airs" or ""), value = song.name or "?" }
+            end
+            if wb.duration then
+                blocks[#blocks + 1] = { kind = "stat", label = "Each holds", icon = "hourglass",
+                    value = tostring(wb.duration) }
+            end
+            if wb.earshot then
+                blocks[#blocks + 1] = { kind = "stat", label = "Earshot", value = tostring(wb.earshot) .. " tiles" }
+            end
+            blocks[#blocks + 1] = { kind = "note",
+                text = "Perform ends your turn to sound the next air, for you and every ally in earshot." }
         end
     end
 

@@ -244,6 +244,41 @@ return {
         end,
     },
     {
+        name = "a killing Mace blow throws the body back before it drops",
+        fn = function()
+            local knight = Character.instantiate("character_knight")
+            knight.inventory = {}
+            Character.addItem(knight, Item.instantiate("weapon_iron_mace"))
+            local c = Combat.new(arena(8, 8), { unit(knight, 3, 4) }, { unit("character_bandit", 4, 4) })
+            local ku, bandit = c.units[1], c.units[2]
+            bandit.char.stats.health.current = 1 -- the mace fells it outright
+            c.turn = { unit = ku, moved = false, moveCost = 0 }
+
+            assert(Combat.useItem(c, ku, knight.inventory[1], 4, 4), "the blow lands")
+            assert(not bandit.alive, "the blow is lethal")
+            assert(bandit.x == 6 and bandit.y == 4,
+                "yet the shove still carried the body two tiles before it fell (x=" .. bandit.x .. ")")
+        end,
+    },
+    {
+        name = "a dying body flung into a wall slams it on the way down",
+        fn = function()
+            local knight = Character.instantiate("character_knight")
+            knight.inventory = {}
+            Character.addItem(knight, Item.instantiate("weapon_iron_mace"))
+            local c = Combat.new(arena(8, 8), { unit(knight, 3, 4) }, { unit("character_bandit", 4, 4) })
+            local ku, bandit = c.units[1], c.units[2]
+            local wall = Wall.place(c, 5, 4, "illusory_wall", { health = 100 })
+            bandit.char.stats.health.current = 1 -- the mace fells it outright
+            c.turn = { unit = ku, moved = false, moveCost = 0 }
+
+            assert(Combat.useItem(c, ku, knight.inventory[1], 4, 4), "the blow lands")
+            assert(not bandit.alive, "the blow is lethal")
+            assert(bandit.x == 4, "pinned against the wall, the dying body never moved")
+            assert(wall.health < 100, "but the corpse-to-be slammed the wall on its way down")
+        end,
+    },
+    {
         name = "the Pull ability refuses a target it cannot see, without spending the turn",
         fn = function()
             local knight = Character.instantiate("character_knight")

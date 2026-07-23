@@ -48,6 +48,7 @@
 
 local Status = require("models.status")
 local Hazard = require("models.hazard")
+local Prop = require("models.prop")
 local Trait = require("models.trait")
 
 local AI = {}
@@ -95,7 +96,8 @@ AI.WEIGHTS = {
     STATUS       = 3,     -- flat, per status a hit would land: it does something, we don't price what
     COUNTER      = 1.2,   -- damage thrown back at me, per point -- slightly dearer than damage dealt
     EXPOSURE     = 1.5,   -- per enemy that could reach the tile I would end my turn on
-    HAZARD       = 4,     -- Hazard.tileBias, already signed for my side (fire negative, sanctuary +)
+    HAZARD       = 4,     -- Hazard.tileBias + Prop.tileBias, already signed for my side (fire and a
+                          -- live powder keg negative, sanctuary positive)
     SPEND        = 0.15,  -- per point of a resource cost, so a mage doesn't nuke a woodlouse
     STEPS        = 0.25,  -- mild: keeps motion sensible without making the AI lazy
     TARGET_PREF  = 6,     -- bonus when a candidate matches the rule's stated targeting preference
@@ -398,15 +400,17 @@ AI.POSTURES = {
         engage = function() return true end,
     },
 
-    -- Walks for the exit and fights only what gets in the way. The escortee's posture: it swings at
-    -- whatever is already in reach (ATTACK_RULE fires before `move` is ever consulted), and spends
-    -- every other turn closing on the ground the objective names.
+    -- Walks for the exit and nothing else. The escortee's posture: it never starts a fight, never
+    -- steps aside to trade a blow -- it spends every turn closing on the ground the objective names,
+    -- and leaves the killing to whoever is escorting it. The empty rule list is the whole point: with
+    -- no rule to fire, AI.plan drops straight to `advance`, so the column is a clock the party has to
+    -- keep the road ahead of, not a combatant that can be baited into stopping.
     --
     -- The opposite of `defensive`, which is the other half of an escort's design space: a defensive
     -- charge is a thing you stand around, an advancing one is a clock you cannot pause. Slot 1 of the
     -- Bastion's line uses both -- the column presses on up the mountain, and digs in at the gate.
     escort = {
-        rules = { SUPPORT_RULE, ATTACK_RULE },
+        rules = {},
         move = "advance",
         engage = function() return true end,
     },
@@ -577,7 +581,11 @@ function AI.scoreCandidate(combat, unit, cand, w, previews)
     -- routinely negative, and a unit that demands a positive net simply refuses to fight.
     cand.outcome = score
 
-    score = score + Hazard.tileBias(combat, cand.x, cand.y, unit.side) * w.HAZARD
+    -- Ground bias: the zones under this tile, plus any powder keg near enough to reach it. One term,
+    -- because they are one judgement -- "do I want to be standing here when my turn ends" -- and a
+    -- planner that weighed fire but strolled into a barrel's blast would read as the same mistake.
+    score = score + (Hazard.tileBias(combat, cand.x, cand.y, unit.side)
+        + Prop.tileBias(combat, cand.x, cand.y)) * w.HAZARD
     score = score - (cand.steps or 0) * w.STEPS
 
     for _, s in ipairs(Combat.abilitySpend(unit, cand.item.activeAbility) or {}) do
@@ -658,6 +666,7 @@ local function fallbackMove(ctx, mode)
         if not (mode == "leash" and manhattan(node.x, node.y, anchorX, anchorY) > leash) then
             local d = manhattan(node.x, node.y, goal.x, goal.y)
             local bias = Hazard.tileBias(combat, node.x, node.y, unit.side)
+                + Prop.tileBias(combat, node.x, node.y)
             if not best or d < best.d
                 or (d == best.d and bias > best.bias)
                 or (d == best.d and bias == best.bias and node.steps < best.steps) then
@@ -746,13 +755,25 @@ end
 
 -- Where a unit's rules come from, in the order a tie is broken:
 --
---   1. PLAYER   char.aiRules      -- authored in the Loadout screen's Tactics tab
+--   1. PLAYER   char.aiRules      -- the character's own list, once the player has taken it over in
+--                                    the Loadout screen's Tactics tab
 --   2. ITEM     ability.ai        -- rides on the item, so handing an NPC a weapon hands it the
 --                                    tactics for that weapon too. This is the whole point of the
 --                                    feature: content authors give a bandit a bomb and it starts
 --                                    lobbing it at clusters, with nothing else to write.
---   3. CHARACTER char.ai          -- blueprint-authored, for behavior specific to one body (a boss)
+--   3. CHARACTER char.ai          -- the character's own list as the BLUEPRINT authored it, for a body
+--                                    that has never been edited (every enemy, and a companion until
+--                                    the player opens its Tactics tab and changes something)
 --   4. POSTURE  archetype defaults -- the floor everyone stands on
+--
+-- PLAYER and CHARACTER are the SAME channel -- a character's own rules -- reached two different ways,
+-- and only ever ONE of them contributes. `char.ai` is the blueprint's list, re-derived from the file
+-- on every load; `char.aiRules` is the player's copy of that list, seeded from `char.ai` the first
+-- time the Tactics tab edits it (ui/tactics_editor.lua) and saved to the save file thereafter. So an
+-- overlay REPLACES the blueprint's rules rather than stacking above them: it already contains
+-- whatever the blueprint authored, and collecting both would double every rule the player never
+-- touched. The two ranks differ only so a body that IS still on its blueprint list sorts below its
+-- item rules, where a player who has taken ownership sorts above them.
 --
 -- `priority` is the primary sort and is explicit for a reason: three independent authors are
 -- contributing to one list and none of them can see the others, so position-in-file cannot be the
@@ -888,12 +909,18 @@ function AI.rulesFor(unit)
     local char = unit.char
     local out = {}
 
-    collect(out, char.aiRules, "player")
+    -- A character's own rules come from exactly one channel: the player's overlay if it exists (which
+    -- was seeded from the blueprint, so it already holds the inherited rules), otherwise the
+    -- blueprint's own list. See the source-order note above for why this is a replace, not a stack.
+    if char.aiRules then
+        collect(out, char.aiRules, "player")
+    else
+        collect(out, char.ai, "character")
+    end
     for _, item in ipairs(Combat.abilityItems(char)) do
         local ab = item.activeAbility
         collect(out, ab and ab.ai, "item", item)
     end
-    collect(out, char.ai, "character")
     collect(out, posture.rules, "posture")
 
     table.sort(out, function(a, b)

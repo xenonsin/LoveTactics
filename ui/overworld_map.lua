@@ -162,6 +162,26 @@ function OverworldMap:arrive()
     return false
 end
 
+-- Step the token back off the encounter it just triggered, onto the tile it arrived from, WITHOUT
+-- re-firing anything -- so a tutorial retry can hand the player back to the overworld one tile shy of
+-- the fight, free to open the Loadout and re-equip before stepping onto the (still-uncleared)
+-- encounter to try again. `slidePrevX/slidePrevY` is the tile the last :step slid from, which -- since
+-- :arrive fires inside that very step -- is exactly the tile just before the encounter. Falls back to
+-- leaving the token where it stands (on the encounter) when there is no recorded previous tile, e.g. an
+-- encounter reached on spawn. Cancels any in-flight walk and slide so nothing carries the token onward.
+function OverworldMap:retreatFromEncounter()
+    local bx, by = self.slidePrevX, self.slidePrevY
+    if bx and self.grid:isWalkable(bx, by, self.keysHeld) then
+        self.px, self.py = bx, by
+    end
+    self.slidePrevX, self.slidePrevY = nil, nil
+    self.slideT = 0
+    self.heldDir = nil
+    self.autoPath = nil
+    self:updateCamera()
+    self:snapCamera()
+end
+
 -- ---------------------------------------------------------------------------
 -- Update / draw
 -- ---------------------------------------------------------------------------

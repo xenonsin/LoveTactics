@@ -1,5 +1,5 @@
 -- Alchemic Mastery: a signature reagent with no ability of its own. Like the Fire Stone
--- (data/items/utility/utility_fire_stone.lua) it works through the 3x3 item grid -- but instead of granting
+-- (data/items/consumable/consumable_fire_stone.lua) it works through the 3x3 item grid -- but instead of granting
 -- a tag, its aura raises the MAGNITUDE of the consumables sitting adjacent to it (diagonals included).
 -- A Fire Bomb next to it hits harder; an acid or a healing potion next to it does more. Build the
 -- loadout around it: the charm is dead weight alone, and a bomb wants it as a neighbor.

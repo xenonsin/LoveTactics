@@ -151,7 +151,8 @@ function Summon.spawn(combat, summoner, charId, x, y, opts)
         timeless = opts.timeless,
     })
     Combat.logEvent(combat, "system",
-        string.format("%s summons %s.", summoner.char.name or "Unit", char.name or "a creature"))
+        string.format("%s summons %s.", summoner.char.name or "Unit", char.name or "a creature"),
+        { summoner, unit })
     -- A conjured body occupies its tile like any other: an opposing trap under it springs, and a
     -- hazard burning there takes hold. Last, and after the announcement, because the creature may not
     -- survive its own arrival -- the caller must check `unit.alive` before binding anything to it.
@@ -210,7 +211,7 @@ function Summon.copy(combat, summoner, x, y, opts)
     -- fakes a move line of its own (data/items/utility/utility_decoy.lua).
     if not opts.decoy then
         Combat.logEvent(combat, "system",
-            string.format("%s conjures a double.", summoner.char.name or "Unit"))
+            string.format("%s conjures a double.", summoner.char.name or "Unit"), summoner)
     end
     Combat.enterTile(combat, unit, x, y) -- as in Summon.spawn: the double may not outlive its arrival
     return unit
@@ -247,7 +248,7 @@ function Summon.copyOf(combat, copier, target, x, y, opts)
         duration = opts.duration,
     })
     Combat.logEvent(combat, "system", string.format("%s takes the shape of %s.",
-        copier.char.name or "Unit", target.char.name or "a foe"))
+        copier.char.name or "Unit", target.char.name or "a foe"), { copier, target })
     Combat.enterTile(combat, unit, x, y) -- as above: the shape may not outlive its arrival
     return unit
 end

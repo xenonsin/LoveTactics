@@ -1,12 +1,13 @@
 -- Shared hover tooltip for a battlefield tile: a dark panel showing the tile's terrain type,
 -- its movement / line-of-sight / positional modifiers, and — when something stands on it — the
 -- occupant's details. A unit shows its side, resource pools (HP / mana / stamina bars) and combat
--- stats; a revealed trap shows its owner and remaining health. Positioned near the mouse and
--- clamped on-screen, mirroring ui/item_tooltip.lua and ui/status_tooltip.lua.
+-- stats; a revealed trap shows its owner and remaining health; a prop (a barrel, a crate) shows its
+-- health and what breaking it does. Positioned near the mouse and clamped on-screen, mirroring
+-- ui/item_tooltip.lua and ui/status_tooltip.lua.
 --
 --   TileTooltip.draw(info, mx, my, maxRight)
 --     info = { cell = <arena tile>, bonus = <fieldBonus bag>, unit = <combat unit|nil>,
---              trap = <revealed trap|nil> }
+--              trap = <revealed trap|nil>, prop = <prop|nil> }
 --
 -- Content is assembled once into an ordered list of blocks that is both measured and drawn, so the
 -- computed box height can never drift from what's rendered. No love.graphics at require-time.
@@ -14,6 +15,7 @@
 local Scale = require("scale")
 local Combat = require("models.combat")
 local Trap = require("models.trap")
+local Prop = require("models.prop")
 local Colors = require("ui.colors")
 local Glyphs = require("ui.glyphs")
 local PoolCallout = require("ui.pool_callout")
@@ -108,6 +110,11 @@ local function accentFor(info)
     end
     if info.trap then
         return info.trap.side == "party" and PARTY_COLOR or ENEMY_COLOR
+    end
+    -- A prop takes no side, so it borrows its own blueprint colour rather than a team's -- the same
+    -- rust-red or pine the board draws it in, which is what ties the tooltip to the block on the tile.
+    if info.prop then
+        return (info.prop.def and info.prop.def.color) or DEFAULT_COLOR
     end
     return TILE_COLOR[(info.cell or {}).type] or DEFAULT_COLOR
 end
@@ -314,6 +321,43 @@ local function buildBlocks(info)
             blocks[#blocks + 1] = { kind = "sep" }
             appendTerrain(blocks, info, true)
         end
+    elseif info.prop then
+        -- A prop reads like a trap with the Owner row struck out: it belongs to nobody, which is the
+        -- single most important thing about a powder keg and so is said in the tinting rather than a
+        -- row -- neutral, not party-blue or enemy-red. HP, then what BREAKING it does (dry-run through
+        -- Prop.preview), because "break it" is the only verb it has and the blast is the whole reason
+        -- to hover it at all.
+        local prop = info.prop
+        local pdef = prop.def or {}
+        local tint = pdef.color and { pdef.color[1], pdef.color[2], pdef.color[3] } or VALUE
+        blocks[#blocks + 1] = { kind = "title", text = (prop.name or "Object"), color = tint }
+        if prop.health and prop.maxHealth then
+            local block = { kind = "bar", label = "HP", stat = "health", cur = prop.health,
+                max = prop.maxHealth, color = tint }
+            if info.preview and (info.preview.damage or 0) > 0 then
+                block.delta = -info.preview.damage
+                block.lethal = info.preview.lethal
+            end
+            blocks[#blocks + 1] = block
+        end
+        if pdef.description and pdef.description ~= "" then
+            blocks[#blocks + 1] = { kind = "desc", text = pdef.description }
+        end
+        local pp = prop.id and Prop.preview(prop.id, prop.amount)
+        if pp and pp.damage > 0 then
+            blocks[#blocks + 1] = { kind = "stat", label = "Blast", value = tostring(pp.damage) }
+            blocks[#blocks + 1] = { kind = "stat", label = "Radius", value = tostring(pdef.radius or 1) }
+        end
+        for _, st in ipairs(pp and pp.statuses or {}) do
+            local def = st.def or {}
+            blocks[#blocks + 1] = { kind = "stat", label = "Applies",
+                value = def.name or st.id or "status", valueColor = def.color or VALUE }
+        end
+        if info.cell then
+            appendHazard(blocks, info)
+            blocks[#blocks + 1] = { kind = "sep" }
+            appendTerrain(blocks, info, true)
+        end
     else
         if appendHazard(blocks, info) then blocks[#blocks + 1] = { kind = "sep" } end
         appendTerrain(blocks, info, false)
@@ -346,7 +390,7 @@ end
 -- draw, so it can't disagree with what gets drawn. Lets a caller stacking several boxes into a fixed
 -- column work out what fits BEFORE it commits any of them to the screen (states/battle.lua).
 function TileTooltip.measure(info, width)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap) then return 0 end
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.prop) then return 0 end
     local _, body = fonts()
     return measureBlocks(buildBlocks(info), ((width or 210) - 9 * 2), body)
 end
@@ -357,7 +401,7 @@ end
 -- so it never covers the board highlights (the blast footprint) the player is reading. No-op when
 -- there is no tile to describe.
 function TileTooltip.draw(info, mx, my, maxRight, opts)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap) then return end
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.prop) then return end
     local title, body, small = fonts()
     local pad, w = 9, (opts and opts.width) or 210
     local innerW = w - pad * 2

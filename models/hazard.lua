@@ -145,6 +145,27 @@ function Hazard.at(combat, x, y, id)
     return nil
 end
 
+-- How much this tile's hazards obstruct a line of sight drawn ACROSS it: the summed `sightCost` of
+-- every live zone standing on it. 0 for the overwhelming majority, which declare none -- fire and rain
+-- are things you see through perfectly well, and only a zone whose whole point is blindness (Darkness)
+-- has any business here.
+--
+-- The third and last contributor to Combat.hasLineOfSight, beside Wall.sightCostAt and Prop.sightCostAt
+-- and shaped exactly like them, which is what makes the addition cheap: sight already asked terrain,
+-- walls and furniture what they cost to see past, and this only widens the question to the ground
+-- itself. Everything that reads sight -- a bow's `requiresSight`, the threat highlight, overwatch, the
+-- enemy AI -- picks up the new answer without knowing a hazard was involved.
+--
+-- SUMMED rather than maxed, so two clouds drifting over one tile blind it harder than one does. That
+-- matches how terrain already stacks toward Combat.SIGHT_BLOCK (two forests block where one does not).
+function Hazard.sightCostAt(combat, x, y)
+    local total = 0
+    for _, h in ipairs(Hazard.allAt(combat, x, y)) do
+        total = total + (h.def.sightCost or 0)
+    end
+    return total
+end
+
 -- The live hazard of blueprint `id` on a tile belonging to exactly `owner` (nil owner matches only an
 -- unowned zone), or nil. Placement's dedupe key -- deliberately narrower than Hazard.at, which cannot
 -- tell "any owner" from "no owner" through one optional argument.
@@ -288,6 +309,61 @@ function Hazard.dropOwnedBy(combat, owner, id)
     return n
 end
 
+-- Carry every zone `owner` holds open along with it: shift each of its hazards by (dx, dy), the same
+-- delta the owner just travelled. The ground a body holds open is held open WHERE THAT BODY IS -- so a
+-- banner heaved across the field takes its rally square with it, and does not leave a live 3x3 blessing
+-- standing over the ground it used to occupy.
+--
+-- A banner never walks, so this only ever fires when something MOVES one (Heave, a shove, a charge) --
+-- which is exactly the case that would otherwise strand a zone. Translating rather than re-laying keeps
+-- each cell's remaining duration, magnitude and side intact, and keeps the zone's SHAPE: a 3x3 stays a
+-- 3x3 rather than being rebuilt by whichever ability happened to author it. A cell that lands off the
+-- map or on unwalkable ground is dropped instead (a zone clipped by the wall it was thrown against),
+-- mirroring Hazard.place's refusal of the same tiles.
+--
+-- Distinct from Combat.layIncense, which DROPS and re-lays a censer's cloud each time its bearer moves.
+-- A censer generates its ground continuously from a def, so re-laying is the cheaper truth; a banner's
+-- square was authored once by the ability that planted it, and there is nothing left to re-lay it from.
+-- Combat.enterTile calls this BEFORE layIncense so a censer-bearer's cloud is corrected by the re-lay
+-- rather than shifted twice.
+--
+-- Occupants are then re-entered: a zone that arrives over a unit affects it at once, exactly as
+-- Hazard.place treats a hazard dropped onto an occupied tile. Reaping the units the ground left behind
+-- is NOT done here -- Hazard.reap runs for every living unit on the next tick, and a blessing that
+-- outlasts the banner by a beat is the same lag a banner cut down between ticks already has.
+-- Returns the number of zone cells carried.
+function Hazard.carry(combat, owner, dx, dy)
+    if not owner then return 0 end
+    if dx == 0 and dy == 0 then return 0 end
+    local list = combat.hazards
+    if not list then return 0 end
+    local tiles = combat.arena and combat.arena.tiles
+    local moved = {}
+    for i = #list, 1, -1 do
+        local h = list[i]
+        if h.alive and h.owner == owner then
+            local nx, ny = h.x + dx, h.y + dy
+            local cell = tiles and tiles[ny] and tiles[ny][nx]
+            if cell and cell.walkable then
+                h.x, h.y = nx, ny
+                moved[#moved + 1] = h
+            else
+                h.alive = false
+                table.remove(list, i)
+                if h.def.onExpire then h.def.onExpire(ctxFor(combat, h, nil)) end
+            end
+        end
+    end
+    local Combat = require("models.combat")
+    for _, h in ipairs(moved) do
+        local occupant = Combat.unitAt(combat, h.x, h.y)
+        if occupant and occupant.alive and h.def.onEnter then
+            h.def.onEnter(ctxFor(combat, h, occupant))
+        end
+    end
+    return #moved
+end
+
 -- Drop any ZONE-BOUND status `unit` is no longer standing in. Such a status carries `source` = the id
 -- of the zone that granted it (stamped automatically -- see the ctx's applyStatus); it lives exactly
 -- as long as a live zone of that id sits under the unit, and Status.tick never ages it. This is the
@@ -322,7 +398,7 @@ function Hazard.reap(combat, unit)
             Combat.logEvent(combat, "status",
                 string.format("%s's %s fades outside the %s.",
                     (unit.char and unit.char.name) or "Unit", s.name or s.id,
-                    Hazard.defs[s.source] and Hazard.defs[s.source].name or "zone"))
+                    Hazard.defs[s.source] and Hazard.defs[s.source].name or "zone"), unit)
         end
     end
 end

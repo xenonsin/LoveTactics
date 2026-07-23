@@ -122,6 +122,12 @@ local function buildCounterBlocks(action)
     -- one. The rows they'd separate are two lines away, not twelve.
     if c.status then
         blocks[#blocks + 1] = { kind = "stat", label = "Applies", value = c.status, valueColor = WARN }
+    elseif c.shoves then
+        -- A shove deals nothing on open ground, so "Damage: none" would be true and useless. What the
+        -- player is actually weighing is the TILE: step in here and you finish the exchange somewhere
+        -- else, out of your own reach and possibly in something worse.
+        blocks[#blocks + 1] = { kind = "stat", label = "Drives you back",
+            value = c.shoves .. (c.shoves == 1 and " tile" or " tiles"), valueColor = WARN }
     else
         blocks[#blocks + 1] = { kind = "stat", label = "Damage",
             value = (c.damage or 0) > 0 and ("-" .. c.damage) or "none", valueColor = DAMAGE }

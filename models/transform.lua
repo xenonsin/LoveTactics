@@ -136,7 +136,7 @@ function Transform.apply(combat, unit, charId, opts)
     end
 
     Combat.logEvent(combat, "status", string.format("%s takes the shape of %s.",
-        original.name or "Unit", shape.name or charId))
+        original.name or "Unit", shape.name or charId), unit)
     return shape
 end
 
@@ -167,7 +167,7 @@ function Transform.revert(combat, unit)
     -- (a pig cut down turns back into the knight it was) but not a thing to announce as a recovery.
     if unit.alive then
         Combat.logEvent(combat, "status", string.format("%s returns to its own shape.",
-            original.name or "Unit"))
+            original.name or "Unit"), unit)
     end
     return true
 end

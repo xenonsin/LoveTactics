@@ -58,6 +58,11 @@ return {
                 { unit("character_bandit", 1, 2) })
             local knight, bandit = c.units[1], c.units[2]
             local weapon = Combat.defaultWeapon(bandit.char)
+            -- Stamina is scarce by design now, so a swordsman cannot naturally afford two answers in a
+            -- round; prop the pool up here since this test is about the reflex having no TIMER, not about
+            -- what the pool holds (the escalating price is what runs it down -- see the next case).
+            knight.char.stats.stamina.max = 999
+            knight.char.stats.stamina.current = 999
 
             local hp0 = bandit.char.stats.health.current
             Combat.dealDamage(c, bandit, knight, weapon)
@@ -93,6 +98,11 @@ return {
                 u.char.stats.health.max = 999
                 u.char.stats.health.current = 999
             end
+            -- ...and the stamina too: the whole point here is the ESCALATING price of answering, which
+            -- comes to 8 + 16 + 32 -- far past a scarce starting pool. Propped so the price is what the
+            -- test measures, not the moment the bar simply runs dry.
+            knight.char.stats.stamina.max = 999
+            knight.char.stats.stamina.current = 999
 
             local before = stamina(knight)
             Combat.dealDamage(c, bandit, knight, weapon)
@@ -189,6 +199,10 @@ return {
             local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } },
                 { unit("character_bandit", 1, 2), unit("character_bandit", 1, 4) })
             local hero, near, far = c.units[1], c.units[2], c.units[3]
+            -- Reach is what this case is about, not the pool: prop the stamina so the escalating price of
+            -- a second answer never masks a blow the blade simply chose not to reach for.
+            hero.char.stats.stamina.max = 999
+            hero.char.stats.stamina.current = 999
 
             local nearHp = near.char.stats.health.current
             Combat.dealDamage(c, near, hero, Combat.defaultWeapon(near.char))

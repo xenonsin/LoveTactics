@@ -61,7 +61,7 @@ function BattleMap.new(arena, opts)
     self.numberFont = opts.numberFont or love.graphics.newFont(12)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
-    self.overlays = { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {} }
+    self.overlays = { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {}, props = {} }
 
     -- On-screen tile size. Defaults to the arena's logical tileSize but can be overridden so the
     -- board renders a little smaller than its data size, opening breathing room around it. All
@@ -101,8 +101,9 @@ end
 --   aoe    -> an armed AoE ability's blast footprint around the aimed cell (bright red/green)
 --   threat -> default-attack reach (red), the band beyond `move` shown during MOVE mode
 --   traps  -> runtime trap objects the viewer can see (own + detected), drawn under the units
+--   logSubjects -> { x, y, unit } marks for the units the hovered combat-log line is about (white)
 function BattleMap:setOverlays(overlays)
-    self.overlays = overlays or { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {} }
+    self.overlays = overlays or { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {}, props = {} }
 end
 
 -- Build the tileset quads + SpriteBatch for the mapped art types, or record that we
@@ -187,6 +188,7 @@ function BattleMap:draw()
     self:drawOverlays()
     self:drawMovePath() -- the actor's steered walk route, an arrow over the blue move wash
     self:drawWalls() -- conjured blockers stand on the ground, above overlays, under the units
+    self:drawProps() -- scattered furniture (barrels, crates) stands beside the walls
     self:drawTraps() -- revealed traps sit above the ground/overlays, under the units
     self:drawUnits()
     self:drawHighlights()
@@ -330,6 +332,56 @@ function BattleMap:drawWalls()
             if w.health and w.maxHealth and w.health < w.maxHealth then
                 local ratio = math.max(0, math.min(1, w.health / w.maxHealth))
                 local bx, by, bw, bh = wx + 8, wy + s - 12, s - 16, 4
+                love.graphics.setColor(0, 0, 0, 0.6)
+                love.graphics.rectangle("fill", bx - 1, by - 1, bw + 2, bh + 2, 2, 2)
+                love.graphics.setColor(0.9, 0.7, 0.3, 0.95)
+                love.graphics.rectangle("fill", bx, by, bw * ratio, bh, 2, 2)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- Props (self.overlays.props): the board's own furniture -- barrels, crates -- one runtime object per
+-- tile ({ x, y, sprite, health, maxHealth, def }). Sideless and always visible to everyone, so unlike
+-- traps there is nothing to filter. Drawn as the prop's sprite, or a rounded block in the blueprint's
+-- own `color` while the art is missing, so a rust-red keg reads apart from a pine crate at a glance --
+-- which matters, because one of them is a bomb.
+--
+-- An explosive prop wears a thin dark outline and a lit core, so "that one goes off" is legible without
+-- a tooltip. Sits above the overlays and under the units, exactly where the walls sit.
+function BattleMap:drawProps()
+    local s = self.size
+    for _, p in ipairs(self.overlays.props or {}) do
+        if p.alive then
+            local px, py = self:cellToPixel(p.x, p.y)
+            local sprite = p.sprite
+            if type(sprite) == "userdata" then
+                love.graphics.setColor(1, 1, 1)
+                local sw, sh = sprite:getDimensions()
+                local scale = math.min(s / sw, s / sh)
+                love.graphics.draw(sprite, px + s / 2, py + s / 2, 0, scale, scale, sw / 2, sh / 2)
+            else
+                local col = (p.def and p.def.color) or { 0.5, 0.45, 0.4 }
+                love.graphics.setColor(col[1], col[2], col[3], 0.95)
+                love.graphics.rectangle("fill", px + 10, py + 8, s - 20, s - 16, 4, 4)
+                love.graphics.setColor(0.14, 0.12, 0.1, 0.95)
+                love.graphics.setLineWidth(2)
+                love.graphics.rectangle("line", px + 10, py + 8, s - 20, s - 16, 4, 4)
+                love.graphics.setLineWidth(1)
+                -- A lit core marks the ones that burst when struck (a `explosive`-tagged prop).
+                for _, t in ipairs(p.tags or {}) do
+                    if t == "explosive" then
+                        love.graphics.setColor(1, 0.72, 0.25, 0.9)
+                        love.graphics.circle("fill", px + s / 2, py + s / 2, 4)
+                        break
+                    end
+                end
+            end
+            -- Struck prop: the same thin amber HP bar damaged traps and walls wear.
+            if p.health and p.maxHealth and p.health < p.maxHealth then
+                local ratio = math.max(0, math.min(1, p.health / p.maxHealth))
+                local bx, by, bw, bh = px + 8, py + s - 12, s - 16, 4
                 love.graphics.setColor(0, 0, 0, 0.6)
                 love.graphics.rectangle("fill", bx - 1, by - 1, bw + 2, bh + 2, 2, 2)
                 love.graphics.setColor(0.9, 0.7, 0.3, 0.95)
@@ -794,8 +846,9 @@ function BattleMap:drawTurnNumber(n, wx, wy, alpha)
     love.graphics.printf(tostring(n), wx + 1, wy + 1, 16, "center")
 end
 
--- Emphasise the acting unit (pulsing gold ring, always) and the unit the timeline is
--- hovering (steady cyan ring). Colours are distinct so the two never read as the same thing.
+-- Emphasise the acting unit (pulsing gold ring, always), the unit the timeline is hovering (steady
+-- cyan ring), and whoever the hovered combat-log line names (pulsing white ring). Colours are
+-- distinct so no two ever read as the same thing.
 function BattleMap:drawHighlights()
     local s = self.size
     local hover = self.overlays.hover
@@ -817,6 +870,33 @@ function BattleMap:drawHighlights()
         love.graphics.setColor(0.98, 0.82, 0.35, pulse)
         love.graphics.setLineWidth(3)
         love.graphics.rectangle("line", wx + 3, wy + 3, s - 6, s - 6, 5, 5)
+        love.graphics.setLineWidth(1)
+    end
+
+    -- Whoever the hovered combat-log line is about: a pulsing white ring, deliberately a third colour
+    -- (gold = acting, cyan = pointed at, white = the log is talking about this one). When a line names
+    -- two -- a striker and the struck -- a thread joins the first to the rest, so the pair reads as
+    -- one event. Drawn above the other rings: it answers a question the player just asked.
+    local subjects = self.overlays.logSubjects
+    if subjects and #subjects > 0 then
+        local pulse = 0.55 + 0.45 * math.sin((self.time or 0) * 5)
+        local ax, ay = self:cellToPixel(subjects[1].x, subjects[1].y)
+        if #subjects > 1 then
+            love.graphics.setColor(1, 1, 1, 0.20 + 0.25 * pulse)
+            love.graphics.setLineWidth(2)
+            for i = 2, #subjects do
+                local bx, by = self:cellToPixel(subjects[i].x, subjects[i].y)
+                love.graphics.line(ax + s / 2, ay + s / 2, bx + s / 2, by + s / 2)
+            end
+        end
+        for _, m in ipairs(subjects) do
+            local wx, wy = self:cellToPixel(m.x, m.y)
+            love.graphics.setColor(1, 1, 1, 0.10)
+            love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+            love.graphics.setColor(1, 1, 1, 0.55 + 0.40 * pulse)
+            love.graphics.setLineWidth(2)
+            love.graphics.rectangle("line", wx + 1, wy + 1, s - 2, s - 2, 4, 4)
+        end
         love.graphics.setLineWidth(1)
     end
 

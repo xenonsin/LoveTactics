@@ -411,6 +411,11 @@ return {
             local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("character_bandit", 2, 1) })
             local p, b = c.units[1], c.units[2]
             local swing = Item.instantiate("weapon_parasitic_staff").activeAbility.cost.amount
+            -- A fixed pool worth exactly two answers (6 + 12) with a sliver to spare, and short of a
+            -- third (24). Starting stamina is scarce by design now and no longer lands there on its own,
+            -- so the case pins the pool it needs -- the escalating price is the subject, not the bar size.
+            p.char.stats.stamina.max = 20
+            p.char.stats.stamina.current = 20
 
             local before = Combat.resource(p.char, "stamina")
             Combat.dealFlatDamage(c, p, 6, nil, nil, b)
@@ -485,6 +490,46 @@ return {
             assert(not boss.alive, "the Crown falls")
             assert(not shade.alive, "and the shades fall with the thing that was wearing them")
             assert(#c.units == 5, "the lethal blow summons nothing: onDamaged skips a corpse")
+        end,
+    },
+    {
+        name = "Blood Fever counts every body on the field, whichever side it fell on",
+        fn = function()
+            -- The one hook keyed to the FIELD rather than to its bearer (Trait.onAnyDeath). What makes
+            -- it wrath's and not grief's is that it never asks whose death it was.
+            local fighter = plainChar("character_knight")
+            fighter.inventory[1] = Item.instantiate("utility_butchers_tally")
+            local c = Combat.new(arena(10, 10),
+                { unit(fighter, 1, 1), unit(plainChar("character_knight"), 2, 1) },
+                { unit(plainChar("character_bandit"), 8, 8), unit(plainChar("character_bandit"), 8, 7) })
+            local bearer, comrade, foe = c.units[1], c.units[2], c.units[3]
+            assert(Trait.has(bearer, "trait_blood_fever"), "the charm carries its rule to whoever holds it")
+            assert((bearer.bonus and bearer.bonus.damage or 0) == 0, "and grants nothing until someone dies")
+
+            Combat.dealFlatDamage(c, foe, 9999, nil, "test")
+            assert(not foe.alive, "an enemy drops")
+            assert(bearer.bonus.damage == 2, "the bearer's blood is up")
+
+            -- ...and its own side falling feeds it exactly as well, which is the sin stated as
+            -- arithmetic: what it wants is for the fight to be going badly for somebody.
+            Combat.dealFlatDamage(c, comrade, 9999, nil, "test")
+            assert(not comrade.alive, "a comrade drops")
+            assert(bearer.bonus.damage == 4, "and it is just as pleased")
+        end,
+    },
+    {
+        name = "Blood Fever stops at five bodies, and a corpse banks nothing for itself",
+        fn = function()
+            local fighter = plainChar("character_knight")
+            fighter.inventory[1] = Item.instantiate("utility_butchers_tally")
+            local foes = {}
+            for i = 1, 7 do foes[i] = unit(plainChar("character_bandit"), i, 8) end
+            local c = Combat.new(arena(10, 10), { unit(fighter, 1, 1) }, foes)
+            local bearer = c.units[1]
+
+            for i = 2, #c.units do Combat.dealFlatDamage(c, c.units[i], 9999, nil, "test") end
+            assert(bearer.bonus.damage == 10,
+                "five bodies at +2 and then nothing more, got " .. bearer.bonus.damage)
         end,
     },
 }

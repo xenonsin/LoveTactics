@@ -35,6 +35,9 @@ return {
     portrait = "assets/portraits/gyeom.png", -- large VN portrait for conversations (falls back if missing)
     class = "mage",
     boss = true,
+    -- 56 health next to a swordsman is a body. Like every mage she keeps her distance (models/ai.lua),
+    -- which is also how the single bolt she shows keeps finding range turn after turn.
+    archetype = "skirmish",
     stats = {
         health = 56, mana = 46, stamina = 10,
         staminaRegen = 2,
@@ -52,4 +55,13 @@ return {
         false,          false,               false,
     },
     defaultAction = "weapon_wand",
+    -- Basic tactics (models/ai.lua): the Ledger only pays out if she is still standing to keep banking
+    -- into it (utility_ledger.lua) -- every turn she survives is a turn of practice, and the Release
+    -- she is built around is four turns of it away. So the one instinct worth authoring is not to trade
+    -- when a glass body is caught: break off under a third health and let the skirmish posture keep the
+    -- range the bolt wants. The concealment that makes her unanswerable rides on the Ledger's trait, not
+    -- here (trait_perfect_recall.lua), so nothing about it belongs in this list.
+    ai = {
+        { priority = "emergency", act = "retreat", when = { subject = "self", test = "hp_pct_below", value = 0.3 } },
+    },
 }

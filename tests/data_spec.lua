@@ -53,7 +53,7 @@ return {
             local c = Character.instantiate("character_knight")
             assert(c.stats.health.max == 70 and c.stats.health.current == 70, "health")
             assert(c.stats.mana.max == 20, "mana max")
-            assert(c.stats.stamina.current == 60, "stamina current")
+            assert(c.stats.stamina.current == 15, "stamina current")
         end,
     },
     {
@@ -94,10 +94,10 @@ return {
         fn = function()
             assert(Status.defs.status_burn, "burn status missing")
             assert(Item.defs.ability_omnislash, "omnislash missing")
-            assert(Item.defs.utility_fire_stone, "fire_stone missing")
+            assert(Item.defs.consumable_fire_stone, "fire_stone missing")
             assert(Item.defs.ability_rain_of_arrows, "rain_of_arrows missing")
             -- The aura block (a top-level item field) survives instantiation.
-            local stone = Item.instantiate("utility_fire_stone")
+            local stone = Item.instantiate("consumable_fire_stone")
             assert(stone.aura and stone.aura.grantTags[1] == "fire", "fire_stone carries its aura")
             -- Ability-level adjacency fields (inside activeAbility) survive too.
             local rain = Item.instantiate("ability_rain_of_arrows")

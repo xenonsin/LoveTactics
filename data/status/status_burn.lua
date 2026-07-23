@@ -2,7 +2,7 @@
 -- unit fire damage (ctx.damage routes through Combat.dealFlatDamage, so the "fire" tag is subject to
 -- any fire resist), and the same ticks count its duration down until it wears off. Inflicted
 -- deterministically by fire-augmented attacks -- e.g. a weapon sitting adjacent to a Fire Stone
--- (data/items/utility/utility_fire_stone.lua) -- or by standing in a Fire hazard (data/hazards/hazard_fire.lua).
+-- (data/items/utility/consumable_fire_stone.lua) -- or by standing in a Fire hazard (data/hazards/hazard_fire.lua).
 --
 -- `magnitude` is quoted PER TURN and ctx.accrue spreads it over the ticks a turn is worth
 -- (Status.TICKS_PER_TURN), so the tuned number stays readable while the burning is continuous. Pricing

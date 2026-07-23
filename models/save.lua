@@ -121,7 +121,11 @@ local function snapshotCharacter(char)
     -- Purely additive, so Save.VERSION deliberately does NOT move: a version bump discards the whole
     -- save, and no existing field changed shape. An older save simply loads with no tactics, which is
     -- exactly what it had.
-    if char.aiRules and #char.aiRules > 0 then snap.aiRules = char.aiRules end
+    -- The player's rule overlay. Its very EXISTENCE is the ownership flag (models/ai.lua): a nil list
+    -- means "never edited, still on the blueprint's rules", so an untouched character diffs clean, while
+    -- an owned-but-emptied list (the player deleted every rule) must survive as `{}` rather than reading
+    -- back as un-owned and resurrecting the blueprint's rules. So: written whenever it is non-nil.
+    if char.aiRules then snap.aiRules = char.aiRules end
     -- The archetype is normally the blueprint's, and re-derived by instantiate; only a player
     -- OVERRIDE is worth storing, or every save would carry a copy of content it already has.
     local bpArchetype = bp and bp.archetype

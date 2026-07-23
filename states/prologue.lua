@@ -87,11 +87,13 @@ local FLIGHT_QUEST = {
             -- champion is fought fresh. Each entry may carry a payload (a treasure's exact `loot`, an
             -- event's `conversation`); see states/game.lua.
             --
-            -- Every stop AFTER the first chest also hands over ONE class ability, so the road finishes
+            -- The stops after the first chest also hand over class abilities, so the road finishes
             -- introducing the roster of classes the village opened: it taught fighter (Clear Out) and
-            -- mage (Jolt) by play, and stop 1 hands the bow (hunter); stops 2-7 cover the rest, one
-            -- basic mechanic apiece, delivered through whatever channel the stop already owns -- an
-            -- event's gift, a fight's spoils, a chest, the last rest. The class rides on WHICH ability,
+            -- mage (Jolt) by play, and stop 1 hands the bow (hunter); stops 2-6 cover the rest, one
+            -- ability apiece (the last chest carrying two, a second strike and spell for the fighter
+            -- and mage the village opened with), delivered through whatever channel the stop already
+            -- owns -- an event's gift, a fight's spoils, a chest. Stop 7 is a plain rest and grants
+            -- nothing: it exists so the champion is fought fresh. The class rides on WHICH ability,
             -- never on who may hold it (docs/classes.md): this is a lesson, not an equip gate.
             always = {
                 -- Stop 1: the teaching chest -- the bow kit (hunter) and the potions that fill the grid.
@@ -108,10 +110,11 @@ local FLIGHT_QUEST = {
                 { id = "encounter_event", conversation = "flight_event_survivor" },
                 -- Stop 5: rogue (Pickpocket) -- lifted on the way out of the extraction.
                 { id = "encounter_survivors_extract", loot = { "ability_pickpocket" } },
-                -- Stop 6: mage (Fire Bolt) -- a spell tucked into a later chest.
-                { id = "encounter_treasure", loot = { "ability_fire_bolt" } },
-                -- Stop 7: fighter (Power Strike) -- the party sharpens for the gate on the last rest.
-                { id = "encounter_rest", loot = { "ability_power_strike" } },
+                -- Stop 6: mage (Fire Bolt) + fighter (Power Strike) -- the last chest before the gate
+                -- rounds out the two classes the village opened with, one spell and one strike.
+                { id = "encounter_treasure", loot = { "ability_fire_bolt", "ability_power_strike" } },
+                -- Stop 7: a plain rest so the champion is fought fresh -- no loot, just a full refill.
+                { id = "encounter_rest" },
             },
         },
         objective = {
@@ -121,6 +124,10 @@ local FLIGHT_QUEST = {
             -- last words before the first foe the game frames as a BOSS, with the champion already
             -- standing on the lane behind the text -- see data/conversations/flight_champion.lua.
             opening = "flight_champion",
+            -- The capstone's own authored board (data/arenas/demon_champion.lua), read by
+            -- states/battle.lua's specFor off the objective rather than the overworld map's `layout`.
+            -- Its terrain answers the boss's three stages (the neck, the high ground, the treeline).
+            layout = "demon_champion",
             composition = function()
                 return { "character_demon_champion", "character_demon_imp", "character_demon_imp" }
             end,

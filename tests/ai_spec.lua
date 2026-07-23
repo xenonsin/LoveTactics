@@ -464,11 +464,33 @@ return {
         end,
     },
     {
-        name = "rules merge player > item > character > posture, ordered by priority first",
+        name = "a blueprint's own rules back an untouched unit, below its item rules",
         fn = function()
+            -- No player overlay: the character is still on the list the blueprint authored, at the
+            -- character rank -- below the item's own rule, above the posture floor.
+            local char = caster("ability_heal")       -- Heal's block is `urgent`
+            char.ai = { { priority = "normal", act = "attack" } }
+            assert(char.aiRules == nil, "the unit was never edited")
+            local c = Combat.new(arena(8, 8),
+                { unit(swordsman(), 4, 4) }, { unit(char, 4, 6) })
+            local merged = AI.rulesFor(c.units[2])
+
+            assert(merged[1].item and merged[1].item.id == "ability_heal",
+                "the item rule (urgent) leads")
+            local sawChar = false
+            for _, e in ipairs(merged) do if e.rule == char.ai[1] then sawChar = true end end
+            assert(sawChar, "the blueprint's own rule is used when there is no player overlay")
+        end,
+    },
+    {
+        name = "the player's overlay replaces the blueprint's rules, and still layers over item and posture",
+        fn = function()
+            -- The overlay was seeded FROM the blueprint (ui/tactics_editor.lua), so it already holds
+            -- whatever the blueprint authored plus the player's edits. Collecting `char.ai` as well
+            -- would double every untouched rule, so once the overlay exists the blueprint list drops.
             local char = caster("ability_heal")
-            char.ai = { { priority = "high", act = "attack" } }          -- character source
-            char.aiRules = { { priority = "high", act = "wait" } }       -- player source, same band
+            char.ai = { { priority = "high", act = "attack" } }          -- the blueprint's own rule
+            char.aiRules = { { priority = "high", act = "wait" } }       -- the player took the list over
             local c = Combat.new(arena(8, 8),
                 { unit(swordsman(), 4, 4) }, { unit(char, 4, 6) })
             local merged = AI.rulesFor(c.units[2])
@@ -476,11 +498,14 @@ return {
             -- Heal's own block is `urgent`, which outranks `high`, so it leads whatever the source.
             assert(merged[1].item and merged[1].item.id == "ability_heal",
                 "priority is the primary sort, whatever the source")
-            -- The two `high` rules tie on the band, so the SOURCE decides: player first.
-            assert(merged[2].rule.act == "wait", "player rules outrank character rules at equal priority")
-            assert(merged[3].rule.act == "attack", "...and the character's own come next")
+            -- The player's `high` rule is present at the player rank...
+            assert(merged[2].rule.act == "wait", "the player's rule leads the `high` band")
+            -- ...and the blueprint's own `attack` rule is GONE, replaced rather than stacked.
+            for _, e in ipairs(merged) do
+                assert(e.rule ~= char.ai[1], "the blueprint's own rule does not also appear")
+            end
             -- Posture defaults are the floor, so they land last.
-            assert(#merged >= 4 and merged[#merged].rule ~= nil, "posture defaults still backstop the list")
+            assert(#merged >= 3 and merged[#merged].rule ~= nil, "posture defaults still backstop the list")
         end,
     },
     {

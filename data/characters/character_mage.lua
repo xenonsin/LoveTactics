@@ -25,7 +25,7 @@ return {
     -- Fire Elemental reserves a quarter of the deep mana pool for as long as the elemental stands.
     startingItems = {
         "consumable_healing_potion", "ability_jolt",             "armor_silk_robes",
-        "weapon_parasitic_staff", "utility_overflowing_focus",   "utility_fire_stone",
+        "weapon_parasitic_staff", "utility_overflowing_focus",   "consumable_fire_stone",
         "ability_rain",   "ability_summon_fire_elemental", "ability_fireball",
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so

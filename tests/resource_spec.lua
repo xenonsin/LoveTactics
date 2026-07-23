@@ -43,11 +43,11 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
-            knight.char.stats.stamina.current = 20 -- max 60
-            knight.char.stats.mana.current = 5     -- max 20
+            knight.char.stats.stamina.current = 5 -- max 15
+            knight.char.stats.mana.current = 5    -- max 20
             -- Knight staminaRegen = 2, so 3 elapsed ticks restore 6.
             Combat.regenerate(c, 3)
-            assert(knight.char.stats.stamina.current == 26, "stamina += staminaRegen * elapsed")
+            assert(knight.char.stats.stamina.current == 11, "stamina += staminaRegen * elapsed")
             assert(knight.char.stats.mana.current == 5, "mana never regenerates")
         end,
     },
@@ -65,9 +65,9 @@ return {
         name = "restoreResource clamps to max and returns the real delta",
         fn = function()
             local knight = Character.instantiate("character_knight")
-            knight.stats.stamina.current = 55 -- max 60
-            assert(Combat.restoreResource(knight, "stamina", 10) == 5, "returns the clamped delta")
-            assert(knight.stats.stamina.current == 60, "capped at max")
+            knight.stats.stamina.current = 12 -- max 15
+            assert(Combat.restoreResource(knight, "stamina", 10) == 3, "returns the clamped delta")
+            assert(knight.stats.stamina.current == 15, "capped at max")
             assert(Combat.restoreResource(knight, "stamina", 10) == 0, "already full -> 0")
             assert(Combat.restoreResource(knight, "stamina", -3) == 0, "non-positive -> 0")
         end,

@@ -36,13 +36,13 @@ One class per deadly sin: each vendor's quest line ends facing its own (see [sto
 
 | Class | Sin | Resource | Identity | Owns |
 |---|---|---|---|---|
-| `fighter` | wrath | stamina | Trades its own health and tempo for damage. Wrath is what happens directly in front of you. Also `Growth.NEUTRAL_CLASS` — every class-less creature grows as one. | `front` aoe, `stun`, `raw`, self-cost (Fury, Desperate Strike), `frenzy`, banners |
-| `knight` | sloth | stamina + mana | The wall. It does not kill you, it decides where you stand. | `taunt`, `knockback`, guard redirect (`oathward`/`martyr`), `defending` wait-swap, armor |
+| `fighter` | wrath | stamina | Trades its own health and tempo for damage. Wrath is what happens directly in front of you. Also `Growth.NEUTRAL_CLASS` — every class-less creature grows as one. | `front` aoe, `stun`, `raw`, self-cost (Fury, Desperate Strike, Reckless), `frenzy`, banners, the extra action |
+| `knight` | sloth | stamina + mana | The wall. It does not kill you, it decides where you stand — or whether you act at all. | `taunt`, `halted`, `knockback`, guard redirect (`oathward`/`martyr`/`sharesDamage`), `defending` wait-swap, armor |
 | `rogue` | greed | stamina | Guile. Conditional multipliers, return-to-origin blinks, and taking what is not yours. | `guile`, `blink`, execute, `steal`, `bleed`, debuff-count scaling |
 | `hunter` | gluttony | stamina | Setup, then payoff — and most of it gated on a bow beside it in the grid. | `mark`, `requiresAdjacent`, traps, animal summons, shapeshifting, `cripple`/`root` |
-| `mage` | pride | mana | Elements, wind-ups, and remaking the ground itself. | `channel`, hazard creation, element tags, `reserve` summons |
+| `mage` | pride | mana | Elements, wind-ups, and remaking the ground itself. | `channel`, hazard creation, element tags, `reserve` summons, the **sigils** (`careful`/`twin`/`speedBonus`/`rangeBonus`) |
 | `priest` | lust | mana | Zones and wards. Holds ground open and closes it to others. | `holy`, `negates`/`reflects`, `cleanse`/`dispel`, friendly hazards, revive, `unarmed` |
-| `alchemist` | envy | mana | Covets others' power rather than casting its own: consumables and grid auras. | `consumesItem`, `poison`/`acid`, the `aura` block, throwables |
+| `alchemist` | envy | mana | Covets others' power rather than casting its own: consumables and grid auras. | `consumesItem`, `poison`/`acid`, the `aura` block, **coatings** and **elixirs**, throwables |
 
 **Owning a keyword is not a monopoly.** What the column means is: this is the class whose identity the
 keyword expresses, and the shelf a new item built on it should default to. Overlap is expected —
@@ -79,18 +79,18 @@ the knight carries the blade. The Cathedral's one sword is forged for somebody e
 | Class | Cluster | Weapons |
 |---|---|---|
 | `fighter` | axe + hammer + greatsword | `weapon_iron_axe`, `weapon_butchers_wedge`, `weapon_crimson_greataxe`, `weapon_iron_hammer`, `weapon_iron_greatsword` |
-| `knight` | sword + spear + mace | `weapon_iron_sword`, `weapon_riposte_blade`, `weapon_demon_bane`, `weapon_crescent_blade`, `weapon_iron_spear`, `weapon_iron_mace` |
-| `rogue` | dagger | `weapon_iron_dagger`, `weapon_kingsblood_dagger`, `weapon_cutpurse_knife` |
-| `hunter` | bow + longbow | `weapon_iron_bow`, `weapon_iron_longbow`, `weapon_hornbow_of_the_hunt` |
-| `mage` | wand + staff | `weapon_wand`, `weapon_staff`, `weapon_emberwand` |
-| `priest` | censer + staff — no edge at all | `weapon_censer`, `weapon_censer_of_ashes`, `weapon_crozier` |
+| `knight` | sword + spear + mace + shield | `weapon_iron_sword`, `weapon_riposte_blade`, `weapon_demon_bane`, `weapon_crescent_blade`, `weapon_iron_spear`, `weapon_mailpiercer`, `weapon_marching_standard`, `weapon_iron_mace` (+ `armor_bulwark_shield`, `armor_oathkeeper_shield`) |
+| `rogue` | dagger | `weapon_iron_dagger`, `weapon_kingsblood_dagger`, `weapon_cutpurse_knife`, `weapon_slipknife` |
+| `hunter` | bow + longbow | `weapon_iron_bow`, `weapon_iron_longbow`, `weapon_hornbow_of_the_hunt`, `weapon_quarrys_answer`, `weapon_stillhunter`, `weapon_hailfall_longbow` |
+| `mage` | wand + staff | `weapon_wand`, `weapon_staff`, `weapon_emberwand`, `weapon_turning_year` |
+| `priest` | censer + staff — no edge at all | `weapon_censer`, `weapon_censer_of_ashes`, `weapon_crozier`, `weapon_intercessors_staff` |
 | `alchemist` | dagger + wand, both envenomed | `weapon_apothecarys_lancet`, `weapon_envenomed_kris`, `weapon_vitriol_wand` |
 
 **Every class stocks at least three.** That is a floor, not a quota — fighter and knight carry more
 because they are the armed shelves, and the catalog is free to grow unevenly. What the floor forbids
 is a shelf with nothing on it.
 
-Three notes on how this shook out:
+Four notes on how this shook out:
 
 - **The taboo is absolute: priest sells no edge of any kind.** `weapon_demon_bane` is the holy blade,
   and it is on the *knight's* shelf — the Cathedral consecrates the steel and the Bastion sells it.
@@ -106,6 +106,13 @@ Three notes on how this shook out:
 - **Priest and alchemist racks are otherwise authored.** Nothing else in the catalog spoke lust or
   envy, and every borrowed alternative would have broken the corollary on day one. A plain hammer on
   the envy shelf is exactly the drift this file exists to stop.
+- **The knight's two pikes each borrow one word, and say so.** `weapon_mailpiercer` spends
+  fighter's `raw`, and `weapon_marching_standard` spends fighter's banner. Neither is on the wrong
+  shelf, because of what the borrowed word is spent *on*: wrath pierces armour to kill faster and
+  raises a standard to make a charge hit harder, while both of these answer *where do we stand* — one
+  by making a shield wall un-stallable (and Halting the rank behind it, which is the knight's own
+  word), the other by nailing the line to a square of ground. An unexplained borrow is
+  indistinguishable from a mistake; these are the explanation.
 
 ### `class` without `price`: the tally, not the shelf
 
@@ -226,22 +233,61 @@ Battlemage and Ninja are not new inventions — the codebase named them years be
 gets items when its mechanics justify them, and each item still owes the corollary above. A pair that
 can only produce a `+n` is not ready.
 
+## Two kinds of aura item: the charm and the coating
+
+Every item may carry an `aura` block, aggregated by `adjacencyAura` and read by the eight cells around
+it. What decides whether it lasts forever is the item's **`type`**, and nothing else:
+
+| | `type` | Lifetime | Priced as |
+|---|---|---|---|
+| a **charm** | `utility` | permanent — one of nine cells, for the rest of the campaign | a build decision |
+| a **coating** | `consumable` | a stack; every deliberate cast it sharpens takes one off it | a fight decision |
+
+`Combat.auraSpent` stops an empty coating applying and `Combat.spendAuras` bills it — deliberately
+split from `adjacencyAura`, which must stay pure because the damage preview calls it on every hover. A
+satchel that emptied itself under the cursor would be a bug that read as one.
+
+A **reflex does not spend a coating**: a parry thrown with an infused blade still burns and takes
+nothing off the stack. A coating is something you apply *between* swings, and an answer is not a swing
+you had time to prepare for.
+
+That split is what lets a coating be worth more per use than a permanent fixture safely could be, and
+it gives the Crucible something to sell you again next week. The Fire Stone and Envenom were charms
+until they became the pair the distinction was drawn for.
+
+The full field list lives in `data/items/consumable/consumable_fire_stone.lua`, which is the file that
+owns the contract.
+
 ## Known debt
 
 Recorded here so it stays a decision rather than drift:
 
-- **knight owns 2 abilities** (`ability_push`, `ability_shout`). Its guard verbs are real but thin,
-  and nothing about it yet reads specifically like *sloth*.
-- **alchemist owns 2 abilities, and both are borrowed** (`ability_disarm`,
-  `ability_summon_homunculus`). Its identity really lives in consumables (12 of 16) and grid auras.
-  That is arguably *on theme* for envy — but it should be chosen, not inherited.
-- **The 3×3 `aura` block is under-used.** `grantTags` / `requiresTags` / `amountBonus` / `lifesteal` /
-  `preserve` is a full combinatorial vocabulary that about eight items touch. It is the most promising
-  unexploited identity axis in the game, especially for alchemist.
 - **The growth tables are the weakest half of a class.** Five of seven differ only in which resource
-  pool they grow. They carry far less identity than the tables above.
+  pool they grow. They carry far less identity than the tables above. *This is now the largest
+  outstanding gap in this file.*
 - **`repRank` is misnamed.** Standing is counted in quests now, not reputation points; the field name
   is the last survivor of the old currency. A rename is mechanical and deliberately deferred.
+- **`data/disciplines/` does not exist.** The blueprint format is specified above and 16 subclasses +
+  21 multiclass pairs are named, and not one has been authored. Several items added in the
+  Baldur's-Gate pass are the first legitimate stock for one (the sigils are Elementalist's, the
+  coatings Poisoner's, the Bulwark's shove Bulwark's) — but a discipline needs its quest gate before
+  it needs its shelf.
+
+### Settled by the Baldur's-Gate import pass
+
+Kept here rather than deleted, because what a debt looked like when it was paid is worth reading:
+
+- ~~**knight owns 2 abilities**~~ — now five (`push`, `shout`, `stand_down`, `shared_burden`, plus the
+  `Bulwark`'s shove and the `Unyielding Seal`). The shelf reads as sloth now, and it does it by
+  *inflicting* the sin rather than suffering it: `status_halted` takes an enemy's turn away without
+  touching its body, and deliberately leaves its reflexes alone so it is not a second Stun.
+- ~~**alchemist owns 2 abilities, and both are borrowed**~~ — the answer turned out not to be more
+  abilities. It was to make the consumables *say something*: coatings that run out, elixirs that lend
+  you somebody else's stat, and the Coveted Blood, whose damage stat is the rest of your party.
+- ~~**The 3×3 `aura` block is under-used**~~ — the vocabulary is now `grantTags` / `requiresTags` /
+  `exceptTags` / `amountBonus` / `rangeBonus` / `speedBonus` / `lifesteal` / `preserve` / `careful` /
+  `twin`, and the mage's five sigils exist to spend it. `speedBonus` is the interesting one: it is the
+  only aura field that touches initiative, which is the one currency nobody gets back.
 
 ## Adding an item to a class
 

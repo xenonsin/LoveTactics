@@ -153,7 +153,7 @@ return {
             -- fire tag being applied shaves 3 off the hit; and Burn is inflicted.
             local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k, b = c.units[1], c.units[2]
-            equip(k.char, { [5] = "utility_fire_stone", [4] = "weapon_iron_sword" })
+            equip(k.char, { [5] = "consumable_fire_stone", [4] = "weapon_iron_sword" })
             k.char.stats.stamina.current = 99
             b.resist = { fire = 3 }
             openTurn(c, k)
@@ -183,7 +183,7 @@ return {
             local cw = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
             local kw, bw = cw.units[1], cw.units[2]
             kw.char.inventory = {}
-            kw.char.inventory[5] = Item.instantiate("utility_fire_stone")
+            kw.char.inventory[5] = Item.instantiate("consumable_fire_stone")
             local wsword = Item.instantiate("weapon_iron_sword")
             wsword.tags[#wsword.tags + 1] = "water"
             kw.char.inventory[4] = wsword
@@ -195,7 +195,7 @@ return {
             -- Sword NOT adjacent to the Fire Stone (opposite corner): no infusion.
             local cn = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
             local kn, bn = cn.units[1], cn.units[2]
-            equip(kn.char, { [1] = "utility_fire_stone", [9] = "weapon_iron_sword" })
+            equip(kn.char, { [1] = "consumable_fire_stone", [9] = "weapon_iron_sword" })
             kn.char.stats.stamina.current = 99
             openTurn(cn, kn)
             assert(Combat.useItem(cn, kn, kn.char.inventory[9], 3, 4), "the distant sword strikes")
@@ -207,7 +207,7 @@ return {
         fn = function()
             local knight = Character.instantiate("character_knight")
             knight.inventory = {}
-            knight.inventory[5] = Item.instantiate("utility_fire_stone")           -- aura source (center)
+            knight.inventory[5] = Item.instantiate("consumable_fire_stone")           -- aura source (center)
             knight.inventory[4] = Item.instantiate("weapon_iron_sword")           -- infused neighbor
             knight.inventory[1] = Item.instantiate("ability_omnislash")    -- scales off weapons
             knight.inventory[2] = Item.instantiate("weapon_iron_sword")           -- feeds Omnislash
@@ -222,7 +222,7 @@ return {
             -- Items placed apart form no relationship.
             local apart = Character.instantiate("character_knight")
             apart.inventory = {}
-            apart.inventory[1] = Item.instantiate("utility_fire_stone")
+            apart.inventory[1] = Item.instantiate("consumable_fire_stone")
             apart.inventory[9] = Item.instantiate("weapon_iron_sword")
             assert(#Combat.adjacencyLinks(apart) == 0, "opposite-corner items are not adjacent")
         end,

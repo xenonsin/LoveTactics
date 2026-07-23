@@ -3,7 +3,7 @@
 -- (ctx.damage routes through Combat.dealFlatDamage, so a unit with poison `resist` shrugs some of it
 -- off), and the same ticks count its duration down until it wears off. `magnitude` is quoted per turn
 -- and ctx.accrue spreads it across the ticks. Inflicted by an Envenom charm
--- (data/items/utility/utility_envenom.lua) infusing an adjacent weapon or item -- exactly as a Fire Stone
+-- (data/items/utility/consumable_envenom.lua) infusing an adjacent weapon or item -- exactly as a Fire Stone
 -- inflicts Burn.
 --
 -- Longer and gentler than Burn: it bites for less but lasts longer, so it rewards being applied

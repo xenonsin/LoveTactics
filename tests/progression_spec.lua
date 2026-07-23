@@ -597,7 +597,7 @@ return {
                 -- so the exact cell is gameplay state and must survive.
                 local knight = p.roster[1]
                 knight.inventory = {}
-                knight.inventory[7] = Item.instantiate("utility_fire_stone")
+                knight.inventory[7] = Item.instantiate("consumable_fire_stone")
 
                 Save.write(p)
                 local loaded = Save.read()
@@ -606,7 +606,7 @@ return {
                 assert(#loaded.party == #p.party, "party size should survive")
                 assert(loaded.roster[1].id == "character_knight", "roster order should survive")
                 assert(loaded.roster[1].inventory[7], "the item should be back in cell 7")
-                assert(loaded.roster[1].inventory[7].id == "utility_fire_stone", "the right item should be in cell 7")
+                assert(loaded.roster[1].inventory[7].id == "consumable_fire_stone", "the right item should be in cell 7")
                 assert(loaded.roster[1].inventory[1] == nil, "empty cells should stay empty")
 
                 -- Party members are the same instances as their roster entries, not copies.

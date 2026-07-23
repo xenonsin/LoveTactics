@@ -1,4 +1,4 @@
--- Cathedral rank-4. A passive aura, in the shape of data/items/utility/utility_fire_stone.lua: it sanctifies
+-- Cathedral rank-4. A passive aura, in the shape of data/items/consumable/consumable_fire_stone.lua: it sanctifies
 -- the weapons and abilities adjacent to it in the 3x3 grid, lending them the holy tag. Kit that
 -- already channels shadow refuses the blessing.
 --

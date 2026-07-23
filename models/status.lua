@@ -103,7 +103,7 @@ local function ctxFor(combat, unit, status)
         -- Write a line to the combat log. What a status uses to narrate something the player would
         -- otherwise have to infer from the numbers -- a sleeper being jolted awake by a blow, and the
         -- initiative that hands back with it. Mirrors the trait ctx's helper of the same name.
-        log = function(kind, text) return Combat.logEvent(combat, kind, text) end,
+        log = function(kind, text, subjects) return Combat.logEvent(combat, kind, text, subjects) end,
         -- The living unit on a tile, or nil. What a hook that reads the board around its bearer needs.
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         -- End this status now (e.g. Defending self-expiring at the owner's next turn start).
@@ -308,6 +308,22 @@ function Status.statBonus(unit, name)
     return total
 end
 
+-- The same fold as Status.statBonus, but itemized: one { label, value } per status that moves `name`,
+-- so the damage-breakdown tooltip can list each buff/debuff on a stat as its own signed line rather
+-- than lumping them into one number. Only non-zero contributors are returned, so the parts always sum
+-- to Status.statBonus for the same unit and stat.
+function Status.statBonusParts(unit, name)
+    local parts = {}
+    for _, s in ipairs(unit.statuses or {}) do
+        local v = 0
+        local bonus = s.def.statBonus
+        if bonus and bonus[name] then v = v + bonus[name] end
+        if s.def.magnitudeStat == name and s.magnitude then v = v + s.magnitude end
+        if v ~= 0 then parts[#parts + 1] = { label = s.def.name or s.id, value = v } end
+    end
+    return parts
+end
+
 -- Reduction to `unit`'s ability RANGE, summed from every active status's `rangeMalus` (0 if none).
 -- Range is per-ability, not a flat stat, so a range-cutting status (Blind) can't ride statBonus the
 -- way a movement cut (Cripple) does; Combat.abilityRange subtracts this and floors the reach at 1, so
@@ -335,6 +351,23 @@ function Status.vulnerability(unit, tags)
     return total
 end
 
+-- The share of its own damage `unit` drinks back right now, summed from every active status's
+-- `lifesteal` (0 when none). Folded into the same `mods.lifesteal` that the Vampiric Strike aura and a
+-- weapon's own declared keyword feed, so all three simply ADD -- a thirsting blade swung under the Red
+-- Thirst drinks deeper than either alone, and every reader (the live cast AND the damage preview)
+-- honours a status-granted thirst for free rather than having to learn about it.
+--
+-- Summed rather than "first wins", unlike most of the flag scans in this file, because thirst is a
+-- QUANTITY and two sources of it are genuinely more of it -- where two barriers are not a stronger
+-- barrier, they are two barriers.
+function Status.lifesteal(unit)
+    local total = 0
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.lifesteal then total = total + s.def.lifesteal end
+    end
+    return total
+end
+
 -- Multiplier applied to every ability cost the unit pays, from each active status's
 -- `costMultiplier` (1 when none). Multiplicative so two haste-like buffs compound rather than
 -- cancel. Folded into Combat.abilityCost, the single source of truth for what an ability costs.
@@ -349,7 +382,17 @@ end
 -- Can the opposing side pick this unit as a target? False while any active status sets
 -- `untargetable` (Invisible). Read by Combat.abilityTargets and the enemy AI's target scans;
 -- friendly and self casts ignore it, so an ally can still heal an invisible friend.
+--
+-- A LIMNED unit (one standing in Witchlight) is targetable whatever it is wearing: the light wins over
+-- every concealment at once, rather than naming the statuses it beats. That ordering is the answer to
+-- invisibility this game did not have -- the counterplay to hiding is not a bigger number, it is a
+-- consumable somebody spent a slot on and a turn throwing.
+--
+-- The unit stays INVISIBLE while it is lit -- it keeps the status, and keeps whatever else that status
+-- pays it. Only the untargetability is overruled, because that is the only part of hiding that the
+-- light has any business arguing with.
 function Status.untargetable(unit)
+    if Status.limned(unit) then return false end
     for _, s in ipairs(unit.statuses or {}) do
         if s.def.untargetable then return true end
     end
@@ -361,12 +404,100 @@ end
 -- `negates = "physical"|"magical"`; the first matching one is returned so Combat.dealFlatDamage can
 -- consume it and the damage preview can read the negation. Mirrors Status.untargetable in shape --
 -- a single flag scanned across the unit's active statuses.
+--
+-- A third value, `negates = "any"`, answers BOTH schools (data/status/status_refracted.lua): it does
+-- not care what is coming, only how many more times something may come. That is a strictly stronger
+-- ward than either school-bound one, so it is only ever authored with few charges and a short window.
+-- Checked as an alternative to the school match rather than as a separate scan, so one loop still
+-- answers the whole question and the FIRST matching ward is still the one that is spent.
 function Status.barrierAgainst(unit, magical)
     local want = magical and "magical" or "physical"
     for _, s in ipairs(unit.statuses or {}) do
-        if s.def.negates == want then return s end
+        if s.def.negates == want or s.def.negates == "any" then return s end
     end
     return nil
+end
+
+-- The CAST WARD on `unit` -- a status declaring `negates = "cast"` -- or nil. Its own kind of ward, and
+-- deliberately not folded into Status.barrierAgainst above: a barrier is spent by DAMAGE and answers
+-- whatever lands, while this is spent by a SPELL BEING AIMED and answers nothing else. A cast ward
+-- swallows one hostile single-target ability whole -- its damage, its status, its displacement, the
+-- whole working -- and a blast that catches its bearer among others goes straight past it.
+--
+-- That distinction is the entire point of the item that grants it (data/items/utility/utility_sealed_
+-- reliquary.lua). Mitigation is arithmetic: every percentage and every pool answers a bigger number
+-- with a bigger number. This answers a DECISION -- the one spell the enemy most wanted to land -- and
+-- the counterplay is equally categorical: aim something else at it first, or aim an area effect.
+function Status.castWardOn(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.negates == "cast" then return s end
+    end
+    return nil
+end
+
+-- Is `unit` forbidden from being mended? True while any active status sets `blocksHealing` (the
+-- Unclosing Wound). Read by Combat.applyHeal, the single funnel every mend in the game runs through --
+-- a spell, a potion, a regeneration tick, a lifesteal drink -- so one flag closes all of them at once.
+--
+-- The counterweight the catalog was missing. Every other debuff in this game makes a body take more or
+-- do less; none of them touched the one lever that decides whether a focused kill actually finishes.
+-- Cleansable like any debuff, which is what keeps it a tempo problem rather than a death sentence.
+function Status.blocksHealing(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.blocksHealing then return s end
+    end
+    return nil
+end
+
+-- Are `unit`'s TRAITS shut off -- every standing reflex, guard, aura and passive it owns? True while
+-- any active status sets `disablesTraits` (Sundered). Read by models/trait.lua's dispatch, the single
+-- chokepoint every trait hook fires through, so one flag silences a parry, a thorn, a last stand and a
+-- death rattle together.
+--
+-- Distinct from `disablesReactions` (Stun, Frozen), and the difference is worth being exact about:
+-- reactions are suppressed while a body is RATTLED, and that gate lets onStatusApplied through on
+-- purpose so a cleansing ward can still shrug off the very stun that landed. Sundering is not a
+-- rattling -- it is the relic itself going quiet -- so it takes that hook too. It is the only thing in
+-- the game that does, which is why it is a separate flag and not a stronger reading of the old one.
+function Status.traitsDisabled(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.disablesTraits then return s end
+    end
+    return nil
+end
+
+-- Is `unit` LIMNED -- lit up so plainly that concealment does not answer for it? True while any active
+-- status sets `revealsBearer` (Witchlight). Read by Status.untargetable below, which is the whole of
+-- its effect: an invisible unit standing in the light is a targetable one.
+--
+-- Deliberately implemented as a status the LIT UNIT wears rather than as sight granted to a side. This
+-- game has no per-side vision model to hang the other reading on, and inventing one to answer a single
+-- consumable would be a large system carrying a small idea. It also reads better on the board: the
+-- badge sits on the unit that has been found, where the player is looking.
+function Status.limned(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.revealsBearer then return s end
+    end
+    return nil
+end
+
+-- The DEFERRAL on `unit` -- a status declaring `defers = true` (the Sealed Hour) -- or nil. While one
+-- stands, every point of damage and every point of healing aimed at its bearer is banked on the status
+-- instead of landing, and the whole ledger settles as one number when it expires.
+--
+-- Read by Combat.dealFlatDamage and Combat.applyHeal, the two funnels that move a health bar at all.
+function Status.deferralOn(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.defers then return s end
+    end
+    return nil
+end
+
+-- Bank `amount` onto a deferral's ledger (positive = damage owed, negative = mending owed) and hand
+-- back the running total. The single writer, so the two call sites cannot disagree about the sign.
+function Status.defer(status, amount)
+    status.ledger = (status.ledger or 0) + (amount or 0)
+    return status.ledger
 end
 
 -- Every active ILLUSION on `unit` (a status whose def sets `illusion = true`), as a list -- empty when
@@ -477,6 +608,26 @@ function Status.disarmed(unit)
     return false
 end
 
+-- Is this unit HALTED -- ordered still, and unable to take an action of any kind? True while any active
+-- status sets `disablesActions` (Halted, landed by the knight's Stand Down). Read by
+-- Combat.itemBlockReason, the single gate for a refused cast, and by the enemy AI's item filter.
+--
+-- The broadest of the four gates above, and the one that refuses on the far side of every question the
+-- others ask: silence refuses what is paid for in mana, denial refuses what is magical, disarm refuses
+-- what is forged -- this refuses the ACT. A halted unit still holds every weapon it had, still has full
+-- pools, still sees the board, and may still walk; it simply may not do anything with any of it.
+--
+-- Deliberately NOT `disablesReactions`, and that gap is the whole design of the status. A halted knight
+-- still parries, still ripostes, still bites back with its thorns. What Sloth takes is initiative in the
+-- ordinary sense of the word -- the will to act first -- and never the reflex to answer. Reaching for
+-- Stun instead would have said something else entirely, and would have been a second Stun besides.
+function Status.halted(unit)
+    for _, s in ipairs(unit.statuses or {}) do
+        if s.def.disablesActions then return true end
+    end
+    return false
+end
+
 -- Is this unit's reflexes shut down -- unable to REACT to anything? True while any active status sets
 -- `disablesReactions` (the hard-control statuses: Stun, Frozen, and any future Sleep). Read by
 -- models/trait.lua to suppress a disabled unit's triggered reactions -- counters, thorns, a dodge, a
@@ -489,6 +640,55 @@ function Status.disablesReactions(unit)
     return false
 end
 
+-- ---------------------------------------------------------------------------
+-- Named immunity. A grid item may declare `statusImmunity = { "status_poison", ... }`, and the
+-- statuses it names simply never land on its carrier.
+--
+-- This is a DIFFERENT kind of thing from the resistance contract above, and the two are meant to stay
+-- different. Resistance is a curve: it shortens every status of a school by a little, it is bought
+-- with defensive stats a character already wanted, and it never quite reaches zero. Immunity is a
+-- wall: it is total, it is named one status at a time, and it is bought by giving up a grid slot to
+-- an item that does nothing else. The resistance comment above says immunity is reached "by arithmetic
+-- rather than by an `immune` flag anyone has to remember to set" -- that remains true of resistance,
+-- and this does not change it. What this adds is the deliberate, purchased, single-status version,
+-- which the diminishing-returns curve cannot express: no amount of magicDefense ever makes a body
+-- categorically unpoisonable, and "unpoisonable" is a legitimate thing to be able to buy.
+--
+-- Scoped to DEBUFFS on purpose. An immunity that also refused Blessing or Regen would be a trap the
+-- tooltip could not warn you about, and no item wants to say "you may not be healed".
+--
+-- Read off the grid rather than folded into unit.bonus, because it is a SET and not a sum -- two items
+-- naming the same status is the same immunity, not a stronger one.
+--
+-- An active BUFF may ward one too, through `grantsImmunity = { "status_halted", ... }` on its own
+-- blueprint (Heroism). Same set, different lifetime, and the difference is what each is for: an item's
+-- immunity is a permanent grid decision, and a buff's is a window somebody spent a turn opening. Both
+-- answer the same question, so both are answered here rather than at the two call sites -- an immunity
+-- only one of the two gates honoured would be an immunity the tooltip could lie about.
+function Status.isImmune(unit, id)
+    local def = Status.defs[id]
+    if not (def and def.debuff) then return false end -- never blocks a buff
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        for _, blocked in ipairs(s.def.grantsImmunity or {}) do
+            -- The DEF, not the instance: the log below names the ward, and a name is a property of the
+            -- blueprint. Same shape the item branch returns, so the caller needs no branch of its own.
+            if blocked == id then return s.def end
+        end
+    end
+    local char = unit and unit.char
+    if not (char and char.inventory) then return false end
+    -- Lazily required, as the trait files do: models/character.lua is still loading when the status
+    -- registry is built, so a top-level require here would be a cycle.
+    local Character = require("models.character")
+    for _, item in ipairs(Character.eachItem(char)) do
+        for _, blocked in ipairs(item.statusImmunity or {}) do
+            if blocked == id then return item end -- the item is returned so the log can name it
+        end
+    end
+    return false
+end
+-- ---------------------------------------------------------------------------
+
 -- Apply status `id` to `unit`. One instance per id: re-applying refreshes the remaining
 -- duration to the longer of old/new and re-runs onApply (so re-stunning bumps again). Runs
 -- the def's onApply hook. Returns the (possibly refreshed) status instance.
@@ -497,6 +697,20 @@ function Status.apply(combat, unit, id, opts)
     local def = Status.defs[id]
     assert(def, "unknown status id: " .. tostring(id))
     unit.statuses = unit.statuses or {}
+
+    -- A named immunity refuses the status outright, BEFORE the resistance curve and before the
+    -- diminishing-returns tally: there is nothing to shorten and nothing to learn, so an immune body
+    -- does not accumulate `_afflicted` counts it will never need. Returns nil exactly as a fully
+    -- resisted application does, so every caller already handles it.
+    local ward = Status.isImmune(unit, id)
+    if ward then
+        if combat and not def.hideLog then
+            local Combat = require("models.combat")
+            Combat.logEvent(combat, "status", string.format("%s is proof against %s (%s).",
+                (unit.char and unit.char.name) or "Unit", def.name or id, ward.name or "an item"), unit)
+        end
+        return nil
+    end
 
     -- A resistible status buys only the ticks this body's ward and its own history let it (see the
     -- resistance contract above). Copied rather than mutated: `opts` is frequently a table owned by an
@@ -513,7 +727,7 @@ function Status.apply(combat, unit, id, opts)
             if combat and not def.hideLog then
                 local Combat = require("models.combat")
                 Combat.logEvent(combat, "status", string.format("%s shrugs off %s.",
-                    (unit.char and unit.char.name) or "Unit", def.name or id))
+                    (unit.char and unit.char.name) or "Unit", def.name or id), unit)
             end
             return nil
         end
@@ -538,8 +752,16 @@ function Status.apply(combat, unit, id, opts)
     -- the Decoy that granted it is trying to keep out of the log.
     if isNew and not def.hideLog then
         local Combat = require("models.combat")
-        Combat.logEvent(combat, "status",
-            string.format("%s is afflicted with %s.", (unit.char and unit.char.name) or "Unit", def.name or id))
+        local entry = Combat.logEvent(combat, "status",
+            string.format("%s is afflicted with %s.", (unit.char and unit.char.name) or "Unit", def.name or id),
+            unit)
+        -- Hang a snapshot of the status on the line so the combat-log panel can show its tooltip on
+        -- hover -- what the effect that just landed is. A snapshot (not the live instance) so a later
+        -- tick or cleanse can't quietly rewrite what a historical line reads as, and so the tooltip
+        -- keeps working after the status itself has worn off.
+        if entry then
+            entry.status = { def = def, name = def.name, remaining = status.remaining }
+        end
     end
 
     -- Fire the standing-reaction hook for a status landing (Trait.onStatusApplied), on BOTH sides of
@@ -634,7 +856,7 @@ function Status.tick(combat, elapsed)
                 if not s.def.hideLog then
                     local Combat = require("models.combat")
                     Combat.logEvent(combat, "status", string.format("%s's %s wears off.",
-                        (e.unit.char and e.unit.char.name) or "Unit", s.name or s.id))
+                        (e.unit.char and e.unit.char.name) or "Unit", s.name or s.id), e.unit)
                 end
             end
         end
@@ -694,6 +916,17 @@ end
 -- the rule belongs to the sleep, not to the sleeper, so it travels with the status onto anyone it
 -- lands on. The hook receives the usual ctx plus `ctx.amount` and `ctx.tags`.
 function Status.onDamaged(combat, unit, amount, tags)
+    -- RE-ENTRY GUARD, and it is load-bearing rather than defensive. A hook here is free to deal damage
+    -- (Rimebitten's cold bites the bearer on every hit), and that damage re-enters Combat.dealFlatDamage,
+    -- which fires this hook again -- on the same body, for the bite it just landed. Without the latch
+    -- that is an unbounded loop that kills its own bearer on the first blow, which is exactly what it
+    -- did before this line existed.
+    --
+    -- The same shape models/trait.lua's dispatch already uses for the same reason. A plain flag rather
+    -- than a depth counter because there is exactly one level to guard: a status answering its own
+    -- answer is never anything but a runaway.
+    if unit._statusReacting then return end
+    unit._statusReacting = true
     local snapshot = {}
     for _, s in ipairs(unit.statuses or {}) do snapshot[#snapshot + 1] = s end
     for _, s in ipairs(snapshot) do
@@ -701,6 +934,31 @@ function Status.onDamaged(combat, unit, amount, tags)
             local ctx = ctxFor(combat, unit, s)
             ctx.amount, ctx.tags = amount, tags
             s.def.onDamaged(ctx)
+        end
+    end
+    unit._statusReacting = false
+end
+
+-- The bearer just DIED. Fired from killUnit, beside Trait.onDeath and before the summons are
+-- unwound, so a status that has been waiting for exactly this still finds a board to act on.
+--
+-- The third of the "what happened to the bearer" hooks (onDealDamage / onDamaged / this), and it
+-- exists for the same reason the second one does: the rule belongs to the STATUS, not to the body
+-- wearing it. A bounty is a promise made about a target -- it has to pay out on whoever is carrying
+-- the mark when they fall, and it must travel onto anyone the mark is moved to. A trait could not do
+-- that; it would have to be attached to the victim's own grid, which is the one place the hunter who
+-- called the bounty has no say.
+--
+-- `ctx.killer` is whoever struck the last blow, when the caller knows -- often nil (a poison tick, a
+-- fire, a fall), which a hook that pays somebody has to be ready for.
+function Status.onDeath(combat, unit, killer)
+    local snapshot = {}
+    for _, s in ipairs(unit.statuses or {}) do snapshot[#snapshot + 1] = s end
+    for _, s in ipairs(snapshot) do
+        if s.def.onDeath then
+            local ctx = ctxFor(combat, unit, s)
+            ctx.killer = killer
+            s.def.onDeath(ctx)
         end
     end
 end

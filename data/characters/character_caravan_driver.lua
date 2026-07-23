@@ -4,10 +4,10 @@
 -- `protect` of each road fight's objective.
 --
 -- Deliberately a separate blueprint from character_caravan_master, who is the same fiction with the
--- opposite posture. The driver `escort`s -- it walks for the exit every turn it is not swinging at
--- something already in reach -- because on the mountain road the column is trying to LEAVE, and its
--- arrival is the win condition. The master holds where he stands at the gate, because by then there
--- is nowhere further up to go.
+-- opposite posture. The driver `escort`s -- it walks for the exit every turn and never stops to
+-- fight, because on the mountain road the column is trying to LEAVE, and its arrival is the win
+-- condition; the killing is the party's job, not the driver's. The master holds where he stands at
+-- the gate, because by then there is nowhere further up to go.
 --
 -- One blueprint per posture rather than a per-spawn override: the same reason
 -- character_bastion_sworn is not character_knight with a flag.

@@ -259,6 +259,7 @@ end
 -- auto-turn until this settles (cardsSettled).
 function CombatPanel:update(dt)
     local current = self.view.current
+    self.time = (self.time or 0) + dt -- drives the log-highlight pulse, in step with the board's
 
     -- Cache each preview ghost's on-screen Y (sticky until the unit next acts, so it survives the hold
     -- beat). A hand-off solidifies the outgoing card at THIS slot -- an empty preview slot in the frozen
@@ -467,9 +468,16 @@ function CombatPanel:drawWaitButton()
     local hot = enabled and self.waitHover
     local label = "Wait"
     if self.view.current then
-        local kind = Combat.waitBehavior(self.view.current).kind
+        local behavior = Combat.waitBehavior(self.view.current)
+        local kind = behavior.kind
         label = (kind == "focus" and "Focus") or (kind == "defend" and "Defend")
             or (kind == "overwatch" and "Overwatch") or "Wait"
+        -- A cycling stance names the air it would sound NEXT rather than the verb, because "Perform"
+        -- alone would be a button that does a different thing every press with no way to see which.
+        if kind == "perform" then
+            local song = Combat.nextSong(self.view.current, behavior)
+            label = (song and song.name) or "Perform"
+        end
     end
     if enabled then love.graphics.setColor(hot and 0.24 or 0.18, hot and 0.30 or 0.24, hot and 0.42 or 0.34)
     else love.graphics.setColor(0.14, 0.15, 0.18) end
@@ -618,6 +626,20 @@ function CombatPanel:drawCard(entry, y, num, h, alpha)
     if flash > 0 then
         love.graphics.setColor(1.0, 0.4, 0.35, flash * 0.45)
         love.graphics.rectangle("fill", self.x + 8, y, self.w - 16, h, 6, 6)
+    end
+    -- Hovering a combat-log line lights the units it names -- here on the strip and, in the same
+    -- white, on the board (ui/battle_map's logSubjects). So a line about a unit that has already
+    -- scrolled off the board's centre of attention is still findable: look for the white. Drawn over
+    -- the finished card, and never on a preview ghost -- a hypothetical slot is nobody's turn.
+    local hl = self.view.logHighlight
+    if u and hl and hl[u] then
+        local pulse = 0.55 + 0.45 * math.sin((self.time or 0) * 5)
+        love.graphics.setColor(1, 1, 1, 0.07)
+        love.graphics.rectangle("fill", self.x + 8, y, self.w - 16, h, 6, 6)
+        love.graphics.setColor(1, 1, 1, 0.50 + 0.40 * pulse)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", self.x + 8, y, self.w - 16, h, 6, 6)
+        love.graphics.setLineWidth(1)
     end
     if dx ~= 0 or dy ~= 0 then love.graphics.pop() end
 end

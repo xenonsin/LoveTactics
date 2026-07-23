@@ -108,6 +108,44 @@ return {
         end,
     },
     {
+        name = "retreatFromEncounter steps the token back onto the tile it arrived from",
+        fn = function()
+            local grid = genOpen(3)
+            revealAll(grid)
+            local w = walker(grid)
+            -- Find a start-adjacent walkable tile: the tile the token "came from" before landing on
+            -- the encounter. Stand the token on the encounter (an adjacent tile) and record the prev.
+            local prevX, prevY = grid.start.x, grid.start.y
+            local encX, encY
+            for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+                local nx, ny = prevX + d[1], prevY + d[2]
+                if grid:isWalkable(nx, ny, {}) then encX, encY = nx, ny; break end
+            end
+            assert(encX, "no walkable neighbour of the start to stage the encounter on")
+            w.px, w.py = encX, encY
+            w.slidePrevX, w.slidePrevY = prevX, prevY
+            w.slideT = 0.2
+            w:retreatFromEncounter()
+            assert(w.px == prevX and w.py == prevY,
+                "expected the token back on " .. prevX .. "," .. prevY .. " got " .. w.px .. "," .. w.py)
+            assert(w.slidePrevX == nil and w.slideT == 0, "the slide animation was cancelled")
+            assert(w.heldDir == nil and w.autoPath == nil, "any in-flight walk was cancelled")
+        end,
+    },
+    {
+        name = "retreatFromEncounter leaves the token put when there is no recorded previous tile",
+        fn = function()
+            local grid = genOpen(3)
+            revealAll(grid)
+            local w = walker(grid)
+            w.px, w.py = grid.start.x, grid.start.y
+            w.slidePrevX, w.slidePrevY = nil, nil
+            w:retreatFromEncounter()
+            assert(w.px == grid.start.x and w.py == grid.start.y,
+                "with no previous tile the token stays where it stands")
+        end,
+    },
+    {
         name = "pathTo returns nil for the player's own tile and for walls",
         fn = function()
             local grid = genOpen(5)

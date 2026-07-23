@@ -1794,6 +1794,56 @@ them:
    shape; the homunculus sheds its stolen human one), with Sublimitas a natural third — the Archmage
    sheds into the demon who fills the board with copies of herself.
 
+## Every scene makes room for the party you actually have
+
+A third rule decided late, and it governs **every conversation in the game**, not just the seven lines:
+
+**If a companion is recruited, they get a voice in the scene.** A scene authored for the avatar and one
+vendor plays the same way whether you arrived alone or with six people at your back, and that is the
+single fastest way to make a party feel like luggage. Write every scene for the **full roster**, and let
+`Conversation.resolve` pare it down to the save it plays in — a companion who has not joined is neither
+on stage nor in the script, and the scene closes over the gap cleanly.
+
+The mechanism is already there and is documented in
+[docs/adding-content.md](adding-content.md#gating-a-scene-on-progress): a conditional `cast` entry plus
+a `when = { has = "character_<id>" }` **block** in the script. `vendor_cathedral_intro` is the shape to
+copy — the base scene is quartermaster and avatar; recruit Amana and a three-line block opens up where
+she and her old church talk past each other, and the vendor's closing line lands on either version.
+
+What a companion's interjection is *for*, in rough order of value:
+
+1. **The sin they answer.** Every companion is the other answer to one general's sin (Amana/lust,
+   Saber/wrath, Kaya/gluttony, Ren/envy, Gyeom/pride, Clem/greed, Rowan/sloth — see the chapters
+   above). Put them in front of their own sin whenever a scene touches it. Amana in the Cathedral,
+   Clem near money, Gyeom near anyone certain they are right. Those are the lines that cost nothing to
+   write and carry the whole thesis.
+2. **The room they know.** A companion recruited out of a chapter has standing in that chapter's
+   buildings forever after — they know the quartermaster's name, they know which shelf is a lie.
+3. **Each other.** Two recruited companions with different reads on the same scene is the cheapest
+   characterisation in the game, and the only place the party exists as a *group* rather than a list of
+   people who each got one moment.
+
+Rules of thumb:
+
+- **Gate the exchange, not the line.** One block, one condition, all the lines that stand or fall
+  together — otherwise someone retorts to a remark nobody made. `tests/conversation_spec.lua` enforces
+  the half of this it can prove (a gated speaker may only speak inside a block requiring them) and that
+  every authored line is reachable in a fully-unlocked save; the rest is on the author.
+- **The base scene must still work.** A block is an addition, never load-bearing. Whatever the scene
+  had to establish, establish it in the ungated lines, and let the closing beat land on either version.
+- **One or two blocks, not seven.** Every recruited companion having something to say and *all of them
+  saying it* are different things — a scene where six people queue up to comment is worse than one
+  where the right person speaks. Pick who has standing here.
+- **Exceptions are the scenes where they are provably absent**: the prologue and `tutorial_*` (nobody is
+  recruited yet), and a companion's own `*_joins` scene (they are the subject, and the roster check has
+  not flipped yet at the moment it plays — other companions already recruited still belong in it).
+
+The existing scenes are **not** all up to this rule. The one-time shop greetings
+(`vendor_<id>_intro`) are — each already joins its own chapter's companion in. Most quest
+`intro`/`outro` scenes are not, including much of the sloth line, which was written before there was a
+roster to write for. Retrofitting is a per-scene pass, cheap, and worth doing whenever a
+line is being touched for another reason.
+
 ## Authoring the remaining six lines
 
 ### The line

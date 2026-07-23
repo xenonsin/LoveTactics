@@ -13,6 +13,8 @@
 --   * onCombatStart(ctx) -- once, after every unit, passive, trap and hazard is in place
 --   * onDamaged(ctx)     -- the bearer was hit and SURVIVED; ctx.amount is post-mitigation
 --   * onCast(ctx)        -- the bearer finished using an item; ctx.item / ctx.tx / ctx.ty
+--   * onAnyDeath(ctx)    -- somebody ELSE dropped, anywhere on the field, on either side; ctx.fallen
+--                           is the body. The one hook that is not about its own bearer.
 --   * onStatusApplied(ctx) -- a status landed and the bearer was on one side of it; ctx.role is
 --                            "recipient" (the bearer gained it) or "applier" (the bearer inflicted
 --                            it), plus ctx.status (the landed instance; ctx.status.def for its
@@ -136,8 +138,14 @@ Trait.ANSWER_ESCALATION_CAP = 8
 function Trait.answerCost(combat, unit, trait, dist)
     local Combat = require("models.combat")
     local rule = trait and trait.def and trait.def.counter
+    -- A reflex that CLOSES is not thrown across the gap -- it crosses it first (see `closes` in
+    -- Trait.mayCounter). So it is priced from beside the attacker, whatever the blow was struck from:
+    -- a knife that arrives at your shoulder is billed a knife, never the bow that could not have
+    -- reached you. Without this the price would be read off a weapon that never swung -- and across a
+    -- gap no weapon covers, off no weapon at all, which would make the answer free.
+    if rule and rule.closes then dist = 1 end
     local base
-    if rule and (rule.reflect or rule.applies) then
+    if rule and (rule.reflect or rule.applies or rule.shoves) then
         base = trait.def.cost -- not a swing: it costs what it says it costs, if anything
     else
         local weapon = Combat.answeringWeapon(combat, unit, dist)
@@ -171,7 +179,7 @@ function Trait.tryEvade(combat, unit, tags)
         if t.def.evadesPhysical and not Combat.onCooldown(unit, t.id) then
             Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
             Combat.logEvent(combat, "action",
-                string.format("%s dodges the blow!", (unit.char and unit.char.name) or "Unit"))
+                string.format("%s dodges the blow!", (unit.char and unit.char.name) or "Unit"), unit)
             return true
         end
     end
@@ -194,7 +202,7 @@ function Trait.trySmoke(combat, unit, attacker)
         if t.def.blocksNextHit and t.stacks == 0 then
             t.stacks = 1 -- spend the one charge FIRST, so the blink's own trap/hazard entries can't re-fire it
             Combat.logEvent(combat, "action",
-                string.format("%s vanishes in a burst of smoke!", (unit.char and unit.char.name) or "Unit"))
+                string.format("%s vanishes in a burst of smoke!", (unit.char and unit.char.name) or "Unit"), unit)
             Combat.knockback(combat, attacker, unit, t.def.blink or 2)
             return true
         end
@@ -248,7 +256,7 @@ function Trait.tryRiposte(combat, unit, attacker, tags, area)
     tallyAnswer(unit)
     Combat.logEvent(combat, "action",
         string.format("%s turns the blow aside and ripostes!",
-            (unit.char and unit.char.name) or "Unit"))
+            (unit.char and unit.char.name) or "Unit"), { unit, attacker })
     -- Flag our own counter as a reaction for its whole flight, so the attacker's parry reads it
     -- as an answer and lets it through rather than answering back. Saved/restored rather than
     -- cleared, so a riposte reached THROUGH another reflex can't unset that one's flag.
@@ -320,7 +328,7 @@ function Trait.tryPreempt(combat, unit, attacker, area)
     tallyAnswer(unit)
     Combat.logEvent(combat, "action",
         string.format("%s sees it coming and strikes first!",
-            (unit.char and unit.char.name) or "Unit"))
+            (unit.char and unit.char.name) or "Unit"), { unit, attacker })
     -- Flagged a reaction for the counter's whole flight, so the attacker's own parry reads
     -- it as an answer and lets it through rather than answering back. Saved/restored rather
     -- than cleared, so a preempt reached THROUGH another reflex can't unset that one's flag.
@@ -360,7 +368,8 @@ function Trait.tryCounterMagic(combat, unit, attacker, tags)
             payCost(unit, t.def.cost)
             Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
             Combat.logEvent(combat, "action", string.format("%s unravels %s's spell!",
-                (unit.char and unit.char.name) or "Unit", (attacker.char and attacker.char.name) or "the caster"))
+                (unit.char and unit.char.name) or "Unit", (attacker.char and attacker.char.name) or "the caster"),
+                { unit, attacker })
             return true
         end
     end
@@ -382,7 +391,8 @@ function Trait.trySurvive(combat, unit)
             local hp = unit.char.stats.health
             hp.current = math.max(1, math.floor(Combat.unreservedMax(unit.char, "health") * 0.5 + 0.5))
             Combat.logEvent(combat, "action",
-                string.format("%s catches a second wind and rises!", (unit.char and unit.char.name) or "Unit"))
+                string.format("%s catches a second wind and rises!", (unit.char and unit.char.name) or "Unit"),
+                unit)
             return true
         end
     end
@@ -428,7 +438,16 @@ end
 --     answersReactions = true,  -- optional: it answers even a blow that is itself an answer
 --     reflect = true,           -- optional: it throws `magnitude`% of the blow back, not a weapon swing
 --     applies = "status_stun",         -- optional: it lands this status rather than damage
+--     shoves = 2,                      -- optional: it drives the attacker back N tiles rather than
+--                                      -- wounding it (the shield's reply -- see ctx.knockback)
+--     closes = true,            -- optional: the bearer does not REACH the attacker, it goes to them.
+--                               -- Reach stops being the gate; open ground beside the attacker is.
 --   }
+--
+-- `reflect`, `applies` and `shoves` are the three ways of saying THIS REFLEX IS NOT A SWING, which is
+-- the one thing Trait.answerCost has to know: there is no weapon in the motion to read a price off, so
+-- the def's own `cost` is what it costs. Everything else answers by swinging, and is billed whatever
+-- the weapon that reached is billed.
 --
 -- Free gates only: it never spends the reflex's `cost` (the hook calls ctx.pay() last for that, and
 -- Trait.counterPreview asks canPay). Cost aside, a true here means the reflex fires -- which is what
@@ -496,6 +515,14 @@ function Trait.mayCounter(combat, unit, trait, attacker, tags, area, at)
         dist = distance(attacker, unit)
     end
     if rule.reach == "melee" then return dist == 1 end
+    -- ...and the one reflex that answers the question the other way. A CLOSING reflex
+    -- (data/traits/trait_slipstep.lua) never reaches across the gap: it crosses it, arrives beside the
+    -- attacker and strikes from there. So distance gates nothing, and what takes its place is the
+    -- landing: open ground next to the attacker to appear on. That is still a fact on the board the
+    -- player can read before committing -- fight it in a doorway with both flanks blocked and the
+    -- knife has nowhere to come from -- which is the rule this whole file is built on, asked of the
+    -- ARRIVAL tile rather than of the swing.
+    if rule.closes then return Combat.openTileNear(combat, attacker.x, attacker.y) ~= nil end
     -- A weapon-borne reflex is bound to its own weapon's reach; only a reflex with no weapon of its own
     -- falls back to "whatever in the grid reaches" (see the note above).
     local weapon = trait.item
@@ -591,12 +618,23 @@ function Trait.counterPreview(combat, target, attacker, opts)
         local reflects = t.def.counter and t.def.counter.reflect
         local from, span = held, heldDist
         if reflects then from, span = target, dist end
+        -- A CLOSING reflex is weighed at the range it will actually be thrown from -- one tile, since
+        -- it arrives beside the attacker before it swings (see Trait.mayCounter and Trait.answerCost,
+        -- which draw the same line). Reading it at the span the blow was struck across would quote the
+        -- player a knife thrown from four tiles off: no weapon reaches, so no damage and no price.
+        if t.def.counter and t.def.counter.closes then span = 1 end
         local cost = Trait.answerCost(combat, from, t, span)
         if Trait.mayCounter(combat, from, t, attacker, opts.tags, opts.area) and canPay(target, cost) then
             local rule = t.def.counter
             if rule.applies then
                 local def = Status.defs[rule.applies]
                 entry(t.name, 0, { status = (def and def.name) or rule.applies, cost = cost })
+            elseif rule.shoves then
+                -- A shove deals nothing on open ground -- the wall, the fire and the drop do the
+                -- talking -- so it is previewed as a named answer with no damage beside it, the same
+                -- shape a stun-applying reflex takes. What the player needs warning of is that
+                -- stepping in loses them the tile, and that is what the name says.
+                entry(t.name, 0, { shoves = rule.shoves, cost = cost })
             elseif rule.reflect then
                 local share = math.floor((opts.damage or 0) * (t.def.magnitude or 0) / 100)
                 -- Below a full point of reflection the spikes don't bite at all (data/traits/thorns.lua).
@@ -661,6 +699,25 @@ local function ctxFor(combat, unit, trait, event)
         drain = function(tgt, stat, amount)
             if not tgt then return 0 end
             return Combat.drainResource(tgt.char, stat, amount)
+        end,
+        -- Shove `tgt` straight away from the bearer, `distance` tiles, hurting whatever the slide
+        -- collides with (Combat.knockback -- the same call a mace's swing makes). What a reflex that
+        -- answers with the SHIELD rather than the blade reaches for: the shield-bearer's reply to being
+        -- hit is not a wound, it is a foot of ground taken back.
+        --
+        -- The bearer is always the source, so the lane is measured from where the guard stands and the
+        -- attacker goes back the way it came.
+        knockback = function(tgt, distance, opts)
+            if not tgt then return 0 end
+            return Combat.knockback(combat, unit, tgt, distance or 1, opts)
+        end,
+        -- Move the BEARER onto a tile, crossing no ground to get there (Combat.teleportUnit): what a
+        -- reflex that answers by ARRIVING reaches for, rather than by reaching. The tile it lands on is
+        -- sprung exactly as a walked-onto one is -- a knife that steps behind a swordsman standing over
+        -- a trap finds the trap -- but no per-tile status is paid on the way, since there is no way.
+        teleport = function(x, y)
+            if not x then return false end
+            return Combat.teleportUnit(combat, unit, x, y)
         end,
         applyStatus = function(tgt, id, opts)
             if not tgt then return nil end
@@ -756,7 +813,7 @@ local function ctxFor(combat, unit, trait, event)
         -- A free tile beside (x, y), or nil when the spot is hemmed in. What a hook calls before it
         -- summons or copies, because a body needs ground to stand on.
         openTileNear = function(x, y) return Combat.openTileNear(combat, x, y) end,
-        log = function(kind, text) return Combat.logEvent(combat, kind, text) end,
+        log = function(kind, text, subjects) return Combat.logEvent(combat, kind, text, subjects) end,
     }
 
     for key, value in pairs(event or {}) do ctx[key] = value end
@@ -806,6 +863,18 @@ end
 -- cannot corrupt the walk (the same guard runTurnHook applies in models/status.lua).
 local function dispatch(combat, unit, hook, event)
     if not unit or not unit.traits or #unit.traits == 0 then return end
+
+    -- SUNDERED: every trait the bearer owns is silent while it holds (Status.traitsDisabled). Gated at
+    -- the dispatch rather than at each hook, so one status closes the parry, the thorns, the guard, the
+    -- last stand and the death rattle together -- and so a trait added tomorrow is covered without
+    -- anybody remembering to cover it.
+    --
+    -- Broader than reactionsSuppressed below on purpose: that one is a body too rattled to answer, and
+    -- it deliberately lets onStatusApplied through so a cleansing ward can shrug off the very stun that
+    -- landed. Sundering is the relic itself going quiet, so it takes that hook too -- which is exactly
+    -- what makes it the answer to a build whose whole strength is its passives. See the flag's comment
+    -- in models/status.lua.
+    if require("models.status").traitsDisabled(unit) then return end
 
     -- Keyed by hook, not a single flag: a retaliation that kills its own bearer must still be able
     -- to fire onDeath from inside onDamaged. Only re-entering the SAME hook is the runaway.
@@ -866,6 +935,57 @@ end
 -- The bearer dropped. Fired from killUnit, before its summons are dismissed.
 function Trait.onDeath(combat, unit, info)
     dispatch(combat, unit, "onDeath", info)
+end
+
+-- SOMEBODY cast, and everyone else on the field felt it. Fired from Combat.useItem beside Trait.onCast,
+-- which is the pair to understand: that one fires on the CASTER, this one on everyone who is not.
+--
+-- The hook a standing thing that punishes sorcery hangs on (data/traits/trait_gaunt_vigil.lua, worn by
+-- the Gaunt Vigil the knight plants). A ward cannot know a spell was worked near it any other way --
+-- the caster's own onCast is the caster's, and nothing in the damage path fires for a working that
+-- deals no damage at all.
+--
+-- `ctx.caster`, `ctx.castItem`, `ctx.castAbility` and the aimed cell ride along, so a hook may price
+-- its answer on what was actually cast and how far away. Only the caster is skipped -- it has already
+-- had its own onCast -- and an ALLY's spell fires this just as a foe's does: whose working it was is
+-- the reflex's business to ask, not this dispatcher's, exactly as onAnyDeath leaves "whose death?" to
+-- the hook.
+--
+-- `castItem`/`castAbility` rather than the plain `item`/`ability` that onCast uses, and the rename is
+-- load-bearing rather than cosmetic. ctxFor copies every event field onto the context AFTER building
+-- it, so an event field named `item` SHADOWS ctx.item -- the item that granted the reacting trait.
+-- On onCast the two are the same table and nothing notices. Here they are emphatically not: the
+-- reacting trait sits on the Gleaning Rod, and the event carries the enemy's fireball. A reflex that
+-- reached for ctx.item expecting its own relic would silently get somebody else's spell, which is the
+-- kind of bug that reads as working behaviour for a long time.
+function Trait.onAnyCast(combat, caster, info)
+    for _, unit in ipairs(combat.units) do
+        if unit.alive and unit ~= caster then
+            dispatch(combat, unit, "onAnyCast", {
+                caster = caster, castItem = info.item, castAbility = info.ability,
+                tx = info.tx, ty = info.ty,
+            })
+        end
+    end
+end
+
+-- SOMEBODY dropped, and every combatant still standing heard it. Fired from killUnit for a real fallen
+-- combatant (never a summon or a decoy, on the same rule the `allyDown` tally uses -- a conjuration
+-- leaving the field is not a body hitting the ground, and a summoner able to farm its own creatures
+-- would be the first thing anyone tried).
+--
+-- The one broadcast hook in this file: every other one fires on the unit the event happened TO, and
+-- this one fires on everyone it did not. That is what a reflex feeding on the field rather than on its
+-- own bearer needs (data/traits/trait_blood_fever.lua) -- "whose death was it?" is a question it
+-- deliberately never asks, so `ctx.fallen` is there for a hook that wants to.
+--
+-- The dead unit is skipped: it has already had its own onDeath, and a corpse hears nothing.
+function Trait.onAnyDeath(combat, fallen)
+    for _, unit in ipairs(combat.units) do
+        if unit.alive and unit ~= fallen then
+            dispatch(combat, unit, "onAnyDeath", { fallen = fallen })
+        end
+    end
 end
 
 return Trait

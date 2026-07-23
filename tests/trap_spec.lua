@@ -270,4 +270,55 @@ return {
             assert(placed and placed.side == "party", "the placed trap is owned by the caster's side")
         end,
     },
+    {
+        name = "a bear trap does both halves: it bites the one who crosses it AND roots them",
+        fn = function()
+            -- The one trap that is a setup rather than an attack (data/traps/bear_trap.lua): the
+            -- spike trap only wounds, the snare only holds, and this does the pair.
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
+            Trap.place(c, 1, 3, "bear_trap", "enemy")
+            local archer = c.units[1]
+            local hp0 = archer.char.stats.health.current
+            openTurn(c, archer)
+
+            assert(Combat.moveUnit(c, archer, 1, 4), "the walk crosses the trap's tile")
+            assert(archer.char.stats.health.current < hp0, "the jaws bit")
+            assert(Status.has(archer, "status_root"), "and closed: the victim is held where it stands")
+        end,
+    },
+    {
+        name = "a blast charge catches the bystanders, not just the one who stepped on it",
+        fn = function()
+            -- The only trap with an area, and the reason to bury one in a doorway: the tile it is
+            -- under matters less than the shape of the room around it.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_archer", 1, 1), unit("character_knight", 2, 3) }, {})
+            Trap.place(c, 1, 3, "blast_charge", "enemy")
+            local walker, bystander = c.units[1], c.units[2]
+            local walked, beside = walker.char.stats.health.current, bystander.char.stats.health.current
+            openTurn(c, walker)
+
+            assert(Combat.moveUnit(c, walker, 1, 4), "the archer crosses the buried charge")
+            assert(walker.char.stats.health.current < walked, "the one who trod on it is caught")
+            assert(bystander.char.stats.health.current < beside,
+                "and so is the ally standing a tile away, who trod on nothing")
+        end,
+    },
+    {
+        name = "a blast charge does not pick sides: the burst catches its own placer's line",
+        fn = function()
+            -- Only the TRIGGER is sided (your own men know where it is buried). What the powder does
+            -- once it goes off is nobody's friend.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_knight", 2, 3) }, { unit("character_bandit", 1, 1) })
+            Trap.place(c, 1, 3, "blast_charge", "enemy") -- an ENEMY charge, with an enemy beside it
+            local ally, bandit = c.units[1], c.units[2]
+            local allyHp, banditHp = ally.char.stats.health.current, bandit.char.stats.health.current
+            openTurn(c, bandit)
+
+            assert(Combat.moveUnit(c, bandit, 1, 4), "nothing triggers for its owner's own side...")
+            assert(bandit.char.stats.health.current == banditHp, "...so the bandit walks over it safely")
+            assert(ally.char.stats.health.current == allyHp, "and nothing goes off at all")
+        end,
+    },
 }

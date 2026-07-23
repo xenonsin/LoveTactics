@@ -17,8 +17,10 @@ local Save = require("models.save")
 local Quest = require("models.quest")
 local EncounterPanel = require("ui.panels.encounter")
 local LootReveal = require("ui.panels.loot_reveal")
+local RestReveal = require("ui.panels.rest")
 local EncounterModel = require("models.encounter")
 local Party = require("ui.panels.party")
+local Consumables = require("ui.panels.consumables")
 local CoachBubble = require("ui.coach_bubble")
 local Locale = require("models.locale")
 
@@ -55,6 +57,8 @@ local COACH_BOUNDS = { x = 20, y = 70, w = Scale.WIDTH - 40, h = Scale.HEIGHT - 
 local backButton = { x = 16, y = 16, w = 110, h = 36 }
 -- Clickable "Items" button: opens the Party screen (stash mode) to arrange party items on the overworld.
 local itemsButton = { x = 138, y = 16, w = 110, h = 36 }
+-- Clickable "Use" button: opens the consumables screen to drink a restorative draught between fights.
+local useButton = { x = 260, y = 16, w = 110, h = 36 }
 
 local function rectContains(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
@@ -71,6 +75,21 @@ end
 -- pass renames it "Return to City" and gates it behind an "abandon this quest?" warning.)
 local function backVisible()
     return not game.tutorial and not game.scripted
+end
+
+-- The "Use" button rides alongside the Items button on a normal quest, but stays hidden through the
+-- flight tutorial: that leg's HUD is deliberately spare (the Items button IS the equip lesson), and
+-- there is nothing to drink before the first fight anyway.
+local function useVisible()
+    return game.itemsVisible and not game.tutorial
+end
+
+-- Open the consumables screen over the overworld (same modal slot as the encounter panel).
+local function openConsumables()
+    game.activePanel = Consumables.new({
+        player = game.player,
+        onClose = function() game.activePanel = nil end,
+    })
 end
 
 -- Open the Party screen over the overworld (same modal slot as the encounter panel).
@@ -260,6 +279,14 @@ function game:openEncounter(cell)
                         game.onComplete()
                         return
                     end
+                    -- Gold skimmed off the enemy during the fight (the Skimmer's Cut) arrives on the
+                    -- spoils table, which this branch otherwise ignores -- a quest pays through
+                    -- Quest.complete, not through spoils. Granted here so a skim earned in a quest
+                    -- battle is still earned, and deliberately BELOW the prologue's early return
+                    -- above: that leg pays nothing at all, and the takings go with it.
+                    if game.player and spoils and (spoils.gold or 0) > 0 then
+                        Player.addGold(game.player, spoils.gold)
+                    end
                     -- The single payout seam: gold, prestige, and sponsor reputation are
                     -- granted here, once, and the game saves. Losing the quest (onLoss)
                     -- pays nothing, so a wipe costs the run.
@@ -303,16 +330,22 @@ function game:openEncounter(cell)
                     State.current = game
                 end
             end,
-            -- "Try Again": restart this same fight from the pre-fight snapshot. Restore the party in
-            -- place (so game.player and Player.active -- the same table -- both carry the fresh
-            -- roster/party/inventory), refill resources, and re-open the un-cleared cell.
+            -- "Try Again": restore the party from the pre-fight snapshot, then hand the player back to
+            -- the OVERWORLD one tile shy of the fight -- not straight into a rematch -- so they can open
+            -- the Loadout and re-equip before re-engaging. Restore the party in place (so game.player
+            -- and Player.active -- the same table -- both carry the fresh roster/party/inventory) and
+            -- refill resources; the cell was never marked `cleared`, so stepping back onto it re-triggers
+            -- this same fight. State.current (not State.switch) resumes the existing overworld map without
+            -- re-running enter -- the same seam onWin uses to return from a won combat.
             onRetry = retrySnapshot and function()
                 local fresh = Save.restore(retrySnapshot)
                 if fresh then
                     for k, v in pairs(fresh) do game.player[k] = v end
                 end
                 Player.restore(game.player) -- a retry is a fresh attempt: the party opens whole
-                game:openEncounter(cell)
+                game.activePanel = nil
+                game.map:retreatFromEncounter()
+                State.current = game
             end or nil,
             -- "Return to Hub": give the fight up and fail the quest (no reward). Offered only once there
             -- is a hub to return to -- the prologue's flight leg (game.tutorial) has none yet, so there
@@ -373,24 +406,31 @@ end
 
 -- Apply the outcome of a non-combat modal once the player confirms it. Treasure has its own reveal
 -- panel (see openEncounter); this now handles only:
---   rest -> refill every resource on the roster to full (Player.restore).
+--   rest -> refill every resource on the roster to full (Player.restore), then replay the mend on a
+--           reveal panel so the player SEES what a rest did -- each party member's HP bar sweeps up
+--           to full (ui/panels/rest.lua). A rest hands over nothing else: it is a breather before a
+--           hard fight, not a cache (loot rides on chests/events).
 function game:resolveNonCombat(cell)
     local enc = cell.encounter
     if enc.kind == "rest" then
-        if game.player then Player.restore(game.player) end
-        -- A rest may also carry loot: the flight leg's last camp hands over a class ability before the
-        -- champion (states/prologue.lua). The grant is banked UP FRONT so dismissing the reveal can
-        -- never cost it, and the chest reveal is reused purely to SHOW the find -- its item card and
-        -- tooltip are where the new ability's mechanic is read, which is the whole point of the stop.
-        local loot = enc.loot or {}
-        if #loot > 0 and game.player then
-            for _, id in ipairs(loot) do Player.grantItem(game.player, id) end
-            game.activePanel = LootReveal.new({
-                encounter = enc,
-                loot = loot,
-                description = "The party makes camp and sorts its kit for the road ahead.",
-                onCollect = function() game.activePanel = nil end,
-                onCancel = function() game.activePanel = nil end,
+        if not game.player then return end
+        -- Snapshot each shown member's wound BEFORE the refill: the reveal animates from it, and once
+        -- Player.restore runs the live stat is already at max, so this is the only place the "before"
+        -- exists. Show the deployable party (who actually fight), falling back to the whole roster.
+        local shown = (game.player.party and #game.player.party > 0 and game.player.party)
+            or game.player.roster or {}
+        local entries = {}
+        for _, char in ipairs(shown) do
+            local hp = char.stats and char.stats.health
+            if type(hp) == "table" then
+                entries[#entries + 1] = { char = char, from = hp.current or hp.max, max = hp.max or 0 }
+            end
+        end
+        Player.restore(game.player)
+        if #entries > 0 then
+            game.activePanel = RestReveal.new({
+                entries = entries,
+                onDone = function() game.activePanel = nil end,
             })
         end
     end
@@ -478,6 +518,18 @@ function game.drawHud()
             itemsButton.w, "center")
     end
 
+    -- Use button (drink a potion), beside Items. Same visibility gate save for the flight tutorial.
+    if useVisible() then
+        love.graphics.setColor(0.20, 0.23, 0.32)
+        love.graphics.rectangle("fill", useButton.x, useButton.y, useButton.w, useButton.h, 6, 6)
+        love.graphics.setColor(0.5, 0.55, 0.7)
+        love.graphics.rectangle("line", useButton.x, useButton.y, useButton.w, useButton.h, 6, 6)
+        love.graphics.setColor(0.95, 0.95, 0.95)
+        love.graphics.setFont(hudFont)
+        love.graphics.printf("Use", useButton.x, useButton.y + useButton.h / 2 - 8,
+            useButton.w, "center")
+    end
+
     -- Quest name + objective hint.
     love.graphics.setFont(titleFont)
     love.graphics.setColor(0.95, 0.85, 0.55)
@@ -498,11 +550,12 @@ function game.drawHud()
     -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse
     -- otherwise. The items key only appears once the Loadout button itself does.
     local items = game.itemsVisible and (InputMode.isGamepad() and "Y: items      " or "I: items      ") or ""
+    local use = useVisible() and (InputMode.isGamepad() and "X: use      " or "U: use      ") or ""
     -- The "back to hub" hint is dropped alongside the button itself during the flight tutorial.
     local back = backVisible() and (InputMode.isGamepad() and "Back: hub" or "Esc: hub") or ""
     local hint = InputMode.isGamepad()
-        and ("Move: D-pad / Stick      " .. items .. back)
-        or ("Move: WASD / Arrows / click adjacent tile      " .. items .. back)
+        and ("Move: D-pad / Stick      " .. items .. use .. back)
+        or ("Move: WASD / Arrows / click adjacent tile      " .. items .. use .. back)
     love.graphics.printf(hint, 0, Scale.HEIGHT - 30, Scale.WIDTH, "center")
     love.graphics.setColor(1, 1, 1)
 end
@@ -521,7 +574,8 @@ function game:cursorKind(x, y)
     if game.activePanel then
         return game.activePanel.cursorKind and game.activePanel:cursorKind(x, y) or "arrow"
     end
-    if (backVisible() and backContains(x, y)) or (game.itemsVisible and rectContains(itemsButton, x, y)) then
+    if (backVisible() and backContains(x, y)) or (game.itemsVisible and rectContains(itemsButton, x, y))
+        or (useVisible() and rectContains(useButton, x, y)) then
         return "hand"
     end
     return "arrow"
@@ -534,6 +588,8 @@ function game.mousepressed(x, y, button)
         toHub()
     elseif button == 1 and game.itemsVisible and rectContains(itemsButton, x, y) then
         openLoadout()
+    elseif button == 1 and useVisible() and rectContains(useButton, x, y) then
+        openConsumables()
     else
         game.map:mousepressed(x, y, button)
     end
@@ -557,6 +613,8 @@ function game.keypressed(key)
         toHub()
     elseif key == "i" and game.itemsVisible then
         openLoadout()
+    elseif key == "u" and useVisible() then
+        openConsumables()
     else
         game.map:keypressed(key)
     end
@@ -569,6 +627,8 @@ function game.gamepadpressed(joystick, button)
         toHub()
     elseif button == "y" and game.itemsVisible then
         openLoadout()
+    elseif button == "x" and useVisible() then
+        openConsumables()
     else
         game.map:gamepadpressed(joystick, button)
     end

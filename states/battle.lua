@@ -40,6 +40,7 @@ local CoachBubble = require("ui.coach_bubble")
 local Glyphs = require("ui.glyphs")
 local Spoils = require("models.spoils")
 local BattleSummary = require("ui.panels.battle_summary")
+local Debug = require("models.debug")
 
 local battle = {}
 
@@ -74,18 +75,35 @@ local MOVE_STEP = 0.25
 -- nothing visible (a bare move, a wait) skips it entirely and hands off at once.
 local IMPACT_PAUSE = 0.5
 
--- Clickable "Forfeit" button so a mouse-only player can bail out (counts as a loss). Wait/Focus/
+-- The left column's controls fold behind a single hamburger toggle. Closed (the default), only
+-- MENU_BUTTON is drawn and the whole column below it belongs to the docked tooltips -- which is what
+-- buys the terrain box its guaranteed room in drawTileTooltip. Open, the entries drop beneath it.
+-- Every entry also has a key/pad binding of its own (Esc / pad B = forfeit, L / left-shoulder = log,
+-- T / left-stick = threats), so the menu is a mouse affordance and never the only way to reach them.
+local MENU_BUTTON = { x = 16, y = 16, w = 36, h = 36 }
+-- Clickable "Forfeit" entry so a mouse-only player can bail out (counts as a loss). Wait/Focus/
 -- Defend is not here: it lives in a long button under the item grid (ui/combat_panel.lua).
-local forfeitButton = { x = 16, y = 16, w = 130, h = 36 }
+local forfeitButton = { x = 16, y = 60, w = 130, h = 36 }
 -- Toggles the combat-log panel on the left (also L / gamepad left-shoulder).
-local logButton = { x = 16, y = 60, w = 130, h = 36 }
+local logButton = { x = 16, y = 104, w = 130, h = 36 }
 -- Toggles the danger overlay that paints EVERY enemy's reach-and-strike range purple across the
 -- whole board (also T / gamepad left-stick), so the player can survey all threats at once.
-local rangesButton = { x = 16, y = 104, w = 130, h = 36 }
--- Abandons the battle outright and drops straight to the main menu (no result, no reward) -- the
--- escape hatch a player wants when they mean to stop playing, distinct from Forfeit (which concedes
--- the fight as a loss and hands control back to whatever launched it).
-local menuButton = { x = 16, y = 148, w = 130, h = 36 }
+local rangesButton = { x = 16, y = 148, w = 130, h = 36 }
+-- Debug-only shortcuts that decide the fight instantly, so a developer can jump straight to the win
+-- or loss follow-up (spoils screen, overworld onWin/onLoss) without playing the encounter out. Gated
+-- on Debug.enabled -- they never render or take a click in a release build. Sat side by side under
+-- the rest of the menu.
+local winButton = { x = 16, y = 192, w = 62, h = 36 }
+local loseButton = { x = 84, y = 192, w = 62, h = 36 }
+
+-- The y the docked tooltip stack may rise to: just under the hamburger while the menu is closed, or
+-- under its last visible entry while it is open, so the menu and the tooltips never draw over each
+-- other. Read as drawTileTooltip's `dockTop`.
+local function menuBottom()
+    if not battle.menuOpen then return MENU_BUTTON.y + MENU_BUTTON.h + 8 end
+    local last = Debug.enabled and winButton or rangesButton
+    return last.y + last.h + 8
+end
 
 -- The 3x3 item grid mapped onto the number KEYPAD by physical position: kp7 is the top-left slot,
 -- kp3 the bottom-right, matching the grid's row-major layout so the keys sit where the slots do.
@@ -98,6 +116,16 @@ local KEYPAD_SLOT = {
 
 local function pointIn(btn, x, y)
     return x >= btn.x and x <= btn.x + btn.w and y >= btn.y and y <= btn.y + btn.h
+end
+
+-- Whether a point is over one of the drawer's entries (never the hamburger itself, which is handled
+-- on its own as the toggle). False while the menu is closed: closed, those rects belong to the
+-- docked tooltip column. Shared by mousepressed -- which folds the drawer away on any click that
+-- misses it -- and cursorKind, so the hand cursor and the click regions can't drift apart.
+local function overMenuEntry(x, y)
+    if not battle.menuOpen then return false end
+    return pointIn(forfeitButton, x, y) or pointIn(logButton, x, y) or pointIn(rangesButton, x, y)
+        or (Debug.enabled and (pointIn(winButton, x, y) or pointIn(loseButton, x, y)))
 end
 
 -- Whether an item carries a given tag (Combat's own hasTag is private). Used by the context cursor
@@ -128,7 +156,13 @@ local function objectiveText(obj)
     elseif obj.type == "defend" then
         text = "Objective: clear every wave"
     elseif obj.type == "reach" then
-        text = "Objective: get anyone to the far side"
+        -- `who` names the ONE body that has to cross (an escort/extraction), so the line has to say
+        -- which body -- "get anyone" is only true for the open footrace with no `who`.
+        if obj.who then
+            text = "Objective: get " .. charName(obj.who) .. " to the far side"
+        else
+            text = "Objective: get anyone to the far side"
+        end
     elseif obj.type == "hold" then
         text = "Objective: hold the marked ground"
     elseif obj.type == "assassinate" then
@@ -136,8 +170,12 @@ local function objectiveText(obj)
     else
         text = "Objective: defeat all enemies"
     end
-    if obj.protect then
+    -- When the body that must cross is also the one that must live (the usual escort), fold the two
+    -- clauses so it doesn't read "get the Driver across -- the Driver must survive".
+    if obj.protect and obj.protect ~= obj.who then
         text = text .. " -- " .. charName(obj.protect) .. " must survive"
+    elseif obj.protect then
+        text = text .. " -- alive"
     end
     return text
 end
@@ -222,6 +260,7 @@ local function specFor(opts, partyIds, seed)
     local enc = opts.encounter or {}
     if enc.kind == "objective" then
         local obj = (opts.quest and opts.quest.map and opts.quest.map.objective) or {}
+        spec.layout = obj.layout or spec.layout -- a boss may name its own board; else keep quest.map.layout
         spec.composition = obj.composition
         spec.allies = obj.allies -- AI-run escorts fighting on the party's side
         spec.objective = obj.win -- { type, target, protect } win condition; nil -> killAll
@@ -285,6 +324,25 @@ local function finishBattle(result)
                 rewardGold = battle.encounter.rewardGold,
                 loot = battle.encounter.loot,
             })
+        end
+        -- Gold picked off the enemy DURING the fight (Combat.skimGold, the Skimmer's Cut) rides out on
+        -- the spoils rather than through a purse-path of its own. Folded in after the roll so it is
+        -- added to the takings rather than replacing them, and a table is minted when the fight rolled
+        -- no spoils of its own -- a skim earned in a quest battle is still earned.
+        local skimmed = battle.combat and battle.combat.skimmed or 0
+        if skimmed > 0 then
+            spoils = spoils or { gold = 0, loot = {} }
+            spoils.gold = (spoils.gold or 0) + skimmed
+        end
+        -- Bounties settled during the fight (Combat.bounty -- a Struck Ledger paid out when its mark
+        -- fell, a body spent to the Ledger's Due) ride out on exactly the same path and for exactly the
+        -- same reason. Note where this sits: INSIDE the `result == "win"` branch, which is the whole
+        -- economy of a bounty -- the promise is banked on the combat, and a battle that is lost pays
+        -- nothing, however many marks were collected on the way down.
+        local bounty = battle.combat and battle.combat.bounty or 0
+        if bounty > 0 then
+            spoils = spoils or { gold = 0, loot = {} }
+            spoils.gold = (spoils.gold or 0) + bounty
         end
     end
 
@@ -361,9 +419,16 @@ end
 
 -- Reachable tiles for the current unit (blue move highlights + move validity). A rooted unit
 -- (a movement-blocking status) can't move this turn, so its reachable set is empty -- it can
--- still attack from where it stands.
+-- still attack from where it stands. So is a unit that has already spent its one move: Combat.reachable
+-- answers "where could this body walk", a question with no notion of a turn, and the one-move rule
+-- lives out here -- startWalk clears the band as the walk begins. That made the band's emptiness a
+-- thing only startWalk maintained, so any LATER rebuild of it mid-turn (toggleBlink calls this) raised
+-- the spent move from the dead: a full blue band, a walk-and-strike attackReach/rangeReach built over
+-- it, a lit target needing an approach, a route drawn to it and a preview pricing move+cast -- and then
+-- confirm's Combat.hasMoved guard refused the click. The rule belongs here, where every derived set
+-- reads it, not in the one function that happens to spend the move.
 local function computeReachable(unit)
-    if Status.blocksMove(unit) then
+    if Status.blocksMove(unit) or Combat.hasMoved(battle.combat) then
         battle.reachable, battle.moveCells = {}, {}
         battle.blinking = false
         return
@@ -456,12 +521,14 @@ end
 
 -- Can `unit`, standing on (sx, sy), legally land `ab` / `item` on the target cell (tx, ty)? The same
 -- per-stand-tile test Combat.attackReach applies -- base range + the item's grid-adjacency bonus +
--- the stand tile's own field range bonus (a sighted ability only), clamped below by the min range and gated on line
+-- the stand tile's own field range bonus (a sighted ability only) - any range-cutting debuff (Blind),
+-- floored at 1, clamped below by the min range and gated on line
 -- of sight when it needs it -- pulled out so a SPECIFIC stand tile (the steered route's endpoint) can
 -- be checked, not just the cheapest one attackReach records. Combat.useItem re-validates on confirm.
 local function standCanHit(unit, ab, item, sx, sy, tx, ty)
-    local r = (ab.range or 1) + Combat.adjacencyRangeBonus(unit.char, item)
+    local r = math.max(1, (ab.range or 1) + Combat.adjacencyRangeBonus(unit.char, item)
         + Combat.fieldRangeBonus(battle.combat, ab.requiresSight, sx, sy)
+        - Status.rangeMalus(unit))
     local d = math.abs(sx - tx) + math.abs(sy - ty)
     if d < Combat.abilityMinRange(ab) or d > r then return false end
     if ab.requiresSight and not Combat.hasLineOfSight(battle.combat, sx, sy, tx, ty) then return false end
@@ -777,7 +844,7 @@ local function spawnReinforcements()
         -- the player's turn have to happen in that order or the lesson between them makes no sense.
         if s.initiative then unit.initiative = s.initiative end
         Combat.logEvent(battle.combat, "action",
-            string.format("%s joins the fight!", unit.char.name or "A demon"))
+            string.format("%s joins the fight!", unit.char.name or "A demon"), unit)
     end
 end
 
@@ -801,40 +868,64 @@ local function waveTile(from, edge)
     return Combat.freeEdgeTile(combat, edge)
 end
 
+-- Walk `wave`'s composition onto the board from its edge. Shared by the one-shot and recurring
+-- paths below; a unit with nowhere to stand is skipped rather than stacked.
+local function fireWave(wave, ctx)
+    local ids = wave.composition
+    if type(ids) == "function" then ids = ids(ctx) end
+    ids = ids or {}
+    -- Resolve every unit's arrival edge up front (once), so `surround` can spread the wave
+    -- and `flank`/`open` read one consistent snapshot of the board rather than shifting as
+    -- earlier arrivals of the same wave fill tiles.
+    local edges = Combat.waveEdges(battle.combat, wave.from, #ids, ctx)
+    for j, id in ipairs(ids) do
+        local x, y = waveTile(wave.from, edges[j])
+        if x then
+            local unit = Combat.addUnit(battle.combat, Character.instantiate(id), "enemy", x, y)
+            Combat.logEvent(battle.combat, "action",
+                string.format("%s joins the fight!", unit.char.name or "A demon"), unit)
+        end
+    end
+end
+
 -- Walk on any reinforcement WAVES whose tick has come (objective.waves = { { at = <ticks>,
 -- composition = ids|fn, from = <edge descriptor> }, ... }). `at` is a mark on the SAME clock the win
 -- conditions read, so a wave and a "survive" duration are quoted in one unit -- ticks -- the player
 -- already sees everywhere. `from` says which SIDE the wave walks on from (default: behind the enemy
 -- line; see Combat.resolveWaveEdge for the top/bottom/left/right/random/flank/open/surround forms),
 -- resolved against the live board so the dynamic modes react to how the fight has developed.
--- Each wave fires once; a unit with nowhere to stand is skipped rather than stacked. This is the
--- generic cousin of spawnReinforcements, which serves the authored tutorial; both arrive through
--- Combat.addUnit, so a newcomer joins the turn order, the board and every query with no further wiring.
+--
+-- A wave with `every = N` instead RECURS: it fires every N ticks for as long as the fight lasts, the
+-- endless-reinforcement shape a `reach`/escort fight wears so the road can never be won by attrition
+-- (Arena.normalizeObjective synthesizes one for every reach objective). `maxAlive` caps it: while the
+-- board already holds that many living enemies the recurrence holds its breath, so it TOPS UP toward
+-- a strength rather than piling on without limit. `count` caps the number of firings.
+--
+-- Each one-shot wave fires once; both kinds arrive through Combat.addUnit, so a newcomer joins the
+-- turn order, the board and every query with no further wiring. Generic cousin of spawnReinforcements.
 local function spawnWaves()
     local obj = battle.combat and battle.combat.objective
     local waves = obj and obj.waves
     if not waves then return end
-    battle.wavesFired = battle.wavesFired or {}
+    battle.waveState = battle.waveState or {}
     local clock = battle.combat.clock or 0
     local ctx = battle.encounterCtx or {}
     for i, wave in ipairs(waves) do
-        if not battle.wavesFired[i] and clock >= (wave.at or 0) then
-            battle.wavesFired[i] = true
-            local ids = wave.composition
-            if type(ids) == "function" then ids = ids(ctx) end
-            ids = ids or {}
-            -- Resolve every unit's arrival edge up front (once), so `surround` can spread the wave
-            -- and `flank`/`open` read one consistent snapshot of the board rather than shifting as
-            -- earlier arrivals of the same wave fill tiles.
-            local edges = Combat.waveEdges(battle.combat, wave.from, #ids, ctx)
-            for j, id in ipairs(ids) do
-                local x, y = waveTile(wave.from, edges[j])
-                if x then
-                    local unit = Combat.addUnit(battle.combat, Character.instantiate(id), "enemy", x, y)
-                    Combat.logEvent(battle.combat, "action",
-                        string.format("%s joins the fight!", unit.char.name or "A demon"))
-                end
-            end
+        local st = battle.waveState[i]
+        if not st then
+            -- First fire lands at `at` for a one-shot, at `every` for a recurring wave that gives no
+            -- explicit start (so an endless wave holds off one period before its first reinforcement).
+            st = { fires = 0, nextAt = wave.at or wave.every or 0 }
+            battle.waveState[i] = st
+        end
+        local capped = wave.count and st.fires >= wave.count
+        local crowded = wave.maxAlive and Combat.aliveCount(battle.combat, "enemy") >= wave.maxAlive
+        if not capped and not crowded and clock >= st.nextAt then
+            fireWave(wave, ctx)
+            st.fires = st.fires + 1
+            -- Recurring waves rearm relative to the fire that just happened (so a `maxAlive` stall
+            -- doesn't bank up owed waves); a one-shot wave is retired.
+            st.nextAt = wave.every and (clock + wave.every) or math.huge
         end
     end
 end
@@ -1054,6 +1145,12 @@ local function startWalk(unit, x, y, onDone, cells)
     battle.walk = { steps = steps, i = 0, timer = 0, onDone = onDone, unit = unit }
     battle.reachable, battle.moveCells = {}, {}
     battle.threatCells, battle.attackReach = {}, {}
+    -- The armed/hovered ability's band was built over the move budget this walk just spent, so it is
+    -- stale the moment the feet leave. Dropping `rangeFor` (the "what are these sets for" marker) is
+    -- what forces the rebuild: refreshView and armedActionAt recompute only when the previewed ITEM
+    -- changes, so hovering or re-arming the same item would otherwise redraw the pre-move
+    -- walk-and-strike reach over a unit that can no longer walk.
+    battle.rangeCells, battle.rangeReach, battle.rangeFor = {}, {}, nil
     battle.movePath = nil
     return true
 end
@@ -1359,6 +1456,31 @@ local function wallAt(x, y)
     return battle.wallCells and battle.wallCells[x .. "," .. y]
 end
 
+-- A living prop on (x, y), or nil. Sideless and always visible, exactly like a wall -- anything in
+-- reach can be struck, which for an explosive barrel is the whole point of it being there.
+local function propAt(x, y)
+    return battle.propCells and battle.propCells[x .. "," .. y]
+end
+
+-- Strike a prop on (tx, ty) with the default action, folding an approach move into the strike exactly
+-- like tryDamageWall. Combat.strikeProp re-checks range/cost; this handles the click UX.
+local function tryDamageProp(unit, tx, ty)
+    local entry = battle.attackReach and battle.attackReach[tx .. "," .. ty]
+    local weapon = battle.defaultAction
+    if not entry or not weapon then return end
+    if refuseIfBlocked(unit, weapon) then return end
+    local function strike()
+        if Combat.strikeProp(battle.combat, unit, weapon, tx, ty) then advanceTurn() end
+    end
+    if entry.fromX ~= unit.x or entry.fromY ~= unit.y then
+        if Combat.hasMoved(battle.combat) then return end
+        return startWalk(unit, entry.fromX, entry.fromY, function()
+            if unit.alive then strike() else advanceTurn() end
+        end)
+    end
+    strike()
+end
+
 -- Strike a wall on (tx, ty) with the default action, folding an approach move into the strike
 -- exactly like tryDamageTrap. Combat.strikeWall re-checks range/cost; this handles the click UX.
 local function tryDamageWall(unit, tx, ty)
@@ -1512,8 +1634,10 @@ local function actionPreviewFor(cx, cy)
             return nil -- an occupied cell that isn't a valid default target: nothing to preview
         end
         -- A revealed enemy trap in reach -> click-to-destroy with an offensive default (a support
-        -- default doesn't strike). A wall in reach breaks the same way (reuses the preview shape).
-        local trap = not support and (revealedEnemyTrapAt(current, cx, cy) or wallAt(cx, cy))
+        -- default doesn't strike). A wall or a prop in reach breaks the same way -- all three are
+        -- "something with HP that isn't a body", so they share one preview shape and one cursor.
+        local trap = not support
+            and (revealedEnemyTrapAt(current, cx, cy) or wallAt(cx, cy) or propAt(cx, cy))
         if trap and inReach then
             local dmg = action and Combat.computeTrapDamage(current, action) or 0
             return { kind = "strikeTrap", item = action, actor = current, trap = trap,
@@ -1560,6 +1684,8 @@ local function confirm()
             tryDamageTrap(current, cx, cy)
         elseif not support and wallAt(cx, cy) and battle.attackReach and battle.attackReach[cx .. "," .. cy] then
             tryDamageWall(current, cx, cy)
+        elseif not support and propAt(cx, cy) and battle.attackReach and battle.attackReach[cx .. "," .. cy] then
+            tryDamageProp(current, cx, cy)
         elseif battle.reachable[cx .. "," .. cy] then
             if battle.blinking then
                 -- A blink is instant (no walk animation): jump, spend mana, then recompute the threat
@@ -1567,6 +1693,9 @@ local function confirm()
                 if Combat.blink(battle.combat, current, cx, cy) then
                     battle.reachable, battle.moveCells = {}, {}
                     battle.threatCells, battle.attackReach = {}, {}
+                    -- The jump spends the turn's one move, so the ability band built over it is stale
+                    -- for the same reason startWalk's is -- see the note there.
+                    battle.rangeCells, battle.rangeReach, battle.rangeFor = {}, {}, nil
                     netFinishTurn({ kind = "blink", x = cx, y = cy })
                     if current.alive then computeThreat(current) computeDanger() else advanceTurn() end
                 end
@@ -1598,7 +1727,7 @@ local function confirm()
         -- Aiming an empty reachable tile is a reposition, not an attack on empty air: walk onto it and
         -- stay armed, refreshing the range from the tile it now stands on (one move per turn).
         if plan.kind == "move" then
-            if Combat.hasMoved(battle.combat) then return end
+            if Combat.hasMoved(battle.combat) then notify("Already moved this turn") return end
             netFinishTurn({ kind = "move", x = plan.x, y = plan.y, path = plan.cells })
             startWalk(current, plan.x, plan.y, function()
                 if not current.alive then advanceTurn() return end
@@ -1620,26 +1749,48 @@ local function confirm()
         -- The extra wind-up poured into a chargeable signature (nil for every other ability), sent with
         -- the command so the peer resolves the same depth. Combat.useItem clamps it either way.
         local wu = (item.activeAbility.windup and (battle.windup or 0)) or nil
+        -- Why the model refused a cast the board had just offered. Every branch below routes its
+        -- refusal through here: a click that lights a target, draws a route and prices the turn in the
+        -- preview, and then does NOTHING when pressed, is unreadable -- the player has no way to tell a
+        -- bug from a rule. The banner names the rule. (The bands are meant to agree with Combat.useItem
+        -- exactly, so any of these firing is a disagreement worth seeing rather than swallowing.)
+        local function refuse(why)
+            notify(string.format("%s: %s", item.name or "That item", tostring(why or "cannot be used here")))
+        end
         local function cast()
             local cell = slotOf(current, item)
-            if Combat.useItem(battle.combat, current, item, cx, cy, wu) then
-                netFinishTurn({ kind = "use", cell = cell, tx = cx, ty = cy, windup = wu })
-                -- The item rides along so a lesson can ask for a strike with a NAMED ability rather
-                -- than any blow at all -- the village lesson's Clear Out, which is aimed at the caster's
-                -- own tile and so cannot be pinned by its victim (see data/tutorials/village.lua).
-                observeAction("attack", current, cx, cy, victim and victim.char.id, item.id)
-                advanceTurn()
-            end
+            local ok, why = Combat.useItem(battle.combat, current, item, cx, cy, wu)
+            if not ok then refuse(why) return end
+            netFinishTurn({ kind = "use", cell = cell, tx = cx, ty = cy, windup = wu })
+            -- The item rides along so a lesson can ask for a strike with a NAMED ability rather
+            -- than any blow at all -- the village lesson's Clear Out, which is aimed at the caster's
+            -- own tile and so cannot be pinned by its victim (see data/tutorials/village.lua).
+            observeAction("attack", current, cx, cy, victim and victim.char.id, item.id)
+            advanceTurn()
         end
         if entry.fromX ~= current.x or entry.fromY ~= current.y then
-            if Combat.hasMoved(battle.combat) then return end -- can't move twice in a turn
-            if not startWalk(current, entry.fromX, entry.fromY, nil, plan.cells) then return end
+            -- Can't move twice in a turn. The approach is part of the action here, so a spent move
+            -- kills the whole click -- say so, rather than letting the press vanish.
+            if Combat.hasMoved(battle.combat) then
+                notify("Out of reach from here -- already moved this turn")
+                return
+            end
+            if not startWalk(current, entry.fromX, entry.fromY, nil, plan.cells) then
+                notify("No route to attack from")
+                return
+            end
             -- The approach is already spent: startWalk walked it in the model, so the unit is
             -- standing on the entry tile and the blow lands NOW, before a frame of the walk is
             -- drawn. Its cues stay in the queue while the route replays -- advanceTurn drains them
             -- when the feet stop, so the impact still reads after the approach rather than during
             -- it. Nothing about the exchange is decided by how long the animation took.
-            local landed = current.alive and Combat.useItem(battle.combat, current, item, cx, cy, wu)
+            local landed, why
+            if current.alive then
+                landed, why = Combat.useItem(battle.combat, current, item, cx, cy, wu)
+            end
+            -- The approach is already walked and paid for; only the blow was refused. Name the reason
+            -- so the turn doesn't just look like it evaporated.
+            if not landed and why then refuse(why) end
             local blow = holdLanding()
             -- Announced now, not when the animation finishes: the model already resolved the whole
             -- turn, and the peer should be told at once rather than after our playback -- their
@@ -2059,6 +2210,27 @@ local function refreshView()
     local hover = battle.hoverUnit
     if hover and hover.alive then overlays.hover = { x = hover.x, y = hover.y } end
 
+    -- The combat log points back at the board: the line under the cursor names its subjects
+    -- (Combat.logEvent's units), and each one still standing gets a ring here and a ring on its
+    -- timeline card below. A line naming two -- the striker and the struck -- draws a thread between
+    -- them as well, so "X takes the blow for Y" reads as a relation and not two unrelated lights.
+    -- Resolved BEFORE the panel view is built so both surfaces answer the same hover on the same frame.
+    local logUnits = battle.log and battle.log:hoveredUnits()
+    local logHighlight
+    if logUnits then
+        local marks = {}
+        for _, u in ipairs(logUnits) do
+            -- A unit the line is about may have died since (or be the corpse the line is about): only
+            -- a body still on the board has a tile worth ringing.
+            if u.alive then marks[#marks + 1] = { x = u.x, y = u.y, unit = u } end
+        end
+        if #marks > 0 then
+            overlays.logSubjects = marks
+            logHighlight = {}
+            for _, m in ipairs(marks) do logHighlight[m.unit] = true end
+        end
+    end
+
     -- "Threats" survey (the left-column toggle): wash EVERY tile any enemy could reach-and-strike
     -- this turn in purple, so the whole danger picture reads at once. During the actor's own move
     -- turn its reachable tiles are left to the move overlay (blue / move-danger purple), so the
@@ -2094,6 +2266,16 @@ local function refreshView()
     battle.wallCells = {}
     for _, w in ipairs(battle.combat.walls or {}) do
         if w.alive then battle.wallCells[w.x .. "," .. w.y] = w end
+    end
+
+    -- Props (the board's own barrels and crates) are sideless and always visible, so like walls the
+    -- renderer gets the whole live list and the click handler gets an "x,y" lookup (propAt). Striking
+    -- one is the ONLY way to set off an explosive barrel, so this lookup is what makes "shoot the keg"
+    -- a click the player can find.
+    overlays.props = battle.combat.props
+    battle.propCells = {}
+    for _, p in ipairs(battle.combat.props or {}) do
+        if p.alive then battle.propCells[p.x .. "," .. p.y] = p end
     end
 
     -- Preview resources lost / damage dealt on the turn-order banners: the action under the mouse
@@ -2176,6 +2358,8 @@ local function refreshView()
             } or nil,
         showInitiative = battle.showInitiative,
         preview = bannerPreview,
+        -- Units the hovered combat-log line is about, so their cards light up with their tiles.
+        logHighlight = logHighlight,
     })
 
     -- Telegraph every in-progress channel's blast on the board -- not just the local armed preview, so
@@ -2387,10 +2571,14 @@ function battle.enter(self, opts)
     -- floaters, HP drain, sprite reactions and card jiggle/fade all read the same state.
     battle.fx = CombatFx.new()
     battle.pendingAdvance = nil
-    -- Timed reinforcements (objective.waves): which waves have already walked on, and the context a
-    -- wave's `composition(ctx)` scales itself against. Reset per battle so a replayed fight starts
-    -- with every wave still pending. See spawnWaves.
-    battle.wavesFired = {}
+    -- The hamburger starts closed every fight: it is a transient drawer, not a remembered preference,
+    -- and a battle that opened over its own tooltip column would be a worse first frame than one that
+    -- didn't. See MENU_BUTTON / menuBottom.
+    battle.menuOpen = false
+    -- Timed reinforcements (objective.waves): each wave's firing state (count + next tick), and the
+    -- context a wave's `composition(ctx)` scales itself against. Reset per battle so a replayed fight
+    -- starts with every wave still pending. See spawnWaves.
+    battle.waveState = {}
     battle.encounterCtx = ctx
     battle.map = BattleMap.new(battle.arena,
         { combat = battle.combat, leftMargin = LEFT_W, rightMargin = PANEL_W,
@@ -2675,7 +2863,10 @@ function battle.draw()
     -- top where the two overlap, so it wins the hit-test; its tooltip may extend to the screen
     -- edge, while a board tooltip is kept clear of the panel (rightMargin).
     local mx, my = battle.mouseX, battle.mouseY
-    if mx then
+    -- When the cursor is over the open combat log, that panel owns the hover: it draws its own
+    -- item/status/breakdown tooltip during its draw pass, so the board's tile tooltip must not also
+    -- fire here and stack on top of it.
+    if mx and not battle.log:contains(mx, my) then
         local st = battle.panel:statusAt(mx, my)
         local boardSt = not st and battle.map:statusAt(mx, my)
         local item = not st and not boardSt and battle.panel:itemAt(mx, my)
@@ -2744,9 +2935,10 @@ function battle.drawTileTooltip(mx, my)
     if not cell then return end
     local unit = Combat.unitAt(battle.combat, cx, cy)
     local trap = battle.trapCells and battle.trapCells[cx .. "," .. cy]
-    -- Whatever a click here would do (attack / move / place a trap / strike a trap) is named by a
-    -- companion panel on top, and its damage/heal is previewed on the occupant's resource bars
-    -- (a unit's HP for a strike/heal, or a trap's HP for a trap strike).
+    local prop = battle.propCells and battle.propCells[cx .. "," .. cy]
+    -- Whatever a click here would do (attack / move / place a trap / strike a trap or a barrel) is
+    -- named by a companion panel on top, and its damage/heal is previewed on the occupant's resource
+    -- bars (a unit's HP for a strike/heal, or a trap's or prop's HP for a strike on one).
     local action = actionPreviewFor(cx, cy)
     local preview
     if action then
@@ -2759,13 +2951,16 @@ function battle.drawTileTooltip(mx, my)
 
     local maxRight = Scale.WIDTH - PANEL_W
     local W = LEFT_W - 32 -- full column width (16px margins each side)
-    local dockTop, gap, exGap = 150, 8, 4
+    -- The stack's ceiling follows the hamburger menu: nearly the whole column while it is closed,
+    -- pushed down to clear the entries while it is open.
+    local dockTop, gap, exGap = menuBottom(), 8, 4
 
     local terrainInfo = { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
                           hazards = Hazard.allAt(battle.combat, cx, cy) }
     local objInfo
     if unit and unit.char then objInfo = { unit = unit, preview = preview }
-    elseif trap then objInfo = { trap = trap, preview = preview } end
+    elseif trap then objInfo = { trap = trap, preview = preview }
+    elseif prop then objInfo = { prop = prop, preview = preview } end
 
     -- The EXCHANGE, in resolution order (bottom-up, so the list reads last-beat-first): the counters
     -- that answer after the blow, then the blow, then any reflex that answers BEFORE it (Keen Senses).
@@ -2784,24 +2979,21 @@ function battle.drawTileTooltip(mx, my)
 
     -- The column is a fixed height and the content isn't: a wordy terrain box, a long status list and
     -- a two-reflex exchange together overrun it, and boxes clamped at dockTop would then draw over
-    -- each other. So measure first and let the REFERENCE boxes yield -- the exchange is what the click
-    -- commits to, and it always gets its room. Terrain goes first (the board itself shows the tile),
-    -- then the occupant (whose bars are on its board token too). Both almost always fit; this is the
-    -- valve for when they don't.
+    -- each other. So measure first and let a box yield -- but never the terrain. The board draws the
+    -- occupant twice over (its token, its HP bar, its status badges) and the tile it stands on not at
+    -- all beyond a flat colour, so terrain is the one thing here that has no second reading anywhere
+    -- on screen. It always draws; the OCCUPANT is the valve, since losing it costs the player only a
+    -- detail view of something already in front of them.
     local budget = Scale.HEIGHT - 8 - dockTop
     for _, a in ipairs(exchange) do budget = budget - ActionPreview.measure(a) - exGap end
     local objH = objInfo and (TileTooltip.measure(objInfo, W) + gap) or 0
     local terrainH = TileTooltip.measure(terrainInfo, W) + gap
-    local showObj = objInfo ~= nil and objH <= budget
-    local showTerrain = terrainH + (showObj and objH or 0) <= budget
+    local showObj = objInfo ~= nil and objH + terrainH <= budget
 
     -- Terrain box at the very bottom of the column. Any hazards on the tile ride along on the same
     -- info so they read as a section directly above the terrain (and below the occupant box).
-    local topBox
-    if showTerrain then
-        topBox = TileTooltip.draw(terrainInfo, mx, my, maxRight,
-            { dock = true, dockX = 16, dockTop = dockTop, width = W })
-    end
+    local topBox = TileTooltip.draw(terrainInfo, mx, my, maxRight,
+        { dock = true, dockX = 16, dockTop = dockTop, width = W })
 
     -- Occupant (unit or trap) in its own box, separated from the terrain by a gap.
     if showObj then
@@ -2846,6 +3038,29 @@ function battle.drawHud()
     local boardX = LEFT_W
     local boardW = Scale.WIDTH - LEFT_W - PANEL_W
 
+    -- The hamburger itself: three bars, brighter while the menu is open so its state reads at a
+    -- glance (the same on/off treatment the toggles below use).
+    local menuOpen = battle.menuOpen
+    if menuOpen then love.graphics.setColor(0.22, 0.24, 0.32) else love.graphics.setColor(0.15, 0.16, 0.20) end
+    love.graphics.rectangle("fill", MENU_BUTTON.x, MENU_BUTTON.y, MENU_BUTTON.w, MENU_BUTTON.h, 6, 6)
+    if menuOpen then love.graphics.setColor(0.62, 0.68, 0.85) else love.graphics.setColor(0.38, 0.42, 0.52) end
+    love.graphics.rectangle("line", MENU_BUTTON.x, MENU_BUTTON.y, MENU_BUTTON.w, MENU_BUTTON.h, 6, 6)
+    if menuOpen then love.graphics.setColor(0.88, 0.92, 1.0) else love.graphics.setColor(0.66, 0.70, 0.80) end
+    love.graphics.setLineWidth(2)
+    for i = 0, 2 do
+        local by = MENU_BUTTON.y + 11 + i * 7
+        love.graphics.line(MENU_BUTTON.x + 10, by, MENU_BUTTON.x + MENU_BUTTON.w - 10, by)
+    end
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(1, 1, 1)
+
+    -- The entries only exist while the menu is open -- closed, the column below the hamburger is the
+    -- tooltips' (and a click there falls through to them, see mousepressed).
+    if not menuOpen then
+        battle.drawHudText(boardX, boardW)
+        return
+    end
+
     -- Forfeit button.
     love.graphics.setColor(0.28, 0.18, 0.20)
     love.graphics.rectangle("fill", forfeitButton.x, forfeitButton.y, forfeitButton.w, forfeitButton.h, 6, 6)
@@ -2879,17 +3094,31 @@ function battle.drawHud()
     love.graphics.printf(rangesOn and "Threats ✓" or "Threats",
         rangesButton.x, rangesButton.y + rangesButton.h / 2 - 8, rangesButton.w, "center")
 
-    -- Exit-to-main-menu button. Neutral grey so it reads as "leave", not as an action taken in the
-    -- fight (the reddish Forfeit is the in-fight concede).
-    love.graphics.setColor(0.16, 0.17, 0.20)
-    love.graphics.rectangle("fill", menuButton.x, menuButton.y, menuButton.w, menuButton.h, 6, 6)
-    love.graphics.setColor(0.45, 0.48, 0.55)
-    love.graphics.rectangle("line", menuButton.x, menuButton.y, menuButton.w, menuButton.h, 6, 6)
-    love.graphics.setColor(0.80, 0.83, 0.88)
-    love.graphics.setFont(hudFont)
-    love.graphics.printf("Main Menu", menuButton.x, menuButton.y + menuButton.h / 2 - 8,
-        menuButton.w, "center")
+    -- Debug-only instant-decision buttons (green Win / red Lose), sat where Main Menu used to be.
+    if Debug.enabled then
+        love.graphics.setFont(hudFont)
+        love.graphics.setColor(0.16, 0.24, 0.17)
+        love.graphics.rectangle("fill", winButton.x, winButton.y, winButton.w, winButton.h, 6, 6)
+        love.graphics.setColor(0.45, 0.70, 0.48)
+        love.graphics.rectangle("line", winButton.x, winButton.y, winButton.w, winButton.h, 6, 6)
+        love.graphics.setColor(0.82, 0.92, 0.82)
+        love.graphics.printf("Win", winButton.x, winButton.y + winButton.h / 2 - 8, winButton.w, "center")
 
+        love.graphics.setColor(0.26, 0.16, 0.17)
+        love.graphics.rectangle("fill", loseButton.x, loseButton.y, loseButton.w, loseButton.h, 6, 6)
+        love.graphics.setColor(0.70, 0.45, 0.45)
+        love.graphics.rectangle("line", loseButton.x, loseButton.y, loseButton.w, loseButton.h, 6, 6)
+        love.graphics.setColor(0.92, 0.82, 0.82)
+        love.graphics.printf("Lose", loseButton.x, loseButton.y + loseButton.h / 2 - 8, loseButton.w, "center")
+    end
+
+    battle.drawHudText(boardX, boardW)
+end
+
+-- The board's own three top lines (encounter name, objective, control hint), split out of drawHud so
+-- the collapsed menu can skip straight to them without repeating the block. Centred over the
+-- battlefield region, never the whole window, so they sit squarely above the board.
+function battle.drawHudText(boardX, boardW)
     -- Encounter name + objective, centred over the battlefield region.
     love.graphics.setFont(titleFont)
     love.graphics.setColor(0.95, 0.85, 0.55)
@@ -3044,6 +3273,7 @@ end
 
 function battle.mousemoved(x, y, dx, dy)
     battle.mouseX, battle.mouseY = x, y -- drives the status tooltip (board + panel hit-tests)
+    battle.log:mousemoved(x, y)         -- drives the combat log's damage-breakdown hover
     if battle.summary then battle.summary:mousemoved(x, y); return end
     -- Hovering the panel's Wait button previews the delay slot on the timeline.
     local overPanel = battle.panel:mousemoved(x, y)
@@ -3074,25 +3304,40 @@ function battle.mousepressed(x, y, button)
     -- and the board, which mousepressed does NOT gate on battle.over).
     if battle.summary then battle.summary:mousepressed(x, y, button); return end
     reclaimAutoTurn()
-    if button == 1 and pointIn(forfeitButton, x, y) then
-        if not tutorialRefuses("forfeit") then lose() end
+    if button == 1 and pointIn(MENU_BUTTON, x, y) then
+        battle.menuOpen = not battle.menuOpen
         return
     end
-    if button == 1 and pointIn(logButton, x, y) then
-        battle.log:toggle()
-        return
+    -- The entries are only clickable while the menu is open -- closed, their rects are the tooltip
+    -- column's, and a click there must fall through rather than fire an invisible Forfeit. The
+    -- toggles deliberately leave the menu open so their ✓ state can be read after the press.
+    if battle.menuOpen and button == 1 then
+        if pointIn(forfeitButton, x, y) then
+            if not tutorialRefuses("forfeit") then lose() end
+            return
+        end
+        if pointIn(logButton, x, y) then
+            battle.log:toggle()
+            return
+        end
+        if pointIn(rangesButton, x, y) then
+            battle.showEnemyRanges = not battle.showEnemyRanges
+            return
+        end
+        if Debug.enabled and pointIn(winButton, x, y) then
+            if not battle.over then win() end
+            return
+        end
+        if Debug.enabled and pointIn(loseButton, x, y) then
+            if not battle.over then lose() end
+            return
+        end
     end
-    if button == 1 and pointIn(rangesButton, x, y) then
-        battle.showEnemyRanges = not battle.showEnemyRanges
-        return
-    end
-    if button == 1 and pointIn(menuButton, x, y) then
-        -- Leaving the fight for good: release the party's between-battle claims (no win/lose path
-        -- runs to do it) so nothing follows the units back out, then drop to the main menu.
-        releaseParty()
-        require("states.init").switch(require("states.menu"))
-        return
-    end
+    -- Any click that missed the drawer folds it away again -- it is a transient menu, and leaving it
+    -- standing over its own tooltip column because the player looked elsewhere is the wrong default.
+    -- The click still falls THROUGH to whatever it landed on (log, panel, board): dismissing a drawer
+    -- the player wasn't aiming at should cost them nothing, least of all the move they just made.
+    if battle.menuOpen and not overMenuEntry(x, y) then battle.menuOpen = false end
     -- A click inside the open log panel is consumed by it (it must not fall through to a
     -- move/attack on the battlefield beneath).
     if battle.log:contains(x, y) then return end
@@ -3110,8 +3355,7 @@ function battle.cursorKind()
     if not mx then return "arrow" end
     if battle.summary then return battle.summary:cursorKind(mx, my) end
     -- Off the board: the clickable UI wants a pointing hand.
-    if pointIn(forfeitButton, mx, my) or pointIn(logButton, mx, my) or pointIn(rangesButton, mx, my)
-        or pointIn(menuButton, mx, my)
+    if pointIn(MENU_BUTTON, mx, my) or overMenuEntry(mx, my)
         or battle.log:contains(mx, my) or battle.panel:contains(mx, my) then
         return "hand"
     end

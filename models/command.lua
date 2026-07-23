@@ -154,6 +154,7 @@ function Command.apply(combat, unit, cmd)
         local action = (kind == "focus" and Combat.focus)
             or (kind == "defend" and Combat.defend)
             or (kind == "overwatch" and Combat.overwatch)
+            or (kind == "perform" and Combat.perform)
             or Combat.wait
         result.acted = action(combat, unit) and true or false
         return result

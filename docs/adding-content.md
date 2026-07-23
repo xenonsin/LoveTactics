@@ -139,6 +139,11 @@ priest's line would leave the mage retorting to a remark nobody made. That is wh
 they group the lines that only make sense together. `tests/conversation_spec.lua` enforces the half of
 this it can prove: a conditional cast member may only speak inside a block that requires them.
 
+This is not just for scenes that happen to have a companion in them — **every** scene is written for
+the full roster and pared down. A recruited companion who stands silent through a scene about their own
+sin is the party reading as luggage; see *"Every scene makes room for the party you actually have"* in
+[docs/story.md](story.md) for who should speak, what for, and the few scenes that are exempt.
+
 Conditions are **data, not functions** (unlike an encounter's `condition(ctx)`) for two reasons: the
 extractor rewrites these files and would erase a closure, and data can be inspected — which is how the
 spec proves the rule above. The grammar:
@@ -307,7 +312,17 @@ return {
 
 **Traits** are how a character (a boss especially) gets an identity rather than just bigger numbers.
 A trait is a `data/traits/<id>.lua` file exposing any of `onCombatStart`, `onDamaged` (fires after
-mitigation, and only if the unit survived), `onCast`, `onDeath`. A trait reaches a unit through an
+mitigation, and only if the unit survived), `onCast`, `onStatusApplied`, `onDeath`, and the two
+**broadcast** hooks — `onAnyDeath` and `onAnyCast`, which fire on everyone the event did *not* happen
+to. Those two are how a standing thing reacts to somebody else's turn: the Gaunt Vigil bites whoever
+worked a spell near it, and the Gleaning Rod banks a charge off it.
+
+> On `onAnyCast`, read the cast through **`ctx.castItem` / `ctx.castAbility`**, and the trait's own
+> relic through `ctx.trait.item`. The event fields are copied onto the context after it is built, so
+> naming them `item` would shadow `ctx.item` — harmless on `onCast`, where the two are the same table,
+> and badly wrong here, where one is your relic and the other is the enemy's fireball.
+
+A trait reaches a unit through an
 **item**: any item that declares `traits = { "<id>" }` grants them to whoever carries it in their 3×3
 grid. A character's *innate* reaction is delivered by a **bound signature relic** — an item with
 `bound = true` (never moved, stowed, sold, or stolen, only forged; see `models/item.lua` `Item.isBound`)
@@ -558,12 +573,19 @@ return {
     traps = {                      -- optional authored traps (hidden from the player until detected)
         { id = "spike_trap", x = 3, y = 4, side = "enemy" },
     },
+    props = {                      -- optional authored props (barrels, crates -- see "Add a prop")
+        { id = "prop_explosive_barrel", x = 5, y = 4 },
+    },
 }
 ```
 
+A curated arena that authors no `props` simply has none: the biome scatter runs in
+`Arena.generateLayout`, so it fills a **generated** board only. Author them here when the placement is
+the point (a keg beside the chokepoint the fight is about).
+
 The fastest way to author one: in a battle press **F5** (dev-only debug save) to serialize the
 current arena to `data/arenas/<biome>_<timestamp>.lua`, then rename and hand-edit it (F5 also
-writes back any authored `traps`). See `data/arenas/forest_01.lua`.
+writes back any authored `traps` and `props`). See `data/arenas/forest_01.lua`.
 
 ### Line of sight & terrain cover
 
@@ -657,12 +679,60 @@ return {
     onTurnEnd   = function(ctx) end,
     onEnterTile = function(ctx) end,   -- the unit crossed onto a tile on foot (bleed)
     onDamaged   = function(ctx) end,   -- the bearer took a hit and lived (sleep breaks on it)
+    onDeath     = function(ctx) end,   -- the bearer fell; ctx.killer when one is known (a bounty)
     -- blocksMove = true,               -- the unit cannot move this turn (root)
     -- turnEndMoveCost = function(ctx) return ctx.moveBudget end, -- pay full move cost anyway
     -- resistible = "magical",          -- opts into resistance: see below
     -- illusion = true,                 -- a lie about a body: Dispel Illusions tears it down
 }
 ```
+
+**A hook that deals damage cannot loop.** `onDamaged` fires from inside the damage core, so a hook
+that hits its own bearer (Rimebitten's cold) re-enters that core and would fire the hook again, for
+the bite it just landed, forever. `Status.onDamaged` latches `unit._statusReacting` for the duration
+of the dispatch — the same guard `models/trait.lua` uses — so a status answering its own answer is
+simply not dispatched. Nothing in a data file has to know about this, but it is why an on-damaged
+status is allowed to deal damage at all.
+
+### The gates a status can close
+
+Each of these is a single flag scanned across the bearer's active statuses, read at exactly one
+chokepoint. They are listed together because choosing between them is most of the design of a new
+debuff — they look similar and refuse very different things:
+
+| Flag | What it refuses | Read by |
+|---|---|---|
+| `silencesMana` | an ability priced in mana | `Combat.itemBlockReason` |
+| `deniesMagic` | anything `magical`, however it is paid for | `Combat.itemBlockReason` |
+| `disablesWeapon` | a forged weapon (bare fists are exempt) | `Combat.itemBlockReason` |
+| `disablesActions` | any action at all; walking and reflexes still work | `Combat.itemBlockReason` |
+| `disablesReactions` | counters, thorns, dodges — but not `onStatusApplied` | `models/trait.lua` |
+| `disablesTraits` | **every** trait hook, `onStatusApplied` included | `models/trait.lua` |
+| `blocksHealing` | every mend, from every source | `Combat.applyHeal` |
+| `preventsDeath` | the drop: a lethal blow floors the bearer at 1 | `Combat.dealFlatDamage` |
+| `revealsBearer` | concealment: an invisible bearer is targetable anyway | `Status.untargetable` |
+| `defers` | *everything*, onto a ledger that settles on expiry | both damage and heal |
+
+`disablesTraits` is the only thing in the game that reaches `onStatusApplied`, which is deliberate:
+that hook is deliberately left open under `disablesReactions` so a cleansing ward can shrug off the
+very stun that landed, and a break has to be able to stop that too.
+
+### Wards: three different kinds of "no"
+
+| Field | Spent by | Answers | Example |
+|---|---|---|---|
+| `negates = "physical" \| "magical"` | a hit of that school | one blow | `status_physical_barrier` |
+| `negates = "any"` | a hit of either school | one blow | `status_splitglass` |
+| `negates = "cast"` | a hostile **single-target** ability being aimed | the whole working | `status_sealed_ward` |
+| `defers = true` | nothing — it banks and settles later | everything, briefly | `status_sealed_hour` |
+
+All of the `negates` forms count charges in `magnitude` and are spent through `Status.consumeBarrier`,
+so an upgrade buys **coverage** rather than a bigger number — a thing that negates outright cannot
+negate harder. A cast ward is refused before the effect runs at all (see the gate at the top of
+`resolveCast`), so a spell that would only have rooted you is stopped exactly as hard as a nuke; an
+area effect goes straight past it, which is the standing counterplay. `Combat.dealFlatDamage` also
+banks what a barrier swallowed onto `barrier.absorbed`, which is what lets `status_kept_wound` throw
+it back on expiry without intercepting the damage path itself.
 
 Apply one from an ability or trap effect via `fx.applyStatus(target, "status_poison", { duration = 8 })`
 (re-applying refreshes the duration; one instance per id). See `data/status/status_stun.lua` and
@@ -796,6 +866,64 @@ the scaled numbers in the tooltip. A unit reveals enemy traps by carrying a dete
 See `data/traps/spike_trap.lua`, `data/traps/snare_trap.lua`, `data/items/ability/ability_spike_trap.lua`, and
 `data/items/utility/utility_trap_sense.lua`.
 
+## Add a prop (battlefield furniture)
+
+Props are the board's own **objects**: a powder keg, a supply crate, a cairn of bones. They belong to
+**no side**, are always visible, block their tile, and — unlike a trap, which waits to be stepped on —
+they answer to being **hit**. The map generator scatters them off the arena's biome, and they are the
+one object layer light enough to be picked up and thrown (Heave). Drop a blueprint into
+`data/props/<id>.lua`:
+
+```lua
+return {
+    name = "Explosive Barrel",
+    description = "A keg of oil and powder. Anything that hits it sets it off.",
+    sprite = "assets/props/explosive_barrel.png",
+    color = { 0.62, 0.31, 0.16 }, -- fallback block colour while the art is missing
+    health = 1,        -- HP; 1 means ANY blow that lands is a killing blow
+    blocksMove = true, -- default true: it stands in the way
+    sightCost = 0,     -- 0 = shoot over it; 1 = soft cover; 2 = a full block
+    magnitude = 16,    -- its own effect power (a placing ability overrides via prop.amount)
+    radius = 1,
+    tags = { "prop", "explosive", "flammable" },
+    -- WHICH BIOMES field this prop, and how heavily. No `biomes` table = everywhere at weight 1;
+    -- with one, it appears only where it is listed. This table is the whole of "a biome's props".
+    biomes = { castle = 3, underworld = 3, forest = 1 },
+    -- ctx = { combat, prop, source, amount, power } + bound helpers (damage / damageProp /
+    -- applyStatus / unitsNear / propsNear). `ctx.power` is the scaled magnitude.
+    onDestroy = function(ctx)
+        for _, u in ipairs(ctx.unitsNear(ctx.prop.x, ctx.prop.y, 1)) do
+            if u.alive then ctx.damage(u, ctx.power, { "fire", "impact" }) end
+        end
+        -- Chaining is just hurting the neighbours: a prop is marked dead before its onDestroy runs,
+        -- so two kegs setting each other off terminates on its own.
+        for _, p in ipairs(ctx.propsNear(ctx.prop.x, ctx.prop.y, 1)) do
+            if p ~= ctx.prop then ctx.damageProp(p, ctx.power) end
+        end
+    end,
+    -- onDamaged = function(ctx) end,     -- every blow that lands; ctx.amount is what it took
+}
+```
+
+**Adding a prop to a biome is a line in the prop's `biomes` table** — never a branch in the
+generator. `Arena.generateLayout` rolls `Prop.SCATTER_MIN..MAX` picks from that weighted pool, places
+them on the neutral middle band (never on a spawn or a tile something already holds), and carries them
+as `layout.props`; `Combat.new` stands them up. A curated arena authors its own with a `props` list
+(`{ { id = "prop_explosive_barrel", x = 4, y = 5 }, ... }`), and `Arena.serialize` writes a generated
+board's props back out so a lucky arrangement can be captured and hand-edited.
+
+Get one onto the field mid-battle with a tile-target ability calling
+`fx.placeProp(fx.tx, fx.ty, "prop_explosive_barrel", { amount = 16 + 2 * fx.level })` — see
+`data/items/ability/ability_powder_keg.lua`. **Prefer placing an existing prop over inventing a new
+one**: everything the player already knows about barrels stays true of the one an alchemist rolls out,
+and none of it has to be re-taught.
+
+Three behaviours come free once a prop has HP and an `onDestroy`, with nothing written to enable them:
+striking it (`Combat.strikeProp`, the same click that breaks a wall), **shoving a body into it**
+(`Combat.knockback`'s collision damages what it hit), and **heaving it** (`Combat.hurlObject` damages
+both ends of a stopped throw). A one-HP keg therefore bursts on any of the three.
+See `data/props/prop_explosive_barrel.lua` and `data/props/prop_crate.lua`.
+
 ## Stackable consumables
 
 Only **consumable** items stack: a bundle of the same consumable shares a single inventory slot
@@ -903,9 +1031,33 @@ A knockback stopped by the board edge, impassable terrain, or another unit deals
 damage to **everyone involved** — the shoved unit and whatever it slammed into. Direction resolves
 to the dominant axis (ties break toward x), matching the 4-directional grid.
 
+A knockback stopped by a **wall or a prop** hurts that object in its own currency, which is how
+shoving a foe into a powder keg sets the keg off with nothing written to say so.
+
 `fx.pull(fx.target)` is the inverse: it drags a unit toward the caster until adjacent, re-aiming
 each step, and needs a clear line of sight. See `data/items/weapon/mace.lua`,
 `data/items/ability/ability_push.lua`, and `ability_pull.lua`.
+
+### Throwing objects
+
+`Combat.hurlObject` is the object-layer twin of knockback: it throws a **prop or a visible trap** the
+same way, down the same lane, with the same "a stopped throw hurts both ends" rule. Reach it from an
+effect with the pair `fx.objectAt` / `fx.hurl`, and prefer a body when there is one:
+
+```lua
+effect = function(fx)
+    local body = fx.unitAt(fx.tx, fx.ty)
+    if body then return fx.knockback(body, 3, { amount = fx.amount }) end
+    local obj, kind = fx.objectAt(fx.tx, fx.ty) -- a prop, or a trap THIS side has detected
+    if obj then fx.hurl(obj, kind, 3, { amount = fx.amount }) end
+end
+```
+
+`fx.objectAt` is scoped to the actor's side, so a throw can never turn up a trap that side has not
+found. Note that **banners need no special case**: a planted banner is a real (if immobile) unit, so
+the `fx.unitAt` branch already grabs it — and the 3x3 ground it holds open travels with it
+(`Hazard.carry`, called from `Combat.enterTile` for any displaced owner). See
+`data/items/ability/ability_heave.lua`.
 
 ## The stash, and stealing into it
 

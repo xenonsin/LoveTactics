@@ -83,11 +83,11 @@ return {
             assert(hp.current == ceiling, "and never climbs past it")
 
             local st = knight.char.stats.stamina
-            Combat.reserve(knight.char, "stamina", 20, holder())
+            Combat.reserve(knight.char, "stamina", 10, holder())
             st.current = 0
             local restored = Combat.restoreResource(knight.char, "stamina", 999)
-            assert(restored == st.max - 20, "restore fills only the unreserved share")
-            assert(st.current == st.max - 20, "and clamps at the ceiling")
+            assert(restored == st.max - 10, "restore fills only the unreserved share")
+            assert(st.current == st.max - 10, "and clamps at the ceiling")
         end,
     },
     {
@@ -96,11 +96,11 @@ return {
             local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             local st = knight.char.stats.stamina
-            Combat.reserve(knight.char, "stamina", 20, holder())
+            Combat.reserve(knight.char, "stamina", 10, holder())
             st.current = 0
 
             Combat.regenerate(c, 100) -- far more ticks than needed to top out
-            assert(st.current == st.max - 20, "regen respects the ceiling")
+            assert(st.current == st.max - 10, "regen respects the ceiling")
             assert(st.max == knight.char.stats.stamina.max, "and leaves max alone, so %-of-max math is unaffected")
         end,
     },

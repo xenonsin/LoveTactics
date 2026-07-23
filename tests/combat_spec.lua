@@ -765,6 +765,35 @@ return {
         end,
     },
     {
+        -- The asymmetry behind a dead click in the battle UI: Combat.reachable answers "where could
+        -- this body walk", a question with no notion of a turn, so it keeps reporting a full band after
+        -- the turn's one move is spent. The one-move rule lives entirely in Combat.hasMoved and in the
+        -- callers that consult it -- states/battle.lua clears its band as the walk begins, and any
+        -- LATER rebuild of that band mid-turn (toggling Blink used to do exactly this) raised the spent
+        -- move from the dead: a walk-and-strike reach built over movement the unit no longer had, a lit
+        -- target, a drawn approach, a preview pricing move+cast -- and then a confirm that refused it.
+        -- Pinned here so the sharp edge is stated rather than rediscovered: rebuild a band mid-turn and
+        -- you MUST gate it on hasMoved yourself.
+        name = "reachable ignores the turn's spent move -- hasMoved is the gate, and callers own it",
+        fn = function()
+            local c = Combat.new(arena(10, 10), { unit(swordsman(), 2, 2) }, {})
+            local knight = c.units[1]
+            openTurn(c, knight)
+            assert(not Combat.hasMoved(c), "the turn opens with the move unspent")
+            assert(next(Combat.reachable(c, knight)) ~= nil, "and a band to walk")
+
+            local plan = Combat.planMove(c, knight, 4, 2)
+            assert(plan, "a two-tile walk is legal")
+            Combat.runMove(c, plan)
+            assert(Combat.hasMoved(c), "the walk spends the turn's one move")
+
+            -- ...and yet the raw query still offers a full band from the new tile. That is the trap.
+            local after = Combat.reachable(c, knight)
+            assert(next(after) ~= nil, "reachable still reports somewhere to walk -- it has no turn")
+            assert(after["6,2"], "including tiles a second walk would need")
+        end,
+    },
+    {
         name = "a weaponless unit can still strike with its unarmed weapon (low power, free)",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_warlord", 3, 3) }, { unit("character_bandit", 3, 4) })
@@ -1000,7 +1029,7 @@ return {
             assert(mage.initiative == fireball.activeAbility.channel,
                 "the blast lands at the wind-up (4), not the wind-up plus the 3 tiles walked; got "
                     .. mage.initiative)
-            assert(Combat.moveDebt(mage) == 3, "the 3 tiles walked are banked as a debt")
+            assert(Combat.tempoDebt(mage) == 3, "the 3 tiles walked are banked as a debt")
 
             -- The follow-up ghost owns the deferred move, so the strip projects the real next slot.
             local ghost = Combat.channelGhosts(c)[1]
@@ -1013,7 +1042,7 @@ return {
             assert(Combat.resolveChannel(c, mage), "the channel resolves")
             assert(mage.initiative == fireball.activeAbility.channel + 3 + speed,
                 "resolution charges the deferred walk on top of speed")
-            assert(Combat.moveDebt(mage) == 0, "the debt is settled, and never charged twice")
+            assert(Combat.tempoDebt(mage) == 0, "the debt is settled, and never charged twice")
         end,
     },
     {
@@ -1033,13 +1062,13 @@ return {
             assert(mage.channel == nil, "the stun shatters the channel")
             -- The debt outlives the channel that banked it: ground covered is paid for exactly once,
             -- so being interrupted can never be cheaper than winding up cleanly.
-            assert(Combat.moveDebt(mage) == 3, "the deferred walk survives the interrupt")
+            assert(Combat.tempoDebt(mage) == 3, "the deferred walk survives the interrupt")
             local before = mage.initiative
             openTurn(c, mage) -- a fresh turn: no ground covered, so the debt is the only move cost
             Combat.pass(c, mage)
             assert(mage.initiative == before + 3 + Combat.WAIT_COST,
                 "the next turn settles the debt on top of its own cost; got " .. mage.initiative)
-            assert(Combat.moveDebt(mage) == 0, "and clears it")
+            assert(Combat.tempoDebt(mage) == 0, "and clears it")
         end,
     },
     {

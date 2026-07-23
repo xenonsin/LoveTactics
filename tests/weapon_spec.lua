@@ -301,6 +301,10 @@ return {
             local c = Combat.new(arena(8, 8), { unit(defender, 3, 3) }, { unit(attacker, 3, 4) })
             local d, a = c.units[1], c.units[2]
             assert(Trait.has(d, "trait_parry"), "an iron sword carries Parry to its holder")
+            -- Stamina is scarce by design, so a swordsman cannot naturally afford two answers (8 + 16)
+            -- in one round; prop the pool so this case measures the doubling PRICE, not the bar emptying.
+            d.char.stats.stamina.max = 999
+            d.char.stats.stamina.current = 999
 
             local before = hp(a)
             Combat.dealFlatDamage(c, d, 5, { "physical" }, "test", a)
@@ -557,6 +561,7 @@ return {
                 { unit(plainChar("character_bandit"), 3, 4), unit(plainChar("character_bandit"), 2, 4) })
             local a = c.units[1]
             a.char.stats.health.current = 40 -- leave room for the drink to show
+            a.char.stats.stamina.current = 99 -- a heavy greataxe (16) outruns a scarce starting pool
 
             openTurn(c, a)
             local ok, res = Combat.useItem(c, a, axe, 3, 4)
@@ -570,6 +575,7 @@ return {
             local c2 = Combat.new(arena(8, 8), { unit(solo, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local s = c2.units[1]
             s.char.stats.health.current = 40
+            s.char.stats.stamina.current = 99 -- as above: the greataxe outruns a scarce starting pool
             openTurn(c2, s)
             local _, res2 = Combat.useItem(c2, s, axe2, 3, 4)
             assert(res.healed > res2.healed,
@@ -587,6 +593,7 @@ return {
             local c1 = Combat.new(arena(8, 8), { unit(plain, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local u1 = c1.units[1]
             u1.char.stats.health.current = 30
+            u1.char.stats.stamina.current = 99 -- the greataxe (16) outruns a scarce starting pool
             openTurn(c1, u1)
             local _, bare = Combat.useItem(c1, u1, axe, 3, 4)
 
@@ -596,6 +603,7 @@ return {
             local c2 = Combat.new(arena(8, 8), { unit(charmed, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local u2 = c2.units[1]
             u2.char.stats.health.current = 30
+            u2.char.stats.stamina.current = 99 -- the greataxe (16) outruns a scarce starting pool
             openTurn(c2, u2)
             local _, both = Combat.useItem(c2, u2, axe2, 3, 4)
 
@@ -727,6 +735,210 @@ return {
             assert(Combat.defend(c, holder), "the buckler braces")
             assert(Status.has(holder, "status_defending"), "its holder is braced")
             assert(not Status.has(beside, "status_defending"), "but a buckler covers nobody else")
+        end,
+    },
+    {
+        name = "the Quarry's Answer shoots back at range -- and cannot answer a foe in its face",
+        fn = function()
+            -- The reach rule read from the far side (docs/weapons.md): the counter is bound to the
+            -- GRANTING weapon's band, so a bow's dead zone is a dead zone for its reply too.
+            local archer = plainChar("character_archer")
+            give(archer, "weapon_quarrys_answer")
+            local c = Combat.new(arena(8, 8), { unit(archer, 3, 3) },
+                { unit(plainChar("character_bandit"), 3, 6), unit(plainChar("character_bandit"), 3, 4) })
+            local a, far, near = c.units[1], c.units[2], c.units[3]
+            a.char.stats.stamina.max, a.char.stats.stamina.current = 999, 999
+
+            local before = hp(far)
+            Combat.dealFlatDamage(c, a, 4, { "physical" }, "test", far)
+            assert(hp(far) < before, "a shot from three tiles out is answered with an arrow")
+
+            -- ...and the same bow is silent against the man standing next to it, which is the whole
+            -- counter to carrying one.
+            a.answersThisRound = 0
+            local nearBefore = hp(near)
+            Combat.dealFlatDamage(c, a, 4, { "physical" }, "test", near)
+            assert(hp(near) == nearBefore, "point-blank is inside the dead zone: no reply")
+        end,
+    },
+    {
+        name = "the Stillhunter swaps Wait into Overwatch and shoots what walks into its band",
+        fn = function()
+            local archer = plainChar("character_archer")
+            give(archer, "weapon_stillhunter")
+            local c = Combat.new(arena(8, 8), { unit(archer, 1, 1) }, { unit(plainChar("character_bandit"), 5, 1) })
+            local watcher, mover = c.units[1], c.units[2]
+
+            assert(Combat.waitBehavior(watcher).kind == "overwatch",
+                "the bow's holder watches instead of waiting")
+            openTurn(c, watcher)
+            assert(Combat.overwatch(c, watcher), "the stance is set")
+
+            local before = hp(mover)
+            openTurn(c, mover)
+            assert(Combat.moveUnit(c, mover, 3, 1), "the bandit walks into the band (2 tiles off)")
+            assert(hp(mover) < before, "and is shot for crossing it")
+        end,
+    },
+    {
+        name = "the Hailfall Longbow drops five arrows on five distinct tiles, aim not included",
+        fn = function()
+            -- Pack every tile of the radius-2 diamond with a body: five of the thirteen are struck,
+            -- each exactly once, and WHICH five is the sky's business.
+            local archer = plainChar("character_archer")
+            local bow = give(archer, "weapon_hailfall_longbow")
+            local party = { unit(archer, 5, 1) }
+            local foes = {}
+            for dx = -2, 2 do
+                for dy = -2, 2 do
+                    if math.abs(dx) + math.abs(dy) <= 2 then
+                        foes[#foes + 1] = unit(plainChar("character_bandit"), 5 + dx, 5 + dy)
+                    end
+                end
+            end
+            assert(#foes == 13, "the diamond is thirteen tiles")
+            local c = Combat.new(arena(10, 10), party, foes)
+            local shooter = c.units[1]
+            shooter.char.stats.stamina.max, shooter.char.stats.stamina.current = 999, 999
+
+            local before = {}
+            for i = 2, #c.units do before[i] = hp(c.units[i]) end
+            openTurn(c, shooter)
+            assert(Combat.useItem(c, shooter, bow, 5, 5), "the draw begins")
+            Combat.resolveChannel(c, shooter) -- a longbow looses on the turn AFTER the draw
+
+            local struck = 0
+            for i = 2, #c.units do
+                if hp(c.units[i]) < before[i] then struck = struck + 1 end
+            end
+            assert(struck == 5, "five arrows, five distinct tiles, five bodies -- got " .. struck)
+        end,
+    },
+    {
+        name = "the Slipknife answers a shot from across the board by arriving beside the shooter",
+        fn = function()
+            local rogue = plainChar("character_bandit")
+            give(rogue, "weapon_slipknife")
+            local c = Combat.new(arena(8, 8), { unit(rogue, 3, 3) }, { unit(plainChar("character_archer"), 3, 7) })
+            local r, shooter = c.units[1], c.units[2]
+            r.char.stats.stamina.max, r.char.stats.stamina.current = 999, 999
+
+            local before = hp(shooter)
+            Combat.dealFlatDamage(c, r, 4, { "physical" }, "test", shooter)
+            local dist = math.abs(r.x - shooter.x) + math.abs(r.y - shooter.y)
+            assert(dist == 1, "the knife crossed the four tiles and is standing beside the archer")
+            assert(hp(shooter) < before, "and cut it on arrival")
+        end,
+    },
+    {
+        name = "a Slipknife has nowhere to arrive when its attacker is hemmed in, and answers nothing",
+        fn = function()
+            -- The counterplay, and it is positional rather than a timer: fill every tile around the
+            -- attacker and the reflex simply has no landing.
+            local rogue = plainChar("character_bandit")
+            give(rogue, "weapon_slipknife")
+            local c = Combat.new(arena(8, 8), { unit(rogue, 5, 5) },
+                { unit(plainChar("character_archer"), 1, 1), unit(plainChar("character_bandit"), 2, 1),
+                  unit(plainChar("character_bandit"), 1, 2), unit(plainChar("character_bandit"), 2, 2) })
+            local r, shooter = c.units[1], c.units[2]
+            r.char.stats.stamina.max, r.char.stats.stamina.current = 999, 999
+
+            local before, stamina = hp(shooter), Combat.resource(r.char, "stamina")
+            Combat.dealFlatDamage(c, r, 4, { "physical" }, "test", shooter)
+            assert(r.x == 5 and r.y == 5, "the rogue stayed exactly where it was")
+            assert(hp(shooter) == before, "and answered nothing")
+            assert(Combat.resource(r.char, "stamina") == stamina,
+                "an answer that never came bills nothing")
+        end,
+    },
+    {
+        name = "the Mailpiercer ignores armour outright and Halts the second rank",
+        fn = function()
+            local knight = plainChar("character_knight")
+            local pike = give(knight, "weapon_mailpiercer")
+            local c = Combat.new(arena(8, 8), { unit(knight, 3, 3) },
+                { unit(plainChar("character_bandit"), 3, 4), unit(plainChar("character_bandit"), 3, 5) })
+            local k, front, back = c.units[1], c.units[2], c.units[3]
+            k.char.stats.stamina.max, k.char.stats.stamina.current = 999, 999
+
+            local f0, b0 = hp(front), hp(back)
+            openTurn(c, k)
+            assert(Combat.useItem(c, k, pike, 3, 4), "the thrust runs down the column")
+            local plain = f0 - hp(front)
+            assert(plain > 0 and hp(back) < b0, "both ranks are skewered")
+            assert(Status.has(back, "status_halted"), "and the far one is pinned off its turn")
+            assert(not Status.has(front, "status_halted"), "the near one is only wounded")
+
+            -- Armour has nothing to say about it: twenty points of defense change the number by zero.
+            front.char.stats.health.current = front.char.stats.health.max
+            front.char.stats.defense = front.char.stats.defense + 20
+            local f1 = hp(front)
+            openTurn(c, k)
+            assert(Combat.useItem(c, k, pike, 3, 4), "the second thrust lands")
+            assert(f1 - hp(front) == plain,
+                "raw: armoured and unarmoured take the same, got " .. (f1 - hp(front)) .. " vs " .. plain)
+        end,
+    },
+    {
+        name = "the Marching Standard plants its colours as it thrusts, and never disarms its bearer",
+        fn = function()
+            local knight = plainChar("character_knight")
+            local pike = give(knight, "weapon_marching_standard")
+            local c = Combat.new(arena(8, 8), { unit(knight, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
+            local k = c.units[1]
+            k.char.stats.stamina.max, k.char.stats.stamina.current = 999, 999
+
+            local function banners()
+                local n = 0
+                for _, u in ipairs(c.units) do
+                    if u.alive and u.char.name == "Banner" then n = n + 1 end
+                end
+                return n
+            end
+
+            openTurn(c, k)
+            assert(Combat.useItem(c, k, pike, 3, 4), "the first thrust lands")
+            assert(banners() == 1, "and drives the standard into the ground beside the knight")
+            assert(Hazard.at(c, k.standard.x, k.standard.y, "hazard_rally"),
+                "the square under it is Rally ground")
+            -- The whole reason it plants without taking the item's summon claim: a weapon that fell
+            -- silent while its own standard stood would be disarming its bearer.
+            assert(Combat.itemBlockReason(k, pike) == nil, "the pike is still a pike")
+
+            openTurn(c, k)
+            assert(Combat.useItem(c, k, pike, 3, 4), "the second thrust lands too")
+            assert(banners() == 1, "but raises no second standard while the first stands")
+
+            -- Cut it down and the next thrust raises it again -- the duality, and it is a board state.
+            k.standard.alive = false
+            openTurn(c, k)
+            assert(Combat.useItem(c, k, pike, 3, 4), "the third thrust lands")
+            assert(banners() == 1 and k.standard.alive, "the colours are back up")
+        end,
+    },
+    {
+        name = "the Wand of the Turning Year alternates its seasons, and its bearer feels neither",
+        fn = function()
+            local mage = plainChar("character_mage")
+            local wand = give(mage, "weapon_turning_year")
+            local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit(plainChar("character_bandit"), 2, 5) })
+            local m, target = c.units[1], c.units[2]
+            m.char.stats.mana.max, m.char.stats.mana.current = 999, 999
+
+            openTurn(c, m)
+            assert(Combat.useItem(c, m, wand, 2, 5), "the first bolt lands")
+            assert(Status.has(target, "status_burn"), "a battle opens on fire")
+            assert(not Status.has(target, "status_freeze"), "and only fire")
+
+            openTurn(c, m)
+            assert(Combat.useItem(c, m, wand, 2, 5), "the second bolt lands")
+            assert(Status.has(target, "status_freeze"), "the year turns: the next one is frost")
+
+            -- The other half of what it sells: the bearer cannot be given either of them, by anybody.
+            Status.apply(c, m, "status_burn")
+            Status.apply(c, m, "status_freeze")
+            assert(not Status.has(m, "status_burn"), "its bearer cannot burn")
+            assert(not Status.has(m, "status_freeze"), "nor freeze")
         end,
     },
     {
