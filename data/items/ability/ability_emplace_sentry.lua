@@ -19,10 +19,10 @@
 -- comes to it. The `duration` is generous for the same reason -- it needs the turns to earn back a lane
 -- it can never re-choose.
 --
--- NOT tagged with a `discipline`. Read as Artificer (mage + alchemist) in docs/classes.md's table, but
--- data/disciplines/ does not exist yet -- there are no blueprints and nothing loads them, so a
--- `discipline` field here would be dead data claiming a system that has not been built. It goes on the
--- alchemist's shelf, where the other two constructs are, and it can be re-homed the day the folder does.
+-- The Artificer's (mage + alchemist) -- the folder exists now (data/disciplines/artificer.lua), so this
+-- is the first real discipline-tagged item: the construct-builder's autonomous turret. Its home shelf
+-- stays alchemist (where the other two constructs are, and its growth tally); the discipline puts it on
+-- the mage shelf too, and locks it until Artificer is unlocked (see docs/classes.md, "Disciplines").
 return {
     name = "Emplace Sentry",
     description = "Bolts down a crossbow sentry that cannot move and fires four tiles. Reserves a fifth of your max mana.",
@@ -31,6 +31,7 @@ return {
     type = "ability",
     tags = { "summon" },
     class = "alchemist",
+    discipline = "artificer", -- mage + alchemist; the Constructs mechanic's first stock
     price = 400,
     repRank = 3,
     activeAbility = {

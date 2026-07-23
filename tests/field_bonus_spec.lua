@@ -166,6 +166,9 @@ return {
             end
 
             -- Enemy on a +1 tile, party 4 tiles away: it opens with a shot in place (range 3 -> 4).
+            -- The knight's move+reach covers this whole 8x1 corridor, so the bowman is threatened
+            -- wherever it stands and holds its ground on STANDOFF rather than on EXPOSURE -- see
+            -- AI.riskScore, and tests/ai_spec.lua for that term on its own.
             local c = Combat.new(arena(8, 1, { { x = 1, y = 1, bonus = { range = 1 } } }),
                 { unit("character_knight", 5, 1) }, { bowman(1, 1) })
             local plan = Combat.planEnemyAction(c, c.units[2])

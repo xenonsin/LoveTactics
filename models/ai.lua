@@ -96,6 +96,7 @@ AI.WEIGHTS = {
     STATUS       = 3,     -- flat, per status a hit would land: it does something, we don't price what
     COUNTER      = 1.2,   -- damage thrown back at me, per point -- slightly dearer than damage dealt
     EXPOSURE     = 1.5,   -- per enemy that could reach the tile I would end my turn on
+    STANDOFF     = 0,     -- see AI.riskScore: only a kiter buys distance INSIDE a zone it can't leave
     HAZARD       = 4,     -- Hazard.tileBias + Prop.tileBias, already signed for my side (fire and a
                           -- live powder keg negative, sanctuary positive)
     SPEND        = 0.15,  -- per point of a resource cost, so a mage doesn't nuke a woodlouse
@@ -136,9 +137,11 @@ local function allies(ctx)
 end
 
 local function nearest(ctx, list)
+    local Combat = require("models.combat") -- lazily, as everywhere else here: models.combat requires us
     local best, bestD
     for _, u in ipairs(list) do
-        local d = manhattan(ctx.unit.x, ctx.unit.y, u.x, u.y)
+        -- Body to body, so a wide unit (on either side) is judged by its nearest cell, not its anchor.
+        local d = Combat.unitGap(ctx.unit, u)
         if not bestD or d < bestD then best, bestD = u, d end
     end
     return best
@@ -183,7 +186,8 @@ AI.TESTS = {
     ["has_status"]    = function(_, list, v) return anyOf(list, function(u) return Status.has(u, v) end) end,
     ["lacks_status"]  = function(_, list, v) return anyOf(list, function(u) return not Status.has(u, v) end) end,
     ["within"]        = function(ctx, list, v)
-        return anyOf(list, function(u) return manhattan(ctx.unit.x, ctx.unit.y, u.x, u.y) <= (v or 1) end)
+        local Combat = require("models.combat") -- lazily, as everywhere else here
+        return anyOf(list, function(u) return Combat.unitGap(ctx.unit, u) <= (v or 1) end)
     end,
     ["count_at_least"] = function(_, list, v) return #list >= (v or 1) end,
     -- "Can I hit it from where I stand right now, with anything I'm carrying?" -- the difference
@@ -380,10 +384,15 @@ AI.POSTURES = {
 
     -- Wants distance. Same rules as an aggressor, opposite footwork: EXPOSURE is dear and closing is
     -- actively penalised, so an archer that can shoot from six tiles will not stroll to three.
+    --
+    -- STANDOFF is the only posture that buys it (see AI.riskScore). EXPOSURE is a count and therefore
+    -- a cliff -- once a foe is quick enough to threaten every tile, it is the same number everywhere
+    -- and stops arguing for range at all. STANDOFF is the slope underneath it, and it is what keeps
+    -- this archer shooting from four tiles instead of closing to punch when it cannot get clear.
     skirmish = {
         rules = { SUPPORT_RULE, ATTACK_RULE },
         move = "kite",
-        weights = { EXPOSURE = 5, STEPS = 0.1, COUNTER = 2.5 },
+        weights = { EXPOSURE = 5, STEPS = 0.1, COUNTER = 2.5, STANDOFF = 6 },
         engage = function() return true end,
     },
 
@@ -515,13 +524,17 @@ function AI.candidates(combat, unit, items, tiles, wantSupport)
                         and t.side == unit.side
                         or (not wantSupport and t.side ~= unit.side and not Status.untargetable(t)))
                     if legal then
-                        local d = manhattan(tile.x, tile.y, t.x, t.y)
+                        -- Aim at the target's cell nearest this stand tile, not its anchor, so a wide
+                        -- mark is struck from beside its closest edge -- and so Combat.useItem's range
+                        -- re-check (measured to this same cell) agrees the shot is legal.
+                        local tcx, tcy = Combat.nearestCell(tile.x, tile.y, t)
+                        local d = manhattan(tile.x, tile.y, tcx, tcy)
                         if d <= range and d >= minRange
                             and (not ab.requiresSight
-                                 or Combat.hasLineOfSight(combat, tile.x, tile.y, t.x, t.y)) then
+                                 or Combat.hasLineOfSight(combat, tile.x, tile.y, tcx, tcy)) then
                             out[#out + 1] = {
                                 x = tile.x, y = tile.y, steps = tile.steps or 0,
-                                item = item, target = t, tx = t.x, ty = t.y,
+                                item = item, target = t, tx = tcx, ty = tcy,
                                 moved = tile.x ~= unit.x or tile.y ~= unit.y,
                             }
                         end
@@ -618,7 +631,35 @@ function AI.riskScore(combat, unit, cand, w, threat)
     -- Combat.threatMap the player's purple danger overlay is drawn from, so the AI is respecting
     -- the very zone the game teaches the player to respect.
     local src = threat[cand.x .. "," .. cand.y]
-    if src then risk = risk + #src * w.EXPOSURE end
+    if src then
+        risk = risk + #src * w.EXPOSURE
+
+        -- STANDOFF: how close the nearest threat actually is, and the term that keeps a kiter kiting
+        -- when there is nowhere safe left to stand.
+        --
+        -- EXPOSURE alone is a COUNT of enemies who could reach the tile, which makes it a cliff rather
+        -- than a slope: a tile is threatened or it isn't. That reads correctly right up until an enemy
+        -- is fast enough to reach everywhere -- and then every candidate carries the identical
+        -- exposure, the term stops discriminating entirely, and an archer who could shoot from four
+        -- tiles walks into arm's reach and punches instead, because at that point nothing in the score
+        -- was still arguing for distance. Raising base movement to 4 made that common enough to see.
+        --
+        -- So: a foe in your face is worth the full weight, one four tiles off a quarter of it. The
+        -- reciprocal is self-limiting (it can never exceed STANDOFF) and it is a slope, so it still
+        -- separates two tiles that are both doomed -- which is the entire situation this exists for.
+        --
+        -- Zero for everyone but the `skirmish` posture. A wall does not want distance and a berserker
+        -- resents it; only a kiter is buying range, and it should only be buying it from inside a zone
+        -- it has already failed to escape. An untouched tile never reaches this branch at all.
+        if w.STANDOFF > 0 then
+            local closest
+            for _, s in ipairs(src) do
+                local d = manhattan(cand.x, cand.y, s.x, s.y)
+                if not closest or d < closest then closest = d end
+            end
+            risk = risk + w.STANDOFF / math.max(1, closest or 1)
+        end
+    end
 
     return -risk
 end
@@ -654,7 +695,9 @@ local function fallbackMove(ctx, mode)
     local anchorX = unit.anchorX or unit.x
     local anchorY = unit.anchorY or unit.y
     local leash = ctx.posture.leash
-    local here = manhattan(unit.x, unit.y, goal.x, goal.y)
+    -- cellGap treats `goal` as its nearest footprint cell when it is a unit, and as a plain point when
+    -- it is an objective tile (no w/h) -- so closing on a wide foe aims at its near edge either way.
+    local here = Combat.cellGap(unit.x, unit.y, goal)
 
     -- A kiter with nothing in range still has to close -- standing off from a foe it cannot shoot is
     -- not skirmishing, it is abstaining. Kiting is expressed in the EXPOSURE weight when it HAS a
@@ -664,7 +707,7 @@ local function fallbackMove(ctx, mode)
     -- scan's first-wins is the whole decision. See Combat.reachableList.
     for _, node in ipairs(Combat.reachableList(combat, unit)) do
         if not (mode == "leash" and manhattan(node.x, node.y, anchorX, anchorY) > leash) then
-            local d = manhattan(node.x, node.y, goal.x, goal.y)
+            local d = Combat.cellGap(node.x, node.y, goal)
             local bias = Hazard.tileBias(combat, node.x, node.y, unit.side)
                 + Prop.tileBias(combat, node.x, node.y)
             if not best or d < best.d
@@ -713,8 +756,11 @@ function AI.preempt(combat, unit)
     if weapon then
         local ab = weapon.activeAbility
         for _, t in ipairs(Combat.abilityTargets(combat, unit, weapon)) do
-            if t.x == tt.x and t.y == tt.y then
-                return { item = weapon, tx = tt.x, ty = tt.y, reason = "taunted" }
+            if t == tt then
+                -- Strike the taunter's nearest cell (its only one, for a 1×1 body), so the range
+                -- re-check in Combat.useItem lands on the same tile this plan aimed at.
+                local cx, cy = Combat.nearestCell(unit.x, unit.y, tt)
+                return { item = weapon, tx = cx, ty = cy, reason = "taunted" }
             end
         end
         local minRange = Combat.abilityMinRange(ab)
@@ -722,15 +768,16 @@ function AI.preempt(combat, unit)
         for _, node in ipairs(Combat.reachableList(combat, unit)) do
             local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
                 + Combat.adjacencyRangeBonus(unit.char, weapon)
-            local d = manhattan(node.x, node.y, tt.x, tt.y)
+            local cx, cy = Combat.nearestCell(node.x, node.y, tt)
+            local d = manhattan(node.x, node.y, cx, cy)
             if d <= range and d >= minRange
-                and (not (ab and ab.requiresSight) or Combat.hasLineOfSight(combat, node.x, node.y, tt.x, tt.y))
+                and (not (ab and ab.requiresSight) or Combat.hasLineOfSight(combat, node.x, node.y, cx, cy))
                 and (not best or node.steps < best.steps) then
-                best = { x = node.x, y = node.y, steps = node.steps }
+                best = { x = node.x, y = node.y, tx = cx, ty = cy, steps = node.steps }
             end
         end
         if best then
-            return { move = { x = best.x, y = best.y }, item = weapon, tx = tt.x, ty = tt.y,
+            return { move = { x = best.x, y = best.y }, item = weapon, tx = best.tx, ty = best.ty,
                      reason = "taunted" }
         end
     end
@@ -738,12 +785,12 @@ function AI.preempt(combat, unit)
     -- Out of reach even after moving: shamble toward the taunter.
     local dest
     for _, node in ipairs(Combat.reachableList(combat, unit)) do
-        local d = manhattan(node.x, node.y, tt.x, tt.y)
+        local d = Combat.cellGap(node.x, node.y, tt)
         if not dest or d < dest.dist or (d == dest.dist and node.steps < dest.steps) then
             dest = { x = node.x, y = node.y, dist = d, steps = node.steps }
         end
     end
-    if dest and dest.dist < manhattan(unit.x, unit.y, tt.x, tt.y) then
+    if dest and dest.dist < Combat.cellGap(unit.x, unit.y, tt) then
         return { move = { x = dest.x, y = dest.y }, reason = "taunted" }
     end
     return { wait = true, reason = "taunted, out of reach" }

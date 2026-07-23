@@ -10,7 +10,7 @@ return {
         staminaRegen = 2,
         damage = 12, magicDamage = 2,
         defense = 10, magicDefense = 6,
-        movement = 3,
+        movement = 4,
         speed = 2,
     },
     startingItems = { "weapon_stone_fists" },

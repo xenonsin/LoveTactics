@@ -21,7 +21,7 @@ return {
         staminaRegen = 2,
         damage = 4, magicDamage = 7, -- it spits hellfire; the claws are for show
         defense = 2, magicDefense = 2,
-        movement = 3,
+        movement = 4,
         speed = 2, -- slower than the avatar and Rowan both: the party always opens
     },
     -- Its body IS its weapon, and that weapon deliberately keeps its distance (see the file).

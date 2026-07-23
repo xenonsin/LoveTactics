@@ -28,10 +28,20 @@ return {
         -- the grunt actually landing a blow for the avatar's sword to answer) would silently break. 15 is
         -- one clean swing with a sliver to spare, matching its bigger sibling the Demon Champion; keep it
         -- at least the claw's cost. See data/tutorials/village.lua's closing arithmetic.
-        health = 66, mana = 0, stamina = 15,
+        --
+        -- But 15 buys only the FIRST swing, and that is not enough on its own. The claw costs 12, and at
+        -- the DEFAULT 1/tick regen (Combat.DEFAULT_STAMINA_REGEN) a grunt recovers only ~6 stamina across
+        -- the ~6 ticks its speed-6 claw bills to the timeline -- never the 12 it needs -- so after the
+        -- opening blow it can no longer afford its own weapon and the enemy AI drops it to the free
+        -- unarmed punch (models/ai.lua's itemsFor fallback) for roughly every OTHER turn. In the prologue
+        -- it dies before that shows; in the siege/survivor packs that field it for a long fight it read as
+        -- "the demon that keeps swatting with its fists." staminaRegen = 2 refills the full 12 across a
+        -- claw's own 6-tick cycle, so it swings claws every turn and the fists never come out. Starting
+        -- stamina stays 15, so nothing about the prologue's opening arithmetic moves.
+        health = 66, mana = 0, stamina = 15, staminaRegen = 2,
         damage = 8, magicDamage = 0,
         defense = 4, magicDefense = 2,
-        movement = 3,
+        movement = 4,
         speed = 2,
     },
     -- Its body IS its weapon, and that weapon is the point of the thing (see the file). It used to

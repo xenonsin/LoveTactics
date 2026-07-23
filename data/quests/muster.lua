@@ -1,51 +1,58 @@
--- Slot 6 of the Bastion's ten: the grind, and the one entry on the board that stays there.
+-- Slot 6 of the Bastion's ten: complicity, and the one day a year the order counts itself.
 --
--- `repeatable`, so it is the rung the player can stand on for as long as they like -- but NOT the
--- rung the line depends on. The Colosseum's authored line made its repeatable load-bearing and
--- soft-locked itself doing it (see the note in docs/story.md); the Bastion's eight non-repeatable
--- quests reach rank 4 on their own, and this is here for gold and materials.
+-- NOT a grind. No quest in this game is `repeatable` any more, and this file used to be the argument
+-- for why not: its whole theme was the repetition -- another name off the roll, Rowan's lines shorter
+-- each run -- which asks the player to farm a quest in order to feel something about farming it. That
+-- is a beat delivered by a design document rather than by a player, and most players never saw it,
+-- because nobody replays a bounty they have already cleared.
 --
--- The theme is the repetition itself. Every run is another name off the roll, and the order never
--- once asks why any of them set the shield down. Rowan's lines get shorter each time.
--- WIP -- THIS SLOT HAS NOT BEEN THROUGH THE PREMISE PASS.
+-- Said once, on a date, it lands. The muster is the season's oath, sworn at the tent, the ceremony the
+-- order has held every year since anyone can remember -- and the queue at the tent is shorter than it
+-- was last year, and shorter than the year before, and nobody standing in it remarks on this. The
+-- order casts the same number of billet rations every season and has stopped running out (the flavour
+-- on data/items/consumable/consumable_bannerets_steel.lua is exactly this fact, written on a tin).
 --
--- Slots 1 and 2 were rebuilt premise-first: what is actually happening, how it bears on Rowan AND on
--- sloth, what the objective is, and which unique item carries the narrative. Doing that to slot 1
--- turned up a duplicated quest with no logistics under its fiction; doing it to slot 2 turned up a
--- premise that could not survive the question "why is this a fight?" and had to be replaced
--- outright. Assume the same of this file until it has had the same pass.
+-- The day's work is the long list: the last open entries closed in one sweep so the roll is clean for
+-- the swearing. The Bastion does not ask why any of them set the shield down -- that is slot 4's
+-- discovery (data/quests/the_long_list.lua) -- and the muster is the ritual built on top of not asking.
 --
--- Known stale here: scenes and items below were authored against the OLD slot-2 backstory (three
--- officers who turned a relief column around -- they do not exist any more; slot 2 is now the
--- nineteen who refused Acedia's terms and were struck off the rolls), and the timeline moved from
--- thirty years to fifteen. Text may still lean on beats that have been rewritten upstream.
-
+-- What it costs Rowan: she swears the season's oath with them, in a half-empty tent, and means every
+-- word of it. The player is the only one there who has been to Greywatch.
+--
+-- WIP -- THIS SLOT HAS NOT BEEN THROUGH THE PREMISE PASS. The scenes below (`bastion_muster_intro` /
+-- `_outro`) were authored to read the same on the fifth run as the first, which is precisely the shape
+-- a one-off does not want; they want a rewrite against the ceremony.
+--
+-- Known stale here: text authored against the OLD slot-2 backstory (three officers who turned a relief
+-- column around -- they do not exist any more) and against a thirty-year timeline that is now fifteen.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "Muster",
-    description = "The roll is long and the Bastion is patient. There is always another name on it.",
+    description = "The season's oath is sworn at the tent on Sunday, and the roll wants closing " ..
+        "before it is read. The queue is shorter than last year. Nobody has mentioned it.",
     difficulty = "Normal",
     sponsor = "bastion",
-    -- Repeatable, so both scenes are written to read the same on the fifth run as the first.
     intro = "bastion_muster_intro",
     outro = "bastion_muster_outro",
-    -- Granted on EVERY completion: repeatable quests skip the double-payout guard in
-    -- models/quest.lua, which is why slot 6's item is a consumable that stacks.
-    rewardItems = { "consumable_bannerets_steel" },
-    rewardGold = 160,
-    rewardRep = 15,
+    -- A ration of billet steel, handed out at the tent with the oath. Granted once, like every other
+    -- quest reward in the game now that nothing is repeatable -- see the item's own header.
+    rewardItems = { "consumable_bannerets_steel", "weapon_debt_bell" },
+    rewardGold = 240,
+    rewardRep = 30,
     rewardPrestige = 1,
     requiredPrestige = 3,
     requiredRep = { vendor = "bastion", rank = 3 }, -- Banneret
-    repeatable = true,
     rewardMaterials = { material_steel_ingot = 2 },
     map = {
         biome = "forest",
         encounters = { min = 6, max = 9, always = { "encounter_forsworn" } },
         objective = {
-            name = "Another Name",
+            name = "The Last Names on the Roll",
             composition = function(ctx)
                 local list = { "character_forsworn_captain" }
-                for i = 1, 1 + math.floor((ctx.prestige or 1) / 3) do
+                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do
                     list[#list + 1] = "character_forsworn_knight"
                 end
                 return list

@@ -6,24 +6,13 @@
 local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
+local Fixture = require("tests.support.fixture")
 
--- Flat all-ground arena; `cover` is a list of { x, y, sightCost, walkable, moveCost } overrides
--- so a test can drop soft/hard cover onto individual tiles. sightCost defaults to 0 (transparent).
+-- Flat all-ground arena; `cover` is a list of { x, y, sightCost, walkable, moveCost } overrides so a
+-- test can drop soft/hard cover onto individual tiles. That is exactly Fixture.new's tile-patch
+-- shape, so it passes straight through; unpatched tiles are transparent ground (sightCost 0).
 local function arena(cols, rows, cover)
-    local tiles = {}
-    for y = 1, rows do
-        tiles[y] = {}
-        for x = 1, cols do
-            tiles[y][x] = { type = "ground", moveCost = 1, walkable = true, sightCost = 0 }
-        end
-    end
-    for _, c in ipairs(cover or {}) do
-        local t = tiles[c.y][c.x]
-        t.sightCost = c.sightCost or 0
-        if c.walkable ~= nil then t.walkable = c.walkable end
-        if c.moveCost then t.moveCost = c.moveCost end
-    end
-    return { cols = cols, rows = rows, tiles = tiles, objective = { type = "killAll" } }
+    return Fixture.new(cols, rows, { tiles = cover })
 end
 
 local function unit(charOrId, x, y)

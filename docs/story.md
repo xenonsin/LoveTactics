@@ -325,17 +325,33 @@ is the character.
 
 ### The ten slots
 
-Ten per line, not four. The four-quest shape cannot fill the ladder: the Colosseum's non-repeatable
-quests total 85 reputation, rank 3 needs 100, and `blood_in_the_sand` — the grind meant to bridge
-Champion to Legend — is itself gated at rank 3. **The authored template is a soft-lock**, and the
-Wrath line needs six new quests before anything copies it.
+Ten per line, not four. The four-quest shape cannot fill the ladder: the Colosseum's four quests
+totalled 85 reputation and rank 3 needs 100, so the line could not reach its own rank-3 quest.
+**The authored template was a soft-lock**, and every line needed six new quests before anything
+copied it. All sixty slots now exist (see *State of the pass*, below).
 
-The intended fix is to make standing a **count of distinct completed quests per sponsor** rather than
-accumulated `rewardRep` points, which is what `docs/classes.md` already claims under Known debt and
-the code has never done (`Player.addReputation`, `Vendor.rankFor`). Then `ranks = { 0, 3, 6, 9 }`,
-rank 4 lands on the ninth, and slot 10 is the general gated behind it — preserving the rule that the
-standing which puts the rank-4 item on the shelf is the standing that lets you face what it was
-warning about. Repeatables must not count, or the grind walks back in.
+**There is no grind. No quest is `repeatable`, and none should be.** That is a design rule, not a
+tuning decision, and it is the reason the ladder is built the way it is: standing is earned by
+*authored* quests only, so a line's nine non-repeatable slots must reach rank 4 on their own. They
+do — 245–325 reputation per line against a 200-point rank 4, with the tightest line (the Bastion's
+235) still clearing it. Nothing anywhere requires the player to replay anything.
+
+Slot 6 used to be where the grind lived, and it is the slot the rule improves most. The beat it
+carries — *the player becomes the hand that buries the evidence / empties the wood / feeds the next
+working* — is an accusation exactly once and a chore every time after; farming it teaches the player
+to tune out the thing it exists to say. Every slot 6 is now a single commissioned job with a date on
+it (a feast, a term's end, a first frost, a quarter close, a muster Sunday), which says the same
+sentence harder and ends.
+
+The remaining ladder debt is the *shape*, not the reachability: on the points ladder, rank 4 now
+lands a slot or two before the ninth, which loosens the rule that the standing putting the rank-4
+item on the shelf is the standing that lets you face what it was warning about. The intended fix is
+unchanged and is now the only thing that restores it — make standing a **count of distinct completed
+quests per sponsor** rather than accumulated `rewardRep` points, which is what `docs/classes.md`
+already claims under Known debt and the code has never done (`Player.addReputation`,
+`Vendor.rankFor`). Then `ranks = { 0, 3, 6, 9 }`, rank 4 lands on the ninth, and slot 10 is the
+general gated behind it. With no repeatables left, the old caveat (*repeatables must not count, or
+the grind walks back in*) is moot: every quest counts, because every quest is authored.
 
 | # | Slot | Rank | The Bastion's ten | What it costs Rowan |
 |---|---|---|---|---|
@@ -344,7 +360,7 @@ warning about. Repeatables must not count, or the grind walks back in.
 | 3 | Complication | 1 | **Held Position** — `hold`; a garrison that will not stand down | first unease: is this what the icon makes? |
 | 4 | Escalation | 2 | **The Long List** — `assassinate` a forsworn knight | the knight says something about Acedia; Rowan gets angry |
 | 5 | The discovery | 2 | **What Greywatch Kept** — `reach`; the ruin | the gate was opened from inside — *she was betrayed* |
-| 6 | Grind | 2 | **Muster** — `repeatable` bounty work | lines get shorter each repeat |
+| 6 | Complicity | 2 | **Muster** — `assassinate`; the roll closed for the season's oath | the tent is half empty and nobody remarks on it |
 | 7 | **The turn** | 3 | **The Order That Was Given** — the archive | the gate opened before relief was due; she refuses absolution |
 | 8 | The break | 3 | **The Bastion Knows** — the terms, under seal | nothing left to say; the Aegis is re-sworn here |
 | 9 | The approach | 3 | **The Forty-First Day** — her company, alive | — |
@@ -383,10 +399,11 @@ the third line worked out end to end, and it exists to prove the *vendor is quie
 claim a second time in a completely different register: the Bastion serves sloth by **declining to
 notice**, and the Colosseum serves wrath by **selling tickets to it**.
 
-**The line is currently soft-locked and that is a shipping bug, not a design note.** `arena_debut`
-pays 25 reputation and `warlord_keep` pays 60 — 85 total. `blood_in_the_sand` gates at rank 3 (100)
-and `general_wrath` at rank 4 (200). There is no way to earn the fifteen points that unlock the grind
-that earns the rest. Six more quests is the fix, which is the same reason the Bastion has ten.
+**The line was soft-locked, and that was a shipping bug rather than a design note.** `arena_debut`
+paid 25 reputation and `warlord_keep` 60 — 85 total, against a `blood_in_the_sand` gated at rank 3
+(100) and a `general_wrath` at rank 4 (200). There was no way to earn the fifteen points that
+unlocked the quest that earned the rest. Six more quests was the fix, which is the same reason the
+Bastion has ten, and they are now on disk: the line pays 325 across its nine.
 
 ### The league and the stables
 
@@ -529,14 +546,14 @@ a greatsword, a potion, and seven empty cells). Both relics are new work.
 | # | Slot | Rank | The Colosseum's ten | What it costs Saber |
 |---|---|---|---|---|
 | 1 | Introduction | 1 | **Debut on the Sand** — beat the hired veteran; she signs with the only house that isn't one | nothing yet; she is enjoying herself |
-| 2 | The recruit | 1 | the card padded with slaughter — what the house actually sells | says nothing about why she knows |
+| 2 | The recruit | 1 | **The Padded Card** — `killAll`+`protect`; the card padded with slaughter | says nothing about why she knows |
 | 3 | Complication | 1 | stable against stable, the sport at its best | the player learns why she loves it |
-| 4 | Escalation | 2 | the Perennial's roster, met as opponents | she recognises the training and won't say so |
-| 5 | The discovery | 2 | the intake — the program, not its output | admits she came out of it |
-| 6 | Grind | 2 | **Blood in the Sand** — `repeatable`; the player is on the card now | implicates them both |
-| 7 | **The turn** | 3 | Ira, briefly reachable — there is no third state | the hope dies |
-| 8 | The break | 3 | she stops deferring and names the day | second relic; patience becomes a choice |
-| 9 | The approach | 3 | the stable cornered, and what it does rather than confess | — |
+| 4 | Escalation | 2 | **The Perennial's Roster** — `killAll`; met as opponents | she recognises the training and won't say so |
+| 5 | The discovery | 2 | **The Intake** — `reach`; the program, not its output | admits she came out of it |
+| 6 | Complicity | 2 | **Blood in the Sand** — `killAll`+`protect`; the player is the draw now, and their undercard is padded for them | implicates them both; she asks whether they will keep the billing |
+| 7 | **The turn** | 3 | **No Third State** — `survive`; Ira, briefly reachable | the hope dies |
+| 8 | The break | 3 | **Naming the Day** — `assassinate`; she stops deferring | second relic; patience becomes a choice |
+| 9 | The approach | 3 | **What the House Does Instead** — `assassinate`; the stable cornered | — |
 | 10 | The general | 4 | **The Unappeased** — `assassinate` | she kills someone who cannot choose |
 
 `arena_debut`, `warlord_keep`, `blood_in_the_sand` and `general_wrath` exist and map onto 1, 3-ish, 6
@@ -691,17 +708,18 @@ Amana cannot yet face (slot 7): the Saint she still believes in is the demon.
 | 3 | Complication | 1 | **The Rite of Ashes** — `survive` | hold consecrated ground; why must the censer burn throughout? |
 | 4 | Escalation | 2 | **The Purge in the Fold** — `killAll` | the "corrupted" are **failed bloodings** — the church's own children |
 | 5 | The discovery | 2 | **The Roll of the Given** — `reach`/`killAll` | the register of "ascended saints" set against the **pit** — it is a casualty list |
-| 6 | Grind | 2 | **Cleansing Work** — `repeatable` | purge the failed bloodings; the player becomes the hand that buries the evidence |
+| 6 | Complicity | 2 | **Cleansing Work** — `killAll`; the diocese tidied before the Feast of the Ascended | purge the failed bloodings; the player becomes the hand that buries the evidence |
 | 7 | **The turn** | 3 | *(no fight)* | **the Saint knew; the Saint is the demon** — Amana's last belief falls |
-| 8 | The break | 3 | *title TBD* — `assassinate` | the Kept-Trust beat: she keeps one thing for herself, and it is not a theft |
+| 8 | The break | 3 | **The Kept Trust** — `assassinate` | the Kept-Trust beat: she keeps one thing for herself, and it is not a theft |
 | 9 | The approach | 3 | **The Saint Unmasked** — `assassinate` | the scale of what her death will **not** stop |
 | 10 | The general | 4 | **Luxuria, the Unbidden** — `assassinate` | two-phase (human Saint → demon); she turns your anointed escort; the sleepers remain |
 
 `haunted_mill`, `rite_of_ashes`, `fallen_confessor` and `general_lust` exist; slots 4–9, the recruit
 **plea** scene (a post-battle `outro`), and every mid-line scene are new. Slot 7 needs the antagonist
-to **speak without a fight** — the same seam flagged for Wrath's slot 7. The rep-ladder soft-lock
-(the middle can't earn enough points to reach the grind) is the same one the Colosseum has, and wants
-the same fix (standing as a **count of distinct completed quests**, `ranks = { 0, 3, 6, 9 }`).
+to **speak without a fight** — the same seam flagged for Wrath's slot 7. The rep-ladder soft-lock is
+gone with the ten slots on disk (the nine pay 305 against a 200-point rank 4); what is left is the
+ladder's *shape*, which still wants standing as a **count of distinct completed quests**
+(`ranks = { 0, 3, 6, 9 }`) to put rank 4 back on the ninth.
 
 ### The relic, and the other unbuyables
 
@@ -843,20 +861,20 @@ fattening, and the Lodge grows its own game from its own greatest.
 |---|---|---|---|---|
 | 1 | Introduction | 1 | **The Sacred Stag** — `assassinate` *(ships)* | the Lodge wants the white stag's antlers; the herd calls it something else — unease planted before it is named |
 | 2 | The recruit | 1 | **[The Guide]** — `survive`/co-op | pushed deep after a bounty, the player is nearly swallowed by the wild; Kaya and her wolf turn it back, and she agrees to **guide** them toward the beast at the wood's heart. She joins (guide-join, not a purge) |
-| 3 | Complication | 1 | **[title TBD]** — `survive` | camped deeper in; hold through the night against the beasts Gula's spreading kills have driven mad and starving |
-| 4 | Escalation | 2 | **[title TBD]** — `killAll` | a "dangerous beast" bounty is a mother over her young / a beast that never threatened anyone — the cull is **manufactured** |
+| 3 | Complication | 1 | **The Starving Dark** — `hold` | camped deeper in; hold through the night against the beasts Gula's spreading kills have driven mad and starving |
+| 4 | Escalation | 2 | **The Manufactured Cull** — `killAll`+`protect` | a "dangerous beast" bounty is a mother over her young / a beast that never threatened anyone — the cull is **manufactured** |
 | 5 | The discovery | 2 | **The Silent Wood** — `reach`/`killAll` | the bounty ledger against a wood gone quiet — a record of **extinction** — and one "beast" on the wall **wore a Grand Hunter's name:** the game is the guild's own |
-| 6 | Grind | 2 | **[Bounty Work]** — `repeatable` | clear the endless board; the player becomes the **hand that empties the wood** |
+| 6 | Complicity | 2 | **Closing the Board** — `killAll`; the book cleared before first frost, with a supper after | the player becomes the **hand that empties the wood**, and it will be full again in spring |
 | 7 | **The turn** | 3 | *(no fight)* | **the beast at the wood's heart is Gula,** and every Grand Hunter turns — the honor is a fattening, the Lodge farms its own; Kaya learns what the crown she'd be offered really is (there but for restraint) |
-| 8 | The break | 3 | *title TBD* — `assassinate` | the temperance beat: Kaya takes **one** shot and stops — stopping is not quitting |
-| 9 | The approach | 3 | **[title TBD]** — `assassinate` | into the deep wood; the scale of what her death will **not** undo — a wild already stripped |
+| 8 | The break | 3 | **One Shot, and Stop** — `assassinate` | the temperance beat: Kaya takes **one** shot and stops — stopping is not quitting |
+| 9 | The approach | 3 | **Into the Deep Wood** — `assassinate` | into the deep wood; the scale of what her death will **not** undo — a wild already stripped |
 | 10 | The general | 4 | **Gula** — `assassinate` | two-phase (human huntress → the beast she became); she **devours the fallen** to heal; the stripped wild remains |
 
 `sacred_stag` exists; the recruit (slot 2), the finale (slot 10), the recruit `outro` (Kaya's terms
 — why she'll guide you), and every mid-line scene are new. Slot 7 needs the antagonist to **speak
-without a fight** — the same seam flagged for Wrath's and Lust's slot 7. The rep-ladder soft-lock
-(the middle cannot earn enough points to reach the grind) is the same one the other lines carry and
-wants the same fix (standing as a **count of distinct completed quests**).
+without a fight** — the same seam flagged for Wrath's and Lust's slot 7. The rep-ladder soft-lock is
+gone with the ten slots on disk (the nine pay 285 against a 200-point rank 4); what is left is the
+ladder's *shape*, which still wants standing as a **count of distinct completed quests**.
 
 ### The relic, and Kaya's signature
 
@@ -1059,15 +1077,16 @@ the player **see** the manufacture and trace it inward, to the vats and the one 
 | 3 | Complication | 1 | `protect` | **The Self-Made Master** — a patron wearing a bought quality, coming apart | proof of the lie: borrowed property **rots** — her honest method vindicated, and she pities him |
 | 4 | Escalation | 2 | `killAll` | **By the Dram** — buyers and enforcers wielding purchased gifts; the first blank homunculi | she sees the Work done brilliantly and hates that it *works* |
 | 5 | The discovery | 2 | `reach`/`killAll` | **The Vats** — the manufactory; the philosophy laid bare, the discards with sewn eyes | she was once *offered* perfection and refused to be perfected at another's cost |
-| 6 | Grind | 2 | `repeatable` | **Cleansing Work** — purge the failed homunculi | the player becomes the hand that buries the college's failures |
+| 6 | Complicity | 2 | `killAll` | **Spoiled Batch** — a term's-end writedown; the college's own porters have started refusing | the player becomes the hand that buries the college's failures |
 | 7 | **The turn** | 3 | *(no fight)* | **Nobody Home** — Livia *is* the thesis: a made thing that will never be real; her death frees nothing, the *philosophy* is the engine | her hope dies — that kindness can *give* Livia a way out |
-| 8 | The break | 3 | `assassinate` | *title TBD* — second relic earned here | she stops giving reflexively; she learns to receive |
+| 8 | The break | 3 | `assassinate` | **What Ren Kept** — second relic earned here | she stops giving reflexively; she learns to receive |
 | 9 | The approach | 3 | `assassinate` | **The Open Formula** — the college doesn't hide, it *proselytises*, and offers the player the tincture | the scale her death won't undo — every gift already sold, every discard already in the vat |
 | 10 | The general | 4 | `assassinate` | **Livia, the Unborn** — two-phase; copy, Pall, Host, Covet, Grudge | she ends someone she can only *see*, not *fill* |
 
 Slot 7 needs the antagonist to **speak without a fight** — the same seam flagged for Wrath's, Lust's
-and Gluttony's slot 7. The rep-ladder soft-lock is the same one the other lines carry and wants the same
-fix (standing as a **count of distinct completed quests**, `ranks = { 0, 3, 6, 9 }`).
+and Gluttony's slot 7. The rep-ladder soft-lock is gone with the ten slots on disk (the nine pay 275
+against a 200-point rank 4 — the tightest line of the seven); what is left is the ladder's *shape*,
+which still wants standing as a **count of distinct completed quests** (`ranks = { 0, 3, 6, 9 }`).
 
 ### The relic, and Ren's signature
 
@@ -1252,19 +1271,19 @@ precisely why she can hear no objection.
 |---|---|---|---|---|
 | 1 | Introduction | 1 | **The Sunken Sanctum** — `killAll` *(ships, `grimoire_ruins`)* | the Arcanum wants its book back and cares nothing for the looters or the dead — it values knowing over people |
 | 2 | The recruit | 1 | **[The Radical]** — `killAll` | sent to bring in a "weak" branded mage; she lets the player think they have her, reveals she was never showing her hand — and stays it anyway; her plea reveals the cost the realm excuses; she joins |
-| 3 | Complication | 1 | **[title TBD]** — `survive`/`killAll` | a working the crown praised — and the subjects it was practised on; the cost the beneficiaries never see |
-| 4 | Escalation | 2 | **[title TBD]** — `killAll` | the inner circle's Adepts met mid-experiment; necromancy and blood magic firsthand |
+| 3 | Complication | 1 | **The Praised Working** — `survive` | a working the crown praised — and the subjects it was practised on; the cost the beneficiaries never see |
+| 4 | Escalation | 2 | **The Inner Circle** — `killAll` | the inner circle's Adepts met mid-experiment; necromancy and blood magic firsthand |
 | 5 | The discovery | 2 | **The Donor Roll** — `reach`/`killAll` | the honor roll of "those who gave themselves to the work" set against what became of them — it is a casualty list |
-| 6 | Grind | 2 | **[Fetching Work]** — `repeatable` | the player fetches forbidden materials for the Arcanum, becoming the hand that feeds the next working |
+| 6 | Complicity | 2 | **The Requisition** — `reach`; one sealed order for one named working | the player fills it without reading it, then is told what it was for — as a courtesy, because the Magus is proud of it |
 | 7 | **The turn** | 3 | *(no fight)* | Sublimitas glances a working and reproduces it flawlessly — she is **not a fraud**; that is why she never stops and hears no objection. She measures Gyeom at a glance and dismisses her, and Gyeom must not correct her |
-| 8 | The break | 3 | *title TBD* — `assassinate` | Gyeom chooses the slope over the summit, deliberately; **second relic** (practice that persists) — improvement becomes a stance |
-| 9 | The approach | 3 | **[title TBD]** — `assassinate` | the scale of what her death will **not** undo — the subjects do not return, and the Arcanum will crown a new Unequalled |
+| 8 | The break | 3 | **The Slope** — `assassinate` | Gyeom chooses the slope over the summit, deliberately; **second relic** (practice that persists) — improvement becomes a stance |
+| 9 | The approach | 3 | **The Next Unequalled** — `assassinate` | the scale of what her death will **not** undo — the subjects do not return, and the Arcanum will crown a new Unequalled |
 | 10 | The general | 4 | **Sublimitas, the Unequalled** — `assassinate` | two-phase (human Archmage → self-copying demon); she answers what you show and raises your fallen — until Gyeom releases what was concealed; the work survives her |
 
 Slot 7 needs the antagonist to **speak without a fight** — the same seam flagged for Wrath's, Lust's,
-Gluttony's and Envy's slot 7. The rep-ladder soft-lock (the middle cannot earn enough points to reach
-the grind) is the same one the other lines carry and wants the same fix (standing as a **count of
-distinct completed quests**).
+Gluttony's and Envy's slot 7. The rep-ladder soft-lock is gone with the ten slots on disk (the nine
+pay 285 against a 200-point rank 4); what is left is the ladder's *shape*, which still wants standing
+as a **count of distinct completed quests**.
 
 ### The relic, and Gyeom's signatures
 
@@ -1510,21 +1529,21 @@ one; and the Bank holds her own note.
 |---|---|---|---|---|
 | 1 | Introduction | 1 | **The Vault Beneath** — `assassinate` *(ships, `vault_heist`)* | the job's no robbery — the "merchant prince" is in the Bank's ledger too; you were sent to *collect.* Everything here is owed to someone you haven't met |
 | 2 | The recruit | 1 | **[Clem]** — `killAll` | the Bank's own retired blade, now burning its writs, marked for it; bested, her plea reveals the machine; she joins |
-| 3 | Complication | 1 | **[title TBD]** — `protect`/`killAll` | a debtor "recruited" to work it off; the cut that never clears, shown |
-| 4 | Escalation | 2 | **[title TBD]** — `killAll` | the trace-up: the contracts all have one client — the outlaws are the establishment |
+| 3 | Complication | 1 | **Working It Off** — `killAll`+`protect` | a debtor "recruited" to work it off; the cut that never clears, shown |
+| 4 | Escalation | 2 | **One Client** — `killAll` | the trace-up: the contracts all have one client — the outlaws are the establishment |
 | 5 | The discovery | 2 | **Accounts Settled in Full** — `reach`/`killAll` | the Bank's roll of debts cleared set against the indentured dead — a casualty list read as an honor roll |
-| 6 | Grind | 2 | **[Collection Work]** — `repeatable` | run the routes; the player *is* the hand the Bank hires |
+| 6 | Complicity | 2 | **Quarter-End** — `killAll`; every route in the city runs on one night | the player *is* the hand the Bank hires, at a posted rate, paid on completion |
 | 7 | **The turn** | 3 | *(no fight)* | killing Aurea cancels no notes — the debt is the pact; and the Bank holds Clem's own. Her hope dies: that she can simply *take* freedom back |
-| 8 | The break | 3 | *title TBD* — `assassinate` | Clem sets down her own debt; **second relic** (Borrowed Time keeps one kill's tempo for herself) |
-| 9 | The approach | 3 | **[title TBD]** — `assassinate` | the scale her death won't undo — a new Bank, the laws still bought |
+| 8 | The break | 3 | **Her Own Note** — `assassinate` | Clem sets down her own debt; **second relic** (Borrowed Time keeps one kill's tempo for herself) |
+| 9 | The approach | 3 | **A New Bank** — `assassinate` | the scale her death won't undo — a new Bank, the laws still bought |
 | 10 | The general | 4 | **Aurea, the Ever-Owed** — `assassinate` | two-phase; her **gold** is ward, strength and fuel — untouchable while rich, she buys off blows and hires blades with it; bankrupt her (deny gildings, hold the loose gold, out-drain with Clem) and she transforms, then falls. Drops the **Bottomless Purse** + `gateHint` |
 
 `vault_heist` exists and maps onto slot 1; the recruit (slot 2), the finale (slot 10), the recruit
 `outro` (Clem's terms — why she'll turn on the house that made her), and every mid-line scene are new. Slot
 7 needs the antagonist to **speak without a fight** — the same seam flagged for Wrath's, Lust's,
-Gluttony's, Envy's and Pride's slot 7. The rep-ladder soft-lock (the middle cannot earn enough points to
-reach the grind) is the same one the other lines carry and wants the same fix (standing as a **count of
-distinct completed quests**, `ranks = { 0, 3, 6, 9 }`).
+Gluttony's, Envy's and Pride's slot 7. The rep-ladder soft-lock is gone with the ten slots on disk
+(the nine pay 285 against a 200-point rank 4); what is left is the ladder's *shape*, which still wants
+standing as a **count of distinct completed quests** (`ranks = { 0, 3, 6, 9 }`).
 
 ### The relic, and Clem's signature
 
@@ -1846,6 +1865,67 @@ line is being touched for another reason.
 
 ## Authoring the remaining six lines
 
+### State of the pass: all sixty slots now exist on disk
+
+**37 new quest blueprints** landed in one pass, filling every empty slot across the six lines — the
+Colosseum's 2/4/5/7/8/9, the Cathedral's 4–9, the Lodge's 3/4/6/7/8/9, the Crucible's 1/3/4/6/7/8/9,
+the Arcanum's 3/4/6/7/8/9 and the Undercroft's 3/4/6/7/8/9. Every ten-slot table above now names a real
+file. What each one carries and what it deliberately does not:
+
+- **Premise-first headers.** Each file opens with what is actually happening, how it bears on the
+  companion *and* on the sin, why it is a fight at all, and why its objective is the one it is — the
+  standard `relief_column` set, and the check `the_long_list` is still flagged as never having passed.
+- **No dangling references.** No `intro` / `outro` / `opening` is named anywhere in the 37, because
+  `Conversation.play` asserts on an unknown id, and no `rewardItems`, because every unbuyable those
+  slots owe (slot 5's register, slot 8's second relics for Saber, Kaya, Ren, Gyeom and Clem) is still
+  unwritten and a dead id is worse than none. **Scenes and relics are the next pass, not this one.**
+- **Existing blueprints only.** Where a slot wants a body that does not exist — the Perennial's
+  fighters, the anointed, the turning wardens, the topped-up buyers, the Bank's chartered security —
+  the header names the wanted blueprint and the file stands in with a shipped one. Every stand-in is
+  called out in its own header rather than left to be discovered.
+- **Slot 7 takes the shippable reading.** The no-fight seam is still unbuilt, so each turn is staged
+  as a battle its `opening` will carry, and each of the six says so in its header. Three of them —
+  wrath, pride, greed — turned out *better* for it: `survive` against Ira and against Sublimitas
+  teaches each finale's counterplay at a survivable price, and greed's `hold` over the true ledger
+  lets the book do the talking, which is right for the one sin whose villain is an arrangement.
+- **Objective spread.** `killAll` / `assassinate` / `survive` / `hold` / `reach`, with `protect`
+  composed under six of them — the "ten slots against three win types" complaint the Bastion's table
+  raises is answered by using all five the resolver now knows.
+- **One deviation, recorded.** This document called both the Cathedral's and the Crucible's slot 6
+  *Cleansing Work*; two quests cannot share a name on one board, so the Crucible's took the college's
+  own term, **Spoiled Batch**. Noted in its file header too.
+
+### The grind is gone, everywhere
+
+A second pass removed **every** `repeatable` quest, including the two that shipped before this work.
+The rule is stated at *The ten slots* above and enforced in `models/quest.lua`'s header: nothing sets
+the field, and the engine still honours it only so a stray def cannot misbehave. What moved:
+
+| Was | Now | Slot |
+|---|---|---|
+| `muster` — another name off the roll, forever | **Muster** — the roll closed for the season's oath; the tent is half empty | Bastion 6 |
+| `blood_in_the_sand` — "win, and win again" | **Blood in the Sand** — the player is the draw, and their undercard is padded *for* them | Colosseum 6 |
+| `cleansing_work` — endless sightings | **Cleansing Work** — the diocese tidied before the Feast of the Ascended | Cathedral 6 |
+| `bounty_work` — the board never empties | **Closing the Board** — the book cleared before first frost, supper after | Lodge 6 |
+| `spoiled_batch` — standard rate, per batch | **Spoiled Batch** — a term's-end writedown the college's own porters refused | Crucible 6 |
+| `fetching_work` — requisitions without end | **The Requisition** — one sealed order, filled unread, explained afterwards as a courtesy | Arcanum 6 |
+| `collection_work` — run the routes | **Quarter-End** — every route in the city on one night, posted rate | Undercroft 6 |
+
+Two of those were the strongest arguments for the rule. `muster`'s theme was *the repetition itself*
+— Rowan's lines shorter each run — which asks a player to farm a quest in order to feel something
+about farming it, and almost nobody replays a cleared bounty, so the beat was delivered to a design
+document rather than to a player. `blood_in_the_sand` was the soft-lock: the rung meant to carry a
+player from Champion to Legend, gated at Champion. Both are better as one authored night.
+
+Reputation was retuned with them — the old grind rates (15) became story rates (30/40), so a
+sponsor's authored quests short of its general now pay **275 (the Crucible) to 325 (the Colosseum)**
+against a 200-point rank 4, with the other five at 285–305.
+Every line clears its own ladder without replaying anything, which is the whole requirement. What
+this does *not* fix is the ladder's shape: rank 4 now lands a slot or two early, and only the
+count-based standing (`ranks = { 0, 3, 6, 9 }`) puts it back on the ninth. That is engine work in
+`Player.addReputation` / `Vendor.rankFor`, it is unchanged by any of this, and no quest has to move
+when it happens.
+
 ### The line
 
 The reputation ladder (0 / 40 / 100 / 200) doubles as the chapter clock. Wrath's line **as currently
@@ -1854,7 +1934,7 @@ should be:
 
 1. `arena_debut` — the introduction, prestige 1
 2. `warlord_keep` — the escalation, prestige 3
-3. `blood_in_the_sand` — `repeatable`, rank-3 gated: the grind from Champion to Legend
+3. `blood_in_the_sand` — rank-3 gated: the night the player becomes the draw (was the line's grind)
 4. `general_wrath` — rank-**4** gated (Legend), prestige 5. The same standing that finally puts the
    Crimson Greataxe on the shelf is the standing that lets you face what the Greataxe was warning about.
 

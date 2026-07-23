@@ -65,7 +65,8 @@ return {
     -- optional gates:
     requiredRep = { vendor = "cathedral", rank = 2 }, -- hidden until you have their trust
     requiredQuests = { "general_wrath", ... },        -- ALL must be done; see below
-    repeatable = true,     -- stays on the board after completion (grind quests)
+    -- repeatable = true, -- DO NOT USE. Honoured by the engine, set by nothing, and the design rule
+    --                    -- is that this game has no grind: every quest is authored and runs once.
     -- optional rewards:
     rewardItems = { "mail_of_the_unappeased" },  -- granted into the stash on completion
     gateHint = "beneath the sand",               -- a fragment shown on a quest that requires this one

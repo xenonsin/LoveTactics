@@ -25,7 +25,7 @@ return {
         staminaRegen = 2,
         damage = 22, magicDamage = 0,
         defense = 11, magicDefense = 6,
-        movement = 3,
+        movement = 4,
         speed = 4, -- quick for a greatsword: she picks her moment
     },
     -- The First Motion is the build-around, `bound` in the centre exactly as Rowan's Aegis is

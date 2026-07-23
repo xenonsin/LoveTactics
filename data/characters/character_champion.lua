@@ -7,7 +7,7 @@ return {
         health = 90, mana = 20, stamina = 18,
         damage = 20, magicDamage = 6,
         defense = 12, magicDefense = 8,
-        movement = 3,
+        movement = 4,
         speed = 3,
     },
     startingItems = { "weapon_iron_sword" },

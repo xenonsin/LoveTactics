@@ -18,6 +18,7 @@ local Vendor = require("models.vendor")
 local Player = require("models.player")
 local Item = require("models.item")
 local Character = require("models.character")
+local Discipline = require("models.discipline") -- unlockedSet: gates a shelf's locked discipline cut
 local Combat = require("models.combat")
 local Sprite = require("models.sprite")
 local Scale = require("scale")
@@ -130,7 +131,7 @@ function Shop:refresh()
     self.rows = {}
 
     if self.mode == "buy" then
-        for _, entry in ipairs(Vendor.stock(self.vendorId, self.rank, self.player.recipes)) do
+        for _, entry in ipairs(Vendor.stock(self.vendorId, self.rank, self.player.recipes, Discipline.unlockedSet(self.player))) do
             -- Instantiate at the item's recipe tier, so its name (+n) and stats reflect what's bought.
             local item = Item.instantiate(entry.id, nil, entry.level)
             self.rows[#self.rows + 1] = {
@@ -152,7 +153,7 @@ function Shop:refresh()
     else -- upgrade
         -- Consumable recipe tiers: this vendor's own consumable shelf, refined per-type. Upgrading one
         -- raises the tier every future purchase comes at (Vendor.upgradeRecipe / Player.recipeLevel).
-        for _, entry in ipairs(Vendor.stock(self.vendorId, self.rank, self.player.recipes)) do
+        for _, entry in ipairs(Vendor.stock(self.vendorId, self.rank, self.player.recipes, Discipline.unlockedSet(self.player))) do
             local sample = entry.type == "consumable" and Item.instantiate(entry.id, nil, entry.level)
             -- Only the bench that refines a consumable lists it: the Market resells potions but hones
             -- none, so a resold potion never shows here (Vendor.canRefineHere).

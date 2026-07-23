@@ -185,7 +185,10 @@ return {
                 -- `natural` is a creature's own body and `unarmed` is the player's single hidden fist;
                 -- neither is shoppable and neither owes a roster (docs/weapons.md).
                 if family and family ~= "natural" and family ~= "unarmed" then
-                    local excluded = false
+                    -- Signatures, generals' relics, AND discipline weapons sit OUTSIDE the family ten:
+                    -- a discipline weapon is additive, locked stock, not part of a base family's 5-on-a-
+                    -- shelf + 5-quest balance (docs/classes.md treats them exactly as it treats relics).
+                    local excluded = def.discipline ~= nil
                     for _, tag in ipairs(def.tags or {}) do
                         if tag == "signature" or tag == "relic" then excluded = true end
                     end

@@ -158,7 +158,9 @@ return {
             local vId, locked
             for vid in pairs(Vendor.defs) do
                 for _, e in ipairs(Vendor.stock(vid, 1)) do
-                    if e.repRank > 1 then vId, locked = vid, e break end
+                    -- A discipline item carries a SECOND lock (its discipline must be unlocked), so it
+                    -- stays locked even at its repRank -- not what this rank-only test means to measure.
+                    if e.repRank > 1 and not e.discipline then vId, locked = vid, e break end
                 end
                 if vId then break end
             end

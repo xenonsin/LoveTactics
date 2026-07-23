@@ -10,7 +10,7 @@ return {
         staminaRegen = 2,
         damage = 4, magicDamage = 12,
         defense = 5, magicDefense = 12,
-        movement = 3,
+        movement = 4,
         speed = 3,
     },
     startingItems = { "weapon_frost_fists" },

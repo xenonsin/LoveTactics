@@ -25,6 +25,9 @@
 -- nineteen who refused Acedia's terms and were struck off the rolls), and the timeline moved from
 -- thirty years to fifteen. Text may still lean on beats that have been rewritten upstream.
 
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "What the Bastion Knows",
     description = "Rowan wants to ask the order a question. The order would rather she did not.",
@@ -37,7 +40,7 @@ return {
     rewardPrestige = 2,
     requiredPrestige = 4,
     requiredRep = { vendor = "bastion", rank = 3 }, -- Banneret
-    rewardItems = { "utility_struck_name" },
+    rewardItems = { "utility_struck_name", "armor_given_guard", "weapon_lending_blade" },
     map = {
         biome = "castle",
         encounters = { min = 9, max = 12, always = { "encounter_elite" } },

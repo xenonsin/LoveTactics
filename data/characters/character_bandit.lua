@@ -8,7 +8,7 @@ return {
         health = 42, mana = 0, stamina = 13, -- resource stats
         damage = 12, magicDamage = 0,         -- flat stats
         defense = 6, magicDefense = 3,
-        movement = 3, -- number of spaces this character can move
+        movement = 4, -- number of spaces this character can move
         speed = 4,
     },
     startingItems = { "weapon_iron_sword" },

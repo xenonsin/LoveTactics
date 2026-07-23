@@ -26,6 +26,9 @@
 -- nineteen who refused Acedia's terms and were struck off the rolls), and the timeline moved from
 -- thirty years to fifteen. Text may still lean on beats that have been rewritten upstream.
 
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Forty-First Day",
     description = "The company that walked out with her is still a company, and it is between you " ..
@@ -34,7 +37,7 @@ return {
     sponsor = "bastion",
     intro = "bastion_forty_first_day_intro",
     outro = "bastion_forty_first_day_outro",
-    rewardItems = { "utility_forty_one_marks" },
+    rewardItems = { "utility_forty_one_marks", "armor_martyrs_shield", "armor_aegis_unbidden", "weapon_sunderers_answer", "weapon_tidesbreak" },
     rewardGold = 400,
     rewardRep = 35,
     rewardPrestige = 2,

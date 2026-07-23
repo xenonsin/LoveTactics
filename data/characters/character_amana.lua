@@ -41,7 +41,7 @@ return {
         staminaRegen = 2,
         damage = 5, magicDamage = 9,   -- feeble on purpose: she does not kill
         defense = 8, magicDefense = 13, -- warded against the magic her line traffics in
-        movement = 3,
+        movement = 4,
         speed = 3,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. The Reliquary is the build-around in the

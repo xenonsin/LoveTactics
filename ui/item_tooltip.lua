@@ -14,6 +14,7 @@ local Scale = require("scale")
 local Combat = require("models.combat")
 local Character = require("models.character")
 local Item = require("models.item")
+local Discipline = require("models.discipline")
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local RangeDiagram = require("ui.range_diagram")
@@ -60,6 +61,7 @@ local MET = { 0.70, 0.88, 0.45 }  -- a satisfied requirement (matches the grid's
 local POWER = { 0.95, 0.72, 0.48 } -- ability Power row (the offensive balance stat)
 local HEAL = { 0.55, 0.90, 0.58 }  -- ability heal row
 local SUMMON = { 0.78, 0.62, 0.96 } -- ability "Summons" row (matches the ability item accent)
+local DISC = { 0.82, 0.70, 0.96 } -- the discipline row: a taxonomy label, tinted like the caster accent
 local BRACE = { 0.55, 0.72, 0.92 } -- a shield's Defend brace-defense (matches the Defending badge tint)
 -- The range-diagram band tint: green for a friendly cast, red for a hostile one (matches the
 -- board's green/red targeting overlays and the action preview's SUPPORT/OFFENSE accents).
@@ -163,6 +165,14 @@ local function buildBlocks(item, actor, innerW)
 
     if item.description and item.description ~= "" then
         blocks[#blocks + 1] = { kind = "desc", text = item.description }
+    end
+
+    -- The discipline this item belongs to (a shop taxonomy; docs/classes.md). Sparse -- most items
+    -- carry none -- so the row shows only when set, named for the player and tinted as a taxonomy label.
+    if item.discipline and Discipline.defs[item.discipline] then
+        blocks[#blocks + 1] = { kind = "sep" }
+        blocks[#blocks + 1] = { kind = "stat", label = "Discipline",
+            value = Discipline.defs[item.discipline].name or item.discipline, valueColor = DISC }
     end
 
     if item.tags and #item.tags > 0 then

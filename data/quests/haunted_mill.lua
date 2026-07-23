@@ -1,8 +1,12 @@
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Haunted Mill",
     description = "Something stalks the old mill after dark. The Cathedral wants it laid to rest.",
     difficulty = "Normal",
     sponsor = "cathedral",
+    rewardItems = { "weapon_drowned_censer", "armor_censer_cloth_habit" },
     rewardGold = 120,
     rewardRep = 30,
     rewardPrestige = 1,

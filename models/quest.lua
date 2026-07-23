@@ -68,8 +68,15 @@ local function gateHints(player, def)
 end
 
 -- The quests this player may see: prestige met, reputation gate met, sponsor's shop open, and not
--- already completed (unless the quest is `repeatable` -- grind quests that keep a sponsor's
--- reputation climbing after their story line is spent).
+-- already completed (unless the quest is `repeatable`).
+--
+-- NOTHING SHIPPED SETS `repeatable`, AND NOTHING SHOULD. The design rule is that this game has no
+-- grind: every quest is authored, runs once, and means something the second time only in memory.
+-- The slot each line once spent on a farmable bounty is now a one-off (docs/story.md's slot 6 --
+-- "the player becomes the hand that does this"), which is a beat a repeat actively destroys: run
+-- once it is an accusation, run eleven times for gold it is a chore the player has tuned out.
+-- The field is still honoured here so a `repeatable` def cannot silently misbehave (the specs build
+-- synthetic ones to pin the double-payout and duplicate-recruit guards), not as an invitation.
 --
 -- Prestige, reputation, and the sponsor's unlock are HARD gates: fail one and the quest is not on
 -- the board at all. A

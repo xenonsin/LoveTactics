@@ -8,6 +8,7 @@ local Player = require("models.player")
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
 local Item = require("models.item")
+local Discipline = require("models.discipline")
 local Save = require("models.save")
 local Character = require("models.character")
 local Combat = require("models.combat")
@@ -166,8 +167,15 @@ return {
             local ids = {}
             for _, entry in ipairs(stock) do
                 ids[entry.id] = true
-                assert(Item.defs[entry.id].class == "rogue",
-                    entry.id .. " is on the rogue shelf without being a rogue item")
+                -- A discipline item is a legitimate guest on a parent's shelf even when its own `class`
+                -- is the OTHER parent (docs/classes.md): a Poacher item (rogue x hunter) sits on the
+                -- rogue shelf whether its home class is rogue or hunter.
+                local bp = Item.defs[entry.id]
+                local onShelf = bp.class == "rogue"
+                for _, p in ipairs(bp.discipline and Discipline.parents(bp.discipline) or {}) do
+                    if p == "rogue" then onShelf = true end
+                end
+                assert(onShelf, entry.id .. " is on the rogue shelf without being a rogue item or a rogue-discipline guest")
                 assert(entry.price, entry.id .. " is for sale with no price")
             end
 
@@ -182,12 +190,14 @@ return {
             local high = Vendor.stock("colosseum", 4)
             assert(#low == #high, "the shelf is the same length at every rank")
 
+            -- A discipline item carries a SECOND lock (its discipline must be unlocked) that rank never
+            -- lifts, so it is not part of this rank-only measure -- count only rank-gated wares.
             local lockedAtLow, lockedAtHigh = 0, 0
-            for _, e in ipairs(low) do if e.locked then lockedAtLow = lockedAtLow + 1 end end
-            for _, e in ipairs(high) do if e.locked then lockedAtHigh = lockedAtHigh + 1 end end
+            for _, e in ipairs(low) do if e.locked and not e.discipline then lockedAtLow = lockedAtLow + 1 end end
+            for _, e in ipairs(high) do if e.locked and not e.discipline then lockedAtHigh = lockedAtHigh + 1 end end
 
             assert(lockedAtLow > 0, "a rank-1 player should see items they cannot buy yet")
-            assert(lockedAtHigh == 0, "a top-rank player should have everything unlocked")
+            assert(lockedAtHigh == 0, "a top-rank player should have everything rank-unlocked")
         end,
     },
     {
@@ -310,7 +320,9 @@ return {
         end,
     },
     {
-        name = "Quest.available drops completed quests, but keeps repeatable ones",
+        -- No shipped quest is `repeatable` (the game has no grind -- see models/quest.lua's header),
+        -- so this only has the drop half to check, which is what it always actually checked.
+        name = "Quest.available drops completed quests from the board",
         fn = function()
             local p = playerAt(1)
 

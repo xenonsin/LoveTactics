@@ -6,12 +6,16 @@
 --
 -- Shippable `killAll` (the resolver knows killAll / assassinate / survive; the `reach` the slot table
 -- wants is not yet built): the Arcanum's own adepts stand between the player and the register, mid-work.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Donor Roll",
     description = "The Arcanum wants a register recovered from a wing it would rather you not linger in. " ..
         "Read the names on your way out.",
     difficulty = "Hard",
     sponsor = "arcanum",
+    rewardItems = { "weapon_second_utterance_wand" },
     rewardGold = 220,
     rewardRep = 45,
     rewardPrestige = 1,

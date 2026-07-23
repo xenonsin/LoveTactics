@@ -7,12 +7,16 @@
 --
 -- Shippable `killAll` (the resolver knows killAll / assassinate / survive; the `reach` the slot table
 -- wants is not yet built): the Bank's own enforcers stand between the player and the ledger room.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "Accounts Settled in Full",
     description = "The Bank keeps a proud register of debts cleared. Reach it, and read what clearing a " ..
         "debt cost the ones who owed it.",
     difficulty = "Hard",
     sponsor = "undercroft",
+    rewardItems = { "armor_opportunists_harness" },
     rewardGold = 220,
     rewardRep = 45,
     rewardPrestige = 1,

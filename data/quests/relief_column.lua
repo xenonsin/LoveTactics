@@ -24,6 +24,9 @@
 -- Rowan recites "hold until relieved" here, flat, the way you recite something you were issued. She
 -- is also unaccountably tense about a routine contract, and the line spends nine more quests
 -- explaining why.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Relief Column",
     description = "Highwatch is besieged and twelve days without supply. Get the column up the mountain.",
@@ -37,7 +40,7 @@ return {
     rewardRep = 20,
     rewardPrestige = 1,
     requiredPrestige = 1,
-    rewardItems = { "utility_relief_horn" },
+    rewardItems = { "utility_relief_horn", "weapon_sworn_lance" },
     map = {
         biome = "castle",
         -- The road up a mountain, and the map is generated as one: `ascent` puts the objective on

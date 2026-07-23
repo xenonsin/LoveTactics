@@ -6,17 +6,11 @@
 local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
+local Fixture = require("tests.support.fixture")
 
 -- A flat, all-walkable arena of the given size (no terrain), with an objective.
 local function arena(cols, rows, objective)
-    local tiles = {}
-    for y = 1, rows do
-        tiles[y] = {}
-        for x = 1, cols do
-            tiles[y][x] = { type = "ground", moveCost = 1, walkable = true }
-        end
-    end
-    return { cols = cols, rows = rows, tiles = tiles, objective = objective or { type = "killAll" } }
+    return Fixture.new(cols, rows, { objective = objective })
 end
 
 -- "A melee unit carrying an iron sword" -- what almost every fixture below actually wants.
@@ -34,24 +28,18 @@ local function swordsman()
 end
 
 -- A { char, x, y } spawn entry. Accepts a blueprint id or a prebuilt character instance.
+--
+-- Isolation "mechanics": strip traits and any bound signature relic (an archer's wolf companion, a
+-- knight's Oathward). Its trait, stats, and combat-start summon would otherwise perturb the unit
+-- counts and initiative these fixtures assume. Innate delivery itself is exercised in
+-- tests/innate_spec.lua.
 local function unit(charOrId, x, y)
-    local char = type(charOrId) == "string" and Character.instantiate(charOrId) or charOrId
-    -- Isolate these mechanics tests from a character's innate, which now rides on a bound signature
-    -- relic in the grid (an archer's wolf companion, a knight's Oathward): strip that relic, since its
-    -- trait, stats, and combat-start summon would otherwise perturb the unit counts and initiative
-    -- these fixtures assume. Innate delivery itself is exercised in tests/innate_spec.lua.
-    char.traits = {}
-    for i = 1, Character.MAX_INVENTORY do
-        if char.inventory[i] and char.inventory[i].bound then char.inventory[i] = nil end
-    end
-    return { char = char, x = x, y = y }
+    return Fixture.unit(charOrId, x, y, { isolate = "mechanics" })
 end
 
 -- Open a turn for a specific unit, independent of initiative order, so a test can exercise
 -- moveUnit/endTurn on the unit it cares about (mirrors what Combat.startTurn sets up).
-local function openTurn(c, u)
-    c.turn = { unit = u, moved = false, moveCost = 0 }
-end
+local openTurn = Fixture.openTurn
 
 -- Current value of a unit's resource pool, whether the stat is a {current,max} table or a plain
 -- number (Combat.resourceValue's rule, mirrored here so the channel tests can read mana either way).
@@ -816,17 +804,18 @@ return {
     {
         name = "attackReach covers the band one step beyond movement (drives the threat overlay)",
         fn = function()
-            -- Knight (chainmail drops movement to 2) alone: it can walk to (4,6) (cost 2) and,
-            -- with a range-1 weapon, threaten (4,7) -- a tile it cannot itself stand on this turn.
+            -- Knight (base 4, chainmail's square drops movement to 3) alone: it can walk to (4,7)
+            -- (cost 3) and, with a range-1 weapon, threaten (4,8) -- a tile it cannot itself stand on
+            -- this turn.
             local c = Combat.new(arena(8, 8), { unit(swordsman(), 4, 4) }, {})
             local knight = c.units[1]
             local reach = Combat.reachable(c, knight)
             local ar = Combat.attackReach(c, knight, 1, reach)
 
-            assert(reach["4,7"] == nil, "the far tile is beyond a movement-2 reach")
-            local cell = ar["4,7"]
+            assert(reach["4,8"] == nil, "the far tile is beyond a movement-3 reach")
+            local cell = ar["4,8"]
             assert(cell, "but it IS within attack reach (threat band)")
-            local d = math.abs(cell.fromX - 4) + math.abs(cell.fromY - 7)
+            local d = math.abs(cell.fromX - 4) + math.abs(cell.fromY - 8)
             assert(d <= 1, "the recorded stand tile is within weapon range of the target")
             assert(cell.fromX == knight.x and cell.fromY == knight.y
                 or reach[cell.fromX .. "," .. cell.fromY], "stand tile is the origin or reachable")

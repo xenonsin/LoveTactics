@@ -25,6 +25,9 @@
 -- nineteen who refused Acedia's terms and were struck off the rolls), and the timeline moved from
 -- thirty years to fifteen. Text may still lean on beats that have been rewritten upstream.
 
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "What Greywatch Kept",
     description = "The fort the doctrine is named after has been empty for fifteen years. Rowan " ..
@@ -38,7 +41,7 @@ return {
     rewardPrestige = 2,
     requiredPrestige = 3,
     requiredRep = { vendor = "bastion", rank = 2 }, -- Sworn
-    rewardItems = { "utility_greywatch_muster_roll" },
+    rewardItems = { "utility_greywatch_muster_roll", "weapon_answering_bell", "weapon_rimebell" },
     map = {
         biome = "castle",
         encounters = { min = 8, max = 11, always = { "encounter_forsworn" } },

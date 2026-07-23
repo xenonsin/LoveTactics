@@ -32,12 +32,16 @@
 --
 -- No unique item, and it is the one slot in the ten that does not want one: the reward IS the
 -- companion, and putting a trinket beside her would only compete with her.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "Debut on the Sand",
     description = "You have no house, no record, and an opening bout against a hired veteran. " ..
         "The odds are the entertainment.",
     difficulty = "Easy",
     sponsor = "colosseum",
+    rewardItems = { "weapon_ledgemans_axe", "armor_reckless_cuirass" },
     rewardGold = 60,
     rewardRep = 25,
     rewardPrestige = 1,

@@ -2,9 +2,10 @@
 -- billet steel, handed out at the muster tent with the season's oath -- the same tent whose queue
 -- gets shorter every year Acedia walks the Watch.
 --
--- Slot 6 is `repeatable`, which is why this is a CONSUMABLE and not a charm: the payout lands on
--- every completion (models/quest.lua's double-payout guard only blocks non-repeatables), so it has
--- to be something that stacks in the stash rather than a grid passive minted over and over.
+-- A CONSUMABLE rather than a charm because a ration is one: it is issued, it is carried, it is spent.
+-- (It was once a consumable for a mechanical reason too -- slot 6 used to be `repeatable`, so the
+-- payout landed on every completion and had to stack rather than mint a grid passive over and over.
+-- Nothing is repeatable any longer; the fiction was the better half of the argument and it stands.)
 --
 -- `class = "knight"` with NO `price`: unbuyable, and still tallying toward knight growth when it is
 -- used (docs/classes.md, "class without price").

@@ -114,6 +114,76 @@ Four notes on how this shook out:
   word), the other by nailing the line to a square of ground. An unexplained borrow is
   indistinguishable from a mistake; these are the explanation.
 
+## The armor spread
+
+Armor answers the shelf question the same way weapons do, with one extra rule of its own.
+
+**Every class shelf carries armor, and exactly five pieces of it are quest-only** — `class` with no
+`price`, the shape described under *the tally, not the shelf* below. `tests/armor_spec.lua` pins it.
+The five are the reward half: what finishing that vendor's line hands you rather than what its counter
+sells. A shelf whose armour is entirely buyable has nothing to give for the work, and one that is
+entirely quest-locked cannot be shopped at, so each shelf owes at least one priced piece too.
+
+Signatures and generals' relics sit **outside** the count, exactly as they sit outside the weapon
+families' ten. `armor_sworn_aegis` carries `class = "knight"` and no price and is still not one of the
+knight's five: it is `bound`, nailed to one character's centre cell, and can never be earned or handed
+over. A count of what a line pays out cannot include a thing nobody can be paid.
+
+**And "quest-only" now means a quest actually hands it over.** For a long time it only meant *unpriced*
+— no vendor stocks it, and `Spoils.lootCandidates` filters the random drop pool by price too, so an
+unpriced item nobody named in a `rewardItems` list could not enter the game by any route at all. 94 of
+them were in exactly that state: loading, passing the schema, counting toward the fives above, and
+unreachable. Every one is now granted by a quest on its own shelf's vendor line, and
+`tests/obtainable_spec.lua` fails the build if a new one appears without a source. The promise in the
+paragraph above is a promise again rather than a claim.
+
+| Class | Quest-only five | Sells |
+|---|---|---|
+| `fighter` | Last Stand Plate, Adrenal Harness, Blood-Fever Mail, Rally Coat, Reckless Cuirass | 4 |
+| `knight` | Aegis Unbidden, Given Guard, Kept Wound, Martyr's Shield, Reflecting Shield | 14 |
+| `rogue` | Cutpurse's Coat, Smokecloth Wrap, Slipstep Leathers, Opportunist's Harness, Unlit Hood | 1 |
+| `hunter` | Kennelbound Jerkin, Quarryhide, Bogwalker's Coat, Ravener's Hide, Blindfold Cloak | 1 |
+| `mage` | Sealed Coat, Gleaner's Mantle, Witchlight Shroud, Unravelling Habit, Gaunt Vigil Plate | 3 |
+| `priest` | Reliquary Mantle, Interceding Stole, Hem of the Stayed Hand, Censer-Cloth Habit, Robes Unbidden | 2 |
+| `alchemist` | Ichor Coat, Choking Apron, Everdraught Bandolier, Reagent Vest, Volatile Carapace | 4 |
+
+Two notes on how this shook out:
+
+- **Rogue and hunter sell one piece each, and that is deliberate rather than unfinished.** Both shelves
+  had *no* armour at all before this pass, so the five quest-only pieces are most of what exists there
+  — which reads correctly for the two sins whose gear is taken rather than ordered. If either shelf
+  grows, it grows on the priced side; the five stay five.
+- **The elemental coats are the Crucible's, not the Market's.** `armor_salamander_hide`,
+  `armor_stormcloth` and `armor_rimecloth` are the counterplay to fire, lightning and cold — and in
+  this game those overwhelmingly arrive from a bomb, a stone or a spilled reagent. The house that sells
+  the burning sells the coat, which is envy's voice and not a general good.
+
+### Cloth costs a square, and penalties stack
+
+`Combat.applyUnitPassives` sums `bonus.movement` across the **whole 3×3 grid**, so a body wearing three
+coats pays for three coats. That was always true and nothing asserted it, which is how the light tier
+came to advertise *"at no cost to your pace"* while really meaning *"wear four of these"*.
+
+So the rule is now stated and enforced (`tests/armor_spec.lua`):
+
+| Tier | Movement |
+|---|---|
+| cloth (robes, wraps, habits, stoles, shrouds, mantles) | **−1**, always |
+| leather / hide cut for movement | 0 |
+| medium (leather armor, chainmail, most plate) | −1 |
+| heavy | −2 |
+
+Base movement was raised to **4** on every character blueprint that had 3, to pay for it — deliberate
+outliers (a planted banner's 0, the dire bear's ponderous 2) were left alone. The player's avatar
+starts wearing `armor_leather_armor`, so the opening pace is 4 − 1 = 3, which is what the prologue's
+fights are cut against.
+
+`Combat.moveBudget` floors at 0. Over-armouring yourself into immobility is a legitimate outcome and is
+left alone; a *negative* budget is not, because it reads as "less than planted" to the Dijkstra, to
+Root, and to the reachable preview, and means nothing in any of them. The floor is in `moveBudget`
+rather than in the fold, so the Loadout screen can still show a −5 and tell the player what they have
+done to themselves.
+
 ### `class` without `price`: the tally, not the shelf
 
 `class` mostly means *sold by* — but it has a second job, and `weapon_parasitic_staff` is the one to
@@ -175,32 +245,73 @@ stay foci.
 ## Disciplines
 
 A **discipline** is a named cluster of items across one or two shelves, unlocked by quests. It is a
-shop taxonomy like `class` is — it adds stock, and that is all. There is no title, no resolver, no
-growth table, no trait. What you become is still decided by what you cast.
+shop taxonomy like `class` is — unlocking it adds stock, and shopping is how you build it. It is **not**
+an assigned identity: there is no title, no resolver, no growth table. What you become is still decided
+by what you cast (`models/growth.lua`); a discipline you have unlocked is a set of items on a shelf, and
+the character those items grow you into stays emergent.
+
+But a discipline is more than a sharper price list. **Each one owns a unique mechanic** — Elementalist's
+sigils, the Ninja's elemental blink, the Necromancer's raised dead. That mechanic does not live in a
+class table; it **rides on the discipline's signature item**, the way every combat trait already attaches
+through the grid (`models/trait.lua`). Unlock the discipline, buy the item, equip it: the mechanic is
+yours — carryable, and tallied by use like anything else. That is what keeps "anyone carries anything,
+identity is emergent" true even though a discipline now *does* something. The full slate of mechanics,
+exemplars and rosters is the authoring plan in [disciplines-plan.md](disciplines-plan.md); this section
+is the contract it obeys.
 
 Blueprints live in `data/disciplines/<id>.lua`:
 
 ```lua
 return {
-    name = "Ninja",
-    classes = { "rogue", "mage" },  -- 2 = multiclass; 1 = subclass
-    requiredQuests = { "quest_vault_heist", "quest_grimoire_ruins" },
+    name    = "Ninja",
+    classes = { "rogue", "mage" },     -- 2 = multiclass; 1 = subclass
+    exemplar = "character_kaen",       -- the NPC built AS this discipline, met in its unlock quest
+    requiredQuests = { "quest_the_shadowless" },
 }
 ```
 
-**Arity is the whole distinction:**
+**Arity is the whole distinction, and it makes a dependency lattice, not a flat matrix:**
 
-- **One parent = a subclass.** It deepens a shelf. Its items live on that one vendor.
-- **Two parents = a multiclass.** One item on *each* parent's shelf. Shopping both shelves is
-  literally how you build the thing — a ninja exists because you bought mage gear for your rogue.
+- **One parent = a subclass.** It deepens a shelf; its items live on that one vendor. Gated by **one
+  quest in that vendor's line**.
+- **Two parents = a multiclass.** One item on *each* parent's shelf — shopping both is literally how you
+  build it (a ninja is mage gear on a rogue). Gated by **earned advancement**: you must already hold a
+  subclass of *each* parent, and that is what opens the multiclass's **capstone quest**. You cannot be
+  sent to meet the ninja until you have walked both a rogue branch and a mage branch. A multiclass whose
+  parents have no subclass yet is unauthorable — its gate can never be satisfied, which is the build
+  order the tree enforces on itself.
 
-**The gate: one quest per parent**, each sponsored by that parent's vendor. A subclass hangs off one
-quest in its vendor's line; a multiclass needs one from each, because you worked for both houses. The
-arity that defines a discipline is also how it is earned.
+**Every discipline has an exemplar** — a character built as that discipline (their kit *is* its items),
+met in the quest that unlocks it. You do not read that a Ninja fuses two shelves; you watch one do it,
+then get to build it. Disposition varies (boss, mentor, recruit); exemplars reuse the roster where a
+character already embodies the thing (`character_warlord` is the Warlord, `character_champion` the
+Champion) and are authored fresh for the gaps.
 
-Items opt in with a top-level `discipline` field — its own field, never a tag, for the same reason
-`class` is (`tags` drive damage scaling and armor `resist`; a shop taxonomy in there is one typo away
-from armor mitigating "ninja" damage).
+### Items opt in, and the field stays sparse
+
+Items join a discipline with a top-level `discipline` field — its own field, never a tag, for the same
+reason `class` is (`tags` drive damage scaling and armor `resist`; a shop taxonomy in there is one typo
+away from armor mitigating "ninja" damage).
+
+The field is **optional and sparse**. A discipline is the *locked deeper cut* of its parent shelf, never
+a re-tag of the whole thing: the base shelf stays open from the first visit and the discipline adds a
+further handful behind the gate. Tag too much and the base shelf empties and nothing is buyable turn
+one, so most items carry no `discipline` at all. One invariant ties the field to `class`:
+
+> **An item's `class` must be one of its discipline's parent `classes`.**
+
+A subclass item's `class` *is* its single parent. A multiclass item carries *one* of its two parents as
+`class` — its home shelf — while the discipline's `classes` list stocks it on the *other* parent's shelf
+too, once unlocked. One class, two shelves.
+
+**Growth is where a discipline item is not "one class."** Using it tallies **all** of its discipline's
+parent classes (`Combat.useItem` → `Discipline.growthClasses`), so a Ninja weapon grows *both* rogue and
+mage — a multiclass advances the fusion, not one half of it. That is still "what you become is decided by
+what you cast": the cast simply counts for both houses. `tests/discipline_spec.lua` enforces the
+class-parent invariant, so a mistagged item fails the build instead of silently vanishing off its shelf.
+
+The item tooltip shows an item's discipline when it has one (`ui/item_tooltip.lua`), so the deeper cut is
+legible on the shelf and in the grid.
 
 ### The subclasses
 
@@ -265,13 +376,21 @@ Recorded here so it stays a decision rather than drift:
 - **The growth tables are the weakest half of a class.** Five of seven differ only in which resource
   pool they grow. They carry far less identity than the tables above. *This is now the largest
   outstanding gap in this file.*
-- **`repRank` is misnamed.** Standing is counted in quests now, not reputation points; the field name
-  is the last survivor of the old currency. A rename is mechanical and deliberately deferred.
-- **`data/disciplines/` does not exist.** The blueprint format is specified above and 16 subclasses +
-  21 multiclass pairs are named, and not one has been authored. Several items added in the
-  Baldur's-Gate pass are the first legitimate stock for one (the sigils are Elementalist's, the
-  coatings Poisoner's, the Bulwark's shove Bulwark's) — but a discipline needs its quest gate before
-  it needs its shelf.
+- **`repRank` is misnamed, and standing is still points.** The intent — and what an earlier version of
+  this line claimed as done — is that standing be a **count of distinct completed quests per sponsor**
+  (`ranks = { 0, 3, 6, 9 }`). `Player.addReputation` and `Vendor.rankFor` have never done that; they
+  sum `rewardRep`. The consequence is live rather than cosmetic now that no quest is repeatable: every
+  vendor line clears rank 4 on its authored quests (275–325 against 200), but rank 4 arrives a slot or
+  two before the ninth, which loosens the rule that the standing putting the rank-4 relic on the shelf
+  is the standing that lets you face what it was warning about. See *The ten slots* in
+  [story.md](story.md). The rename is mechanical; the counting change is the real work.
+- ~~**`data/disciplines/` does not exist yet.**~~ **Built.** All 37 blueprints (16 subclasses + 21
+  multiclasses) load through `models/discipline.lua`, growth tallies both parents, the vendor gate
+  greys locked stock, and every gate quest — both the 16 subclass gates and all 21 multiclass
+  capstones — exists on disk. `tests/discipline_spec.lua` pins the structure and both gate tiers.
+  What remains is content rather than plumbing: ~27 exemplar NPCs are still stand-ins, and about
+  half the signature mechanics are approximations their item headers admit to. See
+  [disciplines-plan.md](disciplines-plan.md).
 
 ### Settled by the Baldur's-Gate import pass
 

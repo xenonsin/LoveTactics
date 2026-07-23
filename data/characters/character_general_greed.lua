@@ -31,7 +31,7 @@ return {
         staminaRegen = 2,
         damage = 14, magicDamage = 0, -- she does not duel; she takes, and she buys blades (deferred)
         defense = 13, magicDefense = 11,
-        movement = 3,
+        movement = 4,
         speed = 3, -- slow: a hoard does not chase
     },
     -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Bottomless

@@ -17,6 +17,7 @@
 
 local Registry = require("models.registry")
 local Item = require("models.item")
+local Discipline = require("models.discipline")
 
 local Vendor = {}
 
@@ -95,7 +96,17 @@ function Vendor.sells(def, item)
         end
         return false
     end
-    return Item.classOf(item) == def.class
+    if Item.classOf(item) == def.class then return true end
+    -- A discipline item also lands on each of its discipline's parent shelves. That is how a multiclass
+    -- item (whose `class` is one parent, its home tally) appears on the OTHER parent's shelf too --
+    -- shopping both shelves is literally how you build the thing. Derived from the discipline's
+    -- `classes`, never authored per-shelf. (Whether it is buyable yet is Vendor.stock's `locked` job.)
+    if item.discipline then
+        for _, parent in ipairs(Discipline.parents(item.discipline)) do
+            if parent == def.class then return true end
+        end
+    end
+    return false
 end
 
 -- Every item this vendor could ever sell, in shelf order (cheapest first). Rank-gated
@@ -107,7 +118,12 @@ end
 -- upgraded item. Kept a bare table (like `rank`) so this module stays player-free.
 --
 -- Returns fresh tables, never the blueprints (which stay immutable).
-function Vendor.stock(vendorId, rank, recipes)
+-- `unlocked` is an optional bare set { disciplineId = true } of the player's unlocked disciplines
+-- (Discipline.unlockedSet). A discipline item is stocked either way but stays `locked` -- greyed like a
+-- rank-locked ware -- until its discipline is unlocked, because seeing the deeper cut you can earn is
+-- the point, same as the reputation ladder. Kept a bare set (like `rank`/`recipes`) so this module
+-- stays player-free.
+function Vendor.stock(vendorId, rank, recipes, unlocked)
     local def = Vendor.defs[vendorId]
     if not def then return {} end
     rank = rank or 1
@@ -120,6 +136,8 @@ function Vendor.stock(vendorId, rank, recipes)
             -- honour the item's repRank as before.
             local repRank = def.general and 1 or (item.repRank or 1)
             local level = (recipes and recipes[id]) or 0
+            -- A discipline item is locked until its discipline is unlocked, on top of any rank gate.
+            local disciplineLocked = item.discipline ~= nil and not (unlocked and unlocked[item.discipline])
             stock[#stock + 1] = {
                 id = id,
                 name = item.name,
@@ -129,7 +147,8 @@ function Vendor.stock(vendorId, rank, recipes)
                 level = level,
                 price = Vendor.priceFor(item.price, level),
                 repRank = repRank,
-                locked = rank < repRank,
+                discipline = item.discipline,
+                locked = (rank < repRank) or disciplineLocked,
             }
         end
     end

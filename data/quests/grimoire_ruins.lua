@@ -1,10 +1,14 @@
 -- The Arcanum. Looters got to the sanctum first; the Arcanum would like its book back, and is
 -- not especially concerned about the looters.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Sunken Sanctum",
     description = "A grimoire lies in the flooded ruins. Others are already digging for it.",
     difficulty = "Normal",
     sponsor = "arcanum",
+    rewardItems = { "weapon_iron_crook", "armor_gleaners_mantle" },
     rewardGold = 140,
     rewardRep = 30,
     rewardPrestige = 1,

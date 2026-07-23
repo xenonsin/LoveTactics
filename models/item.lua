@@ -373,6 +373,7 @@ function Item.instantiate(id, quantity, level)
         statusImmunity = deepCopy(def.statusImmunity), -- status ids this carrier simply cannot be given
         phases = deepCopy(def.phases),         -- a boss relic's health-threshold script, read by trait_boss_phases
         class = def.class,                     -- which class vendor sells it; nil = sold by none
+        discipline = def.discipline,           -- shop taxonomy: the locked discipline this item belongs to (docs/classes.md)
         price = def.price,                     -- vendor gold cost; nil means it is never sold
         repRank = def.repRank,                 -- vendor rank needed to unlock it (default 1)
         level = math.max(0, level or 0),       -- upgrade level; 0 = a base, un-forged item

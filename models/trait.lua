@@ -859,6 +859,38 @@ function Trait.has(unit, id)
     return false
 end
 
+-- The extra pre-mitigation damage `user`'s standing charms add against THIS target with THIS strike.
+--
+-- A PURE query, deliberately not routed through dispatch(): it fires on every damage preview (the
+-- target-hover runs Combat.computeDamage on each frame), so it must not begin a beat, mutate a trait,
+-- or spend anything. It is summed into `base` by BOTH Combat.dealDamage and Combat.computeDamage, which
+-- is the whole point -- the number a charm promises is the number the hover shows and the blow lands.
+--
+-- A hook is `damageBonusVs(ctx)` returning a flat bonus (or nil/0). It reads the strike through a small
+-- ctx: the `target` it is aimed at, the `tags` it carries (so a "ranged only" charm checks for
+-- "ranged"), and `hasStatus(tgt, id)` to key off the target's afflictions (the debuff-count and
+-- vs-Marked charms). `def`/`item` are the reacting trait's own, for a magnitude lookup.
+--
+-- Sundered silences every charm at once, exactly as dispatch() gates the reaction hooks -- a bearer
+-- whose relics have gone quiet gets no bonus damage either.
+function Trait.outgoingDamageBonus(combat, user, target, item, tags)
+    if not user or not target or not user.traits or #user.traits == 0 then return 0 end
+    local Status = require("models.status")
+    if Status.traitsDisabled(user) then return 0 end
+    local total = 0
+    for _, t in ipairs(user.traits) do
+        if t.def.damageBonusVs then
+            total = total + (t.def.damageBonusVs({
+                combat = combat, unit = user, target = target, item = t.item, trait = t, def = t.def,
+                tags = tags or {},
+                hasTag = function(want) return hasTag(tags, want) end,
+                hasStatus = function(tgt, id) return tgt ~= nil and Status.has(tgt, id) end,
+            }) or 0)
+        end
+    end
+    return total
+end
+
 -- Run `hook` for every trait on `unit`. Iterates a snapshot, so a hook that mutates the trait list
 -- cannot corrupt the walk (the same guard runTurnHook applies in models/status.lua).
 local function dispatch(combat, unit, hook, event)

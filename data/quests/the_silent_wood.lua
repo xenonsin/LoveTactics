@@ -8,12 +8,16 @@
 -- wants is not yet built): the beasts the Lodge cultivated stand between the player and the silent
 -- heart of the wood. The named turned-hunter horror is deferred (docs/story.md flags a
 -- `character_turned_hunter` blueprint as new work); the dire bear stands in for it here.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Silent Wood",
     description = "The Lodge's ledger runs long, and the wood it was written against has gone quiet. " ..
         "Read the last names on your way to the heart.",
     difficulty = "Hard",
     sponsor = "hunters_lodge",
+    rewardItems = { "weapon_knell_shaft", "armor_blindfold_cloak" },
     rewardGold = 220,
     rewardRep = 45,
     rewardPrestige = 1,

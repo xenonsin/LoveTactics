@@ -387,13 +387,28 @@ end
 
 -- Bind unit id lists onto a layout's spawn points (zipping to the shorter length).
 -- `offset` skips spawn points already claimed by an earlier bind.
-local function bindUnits(ids, spawns, offset)
+--
+-- A spawn point names the unit's ANCHOR (top-left) cell, so a multi-tile body (a blueprint's
+-- `footprint = { w, h }` -- see models/combat.lua) placed on an edge spawn would otherwise hang its
+-- far cells off the board. `layout` supplies cols/rows so the anchor is pulled back just far enough
+-- for the whole body to sit on the grid; a 1×1 unit, which is nearly all of them, never moves.
+local function bindUnits(ids, spawns, offset, layout)
+    local Character = require("models.character") -- lazily: character.lua never requires us back
     offset = offset or 0
     local units = {}
     for i, id in ipairs(ids) do
         local sp = spawns[i + offset]
         if not sp then break end
-        units[i] = { id = id, x = sp.x, y = sp.y }
+        local x, y = sp.x, sp.y
+        local def = Character.defs and Character.defs[id]
+        local fp = def and def.footprint
+        if fp and layout and layout.cols and layout.rows then
+            local w = math.max(1, math.floor((type(fp) == "number" and fp) or fp.w or 1))
+            local h = math.max(1, math.floor((type(fp) == "number" and fp) or fp.h or 1))
+            x = math.max(1, math.min(x, layout.cols - w + 1))
+            y = math.max(1, math.min(y, layout.rows - h + 1))
+        end
+        units[i] = { id = id, x = x, y = y }
     end
     return units
 end
@@ -409,7 +424,7 @@ local function bindAllies(allyIds, spec, layout)
     local anchor = obj and obj.anchor
     local protectId = obj and obj.protect
     if not (anchor and protectId) then
-        return bindUnits(allyIds, layout.partySpawns, #party)
+        return bindUnits(allyIds, layout.partySpawns, #party, layout)
     end
 
     -- Region tiles that no unit already stands on, so an anchored survivor never shares a cell.
@@ -481,9 +496,9 @@ function Arena.build(ctx, spec)
         tileSize = Arena.TILE_SIZE,
         biome = spec.biome or layout.biome,
         tiles = hydrateTiles(layout),
-        party = bindUnits(partyIds, layout.partySpawns),
+        party = bindUnits(partyIds, layout.partySpawns, 0, layout),
         allies = bindAllies(allyIds, spec, layout),
-        enemies = bindUnits(enemyIds, layout.enemySpawns),
+        enemies = bindUnits(enemyIds, layout.enemySpawns, 0, layout),
         traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
         hazards = layout.hazards or {}, -- authored hazards (fire/rain/sanctuary) carried into combat (Combat.new places them)
         props = layout.props or {}, -- scattered/authored props (barrels, crates) carried into combat (Combat.new places them)

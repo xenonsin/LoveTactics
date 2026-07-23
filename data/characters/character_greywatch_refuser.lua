@@ -24,7 +24,7 @@ return {
         staminaRegen = 2,
         damage = 12, magicDamage = 0,
         defense = 11, magicDefense = 5,
-        movement = 3,
+        movement = 4,
         speed = 2,
     },
     startingItems = {

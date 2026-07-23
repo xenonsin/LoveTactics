@@ -15,7 +15,7 @@ return {
         health = 420, mana = 0, stamina = 25,
         damage = 20, magicDamage = 20,
         defense = 14, magicDefense = 14,
-        movement = 3,
+        movement = 4,
         speed = 3,
     },
     -- Its loadout as the 3x3 grid (row-major); false = an empty cell. Its rule rides on the Hollow Crown

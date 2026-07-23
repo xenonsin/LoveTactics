@@ -11,12 +11,16 @@
 -- `boss` on her blueprint keeps the fight honest (no execute, no Charm); her defeat recruits rather than
 -- kills, exactly as the Colosseum debut keeps Saber (data/quests/arena_debut.lua). She fights alone: the
 -- reward IS the companion, and a second body beside her would only be a wall in the way of it.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Fallen Confessor",
     description = "The Cathedral has branded one of its own fallen and wants her purged. She is standing " ..
         "over someone, and she will not step aside.",
     difficulty = "Normal",
     sponsor = "cathedral",
+    rewardItems = { "weapon_renewal_staff" },
     rewardGold = 90,
     rewardRep = 30,
     rewardPrestige = 1,

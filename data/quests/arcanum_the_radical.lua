@@ -14,12 +14,16 @@
 -- `boss` on her blueprint keeps the fight honest (no execute, no Charm); her defeat recruits rather than
 -- kills, exactly as the Cathedral keeps Amana (data/quests/fallen_confessor.lua) and the Colosseum keeps
 -- Saber (data/quests/arena_debut.lua). She fights alone: the reward IS the companion.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Radical",
     description = "The Arcanum has branded one of its own a danger and wants her brought in. She is " ..
         "standing over the ones it marked, and she reads as no trouble at all.",
     difficulty = "Normal",
     sponsor = "arcanum",
+    rewardItems = { "weapon_swineherds_wand" },
     rewardGold = 90,
     rewardRep = 30,
     rewardPrestige = 1,

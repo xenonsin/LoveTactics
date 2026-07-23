@@ -3,11 +3,15 @@
 -- `requiredRep` in models/quest.lua.
 --
 -- A `survive` objective: hold the consecrated ground while the rite burns down.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Rite of Ashes",
     description = "The rite takes eight turns and cannot be hurried. Something in the dark knows it.",
     difficulty = "Hard",
     sponsor = "cathedral",
+    rewardItems = { "weapon_sealed_censer", "armor_interceding_stole" },
     rewardGold = 220,
     rewardRep = 45,
     rewardPrestige = 1,

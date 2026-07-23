@@ -20,8 +20,10 @@
 -- Lodge").
 --
 -- `bound = true` (models/item.lua): never moved, stowed, given, sold, or stolen -- only forged. Kaya's
--- blueprint sits it in the center of the loadout grid as the build-around. No `class`/`price`: no vendor
--- stocks or buys it; forged at the Blacksmith, its speed curve rising.
+-- blueprint sits it in the center of the loadout grid as the build-around. No `price`: no vendor stocks
+-- or buys it; forged at the Blacksmith, its speed curve rising. `class = "hunter"` with no `price` is the
+-- signature convention (compare data/items/utility/utility_aqua_vitae.lua): unbuyable, and still tallying
+-- toward hunter growth (docs/classes.md).
 return {
     name = "Wolfsong Horn",
     -- The wolf-alive gate is a RULE the player must know, so it stays in the description, not the flavor
@@ -31,6 +33,7 @@ return {
     sprite = "assets/items/sig_wolfsong_horn.png",
     type = "utility", -- a horn: `bound` (not the type) is what locks it in place
     tags = { "signature" },
+    class = "hunter",
     bound = true,
     traits = { "trait_wolf_companion" },
     bonus = { speed = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3 } }, -- levels 0..10

@@ -26,6 +26,9 @@
 -- nineteen who refused Acedia's terms and were struck off the rolls), and the timeline moved from
 -- thirty years to fifteen. Text may still lean on beats that have been rewritten upstream.
 
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Order That Was Given",
     description = "The Bastion's archive keeps everything, including the things it stopped reading. " ..
@@ -34,7 +37,7 @@ return {
     sponsor = "bastion",
     intro = "bastion_the_order_given_intro",
     outro = "bastion_the_order_given_outro",
-    rewardItems = { "utility_relief_order" },
+    rewardItems = { "utility_relief_order", "weapon_knell_point", "weapon_shepherds_crook" },
     rewardGold = 300,
     rewardRep = 30,
     rewardPrestige = 2,

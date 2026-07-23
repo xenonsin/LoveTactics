@@ -21,7 +21,7 @@ return {
         -- bought a turn for, so the ally swings first and the player still lands the last blow. See
         -- data/tutorials/village.lua.)
         speed = 4,
-        cost = { stat = "mana", amount = 10 },
+        cost = { stat = "mana", amount = 5 },
         damage = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 },
         -- The delay, tuned on its own axis and upgraded on its own curve. It used to be read off the
         -- damage roll, which quietly welded the spell's two halves together: a Jolt is DESIGNED to

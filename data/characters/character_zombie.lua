@@ -9,7 +9,7 @@ return {
         staminaRegen = 1,
         damage = 9, magicDamage = 0,
         defense = 4, magicDefense = 2,
-        movement = 3, -- shambling
+        movement = 4, -- shambling
         speed = 2,
     },
     startingItems = { "weapon_rotting_claws" },

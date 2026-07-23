@@ -854,18 +854,19 @@ end
 -- skips straight to that edge. Nil only when there is nowhere to stand, in which case the caller
 -- skips that unit rather than stacking it. Which side a wave comes from lives in models/combat.lua
 -- (Combat.resolveWaveEdge): pure, board-state logic that the headless tests can reach.
-local function waveTile(from, edge)
+local function waveTile(from, edge, w, h)
     local arena, combat = battle.arena, battle.combat
+    w, h = w or 1, h or 1
     if from == nil or from == "back" then
         for _, e in ipairs(arena.enemies or {}) do
-            local row = arena.tiles[e.y]
-            local cell = row and row[e.x]
-            if cell and cell.walkable and not Combat.unitAt(combat, e.x, e.y) then
+            -- The whole footprint must fit on the reused spawn tile, so a big reserve won't half-land
+            -- on a hole the opening formation left (freeEdgeTile below takes the same w,h fallback).
+            if Combat.footprintFree(combat, w, h, e.x, e.y) then
                 return e.x, e.y
             end
         end
     end
-    return Combat.freeEdgeTile(combat, edge)
+    return Combat.freeEdgeTile(combat, edge, w, h)
 end
 
 -- Walk `wave`'s composition onto the board from its edge. Shared by the one-shot and recurring
@@ -879,9 +880,12 @@ local function fireWave(wave, ctx)
     -- earlier arrivals of the same wave fill tiles.
     local edges = Combat.waveEdges(battle.combat, wave.from, #ids, ctx)
     for j, id in ipairs(ids) do
-        local x, y = waveTile(wave.from, edges[j])
+        -- Instantiate first so the arrival tile can be chosen for the newcomer's actual footprint.
+        local char = Character.instantiate(id)
+        local fp = char.footprint or { w = 1, h = 1 }
+        local x, y = waveTile(wave.from, edges[j], fp.w, fp.h)
         if x then
-            local unit = Combat.addUnit(battle.combat, Character.instantiate(id), "enemy", x, y)
+            local unit = Combat.addUnit(battle.combat, char, "enemy", x, y)
             Combat.logEvent(battle.combat, "action",
                 string.format("%s joins the fight!", unit.char.name or "A demon"), unit)
         end

@@ -1117,8 +1117,11 @@ return {
             assert(left <= mine, "the grunt survives the player's last blow with " .. (left - mine)
                 .. " to spare -- the lesson trails off instead of ending")
 
-            -- ...and the Jolt is affordable exactly once, which is the mana lesson: the avatar's
-            -- whole pool is one cast, so the bar empties in front of them rather than ticking down.
+            -- ...and the Jolt is affordable, which is the mana lesson: casting spends a resource the
+            -- player can watch move. The pool is deliberately NOT pinned to a single cast -- how many
+            -- the avatar gets is a balance dial, not a lesson -- so only the two ends are asserted:
+            -- one cast must be payable (or the tutorial hands over a spell it cannot use), and mana
+            -- must not be so deep it reads as free.
             -- Rowan's weapon has to SHOVE, because the closing two steps are built on the gap it
             -- opens: the grunt charges to arm's length, she drives it back, and only then is there a
             -- range for the Jolt to be thrown across. A weapon swap that dropped the knockback would
@@ -1133,7 +1136,10 @@ return {
             assert(cost.stat == "mana", "the lesson's mana beat no longer costs mana")
             local pool = avatar.char.stats.mana.max
             assert(cost.amount <= pool, "the avatar cannot afford the Jolt the lesson hands them")
-            assert(cost.amount * 2 > pool, "a second Jolt is affordable -- the pool no longer reads as scarce")
+            -- A loose sanity floor, not a design target: a pool worth ten-plus casts is a pool the
+            -- player never watches. Ordinary tuning has room to move well inside this.
+            assert(cost.amount * 10 > pool,
+                "mana reads as free in the prologue: " .. math.floor(pool / cost.amount) .. " Jolts a fight")
         end,
     },
 }

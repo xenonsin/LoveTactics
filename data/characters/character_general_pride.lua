@@ -37,7 +37,7 @@ return {
         staminaRegen = 2,
         damage = 9, magicDamage = 18, -- the greatest mage of the age; her spells are the threat
         defense = 14, magicDefense = 20, -- warded against the magic her line traffics in
-        movement = 3,
+        movement = 4,
         speed = 4,
     },
     -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Codex

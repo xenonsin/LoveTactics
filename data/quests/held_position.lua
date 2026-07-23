@@ -23,6 +23,9 @@
 -- nineteen who refused Acedia's terms and were struck off the rolls), and the timeline moved from
 -- thirty years to fifteen. Text may still lean on beats that have been rewritten upstream.
 
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "Held Position",
     description = "A watchpost stands with nothing behind it and nobody coming. Its garrison will " ..
@@ -31,7 +34,7 @@ return {
     sponsor = "bastion",
     intro = "bastion_held_position_intro",
     outro = "bastion_held_position_outro",
-    rewardItems = { "consumable_watchpost_draught" },
+    rewardItems = { "consumable_watchpost_draught", "weapon_unclosing_edge" },
     rewardGold = 130,
     rewardRep = 20,
     rewardPrestige = 1,

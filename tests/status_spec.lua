@@ -107,8 +107,9 @@ return {
 
             local clock0 = c.clock
             assert(Combat.useItem(c, knight, knight.char.inventory[1], 3, 4), "it can still strike adjacent")
-            -- endTurn folds max(actual move 0, forced movement 2) + ability speed 3 = 5.
-            assert(c.clock == clock0 + 5, "rooted turn costs full move (2) + ability speed (3), got "
+            -- endTurn folds max(actual move 0, forced movement 3) + ability speed 3 = 6. The knight's
+            -- budget is base 4 less chainmail's square: Root bills the full walk it never took.
+            assert(c.clock == clock0 + 6, "rooted turn costs full move (3) + ability speed (3), got "
                 .. (c.clock - clock0))
         end,
     },

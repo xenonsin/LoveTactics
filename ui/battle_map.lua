@@ -589,11 +589,14 @@ function BattleMap:drawUnits()
         if u.corpse and not u.alive and not Combat.unitAt(self.combat, u.x, u.y)
             and not (self.fx and self.fx:awaiting(u)) then
             local wx, wy = self:cellToPixel(u.x, u.y)
+            -- Centre the corpse token over the body's whole footprint (its anchor cell for a 1×1).
+            local bw, bh = (u.w or 1) * s, (u.h or 1) * s
+            local cr = math.min(bw, bh) * 0.24
             love.graphics.setColor(0.30, 0.30, 0.34, 0.45)
-            love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.24)
+            love.graphics.circle("fill", wx + bw / 2, wy + bh / 2, cr)
             love.graphics.setColor(0.12, 0.12, 0.14, 0.45)
             love.graphics.setLineWidth(2)
-            love.graphics.circle("line", wx + s / 2, wy + s / 2, s * 0.24)
+            love.graphics.circle("line", wx + bw / 2, wy + bh / 2, cr)
             love.graphics.setLineWidth(1)
         end
     end
@@ -615,6 +618,11 @@ function BattleMap:drawUnits()
         if u.alive or fade > 0 or awaiting then
             local wx, wy = self:cellToPixel(u.x, u.y)
             wx, wy = wx + offX, wy + offY
+            -- The body fills its whole footprint box (one cell for a 1×1 unit). Sprite and token are
+            -- sized to and centred in the box, so a 2×2 ogre draws twice as tall and wide as a man.
+            local bw, bh = (u.w or 1) * s, (u.h or 1) * s
+            local cx, cy = wx + bw / 2, wy + bh / 2
+            local disc = math.min(bw, bh) * 0.32
             local a = fade > 0 and (1 - fade) or (Status.untargetable(u) and 0.40 or 1)
             local tint = 1 - fade -- fade toward black as it dies
             -- No side ring: a faction outline here would sit right on top of the range band's own
@@ -623,37 +631,37 @@ function BattleMap:drawUnits()
             local sprite = u.char.sprite
             if type(sprite) == "userdata" then
                 local sw, sh = sprite:getDimensions()
-                local scale = math.min((s - 8) / sw, (s - 8) / sh)
+                local scale = math.min((bw - 8) / sw, (bh - 8) / sh)
                 love.graphics.setColor(tint, tint, tint, a)
-                love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale, sw / 2, sh / 2)
+                love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
                 if flash > 0 then -- additive pop, so the sprite brightens rather than just recolors
                     love.graphics.setBlendMode("add")
                     love.graphics.setColor(flash * 0.9, flash * 0.5, flash * 0.45, a)
-                    love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale, sw / 2, sh / 2)
+                    love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
                     love.graphics.setBlendMode("alpha")
                 end
                 if glow > 0 then -- the caster's own additive cast glow (a different color from the flash)
                     love.graphics.setBlendMode("add")
                     love.graphics.setColor(gr * glow, gg * glow, gb * glow, a)
-                    love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale, sw / 2, sh / 2)
+                    love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
                     love.graphics.setBlendMode("alpha")
                 end
             else
                 -- Token fallback: colored disc with the unit's initial, in the unit's side colour.
                 local c = Colors.unit(u)
                 love.graphics.setColor(c[1] * tint, c[2] * tint, c[3] * tint, a)
-                love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.32)
+                love.graphics.circle("fill", cx, cy, disc)
                 love.graphics.setFont(self.font)
                 love.graphics.setColor(tint, tint, tint, a)
-                love.graphics.printf((u.char.name or "?"):sub(1, 1), wx, wy + s / 2 - 8, s, "center")
+                love.graphics.printf((u.char.name or "?"):sub(1, 1), wx, cy - 8, bw, "center")
                 if flash > 0 then
                     love.graphics.setColor(1, 1, 1, flash * 0.6 * a)
-                    love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.32)
+                    love.graphics.circle("fill", cx, cy, disc)
                 end
                 if glow > 0 then
                     love.graphics.setBlendMode("add")
                     love.graphics.setColor(gr * glow, gg * glow, gb * glow, a)
-                    love.graphics.circle("fill", wx + s / 2, wy + s / 2, s * 0.32)
+                    love.graphics.circle("fill", cx, cy, disc)
                     love.graphics.setBlendMode("alpha")
                 end
             end
@@ -734,7 +742,10 @@ function BattleMap:statusBadgeRects(u, wx, wy)
     local list = u.statuses
     if not list or #list == 0 then return {} end
     local s = self.size
-    local inner = s - BADGE_INSET * 2
+    -- Lay the badge row along the bottom of the body's whole footprint (its one cell for a 1×1 unit),
+    -- so a wide body's badges spread across its width and sit just above its footprint-wide HP bar.
+    local boxW, boxH = (u.w or 1) * s, (u.h or 1) * s
+    local inner = boxW - BADGE_INSET * 2
     local gap = BADGE_GAP
 
     -- How many slots the row shows, and how wide each is: every status if they still fit at
@@ -748,9 +759,9 @@ function BattleMap:statusBadgeRects(u, wx, wy)
 
     local shown = (slots < #list) and (slots - 1) or #list
     local totalW = slots * bw + (slots - 1) * gap
-    local startX = wx + s - BADGE_INSET - totalW
-    -- The HP bar's black backing tops out at wy + s - 9; sit the badges a couple px above it.
-    local by = wy + s - 11 - BADGE_H
+    local startX = wx + boxW - BADGE_INSET - totalW
+    -- The HP bar's black backing tops out at wy + boxH - 9; sit the badges a couple px above it.
+    local by = wy + boxH - 11 - BADGE_H
     local rects = {}
     for i = 1, slots do
         local r = { x = startX + (i - 1) * (bw + gap), y = by, w = bw, h = BADGE_H }
@@ -805,7 +816,10 @@ function BattleMap:drawHpBar(u, wx, wy, alpha)
     local shown = (self.fx and self.fx:displayHp(u)) or (hp and hp.current) or 0
     local ratio = 0
     if hp and hp.max and hp.max > 0 then ratio = math.max(0, math.min(1, shown / hp.max)) end
-    local bx, by, bw, bh = wx + 4, wy + s - 8, s - 8, 5
+    -- Span the bar across the body's whole footprint and sit it along the box's bottom edge, so a
+    -- wide unit gets a wide bar rather than one hugging its top-left cell. 1×1 is the original geometry.
+    local boxW, boxH = (u.w or 1) * s, (u.h or 1) * s
+    local bx, by, bw, bh = wx + 4, wy + boxH - 8, boxW - 8, 5
     love.graphics.setColor(0, 0, 0, 0.6 * al)
     love.graphics.rectangle("fill", bx - 1, by - 1, bw + 2, bh + 2, 2, 2)
 
@@ -864,12 +878,16 @@ function BattleMap:drawHighlights()
     local current = self.overlays.current
     if current then
         local wx, wy = self:cellToPixel(current.x, current.y)
+        -- Ring the acting unit's whole footprint (it carries its own unit, so its size is known here),
+        -- so a 2×2 body gets a 2×2 gold ring rather than one framing only its anchor cell.
+        local cw = (current.unit and current.unit.w or 1) * s
+        local ch = (current.unit and current.unit.h or 1) * s
         local pulse = 0.65 + 0.35 * math.sin((self.time or 0) * 4)
         love.graphics.setColor(0.98, 0.82, 0.35, 0.13)
-        love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 5, 5)
+        love.graphics.rectangle("fill", wx + 2, wy + 2, cw - 4, ch - 4, 5, 5)
         love.graphics.setColor(0.98, 0.82, 0.35, pulse)
         love.graphics.setLineWidth(3)
-        love.graphics.rectangle("line", wx + 3, wy + 3, s - 6, s - 6, 5, 5)
+        love.graphics.rectangle("line", wx + 3, wy + 3, cw - 6, ch - 6, 5, 5)
         love.graphics.setLineWidth(1)
     end
 

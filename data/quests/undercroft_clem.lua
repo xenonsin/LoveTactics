@@ -10,12 +10,16 @@
 -- `boss` on her blueprint keeps the fight honest (no execute, no Charm); her defeat recruits rather than
 -- kills, exactly as the Cathedral keeps Amana (data/quests/fallen_confessor.lua) and the Colosseum keeps
 -- Saber (data/quests/arena_debut.lua). The reward IS the companion.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Retired Blade",
     description = "The Bank's own quiet hand has turned on it -- burning notes, freeing the ruined. The " ..
         "house wants her collected. Bring her in.",
     difficulty = "Normal",
     sponsor = "undercroft",
+    rewardItems = { "weapon_nightjar" },
     rewardGold = 90,
     rewardRep = 30,
     rewardPrestige = 1,

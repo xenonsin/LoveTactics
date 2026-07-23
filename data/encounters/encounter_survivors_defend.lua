@@ -57,8 +57,8 @@ return {
             -- straight at the survivors and BURST when they die (data/characters/character_demon_bomblet.lua).
             -- Intercept them -- pop them at range, shove them off -- or lose the caravan to a blast. One or
             -- two, beside the Shout (Taunt) this stop grants, so the lesson reads without swamping the board.
-            { at = 14, from = "back", composition = function(ctx)
-                local list = { "character_demon_bomblet" }
+            { at = 14, from = "surround", composition = function(ctx)
+                local list = { "character_demon_bomblet", "character_demon_bomblet", "character_demon_bomblet"  }
                 if (ctx.prestige or 1) >= 2 then list[#list + 1] = "character_demon_bomblet" end
                 return list
             end },

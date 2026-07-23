@@ -1,9 +1,13 @@
 -- Hunter's Lodge. The Lodge calls it a cull. The stag's herd calls it something else.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Sacred Stag",
     description = "A white stag walks the deep wood. The Lodge wants its antlers on their wall.",
     difficulty = "Normal",
     sponsor = "hunters_lodge",
+    rewardItems = { "weapon_deadfall_bow", "armor_quarryhide" },
     rewardGold = 130,
     rewardRep = 30,
     rewardPrestige = 1,

@@ -30,7 +30,7 @@ return {
         health = 115, mana = 0, stamina = 24, -- stamina affords claws + Cleave + repeated Roars
         damage = 14, magicDamage = 0,          -- base; the stage-3 enrage adds up to +20 as it empties
         defense = 8, magicDefense = 4,
-        movement = 3,
+        movement = 4,
         speed = 3, -- deliberately slow: the stage-1 kite / brace lesson leans on it
     },
     -- Its loadout as the 3x3 grid (row-major; false = empty). The Sigil is the build-around in the

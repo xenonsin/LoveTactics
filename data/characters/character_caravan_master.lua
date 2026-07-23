@@ -17,7 +17,7 @@ return {
         staminaRegen = 1,
         damage = 4, magicDamage = 0,
         defense = 3, magicDefense = 2,
-        movement = 3,
+        movement = 4,
         speed = 2,
     },
 }

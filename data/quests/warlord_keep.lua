@@ -1,8 +1,12 @@
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "Siege of Warlord's Keep",
     description = "The Warlord once fought under the Colosseum's banner. They want him brought back, or brought down.",
     difficulty = "Hard",
     sponsor = "colosseum",
+    rewardItems = { "weapon_bellfounders_hammer", "armor_rally_coat" },
     rewardGold = 300,
     rewardRep = 60,
     rewardPrestige = 2,

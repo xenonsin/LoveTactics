@@ -21,6 +21,9 @@
 -- nineteen who refused Acedia's terms and were struck off the rolls), and the timeline moved from
 -- thirty years to fifteen. Text may still lean on beats that have been rewritten upstream.
 
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Long List",
     description = "The Bastion keeps a list of knights who set their shields down, and it would like " ..
@@ -29,7 +32,7 @@ return {
     sponsor = "bastion",
     intro = "bastion_the_long_list_intro",
     outro = "bastion_the_long_list_outro",
-    rewardItems = { "utility_closed_entry" },
+    rewardItems = { "utility_closed_entry", "weapon_splitglass_saber" },
     rewardGold = 180,
     rewardRep = 25,
     rewardPrestige = 1,

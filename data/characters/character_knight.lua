@@ -14,11 +14,11 @@ return {
     -- character has no cast history yet. See models/growth.lua and data/growth/<class>.lua.
     class = "knight",
     stats = {
-        health = 70, mana = 20, stamina = 15, -- resource stats
+        health = 70, mana = 15, stamina = 15, -- resource stats
         staminaRegen = 2, -- stamina recovered per elapsed tick (a flat stat, not a resource)
         damage = 14, magicDamage = 4,          -- flat stats
         defense = 10, magicDefense = 6,
-        movement = 3, -- number of spaces this character can move
+        movement = 4, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
     -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. The

@@ -33,7 +33,7 @@ return {
         staminaRegen = 2,
         damage = 6, magicDamage = 8, -- she does not kill; she lifts
         defense = 8, magicDefense = 12,
-        movement = 3,
+        movement = 4,
         speed = 3,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. The Aqua Vitae is the build-around in the

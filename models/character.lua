@@ -59,6 +59,20 @@ local function isResourceStat(key)
     return false
 end
 
+-- A blueprint's `footprint` into a normalized { w, h }. Accepts { w = 2, h = 2 } (the authored form),
+-- a bare integer N (shorthand for an N×N square), or nil/absent -> 1×1. Dimensions are floored to at
+-- least 1, so a malformed blueprint degrades to a single tile rather than a zero-size body.
+local function normalizeFootprint(fp)
+    if type(fp) == "number" then
+        local n = math.max(1, math.floor(fp))
+        return { w = n, h = n }
+    end
+    if type(fp) == "table" then
+        return { w = math.max(1, math.floor(fp.w or 1)), h = math.max(1, math.floor(fp.h or 1)) }
+    end
+    return { w = 1, h = 1 }
+end
+
 Character.defs = Registry.load("data/characters", "data.characters")
 
 -- The first empty grid cell (1..MAX_INVENTORY), or nil if the grid is full.
@@ -257,6 +271,10 @@ function Character.instantiate(id, progress)
         -- A general/boss blueprint sets `boss = true`; carried through so an ability can refuse to work
         -- on one (Coup de Grace won't execute a boss, Charm won't turn it). Nil for an ordinary unit.
         boss = def.boss,
+        -- Board footprint: how many cells this body covers, as { w, h } anchored at its top-left.
+        -- A blueprint's `footprint = { w = 2, h = 2 }` makes a 2×2 ogre; absent (the case for every
+        -- ordinary character) normalizes to 1×1, the single tile the whole engine assumed before.
+        footprint = normalizeFootprint(def.footprint),
         -- How this body fights when nobody is driving it (models/ai.lua): the posture that decides
         -- whether it engages and how it moves, plus any blueprint-authored rules layered over the
         -- posture's defaults. Both optional -- a character that names neither plays as `aggressive`,

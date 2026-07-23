@@ -48,22 +48,30 @@ return {
         end,
     },
     {
+        -- The claim here is about SHAPE: a resource stat arrives as a { max, current } pair opened
+        -- at full. The knight's actual numbers are a balance decision, so they are read off the
+        -- blueprint rather than baked in -- a rebalance must never turn this red.
         name = "resource stats split into { max, current }",
         fn = function()
+            local def = Character.defs.character_knight.stats
             local c = Character.instantiate("character_knight")
-            assert(c.stats.health.max == 70 and c.stats.health.current == 70, "health")
-            assert(c.stats.mana.max == 20, "mana max")
-            assert(c.stats.stamina.current == 15, "stamina current")
+            for _, stat in ipairs({ "health", "mana", "stamina" }) do
+                assert(type(c.stats[stat]) == "table", stat .. " should split into a table")
+                assert(c.stats[stat].max == def[stat], stat .. " max should come from the blueprint")
+                assert(c.stats[stat].current == def[stat], stat .. " should open at full")
+            end
         end,
     },
     {
+        -- Likewise: a flat stat stays the plain number the blueprint wrote, whatever that number is.
         name = "flat stats stay plain numbers",
         fn = function()
+            local def = Character.defs.character_knight.stats
             local c = Character.instantiate("character_knight")
-            assert(type(c.stats.damage) == "number" and c.stats.damage == 14, "damage")
-            assert(type(c.stats.magicDamage) == "number", "magicDamage")
-            assert(type(c.stats.defense) == "number", "defense")
-            assert(type(c.stats.magicDefense) == "number", "magicDefense")
+            for _, stat in ipairs({ "damage", "magicDamage", "defense", "magicDefense" }) do
+                assert(type(c.stats[stat]) == "number", stat .. " should stay a plain number")
+                assert(c.stats[stat] == def[stat], stat .. " should match the blueprint")
+            end
         end,
     },
     {
@@ -157,9 +165,12 @@ return {
     {
         name = "blueprints are untouched after instantiation",
         fn = function()
+            -- Compare the blueprint against itself across the mutation, not against a literal: what
+            -- is being asserted is that nothing CHANGED, which is true at any balance number.
+            local before = Character.defs.character_knight.stats.health
             local c = Character.instantiate("character_knight")
             c.stats.health.current = 1
-            assert(Character.defs.character_knight.stats.health == 70, "blueprint health mutated")
+            assert(Character.defs.character_knight.stats.health == before, "blueprint health mutated")
             assert(type(Character.defs.character_knight.stats.health) == "number", "blueprint stat became a table")
         end,
     },

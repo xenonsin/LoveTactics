@@ -31,6 +31,7 @@ return {
     type = "utility",
     tags = { "charm", "poison" },
     class = "alchemist",
+    discipline = "apothecary", -- priest + alchemist; the Lent-vitality mechanic's first stock
     price = 460,
     repRank = 3,
     -- The cloud: laid around the bearer on every move and re-laid from Combat.rebase for one that

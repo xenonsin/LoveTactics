@@ -32,7 +32,7 @@ return {
         staminaRegen = 2,
         damage = 12, magicDamage = 12, -- middling of herself; the copy she opens with is the threat
         defense = 12, magicDefense = 14,
-        movement = 3,
+        movement = 4,
         speed = 4,
     },
     -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Envious Glass

@@ -52,6 +52,7 @@ local Wall = require("models.wall")
 local Prop = require("models.prop")
 local Character = require("models.character")
 local Item = require("models.item") -- for Item.costs: the one place an ability's costs are normalized
+local Discipline = require("models.discipline") -- growthClasses: which classes a use tallies
 
 local Combat = {}
 
@@ -157,6 +158,108 @@ local function stepToward(ax, ay, bx, by)
         return (dx > 0) and 1 or -1, 0
     end
     return 0, (dy > 0) and 1 or -1
+end
+
+-- ---------------------------------------------------------------------------
+-- Footprints: a unit occupies a w×h block of cells anchored at its top-left (unit.x, unit.y).
+-- Absent w/h reads as 1×1, so every single-tile unit -- which is every unit today -- and every
+-- caller that still reasons in single points behaves exactly as before. Only code that asks "which
+-- cells?" or "how close?" needs the helpers below.
+-- ---------------------------------------------------------------------------
+
+-- The cells a w×h box anchored at (ax, ay) covers. No board clamp: callers that care about bounds
+-- test each cell (footprintFree / footprintCanShift), and the reach/move math wants the raw cells so
+-- an off-board one reads as "not free" rather than silently dropping out.
+function Combat.cellsAt(w, h, ax, ay)
+    w, h = w or 1, h or 1
+    local out = {}
+    for j = 0, h - 1 do
+        for i = 0, w - 1 do
+            out[#out + 1] = { x = ax + i, y = ay + j }
+        end
+    end
+    return out
+end
+
+-- Every cell a unit's body stands on, from its anchor and footprint.
+function Combat.unitCells(unit)
+    return Combat.cellsAt(unit.w, unit.h, unit.x, unit.y)
+end
+
+-- Min Manhattan distance from point (x, y) to the nearest cell of `unit`'s footprint -- 0 when the
+-- point lies inside the body. The footprint-aware stand-in for manhattan(x, y, unit.x, unit.y):
+-- range, earshot and aura checks measure to the nearest cell, so a big body counts as "in reach"
+-- when any part of it is. Computed as the distance to an axis-aligned box (0 within the span on an
+-- axis, else the overshoot), which for a 1×1 unit is exactly the old manhattan.
+function Combat.cellGap(x, y, unit)
+    local w, h = unit.w or 1, unit.h or 1
+    local dx = math.max(unit.x - x, x - (unit.x + w - 1), 0)
+    local dy = math.max(unit.y - y, y - (unit.y + h - 1), 0)
+    return dx + dy
+end
+
+-- The cell of `unit`'s footprint nearest to (x, y) -- the cell a strike aimed at this body should
+-- land on, so the range re-check in Combat.useItem (measured to that cell) agrees with whatever
+-- planned the shot. Ties break toward the smaller coordinate; a 1×1 body returns its one cell.
+function Combat.nearestCell(x, y, unit)
+    local best, bx, by
+    for _, c in ipairs(Combat.unitCells(unit)) do
+        local d = math.abs(c.x - x) + math.abs(c.y - y)
+        if not best or d < best then best, bx, by = d, c.x, c.y end
+    end
+    return bx, by
+end
+
+-- Min Manhattan distance between two units' footprints (nearest cell to nearest cell). A gap of 1
+-- means orthogonally adjacent bodies -- the melee-reach test for units of any size; 0 only if they
+-- overlap, which the occupancy rules never allow for two living units.
+function Combat.unitGap(a, b)
+    local bw, bh = b.w or 1, b.h or 1
+    local best
+    for j = 0, bh - 1 do
+        for i = 0, bw - 1 do
+            local d = Combat.cellGap(b.x + i, b.y + j, a)
+            if not best or d < best then best = d end
+        end
+    end
+    return best or 0
+end
+
+-- Can a w×h body come to REST at anchor (ax, ay)? Every covered cell must be on the board, walkable,
+-- clear of blocking objects, and clear of any OTHER unit (`ignoreUnit`'s own cells don't count, so a
+-- unit tests tiles it already stands on as free for itself). This is the "footing" predicate shared
+-- by placement finders and the forced-movement / stop checks; a flier's PATH crossing non-walkable
+-- ground is moveGraph's business, but where it finally stops still answers to this.
+function Combat.footprintFree(combat, w, h, ax, ay, ignoreUnit)
+    local arena = combat.arena
+    for _, c in ipairs(Combat.cellsAt(w, h, ax, ay)) do
+        local row = arena and arena.tiles and arena.tiles[c.y]
+        local cell = row and row[c.x]
+        if not (cell and cell.walkable) then return false end
+        if Combat.objectBlocksAt(combat, c.x, c.y) then return false end
+        local occ = Combat.unitAt(combat, c.x, c.y)
+        if occ and occ ~= ignoreUnit then return false end
+    end
+    return true
+end
+
+-- Does any cell of `unit`'s body have a clear line to (x, y)? A wide body sees -- and shoots, and is
+-- shot -- from whichever part of it can, so line of sight is the union over its footprint cells. For
+-- a 1×1 unit this is a single Combat.hasLineOfSight from its one cell.
+function Combat.unitHasSight(combat, unit, x, y)
+    for _, c in ipairs(Combat.unitCells(unit)) do
+        if Combat.hasLineOfSight(combat, c.x, c.y, x, y) then return true end
+    end
+    return false
+end
+
+-- Can unit `a` see unit `b` -- any cell of a's body to any cell of b's? The two-body form of
+-- unitHasSight, for the target checks (targeting, overwatch) where both ends may be wide.
+function Combat.unitsSighted(combat, a, b)
+    for _, c in ipairs(Combat.unitCells(b)) do
+        if Combat.unitHasSight(combat, a, c.x, c.y) then return true end
+    end
+    return false
 end
 
 local function hasTag(tags, want)
@@ -454,8 +557,17 @@ end
 
 -- The unit's effective movement budget (base + item bonus). Public so status hooks (root's
 -- "pay as if you moved max spaces") can read it without duplicating the passive folding.
+--
+-- FLOORED AT ZERO, because armor movement penalties STACK: applyUnitPassives sums `bonus.movement`
+-- across every item in the 3x3 grid, so a body in two heavy plates and a cloth robe is genuinely
+-- capable of totalling below nothing. Immobility is a legitimate outcome of over-armouring and is left
+-- alone -- what the clamp forbids is a NEGATIVE budget, which reads as "less than planted" in every
+-- caller (the Dijkstra in moveGraph, Root's "pay as if you walked max", the reachable preview) and
+-- means nothing in any of them. Deliberately clamped here rather than in applyUnitPassives, so the
+-- Loadout screen can still show a -5 and tell the player what they have done to themselves.
 function Combat.moveBudget(unit)
-    return flatStat(unit, "movement")
+    local m = flatStat(unit, "movement")
+    return m > 0 and m or 0
 end
 
 -- Public read of the fold above, for a model that needs an effective stat but has no business
@@ -651,10 +763,13 @@ end
 -- a single-target ability (no `aoe`) yields only the occupant of the target cell, if any. `unit` is
 -- the caster, needed to orient a directional footprint (line/front); harmless for the others.
 function Combat.aoeUnits(combat, ab, tx, ty, unit)
-    local out = {}
+    local out, seen = {}, {}
     for _, c in ipairs(Combat.aoeCells(combat, ab, tx, ty, unit)) do
         local u = Combat.unitAt(combat, c.x, c.y)
-        if u then out[#out + 1] = u end
+        -- A wide body can lie under several of the blast's cells; it is caught ONCE. Dedup by the
+        -- unit's stable index (every unit has one -- Combat.addUnit / addSide) so a 2×2 target in a
+        -- fireball takes a single hit, not one per covered tile.
+        if u and not seen[u.index] then seen[u.index] = true; out[#out + 1] = u end
     end
     return out
 end
@@ -742,9 +857,13 @@ end
 -- timeless (an object, not a body: it stands outside the turn order entirely -- see Combat.inTimeline).
 function Combat.addUnit(combat, char, side, x, y, opts)
     opts = opts or {}
+    local fp = char.footprint or { w = 1, h = 1 }
     local unit = {
         char = char, side = side,
         x = x, y = y,
+        -- Board footprint (from the blueprint, via Character.instantiate). The unit occupies the w×h
+        -- block whose top-left corner is its anchor (x, y). 1×1 for every ordinary body.
+        w = fp.w, h = fp.h,
         initiative = math.max(0, Combat.initiative(char)),
         speed = Combat.speed(char),
         alive = true,
@@ -791,9 +910,11 @@ function Combat.new(arena, partyUnits, enemyUnits)
 
     local function addSide(list, side)
         for _, u in ipairs(list or {}) do
+            local fp = u.char.footprint or { w = 1, h = 1 }
             local unit = {
                 char = u.char, side = side,
                 x = u.x, y = u.y,
+                w = fp.w, h = fp.h, -- board footprint; see Combat.addUnit
                 initiative = Combat.initiative(u.char),
                 speed = Combat.speed(u.char), -- primary tie-break
                 alive = true,
@@ -1130,7 +1251,7 @@ local function nearSanctifier(combat, u)
     if Trait.has(u, "trait_sanctified_presence") then return true end
     for _, o in ipairs(combat.units) do
         if o.alive and o ~= u and o.side == u.side and Trait.has(o, "trait_sanctified_presence")
-            and manhattan(o.x, o.y, u.x, u.y) == 1 then
+            and Combat.unitGap(o, u) == 1 then
             return true
         end
     end
@@ -1180,9 +1301,19 @@ end
 -- Queries
 -- ---------------------------------------------------------------------------
 
+-- The living unit whose BODY covers (x, y) -- for a big unit, any of its footprint cells, not just
+-- its anchor. This is the engine's one occupancy question: pathing block-checks, forced-movement
+-- collision, spawn placement, click-to-select and AoE all route through it, so making it read the
+-- whole footprint is what lets a 2×2 body block, be selected, and be hit from any of its four cells.
+-- A 1×1 unit's single cell is its anchor, so this is exactly the old x==,y== test for them.
 function Combat.unitAt(combat, x, y)
     for _, u in ipairs(combat.units) do
-        if u.alive and u.x == x and u.y == y then return u end
+        if u.alive then
+            local w, h = u.w or 1, u.h or 1
+            if x >= u.x and x <= u.x + w - 1 and y >= u.y and y <= u.y + h - 1 then
+                return u
+            end
+        end
     end
     return nil
 end
@@ -1237,13 +1368,15 @@ end
 -- onto the ground next to its caster) can honour that standard without re-deriving it.
 --
 -- Orthogonals before diagonals: a body set down beside you should read as beside you.
-function Combat.openTileNear(combat, x, y)
+-- The first open tile in the ring around (x, y) a w×h body would fit on -- the anchor it can be set
+-- down at. `w`/`h` default to 1×1, so every existing summon/spawn caller is unchanged; a large body
+-- passes its footprint so the whole block is checked, not just the ring cell itself.
+function Combat.openTileNear(combat, x, y, w, h)
+    w, h = w or 1, h or 1
     local ring = { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 }, { 1, -1 }, { 1, 1 }, { -1, 1 }, { -1, -1 } }
     for _, d in ipairs(ring) do
         local nx, ny = x + d[1], y + d[2]
-        local row = combat.arena and combat.arena.tiles and combat.arena.tiles[ny]
-        local cell = row and row[nx]
-        if cell and cell.walkable and not Combat.unitAt(combat, nx, ny) then
+        if Combat.footprintFree(combat, w, h, nx, ny) then
             return nx, ny
         end
     end
@@ -1306,9 +1439,10 @@ end
 -- A free walkable tile for a reinforcement arriving from `edge`: the outermost open cell on that
 -- side, spilling inward when the front line is packed. Nil when the whole edge is full, in which case
 -- the caller skips that arrival rather than stacking it onto an occupied tile.
-function Combat.freeEdgeTile(combat, edge)
+function Combat.freeEdgeTile(combat, edge, w, h)
+    w, h = w or 1, h or 1
     for _, t in ipairs(Combat.edgeTiles(combat, edge, 3)) do
-        if not Combat.unitAt(combat, t.x, t.y) then return t.x, t.y end
+        if Combat.footprintFree(combat, w, h, t.x, t.y) then return t.x, t.y end
     end
     return nil
 end
@@ -1518,7 +1652,8 @@ function Combat.unitsNear(combat, x, y, radius)
     radius = radius or 0
     local out = {}
     for _, u in ipairs(combat.units) do
-        if u.alive and manhattan(x, y, u.x, u.y) <= radius then out[#out + 1] = u end
+        -- Nearest cell of the body, so a big unit is "near" (x, y) when any part of it is in radius.
+        if u.alive and Combat.cellGap(x, y, u) <= radius then out[#out + 1] = u end
     end
     return out
 end
@@ -2142,6 +2277,10 @@ local function moveGraph(combat, unit)
     -- square -- which is exactly the thing a shield wall in a corridor is for, and exactly the answer
     -- to it this game did not have.
     local phasing = Combat.isPhasing(unit)
+    -- The body's footprint. The Dijkstra walks the ANCHOR (top-left) cell by cell; every candidate
+    -- anchor is judged by whether the whole w×h block would fit there, so a 2×2 body cannot thread a
+    -- one-tile gap. 1×1 collapses to the single-tile logic this always was.
+    local w, h = unit.w or 1, unit.h or 1
 
     local best = {}
     local origin = { x = unit.x, y = unit.y, cost = 0, steps = 0 }
@@ -2160,27 +2299,36 @@ local function moveGraph(combat, unit)
         if best[key(cur.x, cur.y)] == cur then
             for _, d in ipairs(DIRS) do
                 local nx, ny = cur.x + d[1], cur.y + d[2]
-                if nx >= 1 and nx <= arena.cols and ny >= 1 and ny <= arena.rows then
-                    local cell = arena.tiles[ny][nx]
-                    local occ = Combat.unitAt(combat, nx, ny)
-                    -- An enemy bars the tile outright; a friendly unit may be passed through (transit
-                    -- only). Standing objects and impassable terrain always bar the way.
-                    local enemy = occ ~= nil and occ.side ~= unit.side and not phasing
-                    -- A flier crosses any ground (walkable or not) and is never slowed by it; everyone
-                    -- else pays what the terrain asks and stops at what it can't walk on. Objects (a
-                    -- wall, a barrel) and enemies bar the way for both -- they are obstacles, not footing.
-                    local passable = flying or cell.walkable
-                    if passable and not enemy and not Combat.objectBlocksAt(combat, nx, ny) then
-                        local ncost = cur.cost + (flying and 1 or cell.moveCost)
-                        if ncost <= budget then
-                            local nk = key(nx, ny)
-                            local existing = best[nk]
-                            if not existing or ncost < existing.cost then
-                                local node = { x = nx, y = ny, cost = ncost, steps = cur.steps + 1,
-                                               fromKey = key(cur.x, cur.y), occupied = occ ~= nil }
-                                best[nk] = node
-                                frontier[#frontier + 1] = node
-                            end
+                -- Judge every cell the body would cover at this anchor. An enemy in ANY of them bars
+                -- the move outright; a friendly (or the unit's own current cells, ignored) is transit
+                -- only, so the anchor is walked through but not stopped on. Objects and, for a
+                -- non-flier, impassable terrain always bar the way. Terrain cost is the roughest cell
+                -- the body crosses (flying pays a flat 1 per step), so a wide body is slowed by the
+                -- worst ground under it -- matching how a single tile was costed before.
+                local ok, enemy, otherUnit, stepCost = true, false, false, 0
+                for _, c in ipairs(Combat.cellsAt(w, h, nx, ny)) do
+                    if c.x < 1 or c.x > arena.cols or c.y < 1 or c.y > arena.rows then ok = false; break end
+                    local cell = arena.tiles[c.y][c.x]
+                    if not (flying or cell.walkable) then ok = false; break end
+                    if Combat.objectBlocksAt(combat, c.x, c.y) then ok = false; break end
+                    local occ = Combat.unitAt(combat, c.x, c.y)
+                    if occ and occ ~= unit then
+                        if occ.side ~= unit.side and not phasing then enemy = true; ok = false; break end
+                        otherUnit = true
+                    end
+                    local mc = flying and 1 or cell.moveCost
+                    if mc > stepCost then stepCost = mc end
+                end
+                if ok and not enemy then
+                    local ncost = cur.cost + stepCost
+                    if ncost <= budget then
+                        local nk = key(nx, ny)
+                        local existing = best[nk]
+                        if not existing or ncost < existing.cost then
+                            local node = { x = nx, y = ny, cost = ncost, steps = cur.steps + 1,
+                                           fromKey = key(cur.x, cur.y), occupied = otherUnit }
+                            best[nk] = node
+                            frontier[#frontier + 1] = node
                         end
                     end
                 end
@@ -2256,6 +2404,7 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRa
         stands[#stands + 1] = { x = node.x, y = node.y, cost = node.cost }
     end
 
+    local w, h = unit.w or 1, unit.h or 1
     local out = {}
     for _, s in ipairs(stands) do
         -- The same reach the cast gate computes (Combat.abilityRange, which Combat.useItem checks):
@@ -2265,21 +2414,27 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRa
         -- nothing.
         local r = math.max(1, range + Combat.fieldRangeBonus(combat, requiresSight, s.x, s.y)
             - Status.rangeMalus(unit))
-        for dx = -r, r do
-            for dy = -r, r do
-                local d = math.abs(dx) + math.abs(dy)
-                if d <= r and d >= minRange then
-                    local x, y = s.x + dx, s.y + dy
-                    -- Impassable tiles (solid obstacles, which also fully block sight) can never
-                    -- hold a target, so they're never part of the reach -- no red highlight, and
-                    -- click-to-attack can't fire into a wall.
-                    if x >= 1 and x <= combat.arena.cols and y >= 1 and y <= combat.arena.rows
-                        and combat.arena.tiles[y][x].walkable
-                        and (not requiresSight or Combat.hasLineOfSight(combat, s.x, s.y, x, y)) then
-                        local k = key(x, y)
-                        local e = out[k]
-                        if not e or s.cost < e.moveCost then
-                            out[k] = { x = x, y = y, fromX = s.x, fromY = s.y, moveCost = s.cost }
+        -- A wide body threatens from EVERY cell it would cover when standing at this anchor: the reach
+        -- is the union of the Manhattan diamonds cast from each cell (one cell, the anchor, for a 1×1
+        -- body -- unchanged). `fromX/fromY` stays the stand ANCHOR (where the click plan sends the unit
+        -- to move); sight is drawn from the actual striking cell.
+        for _, bc in ipairs(Combat.cellsAt(w, h, s.x, s.y)) do
+            for dx = -r, r do
+                for dy = -r, r do
+                    local d = math.abs(dx) + math.abs(dy)
+                    if d <= r and d >= minRange then
+                        local x, y = bc.x + dx, bc.y + dy
+                        -- Impassable tiles (solid obstacles, which also fully block sight) can never
+                        -- hold a target, so they're never part of the reach -- no red highlight, and
+                        -- click-to-attack can't fire into a wall.
+                        if x >= 1 and x <= combat.arena.cols and y >= 1 and y <= combat.arena.rows
+                            and combat.arena.tiles[y][x].walkable
+                            and (not requiresSight or Combat.hasLineOfSight(combat, bc.x, bc.y, x, y)) then
+                            local k = key(x, y)
+                            local e = out[k]
+                            if not e or s.cost < e.moveCost then
+                                out[k] = { x = x, y = y, fromX = s.x, fromY = s.y, moveCost = s.cost }
+                            end
                         end
                     end
                 end
@@ -2378,6 +2533,20 @@ function Combat.enterTile(combat, unit, x, y, reason, fromX, fromY)
     if unit.alive and (reason == "walk" or reason == "forced") then
         Status.onEnterTile(combat, unit)
     end
+    -- A body wider than one tile also stands on the cells beyond its anchor. The once-per-move effects
+    -- above (trail, carried ground, bleed) fired for the body as a whole; here we spring only the
+    -- PER-TILE ground -- a trap or a hazard -- under the rest of the footprint, so a 2×2 ogre setting
+    -- a foot on a trap trips it wherever under its bulk that trap sits. A 1×1 body skips this entirely.
+    if unit.alive and ((unit.w or 1) > 1 or (unit.h or 1) > 1) then
+        for _, c in ipairs(Combat.unitCells(unit)) do
+            if unit.alive and not (c.x == x and c.y == y) then
+                local extraTrap = Trap.at(combat, c.x, c.y)
+                if extraTrap and not Combat.ignoresTraps(unit) then Trap.trigger(combat, extraTrap, unit) end
+                if unit.alive then Hazard.onEnter(combat, unit, c.x, c.y) end
+            end
+        end
+        if unit.alive then Hazard.reap(combat, unit) end
+    end
 end
 
 -- The initiative a walk of terrain-weighted `cost` actually charges `unit`: the raw path cost
@@ -2442,25 +2611,35 @@ function Combat.planMoveVia(combat, unit, cells)
     -- re-derivation of the identical legality question (a steered route rather than a derived one),
     -- so the two must answer it the same way or a flier's own move band would refuse its own route.
     local flying = Combat.isFlying(unit)
+    local w, h = unit.w or 1, unit.h or 1
     local seen = { [key(unit.x, unit.y)] = true }
     local cost = 0
     for i = 2, #cells do
         local c, p = cells[i], cells[i - 1]
         if math.abs(c.x - p.x) + math.abs(c.y - p.y) ~= 1 then return nil, "not contiguous" end
-        if c.x < 1 or c.x > arena.cols or c.y < 1 or c.y > arena.rows then return nil, "off grid" end
-        local tile = arena.tiles[c.y][c.x]
-        if not (flying or tile.walkable) then return nil, "blocked" end
         local k = key(c.x, c.y)
         if seen[k] then return nil, "revisit" end -- catch a double-back (incl. onto the origin) first
-        local occ = Combat.unitAt(combat, c.x, c.y)
-        if occ and occ ~= unit then
-            -- The mover may pass THROUGH a friendly unit but must not stop on one (the destination is
-            -- the last cell); an enemy bars the way outright, transit or not.
-            if i == #cells or occ.side ~= unit.side then return nil, "occupied" end
+        -- Judge the whole footprint at this anchor, exactly as moveGraph does: every covered cell must
+        -- be on the board and walkable (a flier excepted), clear of objects, and clear of any OTHER
+        -- unit -- an enemy bars the way, a friendly is transit only (never a stop), and the body's own
+        -- current cells (occ == unit; this is a pure check, the unit hasn't moved) never block it.
+        -- Terrain cost is the roughest cell under the body, matching the derived path in moveGraph.
+        local stepCost = 0
+        for _, fc in ipairs(Combat.cellsAt(w, h, c.x, c.y)) do
+            if fc.x < 1 or fc.x > arena.cols or fc.y < 1 or fc.y > arena.rows then return nil, "off grid" end
+            local tile = arena.tiles[fc.y][fc.x]
+            if not (flying or tile.walkable) then return nil, "blocked" end
+            if Combat.objectBlocksAt(combat, fc.x, fc.y) then return nil, "wall" end
+            local occ = Combat.unitAt(combat, fc.x, fc.y)
+            if occ and occ ~= unit then
+                -- The mover may pass THROUGH a friendly but must not stop on one (the destination is
+                -- the last cell); an enemy bars the way outright, transit or not.
+                if i == #cells or occ.side ~= unit.side then return nil, "occupied" end
+            end
+            if tile.moveCost > stepCost then stepCost = tile.moveCost end
         end
-        if Combat.objectBlocksAt(combat, c.x, c.y) then return nil, "wall" end
         seen[k] = true
-        cost = cost + (flying and 1 or tile.moveCost)
+        cost = cost + (flying and 1 or stepCost)
         if cost > budget then return nil, "too far" end
     end
 
@@ -2582,12 +2761,33 @@ local function canShoveInto(combat, x, y)
     return true, nil
 end
 
+-- The whole-body form of canShoveInto: can `unit` slide so its ANCHOR moves by (dx, dy)? Every cell
+-- the body would then cover is tested, and the cells it already stands on are legal to slide into (a
+-- body moving one tile overlaps its old self). Returns ok, blocker, kind exactly as canShoveInto did
+-- for a single tile -- kind "unit"/"wall"/"prop", nil blocker meaning the map itself barred it -- so
+-- the shove loops read the same answer whatever the body's size. First offending cell wins the report.
+local function footprintCanShift(combat, unit, dx, dy)
+    for _, c in ipairs(Combat.cellsAt(unit.w or 1, unit.h or 1, unit.x + dx, unit.y + dy)) do
+        local row = combat.arena and combat.arena.tiles and combat.arena.tiles[c.y]
+        local cell = row and row[c.x]
+        if not (cell and cell.walkable) then return false, nil end
+        if Combat.objectBlocksAt(combat, c.x, c.y) then
+            local obj, kind = Combat.objectAt(combat, c.x, c.y)
+            return false, obj, kind
+        end
+        local occ = Combat.unitAt(combat, c.x, c.y)
+        if occ and occ ~= unit then return false, occ, "unit" end
+    end
+    return true, nil
+end
+
 -- Slide `unit` one tile by (dx, dy), triggering whatever it lands on. Returns false on a blocked
--- tile without moving it.
+-- tile without moving it. A wide body moves as one -- every cell it would enter must be clear
+-- (footprintCanShift) or the whole slide is refused.
 local function shoveStep(combat, unit, dx, dy)
-    local nx, ny = unit.x + dx, unit.y + dy
-    if not canShoveInto(combat, nx, ny) then return false end
+    if not footprintCanShift(combat, unit, dx, dy) then return false end
     local fromX, fromY = unit.x, unit.y -- as Combat.stepMove: the vacated tile a trail lays behind on
+    local nx, ny = unit.x + dx, unit.y + dy
     unit.x, unit.y = nx, ny
     Combat.enterTile(combat, unit, nx, ny, "forced", fromX, fromY)
     -- Being knocked off your feet shatters a channel you were winding up. Idempotent, so a
@@ -2607,8 +2807,12 @@ function Combat.knockbackTile(combat, source, target, distance)
     local dx, dy = signDominant(target.x - source.x, target.y - source.y)
     local x, y = target.x, target.y
     if dx == 0 and dy == 0 then return x, y end
+    local w, h = target.w or 1, target.h or 1
     for _ = 1, (distance or 1) do
-        if not canShoveInto(combat, x + dx, y + dy) then break end
+        -- Test the whole body at the next anchor, ignoring the target's own cells (it slides through
+        -- them). footprintFree is exactly canShoveInto's rule (walkable, no object, no other unit),
+        -- lifted to the footprint -- so the preview lands where the live shove below comes to rest.
+        if not Combat.footprintFree(combat, w, h, x + dx, y + dy, target) then break end
         x, y = x + dx, y + dy
     end
     return x, y
@@ -2655,7 +2859,7 @@ function Combat.knockback(combat, source, target, distance, opts)
     local total = distance or 1
     local moved = 0
     for _ = 1, total do
-        local ok, blocker, kind = canShoveInto(combat, target.x + dx, target.y + dy)
+        local ok, blocker, kind = footprintCanShift(combat, target, dx, dy)
         if not ok then
             local hit = impactDamage(amount, total - moved)
             Combat.logEvent(combat, "damage",
@@ -2781,7 +2985,7 @@ function Combat.pull(combat, source, target)
         return false, "no line of sight"
     end
     local moved = 0
-    while manhattan(source.x, source.y, target.x, target.y) > 1 do
+    while Combat.unitGap(source, target) > 1 do
         local dx, dy = signDominant(source.x - target.x, source.y - target.y)
         if not shoveStep(combat, target, dx, dy) then break end
         moved = moved + 1
@@ -2816,7 +3020,14 @@ end
 -- it. `target` must start orthogonally adjacent (the "pin"). Returns the number of tiles advanced.
 function Combat.charge(combat, user, target, distance)
     if not (user and user.alive and target and target.alive) then return 0 end
-    if manhattan(user.x, user.y, target.x, target.y) ~= 1 then return 0 end -- must be pinned in front
+    if Combat.unitGap(user, target) ~= 1 then return 0 end -- must be pinned in front
+    -- Charge is a lockstep built on single-tile bodies: the charger steps into the exact cell its
+    -- target vacates each stride. That geometry doesn't hold for a wide body, so a multi-tile charger
+    -- OR target can't perform the drive -- the pin fizzles rather than resolving into a broken slide.
+    -- (A wide BYSTANDER in the lane is still handled below: it is shoved aside as a whole body.)
+    if (user.w or 1) > 1 or (user.h or 1) > 1 or (target.w or 1) > 1 or (target.h or 1) > 1 then
+        return 0
+    end
     local dx, dy = signDominant(target.x - user.x, target.y - user.y)
     if dx == 0 and dy == 0 then return 0 end
 
@@ -3465,7 +3676,7 @@ end
 function Combat.tryRedirect(combat, target, base, tags)
     for _, g in ipairs(combat.units) do
         if g.alive and g.guard and g ~= target and g.side == target.side
-            and manhattan(g.x, g.y, target.x, target.y) == 1 then
+            and Combat.unitGap(g, target) == 1 then
             local kind = g.guard.kind
             -- A DECLARED guard names the one unit it is for (data/traits/trait_oathward_declared.lua):
             -- it guards that ally absolutely and everyone else not at all. An undeclared guard has no
@@ -3983,7 +4194,11 @@ function Combat.dealDamage(combat, user, target, item, opts)
     local ab = item and item.activeAbility
     -- Additive: the ability's damage plus the attacker's attack stat (opts.amount overrides the
     -- declared damage for a one-off hit). Mitigation then subtracts the target's defense + resists.
-    local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item)
+    -- A standing charm may add a conditional bite (Cutpurse's Tally per debuff, the Marksman's Lens
+    -- against a Marked foe). Pure and summed into `base` here AND in computeDamage below, so the hover
+    -- preview never disagrees with the blow. See Trait.outgoingDamageBonus.
+    local charmBonus = Trait.outgoingDamageBonus(combat, user, target, item, tags)
+    local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item) + charmBonus
     -- Name where that pre-mitigation power came from, so the combat-log hover can spell it out: the
     -- attacker's attack stat, the weapon/ability's own damage, and any bare-fist bonus. Rides along on
     -- opts (like opts.area below) to the flat path, which folds it into the damage line's breakdown.
@@ -4013,6 +4228,7 @@ function Combat.dealDamage(combat, user, target, item, opts)
     end
     local fistVal = unarmedDamageBonus(user, item)
     if fistVal ~= 0 then baseParts[#baseParts + 1] = { label = "Unarmed bonus", value = fistVal } end
+    if charmBonus ~= 0 then baseParts[#baseParts + 1] = { label = "Charm bonus", value = charmBonus } end
     opts.baseParts = baseParts
     -- Flag a blow that came out of an AREA ability (a bomb, a fireball, a cleave), so the reflexes down
     -- in dealFlatDamage know a blast from a blow aimed at one body: nothing answers a blast (see
@@ -4049,7 +4265,9 @@ function Combat.computeDamage(combat, user, target, item, opts)
     local magical = hasTag(tags, "magical")
     local atkStat = magical and "magicDamage" or "damage"
     local ab = item and item.activeAbility
-    local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item)
+    -- Mirror dealDamage exactly, charm bonus included, or the hover would under-promise the real hit.
+    local charmBonus = Trait.outgoingDamageBonus(combat, user, target, item, tags)
+    local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item) + charmBonus
     return Combat.mitigatedDamage(target, base, tags, opts)
 end
 
@@ -4656,7 +4874,7 @@ function Combat.abilityTargets(combat, unit, item)
     local range = Combat.abilityRange(combat, unit, ab) + Combat.adjacencyRangeBonus(unit.char, item)
     local minRange = Combat.abilityMinRange(ab)
     for _, other in ipairs(combat.units) do
-        local d = manhattan(unit.x, unit.y, other.x, other.y)
+        local d = Combat.unitGap(unit, other) -- nearest cell to nearest cell, so either body may be wide
         if other.alive and d <= range and d >= minRange then
             local valid = false
             -- An untargetable foe (Invisible) can't be picked; a friendly cast ignores the status,
@@ -4671,7 +4889,7 @@ function Combat.abilityTargets(combat, unit, item)
                 valid = other.side ~= unit.side and not Status.untargetable(other) end
             -- A sight-gated ability can't reach a target it has no clear line to (terrain cover).
             if valid and ab.requiresSight
-                and not Combat.hasLineOfSight(combat, unit.x, unit.y, other.x, other.y) then
+                and not Combat.unitsSighted(combat, unit, other) then
                 valid = false
             end
             if valid then out[#out + 1] = other end
@@ -4795,6 +5013,28 @@ end
 -- ground between, so it springs both tiles but bleeds neither.
 function Combat.swapUnits(combat, a, b)
     if not (a and b and a.alive and b.alive) then return false end
+    local aw, ah = a.w or 1, a.h or 1
+    local bw, bh = b.w or 1, b.h or 1
+    -- Equal footprints always trade cleanly: each lands exactly on the region the other just left.
+    -- Bodies of DIFFERENT size may not -- one might overhang the board or a wall at the other's tile --
+    -- so both destinations are checked, ignoring the two swappers themselves (they vacate together).
+    -- A swap that can't seat both bodies is refused rather than jamming one half off the grid.
+    if aw ~= bw or ah ~= bh then
+        local function fitsIgnoringPair(w, h, ax, ay)
+            for _, c in ipairs(Combat.cellsAt(w, h, ax, ay)) do
+                local row = combat.arena and combat.arena.tiles and combat.arena.tiles[c.y]
+                local cell = row and row[c.x]
+                if not (cell and cell.walkable) then return false end
+                if Combat.objectBlocksAt(combat, c.x, c.y) then return false end
+                local occ = Combat.unitAt(combat, c.x, c.y)
+                if occ and occ ~= a and occ ~= b then return false end
+            end
+            return true
+        end
+        if not (fitsIgnoringPair(aw, ah, b.x, b.y) and fitsIgnoringPair(bw, bh, a.x, a.y)) then
+            return false
+        end
+    end
     a.x, a.y, b.x, b.y = b.x, b.y, a.x, a.y
     Combat.enterTile(combat, a, a.x, a.y)
     if b.alive then Combat.enterTile(combat, b, b.x, b.y) end
@@ -4815,9 +5055,9 @@ local function overwatchShot(combat, watcher, mover)
     if resourceValue(watcher.char, "stamina") < per then return false end
     local range = Combat.abilityRange(combat, watcher, ab, watcher.x, watcher.y)
         + Combat.adjacencyRangeBonus(watcher.char, weapon)
-    local d = manhattan(watcher.x, watcher.y, mover.x, mover.y)
+    local d = Combat.unitGap(watcher, mover)
     if d > range or d < Combat.abilityMinRange(ab) then return false end
-    if ab.requiresSight and not Combat.hasLineOfSight(combat, watcher.x, watcher.y, mover.x, mover.y) then
+    if ab.requiresSight and not Combat.unitsSighted(combat, watcher, mover) then
         return false
     end
     if per > 0 then spendResource(watcher.char, "stamina", per) end
@@ -4998,9 +5238,9 @@ function Combat.teleportCells(combat, unit, range)
             if not (dx == 0 and dy == 0) and (math.abs(dx) + math.abs(dy)) <= range then
                 local x, y = unit.x + dx, unit.y + dy
                 if x >= 1 and x <= cols and y >= 1 and y <= rows then
-                    local cell = combat.arena.tiles[y][x]
-                    if cell.walkable and not Combat.unitAt(combat, x, y)
-                        and not Combat.objectBlocksAt(combat, x, y) then
+                    -- The whole body must fit where it blinks (its own cells don't block it), so a wide
+                    -- unit's blink band drops any anchor its footprint couldn't clear. Matches blink().
+                    if Combat.footprintFree(combat, unit.w or 1, unit.h or 1, x, y, unit) then
                         out[key(x, y)] = { x = x, y = y, cost = 0, steps = 1 }
                     end
                 end
@@ -5020,11 +5260,12 @@ function Combat.blink(combat, unit, x, y)
     if combat.turn.moved then return false, "already moved" end
     local mb = Combat.blinkReady(unit)
     if not mb then return false, "cannot blink" end
-    local row = combat.arena and combat.arena.tiles and combat.arena.tiles[y]
-    local cell = row and row[x]
-    if not (cell and cell.walkable) then return false, "blocked tile" end
-    if Combat.unitAt(combat, x, y) or Combat.objectBlocksAt(combat, x, y) then return false, "occupied tile" end
-    if manhattan(unit.x, unit.y, x, y) > (mb.movement or 0) then return false, "out of range" end
+    -- The whole body must fit where it lands (its own current cells don't block the jump); a wide
+    -- unit can't blink into a one-tile pocket. Range is measured from the nearest cell of the body.
+    if not Combat.footprintFree(combat, unit.w or 1, unit.h or 1, x, y, unit) then
+        return false, "blocked tile"
+    end
+    if Combat.cellGap(x, y, unit) > (mb.movement or 0) then return false, "out of range" end
 
     if mb.cost then spendResource(unit.char, mb.cost.stat, mb.cost.amount) end
     combat.turn.moved = true
@@ -5551,14 +5792,18 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
     local blocked = Combat.itemBlockReason(unit, item)
     if blocked then return false, blocked.reason end
 
-    local dist = manhattan(unit.x, unit.y, tx, ty)
+    -- Range is measured from the NEAREST cell of the caster's body to the aimed tile, so a wide unit
+    -- reaches from whichever part of it is closest (cellGap == manhattan for a 1×1 caster). The aimed
+    -- tile itself may be any cell of a big TARGET's footprint -- Combat.unitAt below resolves the
+    -- occupant from it -- so a 2×2 foe can be struck from beside any of its four cells.
+    local dist = Combat.cellGap(tx, ty, unit)
     if dist > Combat.abilityRange(combat, unit, ab) + Combat.adjacencyRangeBonus(unit.char, item) then
         return false, "out of range"
     end
     if dist < Combat.abilityMinRange(ab) then
         return false, "too close"
     end
-    if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, tx, ty) then
+    if ab.requiresSight and not Combat.unitHasSight(combat, unit, tx, ty) then
         return false, "no line of sight"
     end
     -- Tile-target casts (e.g. summoning a trap) land ON the chosen cell, so it must be an empty,
@@ -6253,8 +6498,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
     -- spell, or a thrown consumable all land here with the item's `class`. Only a real player roster
     -- member counts: `control == "player"` excludes AI escortees, and `not summoned` excludes summons
     -- (both use transient char instances that would never persist the tally anyway).
-    if item.class and Combat.isPlayerControlled(unit) and not unit.summoned then
-        Character.recordUse(unit.char, item.class)
+    -- A discipline item tallies ALL its discipline's parent classes (a Ninja weapon grows both rogue
+    -- AND mage); a plain item tallies its single `class`. growthClasses returns {} for a class-less,
+    -- discipline-less item, so the loop is a no-op there -- same effect as the old `item.class` guard.
+    if Combat.isPlayerControlled(unit) and not unit.summoned then
+        for _, cls in ipairs(Discipline.growthClasses(item)) do
+            Character.recordUse(unit.char, cls)
+        end
     end
 
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed (or the
@@ -6347,14 +6597,14 @@ function Combat.strikeTrap(combat, unit, weapon, x, y)
     if not ab then return false, "no ability" end
     local blocked = Combat.itemBlockReason(unit, weapon)
     if blocked then return false, blocked.reason end
-    local dist = manhattan(unit.x, unit.y, x, y)
+    local dist = Combat.cellGap(x, y, unit)
     if dist > Combat.abilityRange(combat, unit, ab) then
         return false, "out of range"
     end
     if dist < Combat.abilityMinRange(ab) then
         return false, "too close"
     end
-    if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, x, y) then
+    if ab.requiresSight and not Combat.unitHasSight(combat, unit, x, y) then
         return false, "no line of sight"
     end
     Combat.spendCosts(combat, unit, ab)
@@ -6382,10 +6632,10 @@ function Combat.strikeWall(combat, unit, weapon, x, y)
     if not ab then return false, "no ability" end
     local blocked = Combat.itemBlockReason(unit, weapon)
     if blocked then return false, blocked.reason end
-    local dist = manhattan(unit.x, unit.y, x, y)
+    local dist = Combat.cellGap(x, y, unit)
     if dist > Combat.abilityRange(combat, unit, ab) then return false, "out of range" end
     if dist < Combat.abilityMinRange(ab) then return false, "too close" end
-    if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, x, y) then
+    if ab.requiresSight and not Combat.unitHasSight(combat, unit, x, y) then
         return false, "no line of sight"
     end
     Combat.spendCosts(combat, unit, ab)
@@ -6415,10 +6665,10 @@ function Combat.strikeProp(combat, unit, weapon, x, y)
     if not ab then return false, "no ability" end
     local blocked = Combat.itemBlockReason(unit, weapon)
     if blocked then return false, blocked.reason end
-    local dist = manhattan(unit.x, unit.y, x, y)
+    local dist = Combat.cellGap(x, y, unit)
     if dist > Combat.abilityRange(combat, unit, ab) then return false, "out of range" end
     if dist < Combat.abilityMinRange(ab) then return false, "too close" end
-    if ab.requiresSight and not Combat.hasLineOfSight(combat, unit.x, unit.y, x, y) then
+    if ab.requiresSight and not Combat.unitHasSight(combat, unit, x, y) then
         return false, "no line of sight"
     end
     Combat.spendCosts(combat, unit, ab)

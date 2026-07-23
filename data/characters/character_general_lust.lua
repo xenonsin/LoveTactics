@@ -36,7 +36,7 @@ return {
         staminaRegen = 2,
         damage = 14, magicDamage = 10, -- middling; the drink is what keeps her standing
         defense = 14, magicDefense = 14,
-        movement = 3,
+        movement = 4,
         speed = 4,
     },
     -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Reliquary of

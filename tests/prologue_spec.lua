@@ -4,6 +4,7 @@
 -- quest's Saber objective. Headless, pure.
 
 local Character = require("models.character")
+local Item = require("models.item")
 local Player = require("models.player")
 local Quest = require("models.quest")
 local Conversation = require("models.conversation")
@@ -24,12 +25,19 @@ return {
             local avatar = Character.instantiate("character_avatar")
             assert(avatar.name == "Stranger", "the unnamed avatar is 'Stranger', got " .. tostring(avatar.name))
             assert(avatar.class == nil, "the avatar has no class (grows neutral)")
-            -- It opens with a sword and only a sword (the tutorial drips the rest in).
-            local weapons = 0
+            -- It opens with a sword and the coat off its own back, and nothing else (the tutorial drips
+            -- the rest in). The leather is there so the armour slot is not empty on the first Loadout
+            -- screen, and because the movement economy is tuned against a party wearing something --
+            -- base 4 less the coat's square is 3 (see data/characters/character_avatar.lua).
+            local items = 0
             for cell = 1, Character.MAX_INVENTORY do
-                if avatar.inventory[cell] then weapons = weapons + 1 end
+                if avatar.inventory[cell] then items = items + 1 end
             end
-            assert(weapons == 1, "the avatar starts with exactly one item, got " .. weapons)
+            assert(items == 2, "the avatar starts with exactly two items, got " .. items)
+            local names = {}
+            for _, item in ipairs(Character.eachItem(avatar)) do names[item.name] = true end
+            assert(names[Item.defs.weapon_iron_sword.name], "the avatar starts with its sword")
+            assert(names[Item.defs.armor_leather_armor.name], "and with its leather armor")
         end,
     },
     {

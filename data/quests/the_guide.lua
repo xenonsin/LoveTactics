@@ -8,12 +8,16 @@
 -- she takes the party in. `rewardCharacter` grants her on the win (Player.recruit refuses a duplicate).
 -- The `opening` is her arrival; the victory `outro` (kaya_joins) is where she agrees to guide -- for her
 -- own reason, that the thing devouring the wood is devouring the living world she is part of.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Guide",
     description = "Pushed deep after the Lodge's bounty, you are nearly swallowed by a wood gone mad " ..
         "with hunger. Outlast it -- and pray the wild has a hunter of its own.",
     difficulty = "Normal",
     sponsor = "hunters_lodge",
+    rewardItems = { "weapon_corvids_bow", "armor_bogwalkers_coat" },
     rewardGold = 90,
     rewardRep = 30,
     rewardPrestige = 1,

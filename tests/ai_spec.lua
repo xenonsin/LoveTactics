@@ -616,6 +616,49 @@ return {
         end,
     },
 
+    {
+        -- The regression this exists for: EXPOSURE is a COUNT of enemies who could reach the tile, so
+        -- it is a cliff. Once one foe is quick enough to threaten the whole board, every candidate
+        -- carries the same exposure, the term stops discriminating, and a kiter's positional judgement
+        -- silently collapses -- it walked into arm's reach and punched with a bow in its hands.
+        -- STANDOFF is the slope underneath the cliff (AI.riskScore).
+        name = "a kiter with nowhere safe to stand still shoots rather than closing",
+        fn = function()
+            -- An 8x1 corridor, so there is no flank and no escape: the swordsman's move-and-strike band
+            -- covers every tile the archer could stand on. Exposure is therefore identical everywhere
+            -- and cannot be what decides this.
+            local bow = Character.instantiate("character_archer")
+            for i = 1, Character.MAX_INVENTORY do bow.inventory[i] = nil end
+            bow.inventory[1] = Item.instantiate("weapon_iron_bow")
+
+            -- The knight is placed at exactly the bow's range, so SHOOTING FROM WHERE IT ALREADY
+            -- STANDS is on the table -- which is what makes standing still a real choice the scorer
+            -- has to get right, rather than a walk it was going to make anyway.
+            --
+            -- A WHOLE knight, chainmail included, rather than this file's stripped `swordsman()`.
+            -- That is load-bearing: chainmail resists `pierce` harder than it resists a bare fist, so
+            -- against an armoured target the archer's punch genuinely out-damages its own bow, and
+            -- closing is the choice the outcome term prefers. Strip the mail and the bow wins on
+            -- damage alone -- the positional judgement is never consulted and the test proves nothing.
+            local c = Combat.new(arena(8, 1), { unit("character_knight", 4, 1) }, { unit(bow, 1, 1) })
+            local knight, archer = c.units[1], c.units[2]
+
+            local threat = select(2, Combat.threatMap(c, "enemy", archer))
+            local covered = 0
+            for x = 1, 8 do if threat[x .. ",1"] then covered = covered + 1 end end
+            assert(covered >= 7, "the knight threatens essentially the whole corridor, got " .. covered)
+            assert(Combat.moveBudget(knight) >= 3, "and it is the post-rebalance pace that does it")
+
+            local plan = Combat.planEnemyAction(c, archer)
+            assert(plan and plan.item, "the archer acts")
+            assert(plan.item.name == Item.defs.weapon_iron_bow.name,
+                "it shoots rather than punching, got " .. tostring(plan.item.name))
+            -- It holds the tile it was already on. Without STANDOFF every tile scores the same
+            -- exposure and the planner walks it into the knight's face to punch instead.
+            assert(not plan.move, "and it holds its ground to do it")
+        end,
+    },
+
     -- ---------------------------------------------------------------------
     -- Preemption and the shared threat map
     -- ---------------------------------------------------------------------

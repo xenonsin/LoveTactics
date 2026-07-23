@@ -141,7 +141,10 @@ return {
                     for _, family in ipairs(families) do allowed[family] = true end
                     for _, entry in ipairs(Vendor.stock(id, 4)) do
                         local blueprint = Item.defs[entry.id]
-                        if blueprint.type == "weapon" then
+                        -- A discipline item is a GUEST on its OTHER parent's shelf (docs/classes.md,
+                        -- "Disciplines"): its weapon family belongs to its home class's cluster and is
+                        -- checked on that shelf, not here. Only enforce the cluster for the shelf's own class.
+                        if blueprint.type == "weapon" and blueprint.class == def.class then
                             local family = Item.archetype(blueprint)
                             assert(allowed[family],
                                 id .. " stocks " .. entry.id .. " (" .. tostring(family) .. "), which the "

@@ -4,44 +4,26 @@
 -- record-state-while-active system (Fury), Thorns reflection, Second Wind revival, Charge, and
 -- Taunt steering the enemy AI. Pure logic, so it runs headless.
 
-local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
 local Status = require("models.status")
+local Fixture = require("tests.support.fixture")
 
-local function arena(cols, rows)
-    local tiles = {}
-    for y = 1, rows do
-        tiles[y] = {}
-        for x = 1, cols do
-            tiles[y][x] = { type = "ground", moveCost = 1, walkable = true }
-        end
-    end
-    return { cols = cols, rows = rows, tiles = tiles, objective = { type = "killAll" } }
-end
+local arena = Fixture.new
 
--- A { char, x, y } spawn entry built from the bandit blueprint, with innate traits stripped and the
--- grid cleared, then customised: `stats` overrides base stats (resource stats set both max+current),
--- `items` fills the grid in order. Isolates each mechanic from a blueprint's incidental kit.
+-- A { char, x, y } spawn entry on the bandit blueprint, stripped to a bare grid so each mechanic is
+-- isolated from a blueprint's incidental kit. Thin wrapper over Fixture.unit for this spec's
+-- positional style; `opts.id` picks a different blueprint.
 local function mkunit(x, y, opts)
     opts = opts or {}
-    local char = Character.instantiate(opts.id or "character_bandit")
-    char.traits = {}
-    char.inventory = {}
-    for k, v in pairs(opts.stats or {}) do
-        if type(char.stats[k]) == "table" then
-            char.stats[k].max, char.stats[k].current = v, v
-        else
-            char.stats[k] = v
-        end
-    end
-    for _, id in ipairs(opts.items or {}) do
-        Character.addItem(char, Item.instantiate(id))
-    end
-    return { char = char, x = x, y = y }
+    return Fixture.unit(opts.id or "character_bandit", x, y, {
+        isolate = "bare",
+        stats = opts.stats,
+        items = opts.items,
+    })
 end
 
-local function openTurn(c, u) c.turn = { unit = u, moved = false, moveCost = 0 } end
+local openTurn = Fixture.openTurn
 
 -- Deal one unarmed strike from `attacker` at `target` and return the damage dealt.
 local function punch(c, attacker, target)

@@ -27,6 +27,9 @@
 --
 -- The nothing-said rule (docs/story.md): no scene here may state that Acedia defected. The Road-
 -- Captain gets to be bitter and oblique and no more. Slots 5, 7 and 8 are where that lands.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Ones Who Would Not",
     description = "A crew has been taking wagons on the eastern road -- too clean, too disciplined, " ..
@@ -35,7 +38,7 @@ return {
     sponsor = "bastion",
     intro = "bastion_turned_back_intro",
     outro = "bastion_turned_back_outro",
-    rewardItems = { "utility_names_he_kept" },
+    rewardItems = { "utility_names_he_kept", "weapon_wardens_tongue", "armor_kept_wound_shield" },
     rewardGold = 100,
     rewardRep = 20,
     rewardPrestige = 1,
