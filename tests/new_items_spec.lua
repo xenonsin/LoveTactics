@@ -333,4 +333,85 @@ return {
             assert(defender.char.stats.health.current < defender.char.stats.health.max, "the bite still landed")
         end,
     },
+    {
+        name = "a wolf's COUNTER gives ground too, so the answer cannot be answered",
+        fn = function()
+            -- A bandit swings at a wolf standing beside it. The wolf's Feral Instinct answers with its
+            -- teeth -- and the teeth step back, exactly as they do on the wolf's own turn.
+            local c = Combat.new(arena(10, 10),
+                { unit("character_bandit", 4, 4) },
+                { unit("character_wolf_grunt", 5, 4) })
+            local bandit, wolf
+            for _, x in ipairs(c.units) do
+                if x.char.id == "character_bandit" then bandit = x else wolf = x end
+            end
+            local banditHp = bandit.char.stats.health.current
+            openTurn(c, bandit)
+            assert(Combat.useItem(c, bandit, itemNamed(bandit.char, "weapon_iron_sword"), 5, 4),
+                "the bandit swings at the wolf")
+            assert(bandit.char.stats.health.current < banditHp, "the wolf answered")
+            assert(wolf.x == 6 and wolf.y == 4,
+                "the wolf gives ground after countering, got " .. wolf.x .. "," .. wolf.y)
+        end,
+    },
+    {
+        name = "a counter with an ordinary weapon leaves its thrower where it stood",
+        fn = function()
+            -- The step-back is the FANGS', not the counter's: swap the wolf's teeth for a sword and the
+            -- same Feral Instinct answers from the tile it was struck on.
+            local wolfChar = Character.instantiate("character_wolf_grunt")
+            for i = 1, Character.MAX_INVENTORY do
+                if wolfChar.inventory[i] and wolfChar.inventory[i].id == "weapon_wolf_fangs" then
+                    wolfChar.inventory[i] = Item.instantiate("weapon_iron_sword")
+                end
+            end
+            local c = Combat.new(arena(10, 10),
+                { unit("character_bandit", 4, 4) },
+                { unit(wolfChar, 5, 4) })
+            local bandit, wolf
+            for _, x in ipairs(c.units) do
+                if x.char.id == "character_bandit" then bandit = x else wolf = x end
+            end
+            local banditHp = bandit.char.stats.health.current
+            openTurn(c, bandit)
+            assert(Combat.useItem(c, bandit, itemNamed(bandit.char, "weapon_iron_sword"), 5, 4),
+                "the bandit swings")
+            assert(bandit.char.stats.health.current < banditHp, "the sword-armed wolf still answers")
+            assert(wolf.x == 5 and wolf.y == 4, "and holds its ground, got " .. wolf.x .. "," .. wolf.y)
+        end,
+    },
+    {
+        name = "a hawk's Talons stoop and blink the bird back to where its turn began",
+        fn = function()
+            -- The hawk opens at (2,4), crosses to (4,4) beside a bandit, rakes it, and is back on its
+            -- perch -- Shadow Strike's return-to-origin, on a body that cannot afford to stay.
+            local c = Combat.new(arena(10, 10),
+                { unit("character_hawk", 2, 4) },
+                { unit("character_bandit", 5, 4) })
+            local hawk, bandit = c.units[1], c.units[2]
+            openTurn(c, hawk)
+            c.turn.startX, c.turn.startY, c.turn.moved = 2, 4, true
+            hawk.x, hawk.y = 4, 4 -- flown up beside the quarry
+
+            local hp0 = bandit.char.stats.health.current
+            assert(Combat.useItem(c, hawk, itemNamed(hawk.char, "weapon_talons"), 5, 4), "the talons rake")
+            assert(bandit.char.stats.health.current < hp0, "the rake draws blood")
+            assert(hawk.x == 2 and hawk.y == 4,
+                "the hawk is back on its perch, got " .. hawk.x .. "," .. hawk.y)
+        end,
+    },
+    {
+        name = "a hawk that never left its perch rakes from where it stands",
+        fn = function()
+            local c = Combat.new(arena(10, 10),
+                { unit("character_hawk", 4, 4) },
+                { unit("character_bandit", 5, 4) })
+            local hawk, bandit = c.units[1], c.units[2]
+            openTurn(c, hawk)
+            c.turn.startX, c.turn.startY = 4, 4 -- origin is the current tile: the blink is a no-op
+            assert(Combat.useItem(c, hawk, itemNamed(hawk.char, "weapon_talons"), 5, 4), "the talons rake")
+            assert(bandit.char.stats.health.current < bandit.char.stats.health.max, "the rake lands")
+            assert(hawk.x == 4 and hawk.y == 4, "no move -> no blink, got " .. hawk.x .. "," .. hawk.y)
+        end,
+    },
 }

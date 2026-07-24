@@ -16,6 +16,7 @@
 
 local ScreenFx = require("ui.screen_fx")
 local BurstFx = require("ui.burst_fx")
+local Sound = require("models.sound")
 
 local CombatFx = {}
 CombatFx.__index = CombatFx
@@ -40,6 +41,9 @@ local BEAT_GAP    = 0.38    -- pause between an exchange's beats: a counter land
                             -- finished before the answer begins.
 local HP_SPEED    = 9        -- exponential drain rate of the shown HP toward the real value
 local CARD_SHAKE_MAG = 5     -- px the struck unit's turn-strip card rumbles (synced to the sprite shake)
+local HEAVY_HIT   = 12       -- damage at or above which a blow reads as heavy: an extra screen shake below,
+                             -- and the punchier "battle.crit" cue instead of the ordinary "battle.hit". This
+                             -- game rolls no critical hits, so a heavy blow IS the crit the cue names.
 local CHARGE_STEP = 0.12     -- seconds per tile a forced rush (Charge) slides -- brisker than a walk step
 local SHOVE_HOLD  = 0.22     -- a shove (knockback) stands its ground this long before travelling, so the
                              -- blow's damage number reads over the tile the target was struck ON. Matched
@@ -268,6 +272,11 @@ function CombatFx:playBeat(events, actor)
         elseif e.type == "damage" then
             local cell = struck[e.unit] or e.unit
             self:hit(e.unit, e.amount, e.lethal)
+            -- A killing blow's audio is the "death" cue below, not a hit on top of it; a surviving blow
+            -- rings hit, or the heavier "crit" when it lands hard. Silent until the files exist.
+            if not e.lethal then
+                Sound.play((e.amount or 0) >= HEAVY_HIT and "battle.crit" or "battle.hit")
+            end
             if not firstTarget then firstTarget, firstTargetCell = e.unit, cell end
             if self.bursts then
                 self.bursts:strike(cell.x, cell.y, e.tags,
@@ -282,6 +291,15 @@ function CombatFx:playBeat(events, actor)
         elseif e.type == "heal" then
             self:floatText(e.unit, "+" .. tostring(e.amount), { 0.55, 0.95, 0.60 })
             if self.bursts then self.bursts:support(e.unit.x, e.unit.y, "motes") end
+            Sound.play("battle.heal")
+        elseif e.type == "status" then
+            -- A no-visual cue carried only for its sound: a status LANDING on a unit (models/status.lua
+            -- pushes it on a fresh application). The badge/field the status paints is drawn elsewhere.
+            Sound.play("battle.status")
+        elseif e.type == "miss" then
+            -- A blow that was voided outright -- dodged, smoked, substituted (models/combat.lua). No
+            -- damage number floats, so the sound is the only tell that the attack landed nothing.
+            Sound.play("battle.miss")
         elseif e.type == "slide" then
             -- If this cue was pinned while it waited (see :pinSlides) the sprite is already sitting on
             -- its origin tile, so arming the real slide here picks up exactly where the pin left off
@@ -289,6 +307,7 @@ function CombatFx:playBeat(events, actor)
             self:forcedSlide(e.unit, e.fromX, e.fromY, e.hold and SHOVE_HOLD or nil)
         elseif e.type == "death" then
             self:reaction(e.unit).dying = DEATH_TIME
+            Sound.play("battle.death")
         end
     end
     -- The caster's own motion comes from its "cast" cue now. Fall back to the old damage-derived lunge
@@ -328,7 +347,7 @@ function CombatFx:hit(unit, amount, lethal)
         ScreenFx.freeze(0.07)
         ScreenFx.punch(0.7)
         ScreenFx.shake(6, 0.32)
-    elseif (amount or 0) >= 12 then
+    elseif (amount or 0) >= HEAVY_HIT then
         ScreenFx.shake(math.min(4, amount * 0.2), 0.22)
     end
 end

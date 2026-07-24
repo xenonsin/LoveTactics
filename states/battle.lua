@@ -385,6 +385,7 @@ local function win()
     -- sliver of health rather than staying down. Only on a win -- a defeat costs the run outright.
     Combat.reviveFallenParty(battle.combat)
     releaseParty()
+    Sound.play("battle.win")
     finishBattle("win")
 end
 
@@ -397,6 +398,7 @@ local function lose()
     -- when the next battle enters or the player retries (see battle.enter). See ui/screen_fx.lua.
     ScreenFx.grey(0.85)
     releaseParty()
+    Sound.play("battle.loss")
     finishBattle("loss")
 end
 
@@ -805,6 +807,7 @@ local function beginTurn()
     battle.attackReach = {}
     battle.movePath = nil
     if not current then return end
+    Sound.play("battle.turn") -- a soft tick as the active unit changes, both sides; silent until the file exists
     computeDanger() -- every turn, so the "Threats" survey toggle stays fresh on enemy turns too
     -- A unit surfacing mid-channel doesn't take an interactive turn -- its slot IS the spell resolving.
     -- Hold a beat on the telegraphed tiles (like the AI's think-pause) so the blast reads, then
@@ -1025,6 +1028,17 @@ local function netFinishTurn(cmd)
 end
 
 -- `carried` is a cue list an action raised BEFORE the walk that replays its approach -- held back
+-- Cue types that carry sound but paint nothing on the board (ui/combat_fx.lua plays them and returns).
+-- An action whose only cues are these needs no impact hold -- see advanceTurn.
+local SOUND_ONLY_FX = { status = true, miss = true }
+
+local function hasVisibleFx(events)
+    for _, e in ipairs(events) do
+        if not SOUND_ONLY_FX[e.type] then return true end
+    end
+    return false
+end
+
 -- since (see holdLanding) so the blow does not land on screen ahead of the feet that carried it.
 local function advanceTurn(carried)
     pacedTurn(battle.current)
@@ -1037,7 +1051,11 @@ local function advanceTurn(carried)
         events = carried
     end
     if events then battle.fx:ingest(events, battle.current) end
-    if events or battle.fx:busy() then
+    -- Only a VISIBLE reaction earns the impact beat. Some cues carry sound alone -- a status landing, a
+    -- blow voided outright (ui/combat_fx.lua) -- and an action that raised nothing else (a bare Defend)
+    -- must still resolve at once rather than sit through a half-second of nothing, exactly as it did
+    -- before those cues existed. The sound already played during ingest above.
+    if (events and hasVisibleFx(events)) or battle.fx:busy() then
         battle.pendingAdvance = { hold = IMPACT_PAUSE }
     else
         resolveAdvance()
@@ -1062,9 +1080,12 @@ local NOTICE_LIFE = 2.2
 -- number-key, a click-to-strike -- routes its Combat.itemBlockReason here instead of returning
 -- silently, so a dead click always explains itself (a grayed slot only reads once you go looking for
 -- the tooltip). Drawn over the board by drawNotice and fading on its own timer.
-local function notify(text)
+local function notify(text, quiet)
     if not text then return end
     battle.notice = { text = text, life = NOTICE_LIFE }
+    -- A refusal rings the "denied" cue; pass quiet for an informational notice (the wind-up readout),
+    -- which is feedback, not a rejection. Silent until the file exists (models/sound.lua).
+    if not quiet then Sound.play("ui.denied") end
 end
 
 -- Is a running tutorial refusing this kind of action right now? Announces the lesson's nudge through
@@ -1338,7 +1359,7 @@ local function adjustWindup(delta)
     local before = battle.windup or 0
     battle.windup = math.max(lo, math.min(hi, before + delta))
     if battle.windup ~= before then
-        notify(string.format("Wind-up: lands in %d", battle.windup))
+        notify(string.format("Wind-up: lands in %d", battle.windup), true)
     end
     return true
 end
@@ -2700,32 +2721,43 @@ function battle.enter(self, opts)
     -- dismisses it themselves. That is the whole reason it is fielded here rather than as a beat
     -- before the battle: said on a black screen it would be backstory, and said over the board it is
     -- the fight being pointed at.
-    -- `overScene` and the box are asked for HERE rather than declared by the scene, because both are
-    -- true of every conversation that plays over a board and of no scene inherently. The board is the
-    -- thing behind it and the thing it is about: a full-screen bust would stand on the party, and a
-    -- full-WIDTH text box would reach across the button column and the combat panel both.
+    -- Staging is asked for HERE rather than declared by the scene, because it is a fact about the
+    -- screen the scene lands on and not about the scene -- and the two kinds of battle want opposite
+    -- things.
     --
-    -- So the words go in the free gutter under the board -- the same rect the mentor's own panel
-    -- occupies (ui/tutorial_prompt.lua), with the same insets, so a lesson's speech and a scene's
-    -- speech land in exactly the same place rather than one inch apart.
+    -- A LESSON's opening shares the screen with the teaching UI: the mentor's panel and the coach
+    -- bubble are about to speak from the same board, so the scene goes in the free gutter under the
+    -- board -- the same rect ui/tutorial_prompt.lua occupies, with the same insets -- and takes the
+    -- compact `overScene` staging so the lesson's speech and the scene's speech land in exactly the
+    -- same place rather than an inch apart.
+    --
+    -- Every OTHER battle opens with the ordinary conversation UI: full-screen staging, busts, title,
+    -- the box across the bottom, exactly as a scene reads anywhere else in the game. Outside the
+    -- tutorial there is no coaching for it to line up with, and borrowing the lesson's gutter panel
+    -- made a story beat look like an instruction. The board still sits frozen behind it (a
+    -- conversation is a global overlay, see main.lua), so the fight is still the thing being pointed
+    -- at -- it is just pointed at in the game's own voice.
     local opening = openingConversation(opts)
     if opening then
-        local boardBottom = battle.map.originY + battle.arena.rows * battle.map.size
-        local x = LEFT_W + GUTTER_PAD
-        local y = boardBottom + GUTTER_GAP
-        Conversation.play(opening, nil, nil, {
-            overScene = true,
-            -- Don't fold a queued party-join banner onto this scene: an opening plays over a frozen
-            -- board mid-fight, which is the wrong surface for a "[<name> has joined your Party]" line.
-            -- Holding it lets the join land in the next full scene instead -- e.g. Rowan, recruited to
-            -- fight the village battle, is announced in the "Ashes" scene after it (models/conversation).
-            deferJoins = true,
-            box = {
+        -- Never fold a queued party-join banner onto an opening, whichever staging it takes. A
+        -- "[<name> has joined your Party]" line is a roster beat and belongs in a scripted scene
+        -- somebody wrote it into -- the oath in "Ashes", Saber's turn in "The Gatekeeper" -- not
+        -- tacked onto the last words before a fight starts. Holding it lets the join land in the next
+        -- authored scene instead: Rowan, recruited to fight the village battle, is announced in
+        -- "Ashes" after it (models/conversation.lua's drainJoins).
+        local stage = { deferJoins = true }
+        if battle.tutorial then
+            local boardBottom = battle.map.originY + battle.arena.rows * battle.map.size
+            local x = LEFT_W + GUTTER_PAD
+            local y = boardBottom + GUTTER_GAP
+            stage.overScene = true
+            stage.box = {
                 x = x, y = y,
                 w = Scale.WIDTH - PANEL_W - GUTTER_PAD - x,
                 h = Scale.HEIGHT - GUTTER_BOTTOM - y,
-            },
-        })
+            }
+        end
+        Conversation.play(opening, nil, nil, stage)
     end
 end
 

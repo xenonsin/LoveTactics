@@ -16,6 +16,24 @@ local Debug = {}
 
 Debug.enabled = true
 
+-- Runtime toggles a developer flips from inside the game to test content out of order. Unlike
+-- `enabled` (a build constant), these change during a session -- so every reader must AND them with
+-- `enabled`, and the affordance that flips them must only exist when `enabled`. That keeps the rule
+-- above intact: a release build (enabled = false) can neither show the switch nor honour the flag.
+--
+--   showAllQuests  the Quest Board drops every gate, so a locked or prerequisite-gated line can be
+--                  run without progressing to it naturally (models/quest.lua).
+--   allItems       the Loadout stash becomes the full item catalog, restocked as it is spent, so any
+--                  item can be equipped and tested (ui/panels/party.lua).
+Debug.showAllQuests = false
+Debug.allItems = false
+
+-- True only when both the build allows debug affordances AND the named flag is on. The one call the
+-- readers make, so a flag can never be honoured in a build that forbids it.
+function Debug.on(flag)
+    return Debug.enabled and Debug[flag] == true
+end
+
 -- Convenience for the common shape: `Debug.only(thing)` is `thing` in development and nil in a
 -- release build, so a registry or a menu list can splice it in without an if.
 function Debug.only(value)

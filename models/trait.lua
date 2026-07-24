@@ -800,13 +800,18 @@ local function ctxFor(combat, unit, trait, event)
         -- reaction can retaliate without paying a cast's price. The blow re-enters dealFlatDamage and
         -- so can provoke the target's OWN counter; the dispatch guards (unit._reacting + MAX_DEPTH)
         -- stop that from looping.
+        --
+        -- Thrown through Combat.answerStrike rather than dealDamage directly, so a hit-and-run weapon
+        -- gives its ground here too: a wolf that counters bites and is gone, exactly as it does on its
+        -- own turn. Safe at this point and only at this point -- an on-hit reflex is dispatched once
+        -- the whole action has resolved (Combat.beginAnswers), so moving the bearer disturbs nothing.
         basicAttack = function(target)
             if not target then return 0 end
             -- Whichever weapon in the grid reaches THAT far, not whichever sorts first: a counter
             -- thrown across four tiles is a bowshot even when a sword sits in the top-left slot.
             local weapon = Combat.answeringWeapon(combat, unit, distance(unit, target))
             if not weapon then return 0 end
-            return Combat.dealDamage(combat, unit, target, weapon)
+            return Combat.answerStrike(combat, unit, target, weapon)
         end,
         -- The effective reach of the bearer's longest weapon from where it stands (base range plus any
         -- high-ground field bonus). 0 for a unit with no weapon at all. Reported for display; the live

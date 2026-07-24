@@ -17,6 +17,7 @@ local Vendor = require("models.vendor")
 local Locale = require("models.locale")
 local Scale = require("scale")
 local ScreenFx = require("ui.screen_fx")
+local Sound = require("models.sound")
 
 local hub = {}
 
@@ -26,6 +27,15 @@ local map           -- BuildingMap widget
 local background    -- love Image, or a path string if the asset is missing
 local activePanel   -- the open pop-up panel, or nil
 local burger        -- BurgerButton widget: the mouse's way into the system menu
+
+-- Close the open modal, ringing the "cancel" cue -- the shared way out of a building panel or the
+-- system menu, so backing out sounds the same on mouse, keyboard and pad. Silent until the file
+-- exists (models/sound.lua). The post-quest Advancement overlay does NOT use this: its dismissal is a
+-- "continue" past a reward, not a cancel, and it rings its own cue as it opens.
+local function dismissPanel()
+    Sound.play("ui.cancel")
+    activePanel = nil
+end
 
 -- Where the burger sits. Top-LEFT: the title is centered and the right-hand side of the city is where
 -- the eye goes for buildings, so the left corner is the one piece of chrome nothing else wants.
@@ -59,7 +69,7 @@ local function launchPanel(building)
         prestige = hub.player and hub.player.prestige or 1,
         player = hub.player, -- forwarded so a launched quest knows the active party
         vendor = building.vendor, -- vendor id, for buildings that are shops
-        onClose = function() activePanel = nil end,
+        onClose = dismissPanel,
     })
 end
 
@@ -137,7 +147,7 @@ local function openSystemMenu()
     activePanel = SystemMenu.new({
         player = hub.player,
         returnTo = hub,
-        onClose = function() activePanel = nil end,
+        onClose = dismissPanel,
     })
 end
 

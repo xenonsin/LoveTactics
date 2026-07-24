@@ -70,6 +70,10 @@ function Advancement.new(opts)
     self.visible = math.max(1, math.floor(self.listH / ROW_H))
 
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
+
+    -- The company grew: ring the level-up cue as the overlay opens, but only when there is actually an
+    -- advancement to celebrate (a quest with no level-ups shows "No advancement this time" in silence).
+    if #self.entries > 0 then require("models.sound").play("quest.levelup") end
     return self
 end
 

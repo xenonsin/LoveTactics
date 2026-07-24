@@ -13,6 +13,7 @@ local Vendor = require("models.vendor")
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
 local InputMode = require("input_mode")
+local Debug = require("models.debug")
 
 local QuestBoard = {}
 QuestBoard.__index = QuestBoard
@@ -38,13 +39,32 @@ function QuestBoard.new(opts)
 
     self.prestige = opts.prestige or 1
     self.player = opts.player -- carried into the game state so the overworld sees the party
-    -- The board is filtered by the whole player, not just prestige: finished quests drop off
-    -- it, and a sponsor's later quests only appear once you have the reputation for them.
+
+    -- Debug "show all quests" toggle: a development-only button in the footer that drops every gate
+    -- (models/quest.lua) so a line can be run without progressing to it naturally. Only laid out and
+    -- only drawn when Debug.enabled, so a release build never shows it.
+    if Debug.enabled then
+        self.debugRect = { x = self.boxX + 16, y = self.boxY + BOX_H - 76, w = 220, h = 26 }
+    end
+
+    self:rebuild()
+
+    self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
+    return self
+end
+
+-- (Re)load the board and its menu. Split out from `new` so the debug toggle can rebuild in place
+-- when it flips a gate -- the quest list and the left-column menu are both derived from
+-- Quest.available, so both are rebuilt together.
+--
+-- The board is filtered by the whole player, not just prestige: finished quests drop off it, and a
+-- sponsor's later quests only appear once you have the reputation for them.
+function QuestBoard:rebuild()
     self.quests = Quest.available(self.player)
 
-    -- Build the quest list. Selecting a quest starts it: the game state generates
-    -- the overworld map from the quest's `map` params, using the player's prestige
-    -- to pick dynamic encounters (see states/game.lua, models/encounter.lua).
+    -- Build the quest list. Selecting a quest starts it: the game state generates the overworld map
+    -- from the quest's `map` params, using the player's prestige to pick dynamic encounters (see
+    -- states/game.lua, models/encounter.lua).
     --
     -- A `locked` quest is on the board but not startable: the Gate Below appears the moment you kill
     -- your first general and counts your keys until you have all seven (see Quest.available). Menu has
@@ -82,9 +102,13 @@ function QuestBoard.new(opts)
         font = self.headFont,
         maxVisible = MAX_VISIBLE,
     })
+end
 
-    self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
-    return self
+-- Flip the debug gate and reload the board so the newly (un)gated quests appear at once.
+function QuestBoard:toggleDebug()
+    if not Debug.enabled then return end
+    Debug.showAllQuests = not Debug.showAllQuests
+    self:rebuild()
 end
 
 function QuestBoard:close()
@@ -132,9 +156,31 @@ function QuestBoard:draw()
         or "Click a quest / Enter: Start    Wheel / PgUp / PgDn: Scroll    Click X / Esc: Close"
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 34, BOX_W, "center")
 
+    self:drawDebugToggle()
     self.closeButton:draw()
 
     love.graphics.setColor(1, 1, 1)
+end
+
+-- The development-only "show all quests" pill in the bottom-left corner. Lit when the gate is
+-- dropped. Drawn (and hit-tested) only when Debug.enabled, so a release build never shows it.
+function QuestBoard:drawDebugToggle()
+    local r = self.debugRect
+    if not r then return end
+    local on = Debug.showAllQuests
+    love.graphics.setColor(on and 0.28 or 0.16, on and 0.22 or 0.16, on and 0.14 or 0.2)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
+    love.graphics.setColor(on and 0.95 or 0.4, on and 0.7 or 0.42, on and 0.35 or 0.5)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
+    love.graphics.setFont(self.bodyFont)
+    love.graphics.setColor(on and 0.98 or 0.7, on and 0.85 or 0.72, on and 0.55 or 0.78)
+    love.graphics.printf("Debug: All Quests " .. (on and "ON" or "OFF") .. "  [F1]",
+        r.x, r.y + (r.h - self.bodyFont:getHeight()) / 2, r.w, "center")
+end
+
+function QuestBoard:debugHit(x, y)
+    local r = self.debugRect
+    return r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
 function QuestBoard:drawDetail()
@@ -213,7 +259,9 @@ end
 
 -- Hand over the close X or any quest row; arrow elsewhere. See ui/cursor.lua.
 function QuestBoard:cursorKind(x, y)
-    if self.closeButton:contains(x, y) or self.menu:mouseOverItem(x, y) then return "hand" end
+    if self.closeButton:contains(x, y) or self.menu:mouseOverItem(x, y) or self:debugHit(x, y) then
+        return "hand"
+    end
     return "arrow"
 end
 
@@ -225,6 +273,8 @@ function QuestBoard:mousepressed(x, y, button)
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then
         self:close()
+    elseif self:debugHit(x, y) then
+        self:toggleDebug()
     elseif not isInsideBox(self, x, y) then
         -- A click outside the panel dismisses the modal.
         self:close()
@@ -236,6 +286,8 @@ end
 function QuestBoard:keypressed(key)
     if key == "escape" then
         self:close()
+    elseif key == "f1" then
+        self:toggleDebug()
     else
         self.menu:keypressed(key)
     end

@@ -10,6 +10,7 @@ local Registry = require("models.registry")
 local Player = require("models.player")
 local Vendor = require("models.vendor")
 local Building = require("models.building")
+local Debug = require("models.debug")
 
 local Quest = {}
 
@@ -94,6 +95,12 @@ end
 function Quest.available(player)
     local prestige = player.prestige or 1
 
+    -- Debug "show all quests": drop every gate so a locked or prerequisite-gated line can be run
+    -- without progressing to it naturally, and let a finished quest be re-run to test it again. Never
+    -- reachable in a release build (Debug.on ANDs in Debug.enabled), and it changes only what the
+    -- board OFFERS -- Quest.complete's double-payout guard still stands, so a re-run pays nothing.
+    local showAll = Debug.on("showAllQuests")
+
     local list = {}
     for id, def in pairs(Quest.defs) do
         local unlocked = prestige >= (def.requiredPrestige or 1)
@@ -101,8 +108,9 @@ function Quest.available(player)
         local exhausted = Player.hasCompleted(player, id) and not def.repeatable
         local questsMet, keysHeld, keysNeeded = questGate(player, def)
         local locked = not questsMet
+        if showAll then unlocked, exhausted, locked = true, false, false end
 
-        if unlocked and not exhausted and (questsMet or keysHeld >= 1) then
+        if unlocked and not exhausted and (questsMet or keysHeld >= 1 or showAll) then
             local sponsor = def.sponsor and Vendor.get(def.sponsor)
             list[#list + 1] = {
                 id = id,

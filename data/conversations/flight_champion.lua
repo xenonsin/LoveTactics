@@ -1,11 +1,13 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 --
--- Played OVER THE BOARD at the opening of the Demon Champion fight -- the mini-boss the flight leg
--- ends on (states/prologue.lua's FLIGHT_QUEST.objective.opening, fielded by states/battle.lua, which
--- applies the compact `overScene` staging to everything it plays). So the champion and its two imps
--- are already standing on the lane behind Rowan while she talks: the last still moment before the
--- first foe the game frames as a BOSS.
+-- Played at the opening of the Demon Champion fight -- the mini-boss the flight leg ends on
+-- (states/prologue.lua's FLIGHT_QUEST.objective.opening, fielded by states/battle.lua). This is not a
+-- guided fight, so it gets the ORDINARY scene staging -- full portraits, title, the usual dim -- with
+-- the board frozen behind it; only a lesson's opening borrows the compact gutter panel the mentor
+-- speaks from (data/conversations/prologue_village.lua). The champion and its two imps are already
+-- standing on the lane while Rowan talks: the last still moment before the first foe the game frames
+-- as a BOSS.
 --
 -- Its job is to reset the scale. Every fight before this one has been a horde -- imps that die to one
 -- blow, a grunt that takes several. This one has a NAME, and Rowan says so: you do not swarm it down,

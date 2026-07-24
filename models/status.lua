@@ -779,6 +779,9 @@ function Status.apply(combat, unit, id, opts)
     -- the Decoy that granted it is trying to keep out of the log.
     if isNew and not def.hideLog then
         local Combat = require("models.combat")
+        -- A view-side cue so the condition landing makes a sound (ui/combat_fx.lua -> "battle.status").
+        -- Like every fx cue it is silent under a headless run and a dry preview, which never drain it.
+        Combat.pushFx(combat, { type = "status", unit = unit })
         local entry = Combat.logEvent(combat, "status",
             string.format("%s is afflicted with %s.", (unit.char and unit.char.name) or "Unit", def.name or id),
             unit)

@@ -43,17 +43,20 @@ the prologue to an ending, every companion has a join scene, and all seven gener
 
 ## Phase 2 — audio, as a system before it is content
 
-**The system is built (items 4–7); only the content is left.** The game is still silent, but it is now
-silent the way it was once artless: every cue is wired, declared and counted, and a file dropped at the
-path its cue names starts playing with no code change.
+**The system is built AND fully wired (items 4–7); only the content is left.** The game is still silent,
+but it is now silent the way it was once artless: every one of the 23 cues is declared, counted, and
+called from gameplay, so a file dropped at the path its cue names starts playing with no code change.
+`tests/audio_wiring_spec.lua` pins the signals so no cue can go silent at its source unnoticed.
 
 4. ~~**`models/sound.lua`**~~ **Done.**
 5. ~~**Volume settings**~~ **Done.**
 6. ~~**Cue points declared in data**~~ **Done.**
 7. ~~**An `. audio-report` entry point**~~ **Done.**
-8. **The audio content itself** — 23 cues, 0 of them recorded: 6 music beds, 4 UI, 10 battle, 3
-   progress stings. Run `. audio-report missing` for the exact paths. Outsourced or sourced; the brief
-   belongs beside [docs/art-assets.md](art-assets.md). **This is the only part of Phase 2 left.**
+8. **The audio content.** 23 cues, 0 recorded: 6 music beds, 4 UI, 10 battle, 3 progress stings. Run
+   `. audio-report missing` for the exact paths. The brief is written — [docs/audio-assets.md](audio-assets.md),
+   beside the art brief — and **every cue is now wired**, so this is purely a sourcing job: record or
+   source the 23 files (CC0 preferred; no AI) and drop each at its path. Priority order in the brief.
+   **This is the only part of Phase 2 left.**
 
 ## Phase 3 — the silent quests
 

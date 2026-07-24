@@ -296,7 +296,6 @@ return {
     "weapon_suspension_mace",
     "weapon_swineherds_wand",
     "weapon_sworn_lance",
-    "weapon_talons",
     "weapon_tempo_debt",
     "weapon_the_stillness",
     "weapon_thin_place",

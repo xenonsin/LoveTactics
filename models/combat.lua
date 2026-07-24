@@ -472,6 +472,35 @@ function Combat.answeringWeapon(combat, unit, dist)
     return nil
 end
 
+-- Throw an ANSWER with `weapon`: the blow itself, and then the step back a hit-and-run weapon takes
+-- however it is swung. A weapon declaring `hitAndRun = n` gives ground n tiles from whatever it just
+-- bit -- the wolf's Fangs (data/items/weapon/weapon_wolf_fangs.lua), whose own ability effect calls
+-- fx.retreat for exactly the same reason. Without this the step-back would be a property of the
+-- wolf's TURN rather than of its teeth: it darts in and out on its own initiative, then counters a
+-- blow and stands there in reach to be worked over, which is the one thing a wolf never does.
+--
+-- The retreat rides here rather than inside `dealDamage` because only an answer may safely move its
+-- thrower. An on-hit reflex is dispatched once the whole action has resolved (Combat.beginAnswers),
+-- so the board is settled and the bearer's tile is nobody's business but its own. The two reflexes
+-- that fire MID-action instead -- the riposte that deflects a blow and Keen Senses' preempt, both
+-- thrown from inside dealFlatDamage before the strike has landed -- deliberately do not route here:
+-- moving their bearer would shift a cast's geometry out from under the effect still resolving it.
+--
+-- Giving ground after the answer is what makes it stick: any answer to THIS answer re-checks reach
+-- against the final board too, and finds the bearer a tile further off than it swung from.
+-- Returns the damage dealt, exactly as dealDamage does.
+function Combat.answerStrike(combat, unit, target, weapon)
+    if not (unit and target and weapon) then return 0 end
+    local dealt = Combat.dealDamage(combat, unit, target, weapon)
+    local back = weapon.hitAndRun
+    -- Nothing to disengage from once the foe is down, and a bearer felled by its own exchange (a
+    -- counter to the counter) stays where it fell.
+    if back and back > 0 and unit.alive and target.alive then
+        Combat.knockback(combat, target, unit, back, { amount = 0 })
+    end
+    return dealt
+end
+
 -- The character's player-chosen DEFAULT ACTION: the ability used by the click-to-use basic action
 -- and the effective-range band shown on its turn. Unlike defaultWeapon this can be ANY ability item
 -- (a spell, a heal, a consumable), pinned in the Loadout screen via `char.defaultActionSlot`.
@@ -4422,6 +4451,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- outright. Like the barrier above it returns BEFORE the trait damage dispatch -- an evaded hit is
     -- not a wound survived, so it grants no rage, advances no threshold phase, and provokes no counter.
     if Trait.tryEvade(combat, target, tags) then
+        Combat.pushFx(combat, { type = "miss", unit = target })
         return 0
     end
     -- A carried smoke charge (Smoke Bomb) negates an incoming ATTACK outright and blinks the bearer
@@ -4429,6 +4459,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- so a vanished blow grants no rage and provokes no counter; only a real strike (a known attacker)
     -- fires it, so a poison tick or trap can't waste the one charge.
     if Trait.trySmoke(combat, target, attacker) then
+        Combat.pushFx(combat, { type = "miss", unit = target })
         return 0
     end
     -- A standing CLONE dies in the bearer's place and they trade tiles (the Ninja's Substitution).
@@ -4436,6 +4467,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- wound to grant rage or provoke an answer. Unlike them it spends no cooldown and no charge -- the
     -- clone was the charge, and it had to be cast.
     if Trait.trySubstitute(combat, target, attacker) then
+        Combat.pushFx(combat, { type = "miss", unit = target })
         return 0
     end
     -- SPELL EATER (the Spellbreaker's): a MAGICAL blow lands lighter on the bearer, and the difference
@@ -6587,29 +6619,34 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
         if ab.channelStatus then
             Status.apply(combat, unit, ab.channelStatus, { duration = ticks + 1 })
         end
-        -- `channelHazard`: ground the wind-up churns up UNDER ITS OWN FOOTPRINT, laid on commit. The
-        -- exact sibling of `channelStatus` a step outward -- that one is what the CASTER gains the
-        -- moment the tell goes up, this is what the GROUND gains -- and it is declared here for the
-        -- same reason: an `effect` runs when the cast resolves, and a telegraph that only bites after
-        -- the blow lands is not a telegraph.
+        -- `channelAfflict`: a status stamped on WHOEVER IS ALREADY STANDING in the wind-up's footprint
+        -- the moment she commits -- the sibling of `channelStatus` (which lands on the caster) aimed one
+        -- step outward, at the bodies the blow is telegraphed to sweep rather than at the caster. Declared
+        -- here for the same reason: an `effect` runs when the cast RESOLVES, and a telegraph that only
+        -- bites after the blow lands is not a telegraph.
         --
-        -- What it buys is the difference between a tell you can ignore and a tell you have to answer.
-        -- A wind-up aimed at open ground costs its target one step; a wind-up that softens the ground
-        -- it is aimed at costs them the step AND the tempo to take it (Quicksand's Mired doubles what
-        -- a move costs), so walking out of a committed blow is a decision rather than a reflex. The
-        -- hazard is unowned on purpose: this is churned earth, not a summon, so it does not vanish
-        -- when the caster falls, and its `disposition` bites whoever stands in it -- including the
-        -- caster, if the swing draws them in after you.
+        -- What it buys is the difference between a tell you can ignore and a tell you have to answer. A
+        -- wind-up aimed at open ground costs its target one step; one that makes the bodies under it
+        -- COWER (weapon_first_motion's Cowering cuts their movement) shortens how far that step can carry
+        -- them, so walking out of a committed blow is a decision rather than a reflex. Unlike a hazard it
+        -- is NOT terrain: it lands once, on the occupants present at commit, so a foe who was already
+        -- clear is never touched and the counterplay is to not be standing there when she commits.
         --
-        -- Rides the wind-up's own length by default, exactly as channelStatus does: hold the edge
-        -- longer and the ground stays soft longer. `{ id, duration }` overrides that; a bare id string
-        -- takes the hazard blueprint's own default instead.
-        if ab.channelHazard then
-            local ch = ab.channelHazard
-            local hazardId = (type(ch) == "table" and ch.id) or ch
-            local hazardFor = (type(ch) == "table" and ch.duration) or (ticks + 1)
+        -- Side-agnostic -- any body caught in the footprint, foe or friend, exactly as an unowned zone
+        -- would have been -- and it rides the wind-up's own length by default, so a deeper hold cows
+        -- longer. `{ status, duration }` overrides that; a bare id string takes the status blueprint's
+        -- own default duration instead.
+        if ab.channelAfflict then
+            local ca = ab.channelAfflict
+            local statusId = (type(ca) == "table" and ca.status) or ca
+            local afflictFor = (type(ca) == "table" and ca.duration) or (ticks + 1)
+            local seen = {}
             for _, cell in ipairs(Combat.aoeCells(combat, ab, tx, ty, unit)) do
-                Hazard.place(combat, cell.x, cell.y, hazardId, { duration = hazardFor })
+                local occ = Combat.unitAt(combat, cell.x, cell.y)
+                if occ and occ.alive and not seen[occ] then
+                    seen[occ] = true
+                    Status.apply(combat, occ, statusId, { duration = afflictFor })
+                end
             end
         end
         -- The wind-up is an action too: a cast beat on begin-channel, then a second when it resolves

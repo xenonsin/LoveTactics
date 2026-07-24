@@ -4,99 +4,108 @@
 -- target had already left, and then spent six more recovering. Three things changed, and each of them
 -- is a claim worth pinning rather than a number worth eyeballing:
 --
---   * `channelHazard` -- ground the wind-up churns up under its own footprint, laid ON COMMIT. The
---     commit timing is the whole point (a telegraph that only bites after the blow lands is not a
---     telegraph), so it is asserted directly rather than inferred from the end state.
+--   * `channelAfflict` -- a Cowering debuff stamped on whoever stands in the wind-up's footprint, ON
+--     COMMIT. The commit timing is the whole point (a telegraph that only bites after the blow lands is
+--     not a telegraph), so it is asserted directly rather than inferred from the end state.
 --   * an AI rule's `windup` -- how deep to hold a chargeable wind-up. Before this, every enemy cast
 --     opened at the ability's floor because states/battle.lua passed no depth at all, so a boss
 --     carrying a chargeable signature could only ever snap it.
 --   * Saber's own rules reading both, so the fight escalates off what she already did: a snap swing
---     lays the sand, the sand Mires whoever is standing in it, and only THEN does she hold the edge.
+--     cows whoever is under it, the flinch cuts their movement, and only THEN does she hold the edge.
 --
 -- Companion spec to tests/charge_spec.lua, which pins the wind-up depth from the player's side.
 
 local Combat = require("models.combat")
 local Status = require("models.status")
-local Hazard = require("models.hazard")
 local Item = require("models.item")
 local Character = require("models.character")
 local Arena = require("models.arena")
 local Quest = require("models.quest")
 local Fixture = require("tests.support.fixture")
 
--- Every quicksand patch on the board, as a "x,y" set -- what the swing actually churned up.
-local function sandCells(combat)
-    local out = {}
-    for _, h in ipairs(combat.hazards or {}) do
-        if h.alive and h.id == "hazard_quicksand" then out[h.x .. "," .. h.y] = true end
-    end
-    return out
-end
-
-local function count(set)
-    local n = 0
-    for _ in pairs(set) do n = n + 1 end
-    return n
-end
-
 return {
-    -- THE CHANNEL HAZARD ----------------------------------------------------------------------------
+    -- THE CHANNEL AFFLICT (COWERING) ----------------------------------------------------------------
     {
-        name = "the ground goes soft when she COMMITS, not when the blow lands",
+        name = "she cows whoever is caught the moment she COMMITS, not when the blow lands",
         fn = function()
             local map = Fixture.new(8, 8)
             local her = Fixture.unit("character_saber", 4, 4)
             local foe = Fixture.unit("character_bandit", 4, 5)
             local combat = Fixture.combat(map, her, foe)
-            local s = combat.units[1]
+            local s, f = combat.units[1], combat.units[2]
             local blade = Fixture.itemNamed(s.char, "weapon_first_motion")
 
-            assert(count(sandCells(combat)) == 0, "the sand is clean before she swings")
+            assert(not Status.has(f, "status_cowering"), "nobody flinches before she swings")
 
             Fixture.openTurn(combat, s)
             assert(Combat.useItem(combat, s, blade, 4, 5), "she begins the wind-up")
             assert(s.channel, "and it is a channel, not an instant swing")
 
-            -- The claim: the sand is down NOW, during the tell, while the target still has turns in
-            -- which to decide what to do about it. This is the difference between a telegraph the
-            -- player can answer and a consequence they can only regret.
-            local mid = sandCells(combat)
-            assert(count(mid) > 0, "the strike zone is already churned while she is still winding up")
-            assert(mid["4,5"], "including the tile she aimed at, got: " .. table.concat((function()
-                local t = {} for k in pairs(mid) do t[#t + 1] = k end table.sort(t) return t
-            end)(), " "))
+            -- The claim: the flinch is on the body NOW, during the tell, while the target still has
+            -- turns in which to decide what to do about it -- not a consequence delivered when the
+            -- blow lands. This is the difference between a telegraph the player can answer and one
+            -- they can only regret.
+            assert(Status.has(f, "status_cowering"),
+                "the body under the blade is already cowering while she is still winding up")
         end,
     },
     {
-        name = "the sand covers the whole telegraphed footprint, not just the aimed tile",
+        name = "every body in the telegraphed footprint cowers, and one already clear does not",
         fn = function()
-            -- The First Motion drives THROUGH the tiles in front (aoe line, length 2 at level 0), and
-            -- the hazard is laid over Combat.aoeCells -- the same footprint the red preview draws. A
-            -- swing whose sand did not match its own telegraph would be lying to the player.
+            -- The First Motion drives THROUGH the tiles in front (aoe line, length 2 at level 0: the
+            -- aimed cell and the one beyond it). The affliction lands over Combat.aoeCells -- the same
+            -- footprint the red preview draws -- so it must catch every body inside it, and being a
+            -- status on the occupants rather than terrain, it must NOT reach a body standing outside it.
             local map = Fixture.new(8, 8)
             local her = Fixture.unit("character_saber", 4, 4)
-            local foe = Fixture.unit("character_bandit", 4, 5)
-            local combat = Fixture.combat(map, her, foe)
+            local combat = Fixture.combat(map, her, {
+                Fixture.unit("character_bandit", 4, 5), -- the aimed tile
+                Fixture.unit("character_bandit", 4, 6), -- the tile the swing drives through beyond it
+                Fixture.unit("character_bandit", 4, 7), -- one step past the footprint
+            })
             local s = combat.units[1]
             local blade = Fixture.itemNamed(s.char, "weapon_first_motion")
+
+            local cells = Combat.aoeCells(combat, blade.activeAbility, 4, 5, s)
+            assert(#cells >= 2, "the swing really does reach past the first tile")
 
             Fixture.openTurn(combat, s)
             assert(Combat.useItem(combat, s, blade, 4, 5), "she begins the wind-up")
 
-            local sand = sandCells(combat)
-            local cells = Combat.aoeCells(combat, blade.activeAbility, 4, 5, s)
-            assert(#cells >= 2, "the swing really does reach past the first tile")
-            for _, c in ipairs(cells) do
-                assert(sand[c.x .. "," .. c.y],
-                    "every telegraphed tile is churned; " .. c.x .. "," .. c.y .. " was not")
-            end
+            assert(Status.has(Combat.unitAt(combat, 4, 5), "status_cowering"), "the aimed body cowers")
+            assert(Status.has(Combat.unitAt(combat, 4, 6), "status_cowering"),
+                "and so does the one the swing drives through beyond it")
+            assert(not Status.has(Combat.unitAt(combat, 4, 7), "status_cowering"),
+                "but a body already clear of the footprint is never touched -- it is not terrain")
         end,
     },
     {
-        name = "standing in the churned ground Mires you, so leaving it costs double",
+        name = "cowering shortens the escape but does not forbid it -- the dodge is priced, not banned",
         fn = function()
-            -- Quicksand's own contract (data/hazards/hazard_quicksand.lua), asserted here because it
-            -- is the entire reason the swing lays it: the dodge is not forbidden, it is PRICED.
+            -- Cowering's own contract (data/status/cowering.lua), asserted here because it is the
+            -- entire reason the swing lays it: the dodge is not forbidden, its reach is SHORTENED.
+            local map = Fixture.new(8, 8)
+            local her = Fixture.unit("character_saber", 4, 4)
+            local foe = Fixture.unit("character_bandit", 4, 5)
+            local combat = Fixture.combat(map, her, foe)
+            local s, f = combat.units[1], combat.units[2]
+            local blade = Fixture.itemNamed(s.char, "weapon_first_motion")
+
+            local before = Combat.moveBudget(f)
+            Fixture.openTurn(combat, s)
+            assert(Combat.useItem(combat, s, blade, 4, 5), "she begins the wind-up")
+            assert(Status.has(f, "status_cowering"), "the body in the strike zone is cowering")
+
+            local after = Combat.moveBudget(f)
+            assert(after < before, "its reach is cut while the blow hangs over it: " .. before .. " -> " .. after)
+            assert(after > 0, "but it can still move -- the swing is dodgeable, only not for free")
+        end,
+    },
+    {
+        name = "the flinch rides the body, not the ground -- it outlives the swordswoman who caused it",
+        fn = function()
+            -- A hazard would have been terrain answering to its own life; this is a status on the foe,
+            -- so cutting Saber down mid-wind-up does not lift the flinch from the body she stamped it on.
             local map = Fixture.new(8, 8)
             local her = Fixture.unit("character_saber", 4, 4)
             local foe = Fixture.unit("character_bandit", 4, 5)
@@ -106,32 +115,11 @@ return {
 
             Fixture.openTurn(combat, s)
             assert(Combat.useItem(combat, s, blade, 4, 5), "she begins the wind-up")
-            -- The bandit is standing in the strike zone as the sand goes down.
-            Hazard.onEnter(combat, f, f.x, f.y)
-            assert(Status.has(f, "status_mired"),
-                "a body standing in the strike zone is bogged down while the blow is still coming")
-        end,
-    },
-    {
-        name = "the sand does not vanish when she does -- it is churned earth, not a summon",
-        fn = function()
-            local map = Fixture.new(8, 8)
-            local her = Fixture.unit("character_saber", 4, 4)
-            local foe = Fixture.unit("character_bandit", 4, 6)
-            local combat = Fixture.combat(map, her, foe)
-            local s = combat.units[1]
-            local blade = Fixture.itemNamed(s.char, "weapon_first_motion")
+            assert(Status.has(f, "status_cowering"), "the foe is cowering")
 
-            Fixture.openTurn(combat, s)
-            assert(Combat.useItem(combat, s, blade, 4, 5), "she begins the wind-up")
-            local before = count(sandCells(combat))
-            assert(before > 0, "the sand is down")
-
-            -- Cut her down mid-wind-up. An owned zone would go with its owner (Hazard.dropOwnedBy);
-            -- this one is deliberately unowned, so killing the caster does not un-churn the ground.
             Combat.dealFlatDamage(combat, s, 9999, {}, "test")
             assert(not s.alive, "she is down")
-            assert(count(sandCells(combat)) == before, "and the ground she tore up is still torn up")
+            assert(Status.has(f, "status_cowering"), "and the body she made flinch is flinching still")
         end,
     },
 

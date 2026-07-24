@@ -24,8 +24,9 @@
 --     honest, seeable counterpart to the hidden snares: one is the house cheating, one is just the
 --     ground, and between them the flanks cost something to use.
 --
--- Note the sand Saber's own swing churns up (weapon_first_motion's channelHazard) is laid at COMBAT
--- time, on commit -- it is not authored here. This board is the standing terrain; her wind-up adds to it.
+-- Note the flinch Saber's own wind-up stamps on the bodies under it (weapon_first_motion's
+-- channelAfflict, a Cowering debuff) lands at COMBAT time, on commit -- it is not authored here. This
+-- board is the standing terrain; her wind-up works on whoever is caught standing in it.
 return {
     biome = "castle",
     fixed = true, -- addressable by name (spec.layout); never rolled by an ordinary castle fight

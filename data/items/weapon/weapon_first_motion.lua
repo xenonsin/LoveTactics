@@ -72,24 +72,26 @@ return {
         -- fields are one now (models/item.lua's Item.windupRange), and making the range literal
         -- halves her floor: she commits for two ticks, not four.
         windup = { min = 2, max = 5 },
-        -- THE GROUND GOES SOFT WHERE THE BLADE IS GOING TO FALL. Laid on commit, over the exact tiles
-        -- the swing is telegraphed to sweep -- so the tell is not just information, it is terrain.
+        -- THE BODIES UNDER THE BLADE FLINCH. On commit, whoever is already standing in the tiles the
+        -- swing is telegraphed to sweep is made to Cower (data/status/cowering.lua) -- so the tell is
+        -- not just information, it is a grip on the ones it is aimed at.
         --
         -- This is the answer to the blow being trivially dodgeable, and it deliberately does NOT make
-        -- it undodgeable: Quicksand grants Mired, which doubles what a step costs rather than
-        -- forbidding it (data/hazards/hazard_quicksand.lua). Standing in the strike zone when a
-        -- greatsword is coming down is still the wrong idea; walking out of it now costs real tempo
-        -- instead of being free. The counterplay moves from "take one step" to "be somewhere else
-        -- before she commits" -- which is the read the weapon wanted from the player all along.
+        -- it undodgeable: Cowering cuts how FAR a step can carry you rather than forbidding the step.
+        -- Standing in the strike zone when a greatsword is coming down is still the wrong idea; a
+        -- cowering body moves too few tiles to clear the whole telegraphed footprint in one go. The
+        -- counterplay moves from "take one step" to "be somewhere else before she commits" -- the read
+        -- the weapon wanted all along.
         --
-        -- It rides the wind-up's length, so a deep hold leaves the sand churned longer than a snap
-        -- swing does: the deeper the commitment, the longer the ground remembers it. And it is
-        -- unowned and hostile to all comers, so if the swing drags HER onto it she is mired too.
-        -- An explicit duration rather than the wind-up's own length: the default would leave a snap
-        -- swing's sand gone three ticks later, before anybody had to decide anything about it. Ten
-        -- ticks is about two turns -- long enough that the churned ground shapes the exchange AFTER
-        -- the blow as well as the one before it, which is what makes it terrain rather than a effect.
-        channelHazard = { id = "hazard_quicksand", duration = 10 },
+        -- A status on the bodies, NOT terrain: it lands once, on whoever is caught at the moment of
+        -- commit, and a foe already clear of the footprint is never touched. That is the whole seam
+        -- between her ground game and the house's -- the hired hands PIN a runner outright with their
+        -- bolas (character_arena_hand's Root); her own swing only makes the ones under it give ground.
+        --
+        -- `channelAfflict` rides the wind-up's length by default, so a deeper hold cows longer; the
+        -- explicit duration overrides that with a flat window. Side-agnostic, as an unowned zone would
+        -- have been -- if an ally is somehow standing in the strike zone, it cowers too.
+        channelAfflict = { status = "status_cowering", duration = 10 },
         cost = { stat = "stamina", amount = 15 },
         damage = { 22, 24, 27, 29, 32, 34, 37, 39, 42, 44, 47 },
         -- The overhead blow doesn't stop at the first body: it drives THROUGH the tiles in front (the

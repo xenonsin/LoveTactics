@@ -33,6 +33,7 @@ local Character = require("models.character")
 local Player = require("models.player")
 local Item = require("models.item")
 local Growth = require("models.growth")
+local Debug = require("models.debug")
 local Scale = require("scale")
 
 local Party = {}
@@ -223,6 +224,17 @@ function Party.new(opts)
         self.segRects[m] = { x = self.railX + (i - 1) * (segW + 6), y = self.modeY, w = segW, h = MODE_H }
     end
 
+    -- Debug "All Items" toggle: a development-only pill at the right end of the tab band that swaps
+    -- the stash for the full item catalog so any item can be equipped and tested (see setDebugAll).
+    -- Laid out and drawn only when Debug.enabled, so a release build never shows it. Suppressed when
+    -- the host already drives the stash as a catalog through its own filter strip (the debug character
+    -- editor, states/debug_editor.lua), where a second catalog switch would only fight the first.
+    if Debug.enabled and not self.filters then
+        local dbgW = 190
+        self.debugRect = { x = self.boxX + BOX_W - 24 - dbgW, y = self.modeY, w = dbgW, h = MODE_H }
+    end
+    self.debugAll = false
+
     -- Both column editors get the SAME rect: they are alternative views of the area right of the
     -- rail, and one of them being wider than the other would read as the panel resizing on a tab
     -- change.
@@ -279,6 +291,9 @@ function Party:setMsg(text, ok)
 end
 
 function Party:close()
+    -- Put the real stash back before anything can persist it: with the debug catalog still installed,
+    -- the save below would write hundreds of catalog items over the player's real inventory.
+    if self.debugAll then self:setDebugAll(false) end
     -- Persist on the way out, as ui/panels/shop.lua and ui/panels/blacksmith.lua already do. This
     -- screen never used to save at all -- loadout edits (and the default-action star) survived only
     -- until the next unrelated save point. That was survivable when the whole screen was item
@@ -423,6 +438,76 @@ end
 
 function Party:refreshStash()
     self.pool:refresh()
+end
+
+-- ---------------------------------------------------------------------------
+-- Debug "All Items" (development only; guarded by Debug.enabled at every seam)
+-- ---------------------------------------------------------------------------
+--
+-- When on, the stash becomes the whole item catalog, restocked to full as it is spent (see
+-- restockCatalog), so any item can be dragged onto a member and tried out. It works by SETTING ASIDE
+-- the real stash and pointing player.stash at a throwaway catalog buffer -- every transfer path here
+-- indexes player.stash directly, so the buffer has to *be* the stash for the duration rather than a
+-- view beside it (the same shape states/debug_editor.lua uses for its synthetic player).
+--
+-- The real stash is restored the instant the toggle goes off OR the panel closes (before any save),
+-- so the catalog can never be persisted over the player's real inventory. Items equipped onto members
+-- while it was on stay equipped -- that is the point -- but anything left sitting in the catalog
+-- buffer, including a real item stowed there while it was on, is discarded with the buffer.
+function Party:setDebugAll(on)
+    if not Debug.enabled or on == self.debugAll then return end
+    -- Never carry a pickup across the swap: its index would point into the wrong list afterward.
+    self.grid:cancelPickup()
+    self.pool:cancelPickup()
+    self.drag = nil
+
+    if on then
+        self.realStash = self.player and self.player.stash
+        if self.player then self.player.stash = {} end
+        self.debugAll = true
+        self:restockCatalog()
+    else
+        if self.player and self.realStash then self.player.stash = self.realStash end
+        self.realStash = nil
+        self.debugAll = false
+        self.pool:setItems(self.player and self.player.stash or {})
+        self:refreshStash()
+    end
+    Debug.allItems = self.debugAll
+end
+
+-- Fill the catalog buffer with one full stack of every item, sorted by id so the grid does not
+-- reshuffle under the cursor between restocks. Rebuilt in place (same table identity) because the
+-- pool holds a reference to player.stash. Mirrors states/debug_editor.lua's restock.
+function Party:restockCatalog()
+    local stash = self.player and self.player.stash
+    if not stash then return end
+    local ids = {}
+    for id in pairs(Item.defs) do ids[#ids + 1] = id end
+    table.sort(ids)
+    for i = #stash, 1, -1 do stash[i] = nil end
+    for _, id in ipairs(ids) do
+        local def = Item.defs[id]
+        stash[#stash + 1] = Item.instantiate(id, Item.isStackable(def) and Item.maxStack(def) or 1)
+    end
+    self.pool:setItems(stash)
+    self:refreshStash()
+end
+
+-- Restocking while an item is in hand would renumber the buffer under a live pickup, so the catalog
+-- only tops up between actions -- invisible in practice, since there is no moment you are both
+-- holding something and looking for more of it.
+function Party:catalogIdle()
+    return self.drag == nil and not self.pool.picked and not self.grid.picked and not self.quantityPopup
+end
+
+function Party:toggleDebugAll()
+    self:setDebugAll(not self.debugAll)
+end
+
+function Party:debugHit(x, y)
+    local r = self.debugRect
+    return r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
 -- A screen-space rect over the stash's FIRST ROW OF ITEMS, for the overworld tutorial to pin its
@@ -980,6 +1065,8 @@ end
 -- ---------------------------------------------------------------------------
 
 function Party:update(dt)
+    -- Top the debug catalog back up between actions, so an equipped item is instantly replaced.
+    if self.debugAll and self:catalogIdle() then self:restockCatalog() end
     if self.quantityPopup then self.quantityPopup:update(dt) return end
     -- Poll the analog stick for navigation, edge-detected so a held stick steps one cell per push
     -- (mirrors ui/battle_map.lua). D-pad is handled directly in gamepadpressed.
@@ -1016,6 +1103,7 @@ function Party:draw()
     love.graphics.printf(self.title, self.boxX, self.boxY + 18, BOX_W, "center")
 
     self:drawModeSelector()
+    self:drawDebugToggle()
     self:drawRail()
     local editor = self:columnEditor()
     if editor then
@@ -1248,8 +1336,26 @@ end
 function Party:drawPool()
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(0.75, 0.78, 0.86)
-    love.graphics.print("Stash (" .. self.pool:count() .. ")", self.pool.x, self.poolHeaderY)
+    local label = self.debugAll and "Catalog (all items)" or "Stash"
+    love.graphics.print(label .. " (" .. self.pool:count() .. ")", self.pool.x, self.poolHeaderY)
     self.pool:draw()
+end
+
+-- The development-only "All Items" pill at the right end of the tab band. Lit when the catalog is
+-- installed. Drawn (and hit-tested) only when Debug.enabled, so a release build never shows it.
+function Party:drawDebugToggle()
+    local r = self.debugRect
+    if not r then return end
+    local on = self.debugAll
+    love.graphics.setColor(on and 0.28 or 0.16, on and 0.22 or 0.17, on and 0.14 or 0.22, 0.9)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
+    love.graphics.setColor(on and 0.95 or 0.4, on and 0.7 or 0.42, on and 0.35 or 0.5)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
+    love.graphics.setFont(self.smallFont)
+    love.graphics.setColor(on and 0.98 or 0.66, on and 0.85 or 0.68, on and 0.55 or 0.76)
+    love.graphics.printf("Debug: All Items " .. (on and "ON" or "OFF") .. "  [F1]",
+        r.x, r.y + (r.h - self.smallFont:getHeight()) / 2, r.w, "center")
+    love.graphics.setColor(1, 1, 1)
 end
 
 function Party:drawFooter()
@@ -1425,6 +1531,7 @@ function Party:cursorKind(x, y)
     if self.quantityPopup then return self.quantityPopup:cursorKind(x, y) end
     if self.closeButton:contains(x, y) then return "hand" end
     if self:railIndexAt(x, y) then return "hand" end
+    if self:debugHit(x, y) then return "hand" end
     for _, m in pairs(self.segRects) do
         if pointIn(m, x, y) then return "hand" end
     end
@@ -1482,6 +1589,7 @@ function Party:mousepressed(x, y, button)
     for _, m in ipairs(self.modes) do
         if pointIn(self.segRects[m], x, y) then self:setMode(m) return end
     end
+    if self:debugHit(x, y) then self:toggleDebugAll() return end
 
     local empty = not (self.grid.picked or self.pool.picked)
 
@@ -1587,6 +1695,8 @@ function Party:keypressed(key)
         local caught = (editor and editor:cancel())
             or self.grid:cancelPickup() or self.pool:cancelPickup()
         if not caught then self:close() end
+    elseif key == "f1" then
+        self:toggleDebugAll()
     elseif key == "tab" then
         self:cycleFocus(1)
     elseif key == "q" then

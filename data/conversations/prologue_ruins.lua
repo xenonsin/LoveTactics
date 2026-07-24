@@ -9,8 +9,9 @@
 -- fielded by states/game.lua). Staged as an ORDINARY scene -- full portraits, title, the usual dim --
 -- exactly like prologue_intro and prologue_flee either side of it. It is a story beat that happens to
 -- be triggered by a map rather than a beat about the map, and the compact `overScene` staging is kept
--- for the one case that genuinely needs it: the battle opening, where the board underneath is being
--- read tile by tile (data/conversations/prologue_village.lua).
+-- for the one case that genuinely needs it: a GUIDED fight's opening, where the board underneath is
+-- being read tile by tile and the mentor is about to speak from the same gutter panel
+-- (data/conversations/prologue_village.lua). Every other battle opening is staged like this one.
 --
 -- It has three jobs:
 --

@@ -62,6 +62,9 @@ end
 -- too -- and every other injected/label string in the UI.
 function Conversation.drainJoins(resolved)
     if #Conversation.pendingJoins == 0 then return resolved end
+    -- A companion is joining -- ring the join cue as the banner is folded in. Required inline so this
+    -- model keeps no static edge to the sound layer; silent under headless tests (models/sound.lua).
+    require("models.sound").play("quest.join")
     resolved.script = resolved.script or {}
     for _, join in ipairs(Conversation.pendingJoins) do
         resolved.script[#resolved.script + 1] = {
@@ -356,10 +359,12 @@ end
 --
 -- It is an argument rather than only a field on the blueprint because the staging is a property of
 -- WHERE a scene is playing, not of the scene. The same conversation over a black backdrop wants the
--- full visual-novel treatment and over a battlefield wants none of it: a bottom-anchored bust is half
--- the screen tall and stands exactly where the board keeps its board. So states/battle.lua asks for
--- it on everything it plays, and a scene written for the middle of a fight does not have to remember
--- to declare it -- or be wrong the first time somebody plays it somewhere else.
+-- full visual-novel treatment, and over a board the player is being TAUGHT to read tile by tile wants
+-- none of it: a bottom-anchored bust is half the screen tall and stands exactly where the board keeps
+-- its board. So states/battle.lua asks for it on a guided fight's opening (where the mentor's own
+-- panel shares the gutter) and not on an ordinary one, and a scene written for the middle of a fight
+-- does not have to remember to declare it -- or be wrong the first time somebody plays it somewhere
+-- else.
 function Conversation.play(id, onDone, ctx, opts)
     local def = Conversation.defs[id]
     assert(def, "unknown conversation id: " .. tostring(id))
@@ -367,9 +372,10 @@ function Conversation.play(id, onDone, ctx, opts)
     local resolved = Conversation.resolve(def, ctx or Conversation.context(Player.active))
     -- Any companion recruited since the last scene gets a "[<name> has joined your Party]" banner
     -- appended here (Conversation.drainJoins), so the join shows up in the scene that follows it.
-    -- `opts.deferJoins` holds the queue instead: a conversation staged over a frozen battle board (a
-    -- fight's opening scene, states/battle.lua) is an in-fight overlay, not the roster beat where a
-    -- join belongs -- so it lets the banner fall through to the next full scene. The prologue relies
+    -- `opts.deferJoins` holds the queue instead: a fight's opening (states/battle.lua) plays over a
+    -- frozen board as the last words before the first turn, which is not the roster beat a join
+    -- belongs in -- so it lets the banner fall through to the next SCRIPTED scene, one an author put
+    -- the newcomer in on purpose. This holds whatever staging the opening took. The prologue relies
     -- on this: Rowan is recruited before the village fight so she can fight in it, and the join waits
     -- out the tutorial's opening to land in the "Ashes" scene after (states/prologue.lua).
     if not (opts and opts.deferJoins) then Conversation.drainJoins(resolved) end
