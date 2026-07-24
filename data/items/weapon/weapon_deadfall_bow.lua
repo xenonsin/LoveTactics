@@ -31,7 +31,7 @@ return {
         minRange = 2,
         requiresSight = true,
         speed = 4,
-        channel = 2,
+        windup = 2,
         cost = { stat = "stamina", amount = 10 },
         -- Token, and openly so: the shaft is being planted rather than loosed.
         damage = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 },

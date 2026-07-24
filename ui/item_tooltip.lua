@@ -338,12 +338,16 @@ local function buildBlocks(item, actor, innerW, out)
         if ab.speed then
             blocks[#blocks + 1] = { kind = "stat", label = "Speed", value = tostring(ab.speed) }
         end
-        -- A channeled spell (a big AOE like Meteor Storm) winds up for `ab.channel` ticks before it
-        -- fires: the caster is exposed and the effect resolves on its next slot, so the tell is a real
-        -- cost worth quoting. The note spells out the tradeoff (foes can scatter; hard control breaks it).
-        if ab.channel and ab.channel > 0 then
-            blocks[#blocks + 1] = { kind = "stat", label = "Channel", icon = "hourglass",
-                value = tostring(ab.channel) }
+        -- A channeled spell (a big AOE like Meteor Storm) winds up before it fires: the caster is
+        -- exposed and the effect resolves on its next slot, so the tell is a real cost worth quoting.
+        -- A CHARGEABLE one (The First Motion) quotes the whole range it may be held for rather than
+        -- just its floor -- the depth is the player's to choose, so the cheapest and deepest holds are
+        -- both facts about the item. The note spells out the tradeoff (foes can scatter; hard control
+        -- breaks it). The hourglass rides it because this is a duration (ui/glyphs.lua).
+        local windLo, windHi = Item.windupRange(ab)
+        if windHi > 0 then
+            blocks[#blocks + 1] = { kind = "stat", label = "Wind-up", icon = "hourglass",
+                value = (windHi > windLo) and (windLo .. "-" .. windHi) or tostring(windLo) }
             blocks[#blocks + 1] = { kind = "note", text = "Winds up before it fires; disrupted by hard control or forced movement" }
         end
         -- Price the cast for THIS actor: a cost-reducing status (Haste) is already folded into

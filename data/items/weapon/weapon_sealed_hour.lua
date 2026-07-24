@@ -32,7 +32,7 @@ return {
         range = 1,
         minRange = 1,
         speed = 7,
-        channel = 2,
+        windup = 2,
         cost = { stat = "stamina", amount = 16 },
         damage = { 24, 27, 29, 32, 34, 37, 39, 42, 44, 47, 50 }, -- an iron greatsword's: the seal is the extra
         effect = function(fx)

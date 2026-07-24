@@ -26,7 +26,7 @@ return {
         range = 1,
         minRange = 1,
         speed = 7,
-        channel = 2,
+        windup = 2,
         cost = { stat = "stamina", amount = 15 },
         -- Under the iron greatsword's: the roar is the rest of the price.
         damage = { 20, 22, 24, 26, 28, 30, 32, 35, 37, 39, 42 },

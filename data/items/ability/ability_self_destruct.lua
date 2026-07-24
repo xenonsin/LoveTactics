@@ -46,7 +46,7 @@ return {
         target = "self",
         support = false,
         range = 0,
-        channel = 2, -- the tell: the window a step, a shove or a stun has to answer it
+        windup = 2, -- the tell: the window a step, a shove or a stun has to answer it
         speed = 4,
         -- The same 12 the trait throws, and it must STAY the same 12: the Bomblet promises that the
         -- damage only ever comes from the burst, however the burst is triggered, and a player who

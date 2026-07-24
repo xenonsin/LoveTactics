@@ -34,7 +34,7 @@ return {
         range = 1,
         minRange = 1,
         speed = 7,
-        channel = 2,
+        windup = 2,
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's: an ally's whole action is worth more than the six points of Power
         -- it gives up, and it should be, or nobody would ever swing the plain one.

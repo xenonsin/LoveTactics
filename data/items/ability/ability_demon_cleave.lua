@@ -19,7 +19,7 @@ return {
         range = 1,
         minRange = 1,          -- must pick a neighbor (a facing); never its own tile
         speed = 6,             -- heavy, and slow to come around again
-        channel = 2,           -- the two-tick tell: brace, step, or break it
+        windup = 2,           -- the two-tick tell: brace, step, or break it
         cost = { stat = "stamina", amount = 10 },
         damage = { 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22 }, -- a real hit -- the reason to brace it
         aoe = { shape = "front", width = 3 }, -- a 3-wide arc in front, like an axe cleave

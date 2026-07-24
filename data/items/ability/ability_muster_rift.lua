@@ -34,7 +34,7 @@ return {
         target = "self",
         range = 0,
         speed = 5,
-        channel = 4, -- two turns of everyone watching where the muster will be
+        windup = 4, -- two turns of everyone watching where the muster will be
         cost = { stat = "mana", amount = 26 },
         support = true,
         requiresAdjacent = { tag = "banner" },

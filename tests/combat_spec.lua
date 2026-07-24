@@ -1009,7 +1009,7 @@ return {
     },
 
     -- ---------------------------------------------------------------------------
-    -- Channeled abilities: a large AOE spell winds up for `ab.channel` ticks (during which other
+    -- Channeled abilities: a large AOE spell winds up for its `windup` ticks (during which other
     -- units act and may flee the blast) before resolving, and only THEN pays ab.speed. Hard control
     -- and forced movement interrupt it; the committed cost is not refunded. See models/combat.lua
     -- (useItem's channel branch, resolveCast, resolveChannel, interruptChannel).
@@ -1023,7 +1023,7 @@ return {
             local mage, b1, b2 = c.units[1], c.units[2], c.units[3]
             mage.char.inventory = { Item.instantiate("ability_fireball") }
             local fireball = mage.char.inventory[1]
-            assert(fireball.activeAbility.channel == 4, "fireball carries a channel wind-up (deep-copied from data)")
+            assert(fireball.activeAbility.windup == 4, "fireball carries a wind-up (deep-copied from data)")
             mage.initiative, b1.initiative, b2.initiative = 0, 1, 2
             local mana0 = poolOf(mage, "mana")
             local hp1, hp2 = b1.char.stats.health.current, b2.char.stats.health.current
@@ -1088,21 +1088,21 @@ return {
             openTurn(c, mage)
             c.turn.moveCost = 3
             assert(Combat.useItem(c, mage, fireball, 2, 4), "the channel begins")
-            assert(mage.initiative == fireball.activeAbility.channel,
+            assert(mage.initiative == fireball.activeAbility.windup,
                 "the blast lands at the wind-up (4), not the wind-up plus the 3 tiles walked; got "
                     .. mage.initiative)
             assert(Combat.tempoDebt(mage) == 3, "the 3 tiles walked are banked as a debt")
 
             -- The follow-up ghost owns the deferred move, so the strip projects the real next slot.
             local ghost = Combat.channelGhosts(c)[1]
-            assert(ghost.initiative == fireball.activeAbility.channel + 3 + speed,
+            assert(ghost.initiative == fireball.activeAbility.windup + 3 + speed,
                 "the follow-up ghost = resolution + the walk + the cast's speed; got " .. ghost.initiative)
 
             -- Resolving settles the debt: the caster's next turn lands at walk + wind-up + speed -- the
             -- same tick the old stacked model gave it. Only the resolution slot moved earlier.
             openTurn(c, mage)
             assert(Combat.resolveChannel(c, mage), "the channel resolves")
-            assert(mage.initiative == fireball.activeAbility.channel + 3 + speed,
+            assert(mage.initiative == fireball.activeAbility.windup + 3 + speed,
                 "resolution charges the deferred walk on top of speed")
             assert(Combat.tempoDebt(mage) == 0, "the debt is settled, and never charged twice")
         end,

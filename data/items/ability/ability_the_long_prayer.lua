@@ -25,7 +25,7 @@ return {
         target = "tile",
         range = 4,
         speed = 6,
-        channel = 4, -- winds up before it fires (Combat reads ab.channel)
+        windup = 4, -- winds up before it fires (Combat reads `windup`)
         support = true,
         cost = { stat = "mana", amount = 16 },
         description = "Channels, then sanctifies a circle that widens with the wind-up served.",

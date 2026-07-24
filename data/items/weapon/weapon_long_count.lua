@@ -30,7 +30,7 @@ return {
         range = 1,
         minRange = 1,
         speed = 7,
-        channel = 2,
+        windup = 2,
         cost = { stat = "stamina", amount = 16 },
         -- Well under an iron greatsword's, and that is the floor rather than the number: this is what it
         -- lands on turn one, before the count has anything in it.

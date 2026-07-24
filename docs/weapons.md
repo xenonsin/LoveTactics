@@ -30,14 +30,14 @@ which vendor stocks the item and never gates who may carry it. A hunter may abso
 | Family | Base mechanic | Base weapon |
 |---|---|---|
 | `sword` | Average damage and speed, `hands = 1`, and it **parries**: answers an adjacent melee blow with one of its own, for a little stamina. The reference weapon the melee kit is tuned against — its edge is costing nothing up front, and leaving a hand free. | `weapon_iron_sword` |
-| `greatsword` | **Channels** a turn, then lands on one tile for the heaviest hit in the game. `hands = 2`. Its own family, *not* a sword — it must not also parry. | `weapon_iron_greatsword` |
+| `greatsword` | **Winds up** a turn, then lands on one tile for the heaviest hit in the game. `hands = 2`. Its own family, *not* a sword — it must not also parry. | `weapon_iron_greatsword` |
 | `axe` | **Cleaves**: `aoe = { shape = "front", width = 3 }`, a 3-wide arc perpendicular to the aimed tile. Softer per target than a sword; worth it when more than one thing is in front of you. | `weapon_iron_axe` |
 | `spear` | **Skewers a line**: `aoe = { shape = "line", length = 2 }`, the two tiles directly in front. `hands = 2`. | `weapon_iron_spear` |
 | `mace` | **Knocks back** 2 tiles; a collision hurts everything in it. You buy the displacement, not the damage. | `weapon_iron_mace` |
 | `hammer` | **Stuns**, and is ponderous (`speed` 7) — you buy the stun with your own tempo. `hands = 2`. | `weapon_iron_hammer` |
 | `dagger` | **Quick** (`speed` 1–2) and applies **Bleed**. Modest damage; the wound does the rest. | `weapon_iron_dagger` |
 | `bow` | **Ranged physical**. `requiresSight`, and `minRange = 2` — a bow has no point-blank shot. `hands = 2`, as every bow is. | `weapon_iron_bow` |
-| `longbow` | **Channels** a turn to draw, then looses from `range = 5` — two tiles beyond a bow — keeping `requiresSight`, `minRange = 2` and `hands = 2`. Its own family, *not* a bow: the draw is the verb, and the reach is what pays for it. | `weapon_iron_longbow` |
+| `longbow` | **Winds up** a turn to draw, then looses from `range = 5` — two tiles beyond a bow — keeping `requiresSight`, `minRange = 2` and `hands = 2`. Its own family, *not* a bow: the draw is the verb, and the reach is what pays for it. | `weapon_iron_longbow` |
 | `wand` | **Ranged magical**. `requiresSight`, and *no* `minRange`: a wand needs only a direction, which is its whole claim over a bow. | `weapon_wand` |
 | `staff` | Swaps **Wait → Focus** (`waitBehavior`): end the turn to recover mana. The swap *is* the weapon; the strike is a deliberate afterthought. | `weapon_staff` |
 | `censer` | **Emits `incense`**: a square of ground around the bearer, lifted and laid again wherever they go. The smoke is the weapon and the strike an afterthought, as a staff's is — but where a staff's swap pays the bearer, a censer's ground pays whoever stands in it. | `weapon_censer` |
@@ -134,8 +134,8 @@ outside the count and are not listed here.
 ### `greatsword` — fighter
 | | Weapon | Its extra over the base |
 |---|---|---|
-| S1 | `weapon_iron_greatsword` | the base: channels 2, heaviest single-tile hit |
-| S2 | `weapon_headsmans_cleaver` | **Half the telegraph** (channel 1), and full weight only into a foe under half health. The closer to Saber's opener. |
+| S1 | `weapon_iron_greatsword` | the base: winds up 2, heaviest single-tile hit |
+| S2 | `weapon_headsmans_cleaver` | **Half the telegraph** (windup 1), and full weight only into a foe under half health. The closer to Saber's opener. |
 | S3 | `weapon_bellowing_edge` | The impact **taunts** every foe within two tiles onto you — the family's telegraph turned into a plan for the next one. |
 | S4 | `weapon_sealed_hour` | `status_sealed_hour`: all damage and healing on that body is **held, then settles at once**. Wastes the enemy healer; terrible for finishing. |
 | S4 | `weapon_avalanche` | The only greatsword whose wind-up **length is chosen**: two extra ticks widen the fall from one tile to a 3-wide arc. |
@@ -232,7 +232,7 @@ outside the count and are not listed here.
 ### `longbow` — hunter
 | | Weapon | Its extra over the base |
 |---|---|---|
-| S1 | `weapon_iron_longbow` | the base: channels, range 5, `minRange` 2 |
+| S1 | `weapon_iron_longbow` | the base: winds up, range 5, `minRange` 2 |
 | S2 | `weapon_wardens_longbow` | The **draw's depth is chosen** (`windup`) — up to three extra ticks, each adding a quarter of the shot. |
 | S3 | `weapon_piercing_draw` | The shaft runs a **3-tile line** and lands **`raw`**. The hunter's answer to heavy infantry in a corridor. |
 | S4 | `weapon_hailfall_longbow` | **Five arrows on five random tiles** of a 2-radius spread. Buys coverage, gives up the promise — and hits your own line. |
@@ -365,7 +365,7 @@ it for free. Prefer one over hand-rolling the same logic in an `effect`.
 
 | Keyword | Meaning |
 |---|---|
-| `channel = n` | Wind up for `n` ticks; the cast resolves on the wielder's next turn, and hard control breaks it. Exactly `n` — walking first never stretches the telegraph, the move cost is charged past the resolution instead. |
+| `windup = n` | Wind up for `n` ticks; the cast resolves on the wielder's next turn, and hard control breaks it. Exactly `n` — walking first never stretches the telegraph, the move cost is charged past the resolution instead. |
 | `aoe = { shape, … }` | The area the cast covers: `square`, `diamond`, `line` (length), `front` (width). |
 | `frenzy = f` | Every body the area catches **beyond the first** adds `f` of the magnitude to what *each* of them takes. Counts bodies, not enemies — an ally in the arc feeds it too. |
 | `lifesteal = f` | The user heals `f` of everything the cast deals. Adds to a Vampiric Strike aura rather than overriding it. |
@@ -373,7 +373,7 @@ it for free. Prefer one over hand-rolling the same logic in an `effect`.
 | `requiresSight` | Needs a clear line (`Combat.hasLineOfSight`); terrain cover blocks it. |
 | `requiresAdjacent = { type, tag }` | Only usable with a matching item beside it in the 3×3 grid. |
 | `consumesItem` | Spends one of the stack on use. |
-| `windup = { min, max }` | The channel's length is **chosen at cast**, between `min` and `max` extra ticks; the effect reads `fx.windup`. `weapon_avalanche` spends it on footprint, `weapon_wardens_longbow` on damage. |
+| `windup = { min, max }` | The same field, made **chargeable**: the wind-up's length is chosen at cast, anywhere between `min` and `max` *total* ticks. The effect reads `fx.windup` (the whole tell) or `fx.held` (just the part chosen above `min`). `weapon_avalanche` spends it on footprint, `weapon_wardens_longbow` and `weapon_first_motion` on damage. "Not chargeable" is simply `min == max`, which is what the scalar form above is shorthand for. |
 | `channelStatus = id` | A status the caster gains **on commit** and carries through the wind-up. The half an `effect` cannot reach — an effect runs when the cast resolves, and this has to land before the enemy's turn to punish the tell (`weapon_held_breath`). |
 | `steadfast` | The wind-up **cannot be interrupted**. The control still lands in full; only the cancellation is refused, so a stun aimed at it is insufficient rather than wasted (`weapon_kingsfall`). |
 
@@ -384,7 +384,7 @@ than looked up in this file. A **new keyword therefore needs two things**: a
 `data/keywords/keyword_<name>.lua` blueprint (`{ name, description }`) and its field listed in
 `models/keyword.lua`. `tests/glossary_spec.lua` fails a field that names no blueprint.
 
-Four keywords deliberately have no glossary entry — `channel`, `consumesItem`, `requiresAdjacent` and
+Four keywords deliberately have no glossary entry — `windup`, `consumesItem`, `requiresAdjacent` and
 `reserve`. The tooltip already prints prose for each beside its own stat row, and a glossary that
 repeated them would say the same thing twice on one hover.
 
@@ -467,7 +467,7 @@ accident.
 
 ## The mechanisms behind the contract
 
-Most families need no engine support — they are an `activeAbility` shape (`aoe`, `range`, `channel`,
+Most families need no engine support — they are an `activeAbility` shape (`aoe`, `range`, `windup`,
 `speed`) plus an `effect(fx)` that calls an existing helper (`fx.knockback`, `fx.applyStatus`,
 `fx.aoeUnits`). Four are worth knowing about.
 
@@ -599,6 +599,20 @@ gating, and three readers change together so the rule stays one rule:
 It is deliberately not a negation: it fires from the ordinary `onDamaged` hook, so the blow lands in
 full and a *killing* blow goes unanswered. What it buys is a cut and a position — including, half the
 time, standing in the open next to the thing that just shot you.
+
+### The answer that leaves: `hitAndRun`
+
+`hitAndRun = n` on a **weapon** (`weapon_wolf_fangs`) means its bearer gives ground *n* tiles after
+answering with it — `Combat.answerStrike`, which every `ctx.basicAttack` runs through. It is the same
+step the fangs take on the wolf's own turn (`fx.retreat` in its `effect`), declared once so the bite
+and the counter can never drift apart: the step-back belongs to the **teeth**, not to the turn.
+
+Safe there and only there. An on-hit reflex is dispatched once the whole action has resolved
+(`Combat.beginAnswers`), so the board is settled and moving the bearer disturbs nothing — and because
+any answer to *that* answer re-checks reach against the final board too, the wolf's counter cannot
+itself be countered. The two reflexes that fire **mid**-action — the riposte that deflects a blow, and
+Keen Senses' preempt — deliberately do not move their bearer: shifting a cast's geometry out from
+under the effect still resolving it is a different and much worse bug.
 
 Cooldowns still exist and are still the right tool for reflexes that **negate** a blow rather than
 answer it — `dodge`, `smoke_screen`, `counter_magic` — plus the non-combat reflexes (`cleansing_ward`,

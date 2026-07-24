@@ -61,15 +61,21 @@ return {
         end,
     },
     {
-        -- A conditional/signature ability (unlock- or windup-gated) is a separate effect from the item
-        -- it rides on -- the shield's guard is not its sweep -- so it must carry its OWN description,
-        -- rendered under the ability heading beside the "Weather N blows" gate. Without it the player
-        -- sees the requirement and the cost but never learns what earning it does (docs/item-text.md).
+        -- A conditional/signature ability (unlock-gated, or one whose wind-up the player CHOOSES the
+        -- depth of) is a separate effect from the item it rides on -- the shield's guard is not its
+        -- sweep -- so it must carry its OWN description, rendered under the ability heading beside the
+        -- "Weather N blows" gate. Without it the player sees the requirement and the cost but never
+        -- learns what earning it does (docs/item-text.md).
+        --
+        -- The chargeable half asks Item.isChargeable, not "does `windup` exist". Since the wind-up
+        -- fields folded, every telegraphed ability in the game carries a `windup` -- 40 of them a plain
+        -- fixed tell with no decision in it, which is a fact about timing and not a second ability to
+        -- describe. What earns the extra paragraph is the CHOICE, and that is `max > min`.
         name = "a conditional/signature ability spells out what it does",
         fn = function()
             for _, it in ipairs(eachItem()) do
                 local ab = it.def.activeAbility
-                if ab and (ab.unlock or ab.windup) then
+                if ab and (ab.unlock or Item.isChargeable(ab)) then
                     assert(type(ab.description) == "string" and ab.description ~= "",
                         it.id .. "'s signature ability declares no description -- say what earning it"
                             .. " DOES, under its heading (docs/item-text.md)")

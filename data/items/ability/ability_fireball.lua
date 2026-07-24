@@ -18,7 +18,7 @@ return {
         range = 3,
         requiresSight = true, -- must see the target cell: terrain cover blocks the throw
         speed = 4, -- powerful but slow
-        channel = 4, -- winds up before it lands: foes get several turns to leave the blast
+        windup = 4, -- winds up before it lands: foes get several turns to leave the blast
         cost = { stat = "mana", amount = 12 },
         damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
         -- Bursts on impact: a 1-tile radius around the aimed cell, corners included (a 3x3 square).

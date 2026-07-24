@@ -31,7 +31,7 @@ return {
         range = 1,
         minRange = 1,
         speed = 7,
-        channel = 2,
+        windup = 2,
         -- Stamina, not mana. A fighter is who swings this, and a greatsword whose price was mana would be
         -- unusable by the class whose shelf it sits on -- what is magical here is the wound, not the work.
         cost = { stat = "stamina", amount = 16 },

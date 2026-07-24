@@ -59,8 +59,9 @@ local LEFT_W = 264
 
 -- The gutter under the board: the free strip between the left button column and the combat panel,
 -- below the last row of tiles. Mirrors ui/tutorial_prompt.lua's own PAD/GAP/BOTTOM so the mentor's
--- panel and a conversation's text box land in exactly the same rect -- one speaks during the lesson
--- and the other before it, and they should not sit an inch apart while doing it.
+-- panel and a LESSON's opening conversation land in exactly the same rect -- one speaks during the
+-- lesson and the other before it, and they should not sit an inch apart while doing it. Only a guided
+-- fight stages its opening here; every other battle opening uses the ordinary full-screen scene UI.
 local GUTTER_PAD = 16    -- inset from the columns on either side
 local GUTTER_GAP = 8     -- between the board's bottom edge and the box
 local GUTTER_BOTTOM = 12 -- between the box and the bottom of the screen
@@ -748,11 +749,12 @@ end
 -- act, click the item (or Esc) to disarm and move freely, or click a different item to switch. Reads
 -- battle.defaultAction/defaultSupport (computeThreat set them just before). A default the unit can't
 -- afford right now, or a bare-handed unit with no ability at all, simply starts disarmed (move mode).
--- The wind-up a chargeable signature opens (and floors) at: its `windup.min` (a signature swing is
--- always at least this deep a commitment, never the bare base), or 0 for an item with no wind-up.
+-- The wind-up an item opens (and floors) at, in TOTAL ticks: its `windup` min -- a signature swing is
+-- always at least this deep a commitment -- or 0 for an item that resolves at once. Read through
+-- Item.windupRange so the scalar shorthand (`windup = 4`) and the chargeable range are one question.
 local function windupFloor(item)
-    local wu = item and item.activeAbility and item.activeAbility.windup
-    return (wu and wu.min) or 0
+    local lo = Item.windupRange(item and item.activeAbility)
+    return lo
 end
 
 local function armDefaultAction(current)
@@ -1321,21 +1323,22 @@ local function cancelArm()
     battle.windup = 0
 end
 
--- Adjust the extra wind-up the player is pouring into an armed CHARGEABLE channel (Saber's signature),
--- clamped to the ability's own `[windup.min, windup.max]` -- it can be deepened toward the cap and
--- shallowed back to the FLOOR, never below (a signature swing is always a commitment). A no-op (returns
--- false) unless the armed item actually has a wind-up to deepen, so the same key/wheel/bumper falls
--- through to its ordinary job otherwise. Announced each step so the player reads the depth and the
--- resolve time it buys without a fixed HUD.
+-- Adjust the wind-up the player is holding an armed CHARGEABLE channel at (Saber's signature),
+-- clamped to the ability's own `[min, max]` TOTAL ticks -- it can be deepened toward the cap and
+-- shallowed back to the FLOOR, never below (a signature swing is always a commitment). A no-op
+-- (returns false) unless the armed item is actually chargeable, so the same key/wheel/bumper falls
+-- through to its ordinary job on a fixed-tell weapon. Announced each step so the player reads the
+-- resolve time without a fixed HUD -- ONE number now, because the depth and the time it buys are the
+-- same quantity since the wind-up fields folded (Item.windupRange).
 local function adjustWindup(delta)
     local item = battle.mode == "armed" and battle.armedItem
-    local wu = item and item.activeAbility and item.activeAbility.windup
-    if not wu then return false end
+    local ab = item and item.activeAbility
+    if not Item.isChargeable(ab) then return false end
+    local lo, hi = Item.windupRange(ab)
     local before = battle.windup or 0
-    battle.windup = math.max(wu.min or 0, math.min(wu.max or 0, before + delta))
+    battle.windup = math.max(lo, math.min(hi, before + delta))
     if battle.windup ~= before then
-        local ticks = (item.activeAbility.channel or 0) + battle.windup
-        notify(string.format("Wind-up +%d -- lands in %d", battle.windup, ticks))
+        notify(string.format("Wind-up: lands in %d", battle.windup))
     end
     return true
 end
@@ -1772,9 +1775,12 @@ local function confirm()
         -- approach left off. rangeReach spans the whole armed reach.
         local entry = plan.entry
         local victim = Combat.unitAt(battle.combat, cx, cy) -- read before the cast clears the cell
-        -- The extra wind-up poured into a chargeable signature (nil for every other ability), sent with
-        -- the command so the peer resolves the same depth. Combat.useItem clamps it either way.
-        local wu = (item.activeAbility.windup and (battle.windup or 0)) or nil
+        -- The wind-up depth a chargeable signature is being held at, in TOTAL ticks (nil for every
+        -- other ability), sent with the command so the peer resolves the same blow. Combat.useItem
+        -- clamps it either way. See the wire note in models/command.lua: this field changed meaning
+        -- when the wind-up fields folded, so two peers on either side of that change would each clamp
+        -- a different number.
+        local wu = Item.isChargeable(item.activeAbility) and (battle.windup or 0) or nil
         -- Why the model refused a cast the board had just offered. Every branch below routes its
         -- refusal through here: a click that lights a target, draws a route and prices the turn in the
         -- preview, and then does NOTHING when pressed, is unreadable -- the player has no way to tell a
@@ -1955,22 +1961,24 @@ end
 
 -- The timeline ghost(s) for aiming ability `item` from the current stand tile (with `pendingMove`
 -- already spent this turn folded in). A plain cast lands ONE ghost at its action slot. A channeled
--- cast lands TWO: the slot the spell RESOLVES at (the wind-up, ab.channel) and, past that, the slot
--- the caster next acts at (resolution + the cast's own speed, the initiative resolveCast charges when
--- the wind-up finishes) -- so the player reads both when the spell fires and when they regain control.
+-- cast lands TWO: the slot the spell RESOLVES at (its wind-up) and, past that, the slot the caster
+-- next acts at (resolution + the cast's own speed, the initiative resolveCast charges when the
+-- wind-up finishes) -- so the player reads both when the spell fires and when they regain control.
 --
--- A channel resolves `ab.channel` ticks out NO MATTER how far the caster walked first: the wind-up is
+-- A channel resolves its wind-up ticks out NO MATTER how far the caster walked first: the wind-up is
 -- the spell's own, and the move cost is deferred past the resolution (models/combat.lua useItem's
 -- channel branch). So `pendingMove` sits out of the resolve slot and lands in the follow-up instead --
 -- walking moves the ghost the player regains control at, never the one the blast lands at.
 local function abilityGhosts(unit, item, pendingMove, windup)
     local a = item.activeAbility
-    if a.channel then
+    local lo, hi = Item.windupRange(a)
+    if hi > 0 then
         -- The resolve slot moves with the chosen wind-up: a deeper hold on a chargeable signature
         -- (First Motion) is a longer tell, so the turn-order strip shows its blast landing that much
-        -- later -- and, past it, the slot the caster regains control at. `windup` is the extra ticks
-        -- being previewed (the armed depth, or a hovered item's floor); 0 for an ordinary channel.
-        local resolve = a.channel + (windup or 0)
+        -- later -- and, past it, the slot the caster regains control at. `windup` is the TOTAL depth
+        -- being previewed (the armed depth, or a hovered item's floor) -- since the fold it is simply
+        -- the number of ticks until it lands, with nothing to add to it.
+        local resolve = math.max(lo, math.min(hi, windup or lo))
         return {
             { initiative = resolve, label = "channel resolves here" },
             { initiative = resolve + pendingMove + Combat.actionSpeed(unit, a, item),
@@ -2393,14 +2401,16 @@ local function refreshView()
         items = Combat.isPlayerControlled(current) and current.char.inventory or {},
         itemOwner = Combat.isPlayerControlled(current) and current.char or nil, -- for adjacency link lines
         armedItem = battle.armedItem,
-        -- The chargeable wind-up being tuned on the armed signature (nil unless one is armed), so the
-        -- actions header can read out its depth and the resolve time it buys.
-        armedWindup = (battle.armedItem and battle.armedItem.activeAbility
-            and battle.armedItem.activeAbility.windup) and {
-                extra = battle.windup or 0,
-                max = battle.armedItem.activeAbility.windup.max or 0,
-                base = battle.armedItem.activeAbility.channel or 0,
-            } or nil,
+        -- The chargeable wind-up being tuned on the armed signature (nil unless a CHARGEABLE one is
+        -- armed), so the actions header can read out how long the blow is being held. Two numbers,
+        -- not three: since the wind-up fields folded, the depth IS the resolve time, so there is no
+        -- longer a base to add to it (models/item.lua's Item.windupRange).
+        armedWindup = (function()
+            local ab = battle.armedItem and battle.armedItem.activeAbility
+            if not Item.isChargeable(ab) then return nil end
+            local _, hi = Item.windupRange(ab)
+            return { ticks = battle.windup or 0, max = hi }
+        end)(),
         showInitiative = battle.showInitiative,
         preview = bannerPreview,
         -- Units the hovered combat-log line is about, so their cards light up with their tiles.

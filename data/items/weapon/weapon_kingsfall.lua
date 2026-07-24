@@ -30,7 +30,7 @@ return {
         range = 1,
         minRange = 1,
         speed = 7,
-        channel = 2,
+        windup = 2,
         -- The extra, in one word. See Combat.interruptChannel: the flag lives on the ABILITY rather than
         -- on the unit, so a fighter is unbreakable only while swinging this and inherits nothing.
         steadfast = true,

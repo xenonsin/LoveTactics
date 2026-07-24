@@ -1,10 +1,11 @@
 -- The Held Reaction: the alchemist mixes something and does not throw it. Every turn it is held the
 -- mixture gets worse -- and if it is held too long it goes off in their hand.
 --
--- THE CHARGEABLE WIND-UP, used the way the mechanic was built to be used. `windup` is the extra ticks
--- poured into a channel beyond its minimum, handed to the effect as `fx.windup` (see Combat.useItem's
--- channel branch and the signature contract). Everything else that reads it scales a blow with it;
--- this one scales a blow AND a risk, which is the version envy should have.
+-- THE CHARGEABLE WIND-UP, used the way the mechanic was built to be used. `windup = { min, max }` is
+-- how long the mixture is held, in total ticks, and the effect reads `fx.held` -- the part the
+-- alchemist chose above the minimum mix (see Combat.useItem's channel branch and the signature
+-- contract). Everything else that reads it scales a blow with it; this one scales a blow AND a risk,
+-- which is the version envy should have.
 --
 -- Why it is envy's rather than wrath's: the alchemist's whole shelf covets other people's power rather
 -- than casting any (docs/classes.md), and what this covets is TIME. It is the only item in the game
@@ -37,18 +38,19 @@ return {
         range = 4,
         requiresSight = true,
         speed = 4,
-        channel = 2,      -- the minimum mix
-        -- ...and up to four more ticks of holding it, at the player's discretion. Spelled as the
-        -- { min, max } range Combat.useItem clamps against (it reads windup.min / windup.max); a bare
-        -- number here raises the moment the channel opens. min 0 because the extra hold is optional:
-        -- the alchemist may always loose it on the safe two-tick mix.
-        windup = { min = 0, max = 4 },
+        -- The mix, in TOTAL ticks: two is the minimum and where it looses if the alchemist commits to
+        -- nothing, up to six with four more ticks of holding at their discretion. Spelled as the
+        -- { min, max } range Combat.useItem clamps against (Item.windupRange); a bare number instead
+        -- would be a fixed tell with no choice in it. (It read `channel = 2` plus
+        -- `windup = { min = 0, max = 4 }` before the two fields folded into one -- same tell, said once.)
+        windup = { min = 2, max = 6 },
         cost = { stat = "mana", amount = 12 },
         damage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
         aoe = { radius = 1, shape = "square" },
         adjacencyScaling = { type = "consumable" },
         effect = function(fx)
-            local held = fx.windup or 0
+            -- Ticks held BEYOND the minimum mix (fx.held, not the total tell in fx.windup).
+            local held = fx.held or 0
             local satchel = fx.adjacentMatching({ type = "consumable" })
             -- Every tick held adds a share, and every neighbouring consumable makes the share bigger.
             -- Flat arithmetic rather than a multiplier so the tooltip's number and the number the

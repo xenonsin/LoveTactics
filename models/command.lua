@@ -7,8 +7,9 @@
 --
 --   { kind = "move",    x, y, path = { {x,y}, ... } }   -- path optional: a steered route
 --   { kind = "use",     cell, tx, ty, windup }          -- cell is an INVENTORY SLOT, not an item id;
---                                                        --   windup optional: extra ticks poured into
---                                                        --   a chargeable wind-up (Saber's signature)
+--                                                        --   windup optional: the TOTAL ticks a
+--                                                        --   chargeable wind-up is held for (Saber's
+--                                                        --   signature). See the wire note below.
 --   { kind = "wait" }
 --   { kind = "blink",   x, y }
 --   { kind = "forfeit" }
@@ -65,9 +66,17 @@ function Command.wellFormed(cmd)
     elseif cmd.kind == "use" then
         if not isCell(cmd.cell) then return false, "use needs an inventory cell 1.." .. Character.MAX_INVENTORY end
         if not (isCoord(cmd.tx) and isCoord(cmd.ty)) then return false, "use needs whole tx,ty" end
-        -- windup is optional (only a chargeable channel carries one); when present it must be a whole
-        -- non-negative count. Combat.useItem clamps it to the ability's own `windup.max` regardless, so
+        -- windup is optional (only a chargeable wind-up carries one); when present it must be a whole
+        -- non-negative count. Combat.useItem clamps it to the ability's own [min, max] regardless, so
         -- a peer can never deepen a wind-up past what the blueprint allows -- this only rejects garbage.
+        --
+        -- WIRE NOTE. This field carries the TOTAL ticks the blow is held for. It used to carry the
+        -- EXTRA ticks above a separate `ab.channel`, and the two fields have since folded into one
+        -- (models/item.lua's Item.windupRange). The shape did not change, only the quantity -- so two
+        -- peers straddling that change would each clamp a different number against a different range
+        -- and desync silently rather than failing here. There is no version handshake to hang a check
+        -- on, and duels are only ever played between matching builds; if that ever stops being true,
+        -- this is the field that needs a version byte in front of it.
         if cmd.windup ~= nil and not (isCoord(cmd.windup) and cmd.windup >= 0) then
             return false, "use windup must be a whole count >= 0"
         end

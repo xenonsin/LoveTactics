@@ -114,6 +114,42 @@ function Item.costsStat(ab, stat)
     return false
 end
 
+-- The WIND-UP an ability commits to before it lands, normalized to (min, max) ticks -- the single
+-- reader for a duration that used to be assembled from two fields in two different units.
+--
+-- It was `channel` (a tick count) PLUS `windup = { min, max }` (a count of ticks *on top of* the
+-- channel), which meant an ability reading `windup = { min = 2, max = 5 }` actually told for four to
+-- seven ticks, and the effect was handed only the second number -- so the base wind-up was a tax that
+-- scaled nothing and every reader had to re-add the two halves by hand. One field now, in TOTAL
+-- ticks, and "not chargeable" is simply `min == max`.
+--
+-- Two authored shapes, because 40 of the 44 wind-ups in the game are a fixed tell and should not
+-- have to grow a table to say so:
+--   * `windup = 4`              -- a fixed four-tick wind-up (Meteor Storm, an iron greatsword)
+--   * `windup = { min, max }`   -- chargeable: the caster picks the depth at cast (The First Motion)
+-- A missing `windup` is (0, 0): the ability resolves at once and never takes the channel path.
+-- `max` below `min` is clamped up rather than refused -- a bad range should shorten a tell, never
+-- make an ability uncastable.
+--
+-- NOTE this is the ABILITY's field. The pending payload on a unit mid-cast is still `unit.channel`,
+-- and Combat.interruptChannel / status_channeling keep their names: "a channel in progress" is a
+-- different thing from "how long this ability winds up", and only the latter folded.
+function Item.windupRange(ab)
+    local wu = ab and ab.windup
+    if not wu then return 0, 0 end
+    if type(wu) == "number" then return math.max(0, wu), math.max(0, wu) end
+    local lo = math.max(0, wu.min or 0)
+    return lo, math.max(lo, wu.max or lo)
+end
+
+-- Is this ability chargeable -- does the caster get to choose how long to hold it? The question the
+-- battle UI's +/- control and the AI's optional `windup` rule both ask, so a fixed tell and a
+-- chargeable one are never told apart by poking at the field's type in two places.
+function Item.isChargeable(ab)
+    local lo, hi = Item.windupRange(ab)
+    return hi > lo
+end
+
 -- Stacking: only consumables occupy a single inventory slot as a countable stack (a bundle of
 -- health potions with a finite number of uses). Every other type is one-per-slot. A stack can
 -- grow up to `maxStack` (the blueprint may override Item.DEFAULT_MAX_STACK), so "limited uses"
@@ -366,6 +402,7 @@ function Item.instantiate(id, quantity, level)
         detectRadius = def.detectRadius,       -- combat: reveals traps within this radius (detectors)
         maxStack = def.maxStack,               -- stackable (consumable) items: per-slot cap override
         noSteal = def.noSteal,                 -- a pickpocket can never lift this (a beast's fangs)
+        hitAndRun = def.hitAndRun,             -- weapons: tiles the bearer gives ground after an ANSWER (Combat.answerStrike)
         hands = def.hands,                     -- weapons: 1 (default, nil) or 2 -- what Dual Wield reads
         stealPriority = def.stealPriority,     -- a pickpocket takes the highest first (decoy bait)
         noCopy = def.noCopy,                   -- a summoned copy of the holder never carries this

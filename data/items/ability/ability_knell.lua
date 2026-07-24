@@ -43,7 +43,7 @@ return {
         target = "enemy",
         range = 5,
         requiresSight = true,
-        channel = 3, -- the tell, and the counterplay before the counterplay
+        windup = 3, -- the tell, and the counterplay before the counterplay
         speed = 6,
         cost = { stat = "mana", amount = 28 }, -- the shelf's heaviest, spent at cast-start either way
         effect = function(fx)

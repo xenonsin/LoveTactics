@@ -34,7 +34,7 @@ return {
         requiresSight = true,
         speed = 5, -- slower than an iron longbow: the mark is not a snap decision
         cost = { stat = "stamina", amount = 12 },
-        channel = 2,
+        windup = 2,
         -- The lowest curve in the family by a wide margin. A weapon that kills outright must not also
         -- hit hard, and this one's damage exists mostly so the shot is not literally nothing.
         damage = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },

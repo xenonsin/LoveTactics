@@ -38,7 +38,7 @@ return {
         minRange = 2,          -- and a longbow's dead band
         requiresSight = true,
         speed = 4,
-        channel = 2,           -- the draw. Hard control breaks it before a single arrow leaves
+        windup = 2,           -- the draw. Hard control breaks it before a single arrow leaves
         cost = { stat = "stamina", amount = 10 },
         -- Per ARROW, and well under the iron longbow's single heavy shaft: five of these landing is a
         -- rout, one of them landing is a waste of a turn. That spread is the weapon.

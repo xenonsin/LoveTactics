@@ -18,7 +18,7 @@ return {
         allowOccupied = true,
         range = 3,
         speed = 5,
-        channel = 6, -- mirrors Blizzard's wind-up
+        windup = 6, -- mirrors Blizzard's wind-up
         cost = { stat = "mana", amount = 16 },
         damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 },
         aoe = { radius = 1, shape = "square" },

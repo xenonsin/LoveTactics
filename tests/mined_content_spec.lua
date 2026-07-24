@@ -305,7 +305,7 @@ return {
             m.char.stats.mana.current = m.char.stats.mana.max
             Trait.attach(m)
             assert(Trait.has(m, "trait_second_utterance"), "the charm carries its trait")
-            assert(spell.activeAbility.channel and spell.activeAbility.channel > 0, "the spell really does channel")
+            assert(spell.activeAbility.windup and spell.activeAbility.windup > 0, "the spell really does wind up")
 
             -- With no charge banked, the cast winds up as normal.
             openTurn(c, m)
@@ -337,7 +337,7 @@ return {
             local m = c.units[1]
             m.char.stats.mana.current = m.char.stats.mana.max
             Status.apply(c, m, "status_second_utterance")
-            assert(not bolt.activeAbility.channel, "a fire bolt does not channel")
+            assert(not bolt.activeAbility.windup, "a fire bolt does not wind up")
 
             openTurn(c, m)
             assert(Combat.useItem(c, m, bolt, 5, 2), "the bolt is cast")
@@ -409,7 +409,7 @@ return {
             local c = Combat.new(arena(12, 6), { unit(mage, 2, 3) }, { unit(plainChar("character_bandit"), 6, 3) })
             local m, foe = c.units[1], c.units[2]
             m.char.stats.mana.current = m.char.stats.mana.max
-            assert(spell.activeAbility.channel > 0, "the sentence is announced before it is passed")
+            assert(spell.activeAbility.windup > 0, "the sentence is announced before it is passed")
 
             openTurn(c, m)
             local ok, info = Combat.useItem(c, m, spell, foe.x, foe.y)

@@ -28,7 +28,7 @@ return {
         target = "self",
         range = 0,
         speed = 6,
-        channel = 3,
+        windup = 3,
         support = true,
         cost = { stat = "mana", amount = 18 },
         healing = { 10, 11, 12, 14, 15, 16, 18, 19, 20, 22, 23 }, -- Combat.abilityMagnitude reads this

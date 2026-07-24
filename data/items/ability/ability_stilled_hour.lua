@@ -36,7 +36,7 @@ return {
         range = 4,
         requiresSight = true,
         speed = 6, -- the slowest cast in the game: an hour costs an hour
-        channel = 5,
+        windup = 5,
         cost = { stat = "mana", amount = 30 },
         support = true, -- it deals nothing; the AI weighs it as control rather than as a strike
         aoe = { radius = 1, shape = "square" },

@@ -102,14 +102,17 @@ return {
                         id .. ": a spear skewers a line")
                 end,
                 greatsword = function(ab, id)
-                    assert((ab.channel or 0) >= 1, id .. ": a greatsword winds up")
+                    -- The family contract reads the FOLDED wind-up (Item.windupRange), so a fixed
+                    -- `windup = 2` and a chargeable `{ min = 2, max = 5 }` both answer 2 here: the
+                    -- floor is one question however the blueprint chose to spell it.
+                    assert(Item.windupRange(ab) >= 1, id .. ": a greatsword winds up")
                 end,
                 bow = function(ab, id)
                     assert((ab.range or 1) >= 2, id .. ": a bow shoots at range")
                     assert((ab.minRange or 0) >= 2, id .. ": a bow has no point-blank shot")
                 end,
                 longbow = function(ab, id)
-                    assert((ab.channel or 0) >= 1, id .. ": a longbow is drawn before it looses")
+                    assert(Item.windupRange(ab) >= 1, id .. ": a longbow is drawn before it looses")
                     assert((ab.range or 1) >= 5, id .. ": a longbow outreaches a bow by two tiles")
                     assert((ab.minRange or 0) >= 2, id .. ": a longbow has no point-blank shot")
                 end,

@@ -32,7 +32,7 @@ return {
         minRange = 2,
         requiresSight = true,
         speed = 4,
-        channel = 2,
+        windup = 2,
         cost = { stat = "stamina", amount = 10 },
         -- Well under the iron longbow's, and that is the FLOOR: this is what it lands while the party is
         -- intact, which should feel like carrying the wrong bow.

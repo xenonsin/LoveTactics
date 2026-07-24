@@ -32,7 +32,7 @@ return {
         minRange = 2,
         requiresSight = true,
         speed = 4,
-        channel = 2,
+        windup = 2,
         cost = { stat = "stamina", amount = 10 },
         damage = { 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21 },
         -- The whole weapon, in one field. `channelStatus` lands on the caster the moment the draw is

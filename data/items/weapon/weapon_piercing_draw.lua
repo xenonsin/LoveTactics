@@ -30,7 +30,7 @@ return {
         minRange = 2,
         requiresSight = true,
         speed = 4,
-        channel = 2,
+        windup = 2,
         cost = { stat = "stamina", amount = 11 },
         -- Well under the iron longbow's per body -- `raw` means all of it arrives, and three bodies may
         -- pay it. A raw shot at the family's usual weight would simply delete a rank.

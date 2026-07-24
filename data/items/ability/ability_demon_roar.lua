@@ -23,7 +23,7 @@ return {
         allowOccupied = true,
         range = 1,
         speed = 6,
-        channel = 3, -- the three-tick tell: the window a Stun or a shove has to deny the call
+        windup = 3, -- the three-tick tell: the window a Stun or a shove has to deny the call
         cost = { stat = "stamina", amount = 6 },
         aoe = { radius = 1, shape = "square" },
         damage = { 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11 }, -- a real bruise, so the AI values winding it up

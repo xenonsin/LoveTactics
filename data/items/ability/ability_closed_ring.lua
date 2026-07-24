@@ -41,7 +41,7 @@ return {
         range = 4,
         requiresSight = true,
         speed = 5,
-        channel = 3, -- a turn's warning: the ringed piece gets one chance to step out of the box
+        windup = 3, -- a turn's warning: the ringed piece gets one chance to step out of the box
         cost = { { stat = "mana", amount = 18 }, { stat = "stamina", amount = 6 } },
         support = true,
         requiresAdjacent = { tag = "shield" },

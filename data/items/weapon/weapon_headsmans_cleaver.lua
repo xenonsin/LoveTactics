@@ -28,7 +28,7 @@ return {
         range = 1,
         minRange = 1,
         speed = 6,
-        channel = 1, -- the shortest wind-up in the family: half the iron greatsword's telegraph
+        windup = 1, -- the shortest wind-up in the family: half the iron greatsword's telegraph
         cost = { stat = "stamina", amount = 13 },
         -- Well under the iron greatsword's curve: this is what it lands into a HEALTHY target, and the
         -- bonus below is what it lands into the wounded one it is actually for.

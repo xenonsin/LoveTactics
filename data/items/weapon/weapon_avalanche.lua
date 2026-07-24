@@ -1,8 +1,8 @@
 -- A greatsword, so it winds up (docs/weapons.md) -- and it is the only one whose wind-up the player
--- chooses the LENGTH of. `windup = { min, max }` (the chargeable channel Saber's signature introduced,
--- data/items/weapon/weapon_first_motion.lua) lets the bearer pour up to two extra ticks into the raise,
--- and what those ticks buy is not damage but FOOTPRINT: the blow lands as a 3-wide arc instead of a
--- single tile.
+-- chooses the LENGTH of. `windup = { min, max }` (the chargeable wind-up Saber's signature introduced,
+-- data/items/weapon/weapon_first_motion.lua) lets the bearer hold the raise for two ticks or four,
+-- and what those extra ticks buy is not damage but FOOTPRINT: the blow lands as a 3-wide arc instead
+-- of a single tile.
 --
 -- The family shelf's capstone, and the one weapon that lets a greatsword answer a crowd. Every other
 -- greatsword pours everything into one cell -- that is what separates the family from the axe -- and this
@@ -30,8 +30,10 @@ return {
         range = 1,
         minRange = 1,
         speed = 7,
-        channel = 2,               -- the base raise, as every greatsword's
-        windup = { min = 0, max = 2 }, -- ...and up to two MORE ticks, chosen at cast, for the arc below
+        -- The raise, in TOTAL ticks: two is the greatsword family's base and where this looses if the
+        -- bearer commits to nothing, up to four for the full arc below. (It read `channel = 2` plus
+        -- `windup = { min = 0, max = 2 }` before the two fields folded into one -- same tell, said once.)
+        windup = { min = 2, max = 4 },
         cost = { stat = "stamina", amount = 17 },
         -- A shade under the iron greatsword's: what the extra ticks buy is width, and it must not also
         -- quietly buy weight, or holding would never be wrong.
@@ -42,8 +44,9 @@ return {
         -- damage), where widening in the effect would not be.
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
-            -- Fewer than two extra ticks poured in and it is an ordinary greatsword: one tile, one body.
-            if (fx.windup or 0) < 2 then
+            -- Fewer than two ticks poured in ON TOP of the base raise (fx.held, not the total tell in
+            -- fx.windup) and it is an ordinary greatsword: one tile, one body.
+            if (fx.held or 0) < 2 then
                 if fx.target then fx.damage(fx.target) end
                 return
             end

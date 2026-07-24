@@ -19,7 +19,7 @@ return {
         range = 4,
         requiresSight = true,
         speed = 5,
-        channel = 4, -- winds up before it fires (Combat reads ab.channel; see ability_meteor_storm)
+        windup = 4, -- winds up before it fires (Combat reads `windup`; see ability_meteor_storm)
         cost = { stat = "mana", amount = 14 },
         aoe = { radius = 1, shape = "diamond" },
         damage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, -- carries `holy` + `magical` via tags

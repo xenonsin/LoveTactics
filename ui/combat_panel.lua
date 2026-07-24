@@ -1089,12 +1089,14 @@ end
 function CombatPanel:drawItemGrid()
     love.graphics.setFont(self.smallFont)
     -- The header is normally "Actions"; while a chargeable signature is aimed it becomes its wind-up
-    -- read-out instead, in the gold the timeline wears (this IS a count of ticks): the extra poured in
-    -- out of the cap, and the total wind-up before it lands. Wheel / +- / bumpers tune it (battle.lua).
+    -- read-out instead, in the gold the timeline wears (this IS a count of ticks): how long the blow
+    -- is being held, out of the deepest hold the ability allows. ONE pair of numbers rather than the
+    -- old "+extra out of max, lands in base+extra" -- since the wind-up fields folded the depth and
+    -- the time it buys are the same quantity. Wheel / +- / bumpers tune it (battle.lua).
     local wu = self.view.armedWindup
     if wu then
         love.graphics.setColor(SPEED_COLOR[1], SPEED_COLOR[2], SPEED_COLOR[3])
-        love.graphics.printf(string.format("Wind-up +%d/%d  (lands in %d)", wu.extra, wu.max, wu.base + wu.extra),
+        love.graphics.printf(string.format("Wind-up %d/%d  (lands in %d)", wu.ticks, wu.max, wu.ticks),
             self.x, self.gridY - 16, self.w, "center")
     else
         love.graphics.setColor(0.7, 0.72, 0.8)

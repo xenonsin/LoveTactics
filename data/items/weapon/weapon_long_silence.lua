@@ -31,7 +31,7 @@ return {
         minRange = 2,
         requiresSight = true,
         speed = 4,
-        channel = 2,
+        windup = 2,
         cost = { stat = "stamina", amount = 10 },
         -- Under the iron longbow's: taking a caster's whole kit away is worth more than the arrow.
         damage = { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 },

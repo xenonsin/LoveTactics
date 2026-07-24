@@ -7,7 +7,7 @@
 -- Combat.resolveChannel grants the charge, Combat.useItem's channel branch spends it -- so any relic that
 -- grants this trait behaves identically without either end learning about relics.
 --
--- WHAT IT ACTUALLY CHANGES, since "casts faster" undersells it. A channel is a TELEGRAPH: `ab.channel`
+-- WHAT IT ACTUALLY CHANGES, since "casts faster" undersells it. A channel is a TELEGRAPH: the `windup`
 -- ticks in which every other unit gets a turn to walk out of the painted tiles, and hard control shatters
 -- the cast outright (Combat.interruptChannel). Skipping the wind-up does not just save time -- it removes
 -- the counterplay. Nobody steps clear of a Meteor Storm that was never announced, and nobody stuns it out

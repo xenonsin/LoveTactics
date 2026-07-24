@@ -35,7 +35,7 @@ return {
         range = 4,
         requiresSight = true,
         speed = 5,
-        channel = 3, -- the breath is drawn in before it is taken: a turn's warning, for both sides
+        windup = 3, -- the breath is drawn in before it is taken: a turn's warning, for both sides
         cost = { stat = "mana", amount = 20 },
         damage = { 6, 6, 7, 8, 8, 9, 10, 10, 11, 12, 12 },
         aoe = { radius = 2, shape = "square" },

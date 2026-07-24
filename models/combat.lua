@@ -6526,21 +6526,22 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
     Combat.tally(unit, "cast", 1)
     Combat.unlockConsume(unit, item)
 
-    -- A channeled ability (a large AOE spell) doesn't resolve now: the caster winds up for
-    -- `ab.channel` ticks, during which every other unit gets to act and may walk out of the
+    -- A channeled ability (a large AOE spell) doesn't resolve now: the caster winds up for its
+    -- `windup` ticks, during which every other unit gets to act and may walk out of the
     -- threatened tiles. Everything is committed at cast-start -- the cost is spent above, and a
     -- consumable is spent here too -- so an interrupted channel is a fully-wasted cast. The effect
     -- itself runs later, from Combat.resolveChannel when the caster's slot comes back around, and
-    -- only THEN is ab.speed charged. Ending the turn by ab.channel (not ab.speed) is what places
+    -- only THEN is ab.speed charged. Ending the turn by the wind-up (not ab.speed) is what places
     -- the caster back in the order at exactly its resolution slot, so no separate scheduler exists.
     --
-    -- The wind-up is `ab.channel` ticks and nothing else: the turn's move cost is DEFERRED past the
+    -- The wind-up is those ticks and nothing else: the turn's move cost is DEFERRED past the
     -- resolution (endTurn's `defer`) rather than stacked onto it. Walking before a cast must not
     -- stretch the caster's own telegraph -- that would hand the foes under the blast extra turns to
     -- stroll out of it, and silently punish repositioning. The ground is still paid for, on the far
     -- side: the debt lands on the resolving turn, so the caster's NEXT action comes at the same tick
     -- either way and only the resolution slot moves earlier.
-    if ab.channel and ab.channel > 0 then
+    local windLo, windHi = Item.windupRange(ab)
+    if windHi > 0 then
         -- SECOND UTTERANCE (data/traits/trait_second_utterance.lua): a mage that just landed a channel
         -- has one cast in hand that needs no wind-up at all. Spend the charge and fall straight through
         -- to resolveCast, which is exactly what an unchanneled ability does -- so the spell lands now
@@ -6558,22 +6559,21 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
                     unitName(unit), item.name or "the working"), unit)
             return resolveCast(combat, unit, item, ab, tx, ty)
         end
-        -- A chargeable wind-up (Saber's signature): the caster may pour EXTRA ticks into the swing
-        -- beyond the base `channel`, up to `ab.windup.max`, and the effect reads how deep it was held
-        -- (fx.windup) to scale its blow. A longer wind-up is a longer, breakable tell -- the extra
-        -- ticks land on both the "channeling" badge's duration and the initiative the turn bills, so
-        -- the resolution slot itself moves later and every foe gets those turns to walk clear or
-        -- shatter it. Clamped here so a bad `windup` from anywhere (a stale network command, a bug)
-        -- can never stretch the tell past what the ability allows.
-        -- Clamp to the ability's own [min, max]: `min` is a floor a chargeable signature always pays
-        -- (First Motion cannot be loosed at +0 -- see its `windup`), `max` the cap. A missing/short
-        -- `windup` (a stale command, an AI cast, an old peer) is raised to the floor rather than refused.
-        local lo = (ab.windup and ab.windup.min) or 0
-        local hi = (ab.windup and ab.windup.max) or 0
-        local extra = math.max(lo, math.min(math.floor(windup or lo), hi))
-        local ticks = ab.channel + extra
+        -- A chargeable wind-up (Saber's signature): the caster picks how long to hold the swing,
+        -- anywhere in the ability's own [min, max] TOTAL ticks, and the effect reads both how long it
+        -- ran (fx.windup) and how much of that was chosen above the floor (fx.held) to scale its blow.
+        -- A longer wind-up is a longer, breakable tell -- the extra ticks land on both the "channeling"
+        -- badge's duration and the initiative the turn bills, so the resolution slot itself moves later
+        -- and every foe gets those turns to walk clear or shatter it.
+        --
+        -- Clamped here so a bad depth from anywhere (a stale network command, a bug) can never stretch
+        -- the tell past what the ability allows, nor cut it below the floor: `min` is what a signature
+        -- swing always commits to, `max` the cap. A missing depth (an AI cast that named none, an old
+        -- peer) opens at the floor rather than being refused.
+        local ticks = math.max(windLo, math.min(math.floor(windup or windLo), windHi))
+        local held = ticks - windLo
         if ab.consumesItem then item.quantity = math.max(0, (item.quantity or 1) - 1) end
-        unit.channel = { item = item, ab = ab, tx = tx, ty = ty, windup = extra }
+        unit.channel = { item = item, ab = ab, tx = tx, ty = ty, windup = ticks, held = held }
         Status.apply(combat, unit, "status_channeling", { duration = ticks + 1 })
         -- `channelStatus`: a status the caster gains ON COMMIT and carries through the wind-up, for the
         -- one thing an `effect` cannot express -- an effect runs when the cast RESOLVES, and this has to
@@ -6682,7 +6682,7 @@ end
 -- calls it turns later). `target` and `reserve` are derived HERE, not at cast-start, so a channel reads
 -- the LIVE board -- a foe that stepped out of the blast is simply gone from fx.aoeUnits(). `alreadyConsumed`
 -- is set by the channel path (which spent the stack at cast-start) so the stack isn't decremented twice.
-function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
+function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, held)
     local target = Combat.unitAt(combat, tx, ty)
     local reserve = Combat.abilityReserve(unit, ab)
 
@@ -6791,10 +6791,18 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
         -- NOT named `fx.charge`: that is already the Charge ability's shove, further down this table.
         chargePool = function(key) return Combat.chargePool(unit, key) end,
         spendCharge = function(key, n) return Combat.spendCharge(unit, key, n) end,
-        -- The EXTRA wind-up ticks poured into a chargeable channel (0 for everything else). Saber's
-        -- signature reads it to scale the blow: patience made arithmetic -- the longer she held the
-        -- edge, the harder it lands (see the ability's effect and Combat.useItem's channel branch).
+        -- The wind-up this cast actually ran for, in TOTAL ticks (0 for an ability that resolves at
+        -- once), and `held`: how many of those the caster CHOSE above the ability's floor. They are
+        -- the same number for an ability whose floor is 0, and they differ for one that always
+        -- commits to a base tell (The First Motion cannot be loosed shallower than its `min`).
+        --
+        -- Both are offered because scaling wants one or the other and neither can be derived from the
+        -- other without also knowing the ability's own range -- which would send every effect back to
+        -- the ability table for a number the engine already has in hand. Saber's signature reads
+        -- `held`: patience made arithmetic, the longer she held the edge past her floor, the harder it
+        -- lands (see the ability's effect and Combat.useItem's channel branch).
         windup = windup or 0,
+        held = held or 0,
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.
@@ -7350,7 +7358,8 @@ function Combat.resolveChannel(combat, unit)
     Status.remove(combat, unit, "status_channeling")
     Combat.logEvent(combat, "action",
         string.format("%s's %s resolves.", unitName(unit), pending.item.name or "channel"), unit)
-    local ok, info = resolveCast(combat, unit, pending.item, pending.ab, pending.tx, pending.ty, true, pending.windup)
+    local ok, info = resolveCast(combat, unit, pending.item, pending.ab, pending.tx, pending.ty, true,
+        pending.windup, pending.held)
     -- SECOND UTTERANCE: a mage carrying the trait banks a free wind-up the moment a channel LANDS --
     -- never when one begins, and never when one is interrupted, so the charge is paid for by a spell
     -- that actually resolved. Granted after the cast rather than before so a caster cut down by its own

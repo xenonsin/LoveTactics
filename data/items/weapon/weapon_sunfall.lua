@@ -31,7 +31,7 @@ return {
         minRange = 2,
         requiresSight = true,
         speed = 4,
-        channel = 2,
+        windup = 2,
         cost = { stat = "stamina", amount = 11 },
         -- Under the iron longbow's: the halo is the weapon, and the arrow is the delivery.
         damage = { 6, 7, 8, 8, 9, 10, 11, 12, 13, 14, 15 },

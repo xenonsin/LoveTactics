@@ -35,7 +35,7 @@ return {
         range = 5,
         requiresSight = true,
         speed = 5,
-        channel = 3,
+        windup = 3,
         cost = { { stat = "mana", amount = 14 }, { stat = "stamina", amount = 8 } },
         support = true, -- it lands no damage at all, and damage is the thing that undoes it
         aoe = { radius = 2, shape = "square" },

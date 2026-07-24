@@ -1,6 +1,6 @@
 -- A longbow, so it is drawn before it looses and reaches five tiles (docs/weapons.md). Its extra is that
--- the draw can be DEEPENED: `windup = { min, max }` lets the archer pour up to three extra ticks into it,
--- and every one of them puts more behind the shaft.
+-- the draw can be DEEPENED: `windup = { min, max }` lets the archer hold it for two ticks or five, and
+-- every tick past the base draw puts more behind the shaft.
 --
 -- The family's second rung, and the one that teaches what a longbow is for. An iron longbow's bargain is
 -- fixed -- one turn of draw, one heavy arrow -- and a new archer reads that as strictly worse than
@@ -32,15 +32,18 @@ return {
         minRange = 2, -- and the family's dead zone
         requiresSight = true,
         speed = 4,
-        channel = 2,                  -- the base draw
-        windup = { min = 0, max = 3 }, -- ...and up to three more ticks, chosen at cast
+        -- The draw, in TOTAL ticks: two is the family's base and where it looses if the archer holds
+        -- nothing extra, up to five at full depth. (It read `channel = 2` plus
+        -- `windup = { min = 0, max = 3 }` before the two fields folded into one -- same tell, said once.)
+        windup = { min = 2, max = 5 },
         cost = { stat = "stamina", amount = 9 },
         -- Under the iron longbow's, read as the UNDEEPENED number: drawing to the same depth as an iron
         -- longbow should land a little short of it, and the extra ticks are what buys past it.
         damage = { 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19 },
         effect = function(fx)
-            -- +25% per extra tick poured in. Linear and uncomplicated on purpose -- see the header.
-            local held = fx.windup or 0
+            -- +25% per tick held BEYOND the base draw (fx.held, not the total tell in fx.windup).
+            -- Linear and uncomplicated on purpose -- see the header.
+            local held = fx.held or 0
             if fx.target then
                 fx.damage(fx.target, { amount = math.floor((fx.amount or 0) * (1 + 0.25 * held)) })
             end

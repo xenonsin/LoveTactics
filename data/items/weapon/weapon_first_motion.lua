@@ -17,7 +17,7 @@
 -- a wounded target is an ordinary heavy hit rather than a punishment. She simply pays off enormously
 -- for opening a fight instead of closing one -- the opposite of every other greatsword in the game.
 --
--- The greatsword's `channel` is not a tax here, it is the characterisation. The family owes a wind-up
+-- The greatsword's wind-up is not a tax here, it is the characterisation. The family owes one
 -- (docs/weapons.md; enforced by tests/weapon_spec.lua) and hers is the whole idea: declare the blow a
 -- turn early, commit, land once. It also means the turns she spends winding up are turns she is NOT
 -- feeding Ira, which is the right answer and the board teaches it without a word.
@@ -27,12 +27,13 @@
 -- `price`: unbuyable, and still tallying toward fighter growth (docs/classes.md).
 --
 -- Patience is also a knob the player turns, not only a sum the arithmetic does for her: she may HOLD
--- the wind-up longer for more (`windup`, below). Each extra tick she pours in lands as more damage,
--- and a deeper wind-up is a longer, breakable tell -- hard control or a shove shatters a channel and
--- wastes the whole swing (Combat.interruptChannel), and every extra tick is a turn her foes get to walk
--- out of reach. The reward is for holding the edge exactly as long as the board lets her. The depth is
--- chosen at cast (wheel / + - / bumpers, states/battle.lua) and travels with the networked command
--- (models/command.lua) so both duellists resolve the same blow; Combat.useItem clamps it to windup.max.
+-- the wind-up longer for more (`windup`, below). Each tick she pours in past her floor lands as more
+-- damage, and a deeper wind-up is a longer, breakable tell -- hard control or a shove shatters a
+-- wind-up in progress and wastes the whole swing (Combat.interruptChannel), and every extra tick is a
+-- turn her foes get to walk out of reach. The reward is for holding the edge exactly as long as the
+-- board lets her. The depth is chosen at cast (wheel / + - / bumpers, states/battle.lua) and travels
+-- with the networked command (models/command.lua) so both duellists resolve the same blow;
+-- Combat.useItem clamps it to the range.
 return {
     name = "The First Motion",
     description = "Winds up, drives through the tiles in front (a cone when forged). Bonus scales to +60% into a full-health foe.",
@@ -53,12 +54,23 @@ return {
         allowOccupied = true,
         range = 1,
         minRange = 1,
-        speed = 6,             -- ponderous, but a shade quicker than an iron greatsword
-        channel = 2,           -- the BASE wind-up: two ticks before it lands; hard control breaks it
-        -- ...and she pours between two and five MORE ticks in, chosen at cast, for more damage. The
-        -- `min` is the floor: a signature swing is always a real commitment, never the bare base -- she
-        -- cannot loose it below +2. (Combat.useItem clamps to [min, max]; states/battle.lua opens at min
-        -- and previews the resolve slot for the chosen depth on the turn-order strip.)
+        -- The FOLLOW-THROUGH: what the swing bills once it lands, and what she spends recovering from
+        -- it. Down from 6, on every copy of the blade rather than a boss-only variant -- a greatsword
+        -- that told for four ticks and then stood in its own recovery for six more was acting once
+        -- every two or three of anyone else's turns, which read as a weapon that does not work rather
+        -- than a weapon that costs something. The wind-up is where this blade's price is paid; the
+        -- recovery was charging for it twice.
+        speed = 4,
+        -- The wind-up, in TOTAL ticks, and she chooses where in the range to loose it. `min` is the
+        -- floor -- a signature swing is always a real commitment, never a poke -- and `max` the
+        -- deepest hold. (Combat.useItem clamps to [min, max]; states/battle.lua opens at min and
+        -- previews the resolve slot for the chosen depth on the turn-order strip.)
+        --
+        -- These are the numbers the file always APPEARED to say. They used to sit on top of a
+        -- separate `channel = 2`, so "2 to 5" really meant a four-to-seven-tick tell and only the
+        -- 2-to-5 part was paid for in damage -- the base was a tax that scaled nothing. The two
+        -- fields are one now (models/item.lua's Item.windupRange), and making the range literal
+        -- halves her floor: she commits for two ticks, not four.
         windup = { min = 2, max = 5 },
         cost = { stat = "stamina", amount = 15 },
         damage = { 22, 24, 27, 29, 32, 34, 37, 39, 42, 44, 47 },
@@ -89,10 +101,14 @@ return {
                 local hp = u.char.stats.health
                 local frac = (hp.max and hp.max > 0) and ((hp.current or 0) / hp.max) or 1
                 local opening = math.floor(fx.amount * 0.6 * frac)
-                -- Patience made arithmetic she controls: each extra wind-up tick she chose to hold adds a
-                -- share of the swing (fx.windup, from Combat.useItem's channel branch). A snap swing is an
-                -- ordinary heavy greatsword blow; a deep hold into a fresh target is devastating.
-                local held = math.floor(fx.amount * 0.4 * (fx.windup or 0))
+                -- Patience made arithmetic she controls: each wind-up tick she chose to hold BEYOND her
+                -- floor adds a share of the swing (fx.held, from Combat.useItem's channel branch --
+                -- fx.windup beside it is the total tell, which is not what is being paid for here).
+                -- A swing loosed at the floor is an ordinary heavy greatsword blow; a deep hold into a
+                -- fresh target is devastating. Reading `held` rather than the total is what makes the
+                -- bonus the reward for a CHOICE: the two ticks she always pays are the price of the
+                -- weapon, and only what she adds on top of them is patience.
+                local held = math.floor(fx.amount * 0.4 * (fx.held or 0))
                 fx.damage(u, { amount = fx.amount + opening + held })
             end
         end,

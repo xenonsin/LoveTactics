@@ -32,7 +32,7 @@ return {
         range = 5,
         requiresSight = true,
         speed = 5,
-        channel = 3,
+        windup = 3,
         cost = { stat = "mana", amount = 22 },
         support = true, -- it lands no damage: reads green, and the AI weighs it as zoning
         effect = function(fx)
