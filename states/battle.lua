@@ -1934,7 +1934,9 @@ local function executeEnemyAction()
     local function act_()
         if not current.alive then advanceTurn() return end -- cut down on the approach
         local acted = false
-        if act.item then acted = Combat.useItem(battle.combat, current, act.item, act.tx, act.ty) end
+        -- act.windup: the depth an AI rule asked a chargeable wind-up to be held at (models/ai.lua).
+        -- nil for every ordinary action, and Combat.useItem opens at the ability's floor when it is.
+        if act.item then acted = Combat.useItem(battle.combat, current, act.item, act.tx, act.ty, act.windup) end
         -- Reposition-only, nothing to do, or an item use that unexpectedly failed: pass so the
         -- turn always ends (paying the real move cost) and never soft-locks on this unit.
         if not acted then Combat.pass(battle.combat, current) end
@@ -1946,7 +1948,7 @@ local function executeEnemyAction()
     if act.move and startWalk(current, act.move.x, act.move.y, nil) then
         if current.alive then
             local acted = act.item
-                and Combat.useItem(battle.combat, current, act.item, act.tx, act.ty)
+                and Combat.useItem(battle.combat, current, act.item, act.tx, act.ty, act.windup)
             -- Reposition-only, nothing to do, or an item use that unexpectedly failed: pass so the
             -- turn always ends (paying the real move cost) and never soft-locks on this unit.
             if not acted then Combat.pass(battle.combat, current) end

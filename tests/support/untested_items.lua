@@ -15,7 +15,6 @@ return {
     "ability_binding_grace",
     "ability_blast_charge",
     "ability_blightstake",
-    "ability_bolas",
     "ability_carved_stake",
     "ability_closed_ring",
     "ability_collapse",

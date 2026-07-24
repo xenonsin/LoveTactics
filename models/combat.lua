@@ -6587,6 +6587,31 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
         if ab.channelStatus then
             Status.apply(combat, unit, ab.channelStatus, { duration = ticks + 1 })
         end
+        -- `channelHazard`: ground the wind-up churns up UNDER ITS OWN FOOTPRINT, laid on commit. The
+        -- exact sibling of `channelStatus` a step outward -- that one is what the CASTER gains the
+        -- moment the tell goes up, this is what the GROUND gains -- and it is declared here for the
+        -- same reason: an `effect` runs when the cast resolves, and a telegraph that only bites after
+        -- the blow lands is not a telegraph.
+        --
+        -- What it buys is the difference between a tell you can ignore and a tell you have to answer.
+        -- A wind-up aimed at open ground costs its target one step; a wind-up that softens the ground
+        -- it is aimed at costs them the step AND the tempo to take it (Quicksand's Mired doubles what
+        -- a move costs), so walking out of a committed blow is a decision rather than a reflex. The
+        -- hazard is unowned on purpose: this is churned earth, not a summon, so it does not vanish
+        -- when the caster falls, and its `disposition` bites whoever stands in it -- including the
+        -- caster, if the swing draws them in after you.
+        --
+        -- Rides the wind-up's own length by default, exactly as channelStatus does: hold the edge
+        -- longer and the ground stays soft longer. `{ id, duration }` overrides that; a bare id string
+        -- takes the hazard blueprint's own default instead.
+        if ab.channelHazard then
+            local ch = ab.channelHazard
+            local hazardId = (type(ch) == "table" and ch.id) or ch
+            local hazardFor = (type(ch) == "table" and ch.duration) or (ticks + 1)
+            for _, cell in ipairs(Combat.aoeCells(combat, ab, tx, ty, unit)) do
+                Hazard.place(combat, cell.x, cell.y, hazardId, { duration = hazardFor })
+            end
+        end
         -- The wind-up is an action too: a cast beat on begin-channel, then a second when it resolves
         -- (resolveCast, turns later). So a channeled spell reads both as it is loosed and as it lands.
         Combat.pushFx(combat, { type = "cast", unit = unit, tx = tx, ty = ty,

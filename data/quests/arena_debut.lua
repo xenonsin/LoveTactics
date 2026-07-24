@@ -106,12 +106,26 @@ return {
         },
         objective = {
             name = "The Card's Opener",
-            -- Saber and one hand from the house that booked her -- a team, because everything on this
-            -- sand is a team. Kept to two so a two-unit prologue party is tested and not buried; she
-            -- is the bout, the other is a wall.
-            composition = function() return { "character_saber", "character_bandit" } end,
+            -- The bout is fought on an authored board, not a rolled castle field: a bowl whose walls
+            -- funnel a dodging body toward rigged edges, so Saber's telegraphed swing finally has
+            -- ground that answers it (data/arenas/colosseum_sand.lua). Read by states/battle.lua's
+            -- specFor off the objective, exactly as the flight leg names the Demon Champion's arena.
+            layout = "colosseum_sand",
+            -- Saber (the boss TWIN -- data/characters/character_saber_bout.lua -- so nothing about the
+            -- bout follows her home) and one hand from the house that booked her, a team because
+            -- everything on this sand is a team. The hand is a NETTER now, not a wall
+            -- (data/characters/character_arena_hand.lua): it roots the body Saber is about to commit
+            -- to, which is the setup her whole telegraphed swing was missing. Kept to two at the bell
+            -- so a two-unit prologue party opens on a fair footing; the third body arrives only if the
+            -- party presses her to two-thirds health, summoned by her relic (utility_gatekeepers_measure)
+            -- -- escalation that cannot be skipped by bursting her past it.
+            composition = function() return { "character_saber_bout", "character_arena_hand" } end,
             opening = "colosseum_debut_confront",
-            win = { type = "killAll" },
+            -- Assassinate, not killAll: the bout ends when SABER goes down, which is both the fiction
+            -- (you beat HER) and the fix for adds -- once her relic can summon hands, killAll would drag
+            -- the win out into mopping up reinforcements after the fight was already decided. The mark
+            -- is the twin, the body actually on the sand. Same win type the Demon Champion uses.
+            win = { type = "assassinate", target = "character_saber_bout" },
         },
         keyCount = 0,
     },

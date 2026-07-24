@@ -212,6 +212,14 @@ AI.TESTS = {
 --   cast    -- either; the form an item's own block usually wants, since the item knows which it is
 --   retreat -- break off toward the ally most in need of cover
 --   wait    -- spend the turn deliberately
+--
+-- An acting rule may also carry `windup = n`: how deep to hold a CHARGEABLE wind-up (models/item.lua's
+-- Item.windupRange), in total ticks, clamped by Combat.useItem to the ability's own range. Omitted, the
+-- cast opens at the ability's floor -- which is what every enemy did before this existed, and why a
+-- boss carrying a chargeable signature could only ever snap it at the minimum. It is a per-RULE number
+-- rather than a scored one because the decision is "what is this rule for": a rule that fires at a
+-- rooted foe wants the deepest hold on the board, and the same weapon aimed at something that can
+-- still walk wants the shallowest, and no amount of tile scoring can tell those two apart.
 AI.ACTIONS = {
     attack = true, support = true, cast = true, retreat = true, wait = true,
 }
@@ -1153,6 +1161,13 @@ function AI.plan(combat, unit)
                         return {
                             move = pick.moved and { x = pick.x, y = pick.y } or nil,
                             item = pick.item, tx = pick.tx, ty = pick.ty,
+                            -- How deep to hold a chargeable wind-up, when the rule named a depth.
+                            -- Carried straight through from the rule rather than scored: how long to
+                            -- commit is an authoring decision about THIS foe on THIS rule ("snap at
+                            -- anything that can still walk, hold the edge on something rooted"), not
+                            -- something the tile scorer has any way to weigh. nil leaves it to
+                            -- Combat.useItem, which opens at the ability's floor.
+                            windup = rule.windup,
                             reason = string.format("%s rule %d (%s) -> %s, score %.1f",
                                 postureName, index, AI.describeRule(rule),
                                 pick.target.char.name or "target", pick.score),

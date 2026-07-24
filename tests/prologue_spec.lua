@@ -64,15 +64,23 @@ return {
         end,
     },
     {
-        name = "the debut quest's boss is Saber",
+        name = "the debut quest's boss is the Saber twin, and the win ends when she falls",
         fn = function()
             local def = Quest.defs["arena_debut"]
             assert(def, "arena_debut exists")
             local list = def.map.objective.composition({ prestige = 1 })
-            local hasSaber = false
-            for _, id in ipairs(list) do if id == "character_saber" then hasSaber = true end end
-            assert(hasSaber, "the debut objective fields Saber")
-            assert(def.map.objective.win.type == "killAll", "the debut is a killAll bout")
+            local hasBout = false
+            for _, id in ipairs(list) do if id == "character_saber_bout" then hasBout = true end end
+            -- The bout fields the boss TWIN, not the recruit -- so the phase relic and the deeper health
+            -- pool never ride home when Quest.complete recruits the clean character_saber.
+            assert(hasBout, "the debut objective fields the Saber bout twin")
+            -- Assassinate, not killAll: once her relic can summon hands, the bout has to end when SABER
+            -- goes down rather than dragging on to clear the reinforcements.
+            local obj = def.map.objective
+            assert(obj.win.type == "assassinate", "the debut ends on Saber's defeat, not a board clear")
+            assert(obj.win.target == "character_saber_bout", "and the mark is the twin on the sand")
+            -- The reward is still the CLEAN companion.
+            assert(def.rewardCharacter == "character_saber", "the recruit is the un-bossed Saber")
         end,
     },
     {

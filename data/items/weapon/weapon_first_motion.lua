@@ -72,6 +72,24 @@ return {
         -- fields are one now (models/item.lua's Item.windupRange), and making the range literal
         -- halves her floor: she commits for two ticks, not four.
         windup = { min = 2, max = 5 },
+        -- THE GROUND GOES SOFT WHERE THE BLADE IS GOING TO FALL. Laid on commit, over the exact tiles
+        -- the swing is telegraphed to sweep -- so the tell is not just information, it is terrain.
+        --
+        -- This is the answer to the blow being trivially dodgeable, and it deliberately does NOT make
+        -- it undodgeable: Quicksand grants Mired, which doubles what a step costs rather than
+        -- forbidding it (data/hazards/hazard_quicksand.lua). Standing in the strike zone when a
+        -- greatsword is coming down is still the wrong idea; walking out of it now costs real tempo
+        -- instead of being free. The counterplay moves from "take one step" to "be somewhere else
+        -- before she commits" -- which is the read the weapon wanted from the player all along.
+        --
+        -- It rides the wind-up's length, so a deep hold leaves the sand churned longer than a snap
+        -- swing does: the deeper the commitment, the longer the ground remembers it. And it is
+        -- unowned and hostile to all comers, so if the swing drags HER onto it she is mired too.
+        -- An explicit duration rather than the wind-up's own length: the default would leave a snap
+        -- swing's sand gone three ticks later, before anybody had to decide anything about it. Ten
+        -- ticks is about two turns -- long enough that the churned ground shapes the exchange AFTER
+        -- the blow as well as the one before it, which is what makes it terrain rather than a effect.
+        channelHazard = { id = "hazard_quicksand", duration = 10 },
         cost = { stat = "stamina", amount = 15 },
         damage = { 22, 24, 27, 29, 32, 34, 37, 39, 42, 44, 47 },
         -- The overhead blow doesn't stop at the first body: it drives THROUGH the tiles in front (the

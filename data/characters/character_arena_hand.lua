@@ -1,0 +1,47 @@
+-- A House Hand: the second body on the sand in the debut bout (data/quests/arena_debut.lua), and the
+-- one Saber's fight is built around. Every team in the Colosseum is a team (docs/story.md, "The
+-- Colosseum"), so the veteran the house booked does not fight alone -- she brings a hand, and the
+-- hand's whole job is to make her one big swing land.
+--
+-- It is a NETTER, not a wall. The old debut fielded a plain bandit here -- a body to soak a hit -- and
+-- the trouble was that a wall does nothing about the real problem, which is that the player can simply
+-- step out of Saber's telegraphed blow. This one carries the Bolas (data/items/ability/ability_bolas.lua):
+-- range-3 Root, so it PINS the body Saber is about to commit to. The read is legible on purpose -- you
+-- can see who is holding you, and killing the hand frees the ground -- so "I got rooted and eaten" is a
+-- targeting decision (drop the netter first) rather than a tax the arena charges you.
+--
+-- Deliberately soft. It is a spotter for the greatsword, not a second greatsword: low health, a light
+-- spear for when it has nothing to net, and no boss protection. A party that reads the fight kills it
+-- early and the pins stop; a party that ignores it feeds Saber a rooted target every other turn.
+return {
+    name = "House Hand",
+    sprite = "assets/chars/bandit.png", -- reuses bandit art until its own exists
+    stats = {
+        health = 34, mana = 0, stamina = 16, -- softer than a bandit: it is support, and meant to fall first
+        staminaRegen = 2,                     -- enough to keep the net coming; see ability_bolas' cost
+        damage = 10, magicDamage = 0,
+        defense = 6, magicDefense = 3,
+        movement = 4,
+        speed = 3, -- a shade quicker than a bandit in the order: it wants to net BEFORE Saber commits
+    },
+    -- The net is the tool; the spear is the fallback. Bolas in a free cell (it needs no weapon beside
+    -- it -- the snare IS the tool), a light spear for melee, nothing bound.
+    startingItems = {
+        false, "ability_bolas",     false,
+        false, "weapon_iron_spear", false,
+        false, false,               false,
+    },
+    defaultAction = "ability_bolas",
+    ai = {
+        -- 1. Net an UNPINNED foe at range: the setup half. Skips anyone already rooted -- one net holds
+        -- as well as two, and a wasted throw is a turn Saber's target got to walk. `within` gates on the
+        -- bolas' own reach (range 3); first-match-wins means a foe already rooted falls through to the
+        -- spear rule instead of being netted twice.
+        { priority = "high", act = "cast", item = "ability_bolas",
+          when = { subject = "any_foe", test = "lacks_status", value = "status_root" } },
+        -- 2. Otherwise close and jab. It is not the threat, but a hand that has nobody to net should not
+        -- stand idle while the crowd watches.
+        { priority = "normal", act = "attack", item = "weapon_iron_spear",
+          when = { subject = "any_foe", test = "in_reach" } },
+    },
+}
