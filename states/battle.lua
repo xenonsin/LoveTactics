@@ -2425,9 +2425,10 @@ local function refreshView()
         itemOwner = Combat.isPlayerControlled(current) and current.char or nil, -- for adjacency link lines
         armedItem = battle.armedItem,
         -- The chargeable wind-up being tuned on the armed signature (nil unless a CHARGEABLE one is
-        -- armed), so the actions header can read out how long the blow is being held. Two numbers,
-        -- not three: since the wind-up fields folded, the depth IS the resolve time, so there is no
-        -- longer a base to add to it (models/item.lua's Item.windupRange).
+        -- armed), so the actions header can read out how deep the blow is being held. Two numbers,
+        -- not three: since the wind-up fields folded, the depth is the commitment the bonus is scored
+        -- on (models/item.lua's Item.windupRange). It equals the resolve time at an ordinary tempo, but
+        -- Haste/Mired scale the actual tell (Combat.useItem's timeTicks) apart from the depth shown here.
         armedWindup = (function()
             local ab = battle.armedItem and battle.armedItem.activeAbility
             if not Item.isChargeable(ab) then return nil end

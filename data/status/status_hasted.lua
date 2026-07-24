@@ -5,6 +5,11 @@
 -- ground: Combat.reachable still spends the raw path cost against the movement budget, so a hasted
 -- unit goes exactly as far, it just comes back around the turn order sooner.
 --
+-- The same discount runs a WIND-UP shorter (Combat.useItem folds costMultiplier into the channel's
+-- timeTicks): a hasted greatsword tells for half as long. Crucially it discounts only the TIME, never
+-- the COMMITMENT -- the swing's bonus is scored on the undiscounted hold -- so a hasted wind-up lands
+-- the full-depth blow in half the tell rather than a weaker one sooner. Buying time, not ground, again.
+--
 -- It does NOT discount a RESERVATION (Combat.abilityReserve). A reservation is spent at the moment
 -- of casting like a cost is, but it stays locked away for as long as the summon lives, and its size
 -- is set by that creature rather than by the caster's tempo.

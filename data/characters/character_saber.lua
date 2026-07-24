@@ -45,7 +45,7 @@ return {
         -- greatsword; what separates the rules is WHO she goes for and HOW LONG SHE HOLDS IT, which is
         -- the whole of the weapon.
         --
-        -- 1. ROOTED -- pinned by a hired hand's bolas (character_arena_hand), or her own. She
+        -- 1. ROOTED -- pinned by a trapper's bolas (character_trapper), or her own. She
         -- PRIORITIZES a pinned foe: a rooted body cannot walk out at all, so it is the surest mark on
         -- the board. But the root is only six ticks, so a deep hold would resolve AFTER it lapses (her
         -- turn comes back at +4, and +5 more of wind-up lands at 9) -- she takes the SNAP that lands

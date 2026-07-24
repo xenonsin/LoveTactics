@@ -6604,20 +6604,32 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
         -- peer) opens at the floor rather than being refused.
         local ticks = math.max(windLo, math.min(math.floor(windup or windLo), windHi))
         local held = ticks - windLo
+        -- DEPTH vs TIME. `ticks`/`held` are the COMMITMENT -- how long she chose to hold, and how far
+        -- past the floor -- and they are what every wind-up-scaled EFFECT is scored on (this weapon's
+        -- bonus off `held`, a benediction's mend and the Long Prayer's radius off the total `windup`),
+        -- so they are left undiscounted: the payoff is worth what the hold was worth. `timeTicks` is how
+        -- long that hold actually takes on the TIMELINE, and it rides the same costMultiplier knob every
+        -- other timeline cost does (Combat.abilityCost) -- Haste halves it, Mired doubles it, Graven
+        -- shaves it. The two come apart precisely so a hasted wind-up lands the FULL payoff in HALF the
+        -- tell: the player has half the time to walk clear, and the blow at the end is no softer.
+        -- Floored at one tick -- a wind-up still has to hang for a beat.
+        local timeTicks = math.max(1, math.floor(ticks * Status.costMultiplier(unit) + 0.5))
         if ab.consumesItem then item.quantity = math.max(0, (item.quantity or 1) - 1) end
+        -- `windup` = the commitment the effect scales its payoff on (undiscounted); the TELL it actually
+        -- hangs for is timeTicks, which is what the badge below and endTurn (the resolution slot) bill.
         unit.channel = { item = item, ab = ab, tx = tx, ty = ty, windup = ticks, held = held }
-        Status.apply(combat, unit, "status_channeling", { duration = ticks + 1 })
+        Status.apply(combat, unit, "status_channeling", { duration = timeTicks + 1 })
         -- `channelStatus`: a status the caster gains ON COMMIT and carries through the wind-up, for the
         -- one thing an `effect` cannot express -- an effect runs when the cast RESOLVES, and this has to
         -- land on the beat the tell goes up, before the enemy's turn to punish it. Declared rather than
         -- hooked, so the one weapon that wants it (weapon_held_breath: drawing makes the archer unseen)
         -- needs no fx context built at a point in the turn where there is nothing to aim one at.
         --
-        -- It rides the wind-up's own length, so a deeper draw hides longer -- and it is applied AFTER
-        -- `status_channeling`, so a status that interrupts channels cannot cancel the very cast it was
-        -- granted by.
+        -- It rides the wind-up's own length (the actual tell, so a hasted draw hides for the shorter
+        -- time it is actually drawing), and it is applied AFTER `status_channeling`, so a status that
+        -- interrupts channels cannot cancel the very cast it was granted by.
         if ab.channelStatus then
-            Status.apply(combat, unit, ab.channelStatus, { duration = ticks + 1 })
+            Status.apply(combat, unit, ab.channelStatus, { duration = timeTicks + 1 })
         end
         -- `channelAfflict`: a status stamped on WHOEVER IS ALREADY STANDING in the wind-up's footprint
         -- the moment she commits -- the sibling of `channelStatus` (which lands on the caster) aimed one
@@ -6639,7 +6651,7 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
         if ab.channelAfflict then
             local ca = ab.channelAfflict
             local statusId = (type(ca) == "table" and ca.status) or ca
-            local afflictFor = (type(ca) == "table" and ca.duration) or (ticks + 1)
+            local afflictFor = (type(ca) == "table" and ca.duration) or (timeTicks + 1)
             local seen = {}
             for _, cell in ipairs(Combat.aoeCells(combat, ab, tx, ty, unit)) do
                 local occ = Combat.unitAt(combat, cell.x, cell.y)
@@ -6655,7 +6667,9 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
             support = Combat.isSupportAbility(ab), tags = Combat.fxTags(item, ab) })
         Combat.logEvent(combat, "action",
             string.format("%s begins channeling %s.", unitName(unit), item.name or "an ability"), unit)
-        endTurn(combat, unit, ticks, true)
+        -- Bill the TELL, not the depth: the resolution slot comes back after timeTicks, so a hasted
+        -- wind-up resolves sooner while the effect still scores its bonus on the undiscounted `held`.
+        endTurn(combat, unit, timeTicks, true)
         return true, { channeling = true }
     end
 

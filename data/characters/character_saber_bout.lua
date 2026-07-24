@@ -3,7 +3,7 @@
 -- (data/quests/arena_debut.lua's composition); `rewardCharacter` still hands the player the clean
 -- `character_saber`. That split is the whole point of the twin: everything the bout needs and the
 -- companion must not keep -- the boss flag, the fuller health pool, and above all the phase relic that
--- summons reinforcements and enrages -- lives here and rides home with nobody. It is exactly how the
+-- commits her at a third of her health -- lives here and rides home with nobody. It is exactly how the
 -- Demon Champion is never a recruitable body.
 --
 -- It EXTENDS the recruit rather than restating her, so the two can never drift. Her kit and her tactics
@@ -25,10 +25,10 @@ for k, v in pairs(base) do bout[k] = v end
 -- longer carries it -- an ally is never targeted that way.
 bout.boss = true
 
--- A deeper pool than the companion's 84: the debut's fuller toolkit (the sand, the net, her own deep
--- holds) would kill 84 before the 66% and 33% thresholds could ever read, and the phases ARE the fight.
--- Copied off the base stats so movement/speed/defense stay exactly the companion's -- only the ceiling
--- moves.
+-- A deeper pool than the companion's 84: the debut's fuller toolkit (the trappers' nets, her own deep
+-- holds) would kill 84 before the 33% commit threshold could ever read, and the phase IS the fight's
+-- turn. Copied off the base stats so movement/speed/defense stay exactly the companion's -- only the
+-- ceiling moves.
 bout.stats = {}
 for k, v in pairs(base.stats) do bout.stats[k] = v end
 bout.stats.health = 110

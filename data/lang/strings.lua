@@ -54,6 +54,12 @@ return {
     ["line.arena_debut_event.5"] = { en = "...forty in coin to open the card, win or lose, so long as the show is good. He's already written the ending. I take the money anyway.", ja = "" },  -- TODO
     ["line.arena_debut_event.6"] = { en = "No handler, no leash, no debt at the door. Whatever happens on that sand is ours alone -- and we walk to it steady.", ja = "" },  -- TODO
     ["line.arena_debut_event.7"] = { en = "They booked a veteran to open on a team with nothing behind it. Go and make them regret the casting.", ja = "" },  -- TODO
+    ["line.arena_debut_kit.1"] = { en = "Someone kitted up for this card and never made it to the sand. Their bag's still here, straps cut in a hurry.", ja = "" },  -- TODO
+    ["line.arena_debut_kit.2"] = { en = "Cleansing draughts -- a couple of clearwater vials and a panacea besides. Choose...", ja = "" },  -- TODO
+    ["line.arena_debut_kit.3"] = { en = "Take the lot.", ja = "" },  -- TODO
+    ["line.arena_debut_kit.4"] = { en = "Rowan -- why would a fighter bring these to a sword bout?", ja = "" },  -- TODO
+    ["line.arena_debut_kit.5"] = { en = "Because a house like the one we're drawn against doesn't win with the sword alone -- it fields netters. They'll rope your legs and hold you still while the big blade winds up. Drink one the moment you're pinned and it cuts you loose -- you get your step back before the swing lands. A panacea will do the same for whoever's caught beside you. Don't stand there roped, waiting for it.", ja = "" },  -- TODO
+    ["line.arena_debut_kit.6"] = { en = "Cut loose, then move. Understood. Let's not keep the veteran waiting.", ja = "" },  -- TODO
     ["line.arena_saber_joins.1"] = { en = "Footsteps behind us -- the same weight that put me on my back an hour ago. She followed us out.", ja = "" },  -- TODO
     ["line.arena_saber_joins.2"] = { en = "Easy, knight. If I meant you harm I'd not announce it with my boots.", ja = "" },  -- TODO
     ["line.arena_saber_joins.3"] = { en = "Saber. That's the name the card gives me, and it'll do -- you'll have heard the house one shouted over the sand. Forget that one. It was rented.", ja = "" },  -- TODO
@@ -587,6 +593,7 @@ return {
     ["title.arcanum_general_pride_confront"] = { en = "The Unequalled", ja = "" },  -- TODO
     ["title.arcanum_the_radical_confront"] = { en = "The Radical", ja = "" },  -- TODO
     ["title.arena_debut_event"] = { en = "The Tout on the Concourse", ja = "" },  -- TODO
+    ["title.arena_debut_kit"] = { en = "An Unclaimed Kit", ja = "" },  -- TODO
     ["title.arena_saber_joins"] = { en = "Past the Gate", ja = "" },  -- TODO
     ["title.bastion_forty_first_day_confront"] = { en = "The Forty-First Day", ja = "" },  -- TODO
     ["title.bastion_forty_first_day_intro"] = { en = "Still a Company", ja = "" },  -- TODO

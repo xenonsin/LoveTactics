@@ -1,25 +1,25 @@
--- A House Hand: the second body on the sand in the debut bout (data/quests/arena_debut.lua), and the
--- one Saber's fight is built around. Every team in the Colosseum is a team (docs/story.md, "The
--- Colosseum"), so the veteran the house booked does not fight alone -- she brings a hand, and the
--- hand's whole job is to make her one big swing land.
+-- A Trapper: one of the two bodies the house puts on the sand beside Saber in the debut bout
+-- (data/quests/arena_debut.lua), and the pair her fight is built around. Every team in the Colosseum is
+-- a team (docs/story.md, "The Colosseum"), so the veteran the house booked does not fight alone -- it
+-- hires trappers, and their whole job is to make her one big swing land.
 --
 -- It is a TRAPPER, not a wall. The old debut fielded a plain bandit here -- a body to soak a hit -- and
 -- the trouble was that a wall does nothing about the real problem, which is that the player can simply
 -- step out of Saber's telegraphed blow. This one carries the Bolas (data/items/ability/ability_bolas.lua):
 -- range-3 Root, so it PINS the body Saber is about to commit to. The read is legible on purpose -- you
--- can see who is holding you, and killing the hand frees the ground -- so "I got rooted and eaten" is a
--- targeting decision (drop the trapper first) rather than a tax the arena charges you.
+-- can see who is holding you, and killing the trapper frees the ground -- so "I got rooted and eaten" is
+-- a targeting decision (drop the trappers first) rather than a tax the arena charges you.
 --
 -- Deliberately soft. It is a spotter for the greatsword, not a second greatsword: low health, an iron
 -- bow to plink from range once a foe is already pinned, and no boss protection. A party that reads the
--- fight kills it early and the pins stop; a party that ignores it feeds Saber a rooted target every
+-- fight kills them early and the pins stop; a party that ignores them feeds Saber a rooted target every
 -- other turn.
 --
 -- `archetype = "skirmish"` because it fights at range: a trapper wants to keep its distance and hold a
 -- line, not close and brawl -- and a bow cannot even fire at an adjacent tile (weapon_iron_bow's
 -- minRange 2), so an aggressive footwork that walked into melee would strand its fallback weapon.
 return {
-    name = "House Hand",
+    name = "Trapper",
     sprite = "assets/chars/bandit.png", -- reuses bandit art until its own exists
     archetype = "skirmish",             -- keeps its range; see the note above
     stats = {

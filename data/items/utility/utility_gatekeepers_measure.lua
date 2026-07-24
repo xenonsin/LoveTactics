@@ -1,4 +1,4 @@
--- Saber's bout relic: the three-stage shape of the debut fight, carried on the boss twin
+-- Saber's bout relic: the closing shape of the debut fight, carried on the boss twin
 -- (data/characters/character_saber_bout.lua) and NOWHERE else -- the recruited Saber
 -- (data/characters/character_saber.lua) never holds it, so none of what follows rides home when she
 -- joins the party. That separation is the whole reason the twin exists.
@@ -7,26 +7,23 @@
 -- a bound centre-cell relic carrying trait_boss_phases, whose `phases` table below is this boss's own
 -- script. No new Lua -- the trait reads the stages off the relic.
 --
--- WHAT THE STAGES MEAN. Saber is the gatekeeper, and she is delighted to finally be pressed
--- (data/conversations/prologue_victory.lua). The fight is her taking a newcomer progressively more
--- seriously, not a health bar with tricks bolted on:
---   66%  She calls in another hand from the house. Everything on this sand is a team, and she stops
---        fighting as if the one at her side were enough. The summoned body is a netter
---        (data/characters/character_arena_hand.lua), so the escalation is MORE PINS for her greatsword,
---        which is the exact threat the opening already taught -- turned up, not turned into something new.
---        It arrives as a phase response rather than a third body in the opening line, so the bout opens a
---        fair two-on-two and the extra pressure cannot be skipped by bursting her past the threshold
---        (trait_boss_phases fires only on a survived blow -- the honest reading its header documents).
+-- WHAT THE STAGE MEANS. Saber is the gatekeeper, and she is delighted to finally be pressed
+-- (data/conversations/prologue_victory.lua). The bout opens with her whole team already on the sand --
+-- two Trappers off her shoulders (data/quests/arena_debut.lua), no reinforcement held back -- so the
+-- one remaining stage is about HER, not the size of the crowd:
 --   33%  She stops holding the edge for the perfect moment and simply commits: fast (status_hasted) and
 --        hitting harder (a flat damage bump). Patience was the discipline of picking the moment; past
---        this she has decided every moment is the moment. A player who has been walking out of her
---        wind-ups now has half the time to do it.
+--        this she has decided every moment is the moment. Because Haste runs a wind-up shorter without
+--        softening it (data/status/status_hasted.lua), a player who has been walking out of her deep
+--        holds now has HALF the tell to do it in -- and the blow at the end is no smaller. It cannot be
+--        skipped by bursting her past the threshold -- trait_boss_phases fires only on a survived blow
+--        (the honest reading its header documents).
 --
 -- `bound = true` (models/item.lua): unstealable, so a rogue cannot lift her whole fight off her in one
 -- grab. No `class`/`price`: not gear anyone shops for.
 return {
     name = "The Gatekeeper's Measure",
-    description = "Its bearer answers each wound with the next stage of the fight.",
+    description = "Its bearer answers a deep enough wound by committing to the fight.",
     flavor = "She has watched this sand eat better fighters than you. Show her something, and she " ..
         "stops watching.",
     sprite = "assets/items/sig_unappeased_heart.png", -- placeholder until its own art exists
@@ -35,13 +32,9 @@ return {
     bound = true,
     traits = { "trait_boss_phases" },
     phases = {
-        -- 66%: call in another hand. A netter, so the escalation is more of the pin-then-commit threat
-        -- the opening already posed. Summoned onto an open tile beside her (trait_boss_phases' summon).
-        { at = 0.66, responses = {
-            { kind = "summon", id = "character_arena_hand", count = 1 },
-            { kind = "log", text = "Saber whistles through her teeth, and another of the house's hands steps onto the sand." },
-        } },
-        -- 33%: she stops toying. Fast, and a flat bump to the swing -- committed rather than patient.
+        -- 33%: she stops toying. Fast, and a flat bump to the swing -- committed rather than patient. The
+        -- crowd is already all here (both trappers opened with her), so the escalation is entirely in how
+        -- she herself fights, not in another body called onto the sand.
         { at = 0.33, responses = {
             { kind = "status", id = "status_hasted" },
             { kind = "bonus",  stat = "damage", amount = 6 },

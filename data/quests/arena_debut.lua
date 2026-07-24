@@ -86,20 +86,26 @@ return {
     map = {
         biome = "castle",
         -- The walk to the tunnel mouth is the undercard, not a maze to survive. A curated stop list
-        -- rather than a bare roll: one narrative scene that teaches the bout's thesis before the bout
-        -- (the mismatch, sold as entertainment), a couple of non-combat beats -- a found cache and a
-        -- moment to breathe before the veteran -- and a short warm-up. `always` pins the authored
-        -- three; min/max tops the card up with a scuffle or two from the castle pool (beast bouts are
-        -- ordinary arena fare). Map size scales with this AND the biome's density now (models/overworld.lua),
-        -- so a tight castle no longer sprawls into an empty warren for a handful of stops.
+        -- rather than a bare roll, and it TEACHES THE BOUT before the bout: the concourse scene sells
+        -- the mismatch, a house sparring pair (encounter_arena_undercard) introduces the Trapper's Root
+        -- where a pin cannot lose the fight, a found kit (arena_debut_kit) hands the cleanses that lift
+        -- it and has Rowan name what they are for, and a rest fights the veteran fresh. `always` pins
+        -- those four; min/max tops the card up with a scuffle or two from the castle pool (beast bouts
+        -- are ordinary arena fare). Map size scales with this AND the biome's density now
+        -- (models/overworld.lua), so a tight castle no longer sprawls into an empty warren.
         encounters = {
             min = 5, max = 6,
             always = {
                 -- The concourse scene: a booking man prices the nobody. Non-combat, and the one
                 -- narrative stop on the card (data/conversations/arena_debut_event.lua).
                 { id = "encounter_event", conversation = "arena_debut_event" },
-                -- An unclaimed kit from a bout that never happened -- a small find on the way in.
-                { id = "encounter_treasure" },
+                -- The warm-up that introduces the net: one Trapper + one bandit, the main event in
+                -- miniature minus the boss, so a new player meets Root somewhere it cannot lose them the
+                -- fight (data/encounters/encounter_arena_undercard.lua).
+                { id = "encounter_arena_undercard" },
+                -- The unclaimed kit from a bout that never happened, now a scene: it hands the cleanses
+                -- that answer the net and has Rowan name their use (data/conversations/arena_debut_kit.lua).
+                { id = "encounter_event", conversation = "arena_debut_kit" },
                 -- A last breath before the veteran, so the debut is fought fresh (Player.restore).
                 { id = "encounter_rest" },
             },
@@ -112,14 +118,16 @@ return {
             -- specFor off the objective, exactly as the flight leg names the Demon Champion's arena.
             layout = "colosseum_sand",
             -- Saber (the boss TWIN -- data/characters/character_saber_bout.lua -- so nothing about the
-            -- bout follows her home) and one hand from the house that booked her, a team because
-            -- everything on this sand is a team. The hand is a NETTER now, not a wall
-            -- (data/characters/character_arena_hand.lua): it roots the body Saber is about to commit
-            -- to, which is the setup her whole telegraphed swing was missing. Kept to two at the bell
-            -- so a two-unit prologue party opens on a fair footing; the third body arrives only if the
-            -- party presses her to two-thirds health, summoned by her relic (utility_gatekeepers_measure)
-            -- -- escalation that cannot be skipped by bursting her past it.
-            composition = function() return { "character_saber_bout", "character_arena_hand" } end,
+            -- bout follows her home) and two Trappers from the house that booked her, a team because
+            -- everything on this sand is a team. A trapper is a NETTER, not a wall
+            -- (data/characters/character_trapper.lua): it roots the body Saber is about to commit to,
+            -- which is the setup her whole telegraphed swing was missing. Both are on the sand at the
+            -- bell -- the pressure is honest and there in the opening line, not held back as a summon --
+            -- and they are deliberately soft, so a party that reads the fight drops them first and the
+            -- pins stop.
+            composition = function()
+                return { "character_saber_bout", "character_trapper", "character_trapper" }
+            end,
             opening = "colosseum_debut_confront",
             -- Assassinate, not killAll: the bout ends when SABER goes down, which is both the fiction
             -- (you beat HER) and the fix for adds -- once her relic can summon hands, killAll would drag

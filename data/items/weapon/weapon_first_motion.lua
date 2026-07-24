@@ -85,8 +85,8 @@ return {
         --
         -- A status on the bodies, NOT terrain: it lands once, on whoever is caught at the moment of
         -- commit, and a foe already clear of the footprint is never touched. That is the whole seam
-        -- between her ground game and the house's -- the hired hands PIN a runner outright with their
-        -- bolas (character_arena_hand's Root); her own swing only makes the ones under it give ground.
+        -- between her ground game and the house's -- the trappers PIN a runner outright with their
+        -- bolas (character_trapper's Root); her own swing only makes the ones under it give ground.
         --
         -- `channelAfflict` rides the wind-up's length by default, so a deeper hold cows longer; the
         -- explicit duration overrides that with a flat window. Side-agnostic, as an unowned zone would

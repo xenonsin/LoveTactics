@@ -172,6 +172,38 @@ return {
                 "holding the edge is worth something: snap " .. snap .. " vs held " .. held)
         end,
     },
+    {
+        name = "haste runs her wind-up shorter without softening the blow",
+        fn = function()
+            -- Haste discounts the TELL (Combat.useItem's timeTicks) but not the COMMITMENT the bonus is
+            -- scored on, so a hasted deep hold lands the SAME damage as an un-hasted one -- in a shorter
+            -- wind-up. Half the time to walk clear, and the blow at the end is no smaller.
+            local function swing(hasted)
+                local map = Fixture.new(8, 8)
+                local her = Fixture.unit("character_saber", 4, 4)
+                local foe = Fixture.unit("character_bandit", 4, 5, { stats = { health = 400 } })
+                local combat = Fixture.combat(map, her, foe)
+                local s, f = combat.units[1], combat.units[2]
+                local blade = Fixture.itemNamed(s.char, "weapon_first_motion")
+                local _, hi = Item.windupRange(blade.activeAbility)
+                if hasted then Status.apply(combat, s, "status_hasted") end
+                local before = Fixture.hp(f)
+                Fixture.openTurn(combat, s)
+                assert(Combat.useItem(combat, s, blade, 4, 5, hi), "she holds the edge to the cap")
+                -- The actual tell she hangs for is the channeling badge's life (timeTicks + 1); the
+                -- stored channel.windup is the undiscounted commitment the bonus is scored on.
+                local tell = Status.get(s, "status_channeling").remaining
+                Combat.resolveChannel(combat, s)
+                return before - Fixture.hp(f), tell
+            end
+            local plainDmg, plainTell = swing(false)
+            local hasteDmg, hasteTell = swing(true)
+            assert(hasteTell < plainTell,
+                "the hasted tell is shorter: " .. hasteTell .. " vs " .. plainTell)
+            assert(hasteDmg == plainDmg,
+                "but the blow is identical: hasted " .. hasteDmg .. " vs un-hasted " .. plainDmg)
+        end,
+    },
 
     -- HER KIT ---------------------------------------------------------------------------------------
     {
@@ -259,63 +291,137 @@ return {
         end,
     },
     {
-        name = "the relic summons a hand at two-thirds and commits her at a third",
+        name = "the relic commits her at a third -- and no longer whistles in a second wave",
         fn = function()
             -- utility_gatekeepers_measure's script, driven the way the Champion's Sigil is driven: a
             -- survived blow crosses a threshold. Fielded through the twin, which is the only thing that
-            -- carries it.
+            -- carries it. The 66% summon was retired -- both trappers now open on the sand -- so the
+            -- relic's one remaining stage is the 33% commit, and nothing is called in before it.
             local map = Fixture.new(10, 10)
             local her = Fixture.unit("character_saber_bout", 5, 5)
             local foe = Fixture.unit("character_bandit", 2, 2)
             local combat = Fixture.combat(map, her, foe)
             local s = combat.units[1]
-            assert(Status ~= nil)
 
             local phase
             for _, t in ipairs(s.traits or {}) do if t.id == "trait_boss_phases" then phase = t end end
             assert(phase and phase.item and phase.item.phases,
-                "the twin answers each wound with the next stage, scripted on the relic")
+                "the twin answers a deep wound with the next stage, scripted on the relic")
+
+            local function trappersOnSand()
+                local n = 0
+                for _, u in ipairs(combat.units) do
+                    if u.alive and u.char.id == "character_trapper" then n = n + 1 end
+                end
+                return n
+            end
+            assert(trappersOnSand() == 0, "no trapper is fielded in this isolated fixture")
 
             local hp = s.char.stats.health
-            local handsBefore = 0
-            for _, u in ipairs(combat.units) do
-                if u.alive and u.char.id == "character_arena_hand" then handsBefore = handsBefore + 1 end
-            end
 
-            -- Just under two-thirds: she whistles in a hand.
+            -- Just under two-thirds: the OLD summon threshold. Nothing crosses now -- the only stage is
+            -- at a third -- so no body is called in and she has not committed.
             hp.current = math.floor(hp.max * 0.65) + 1
             Combat.dealFlatDamage(combat, s, 1, nil, "test")
-            assert(s.alive and phase.stacks == 1, "one stage crossed at two-thirds")
-            local handsAfter = 0
-            for _, u in ipairs(combat.units) do
-                if u.alive and u.char.id == "character_arena_hand" then handsAfter = handsAfter + 1 end
-            end
-            assert(handsAfter == handsBefore + 1, "another house hand is on the sand")
-            assert(not Status.get(s, "status_hasted"), "but she has not committed yet")
+            assert(s.alive and phase.stacks == 0, "two-thirds crosses nothing: the second wave is gone")
+            assert(trappersOnSand() == 0, "and no trapper is whistled onto the sand")
+            assert(not Status.get(s, "status_hasted"), "she has not committed at two-thirds")
 
             -- Just under a third: she stops toying -- fast and hitting harder.
             local dmgBefore = s.bonus.damage or 0
             hp.current = math.floor(hp.max * 0.32) + 1
             Combat.dealFlatDamage(combat, s, 1, nil, "test")
-            assert(phase.stacks == 2, "the second stage crossed at a third")
+            assert(phase.stacks == 1, "the one remaining stage crosses at a third")
             assert(Status.get(s, "status_hasted"), "she turns fast (status_hasted)")
             assert((s.bonus.damage or 0) > dmgBefore, "and her swing hits harder")
+            assert(trappersOnSand() == 0, "still no reinforcement -- the crowd was all there at the bell")
         end,
     },
     {
-        name = "the house hand nets an unpinned foe -- the setup Saber's swing was missing",
+        name = "a trapper nets an unpinned foe -- the setup Saber's swing was missing",
         fn = function()
             local map = Fixture.new(8, 8)
-            local hand = Fixture.unit("character_arena_hand", 4, 4)
+            local trapper = Fixture.unit("character_trapper", 4, 4)
             local foe = Fixture.unit("character_avatar", 4, 6)
-            local combat = Fixture.combat(map, hand, foe)
+            local combat = Fixture.combat(map, trapper, foe)
             local h, f = combat.units[1], combat.units[2]
             local bolas = Fixture.itemNamed(h.char, "ability_bolas")
-            assert(bolas, "the hand carries the net")
+            assert(bolas, "the trapper carries the net")
 
             Fixture.openTurn(combat, h)
             assert(Combat.useItem(combat, h, bolas, 4, 6), "it throws the net")
             assert(Status.has(f, "status_root"), "and the target is pinned for Saber's swing")
+        end,
+    },
+    {
+        name = "the opener fields Saber and two trappers, with a gate spawn for each",
+        fn = function()
+            -- The bell opens on the whole team -- the boss twin and two trappers -- rather than holding a
+            -- body back for a summon. The composition names three, and the board must seat every one.
+            local comp = Quest.defs["arena_debut"].map.objective.composition()
+            assert(#comp == 3, "three bodies open the bout, got " .. #comp)
+            assert(comp[1] == "character_saber_bout", "Saber's twin leads the line")
+            local trappers = 0
+            for _, id in ipairs(comp) do if id == "character_trapper" then trappers = trappers + 1 end end
+            assert(trappers == 2, "two trappers on the sand at the bell, got " .. trappers)
+
+            local sand = require("data.arenas.colosseum_sand")
+            assert(#sand.enemySpawns >= 3,
+                "the board seats all three, got " .. #sand.enemySpawns .. " enemy spawns")
+        end,
+    },
+
+    -- THE ROOT COUNTERPLAY ------------------------------------------------------------------------
+    -- The bout roots the player nearly every turn (two Trappers, a 2-unit party). These two stops on
+    -- the approach make that fair: the undercard teaches the net where it cannot lose the fight, and
+    -- the kit scene hands the cleanse that lifts it. A re-roll or rename that stripped either would
+    -- leave the bout balanced around a lesson never taught and a tool never found.
+    {
+        name = "the approach fields the netter before the boss -- the trapper undercard",
+        fn = function()
+            local Encounter = require("models.encounter")
+            local always = Quest.defs["arena_debut"].map.encounters.always
+            local listed = false
+            for _, e in ipairs(always) do if e.id == "encounter_arena_undercard" then listed = true end end
+            assert(listed, "the approach lists the trapper undercard among its always-stops")
+
+            local def = Encounter.defs["encounter_arena_undercard"]
+            assert(def and def.kind == "combat", "the undercard is a combat stop")
+            local trappers = 0
+            for _, id in ipairs(def.composition()) do
+                if id == "character_trapper" then trappers = trappers + 1 end
+            end
+            assert(trappers >= 1, "it fields the same Trapper, so Root is met before the bout")
+        end,
+    },
+    {
+        name = "the found kit hands a self-cleanse -- the rooted unit's own way out",
+        fn = function()
+            -- A rooted body can still drink (Root blocks the step, not the hand -- status_root sets
+            -- blocksMove, not disablesActions), so a self-cleanse buys the move back. The scene must
+            -- actually grant one; the fight is balanced on the player having it.
+            local always = Quest.defs["arena_debut"].map.encounters.always
+            local convId
+            for _, e in ipairs(always) do
+                if e.id == "encounter_event" and e.conversation == "arena_debut_kit" then convId = e.conversation end
+            end
+            assert(convId, "the approach lists the kit scene among its always-stops")
+
+            local conv = require("data.conversations." .. convId)
+            local grantsVial = false
+            for _, node in ipairs(conv.script) do
+                for _, c in ipairs(node.choices or {}) do
+                    local grant = c.effect and c.effect.grant
+                    if type(grant) == "table" then
+                        for _, id in ipairs(grant) do
+                            if id == "consumable_clearwater_vial" then grantsVial = true end
+                        end
+                    elseif grant == "consumable_clearwater_vial" then
+                        grantsVial = true
+                    end
+                end
+            end
+            assert(grantsVial, "the kit scene grants a Clearwater Vial, the rooted unit's own out")
         end,
     },
 
@@ -332,7 +438,7 @@ return {
             local built = Arena.build({}, {
                 layout = "colosseum_sand", biome = "castle",
                 party = { "character_avatar", "character_knight" },
-                composition = function() return { "character_saber_bout", "character_arena_hand" } end,
+                composition = Quest.defs["arena_debut"].map.objective.composition,
                 objective = { type = "assassinate", target = "character_saber_bout" },
                 seed = 1,
             })

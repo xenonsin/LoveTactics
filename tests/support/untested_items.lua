@@ -138,7 +138,6 @@ return {
     "consumable_ball_bearings",
     "consumable_bannerets_steel",
     "consumable_berserkers_brew",
-    "consumable_clearwater_vial",
     "consumable_crawler_mucus",
     "consumable_elixir_of_heroism",
     "consumable_elixir_of_the_adept",
