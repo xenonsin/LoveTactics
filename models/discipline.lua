@@ -25,6 +25,16 @@ function Discipline.arity(id)
     return #Discipline.parents(id)
 end
 
+-- The display name of discipline `id` ("Ninja"), or nil when the id is absent or unknown. The single
+-- place the UI turns a stored id into words, so every surface that names an item's discipline -- the
+-- tooltip's row, the shop shelf, the forge -- says it the same way, and a stale id on an item prints
+-- nothing rather than leaking a raw slug into the panel.
+function Discipline.displayName(id)
+    local def = id and Discipline.defs[id]
+    if not def then return nil end
+    return def.name or id
+end
+
 -- The growth paths a use of `item` should tally toward (models/growth.lua, which reads these as keys
 -- into data/growth/<id>.lua). A discipline is ITS OWN growth path: a discipline item tallies the
 -- discipline id, so a build leaning on Ninja stock grows on data/growth/ninja.lua -- a blend the two

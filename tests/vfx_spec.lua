@@ -133,6 +133,53 @@ return {
         end,
     },
     {
+        name = "every motif a flight maps to is a real burst shape",
+        fn = function()
+            for motif, pattern in pairs(BurstFx.FLIGHT_PATTERN) do
+                assert(Motif.SET[motif], "flight maps an unknown motif: " .. motif)
+                assert(BurstFx.STYLE[pattern], motif .. " flies as unstyled burst " .. tostring(pattern))
+                assert(BurstShader.PATTERNS[pattern], motif .. " flies as a burst with no shader id")
+            end
+            assert(BurstFx.STYLE[BurstFx.DEFAULT_FLIGHT], "the default flight must be a real shape")
+        end,
+    },
+    {
+        name = "what flies is the item's business: a routing tag beats the tiles between the bodies",
+        fn = function()
+            -- The Iron Mace. Its own shove opens two tiles between the bodies; it still swings.
+            local mace = { "mace", "impact", "physical", "melee" }
+            assert(not BurstFx.throwsProjectile(mace, 1), "a mace at arm's length swings")
+            assert(not BurstFx.throwsProjectile(mace, 2), "a mace does not fire a bolt, ever")
+            -- The Gathering Bell: a mace with two tiles of REACH, and still no projectile.
+            assert(not BurstFx.throwsProjectile({ "mace", "impact", "physical", "melee" }, 2),
+                "a reach weapon reaches, it does not shoot")
+            -- A bow looses even point-blank.
+            assert(BurstFx.throwsProjectile({ "bow", "pierce", "physical", "ranged" }, 1),
+                "a bow at point-blank still looses an arrow")
+            -- Neither routing tag: an ability's descriptive tags, or a natural spitter. Gap decides.
+            assert(BurstFx.throwsProjectile({ "fire", "arcane" }, 3), "a spell thrown across the board flies")
+            assert(not BurstFx.throwsProjectile({ "fire", "arcane" }, 1), "cast into an adjacent face, it does not")
+            assert(BurstFx.throwsProjectile({ "natural", "poison", "physical" }, 3), "a spitter spits")
+            assert(not BurstFx.throwsProjectile(nil, 1) and BurstFx.throwsProjectile(nil, 2),
+                "a tagless blow falls back to distance alone")
+        end,
+    },
+    {
+        name = "a projectile wears the item's element, and a plain one streaks",
+        fn = function()
+            -- An arrow is an arrow: the shape motifs name no flying body, so they take the streak.
+            assert(BurstFx.flightPatternFor({ "bow", "pierce", "physical", "ranged" }) == BurstFx.DEFAULT_FLIGHT,
+                "an arrow streaks")
+            assert(BurstFx.flightPatternFor(nil) == BurstFx.DEFAULT_FLIGHT, "so does a tagless shot")
+            -- ...but a fireball flies as the bloom it lands as, off the same tags its impact reads.
+            local wand = { "wand", "magical", "fire", "ranged" }
+            assert(BurstFx.flightPatternFor(wand) == "bloom", "a fire wand throws fire")
+            assert(BurstFx.patternFor(wand) == "bloom", "and lands as the same thing it threw")
+            assert(BurstFx.flightPatternFor({ "wand", "magical", "lightning", "ranged" }) == BurstFx.DEFAULT_FLIGHT,
+                "a fork sliding across the board reads as a bug: lightning streaks, then forks where it lands")
+        end,
+    },
+    {
         name = "flight time grows with distance, clamped at both ends",
         fn = function()
             local near = BurstFx.flightTime(1, 1, 2, 1) -- one tile

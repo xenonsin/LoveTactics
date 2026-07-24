@@ -77,11 +77,13 @@ local function backVisible()
     return not game.tutorial and not game.scripted
 end
 
--- The "Use" button rides alongside the Items button on a normal quest, but stays hidden through the
--- flight tutorial: that leg's HUD is deliberately spare (the Items button IS the equip lesson), and
--- there is nothing to drink before the first fight anyway.
+-- The "Use" button rides alongside the Items button on a normal quest (both flags start true). On the
+-- flight tutorial it is held back TWICE over: it needs loot to spend (game.itemsVisible, set by the
+-- teaching chest) and the first fight behind the party (game.useUnlocked, set on the survivors'
+-- defence win). Until then that leg's HUD is deliberately spare -- the Items button IS the equip
+-- lesson -- and a potion has nothing to mend yet.
 local function useVisible()
-    return game.itemsVisible and not game.tutorial
+    return game.itemsVisible and game.useUnlocked
 end
 
 -- Open the consumables screen over the overworld (same modal slot as the encounter panel).
@@ -193,6 +195,9 @@ function game.enter(self, quest, prestige, player, onComplete)
     -- board quest to abandon. See backVisible and arena_debut's followUp.
     game.scripted = mp.scripted
     game.itemsVisible = (mp.tutorial ~= "flight")
+    -- The Use button's own gate, held shut for the flight leg until the first fight is won (see
+    -- useVisible and the combat onWin below). True from the start everywhere else.
+    game.useUnlocked = (mp.tutorial ~= "flight")
     game.coach = nil
 
     -- Last, once the map exists: a quest may open with a scene played OVER it. A conversation is a
@@ -271,6 +276,12 @@ function game:openEncounter(cell)
             onWin = function(spoils)
                 cell.cleared = true
                 game.activePanel = nil
+                -- The flight leg's Use lesson: the party walks off the survivors' defence wounded,
+                -- with a pocket of draughts from the teaching chest and nowhere to spend them, so the
+                -- button appears the moment that need does. Revealed on the leg's FIRST combat win --
+                -- which the authored trail makes the defence (states/prologue.lua's FLIGHT_QUEST,
+                -- stop 3) -- rather than keyed to an encounter id typed a second time over here.
+                if game.tutorial == "flight" then game.useUnlocked = true end
                 if kind == "objective" then
                     game.complete = true
                     -- Prologue (or any scripted caller) reroute: hand the cleared objective back to

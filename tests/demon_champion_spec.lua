@@ -1,7 +1,9 @@
 -- Tests for the Demon Champion capstone (the tutorial's conclusion) and the reusable systems it
 -- introduces: the data-driven phase trait (data/traits/trait_boss_phases.lua, scripted by
--- data/items/utility/utility_demon_sigil.lua), the self-destruct trait (data/traits/trait_volatile.lua
--- on data/characters/character_demon_bomblet.lua), the generic Heave throw (data/items/ability/
+-- data/items/utility/utility_demon_sigil.lua), the self-destruct pair on
+-- data/characters/character_demon_bomblet.lua (data/traits/trait_volatile.lua when something else
+-- kills it, data/items/ability/ability_self_destruct.lua when it pulls its own pin), the generic
+-- Heave throw (data/items/ability/
 -- ability_heave.lua), the Roar's interruptible summon (data/items/ability/ability_demon_roar.lua), and
 -- the authored arena + hazard seam (data/arenas/demon_champion.lua, models/arena.lua). Pure logic,
 -- headless -- mirrors tests/trait_spec.lua and tests/flight_leg_spec.lua.
@@ -11,6 +13,7 @@ local Combat = require("models.combat")
 local Trait = require("models.trait")
 local Status = require("models.status")
 local Arena = require("models.arena")
+local AI = require("models.ai")
 
 local function arena(cols, rows)
     local tiles = {}
@@ -117,6 +120,101 @@ return {
             Combat.dealFlatDamage(c, a, 9999, nil, "test") -- pop A; its blast should finish the adjacent B
             assert(not a.alive, "the popped Bomblet is gone")
             assert(not b.alive, "and the chain took its neighbour with it (and the test returned: no infinite loop)")
+        end,
+    },
+
+    -- ----- the DELIBERATE burst (ability_self_destruct) -----
+    --
+    -- The active half of the same rule. Everything here is about the seam between the two: they throw
+    -- one identical blast, they never throw it twice, and the channel is what the party answers.
+    {
+        name = "the Bomblet carries Self-Destruct, and it throws exactly the trait's blast",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("character_knight", 2, 3) },
+                { unit("character_demon_bomblet", 2, 2) })
+            local knight, bomblet = c.units[1], c.units[2]
+            local bomb = bomblet.char.inventory[2] -- grid cell 2 (see the blueprint)
+            assert(bomb and bomb.id == "ability_self_destruct", "the fuse sits above the Core")
+            -- Same number, both ways round: a player who learned the blast from a bomblet they shot must
+            -- not be surprised by one that jumped them.
+            assert(bomb.activeAbility.damage == Trait.defs.trait_volatile.magnitude,
+                "the deliberate burst is the trait's own magnitude")
+
+            local before = knight.char.stats.health.current
+            assert(Combat.useItem(c, bomblet, bomb, 2, 2), "it pulls its own pin")
+            assert(bomblet.alive and bomblet.channel, "...over a wind-up: nothing has gone off yet")
+            assert(knight.char.stats.health.current == before, "and the knight is untouched during the tell")
+
+            assert(Combat.resolveChannel(c, bomblet), "the wound-up burst resolves")
+            assert(not bomblet.alive, "the bomber is gone")
+            local dealt = before - knight.char.stats.health.current
+            assert(dealt > 0, "and the ring caught the adjacent knight")
+
+            -- ...and it is ONE blast, not two: the ability's own ring plus the trait answering the
+            -- bomber's removal would silently double every self-destruct on the board.
+            local c2 = Combat.new(arena(8, 8),
+                { unit("character_knight", 2, 3) },
+                { unit("character_demon_bomblet", 2, 2) })
+            local knight2, bomblet2 = c2.units[1], c2.units[2]
+            local was = knight2.char.stats.health.current
+            Combat.dealFlatDamage(c2, bomblet2, 9999, nil, "test") -- the passive half, for comparison
+            assert(was - knight2.char.stats.health.current == dealt,
+                "pulling the pin and being killed cost the knight the same -- no second burst")
+        end,
+    },
+    {
+        name = "breaking the wind-up defuses the bomb; killing it inside the wind-up does not",
+        fn = function()
+            -- Interrupted: shoved or stunned mid-channel, the cast is wasted and the bomber stands there
+            -- holding it. This is the answer the passive trait never allowed.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_knight", 2, 3) },
+                { unit("character_demon_bomblet", 2, 2) })
+            local knight, bomblet = c.units[1], c.units[2]
+            local before = knight.char.stats.health.current
+            assert(Combat.useItem(c, bomblet, bomblet.char.inventory[2], 2, 2), "the burst begins")
+            assert(Combat.interruptChannel(c, bomblet, "shoved"), "a shove breaks the channel")
+            assert(not Combat.resolveChannel(c, bomblet), "there is nothing left to resolve")
+            assert(bomblet.alive, "the bomber is still standing, its pin unpulled")
+            assert(knight.char.stats.health.current == before, "and the knight took nothing")
+
+            -- Killed mid-channel: the channel drops, but the DEATH is answered by the trait, so the
+            -- blast lands anyway. Killing it in your own teeth is still the wrong answer.
+            local c2 = Combat.new(arena(8, 8),
+                { unit("character_knight", 2, 3) },
+                { unit("character_demon_bomblet", 2, 2) })
+            local knight2, bomblet2 = c2.units[1], c2.units[2]
+            local was = knight2.char.stats.health.current
+            assert(Combat.useItem(c2, bomblet2, bomblet2.char.inventory[2], 2, 2), "the burst begins")
+            Combat.dealFlatDamage(c2, bomblet2, 9999, nil, "test")
+            assert(not bomblet2.alive, "the bomber is cut down mid-tell")
+            assert(knight2.char.stats.health.current < was, "and it burst all the same")
+        end,
+    },
+    {
+        name = "a Bomblet plans its own burst -- it walks into the ring and pulls the pin",
+        fn = function()
+            -- The whole point of the active half: left to itself, the Bomblet must actually DO
+            -- something. It closes and detonates rather than standing beside the party forever waiting
+            -- to be killed. (A self-target cast is aimed at the tile the caster WALKS to -- see
+            -- AI.candidates -- which is what lets this be a plan at all.)
+            local c = Combat.new(arena(8, 8),
+                { unit("character_knight", 5, 5) },
+                { unit("character_demon_bomblet", 5, 2) }) -- three tiles off: within its movement of 4
+            local bomblet = c.units[2]
+            local plan = AI.plan(c, bomblet)
+            assert(plan.item and plan.item.id == "ability_self_destruct", "it plans the burst: " .. AI.explain(plan))
+            assert(plan.move, "having walked into range of the ring first")
+            assert(plan.tx == plan.move.x and plan.ty == plan.move.y, "aimed at the tile it walks to")
+
+            -- ...and with nobody to catch it, it does NOT waste itself: the outcome gate refuses a burst
+            -- that accomplishes nothing, and the posture just walks it closer.
+            local c2 = Combat.new(arena(16, 16),
+                { unit("character_knight", 16, 16) },
+                { unit("character_demon_bomblet", 2, 2) })
+            local far = AI.plan(c2, c2.units[2])
+            assert(not far.item, "far from the party it holds its charge and approaches: " .. AI.explain(far))
         end,
     },
 

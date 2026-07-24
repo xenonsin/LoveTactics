@@ -116,6 +116,23 @@ function ItemTooltip.printFlavor(text, x, y, w, font)
     return math.max(1, #wrapped) * font:getHeight()
 end
 
+-- The discipline `item` falls under, drawn as a tinted label right-aligned in a `w`-wide column at
+-- (x, y). Draws nothing and returns false for the many items that carry none, so a caller can put it
+-- on a line it shares with other text. `font` defaults to the tooltip's small face.
+--
+-- The inline detail columns -- the shop shelf, the forge -- build their own text rather than hovering
+-- this tooltip, so they call this instead of repeating the lookup: one owner for both the wording and
+-- the tint means the deeper cut reads identically wherever an item is shown.
+function ItemTooltip.printDiscipline(item, x, y, w, font)
+    local name = item and Discipline.displayName(item.discipline)
+    if not name then return false end
+    local _, _, small = fonts()
+    love.graphics.setFont(font or small)
+    love.graphics.setColor(DISC[1], DISC[2], DISC[3], 1)
+    love.graphics.printf(name, x, y, w, "right")
+    return true
+end
+
 -- The value column of a stat row: it starts after the label and runs to the row's right edge, so a
 -- long value (a weapon's tag list, an armor's resists) wraps inside the tooltip instead of running
 -- past its border. Returns the column's x offset from the row's left edge, its width, and the
@@ -175,10 +192,10 @@ local function buildBlocks(item, actor, innerW, out)
 
     -- The discipline this item belongs to (a shop taxonomy; docs/classes.md). Sparse -- most items
     -- carry none -- so the row shows only when set, named for the player and tinted as a taxonomy label.
-    if item.discipline and Discipline.defs[item.discipline] then
+    local discName = Discipline.displayName(item.discipline)
+    if discName then
         blocks[#blocks + 1] = { kind = "sep" }
-        blocks[#blocks + 1] = { kind = "stat", label = "Discipline",
-            value = Discipline.defs[item.discipline].name or item.discipline, valueColor = DISC }
+        blocks[#blocks + 1] = { kind = "stat", label = "Discipline", value = discName, valueColor = DISC }
     end
 
     if item.tags and #item.tags > 0 then

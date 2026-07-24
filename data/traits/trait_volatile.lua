@@ -4,6 +4,12 @@
 -- deals a flat blast to everything in a small radius, friend and FOE alike (no side filter): you can
 -- bait an enemy into its own bombs, and a clustered pack chain-reacts as each blast sets off the next.
 --
+-- This is the half that fires when SOMETHING ELSE does the killing. The Bomblet also carries the
+-- deliberate half -- data/items/ability/ability_self_destruct.lua, a channeled cast that throws the
+-- same ring on purpose -- and the two never double up, because that ability spends its caster through
+-- fx.expendSelf (a dismissal, which fires no onDeath) rather than by killing it. A bearer that bursts
+-- of its own accord has already burst; this hook is what answers a bearer that was cut down.
+--
 -- onDeath (not onDamaged): the blow that KILLS never fires onDamaged, so the burst has to hang off the
 -- death itself. Trait.onDeath runs from killUnit before the field is unwound (see
 -- data/traits/trait_blood_price.lua), so the blast lands with the bomber still on its tile. The

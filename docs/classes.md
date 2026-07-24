@@ -338,8 +338,13 @@ mage — a multiclass advances the fusion, not one half of it. That is still "wh
 what you cast": the cast simply counts for both houses. `tests/discipline_spec.lua` enforces the
 class-parent invariant, so a mistagged item fails the build instead of silently vanishing off its shelf.
 
-The item tooltip shows an item's discipline when it has one (`ui/item_tooltip.lua`), so the deeper cut is
-legible on the shelf and in the grid.
+**Every surface that shows an item names its discipline.** The hover tooltip carries a `Discipline` row
+(`ui/item_tooltip.lua`) — which covers the grid, the Armory, loot reveals, the combat log and dialogue
+rewards, since they all hover the same tooltip. The two panels that build their own detail column instead
+of hovering — the shop shelf (`ui/panels/shop.lua`) and the forge (`ui/panels/blacksmith.lua`) — print the
+name opposite the item's type line, via `ItemTooltip.printDiscipline`. That helper and
+`Discipline.displayName` are the single owners of the wording and the tint, so no surface can drift or
+print a raw id; `tests/discipline_spec.lua` pins that every tagged item resolves to a name.
 
 ### Every discipline stocks five, on both parents' shelves
 

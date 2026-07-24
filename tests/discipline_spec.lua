@@ -265,6 +265,22 @@ tests[#tests + 1] = { name = "every discipline-tagged item's class is one of its
     end
 end }
 
+tests[#tests + 1] = { name = "every discipline-tagged item resolves to a display name", fn = function()
+    -- The panels that name an item's discipline (the tooltip row, the shop shelf, the forge) all go
+    -- through Discipline.displayName, so a tagged item that fails to resolve would print nothing at
+    -- all rather than a wrong word -- silent, and exactly the kind of hole a sweep would miss.
+    for id, item in pairs(Item.defs) do
+        if item.discipline then
+            local name = Discipline.displayName(item.discipline)
+            assert(type(name) == "string" and name ~= "",
+                id .. ": discipline '" .. tostring(item.discipline) .. "' has no display name")
+        end
+    end
+    -- An absent or stale id names nothing, so the label is simply skipped instead of leaking a slug.
+    assert(Discipline.displayName(nil) == nil, "no discipline names nothing")
+    assert(Discipline.displayName("not_a_discipline") == nil, "an unknown discipline names nothing")
+end }
+
 tests[#tests + 1] = { name = "growthClasses tallies the discipline itself, else the bare class", fn = function()
     -- A discipline item grows ITS OWN path (ninja), not its parents -- each discipline has a growth
     -- table of its own now (data/growth/ninja.lua), so a ninja build grows into a ninja.

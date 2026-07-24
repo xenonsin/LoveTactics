@@ -513,7 +513,27 @@ function AI.candidates(combat, unit, items, tiles, wantSupport)
     for _, tile in ipairs(tiles) do
         for _, item in ipairs(items) do
             local ab = item.activeAbility
-            if ab and Combat.isSupportAbility(ab) == wantSupport then
+            local considered = ab and Combat.isSupportAbility(ab) == wantSupport
+            if considered and ab.target == "self" then
+                -- A SELF-targeted ability has exactly one legal mark -- the caster -- aimed at the tile
+                -- it would be STANDING on, not the one it stands on now. Enumerated apart from the scan
+                -- below because that scan asks "which body is within range of this stand tile", and for
+                -- a self-cast walked to from four tiles away the answer is a body that hasn't moved
+                -- there yet: every tile but the current one measures its own distance to the caster's
+                -- old cell and fails. Worse for a HOSTILE self-cast (`support = false` -- Clear Out, the
+                -- Bomblet's Self-Destruct), which the scan only ever offers FOES, and no foe is ever at
+                -- range 0 of itself: without this the ability sits in the kit and enters no plan at all.
+                --
+                -- The one cost is that a self-cast is priced once per reachable tile rather than once
+                -- (Combat.previewAbility is memoised by aim cell, and here the aim cell IS the stand
+                -- tile). That is the price of letting a unit walk somewhere worth detonating, and it
+                -- falls only on the handful of units carrying one.
+                out[#out + 1] = {
+                    x = tile.x, y = tile.y, steps = tile.steps or 0,
+                    item = item, target = unit, tx = tile.x, ty = tile.y,
+                    moved = tile.x ~= unit.x or tile.y ~= unit.y,
+                }
+            elseif considered then
                 local range = Combat.abilityRange(combat, unit, ab, tile.x, tile.y)
                     + Combat.adjacencyRangeBonus(unit.char, item)
                 local minRange = Combat.abilityMinRange(ab)
@@ -1075,11 +1095,24 @@ function AI.plan(combat, unit)
                     for _, c in ipairs(AI.candidates(combat, unit, usable, tiles, false)) do pool[#pool + 1] = c end
                 end
 
+                -- Score everything, then throw out whatever accomplishes NOTHING before ranking the
+                -- rest. The gate at the bottom asks the same question of the winner, and asking it
+                -- only there is not enough: an idle candidate does nothing, and doing nothing is cheap
+                -- -- no steps, no exposure, no resource spent -- so it reliably outscores a real action
+                -- whose blow is worth less than the walk it costs. Left in the pool it wins the sort,
+                -- fails the gate, and the rule takes NO action at all, which is precisely the outcome
+                -- the gate's own comment says it does not want. (A Bomblet walking three tiles to burst
+                -- on an armoured knight is exactly that shape, and it is a real action -- it is the
+                -- only one that unit has.)
+                local scored = {}
+                for _, c in ipairs(pool) do
+                    c.score = AI.scoreCandidate(combat, unit, c, w, previews)
+                    c.score = c.score + prefBonus(ctx, rule, c, w)
+                    if c.outcome > 0 then scored[#scored + 1] = c end
+                end
+                pool = scored
+
                 if #pool > 0 then
-                    for _, c in ipairs(pool) do
-                        c.score = AI.scoreCandidate(combat, unit, c, w, previews)
-                        c.score = c.score + prefBonus(ctx, rule, c, w)
-                    end
                     -- Ties are broken toward standing still, then by board position, so that an
                     -- otherwise even choice is made the same way every run. A comparator that left
                     -- ties genuinely unordered would make this module's tests flap.

@@ -5189,6 +5189,11 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         placeTrap = function() return nil end,
         placeHazard = function() return nil end,
         placeWall = function() return nil end,
+        -- A dry run must not take the caster off the board -- and it must not PRICE it either. The
+        -- panel shows what a self-destruct does to everyone standing around it; the bomber's own
+        -- departure is the ability, not a casualty of it, and neither the hover nor the AI's outcome
+        -- score has a row for it. See the live helper in resolveCast for why it is a dismissal.
+        expendSelf = function() return false end,
         dispel = function() return { revealed = 0, wallsDestroyed = 0 } end,
         summon = function() return previewStandIn() end,
         copy = function() return previewStandIn() end,
@@ -5403,6 +5408,9 @@ function Combat.abilityOutput(unit, item)
             return nil
         end,
         placeWall = function() return nil end,
+        -- There is no board to leave here, and the row quotes what the ability DOES rather than what
+        -- it costs the thing using it (the same reason `retreat` reports nothing).
+        expendSelf = function() return false end,
         dispel = function() return { revealed = 0, wallsDestroyed = 0 } end,
         -- Record WHAT the ability summons -- and for how long -- so the inventory tooltip can name it
         -- and quote its duration, without building anything; the stand-in keeps a chained effect from
@@ -6979,6 +6987,28 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
                 return true
             end
             return false
+        end,
+        -- The caster SPENDS ITSELF on this cast: it comes off the field the instant the effect says
+        -- so, and the cast it is still inside finishes without it (the Bomblet's Self-Destruct --
+        -- data/items/ability/ability_self_destruct.lua).
+        --
+        -- Deliberately Combat.dismiss and not a death, for two reasons that point the same way.
+        -- Nothing STRUCK it: there is no killer to credit, no corpse to raise from something that
+        -- came apart, and no death-reflex on the field that a body hitting the ground should feed.
+        -- And, decisively, dismissal fires no Trait.onDeath -- which is exactly what keeps a Volatile
+        -- bearer from bursting TWICE, once as the ability that IS the blast and once as the trait
+        -- that answers being killed by somebody else (data/traits/trait_volatile.lua).
+        --
+        -- Inert in both dry runs, so the AI never prices the body an effect spends: for the one kind
+        -- of unit that carries this, its own life is the ammunition rather than a cost it should be
+        -- talked out of paying (see the friendly-KILL term in models/ai.lua's outcomeScore).
+        --
+        -- Returns false for a caster already gone -- a chain of bursts can kill this one before its
+        -- own line is reached (its neighbour's blast catches it), and the second removal is a no-op.
+        expendSelf = function(text)
+            if not unit.alive then return false end
+            Combat.dismiss(combat, unit, text or string.format("%s is gone.", unitName(unit)))
+            return true
         end,
         -- Reveal invisible units and tear down `illusion` walls across a set of cells (Dispel
         -- Illusions). Defaults to the ability's own AoE footprint around the aimed tile.

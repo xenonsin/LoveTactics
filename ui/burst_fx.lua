@@ -12,7 +12,8 @@
 -- Spawned by the combat animation controller (ui/combat_fx.lua) as it plays out an exchange:
 --   fx:strike(x, y, tags, opts)              -- an impact where a blow landed, shape from its tags
 --   fx:support(x, y, pattern, opts)          -- motes/sigil for a heal or a friendly cast
---   local dur = fx:flight(fx, fx, tx, ty, tags, opts)  -- a projectile; spawns its own impact on arrival
+--   local dur = fx:flight(fx, fy, tx, ty, tags, opts)  -- a projectile; returns its time in the air, so
+--                                            -- the caller can land the blow's whole reaction on arrival
 --
 -- ---------------------------------------------------------------------------
 -- WHY THE CONTROLLER RESOLVES THE MOTIF, NOT THE MODEL
@@ -86,12 +87,36 @@ local MOTIF_COLOR = {
 }
 BurstFx.MOTIF_COLOR = MOTIF_COLOR
 
+-- Motif -> what the thing crossing the board LOOKS like. Most blows that travel are a thrown or loosed
+-- object -- an arrow, a dart, a stone -- and a comet-headed `streak` is what those look like, so the
+-- shape tags (slash/pierce/impact) deliberately have no entry and fall through to the default below.
+-- The elements that fly as a BALL of themselves get their own body instead, and it is the same body
+-- their impact draws, so a Fireball's bolt and its blast are visibly one object arriving. Lightning is
+-- absent on purpose: a fork that slides across the board reads as a bug, so a bolt streaks and forks
+-- only where it lands.
+local FLIGHT_PATTERN = {
+    fire = "bloom", ice = "shatter", water = "spray", poison = "spray", acid = "spray",
+    dark = "spray", light = "flare", holy = "flare", arcane = "sigil", control = "sigil",
+}
+BurstFx.FLIGHT_PATTERN = FLIGHT_PATTERN
+
+-- What crosses the board when the blow's motif names no body of its own: the projectile streak.
+BurstFx.DEFAULT_FLIGHT = "streak"
+
 -- Projectile pacing. A bolt crosses at a fixed board SPEED (tiles per second) so a long shot really
 -- does take longer to arrive than a short one -- distance is the thing a flight exists to show -- but
 -- clamped at both ends so a point-blank shot still reads and a full-board shot never dawdles.
 BurstFx.FLIGHT_SPEED = 16      -- tiles/second
 BurstFx.FLIGHT_MIN = 0.12
 BurstFx.FLIGHT_MAX = 0.42
+
+-- A borrowed impact shape is drawn in flight frozen at this point of its life -- past the rise, well
+-- before the fall -- so a fireball crossing the board is a fireball at full body rather than one caught
+-- mid-birth (every shape's `env` is still at zero on age 0) or mid-death. `streak` ignores age entirely
+-- and is unaffected. The borrowed shape also flies a little smaller than it lands, so the arrival still
+-- reads as the blow opening up.
+BurstFx.FLIGHT_AGE = 0.32
+BurstFx.FLIGHT_SCALE = 0.62
 
 -- ---------------------------------------------------------------------------
 -- Pure decisions (no love.graphics -- tests/vfx_spec.lua drives these directly)
@@ -111,6 +136,38 @@ function BurstFx.colorFor(tags, pattern)
     if motif and MOTIF_COLOR[motif] then return MOTIF_COLOR[motif] end
     local style = STYLE[pattern]
     return style and style.color or { 1, 1, 1 }
+end
+
+-- Does a blow carrying `tags`, struck across `gap` tiles, actually THROW something across the board?
+--
+-- The ROUTING tags decide it, not the gap. Motif.of deliberately ignores "melee" and "ranged" because
+-- they draw no picture -- but they are precisely the statement of how a blow REACHES a body, which is
+-- the one question a projectile answers. So a `melee` weapon never looses anything however far it
+-- reaches (the Gathering Bell is a mace with two tiles of swing, and a mace that fires a bolt is
+-- nonsense), and a `ranged` one always does.
+--
+-- Gap is the fallback for the blows that state neither: an ability's own tags are descriptive only
+-- ({ "fire", "arcane" }), and a handful of natural weapons -- a blight spitter, a cinder spit -- carry
+-- no routing tag either. For those, two tiles of separation IS the evidence that something crossed.
+--
+-- Note the gap must be measured to the tile the target was STRUCK on, not the one it was knocked to;
+-- the caller owns that (ui/combat_fx.lua's struckCells), and getting it wrong is what used to make a
+-- mace's own two-tile shove read as two tiles of shooting.
+function BurstFx.throwsProjectile(tags, gap)
+    for _, t in ipairs(tags or {}) do
+        if t == "melee" then return false end
+        if t == "ranged" then return true end
+    end
+    return (gap or 0) >= 2
+end
+
+-- The shape a blow carrying `tags` takes while it is in the air: the motif's own flying body, else the
+-- default streak. The sibling of patternFor, and read the same way -- so the item doing the attack
+-- picks its projectile exactly as it picks its impact.
+function BurstFx.flightPatternFor(tags, explicit)
+    if explicit and STYLE[explicit] then return explicit end
+    local motif = Motif.of(tags)
+    return (motif and FLIGHT_PATTERN[motif]) or BurstFx.DEFAULT_FLIGHT
 end
 
 -- How long a projectile from (fx, fy) to (tx, ty) spends in the air: distance over speed, clamped.
@@ -189,17 +246,26 @@ function BurstFx:support(x, y, pattern, opts)
     pushBurst(self, x, y, pattern or "motes", opts)
 end
 
--- Launch a projectile from cell (fromX, fromY) toward (toX, toY), drawn as a `streak` tinted by
--- `tags`. Returns the seconds it will spend in the air, so the caller can time the blow's reaction to
--- its arrival (ui/combat_fx.lua defers the hit by exactly this). On arrival the flight spawns the
--- impact burst itself, so the projectile and its blast are one object's whole life.
+-- Launch a projectile from cell (fromX, fromY) toward (toX, toY), shaped and tinted by `tags`: an
+-- arrow streaks, a fireball flies as the bloom it will land as (see FLIGHT_PATTERN). Returns the
+-- seconds it will spend in the air, so the caller can time the blow's reaction to its arrival
+-- (ui/combat_fx.lua defers the hit by exactly this). On arrival the flight spawns the impact burst
+-- itself, so the projectile and its blast are one object's whole life.
+--
+-- WHETHER a blow flies at all is BurstFx.throwsProjectile's decision, made by the caller before it
+-- gets here -- this end just draws what it is handed.
 function BurstFx:flight(fromX, fromY, toX, toY, tags, opts)
     opts = opts or {}
     local dur = opts.dur or BurstFx.flightTime(fromX, fromY, toX, toY)
+    local pattern = BurstFx.flightPatternFor(tags, opts.pattern)
+    local style = STYLE[pattern] or STYLE.streak
     self.flights[#self.flights + 1] = {
         fromX = fromX, fromY = fromY, toX = toX, toY = toY,
         t = 0, dur = dur,
-        color = opts.color or BurstFx.colorFor(tags, "streak"),
+        pattern = pattern,
+        radius = style.radius * (pattern == BurstFx.DEFAULT_FLIGHT and 1 or BurstFx.FLIGHT_SCALE),
+        seed = math.random(),
+        color = opts.color or BurstFx.colorFor(tags, pattern),
         tags = tags,
         lethal = opts.lethal,
     }
@@ -221,9 +287,12 @@ function BurstFx:update(dt)
         local f = self.flights[i]
         f.t = f.t + dt
         if f.t >= f.dur then
+            -- The bolt lands and is gone. It does NOT burst here: the caller timed a whole beat of
+            -- reactions to this exact arrival (ui/combat_fx.lua defers by the duration :flight returned)
+            -- and that beat spawns the impact, with the strike angle and the lethality only it knows.
+            -- Bursting here as well drew the blast twice, from two owners that had to agree about where
+            -- the body was standing -- and did not, once a knockback was in play.
             table.remove(self.flights, i)
-            -- The bolt lands: its impact bursts here, from the same tags it carried across the board.
-            self:strike(f.toX, f.toY, f.tags, { lethal = f.lethal })
         end
     end
 end
@@ -286,12 +355,14 @@ function BurstFx:draw(map)
         local by = f.fromY + (f.toY - f.fromY) * p
         local wx, wy = map:cellToPixel(bx, by)
         local cx, cy = wx + size / 2, wy + size / 2
-        -- Fade the streak in over its first sliver of flight and out over its last, so it neither
+        -- Fade the projectile in over its first sliver of flight and out over its last, so it neither
         -- pops at the muzzle nor lingers past the impact that replaces it.
         local alpha = math.min(1, p * 8) * math.min(1, (1 - p) * 8 + 0.2)
-        local style = STYLE.streak
-        drawQuad(cx, cy, style.radius, "streak", f.color, alpha, 0, 0.5,
-            0, f.toX - f.fromX, f.toY - f.fromY, 1)
+        -- The travel direction, given both ways: as `uAim` (the streak's own tail) and as the shape
+        -- angle every other family reads. A frozen age holds a borrowed body at full bloom (FLIGHT_AGE).
+        local dx, dy = f.toX - f.fromX, f.toY - f.fromY
+        drawQuad(cx, cy, f.radius, f.pattern, f.color, alpha, BurstFx.FLIGHT_AGE, f.seed,
+            math.atan2(dy, dx), dx, dy, 1)
     end
 
     love.graphics.setShader()

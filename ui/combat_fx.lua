@@ -15,6 +15,7 @@
 -- headless tests (which never touch the UI layer) stay free of love.graphics.
 
 local ScreenFx = require("ui.screen_fx")
+local BurstFx = require("ui.burst_fx")
 
 local CombatFx = {}
 CombatFx.__index = CombatFx
@@ -159,6 +160,27 @@ local function tileGap(a, b)
     return math.max(math.abs(a.x - b.x), math.abs(a.y - b.y))
 end
 
+-- Where each unit in this beat was standing when the blow LANDED on it.
+--
+-- A shove folded into a strike (the mace, Shield Shove, a thrown body) is resolved by the model in the
+-- same atomic pass as the damage, so by the time the view sees the cue the target's unit.x/unit.y
+-- ALREADY reads as the tile it ends up on -- while the sprite is still standing where it was hit,
+-- pinned there by :pinSlides and held by SHOVE_HOLD. Every picture of the blow has to be drawn on the
+-- tile the body was ON, not the one it is about to occupy: the impact burst, the lean of whoever swung,
+-- and above all the projectile, which otherwise sails past the target to the far end of the shove
+-- before the target has so much as flinched.
+--
+-- The shove cue carries that origin (`hold` marks a slide the blow itself threw, see
+-- Combat.shoveDone), so this reads it back out. Returned as bare {x, y} tables, which stand in for a
+-- unit anywhere a cell is all that is wanted.
+local function struckCells(events)
+    local at = {}
+    for _, e in ipairs(events) do
+        if e.type == "slide" and e.hold then at[e.unit] = { x = e.fromX, y = e.fromY } end
+    end
+    return at
+end
+
 -- The direction a blow came from, attacker -> victim, in radians (board space, +y down). A slash
 -- sweeps across it and a stab drives along it; 0 for a wound with no striker (a toll, a poison tick),
 -- which the radially-symmetric default burst does not read anyway.
@@ -169,29 +191,44 @@ local function strikeAngle(attacker, victim)
     return math.atan2(dy, dx)
 end
 
--- A blow struck from range (its attacker ≥2 tiles off) becomes a projectile: the shooter leans and its
--- spell fires NOW, but the wound -- the number, the shake, the impact burst, any shove or death that
--- rode with it -- waits until the bolt actually arrives. Detected here, on the first play of a beat;
--- the reactions are split off into a delayed replay of the same beat, which re-enters playBeat flagged
--- `_delayed` and takes the ordinary melee path below.
+-- A blow that THROWS something becomes a projectile: the shooter leans and its shot fires NOW, but the
+-- wound -- the number, the shake, the impact burst, any shove or death that rode with it -- waits until
+-- the bolt actually arrives. Detected here, on the first play of a beat; the reactions are split off
+-- into a delayed replay of the same beat, which re-enters playBeat flagged `_delayed` and takes the
+-- ordinary melee path below.
+--
+-- Which blows those are is the ITEM's business, read off its tags by BurstFx.throwsProjectile rather
+-- than guessed from the tiles between the two bodies: a mace is a mace at any reach, and a wand is a
+-- wand at point-blank. Distance only breaks the tie for the blows that state no routing at all. The gap
+-- it measures runs to the tile the target was STRUCK on -- a shove that has already resolved in the
+-- model must not be mistaken for the shooting distance, which is the exact way a mace used to fire.
 --
 -- This reuses the exact machinery a counter already uses (self.pending / :hold / :pinSlides / :busy),
 -- so nothing new gates the turn hand-off: a bolt in the air is just one more beat not yet played.
 -- Returns true if it deferred (the caller must stop), false to fall through to an immediate melee beat.
 function CombatFx:deferRanged(events, actor)
     if events._delayed or not self.bursts then return false end
+    local struck = struckCells(events)
     local far = {}
     for _, e in ipairs(events) do
-        if e.type == "damage" and e.attacker and tileGap(e.attacker, e.unit) >= 2 then
-            far[#far + 1] = e
+        -- A blow that wounded its own striker (recoil, a backfire) crossed nothing, whatever it was
+        -- thrown with, so it never flies -- the routing tags below would otherwise loose a bolt from a
+        -- body to itself.
+        if e.type == "damage" and e.attacker and e.attacker ~= e.unit then
+            local cell = struck[e.unit] or e.unit
+            if BurstFx.throwsProjectile(e.tags, tileGap(e.attacker, cell)) then
+                far[#far + 1] = e
+            end
         end
     end
     if #far == 0 then return false end
 
-    -- Launch a bolt per far blow, and take the longest flight as the beat's delay.
+    -- Launch a bolt per far blow -- aimed at the tile the body is standing on, NOT the one its own
+    -- knockback is about to put it on -- and take the longest flight as the beat's delay.
     local dur = 0
     for _, e in ipairs(far) do
-        dur = math.max(dur, self.bursts:flight(e.attacker.x, e.attacker.y, e.unit.x, e.unit.y, e.tags,
+        local cell = struck[e.unit] or e.unit
+        dur = math.max(dur, self.bursts:flight(e.attacker.x, e.attacker.y, cell.x, cell.y, e.tags,
             { lethal = e.lethal }))
     end
 
@@ -203,7 +240,7 @@ function CombatFx:deferRanged(events, actor)
     end
     later._delayed = true
     if #now > 0 then self:playBeat(now, actor) end
-    for _, e in ipairs(far) do self:lunge(e.attacker, e.unit) end
+    for _, e in ipairs(far) do self:lunge(e.attacker, struck[e.unit] or e.unit) end
 
     self.pending[#self.pending + 1] = { t = dur, events = later }
     self:hold(later, 1)
@@ -215,7 +252,11 @@ end
 function CombatFx:playBeat(events, actor)
     if self:deferRanged(events, actor) then return end
     local delayed = events._delayed
-    local firstTarget
+    -- Where the bodies in this beat are STANDING as it plays, which is not where the model has already
+    -- put the ones this blow shoves (see struckCells). Everything drawn at the point of impact is
+    -- placed against these, so the burst marks the tile the sprite is on and the lean points at it.
+    local struck = struckCells(events)
+    local firstTarget, firstTargetCell
     local actorCast = false -- did the acting unit already play a cast beat this batch?
     for _, e in ipairs(events) do
         if e.type == "cast" then
@@ -225,17 +266,18 @@ function CombatFx:playBeat(events, actor)
             -- leaves its mark through the damage bursts its blows spawn, so it gets none here.
             if self.bursts and e.support then self.bursts:support(e.unit.x, e.unit.y, "motes") end
         elseif e.type == "damage" then
+            local cell = struck[e.unit] or e.unit
             self:hit(e.unit, e.amount, e.lethal)
-            firstTarget = firstTarget or e.unit
+            if not firstTarget then firstTarget, firstTargetCell = e.unit, cell end
             if self.bursts then
-                self.bursts:strike(e.unit.x, e.unit.y, e.tags,
-                    { angle = strikeAngle(e.attacker, e.unit), lethal = e.lethal })
+                self.bursts:strike(cell.x, cell.y, e.tags,
+                    { angle = strikeAngle(e.attacker, cell), lethal = e.lethal })
             end
             -- A blow struck by someone other than the acting unit -- a counter, a riposte, a thorns
             -- answer -- leans off its own cue, since the actor fallback below can't speak for it. On a
             -- delayed replay the shooter already leaned as it fired, so it must not lean again on impact.
             if not delayed and e.attacker and e.attacker ~= actor and e.attacker ~= e.unit then
-                self:lunge(e.attacker, e.unit)
+                self:lunge(e.attacker, cell)
             end
         elseif e.type == "heal" then
             self:floatText(e.unit, "+" .. tostring(e.amount), { 0.55, 0.95, 0.60 })
@@ -253,7 +295,7 @@ function CombatFx:playBeat(events, actor)
     -- only when the actor drew blood WITHOUT casting -- a counterattack or a reaction trait, which hits
     -- through no ability of its own -- so such a blow still leans toward the unit it hurt.
     if actor and not actorCast and firstTarget and actor ~= firstTarget then
-        self:lunge(actor, firstTarget)
+        self:lunge(actor, firstTargetCell)
     end
 end
 

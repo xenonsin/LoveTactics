@@ -19,7 +19,7 @@
 local Menu = require("ui.menu")
 local QuantityPopup = require("ui.quantity_popup")
 local CloseButton = require("ui.close_button")
-local ItemTooltip = require("ui.item_tooltip") -- for printFlavor: the sheared italic story line
+local ItemTooltip = require("ui.item_tooltip") -- printFlavor (sheared italic story line) + printDiscipline
 local GlossaryPanel = require("ui.glossary_panel")
 local Glossary = require("models.glossary")
 local Vendor = require("models.vendor")
@@ -447,6 +447,11 @@ function Shop:drawDetail()
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(0.6, 0.63, 0.72)
     love.graphics.printf((item.type or "item"):upper(), x, y + 26, w, "left")
+    -- The discipline this item falls under, opposite its type on the same line. It is the shelf's own
+    -- answer to "why is this here and not on the open rack": a priced row in the locked deeper cut
+    -- names the discipline that unlocked it, and a multiclass row names the one that put it on THIS
+    -- vendor's shelf rather than the other parent's. Most stock carries none and the line stays bare.
+    ItemTooltip.printDiscipline(item, x, y + 26, w, self.smallFont)
 
     love.graphics.setFont(self.bodyFont)
     love.graphics.setColor(0.8, 0.82, 0.88)

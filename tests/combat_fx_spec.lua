@@ -187,6 +187,59 @@ return {
         end,
     },
     {
+        name = "a mace's own shove is not a shooting distance",
+        fn = function()
+            local fx = newFx()
+            local flights, hitX = 0, nil
+            fx.bursts = {
+                flight = function() flights = flights + 1; return 0.2 end,
+                strike = function(_, x) hitX = x end,
+                support = function() end,
+            }
+            -- The Iron Mace: struck from the next tile over, and the same blow threw the body two
+            -- further. The model resolved both at once, so the victim already READS as four tiles out.
+            local attacker = { x = 1, y = 1, char = { name = "swinger" } }
+            local victim = { x = 4, y = 1, alive = true, char = { name = "mark" } }
+            fx:ingest({
+                { type = "damage", unit = victim, attacker = attacker, amount = 9, beat = 0,
+                  tags = { "mace", "impact", "physical", "melee" } },
+                { type = "slide", unit = victim, fromX = 2, fromY = 1, hold = true, beat = 0 },
+            }, attacker)
+            assert(flights == 0, "a mace fired a projectile: its own knockback was read as a shot")
+            assert(hitX == 2, "the impact burst landed on the knocked-back tile, not the struck one")
+            assert(#fx.floaters >= 1, "the mace's damage number should show at once, not on an arrival")
+        end,
+    },
+    {
+        name = "a bolt is aimed where the body IS, not where its shove is about to put it",
+        fn = function()
+            local fx = newFx()
+            local shotAt, hitX = nil, nil
+            fx.bursts = {
+                flight = function(_, _, _, toX) shotAt = toX; return 0.2 end,
+                strike = function(_, x) hitX = x end,
+                support = function() end,
+            }
+            -- A ranged blow that also shoves (the Tidesbreak's line). The bolt must stop on the tile
+            -- the target is standing on -- which is where the sprite is pinned -- and only then is the
+            -- body thrown; a bolt aimed at unit.x flies past it to the far end before the hit lands.
+            local attacker = { x = 1, y = 1, char = { name = "shooter" } }
+            local victim = { x = 7, y = 1, alive = true, char = { name = "mark" } }
+            fx:ingest({
+                { type = "damage", unit = victim, attacker = attacker, amount = 6, beat = 0,
+                  tags = { "bow", "pierce", "physical", "ranged" } },
+                { type = "slide", unit = victim, fromX = 5, fromY = 1, hold = true, beat = 0 },
+            }, attacker)
+            assert(shotAt == 5, "the bolt was aimed at the end of the knockback, overshooting the target")
+            assert(math.abs(offsetTiles(fx, victim) - originOffset(5, victim)) < 0.001,
+                "the body left its tile while the bolt was still in the air")
+
+            for _ = 1, 20 do fx:update(1 / 60) end -- 0.33s > the 0.2 flight
+            assert(hitX == 5, "the impact burst fired on the destination tile rather than the struck one")
+            assert(#fx.floaters >= 1, "no damage number when the bolt landed")
+        end,
+    },
+    {
         name = "without a burst controller a ranged blow still resolves at once (headless model tests)",
         fn = function()
             local fx = newFx() -- fx.bursts is nil

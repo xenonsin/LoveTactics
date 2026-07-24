@@ -14,7 +14,7 @@ local Material = require("models.material")
 local Character = require("models.character")
 local Player = require("models.player")
 local CloseButton = require("ui.close_button")
-local ItemTooltip = require("ui.item_tooltip") -- for printFlavor: the sheared italic story line
+local ItemTooltip = require("ui.item_tooltip") -- printFlavor (sheared italic story line) + printDiscipline
 local Scale = require("scale")
 local InputMode = require("input_mode")
 
@@ -196,6 +196,9 @@ function BlacksmithPanel:drawDetail()
     love.graphics.setColor(0.6, 0.65, 0.75)
     love.graphics.printf(item.type .. "   (level " .. (item.level or 0) .. " / " .. Item.MAX_LEVEL .. ")",
         x, y + 26, w, "left")
+    -- The discipline this piece falls under, opposite its type/level on the same line. The forge lists
+    -- gear from every shelf at once, so the taxonomy is worth saying here too; most pieces carry none.
+    ItemTooltip.printDiscipline(item, x, y + 26, w, self.bodyFont)
 
     love.graphics.setColor(0.8, 0.82, 0.88)
     local desc = item.description or ""
