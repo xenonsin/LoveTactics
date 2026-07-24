@@ -21,6 +21,7 @@ return {
     rewardGold = 220,
     rewardRep = 45,
     rewardPrestige = 1,
+    requiredQuests = { "the_manufactured_cull" }, -- slot 5: the line runs in order
     requiredPrestige = 2,
     requiredRep = { vendor = "hunters_lodge", rank = 2 }, -- Stalker or better
     map = {

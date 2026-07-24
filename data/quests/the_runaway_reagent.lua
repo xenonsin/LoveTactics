@@ -37,7 +37,7 @@ return {
     rewardGold = 80,
     rewardRep = 20,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredPrestige = 4,
     map = {
         biome = "forest",
         encounters = { min = 4, max = 6 },

@@ -35,7 +35,8 @@ return {
     rewardGold = 220,
     rewardRep = 45,
     rewardPrestige = 1,
-    requiredPrestige = 3,
+    requiredQuests = { "purge_in_the_fold" }, -- slot 5: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "cathedral", rank = 2 }, -- Acolyte
     map = {
         biome = "castle",

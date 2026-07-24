@@ -27,8 +27,17 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical" },
     class = "rogue",
-    price = 340,
-    repRank = 4, -- the rogue shelf's top rung, now that the Kingsblood and Slipknife are quest-only
+    -- Quest-only: `class` with no `price` tallies toward rogue growth but sits on no shelf, and the
+    -- missing `price` also keeps it out of the random spoils pool (models/spoils.lua reads `price` as
+    -- the "is this ordinary stock?" marker). Granted by data/quests/a_new_bank.lua.
+    --
+    -- It held the shelf's top rung (340, rank 4) only because the Kingsblood -- the blade actually
+    -- designated for it -- had been left unpriced. With the Kingsblood restored to 800 / rank 4 like
+    -- every other line's relic, the dagger family's five-shelf/five-quest roster (docs/weapons.md,
+    -- tests/weapon_spec.lua) has one seat too many on the shop side, and this is the blade that gives
+    -- it up. It loses the least by moving: a rank-4 price tag was never what recommended it. What
+    -- recommends it is being the only knife that touches two bodies, and that argument is the same one
+    -- whether you bought it or were handed it.
     activeAbility = {
         target = "enemy",
         range = 1,

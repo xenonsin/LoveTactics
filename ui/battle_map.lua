@@ -27,6 +27,15 @@ local Combat = require("models.combat")
 local Status = require("models.status")
 local StatusBadge = require("ui.status_badge")
 local Colors = require("ui.colors")
+local FieldFx = require("ui.field_fx")
+local BurstFx = require("ui.burst_fx")
+local SpriteShader = require("shaders.sprite")
+
+-- The two boundary colours for the sprite dissolve/materialize (shaders/sprite.lua): a warm ember eats
+-- a felled body, a cold arcane light knits a summoned one into being.
+local DISSOLVE_EDGE = { 1.00, 0.55, 0.16 }
+local MATERIALIZE_EDGE = { 0.55, 0.74, 1.00 }
+local MATERIALIZE_TIME = 0.45 -- seconds a newly-arrived unit spends knitting in
 
 local BattleMap = {}
 BattleMap.__index = BattleMap
@@ -85,7 +94,33 @@ function BattleMap.new(arena, opts)
 
     self.tilesetDef = Tileset.get(Biome.get(arena.biome).tileset)
     self:buildTiles()
+    -- The shader-driven ground: hazards, the auras they hold open, the statuses units carry, and the
+    -- telegraphs an armed ability paints. Compiles nothing until the first draw (see ui/field_fx.lua).
+    self.fields = FieldFx.new()
+    -- The point effects: impact bursts, spell blooms and the bolts that fly to them. Shared into the
+    -- combat controller by states/battle.lua (which sets fx.bursts to this) so a resolving blow can
+    -- spawn its own picture. Compiles nothing until the first burst is drawn (see ui/burst_fx.lua).
+    self.bursts = BurstFx.new()
+    -- Sprite-transform bookkeeping (shaders/sprite.lua). `materialize` maps a just-arrived unit to the
+    -- seconds left on its knit-in; `known` is every unit we have already drawn once, so the units
+    -- present at the opening bell are NOT treated as summoned. Compiled lazily on first use.
+    self.materialize = {}
+    self.known = nil -- nil until the first update seeds it with the starting roster
     return self
+end
+
+-- The unit-sprite shader, compiled once on first use and latched on failure -- the board falls back to
+-- the flat fade/tint the way ui/field_fx.lua falls back to its wash. Mirrors that guard exactly.
+function BattleMap:spriteFx()
+    if self.spriteShaderObj then return self.spriteShaderObj end
+    if self.spriteShaderFailed then return nil end
+    local ok, sh = pcall(love.graphics.newShader, SpriteShader.source)
+    if not ok or not sh then
+        self.spriteShaderFailed = true
+        return nil
+    end
+    self.spriteShaderObj = sh
+    return sh
 end
 
 function BattleMap:firstPartyUnit()
@@ -151,6 +186,9 @@ end
 
 function BattleMap:update(dt)
     self.time = (self.time or 0) + dt -- drives the current-unit highlight pulse
+    self.fields:update(dt) -- the field shader's shared clock + per-field birth ramps
+    self.bursts:update(dt) -- impact bursts age out; bolts in flight advance and land
+    self:trackArrivals(dt)  -- a unit that appears mid-battle (a summon, a reinforcement) knits in
     -- Poll the analog stick for cursor movement (edge-detected so a held stick moves
     -- one cell per push, matching ui/menu.lua).
     if not love.joystick then return end
@@ -172,6 +210,30 @@ function BattleMap:update(dt)
     end
 end
 
+-- Detect units that were NOT on the board a moment ago and start each one materializing -- a summoner's
+-- conjured wolf, a wave of reinforcements walking on. The roster present at the first update is seeded
+-- as already-known so nobody knits in at the opening bell; after that any fresh, living unit does. Runs
+-- off the combat unit list alone, so it needs no cue from the model -- a summon appears in that list the
+-- instant it is placed. Timers tick down here; ui/battle_map.lua's drawUnits reads them.
+function BattleMap:trackArrivals(dt)
+    if not self.combat then return end
+    if not self.known then
+        self.known = {}
+        for _, u in ipairs(self.combat.units) do self.known[u] = true end
+        return
+    end
+    for _, u in ipairs(self.combat.units) do
+        if u.alive and not self.known[u] then
+            self.known[u] = true
+            if self:spriteFx() then self.materialize[u] = MATERIALIZE_TIME end
+        end
+    end
+    for u, t in pairs(self.materialize) do
+        t = t - dt
+        if t <= 0 then self.materialize[u] = nil else self.materialize[u] = t end
+    end
+end
+
 function BattleMap:moveCursor(dx, dy)
     self.cursor.x = math.max(1, math.min(self.arena.cols, self.cursor.x + dx))
     self.cursor.y = math.max(1, math.min(self.arena.rows, self.cursor.y + dy))
@@ -184,7 +246,7 @@ end
 function BattleMap:draw()
     self:drawTiles()
     self:drawObjective() -- the ground a reach/hold objective is won on, under everything else
-    self:drawHazards() -- area effects wash the ground under the interaction highlights
+    self:drawFields() -- hazards, auras and carried statuses wash the ground under the highlights
     self:drawOverlays()
     self:drawMovePath() -- the actor's steered walk route, an arrow over the blue move wash
     self:drawWalls() -- conjured blockers stand on the ground, above overlays, under the units
@@ -192,6 +254,7 @@ function BattleMap:draw()
     self:drawTraps() -- revealed traps sit above the ground/overlays, under the units
     self:drawUnits()
     self:drawHighlights()
+    self.bursts:draw(self) -- impacts, blooms and bolts, over the bodies and highlights, under the readouts
     self:drawUnitInfo() -- HP bars + turn numbers + status badges sit above the highlight fills
     self:drawCursor()
     love.graphics.setColor(1, 1, 1)
@@ -230,36 +293,20 @@ function BattleMap:drawObjective()
     love.graphics.setColor(1, 1, 1)
 end
 
--- Hazards (self.overlays.hazards): persistent area effects, one runtime object per covered cell
--- ({ x, y, sprite, def }). Always visible to both sides. Drawn as the hazard's sprite, or a
--- translucent tile wash + border tinted by disposition (fire orange, sanctuary green, rain blue), so
--- the footprint reads as a patch of ground. Sits under traps/units.
-function BattleMap:drawHazards()
-    local s = self.size
-    for _, h in ipairs(self.overlays.hazards or {}) do
-        if h.alive then
-            local wx, wy = self:cellToPixel(h.x, h.y)
-            local disp = h.def and h.def.disposition
-            local r, g, b = 0.55, 0.72, 0.95 -- neutral (rain) blue
-            if disp == "hostile" then r, g, b = 0.95, 0.45, 0.25 -- fire orange
-            elseif disp == "friendly" then r, g, b = 0.40, 0.85, 0.50 end -- sanctuary green
-            local sprite = h.sprite
-            if type(sprite) == "userdata" then
-                love.graphics.setColor(1, 1, 1)
-                local sw, sh = sprite:getDimensions()
-                local scale = math.min(s / sw, s / sh)
-                love.graphics.draw(sprite, wx + s / 2, wy + s / 2, 0, scale, scale, sw / 2, sh / 2)
-            else
-                love.graphics.setColor(r, g, b, 0.30)
-                love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
-                love.graphics.setColor(r, g, b, 0.80)
-                love.graphics.setLineWidth(2)
-                love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
-                love.graphics.setLineWidth(1)
-            end
-        end
-    end
-    love.graphics.setColor(1, 1, 1)
+-- Tile FIELDS: every hazard on the board (self.overlays.hazards -- fire, rain, a Sanctuary, the
+-- square a banner holds, a censer's travelling cloud) plus the statuses units carry that are worth
+-- showing as ground (self.overlays.unitFields). Handed straight to ui/field_fx.lua, which resolves
+-- each one's pattern, composites everything standing on a cell and paints the lot with one shader.
+--
+-- Full-tile and edge-aware: a field covers its whole cell and feathers only where the footprint
+-- actually ends, so a 3x3 blessing reads as one patch of ground rather than nine outlined boxes.
+-- Several on a tile STACK -- rain drifting over a Sanctuary shows both -- which the old flat wash,
+-- one opaque rect per hazard, could not say at all.
+--
+-- Sits under the interaction highlights and the units, exactly where the old hazard wash sat: this
+-- is scenery, and the thing the player is steering by has to win.
+function BattleMap:drawFields()
+    self.fields:draw(self, self.overlays)
 end
 
 -- Revealed traps (self.overlays.traps): each a runtime trap { x, y, side, sprite, health,
@@ -466,7 +513,14 @@ function BattleMap:drawOverlays()
         love.graphics.setLineWidth(1)
     end
     -- "Threats" survey: the full enemy danger zone (every tile a foe could reach-and-strike),
-    -- purple, painted first so the actor's own blue/red bands sit on top of it.
+    -- purple, painted first so the actor's own blue/red bands sit on top of it. A very faint violet
+    -- haze underneath it (the same field shader the hazards use) makes the surveyed ground read as
+    -- *unsafe air* rather than as another flat band -- deliberately the quietest field on the board,
+    -- since it can cover half of it.
+    self.fields:drawTelegraph(self, self.overlays.enemyRanges, {
+        pattern = "smoke", color = Colors.DANGER, alpha = 0.11, intensity = 0.7,
+        group = "telegraph:danger",
+    })
     paint(self.overlays.enemyRanges, Colors.DANGER)
     -- Default-attack (threat) reach in red, under the blue move band. Its cells are the tiles
     -- beyond movement the unit could still strike, so it never overlaps the move set.
@@ -492,6 +546,14 @@ function BattleMap:drawOverlays()
     -- for a friendly area cast, red for a hostile one. Cells can extend past the range set (a blast
     -- that clips tiles you couldn't aim at directly), so it paints its own fill + a bold border.
     if self.overlays.aoe then
+        -- The blast previews ITSELF: the pattern is resolved from the armed item's own tags through
+        -- the same rule a hazard uses, so a Fireball's footprint shows the flame it is about to
+        -- leave, in the same picture the resulting Fire hazard will draw. An ability whose tags name
+        -- no family (a plain physical sweep) simply gets no field and keeps the flat wash below.
+        self.fields:drawTelegraph(self, self.overlays.aoe, {
+            pattern = FieldFx.patternFor(self.overlays.aoeTags),
+            group = "telegraph:aoe",
+        })
         local c = self.overlays.aoeSupport and Colors.SUPPORT or Colors.AOE
         local r, g, b = c[1], c[2], c[3]
         for _, c in ipairs(self.overlays.aoe) do
@@ -513,6 +575,12 @@ function BattleMap:drawOverlays()
     -- Pulses in an ominous magenta-violet to read as "imminent detonation", distinct from the steady
     -- armed-AoE wash above. Read straight off unit.channel, so it persists across every unit's turn.
     if self.overlays.channelAoe then
+        -- Same self-preview as the armed blast above, and louder: this one is already committed and
+        -- the only question left is who is still standing on it when it lands.
+        self.fields:drawTelegraph(self, self.overlays.channelAoe, {
+            pattern = FieldFx.patternFor(self.overlays.channelTags),
+            intensity = 1.0, group = "telegraph:channel",
+        })
         local t = 0.5 + 0.5 * math.sin(love.timer.getTime() * 5) -- 0..1 pulse
         for _, c in ipairs(self.overlays.channelAoe) do
             local wx, wy = self:cellToPixel(c.x, c.y)
@@ -632,8 +700,32 @@ function BattleMap:drawUnits()
             if type(sprite) == "userdata" then
                 local sw, sh = sprite:getDimensions()
                 local scale = math.min((bw - 8) / sw, (bh - 8) / sh)
-                love.graphics.setColor(tint, tint, tint, a)
-                love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
+                -- A dying body burns away (dissolve) and a just-arrived one knits in (materialize),
+                -- both through shaders/sprite.lua, in place of the old flat fade-to-black. The shader
+                -- eats or reveals the sprite along a ragged edge lit by its boundary colour, so a death
+                -- reads as a body coming apart rather than a token dimming. Everything else -- a living
+                -- unit at rest -- takes the plain tinted draw below, unchanged.
+                local mat = self.materialize[u]
+                local shader = (fade > 0 or mat) and self:spriteFx()
+                if shader then
+                    love.graphics.setShader(shader)
+                    if fade > 0 then
+                        shader:send("uMode", SpriteShader.MODES.dissolve)
+                        shader:send("uAmount", fade)
+                        shader:send("uEdge", DISSOLVE_EDGE)
+                    else
+                        shader:send("uMode", SpriteShader.MODES.materialize)
+                        shader:send("uAmount", 1 - mat / MATERIALIZE_TIME)
+                        shader:send("uEdge", MATERIALIZE_EDGE)
+                    end
+                    shader:send("uTime", self.time or 0)
+                    love.graphics.setColor(1, 1, 1, Status.untargetable(u) and 0.40 or 1)
+                    love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
+                    love.graphics.setShader()
+                else
+                    love.graphics.setColor(tint, tint, tint, a)
+                    love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
+                end
                 if flash > 0 then -- additive pop, so the sprite brightens rather than just recolors
                     love.graphics.setBlendMode("add")
                     love.graphics.setColor(flash * 0.9, flash * 0.5, flash * 0.45, a)

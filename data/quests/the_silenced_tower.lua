@@ -11,7 +11,8 @@
 -- afraid of somebody -- she has simply decided that everyone who can cast is the same problem, and
 -- the party contains counter-examples she will not look at.
 --
--- GATING: the both-parents rule lives in `Discipline.isUnlocked`, not here -- see the note in
+-- GATING: `requiredQuests` names the first subclass gate of each parent line, so this capstone does
+-- not appear until the player genuinely holds both halves -- see the note in
 -- data/quests/champions_challenge.lua.
 --
 -- FIRST PASS. Scenes are not authored, so nothing is named. The sword-oath wants a bespoke blueprint
@@ -25,7 +26,10 @@ return {
     rewardGold = 250,
     rewardRep = 10,
     rewardPrestige = 1,
-    requiredPrestige = 4,
+    -- Both parents, earned: "held_position" is the first knight subclass gate on its line,
+    -- "the_praised_working" the first mage. Holding either is impossible without them.
+    requiredQuests = { "held_position", "the_praised_working" },
+    requiredPrestige = 3,
     map = {
         biome = "castle",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },

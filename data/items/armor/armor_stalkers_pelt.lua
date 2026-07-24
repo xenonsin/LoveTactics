@@ -19,6 +19,7 @@ return {
     type = "armor",
     tags = { "hide" },
     class = "hunter",
+    discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
     price = 290,
     repRank = 2,
     traits = { "trait_keen_senses" },

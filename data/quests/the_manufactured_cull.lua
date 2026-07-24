@@ -38,7 +38,8 @@ return {
     rewardGold = 180,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 3,
+    requiredQuests = { "the_starving_dark" }, -- slot 4: the line runs in order
+    requiredPrestige = 2,
     requiredRep = { vendor = "hunters_lodge", rank = 2 }, -- Stalker
     map = {
         biome = "forest",

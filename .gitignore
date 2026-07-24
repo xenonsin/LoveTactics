@@ -1,6 +1,19 @@
 # LÖVE2D build artifacts
 *.love
 
+# Everything the icon pipeline vendors or stages. None of it is committed: it is a large
+# third-party checkout plus a downloaded binary, all reproducible with tools/icons/fetch.ps1.
+#
+#   vendor/game-icons/  ~4200 CC BY 3.0 SVGs cloned from github.com/game-icons/icons
+#   vendor/bin/         the pinned resvg rasterizer
+#   vendor/staging/     colorized SVGs written on the way to a PNG
+#
+# The rendered PNGs under assets/ ARE committed -- a fresh clone must run without anyone
+# installing the pipeline, and most of assets/ is commissioned or purchased art that has no
+# generator at all. See docs/art-assets.md.
+vendor/
+*.resvg.tmp.svg
+
 # OS files
 .DS_Store
 Thumbs.db

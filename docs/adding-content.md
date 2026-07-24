@@ -64,7 +64,10 @@ return {
     requiredPrestige = 1,  -- appears once the player's prestige reaches this
     -- optional gates:
     requiredRep = { vendor = "cathedral", rank = 2 }, -- hidden until you have their trust
-    requiredQuests = { "general_wrath", ... },        -- ALL must be done; see below
+    requiredQuests = { "general_wrath", ... },        -- ALL must be done; see below.
+    -- ONE entry is how a vendor line chains: every sin quest names the slot before it, so the line
+    -- runs in authored order and prestige only gates the line's entry. A one-key gate hides the
+    -- quest until it is met; a multi-key gate shows it locked (the Gate Below).
     -- repeatable = true, -- DO NOT USE. Honoured by the engine, set by nothing, and the design rule
     --                    -- is that this game has no grind: every quest is authored and runs once.
     -- optional rewards:
@@ -652,6 +655,15 @@ mechanism pointed at different tags:
 catch, tag the hazard `burnable`; to make a Frozen unit conduct, give the status
 `tileTags = { "conductable" }`. Nothing in `models/` changes either time.
 
+**A hazard's tags also decide how it is drawn.** Zones have no art: the board paints each one as a
+full-tile procedural field, and the pattern comes from the first tag `ui/field_fx.lua` recognises —
+`fire` → flame, `ice` → rime, `water` → rain, `holy` → halo, and so on. So list the **descriptive**
+tag first and the mechanical one after it (`{ "water", "conductable" }`, never the reverse), and a
+new hazard arrives on the board looking like itself with nothing authored. Add an optional
+`fx = { pattern, color, density, intensity }` only where a zone wants a look its tags don't imply —
+Darkness is smoke in a colour no other smoke uses. See
+[architecture.md](architecture.md#zones-and-auras).
+
 ## Add a status effect
 
 Status effects are timed effects on a combat unit, measured in **ticks** (the initiative
@@ -1094,3 +1106,74 @@ dry runs are `pcall`-guarded, so a missing helper doesn't error — it silently 
 Add a `tests/<area>_spec.lua` returning `{ name, fn }` cases; it is auto-discovered. Test the
 data/model layer (discovery, filtering, immutability) — not `love.graphics`. Run with
 `& "E:\LOVE\lovec.exe" . test`. See `tests/hub_spec.lua`.
+
+### Fixtures
+
+Don't hand-roll a board. `tests/support/fixture.lua` builds the two things a combat case needs:
+
+```lua
+local Fixture = require("tests.support.fixture")
+
+local hero = Fixture.unit("character_knight", 2, 2,
+    { isolate = "bare", items = { "weapon_iron_sword" }, stats = { damage = 0 } })
+local foe  = Fixture.unit("character_bandit", 2, 3, { stats = { defense = 0, health = 100 } })
+local c    = Fixture.combat(Fixture.new(8, 8), hero, foe)
+local ok, res = Fixture.strike(c, hero, foe, "weapon_iron_sword")
+```
+
+`Fixture.new(cols, rows, opts)` takes `objective`, `seed`, `traps`, and a `tiles` list of
+`{ x, y, ... }` patches for walls, cover, and field bonuses.
+
+**Pick an isolation level deliberately** — it decides what your numbers mean:
+
+| `isolate` | What it leaves | Use when |
+| --- | --- | --- |
+| `"none"` (default) | the character exactly as authored | the test is *about* a blueprint |
+| `"mechanics"` | traits and bound signature relics stripped | the test is about the engine |
+| `"bare"` | the whole 3×3 grid emptied | the item under test is the variable |
+
+### Assert the rule, read the magnitude
+
+A test that bakes in a balance number turns red every time somebody retunes the data, which trains
+everyone to ignore it. Read each term off the blueprint instead — then the expectation moves with
+the rebalance, and only a change to the *arithmetic* fails:
+
+```lua
+-- No: breaks when the sword's power curve moves.
+assert(res.damageDealt == 14)
+
+-- Yes: states the formula, survives any retune.
+local expected = Combat.abilityMagnitude(sword.activeAbility)
+    + hero.char.stats.damage - foe.char.stats.defense
+assert(res.damageDealt == expected)
+```
+
+Where a case depends on a premise (armour that outweighs a strike, a pool that can hold a whole
+flask), assert the premise too — otherwise a rebalance can leave the test passing while it quietly
+stops testing anything.
+
+Design invariants are the deliberate exception: `tests/tutorial_spec.lua` *should* fail when a
+rebalance breaks the prologue's choreography. That is the test working.
+
+### Item coverage
+
+Two layers, and they do different jobs.
+
+**`tests/item_contract_spec.lua`** sweeps *every* item and asserts the universal contract — you get
+this for free the moment your item exists:
+
+- it builds at level 0 and at `Item.MAX_LEVEL`, and every per-level row has all 11 entries
+  (a short row doesn't error — `Item.resolveLevel` clamps, so the curve silently stops climbing)
+- previewing it never changes the board (aim preview *and* inventory hover)
+- firing it never raises, never drives a unit outside `[0, max]` health, and either works or is
+  refused with a reason string
+- a declared `cost` is enforced — it cannot be cast one short of it
+- passive `bonus`/`resist`/`traits`/`maxBonus` fold onto a holder without error
+
+**`tests/item_coverage_spec.lua`** ratchets *bespoke* coverage: a new item must be named by some
+spec, or the build goes red. The backlog is grandfathered in `tests/support/untested_items.lua` and
+only ever shrinks — write a case naming the id, then delete its line.
+
+Naming an id is a low bar on purpose (it can't tell a real case from an id in a spawn list). It
+exists to put you in the spec file, where writing the real assertion is the obvious next move. The
+sweep proves your item doesn't crash; only a case of its own proves it does what it's *for*.

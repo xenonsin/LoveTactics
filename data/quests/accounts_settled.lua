@@ -20,7 +20,8 @@ return {
     rewardGold = 220,
     rewardRep = 45,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredQuests = { "one_client" }, -- slot 5: the line runs in order
+    requiredPrestige = 3,
     requiredRep = { vendor = "undercroft", rank = 2 }, -- Prowler or better
     map = {
         biome = "castle",

@@ -41,7 +41,8 @@ return {
     rewardGold = 300,
     rewardRep = 30,
     rewardPrestige = 2,
-    requiredPrestige = 4,
+    requiredQuests = { "closing_the_board" }, -- slot 7: the line runs in order
+    requiredPrestige = 2,
     requiredRep = { vendor = "hunters_lodge", rank = 3 }, -- Beastslayer
     map = {
         biome = "forest",

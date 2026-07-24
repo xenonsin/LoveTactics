@@ -131,6 +131,74 @@ return {
             assert(math.abs(offsetTiles(fx, u)) < 0.001, "a plain shove had not landed after a second")
         end,
     },
+
+    -- ---------------------------------------------------------------------------
+    -- Ranged blows fly: a shot from >=2 tiles becomes a projectile, and its wound is held back until
+    -- the bolt lands. This reuses the exact deferral the shove tests above exercise (pending / hold /
+    -- busy), so a regression here is a regression in the same seam. A fake burst controller stands in
+    -- for ui/burst_fx.lua -- the invariant is the TIMING, not the picture.
+    -- ---------------------------------------------------------------------------
+    {
+        name = "a ranged blow launches a bolt and holds the victim until it lands",
+        fn = function()
+            local fx = newFx()
+            local flights, strikes = 0, 0
+            fx.bursts = {
+                flight = function(_, _, _, _, _, _) flights = flights + 1; return 0.2 end,
+                strike = function() strikes = strikes + 1 end,
+                support = function() end,
+            }
+            local attacker = { x = 1, y = 1, char = { name = "shooter" } }
+            local victim = { x = 5, y = 1, alive = true, char = { name = "mark" } }
+            fx:ingest({ { type = "damage", unit = victim, attacker = attacker, amount = 3, beat = 0,
+                tags = { "fire" } } }, attacker)
+
+            -- The bolt is away, but nothing has struck yet: the victim is held and the turn cannot pass.
+            assert(flights == 1, "no bolt was launched for a blow from across the board")
+            assert(strikes == 0, "the impact fired before the bolt arrived")
+            assert(#fx.floaters == 0, "the damage number showed before the bolt arrived")
+            assert(fx:awaiting(victim), "the victim was not held while the bolt was in flight")
+            assert(fx:busy(), "the turn handed off while a bolt was still in the air")
+
+            -- Once the flight time elapses the wound lands: the number floats, the impact bursts, the
+            -- hold releases.
+            for _ = 1, 20 do fx:update(1 / 60) end -- 0.33s > 0.2 flight
+            assert(strikes == 1, "the impact never fired when the bolt landed")
+            assert(#fx.floaters >= 1, "no damage number after the bolt landed")
+            assert(not fx:awaiting(victim), "the victim stayed held after the bolt landed")
+        end,
+    },
+    {
+        name = "a melee blow does not fly -- it lands on the same frame",
+        fn = function()
+            local fx = newFx()
+            local flights = 0
+            fx.bursts = {
+                flight = function() flights = flights + 1; return 0.2 end,
+                strike = function() end, support = function() end,
+            }
+            local attacker = { x = 1, y = 1, char = { name = "swinger" } }
+            local victim = { x = 2, y = 1, alive = true, char = { name = "mark" } }
+            fx:ingest({ { type = "damage", unit = victim, attacker = attacker, amount = 3, beat = 0,
+                tags = { "slash" } } }, attacker)
+            assert(flights == 0, "an adjacent blow must not launch a projectile")
+            assert(#fx.floaters >= 1, "a melee damage number should show at once")
+            assert(not fx:awaiting(victim), "a melee victim should never be held")
+        end,
+    },
+    {
+        name = "without a burst controller a ranged blow still resolves at once (headless model tests)",
+        fn = function()
+            local fx = newFx() -- fx.bursts is nil
+            local attacker = { x = 1, y = 1, char = { name = "shooter" } }
+            local victim = { x = 6, y = 1, alive = true, char = { name = "mark" } }
+            fx:ingest({ { type = "damage", unit = victim, attacker = attacker, amount = 3, beat = 0,
+                tags = { "fire" } } }, attacker)
+            -- No controller to defer against: the exchange plays exactly as it did before flights existed.
+            assert(#fx.floaters >= 1, "a blow with no burst controller should resolve immediately")
+            assert(not fx:awaiting(victim), "nothing should be held when there is no bolt to wait on")
+        end,
+    },
 }
 
 

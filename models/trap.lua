@@ -87,6 +87,12 @@ function Trap.place(combat, x, y, id, side, opts)
         health = def.health or 1,
         maxHealth = def.health or 1,
         amount = opts.amount, -- item-level-scaled trigger magnitude (nil for an arena-authored trap)
+        -- Who set it, when a unit did (nil for anything the arena was authored with). Distinct from
+        -- `side`, which is all a trap needed for as long as the only question was "does this bite me":
+        -- a standing rule that keys off the TRAPPER rather than the faction -- the Poacher's Quarry's
+        -- Due, marking whatever its own snares catch -- cannot be answered by a side alone, because two
+        -- hunters on one side do not share each other's charms.
+        placer = opts.placer,
         alive = true,
         def = def,
         tags = tags,
@@ -152,6 +158,17 @@ function Trap.trigger(combat, trap, victim)
     Combat.logEvent(combat, "trap",
         string.format("%s triggers %s!", (victim.char and victim.char.name) or "Unit", trap.name or "a trap"))
     if trap.def.onTrigger then trap.def.onTrigger(ctxFor(combat, trap, victim)) end
+    -- QUARRY'S DUE (the Poacher's): a trapper whose charm declares `marksTrapped` paints whatever its
+    -- own snares catch. Keyed off `trap.placer`, not off the side, so one hunter's charm never marks
+    -- for the hunter standing beside it -- and fired after the trap's own effect, so a snare that
+    -- Roots leaves its victim Rooted AND Marked rather than racing its own status.
+    --
+    -- This is the wiring that makes the discipline one thing: the traps were already on the shelf and
+    -- the execute was already on the shelf, and until now nothing connected them.
+    local Trait = require("models.trait")
+    if trap.placer and trap.placer.alive and victim.alive and Trait.flag(trap.placer, "marksTrapped") then
+        require("models.status").apply(combat, victim, "status_mark", { applier = trap.placer })
+    end
     if trap.def.consumedOnTrigger ~= false then trap.alive = false end
     return true
 end

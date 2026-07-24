@@ -27,6 +27,7 @@ return {
     type = "ability",
     tags = { "fire", "explosive" },
     class = "alchemist",
+    discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
     price = 400,
     repRank = 4,
     activeAbility = {
@@ -37,7 +38,11 @@ return {
         requiresSight = true,
         speed = 4,
         channel = 2,      -- the minimum mix
-        windup = 4,       -- and up to four more ticks of holding it, at the player's discretion
+        -- ...and up to four more ticks of holding it, at the player's discretion. Spelled as the
+        -- { min, max } range Combat.useItem clamps against (it reads windup.min / windup.max); a bare
+        -- number here raises the moment the channel opens. min 0 because the extra hold is optional:
+        -- the alchemist may always loose it on the safe two-tick mix.
+        windup = { min = 0, max = 4 },
         cost = { stat = "mana", amount = 12 },
         damage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
         aoe = { radius = 1, shape = "square" },

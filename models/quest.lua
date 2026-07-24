@@ -84,6 +84,13 @@ end
 -- appears `locked`, carrying its key count and the hints earned so far. Seeing what you have not yet
 -- earned is the point of a ladder -- the same reason Vendor.stock returns rank-locked items flagged
 -- rather than hidden. The caller must refuse to start a locked quest (see ui/panels/quest_board.lua).
+--
+-- THE ONE-KEY CASE IS EFFECTIVELY HARD, and the sin lines lean on it. A quest naming a SINGLE
+-- prerequisite has `keysHeld >= 1` and `questsMet` become true at the same instant, so it is hidden
+-- outright until its predecessor is done rather than shown locked. That is what lets every sin line
+-- run as a chain -- slot 5 names slot 4, and the board shows a line's next card and nothing further
+-- (docs/story.md, "The ten slots"). The soft, show-it-locked behaviour is for the multi-key case that
+-- wants it: the Gate Below, where being two keys short is information worth putting on the board.
 function Quest.available(player)
     local prestige = player.prestige or 1
 
@@ -133,6 +140,10 @@ function Quest.available(player)
                 -- `enter`). Distinct from `intro`, which plays over the hub before party select:
                 -- this one has the road and the fog sitting behind it.
                 opening = def.opening,
+                -- The campaign's last quest: its outro rolls the credits instead of returning to the
+                -- hub (states/game.lua). A flag rather than a quest id known to the engine, so an
+                -- alternate or additional ending is a data edit and nothing else.
+                endsCampaign = def.endsCampaign,
             }
         end
     end

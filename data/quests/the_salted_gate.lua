@@ -10,7 +10,8 @@
 -- from within, which is the exact sentence the sloth line spends ten quests on (docs/story.md,
 -- Greywatch). This is a small, deliberate echo, not a plot connection: she is nobody's agent.
 --
--- GATING: the both-parents rule lives in `Discipline.isUnlocked`, not here -- see the note in
+-- GATING: `requiredQuests` names the first subclass gate of each parent line, so this capstone does
+-- not appear until the player genuinely holds both halves -- see the note in
 -- data/quests/champions_challenge.lua.
 --
 -- FIRST PASS. Scenes are not authored, so nothing is named. The turncoat wants a bespoke blueprint;
@@ -25,7 +26,10 @@ return {
     rewardGold = 250,
     rewardRep = 10,
     rewardPrestige = 1,
-    requiredPrestige = 4,
+    -- Both parents, earned: "held_position" is the first knight subclass gate on its line,
+    -- "one_client" the first rogue. Holding either is impossible without them.
+    requiredQuests = { "held_position", "one_client" },
+    requiredPrestige = 2,
     map = {
         biome = "castle",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },

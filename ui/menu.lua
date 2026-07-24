@@ -10,6 +10,13 @@
 --       { label = "Exit",       action = function() love.event.quit() end },
 --   })
 --
+-- A row may also carry a `value` -- a string, or a function returning one -- which turns it from a
+-- button into a SETTING: the label sits left, the value right, and left/right (or the d-pad's
+-- horizontal axis) work it as well as Enter does. `adjust(dir)` handles a row with more than two
+-- states; without one, both directions just run `action`, which is all a toggle needs. The value is
+-- read at draw time rather than baked into the label, so flipping a preference needs no rebuild.
+-- states/settings.lua is the whole of it in practice.
+--
 --   -- in your state:
 --   menu:update(dt)
 --   menu:draw()
@@ -19,6 +26,7 @@
 --   menu:gamepadpressed(joystick, button)
 
 local Scale = require("scale")
+local Sound = require("models.sound")
 
 local Menu = {}
 Menu.__index = Menu
@@ -31,6 +39,8 @@ local DEFAULTS = {
     centerX = nil,          -- nil = horizontally centered on the window
     axisThreshold = 0.5,    -- analog stick deflection needed to register a move
 }
+
+local VALUE_PAD = 18 -- inset of a setting row's label and value from its button border
 
 function Menu.new(items, opts)
     opts = opts or {}
@@ -125,20 +135,59 @@ local function isInside(item, px, py)
 end
 
 -- Move the selection by delta, wrapping around the ends, dragging the scroll window along.
+--
+-- The blip is fired here rather than at each of the five input paths that move a selection (arrows,
+-- WASD, the analog stick, a gamepad d-pad, the mouse crossing a new row), so keyboard and pad and
+-- mouse cannot drift apart on which movements are audible. Silent until the file exists; see
+-- models/sound.lua.
 function Menu:moveSelection(delta)
     local count = #self.items
     if count == 0 then return end
+    local before = self.selected
     self.selected = (self.selected - 1 + delta) % count + 1
     self:scrollToSelection()
+    if self.selected ~= before then Sound.play("ui.move") end
 end
 
 function Menu:setFocused(focused)
     self.focused = focused and true or false
 end
 
+-- The row currently under the highlight, so a screen can draw whatever belongs beside the list --
+-- the settings screen's description of the option being looked at.
+function Menu:selectedItem()
+    return self.items[self.selected]
+end
+
+-- A row's current value as a string, or nil when it is a plain button. Read fresh every frame: a
+-- setting row's value is a live reading of the preference, not a copy taken when the menu was built.
+function Menu.valueOf(item)
+    local value = item and item.value
+    if type(value) == "function" then value = value(item) end
+    if value == nil then return nil end
+    return tostring(value)
+end
+
 function Menu:activate()
     local item = self.items[self.selected]
-    if item and item.action then item.action() end
+    if not (item and item.action) then return end
+    -- A row with an `adjust` fires its own sound as it steps (the volume sliders play into the level
+    -- they are setting), so it is not given the generic confirm on top of that.
+    if not item.adjust then Sound.play("ui.confirm") end
+    item.action()
+end
+
+-- Work the selected row sideways: `adjust` for a row with several states, else `action`, which is
+-- everything a two-state toggle needs. A plain button ignores both directions rather than firing --
+-- pressing left on "Exit To Desktop" must not exit.
+function Menu:adjustSelection(dir)
+    local item = self.items[self.selected]
+    if not item then return end
+    if item.adjust then
+        item.adjust(dir)
+    elseif Menu.valueOf(item) and item.action then
+        item.action()
+    end
 end
 
 function Menu:update(dt)
@@ -203,7 +252,18 @@ function Menu:draw()
 
             love.graphics.setColor(0.95, 0.95, 0.95)
             local th = self.font:getHeight()
-            love.graphics.printf(item.label, item.x, item.y + item.h / 2 - th / 2, item.w, "center")
+            local ty = item.y + item.h / 2 - th / 2
+            local value = Menu.valueOf(item)
+            if value then
+                -- A setting row: label left, value right, both inset from the border. Centering the
+                -- label would put every row's text in a different place relative to its value, and a
+                -- column of settings is read by scanning that value column.
+                love.graphics.printf(item.label, item.x + VALUE_PAD, ty, item.w - VALUE_PAD * 2, "left")
+                love.graphics.setColor(0.95, 0.85, 0.55)
+                love.graphics.printf(value, item.x + VALUE_PAD, ty, item.w - VALUE_PAD * 2, "right")
+            else
+                love.graphics.printf(item.label, item.x, ty, item.w, "center")
+            end
         end
     end
     self:drawScrollHints()
@@ -253,6 +313,10 @@ function Menu:keypressed(key)
         self:moveSelection(-self:visibleCount())
     elseif key == "pagedown" then
         self:moveSelection(self:visibleCount())
+    elseif key == "left" or key == "a" then
+        self:adjustSelection(-1)
+    elseif key == "right" or key == "d" then
+        self:adjustSelection(1)
     elseif key == "return" or key == "kpenter" or key == "space" then
         self:activate()
     end
@@ -263,6 +327,10 @@ function Menu:gamepadpressed(joystick, button)
         self:moveSelection(-1)
     elseif button == "dpdown" then
         self:moveSelection(1)
+    elseif button == "dpleft" then
+        self:adjustSelection(-1)
+    elseif button == "dpright" then
+        self:adjustSelection(1)
     elseif button == "a" or button == "start" then
         self:activate()
     end

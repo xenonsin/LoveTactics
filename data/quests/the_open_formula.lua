@@ -36,7 +36,8 @@ return {
     rewardGold = 400,
     rewardRep = 35,
     rewardPrestige = 2,
-    requiredPrestige = 5,
+    requiredQuests = { "what_ren_kept" }, -- slot 9: the line runs in order
+    requiredPrestige = 4,
     requiredRep = { vendor = "alchemist", rank = 3 }, -- Transmuter
     map = {
         biome = "castle",

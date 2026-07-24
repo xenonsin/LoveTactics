@@ -39,7 +39,8 @@ return {
     rewardGold = 130,
     rewardRep = 25,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredQuests = { "crucible_the_counterfeiter" }, -- slot 3: the line runs in order
+    requiredPrestige = 4,
     map = {
         biome = "castle",
         encounters = { min = 5, max = 7 },

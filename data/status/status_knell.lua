@@ -29,6 +29,7 @@ return {
     abbr = "Knl",
     description = "Marked for an hour: when the count runs out, this unit dies.",
     color = { 0.55, 0.20, 0.28 }, -- badge tint (a deep funeral red, unlike anything else on the strip)
+    fx = { pattern = "rune" },    -- a mark inscribed under the marked, in the same red as the badge
     duration = 20, -- ~4 turns at Status.TICKS_PER_TURN: long enough to cure, short enough to fear
     debuff = true, -- the whole counterplay: Cure and Panacea lift it
     lingers = true, -- the appointment is with the person, not the tile

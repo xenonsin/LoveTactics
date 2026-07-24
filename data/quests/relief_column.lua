@@ -39,7 +39,7 @@ return {
     rewardGold = 80,
     rewardRep = 20,
     rewardPrestige = 1,
-    requiredPrestige = 1,
+    requiredPrestige = 2,
     rewardItems = { "utility_relief_horn", "weapon_sworn_lance" },
     map = {
         biome = "castle",

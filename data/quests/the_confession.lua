@@ -15,7 +15,8 @@
 -- children and called the failures demons has an obvious institutional use for someone whose whole
 -- craft is deciding who counts as one (docs/story.md, "The blooding").
 --
--- GATING: the both-parents rule lives in `Discipline.isUnlocked`, not here -- see the note in
+-- GATING: `requiredQuests` names the first subclass gate of each parent line, so this capstone does
+-- not appear until the player genuinely holds both halves -- see the note in
 -- data/quests/champions_challenge.lua.
 --
 -- FIRST PASS. Scenes are not authored, so nothing is named. The witch-finder wants a bespoke
@@ -29,7 +30,10 @@ return {
     rewardGold = 250,
     rewardRep = 10,
     rewardPrestige = 1,
-    requiredPrestige = 4,
+    -- Both parents, earned: "one_client" is the first rogue subclass gate on its line,
+    -- "rite_of_ashes" the first priest. Holding either is impossible without them.
+    requiredQuests = { "one_client", "rite_of_ashes" },
+    requiredPrestige = 1,
     map = {
         biome = "castle",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },

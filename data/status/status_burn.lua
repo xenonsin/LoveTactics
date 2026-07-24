@@ -18,6 +18,7 @@ return {
     abbr = "Brn",
     description = "Scorched: takes fire damage as time passes.",
     color = { 0.85, 0.45, 0.2 }, -- badge tint (ember orange)
+    fx = { pattern = "flame" },  -- and the ground under a burning body burns (ui/field_fx.lua)
     duration = 15, -- ~3 turns at Status.TICKS_PER_TURN: the "few turns" the prose above promises
     magnitude = 4, -- fire damage per turn's worth of ticks
     debuff = true, -- removable by Cure

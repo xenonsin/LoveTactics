@@ -37,7 +37,8 @@ return {
     rewardGold = 240,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 3,
+    requiredQuests = { "the_silent_wood" }, -- slot 6: the line runs in order
+    requiredPrestige = 2,
     requiredRep = { vendor = "hunters_lodge", rank = 3 }, -- Beastslayer
     map = {
         biome = "forest",

@@ -18,7 +18,6 @@
 return {
     name = "Stillness",
     description = "Stilled ground: nothing standing in it may take an action.",
-    sprite = "assets/hazards/stillness.png",
     tags = { "arcane" },
     duration = 15,           -- ~3 turns of held time
     disposition = "hostile",

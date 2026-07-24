@@ -16,8 +16,8 @@
 return {
     name = "Bloodsong",
     description = "Red smoke: allies standing in it drink back a share of what they deal.",
-    sprite = "assets/hazards/bloodsong.png",
     tags = { "banner" },
+    fx = { color = { 0.86, 0.14, 0.20 } }, -- the colours are red: the weave, in the standard's own hue
     duration = 6,
     disposition = "friendly", -- only the side that owns it is drawn to stand in it
     onEnter = function(ctx)

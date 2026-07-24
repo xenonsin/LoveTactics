@@ -25,14 +25,24 @@ function Discipline.arity(id)
     return #Discipline.parents(id)
 end
 
--- The classes a use of `item` should tally toward growth (models/growth.lua). A discipline item
--- tallies ALL of its discipline's parent classes -- a Ninja weapon grows both rogue AND mage -- which
--- is what makes a multiclass item advance the fusion rather than one half of it. A plain item tallies
--- its single `class`. Empty for a class-less, discipline-less item (a natural weapon, a torch).
+-- The growth paths a use of `item` should tally toward (models/growth.lua, which reads these as keys
+-- into data/growth/<id>.lua). A discipline is ITS OWN growth path: a discipline item tallies the
+-- discipline id, so a build leaning on Ninja stock grows on data/growth/ninja.lua -- a blend the two
+-- parent tables cannot express, and the mechanical half of "each discipline is its own thing." A plain
+-- item tallies its single `class`. Empty for a class-less, discipline-less item (a natural weapon).
+--
+-- This SUPERSEDES the older "a discipline item tallies both parent classes" rule. It could because
+-- every discipline now has a growth table of its own (there is one file per discipline, enforced by
+-- tests/discipline_spec.lua); before, a discipline had no table and had to borrow its parents'. The
+-- unlock gating means the path is naturally earned -- a character cannot grow toward a discipline
+-- until that discipline's stock is on the shelf to carry.
+--
+-- Named `growthClasses` (not `growthPaths`) because the caller and the growth model still think in
+-- one vocabulary of tally keys, and a discipline id is just another key alongside the seven classes.
 function Discipline.growthClasses(item)
     if not item then return {} end
     if item.discipline and Discipline.defs[item.discipline] then
-        return Discipline.parents(item.discipline)
+        return { item.discipline }
     end
     if item.class then return { item.class } end
     return {}
@@ -82,6 +92,30 @@ function Discipline.unlockedSet(player)
         if Discipline.isUnlocked(player, id) then set[id] = true end
     end
     return set
+end
+
+-- The disciplines a vendor of `class` should ANNOUNCE to `player`: unlocked, not yet announced, and
+-- carrying `class` as one of their parents (so their stock lands on this shelf). Sorted for a stable
+-- order when several came due at once. This is the shop-open hook in states/hub.lua -- it names the
+-- newly earned disciplines whose gear just appeared on the rack the player is standing at.
+--
+-- A multiclass has two parents; it will match at either vendor, but `hasAnnouncedDiscipline` is keyed
+-- per discipline, so the first shop opened claims it and the second does not repeat.
+function Discipline.pendingAnnouncements(player, class)
+    local Player = require("models.player")
+    local out = {}
+    for id, def in pairs(Discipline.defs) do
+        local onThisShelf = false
+        for _, parent in ipairs(def.classes or {}) do
+            if parent == class then onThisShelf = true end
+        end
+        if onThisShelf and Discipline.isUnlocked(player, id)
+            and not Player.hasAnnouncedDiscipline(player, id) then
+            out[#out + 1] = id
+        end
+    end
+    table.sort(out)
+    return out
 end
 
 return Discipline

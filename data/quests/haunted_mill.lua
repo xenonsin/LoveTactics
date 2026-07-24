@@ -14,7 +14,8 @@ return {
     -- board must show ONLY the Colosseum debut (data/quests/arena_debut.lua), the quest the arrival
     -- coaching points at. The debut pays +1 prestige, so this Mill surfaces the moment it is done --
     -- the tutorial stays a single unambiguous choice, and the Cathedral's line opens right after it.
-    requiredPrestige = 2,
+    requiredQuests = { "arena_debut" }, -- slot 1: the line runs in order
+    requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {
         biome = "forest",

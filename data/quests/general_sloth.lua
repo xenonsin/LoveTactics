@@ -41,7 +41,8 @@ return {
     rewardRep = 80,
     rewardPrestige = 3,
     rewardItems = { "weapon_forsworn_pike" },
-    requiredPrestige = 5,
+    requiredQuests = { "forty_first_day" }, -- slot 10: the line runs in order
+    requiredPrestige = 2,
     requiredRep = { vendor = "bastion", rank = 4 }, -- Lord Commander
     gateHint = "past the gate that was opened from within",
     map = {

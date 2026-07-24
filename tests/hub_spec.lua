@@ -89,11 +89,14 @@ return {
                 assert(q.requiredPrestige <= 1, q.id .. " should not appear at prestige 1")
             end
 
+            -- Prestige now gates a LINE'S ENTRY rather than its running order (every sin quest chains
+            -- off the one before it), so this has to name a chain HEAD or it would be testing the
+            -- chain instead. `vault_heist` opens the Undercroft and has no prerequisite of its own.
             local hasHard = false
             for _, q in ipairs(Quest.available(playerAt(3))) do
-                if q.id == "warlord_keep" then hasHard = true end
+                if q.id == "vault_heist" then hasHard = true end
             end
-            assert(hasHard, "warlord_keep should be available at prestige 3")
+            assert(hasHard, "vault_heist should be available at prestige 3")
         end,
     },
     {

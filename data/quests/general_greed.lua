@@ -17,7 +17,8 @@ return {
     rewardRep = 80,
     rewardPrestige = 3,
     rewardItems = { "utility_bottomless_purse" },
-    requiredPrestige = 5,
+    requiredQuests = { "a_new_bank" }, -- slot 10: the line runs in order
+    requiredPrestige = 3,
     requiredRep = { vendor = "undercroft", rank = 4 }, -- Guildmaster
     gateHint = "beneath the vault that was never full",
     map = {

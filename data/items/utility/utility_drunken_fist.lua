@@ -10,6 +10,7 @@ return {
     type = "utility",
     tags = { "fist" },
     class = "priest",
+    discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 200,
     repRank = 2,
     unarmedBonus = { drunkDamage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 } },

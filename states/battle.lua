@@ -34,6 +34,7 @@ local Hazard = require("models.hazard")
 local Status = require("models.status")
 local EncounterModel = require("models.encounter")
 local Tutorial = require("models.tutorial")
+local Sound = require("models.sound")
 local Conversation = require("models.conversation")
 local TutorialPrompt = require("ui.tutorial_prompt")
 local CoachBubble = require("ui.coach_bubble")
@@ -41,6 +42,8 @@ local Glyphs = require("ui.glyphs")
 local Spoils = require("models.spoils")
 local BattleSummary = require("ui.panels.battle_summary")
 local Debug = require("models.debug")
+local ScreenFx = require("ui.screen_fx")
+local Settings = require("models.settings")
 
 local battle = {}
 
@@ -375,6 +378,7 @@ end
 local function win()
     battle.over = true
     battle.walk = nil -- nobody finishes their stroll once the battle is decided
+    ScreenFx.vignette(0) -- a won fight is not a dying one: drop any low-HP edge before the panel opens
     Combat.logEvent(battle.combat, "system", "Victory!")
     -- A won fight is not a lost life: any party member who fell is carried out to the overworld at a
     -- sliver of health rather than staying down. Only on a win -- a defeat costs the run outright.
@@ -387,6 +391,10 @@ local function lose()
     battle.over = true
     battle.walk = nil
     Combat.logEvent(battle.combat, "system", "Defeat.")
+    -- The colour drains out of the world as the defeat panel closes over it -- a grey that says the run
+    -- is lost more plainly than any banner. Not motion, so it plays even under reduced effects; cleared
+    -- when the next battle enters or the player retries (see battle.enter). See ui/screen_fx.lua.
+    ScreenFx.grey(0.85)
     releaseParty()
     finishBattle("loss")
 end
@@ -600,6 +608,20 @@ local function aoeFootprint(item, cx, cy)
     end
     if not onTarget then return nil end
     return Combat.aoeCells(battle.combat, ab, cx, cy, battle.current)
+end
+
+-- Every tag a cast of `item` carries, item-level and ability-level both -- the same pair
+-- Combat.auraApplies reads across, for the same reason: a "fire" declared on the ability rather than
+-- on the item is still fire. The board resolves the blast telegraph's shader field from these
+-- (ui/field_fx.lua's patternFor), so a Fireball's footprint previews the flame it is about to leave.
+local function fieldTags(item)
+    if not item then return nil end
+    local ab = item.activeAbility
+    if not (ab and ab.tags) then return item.tags end
+    local out = {}
+    for _, t in ipairs(item.tags or {}) do out[#out + 1] = t end
+    for _, t in ipairs(ab.tags) do out[#out + 1] = t end
+    return out
 end
 
 -- The default-ACTION reach: every cell the unit could use its default action on this turn (the
@@ -2138,6 +2160,7 @@ local function refreshView()
         -- An AoE ability paints its blast footprint around the aimed cell, brighter than the wash.
         overlays.aoe = aoeFootprint(previewItem, battle.map.cursor.x, battle.map.cursor.y)
         overlays.aoeSupport = support
+        overlays.aoeTags = fieldTags(previewItem) -- the blast previews its own element (see fieldTags)
 
         -- Preview the move to reach the aimed cell, drawn as the same arrow move mode uses: onto the
         -- cell when it's a reposition (empty reachable tile), or to the stand tile the action fires
@@ -2264,6 +2287,24 @@ local function refreshView()
     -- live list -- no per-side visibility filter like traps have.
     overlays.hazards = battle.combat.hazards
 
+    -- The statuses a unit CARRIES that are worth painting as ground under it: a burning body should
+    -- stand in flame, a frozen one in rime. Only the handful whose blueprint declares an `fx` block
+    -- qualify -- the badges are the complete read of a unit's condition, and a unit with six statuses
+    -- must not be standing in six fields. The renderer's field pass composites these with whatever
+    -- hazard already covers the tile, so a burning unit in the rain shows both (ui/field_fx.lua).
+    local unitFields
+    for _, u in ipairs(battle.combat.units) do
+        if u.alive then
+            for _, st in ipairs(u.statuses or {}) do
+                if st.def and st.def.fx then
+                    unitFields = unitFields or {}
+                    unitFields[#unitFields + 1] = { x = u.x, y = u.y, unit = u, status = st }
+                end
+            end
+        end
+    end
+    overlays.unitFields = unitFields
+
     -- Walls (conjured blockers) are always visible to both sides too. Keep a per-frame "x,y" lookup
     -- for click-to-strike (wallAt), mirroring battle.trapCells.
     overlays.walls = battle.combat.walls
@@ -2369,11 +2410,14 @@ local function refreshView()
     -- Telegraph every in-progress channel's blast on the board -- not just the local armed preview, so
     -- an ENEMY winding up Meteor Storm paints the tiles it will hit, and the player can step clear.
     -- Read from unit.channel (the pending payload), independent of whose turn it is.
-    local channelAoe
+    local channelAoe, channelTags
     for _, u in ipairs(battle.combat.units) do
         local ch = u.alive and u.channel
         if ch then
             channelAoe = channelAoe or {}
+            -- The first channeler's element dresses the telegraph's field (several at once is rare
+            -- enough that one shared picture beats splitting the footprint by owner).
+            channelTags = channelTags or fieldTags(ch.item)
             -- Call Combat.aoeCells directly rather than aoeFootprint: the footprint helper gates on the
             -- ACTING unit's range set, but this is the channeler's own stored aim, cast turns ago.
             for _, c in ipairs(Combat.aoeCells(battle.combat, ch.ab, ch.tx, ch.ty, u)) do
@@ -2382,6 +2426,7 @@ local function refreshView()
         end
     end
     overlays.channelAoe = channelAoe
+    overlays.channelTags = channelTags
 
     overlays.hpPreview = bannerPreview -- per-unit incoming damage/heal, for on-board HP bars
 
@@ -2446,6 +2491,13 @@ function battle.enter(self, opts)
     battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided
     battle.over = false
     battle.showInitiative = true -- initiative numbers on the turn order (F6 toggles)
+
+    -- The bed, and the sting over the top of it. An `objective` encounter is the quest's real fight --
+    -- a general, a boss, the Crown -- so it gets its own track; everything else is an ordinary bout on
+    -- the way there. Both are silent until the files exist (models/sound.lua), and Sound.music is
+    -- idempotent, so re-entering the same kind of fight does not restart the track.
+    Sound.music(battle.encounter.kind == "objective" and "music.boss" or "music.battle")
+    Sound.play("battle.start")
 
     -- Active party instances (from the player). Matched to their spawns by POSITION rather than by
     -- id: Arena.build binds ids to spawn points in the order it is given them (bindUnits), so index
@@ -2574,6 +2626,9 @@ function battle.enter(self, opts)
     -- One animation controller for the battle, shared into the board and the turn strip so damage
     -- floaters, HP drain, sprite reactions and card jiggle/fade all read the same state.
     battle.fx = CombatFx.new()
+    -- Clear any screen effects the last fight left standing -- the defeat grey most of all, so a retry
+    -- opens on a full-colour board rather than the grey the loss faded to (ui/screen_fx.lua).
+    ScreenFx.reset()
     battle.pendingAdvance = nil
     -- The hamburger starts closed every fight: it is a transient drawer, not a remembered preference,
     -- and a battle that opened over its own tooltip column would be a worse first frame than one that
@@ -2588,6 +2643,9 @@ function battle.enter(self, opts)
         { combat = battle.combat, leftMargin = LEFT_W, rightMargin = PANEL_W,
           tileSize = BOARD_TILE, topMargin = BOARD_TOP })
     battle.map.fx = battle.fx
+    -- The board's point-effect controller (impact bursts, spell blooms, bolts in flight) is shared into
+    -- the animation controller, which spawns from it as it plays out each blow. See ui/burst_fx.lua.
+    battle.fx.bursts = battle.map.bursts
     battle.panel = CombatPanel.new(battle.combat, {
         onActivateItem = function(item) armItem(item) end,
         onHoverItem = function(item) battle.hoverItem = item end,
@@ -2659,7 +2717,43 @@ function battle.enter(self, opts)
     end
 end
 
+-- A red edge-vignette that deepens as the player's most-wounded standing unit nears death, and clears
+-- the moment nobody is in the red. Meaning rather than motion, so it holds under reduced effects; it
+-- reads the player's OWN side only, since a bloodied enemy is good news. A slow pulse keeps it alive
+-- rather than a flat wash. See ui/screen_fx.lua. Skipped once the fight is decided (the defeat grey or
+-- the victory panel owns the frame then).
+--
+-- OFF unless the player asks for it (`danger_vignette`, models/settings.lua): a red wash closing over
+-- the board is the loudest thing on the screen and the HP bars already carry the warning. The gate
+-- lives here rather than in ScreenFx.vignette because the verb is general -- this is the one caller
+-- that means "you are dying", and only that meaning is optional. Clearing on the way out matters: a
+-- player who flicks the toggle off mid-fight must not be left with the last edge frozen on screen.
+local function updateDangerVignette()
+    if battle.over or battle.summary then return end
+    local worst = 1
+    for _, u in ipairs(battle.combat.units) do
+        if u.alive and u.side == battle.combat.playerSide then
+            local hp = u.char.stats.health
+            if hp and hp.max > 0 then worst = math.min(worst, hp.current / hp.max) end
+        end
+    end
+    if worst >= 0.30 or Settings.get("danger_vignette") ~= true then
+        ScreenFx.vignette(0)
+    else
+        -- 0 at the 30% threshold up to a firm edge as it approaches 0, with a slow breath over it.
+        local depth = (0.30 - worst) / 0.30
+        local pulse = 0.85 + 0.15 * math.sin((battle.map.time or 0) * 3)
+        ScreenFx.vignette(depth * 0.55 * pulse, { 0.6, 0.05, 0.05 })
+    end
+end
+
 function battle.update(dt)
+    -- Hit-stop: a killing blow freezes the SIMULATION for a beat (ui/screen_fx.lua sets the scale to 0),
+    -- so the whole board holds while the death registers, then resumes. Only the gameplay clock is
+    -- scaled -- ScreenFx's own shake/flash/freeze decays advance on real dt back in main.lua, so the
+    -- freeze ends on its own and its shake still plays. A summary overlay ignores it (the fight is over).
+    if not battle.summary then dt = dt * ScreenFx.timeScale() end
+
     -- The victory/defeat overlay animates over the frozen board (map/fx still tick below so the frame
     -- keeps breathing behind it).
     if battle.summary then battle.summary:update(dt) end
@@ -2682,6 +2776,7 @@ function battle.update(dt)
 
     battle.map:update(dt)
     battle.fx:update(dt)
+    updateDangerVignette()
     -- Age out a refusal notice. Independent of the turn/animation clock: it is UI chrome about a
     -- click that never became an action, so nothing on the board waits on it.
     if battle.notice then
@@ -2939,6 +3034,7 @@ function battle.drawTileTooltip(mx, my)
     if not cell then return end
     local unit = Combat.unitAt(battle.combat, cx, cy)
     local trap = battle.trapCells and battle.trapCells[cx .. "," .. cy]
+    local wall = battle.wallCells and battle.wallCells[cx .. "," .. cy]
     local prop = battle.propCells and battle.propCells[cx .. "," .. cy]
     -- Whatever a click here would do (attack / move / place a trap / strike a trap or a barrel) is
     -- named by a companion panel on top, and its damage/heal is previewed on the occupant's resource
@@ -2962,8 +3058,11 @@ function battle.drawTileTooltip(mx, my)
     local terrainInfo = { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
                           hazards = Hazard.allAt(battle.combat, cx, cy) }
     local objInfo
+    -- Same precedence actionPreviewFor picks a strike target with (trap, then wall, then prop), so the
+    -- box that opens describes the very thing a click would hit.
     if unit and unit.char then objInfo = { unit = unit, preview = preview }
     elseif trap then objInfo = { trap = trap, preview = preview }
+    elseif wall then objInfo = { wall = wall, preview = preview }
     elseif prop then objInfo = { prop = prop, preview = preview } end
 
     -- The EXCHANGE, in resolution order (bottom-up, so the list reads last-beat-first): the counters

@@ -10,7 +10,8 @@ return {
     rewardGold = 300,
     rewardRep = 60,
     rewardPrestige = 2,
-    requiredPrestige = 3,
+    requiredQuests = { "the_padded_card" }, -- slot 3: the line runs in order
+    requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {
         biome = "castle",

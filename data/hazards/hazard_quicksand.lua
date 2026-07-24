@@ -10,7 +10,6 @@
 return {
     name = "Quicksand",
     description = "Sucking ground: doubles the movement and ability costs of any unit standing in it.",
-    sprite = "assets/hazards/quicksand.png",
     tags = { "earth" },
     duration = 20,            -- ticks the churned ground persists: ~4 turns, the area-denial it is for
     disposition = "hostile",  -- the enemy AI steps around it

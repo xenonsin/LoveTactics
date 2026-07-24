@@ -32,6 +32,24 @@ local function punch(c, attacker, target)
     return res.damageDealt
 end
 
+-- An item's Power, straight off the blueprint at level 0. Every expected number below is built from
+-- these rather than typed in, so retuning a curve retunes the test with it: what these cases assert
+-- is the RULE each item adds (the fist gains flat Power, the strike ignores armor, the charm drinks
+-- back a share), never the balance number the rule currently lands on.
+local function power(id)
+    return Combat.abilityMagnitude(Item.instantiate(id).activeAbility)
+end
+
+-- A bare fist's Power, the baseline every fist-charm case is measured against.
+local function fistPower(unit)
+    return Combat.abilityMagnitude(unit.char.unarmed.activeAbility)
+end
+
+-- What a fist charm contributes, read off its own unarmedBonus block.
+local function fistBonus(id, field)
+    return (Item.instantiate(id).unarmedBonus or {})[field or "damage"] or 0
+end
+
 return {
     {
         name = "Iron Fist adds flat Power to the bare fist, and nothing to a crafted weapon",
@@ -40,11 +58,16 @@ return {
                 { mkunit(2, 2, { stats = { damage = 0 }, items = { "utility_iron_fist" } }) },
                 { mkunit(2, 3, { stats = { defense = 0, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
-            -- Unarmed Power 2 + damage 0 + Iron Fist +4 = 6, against defense 0.
-            assert(punch(c, hero, foe) == 6, "iron fist should push the fist to 6 damage")
-            -- A crafted weapon is untouched by the fist bonus (identity check on char.unarmed).
-            local sword = Item.instantiate("weapon_iron_sword") -- power 6 + damage 0 = 6, NOT 10
-            assert(Combat.computeDamage(c, hero, foe, sword) == 6, "iron fist must not buff a weapon")
+            -- The charm's whole rule: bare Power plus its flat bonus, against a defenseless target.
+            local bonus = fistBonus("utility_iron_fist")
+            assert(bonus > 0, "this case needs a charm that actually adds Power")
+            assert(punch(c, hero, foe) == fistPower(hero) + bonus,
+                "the iron fist should add its " .. bonus .. " to the bare strike")
+            -- A crafted weapon is untouched by the fist bonus (identity check on char.unarmed): it
+            -- lands at its own Power and nothing more.
+            local sword = Item.instantiate("weapon_iron_sword")
+            assert(Combat.computeDamage(c, hero, foe, sword) == power("weapon_iron_sword"),
+                "iron fist must not buff a weapon")
         end,
     },
     {
@@ -69,8 +92,10 @@ return {
                 { mkunit(2, 2, { stats = { damage = 0 }, items = { "utility_swift_fist" } }) },
                 { mkunit(2, 3, { stats = { defense = 0, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
-            -- Two hits of Power 2 each = 4 total.
-            assert(punch(c, hero, foe) == 4, "swift fist should deal two 2-damage hits")
+            -- The rule is the SECOND hit, so the expectation is the bare fist doubled -- whatever a
+            -- bare fist currently hits for.
+            assert(punch(c, hero, foe) == fistPower(hero) * 2,
+                "the swift fist should land the bare strike twice")
         end,
     },
     {
@@ -80,10 +105,19 @@ return {
                 { mkunit(2, 2, { stats = { damage = 0 }, items = { "utility_drunken_fist" } }) },
                 { mkunit(2, 3, { stats = { defense = 0, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
-            assert(punch(c, hero, foe) == 2, "sober: just the bare fist's Power 2")
-            Status.apply(c, hero, "status_drunk") -- +3 Damage (statBonus) and +6 drunk fist Power
-            -- base = damage 2 + damage(0 + drunk 3) + drunkDamage 6 = 11.
-            assert(punch(c, hero, foe) == 11, "drunk: fist swells to 11 damage, got")
+            local sober = fistPower(hero)
+            assert(punch(c, hero, foe) == sober, "sober: just the bare fist's Power")
+
+            -- Drunk, three things stack: the bare Power, the status's own Damage bonus, and the
+            -- charm's drunk-only Power. All three come off their blueprints, so the case states the
+            -- STACKING rule and survives a retune of any of them.
+            local drunkDamage = Status.defs.status_drunk.statBonus.damage
+            local drunkFist = fistBonus("utility_drunken_fist", "drunkDamage")
+            assert(drunkFist > 0, "this case needs a charm that pays out while drunk")
+
+            Status.apply(c, hero, "status_drunk")
+            assert(punch(c, hero, foe) == sober + drunkDamage + drunkFist,
+                "drunk: the bare fist, the tipsy Damage, and the charm's own Power all stack")
         end,
     },
     {
@@ -93,10 +127,16 @@ return {
                 { mkunit(2, 2, { stats = { health = 100 }, items = { "utility_toughness" } }) },
                 { mkunit(5, 5, {}) })
             local hero = c.units[1]
-            assert(Combat.unreservedMax(hero.char, "health") == 120, "toughness lifts the cap to 120")
-            hero.char.stats.health.current = 100
-            Combat.applyHeal(c, hero, 30)
-            assert(hero.char.stats.health.current == 120, "the heal fills into the raised ceiling")
+            -- The charm's rule is "lift the ceiling by its own maxBonus, and let a heal reach it".
+            local base = hero.char.stats.health.max
+            local lift = (Item.instantiate("utility_toughness").maxBonus or {}).health or 0
+            assert(lift > 0, "this case needs a charm that actually raises the ceiling")
+            local raised = base + lift
+            assert(Combat.unreservedMax(hero.char, "health") == raised,
+                "toughness lifts the cap to " .. raised)
+            hero.char.stats.health.current = base
+            Combat.applyHeal(c, hero, lift * 2) -- more than the new headroom: it should just fill it
+            assert(hero.char.stats.health.current == raised, "the heal fills into the raised ceiling")
         end,
     },
     {
@@ -107,10 +147,14 @@ return {
                 { mkunit(2, 3, { stats = { defense = 100, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
             local pen = hero.char.inventory[2]
+            -- The target's armor is set far above the strike's Power on purpose: a MITIGATED hit
+            -- would floor at 1, so landing the whole Power is only possible if defense was skipped.
+            local raw = power("ability_penetrating_strike")
+            assert(foe.char.stats.defense > raw, "the fixture needs armor that would otherwise swallow this")
             openTurn(c, hero)
             local _, res = Combat.useItem(c, hero, pen, foe.x, foe.y)
-            -- Power 8 with NO defense subtracted (raw). A mitigated hit would floor at 1.
-            assert(res.damageDealt == 8, "penetrating strike ignores 100 defense, dealing its Power 8")
+            assert(res.damageDealt == raw,
+                "penetrating strike ignores " .. foe.char.stats.defense .. " defense, dealing its Power " .. raw)
         end,
     },
     {
@@ -134,12 +178,19 @@ return {
                                  items = { "weapon_iron_sword", "utility_vampiric_strike" } }) },
                 { mkunit(2, 3, { stats = { defense = 0, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
-            hero.char.stats.health.current = 50 -- leave room for the lifesteal heal to show
+            -- The charm's rule is a SHARE of whatever landed, so the share is read off the charm and
+            -- the damage off the sword: neither number is typed in.
+            local share = Item.instantiate("utility_vampiric_strike").aura.lifesteal
+            assert(share and share > 0, "this case needs a charm that actually drinks")
+            local wounded = 50 -- leave room for the lifesteal heal to show
+            hero.char.stats.health.current = wounded
             openTurn(c, hero)
             local _, res = Combat.useItem(c, hero, hero.char.inventory[1], foe.x, foe.y)
-            assert(res.damageDealt == 6, "the sword lands for 6")
-            assert(res.healed == 3, "the wielder drinks back half the damage (3)")
-            assert(hero.char.stats.health.current == 53, "the lifesteal heal lands on the wielder")
+            assert(res.damageDealt == power("weapon_iron_sword"), "the sword lands for its Power")
+            assert(res.healed == math.floor(res.damageDealt * share),
+                "the wielder drinks back its share (" .. share .. ") of what landed")
+            assert(hero.char.stats.health.current == wounded + res.healed,
+                "the lifesteal heal lands on the wielder")
         end,
     },
     {
@@ -166,19 +217,22 @@ return {
             Status.apply(c, hero, "status_fury")
             hero.char.stats.health.current = 1
 
-            -- Bank damage: a sword strike of Power 6 against defense 0.
+            -- Bank damage: a sword strike against defense 0, so the whole Power lands and is banked.
             local dealt = Combat.dealDamage(c, hero, foe, Item.instantiate("weapon_iron_sword"))
-            assert(dealt == 6, "the strike lands for 6")
-            assert(Status.get(hero, "status_fury").recorded == 6, "Fury banks the 6 damage dealt")
+            assert(dealt == power("weapon_iron_sword"), "the strike lands for its Power")
+            assert(Status.get(hero, "status_fury").recorded == dealt, "Fury banks what it dealt")
 
             -- A lethal blow cannot fell it while raging: it holds at 1 HP.
             Combat.dealFlatDamage(c, hero, 9999, { "physical" }, "a lethal blow")
             assert(hero.alive and hero.char.stats.health.current == 1, "Fury keeps the bearer up at 1 HP")
 
-            -- When the window closes it heals for half of what it banked (floor(6*0.5) = 3).
+            -- When the window closes it heals for half of what it banked. The fraction is the
+            -- status's own (status_fury's onExpire), named here so the sum stays readable.
+            local PAYBACK = 0.5
             Status.tick(c, 99)
             assert(not Status.has(hero, "status_fury"), "the Fury window has closed")
-            assert(hero.char.stats.health.current == 1 + 3, "on expiry Fury heals half the banked damage")
+            assert(hero.char.stats.health.current == 1 + math.floor(dealt * PAYBACK),
+                "on expiry Fury heals half the banked damage")
         end,
     },
     {
@@ -192,9 +246,12 @@ return {
             -- The foe strikes the spiked wearer; capture what actually landed, then check the reflect.
             -- The foe carries 0 defense, so the reflected hit isn't itself mitigated (it would be, in
             -- general -- the spikes bite armor too) and lands at the full 40% share.
+            local Trait = require("models.trait")
+            local share = Trait.defs.trait_thorns.magnitude -- percent of the blow reflected
             local dealt = Combat.dealDamage(c, foe, wearer, Item.instantiate("weapon_iron_sword"))
             local reflected = foeHp0 - foe.char.stats.health.current
-            assert(reflected == math.floor(dealt * 40 / 100), "thorns returns 40% of the blow")
+            assert(reflected == math.floor(dealt * share / 100),
+                "thorns returns " .. share .. "% of the blow")
             assert(reflected > 0, "the reflection actually bit")
         end,
     },
@@ -205,9 +262,14 @@ return {
                 { mkunit(2, 2, { stats = { health = 100 }, items = { "utility_second_wind" } }) },
                 { mkunit(5, 5, {}) })
             local hero = c.units[1]
+            -- The fraction is the trait's own (data/traits/trait_second_wind.lua stands the bearer
+            -- up at half its unreserved max), named here rather than left as a bare 50.
+            local RISE = 0.5
+            local max = hero.char.stats.health.max
             Combat.dealFlatDamage(c, hero, 9999, { "physical" }, "a killing blow")
             assert(hero.alive, "Second Wind refuses the first killing blow")
-            assert(hero.char.stats.health.current == 50, "it stands the bearer up at half of max")
+            assert(hero.char.stats.health.current == math.floor(max * RISE),
+                "it stands the bearer up at half of max")
             -- Spent: the next lethal blow finishes it.
             Combat.dealFlatDamage(c, hero, 9999, { "physical" }, "the second blow")
             assert(not hero.alive, "Second Wind saves only once a battle")

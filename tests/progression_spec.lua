@@ -322,25 +322,37 @@ return {
     {
         -- No shipped quest is `repeatable` (the game has no grind -- see models/quest.lua's header),
         -- so this only has the drop half to check, which is what it always actually checked.
-        name = "Quest.available drops completed quests from the board",
+        name = "Quest.available drops completed quests and opens the next slot",
         fn = function()
             local p = playerAt(1)
 
-            local before = #Quest.available(p)
-            assert(before > 0, "a new player should have quests")
+            local function boardHas(id)
+                for _, q in ipairs(Quest.available(p)) do
+                    if q.id == id then return true end
+                end
+                return false
+            end
+
+            assert(boardHas("arena_debut"), "the debut is the prestige-1 board")
+            assert(not boardHas("the_padded_card"), "slot 2 waits on slot 1")
 
             p.completedQuests.arena_debut = true
-            local after = Quest.available(p)
-            assert(#after == before - 1, "a completed quest should leave the board")
-            for _, q in ipairs(after) do
-                assert(q.id ~= "arena_debut", "arena_debut should be gone")
-            end
+            assert(not boardHas("arena_debut"), "a completed quest leaves the board")
+            -- ...and the slot behind it arrives, which is the whole point of the chain: the debut is
+            -- what opens the Colosseum's second card AND the Cathedral's first (docs/story.md).
+            assert(boardHas("the_padded_card"), "clearing slot 1 opens slot 2")
+            assert(boardHas("haunted_mill"), "the debut opens the Cathedral's line")
         end,
     },
     {
         name = "Quest.available hides a reputation-gated quest until the rank is earned",
         fn = function()
             local p = playerAt(5) -- prestige is not the gate here; reputation is
+            -- The Cathedral's line runs in order, so put slots 1-2 behind it: what is left holding
+            -- slot 3 back is then the reputation rank alone, which is what this case is about.
+            p.completedQuests.arena_debut = true
+            p.completedQuests.haunted_mill = true
+            p.completedQuests.fallen_confessor = true
 
             local function boardHas(id)
                 for _, q in ipairs(Quest.available(p)) do
@@ -494,12 +506,19 @@ return {
         fn = function()
             local p = playerAt(5)
             Player.addReputation(p, "colosseum", Vendor.defs.colosseum.ranks[4])
+            -- A general is slot 10 of a line that runs in order, so the nine in front of it have to
+            -- be done. Standing alone no longer puts Ira on the board -- the line does.
+            for _, id in ipairs({
+                "arena_debut", "the_padded_card", "warlord_keep", "the_perennial_roster",
+                "the_intake", "blood_in_the_sand", "no_third_state", "naming_the_day",
+                "what_the_house_does",
+            }) do p.completedQuests[id] = true end
 
             local quest
             for _, q in ipairs(Quest.available(p)) do
                 if q.id == "general_wrath" then quest = q end
             end
-            assert(quest, "at Legend and prestige 5, Ira should be on the board")
+            assert(quest, "at Legend with the line behind her, Ira should be on the board")
 
             local function stashCount(id)
                 local n = 0

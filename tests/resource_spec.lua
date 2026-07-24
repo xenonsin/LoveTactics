@@ -43,12 +43,15 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
-            knight.char.stats.stamina.current = 5 -- max 15
-            knight.char.stats.mana.current = 5    -- max 20
-            -- Knight staminaRegen = 2, so 3 elapsed ticks restore 6.
-            Combat.regenerate(c, 3)
-            assert(knight.char.stats.stamina.current == 11, "stamina += staminaRegen * elapsed")
-            assert(knight.char.stats.mana.current == 5, "mana never regenerates")
+            -- Both pools are dropped well clear of their ceilings so the regen has room to show.
+            local stam0, mana0, ticks = 5, 5, 3
+            knight.char.stats.stamina.current = stam0
+            knight.char.stats.mana.current = mana0
+            local regen = knight.char.stats.staminaRegen
+            Combat.regenerate(c, ticks)
+            assert(knight.char.stats.stamina.current == stam0 + regen * ticks,
+                "stamina += staminaRegen * elapsed")
+            assert(knight.char.stats.mana.current == mana0, "mana never regenerates")
         end,
     },
     {
@@ -65,9 +68,13 @@ return {
         name = "restoreResource clamps to max and returns the real delta",
         fn = function()
             local knight = Character.instantiate("character_knight")
-            knight.stats.stamina.current = 12 -- max 15
-            assert(Combat.restoreResource(knight, "stamina", 10) == 3, "returns the clamped delta")
-            assert(knight.stats.stamina.current == 15, "capped at max")
+            -- Leave a known gap to the ceiling, then over-restore: the claim is that the RETURN is
+            -- the gap actually closed, whatever the ceiling happens to be.
+            local gap = 3
+            local max = knight.stats.stamina.max
+            knight.stats.stamina.current = max - gap
+            assert(Combat.restoreResource(knight, "stamina", gap * 4) == gap, "returns the clamped delta")
+            assert(knight.stats.stamina.current == max, "capped at max")
             assert(Combat.restoreResource(knight, "stamina", 10) == 0, "already full -> 0")
             assert(Combat.restoreResource(knight, "stamina", -3) == 0, "non-positive -> 0")
         end,
@@ -87,15 +94,18 @@ return {
         name = "Focus wait-behavior restores mana and ends the turn behind the next unit",
         fn = function()
             local priest = Character.instantiate("character_priest")
-            priest.stats.mana.current = 10 -- max 70; focus_stone restores 12
+            local mana0 = 10 -- wounded well clear of the ceiling, so the whole restore lands
+            priest.stats.mana.current = mana0
             local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("character_bandit", 6, 6) })
             local pu, bandit = c.units[1], c.units[2]
-            local focusSpeed = Combat.waitBehavior(pu).speed
-            assert(Combat.waitBehavior(pu).kind == "focus", "focus stone swaps Wait -> Focus")
+            local focus = Combat.waitBehavior(pu)
+            local focusSpeed = focus.speed
+            assert(focus.kind == "focus", "focus stone swaps Wait -> Focus")
             pu.initiative, bandit.initiative = 0, 5
             openTurn(c, pu)
             assert(Combat.focus(c, pu), "focus succeeds")
-            assert(pu.char.stats.mana.current == 22, "mana restored by the focus item's amount")
+            assert(pu.char.stats.mana.current == mana0 + focus.mana,
+                "mana restored by the focus item's own amount (" .. focus.mana .. ")")
             -- Focus costs its full speed of the timeline: after rebase (next unit at 5 drops to 0)
             -- the actor trails by focusSpeed - 5, a much bigger delay than a plain wait's +1.
             assert(bandit.initiative == 0, "the next unit rebases to 0")
@@ -106,17 +116,22 @@ return {
         name = "Parasitic Staff deals damage and refunds mana to the wielder on hit",
         fn = function()
             local priest = Character.instantiate("character_priest")
-            priest.stats.mana.current = 10 -- max 70
+            local mana0 = 10 -- wounded well clear of the ceiling, so the whole siphon lands
+            priest.stats.mana.current = mana0
             local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("character_bandit", 2, 1) })
             local pu, bandit = c.units[1], c.units[2]
             local staff = itemNamed(pu.char, "weapon_parasitic_staff")
             assert(staff, "priest carries the parasitic staff")
+            -- The refund is a literal inside the staff's own effect function, so it cannot be read
+            -- off a field the way the stamina cost can. Named here so the sum stays legible.
+            local SIPHON = 5
             local staBefore = pu.char.stats.stamina.current
             openTurn(c, pu)
             assert(Combat.useItem(c, pu, staff, bandit.x, bandit.y), "adjacent siphon hits")
             assert(bandit.char.stats.health.current < bandit.char.stats.health.max, "bandit took damage")
-            assert(pu.char.stats.mana.current == 15, "wielder regained 5 mana on hit")
-            assert(pu.char.stats.stamina.current == staBefore - 6, "stamina cost paid")
+            assert(pu.char.stats.mana.current == mana0 + SIPHON, "wielder regained mana on hit")
+            assert(pu.char.stats.stamina.current == staBefore - staff.activeAbility.cost.amount,
+                "stamina cost paid")
         end,
     },
     {
@@ -127,7 +142,13 @@ return {
             local au = c.units[1]
             local brace = Combat.waitBehavior(au)
             assert(brace.kind == "defend", "buckler swaps Wait -> Defend")
-            assert(brace.defense == 6, "the buckler's level-0 brace defense (tunable on the shield)")
+            -- The brace is tuned on the shield itself, so the claim is that waitBehavior surfaces
+            -- the buckler's OWN number rather than one of its own -- and that it is a real bonus.
+            -- How much that number is worth in mitigation is asserted against it below.
+            local buckler = Item.instantiate("armor_buckler")
+            assert(brace.defense == buckler.waitBehavior.defense,
+                "the brace is the shield's tuned amount, not an invention of the Defend action")
+            assert(brace.defense > 0, "and it is a real bonus")
 
             -- mitigatedDamage reads the unit's effective defense (flatStat), so it reflects the buff.
             local before = Combat.mitigatedDamage(au, 50, { "physical" })

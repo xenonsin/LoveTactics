@@ -1,21 +1,46 @@
--- Battle spoils: the gold and loot a won combat/elite fight hands over. Enemies carry no reward
--- data of their own and there is no drop-table authoring, so spoils are COMPUTED from the size of
--- the roster that was beaten and the company's prestige -- richer fights the deeper the run. An
--- encounter may override either half (rewardGold / loot on its blueprint), mirroring how a treasure
--- cache authors its own `loot` list (data/encounters/encounter_treasure.lua).
+-- Battle spoils: the gold and loot a won combat/elite fight hands over. Gold is still COMPUTED from
+-- the size of the roster that was beaten and the company's prestige -- richer fights the deeper the
+-- run. An encounter may override either half (rewardGold / loot on its blueprint), mirroring how a
+-- treasure cache authors its own `loot` list (data/encounters/encounter_treasure.lua).
 --
 --   local s = Spoils.roll({ enemyUnits = battle.enemyUnits, prestige = 3, kind = "combat" })
 --   -- s = { gold = 71, loot = { "consumable_healing_potion" } }
+--
+-- LOOT COMES OFF THE BODIES FIRST. It used to be a price-banded random draw over every item in the
+-- game, with no connection at all to the roster that was beaten -- there was no drop-table
+-- authoring, so there was nothing to connect it to. That was invisible while enemies carried
+-- interchangeable stock (nobody covets a bandit's iron sword), and stops being invisible the moment
+-- the bestiary lands: the whole pitch of a discipline Elite is "I want the thing he just used," and
+-- answering that with a rolled healing potion is the wrong answer to a question the fight itself
+-- asked (docs/bestiary.md).
+--
+-- So the roll draws from the CARRIED pool -- the priced, unbound items the beaten roster actually
+-- had in its grids -- and falls back to the old price band when that pool is empty. The fallback is
+-- not a legacy path: a wolf pack carries nothing priced (a creature's natural weapons are unpriced
+-- and `noSteal`, docs/bestiary.md), and a fight that pays nothing at all is worse than one that pays
+-- a potion. CARRIED_BIAS keeps a slice of the band even when there IS a body worth looting, so
+-- consumables still turn up in fights against people who weren't carrying any.
+--
+-- No price band applies to a carried drop, and that is the point rather than an oversight: if you
+-- beat something wielding a relic, being able to walk away with the relic is the reward. `bound` is
+-- still honoured, which is what keeps a boss's phase machinery (utility_demon_sigil and its
+-- trait_boss_phases) out of the player's hands.
 --
 -- Pure logic, no love.graphics at require time -- loads under the headless test runner. RNG falls
 -- back to math.random when love.math is unavailable, so the roll is exercisable outside a window.
 
 local Item = require("models.item")
+local Character = require("models.character")
 
 local Spoils = {}
 
 local GOLD_PER_ENEMY = 8    -- base gold each defeated enemy is worth, before prestige/jitter
 local ELITE_GOLD_MULT = 1.8 -- an elite fight pays out richer than a like-sized common one
+-- The chance a given drop is drawn off the beaten bodies rather than the generic price band, when
+-- both pools have something in them. Not 1.0: at 1.0 a fight against people who happened to carry
+-- no consumables can never pay a potion, and the band is the only thing that stocks the everyday
+-- restock. Three drops in four coming off the corpse is enough for the connection to read.
+local CARRIED_BIAS = 0.75
 
 -- love.math.random when running under LÖVE, else math.random. Same call signatures: () -> [0,1),
 -- (m) -> [1,m], (m,n) -> [m,n]. Kept behind one helper so the whole module is engine-agnostic.
@@ -50,6 +75,30 @@ local function lootCandidates(maxPrice)
     return pool
 end
 
+-- The carried pool: every priced, unbound item in the beaten roster's grids. One entry per item
+-- CARRIED rather than per distinct id, so four bandits with iron swords make an iron sword four
+-- times as likely to fall out -- "what you defeat" includes how much of it there was.
+--
+-- Tolerant about the shape it is handed, because the callers differ: a live battle passes real
+-- units, and a test or a headless caller may pass bare `{ char = { id = ... } }` stand-ins with no
+-- grid at all. A body with no inventory contributes nothing instead of erroring.
+local function carriedCandidates(enemyUnits)
+    local pool = {}
+    if not enemyUnits then return pool end
+    for _, unit in ipairs(enemyUnits) do
+        local char = unit and unit.char
+        if char and char.inventory then
+            for _, item in ipairs(Character.eachItem(char)) do
+                local def = item.id and Item.defs[item.id]
+                if def and def.price and def.price > 0 and not def.bound then
+                    pool[#pool + 1] = { id = item.id, weight = 1 }
+                end
+            end
+        end
+    end
+    return pool
+end
+
 -- Weighted draw of one id from a { id, weight } pool, or nil for an empty pool.
 local function pick(pool)
     if #pool == 0 then return nil end
@@ -66,7 +115,7 @@ end
 -- 0-2 loot ids. An override list is used verbatim (unknown ids dropped so a typo can't crash the
 -- later Item.instantiate). Otherwise: a likely first drop and an unlikely second, both richer and
 -- more probable for an elite.
-local function rollLoot(prestige, kind, override)
+local function rollLoot(prestige, kind, override, enemyUnits)
     if override then
         local out = {}
         for _, id in ipairs(override) do
@@ -77,13 +126,22 @@ local function rollLoot(prestige, kind, override)
     local elite = kind == "elite"
     local maxPrice = 40 + math.max(1, prestige) * 60
     if elite then maxPrice = maxPrice * 1.5 end
-    local pool = lootCandidates(maxPrice)
+    local band = lootCandidates(maxPrice)
+    local carried = carriedCandidates(enemyUnits)
+
+    -- One drop: off a body when there is one to loot and the bias says so, else out of the band.
+    -- Each drop rolls its own source, so a two-drop fight can pay one of each.
+    local function draw()
+        if #carried > 0 and rnd() < CARRIED_BIAS then return pick(carried) end
+        return pick(band)
+    end
+
     local out = {}
     if rnd() < (elite and 0.90 or 0.55) then
-        local id = pick(pool); if id then out[#out + 1] = id end
+        local id = draw(); if id then out[#out + 1] = id end
     end
     if rnd() < (elite and 0.45 or 0.18) then
-        local id = pick(pool); if id then out[#out + 1] = id end
+        local id = draw(); if id then out[#out + 1] = id end
     end
     return out
 end
@@ -94,6 +152,10 @@ end
 --   opts.kind        "combat" | "elite" (elite pays richer); anything else treated as common
 --   opts.rewardGold  encounter override: exact gold, skipping the computation
 --   opts.loot        encounter override: an explicit id list, skipping the roll
+--
+-- `enemyUnits` now feeds BOTH halves: its length sets the gold, and its grids are the drop table.
+-- Passing `count` alone still works and still pays gold, it just has no bodies to loot, so the
+-- roll falls back to the price band entirely.
 function Spoils.roll(opts)
     opts = opts or {}
     local count = opts.count or (opts.enemyUnits and #opts.enemyUnits) or 1
@@ -101,7 +163,7 @@ function Spoils.roll(opts)
     local kind = opts.kind or "combat"
     return {
         gold = rollGold(count, prestige, kind, opts.rewardGold),
-        loot = rollLoot(prestige, kind, opts.loot),
+        loot = rollLoot(prestige, kind, opts.loot, opts.enemyUnits),
     }
 end
 

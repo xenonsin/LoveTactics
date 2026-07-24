@@ -19,7 +19,6 @@
 return {
     name = "Graven Circle",
     description = "Cut sigils: the mage who graved them casts and moves for less while standing within.",
-    sprite = "assets/hazards/graven_circle.png",
     tags = { "arcane" },
     duration = 20, -- the sigils scuff out on their own; the ability re-scales this by its forge level
     disposition = "friendly",

@@ -15,7 +15,6 @@
 return {
     name = "Rally",
     description = "A banner's shadow: allies standing within are Inspired.",
-    sprite = "assets/hazards/rally.png",
     tags = { "morale" },
     -- Effectively forever: this ground answers to the banner's life, not to a clock. The banner dies
     -- long before the count runs out, and Hazard.dropOwnedBy is what really ends it.

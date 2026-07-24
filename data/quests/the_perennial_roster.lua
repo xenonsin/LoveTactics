@@ -31,7 +31,8 @@ return {
     rewardGold = 180,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 3,
+    requiredQuests = { "warlord_keep" }, -- slot 4: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "colosseum", rank = 2 }, -- Contender
     map = {
         biome = "castle",

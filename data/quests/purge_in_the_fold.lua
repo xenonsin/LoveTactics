@@ -35,7 +35,8 @@ return {
     rewardGold = 180,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 3,
+    requiredQuests = { "rite_of_ashes" }, -- slot 4: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "cathedral", rank = 2 }, -- Acolyte
     map = {
         biome = "forest",

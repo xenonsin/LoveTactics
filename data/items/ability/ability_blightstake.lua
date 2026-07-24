@@ -31,6 +31,7 @@ return {
     type = "ability",
     tags = { "poison" },
     class = "hunter",
+    discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
     price = 340,
     repRank = 3,
     activeAbility = {

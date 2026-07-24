@@ -157,19 +157,29 @@ return {
             local clock0 = c.clock
             local hp0 = bandit.char.stats.health.current
 
+            -- The claim is the FORMULA -- power + the wielder's Damage, less the target's Defense,
+            -- billed at the ability's own cost and speed -- so each term is read off the blueprints
+            -- rather than baked in. A rebalance moves the expectation with the data; only a change to
+            -- the arithmetic itself turns this red.
+            local ab = sword.activeAbility
+            local expected = Combat.abilityMagnitude(ab) + knight.char.stats.damage
+                - bandit.char.stats.defense
+
             local ok, res = Combat.useItem(c, knight, sword, 3, 4)
             assert(ok, "adjacent attack should succeed")
-            assert(res.damageDealt == 14, "sword power 6 + 14 dmg - 6 def = 14, got " .. res.damageDealt)
-            assert(bandit.char.stats.health.current == hp0 - 14, "target lost 14 HP")
-            assert(knight.char.stats.stamina.current == stam0 - 8, "stamina cost spent")
-            assert(c.clock == clock0 + 3, "the turn cost the ability speed 3")
+            assert(res.damageDealt == expected,
+                "power + damage - defense should be " .. expected .. ", got " .. res.damageDealt)
+            assert(bandit.char.stats.health.current == hp0 - expected, "the target lost exactly that")
+            assert(knight.char.stats.stamina.current == stam0 - ab.cost.amount, "stamina cost spent")
+            assert(c.clock == clock0 + ab.speed, "the turn cost the ability's speed")
 
             -- Out of range.
             assert(Combat.useItem(c, knight, sword, 3, 8) == false, "range 1 can't hit 5 tiles away")
 
-            -- Unaffordable cost.
-            knight.char.stats.stamina.current = 2
-            assert(Combat.useItem(c, knight, sword, 3, 4) == false, "8-cost with 2 stamina rejected")
+            -- Unaffordable cost: one short of the swing's price.
+            knight.char.stats.stamina.current = ab.cost.amount - 1
+            assert(Combat.useItem(c, knight, sword, 3, 4) == false,
+                "a swing costing " .. ab.cost.amount .. " is refused one short of it")
         end,
     },
     {
@@ -192,14 +202,18 @@ return {
             local potion = mage.char.inventory[1]
             assert(potion.name == "Healing Potion", "mage carries the potion")
 
-            -- Wounded far enough below its 70 max that the whole flask lands without capping --
-            -- the cap is the NEXT test's business, and this one is about the slot.
-            knight.char.stats.health.current = 30
+            -- Wounded far enough below max that the whole flask lands without capping -- the cap is
+            -- the NEXT test's business, and this one is about the slot. The wound is sized off the
+            -- flask, so retuning either the potion or the knight leaves the case intact.
+            local heal = Combat.abilityMagnitude(potion.activeAbility)
+            local wounded = knight.char.stats.health.max - heal - 5
+            assert(wounded >= 1, "the fixture needs an ally who can hold the whole flask")
+            knight.char.stats.health.current = wounded
             local invBefore = #mage.char.inventory
             local ok, res = Combat.useItem(c, mage, potion, 3, 4) -- heal adjacent ally
             assert(ok, "healing an ally should succeed")
-            assert(res.healed == 30, "flat 30 heal, got " .. res.healed)
-            assert(knight.char.stats.health.current == 60, "ally healed 30 -> 60")
+            assert(res.healed == heal, "the whole flask lands: " .. heal .. ", got " .. res.healed)
+            assert(knight.char.stats.health.current == wounded + heal, "and the ally is mended by it")
             -- The single-use potion is now spent (quantity 0) but its slot is KEPT.
             assert(#mage.char.inventory == invBefore, "empty stack keeps its inventory slot")
             assert(potion.quantity == 0, "stack is spent")
@@ -214,47 +228,79 @@ return {
         name = "dealDamage floors at 1 and applyHeal caps at max",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_warlord", 1, 2) })
-            local sword = Item.instantiate("weapon_iron_sword") -- power 6
-            -- Sword power 6 + mage damage 5 (physical) - warlord defense 16 -> negative, floored to 1.
-            local d = Combat.dealDamage(c, c.units[1], c.units[2], sword, {})
+            local mage, warlord = c.units[1], c.units[2]
+            local sword = Item.instantiate("weapon_iron_sword")
+            -- A soft caster swinging steel at a heavily armoured target: power + Damage does not
+            -- cover the warlord's Defense, so the blow floors at 1 rather than going negative. The
+            -- premise is checked rather than assumed, so a rebalance that made the mage genuinely
+            -- able to hurt him reports THAT instead of a bare "expected 1".
+            local raw = Combat.abilityMagnitude(sword.activeAbility) + mage.char.stats.damage
+            assert(raw < warlord.char.stats.defense,
+                "this case needs a strike the target's armor outweighs (" .. raw .. " vs "
+                    .. warlord.char.stats.defense .. ")")
+            local d = Combat.dealDamage(c, mage, warlord, sword, {})
             assert(d == 1, "damage floors at 1, got " .. d)
 
+            -- A heal that overshoots is billed only for the gap it actually closed.
             local knight = swordsman()
-            knight.stats.health.current = 60
-            local healed = Combat.applyHeal(c, { char = knight }, 30)
-            assert(healed == 10, "heal capped at max (60 -> 70), got " .. healed)
-            assert(knight.stats.health.current == 70, "HP capped at max")
+            local gap = 10
+            knight.stats.health.current = knight.stats.health.max - gap
+            local healed = Combat.applyHeal(c, { char = knight }, gap * 3)
+            assert(healed == gap, "an overshooting heal is billed for the gap (" .. gap .. "), got " .. healed)
+            assert(knight.stats.health.current == knight.stats.health.max, "HP capped at max")
         end,
     },
     {
         name = "tags route the scaling stat and armor mitigates matching tags",
         fn = function()
-            -- Magical attack scales off magicDamage/magicDefense.
+            -- A magical attack scales off magicDamage and is mitigated by magicDefense -- the ROUTING
+            -- is the claim, so the terms come off the blueprints and only the choice of stat is fixed.
             local mc = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 1, 2) })
-            local gem = Item.instantiate("ability_fireball") -- tags { fire, magical }, power 8
-            local dm = Combat.dealDamage(mc, mc.units[1], mc.units[2], gem, {})
-            assert(dm == 23, "fireball power 8 + 18 magicDmg - 3 magicDef = 23, got " .. dm)
+            local caster, mtarget = mc.units[1], mc.units[2]
+            local gem = Item.instantiate("ability_fireball") -- tags { fire, magical }
+            local expectMagic = Combat.abilityMagnitude(gem.activeAbility) + caster.char.stats.magicDamage
+                - mtarget.char.stats.magicDefense
+            local dm = Combat.dealDamage(mc, caster, mtarget, gem, {})
+            assert(dm == expectMagic,
+                "a magical hit routes through magicDamage/magicDefense: expected " .. expectMagic
+                    .. ", got " .. dm)
 
-            -- Leather armor: +4 defense and tag resist { slash = 3, physical = 2 }. A slash
-            -- weapon is mitigated more than a same-power pierce weapon, isolating the tag match.
-            local armored = Character.instantiate("character_bandit") -- base defense 6, health 60
-            assert(Character.addItem(armored, Item.instantiate("armor_leather_armor")), "equip armor")
+            -- Leather armor carries flat defense AND a per-tag resist. A slash weapon is mitigated by
+            -- the slash line as well as the physical one; a pierce weapon only by physical. The claim
+            -- is that the tag MATCH bites, so the resist table is read rather than restated.
+            local armored = Character.instantiate("character_bandit")
+            local leather = Item.instantiate("armor_leather_armor")
+            assert(Character.addItem(armored, leather), "equip armor")
+            local resist = leather.resist or {}
+            assert((resist.slash or 0) > 0, "this case needs armor that resists slash specifically")
+
             local ac = Combat.new(arena(8, 8), { unit("character_warlord", 1, 1) }, { unit(armored, 1, 2) })
-            local attacker, defender = ac.units[1], ac.units[2] -- warlord damage 28
+            local attacker, defender = ac.units[1], ac.units[2]
             local sword = Item.instantiate("weapon_iron_sword") -- tags { sword, slash, physical }
-            local bow = Item.instantiate("weapon_iron_bow")          -- tags { bow, pierce, physical }
+            local bow = Item.instantiate("weapon_iron_bow")     -- tags { bow, pierce, physical }
 
-            local dSlash = Combat.dealDamage(ac, attacker, defender, sword, {}) -- sword power 6
+            local dSlash = Combat.dealDamage(ac, attacker, defender, sword, {})
             defender.char.stats.health.current = defender.char.stats.health.max -- reset for a clean 2nd hit
-            local dPierce = Combat.dealDamage(ac, attacker, defender, bow, {})  -- bow power 5
-            assert(dSlash == 19, "6 + 28 - (6+4) def - (3 slash + 2 physical) = 19, got " .. dSlash)
-            assert(dPierce == 21, "5 + 28 - (6+4) def - (2 physical only) = 21, got " .. dPierce)
-            assert(dSlash < dPierce, "slash-resisting armor mitigates the sword more than the bow")
+            local dPierce = Combat.dealDamage(ac, attacker, defender, bow, {})
+
+            -- Compare like with like: back the two weapons' differing power out of the results, so
+            -- what is left is purely what the armor took off each.
+            local slashPower = Combat.abilityMagnitude(sword.activeAbility)
+            local piercePower = Combat.abilityMagnitude(bow.activeAbility)
+            assert(dSlash - slashPower == dPierce - piercePower - resist.slash,
+                "the slash line costs the sword exactly its " .. resist.slash .. ", and nothing else differs")
+            assert(dSlash - slashPower < dPierce - piercePower,
+                "slash-resisting armor mitigates the sword more than the bow, power for power")
 
             -- No armor: full power + stat, minus defense, no tag mitigation.
             local uc = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1) }, { unit("character_bandit", 1, 2) })
-            local du = Combat.dealDamage(uc, uc.units[1], uc.units[2], uc.units[1].char.inventory[1], {})
-            assert(du == 14, "un-resisted attack does full 6 + 14 - 6 = 14, got " .. du)
+            local striker, bare = uc.units[1], uc.units[2]
+            local plain = striker.char.inventory[1]
+            local expectBare = Combat.abilityMagnitude(plain.activeAbility) + striker.char.stats.damage
+                - bare.char.stats.defense
+            local du = Combat.dealDamage(uc, striker, bare, plain, {})
+            assert(du == expectBare, "an un-resisted attack takes only defense off: expected "
+                .. expectBare .. ", got " .. du)
         end,
     },
     {
@@ -274,15 +320,23 @@ return {
             -- this is a RANGED drain, and a mage in melee would eat the bandit's sword-parry
             -- (data/traits/parry.lua) on the way, which has nothing to do with effect composition.
             local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 5) }, { unit("character_bandit", 2, 3) })
-            local mage = c.units[1]
-            -- Wounded to 10 of its 42 max, so the full drain lands as healing rather than capping:
-            -- this is a test about effect composition, not about the ceiling.
-            mage.char.stats.health.current = 10
+            local mage, target = c.units[1], c.units[2]
+            -- The wand's own power is this test's (it is defined right here), but the two stats it
+            -- runs through belong to the blueprints, so the expectation is assembled from them.
+            local expected = wand.activeAbility.damage + mage.char.stats.magicDamage
+                - target.char.stats.magicDefense
+            -- Wounded deep enough that the full drain lands as healing rather than capping: this is
+            -- a test about effect composition, not about the ceiling.
+            local wounded = mage.char.stats.health.max - expected - 5
+            assert(wounded >= 1, "the fixture needs a caster who can hold the whole drain")
+            mage.char.stats.health.current = wounded
             local ok, res = Combat.useItem(c, mage, wand, 2, 3)
             assert(ok, "ranged drain should succeed")
-            assert(res.damageDealt == 20, "wand power 5 + 18 magicDmg - 3 magicDef = 20")
-            assert(res.healed == 20, "lifesteal heals the amount dealt")
-            assert(mage.char.stats.health.current == 30, "10 + 20 = 30")
+            assert(res.damageDealt == expected, "the drain bites for " .. expected
+                .. ", got " .. res.damageDealt)
+            assert(res.healed == expected, "lifesteal heals the amount dealt")
+            assert(mage.char.stats.health.current == wounded + expected,
+                "and that healing lands on the caster")
         end,
     },
     {
@@ -291,19 +345,27 @@ return {
             local c = Combat.new(arena(8, 8), { unit(swordsman(), 1, 1), unit("character_mage", 2, 1) }, {})
             local knight, mage = c.units[1], c.units[2]
 
-            -- Iron Sword: power 6 + knight damage 14 = 20 (the stand-in has no defense).
-            local swOut = Combat.abilityOutput(knight, knight.char.inventory[1])
-            assert(swOut.damage == 20, "sword preview = 6 + 14 = 20, got " .. swOut.damage)
+            -- A preview is power + the wielder's matching attack stat, with no target to mitigate it.
+            -- Every term is read off the blueprint, so the preview stays pinned to the real number
+            -- through any rebalance -- which is the whole point of the case.
+            local sword = knight.char.inventory[1]
+            local swOut = Combat.abilityOutput(knight, sword)
+            assert(swOut.damage == Combat.abilityMagnitude(sword.activeAbility) + knight.char.stats.damage,
+                "the sword previews power + Damage, got " .. swOut.damage)
             assert(swOut.heal == 0 and not swOut.multi, "a single strike: no heal, not AoE")
 
-            -- Fireball: magical, power 8 + mage magicDamage 18 = 26 per target; AoE flag set.
-            local fbOut = Combat.abilityOutput(mage, Item.instantiate("ability_fireball"))
-            assert(fbOut.damage == 26, "fireball preview = 8 + 18 = 26, got " .. fbOut.damage)
+            -- Fireball: magical, so it previews off magicDamage; AoE flag set.
+            local fireball = Item.instantiate("ability_fireball")
+            local fbOut = Combat.abilityOutput(mage, fireball)
+            assert(fbOut.damage == Combat.abilityMagnitude(fireball.activeAbility) + mage.char.stats.magicDamage,
+                "the fireball previews power + magicDamage, got " .. fbOut.damage)
             assert(fbOut.multi, "fireball is an AoE ability (its number is per target)")
 
-            -- Healing Potion: heal scales with Power (30); no damage.
-            local hpOut = Combat.abilityOutput(mage, Item.instantiate("consumable_healing_potion"))
-            assert(hpOut.heal == 30 and hpOut.damage == 0, "potion previews a 30 heal")
+            -- Healing Potion: a flat heal off its own Power, and no damage at all.
+            local potion = Item.instantiate("consumable_healing_potion")
+            local hpOut = Combat.abilityOutput(mage, potion)
+            assert(hpOut.heal == Combat.abilityMagnitude(potion.activeAbility) and hpOut.damage == 0,
+                "the potion previews its flat heal and nothing else")
 
             -- Jolt: light magical hit (4 + 18 = 22) PLUS a stun carrying its OWN authored magnitude.
             -- The two are deliberately independent -- the spell is built to barely hurt and to sell
@@ -312,7 +374,8 @@ return {
             -- than typed in, so re-tuning the curve does not come here to be re-typed.
             local jolt = Item.instantiate("ability_jolt")
             local jOut = Combat.abilityOutput(mage, jolt)
-            assert(jOut.damage == 22, "jolt preview = 4 + 18 = 22, got " .. jOut.damage)
+            assert(jOut.damage == Combat.abilityMagnitude(jolt.activeAbility) + mage.char.stats.magicDamage,
+                "the jolt previews power + magicDamage, got " .. jOut.damage)
             assert(#jOut.statuses == 1 and jOut.statuses[1].id == "status_stun", "jolt applies stun")
             assert(jOut.statuses[1].opts.magnitude == jolt.activeAbility.stun,
                 "the stun previews its own authored magnitude, not the damage roll")
@@ -793,12 +856,22 @@ return {
 
             local stam0 = warlord.char.stats.stamina.current
             local clock0 = c.clock
+            -- The fist runs the same power + Damage - Defense formula as any weapon; what makes it
+            -- the FIST is that its power is low, it is free, and it is slow. Each of those is read
+            -- off the unarmed ability rather than typed in.
+            local fistAb = fist.activeAbility
+            local expected = Combat.abilityMagnitude(fistAb) + warlord.char.stats.damage
+                - bandit.char.stats.defense
+            local sword = Item.instantiate("weapon_iron_sword")
+            assert(Combat.abilityMagnitude(fistAb) < Combat.abilityMagnitude(sword.activeAbility),
+                "the bare fist should stay weaker than drawn steel")
+
             local ok, res = Combat.useItem(c, warlord, fist, 3, 4)
             assert(ok, "adjacent unarmed strike lands")
-            -- unarmed power 2 + 28 damage - 6 defense = 24 (a sword, power 6, would do 28).
-            assert(res.damageDealt == 24, "low-power hit: 2 + 28 - 6 = 24, got " .. res.damageDealt)
+            assert(res.damageDealt == expected, "the fist lands for " .. expected
+                .. ", got " .. res.damageDealt)
             assert(warlord.char.stats.stamina.current == stam0, "unarmed costs no stamina")
-            assert(c.clock == clock0 + 5, "the turn costs the unarmed speed (5)")
+            assert(c.clock == clock0 + fistAb.speed, "the turn costs the unarmed speed")
         end,
     },
     {
@@ -1333,7 +1406,11 @@ return {
                 { unit(swordsman(), 3, 3), unit(swordsman(), 4, 3) },
                 { unit("character_bandit", 3, 5) })
             local fallen, standing = c.units[1], c.units[2]
-            fallen.char.stats.health.max = 62
+            -- A round max, chosen here rather than borrowed from a blueprint, so the revive fraction
+            -- below is the only thing this case is really asserting.
+            local maxHp = 60
+            local reviveFraction = 0.2 -- models/combat.lua reviveFallenParty's default
+            fallen.char.stats.health.max = maxHp
 
             -- Knock the first party member down; the second walks away untouched.
             fallen.alive, fallen.corpse = false, true
@@ -1344,8 +1421,9 @@ return {
 
             assert(fallen.alive, "the fallen member is back on their feet")
             assert(not fallen.corpse, "the corpse flag is cleared")
-            assert(fallen.char.stats.health.current == 12,
-                "restored to floor(62 * 0.2) = 12, got " .. fallen.char.stats.health.current)
+            assert(fallen.char.stats.health.current == math.floor(maxHp * reviveFraction),
+                "restored to floor(" .. maxHp .. " * " .. reviveFraction .. "), got "
+                    .. fallen.char.stats.health.current)
             assert(standing.char.stats.health.current == standingHp,
                 "a survivor's health is left exactly as the battle left it")
         end,

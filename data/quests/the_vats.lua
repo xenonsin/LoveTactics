@@ -15,7 +15,8 @@ return {
     rewardGold = 220,
     rewardRep = 45,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredQuests = { "by_the_dram" }, -- slot 5: the line runs in order
+    requiredPrestige = 4,
     requiredRep = { vendor = "alchemist", rank = 2 }, -- Distiller or better
     map = {
         biome = "castle",

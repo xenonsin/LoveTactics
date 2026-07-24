@@ -10,6 +10,7 @@ return {
     type = "ability",
     tags = { "ice", "magical" },
     class = "mage",
+    discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
     price = 380,
     repRank = 3,
     activeAbility = {

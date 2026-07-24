@@ -17,7 +17,8 @@ return {
     rewardRep = 80,
     rewardPrestige = 3,
     rewardItems = { "utility_reliquary_unbidden" },
-    requiredPrestige = 5,
+    requiredQuests = { "the_saint_unmasked" }, -- slot 10: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "cathedral", rank = 4 }, -- Saint
     gateHint = "under the nave, where the faithful were unmade",
     map = {

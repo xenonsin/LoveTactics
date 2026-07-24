@@ -15,7 +15,6 @@
 return {
     name = "Choking Fumes",
     description = "A censer's poisoned smoke: foes standing within are Poisoned.",
-    sprite = "assets/hazards/choking.png",
     tags = { "poison" },
     duration = 12,           -- as Incense: renewed each beat by the censer, and gone within a turn without one
     disposition = "hostile", -- the enemy AI steps around it, which is itself a way to push a line

@@ -20,7 +20,8 @@
 -- discipline tree has enough gates), but a player who runs them in the other order gets the weaker
 -- version.
 --
--- GATING: the both-parents rule lives in `Discipline.isUnlocked`, not here -- see the note in
+-- GATING: `requiredQuests` names the first subclass gate of each parent line, so this capstone does
+-- not appear until the player genuinely holds both halves -- see the note in
 -- data/quests/champions_challenge.lua. This one has a second, unexpressible prerequisite too: it
 -- wants Ren RECRUITED, and a quest cannot gate on party membership. She is recruited at slot 2 of the
 -- Crucible's line, well before prestige 4, so in practice it holds.
@@ -37,6 +38,9 @@ return {
     rewardGold = 250,
     rewardRep = 10,
     rewardPrestige = 1,
+    -- Both parents, earned: "rite_of_ashes" is the first priest subclass gate on its line,
+    -- "by_the_dram" the first alchemist. Holding either is impossible without them.
+    requiredQuests = { "rite_of_ashes", "by_the_dram" },
     requiredPrestige = 4,
     map = {
         biome = "castle",

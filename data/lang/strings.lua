@@ -3,6 +3,42 @@
 -- here -- edit the conversation/blueprint); translate the other columns. A blank cell (or
 -- `-- TODO`) falls back to English at runtime. See docs/localization.md.
 return {
+    ["line.amana_joins.1"] = { en = "Enough. You have me. The coin is yours whatever happens next -- I am not asking you to give that up.", ja = "" },  -- TODO
+    ["line.amana_joins.10"] = { en = "Those. The corruption you are paid to purge. Every one of them was a child in that hall a season ago.", ja = "" },  -- TODO
+    ["line.amana_joins.11"] = { en = "I have put down three of those this year and been thanked for it.", ja = "" },  -- TODO
+    ["line.amana_joins.12"] = { en = "And it kills. Most often, it simply kills. The body goes out the back and into a pit with no marker on it, and the register writes the child down as ascended to the Light.", ja = "" },  -- TODO
+    ["line.amana_joins.13"] = { en = "The roll of our glorious dead is a casualty list. Everyone reads it aloud on the feast day. Nobody has ever once counted it.", ja = "" },  -- TODO
+    ["line.amana_joins.14"] = { en = "...Say that last part again.", ja = "" },  -- TODO
+    ["line.amana_joins.15"] = { en = "The register writes them down as ascended.", ja = "" },  -- TODO
+    ["line.amana_joins.16"] = { en = "My order carves a mark for each of its dead and teaches children the marks are days held. Same trick. Different stone.", ja = "" },  -- TODO
+    ["line.amana_joins.17"] = { en = "I am sorry. Go on. I did not mean to make this mine.", ja = "" },  -- TODO
+    ["line.amana_joins.18"] = { en = "How old are they when they take them?", ja = "" },  -- TODO
+    ["line.amana_joins.19"] = { en = "Six. Seven. Young enough not to remember being asked, because they were not.", ja = "" },  -- TODO
+    ["line.amana_joins.2"] = { en = "I am asking for the walk back. That is all. Hear it, and then take me in if you still mean to.", ja = "" },  -- TODO
+    ["line.amana_joins.20"] = { en = "Mm. Then I know the shape of your house, priest, and I have never set foot in it.", ja = "" },  -- TODO
+    ["line.amana_joins.21"] = { en = "I hid nine of them. I would have hidden ninety. That is the whole of my crime and I will not pretend to regret it in front of you.", ja = "" },  -- TODO
+    ["line.amana_joins.22"] = { en = "Then why is a Confessor standing in a wood alone? Why has nobody in that building said a word?", ja = "" },  -- TODO
+    ["line.amana_joins.23"] = { en = "Because almost nobody in that building knows. That is what I need you to understand, and it is the part that sounds like an excuse.", ja = "" },  -- TODO
+    ["line.amana_joins.24"] = { en = "The faith is real. The people in it are good. I have knelt beside them my whole life. It is a small circle around the rite -- and they have kept it from the rest of us for a generation.", ja = "" },  -- TODO
+    ["line.amana_joins.25"] = { en = "If the Saint herself were told, plainly, with proof she could not put aside -- it would end that afternoon. I believe that. I have to; it is the last thing I have that is not on fire.", ja = "" },  -- TODO
+    ["line.amana_joins.26"] = { en = "That is a great deal of weight on one woman's ignorance.", ja = "" },  -- TODO
+    ["line.amana_joins.27"] = { en = "Yes. It is.", ja = "" },  -- TODO
+    ["line.amana_joins.28"] = { en = "A rite that kills most of the ones it is done to is not a rite. It is a yield. Somebody is running it as a yield.", ja = "" },  -- TODO
+    ["line.amana_joins.29"] = { en = "...I have not let myself put it that way.", ja = "" },  -- TODO
+    ["line.amana_joins.3"] = { en = "Say it.", ja = "" },  -- TODO
+    ["line.amana_joins.30"] = { en = "Somebody keeps that register. Ledgers don't write themselves, and the hand that keeps one always knows what it's for.", ja = "" },  -- TODO
+    ["line.amana_joins.31"] = { en = "So. I cannot walk back in. I am fallen, and the word is theirs to give, and they have given it.", ja = "" },  -- TODO
+    ["line.amana_joins.32"] = { en = "But you are not the faith's hand. You were hired by it once and you did not finish the job, which makes you the only outfit in this country I can say any of this to.", ja = "" },  -- TODO
+    ["line.amana_joins.33"] = { en = "Take me with you. I will not ask you for a wage, or a share, or a say in where we go. I have never been much good at wanting things for myself -- they were thorough about that.", ja = "" },  -- TODO
+    ["line.amana_joins.34"] = { en = "I only want to be standing somewhere the truth can still be carried. Let me carry it.", ja = "" },  -- TODO
+    ["line.amana_joins.35"] = { en = "You can want a wage too. We'll start there.", ja = "" },  -- TODO
+    ["line.amana_joins.36"] = { en = "...I will think about it.", ja = "" },  -- TODO
+    ["line.amana_joins.4"] = { en = "The children the faith takes in are sorted. Most are made anointed -- the holy warriors you have cheered in the street. A few of us are kept back as clergy, and never blooded.", ja = "" },  -- TODO
+    ["line.amana_joins.5"] = { en = "Blooded. That is the word for it. There is a rite, and the rite puts something into a child, and what it puts in is not the Light.", ja = "" },  -- TODO
+    ["line.amana_joins.6"] = { en = "It is demon's blood.", ja = "" },  -- TODO
+    ["line.amana_joins.7"] = { en = "...You are certain.", ja = "" },  -- TODO
+    ["line.amana_joins.8"] = { en = "I stood close enough to be certain. Three things happen at that altar.", ja = "" },  -- TODO
+    ["line.amana_joins.9"] = { en = "It takes -- and you get a soldier who will die gladly and never know what is in him. It takes wrong -- and you get a thing that is hunted afterwards, and called a demon out of the wild.", ja = "" },  -- TODO
     ["line.arcanum_general_pride_confront.1"] = { en = "Let me see you. There -- I have the whole of you in a glance. Every working you carry, and I hold the answer to each. Cast it, and it comes back to you.", ja = "" },  -- TODO
     ["line.arcanum_general_pride_confront.2"] = { en = "And little Gyeom, still behind that book. I taught circles around you once, and you learned to cower rather than shine. There is nothing in you I have not already surpassed.", ja = "" },  -- TODO
     ["line.arcanum_general_pride_confront.3"] = { en = "No. There is nothing in me you can see.", ja = "" },  -- TODO
@@ -234,6 +270,48 @@ return {
     ["line.colosseum_debut_confront.6"] = { en = "Two.", ja = "" },  -- TODO
     ["line.colosseum_debut_confront.7"] = { en = "Everyone your size opens careful. Feels each other out, three or four exchanges, learns the range.", ja = "" },  -- TODO
     ["line.colosseum_debut_confront.8"] = { en = "I don't.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.1"] = { en = "You came down the stair together, and one of you is favouring a left foot. You have been fighting already.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.10"] = { en = "I do not remember you. I do not remember anyone. That is not unkindness, it is the specification.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.11"] = { en = "I will tell you what I am, since you came all this way and will not otherwise believe it of a person.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.12"] = { en = "I have no fear. No pain. Nothing holds to me -- they saw to all of it before I could walk, and they were thorough, and I was very good.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.13"] = { en = "I felt nothing about being very good.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.14"] = { en = "Then one year somebody assigned to me broke protocol and talked to me. Described the room. Described the crowd. Told me what colour things were, which meant nothing and I have never forgotten a word of it.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.15"] = { en = "And I was angry when they were taken away. That was the first thing I ever felt. It arrived whole, and it was mine, and it has been the only proof I have ever had that there is anyone in here.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.16"] = { en = "Taken away where?", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.17"] = { en = "Reassigned. There is a form. I have never seen where the form goes.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.18"] = { en = "...Oh.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.19"] = { en = "So there's nobody to collect from. Not one name at the bottom of it.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.2"] = { en = "Good. I was told this was scheduled for the ninth. They moved it and did not say so, which is usual.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.20"] = { en = "No. I have looked. That is why it does not close.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.21"] = { en = "How old were you when they began?", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.22"] = { en = "There was no beginning. There is no part of me from before it.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.23"] = { en = "...I know a house that does this. I did not know there were two.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.24"] = { en = "And the stable never once said what it had made.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.25"] = { en = "It cannot. Saying what I am means saying what the programme is, and the programme is still running. There are children in the intake tonight.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.26"] = { en = "You have described a life with one feeling in it and called that proof of a person. It is not much of a proof.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.27"] = { en = "It is the only one I was issued.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.28"] = { en = "Nothing in a wood is built like you. Every animal out there can be frightened. That is what keeps it alive.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.29"] = { en = "Yes. I have been told I am superb.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.3"] = { en = "Scheduled.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.30"] = { en = "Veteran. They say you put your sword down once, on a full house, and would not finish what you were told to finish.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.31"] = { en = "They died anyway. Somebody else did it while I stood there.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.32"] = { en = "I have thought about that more than I have thought about anything.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.33"] = { en = "Not whether it was right. I have no instrument for that. Only that a feeling went into you and a whole arena had to stop and wait for it. Mine has never moved anything at all.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.34"] = { en = "...Ira. I came down here believing I could take you out of it. That there was somewhere else you could be put.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.35"] = { en = "I know what you are offering. I had it.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.36"] = { en = "There was no one in it.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.37"] = { en = "So. Come and hit me properly. Not fast -- fast is nothing, and I have had a great deal of nothing.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.38"] = { en = "Every blow you land wakes a little more of me up. You will find that inconvenient. It is the only hour of my life I am ever present for, and I intend to be present for all of it.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.39"] = { en = "That is not a reason to keep going.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.4"] = { en = "Everything I have done was scheduled. This is a card like any other card. You are on it.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.40"] = { en = "It is the only one there is. Begin.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.41"] = { en = "I do not kill people who cannot choose.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.42"] = { en = "...Guard yourselves. I am going to do it anyway, and I would rather nobody tells me later that it was mercy.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.5"] = { en = "You are standing too still. Everyone shifts. You have been taught not to and you kept it.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.6"] = { en = "Ira.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.7"] = { en = "That is the name, yes. You came out of the house.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.8"] = { en = "I washed out of it.", ja = "" },  -- TODO
+    ["line.colosseum_general_wrath_confront.9"] = { en = "I know. They keep the ones who wash out in the ledger for a while, in case it takes late. Then they stop.", ja = "" },  -- TODO
     ["line.conversation_wrath_intro.1"] = { en = "So. Fresh blood for the sand. The crowd does love a debut -- win or die.", ja = "ほう、砂場に新しい血か。観衆はデビュー戦が大好きだ――勝つか、死ぬかだ。" },
     ["line.conversation_wrath_intro.2"] = { en = "We came to fight, not to be entertainment.", ja = "戦いに来た。見世物になりに来たわけじゃない。" },
     ["line.conversation_wrath_intro.3"] = { en = "Here they are the same thing. Tell me -- why should the arena remember your name?", ja = "ここでは同じことさ。言ってみろ――なぜ闘技場がお前の名を覚えるべきなのか?" },
@@ -250,6 +328,27 @@ return {
     ["line.crucible_the_counterfeiter_confront.1"] = { en = "The one you want has been forging clean-slate writs and stealing our reagents -- our discards, she calls them. She gives our craft away for nothing. Theft from the college. Bring her in.", ja = "" },  -- TODO
     ["line.crucible_the_counterfeiter_confront.2"] = { en = "He calls them discards. Look at the one behind me -- eyes sewn shut, and still afraid. That is what 'a self is inventory' makes.", ja = "" },  -- TODO
     ["line.crucible_the_counterfeiter_confront.3"] = { en = "I will not let you take her back to the vats. Come and try, if you were sent to. I would rather you saw this than believed him.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_alchemist.1"] = { en = "The {discipline}'s Work is unlocked to you, {name}. The Crucible releases its guarded cut for that method -- the shelf has more to offer you.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_alchemist.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_alchemist.3"] = { en = "You made this yours honestly. That is rarer here than the gear is. Take it.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_arcanum.1"] = { en = "You have opened the {discipline}'s discipline, {name}. The Arcanum unseals what it holds for that study -- the shelf is longer for you now.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_arcanum.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_arcanum.3"] = { en = "There is always more to learn on that road. Good. Take only what you will practise.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_bastion.1"] = { en = "You have earned the {discipline} road, {name}. The quartermaster has moved its gear onto your rack -- kit the Watch keeps for the ones who prove they can carry it.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_bastion.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_bastion.3"] = { en = "I trained beside a few who took that road. It is a good one. Do not let the rack outgrow the arm.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_cathedral.1"] = { en = "The {discipline}'s calling is open to you, {name}. What the Cathedral kept back for that path is on the shelf -- take what serves.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_cathedral.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_cathedral.3"] = { en = "The Light gives what is earned, and you earned this. Carry it gently.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_colosseum.1"] = { en = "The {discipline}'s work is on your card now, {name}. The stable stocks for the fighters who reach it -- and you reached it. Spend, and spend well.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_colosseum.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_colosseum.3"] = { en = "Knew you had it in you. That gear's sharper than the house lets most touch -- go on, kit up.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_hunters_lodge.1"] = { en = "You walk the {discipline}'s trail now, {name}. The Lodge sets out gear for the ones who get this far -- it is yours to draw.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_hunters_lodge.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_hunters_lodge.3"] = { en = "That path knows when to stop. Take the kit. Remember the lesson with it.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_undercroft.1"] = { en = "The {discipline}'s trade is yours now, {name}. The firm keeps stock off the open book for a hand that reaches it -- and you reached it. Quietly, mind.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_undercroft.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
+    ["line.discipline_unlocked_undercroft.3"] = { en = "Took me years to get shown that rack. You did it faster. Don't get sloppy with it.", ja = "" },  -- TODO
     ["line.flight_champion.1"] = { en = "Stop here, {name}. That one at the head of them is no imp -- it has a name where they carry none, and it leads this whole raiding party. This is the thing that has been walking the road behind us.", ja = "" },  -- TODO
     ["line.flight_champion.2"] = { en = "It's between us and the capital.", ja = "" },  -- TODO
     ["line.flight_champion.3"] = { en = "It is. And it will not fall to the swarm-work that served against the rest -- it takes blows the grunts could not, and the imps beside it only want to keep us busy while it reaches you.", ja = "" },  -- TODO
@@ -269,6 +368,52 @@ return {
     ["line.flight_event_survivor.5"] = { en = "...north, along the ridge, in numbers. Good -- we take the low road. And she gave you the tell: where a demon's guard runs thin, if you mark it before the strike.", ja = "" },  -- TODO
     ["line.flight_event_survivor.6"] = { en = "Nothing to spare but thanks -- and she gave that freely. A vial of solvent, pressed on you in kind: splash it and a demon cannot grip its blade.", ja = "" },  -- TODO
     ["line.flight_event_survivor.7"] = { en = "An apothecary, before the fires. Then the capital: reach the walls.", ja = "" },  -- TODO
+    ["line.gate_below_confront.1"] = { en = "You came a long way down to meet me, and there is no me to meet.", ja = "" },  -- TODO
+    ["line.gate_below_confront.10"] = { en = "I know. I stopped waiting. You are forty-one days too late to frighten me with it.", ja = "" },  -- TODO
+    ["line.gate_below_confront.11"] = { en = "There is nothing in you I have not already surpassed.", ja = "" },  -- TODO
+    ["line.gate_below_confront.12"] = { en = "You are reciting. She meant it -- that was what was wrong with her. You are just holding the sound.", ja = "" },  -- TODO
+    ["line.gate_below_confront.13"] = { en = "Kneel, and I will give you back the name they took.", ja = "" },  -- TODO
+    ["line.gate_below_confront.14"] = { en = "I have a name. I gave it to myself, and you were not there.", ja = "" },  -- TODO
+    ["line.gate_below_confront.15"] = { en = "The board never closes. There will be more in the spring. There are always more in the spring.", ja = "" },  -- TODO
+    ["line.gate_below_confront.16"] = { en = "Then we will be there in the spring.", ja = "" },  -- TODO
+    ["line.gate_below_confront.17"] = { en = "Everything made can be unmade cheaper. Ask the girl who was poured.", ja = "" },  -- TODO
+    ["line.gate_below_confront.18"] = { en = "I did ask her. That is the difference between us, and it is not a small one.", ja = "" },  -- TODO
+    ["line.gate_below_confront.19"] = { en = "Everything is owed. Everything comes back to the house in the end.", ja = "" },  -- TODO
+    ["line.gate_below_confront.2"] = { en = "Seven appetites. That was the whole of it. Seven wants, and seven people who agreed to carry one each, because a want cannot walk about on its own.", ja = "" },  -- TODO
+    ["line.gate_below_confront.20"] = { en = "Not this. This one I am writing off.", ja = "" },  -- TODO
+    ["line.gate_below_confront.21"] = { en = "You see? I still have all of them. And I can put one back on whenever I care to.", ja = "" },  -- TODO
+    ["line.gate_below_confront.22"] = { en = "So do it properly, if you are going to. Not the appetite this time.", ja = "" },  -- TODO
+    ["line.gate_below_confront.23"] = { en = "The thing that was hungry.", ja = "" },  -- TODO
+    ["line.gate_below_confront.24"] = { en = "That is what we came down for.", ja = "" },  -- TODO
+    ["line.gate_below_confront.3"] = { en = "You took them off me one at a time. Careful work. I felt every one go the way you feel a tooth go -- not pain. An absence, with an edge on it.", ja = "" },  -- TODO
+    ["line.gate_below_confront.4"] = { en = "Then there is nothing left of you.", ja = "" },  -- TODO
+    ["line.gate_below_confront.5"] = { en = "Nothing is not the same as harmless.", ja = "" },  -- TODO
+    ["line.gate_below_confront.6"] = { en = "I kept nothing of their souls. Souls are not food, and I was never sentimental. What I keep is the SHAPE a person makes when they say yes.", ja = "" },  -- TODO
+    ["line.gate_below_confront.7"] = { en = "Come and be measured, little card-filler. You were always going to lose to somebody the house had already paid.", ja = "" },  -- TODO
+    ["line.gate_below_confront.8"] = { en = "That is her mouth and it is not her. She never once said a thing she had been paid to say -- that was the whole trouble with her.", ja = "" },  -- TODO
+    ["line.gate_below_confront.9"] = { en = "Hold until relieved. Nobody is coming, girl. Nobody was ever coming.", ja = "" },  -- TODO
+    ["line.gate_below_ending.1"] = { en = "...", ja = "" },  -- TODO
+    ["line.gate_below_ending.10"] = { en = "There is a reckoning owed under this floor and it is paid. I have wanted that since before I had a name that was mine to give out.", ja = "" },  -- TODO
+    ["line.gate_below_ending.11"] = { en = "Nobody booked this one. Nobody wrote the ending. It came out how it came out, and it is ours.", ja = "" },  -- TODO
+    ["line.gate_below_ending.12"] = { en = "Listen to it. That is the quietest a wood has been in my whole life, and I have spent my whole life making woods quiet.", ja = "" },  -- TODO
+    ["line.gate_below_ending.13"] = { en = "I do not think I have to any more.", ja = "" },  -- TODO
+    ["line.gate_below_ending.14"] = { en = "You are all standing. I want to say that out loud, because I spent the entire way down assuming I would be counting.", ja = "" },  -- TODO
+    ["line.gate_below_ending.15"] = { en = "Somebody put a hand under me on the stair, and I let them. That is new. I am keeping it.", ja = "" },  -- TODO
+    ["line.gate_below_ending.16"] = { en = "Everything is owed, it said. Everything comes back to the house.", ja = "" },  -- TODO
+    ["line.gate_below_ending.17"] = { en = "The house is a hole in the ground and I am walking out of it. Let it stay owed.", ja = "" },  -- TODO
+    ["line.gate_below_ending.18"] = { en = "...including mine. Fine. Especially mine.", ja = "" },  -- TODO
+    ["line.gate_below_ending.19"] = { en = "Nobody up there is going to know what this was.", ja = "" },  -- TODO
+    ["line.gate_below_ending.2"] = { en = "It is not leaving anything behind.", ja = "" },  -- TODO
+    ["line.gate_below_ending.20"] = { en = "The board will post work in the morning. The shops will open. Somebody will complain about the price of steel.", ja = "" },  -- TODO
+    ["line.gate_below_ending.21"] = { en = "That is the whole of what we were for. That it stays boring up there.", ja = "" },  -- TODO
+    ["line.gate_below_ending.22"] = { en = "Come on. It is a long stair and I would like to see the sky do the thing it does.", ja = "" },  -- TODO
+    ["line.gate_below_ending.3"] = { en = "No shape on the floor. No last word. It emptied out like a coat coming off a hook.", ja = "" },  -- TODO
+    ["line.gate_below_ending.4"] = { en = "Because that is what it was. We kept expecting a thing wearing seven appetites. It was seven appetites wearing a thing.", ja = "" },  -- TODO
+    ["line.gate_below_ending.5"] = { en = "Take them off and you are not left with a monster. You are left with the hook.", ja = "" },  -- TODO
+    ["line.gate_below_ending.6"] = { en = "Seven people said yes to it.", ja = "" },  -- TODO
+    ["line.gate_below_ending.7"] = { en = "That part does not come off. We killed the wanting. We did not un-ask the question, and it was asked of them, and every one of them answered.", ja = "" },  -- TODO
+    ["line.gate_below_ending.8"] = { en = "Forty-one of mine answered it too, and they were not monsters when they did. They were cold, and tired, and somebody offered.", ja = "" },  -- TODO
+    ["line.gate_below_ending.9"] = { en = "I have stopped being able to tell that story as though the ending was obvious.", ja = "" },  -- TODO
     ["line.gyeom_joins.1"] = { en = "You have me. Or you have what I let you see -- I have found that is usually enough.", ja = "" },  -- TODO
     ["line.gyeom_joins.2"] = { en = "The Arcanum wins the wars the crown cannot, and everyone above it looks away from the wing where the winning is grown. I looked. The register calls them donors to knowledge. I have read what became of them.", ja = "" },  -- TODO
     ["line.gyeom_joins.3"] = { en = "{name}. You are the first outfit here that is not the Arcanum's hand. I do not need to be the greatest of anything. I only need to be a little more use tomorrow than I was today -- and I would rather spend that on your road than its shelves.", ja = "" },  -- TODO
@@ -417,6 +562,7 @@ return {
     ["name.character_avatar"] = { en = "Stranger", ja = "" },  -- TODO
     ["name.character_caravan_master"] = { en = "Caravan Master", ja = "" },  -- TODO
     ["name.character_clem"] = { en = "Clem", ja = "" },  -- TODO
+    ["name.character_demon_lord"] = { en = "The Hollow Crown", ja = "" },  -- TODO
     ["name.character_forsworn_captain"] = { en = "Forsworn Captain", ja = "" },  -- TODO
     ["name.character_general_envy"] = { en = "Livia, the Unborn", ja = "" },  -- TODO
     ["name.character_general_gluttony"] = { en = "Gula, the Unsated", ja = "" },  -- TODO
@@ -424,6 +570,7 @@ return {
     ["name.character_general_lust"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
     ["name.character_general_pride"] = { en = "Sublimitas, the Unequalled", ja = "" },  -- TODO
     ["name.character_general_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
+    ["name.character_general_wrath"] = { en = "Ira, the Unappeased", ja = "" },  -- TODO
     ["name.character_greywatch_captain"] = { en = "Road-Captain", ja = "" },  -- TODO
     ["name.character_gyeom"] = { en = "Gyeom", ja = "" },  -- TODO
     ["name.character_kaya"] = { en = "Kaya", ja = "" },  -- TODO
@@ -436,6 +583,7 @@ return {
     ["name.hunters_lodge"] = { en = "Hunter's Lodge", ja = "" },  -- TODO
     ["name.market"] = { en = "The Market", ja = "" },  -- TODO
     ["name.undercroft"] = { en = "The Undercroft", ja = "" },  -- TODO
+    ["title.amana_joins"] = { en = "A Trust Returned", ja = "" },  -- TODO
     ["title.arcanum_general_pride_confront"] = { en = "The Unequalled", ja = "" },  -- TODO
     ["title.arcanum_the_radical_confront"] = { en = "The Radical", ja = "" },  -- TODO
     ["title.arena_debut_event"] = { en = "The Tout on the Concourse", ja = "" },  -- TODO
@@ -468,12 +616,22 @@ return {
     ["title.cathedral_general_lust_confront"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
     ["title.clem_joins"] = { en = "For Free", ja = "" },  -- TODO
     ["title.colosseum_debut_confront"] = { en = "The Card's Opener", ja = "" },  -- TODO
+    ["title.colosseum_general_wrath_confront"] = { en = "Ira, the Unappeased", ja = "" },  -- TODO
     ["title.conversation_wrath_intro"] = { en = "Debut on the Sand", ja = "砂上のデビュー" },
     ["title.crucible_general_envy_confront"] = { en = "The Unborn", ja = "" },  -- TODO
     ["title.crucible_the_counterfeiter_confront"] = { en = "The Counterfeiter", ja = "" },  -- TODO
+    ["title.discipline_unlocked_alchemist"] = { en = "A New Formula", ja = "" },  -- TODO
+    ["title.discipline_unlocked_arcanum"] = { en = "A Further Working", ja = "" },  -- TODO
+    ["title.discipline_unlocked_bastion"] = { en = "The Shelf Is Yours", ja = "" },  -- TODO
+    ["title.discipline_unlocked_cathedral"] = { en = "What the Faith Keeps", ja = "" },  -- TODO
+    ["title.discipline_unlocked_colosseum"] = { en = "A New Card", ja = "" },  -- TODO
+    ["title.discipline_unlocked_hunters_lodge"] = { en = "The Deeper Wood", ja = "" },  -- TODO
+    ["title.discipline_unlocked_undercroft"] = { en = "Off the Book", ja = "" },  -- TODO
     ["title.flight_champion"] = { en = "The Champion", ja = "" },  -- TODO
     ["title.flight_event_shrine"] = { en = "The Roadside Shrine", ja = "" },  -- TODO
     ["title.flight_event_survivor"] = { en = "A Voice from the Brush", ja = "" },  -- TODO
+    ["title.gate_below_confront"] = { en = "The Hollow Crown", ja = "" },  -- TODO
+    ["title.gate_below_ending"] = { en = "What Was Under It", ja = "" },  -- TODO
     ["title.gyeom_joins"] = { en = "What She Kept", ja = "" },  -- TODO
     ["title.hunters_lodge_general_gluttony_confront"] = { en = "The Unsated", ja = "" },  -- TODO
     ["title.hunters_lodge_the_guide_confront"] = { en = "The Guide", ja = "" },  -- TODO

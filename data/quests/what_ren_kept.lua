@@ -32,6 +32,7 @@ return {
     rewardGold = 320,
     rewardRep = 30,
     rewardPrestige = 2,
+    requiredQuests = { "nobody_home" }, -- slot 8: the line runs in order
     requiredPrestige = 4,
     requiredRep = { vendor = "alchemist", rank = 3 }, -- Transmuter
     map = {

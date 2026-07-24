@@ -15,6 +15,7 @@ return {
     type = "consumable",
     tags = { "lightning" },
     class = "alchemist",
+    discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
     price = 160,
     repRank = 2,
     activeAbility = {

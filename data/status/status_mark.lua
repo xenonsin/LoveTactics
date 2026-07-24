@@ -10,4 +10,10 @@ return {
     duration = 10, -- ~2 turns at Status.TICKS_PER_TURN: a mark someone can still act on
     debuff = true,                -- removable by Cure
     statBonus = { defense = -5, magicDefense = -5 },
+    -- A marked body cannot vanish. The rule belongs to the DEBUFF, not to an item: the first draft of
+    -- the Inquisitor shelf sold a lamp that did this, which made "painted for the kill" mean something
+    -- different depending on who had been shopping. Here it holds for every Mark in the game -- the
+    -- hunter's quarry-sign, the Mark of Heresy, a trap's -- and it gives Cure a real decision to make,
+    -- since cleansing the Mark is now also how you get your rogue out of sight again.
+    forbids = "status_invisible",
 }

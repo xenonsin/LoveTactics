@@ -10,7 +10,8 @@
 -- Disposition is BOSS/MENTOR and this file takes the boss reading -- she is not defending the foundry
 -- from the party so much as continuing to work while they are in it, which is worse.
 --
--- GATING: the both-parents rule lives in `Discipline.isUnlocked`, not here -- see the note in
+-- GATING: `requiredQuests` names the first subclass gate of each parent line, so this capstone does
+-- not appear until the player genuinely holds both halves -- see the note in
 -- data/quests/champions_challenge.lua.
 --
 -- FIRST PASS. Scenes are not authored, so nothing is named. The builder wants a bespoke blueprint
@@ -26,6 +27,9 @@ return {
     rewardGold = 250,
     rewardRep = 10,
     rewardPrestige = 1,
+    -- Both parents, earned: "the_praised_working" is the first mage subclass gate on its line,
+    -- "by_the_dram" the first alchemist. Holding either is impossible without them.
+    requiredQuests = { "the_praised_working", "by_the_dram" },
     requiredPrestige = 4,
     map = {
         biome = "castle",

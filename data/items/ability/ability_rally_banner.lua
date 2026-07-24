@@ -16,6 +16,7 @@ return {
     type = "ability",
     tags = { "banner", "rally" },
     class = "fighter",
+    discipline = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
     price = 320,
     repRank = 3,
     activeAbility = {

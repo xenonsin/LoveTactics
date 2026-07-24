@@ -28,6 +28,7 @@ return {
     type = "utility",
     tags = { "banner" },
     class = "fighter",
+    discipline = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
     price = 460,
     repRank = 4,
     -- Radius 1: the smoke reaches the bodies actually beside the bearer, and no further. The forge

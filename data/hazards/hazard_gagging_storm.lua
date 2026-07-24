@@ -14,7 +14,6 @@
 return {
     name = "Gagging Storm",
     description = "Screaming static: nothing standing in it can spend mana on a working.",
-    sprite = "assets/hazards/gagging_storm.png",
     tags = { "lightning", "conductable" }, -- it is a storm: a bolt cast into it carries, as it should
     duration = 12,            -- ~2.5 turns
     disposition = "hostile",

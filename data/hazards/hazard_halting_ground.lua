@@ -6,8 +6,10 @@
 return {
     name = "Halting Ground",
     description = "A warden's line: foes that cross it are Halted.",
-    sprite = "assets/hazards/halting_ground.png",
     tags = { "control" },
+    -- A warden's line, not a wizard's circle: the same rune the arcane zones wear, in the standard's
+    -- amber rather than the Arcanum's violet.
+    fx = { color = { 0.96, 0.72, 0.26 } },
     duration = 9999, -- answers to the standard's life, not a clock (Hazard.dropOwnedBy ends it)
     disposition = "hostile", -- the enemy is the one who steps in and pays
     onEnter = function(ctx)

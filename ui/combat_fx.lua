@@ -14,6 +14,8 @@
 -- Everything here is created lazily inside :new()/on first use, never at require-time, so the model's
 -- headless tests (which never touch the UI layer) stay free of love.graphics.
 
+local ScreenFx = require("ui.screen_fx")
+
 local CombatFx = {}
 CombatFx.__index = CombatFx
 
@@ -52,6 +54,10 @@ function CombatFx.new()
     self.pending = {}  -- beats waiting their turn: { t = seconds left, events = cue list }
     self.hp = {}       -- unit -> shown HP value, eased toward hp.current
     self.held = {}     -- unit -> how many pending beats still owe it a hit; its HP bar waits on them
+    -- The point-effect controller (ui/burst_fx.lua), shared in by states/battle.lua once the board it
+    -- draws on exists. Optional: the headless model tests build a CombatFx with none, and every call
+    -- below guards on it, so an exchange resolves identically with or without a board to paint on.
+    self.bursts = nil
     self.font = love.graphics.newFont(18)
     self.bigFont = love.graphics.newFont(24)
     return self
@@ -146,24 +152,94 @@ function CombatFx:awaiting(unit)
     return self.held[unit] ~= nil
 end
 
+-- The tile gap between two units, king's-move: an attacker two or more tiles from the body it struck
+-- is shooting, not swinging, and its blow should cross the board before it lands.
+local function tileGap(a, b)
+    if not (a and b) then return 0 end
+    return math.max(math.abs(a.x - b.x), math.abs(a.y - b.y))
+end
+
+-- The direction a blow came from, attacker -> victim, in radians (board space, +y down). A slash
+-- sweeps across it and a stab drives along it; 0 for a wound with no striker (a toll, a poison tick),
+-- which the radially-symmetric default burst does not read anyway.
+local function strikeAngle(attacker, victim)
+    if not (attacker and victim) then return 0 end
+    local dx, dy = victim.x - attacker.x, victim.y - attacker.y
+    if dx == 0 and dy == 0 then return 0 end
+    return math.atan2(dy, dx)
+end
+
+-- A blow struck from range (its attacker ≥2 tiles off) becomes a projectile: the shooter leans and its
+-- spell fires NOW, but the wound -- the number, the shake, the impact burst, any shove or death that
+-- rode with it -- waits until the bolt actually arrives. Detected here, on the first play of a beat;
+-- the reactions are split off into a delayed replay of the same beat, which re-enters playBeat flagged
+-- `_delayed` and takes the ordinary melee path below.
+--
+-- This reuses the exact machinery a counter already uses (self.pending / :hold / :pinSlides / :busy),
+-- so nothing new gates the turn hand-off: a bolt in the air is just one more beat not yet played.
+-- Returns true if it deferred (the caller must stop), false to fall through to an immediate melee beat.
+function CombatFx:deferRanged(events, actor)
+    if events._delayed or not self.bursts then return false end
+    local far = {}
+    for _, e in ipairs(events) do
+        if e.type == "damage" and e.attacker and tileGap(e.attacker, e.unit) >= 2 then
+            far[#far + 1] = e
+        end
+    end
+    if #far == 0 then return false end
+
+    -- Launch a bolt per far blow, and take the longest flight as the beat's delay.
+    local dur = 0
+    for _, e in ipairs(far) do
+        dur = math.max(dur, self.bursts:flight(e.attacker.x, e.attacker.y, e.unit.x, e.unit.y, e.tags,
+            { lethal = e.lethal }))
+    end
+
+    -- The immediate half fires now: any cast cue (the shooting motion + glow), and the shooter's lean.
+    -- The rest is held back to replay when the bolt lands.
+    local now, later = {}, {}
+    for _, e in ipairs(events) do
+        if e.type == "cast" then now[#now + 1] = e else later[#later + 1] = e end
+    end
+    later._delayed = true
+    if #now > 0 then self:playBeat(now, actor) end
+    for _, e in ipairs(far) do self:lunge(e.attacker, e.unit) end
+
+    self.pending[#self.pending + 1] = { t = dur, events = later }
+    self:hold(later, 1)
+    self:pinSlides(later)
+    return true
+end
+
 -- Play one beat's worth of cues -- the reactions for a single blow and everything simultaneous with it.
 function CombatFx:playBeat(events, actor)
+    if self:deferRanged(events, actor) then return end
+    local delayed = events._delayed
     local firstTarget
     local actorCast = false -- did the acting unit already play a cast beat this batch?
     for _, e in ipairs(events) do
         if e.type == "cast" then
             self:cast(e.unit, e.tx, e.ty, e.support)
             if e.unit == actor then actorCast = true end
+            -- A friendly cast (a heal, a blessing) rises as motes off the caster; an offensive cast
+            -- leaves its mark through the damage bursts its blows spawn, so it gets none here.
+            if self.bursts and e.support then self.bursts:support(e.unit.x, e.unit.y, "motes") end
         elseif e.type == "damage" then
             self:hit(e.unit, e.amount, e.lethal)
             firstTarget = firstTarget or e.unit
+            if self.bursts then
+                self.bursts:strike(e.unit.x, e.unit.y, e.tags,
+                    { angle = strikeAngle(e.attacker, e.unit), lethal = e.lethal })
+            end
             -- A blow struck by someone other than the acting unit -- a counter, a riposte, a thorns
-            -- answer -- leans off its own cue, since the actor fallback below can't speak for it.
-            if e.attacker and e.attacker ~= actor and e.attacker ~= e.unit then
+            -- answer -- leans off its own cue, since the actor fallback below can't speak for it. On a
+            -- delayed replay the shooter already leaned as it fired, so it must not lean again on impact.
+            if not delayed and e.attacker and e.attacker ~= actor and e.attacker ~= e.unit then
                 self:lunge(e.attacker, e.unit)
             end
         elseif e.type == "heal" then
             self:floatText(e.unit, "+" .. tostring(e.amount), { 0.55, 0.95, 0.60 })
+            if self.bursts then self.bursts:support(e.unit.x, e.unit.y, "motes") end
         elseif e.type == "slide" then
             -- If this cue was pinned while it waited (see :pinSlides) the sprite is already sitting on
             -- its origin tile, so arming the real slide here picks up exactly where the pin left off
@@ -203,6 +279,16 @@ function CombatFx:hit(unit, amount, lethal)
     r.flashT = FLASH_TIME
     self:floatText(unit, tostring(amount), lethal and { 1.0, 0.42, 0.38 } or { 0.95, 0.28, 0.26 }, lethal)
     -- The card's rumble + flash read the same shakeT/flashT below, so they land in sync with the sprite.
+    -- A killing blow reaches past the struck body to the whole frame: a brief hit-stop, a punch and a
+    -- shake, so a death lands with weight. These no-op under the reduced-effects setting (ui/screen_fx).
+    -- A heavy but non-lethal blow gets a proportional shake alone -- a scratch does not move the camera.
+    if lethal then
+        ScreenFx.freeze(0.07)
+        ScreenFx.punch(0.7)
+        ScreenFx.shake(6, 0.32)
+    elseif (amount or 0) >= 12 then
+        ScreenFx.shake(math.min(4, amount * 0.2), 0.22)
+    end
 end
 
 function CombatFx:floatText(unit, text, color, big)

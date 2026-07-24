@@ -32,7 +32,8 @@ return {
     rewardGold = 220,
     rewardRep = 45,
     rewardPrestige = 1,
-    requiredPrestige = 3,
+    requiredQuests = { "the_perennial_roster" }, -- slot 5: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "colosseum", rank = 2 }, -- Contender
     map = {
         biome = "castle",

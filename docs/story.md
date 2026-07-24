@@ -343,15 +343,35 @@ to tune out the thing it exists to say. Every slot 6 is now a single commissione
 it (a feast, a term's end, a first frost, a quarter close, a muster Sunday), which says the same
 sentence harder and ends.
 
-The remaining ladder debt is the *shape*, not the reachability: on the points ladder, rank 4 now
-lands a slot or two before the ninth, which loosens the rule that the standing putting the rank-4
-item on the shelf is the standing that lets you face what it was warning about. The intended fix is
-unchanged and is now the only thing that restores it — make standing a **count of distinct completed
-quests per sponsor** rather than accumulated `rewardRep` points, which is what `docs/classes.md`
-already claims under Known debt and the code has never done (`Player.addReputation`,
-`Vendor.rankFor`). Then `ranks = { 0, 3, 6, 9 }`, rank 4 lands on the ninth, and slot 10 is the
-general gated behind it. With no repeatables left, the old caveat (*repeatables must not count, or
-the grind walks back in*) is moot: every quest counts, because every quest is authored.
+**A line is a chain, and the chain is what orders it.** Every sin quest names the slot before it in
+`requiredQuests`; a one-key gate is hidden until it is met (`models/quest.lua`), so the board shows a
+line's next card and nothing past it. Prestige gates only a line's **entry** — which is really its
+vendor's door — and every slot in a line therefore carries the same prestige number. Both halves are
+pinned by `tests/quest_ladder_spec.lua`, which walks each line backwards from its general and
+requires an unbroken run of ten.
+
+This is what makes a line a story rather than a pile. Under a pure prestige gate, six of a line's
+slots came onto the board together the moment a number ticked over, so slot 7's turn could be played
+before slot 5's discovery and the middle of every line read in whatever order the player happened to
+click. The Crucible was the worst case — eleven of its thirteen quests unlocked at once — but no line
+was safe from it. The chain costs nothing and removes the whole failure mode.
+
+The Cathedral's head is the one deliberate step outside its own line: `haunted_mill` waits on
+`arena_debut`, so the church opens after the debut on the sand rather than on a prestige number
+(`data/buildings/cathedral.lua` gates the door the same way). The Bastion's `bandit_ambush` and
+`caravan_road` sit outside the ten entirely — ordinary bounty work, available whenever the Bastion is,
+belonging to no chain.
+
+Reputation rank is now **redundant but retained**: with the order fixed, standing is a function of
+position, and every rank gate is satisfied by the quests in front of it. It stays because it is what
+couples a line's progress to its shelf — the rule that the standing which puts the rank-4 relic in
+the shop is the standing that lets you face the general the relic describes. The older debt still
+stands and is unchanged: on a points ladder rank 4 lands a slot or two early, and only counting
+standing as a **count of distinct completed quests per sponsor** (`ranks = { 0, 3, 6, 9 }`) puts it
+back on the ninth — which `docs/classes.md` claims under Known debt and the code has never done
+(`Player.addReputation`, `Vendor.rankFor`). With no repeatables left, the old caveat (*repeatables
+must not count, or the grind walks back in*) is moot: every quest counts, because every quest is
+authored.
 
 | # | Slot | Rank | The Bastion's ten | What it costs Rowan |
 |---|---|---|---|---|

@@ -6,7 +6,6 @@
 return {
     name = "Sacred Ground",
     description = "A sacred banner's shadow: allies standing within are Blessed.",
-    sprite = "assets/hazards/sacred.png",
     tags = { "holy" },
     duration = 9999, -- answers to the banner's life, not a clock (Hazard.dropOwnedBy)
     disposition = "friendly",

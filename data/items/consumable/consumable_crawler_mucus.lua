@@ -24,6 +24,7 @@ return {
     type = "consumable", -- a coating: it is used up by the weapon it is smeared beside
     tags = { "poison", "coating" },
     class = "alchemist",
+    discipline = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
     price = 200,
     repRank = 2,
     aura = {

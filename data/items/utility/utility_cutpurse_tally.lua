@@ -15,6 +15,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "rogue",
+    discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
     price = 320,
     repRank = 3,
     traits = { "trait_cutpurse_tally" },

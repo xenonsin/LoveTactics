@@ -447,17 +447,24 @@ return {
             local p, b = c.units[1], c.units[2]
             local banditHP = b.char.stats.health.current
 
-            p.char.stats.stamina.current = 5 -- one short of the 6 a counter costs
+            -- An answer costs what the swing that answers costs (data/traits/trait_keen_senses.lua),
+            -- so "one short" is read off the staff rather than typed in -- otherwise a re-priced
+            -- weapon would leave this case funding a counter it means to starve.
+            local counterCost = Item.instantiate("weapon_parasitic_staff").activeAbility.cost.amount
+            local short = counterCost - 1
+            p.char.stats.stamina.current = short
             assert(Combat.dealFlatDamage(c, p, 12, nil, nil, b) > 0, "the blow lands unanswered")
             assert(b.char.stats.health.current == banditHP, "no stamina, no answer")
-            assert(p.char.stats.stamina.current == 5, "and nothing is spent on the reflex that never fired")
+            assert(p.char.stats.stamina.current == short,
+                "and nothing is spent on the reflex that never fired")
 
             -- Sensing a blow is not reaching the one who threw it: a sword answers only its own range.
-            p.char.stats.stamina.current = 40
+            local plenty = counterCost * 5 -- comfortably able to pay, so only range can stop it
+            p.char.stats.stamina.current = plenty
             b.x = 5
             assert(Combat.dealFlatDamage(c, p, 12, nil, nil, b) > 0, "the distant blow lands")
             assert(b.char.stats.health.current == banditHP, "a sword cannot answer across the field")
-            assert(p.char.stats.stamina.current == 40, "and the unfired reflex costs nothing")
+            assert(p.char.stats.stamina.current == plenty, "and the unfired reflex costs nothing")
         end,
     },
     {
@@ -506,30 +513,39 @@ return {
             assert(Trait.has(bearer, "trait_blood_fever"), "the charm carries its rule to whoever holds it")
             assert((bearer.bonus and bearer.bonus.damage or 0) == 0, "and grants nothing until someone dies")
 
+            -- One body is worth the trait's own magnitude; two are worth twice it. The rule is
+            -- "per body, either side", so the per-body figure is read off the blueprint.
+            local perBody = Trait.defs.trait_blood_fever.magnitude
+
             Combat.dealFlatDamage(c, foe, 9999, nil, "test")
             assert(not foe.alive, "an enemy drops")
-            assert(bearer.bonus.damage == 2, "the bearer's blood is up")
+            assert(bearer.bonus.damage == perBody, "the bearer's blood is up")
 
             -- ...and its own side falling feeds it exactly as well, which is the sin stated as
             -- arithmetic: what it wants is for the fight to be going badly for somebody.
             Combat.dealFlatDamage(c, comrade, 9999, nil, "test")
             assert(not comrade.alive, "a comrade drops")
-            assert(bearer.bonus.damage == 4, "and it is just as pleased")
+            assert(bearer.bonus.damage == perBody * 2, "and it is just as pleased")
         end,
     },
     {
         name = "Blood Fever stops at five bodies, and a corpse banks nothing for itself",
         fn = function()
+            local def = Trait.defs.trait_blood_fever
+            local perBody, cap = def.magnitude, def.maxStacks
+
             local fighter = plainChar("character_knight")
             fighter.inventory[1] = Item.instantiate("utility_butchers_tally")
+            -- Two more bodies than the ceiling allows, so the cap is what stops the count and not
+            -- the supply of corpses.
             local foes = {}
-            for i = 1, 7 do foes[i] = unit(plainChar("character_bandit"), i, 8) end
+            for i = 1, cap + 2 do foes[i] = unit(plainChar("character_bandit"), i, 8) end
             local c = Combat.new(arena(10, 10), { unit(fighter, 1, 1) }, foes)
             local bearer = c.units[1]
 
             for i = 2, #c.units do Combat.dealFlatDamage(c, c.units[i], 9999, nil, "test") end
-            assert(bearer.bonus.damage == 10,
-                "five bodies at +2 and then nothing more, got " .. bearer.bonus.damage)
+            assert(bearer.bonus.damage == perBody * cap,
+                cap .. " bodies at +" .. perBody .. " and then nothing more, got " .. bearer.bonus.damage)
         end,
     },
 }

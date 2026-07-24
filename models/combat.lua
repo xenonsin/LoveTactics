@@ -1140,6 +1140,12 @@ end
 --   cast                    -- committed to an ability         (Combat.useItem)
 --   turnTaken               -- began a turn                    (Combat.startTurn)
 --   companionDamage         -- a summon of this unit drew blood (Combat.dealDamage)
+--   allyStruck              -- a blow landed on the ally beside it (Combat.dealDamage)
+--   unarmedHit              -- landed a blow with its own fists   (Combat.dealDamage)
+--   repeatStrike            -- struck the same body twice running (Combat.dealDamage)
+--   answered                -- turned a blow aside / countered    (Trait's tallyAnswer)
+--   foeDown                 -- an enemy of this unit fell         (killUnit)
+--   allyMended              -- someone on its side was healed     (Combat.applyHeal)
 -- ---------------------------------------------------------------------------
 
 -- Add `n` (default 1) to `unit`'s running count of `event`. Nil-safe on both the unit and its
@@ -1154,6 +1160,176 @@ end
 function Combat.tallyCount(unit, event)
     return (unit and unit.tally and unit.tally[event]) or 0
 end
+
+-- CHI: the monk's charge, and the one tally that is a spendable POOL rather than a running total.
+--
+-- Every tally above is monotonic on purpose -- "how many blows have you landed this battle" is a
+-- question whose answer never goes down -- and the signature system reads it through a PER-ITEM
+-- baseline (unit.unlockBase) so each relic counts from where it last fired. That is exactly wrong for
+-- chi, which has to be ONE pool shared by every monk ability: a Flurry and an Asura Strike must draw on
+-- the same charge, or "spend your chi" means a different thing in each file.
+--
+-- So chi keeps a single baseline on the unit (`chargeSpent.chi`) rather than a per-item one, and is DERIVED
+-- rather than stored: banked unarmed blows less what has been spent. Combat.dealDamage banks
+-- "unarmedHit" only for a blow thrown with the bearer's own fists, so chi is built by punching and by
+-- nothing else -- a monk who picks up a sword stops charging.
+--
+-- CAPPED, because a charge that grew all battle would make the last turn of a long fight the only one
+-- that mattered. Overflow past the cap is simply never banked -- landing another punch on a full pool
+-- wastes it, which is the pressure that makes spending it a decision.
+Combat.CHI_MAX = 10
+
+-- The pools the ENGINE defines, rather than an item. Exactly one: chi predates the general mechanism
+-- below and its source is a fact about the body (bare hands), not about anything you can buy -- there
+-- is no fist charm to declare it on, and a monk who owns no charms still charges. Everything else
+-- declares its own pool in data (see Combat.chargeDef).
+Combat.CHARGE_DEFS = {
+    chi = { from = { "unarmedHit" }, max = Combat.CHI_MAX },
+}
+
+-- One free action per turn. The resource cost on a free ability bounds how often you can AFFORD to
+-- press it, never how often you can press it -- a free ability priced at nothing would loop forever,
+-- and even a priced one turns a full stamina bar into an unanswerable burst. Tracked on the unit and
+-- cleared in Combat.startTurn (see resolveCast and Combat.itemBlockReason).
+Combat.FREE_ACTIONS_PER_TURN = 1
+
+-- The tags that count as an ELEMENT for the purposes of "what did you last throw" (the Battlemage's
+-- Resonant Grip). A closed set rather than "any tag on the cast": a strike must not start carrying
+-- `utility` or `charm` around, and armour `resist` is keyed on exactly these words, so widening the set
+-- would quietly change what plate turns aside.
+Combat.ELEMENT_TAGS = {
+    fire = true, ice = true, lightning = true, water = true,
+    dark = true, holy = true, acid = true, poison = true,
+}
+
+-- How many free actions `unit` has left this turn. The single reader for both the spend in resolveCast
+-- and the grey-out in Combat.itemBlockReason, so the button and the rule can never disagree.
+function Combat.freeActionsLeft(unit)
+    if not unit then return 0 end
+    return math.max(0, Combat.FREE_ACTIONS_PER_TURN - (unit.freeActionsUsed or 0))
+end
+
+-- The merged definition of pool `key` for this unit: every item in the grid that declares
+-- `charge = { key = ..., from = ..., max = ... }`, folded together with the engine's own defs.
+--
+-- Merged rather than first-wins so a second charm can DEEPEN a pool instead of opening a rival one:
+-- `from` unions (Crusader's Tabard banks Zeal on kills, Vow of the March adds nearby mends, and a
+-- Crusader holding both banks on either) and the highest `max` wins. Two items disagreeing about what
+-- a pool is would otherwise mean "your zeal" named a different number in each file -- the exact bug
+-- chi's single-baseline design exists to avoid.
+--
+-- Returns nil when nothing declares the key: no charm, no pool. That is the discipline contract doing
+-- its job (the mechanic rides on the item), and it is why Combat.charge answers 0 rather than erroring.
+function Combat.chargeDef(unit, key)
+    local builtin = Combat.CHARGE_DEFS[key]
+    local from, max = nil, nil
+    if builtin then
+        from = {}
+        for _, t in ipairs(builtin.from) do from[t] = true end
+        max = builtin.max
+    end
+    if unit and unit.char then
+        for _, item in ipairs(Character.eachItem(unit.char)) do
+            local c = item.charge
+            if c and c.key == key then
+                from = from or {}
+                -- `from` may be a single tally name or a list of them; both read the same way here.
+                if type(c.from) == "table" then
+                    for _, t in ipairs(c.from) do from[t] = true end
+                elseif c.from then
+                    from[c.from] = true
+                end
+                if c.max and (not max or c.max > max) then max = c.max end
+            end
+        end
+    end
+    if not from then return nil end
+    return { from = from, max = max or Combat.CHI_MAX }
+end
+
+-- What `unit` currently holds of pool `key`: floored at 0, capped at the pool's max.
+--
+-- DERIVED rather than stored, exactly as chi always was -- banked tallies less what has been spent --
+-- so nothing has to remember to credit the pool at the moment a blow lands. Capped, because a charge
+-- that grew all battle would make the last turn of a long fight the only one that mattered; overflow
+-- past the cap is simply never banked, which is the pressure that makes spending it a decision.
+--
+-- `chargePool` rather than `charge` because Combat.charge is already the Charge ABILITY -- pinning a
+-- body and driving it down the lane. Two unrelated meanings of one short word, and the older one has
+-- an ability file and an fx helper named after it; the pool takes the longer name rather than shadow
+-- a working function. (This is not hypothetical: it shadowed it for one test run.)
+function Combat.chargePool(unit, key)
+    if not unit then return 0 end
+    local def = Combat.chargeDef(unit, key)
+    if not def then return 0 end
+    local banked = 0
+    for tally in pairs(def.from) do
+        banked = banked + Combat.tallyCount(unit, tally)
+    end
+    local spent = (unit.chargeSpent and unit.chargeSpent[key]) or 0
+    return math.max(0, math.min(banked - spent, def.max))
+end
+
+-- Spend `n` of pool `key` (default: ALL of it), returning how much was actually spent.
+--
+-- Spending ALL of it moves the baseline to the whole tally rather than subtracting the capped figure,
+-- so a pool that had overflowed past the cap is emptied outright and cannot leave a hidden remainder
+-- behind. A partial spend just advances the baseline by what it took.
+--
+-- Mutating, so an ability effect must reach it through `fx.spendCharge` and never call it directly:
+-- the damage preview runs effects too, and a pool that emptied itself under the cursor would be a bug
+-- that read as one (the same rule the coatings follow -- see Combat.auraSpent).
+function Combat.spendCharge(unit, key, n)
+    if not unit then return 0 end
+    local have = Combat.chargePool(unit, key)
+    unit.chargeSpent = unit.chargeSpent or {}
+    if not n then
+        local def = Combat.chargeDef(unit, key)
+        local banked = 0
+        if def then
+            for tally in pairs(def.from) do banked = banked + Combat.tallyCount(unit, tally) end
+        end
+        unit.chargeSpent[key] = banked
+        return have
+    end
+    local take = math.max(0, math.min(n, have))
+    unit.chargeSpent[key] = (unit.chargeSpent[key] or 0) + take
+    return take
+end
+
+-- Empty pool `key` outright without spending it on anything: the baseline jumps to whatever is banked,
+-- so the charge is gone rather than merely capped. What a pool declaring `resetOn` loses when its
+-- condition breaks -- the Duelist's Tempo evaporating the moment the blade finds a different throat.
+--
+-- Deliberately NOT the same call as spendCharge(unit, key): a spend hands back what it took so an
+-- effect can scale off it, while this is a forfeit and returns nothing, and a reader that confuses the
+-- two would silently pay out for a pool that was thrown away.
+function Combat.resetCharge(unit, key)
+    if not unit then return end
+    local def = Combat.chargeDef(unit, key)
+    if not def then return end
+    local banked = 0
+    for tally in pairs(def.from) do banked = banked + Combat.tallyCount(unit, tally) end
+    unit.chargeSpent = unit.chargeSpent or {}
+    unit.chargeSpent[key] = banked
+end
+
+-- Every pool in `unit`'s grid that declares `resetOn = reason`, emptied. Data-declared rather than
+-- named in the engine: combat.lua must not know what "tempo" is, only that some pool asked to be
+-- forfeit when a streak breaks. A new discipline can invent its own condition without touching this.
+function Combat.resetChargesOn(unit, reason)
+    if not (unit and unit.char) then return end
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        local c = item.charge
+        if c and c.key and c.resetOn == reason then Combat.resetCharge(unit, c.key) end
+    end
+end
+
+-- Chi, kept as its own name because two dozen monk files and the battle UI call it that. It is now the
+-- general mechanism above with a built-in definition, so the monk shelf did not change and does not
+-- know it moved.
+function Combat.chi(unit) return Combat.chargePool(unit, "chi") end
+function Combat.spendChi(unit, n) return Combat.spendCharge(unit, "chi", n) end
 
 -- Verb fragments for the auto-generated lock label, when an unlock declares no `text` of its own.
 local UNLOCK_LABELS = {
@@ -1777,9 +1953,32 @@ end
 function Combat.startTurn(combat)
     local unit = Combat.currentUnit(combat)
     combat.turn = unit and { unit = unit, moved = false, moveCost = 0, startX = unit.x, startY = unit.y } or nil
+    -- Decided in the block below, granted past Status.onTurnStart at the foot of this function.
+    local veil = false
     -- An Overwatch stance is a one-turn watch: it lapses the moment its holder comes back around to
     -- act, so the unit chooses anew each turn whether to hold the line again.
-    if unit then unit.overwatch = nil end
+    -- Free actions refresh on the same beat and for the same reason (Combat.FREE_ACTIONS_PER_TURN).
+    -- Cleared at turn START rather than in endTurn because a free cast never REACHES endTurn -- that is
+    -- the whole point of it -- and a turn can also close through wait, death or a rout.
+    if unit then
+        unit.overwatch = nil
+        unit.freeActionsUsed = nil
+        -- THE IDLE VEIL (the Ninja's Smoke Mantle): a bearer who drew no blood on its previous turn
+        -- opens this one unseen. Measured off the `hitDealt` tally rather than a flag, because the
+        -- tally is already kept and already monotonic -- "did the count move since I last stood here"
+        -- is the same question as "did I attack", and needs nothing new to remember it.
+        --
+        -- DECIDED here and APPLIED at the bottom of this function, past Status.onTurnStart. That is
+        -- not tidiness: status_invisible self-expires in onTurnStart (it lasts until its holder's next
+        -- turn), so a veil granted before that call is stripped by it on the same beat. The bookmark
+        -- has to be read here, before anything else this turn can move the tally, and the grant has to
+        -- happen there, after the expiry sweep has run.
+        local hits = Combat.tallyCount(unit, "hitDealt")
+        veil = Trait.flag(unit, "veilsWhenIdle") and unit.lastTurnHits and hits == unit.lastTurnHits
+        -- Written unconditionally, so a ninja who spends three turns hiding is veiled on each of them
+        -- rather than only the first.
+        unit.lastTurnHits = hits
+    end
     -- Answers are paced by an escalating price rather than a cooldown (see Trait.answerCost): each
     -- answer since the bearer last acted costs double the one before it, and coming back around to
     -- act is what clears the tally. So a unit surrounded by three foes answers the first blow at
@@ -1804,6 +2003,26 @@ function Combat.startTurn(combat)
         unit.turnStartX, unit.turnStartY = unit.x, unit.y
     end
     if unit then Status.onTurnStart(combat, unit) end
+    -- The idle veil, granted past the expiry sweep above (see where `veil` is decided): a ninja who
+    -- drew no blood last turn opens this one out of sight. After onTurnStart, or the sweep that ends
+    -- LAST turn's invisibility would end this turn's in the same breath.
+    if veil then Status.apply(combat, unit, "status_invisible") end
+    -- CONTAGION (the Plague Knight's): at the top of the bearer's turn, every poisoned body on the
+    -- field infects the bearer's enemies standing next to it. A passive rather than a cast (rule R4) --
+    -- standing beside you sickens, and you never press a button for it.
+    --
+    -- Reads POISONED BODIES rather than poisoned enemies, which is what makes the Plaguebearer's
+    -- Draught a strategy instead of a self-harm: a plague knight who has poisoned ITSELF is a walking
+    -- source, and the sickness spreads out of its own tile. Only the bearer's foes ever catch it.
+    if unit and Trait.flag(unit, "spreadsPoison") then Combat.spreadContagion(combat, unit) end
+    -- THE FIELD STILL (the Warbrewer's): a draught is brewed into the grid at the top of the turn. The
+    -- flag carries the item id, so the charm decides what it makes and the engine only decides when.
+    local still = unit and Trait.flag(unit, "brewsEachTurn")
+    if still then Combat.grantItem(combat, unit, still.def.brewsEachTurn) end
+    -- FUSES (S3) burn down in their OWNER's turns, not on a global clock -- so two sappers' charges each
+    -- count at their own pace, and a charge whose owner is dead simply waits. Nobody is left to set it
+    -- off, which is the right answer and costs nothing to arrange.
+    if unit then Combat.tickCharges(combat, unit) end
     return unit
 end
 
@@ -2884,6 +3103,7 @@ function Combat.knockback(combat, source, target, distance, opts)
                 Combat.damageObject(combat, blocker, kind, hit)
             end
             Combat.endBeat(combat)
+            Combat.shoveRiders(combat, source, target, true)
             return shoveDone(combat, target, oX, oY, moved), true
         end
         shoveStep(combat, target, dx, dy)
@@ -2893,7 +3113,234 @@ function Combat.knockback(combat, source, target, distance, opts)
         -- A trap or hazard on the tile it was driven onto may have finished it; stop the slide.
         if not target.alive then return shoveDone(combat, target, oX, oY, moved), false end
     end
+    Combat.shoveRiders(combat, source, target, false)
     return shoveDone(combat, target, oX, oY, moved), false
+end
+
+-- ---------------------------------------------------------------------------
+-- FUSES (S3): things planted now that go off later.
+--
+-- A charge is a plain record on `combat.charges` -- x, y, side, owner index, a countdown and a
+-- magnitude -- and NOT a closure. That is the whole design constraint: this state has to survive
+-- models/state_hash.lua, which projects the board to sorted-key Lua source so two machines watching one
+-- fight can prove they agree. A scheduled function is unhashable and unserialisable, so a fuse carries
+-- data and the engine owns the one behaviour.
+--
+-- One behaviour, deliberately. A general "run this later" queue would be a nicer toy and an
+-- indeterminism farm; what the Saboteur actually needs is "a thing that explodes", either when its
+-- count runs out or when its owner says so, and that is expressible in six numbers.
+-- ---------------------------------------------------------------------------
+
+-- Plant a charge on a tile. `fuse` is in turns of the owner; nil owner means it only ever answers to
+-- the clock.
+function Combat.plantCharge(combat, owner, x, y, opts)
+    opts = opts or {}
+    combat.charges = combat.charges or {}
+    local charge = {
+        x = x, y = y,
+        side = owner and owner.side or "party",
+        owner = owner and owner.index or nil,
+        fuse = opts.fuse or 2,
+        amount = opts.amount or 14,
+        radius = opts.radius or 1,
+    }
+    combat.charges[#combat.charges + 1] = charge
+    if owner and owner.side == "party" then
+        Combat.logEvent(combat, "trap",
+            string.format("%s sets a charge at (%d, %d).", unitName(owner), x, y), owner)
+    end
+    return charge
+end
+
+-- Set a charge off: everything within its radius takes the blast, friend or foe. A charge belongs to
+-- nobody once it is in the ground -- the same rule a powder keg follows (Prop.place takes no side).
+function Combat.detonate(combat, charge)
+    if not (charge and not charge.spent) then return 0 end
+    charge.spent = true
+    local hit = 0
+    for _, u in ipairs(Combat.unitsNear(combat, charge.x, charge.y, charge.radius or 1)) do
+        if u.alive then
+            Combat.dealFlatDamage(combat, u, charge.amount, { "physical", "impact" }, "the charge")
+            hit = hit + 1
+        end
+    end
+    Combat.logEvent(combat, "damage",
+        string.format("A charge goes off at (%d, %d).", charge.x, charge.y))
+    return hit
+end
+
+-- Every live charge `owner` planted, set off at once (the Saboteur's Detonator). Returns how many.
+function Combat.detonateAll(combat, owner)
+    local n = 0
+    for _, c in ipairs(combat.charges or {}) do
+        if not c.spent and c.owner == owner.index then
+            Combat.detonate(combat, c)
+            n = n + 1
+        end
+    end
+    Combat.sweepCharges(combat)
+    return n
+end
+
+-- Tick every charge owned by `unit` down one, firing any that reach zero. Called from startTurn, so a
+-- fuse is measured in ITS OWNER's turns rather than in a global clock: two sappers' charges each count
+-- at their own pace, and a charge whose owner is dead simply waits (its counter never advances), which
+-- reads correctly -- nobody is left to set it off.
+function Combat.tickCharges(combat, unit)
+    if not (combat.charges and unit) then return end
+    for _, c in ipairs(combat.charges) do
+        if not c.spent and c.owner == unit.index then
+            c.fuse = c.fuse - 1
+            if c.fuse <= 0 then Combat.detonate(combat, c) end
+        end
+    end
+    Combat.sweepCharges(combat)
+end
+
+-- Drop spent charges. Kept out of the loops above so a detonation cannot mutate the list it is walking.
+function Combat.sweepCharges(combat)
+    if not combat.charges then return end
+    local keep = {}
+    for _, c in ipairs(combat.charges) do
+        if not c.spent then keep[#keep + 1] = c end
+    end
+    combat.charges = keep
+end
+
+-- FIELD CRAFTING (S4): make an item and put it in `unit`'s grid, marked `ephemeral` so it lasts the
+-- fight and no longer. The model half of fx.grantItem.
+--
+-- Built on the path Combat.steal already proved: Character.addItem works perfectly well mid-battle, and
+-- a full grid simply refuses. There is no new inventory layer here and deliberately so -- a brewed
+-- poultice is an ITEM, and everything that already knows what an item is (the grid, the tooltip, the
+-- damage preview, a pickpocket, the stack merge) picks it up for free.
+--
+-- `opts.quantity` stacks it, which matters because a merge into an existing stack of the same id is what
+-- Character.addItem does anyway: a Herbalist who distils the same reagent twice gets a stack of two
+-- rather than two cells spent.
+function Combat.grantItem(combat, unit, itemId, opts)
+    if not (unit and unit.char and itemId) then return nil end
+    opts = opts or {}
+    local item = Item.instantiate(itemId, opts.quantity or 1, opts.level or 0)
+    item.ephemeral = true
+    if not Character.addItem(unit.char, item) then
+        Combat.logEvent(combat, "system",
+            string.format("%s has nowhere to put %s.", unitName(unit), item.name or "it"), unit)
+        return nil
+    end
+    Combat.logEvent(combat, "action",
+        string.format("%s comes away with %s.", unitName(unit), item.name or "something"), unit)
+    return item
+end
+
+-- Are `a` and `b` neighbours in `char`'s 3x3 grid (diagonals included)? A thin wrapper over the two
+-- Character helpers the aura system already uses, so a rule about adjacency does not have to re-derive
+-- slot indices at every call site.
+function Combat.gridAdjacent(char, a, b)
+    if not (char and a and b) then return false end
+    local idx = Character.slotIndex(char, a)
+    if not idx then return false end
+    for _, other in ipairs(Character.adjacentItems(char, idx)) do
+        if other == b then return true end
+    end
+    return false
+end
+
+-- How far `unit` has travelled since its turn opened, in tiles (Chebyshev -- a diagonal step is one).
+-- Read off `turnStartX/Y`, the bookmark Combat.startTurn already lays down for the Backward Glance, so
+-- nothing new has to be remembered. 0 for a unit whose turn is not open, and for one that has not moved.
+--
+-- What the Skirmisher's shelf is measured in: Running Shot scales with it and the Outrider's Harness
+-- gates on it. Deliberately "how far from where you started" rather than "how many steps you took" --
+-- a rider who circles back to the same tile has covered no ground, whatever the pathfinder says, and
+-- the item that pays for movement should pay for having gone somewhere.
+function Combat.tilesMovedThisTurn(unit)
+    if not (unit and unit.turnStartX and unit.turnStartY) then return 0 end
+    return math.max(math.abs(unit.x - unit.turnStartX), math.abs(unit.y - unit.turnStartY))
+end
+
+-- CONTAGION: every poisoned body on the field passes it to `carrier`'s foes standing beside it.
+--
+-- Gathered before any of it is applied, so a body infected by this pass cannot itself spread on the
+-- same pass -- otherwise one poisoned unit in a packed line would sicken the whole line in a single
+-- turn, and the mechanic would read as an area spell that happened to be free.
+--
+-- Poison already ticks and already stacks; what the Plague Knight adds is that it TRAVELS. That is why
+-- the rot-fume payoff (damage scaling with how many are poisoned) had to ship alongside it: before
+-- these two, spreading poison produced a status almost nothing in the catalog read.
+function Combat.spreadContagion(combat, carrier)
+    local caught = {}
+    for _, src in ipairs(combat.units) do
+        if src.alive and Status.has(src, "status_poison") then
+            for _, near in ipairs(combat.units) do
+                if near.alive and near ~= src and near.side ~= carrier.side
+                    and math.max(math.abs(near.x - src.x), math.abs(near.y - src.y)) == 1
+                    and not Status.has(near, "status_poison") then
+                    caught[#caught + 1] = near
+                end
+            end
+        end
+    end
+    for _, victim in ipairs(caught) do
+        Status.apply(combat, victim, "status_poison", { applier = carrier })
+    end
+    if #caught > 0 then
+        Combat.logEvent(combat, "status",
+            string.format("The sickness spreads to %d more.", #caught), carrier)
+    end
+    return #caught
+end
+
+-- What the SUMMONER's standing charms add to a creature that has just arrived. The summon-layer twin of
+-- Combat.shoveRiders, and it exists for the same reason: the caller already knows the thing the charm
+-- needs to know (who called it, and that it is standing), so the charm answers a flag rather than
+-- re-deriving an event.
+--
+-- Written against `summoned` in general rather than against spirits or totems, which is the precedent
+-- the Beastlord's Bond set (docs/disciplines-plan.md): a Shaman's Ancestor Mask mends a Beastmaster's
+-- wolf too, and nothing in its behaviour knows which shelf sold it. That is "anyone carries anything"
+-- earning its keep.
+function Combat.summonRiders(combat, summoner, summoned)
+    if not (summoner and summoned and summoned.alive) then return end
+
+    -- TOTEM-CARVER'S KIT: what you plant stands longer. Raises the ceiling AND fills it, so the
+    -- creature actually arrives with the health rather than arriving wounded into a bigger body.
+    local bolster = Trait.flag(summoner, "bolstersSummons")
+    if bolster and summoned.char and summoned.char.stats and summoned.char.stats.health then
+        local hp = summoned.char.stats.health
+        local gain = (bolster.def and bolster.def.magnitude) or 10
+        hp.max = hp.max + gain
+        hp.current = hp.current + gain
+    end
+    -- GHOST-WIND: what the wind carries arrives already moving.
+    if Trait.flag(summoner, "hastensSummons") then
+        Status.apply(combat, summoned, "status_hasted", { applier = summoner })
+    end
+end
+
+-- What the SHOVER's standing charms add to a shove that has just resolved. Read as declarative flags
+-- off the source's traits (Trait.flag) rather than as hooks, because everything a hook would have to
+-- work out -- who was thrown, whether it hit something -- the shove already knows.
+--
+-- This is the seam the Vanguard is built on, and the reason it is a seam at all: 19 items in the
+-- catalog cause knockback and only a handful apply Sundered, so a charm that converts one into the
+-- other is worth more than any single weapon could be. It reaches every shove in the game -- a mace's
+-- innate displacement, Push, Shieldbreak, a hurled body -- without any of them knowing it exists.
+--
+-- Fired for the shover, never the shoved: `source` is who threw it. A shove that never got going
+-- (dx == dy == 0) returns before this, so a rider cannot fire on a shove that did not happen.
+function Combat.shoveRiders(combat, source, target, collided)
+    if not (source and target and target.alive) then return end
+
+    -- BREAKER'S WEDGE: every shove opens the armour it drove through.
+    if Trait.flag(source, "sundersOnShove") then
+        Status.apply(combat, target, "status_sundered", { applier = source })
+    end
+    -- BREAKER'S HARNESS: a shove that ended against something Stuns what it slammed. Only on a
+    -- collision -- a body with room to travel is merely displaced, and the harness is about the wall.
+    if collided and Trait.flag(source, "stunsOnCollision") then
+        Status.apply(combat, target, "status_stun", { applier = source })
+    end
 end
 
 -- Can a thrown OBJECT come to rest on (x, y)? Returns ok, blocker, kind exactly as canShoveInto does,
@@ -3649,12 +4096,28 @@ local function killUnit(combat, target)
     if not target.summoned and not target.decoyOf then
         for _, u in ipairs(combat.units) do
             if u.alive and u ~= target and u.side == target.side then Combat.tally(u, "allyDown", 1) end
+            -- ...and the mirror of it: everyone on the OTHER side banks a `foeDown`. Distinct from
+            -- `kill`, which is credited to the one who struck the blow -- this is "the enemy is one
+            -- body lighter", which is what a pool belonging to a cause rather than to a killer fills
+            -- on (the Crusader's Zeal, via data/items/utility/utility_vow_of_the_march.lua).
+            if u.alive and u.side ~= target.side then Combat.tally(u, "foeDown", 1) end
         end
         -- ...and EVERYONE still standing, on both sides, heard the body drop. The tally above is news
         -- for one side; this is the field itself changing, and a reflex that feeds on death does not
         -- care whose it was (Trait.onAnyDeath -- data/traits/trait_blood_fever.lua). Gated by the same
         -- condition for the same reason: a conjuration winking out is not a body hitting the ground.
         Trait.onAnyDeath(combat, target)
+    end
+
+    -- A CONJURATION coming apart is news for exactly one person: whoever paid for it. The broadcast
+    -- above deliberately excludes summons -- a wolf winking out is not a body hitting the ground, and a
+    -- summoner farming its own conjurations must not feed every death-reflex on the field. But the
+    -- SUMMONER's own charms have a legitimate interest, and until this there was nowhere for them to
+    -- hear it (the construct itself carries no grid, so a rule written on the wreck has nothing to hang
+    -- from). Narrow by construction: one hook, one recipient, and only for a real summoner still
+    -- standing. What the Artificer's Salvage Rig is built on.
+    if target.summoned and not target.decoyOf and target.summoner and target.summoner.alive then
+        Trait.onSummonLost(combat, target.summoner, { lost = target })
     end
 
     -- Ground the dead unit was holding open goes with it: cut down a banner and its square stops being
@@ -3968,6 +4431,33 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     if Trait.trySmoke(combat, target, attacker) then
         return 0
     end
+    -- A standing CLONE dies in the bearer's place and they trade tiles (the Ninja's Substitution).
+    -- Beside the two above and for the same reason: the blow landed on a conjuration, so there is no
+    -- wound to grant rage or provoke an answer. Unlike them it spends no cooldown and no charge -- the
+    -- clone was the charge, and it had to be cast.
+    if Trait.trySubstitute(combat, target, attacker) then
+        return 0
+    end
+    -- SPELL EATER (the Spellbreaker's): a MAGICAL blow lands lighter on the bearer, and the difference
+    -- is refunded to them as mana. Anti-magic as absorption rather than denial -- the enemy caster still
+    -- gets to cast, and gets to watch it pay for the answer.
+    --
+    -- Placed after the negating reflexes and before mitigation, so it is a discount on a blow that is
+    -- really going to land rather than a fourth way of voiding one. The refund is the eaten half, so an
+    -- item that reduces more also feeds more, and there is only one number to tune.
+    if (base or 0) > 0 and hasTag(tags, "magical") then
+        local eater = Trait.flag(target, "eatsMagic")
+        if eater then
+            local share = (eater.def and eater.def.magnitude or 40) / 100
+            local eaten = math.floor(base * share)
+            if eaten > 0 then
+                base = base - eaten
+                Combat.restoreResource(target.char, "mana", eaten)
+                Combat.logEvent(combat, "status",
+                    string.format("%s swallows the working (%d mana).", unitName(target), eaten), target)
+            end
+        end
+    end
     -- A duelist's blade (the Riposte Blade) turns an incoming melee blow aside and answers it in the
     -- same motion. Like the two reflexes above it returns BEFORE mitigation and the trait damage
     -- dispatch -- a blow that never landed is not a wound survived, so it grants no rage and provokes
@@ -4014,8 +4504,11 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     if attacker then target.lastAttacker = attacker end
     -- Animation cue: the blow that actually landed (post-mitigation), flagged lethal so the view
     -- can punch a killing hit harder. The matching death cue is pushed by killUnit below.
+    -- `tags` rides along untouched so the view can pick the blow's picture -- a slash arc, a fire
+    -- bloom, a bolt fork -- off the same tag list ui/motif.lua reads everywhere else. The model states
+    -- what the blow WAS and stays out of how it looks; ui/burst_fx.lua turns the tags into a shape.
     Combat.pushFx(combat, { type = "damage", unit = target, amount = dmg,
-        lethal = hp.current <= 0, attacker = attacker })
+        lethal = hp.current <= 0, attacker = attacker, tags = tags })
     local entry
     if source then
         entry = Combat.logEvent(combat, "damage",
@@ -4189,6 +4682,17 @@ end
 function Combat.dealDamage(combat, user, target, item, opts)
     opts = opts or {}
     local tags = collectTags(item, opts)
+    -- THE RESONANT GRIP (the Battlemage's): a bearer's weapon strikes carry the element of whatever they
+    -- last cast. Folded into the tag set here, so it reaches armour `resist`, the elemental interactions
+    -- (a lightning strike arcing into water, a fire blow burning through Wet) and the damage scaling all
+    -- at once -- which is the whole point of it being a tag rather than a damage bonus.
+    --
+    -- Only for a NON-magical strike: a spell already has its own element, and letting the grip overwrite
+    -- one Fireball with the memory of another would be a bug that reads as flavour.
+    if not hasTag(tags, "magical") and user and user.lastCastElement
+        and Trait.flag(user, "carriesLastElement") then
+        tags[#tags + 1] = user.lastCastElement
+    end
     local magical = hasTag(tags, "magical")
     local atkStat = magical and "magicDamage" or "damage"
     local ab = item and item.activeAbility
@@ -4249,9 +4753,54 @@ function Combat.dealDamage(combat, user, target, item, opts)
     if dealt > 0 then
         Combat.tally(user, "hitDealt", 1)
         Combat.tally(user, "damageDealt", dealt)
+        -- A BARE-HANDED blow also banks chi (Combat.chi) -- the monk's charge is built by punching and
+        -- by nothing else, so a blow struck with a crafted weapon banks none. Identified the one way
+        -- unarmed ever is in this file, by instance rather than by tag: `char.unarmed` is a single
+        -- hidden weapon (models/character.lua attaches it), which is what keeps a "fist"-tagged
+        -- knuckle-duster from quietly counting as a fist.
+        if user.char and item == user.char.unarmed then Combat.tally(user, "unarmedHit", 1) end
         -- A summon's blow also banks onto its summoner, so a signature can charge off the deeds of the
         -- creature it fields -- the Wolfsong Horn fills as Kaya's wolf draws blood (companionDamage).
         if user.summoner then Combat.tally(user.summoner, "companionDamage", dealt) end
+        -- BATTLE CASTING (the Battlemage's), the other half: steel feeds the working. A non-magical blow
+        -- hands a little mana back, so a battlemage out of spells is not out of the fight -- it is one
+        -- swing away from being back in it. Only physical blows, or a mage would be refunding itself for
+        -- casting.
+        if not magical and Trait.flag(user, "strikesRefundMana") then
+            Combat.restoreResource(user.char, "mana", 3)
+        end
+        -- ...and every ALLY standing next to the body that just took it banks "allyStruck". The
+        -- counterpart to hitTaken, seen from one tile over: what a formation charge pool fills on when
+        -- the line beside you is being worked over rather than you (the Champion's Crowd's Favour).
+        --
+        -- Adjacency is read at the moment the blow lands, not at the start of the turn, so a shove that
+        -- moved someone out of the rank a beat earlier correctly stops paying them. Counted once per
+        -- neighbour per blow -- it is "a blow fell beside me", not a share of the damage -- which keeps
+        -- it commensurate with hitTaken and lets one pool draw on both.
+        for _, u in ipairs(combat.units) do
+            if u.alive and u ~= target and u.side == target.side
+                and math.max(math.abs(u.x - target.x), math.abs(u.y - target.y)) == 1 then
+                Combat.tally(u, "allyStruck", 1)
+            end
+        end
+        -- The SAME-TARGET streak. En Garde has kept its own copy of this since it shipped
+        -- (u.enGardeTarget / u.enGardeStacks, bumped inside one ability's effect); this is the general
+        -- form, updated by every damaging blow however it was thrown, so a charge pool can read
+        -- "I have not looked away from this one" without an ability having to be the thing that
+        -- noticed. "repeatStrike" banks on the second consecutive blow and every one after it.
+        --
+        -- Self-damage is not a streak (a bomb under your own feet is not persistence), and a switch
+        -- forfeits any pool that declared resetOn = "targetSwitch" -- which is the Duelist's whole
+        -- bargain: the tempo is only yours while the duel is.
+        if user ~= target then
+            if user.streakTarget == target then
+                user.streakCount = (user.streakCount or 1) + 1
+                Combat.tally(user, "repeatStrike", 1)
+            else
+                if user.streakTarget then Combat.resetChargesOn(user, "targetSwitch") end
+                user.streakTarget, user.streakCount = target, 1
+            end
+        end
     end
     return dealt
 end
@@ -4313,7 +4862,48 @@ function Combat.applyHeal(combat, target, amount)
         Combat.logEvent(combat, "heal", string.format("%s is healed for %d.", unitName(target), healed), target)
         Combat.pushFx(combat, { type = "heal", unit = target, amount = healed })
     end
+    -- Every unit on the patient's side banks an `allyMended`. The counterpart to `healDone`, which is
+    -- credited to the CASTER: this is "the line was tended", which is what a pool belonging to a cause
+    -- rather than to a healer fills on (the Crusader's Zeal). Fired here, in the one funnel every mend
+    -- in the game runs through, so a potion, a regeneration tick and a lifesteal drink all count.
+    if healed > 0 and target then
+        for _, u in ipairs(combat.units) do
+            if u.alive and u.side == target.side then Combat.tally(u, "allyMended", 1) end
+        end
+    end
     return healed
+end
+
+-- S5: strip up to `n` BLESSINGS from one body (nil = all of them), returning the ids taken.
+--
+-- The mirror of Combat.cleanse, which takes the afflictions off a friend: this takes the advantages off
+-- an enemy. Between them they are the whole of "make that body plain", and the game had only the kind
+-- half until now -- which is why the Confessor's Needle shipped with its dispel clause missing and a
+-- header admitting it.
+--
+-- Gathered before any of it is removed, because walking a status list while removing from it is how you
+-- take half of what you meant to. Returns the ids rather than a count so a caller can scale off WHAT it
+-- took as well as how much.
+function Combat.dispelUnit(combat, unit, n)
+    if not (unit and unit.alive) then return {} end
+    local taken = {}
+    for _, st in ipairs(unit.statuses or {}) do
+        local def = Status.defs[st.id]
+        -- A blessing is a status that is not a debuff and not one of the engine's own bookkeeping
+        -- markers (`hideLog` covers Channeling, which is a pending spell rather than a boon -- stripping
+        -- it here would make this a silent counterspell, which is exactly the power S5 gave up).
+        if def and not def.debuff and not def.hideLog then
+            taken[#taken + 1] = st.id
+            if n and #taken >= n then break end
+        end
+    end
+    for _, id in ipairs(taken) do Status.remove(combat, unit, id) end
+    if #taken > 0 then
+        Combat.logEvent(combat, "status",
+            string.format("%s is stripped of %d blessing%s.", unitName(unit), #taken,
+                #taken == 1 and "" or "s"), unit)
+    end
+    return taken
 end
 
 -- Strip every debuff from `unit` and log it (Cure). Delegates the removal to Status.cleanse -- the
@@ -4483,6 +5073,15 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         -- rather than by construction. This makes it correct by construction -- an effect that scales a
         -- heal or a second strike off fx.level would otherwise lose it, and would do so silently.
         level = item and item.level or 0,
+        -- The monk's charge. Read-only, so the dry run answers truthfully; the SPEND below is inert
+        -- here, because a preview that emptied the pool under the cursor would be a bug that read as
+        -- one. It still reports what the live spend would take, so an effect scaling its damage off
+        -- the returned figure previews the blow it is actually going to land.
+        chi = Combat.chi(unit),
+        spendChi = function(n)
+            local have = Combat.chi(unit)
+            return n and math.max(0, math.min(n, have)) or have
+        end,
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.
@@ -4741,6 +5340,13 @@ function Combat.abilityOutput(unit, item)
         user = unit, target = dummy, item = item, combat = nil, tx = 0, ty = 0,
         amount = Combat.abilityMagnitude(ab),
         level = item and item.level or 0, -- so a summon/hazard/trap effect can quote its level-scaled output
+        -- The charge this bearer holds, and an inert spend that only reports (see the note on the
+        -- preview context above). There is no board here, so a stand-in unit simply holds none.
+        chi = Combat.chi(unit),
+        spendChi = function(n)
+            local have = Combat.chi(unit)
+            return n and math.max(0, math.min(n, have)) or have
+        end,
         unitAt = function() return nil end,
         unitsNear = function() return { dummy } end,
         -- There is no board here, so hand back the cell itself: an effect that goes on to place
@@ -4909,6 +5515,23 @@ function Combat.isSupportAbility(ab)
     if ab == nil then return false end
     if ab.support ~= nil then return ab.support end
     return ab.target == "ally" or ab.target == "self"
+end
+
+-- The tag list a cast/strike cue carries so the view can pick its picture -- the item's own tags plus
+-- the active ability's, in that order, the same descriptive-tag-leads ordering ui/motif.lua reads. A
+-- weapon says its family and shape ("dagger", "pierce"); the ability behind it adds the element it
+-- throws ("fire"). The two together are what let a Fireball wand bloom and a Frost wand shatter off
+-- one shared vocabulary, with nothing authored to say so. Mirrors states/battle.lua's fieldTags, which
+-- builds the same list for the telegraph -- promise and result read the same because they are the same
+-- tags. Nil-safe: an item with no tags and no ability yields nil, and the view falls back.
+function Combat.fxTags(item, ab)
+    if not item then return nil end
+    ab = ab or item.activeAbility
+    if not (ab and ab.tags) then return item.tags end
+    local out = {}
+    for _, t in ipairs(item.tags or {}) do out[#out + 1] = t end
+    for _, t in ipairs(ab.tags) do out[#out + 1] = t end
+    return out
 end
 
 local function resourceValue(char, stat)
@@ -5158,6 +5781,40 @@ end
 function Combat.spendCost(combat, unit, cost)
     if not cost then return end
     local char = unit.char
+    -- A DAMPENING OATH standing within reach doubles what a working costs (the Spellbreaker's). A tax
+    -- rather than a denial, which is the whole shape of that shelf: the caster still gets to cast, the
+    -- enemy AI is not deadlocked, and what the spellbreaker has bought is that the other side runs dry
+    -- first. Mana only -- an oath does not make a swing tire you faster.
+    --
+    -- Applied here, in the one spend path every cast routes through, and deliberately NOT in costBlock:
+    -- affordability is checked against the printed price, so a caster who could just afford a spell is
+    -- allowed to commit to it and then finds the pool emptied. Being taxed into nothing is the threat.
+    if cost.stat == "mana" and cost.amount and cost.amount > 0 then
+        for _, u in ipairs(combat.units or {}) do
+            if u.alive and u.side ~= unit.side and Trait.flag(u, "dampensNearbyCasts")
+                and math.max(math.abs(u.x - unit.x), math.abs(u.y - unit.y)) <= 3 then
+                cost = { stat = cost.stat, amount = cost.amount * 2 }
+                Combat.logEvent(combat, "status",
+                    string.format("%s's working costs double under the oath.", unitName(unit)), unit)
+                break
+            end
+        end
+        -- BATTLE CASTING (the Battlemage's): a working thrown with a foe in your face costs less. The
+        -- inverse of every caster's instinct, and the whole argument of the discipline -- a battlemage
+        -- is cheapest exactly where a mage is most frightened. Applied after the oath, so a battlemage
+        -- standing beside a spellbreaker pays double and then takes its discount off the doubled price.
+        local bc = Trait.flag(unit, "cheaperInMelee")
+        if bc then
+            for _, u in ipairs(combat.units or {}) do
+                if u.alive and u.side ~= unit.side
+                    and math.max(math.abs(u.x - unit.x), math.abs(u.y - unit.y)) <= 1 then
+                    local off = (bc.def and bc.def.magnitude or 30) / 100
+                    cost = { stat = cost.stat, amount = math.max(1, math.floor(cost.amount * (1 - off))) }
+                    break
+                end
+            end
+        end
+    end
     -- Short on mana with a flask to hand: drink first, then pay as normal. Tried BEFORE Overchannel
     -- because a mage carrying both should reach for the potion before it reaches for its own blood --
     -- stock is the cheaper of the two, and a reflex that burned health while a draught sat unopened in
@@ -5547,7 +6204,17 @@ function Combat.releaseClaims(char)
     char.reservations = nil
     for i = 1, Character.MAX_INVENTORY do
         local item = char.inventory[i]
-        if item then item.activeSummon = nil end
+        if item then
+            item.activeSummon = nil
+            -- EPHEMERAL stock (S4, field crafting) does not leave the battlefield. A poultice wrung out
+            -- of a burning hedge is a thing you made out of the fight, and carrying it home would turn
+            -- every Herbalist into a free-money printer between quests -- brew, walk out, sell.
+            --
+            -- Cleared here rather than at the grant, because the whole point is that it is real FOR the
+            -- fight: it stacks, it is cast, it is stolen, it is previewed, exactly like bought stock.
+            -- The only thing it may not do is persist.
+            if item.ephemeral then char.inventory[i] = nil end
+        end
     end
 end
 
@@ -5583,6 +6250,15 @@ function Combat.itemBlockReason(unit, item)
         return { kind = "active", summon = held, reason = "summon still active", text = text }
     end
     if not unit then return nil end
+
+    -- A free action already spent this turn. Checked before the resource gates so a skirmisher whose
+    -- free shot is gone is told THAT, rather than being told it can afford a shot it may not take --
+    -- the free ability is usually still perfectly affordable, which is exactly what makes the greyed
+    -- slot confusing without this line.
+    if ab.free and Combat.freeActionsLeft(unit) <= 0 then
+        return { kind = "spent", reason = "free action spent",
+            text = "Free action already used this turn" }
+    end
 
     -- Halted: told to stand down, and standing down. Refuses EVERY ability -- weapon, spell, potion
     -- alike -- so it is checked before the three narrower gates below it, which would otherwise let a
@@ -5906,7 +6582,7 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
         -- The wind-up is an action too: a cast beat on begin-channel, then a second when it resolves
         -- (resolveCast, turns later). So a channeled spell reads both as it is loosed and as it lands.
         Combat.pushFx(combat, { type = "cast", unit = unit, tx = tx, ty = ty,
-            support = Combat.isSupportAbility(ab) })
+            support = Combat.isSupportAbility(ab), tags = Combat.fxTags(item, ab) })
         Combat.logEvent(combat, "action",
             string.format("%s begins channeling %s.", unitName(unit), item.name or "an ability"), unit)
         endTurn(combat, unit, ticks, true)
@@ -6036,7 +6712,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
     -- blood animated the actor (the view derived a lunge from the damage cue); a cure or a summon
     -- resolved with the caster standing dead still. See ui/combat_fx.
     Combat.pushFx(combat, { type = "cast", unit = unit, tx = tx, ty = ty,
-        support = Combat.isSupportAbility(ab) })
+        support = Combat.isSupportAbility(ab), tags = Combat.fxTags(item, ab) })
 
     -- Effect context: bound helpers let a data-file effect compose damage/heal/AoE
     -- without touching this module. Results are accumulated for the caller/UI.
@@ -6051,6 +6727,27 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
     -- default opts.amount below -- Combat.dealDamage bases its hit on opts.amount/ab.damage, not on
     -- fx.amount, so a damage bomb needs it fed in there too.
     local effectiveAmount = castAmount(combat, unit, ab, tx, ty, auraMods)
+    -- THE ARCANE CONDUIT (the Battlemage's): a charm that sharpens the items sitting NEXT TO IT in the
+    -- grid, funded by the caster's banked Arcane rather than free. Read here, in resolveCast, which is
+    -- the REAL cast path -- the damage preview goes through Combat.computeDamage and never reaches this,
+    -- which is the only reason a spend may sit in this function at all.
+    --
+    -- The first aura in the game that costs something. Everything in the `aura` block has always been
+    -- free once bought, so grid position was a layout puzzle; this makes it a spending decision, since
+    -- the conduit can only sharpen as many casts as the caster has banked.
+    -- TWO points per sharpen, and the reason is arithmetic rather than taste: Arcane banks off the
+    -- `cast` tally, so a sharpened cast credits the pool one point on its way past. At a cost of one the
+    -- conduit would net zero and simply always be on, which is not a spending decision, it is a passive
+    -- wearing a resource bar. At two it is "cast twice, sharpen once".
+    if effectiveAmount and Combat.chargePool(unit, "arcane") >= 2 then
+        local conduit = Trait.flag(unit, "arcaneConduit")
+        if conduit and conduit.item and Combat.gridAdjacent(unit.char, conduit.item, item) then
+            Combat.spendCharge(unit, "arcane", 2)
+            effectiveAmount = math.floor(effectiveAmount * (1 + (conduit.def.magnitude or 50) / 100))
+            Combat.logEvent(combat, "action",
+                string.format("%s's conduit sharpens the working.", unitName(unit)), unit)
+        end
+    end
     local result = { damageDealt = 0, healed = 0 }
     -- The initiative this action bills at end of turn. Read through Combat.actionSpeed rather than off
     -- `ab.speed` directly, so the number charged here is the number the timeline ghost and the hover
@@ -6070,6 +6767,22 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
         -- The item's upgrade level (0..N). What a summon/hazard/trap/wall scales off: the stronger the
         -- forged item, the tougher the creature it calls and the harder/longer-lived the ground it lays.
         level = item.level or 0,
+        -- The monk's charge as it stands at the moment of the cast, and the live spend that empties it
+        -- (Combat.chi / Combat.spendChi). `spendChi()` with no argument takes ALL of it and hands back
+        -- what it took, which is what a chi-dump scales its damage off; `spendChi(n)` takes a fixed
+        -- bite. Routed through fx rather than called on the model directly so the damage PREVIEW, which
+        -- runs this same effect against an inert context, reports the blow without draining the pool.
+        chi = Combat.chi(unit),
+        spendChi = function(n) return Combat.spendChi(unit, n) end,
+        -- The general form of the two lines above: any named pool the caster's grid declares
+        -- (Combat.chargeDef). `chargePool(key)` reads it, `spendCharge(key)` with no amount takes ALL
+        -- of it and hands back what it took -- which is what a dump scales its payoff off. Routed
+        -- through fx for the same reason chi is: the damage preview runs this effect against an inert
+        -- context, and a pool that drained under the cursor would be a bug that read as one.
+        --
+        -- NOT named `fx.charge`: that is already the Charge ability's shove, further down this table.
+        chargePool = function(key) return Combat.chargePool(unit, key) end,
+        spendCharge = function(key, n) return Combat.spendCharge(unit, key, n) end,
         -- The EXTRA wind-up ticks poured into a chargeable channel (0 for everything else). Saber's
         -- signature reads it to scale the blow: patience made arithmetic -- the longer she held the
         -- edge, the harder it lands (see the ability's effect and Combat.useItem's channel branch).
@@ -6145,6 +6858,14 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
             if not tgt then return 0 end
             local h = Combat.applyHeal(combat, tgt, amount)
             result.healed = result.healed + h
+            -- THE SHARED LEDGER (the Apothecary's): a mend that landed also lends the patient a share
+            -- of the healer's own guard (status_lent_guard). Here rather than in Combat.applyHeal
+            -- because this is the one heal path that knows WHO did the mending -- applyHeal is handed
+            -- only a patient, which is exactly why the Crusader's allyMended tally lives there and this
+            -- does not. Envy's verb on the priest's action: healing that lends rather than only mends.
+            if h > 0 and tgt ~= unit and Trait.flag(unit, "lendsGuard") then
+                Status.apply(combat, tgt, "status_lent_guard", { applier = unit })
+            end
             -- A mend that actually restored something banks a `healDone` on the CASTER (applyHeal
             -- itself knows only the patient) -- what a mercy signature gated on healing counts. An
             -- AoE mend that lands on three allies is three, which is what "heal N times" reads as.
@@ -6189,6 +6910,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
         placeTrap = function(px, py, id, opts)
             -- opts.amount (an item-level-scaled magnitude) rides onto the trap, so a forged Spike Trap
             -- stabs harder; the trap's own effect reads trap.amount, falling back to its blueprint.
+            opts = opts or {}
+            -- ...and WHO set it, so a standing rule can key off the trapper rather than the faction
+            -- (Trap.trigger's Quarry's Due). An arena-authored trap has no placer and never will.
+            if opts.placer == nil then opts.placer = unit end
             local trap = Trap.place(combat, px, py, id, unit.side, opts)
             if trap and unit.side == "party" then
                 Combat.logEvent(combat, "trap",
@@ -6203,7 +6928,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
         placeHazard = function(px, py, id, opts)
             opts = opts or {}
             opts.side = opts.side or unit.side
-            return Hazard.place(combat, px, py, id, opts)
+            local zone = Hazard.place(combat, px, py, id, opts)
+            -- THE WARDEN'S WRIT: a bearer whose charm declares `haltsOwnHazards` stamps every zone it
+            -- lays as Halting (Hazard.onEnter reads the rider). Applied here rather than inside
+            -- Hazard.place so it only ever catches ground a UNIT deliberately laid -- a hazard that
+            -- spread on its own, or one the arena was authored with, is nobody's writ.
+            if zone and Trait.flag(unit, "haltsOwnHazards") then zone.halts = true end
+            return zone
         end,
         -- Raise a wall segment on a tile, owned by the caster's side (models/wall.lua). Summon Wall
         -- calls this once per tile of its 3x1 line; a tile that can't hold a wall (a unit on it,
@@ -6254,6 +6985,12 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
         dispel = function(cells)
             return Combat.dispel(combat, cells or Combat.aoeCells(combat, ab, tx, ty, unit))
         end,
+        -- S5: strip blessings from ONE body. The single-target counterpart to fx.dispel above, which
+        -- clears an area's illusions and reveals what is hiding in it -- a different job entirely, and
+        -- the reason Confessor's Needle shipped admitting it could not do this half.
+        --
+        -- `n` caps how many come off (nil = all). Returns what was taken, so an effect can scale off it.
+        dispelUnit = function(tgt, n) return Combat.dispelUnit(combat, tgt, n) end,
         -- Summon a character onto the field, sustained by the caster (models/summon.lua). Whatever
         -- comes back holds two things for as long as it lives: the ability's reservation (ab.reserve),
         -- so the committed resource is freed the moment the creature falls, and the item's own
@@ -6276,6 +7013,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
             if summoned and summoned.alive then
                 if not (opts and opts.noClaim) then item.activeSummon = summoned end
                 if reserve then Combat.reserve(unit.char, reserve.stat, reserve.amount, summoned) end
+                Combat.summonRiders(combat, unit, summoned)
             end
             return summoned
         end,
@@ -6350,6 +7088,17 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
         charge = function(tgt, distance)
             if not tgt then return 0 end
             return Combat.charge(combat, unit, tgt, distance)
+        end,
+        -- FIELD CRAFTING (S4): put a freshly-made item into a unit's grid. Marked `ephemeral`, so it is
+        -- real for this fight -- it stacks, casts, previews and can be stolen exactly like bought stock
+        -- -- and is stripped on the way out (Combat.releaseClaims). Carrying field-brewed goods home
+        -- would make a Herbalist a money printer between quests: brew, walk out, sell.
+        --
+        -- Returns the item, or nil when the grid is full. A full grid is a real answer rather than an
+        -- error: the apothecary's satchel has nine cells like everyone else's, and deciding what to
+        -- carry is the game. Callers narrate the failure.
+        grantItem = function(tgt, itemId, opts)
+            return Combat.grantItem(combat, tgt or unit, itemId, opts)
         end,
         -- Lift a random item off a unit (Combat.steal picks it; a Decoy volunteers itself).
         steal = function(tgt)
@@ -6445,6 +7194,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
     -- footprint (the AoE cells, or just the aimed cell). Runs after the effect so a water AoE that
     -- also lays down rain clears the fire it fell on. Uses the full cast tag set (item + ability).
     local castTags = collectTags(item, nil)
+    -- THE RESONANT GRIP remembers what you last threw: the element of the most recent cast is kept on
+    -- the caster so a weapon strike can carry it (see Combat.dealDamage). Recorded for everyone rather
+    -- than only for a charm-holder, because it costs one field and a charm bought three turns later
+    -- should not have to explain why it starts empty.
+    for _, t in ipairs(castTags) do
+        if Combat.ELEMENT_TAGS[t] then unit.lastCastElement = t end
+    end
     local footprint = ab.aoe and Combat.aoeCells(combat, ab, tx, ty, unit) or { { x = tx, y = ty } }
     if hasTag(castTags, "water") then
         Hazard.douse(combat, footprint, castTags)
@@ -6509,7 +7265,25 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup)
 
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed (or the
     -- speed an effect chose through fx.setSpeed -- Dual Wield's summed weapon speeds).
-    endTurn(combat, unit, ctl.speed)
+    --
+    -- ...unless the ability is FREE, which bills no initiative and leaves the turn open. Distinct from
+    -- fx.grantExtraAction, which hands the turn back only AFTER banking the full price of the action
+    -- that closed it (endTurn's surge branch): one is free, the other is bought on credit. A free cast
+    -- still paid its stamina or mana and still spent its stack -- what it did not spend is tempo.
+    --
+    -- The counter lives on the UNIT rather than on `combat.turn`, because Combat.itemBlockReason --
+    -- which greys the slot and writes the tooltip -- is handed only (unit, item) and is required to
+    -- stay a pure read of the unit and its grid. A counter it could not reach is a limit the player
+    -- discovers by clicking a button that does nothing. Cleared in Combat.startTurn.
+    --
+    -- Guarded even though every free ability carries a resource cost: the cost bounds how often you can
+    -- AFFORD to press it, never how many times per turn you may, and a full stamina bar spent inside
+    -- one initiative slot is not a burst, it is a solo.
+    if ab.free and Combat.freeActionsLeft(unit) > 0 then
+        unit.freeActionsUsed = (unit.freeActionsUsed or 0) + 1
+    else
+        endTurn(combat, unit, ctl.speed)
+    end
 
     -- Consume one use: decrement the stack (a bundle of consumables), floored at 0. The spent
     -- slot STAYS in the inventory as an empty stack -- Combat.isDepleted then blocks activation
@@ -6572,6 +7346,16 @@ end
 -- honest: a stun aimed at a Kingsfall is not wasted, it is only insufficient.
 function Combat.interruptChannel(combat, unit, reason)
     if not unit.channel then return false end
+    -- VIGIL BEADS (the Theurge's): a bearer whose charm declares `steadfastChannels` cannot have ANY
+    -- wind-up broken. The flag lives on the UNIT where `steadfast` lives on the ABILITY, and that is
+    -- the whole difference between the two: Kingsfall makes one particular greatsword unbreakable and
+    -- its bearer is ordinary the moment they put it down, while this makes the CASTER unbreakable and
+    -- every channel they own inherits it. One is a weapon; this is a discipline.
+    if Trait.flag(unit, "steadfastChannels") then
+        Combat.logEvent(combat, "status",
+            string.format("%s does not falter (%s).", unitName(unit), reason or "disrupted"), unit)
+        return false
+    end
     if unit.channel.ab and unit.channel.ab.steadfast then
         Combat.logEvent(combat, "status",
             string.format("%s does not falter (%s).", unitName(unit), reason or "disrupted"), unit)
@@ -6612,7 +7396,7 @@ function Combat.strikeTrap(combat, unit, weapon, x, y)
     -- Damage the trap by the weapon's attack stat (magical weapons use magicDamage). Traps have
     -- no defense, so this is the raw stat, floored.
     Combat.logEvent(combat, "trap", string.format("%s strikes %s.", unitName(unit), trap.name or "a trap"), unit)
-    Combat.pushFx(combat, { type = "cast", unit = unit, tx = x, ty = y, support = false })
+    Combat.pushFx(combat, { type = "cast", unit = unit, tx = x, ty = y, support = false, tags = Combat.fxTags(weapon, ab) })
     Trap.damage(combat, trap, Combat.computeTrapDamage(unit, weapon))
 
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
@@ -6641,7 +7425,7 @@ function Combat.strikeWall(combat, unit, weapon, x, y)
     Combat.spendCosts(combat, unit, ab)
 
     Combat.logEvent(combat, "trap", string.format("%s strikes %s.", unitName(unit), wall.name or "a wall"), unit)
-    Combat.pushFx(combat, { type = "cast", unit = unit, tx = x, ty = y, support = false })
+    Combat.pushFx(combat, { type = "cast", unit = unit, tx = x, ty = y, support = false, tags = Combat.fxTags(weapon, ab) })
     Wall.damage(combat, wall, Combat.computeTrapDamage(unit, weapon))
 
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
@@ -6675,7 +7459,7 @@ function Combat.strikeProp(combat, unit, weapon, x, y)
 
     Combat.logEvent(combat, "trap",
         string.format("%s strikes %s.", unitName(unit), prop.name or "an object"), unit)
-    Combat.pushFx(combat, { type = "cast", unit = unit, tx = x, ty = y, support = false })
+    Combat.pushFx(combat, { type = "cast", unit = unit, tx = x, ty = y, support = false, tags = Combat.fxTags(weapon, ab) })
     Prop.damage(combat, prop, Combat.computeTrapDamage(unit, weapon), unit)
 
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)

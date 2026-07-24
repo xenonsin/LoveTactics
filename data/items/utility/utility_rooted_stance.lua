@@ -26,6 +26,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
+    discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 620,
     repRank = 4,
     statusImmunity = { "status_stun" },

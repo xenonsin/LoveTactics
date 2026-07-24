@@ -16,8 +16,10 @@
 return {
     name = "Witchlight",
     description = "Harsh light: nothing standing in it can hide from being targeted.",
-    sprite = "assets/hazards/witchlight.png",
     tags = { "light" },
+    -- "light" resolves to the same halo the holy ground wears, and this is not holy ground. The cold
+    -- blue-white is what the description promises: a hard, colourless light, not a blessing.
+    fx = { color = { 0.86, 0.95, 1.00 } },
     duration = 10,           -- ~2 turns: one exchange's worth of being seen
     disposition = "hostile", -- the enemy AI would rather not be stood in it
     onEnter = function(ctx)

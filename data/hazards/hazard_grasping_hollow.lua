@@ -20,8 +20,10 @@
 return {
     name = "Grasping Hollow",
     description = "Sucking ground: roots whatever steps into it.",
-    sprite = "assets/hazards/grasping_hollow.png",
     tags = { "earth" },
+    -- Quicksand's churn, in a bruised violet: this one is not mud, it is something under the mud, and
+    -- the two must not read as the same patch of ground.
+    fx = { color = { 0.30, 0.18, 0.34 }, intensity = 1.1 },
     duration = 18,           -- ~3.5 turns of held ground
     disposition = "hostile", -- the enemy AI paths around it rather than through
     onEnter = function(ctx)

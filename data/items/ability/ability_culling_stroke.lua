@@ -27,6 +27,7 @@ return {
     type = "ability",
     tags = { "slash", "physical" },
     class = "fighter",
+    discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 420,
     repRank = 4,
     activeAbility = {

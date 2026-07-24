@@ -34,7 +34,8 @@ return {
     rewardGold = 320,
     rewardRep = 30,
     rewardPrestige = 2,
-    requiredPrestige = 4,
+    requiredQuests = { "no_third_state" }, -- slot 8: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "colosseum", rank = 3 }, -- Champion
     map = {
         biome = "castle",

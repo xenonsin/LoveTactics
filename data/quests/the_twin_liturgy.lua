@@ -11,7 +11,8 @@
 -- `obj.protect` before the win type, so the two compose): keep the ground and keep her breathing. The
 -- twin liturgy needs two voices and she has one, which is why she asked.
 --
--- GATING: the both-parents rule lives in `Discipline.isUnlocked`, not here -- see the note in
+-- GATING: `requiredQuests` names the first subclass gate of each parent line, so this capstone does
+-- not appear until the player genuinely holds both halves -- see the note in
 -- data/quests/champions_challenge.lua.
 --
 -- FIRST PASS. Scenes are not authored, so nothing is named. The divine wants a bespoke blueprint
@@ -25,7 +26,10 @@ return {
     rewardGold = 250,
     rewardRep = 10,
     rewardPrestige = 1,
-    requiredPrestige = 4,
+    -- Both parents, earned: "the_praised_working" is the first mage subclass gate on its line,
+    -- "rite_of_ashes" the first priest. Holding either is impossible without them.
+    requiredQuests = { "the_praised_working", "rite_of_ashes" },
+    requiredPrestige = 1,
     map = {
         biome = "castle",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },

@@ -513,12 +513,15 @@ return {
         fn = function()
             local player = Player.new()
             player.prestige = 3
+            -- The Colosseum's line runs in order, so slot 3 needs slots 1-2 behind it.
+            player.completedQuests.arena_debut = true
+            player.completedQuests.the_padded_card = true
 
             local found
             for _, q in ipairs(Quest.available(player)) do
                 if q.id == "warlord_keep" then found = q end
             end
-            assert(found, "warlord_keep not available at prestige 3")
+            assert(found, "warlord_keep not available once slots 1-2 are done")
             assert(found.map and found.map.keyCount == 2, "warlord_keep map params not carried")
             -- blueprint still intact
             assert(Quest.defs.warlord_keep.id == nil, "quest blueprint mutated")

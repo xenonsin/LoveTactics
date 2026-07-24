@@ -25,8 +25,11 @@
 return {
     name = "Darkness",
     description = "Unnatural dark: nothing can see a line across it. Walking through is untouched.",
-    sprite = "assets/hazards/darkness.png",
     tags = { "dark" },
+    -- The one field on the board that SUBTRACTS light. "dark" already resolves to smoke; the near-black
+    -- violet and the raised density are what make it read as a hole in the board rather than as another
+    -- cloud, which is the honest picture of a tile nothing can see across.
+    fx = { color = { 0.10, 0.07, 0.16 }, density = 1.35 },
     duration = 15,           -- ~3 turns at Status.TICKS_PER_TURN, as a Fire's blaze lasts
     disposition = "neutral", -- it harms nobody, so the enemy AI has no reason to route around it
     sightCost = 2,           -- Combat.SIGHT_BLOCK: one tile of it seals a line outright

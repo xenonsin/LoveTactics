@@ -13,6 +13,7 @@ return {
     abbr = "Psn",
     description = "Poisoned: takes toxic damage as time passes.",
     color = { 0.45, 0.72, 0.30 }, -- badge tint (venom green)
+    fx = { pattern = "smoke" },   -- a poisoned body trails the same haze the fumes that dosed it do
     duration = 25, -- ~5 turns at Status.TICKS_PER_TURN: longer than Burn's 3, as the prose promises
     magnitude = 3, -- poison damage per turn's worth of ticks (spread over the clock by ctx.accrue)
     debuff = true, -- removable by Cure / Panacea

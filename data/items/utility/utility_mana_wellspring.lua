@@ -9,6 +9,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
+    discipline = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
     price = 340,
     repRank = 3,
     traits = { "trait_arcane_reservoir" },

@@ -27,6 +27,7 @@ return {
     type = "armor",
     tags = { "heavy" },
     class = "fighter",
+    discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 460,
     repRank = 4,
     traits = { "trait_unspent_heart" },

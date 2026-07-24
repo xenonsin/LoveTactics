@@ -19,7 +19,8 @@ return {
     rewardGold = 220,
     rewardRep = 45,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredQuests = { "the_inner_circle" }, -- slot 5: the line runs in order
+    requiredPrestige = 3,
     requiredRep = { vendor = "arcanum", rank = 2 }, -- Adept or better
     map = {
         biome = "castle",

@@ -25,6 +25,7 @@ return {
     type = "utility",
     tags = { "boots" },
     class = "hunter",
+    discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
     price = 380,
     repRank = 2,
     -- No `duration`: a trap is an object left lying there, not ground that ages out. It waits.

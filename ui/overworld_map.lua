@@ -218,6 +218,7 @@ end
 -- is held steps immediately, then it auto-repeats after MOVE_INITIAL, MOVE_REPEAT
 -- apart. Changing direction re-arms the pause so a quick tap is a single tile.
 function OverworldMap:update(dt)
+    self.fogTime = (self.fogTime or 0) + (dt or 0) -- the fog shader's drift clock
     -- Camera easing + token slide run every frame, whether or not we're moving.
     if self.camTargetX then
         local t = math.min(1, dt * CAM_LERP)
@@ -399,26 +400,76 @@ function OverworldMap:draw()
     love.graphics.pop()
 end
 
+-- The fog shader (shaders/fog.lua), compiled once on first draw and latched on failure so a driver
+-- that refuses it drops back to the flat rects forever -- the same tolerance ui/field_fx.lua gives its
+-- own shader. Returns the shader or nil.
+function OverworldMap:fogFx()
+    if self.fogShader then return self.fogShader end
+    if self.fogFailed then return nil end
+    local ok, sh = pcall(love.graphics.newShader, require("shaders.fog").source)
+    if not ok or not sh then
+        self.fogFailed = true
+        return nil
+    end
+    local data = love.image.newImageData(1, 1)
+    data:setPixel(0, 0, 1, 1, 1, 1)
+    self.fogPx = love.graphics.newImage(data)
+    self.fogShader = sh
+    return sh
+end
+
 -- Fog of war overlay (drawn after markers so it hides markers on hidden tiles).
--- Three tiers: undiscovered tiles are near-opaque black; discovered tiles outside
--- the current (circular) vision radius are dimmed; tiles within vision are left
+-- Three tiers: undiscovered tiles are near-opaque churning mist; discovered tiles outside
+-- the current (circular) vision radius are veiled; tiles within vision are left
 -- untouched. Uses the grid's shared inVision test so it matches what reveal lit.
+--
+-- Each fogged tile is drawn through shaders/fog.lua, which samples its churn in BOARD space (uCell) so
+-- a whole unexplored region rolls as one dark mass instead of a grid of identical black squares. If the
+-- shader is unavailable it falls back to the flat rects this always drew.
 function OverworldMap:drawFog()
     local s = self.grid.size
     local r = self.visionRadius
+    local sh = self:fogFx()
+
+    if not sh then
+        for y = 1, self.grid.rows do
+            for x = 1, self.grid.cols do
+                local c = self.grid:get(x, y)
+                local wx, wy = self.grid:cellToPixel(x, y)
+                if not c.seen then
+                    love.graphics.setColor(0.02, 0.02, 0.03, 0.98)
+                    love.graphics.rectangle("fill", wx, wy, s, s)
+                elseif not self.grid:inVision(self.px, self.py, x, y, r) then
+                    love.graphics.setColor(0.02, 0.02, 0.03, 0.5)
+                    love.graphics.rectangle("fill", wx, wy, s, s)
+                end
+            end
+        end
+        love.graphics.setColor(1, 1, 1)
+        return
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setShader(sh)
+    sh:send("uTime", self.fogTime or 0)
     for y = 1, self.grid.rows do
         for x = 1, self.grid.cols do
             local c = self.grid:get(x, y)
-            local wx, wy = self.grid:cellToPixel(x, y)
+            local alpha
             if not c.seen then
-                love.graphics.setColor(0.02, 0.02, 0.03, 0.98)
-                love.graphics.rectangle("fill", wx, wy, s, s)
+                alpha = 0.98
             elseif not self.grid:inVision(self.px, self.py, x, y, r) then
-                love.graphics.setColor(0.02, 0.02, 0.03, 0.5)
-                love.graphics.rectangle("fill", wx, wy, s, s)
+                alpha = 0.5
+            end
+            if alpha then
+                local wx, wy = self.grid:cellToPixel(x, y)
+                sh:send("uCell", { x, y })
+                sh:send("uAlpha", alpha)
+                love.graphics.draw(self.fogPx, wx, wy, 0, s, s)
             end
         end
     end
+    love.graphics.setShader()
     love.graphics.setColor(1, 1, 1)
 end
 

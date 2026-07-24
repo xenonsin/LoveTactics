@@ -377,6 +377,17 @@ it for free. Prefer one over hand-rolling the same logic in an `effect`.
 | `channelStatus = id` | A status the caster gains **on commit** and carries through the wind-up. The half an `effect` cannot reach — an effect runs when the cast resolves, and this has to land before the enemy's turn to punish the tell (`weapon_held_breath`). |
 | `steadfast` | The wind-up **cannot be interrupted**. The control still lands in full; only the cancellation is refused, so a stun aimed at it is insufficient rather than wasted (`weapon_kingsfall`). |
 
+**A keyword owes the player a definition.** Every surface that names one also defines it
+(`models/glossary.lua` → `ui/glossary_panel.lua`): the item tooltip opens a glossary column beside
+itself, and the shop's detail pane closes with a docked one. So a word can be read on the spot rather
+than looked up in this file. A **new keyword therefore needs two things**: a
+`data/keywords/keyword_<name>.lua` blueprint (`{ name, description }`) and its field listed in
+`models/keyword.lua`. `tests/glossary_spec.lua` fails a field that names no blueprint.
+
+Four keywords deliberately have no glossary entry — `channel`, `consumesItem`, `requiresAdjacent` and
+`reserve`. The tooltip already prints prose for each beside its own stat row, and a glossary that
+repeated them would say the same thing twice on one hover.
+
 ### What a neighbouring item can do to a cast
 
 The keywords above are declared **on the ability**. The `aura` block is the mirror of them, declared on

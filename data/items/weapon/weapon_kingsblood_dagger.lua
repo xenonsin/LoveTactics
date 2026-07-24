@@ -20,11 +20,20 @@ return {
     sprite = "assets/items/kingsblood_dagger.png",
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
-    -- Quest-only: a `class` with no `price` tallies toward rogue growth but sits on no shelf, and no
-    -- `price` also keeps it out of the random spoils pool (models/spoils.lua), which reads `price` as the
-    -- "is this ordinary stock?" marker. The Undercroft sells it back to you in fiction; in play it is a
-    -- thing you are given for doing the guild a service, which is the more Greedish arrangement anyway.
     class = "rogue",
+    -- The Undercroft's rank-4, and priced like the other six lines' (800 / rank 4: the Crimson Greataxe,
+    -- the Oathkeeper Shield, the Censer of Dawn, the Hornbow of the Hunt, the Philosopher's Stone, the
+    -- Codex of Hubris). That symmetry is load-bearing: for every vendor, the standing that finally puts
+    -- its 800-gold relic on the shelf is the standing that lets you face the general the relic has been
+    -- describing (docs/story.md). Greed was the one line where it did not hold -- this file said
+    -- "Undercroft rank-4" in its first line and then carried no `price` and no `repRank` at all, so the
+    -- shop had no top rung and the rule quietly had six cases instead of seven.
+    --
+    -- Being sold is also the more Greedish arrangement, whatever an earlier note here claimed: the guild
+    -- sells it, buys it back, and takes a cut each time. You pay the Undercroft for the knife it named
+    -- after somebody's blood, which is the joke.
+    price = 800,
+    repRank = 4,
     stealPriority = 2, -- a thief covets it above ordinary kit (below a Decoy's bait)
     activeAbility = {
         target = "enemy",

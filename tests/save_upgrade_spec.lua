@@ -26,6 +26,21 @@ return {
         end,
     },
     {
+        name = "visited-vendor and discipline-announced flags round-trip",
+        fn = function()
+            local player = Player.new()
+            player.visitedVendors.colosseum = true
+            player.announcedDisciplines.warlord = true
+            player.announcedDisciplines.champion = true
+
+            local restored = Save.restore(Save.snapshot(player))
+            assert(restored.visitedVendors.colosseum == true, "a visited vendor survives the round-trip")
+            assert(restored.announcedDisciplines.warlord == true, "an announced discipline survives")
+            assert(restored.announcedDisciplines.champion == true, "a second announced discipline survives")
+            assert(restored.announcedDisciplines.ninja == nil, "an un-announced discipline is not invented")
+        end,
+    },
+    {
         name = "a character showing its blueprint name stores no override (clean diff)",
         fn = function()
             local player = Player.new()

@@ -14,6 +14,7 @@ return {
     type = "ability",
     tags = { "dark", "magical" },
     class = "mage",
+    discipline = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
     price = 500,
     repRank = 4,
     activeAbility = {

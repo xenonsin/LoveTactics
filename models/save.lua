@@ -195,10 +195,23 @@ function Save.snapshot(player)
         if seen then visitedVendors[vendorId] = true end
     end
 
+    local announcedDisciplines = {}
+    for disciplineId, seen in pairs(player.announcedDisciplines or {}) do
+        if seen then announcedDisciplines[disciplineId] = true end
+    end
+
+    -- How many times this campaign has been finished and carried forward (Player.newGamePlus). Purely
+    -- additive, so Save.VERSION deliberately does NOT move -- same rule aiRules and visitedVendors
+    -- follow above: a bump discards the whole save, and no existing field changed shape here. An older
+    -- save loads with no count, which reads as a first run, which is what it is.
+    -- Omitted while zero so a save that has never finished the game diffs clean.
+    local ngPlus = (player.ngPlus or 0) > 0 and player.ngPlus or nil
+
     return {
         version = Save.VERSION,
         gold = player.gold,
         prestige = player.prestige,
+        ngPlus = ngPlus,
         body = player.body, -- the created avatar's body (1/2); nil before character creation
         name = player.name, -- the name typed at creation (also on the avatar instance)
         -- Who this player is to other players (Player.authorId). Persisted rather than re-minted,
@@ -210,6 +223,7 @@ function Save.snapshot(player)
         materials = materials,
         recipes = recipes,
         visitedVendors = visitedVendors,
+        announcedDisciplines = announcedDisciplines,
         roster = roster,
         party = party,
         stash = stash,
@@ -323,9 +337,17 @@ function Save.restore(snap)
         if seen then visitedVendors[vendorId] = true end
     end
 
+    -- Discipline-unlocked announcement flags (states/hub.lua). Same shape and same forgiving default:
+    -- nil on an older save loads empty, so an already-unlocked discipline simply announces once more.
+    local announcedDisciplines = {}
+    for disciplineId, seen in pairs(snap.announcedDisciplines or {}) do
+        if seen then announcedDisciplines[disciplineId] = true end
+    end
+
     return {
         gold = snap.gold or 0,
         prestige = snap.prestige or 1,
+        ngPlus = snap.ngPlus or 0, -- absent on a save from before New Game+, and on any first run
         body = snap.body, -- nil for a save made before character creation set it
         name = snap.name,
         authorId = snap.authorId, -- nil on an older save; Player.authorId mints one on demand
@@ -334,6 +356,7 @@ function Save.restore(snap)
         materials = materials,
         recipes = recipes,
         visitedVendors = visitedVendors,
+        announcedDisciplines = announcedDisciplines,
         roster = roster,
         party = party,
         stash = stash,

@@ -4,12 +4,34 @@
 
 local Spoils = require("models.spoils")
 local Item = require("models.item")
+local Character = require("models.character")
 
--- A stand-in enemy roster: only the length matters to the gold computation.
+-- A stand-in enemy roster: bare tables with no grid, so only the length matters. Kept as-is to
+-- prove the gold half still works for a caller that has no bodies to hand over.
 local function roster(n)
     local units = {}
     for i = 1, n do units[i] = { char = { id = "character_bandit" } } end
     return units
+end
+
+-- A REAL roster: instantiated characters carrying their blueprint loadouts, which is what a live
+-- battle passes and what the carried-drop path actually reads.
+local function realRoster(id, n)
+    local units = {}
+    for i = 1, n do units[i] = { char = Character.instantiate(id) } end
+    return units
+end
+
+-- The priced, unbound ids a roster is carrying -- the set a carried drop must come from.
+local function carriedIds(units)
+    local set = {}
+    for _, u in ipairs(units) do
+        for _, item in ipairs(Character.eachItem(u.char)) do
+            local def = item.id and Item.defs[item.id]
+            if def and def.price and def.price > 0 and not def.bound then set[item.id] = true end
+        end
+    end
+    return set
 end
 
 return {
@@ -88,6 +110,60 @@ return {
         fn = function()
             local s = Spoils.roll({ prestige = 1, kind = "combat" })
             assert(s.gold > 0, "gold falls back to a single-enemy computation")
+        end,
+    },
+    {
+        -- The headline of the carried-drop change: beating a body pays out in what that body had.
+        name = "loot is drawn off the beaten roster far more often than off the price band",
+        fn = function()
+            local units = realRoster("character_bandit", 3)
+            local carried = carriedIds(units)
+            assert(next(carried), "the bandit must carry something priced for this test to mean anything")
+            local fromBody, total = 0, 0
+            for _ = 1, 400 do
+                local s = Spoils.roll({ enemyUnits = units, prestige = 3, kind = "combat" })
+                for _, id in ipairs(s.loot) do
+                    total = total + 1
+                    if carried[id] then fromBody = fromBody + 1 end
+                end
+            end
+            assert(total > 0, "400 rolls should produce some loot")
+            -- CARRIED_BIAS is 0.75; a band draw can coincidentally match a carried id, never the
+            -- reverse, so the true rate is >= 0.75. 0.5 leaves ample room for sampling noise.
+            assert(fromBody / total > 0.5,
+                "most drops should come off the bodies, got " .. fromBody .. "/" .. total)
+        end,
+    },
+    {
+        -- Creatures carry unpriced, noSteal natural weapons, so their carried pool is empty and the
+        -- price band has to catch the fight. A beast pack that paid nothing would be a regression.
+        name = "a roster carrying nothing priced still pays out from the price band",
+        fn = function()
+            local units = realRoster("character_wolf_grunt", 3)
+            assert(not next(carriedIds(units)), "a wolf should carry nothing priced")
+            local drops = 0
+            for _ = 1, 200 do
+                local s = Spoils.roll({ enemyUnits = units, prestige = 3, kind = "elite" })
+                drops = drops + #s.loot
+            end
+            assert(drops > 0, "an empty carried pool must fall back to the band, not pay nothing")
+        end,
+    },
+    {
+        -- What keeps a boss's phase machinery out of the player's hands (utility_demon_sigil is
+        -- `bound` and carries trait_boss_phases). Every drop must still be a real, unbound item.
+        name = "a bound relic is never dropped, even by the body carrying it",
+        fn = function()
+            local units = realRoster("character_demon_champion", 1)
+            for _ = 1, 300 do
+                local s = Spoils.roll({ enemyUnits = units, prestige = 5, kind = "elite" })
+                for _, id in ipairs(s.loot) do
+                    local def = Item.defs[id]
+                    assert(def, "rolled loot id must exist: " .. tostring(id))
+                    assert(not def.bound, "a bound item must never drop: " .. tostring(id))
+                    assert(def.price and def.price > 0, "an unpriced item must never drop: " .. tostring(id))
+                end
+            end
         end,
     },
 }

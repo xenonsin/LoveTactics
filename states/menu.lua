@@ -153,7 +153,9 @@ end
 -- Loadouts are rolled fresh each time (see randomizeLoadout) so repeated runs exercise a spread of
 -- items rather than the same four authored grids. One `taken` set spans the party, so the four grids
 -- between them show 36 distinct items.
-local function startMockBattle()
+-- `layout` optionally names a hand-authored board (data/arenas/<id>.lua) instead of rolling one --
+-- how the Field Gallery below drops onto its own map without needing a quest to carry it.
+local function startMockBattle(layout)
     local Character = require("models.character")
     local pool = randomizablePool()
     local taken = {}
@@ -169,7 +171,8 @@ local function startMockBattle()
         prestige = 3,
         party = party,
         quest = { map = { biome = "castle", objective = {
-            name = "Mock Battle",
+            name = layout and "Field Gallery" or "Mock Battle",
+            layout = layout,
             composition = function() return { "character_bandit", "character_bandit", "character_champion" } end,
             win = { type = "killAll" },
         } } },
@@ -215,6 +218,11 @@ local function buildMenu()
     }
 
     items[#items + 1] = {
+        label = "Settings",
+        action = function() State.switch(require("states.settings"), menu) end,
+    }
+
+    items[#items + 1] = {
         label = "Exit To Desktop",
         action = function() love.event.quit() end,
     }
@@ -230,8 +238,16 @@ local DEBUG_MARGIN = 16
 local function buildDebugMenu()
     if not DEBUG then return nil end
     return Menu.new({
-        { label = "Mock Battle", action = startMockBattle },
+        { label = "Mock Battle", action = function() startMockBattle() end },
+        -- Every tile-field pattern on one board, for looking at the shader rather than arguing about
+        -- it. See data/arenas/field_gallery.lua for what each row is arranged to prove.
+        { label = "Field Gallery", action = function() startMockBattle("field_gallery") end },
         { label = "Character Editor", action = function() State.switch(require("states.debug_editor")) end },
+        -- The credits roll is otherwise reachable only by finishing the campaign, which makes it the
+        -- least-looked-at screen in the game and the one carrying a licence obligation (the
+        -- game-icons.net attribution). `newGamePlus = false`: there is no run behind this, so the
+        -- carry-forward offer would have nothing to carry.
+        { label = "Credits", action = function() State.switch(require("states.credits"), { newGamePlus = false }) end },
         { label = "Extract Strings", action = runExtractStrings },
     }, {
         buttonWidth = DEBUG_BUTTON_W,
@@ -258,6 +274,7 @@ local function setFocus(which)
 end
 
 function menu.enter()
+    require("models.sound").music("music.menu")
     widget = buildMenu()
     debugWidget = buildDebugMenu()
     setFocus("main")

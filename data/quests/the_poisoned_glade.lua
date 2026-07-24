@@ -11,7 +11,8 @@
 -- in it because it is the richest place for miles if you know which parts are poison, which is the
 -- entire discipline stated as a life.
 --
--- GATING: the both-parents rule lives in `Discipline.isUnlocked`, not here -- see the note in
+-- GATING: `requiredQuests` names the first subclass gate of each parent line, so this capstone does
+-- not appear until the player genuinely holds both halves -- see the note in
 -- data/quests/champions_challenge.lua.
 --
 -- FIRST PASS. Scenes are not authored, so nothing is named, and no `rewardCharacter` is set -- the
@@ -26,6 +27,9 @@ return {
     rewardGold = 250,
     rewardRep = 10,
     rewardPrestige = 1,
+    -- Both parents, earned: "the_starving_dark" is the first hunter subclass gate on its line,
+    -- "by_the_dram" the first alchemist. Holding either is impossible without them.
+    requiredQuests = { "the_starving_dark", "by_the_dram" },
     requiredPrestige = 4,
     map = {
         biome = "forest",

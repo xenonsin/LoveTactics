@@ -9,6 +9,7 @@ return {
     type = "ability",
     tags = { "summon", "earth" },
     class = "mage",
+    discipline = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
     price = 470,
     repRank = 4,
     activeAbility = {

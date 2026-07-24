@@ -8,12 +8,20 @@
 -- row (the detail follows with no extra press), A buys/sells/upgrades it, the shoulder buttons cycle
 -- Buy<->Sell<->Upgrade, B closes. No drag, no member targeting.
 --
+-- The detail pane closes with a GLOSSARY block (ui/glossary_panel.lua, gathered by
+-- models/glossary.lua) defining every status the highlighted item can inflict and every keyword its
+-- ability declares -- docked into the column rather than floating, since this pane is a column of
+-- inline text and not a hover. It follows the selection like the rest of the detail, so it costs the
+-- pad and the keyboard no extra press either.
+--
 --   local panel = Shop.new({ vendor = "colosseum", player = p, onClose = fn })
 
 local Menu = require("ui.menu")
 local QuantityPopup = require("ui.quantity_popup")
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip") -- for printFlavor: the sheared italic story line
+local GlossaryPanel = require("ui.glossary_panel")
+local Glossary = require("models.glossary")
 local Vendor = require("models.vendor")
 local Player = require("models.player")
 local Item = require("models.item")
@@ -71,6 +79,10 @@ function Shop.new(opts)
     self.headFont = love.graphics.newFont(18)
     self.bodyFont = love.graphics.newFont(15)
     self.smallFont = love.graphics.newFont(13)
+    -- One step below `small`, for the glossary block at the foot of the detail column: it is reference
+    -- text under the stats rather than a stat, and the smaller face is what lets three definitions fit
+    -- in the room between the stat block and the price.
+    self.glossFont = love.graphics.newFont(12)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
@@ -478,6 +490,21 @@ function Shop:drawDetail()
             for _, c in ipairs(costs) do parts[#parts + 1] = c.amount .. " " .. c.stat end
             statLine("Cost", table.concat(parts, " + "))
         end
+    end
+
+    -- What the shelf otherwise never says: every status this thing can inflict and every keyword its
+    -- ability declares, defined in the room between the stat block and the price. This column has no
+    -- "Applies" row of its own -- unlike the in-battle tooltip -- so for a shopper the glossary is the
+    -- ONLY place a weapon admits it burns. It sizes itself to the gap and spends a "+n more" on
+    -- anything that will not fit, rather than running over the transaction line below.
+    local glossY = sy + 10
+    local glossMaxH = (self.boxY + BOX_H - 96) - 12 - glossY
+    local entries = Glossary.forItem(item, nil, out or false)
+    if #entries > 0 and glossMaxH > 0 then
+        love.graphics.setColor(0.30, 0.33, 0.40, 0.8)
+        love.graphics.line(x, glossY - 6, x + w, glossY - 6)
+        GlossaryPanel.drawColumn(entries, x, glossY, w, glossMaxH,
+            { nameFont = self.smallFont, descFont = self.glossFont, capFont = self.glossFont })
     end
 
     -- The transaction line for this mode.

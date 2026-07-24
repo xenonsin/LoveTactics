@@ -36,7 +36,8 @@ return {
     rewardGold = 320,
     rewardRep = 30,
     rewardPrestige = 2,
-    requiredPrestige = 4,
+    requiredQuests = { "what_the_honor_makes" }, -- slot 8: the line runs in order
+    requiredPrestige = 2,
     requiredRep = { vendor = "hunters_lodge", rank = 3 }, -- Beastslayer
     map = {
         biome = "forest",

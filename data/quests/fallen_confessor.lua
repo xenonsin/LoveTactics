@@ -24,8 +24,13 @@ return {
     rewardGold = 90,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredQuests = { "haunted_mill" }, -- slot 2: the line runs in order
+    requiredPrestige = 1,
     rewardCharacter = "character_amana",
+    -- The plea. She is bested, stays your hand, and tells you what the rite actually does before you
+    -- collect -- then joins. Player.recruit has already run by the time this plays, so the join banner
+    -- folds onto the scene. Note what she still believes about the Saint: that is slot 7's to break.
+    outro = "amana_joins",
     map = {
         biome = "forest",
         encounters = { min = 3, max = 5 }, -- map size scales with this (models/overworld.lua)

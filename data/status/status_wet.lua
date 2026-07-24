@@ -30,6 +30,7 @@ return {
     abbr = "Wet",
     description = "Soaked: takes extra lightning and ice damage, resists fire, and conducts to nearby water.",
     color = { 0.40, 0.62, 0.92 }, -- badge tint (rain blue)
+    fx = { pattern = "rain" },    -- a drenched unit drips: the rain's own picture, carried out of it
     duration = 15,  -- ~3 turns at Status.TICKS_PER_TURN: long enough to soak a cluster, then Jolt it
     debuff = true, -- removable by Cure
     lingers = true, -- you walk out of the rain still soaked; it dries on its own duration

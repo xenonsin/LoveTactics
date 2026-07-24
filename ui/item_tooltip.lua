@@ -7,6 +7,10 @@
 --   ItemTooltip.draw(item, mx, my, maxRight, actor)   -- actor (optional) gates the ability cost:
 --                                                     -- it renders red + a note when unaffordable
 --
+-- Whatever the tooltip NAMES it also defines: a sibling column (ui/glossary_panel.lua, gathered by
+-- models/glossary.lua) opens beside the box carrying one line on each status the item can inflict and
+-- each keyword its ability declares. It is drawn from here so every caller in the game gets it.
+--
 -- Content is assembled once into an ordered list of blocks that is both measured and drawn, so
 -- the computed box height can never drift from what's rendered.
 
@@ -17,7 +21,9 @@ local Item = require("models.item")
 local Discipline = require("models.discipline")
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
+local Glossary = require("models.glossary")
 local RangeDiagram = require("ui.range_diagram")
+local GlossaryPanel = require("ui.glossary_panel")
 local Glyphs = require("ui.glyphs")
 local Colors = require("ui.colors")
 
@@ -145,7 +151,7 @@ end
 -- `actor` (optional) is the unit the ability is priced and gated against: whatever stops it from
 -- being cast right now (Combat.itemBlockReason) reddens the offending row and closes the ability
 -- section with a `warn` block spelling the reason out.
-local function buildBlocks(item, actor, innerW)
+local function buildBlocks(item, actor, innerW, out)
     local blocks = {}
     local typeCol = TYPE_COLOR[item.type] or DEFAULT_COLOR
     -- The one reason this item can't be activated (nil when it can, or when it's passive).
@@ -209,7 +215,8 @@ local function buildBlocks(item, actor, innerW)
         -- amount, plus any status it applies. A dry-run against a zero-defense stand-in tells damage
         -- from heal and surfaces the statuses; with no actor (an Armory hover) it runs against a
         -- neutral caster so the derived numbers still show, just without the actor's stats folded in.
-        local out = Combat.abilityOutput(actor, item)
+        -- The run itself happens once in `draw` and is handed down, since the glossary column beside
+        -- this tooltip reads the very same statuses off it.
         if out then
             if out.heal > 0 then
                 blocks[#blocks + 1] = { kind = "stat", label = "Heal",
@@ -476,7 +483,10 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
     local innerW = w - pad * 2
     maxRight = maxRight or Scale.WIDTH
 
-    local blocks = buildBlocks(item, actor, innerW)
+    -- One dry run per hover, shared: the blocks below quote its numbers and the glossary column at the
+    -- foot of this function names the statuses it turned up.
+    local out = Combat.abilityOutput(actor, item) or false
+    local blocks = buildBlocks(item, actor, innerW, out)
     local titleH, bodyH, smallH, powerH = title:getHeight(), body:getHeight(), small:getHeight(), power:getHeight()
 
     -- Measure: sum each block's height (wrapping desc against innerW, cached for the draw pass).
@@ -596,6 +606,11 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
             ty = ty + b.lines * bodyH + 1
         end
     end
+
+    -- The definitions for every proper noun this tooltip just dropped -- the statuses it applies, the
+    -- keywords its ability declares -- in a sibling column beside the box. Drawn last, and positioned
+    -- off the box we just measured, so it lands next to the tooltip rather than under the cursor.
+    GlossaryPanel.draw(Glossary.forItem(item, actor, out), { x = bx, y = by, w = w, h = h }, maxRight)
 
     love.graphics.setColor(1, 1, 1)
 end

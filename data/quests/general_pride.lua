@@ -17,7 +17,8 @@ return {
     rewardRep = 80,
     rewardPrestige = 3,
     rewardItems = { "utility_codex_unanswered" },
-    requiredPrestige = 5,
+    requiredQuests = { "the_next_unequalled" }, -- slot 10: the line runs in order
+    requiredPrestige = 3,
     requiredRep = { vendor = "arcanum", rank = 4 }, -- Archmage
     gateHint = "where the shelves answer only themselves",
     map = {

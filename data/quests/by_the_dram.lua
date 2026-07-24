@@ -36,7 +36,8 @@ return {
     rewardGold = 180,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 3,
+    requiredQuests = { "the_self_made_master" }, -- slot 4: the line runs in order
+    requiredPrestige = 4,
     requiredRep = { vendor = "alchemist", rank = 2 }, -- Distiller
     map = {
         biome = "castle",

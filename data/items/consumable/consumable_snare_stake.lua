@@ -17,6 +17,7 @@ return {
     type = "consumable",
     tags = { "trap" },
     class = "hunter",
+    discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
     price = 110,
     repRank = 2,
     activeAbility = {

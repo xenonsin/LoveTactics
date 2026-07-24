@@ -3,6 +3,7 @@ local Scale = require("scale")
 local InputMode = require("input_mode")
 local Cursor = require("ui.cursor")
 local Conversation = require("models.conversation")
+local ScreenFx = require("ui.screen_fx")
 
 function love.load(args)
     -- Headless test entry: `& "E:\LOVE\lovec.exe" . test`
@@ -16,6 +17,36 @@ function love.load(args)
     -- Stamps stable ids into conversations and regenerates data/lang/*.lua. See tools/extract_strings.
     if args and args[1] == "extract-strings" then
         require("tools.extract_strings").run()
+        love.event.quit(0)
+        return
+    end
+
+    -- Art-debt report: `& "E:\LOVE\lovec.exe" . art-report [missing]`
+    -- Counts referenced-vs-present art per bucket. See tools/art_report and docs/art-assets.md.
+    if args and args[1] == "art-report" then
+        require("tools.art_report").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
+    -- Audio-debt report: `& "E:\LOVE\lovec.exe" . audio-report [missing]`
+    -- Counts declared cues (data/sounds.lua) against what is on disk. See tools/audio_report.
+    if args and args[1] == "audio-report" then
+        require("tools.audio_report").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
+    -- Icon pipeline: `. icon-map [unmatched]` proposes a game-icons.net icon for each icon-shaped
+    -- asset; `. icon-build` renders the mapping into assets/. Run tools/icons/fetch.ps1 first.
+    if args and args[1] == "icon-map" then
+        require("tools.icon_map").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
+    if args and args[1] == "icon-build" then
+        require("tools.icon_build").run({ select(2, unpack(args)) })
         love.event.quit(0)
         return
     end
@@ -47,6 +78,7 @@ function love.load(args)
         State.switch(require("states.debug_editor"))
         return
     end
+
     State.switch(require("states.menu"))
 end
 
@@ -86,6 +118,11 @@ local function forwardMouse(name)
 end
 
 love.update = function(dt)
+    -- The screen-effect decays advance on REAL dt, always -- before the conversation short-circuit and
+    -- untouched by any hit-stop, so a freeze the battle imposes on itself still lets its own shake and
+    -- flash run down (ui/screen_fx.lua). A state that wants the freeze applies ScreenFx.timeScale() to
+    -- its own gameplay dt (states/battle.lua); everything else ignores it.
+    ScreenFx.update(dt)
     local overlay = Conversation.active
     if overlay then
         if overlay.update then overlay:update(dt) end

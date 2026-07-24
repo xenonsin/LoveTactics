@@ -6,7 +6,6 @@
 return {
     name = "Sanctuary",
     description = "Hallowed ground: grants Regeneration to allies who stand within.",
-    sprite = "assets/hazards/sanctuary.png",
     tags = { "holy" },
     duration = 15, -- ticks the hallowed ground lingers: ~3 turns at Status.TICKS_PER_TURN
     disposition = "friendly", -- a hurt unit of the caster's side will step onto it

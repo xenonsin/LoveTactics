@@ -13,7 +13,6 @@
 return {
     name = "Muster",
     description = "Mustered ground: allies stand braced in it, and enemies stand open.",
-    sprite = "assets/hazards/muster.png",
     tags = { "banner" },
     duration = 6,
     disposition = "neutral", -- it draws the owner in and pushes the foe out; neither reading is right

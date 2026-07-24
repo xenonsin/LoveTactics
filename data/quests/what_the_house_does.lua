@@ -30,7 +30,8 @@ return {
     rewardGold = 400,
     rewardRep = 35,
     rewardPrestige = 2,
-    requiredPrestige = 5,
+    requiredQuests = { "naming_the_day" }, -- slot 9: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "colosseum", rank = 3 }, -- Champion
     map = {
         biome = "castle",

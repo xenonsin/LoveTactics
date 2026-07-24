@@ -26,6 +26,7 @@ return {
     type = "utility",
     tags = { "poison" },
     class = "alchemist",
+    discipline = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
     price = 300,
     repRank = 3,
     -- The `incense` contract (see Combat.layIncense): a hazard, a radius, and a magnitude, laid around

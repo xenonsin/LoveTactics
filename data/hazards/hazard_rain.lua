@@ -6,7 +6,6 @@
 return {
     name = "Rain",
     description = "Soaking downpour: leaves those who enter Wet, and conducts lightning.",
-    sprite = "assets/hazards/rain.png",
     -- "water" douses fire (Hazard.douse); "conductable" makes the drenched ground itself carry a
     -- charge, so a bolt landing beside the cloud arcs through it (Combat.tileHasTag).
     tags = { "water", "conductable" },

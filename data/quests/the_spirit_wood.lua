@@ -10,7 +10,8 @@
 -- the wood and she is holding it down while the party is in it, which is why the objective is
 -- `survive`: outlast the night and she settles the rest.
 --
--- GATING: the both-parents rule lives in `Discipline.isUnlocked`, not here -- see the note in
+-- GATING: `requiredQuests` names the first subclass gate of each parent line, so this capstone does
+-- not appear until the player genuinely holds both halves -- see the note in
 -- data/quests/champions_challenge.lua.
 --
 -- FIRST PASS. Scenes are not authored, so nothing is named. The spirit-caller wants a bespoke
@@ -25,7 +26,10 @@ return {
     rewardGold = 250,
     rewardRep = 10,
     rewardPrestige = 1,
-    requiredPrestige = 4,
+    -- Both parents, earned: "the_starving_dark" is the first hunter subclass gate on its line,
+    -- "the_praised_working" the first mage. Holding either is impossible without them.
+    requiredQuests = { "the_starving_dark", "the_praised_working" },
+    requiredPrestige = 2,
     map = {
         biome = "forest",
         encounters = { min = 6, max = 9, always = { "encounter_wolf" } },

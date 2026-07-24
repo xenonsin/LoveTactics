@@ -79,6 +79,13 @@ spell whose whole item *is* the ability lets the top `description` speak for it 
 | Shop panel (`ui/panels/shop.lua`) | yes | italic, beneath it |
 | Blacksmith panel (`ui/panels/blacksmith.lua`) | yes | italic, beneath it |
 
+A **status** or **keyword** description is item text too, and it reaches the player through the same
+two surfaces: the glossary (`ui/glossary_panel.lua`) prints the `description` off `data/status/*.lua`
+and `data/keywords/*.lua` verbatim beside the item tooltip and at the foot of the shop's detail pane.
+Write those lines to the rules above — mechanical, one sentence, no flavor. Keep them **short**: the
+shop's docked form runs the name and the description together on one wrapped line in a 344px column,
+so a rambling status description is what pushes a third definition off the panel.
+
 The italic is faked with a shear transform, not an italic font — the project ships no font asset and
 LÖVE's default face has no italic. `ItemTooltip.printFlavor` owns that math; call it rather than
 re-deriving the shear, and note it reserves horizontal room for the slant's overhang.

@@ -42,7 +42,8 @@ return {
     rewardGold = 100,
     rewardRep = 20,
     rewardPrestige = 1,
-    requiredPrestige = 1,
+    requiredQuests = { "relief_column" }, -- slot 2: the line runs in order
+    requiredPrestige = 2,
     map = {
         biome = "forest",
         encounters = { min = 5, max = 7 },

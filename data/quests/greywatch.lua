@@ -39,7 +39,8 @@ return {
     rewardGold = 220,
     rewardRep = 25,
     rewardPrestige = 2,
-    requiredPrestige = 3,
+    requiredQuests = { "the_long_list" }, -- slot 5: the line runs in order
+    requiredPrestige = 2,
     requiredRep = { vendor = "bastion", rank = 2 }, -- Sworn
     rewardItems = { "utility_greywatch_muster_roll", "weapon_answering_bell", "weapon_rimebell" },
     map = {
@@ -53,6 +54,13 @@ return {
                     list[#list + 1] = "character_forsworn_knight"
                 end
                 list[#list + 1] = "character_demon_grunt"
+                -- The Knight in Grey, and the payoff of a plant made on board one: an unnamed,
+                -- unexplained grey knight stood on the demons' side of the siege line in
+                -- data/quests/relief_column.lua, and that file's header promises he pays HERE, at
+                -- the gate that was opened from within. He is also the Sentinel's exemplar
+                -- (data/disciplines/sentinel.lua), which gates on this quest -- so the discipline is
+                -- unlocked by the fight where the player finally sees what he is.
+                list[#list + 1] = "character_grey_knight"
                 return list
             end,
             -- `reach`: the point is getting THROUGH the ruin to the gate, not clearing it. Acedia's

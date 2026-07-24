@@ -11,6 +11,7 @@ return {
     type = "ability",
     tags = { "impact", "physical" },
     class = "knight",
+    discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 200,
     repRank = 2,
     activeAbility = {

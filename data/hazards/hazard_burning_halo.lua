@@ -17,7 +17,6 @@
 return {
     name = "Burning Halo",
     description = "A ring of white fire: enemies in it burn, and cannot see far enough to shoot.",
-    sprite = "assets/hazards/burning_halo.png",
     tags = { "fire" },
     duration = 6,
     disposition = "hostile",

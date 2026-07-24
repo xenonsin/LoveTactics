@@ -37,6 +37,7 @@ return {
     rewardGold = 240,
     rewardRep = 30,
     rewardPrestige = 1,
+    requiredQuests = { "accounts_settled" }, -- slot 6: the line runs in order
     requiredPrestige = 3,
     requiredRep = { vendor = "undercroft", rank = 3 }, -- Shadow
     map = {

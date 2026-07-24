@@ -41,7 +41,8 @@ return {
     rewardGold = 300,
     rewardRep = 30,
     rewardPrestige = 2,
-    requiredPrestige = 4,
+    requiredQuests = { "muster" }, -- slot 7: the line runs in order
+    requiredPrestige = 2,
     requiredRep = { vendor = "bastion", rank = 3 }, -- Banneret
     map = {
         biome = "castle",

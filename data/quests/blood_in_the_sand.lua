@@ -40,7 +40,8 @@ return {
     rewardGold = 240,
     rewardRep = 40,
     rewardPrestige = 1,
-    requiredPrestige = 3,
+    requiredQuests = { "the_intake" }, -- slot 6: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "colosseum", rank = 3 }, -- Champion
     map = {
         biome = "castle",

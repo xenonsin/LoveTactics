@@ -173,6 +173,13 @@ So the rule is now stated and enforced (`tests/armor_spec.lua`):
 | medium (leather armor, chainmail, most plate) | −1 |
 | heavy | −2 |
 
+**And no armor ever grants movement.** The tiers above are a *cost table*; a piece that hands a square
+back does not bend it, it cancels it — and once one does, the honest reading of the table becomes "wear
+the right four coats." The floor is 0 (`leather / hide cut for movement`), never a positive. A discipline
+that wants to sell pace sells it as a charm, an ability, or a weapon that does not close your move.
+`tests/armor_spec.lua` pins it, and the rule is why the Skirmisher's `armor_outriders_harness` buys an
+unanswerable opening strike rather than the +1 it was first drafted with.
+
 Base movement was raised to **4** on every character blueprint that had 3, to pay for it — deliberate
 outliers (a planted banner's 0, the dire bear's ponderous 2) were left alone. The player's avatar
 starts wearing `armor_leather_armor`, so the opening pace is 4 − 1 = 3, which is what the prologue's
@@ -242,13 +249,34 @@ It does not need one. Unarmed power already flows through **fist charms in the 3
 (`unarmedBonus`), which are utility items. Monk is a charm-driven discipline, and the priest's weapons
 stay foci.
 
+What the charms lacked was anything to spend them on — for a long time Monk was the one shelf with no
+active item at all, four passives and no button. That is now answered by **chi** (`Combat.chi`), a
+single per-unit pool banked by landing *bare-handed* blows and by nothing else: `Combat.dealDamage`
+tallies `unarmedHit` only when the weapon is the hidden `char.unarmed` instance, so picking up a sword
+stops the charge. Chi is capped (`Combat.CHI_MAX`), so it cannot be hoarded across a whole battle, and
+it is **one pool shared by every monk ability** rather than the per-item baseline the signature
+`unlock` system keeps — which is why both monk actives gate on a plain `when` predicate and spend the
+pool in their own effect. Flurry spends three and throws three fist strikes (so the charms scale all
+three); Asura Strike spends *all* of it and scales the blow by what it took. A spend must be reached
+through `fx.spendChi`, never `Combat.spendChi` directly, or the damage preview would empty the pool
+under the cursor — the same rule the coatings follow.
+
 ## Disciplines
 
 A **discipline** is a named cluster of items across one or two shelves, unlocked by quests. It is a
 shop taxonomy like `class` is — unlocking it adds stock, and shopping is how you build it. It is **not**
-an assigned identity: there is no title, no resolver, no growth table. What you become is still decided
-by what you cast (`models/growth.lua`); a discipline you have unlocked is a set of items on a shelf, and
-the character those items grow you into stays emergent.
+an assigned identity: there is no title and no resolver. What you become is still decided by what you
+cast (`models/growth.lua`); a discipline you have unlocked is a set of items on a shelf, and the
+character those items grow you into stays emergent.
+
+**A discipline is its own growth path.** Each has a `data/growth/<id>.lua` table of its own, and a
+discipline item tallies the *discipline* rather than its parent class(es)
+(`Discipline.growthClasses`). So a build leaning on Ninja stock grows into a ninja — a rogue/mage blend
+neither base table expresses — and a Barbarian grows harder-hitting and thinner-skinned than the
+fighter it branches from. This is still emergent, not assigned: you grow toward a discipline only by
+*casting its gear*, which you can only do once its gate is cleared and its stock is on the shelf. The
+unlock earns the path; use walks it. (This supersedes the earlier rule where a discipline item grew
+both parent classes — it could, before every discipline had a table of its own.)
 
 But a discipline is more than a sharper price list. **Each one owns a unique mechanic** — Elementalist's
 sigils, the Ninja's elemental blink, the Necromancer's raised dead. That mechanic does not live in a
@@ -312,6 +340,77 @@ class-parent invariant, so a mistagged item fails the build instead of silently 
 
 The item tooltip shows an item's discipline when it has one (`ui/item_tooltip.lua`), so the deeper cut is
 legible on the shelf and in the grid.
+
+### Every discipline stocks five, on both parents' shelves
+
+Two floors, both enforced by `tests/discipline_spec.lua`:
+
+> **A discipline stocks at least five priced items** — and **a multiclass stocks at least one on each
+> parent's shelf.**
+
+The first replaced an older "at least one buyable item," which was only ever a check against a *dead*
+shelf. It could not see the real failure, which is a shelf that unlocks and hands you one cast and two
+charms: three is too few to read as a build, and for a long while every multiclass had **two**. The
+second is the failure nobody was looking for at all — six multiclasses had every item on one parent, so
+the other vendor announced a discipline and then sold nothing for it. Artificer and Plague Knight each
+had a completely empty parent.
+
+The rosters that answer both are in [disciplines-plan.md](disciplines-plan.md). Two rules from that pass
+belong here rather than there, because they bind any future roster.
+
+**A discipline's items are authored, never retagged.** The subclass pass drew its five from each parent's
+deep shelf, and that stock is spent — another sweep would empty the base shelves the disciplines are
+supposed to sit *behind*.
+
+**A discipline consumable never wears the `potion` tag.** The Market resells anything in its `stockTags`
+and a general store ignores `repRank` entirely (see *The general store* above), so a gated draught tagged
+`potion` sits on the grocer's shelf from the first visit — the gate is still there and the item is behind
+it at its own vendor, and you can buy it anyway. The existing discipline consumables had all quietly
+avoided this (Berserker's Brew and the Wildcraft Poultice are `restorative`); it is written down now
+because three new ones tripped it, and `tests/progression_spec.lua` is what caught them. Use `elixir`,
+`draught`, `coating`, `restorative` — anything but the one word the grocer is watching for.
+
+### A charge is a named pool with a public price
+
+The Monk's chi was the first of these and stayed the only one for a long time: a per-unit charge banked
+by one specific act and spent by that discipline's abilities. It is now the general form
+(`Combat.chargePool` / `Combat.spendCharge`, reached from an effect as `fx.chargePool` /
+`fx.spendCharge`), and an item declares its own pool in data:
+
+```lua
+charge = { key = "zeal", from = { "kill", "healDone" }, max = 8 },
+```
+
+`from` names tallies (`Combat.tally`: `kill`, `hitDealt`, `hitTaken`, `damageDealt`, `damageTaken`,
+`healDone`, `cast`, `turnTaken`, `allyDown`, `unarmedHit`). Every declaration of a key across the
+bearer's grid merges — `from` unions, the highest `max` wins — so a second charm can *deepen* a pool
+rather than opening a rival one. Chi is now this mechanism with a built-in definition, so the monk files
+did not change.
+
+Two rules the pool inherits from chi, and one it added:
+
+- **Capped, and derived rather than stored.** A charge that grew all battle would make the last turn the
+  only one that mattered. Overflow past `max` is never banked.
+- **A spend reaches it through `fx.spendCharge`, never `Combat.spendCharge`.** The damage preview runs
+  effects against an inert context; a pool that emptied itself under the cursor is a bug that reads as
+  one. Same rule the coatings follow.
+- **It is `chargePool`, not `charge`.** `Combat.charge` is already the Charge ability — pinning a body
+  and driving it down the lane — and it has an `fx.charge` of its own. The pool took the longer name
+  rather than shadow a working function.
+- **A pool banks from a tally, never from carrying one particular weapon.** Zeal takes any kill and any
+  nearby mend, so a Crusader who spent the fight healing still arrives at the payoff — the pool is the
+  discipline's, not one item's admission fee. This is why `from` is a list.
+
+### A free action does not close the turn
+
+`ab.free = true` says a cast bills no initiative and leaves the turn open — distinct from
+`fx.grantExtraAction`, which hands back a turn *after* banking the full price of the action that ended
+it. One is free, the other is bought on credit.
+
+**One per turn** (`Combat.FREE_ACTIONS_PER_TURN`, tracked on `combat.turn`), because the resource costs
+on a free ability bound how often you can afford it but not how often you can *press* it — a zero-cost
+free action would loop forever. `Combat.itemBlockReason` greys the second one, so the limit is visible
+in the grid rather than discovered by a dead click.
 
 ### The subclasses
 

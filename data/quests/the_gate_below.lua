@@ -13,6 +13,11 @@
 -- `keyCount = 0` deliberately: `map.keyCount` is the overworld's own locked-door puzzle (see
 -- models/overworld.lua), an entirely different thing that happens to share the word. The seven keys of
 -- this quest are already spent by the time the map is generated. Do not lock the last door twice.
+--
+-- `endsCampaign` is what makes this the LAST quest rather than merely the hardest one: states/game.lua
+-- routes its outro into states/credits.lua instead of back to the hub. It is a data flag rather than a
+-- quest id compared in the state, so the engine never learns this file's name and a second ending (or a
+-- different one) needs no engine edit at all.
 return {
     name = "The Gate Below",
     description = "Seven appetites, put down one at a time. What is left of the thing that had them " ..
@@ -23,6 +28,9 @@ return {
     rewardRep = 0,
     rewardPrestige = 10,
     requiredPrestige = 10,
+    endsCampaign = true,
+    -- The last scene in the game, played over the frozen final frame before the credits roll.
+    outro = "gate_below_ending",
     requiredQuests = {
         "general_wrath",
         "general_lust",
@@ -37,10 +45,13 @@ return {
         encounters = { min = 12, max = 16, always = { "encounter_elite", "encounter_elite", "encounter_elite" } },
         objective = {
             name = "The Hollow Crown",
+            -- The only seam the Crown can speak from: `intro` plays over the hub before the party is
+            -- picked, and by the time `outro` runs an assassinate target is already dead.
+            opening = "gate_below_confront",
             composition = function(ctx)
                 local list = { "character_demon_lord" }
                 -- Its honour guard, not its arsenal -- the arsenal is what it summons out of your
-                -- own past as it fails (data/traits/hollow_crown.lua).
+                -- own past as it fails (data/traits/trait_hollow_crown.lua).
                 for i = 1, 2 + math.floor((ctx.prestige or 1) / 4) do list[#list + 1] = "character_champion" end
                 return list
             end,

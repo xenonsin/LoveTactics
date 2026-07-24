@@ -9,6 +9,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "fighter",
+    discipline = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
     price = 220,
     repRank = 2,
     traits = { "trait_last_stand" },

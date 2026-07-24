@@ -12,7 +12,8 @@
 -- is the same as hers -- which is why this is a `killAll` with `protect` layered under it
 -- (Combat.evaluate checks `obj.protect` before the win type, so the two compose) rather than a duel.
 --
--- GATING: the both-parents rule lives in `Discipline.isUnlocked`, not here -- see the note in
+-- GATING: `requiredQuests` names the first subclass gate of each parent line, so this capstone does
+-- not appear until the player genuinely holds both halves -- see the note in
 -- data/quests/champions_challenge.lua.
 --
 -- FIRST PASS. Scenes are not authored, so nothing is named. The sworn knight wants a bespoke
@@ -26,7 +27,10 @@ return {
     rewardGold = 250,
     rewardRep = 10,
     rewardPrestige = 1,
-    requiredPrestige = 4,
+    -- Both parents, earned: "held_position" is the first knight subclass gate on its line,
+    -- "rite_of_ashes" the first priest. Holding either is impossible without them.
+    requiredQuests = { "held_position", "rite_of_ashes" },
+    requiredPrestige = 1,
     map = {
         biome = "castle",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },

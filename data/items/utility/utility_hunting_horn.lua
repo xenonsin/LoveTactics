@@ -27,6 +27,7 @@ return {
     type = "utility",
     tags = { "horn" },
     class = "hunter",
+    discipline = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
     price = 420,
     repRank = 3,
     waitBehavior = {

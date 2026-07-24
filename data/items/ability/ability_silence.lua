@@ -10,6 +10,7 @@ return {
     type = "ability",
     tags = { "holy" },
     class = "priest",
+    discipline = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
     price = 200,
     repRank = 3,
     activeAbility = {

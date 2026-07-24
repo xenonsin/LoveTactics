@@ -35,7 +35,8 @@ return {
     rewardGold = 90,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredQuests = { "arena_debut" }, -- slot 2: the line runs in order
+    requiredPrestige = 1,
     map = {
         biome = "castle",
         encounters = { min = 4, max = 6 },

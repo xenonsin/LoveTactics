@@ -40,6 +40,7 @@ return {
     rewardGold = 180,
     rewardRep = 30,
     rewardPrestige = 1,
+    requiredQuests = { "working_it_off" }, -- slot 4: the line runs in order
     requiredPrestige = 3,
     requiredRep = { vendor = "undercroft", rank = 2 }, -- Prowler
     map = {

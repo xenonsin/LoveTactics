@@ -17,7 +17,8 @@ return {
     rewardRep = 80,
     rewardPrestige = 3,
     rewardItems = { "armor_mail_of_the_unappeased" },
-    requiredPrestige = 5,
+    requiredQuests = { "what_the_house_does" }, -- slot 10: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "colosseum", rank = 4 }, -- Legend
     gateHint = "beneath the sand, where the roaring was loudest",
     map = {
@@ -25,6 +26,8 @@ return {
         encounters = { min = 10, max = 14, always = { "encounter_elite", "encounter_elite" } },
         objective = {
             name = "Ira, the Unappeased",
+            -- The only seam she can speak from, and the last of the seven generals to get one.
+            opening = "colosseum_general_wrath_confront",
             composition = function(ctx)
                 local list = { "character_general_wrath" }
                 for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_champion" end

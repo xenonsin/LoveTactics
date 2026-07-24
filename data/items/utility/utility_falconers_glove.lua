@@ -18,6 +18,7 @@ return {
     type = "utility",
     tags = { "beast" },
     class = "hunter",
+    discipline = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
     price = 340,
     repRank = 3,
     traits = { "trait_falconers_hawk" },

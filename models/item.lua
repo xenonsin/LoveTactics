@@ -358,6 +358,8 @@ function Item.instantiate(id, quantity, level)
         maxBonus = deepCopy(def.maxBonus),     -- resource passives: raise a max health/stamina/mana ceiling
         waitBehavior = deepCopy(def.waitBehavior), -- swaps this holder's Wait -> Focus / Defend
         moveBehavior = deepCopy(def.moveBehavior), -- swaps this holder's walk -> teleport (Blink)
+        charge = deepCopy(def.charge),         -- { key, from, max, resetOn }: a named pool this item banks (Combat.chargeDef)
+        ephemeral = def.ephemeral,             -- field-brewed: real for this fight, gone at the gate (Combat.releaseClaims)
         trail = deepCopy(def.trail),           -- { hazard, duration } | { trap }: ground left behind every tile walked
         incense = deepCopy(def.incense),       -- { hazard, radius, amount }: ground that follows the bearer (a censer)
         visionRadius = def.visionRadius,       -- overworld vision boost (e.g. torch); nil for most

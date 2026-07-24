@@ -35,6 +35,7 @@ return {
     rewardGold = 300,
     rewardRep = 30,
     rewardPrestige = 2,
+    requiredQuests = { "spoiled_batch" }, -- slot 7: the line runs in order
     requiredPrestige = 4,
     requiredRep = { vendor = "alchemist", rank = 3 }, -- Transmuter
     map = {

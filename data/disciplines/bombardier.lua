@@ -2,11 +2,14 @@
 -- Signature mechanic: Scatter bombs -- thrown consumables that seed hazards at range and
 -- chain-detonate.
 -- Exemplar: a counterfeit-bomb runner (character_bombardier, NEW -- pending), met as a BOSS.
--- Gate: one quest in the alchemist (Crucible) line -- crucible_the_counterfeiter.
+-- Gate: one quest in the alchemist (Crucible) line -- by_the_dram (slot 4).
+-- A subclass opens no earlier than slot 3: a discipline handed over on a line's first or
+-- second quest is not earned advancement, it is a welcome gift.
+-- welcome gift.
 -- See docs/disciplines-plan.md.
 return {
     name    = "Bombardier",
     classes = { "alchemist" },
     exemplar = "character_bombardier", -- NEW, pending
-    requiredQuests = { "crucible_the_counterfeiter" },
+    requiredQuests = { "by_the_dram" },
 }

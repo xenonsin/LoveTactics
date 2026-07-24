@@ -35,7 +35,8 @@ return {
     rewardGold = 320,
     rewardRep = 30,
     rewardPrestige = 2,
-    requiredPrestige = 4,
+    requiredQuests = { "the_saint_knew" }, -- slot 8: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "cathedral", rank = 3 }, -- Confessor
     map = {
         biome = "castle",

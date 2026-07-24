@@ -15,7 +15,8 @@ return {
     rewardGold = 220,
     rewardRep = 45,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredQuests = { "fallen_confessor" }, -- slot 3: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "cathedral", rank = 2 }, -- Acolyte or better
     map = {
         biome = "forest",

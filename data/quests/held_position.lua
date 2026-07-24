@@ -38,6 +38,7 @@ return {
     rewardGold = 130,
     rewardRep = 20,
     rewardPrestige = 1,
+    requiredQuests = { "turned_back" }, -- slot 3: the line runs in order
     requiredPrestige = 2,
     map = {
         biome = "castle",

@@ -31,6 +31,12 @@
 --   * blocksMove = true   -- the unit cannot move on its turn (root)
 --   * turnEndMoveCost(ctx)-> a move cost the unit pays at end of turn even if it stayed put
 --                            (root: as if it had moved max spaces)
+--   * fx = { pattern = ...}  -- read only by the view: this status also paints a full-tile FIELD under
+--                            its bearer, in the named pattern from ui/field_fx.lua and this def's own
+--                            `color`. Declared by a HANDFUL of statuses only -- the ones that are a
+--                            visible condition of the body (Burn, Bleed, Freeze), not of its
+--                            paperwork. The badge is the complete read of a unit's condition; this is
+--                            the loud half of it, and the board caps it at two fields per unit.
 --
 -- `ctx` carries { combat, unit, status, magnitude, moveBudget } plus bound, headless-safe
 -- helpers (damage / applyStatus / unitsNear) so a data-file hook composes effects without
@@ -710,6 +716,27 @@ function Status.apply(combat, unit, id, opts)
                 (unit.char and unit.char.name) or "Unit", def.name or id, ward.name or "an item"), unit)
         end
         return nil
+    end
+
+    -- A status ALREADY WORN can forbid another one. Today exactly one pair uses it: Mark carries
+    -- `preventsInvisible`, so a body painted for the kill cannot slip out of sight -- the rule lives in
+    -- the debuff rather than in an item that has to be bought, which means it holds for everyone who
+    -- applies a Mark rather than only for an Inquisitor who paid for a lamp.
+    --
+    -- Checked here, next to the immunity gate, because it IS one: a refusal by something the body is
+    -- already wearing rather than by something it owns. Kept separate from Status.isImmune all the same,
+    -- since that reads the grid (a ward you carry) and this reads the statuses (a condition you are in),
+    -- and folding them would make "why did this not land" answerable only by reading both.
+    for _, st in ipairs(unit.statuses) do
+        local blocker = Status.defs[st.id]
+        if blocker and blocker.forbids == id then
+            if combat and not def.hideLog then
+                local Combat = require("models.combat")
+                Combat.logEvent(combat, "status", string.format("%s cannot be %s while %s.",
+                    (unit.char and unit.char.name) or "Unit", def.name or id, blocker.name or st.id), unit)
+            end
+            return nil
+        end
     end
 
     -- A resistible status buys only the ticks this body's ward and its own history let it (see the

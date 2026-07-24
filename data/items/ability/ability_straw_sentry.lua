@@ -29,6 +29,7 @@ return {
     type = "ability",
     tags = { "decoy", "taunt" },
     class = "knight",
+    discipline = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
     price = 300,
     repRank = 3,
     activeAbility = {

@@ -28,6 +28,7 @@ return {
     type = "ability",
     tags = { "fire", "explosive" },
     class = "alchemist",
+    discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
     price = 240,
     repRank = 2,
     activeAbility = {

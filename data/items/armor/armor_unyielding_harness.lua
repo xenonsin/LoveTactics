@@ -27,6 +27,7 @@ return {
     type = "armor",
     tags = { "heavy", "plate" },
     class = "knight",
+    discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 480,
     repRank = 3,
     traits = { "trait_unyielding" },

@@ -1,13 +1,14 @@
 -- Shared hover tooltip for a battlefield tile: a dark panel showing the tile's terrain type,
 -- its movement / line-of-sight / positional modifiers, and — when something stands on it — the
 -- occupant's details. A unit shows its side, resource pools (HP / mana / stamina bars) and combat
--- stats; a revealed trap shows its owner and remaining health; a prop (a barrel, a crate) shows its
--- health and what breaking it does. Positioned near the mouse and clamped on-screen, mirroring
--- ui/item_tooltip.lua and ui/status_tooltip.lua.
+-- stats; a revealed trap shows its owner and remaining health; a conjured wall shows its owner,
+-- health and how long it stands; a prop (a barrel, a crate) shows its health and what breaking it
+-- does. Positioned near the mouse and clamped on-screen, mirroring ui/item_tooltip.lua and
+-- ui/status_tooltip.lua.
 --
 --   TileTooltip.draw(info, mx, my, maxRight)
 --     info = { cell = <arena tile>, bonus = <fieldBonus bag>, unit = <combat unit|nil>,
---              trap = <revealed trap|nil>, prop = <prop|nil> }
+--              trap = <revealed trap|nil>, wall = <wall|nil>, prop = <prop|nil> }
 --
 -- Content is assembled once into an ordered list of blocks that is both measured and drawn, so the
 -- computed box height can never drift from what's rendered. No love.graphics at require-time.
@@ -110,6 +111,11 @@ local function accentFor(info)
     end
     if info.trap then
         return info.trap.side == "party" and PARTY_COLOR or ENEMY_COLOR
+    end
+    -- A wall takes a side like a trap (whoever raised it), and the board draws it the same stone grey
+    -- either way -- so the tooltip is the only place the ownership shows, and it says it in the tint.
+    if info.wall then
+        return info.wall.side == "party" and PARTY_COLOR or ENEMY_COLOR
     end
     -- A prop takes no side, so it borrows its own blueprint colour rather than a team's -- the same
     -- rust-red or pine the board draws it in, which is what ties the tooltip to the block on the tile.
@@ -321,6 +327,45 @@ local function buildBlocks(info)
             blocks[#blocks + 1] = { kind = "sep" }
             appendTerrain(blocks, info, true)
         end
+    elseif info.wall then
+        -- A wall reads like a trap that makes no secret of itself: owner, the HP it takes to tear
+        -- down, and -- the two things the terrain box below would otherwise lie about -- the movement
+        -- and sight it OVERRIDES on this tile. The countdown matters as much as the HP: a conjured
+        -- barrier fades on its own, so "wait it out" is a real answer to it and the player needs the
+        -- number to weigh that against spending a turn breaking through.
+        local wall = info.wall
+        local sideCol = wall.side == "party" and PARTY_COLOR or ENEMY_COLOR
+        blocks[#blocks + 1] = { kind = "title", text = (wall.name or "Wall"), color = sideCol }
+        blocks[#blocks + 1] = { kind = "stat", label = "Raised by",
+            value = wall.side == "party" and "Ally" or "Enemy", valueColor = sideCol }
+        if wall.health and wall.maxHealth then
+            local block = { kind = "bar", label = "HP", stat = "health", cur = wall.health,
+                max = wall.maxHealth, color = sideCol }
+            if info.preview and (info.preview.damage or 0) > 0 then
+                block.delta = -info.preview.damage
+                block.lethal = info.preview.lethal
+            end
+            blocks[#blocks + 1] = block
+        end
+        local wdef = wall.def or {}
+        if wdef.description and wdef.description ~= "" then
+            blocks[#blocks + 1] = { kind = "desc", text = wdef.description }
+        end
+        blocks[#blocks + 1] = { kind = "stat", label = "Movement",
+            value = wall.blocksMove and "Impassable" or "Passable",
+            valueColor = wall.blocksMove and ENEMY_COLOR or VALUE }
+        blocks[#blocks + 1] = { kind = "stat", label = "Line of sight", value = coverText(wall.sightCost) }
+        -- Timed walls only: one with no `remaining` stands until it is struck down or dispelled, and
+        -- printing an empty clock for it would read as "soon".
+        if wall.remaining then
+            blocks[#blocks + 1] = { kind = "status", name = "Fades in", color = MUTED,
+                remaining = wall.remaining }
+        end
+        if info.cell then
+            appendHazard(blocks, info)
+            blocks[#blocks + 1] = { kind = "sep" }
+            appendTerrain(blocks, info, true)
+        end
     elseif info.prop then
         -- A prop reads like a trap with the Owner row struck out: it belongs to nobody, which is the
         -- single most important thing about a powder keg and so is said in the tinting rather than a
@@ -390,7 +435,7 @@ end
 -- draw, so it can't disagree with what gets drawn. Lets a caller stacking several boxes into a fixed
 -- column work out what fits BEFORE it commits any of them to the screen (states/battle.lua).
 function TileTooltip.measure(info, width)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.prop) then return 0 end
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop) then return 0 end
     local _, body = fonts()
     return measureBlocks(buildBlocks(info), ((width or 210) - 9 * 2), body)
 end
@@ -401,7 +446,7 @@ end
 -- so it never covers the board highlights (the blast footprint) the player is reading. No-op when
 -- there is no tile to describe.
 function TileTooltip.draw(info, mx, my, maxRight, opts)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.prop) then return end
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop) then return end
     local title, body, small = fonts()
     local pad, w = 9, (opts and opts.width) or 210
     local innerW = w - pad * 2

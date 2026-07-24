@@ -27,7 +27,8 @@ return {
     rewardGold = 90,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredQuests = { "grimoire_ruins" }, -- slot 2: the line runs in order
+    requiredPrestige = 3,
     rewardCharacter = "character_gyeom",
     -- The victory scene, played over the frozen final frame: she reveals what she never showed, pleads
     -- the cost the realm excuses, and joins. Player.recruit has already added her by the time it runs.

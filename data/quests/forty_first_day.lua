@@ -37,11 +37,15 @@ return {
     sponsor = "bastion",
     intro = "bastion_forty_first_day_intro",
     outro = "bastion_forty_first_day_outro",
-    rewardItems = { "utility_forty_one_marks", "armor_martyrs_shield", "armor_aegis_unbidden", "weapon_sunderers_answer", "weapon_tidesbreak" },
+    rewardItems = {
+        "utility_forty_one_marks", "armor_martyrs_shield", "armor_aegis_unbidden",
+        "weapon_sunderers_answer", "weapon_tidesbreak",
+    },
     rewardGold = 400,
     rewardRep = 35,
     rewardPrestige = 2,
-    requiredPrestige = 5,
+    requiredQuests = { "what_the_bastion_knows" }, -- slot 9: the line runs in order
+    requiredPrestige = 2,
     requiredRep = { vendor = "bastion", rank = 3 }, -- Banneret
     map = {
         biome = "castle",

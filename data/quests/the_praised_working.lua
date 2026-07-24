@@ -37,7 +37,8 @@ return {
     rewardGold = 130,
     rewardRep = 25,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredQuests = { "arcanum_the_radical" }, -- slot 3: the line runs in order
+    requiredPrestige = 3,
     map = {
         biome = "forest",
         encounters = { min = 5, max = 7 },

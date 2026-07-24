@@ -8,6 +8,7 @@ return {
     type = "utility",
     tags = { "ward" },
     class = "priest",
+    discipline = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
     price = 260,
     repRank = 2,
     traits = { "trait_cleansing_ward" },

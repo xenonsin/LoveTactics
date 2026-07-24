@@ -9,8 +9,10 @@
 -- Disposition is RECRUIT (docs/disciplines-plan.md): she is beaten, she is delighted about it, and she
 -- signs on. Nothing about her is villainous and the fight should not be staged as a killing.
 --
--- GATING: the both-parents rule lives in `Discipline.isUnlocked`, not here -- see the note in
--- data/quests/champions_challenge.lua, which explains why a quest cannot express it.
+-- GATING: `requiredQuests` names the first subclass gate of each parent line, so this capstone does
+-- not appear until the player genuinely holds both halves -- see the note in
+-- data/quests/champions_challenge.lua for why naming one quest per parent is exact rather than
+-- over-strict.
 --
 -- FIRST PASS. Scenes are not authored, so nothing is named, and no `rewardCharacter` is set: the
 -- swaggering blade needs a blueprint of her own before she can join anything (she is one of the ~17
@@ -25,7 +27,10 @@ return {
     rewardGold = 250,
     rewardRep = 10,
     rewardPrestige = 1,
-    requiredPrestige = 4,
+    -- Both parents, earned: "warlord_keep" is the first fighter subclass gate on its line,
+    -- "one_client" the first rogue. Holding either is impossible without them.
+    requiredQuests = { "warlord_keep", "one_client" },
+    requiredPrestige = 1,
     map = {
         biome = "castle",
         encounters = { min = 6, max = 8 },

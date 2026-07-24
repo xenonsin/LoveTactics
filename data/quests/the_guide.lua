@@ -21,6 +21,7 @@ return {
     rewardGold = 90,
     rewardRep = 30,
     rewardPrestige = 1,
+    requiredQuests = { "sacred_stag" }, -- slot 2: the line runs in order
     requiredPrestige = 2,
     rewardCharacter = "character_kaya",
     outro = "kaya_joins",

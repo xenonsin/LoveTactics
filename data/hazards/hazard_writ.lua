@@ -18,7 +18,6 @@
 return {
     name = "Writ of Fire",
     description = "A burning mark: takes everything standing on it when it finally comes due.",
-    sprite = "assets/hazards/writ.png",
     tags = { "fire" },
     duration = 6,             -- ~1 turn's grace: long enough to run, short enough to be a threat
     disposition = "hostile",  -- the enemy AI reads it as ground to be off

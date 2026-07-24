@@ -32,6 +32,7 @@ return {
     type = "armor",
     tags = { "heavy", "plate" },
     class = "knight",
+    discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 700,
     repRank = 4,
     bonus = { defense = { 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18 }, movement = -2 },

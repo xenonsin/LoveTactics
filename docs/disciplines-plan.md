@@ -42,11 +42,18 @@ The discipline **system** is implemented and passes `tests/discipline_spec.lua`.
 
 - **Loader** — `models/discipline.lua` loads `data/disciplines/`; all 37 blueprints exist (16 subclasses
   + 21 multiclasses).
-- **Growth tallies both parents** — using a discipline item records a cast for *every* parent class
-  (`Combat.useItem` → `Discipline.growthClasses`), so a Ninja weapon grows both rogue *and* mage.
+- **Its own growth path** — every discipline has a `data/growth/<id>.lua` table, and a discipline item
+  tallies the *discipline* (`Combat.useItem` → `Discipline.growthClasses`), so a Ninja build grows on
+  the ninja table — a rogue/mage blend, not both parents at once. (This replaced the older "tallies
+  both parents" rule, which existed only because disciplines had no table of their own.)
 - **Tooltip** — an item's discipline shows in `ui/item_tooltip.lua`.
 - **Vendor gating** — a discipline item is stocked on each parent shelf but stays locked (greyed) until
   `Discipline.isUnlocked` (its quests done; for a multiclass, a subclass of each parent already held).
+- **Unlock announcement** — the next time the player opens a parent shop after a discipline unlocks, the
+  vendor plays a one-time "the shelf just grew" scene naming it (`data/conversations/discipline_unlocked_<vendor>.lua`,
+  driven from `states/hub.lua` via `Discipline.pendingAnnouncements` + `Player.announcedDisciplines`). One
+  scene per shop speaks every discipline through the `{discipline}` token; a two-parent discipline
+  announces at whichever shop is opened first.
 - **Tagging invariant** — an item's `class` must be one of its discipline's parents. Enforced.
 
 ## The roots: base-class exemplars
@@ -66,27 +73,33 @@ listed so the branches have something to branch *from*.
 
 ## The subclasses (16)
 
-Gate quests are the existing ones assigned in the last pass (one per discipline, no reuse). **E** =
-exemplar already exists in the roster; **N** = needs a new character blueprint.
+One existing quest per discipline, no reuse, and — the rule that moved nine of them — **never earlier
+than slot 3 of its line**. A discipline handed over on a line's first or second quest is not earned
+advancement; it is a welcome gift, collected before the player has done anything with the base shelf,
+and it makes this whole lattice decorative. By slot 3 a line has introduced itself, handed over its
+companion, and asked for something. `tests/discipline_spec.lua` derives the slot by walking the line's
+chain and fails the build below the floor.
+
+**E** = exemplar already exists in the roster; **N** = needs a new character blueprint.
 
 | Discipline | Parent | Exemplar | | Disposition | Gate quest |
 |---|---|---|---|---|---|
-| **Barbarian** | fighter | arena berserker | N | boss | `blood_in_the_sand` |
-| **Warlord** | fighter | The Warlord (`character_warlord`) | E | boss | `warlord_keep` |
-| **Sentinel** | knight | Knight in Grey (`character_grey_knight`) | E | mentor | `relief_column` |
-| **Bulwark** | knight | Road-Captain (`character_greywatch_captain`) | E | mentor / ally | `held_position` |
-| **Assassin** | rogue | a killer sent for you | N | boss | `accounts_settled` |
-| **Thief** | rogue | a guild fence | N | recruit / mentor | `vault_heist` |
-| **Druid** | hunter | a wild shapeshifter | N | mentor | `the_guide` |
-| **Beastmaster** | hunter | Kaya (`character_kaya`)* | E | recruit | `sacred_stag` |
-| **Trapper** | hunter | a woodland ambusher | N | boss | `the_silent_wood` |
-| **Elementalist** | mage | Gyeom (`character_mage`)* | E | mentor | `grimoire_ruins` |
-| **Summoner** | mage | a conjurer with an elemental court | N | boss | `donor_roll` |
-| **Necromancer** | mage | a radical of the Arcanum | N | boss | `arcanum_the_radical` |
-| **Monk** | priest | a fist-and-litany ascetic | N | mentor | `haunted_mill` |
-| **Exorcist** | priest | Amana (`character_amana`)* | E | mentor / ally | `fallen_confessor` |
-| **Poisoner** | alchemist | a vat-master | N | boss | `the_vats` |
-| **Bombardier** | alchemist | a counterfeit-bomb runner | N | boss | `crucible_the_counterfeiter` |
+| **Barbarian** | fighter | arena berserker | N | boss | `blood_in_the_sand` · slot 6 |
+| **Warlord** | fighter | The Warlord (`character_warlord`) | E | boss | `warlord_keep` · slot 3 |
+| **Sentinel** | knight | Knight in Grey (`character_grey_knight`) | E | mentor | `greywatch` · slot 5 |
+| **Bulwark** | knight | Road-Captain (`character_greywatch_captain`) | E | mentor / ally | `held_position` · slot 3 |
+| **Assassin** | rogue | a killer sent for you | N | boss | `accounts_settled` · slot 5 |
+| **Thief** | rogue | a guild fence | N | recruit / mentor | `one_client` · slot 4 |
+| **Druid** | hunter | a wild shapeshifter | N | mentor | `the_manufactured_cull` · slot 4 |
+| **Beastmaster** | hunter | Kaya (`character_kaya`)* | E | recruit | `the_starving_dark` · slot 3 |
+| **Trapper** | hunter | a woodland ambusher | N | boss | `the_silent_wood` · slot 5 |
+| **Elementalist** | mage | Gyeom (`character_mage`)* | E | mentor | `the_praised_working` · slot 3 |
+| **Summoner** | mage | a conjurer with an elemental court | N | boss | `donor_roll` · slot 5 |
+| **Necromancer** | mage | an Adept of the inner circle | N | boss | `the_inner_circle` · slot 4 |
+| **Monk** | priest | a fist-and-litany ascetic | N | mentor | `purge_in_the_fold` · slot 4 |
+| **Exorcist** | priest | Amana (`character_amana`)* | E | mentor / ally | `rite_of_ashes` · slot 3 |
+| **Poisoner** | alchemist | a vat-master | N | boss | `the_vats` · slot 5 |
+| **Bombardier** | alchemist | a counterfeit-bomb runner | N | boss | `by_the_dram` · slot 4 |
 
 \* Reusing a *companion* as a discipline exemplar changes the beat: the "first meet" is with someone
 already in your party, so the unlock quest becomes a **companion quest** deepening them (Kaya learns to
@@ -178,7 +191,7 @@ need engine work, so it drives build order far more than stock or quests do.
 | Elementalist | **Sigils** — aura tiles that reshape spells cast beside them | ✓ |
 | Summoner | **Reserve court** — bank mana to field independent elementals | ✓ |
 | Necromancer | **Corpse-raise** — the slain rise as your undead | ✗ |
-| Monk | **Chi** — unarmed strikes build a charge spent on a burst | ~ |
+| Monk | **Chi** — unarmed strikes build a charge spent on a burst | ✓ |
 | Exorcist | **Banish** — remove summons from the field, strip buffs and hazards | ✓ |
 | Poisoner | **Coatings** — depleting weapon infusions applied between swings | ✓ |
 | Bombardier | **Scatter bombs** — thrown consumables that seed hazards and chain-detonate | ~ |
@@ -236,30 +249,125 @@ home shelf and growth tally) and appears on the *other* parent's shelf too via t
 ~466 items**: base shelf → leave `discipline` unset; locked deeper cut → set it and confirm `class` is a
 parent; new signature/mechanic item → author it tagged.
 
-Rosters for the deeper disciplines are authored as each is built; the three Tier-A shelves already have
-their stock and are concrete now:
+**All 16 subclass rosters are now tagged** (82 existing items, drawn from each parent's deep shelf and
+assigned by signature mechanic). Before this pass every subclass unlocked an *empty* cut: the 21
+multiclasses carried their two items each, but the 16 subclasses had zero, so the first sixteen rungs
+of the earned-advancement lattice paid out nothing. `tests/discipline_spec.lua` now fails the build if
+any discipline has no priced item.
 
-| Discipline | Existing items → tag `discipline` | Author new |
+Three rules shaped the pass, and they are the rules for any future retag:
+
+- **Deep shelf only — rank 2 and up, never turn-one.** Tagging an item removes it from turn-one
+  availability, so the roster is drawn from the *locked* part of the parent shelf a player already
+  needs standing to reach. That is the "adds rather than takes away" default made concrete: the gate
+  moves the deep cut behind an *earlier* unlock, it does not strip the opening shelf.
+- **No weapons, no shields.** Both are counted in family rosters of exactly five
+  (`tests/weapon_spec.lua`), and a `discipline` tag is excluded from that count — tagging one would
+  drop its family to four and fail the build. A discipline weapon has to be authored as an *addition*
+  (as the multiclass signatures were), never a retag of base stock. So subclass rosters are abilities,
+  utilities, consumables, and non-shield armour.
+- **Each item to exactly one discipline**, chosen by mechanic — the sigils to Elementalist, the fist
+  charms to Monk, the elemental summons to Summoner, the traps to Trapper, the coatings to Poisoner,
+  the bombs to Bombardier, and so on.
+
+**Every subclass now stocks at least five.** The retag pass left counts running 3–8, with Warlord,
+Thief and Necromancer on three apiece — the shelves whose parent's deep non-weapon stock is genuinely
+shallow, flagged here as the ones that "most want a couple of authored additions later." They got
+them. Three is too few to read as a *build*: a discipline you unlocked should hand you a shelf to shop,
+not one cast and two charms.
+
+Ten items were authored to lift the six shelves that sat under five, and the roster now runs **5–8
+across all sixteen** (92 items):
+
+| Shelf | Was | Added | Now |
+|---|---|---|---|
+| Warlord | 3 | Muster Banner *(ability)*, War Drums *(consumable)* | 5 |
+| Thief | 3 | Sap *(ability)*, Shakedown *(ability)* | 5 |
+| Necromancer | 3 | Corpse Burst *(ability)*, Charnel Reliquary *(utility)* | 5 |
+| Druid | 4 | Wild Shape: Raven *(ability)* | 5 |
+| Beastmaster | 4 | Beastlord's Bond *(utility)* | 5 |
+| Monk | 4 | Flurry *(ability)*, Asura Strike *(ability)* | 6 |
+
+The additions obey the same rules as the retag pass, with one difference worth stating: a *retag* had
+to come off the parent's deep shelf, but an **authored** item may be new stock — which is the only way
+a shallow shelf could ever have been deepened. The no-weapons rule still holds *for the tagged item*:
+the Druid's raven form carries a natural ranged weapon, but that is creature gear (classless, unpriced,
+`noSteal`, outside every family roster) and the tagged item is the Wild Shape ability.
+
+Two of them are worth calling out as design rather than stock:
+
+- **Monk's pair made the shelf pressable at all.** It was four passive fist charms with nothing to
+  spend them on — the one discipline with no active item. Flurry and Asura Strike are both built on
+  **chi**, which is now real (see the mechanics table above).
+- **Beastlord's Bond is written against `summoned`, not against beasts**, so it mends a Beastmaster's
+  wolf and a Summoner's elementals with one rule. A `discipline` field names only one owner, so its
+  home is the Lodge — but nothing in its behaviour knows that, which is "anyone carries anything"
+  earning its keep.
+
+The multiclass side has since been brought to the same floor — see the next section.
+
+## Five per multiclass: the settled slate
+
+The multiclasses shipped with **two items each** while every subclass ran five to eight. Three is too
+few to read as a build, and the argument that retired it is the one the subclass pass already made:
+*a discipline you unlocked should hand you a shelf to shop, not one cast and two charms.* Two is
+worse than three.
+
+So the 21 multiclasses were taken to **five apiece** — 63 authored items, settled over four rounds of
+author review. Two shelves ended at six, which is inside the subclass range and deliberate in both
+cases (noted below).
+
+Three rules governed the pass, and the first is the one that cost the most:
+
+- **Authored, never retagged.** The subclass pass drew its rosters off each parent's *deep shelf*.
+  That stock is spent: pulling another 63 would empty the base shelves the disciplines are supposed
+  to sit behind. Every item here is new.
+- **Both parent shelves must be stocked.** Six multiclasses had all their items on one parent, which
+  meant the other vendor unlocked a discipline and then sold nothing for it. Artificer (mage) and
+  Plague Knight (alchemist) were the worst — a completely empty parent.
+  `tests/discipline_spec.lua` now fails the build on it.
+- **Each item owes the mechanic, not the shelf.** A `+n` on the right vendor is still the thing the
+  forge already sells. Where a pitch could only produce one, the answer was to move the behaviour out
+  of an item entirely — which is where the five rules below came from.
+
+### The five rules the pass settled
+
+Each of these started as a note on a single item and generalized into a contract. They are worth more
+than the items that prompted them:
+
+| | Rule | Where it lives |
 |---|---|---|
-| **Elementalist** | the sigils — `utility_careful_sigil`, `utility_distant_sigil`, `utility_quickened_sigil`, `utility_twinned_sigil` | a capstone channelled-hazard spell (the exemplar's finisher) |
-| **Poisoner** | coatings — `consumable_envenom`, `consumable_acid_bomb`, `consumable_crawler_mucus`, `consumable_thinblood_rime`* | a signature envenom the vat-master carries |
-| **Bulwark** | the shoves — `ability_push`, `ability_shout`, `ability_heave`; `armor_halting_rank` | a knockback capstone / a wall relic |
+| **R1** | **Armor never grants movement.** The movement tiers in the armor spread are a cost table; an armor that pays movement back undoes them. | [classes.md](classes.md) armor spread |
+| **R2** | **A charge pool banks from a generic tally, never from carrying one weapon.** Zeal banks on kills *and* heals, so a Crusader who spent the fight mending still reaches the payoff. | `Combat.chargeDef` |
+| **R3** | **`status_mark` gains `preventsInvisible`.** The rule belongs in the debuff, not in a lamp you have to buy — it now holds for everyone who applies Mark. | `data/status/status_mark.lua` |
+| **R4** | **Contagion is a passive, not an active.** Standing beside you spreads what you carry; you never press a button for it. | `plague_knight` roster |
+| **R5** | **Poison needs payoffs before Plague Knight is real.** Contagion was spreading a status almost nothing read. Rot-Fume Gauntlet now scales with how many enemies are poisoned; the Poisoner shelf owes the same audit. | open thread |
 
-\* These coatings are currently base-alchemist stock. Moving them behind the Poisoner gate removes them
-from turn-one availability — a real decision. Alternative: leave the base coatings open and author *new*
-Poisoner-only coatings, so the gate adds rather than takes away. Decide per shelf; the "adds rather than
-takes away" reading is safer and is the default for the rest of the slate.
+### Two findings that changed the systems bill
 
-## Two items per multiclass (the approved set)
+- **Channels already break without an interrupt system.** `Combat.interruptChannel` exists and is
+  already called from knockback ([combat.lua:2841](../models/combat.lua)), displacement, dismissal and
+  death, and seven statuses carry `interruptsChannel`. So S5's veto half was only ever needed for
+  *instant* casts — and every active anti-magic item was turned down in review as too punishing.
+  **S5 shrank to `fx.dispelUnit`**, which cut the AI work that was its real cost.
+- **Sunder is rare and knockback is everywhere.** 19 items cause knockback; only five things in the
+  catalog apply Sundered. So Vanguard's charm turning every shove into a Sunder is not a convenience —
+  it is what makes the discipline's mechanic exist at all, and it replaced two weaker items.
 
-The **42 approved items** (author feedback rounds settled). Each carries `discipline = <id>`, sits on one
-of its parents' shelves, and speaks the discipline's signature mechanic. Build status per item:
+### Build status per item
 
-- **⌂ tagged** — an existing item re-homed into the discipline (done this session).
+- **⌂ tagged** — an existing item re-homed into the discipline.
 - **✓ buildable now** — expressible with mechanics the engine already has.
 - **~ mostly there** — a small effect/status on top of existing pieces.
-- **✗ needs a new mechanic** — blocked on the engine work in the mechanics tables above; a blueprint
-  written now would be dead data, so these wait on their system.
+- **✗ needs a new mechanic** — blocked on the engine work in the mechanics tables above.
+
+### The original two
+
+Kept as its own table because these are the ones already on disk; the three that follow each are the
+new stock.
+
+| Discipline | Item A (shelf · type) | Item B (shelf · type) |
+|---|---|---|
 
 | Discipline | Item A (shelf · type) | Item B (shelf · type) |
 |---|---|---|
@@ -285,7 +393,57 @@ of its parents' shelves, and speaks the discipline's signature mechanic. Build s
 | Artificer | Emplace Sentry — an autonomous turret *(alchemist · ability)* ⌂ | Overcharge — a construct acts twice *(alchemist · ability)* ✗ |
 | Apothecary | Transfusion — lend your vitality to an ally *(priest · ability)* ~ | Coveted Blood — cloud: allies' piercing hits bite harder *(alchemist · utility)* ⌂ |
 
-**Implementation status: 31 of 42 authored and tested green** (the engine turned out to already carry
+### The three that take each shelf to five
+
+| Discipline | + Item | + Item | + Item |
+|---|---|---|---|
+| Champion | Defiant Stand — taunt adjacent, bank Defiance per hit taken *(knight · ability)* S1 | Answering Blow — spend all Defiance, strike every adjacent *(fighter · ability)* S1 | Crowd's Favour — Defiance also banks when an ally beside you is struck *(fighter · utility)* S1 |
+| Duelist | Coup Droit — spend Tempo, damage × spent, duelbound only *(fighter · ability)* S1 | Main-Gauche — parries bank Tempo *(rogue · dagger)* S1 | Reading the Blade — bank Tempo per repeat strike; empties if you switch target *(fighter · utility)* S1 |
+| Skirmisher | Running Shot — damage scales with tiles moved this turn *(hunter · ability)* ✓ | Outrider's Harness — first post-move strike Exposes and cannot be answered *(fighter · armor)* ~ | Harrier's Bow — the shot does not close your movement *(hunter · bow)* ~ |
+| Battlemage | Resonant Grip — strikes carry the element of your last cast *(fighter · utility)* ~ | Arcane Conduit — adjacent grid items cast harder, spending Arcane *(mage · utility)* S1 | *(Spellstrike and Arcane Cleave stand)* |
+| Crusader | Vow of the March — bank Zeal on any kill or nearby heal *(priest · utility)* S1 | Reckoning — spend Zeal: holy blow that mends every adjacent ally *(fighter · ability)* S1 | Crusader's Tabard — heal-on-kill scales with Zeal held *(fighter · armor)* S1 |
+| Warbrewer | Battle Tonic — free action, restores stamina *(alchemist · consumable)* S2 | Field Still — brews a draught into your grid each turn *(fighter · utility)* S4 | Round for the House — your draughts also reach adjacent allies at half *(fighter · utility)* ✓ |
+| Vanguard | Breaker's Harness — knockbacks into a wall Stun *(knight · armor)* ~ | Breaker's Wedge — **any** knockback you inflict Sunders *(knight · utility)* ✓ | Stripped Plate — armour you Sunder is added to yours *(rogue · utility)* ~ |
+| Warden | Warden's Writ — every hazard you place also Halts *(knight · utility)* ~ | Beat the Bounds — foes standing in **any** hazard are Rooted and damaged *(hunter · ability)* ✓ | Marchstone — incense: the ground you stand on counts as your hazard *(hunter · utility)* ✓ |
+| Spellbreaker | Silencing Blade — Silences; damage scales with target mana *(knight · sword)* ~ | Dampening Oath — enemy casts within 3 cost double mana *(knight · utility)* ~ | Spell Eater + Empty Vessel — absorb magic for mana; execute the mana-dry *(mage · utility ×2)* ~ |
+| Paladin | Lay On Hands — heal + Aegis, pull their debuffs onto yourself *(priest · ability)* ~ | Oathkeeper's Litany — lasting damage-reduction aura *(priest · ability)* ~ | Vow-Marked Plate — every debuff you carry hardens you *(knight · armor)* ~ |
+| Plague Knight | Contagion — poisoned foes infect their neighbours *(alchemist · utility)* R4 | Plaguebearer's Draught — poison yourself; spread on contact *(alchemist · consumable)* ~ | Rot-Fume Gauntlet — damage scales with the poisoned on the field *(knight · utility)* R5 |
+| Poacher | Throatcut — execute the Rooted or Crippled; refunds on a kill *(rogue · ability)* ✓ | Quarry's Due — anything caught in your traps is Marked *(hunter · utility)* ✓ | The Long Wait — attacks on Rooted or Marked cannot be countered *(rogue · utility)* ~ |
+| Ninja | Shadow Step — swap places with one of your clones *(mage · ability)* ✓ | Substitution — a blow kills a standing clone instead; you take its tile *(rogue · utility)* ~ | Smoke Mantle — Invisible at turn start if you did not attack *(rogue · armor)* ~ |
+| Inquisitor | Sentence — execute a Marked target; holy, dispels *(priest · ability)* S5 | The Question — steal a buff off a Marked target *(rogue · ability)* S5 | The Pyre — every Marked enemy on the field burns at once *(priest · ability)* ✓ |
+| Saboteur | Detonator — set off every charge you planted *(rogue · ability)* S3 | Sapper's Line — three charges in a line, two-turn fuse *(alchemist · consumable)* S3 | Collapse — destroy a wall or prop, hazard the rubble *(alchemist · ability)* ~ |
+| Shaman | Bind Spirit — bind a spirit to a hazard; it follows *(mage · ability)* ~ | Ancestor Mask — spirits inherit your hazards' element *(hunter · utility)* ~ | Ghost-Wind — spirits pass walls unharmed and feed on hazards *(hunter · utility)* ~ |
+| Totemist | Totem of Mending — a totem that heals adjacent allies *(priest · ability)* ✓ | Totem-Carver's Kit — totems gain health and radius *(hunter · utility)* ✓ | Ley Line — a totem's effect floods the line to another totem *(priest · ability)* ~ |
+| Herbalist | Distil — consume a hazard tile, gain a matching consumable *(alchemist · ability)* S4 | Bitterroot Draught — cleanse + immunity to the hazard you stand in *(alchemist · consumable)* ✓ | Culler's Kit — an enemy you kill leaves a reagent in your grid *(hunter · utility)* S4 |
+| Theurge | The Long Prayer — channel; the sanctified zone grows each turn *(priest · ability)* ~ | Vigil Beads — your channels cannot be interrupted *(mage · utility)* ~ | Benediction — a channelled heal that bursts over the party *(priest · ability)* ~ |
+| Artificer | Field Assembly — build a construct from a consumable; it attacks with its effect *(mage · ability)* S4 | Recall Construct — dismiss for half refund, redeploy in range *(mage · ability)* ✓ | Salvage Rig — a destroyed construct bursts and refunds mana *(alchemist · utility)* ~ |
+| Apothecary | Borrowed Hands — your magic attack becomes the party's highest *(alchemist · consumable)* ✓ | The Shared Ledger — those you heal borrow your defense *(priest · utility)* ~ | The Tithe — copy every buff your allies carry onto yourself *(alchemist · consumable)* ~ |
+
+**Built and green.** All 37 disciplines now stock five or more (`tests/discipline_spec.lua` pins the
+floor and the per-parent rule), and every multiclass sells something at *both* its parents. The five
+systems shipped as four and a half — S5 shrank to `fx.dispelUnit` when the interrupt half turned out to
+have no consumer.
+
+Three names had to move, and they are recorded rather than hidden — the deeper cut always yields to the
+shelf a player meets first, the same precedent "Duelist's Edge" → "Duelist's Poise" set:
+
+| Drafted as | Shipped as | Because |
+|---|---|---|
+| Shadow Step *(ninja)* | **Shadow Trade** | `ability_shadow_step` is a rogue base-shelf blink |
+| Collapse *(saboteur)* | **Bring It Down** | `ability_collapse` is a mage's board-folding pull |
+| Duelist's Edge *(duelist)* | **Duelist's Poise** | `weapon_duelists_edge` is a knight's binding blade |
+
+**Two shelves stand at six**, both deliberate and both inside the subclass range:
+
+- **Ninja** adds **Scatterlight** *(mage · ability)* — plant three clones on random nearby tiles and swap
+  with one at random. Randomness you chose to enter is a different thing from randomness done to you,
+  and `fx.random` draws from the battle's own sequence so a replay scatters identically.
+- **Spellbreaker** keeps **both** Spell Eater and Empty Vessel. Worth recording that the shelf is now
+  six passives and no active of its own: every *active* anti-magic item was turned down in review. That
+  is a coherent reading — an anti-mage is a condition the enemy walks into rather than a button — but
+  it is a choice, not an oversight.
+
+**Implementation status (the original 42): 31 of 42 authored and tested green** (the engine turned out to already carry
 most mechanics — `silenced`, `invisible`, `sundered`, `taunt`, guard-redirect, `fx.copy`/`drain`/
 `summon`/`retreat`, and the incense/aura/hazard systems). Done: Champion (Provoke, Reprisal), Vanguard
 (Shieldbreak, Pry Open), Spellbreaker (Null Field, Mana Sunder), Ninja (Mirror Image, Vanishing Strike),

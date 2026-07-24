@@ -115,6 +115,8 @@ end
 --   {name}   -- the name the player typed at character creation, so a companion can address the
 --               avatar directly (Rowan is sworn to you and calls you by it from the first scene).
 --               An unset name falls back to the avatar blueprint's "Stranger".
+--   {discipline} -- the display name of the discipline a vendor is announcing as newly unlocked
+--               (states/hub.lua). Set on the active player for the scene's duration, like {name}.
 --   {select} -- the confirm verb for the device in the player's hands RIGHT NOW (see above). It
 --               re-resolves on every draw, so a player who puts down the mouse and picks up a pad
 --               mid-lesson sees the instruction change under them rather than being told to click.
@@ -130,6 +132,14 @@ function Locale.substitute(text)
     if text:find("{name}", 1, true) then
         local p = require("models.player").active
         text = text:gsub("{name}", (p and p.name) or "Stranger")
+    end
+    if text:find("{discipline}", 1, true) then
+        -- The display name of the discipline a shop is currently announcing (states/hub.lua sets it
+        -- on the active player just before playing the scene, and clears it after). Read the same way
+        -- {name} reads the avatar's name, so a single "the shelf just grew" scene per vendor can speak
+        -- any discipline. Falls back to a plain word if nothing is being announced.
+        local p = require("models.player").active
+        text = text:gsub("{discipline}", (p and p.announcingDiscipline) or "a new discipline")
     end
     if text:find("{select}", 1, true) then
         text = text:gsub("{select}", Locale.selectKey() or SELECT_WORD)

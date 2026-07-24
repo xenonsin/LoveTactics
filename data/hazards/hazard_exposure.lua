@@ -13,8 +13,11 @@
 return {
     name = "Coveted Blood",
     description = "A cloying haze: foes standing within take extra damage from piercing hits.",
-    sprite = "assets/hazards/exposure.png",
     tags = { "poison" },
+    -- The same smoke the Choking Fumes wear, in a cloying rose rather than the censer's sick green:
+    -- these two clouds mean different things and must not read as one, which is exactly the mistake
+    -- the old three-colour wash made of every hazard on the board.
+    fx = { color = { 0.82, 0.44, 0.55 } },
     duration = 12,           -- as Incense: renewed each beat by the bearer, and gone within a turn without one
     disposition = "hostile", -- the enemy AI steps around it, which is itself a way to move a line
     onEnter = function(ctx)

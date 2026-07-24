@@ -120,6 +120,7 @@ end
 -- as a real overworld traversal and then hand control back to its own sequencer (states/prologue.lua)
 -- rather than ending at the hub. A normal board quest passes no onComplete and behaves as before.
 function game.enter(self, quest, prestige, player, onComplete)
+    require("models.sound").music("music.overworld")
     game.quest = quest
     game.prestige = prestige or 1
     game.player = player -- kept so combat encounters can deploy the active party
@@ -291,6 +292,10 @@ function game:openEncounter(cell)
                     -- granted here, once, and the game saves. Losing the quest (onLoss)
                     -- pays nothing, so a wipe costs the run.
                     game.reward = Quest.complete(game.player, game.quest)
+                    -- The sting that marks a quest actually ending. Until now the single loudest
+                    -- silence in the game was here: the objective clears, the board goes quiet, and
+                    -- nothing at all says the run is over.
+                    require("models.sound").play("quest.complete")
                     -- Hand the reward (gold/prestige/rep + the roster's level-ups) to the hub, which
                     -- opens the Company Advancement overlay on entry and clears this once shown.
                     if game.player and game.reward then game.player.pendingSummary = game.reward end
@@ -305,7 +310,13 @@ function game:openEncounter(cell)
                     -- recruit belongs to the meeting the leg ends on, not to the arena scene before it.
                     local followUp = game.quest and game.quest.followUp
                     local function goNext()
-                        if followUp then
+                        -- The campaign's last quest does not go home. `endsCampaign` is carried on the
+                        -- quest (data/quests/the_gate_below.lua) rather than a quest id compared here,
+                        -- so this state never learns which file is the ending and a second one costs
+                        -- no engine edit. New Game+ is offered because the run is, by definition, over.
+                        if game.quest and game.quest.endsCampaign then
+                            State.switch(require("states.credits"), { newGamePlus = true })
+                        elseif followUp then
                             State.switch(require("states.game"), followUp, game.prestige, game.player,
                                 function() State.switch(require("states.hub")) end)
                         else

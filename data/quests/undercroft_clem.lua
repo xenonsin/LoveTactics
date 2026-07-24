@@ -23,7 +23,8 @@ return {
     rewardGold = 90,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredQuests = { "vault_heist" }, -- slot 2: the line runs in order
+    requiredPrestige = 3,
     rewardCharacter = "character_clem",
     outro = "clem_joins",
     map = {

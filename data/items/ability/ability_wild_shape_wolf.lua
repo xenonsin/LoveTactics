@@ -35,6 +35,7 @@ return {
     type = "ability",
     tags = { "primal", "illusion", "utility" },
     class = "hunter",
+    discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
     price = 300,
     repRank = 2,
     activeAbility = {

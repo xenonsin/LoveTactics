@@ -43,7 +43,8 @@ return {
     rewardGold = 300,
     rewardRep = 30,
     rewardPrestige = 2,
-    requiredPrestige = 4,
+    requiredQuests = { "quarter_end" }, -- slot 7: the line runs in order
+    requiredPrestige = 3,
     requiredRep = { vendor = "undercroft", rank = 3 }, -- Shadow
     map = {
         biome = "castle",

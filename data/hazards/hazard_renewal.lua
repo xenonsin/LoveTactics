@@ -9,7 +9,6 @@
 return {
     name = "Renewing Ground",
     description = "A renewal banner's shadow: allies standing within recover health.",
-    sprite = "assets/hazards/renewal.png",
     tags = { "holy" },
     duration = 9999, -- answers to the banner's life, not a clock (Hazard.dropOwnedBy)
     disposition = "friendly",

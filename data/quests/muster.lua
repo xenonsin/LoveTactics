@@ -42,7 +42,8 @@ return {
     rewardGold = 240,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 3,
+    requiredQuests = { "greywatch" }, -- slot 6: the line runs in order
+    requiredPrestige = 2,
     requiredRep = { vendor = "bastion", rank = 3 }, -- Banneret
     rewardMaterials = { material_steel_ingot = 2 },
     map = {

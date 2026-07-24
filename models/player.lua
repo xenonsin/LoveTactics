@@ -180,6 +180,8 @@ function Player.new()
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
         visitedVendors = {},  -- vendor id -> true; a shop plays its intro scene the first time only (states/hub.lua)
+        announcedDisciplines = {}, -- discipline id -> true; a vendor announces a newly unlocked discipline once (states/hub.lua)
+        ngPlus = 0,           -- completed campaigns carried forward; see Player.newGamePlus
     }
 
     for matId, count in pairs(Player.defaults.startingMaterials or {}) do
@@ -273,6 +275,21 @@ end
 function Player.markVendorVisited(player, vendorId)
     player.visitedVendors = player.visitedVendors or {}
     player.visitedVendors[vendorId] = true
+end
+
+-- Whether the player has already been told, at a vendor, that this discipline unlocked. A newly
+-- unlocked discipline plays a one-time "the shelf just grew" scene the next time you walk into a
+-- parent vendor (states/hub.lua); this flag keeps it to once, across a save/load. A discipline with
+-- two parents announces at whichever vendor is opened first -- the flag is per discipline, not per
+-- shelf, so the second parent does not repeat it. Unknown disciplines read as un-announced.
+function Player.hasAnnouncedDiscipline(player, disciplineId)
+    return (player.announcedDisciplines or {})[disciplineId] == true
+end
+
+-- Record that the discipline-unlocked scene has now played, so it never plays again.
+function Player.markDisciplineAnnounced(player, disciplineId)
+    player.announcedDisciplines = player.announcedDisciplines or {}
+    player.announcedDisciplines[disciplineId] = true
 end
 
 -- This player's identity to OTHER players, minted on first use and kept from then on.
@@ -456,6 +473,41 @@ end
 -- Establish `Player.active` and return it. With `fresh`, starts a new game and wipes any
 -- save; otherwise resumes the save on disk, falling back to a new game when there is none
 -- (or it is unreadable). Idempotent-ish: call it once per game start, not per state entry.
+-- Begin a New Game+ on the finished run. Offered by states/credits.lua once the campaign's last quest
+-- (`endsCampaign`) has been cleared.
+--
+-- What carries and what resets is the whole design, so it is spelled out rather than implied:
+--
+--   CARRIES -- the roster and their grids, the stash, gold, materials, recipe tiers, and above all
+--   PRESTIGE. Prestige is character level (Player.syncLevels), so the company walks into the new run
+--   at the power it finished at. It is also what every encounter's `composition` scales against, so the
+--   board scales up to meet them; the carry-over is a head start, not a holiday.
+--
+--   RESETS -- completed quests and vendor reputation. Clearing the quest ledger puts all seventy line
+--   slots back on the board AND re-locks the Gate Below, whose `requiredQuests` are unmet again.
+--   Clearing reputation drops every vendor to rank 1, so the rank-gated shelves and the seven relics
+--   have to be earned a second time. Between them, the ladder is a ladder again.
+--
+--   PERSISTS DELIBERATELY -- visited-vendor and discipline-announcement flags. Those exist to make a
+--   one-time scene play once; replaying eight shop introductions is not a reward.
+--
+-- Recruits are left in the roster rather than un-recruited. Their quests return to the board, and
+-- Player.recruit refuses a duplicate by design, so a re-run of a recruit quest pays its gold and its
+-- scene and mints nobody -- which is the correct reading of meeting someone you already travel with.
+function Player.newGamePlus(player)
+    player = player or Player.active
+    if not player then return nil end
+
+    player.ngPlus = (player.ngPlus or 0) + 1
+    player.completedQuests = {}
+    player.reputation = {}
+    -- The post-quest advancement overlay is owed to the run that just ended, not to the new one.
+    player.pendingSummary = nil
+
+    Player.save()
+    return player
+end
+
 function Player.start(fresh)
     if fresh then
         Save.clear()

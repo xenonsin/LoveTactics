@@ -18,7 +18,8 @@ return {
     rewardRep = 80,
     rewardPrestige = 3,
     rewardItems = { "utility_envious_glass" },
-    requiredPrestige = 5,
+    requiredQuests = { "the_open_formula" }, -- slot 10: the line runs in order
+    requiredPrestige = 4,
     requiredRep = { vendor = "alchemist", rank = 4 }, -- Philosopher
     gateHint = "below the vats, where the shapeless envy the shaped",
     map = {

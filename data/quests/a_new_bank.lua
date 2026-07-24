@@ -34,11 +34,12 @@ return {
         "files are crossing the street tonight under escort.",
     difficulty = "Hard",
     sponsor = "undercroft",
-    rewardItems = { "armor_slipstep_leathers" },
+    rewardItems = { "armor_slipstep_leathers", "weapon_throughline" },
     rewardGold = 400,
     rewardRep = 35,
     rewardPrestige = 2,
-    requiredPrestige = 5,
+    requiredQuests = { "her_own_note" }, -- slot 9: the line runs in order
+    requiredPrestige = 3,
     requiredRep = { vendor = "undercroft", rank = 3 }, -- Shadow
     map = {
         biome = "castle",

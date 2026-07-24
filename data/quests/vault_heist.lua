@@ -12,7 +12,7 @@ return {
     rewardGold = 150,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 1,
+    requiredPrestige = 3,
     map = {
         biome = "castle",
         encounters = { min = 4, max = 7 },

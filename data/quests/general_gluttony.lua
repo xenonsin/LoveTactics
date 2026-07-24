@@ -17,7 +17,8 @@ return {
     rewardRep = 80,
     rewardPrestige = 3,
     rewardItems = { "utility_maw_of_the_unfed" },
-    requiredPrestige = 5,
+    requiredQuests = { "into_the_deep_wood" }, -- slot 10: the line runs in order
+    requiredPrestige = 2,
     requiredRep = { vendor = "hunters_lodge", rank = 4 }, -- Grand Hunter
     gateHint = "at the heart of the wood the hunt hollowed out",
     map = {

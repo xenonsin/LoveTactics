@@ -6,8 +6,9 @@
 -- hazard tile the effect fires; the effect is delivered as a status (Status.apply) -- and, being
 -- one-instance-per-id, refreshes rather than stacks on re-entry. Whether the effect respects sides is
 -- the def's own business: fire burns friend and foe alike, while a sanctuary blesses only its caster's
--- side (see Hazard.allied / ctx.isAlly). Pure logic (no love.graphics beyond the tolerant Sprite
--- loader), so it loads under the headless tests.
+-- side (see Hazard.allied / ctx.isAlly). Pure logic -- no love.graphics at all -- so it loads under
+-- the headless tests. A zone has no art: it is drawn procedurally from its TAGS by the field shader
+-- (ui/field_fx.lua), which is why nothing here loads or carries a sprite.
 --
 -- ---------------------------------------------------------------------------
 -- A hazard is the ONE zone concept. There is no separate "aura": an aura is just what you call a
@@ -41,10 +42,16 @@
 --                      that answers only to its duration
 --   * disposition   -- "hostile" | "friendly" | "neutral": drives the enemy AI's avoid/seek (default
 --                      neutral). A "friendly" hazard only draws the side that owns it.
---   * tags          -- descriptive tags (e.g. { "fire" }). Two jobs: a cast whose tags meet a
---                      hazard's dousedByTags removes it, AND the hazard lends these tags to the TILE
---                      it sits on (Combat.tileHasTag) -- which is how a Rain cloud's "conductable"
---                      makes drenched ground carry a bolt, just as water terrain does.
+--   * tags          -- descriptive tags (e.g. { "fire" }). THREE jobs: a cast whose tags meet a
+--                      hazard's dousedByTags removes it; the hazard lends these tags to the TILE it
+--                      sits on (Combat.tileHasTag) -- which is how a Rain cloud's "conductable"
+--                      makes drenched ground carry a bolt, just as water terrain does; and the FIRST
+--                      tag the field shader recognises decides how the zone is drawn (fire -> flame,
+--                      ice -> rime, see ui/field_fx.lua's TAG_PATTERN). So the descriptive tag leads
+--                      and the mechanical one trails: { "water", "conductable" }, not the reverse.
+--   * fx            -- optional visual override, read only by the view: { pattern, color, density,
+--                      intensity }. Needed only where a zone wants a look its tags don't imply --
+--                      Darkness is smoke in a colour no other smoke uses. Most defs declare none.
 --   * dousedByTags  -- tags that dispel this hazard when a matching cast covers its tile (e.g. water -> fire)
 --   * spread        -- { intoTag = "burnable" }: each tick, seed fresh hazards on adjacent tiles
 --                      carrying that tag (fire creeping through a forest). The tag is resolved
@@ -58,7 +65,6 @@
 -- sits in a load-time require cycle (combat.lua requires this module).
 
 local Registry = require("models.registry")
-local Sprite = require("models.sprite")
 
 local Hazard = {}
 
@@ -119,6 +125,15 @@ local function ctxFor(combat, hazard, unit)
         end,
         damage = function(tgt, amount, tags)
             if not tgt then return 0 end
+            -- A SUMMON whose summoner carries the Ancestor Mask takes nothing from ground: a spirit is
+            -- of the field, and the field does not burn its own. Checked here, in the one closure every
+            -- hazard reaches for to hurt somebody, so it holds for fire, acid, quicksand and anything
+            -- authored later without those files knowing.
+            --
+            -- Only the DAMAGE is waived, never the statuses -- a spirit in a Gagging Storm is still
+            -- Silenced. Immunity to being hurt by weather is a different claim from immunity to weather.
+            local Trait = require("models.trait")
+            if tgt.summoner and Trait.flag(tgt.summoner, "summonsShrugHazards") then return 0 end
             return Combat.dealFlatDamage(combat, tgt, amount, tags, hazard.name or hazard.id)
         end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
@@ -183,6 +198,17 @@ function Hazard.onEnter(combat, unit, x, y)
     if not (unit and unit.alive) then return end
     for _, h in ipairs(Hazard.allAt(combat, x, y)) do
         if h.def.onEnter then h.def.onEnter(ctxFor(combat, h, unit)) end
+        -- A RIDER stamped onto the instance at placement, not declared by the blueprint: the Warden's
+        -- Writ marks every zone its bearer lays with `halts`, so a warden's fire, rain and quicksand
+        -- all take a turn off whoever walks in. Instance-level rather than blueprint-level because the
+        -- blueprints are shared -- one warden must not make the whole world's fire Halting.
+        --
+        -- Foes only, on the zone's own reading of sides (Hazard.allied), so a warden never Halts its
+        -- own line by standing in its own weather.
+        if h.halts and unit.alive and not Hazard.allied(h, unit.side) then
+            local Status = require("models.status")
+            Status.apply(combat, unit, "status_halted", { applier = h.owner })
+        end
     end
 end
 
@@ -224,7 +250,6 @@ function Hazard.place(combat, x, y, id, opts)
     local hazard = {
         id = id,
         name = def.name,
-        sprite = Sprite.load(def.sprite),
         x = x, y = y,
         side = opts.side,
         remaining = opts.duration or def.duration or 1,

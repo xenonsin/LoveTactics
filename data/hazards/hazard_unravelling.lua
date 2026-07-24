@@ -18,7 +18,6 @@
 return {
     name = "Unravelling",
     description = "Picked-loose ground: everything standing in it takes more from magic.",
-    sprite = "assets/hazards/unravelling.png",
     tags = { "arcane" },
     duration = 14,           -- ~3 turns for the party's casters to spend
     disposition = "hostile",

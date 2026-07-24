@@ -10,12 +10,23 @@
 -- purpose and answers every striker, so the losing line is the obvious one -- surround her and swing.
 -- The board should teach that in about two turns.
 --
--- GATING, and the one thing this file cannot say: a multiclass needs one subclass of EACH parent
--- before it opens, and that rule lives in `Discipline.isUnlocked` (models/discipline.lua), which walks
--- the parents itself. A quest can only gate on prestige, sponsor standing and a list of specific quest
--- ids -- there is no way to write "any fighter subclass and any knight subclass" here, and naming two
--- particular ones would lock out a player who took the other pair. So the quest is open on standing
--- and the discipline stays shut until the parents are real. Completing this early is harmless.
+-- GATING, and why naming one quest per parent is EXACT rather than over-strict. A multiclass needs
+-- one subclass of each parent before it opens. `requiredQuests` is an all-of list of specific ids and
+-- cannot say "any fighter subclass" -- which used to be the argument for leaving the rule entirely to
+-- `Discipline.isUnlocked` and gating this quest on a prestige number instead. That argument died when
+-- the vendor lines became CHAINS (docs/story.md, "The ten slots"): a line runs in authored order, so
+-- reaching a later subclass gate is impossible without having cleared the earlier one. "Any fighter
+-- subclass" therefore collapses to "the FIRST fighter subclass gate" -- `warlord_keep` at slot 3, which
+-- `blood_in_the_sand` at slot 6 strictly depends on. Naming it locks nobody out; there is no other
+-- pair to take.
+--
+-- So the two ids below are the real prerequisite, stated where a player can see it: this capstone is
+-- off the board until both halves are genuinely held, and a multi-key `requiredQuests` shows it
+-- LOCKED with its count once the first arrives (models/quest.lua) -- "you have the knight half" is
+-- worth putting on the board. `Discipline.isUnlocked` still walks the parents itself, which is now a
+-- redundant safety net rather than the only enforcement.
+--
+-- Prestige is left at the sponsor's own door (the Colosseum opens at 1) so it gates nothing here.
 --
 -- FIRST PASS. Scenes are not authored, so no `intro` / `outro` / `opening` is named (Conversation.play
 -- asserts on an unknown id). No `rewardItems`: a discipline's payload is its SHELF, which unlocking
@@ -29,7 +40,10 @@ return {
     rewardGold = 250,
     rewardRep = 10, -- deliberately small: capstones sit outside the ten and must not skew the ladder
     rewardPrestige = 1,
-    requiredPrestige = 4,
+    -- Both parents, earned: "warlord_keep" is the first fighter subclass gate on its line,
+    -- "held_position" the first knight. Holding either is impossible without them.
+    requiredQuests = { "warlord_keep", "held_position" },
+    requiredPrestige = 1,
     map = {
         biome = "castle",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },

@@ -27,6 +27,22 @@ list of `{ name, fn }` cases; `fn` uses `assert(...)` and is run under `pcall`. 
 0 when all pass, 1 otherwise. See `tests/data_spec.lua` and `tests/hub_spec.lua` for the style.
 Keep model/data logic free of `love.graphics` at require-time so it loads under headless tests.
 
+## Wiki
+
+The [GitHub wiki](https://github.com/xenonsin/LoveTactics/wiki) is a **generated mirror** of
+`docs/` — never edit wiki pages by hand, edit the source doc. `tools/wiki-sync.sh` copies each
+`docs/NAME.md` to a Title-Cased page, rewrites intra-doc links (preserving `#anchors`), and
+regenerates `Home.md` + `_Sidebar.md`. A `post-commit` hook publishes automatically whenever a
+commit touches `docs/*.md`; skip it once with `LOVETACTICS_WIKI_NOSYNC=1 git commit ...`.
+
+After a fresh clone, two one-time steps (`.git/hooks` is not tracked, so the hook does not come
+with the repo):
+
+```bash
+git clone https://github.com/xenonsin/LoveTactics.wiki.git ../LoveTactics.wiki
+tools/wiki-sync.sh --install-hook
+```
+
 ## Framework
 
 - **Engine:** LÖVE2D — callbacks defined in `main.lua` (e.g., `love.load`, `love.update`, `love.draw`, `love.keypressed`)
@@ -62,7 +78,10 @@ The codebase is organized into layers loaded via `require()`. See
   gate (anyone can carry anything) — see [docs/classes.md](docs/classes.md), enforced by
   `tests/class_spec.lua`.
 - **`assets/`** — images/audio/maps referenced by path from data files (e.g.
-  `assets/hub/city.png`), loaded lazily through `models/sprite.lua`.
+  `assets/hub/city.png`), loaded lazily through `models/sprite.lua`. A missing file resolves to its
+  path string rather than crashing, so art can land incrementally — which also means the art debt is
+  invisible without a sweep. [docs/art-assets.md](docs/art-assets.md) holds the specs, sourcing and
+  artist brief; `& "E:\LOVE\lovec.exe" . art-report` counts what is still outstanding.
 
 ### Hub city & pop-up panels
 

@@ -93,13 +93,22 @@ local function boardOf(combat)
         walls[i] = { id = w.id, x = w.x, y = w.y, side = w.side,
                      health = w.health, remaining = w.remaining }
     end
-    return traps, hazards, walls
+    -- Planted charges (S3). Included for exactly the reason the traps above are: a peer whose fuse burnt
+    -- down a turn earlier has diverged even though every body is still standing where the other expects.
+    -- Every field is a number or a string by construction -- a charge is data and never a closure, which
+    -- is the constraint that shaped the whole fuse system (see Combat.plantCharge).
+    local charges = {}
+    for i, c in ipairs(combat.charges or {}) do
+        charges[i] = { x = c.x, y = c.y, side = c.side, owner = c.owner,
+                       fuse = c.fuse, amount = c.amount, radius = c.radius }
+    end
+    return traps, hazards, walls, charges
 end
 
 -- The full state, as sorted-key Lua source. Stable across runs and machines: every table here is
 -- built in a fixed order, and Save.encode sorts keys.
 function StateHash.of(combat)
-    local traps, hazards, walls = boardOf(combat)
+    local traps, hazards, walls, charges = boardOf(combat)
     local turn = combat.turn
     local projection = {
         clock = combat.clock,
@@ -108,6 +117,7 @@ function StateHash.of(combat)
         traps = traps,
         hazards = hazards,
         walls = walls,
+        charges = charges,
         -- Whose turn it is, and what they have already spent of it. A peer that thinks the move is
         -- still available has diverged even if every body is still standing in the same place.
         turn = turn and {

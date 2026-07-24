@@ -166,11 +166,50 @@ local function serializeCastEntry(e)
     return "{ " .. table.concat(parts, ", ") .. " }"
 end
 
--- Serialize a whole conversation def back to a readable .lua file.
-local function serializeConversation(def)
+local STANDARD_HEADER = {
+    "-- Conversation authored inline (English); localization ids (`tag`) are stamped by",
+    "-- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.",
+}
+
+-- The authored comment block at the top of an existing conversation file, minus the two standard lines
+-- this tool writes itself.
+--
+-- This exists because the serializer below regenerates the whole file from the parsed def, and for a
+-- long time that silently destroyed every hand-written header the moment a conversation gained a new
+-- line to stamp. Those headers are where a scene records what it is FOR -- which slot it opens, whose
+-- refusal it is, what it deliberately does not say -- and losing them on a routine re-stamp is losing
+-- the only copy. A def carries no comments, so they have to be read back off disk and re-emitted.
+--
+-- Only the leading run of `--` lines is preserved; a comment further down the file still cannot
+-- survive a rewrite, which is why authored notes belong at the top.
+local function headerLines(source)
+    if not source then return {} end
+
+    local standard = {}
+    for _, line in ipairs(STANDARD_HEADER) do standard[line] = true end
+
+    local kept = {}
+    for line in source:gmatch("([^\n]*)\n?") do
+        local trimmed = line:gsub("%s+$", "")
+        if trimmed:match("^%-%-") then
+            if not standard[trimmed] then kept[#kept + 1] = trimmed end
+        elseif trimmed ~= "" then
+            break -- first line of real code: the header is over
+        end
+    end
+    return kept
+end
+
+local function authoredHeader(rel)
+    return headerLines(love.filesystem.read(rel))
+end
+
+-- Serialize a whole conversation def back to a readable .lua file. `header` is the authored comment
+-- block to preserve above the def (see authoredHeader).
+local function serializeConversation(def, header)
     local out = {}
-    out[#out + 1] = "-- Conversation authored inline (English); localization ids (`tag`) are stamped by"
-    out[#out + 1] = "-- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua."
+    for _, line in ipairs(STANDARD_HEADER) do out[#out + 1] = line end
+    for _, line in ipairs(header or {}) do out[#out + 1] = line end
     out[#out + 1] = "return {"
     if def.title then out[#out + 1] = "    title = " .. q(def.title) .. "," end
     local cast = {}
@@ -345,7 +384,9 @@ function M.run()
     for _, convId in ipairs(conversationIds()) do
         local def = require("data.conversations." .. convId)
         if stampTags(def) then
-            writeFile("data/conversations/" .. convId .. ".lua", serializeConversation(def))
+            local rel = "data/conversations/" .. convId .. ".lua"
+            -- Read the authored header BEFORE overwriting the file it lives in.
+            writeFile(rel, serializeConversation(def, authoredHeader(rel)))
             stamped = stamped + 1
         end
         collect(convId, def, records, seenNames)
@@ -362,5 +403,12 @@ function M.run()
     print(string.format("extract-strings: %d string(s) across %d conversation(s); stamped %d file(s); languages: %s.",
         #records, #conversationIds(), stamped, table.concat(otherLangs, ", ")))
 end
+
+-- Exposed for tests/extract_strings_spec.lua: the pure half of the rewrite -- reading an authored
+-- header off a source string and emitting a file that keeps it. M.run's disk half is left alone, the
+-- same split tools/write_character.lua draws.
+M.headerLines = headerLines
+M.serializeConversation = serializeConversation
+M.STANDARD_HEADER = STANDARD_HEADER
 
 return M

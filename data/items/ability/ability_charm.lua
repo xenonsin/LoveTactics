@@ -12,6 +12,7 @@ return {
     type = "ability",
     tags = { "guile", "utility" },
     class = "rogue",
+    discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
     price = 340,
     repRank = 3,
     activeAbility = {

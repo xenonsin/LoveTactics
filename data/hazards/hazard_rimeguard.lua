@@ -17,7 +17,6 @@
 return {
     name = "Rimeguard",
     description = "Biting cold: enemies standing in it are slowed to a crawl.",
-    sprite = "assets/hazards/rimeguard.png",
     tags = { "ice" },
     duration = 6,
     disposition = "hostile", -- the enemy AI would rather go around

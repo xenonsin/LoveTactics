@@ -20,6 +20,7 @@ return {
     type = "ability",
     tags = { "summon", "illusion" },
     class = "mage",
+    discipline = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
     price = 350,
     repRank = 3,
     noCopy = true,

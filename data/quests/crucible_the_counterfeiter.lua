@@ -20,7 +20,8 @@ return {
     rewardGold = 90,
     rewardRep = 30,
     rewardPrestige = 1,
-    requiredPrestige = 2,
+    requiredQuests = { "the_runaway_reagent" }, -- slot 2: the line runs in order
+    requiredPrestige = 4,
     rewardCharacter = "character_ren",
     outro = "ren_joins",
     map = {

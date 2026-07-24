@@ -36,6 +36,7 @@ return {
     rewardGold = 180,
     rewardRep = 25,
     rewardPrestige = 1,
+    requiredQuests = { "held_position" }, -- slot 4: the line runs in order
     requiredPrestige = 2,
     requiredRep = { vendor = "bastion", rank = 2 }, -- Sworn
     map = {

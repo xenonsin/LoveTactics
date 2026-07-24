@@ -162,6 +162,11 @@ end
 -- Record that `unit` has thrown an answer, so the next one this round costs double (Trait.answerCost).
 local function tallyAnswer(unit)
     unit.answersThisRound = (unit.answersThisRound or 0) + 1
+    -- ...and a running, battle-long count of blows this unit turned aside or answered, for anything
+    -- that charges off defending rather than attacking (the Duelist's Main-Gauche banks Tempo on it).
+    -- Separate from `answersThisRound`, which is a per-round budget the reflex gates read and reset;
+    -- this one only ever goes up, which is what a Combat.tally has to do to feed a charge pool.
+    require("models.combat").tally(unit, "answered", 1)
 end
 
 -- Does a standing evade reflex (the Dodge trait) let `unit` slip a would-be PHYSICAL hit? Mirrors
@@ -204,6 +209,41 @@ function Trait.trySmoke(combat, unit, attacker)
             Combat.logEvent(combat, "action",
                 string.format("%s vanishes in a burst of smoke!", (unit.char and unit.char.name) or "Unit"), unit)
             Combat.knockback(combat, attacker, unit, t.def.blink or 2)
+            return true
+        end
+    end
+    return false
+end
+
+-- SUBSTITUTION (the Ninja's): does a standing clone die in the bearer's place? Consulted in
+-- Combat.dealFlatDamage beside tryEvade and trySmoke, and like them it returns BEFORE mitigation, so a
+-- substituted blow deals 0, grants no rage, and provokes no counter -- nothing landed on anybody who is
+-- still standing.
+--
+-- The trade is the item: the clone is spent (it dies) and the bearer takes its tile, so the blow costs
+-- you a conjuration and moves you somewhere you did not choose. That is the difference between this and
+-- a dodge -- a dodge is free and repeatable on a cooldown, and this is a resource you had to cast.
+--
+-- A "clone" is any live summon of this unit flagged `decoy` (Summon.copy's `decoyOf`), which is exactly
+-- what Mirror Image and Scatterlight plant. A ninja with no clone out gets nothing, which is what keeps
+-- the mantle honest: the mage half has to have been paid for before the rogue half collects.
+--
+-- No cooldown and no stack: the clone IS the cost.
+function Trait.trySubstitute(combat, unit, attacker)
+    if not unit or not unit.traits or not attacker then return false end
+    if reactionsSuppressed(unit) then return false end
+    if not Trait.flag(unit, "substitutes") then return false end
+    local Combat = require("models.combat")
+    for _, u in ipairs(combat.units or {}) do
+        if u.alive and u.decoyOf == unit and u ~= unit then
+            local cx, cy = u.x, u.y
+            Combat.logEvent(combat, "action",
+                string.format("%s's double takes the blow, and they trade places.",
+                    (unit.char and unit.char.name) or "Unit"), { unit, u })
+            -- Dismissed rather than killed: a conjuration unravelling is not a death, so it leaves no
+            -- corpse, feeds no death reflex, and cannot be raised by whoever is watching.
+            Combat.dismiss(combat, u, nil)
+            Combat.teleportUnit(combat, unit, cx, cy)
             return true
         end
     end
@@ -472,6 +512,25 @@ function Trait.mayCounter(combat, unit, trait, attacker, tags, area, at)
     if area then return false end
     if attacker.side == unit.side then return false end -- never answer a friendly or self source
     if reactionsSuppressed(unit) then return false end -- a stunned/frozen unit answers nothing
+    -- UNANSWERABLE (the Poacher's Long Wait): a blow struck at a body already Rooted or Marked cannot
+    -- be countered at all, if the striker carries the charm. Read off the ATTACKER rather than the
+    -- defender, which is the only place it can live -- what the charm buys is the trapper's own safety
+    -- from the thing thrashing in its snare, and the snared foe knows nothing about who set it.
+    --
+    -- Gated in mayCounter rather than at each reflex, so it silences every kind of answer at once --
+    -- parry, riposte, thorns, a reflecting ward -- and so the hover preview (Trait.counterPreview runs
+    -- through here) promises the same silence the swing delivers.
+    if Trait.flag(attacker, "unanswerableVsHeld") then
+        local Status = require("models.status")
+        if Status.has(unit, "status_root") or Status.has(unit, "status_mark") then return false end
+    end
+    -- OUTRIDER'S HARNESS (the Skirmisher's): a blow thrown by somebody who has covered ground this turn
+    -- cannot be answered. Same gate, same reasoning -- read off the attacker, because what the armour
+    -- buys is the rider's own safety in passing, and the thing being ridden past knows nothing about it.
+    if Trait.flag(attacker, "unanswerableAfterMove") then
+        local Combat = require("models.combat")
+        if Combat.tilesMovedThisTurn(attacker) >= 2 then return false end
+    end
     if rule.requiresArmed and not trait.armed then return false end
     if rule.requiresTag and not hasTag(tags, rule.requiresTag) then return false end
     if rule.requiresStatus and not require("models.status").has(unit, rule.requiresStatus) then
@@ -859,6 +918,28 @@ function Trait.has(unit, id)
     return false
 end
 
+-- The first trait on `unit` declaring the boolean/valued flag `name`, or nil. For the standing rules
+-- that ride along on a MODEL action rather than on a hook -- "every shove you throw also Sunders" --
+-- where the interesting code is already written in combat.lua and what the charm adds is one clause.
+--
+-- Flag-shaped rather than hook-shaped on purpose: a hook would have to re-derive who was shoved, how
+-- far, and whether it collided, all of which the shove already knows. So the model asks a yes/no
+-- question at the seam and the charm answers it. Returns the TRAIT, not just true, so the caller can
+-- read a magnitude off `t.def` in the same lookup.
+--
+-- Sundered gags these exactly as it gags the reaction hooks and the damage charms (see dispatch and
+-- Trait.outgoingDamageBonus): a bearer whose relics have gone quiet does not get to keep the quiet
+-- ones working.
+function Trait.flag(unit, name)
+    -- Lazy, like every other Status reach in this file: status.lua requires trait.lua back.
+    local Status = require("models.status")
+    if not unit or Status.has(unit, "status_sundered") then return nil end
+    for _, t in ipairs(unit.traits or {}) do
+        if t.def and t.def[name] then return t end
+    end
+    return nil
+end
+
 -- The extra pre-mitigation damage `user`'s standing charms add against THIS target with THIS strike.
 --
 -- A PURE query, deliberately not routed through dispatch(): it fires on every damage preview (the
@@ -967,6 +1048,16 @@ end
 -- The bearer dropped. Fired from killUnit, before its summons are dismissed.
 function Trait.onDeath(combat, unit, info)
     dispatch(combat, unit, "onDeath", info)
+end
+
+-- A conjuration of the bearer's came apart. Fired from killUnit to the SUMMONER alone -- never
+-- broadcast, because a summon winking out is not a body hitting the ground and must not feed the
+-- death-reflexes on the field (that is why Trait.onAnyDeath excludes summons). The one interested party
+-- is whoever paid for it, and the wreck itself carries no grid for a rule to hang from.
+--
+-- `info.lost` is the departed. What the Artificer's Salvage Rig reads.
+function Trait.onSummonLost(combat, summoner, info)
+    dispatch(combat, summoner, "onSummonLost", info)
 end
 
 -- SOMEBODY cast, and everyone else on the field felt it. Fired from Combat.useItem beside Trait.onCast,

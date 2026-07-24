@@ -37,7 +37,8 @@ return {
     rewardGold = 300,
     rewardRep = 30,
     rewardPrestige = 2,
-    requiredPrestige = 4,
+    requiredQuests = { "blood_in_the_sand" }, -- slot 7: the line runs in order
+    requiredPrestige = 1,
     requiredRep = { vendor = "colosseum", rank = 3 }, -- Champion
     map = {
         biome = "castle",

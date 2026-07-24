@@ -40,7 +40,8 @@ return {
     rewardGold = 300,
     rewardRep = 30,
     rewardPrestige = 2,
-    requiredPrestige = 4,
+    requiredQuests = { "the_requisition" }, -- slot 7: the line runs in order
+    requiredPrestige = 3,
     requiredRep = { vendor = "arcanum", rank = 3 }, -- Magus
     map = {
         biome = "castle",

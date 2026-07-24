@@ -27,6 +27,7 @@ return {
     type = "utility",
     tags = { "arcane", "sigil" },
     class = "mage",
+    discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
     price = 520,
     repRank = 4,
     aura = {

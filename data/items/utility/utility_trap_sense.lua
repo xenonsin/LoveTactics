@@ -9,6 +9,7 @@ return {
     type = "utility",
     tags = { "detect traps" },
     class = "hunter",
+    discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
     price = 150,
     repRank = 2,
     detectRadius = 2,

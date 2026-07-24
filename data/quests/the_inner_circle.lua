@@ -37,6 +37,7 @@ return {
     rewardGold = 180,
     rewardRep = 30,
     rewardPrestige = 1,
+    requiredQuests = { "the_praised_working" }, -- slot 4: the line runs in order
     requiredPrestige = 3,
     requiredRep = { vendor = "arcanum", rank = 2 }, -- Adept
     map = {

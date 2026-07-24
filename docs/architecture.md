@@ -240,6 +240,29 @@ zone-granted status that clings to its zone, and it falls out of two rules in `m
   its `owner` was cut down (`Hazard.tick` → `Hazard.reap`). Both ask the same question once a beat: is
   a zone that grants this still under you?
 
+**And they are drawn as one thing too.** Every zone on the board is a full-tile procedural **field**,
+painted by a single pixel shader with ten patterns (`shaders/field.lua`) through the controller
+`ui/field_fx.lua`. No hazard has, or can have, a sprite. Three properties are worth knowing:
+
+- **One tag vocabulary, three sources.** A field's pattern is resolved from tags the def already
+  declares for mechanical reasons — `fire` → flame, `ice` → rime, `water` → rain. The *same* table
+  serves the statuses a unit carries (a burning body stands in flame) and the footprint an armed
+  ability telegraphs, so a Fire hazard, a Burning unit and a Fireball's blast preview all reach the
+  same picture with nothing authored to say so. A def's optional `fx` block overrides colour or
+  pattern where its tags don't imply the look it wants — Darkness is smoke in a colour no other
+  smoke uses.
+- **Fields stack; sprites would occlude.** Everything on a cell is collected, ordered by layer
+  (stain → field → mist → glow) and alpha-normalised under a cap, so rain drifting over a Sanctuary
+  reads as *two* fields. The order is sorted on layer, pattern, group and a first-seen ordinal — never
+  on list position, because `combat.hazards` is reshuffled by every `table.remove` in `Hazard.tick`
+  and `Hazard.douse`, and a picture that read index order would flicker whenever an unrelated zone
+  expired.
+- **The footprint is the silhouette.** Noise is sampled in *board* space and each tile is told which
+  of its four sides are the field's actual boundary, so only those are feathered. A 3×3 blessing is
+  one patch of ground, not nine outlined squares. See
+  [art-assets.md](art-assets.md#hazards-are-not-icons) for why this replaced a painted-art commission
+  outright.
+
 **A zone `owner`** ties ground to a body on the field. A banner is nothing but a destructible object
 that owns its square: it is `timeless` (takes no turns, never appears in the turn order) and has no
 effect of its own, and `Hazard.dropOwnedBy` removes its ground the moment it dies — which removes the

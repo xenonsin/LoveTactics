@@ -18,7 +18,6 @@
 return {
     name = "Shared Bulwark",
     description = "Covered ground: allies standing in it turn aside the next physical blow.",
-    sprite = "assets/hazards/shared_bulwark.png",
     tags = { "structure" },
     duration = 6,
     disposition = "friendly",
