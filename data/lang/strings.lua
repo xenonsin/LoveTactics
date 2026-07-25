@@ -456,9 +456,9 @@ return {
     ["line.prologue_flee.4"] = { en = "To the capital, then. Its walls still stand... for now.", ja = "" },  -- TODO
     ["line.prologue_flier.1"] = { en = "Bounties, escorts, standing contracts... half of these want a company three times our size.", ja = "" },  -- TODO
     ["line.prologue_flier.2"] = { en = "This one doesn't.", ja = "" },  -- TODO
-    ["line.prologue_flier.3"] = { en = "The Colosseum. They pay for a debut bout -- a single fight, on the sand, in front of a crowd. Win or lose, the purse is posted the same.", ja = "" },  -- TODO
-    ["line.prologue_flier.4"] = { en = "A blood sport.", ja = "" },  -- TODO
-    ["line.prologue_flier.5"] = { en = "A paying one, and it asks only two on the field. It is not the war we came to fight, {name}... but it is the coin we can earn today. Take it, and we eat.", ja = "" },  -- TODO
+    ["line.prologue_flier.3"] = { en = "The Colosseum. A debut bout, a single fight on the sand, in front of a crowd.", ja = "" },  -- TODO
+    ["line.prologue_flier.4"] = { en = "A blood sport. Is this what we're reduced to?", ja = "" },  -- TODO
+    ["line.prologue_flier.5"] = { en = "Pride has buried more soldiers than the demons have, {name}. I'll not let it bury us. We earn today, we eat tonight, and we choose our war when we can.", ja = "" },  -- TODO
     ["line.prologue_intro.1"] = { en = "Fire on the eastern fields -- demons, real ones, not a soldier's tale! Run, child, run!", ja = "" },  -- TODO
     ["line.prologue_intro.2"] = { en = "{name}. Behind me, and stay there. This is the part of the oath I have been waiting to keep.", ja = "" },  -- TODO
     ["line.prologue_intro.3"] = { en = "They serve the Demon Lord. If the capital falls after us, there is nowhere left to run to.", ja = "" },  -- TODO

@@ -12,8 +12,8 @@ return {
     script = {
         { "character_avatar", "Bounties, escorts, standing contracts... half of these want a company three times our size.", tag = 1 },
         { "character_knight", "This one doesn't.", tag = 2 },
-        { "character_knight", "The Colosseum. They pay for a debut bout -- a single fight, on the sand, in front of a crowd. Win or lose, the purse is posted the same.", tag = 3 },
-        { "character_avatar", "A blood sport.", tag = 4 },
-        { "character_knight", "A paying one, and it asks only two on the field. It is not the war we came to fight, {name}... but it is the coin we can earn today. Take it, and we eat.", tag = 5 },
+        { "character_knight", "The Colosseum. A debut bout, a single fight on the sand, in front of a crowd.", tag = 3 },
+        { "character_avatar", "A blood sport. Is this what we're reduced to?", tag = 4 },
+        { "character_knight", "Pride has buried more soldiers than the demons have, {name}. I'll not let it bury us. We earn today, we eat tonight, and we choose our war when we can.", tag = 5 },
     },
 }
