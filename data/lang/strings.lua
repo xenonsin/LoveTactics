@@ -53,7 +53,7 @@ return {
     ["line.arena_debut_event.4"] = { en = "Walk past him to the sand.", ja = "" },  -- TODO
     ["line.arena_debut_event.5"] = { en = "...forty in coin to open the card, win or lose, so long as the show is good. He's already written the ending. I take the money anyway.", ja = "" },  -- TODO
     ["line.arena_debut_event.6"] = { en = "No handler, no leash, no debt at the door. Whatever happens on that sand is ours alone -- and we walk to it steady.", ja = "" },  -- TODO
-    ["line.arena_debut_event.7"] = { en = "They booked a veteran to open on a team with nothing behind it. Go and make them regret the casting.", ja = "" },  -- TODO
+    ["line.arena_debut_event.7"] = { en = "They put their opener up against a team with nothing behind it -- and look at her: a mismatch in her favor and she's glad of it. Not hungry, not bored, just happy for the fight. No one's read her opening in years. Go be the first.", ja = "" },  -- TODO
     ["line.arena_debut_kit.1"] = { en = "Someone kitted up for this card and never made it to the sand. Their bag's still here, straps cut in a hurry.", ja = "" },  -- TODO
     ["line.arena_debut_kit.2"] = { en = "Cleansing draughts -- a couple of clearwater vials and a panacea besides. Choose...", ja = "" },  -- TODO
     ["line.arena_debut_kit.3"] = { en = "Take the lot.", ja = "" },  -- TODO
@@ -63,10 +63,10 @@ return {
     ["line.arena_saber_joins.1"] = { en = "Footsteps behind us -- the same weight that put me on my back an hour ago. She followed us out.", ja = "" },  -- TODO
     ["line.arena_saber_joins.2"] = { en = "Easy, knight. If I meant you harm I'd not announce it with my boots.", ja = "" },  -- TODO
     ["line.arena_saber_joins.3"] = { en = "Saber. That's the name the card gives me, and it'll do -- you'll have heard the house one shouted over the sand. Forget that one. It was rented.", ja = "" },  -- TODO
-    ["line.arena_saber_joins.4"] = { en = "I open every bout the same way, and no one has read it in years. You two did. You didn't flinch at the crowd, and you didn't flinch at me, and nobody paid you to stand there.", ja = "" },  -- TODO
+    ["line.arena_saber_joins.4"] = { en = "I open every bout the same way, and no one has read it in years. You two did -- and I had more fun losing that than I've had winning since I can remember. You didn't flinch at the crowd, you didn't flinch at me, and nobody paid you to stand there.", ja = "" },  -- TODO
     ["line.arena_saber_joins.5"] = { en = "{name}. No house, no handler, no leash at the gate. Someone will tell you that's a weakness before the week's out. It isn't. On that sand it is the only thing worth owning.", ja = "" },  -- TODO
     ["line.arena_saber_joins.6"] = { en = "There is a reckoning owed under this arena. Its patron has eaten better fighters than me, one at a time, because one at a time is how she likes them. I cannot reach her alone. You are the first outfit I've met that might.", ja = "" },  -- TODO
-    ["line.arena_saber_joins.7"] = { en = "So. No coin this round, no booking, no ending written for me before the bell. I'm asking straight: take me on.", ja = "" },  -- TODO
+    ["line.arena_saber_joins.7"] = { en = "So. No coin this round, no booking, no ending written for me before the bell -- just the first fight in years I'd follow off the sand. I'm asking straight: take me on.", ja = "" },  -- TODO
     ["line.arena_saber_joins.8"] = { en = "You unseated a sworn knight in front of a house that wanted you to win, veteran. I would far rather have that swinging beside us than waiting on the next card.", ja = "" },  -- TODO
     ["line.arena_saber_joins.9"] = { en = "Then it's a team, and it has nothing behind it, and I have wanted that for longer than I'd say. Lead on. Let's see how far it goes.", ja = "" },  -- TODO
     ["line.bastion_forty_first_day_confront.1"] = { en = "You've counted the marks on the gate, I expect. Everyone does.", ja = "" },  -- TODO

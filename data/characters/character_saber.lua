@@ -3,6 +3,12 @@
 -- woman with a gender-neutral name, and the virtue is hinted, never labeled -- a saber is her blade,
 -- and in another tongue (sabr) it is patience itself.
 --
+-- Her patience wears the face of JOY. She loves fighting for its own sake, so she is never in a hurry:
+-- there is nowhere she would rather be than mid-bout, which is why she can hold the swing, never gets
+-- greedy, and opens the same card for years without souring. That is contentment, not endurance -- the
+-- exact pole opposite Ira's wrath, which is hunger that grows by feeding (trait_wrath_rising). Saber
+-- already has enough, every fight, and so can wait forever for the one worth leaving the sand for.
+--
 -- She is the arena's gatekeeper, and the debut bout is secretly her own audition: a seasoned
 -- gladiator who has watched the Colosseum and its patron, Ira (see character_general_wrath.lua),
 -- devour fighter after fighter, and who will not be eaten. She fights every newcomer waiting for the

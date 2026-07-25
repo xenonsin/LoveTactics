@@ -12,6 +12,6 @@ return {
         } },
         { "character_avatar", "...forty in coin to open the card, win or lose, so long as the show is good. He's already written the ending. I take the money anyway.", tag = 5, id = "offer", goto = "sand" },
         { "character_knight", "No handler, no leash, no debt at the door. Whatever happens on that sand is ours alone -- and we walk to it steady.", tag = 6, id = "past", goto = "sand" },
-        { "character_knight", "They booked a veteran to open on a team with nothing behind it. Go and make them regret the casting.", tag = 7, id = "sand" },
+        { "character_knight", "They put their opener up against a team with nothing behind it -- and look at her: a mismatch in her favor and she's glad of it. Not hungry, not bored, just happy for the fight. No one's read her opening in years. Go be the first.", tag = 7, id = "sand" },
     },
 }

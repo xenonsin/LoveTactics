@@ -6,17 +6,29 @@
 -- teams on the sand against each other. The player arrives with no house at all, which is the whole
 -- point of them: the only team out there with nothing behind it.
 --
--- So the debut is not a tryout, it is a mismatch sold as one. A booking house has hired a free agent
--- to open the card against the nobody, because a veteran against an unknown is a safe bet and a good
--- crowd. The free agent is Saber (data/characters/character_saber.lua), who fights for whoever books
--- her, house to house, and has done since the Perennial washed her out.
+-- So the debut is not a tryout for the player -- it is secretly Saber's audition of THEM
+-- (character_saber.lua). The house sets its standing opener on the nobody because a proven veteran
+-- against an unknown is a safe bet and a good crowd. She is no sword for hire -- and, the point the
+-- framing has to protect, no unbeaten champion either: an apex predator that wins forever is the WRATH
+-- fantasy, appetite that feeds on the fight (Ira grows stronger the longer it runs, trait_wrath_rising).
+-- Saber is the opposite pole, and the reason is JOY. She loves fighting for its own sake, so she is
+-- never in a hurry: there is nowhere she would rather be than mid-bout, which is exactly why she can
+-- hold the swing, never gets greedy, and opens the same card for years without souring. Her patience is
+-- not endurance, it is contentment -- she already has enough, every fight, so time does not press on her
+-- the way appetite presses on Ira. THAT is the foil: contentment against hunger. Ira needs more and
+-- more; Saber needs nothing but the fight in front of her. The reckoning stays unspoken here (the join
+-- scene, arena_saber_joins.lua); the intro plants only the shape, and that beating her is not a power
+-- upset but the best fight she has had in years -- the thing she has patiently, happily been waiting
+-- for, and the one worth leaving the sand for. She washed out of the Perennial and keeps to the gate
+-- because the patron's machine turns the sport she loves into slaughter, and she is the last fighter on
+-- it who kept the thing play.
 --
 -- WHAT IT COSTS SABER: nothing yet. She is enjoying herself. That is deliberate -- she loves this, and
 -- the line does not work unless the player sees why before it starts asking what her joy pays for.
 --
--- WHY SHE SIGNS. Not because she was beaten; she has been beaten before. Because the party that did it
--- is the only outfit on the sand that is not part of the machine, and what she wants is a team that
--- can go all the way to the thing under it. `rewardCharacter` is the data path for that -- Quest.complete
+-- WHY SHE SIGNS. Not because she was beaten (she has been beaten before), and not because they were
+-- strong: because it was the most fun she has had in years, and the party is the only outfit on the sand
+-- not part of the machine -- a team that could chase that joy all the way to the thing under it. `rewardCharacter` is the data path for that -- Quest.complete
 -- recruits her the moment the bout is won. But her ASKING is a scene, not a payout: the victory outro
 -- (the Gatekeeper) has her defer it, and `followUp` below walks the party off the sand into a short
 -- overworld leg where she catches them past the gate and puts the question. The join banner is held
@@ -37,8 +49,8 @@
 -- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "Debut on the Sand",
-    description = "You have no house, no record, and an opening bout against a hired veteran. " ..
-        "The odds are the entertainment.",
+    description = "You have no house, no record, and an opening bout against the veteran who tests " ..
+        "every newcomer with the same opening -- the one no one has read in years. The odds are the entertainment.",
     difficulty = "Easy",
     sponsor = "colosseum",
     rewardItems = { "weapon_ledgemans_axe", "armor_reckless_cuirass" },
