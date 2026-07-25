@@ -151,6 +151,7 @@ function Party.new(opts)
     self.filters = opts.filters
     self.onFilterChanged = opts.onFilterChanged
     self.filterCursor = 1
+    self.filterOpen = false -- the stash filter dropdown starts closed, behind its "Filter" toggle
 
     self.titleFont = love.graphics.newFont(28)
     self.headFont = love.graphics.newFont(18)
@@ -200,13 +201,7 @@ function Party.new(opts)
 
     local poolX = self.grid.x + self.grid.gridW + 24
     self.poolHeaderY = contentY
-
-    -- The filter strip claims a band between the stash header and the grid itself, so the pool's top
-    -- is derived from it rather than hand-tuned -- the same reasoning as `contentY` and the tab strip.
     local poolTop = contentY + 24
-    if self.filters then
-        poolTop = self:layoutFilters(poolX, poolTop, self.boxX + BOX_W - 24 - poolX) + 6
-    end
 
     self.pool = PoolGrid.new({
         x = poolX,
@@ -215,6 +210,19 @@ function Party.new(opts)
         h = bottom - poolTop,
     })
     self.pool:setItems(self.player and self.player.stash or {})
+
+    -- Stash filter dropdown: a "Filter" toggle in the stash header (drawFilterButton) opens a chip
+    -- strip -- one chip per weapon type / discipline -- laid out over the top of the stash. The options
+    -- are fixed for the panel's lifetime, so the chips are positioned ONCE here; only their visibility
+    -- (self.filterOpen) changes at runtime. The strip OVERLAYS the stash rather than reserving a band,
+    -- so a closed filter costs the stash no height.
+    if self.filters then
+        local bw, bh, pad = 96, 20, 8
+        self.filterBtn = { x = self.pool.x + self.pool.w - bw, y = self.poolHeaderY - 2, w = bw, h = bh }
+        local dx, dy = self.pool.x, self.filterBtn.y + self.filterBtn.h + 4
+        local dropBottom = self:layoutFilters(dx + pad, dy + pad, self.pool.w - pad * 2)
+        self.dropdownRect = { x = dx, y = dy, w = self.pool.w, h = (dropBottom - dy) + pad }
+    end
 
     -- Tab segments, sized to the label rather than to a share of the box: two words centred over a
     -- 1160px panel would read as a header, not as something you can click.
@@ -226,10 +234,12 @@ function Party.new(opts)
 
     -- Debug "All Items" toggle: a development-only pill at the right end of the tab band that swaps
     -- the stash for the full item catalog so any item can be equipped and tested (see setDebugAll).
-    -- Laid out and drawn only when Debug.enabled, so a release build never shows it. Suppressed when
-    -- the host already drives the stash as a catalog through its own filter strip (the debug character
-    -- editor, states/debug_editor.lua), where a second catalog switch would only fight the first.
-    if Debug.enabled and not self.filters then
+    -- Laid out and drawn only when Debug.enabled, so a release build never shows it. Suppressed only
+    -- when the host rebuilds the stash itself on every filter change (onFilterChanged -- the debug
+    -- character editor's catalog restock), where a second catalog switch would fight the first. The
+    -- Armory's filters are a non-destructive VIEW over the real stash, so the catalog toggle sits
+    -- happily beside them (and just gets narrowed by the same view).
+    if Debug.enabled and not self.onFilterChanged then
         local dbgW = 190
         self.debugRect = { x = self.boxX + BOX_W - 24 - dbgW, y = self.modeY, w = dbgW, h = MODE_H }
     end
@@ -341,6 +351,9 @@ end
 function Party:setFocus(region)
     self.focus = region
     self.pool.focused = (region == "pool")
+    -- The filter dropdown IS the "filters" region: it is open exactly while focused, so Tabbing to it
+    -- (or clicking a chip) opens it and moving away closes it, with no separate open flag to desync.
+    if self.filters then self.filterOpen = (region == "filters") end
 end
 
 -- Region-cycle fallback (Tab / Y): advance through REGIONS and drop any in-progress pickup.
@@ -437,7 +450,47 @@ end
 -- ---------------------------------------------------------------------------
 
 function Party:refreshStash()
-    self.pool:refresh()
+    self.pool:setItems(self:visibleStash())
+end
+
+-- Does `item` survive the active filter strip? An item passes a group when that group either isn't a
+-- view filter (no `valueOf` -- the debug editor's groups filter by rebuilding the catalog instead) or
+-- has nothing picked, OR the item's value for the group is one of the picked options. It must pass
+-- EVERY group, so "Weapon: sword" + "Discipline: duelist" narrows to swords that are also duelist gear.
+function Party:passesFilters(item)
+    if not self.filters then return true end
+    for _, f in ipairs(self.filters) do
+        if f.valueOf and next(f.selected or {}) ~= nil then
+            local v = f.valueOf(item)
+            if not (v ~= nil and f.selected[v]) then return false end
+        end
+    end
+    return true
+end
+
+-- The stash as the pool should show it: the whole list when nothing narrows it, else only the items
+-- passing the strip. Building the view also records self.stashMap (pool index -> real stash index) so
+-- every transfer can translate back -- the REAL player.stash is never reordered or thinned by a filter,
+-- which is what keeps the direct-index transfer paths (Party:placeIntoGrid) handing out the right item.
+function Party:visibleStash()
+    local stash = (self.player and self.player.stash) or {}
+    if not self.filters then self.stashMap = nil return stash end
+    local view, map = {}, {}
+    for i, item in ipairs(stash) do
+        if self:passesFilters(item) then
+            view[#view + 1] = item
+            map[#view] = i
+        end
+    end
+    self.stashMap = map
+    return view
+end
+
+-- Translate a POOL cell index into its index in the real player.stash: identity when the pool shows
+-- the whole stash (self.stashMap nil), a lookup when a filter is narrowing the view.
+function Party:stashIndex(poolIndex)
+    if self.stashMap then return self.stashMap[poolIndex] end
+    return poolIndex
 end
 
 -- ---------------------------------------------------------------------------
@@ -546,7 +599,8 @@ function Party:stashIndexOf(item)
     return nil
 end
 
-function Party:transferStashToGrid(stashIndex, cell)
+function Party:transferStashToGrid(poolIndex, cell)
+    local stashIndex = self:stashIndex(poolIndex)
     local stashItem = self.player and self.player.stash and self.player.stash[stashIndex]
     if not stashItem then return end
     if Item.isStackable(stashItem) and (stashItem.quantity or 1) > 1 then
@@ -669,9 +723,10 @@ end
 function Party:givePoolItemToMember(poolIndex, memberIdx)
     local member = self.chars[memberIdx]
     if not member then return end
-    local item = self.player and self.player.stash and self.player.stash[poolIndex]
+    local stashIndex = self:stashIndex(poolIndex)
+    local item = self.player and self.player.stash and self.player.stash[stashIndex]
     if not item then return end
-    Player.takeFromStash(self.player, poolIndex)
+    Player.takeFromStash(self.player, stashIndex)
     if not Character.addItem(member, item) then
         Player.addToStash(self.player, item)
         self:setMsg((member.name or "That member") .. "'s grid is full.", false)
@@ -717,9 +772,9 @@ end
 -- Auto-equip a whole stash item onto the focused member's first empty slot (stackables merge into an
 -- existing same-id stack first). This is what a plain click / confirm on a stash cell does; a mouse
 -- drag onto a specific cell or portrait is the way to aim a slot, member, or a partial quantity.
-function Party:equipStashItem(stashIndex)
+function Party:equipStashItem(poolIndex)
     local char = self:currentChar()
-    local stashItem = self.player and self.player.stash and self.player.stash[stashIndex]
+    local stashItem = self.player and self.player.stash and self.player.stash[self:stashIndex(poolIndex)]
     if not (char and stashItem) then return end
     local slot = Character.firstEmptySlot(char)
     if not slot and not self:canMergeStack(char, stashItem) then
@@ -848,6 +903,13 @@ local CHIP_PAD = 8
 -- (row/col per chip) so keyboard and pad navigation can walk the ragged rows. Returns the y the band
 -- ends at. Each group's label sits inline at the left of its first row, so the strip stays two short
 -- blocks rather than a stack of headers eating the stash's height.
+-- The words a chip shows. `option` is the stored VALUE (a raw archetype id, a discipline id) the
+-- filter matches on and keys `selected` by; `format` (optional) prettifies it for display only --
+-- "trapper" -> "Trapper" -- so nice labels never change what the filter actually compares.
+function Party:chipLabel(filter, option)
+    return (filter.format and filter.format(option)) or option
+end
+
 function Party:layoutFilters(x, y, w)
     love.graphics.setFont(self.tinyFont)
     local labelW = 0
@@ -868,7 +930,7 @@ function Party:layoutFilters(x, y, w)
         end
         filter.labelY = cy
         for _, option in ipairs(filter.options) do
-            local cw = self.tinyFont:getWidth(option) + CHIP_PAD * 2
+            local cw = self.tinyFont:getWidth(self:chipLabel(filter, option)) + CHIP_PAD * 2
             if col > 0 and cx + cw > x + w then
                 cx, cy, col, row = chipX0, cy + CHIP_H + CHIP_GAP, 0, row + 1
             end
@@ -883,6 +945,23 @@ function Party:layoutFilters(x, y, w)
 
     self.filterCursor = 1
     return cy + CHIP_H
+end
+
+-- Show / hide the filter dropdown. Open and "the filters region is focused" are the same state (see
+-- setFocus), so opening is just focusing the region and closing is handing focus back to the stash.
+function Party:toggleFilterPanel()
+    if self.filterOpen then self:closeFilterPanel() else self:openFilterPanel() end
+end
+
+function Party:openFilterPanel()
+    self.grid:cancelPickup()
+    self.pool:cancelPickup()
+    self.drag = nil
+    self:setFocus("filters")
+end
+
+function Party:closeFilterPanel()
+    if self.focus == "filters" then self:setFocus("pool") else self.filterOpen = false end
 end
 
 -- Flip one chip on or off. Toggling never touches the others: a stash filtered to "weapon + armor"
@@ -931,14 +1010,51 @@ function Party:moveFilterCursor(dc, dr)
 end
 
 function Party:filterIndexAt(x, y)
+    if not self.filterOpen then return nil end -- chips aren't drawn (or clickable) while the dropdown is shut
     for i, r in ipairs(self.filterChips or {}) do
         if pointIn(r, x, y) then return i end
     end
     return nil
 end
 
+-- The "Filter" toggle in the stash header: three burger bars + the word, always shown when the panel
+-- has filters. A count rides along ("Filter (2)") whenever any chip is picked, so the strip being shut
+-- never hides the fact that the stash is currently narrowed.
+function Party:drawFilterButton()
+    local r = self.filterBtn
+    if not r then return end
+    local active = 0
+    for _, f in ipairs(self.filters) do
+        for _ in pairs(f.selected or {}) do active = active + 1 end
+    end
+    local open = self.filterOpen
+    love.graphics.setColor(open and 0.26 or 0.16, open and 0.30 or 0.17, open and 0.40 or 0.22, 0.95)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
+    love.graphics.setColor(active > 0 and 0.95 or 0.4, active > 0 and 0.82 or 0.42, active > 0 and 0.4 or 0.5)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
+
+    local bx, barW = r.x + 8, 12
+    love.graphics.setColor(0.86, 0.88, 0.92)
+    for k = 0, 2 do
+        love.graphics.rectangle("fill", bx, r.y + 6 + k * 4, barW, 2, 1, 1)
+    end
+    love.graphics.setFont(self.smallFont)
+    love.graphics.setColor(0.9, 0.92, 0.96)
+    local label = active > 0 and ("Filter (" .. active .. ")") or "Filter"
+    love.graphics.print(label, bx + barW + 6, r.y + (r.h - self.smallFont:getHeight()) / 2)
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- The filter dropdown: drawn only while open, as an overlay panel below the Filter toggle (so a shut
+-- filter reserves no stash height). Each group prints its label inline, then its wrap-flowed chips.
 function Party:drawFilters()
-    if not self.filters then return end
+    if not (self.filters and self.filterOpen and self.dropdownRect) then return end
+    local r = self.dropdownRect
+    love.graphics.setColor(0.10, 0.11, 0.15) -- fully opaque so the stash beneath doesn't bleed through
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 6, 6)
+    love.graphics.setColor(0.5, 0.55, 0.7)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 6, 6)
+
     love.graphics.setFont(self.tinyFont)
     local th = self.tinyFont:getHeight()
 
@@ -948,7 +1064,8 @@ function Party:drawFilters()
     end
 
     for i, chip in ipairs(self.filterChips) do
-        local on = self.filters[chip.group].selected[chip.option]
+        local filter = self.filters[chip.group]
+        local on = filter.selected[chip.option]
         local cursored = (self.focus == "filters" and self.filterCursor == i)
 
         -- On reads as a lit chip, off as a hollow one; the cursor is a separate ring, so a focused
@@ -970,7 +1087,7 @@ function Party:drawFilters()
         end
 
         love.graphics.setColor(on and 0.95 or 0.66, on and 0.96 or 0.68, on and 1 or 0.76)
-        love.graphics.printf(chip.option, chip.x, chip.y + (CHIP_H - th) / 2, chip.w, "center")
+        love.graphics.printf(self:chipLabel(filter, chip.option), chip.x, chip.y + (CHIP_H - th) / 2, chip.w, "center")
     end
     love.graphics.setColor(1, 1, 1)
 end
@@ -1111,8 +1228,9 @@ function Party:draw()
     else
         self:drawFocus()
         self:drawMemberGrid()
-        self:drawFilters()
         self:drawPool()
+        self:drawFilterButton()
+        self:drawFilters() -- the dropdown, drawn last so it overlays the top of the stash while open
     end
 
     self:drawFooter()
@@ -1490,6 +1608,7 @@ end
 -- no acting unit, so `actor` is nil: ItemTooltip shows the item's static stats.
 function Party:drawActiveTooltip()
     if self:columnEditor() then return end -- an editor labels its own fields; no item is on show
+    if self.filterOpen then return end     -- the dropdown overlays the stash; no cell tooltip beneath it
     if InputMode.isMouse() then
         -- The star badge under the pointer wins over the item tooltip (they'd otherwise stack in the
         -- cell's top-right corner), naming what a click there does.
@@ -1537,6 +1656,7 @@ function Party:cursorKind(x, y)
     end
     local editor = self:columnEditor()
     if editor then return editor:cursorKind(x, y) end
+    if self.filterBtn and pointIn(self.filterBtn, x, y) then return "hand" end
     if self:filterIndexAt(x, y) then return "hand" end
     if self.grid:indexAt(x, y) or self.pool:contains(x, y) then return "hand" end
     return "arrow"
@@ -1621,11 +1741,21 @@ function Party:mousepressed(x, y, button)
         return
     end
 
-    local fi = self:filterIndexAt(x, y)
-    if fi then
-        self:setFocus("filters")
-        self.filterCursor = fi
-        self:toggleFilter(fi)
+    if self.filterBtn and pointIn(self.filterBtn, x, y) then
+        self:toggleFilterPanel()
+        return
+    end
+    if self.filterOpen then
+        local fi = self:filterIndexAt(x, y)
+        if fi then
+            self:setFocus("filters")
+            self.filterCursor = fi
+            self:toggleFilter(fi)
+            return
+        end
+        -- A click off the open dropdown just closes it, and is swallowed so it can't also equip or
+        -- pick up whatever cell was sitting behind the overlay.
+        if not pointIn(self.dropdownRect, x, y) then self:closeFilterPanel() end
         return
     end
 
@@ -1692,6 +1822,7 @@ function Party:keypressed(key)
     local editor = self:columnEditor()
     if key == "escape" then
         self.drag = nil
+        if self.filterOpen then self:closeFilterPanel() return end -- shut the dropdown before the panel
         local caught = (editor and editor:cancel())
             or self.grid:cancelPickup() or self.pool:cancelPickup()
         if not caught then self:close() end
@@ -1734,6 +1865,7 @@ function Party:gamepadpressed(joystick, button)
     local editor = self:columnEditor()
     if button == "b" then
         self.drag = nil
+        if self.filterOpen then self:closeFilterPanel() return end -- shut the dropdown before the panel
         local caught = (editor and editor:cancel())
             or self.grid:cancelPickup() or self.pool:cancelPickup()
         if not caught then self:close() end

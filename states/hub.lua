@@ -13,6 +13,7 @@ local BurgerButton = require("ui.burger_button")
 local CoachBubble = require("ui.coach_bubble")
 local Conversation = require("models.conversation")
 local Discipline = require("models.discipline")
+local Item = require("models.item")
 local Vendor = require("models.vendor")
 local Locale = require("models.locale")
 local Scale = require("scale")
@@ -56,6 +57,59 @@ local function introBuildingRect()
     return nil
 end
 
+local function titleCase(s) return (s:gsub("^%l", string.upper)) end
+
+-- The stash filters the Armory (Loadout) panel offers: one chip per item type, weapon type and
+-- discipline PRESENT in the stash, so the strip only ever offers a cut that returns something rather
+-- than a wall of the whole taxonomy (5 types, 13 weapon families, 37 disciplines) most of which the
+-- player owns nothing of. `valueOf` tells the panel how to read an item's value for the group;
+-- `format` prettifies the chip label without changing the stored value the filter matches on. Options
+-- are read at open, so they reflect the stash the player is standing in front of.
+local function armoryFilters(player)
+    local stash = (player and player.stash) or {}
+    local typeSet, archSet, discSet = {}, {}, {}
+    for _, item in ipairs(stash) do
+        if item.type then typeSet[item.type] = true end
+        local a = Item.archetype(item)
+        if a then archSet[a] = true end
+        if item.discipline and Discipline.defs[item.discipline] then discSet[item.discipline] = true end
+    end
+
+    local types, archs, discs = {}, {}, {}
+    for t in pairs(typeSet) do types[#types + 1] = t end
+    for a in pairs(archSet) do archs[#archs + 1] = a end
+    for d in pairs(discSet) do discs[#discs + 1] = d end
+    table.sort(types)
+    table.sort(archs)
+    table.sort(discs, function(a, b)
+        return (Discipline.displayName(a) or a) < (Discipline.displayName(b) or b)
+    end)
+
+    local groups = {}
+    if #types > 0 then
+        groups[#groups + 1] = {
+            label = "Type", options = types, selected = {},
+            valueOf = function(item) return item.type end,
+            format = titleCase,
+        }
+    end
+    if #archs > 0 then
+        groups[#groups + 1] = {
+            label = "Weapon", options = archs, selected = {},
+            valueOf = function(item) return Item.archetype(item) end,
+            format = titleCase,
+        }
+    end
+    if #discs > 0 then
+        groups[#groups + 1] = {
+            label = "Discipline", options = discs, selected = {},
+            valueOf = function(item) return item.discipline end,
+            format = function(id) return Discipline.displayName(id) or id end,
+        }
+    end
+    return (#groups > 0) and groups or nil
+end
+
 -- Open the pop-up panel for a building. Buildings name a module under
 -- ui/panels/; anything without one falls back to the generic placeholder.
 local function launchPanel(building)
@@ -69,6 +123,9 @@ local function launchPanel(building)
         prestige = hub.player and hub.player.prestige or 1,
         player = hub.player, -- forwarded so a launched quest knows the active party
         vendor = building.vendor, -- vendor id, for buildings that are shops
+        -- The Armory (Loadout) shelf gets a weapon-type / discipline filter over the stash; other
+        -- buildings' panels ignore the field.
+        filters = (moduleName == "party") and armoryFilters(hub.player) or nil,
         onClose = dismissPanel,
     })
 end
