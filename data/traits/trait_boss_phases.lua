@@ -20,12 +20,19 @@
 -- same one the Crown documents.
 --
 -- Response kinds:
---   status { id, opts }         apply/refresh a status on the bearer (arms status_roaring)
---   clear  { id }               strip a status from the bearer (drops status_roaring at the next stage)
---   bonus  { stat, amount }     a flat, permanent per-battle stat bump (ctx.addBonus writes unit.bonus)
---   summon { id, count }        call bodies onto open tiles beside the bearer, sustained by it
---   enrage { magnitude }        switch on the continuous Rising-Wrath curve for the rest of the fight
---   log    { text }             a line in the combat log
+--   status    { id, opts }      apply/refresh a status on the bearer (arms status_roaring)
+--   clear     { id }            strip a status from the bearer (drops status_roaring at the next stage)
+--   bonus     { stat, amount }  a flat, permanent per-battle stat bump (ctx.addBonus writes unit.bonus)
+--   summon    { id, count }     call bodies onto open tiles beside the bearer, sustained by it
+--   transform { id }            the bearer sheds its body for another blueprint's -- the human general
+--                               becoming the demon beneath. Same unit, same tile, same health bar; its
+--                               kit and board sprite become the shape's (models/transform.lua). Permanent
+--                               (nothing reverts a phase transform), so the fight continues in the new
+--                               form. Carries the CURRENT health across, so a general phased at 50% opens
+--                               its demon stage already half-spent -- the transform changes what it can
+--                               do, never how much killing it takes.
+--   enrage    { magnitude }     switch on the continuous Rising-Wrath curve for the rest of the fight
+--   log       { text }          a line in the combat log
 local RESPONSES = {
     status = function(ctx, r) ctx.applyStatus(ctx.unit, r.id, r.opts) end,
     clear  = function(ctx, r) ctx.clearStatus(ctx.unit, r.id) end,
@@ -36,6 +43,7 @@ local RESPONSES = {
             if x then ctx.summon(r.id, x, y) end
         end
     end,
+    transform = function(ctx, r) if r.id then ctx.transform(r.id) end end,
     -- Set the magnitude the curve is worth at death's door; the onDamaged body below re-scales the
     -- bearer's damage off missing health every later survived blow (ctx.trait.applied tracks paid).
     enrage = function(ctx, r) ctx.trait.enrageMagnitude = r.magnitude end,

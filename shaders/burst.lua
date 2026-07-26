@@ -91,7 +91,7 @@ vec2 pat_slash(vec2 p, float age) {
     // blow's travel (uShape.y is attacker -> victim, so the attacker sits toward -x); a small per-swing
     // jitter keeps repeats from stacking, but the arc always tracks the real strike direction.
     float ang = uShape.y + (uSeed - 0.5) * 0.3;
-    p = rot(-ang) * p;
+    p = rot(ang) * p;
     // A crescent that pivots from behind the attacker's side: an arc of a circle centred toward -x whose
     // radius grows as the swing follows through, so the lit edge sweeps across the point from the near
     // side out past the far side over the burst's life -- a blade arcing FROM the attacker THROUGH the
@@ -110,7 +110,7 @@ vec2 pat_slash(vec2 p, float age) {
 
 vec2 pat_pierce(vec2 p, float age) {
     float ang = uShape.y;
-    p = rot(-ang) * p;
+    p = rot(ang) * p;
     // A lens along the hit direction: narrow across, driven forward along it, with a hard flash at the
     // puncture the instant it lands.
     float reach = -0.2 + age * 1.1;
@@ -162,7 +162,7 @@ vec2 pat_shatter(vec2 p, float age) {
 
 vec2 pat_bolt(vec2 p, float age) {
     float ang = uShape.y;
-    p = rot(-ang) * p;
+    p = rot(ang) * p;
     // A vertical fork that jitters along its length; the jitter is frozen per-strike by uSeed.
     float wob = (fbm(vec2(p.y * 4.0 + uSeed * 20.0, uSeed * 5.0)) - 0.5) * 0.5;
     float fil = smoothstep(0.05, 0.0, abs(p.x - wob));

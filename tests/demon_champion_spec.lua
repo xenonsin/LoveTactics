@@ -95,6 +95,40 @@ return {
         end,
     },
 
+    {
+        -- The `transform` phase response (trait_boss_phases): a stage can shed the boss's body for
+        -- another blueprint's -- the human general becoming the demon beneath. It stays the SAME unit
+        -- (one tile, one health bar) in a new shape, and because ui/battle_map draws unit.char.sprite
+        -- live, the board sprite swaps with it. Scripted onto the Sigil's OWN runtime phase table (the
+        -- item instance, not the shared blueprint) so the response is exercised without a bespoke fixture.
+        name = "a phase can transform the boss into another body, board sprite and all",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) },
+                { unit("character_demon_champion", 5, 5) })
+            local boss = c.units[2]
+            local phase = traitOn(boss, "trait_boss_phases")
+            assert(boss.char.id == "character_demon_champion", "starts in its own body")
+            assert(boss.char.spritePath == "assets/chars/demon_grunt.png", "wearing its own board sprite")
+            local pool = boss.char.stats.health -- the continuous thing a transform must carry, by reference
+
+            -- Rewrite the stage script to a single transform at half health (runtime instance only).
+            phase.item.phases = { { at = 0.5, responses = {
+                { kind = "transform", id = "character_demon_lord" },
+            } } }
+            phase.stacks = 0
+
+            local hp = boss.char.stats.health
+            hp.current = math.floor(hp.max * 0.49) + 1
+            Combat.dealFlatDamage(c, boss, 1, nil, "test") -- string source: no attacker, counter stays out
+
+            assert(phase.stacks == 1, "the transform stage crossed at half health")
+            assert(boss == c.units[2] and #c.units == 2, "the SAME unit -- transform adds no body")
+            assert(boss.char.id == "character_demon_lord", "the boss now wears the demon lord's body")
+            assert(boss.char.spritePath == "assets/chars/demon_lord.png", "and the board sprite followed the shape")
+            assert(boss.char.stats.health == pool, "the health pool carried across (a transform is not a heal)")
+        end,
+    },
+
     -- ----- the self-destruct Bomblet (trait_volatile) -----
     {
         name = "a Bomblet bursts when it dies, hitting what stands beside it",

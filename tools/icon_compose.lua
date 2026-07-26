@@ -2,7 +2,8 @@
 -- "The permanent icon system — compose, don't commission").
 --
 --     & "E:\LOVE\lovec.exe" . icon-compose        # render the demo spread (one per family + type)
---     & "E:\LOVE\lovec.exe" . icon-compose all     # ... every item blueprint
+--     & "E:\LOVE\lovec.exe" . icon-compose all     # ... every item blueprint (preview only)
+--     & "E:\LOVE\lovec.exe" . icon-compose assets  # graduate: write every item's OWN sprite path in assets/
 --
 -- Where icon-build draws ONE game-icons glyph per asset, this draws the icon as a pure function of
 -- the tags the blueprint already declares -- exactly the way shaders/field.lua draws a hazard from
@@ -15,9 +16,10 @@
 --   4. BADGE   a corner disc in the item's TYPE colour, and `repRank` tier pips along the bottom.
 --
 -- The 15 base slugs are canonical game-icons picks (reuse, not commission -- the decision recorded in
--- the doc). Output lands under vendor/compose-preview/ -- gitignored, and deliberately NOT assets/, so
--- a prototype run can never overwrite the shipped icon set. When this graduates it writes assets/ like
--- icon-build and becomes the fourth pipeline verb.
+-- the doc). Preview runs (`icon-compose` / `icon-compose all`) land under vendor/compose-preview/ --
+-- gitignored, and deliberately NOT assets/, so a prototype run can never overwrite the shipped set.
+-- `icon-compose assets` is the graduation: it writes each item's own sprite path in assets/items/,
+-- making this the fourth pipeline verb and the source of the shipped icon set.
 
 local Registry = require("models.registry")
 local Item = require("models.item")
@@ -226,6 +228,20 @@ local function demoSelection(defs)
     return picked
 end
 
+-- The output path for one item. Preview mode names by blueprint id under OUT_ROOT; `assets` mode
+-- writes to the blueprint's OWN sprite path so the game -- which loads by that path, not by id --
+-- actually picks the composed icon up. The id and the sprite basename disagree for ~half the
+-- catalogue, so naming by id in assets/ would leave those items on their old glyph.
+local function outPathFor(id, def, toAssets)
+    if not toAssets then return OUT_ROOT .. "/" .. id .. ".png" end
+    local sp = def.sprite
+    if type(sp) ~= "string" then return nil, "no sprite field" end
+    -- Graduation writes ONLY into assets/items/. A sprite pointing elsewhere (e.g. weapon_talons
+    -- borrows assets/chars/hawk.png) is left alone rather than composed over shared character art.
+    if not sp:match("^assets/items/[^/]+%.png$") then return nil, "sprite outside assets/items: " .. sp end
+    return sp
+end
+
 function M.run(args)
     if not love.filesystem.getInfo(RESVG) then
         print("resvg not found at " .. RESVG)
@@ -233,9 +249,10 @@ function M.run(args)
         return
     end
 
-    local all = false
+    local all, toAssets = false, false
     for _, a in ipairs(args or {}) do
         if a == "all" then all = true end
+        if a == "assets" then all, toAssets = true, true end -- graduation implies the full catalogue
     end
 
     local defs = Registry.load("data/items", "data.items")
@@ -252,34 +269,41 @@ function M.run(args)
     ensureDir(OUT_ROOT)
     ensureDir(OUT_ROOT .. "/staging")
 
-    local rendered, failures = 0, {}
+    local rendered, skipped, failures = 0, {}, {}
     for _, id in ipairs(ids) do
         local def = defs[id]
-        local svg, err = compose(def)
-        if not svg then
-            failures[#failures + 1] = id .. " -- " .. tostring(err)
+        local pngRel, skipWhy = outPathFor(id, def, toAssets)
+        if not pngRel then
+            skipped[#skipped + 1] = id .. " -- " .. skipWhy
         else
-            local stageRel = OUT_ROOT .. "/staging/" .. id .. ".svg"
-            local pngRel = OUT_ROOT .. "/" .. id .. ".png"
-            local wrote, werr = writeFile(stageRel, svg)
-            if not wrote then
-                failures[#failures + 1] = id .. " -- cannot stage: " .. tostring(werr)
-            elseif rasterize(stageRel, pngRel) then
-                rendered = rendered + 1
+            local svg, err = compose(def)
+            if not svg then
+                failures[#failures + 1] = id .. " -- " .. tostring(err)
             else
-                failures[#failures + 1] = id .. " -- resvg failed"
+                local stageRel = OUT_ROOT .. "/staging/" .. id .. ".svg"
+                local wrote, werr = writeFile(stageRel, svg)
+                if not wrote then
+                    failures[#failures + 1] = id .. " -- cannot stage: " .. tostring(werr)
+                elseif rasterize(stageRel, pngRel) then
+                    rendered = rendered + 1
+                else
+                    failures[#failures + 1] = id .. " -- resvg failed"
+                end
             end
         end
     end
 
+    local dest = toAssets and "assets/items/ (each item's own sprite path)" or (OUT_ROOT .. "/")
     print("")
-    print(string.format("  composed %d icon(s) into %s/", rendered, OUT_ROOT))
+    print(string.format("  composed %d icon(s) into %s", rendered, dest))
+    print(string.format("  skipped  %d", #skipped))
     print(string.format("  failed   %d", #failures))
     print("")
+    for _, s in ipairs(skipped) do print("  skip: " .. s) end
     for _, f in ipairs(failures) do print("  fail: " .. f) end
     if not all then
         print("")
-        print("  (demo spread -- run `. icon-compose all` for every item)")
+        print("  (demo spread -- `. icon-compose all` for the full preview, `. icon-compose assets` to graduate)")
     end
 end
 

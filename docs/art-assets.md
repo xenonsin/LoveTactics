@@ -30,7 +30,7 @@ dropped in later transparently replaces its token.
 
 | Bucket | Have | Needed | Rendered at | Source |
 |---|---|---|---|---|
-| `items/` | 579 | 580 | 64px cell | game-icons.net — [pipeline](#the-icon-pipeline) ✅ |
+| `items/` | 579 | 580 | 64px cell | **composed from tags** — [icon system](#the-permanent-icon-system--compose-dont-commission) ✅ |
 | `chars/` | 56 | 56 | ~52px on a 60px tile | **composed placeholders** — see [Characters](#characters) |
 | ~~`hazards/`~~ | — | — | 64px tile, under units | **no art, ever** — [drawn by a shader](#hazards-are-not-icons) ✅ |
 | `portraits/` | 0 | 19 | 470px tall standing figure | **commission** |
@@ -233,8 +233,10 @@ brief rather than being discovered at delivery.
 ## The icon pipeline
 
 Icons are not hand-placed — they are rendered from game-icons.net by a three-step pipeline. Nothing
-third-party is committed; `vendor/` is gitignored and reproducible, while the rendered PNGs under
-`assets/` **are** committed, so a fresh clone runs without anyone installing the pipeline.
+third-party is committed; `vendor/` is gitignored and reproducible. `assets/` is gitignored too:
+item icons are regenerated with `. icon-compose assets` (see [The permanent icon
+system](#the-permanent-icon-system--compose-dont-commission)), and `models/sprite.lua` tolerates a
+missing file — a fresh clone simply shows no icons until the composer runs.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\icons\fetch.ps1   # once: SVG sources + resvg
@@ -369,60 +371,103 @@ credits screen. See [Attribution obligation](#attribution-obligation).
 
 ## The permanent icon system — compose, don't commission
 
-The pipeline above is a **sourcing stage, not the final look**: it recolours a shared line-art set
-(game-icons.net) and reuses 227 drawings across 513 assets. That reuse is easy to read as a debt to
-be repaid by commissioning 500 bespoke icons. It is not — because no item's identity was ever carried
-by a unique drawing. It is carried by a handful of fields the blueprint already declares:
+**This is the shipped item-icon system.** Every file in `assets/items/` is composed at build time by
+`tools/icon_compose.lua` (`. icon-compose assets`) from tags the blueprint already declares — the
+`icon-build` game-icons.net recolour was a *sourcing stage*, and this replaced it as the final look.
+
+No item's identity was ever carried by a unique drawing. It is carried by a handful of fields:
 
 - **family** — 15 total (`Item.ARCHETYPES`): sword, greatsword, axe, mace, hammer, dagger, spear,
   bow, longbow, staff, wand, shield, censer, unarmed, natural.
 - **type** — `weapon` / `ability` / `armor` / `utility` / `material`.
 - **element / strike** — the damage tag (`slash`, `fire`, `ice`, …) already on `tags`.
 - **class** — the vendor shelf (`fighter`, `rogue`, `priest`, …), ~7.
-- **tier** — derivable from `repRank` / `price` / `discipline`.
+- **tier** — the item's `repRank`.
 
 The Carrion Axe *is* axe + slash + fighter; the Culling Stroke *is* slash + fighter + barbarian. The
-picture is a pure function of tags the item carries — exactly as a hazard's picture is a function of
-its `fire`/`ice` tag. So the resolution to the reuse limitation is the one the hazards already found:
-**compose the icon from tags at build time; do not draw it.**
+picture is a pure function of those tags — exactly as a hazard's picture is a function of its
+`fire`/`ice` tag. So the icon is **composed from tags at build time, not drawn.**
 
-### Two moves, either or both
+### The four layers — and the legend
 
-**Composition — the item paperdoll.** `base silhouette (per family, 15) × material/element tint ×
-property badge × frame (class colour + tier)`. Fifteen base shapes, tinted and badged, read as
-hundreds of distinct icons. Two of the four layers already exist: the `badges/` author folder is 59
-medallions — the property-badge layer, already drawn — and colour is already baked at export (see
-[Colour is baked in](#colour-is-baked-in-at-render-time)), now keyed on element/class rather than a
-flat per-bucket constant. The art this actually needs is **~15 clean family silhouettes, not 500
-items**.
+Each icon is `base silhouette × element tint × class frame × type-and-tier badge`. The four layers map
+to four data channels; the colour tables below are the single source of truth alongside the
+`CLASS_COLOR` / `TYPE_COLOR` / `ELEMENT_TINT` tables in `tools/icon_compose.lua` — **keep them in
+sync**.
 
-**Restyle — the hazard shader, one layer up.** What reads as *temporary* about the current set is the
-flat clipart treatment, not the count. One consistent build-time pass over all 502 — bevel, inner
-shadow, material fill, a plate behind — makes the whole library cohere as a single house style, and
-item #503 inherits it for nothing. Applied on its own this may retire the word "temporary" **without
-replacing game-icons.net at all**: the source stays, the look becomes ours.
+**1. Base silhouette — the item's family (or type, for typeless items).** One of 15 canonical
+game-icons shapes (a broadsword, a battle-axe, a wizard-staff…). An ability/armor/utility/material
+owns no weapon family, so it falls back to a type shape (ability → magic-swirl, armor → breastplate,
+utility → flask, material → gems).
+
+**2. Tint — the element/strike tag** recolours that silhouette. A physical strike or no element at
+all lands on steel.
+
+| Element tag | Tint |
+|---|---|
+| `fire` / `burn` | orange `#ef7d4a` |
+| `ice` / `frost` | light blue `#7fc6ec` |
+| `lightning` / `shock` | yellow `#f3d24a` |
+| `holy` / `radiant` / `light` | pale gold `#f2e6a8` |
+| `shadow` / `dark` | purple `#a279c9` |
+| `poison` / `nature` | green `#8fbf5a` |
+| `arcane` | violet `#b98fe0` |
+| *(physical / none)* | steel `#dce1e6` |
+
+**3. Frame — the class (vendor shelf) colour**, a rounded border that **thickens with tier**
+(`12 + repRank·4` px).
+
+| Class | Frame |
+|---|---|
+| fighter | red-orange `#c0562f` |
+| rogue | green `#6f9a52` |
+| mage | blue `#6f82d4` |
+| ranger | teal `#4f9a86` |
+| priest / cleric | gold `#d8c15f` |
+| *(none)* | grey `#9aa0a8` |
+
+**4. Badge — the type**, a corner disc top-right; plus **tier pips**, a row of `repRank` diamonds
+along the bottom in the class colour. So *four green pips + green frame* reads as *a rank-4 rogue item*
+at a glance.
+
+| Type | Badge disc |
+|---|---|
+| weapon | orange `#c9603a` |
+| ability | purple `#8a6fd0` |
+| armor | blue `#5f8fb0` |
+| utility / consumable | green `#6fae72` |
+| material | brown `#b0894f` |
+| *(other)* | grey `#888e96` |
+
+### How it's built
+
+`icon-compose` is the fourth pipeline verb beside `icon-map` and `icon-build`:
+
+```powershell
+& "E:\LOVE\lovec.exe" . icon-compose         # demo spread (one per family + type) -> vendor/compose-preview/
+& "E:\LOVE\lovec.exe" . icon-compose all      # every item, preview only (never assets/)
+& "E:\LOVE\lovec.exe" . icon-compose assets   # graduate: write each item's OWN sprite path in assets/
+```
+
+The `assets` verb writes to each blueprint's **own `sprite` path** (not `<id>.png`) — the game loads
+by that path, and the id and sprite basename disagree for ~half the catalogue. It renders only into
+`assets/items/`; a sprite pointing elsewhere (e.g. `weapon_talons` borrows `assets/chars/hawk.png`) is
+skipped rather than composed over shared art. Output stays **generated**, preserving the one property
+that cannot be lost — a new item costs zero art.
 
 ### What still gets commissioned
 
 The signature relics (~8 per companion) and the generals' gear are the pieces a player studies in a
-panel; those earn bespoke art. That surface is dozens, and the roadmap already isolates it (the
-signature relics; the 248 items with a bespoke case). Everything else stays composed.
+panel; those earn bespoke art. `models/sprite.lua` loads by path, so a hand-drawn file dropped at an
+item's `sprite` path transparently replaces its composed icon — re-running `icon-compose assets` would
+overwrite it, so bespoke art belongs on its own path. Everything else stays composed.
 
 ### Why this is not a downgrade
 
 The icon's job here is **category legibility, not identity** — [Known limitation: icon
-reuse](#known-limitation-icon-reuse) already records that names and tooltips identify an item and that
-the reuse is inherent and fine. A family+element+badge composition delivers exactly the legibility the
+reuse](#known-limitation-icon-reuse) records that names and tooltips identify an item and that reuse is
+inherent and fine. A family + element + class + tier composition delivers exactly the legibility the
 panel needs; 500 unique drawings was an artefact of counting items rather than counting meanings.
-
-### Migration
-
-`icon-build` today runs `SVG → recolour → rasterize at 128px`. The permanent form swaps the middle
-step for a composer that reads `(family, type, element, class, tier) → base + tint + badge + frame`;
-`icon-map` already resolves the family it keys on, so the inputs are the tags the pipeline matches
-today. It stays **generated**, which preserves the one property that cannot be lost — a new item costs
-zero art. When built it becomes a fourth pipeline verb (`icon-compose`) beside `icon-map` and
-`icon-build`, and this section moves from plan to record.
 
 ## Adding new art
 

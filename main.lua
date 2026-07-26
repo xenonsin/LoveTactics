@@ -51,9 +51,10 @@ function love.load(args)
         return
     end
 
-    -- Icon COMPOSER (prototype): `. icon-compose [all]` draws each icon from the blueprint's own tags
-    -- (family + element + class + tier) into vendor/compose-preview/, never assets/. The permanent
-    -- form of the pipeline above -- see docs/art-assets.md, "The permanent icon system".
+    -- Icon COMPOSER: `. icon-compose [all]` draws each icon from the blueprint's own tags
+    -- (family + element + class + tier) into vendor/compose-preview/ (never assets/); `. icon-compose
+    -- assets` graduates it, writing each item's own sprite path in assets/. The permanent form of the
+    -- pipeline above -- see docs/art-assets.md, "The permanent icon system".
     if args and args[1] == "icon-compose" then
         require("tools.icon_compose").run({ select(2, unpack(args)) })
         love.event.quit(0)

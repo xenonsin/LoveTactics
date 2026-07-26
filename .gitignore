@@ -7,12 +7,14 @@
 #   vendor/game-icons/  ~4200 CC BY 3.0 SVGs cloned from github.com/game-icons/icons
 #   vendor/bin/         the pinned resvg rasterizer
 #   vendor/staging/     colorized SVGs written on the way to a PNG
-#
-# The rendered PNGs under assets/ ARE committed -- a fresh clone must run without anyone
-# installing the pipeline, and most of assets/ is commissioned or purchased art that has no
-# generator at all. See docs/art-assets.md.
 vendor/
 *.resvg.tmp.svg
+
+# Rendered/generated art is NOT committed (project decision). Item icons are reproducible from
+# blueprint tags with `. icon-compose assets`; other buckets are provided locally. A fresh clone
+# has no icons until the composer runs -- models/sprite.lua tolerates the gap (a missing file
+# resolves to its path string rather than crashing). See docs/art-assets.md.
+assets/
 
 # OS files
 .DS_Store

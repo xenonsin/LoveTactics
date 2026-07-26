@@ -714,6 +714,7 @@ local function ctxFor(combat, unit, trait, event)
     local Combat = require("models.combat")
     local Status = require("models.status")
     local Summon = require("models.summon")
+    local Transform = require("models.transform")
 
     -- Stamp a live conjuration onto the item that granted this trait (see ctx.summon below).
     local function claim(summoned)
@@ -839,6 +840,16 @@ local function ctxFor(combat, unit, trait, event)
         -- the summon above.
         copyOf = function(target, px, py, opts)
             return claim(Summon.copyOf(combat, unit, target, px, py, opts))
+        end,
+        -- Take on another BLUEPRINT's body in place -- the SAME unit, one tile, one health bar, in a
+        -- different shape (models/transform.lua): the general shedding its human mask for the demon
+        -- beneath at a phase threshold. Unlike a summon it adds no body; unlike an inflicted pig it
+        -- reserves nothing and no status owns a revert, so a phase transform is PERMANENT -- worn until
+        -- death. The board sprite follows for free: the renderer reads unit.char.sprite live, and this
+        -- swapped unit.char. Returns the new shape's char, or nil if refused (already transformed, or a
+        -- data typo in the id -- which must not take the boss off the board).
+        transform = function(charId, opts)
+            return Transform.apply(combat, unit, charId, opts)
         end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
