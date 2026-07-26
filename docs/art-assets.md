@@ -112,6 +112,47 @@ Inanimate, so they are exempt from the character-layer rule and should match the
 
 > banner · march_standard · straw_sentry · totem
 
+### Composed tokens — the budget stand-in, same philosophy as items
+
+Most of the 55 are portrait-less — a creature, a nameless enemy, an NPC that will never earn a painted
+face. Those don't wait on a commission and don't sit forever as the bare initial-in-a-disc fallback
+(`ui/battle_map.lua` drawUnits): they get a **composed token**, drawn as a pure function of fields the
+blueprint already carries — exactly the way an item's icon is a function of its family/element/class
+([The permanent icon system](#the-permanent-icon-system--compose-dont-commission)) and a hazard's picture
+is a function of its `fire`/`ice` tag.
+
+```powershell
+& "E:\LOVE\lovec.exe" . char-compose            # every character -> vendor/compose-preview/chars/
+& "E:\LOVE\lovec.exe" . char-compose assets      # publish into assets/chars/, skipping ids with real art
+& "E:\LOVE\lovec.exe" . char-compose assets force # ... and overwrite even where real art exists
+```
+
+`tools/char_compose.lua` composes four layers, four data channels:
+
+| Layer | Channel | Source |
+|---|---|---|
+| **Base** silhouette | a creature/name match first, then a **`kind`** bucket | game-icons.net (reuse, not commission) |
+| **Tint** | element (elementals), else kind | — |
+| **Frame** | `class` colour (the vendor shelf), gold + thicker for a boss | shared with the item composer |
+| **Badge** | a gold disc for a `boss`/general | — |
+
+A classless boss — the seven sin generals are `boss = true` with no `class` — would otherwise be a rank
+swordman told apart only by its frame, so it is lifted to an **overlord silhouette** (a horned helm). A boss
+that *has* a class keeps its role look (priest-boss Amana still reads priest) and a boss that is a demon or
+beast keeps its creature; only the generic humanoid is lifted. The guessing is regression-guarded headlessly
+by `tests/char_compose_spec.lua` — pure logic, no render — the way the item pipeline guards its family picks.
+
+`kind` (humanoid · beast · elemental · construct · demon · undead · object) is the character analog to an
+item's **family** — the one field that decides the silhouette. It is *guessed* from the blueprint (a
+`class` says humanoid; the id's own words say the rest) and **corrected with one line**, `kind = "beast"`,
+the same "guess, then override" split the icon pipeline uses. No mass edit of blueprints.
+
+Like `icon-build`, `assets` mode **skips any file already on disk**, so a painted head crop dropped in later
+is never overwritten — and it writes to the exact `def.sprite` path (not `<id>.png`), so a shared file
+(`demon_bomblet` → `demon_imp.png`) is composed once and every borrower rides along on it. A composed token
+is a placeholder in the painted register, so it is deliberately **not** committed by default: the plain run
+lands in `vendor/compose-preview/chars/` for review, and only the explicit `assets` arg publishes.
+
 ## Terrain
 
 ⚠️ **Fix before buying:** every tileset declares `tileSize = 16` (`data/tilesets/*.lua`,

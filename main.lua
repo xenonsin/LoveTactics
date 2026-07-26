@@ -60,6 +60,16 @@ function love.load(args)
         return
     end
 
+    -- Character-token COMPOSER: `. char-compose [assets [force]]` draws a board token from each
+    -- character blueprint's own fields (kind + class + element + boss) into vendor/compose-preview/chars/,
+    -- or into assets/chars/ with `assets` (skipping ids that already have real art). The item composer,
+    -- one register up -- see tools/char_compose and docs/art-assets.md, "Composed tokens for characters".
+    if args and args[1] == "char-compose" then
+        require("tools.char_compose").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     Scale.resize(love.graphics.getDimensions())
 
     -- Two-window duel harness, for developing the netplay protocol against a real socket:
