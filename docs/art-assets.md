@@ -20,16 +20,18 @@ file lands the count moves on its own. Paste a fresh summary into the snapshot b
 
 ## Snapshot
 
-As of 2026-07-23 — **513 of 601 present**, 88 outstanding. Regenerate with the command above.
+As of 2026-07-26 — **646 of 703 present**, 57 outstanding. Regenerate with the command above.
 
-(Was 513 of 625 / 112 outstanding. The 24 hazards left the ledger entirely — they are drawn by a
-shader now and reference no files, so the report has no bucket to count. See
-[Hazards are not icons](#hazards-are-not-icons).)
+`chars/` is now full, but with **composed placeholder tokens**, not painted art — every character
+blueprint resolves to a file so nothing renders as the bare letter fallback, yet the painted-character
+work below is still owed. See [Composed tokens](#composed-tokens--the-budget-stand-in-same-philosophy-as-items):
+`char-compose assets` fills the gaps and skips any id that already has real art, so a painted head crop
+dropped in later transparently replaces its token.
 
 | Bucket | Have | Needed | Rendered at | Source |
 |---|---|---|---|---|
-| `items/` | 502 | 502 | 64px cell | game-icons.net — [pipeline](#the-icon-pipeline) ✅ |
-| `chars/` | 0 | 55 | ~52px on a 60px tile | mixed — see [Characters](#characters) |
+| `items/` | 579 | 580 | 64px cell | game-icons.net — [pipeline](#the-icon-pipeline) ✅ |
+| `chars/` | 56 | 56 | ~52px on a 60px tile | **composed placeholders** — see [Characters](#characters) |
 | ~~`hazards/`~~ | — | — | 64px tile, under units | **no art, ever** — [drawn by a shader](#hazards-are-not-icons) ✅ |
 | `portraits/` | 0 | 19 | 470px tall standing figure | **commission** |
 | `vendors/` | 0 | 8 | shop panel | **commission** |
@@ -39,9 +41,11 @@ shader now and reference no files, so the report has no bucket to count. See
 | `props/` | 2 | 2 | 64px tile | game-icons.net ✅ |
 | `hub/` | 0 | 1 | 1280×720 | **commission** |
 | `fonts/` | 0 | 1 | — | `ui.ttf`, not art |
+| `audio/` | 0 | 23 | — | see [audio-assets.md](audio-assets.md) |
 
-Everything the icon pipeline covers is **complete**. The 112 outstanding are the buckets that need
-a human hand: painted characters, painted hazards, backgrounds, and terrain.
+The icon pipeline and the composed character tokens are **complete**; the 57 outstanding are the buckets
+that still need a human hand: painted portraits, vendors, backgrounds, terrain, and audio. The composed
+`chars/` tokens stand in until painted character art replaces them.
 
 `tests/` is excluded from the sweep — a spec's stand-in sprite path exists to prove the tolerant
 loader survives a missing file, so it is not art anyone owes.
