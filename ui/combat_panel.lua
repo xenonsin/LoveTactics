@@ -39,6 +39,7 @@ local SLIM_H = 34      -- a non-current turn card: small portrait, name, one thi
 local CURRENT_H = 82   -- the acting unit's card: taller, larger portrait, full numbered HP/MP/SP
 local ENTRY_GAP = 4   -- gap between slim cards; kept tight so the strip fits 9 turns (current + 8) without scrolling
 local NUM_GUTTER = 20  -- left column holding each card's turn number, kept clear of the portrait
+local INTENT_COL = 30  -- right column reserved on a foe's slim card for its predicted intent (icon + number)
 local CURRENT_TOP_GAP = 24 -- extra room above the acting card for its "Current Turn" caption
 -- Item slots are rectangular (wider than tall) and kept compact so the turn-order
 -- strip above them gets the bulk of the panel height.
@@ -944,6 +945,13 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
 
     local rx = ex + NUM_GUTTER + ps + lerp(8, 10, p)
     local rw = ex + ew - rx - lerp(8, 10, p)
+    -- The predicted intent (models/intent.lua) for a foe's SLIM card: what it will do this round and to
+    -- whom, read off the shared cache the state feeds in. Only foes (never our own), never the acting
+    -- card (its intent is moot -- it acts now), and it fades out as a card grows into the current frame
+    -- (p rising), so the read lives on the upcoming strip alone. When shown, it reserves a right-hand
+    -- column so the HP bar stops short of it rather than running underneath.
+    local intent = (not isCurrent) and (not isParty) and self.view.intents and self.view.intents[unit]
+    if intent and p < 0.5 then rw = rw - INTENT_COL end
     -- Name: the small card's font scaled up toward the head font on the current card; colour warms to gold.
     local nsc = lerp(1, self.headFont:getHeight() / self.nameFont:getHeight(), p)
     love.graphics.setFont(self.nameFont)
@@ -969,12 +977,47 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
         self:drawPoolBars(unit, rx, rw, dy + 34, p * ca)
     end
 
+    -- The intent read sits in the reserved right column, on the HP-bar row (which was shortened to
+    -- make room) rather than the top -- the top-right holds the initiative read-out and the status
+    -- badges, and the lower-right is otherwise empty. Fades as the card grows current.
+    if intent and (1 - p) > 0.5 then
+        self:drawIntentRead(intent, ex + ew - 6, dy + dh - 9, (1 - p) * ca)
+    end
+
     -- The ghost's dashed border dissolves out as the card solidifies, so a card that had a preview
     -- visibly turns from ghost into real. Only for the real queue card (not the fading frame card,
     -- `alpha`) and only for a card that actually had a ghost (dashed = true).
     if sd and sd.dashed and sd.t > 0.02 and not alpha then
         self:dashedRect(ex, dy, ew, dh, 0.9 * sd.t)
     end
+end
+
+-- A foe's predicted intent (models/intent.lua) on its turn-order card: the kind glyph plus the number
+-- the blow carries, laid right-to-left ending at `rightX` and centred on `cy`. The number is the
+-- damage a strike or spell lands, or the healing a support cast gives -- the same deterministic
+-- figure the aimed-action HP-bar preview shows, so the timeline quotes a number the player already
+-- trusts. A debuff or a hold shows the icon alone (the mark itself says "status" / "coming for
+-- nobody"). Tinted by the intent's kind, matching its target line on the board.
+function CombatPanel:drawIntentRead(intent, rightX, cy, alpha)
+    local kind = intent.kind or "wait"
+    local col = Colors.INTENT[kind] or Colors.RANGE
+    local glyph = Glyphs.INTENT[kind] or Glyphs.INTENT.wait
+    local n
+    if kind == "attack" or kind == "cast" then
+        if intent.amount and intent.amount > 0 then n = math.floor(intent.amount + 0.5) end
+    elseif kind == "support" then
+        if intent.heal and intent.heal > 0 then n = math.floor(intent.heal + 0.5) end
+    end
+    local x = rightX
+    if n then
+        love.graphics.setFont(self.smallFont)
+        local text = tostring(n)
+        love.graphics.setColor(col[1], col[2], col[3], alpha)
+        love.graphics.print(text, x - self.smallFont:getWidth(text), cy - self.smallFont:getHeight() / 2)
+        x = x - self.smallFont:getWidth(text) - 3
+    end
+    local iconW = 10
+    glyph(x - iconW, cy - iconW / 2, iconW, iconW, col[1], col[2], col[3], alpha)
 end
 
 -- Small hourglass glyph (two triangles) for the speed badge, drawn in the given box. Kept as a method

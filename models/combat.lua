@@ -1738,6 +1738,76 @@ function Combat.waveEdges(combat, from, count, ctx)
     return edges
 end
 
+-- The tile a single reinforcement lands on, given the edge Combat.waveEdges resolved for it. For the
+-- default (behind the enemy line) an unused ORIGINAL enemy spawn is preferred -- reserves filling the
+-- holes the opening formation left -- before falling back to the outermost open cell on the edge. Nil
+-- when there is nowhere to stand. `freeFn(w, h, x, y)` decides whether a footprint may land: it
+-- defaults to the live board, but Combat.previewWaveArrival passes one that also refuses tiles an
+-- earlier unit in the SAME wave has already claimed, so a previewed wave never doubles two bodies onto
+-- one cell. Pure -- the headless suite reaches it directly. (states/battle.lua's old private waveTile,
+-- lifted here so the preview and the spawn choose ground by one rule.)
+function Combat.waveArrivalTile(combat, from, edge, w, h, freeFn)
+    w, h = w or 1, h or 1
+    freeFn = freeFn or function(fw, fh, x, y) return Combat.footprintFree(combat, fw, fh, x, y) end
+    if from == nil or from == "back" then
+        for _, e in ipairs((combat.arena and combat.arena.enemies) or {}) do
+            if freeFn(w, h, e.x, e.y) then return e.x, e.y end
+        end
+    end
+    for _, t in ipairs(Combat.edgeTiles(combat, edge, 3)) do
+        if freeFn(w, h, t.x, t.y) then return t.x, t.y end
+    end
+    return nil
+end
+
+-- Resolve a whole wave's arrival WITHOUT spawning it: where each unit would land, read off the live
+-- board. This is what makes a reinforcement telegraph honest -- states/battle.lua commits the result a
+-- couple of turns early and then BOTH draws it and spawns from it, so the marker the player sees and
+-- the bodies that arrive are one and the same (see spawnWaves/fireWave). Resolving a dynamic edge
+-- (flank/open/random) once, here, is also what fixes it: the preview cannot drift from the reality
+-- because there is only ever one resolution.
+--
+-- Returns { edge, tiles = { { x, y, w, h }, ... }, ids, chars } or nil for an empty wave / no room.
+-- `chars` are instantiated once here and reused at spawn time, so a `composition` function is
+-- evaluated a single time and a random roster is fixed the moment it is committed. Units for which no
+-- tile is open (a packed edge) are dropped from the plan, exactly as the old fire-time path skipped an
+-- arrival with nowhere to stand. Pure and headless-safe (Character.instantiate needs no window).
+function Combat.previewWaveArrival(combat, wave, ctx)
+    local ids = wave.composition
+    if type(ids) == "function" then ids = ids(ctx or {}) end
+    ids = ids or {}
+    if #ids == 0 then return nil end
+    local from = wave.from
+    local edges = Combat.waveEdges(combat, from, #ids, ctx)
+    local reserved = {}
+    local function freeFn(w, h, x, y)
+        if not Combat.footprintFree(combat, w, h, x, y) then return false end
+        for dx = 0, w - 1 do
+            for dy = 0, h - 1 do
+                if reserved[(x + dx) .. "," .. (y + dy)] then return false end
+            end
+        end
+        return true
+    end
+    local tiles, chars, keptIds = {}, {}, {}
+    for i, id in ipairs(ids) do
+        local char = Character.instantiate(id)
+        local fp = char.footprint or { w = 1, h = 1 }
+        local w, h = fp.w or 1, fp.h or 1
+        local x, y = Combat.waveArrivalTile(combat, from, edges[i], w, h, freeFn)
+        if x then
+            for dx = 0, w - 1 do
+                for dy = 0, h - 1 do reserved[(x + dx) .. "," .. (y + dy)] = true end
+            end
+            tiles[#tiles + 1] = { x = x, y = y, w = w, h = h }
+            chars[#chars + 1] = char
+            keptIds[#keptIds + 1] = id
+        end
+    end
+    if #tiles == 0 then return nil end
+    return { edge = edges[1], tiles = tiles, ids = keptIds, chars = chars }
+end
+
 -- Does `unit` cross traps unharmed? True when it carries any item tagged "ignore traps" (Feather
 -- Boots). Mirrors the "detect traps" inventory scan in models/trap.lua: a passive keyed off an item
 -- sitting in the 3x3 grid, never an equip slot. Read by Combat.enterTile to skip the trap trigger.

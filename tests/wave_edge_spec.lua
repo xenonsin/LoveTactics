@@ -4,6 +4,7 @@
 -- reserves at whichever flank the fight has actually opened up. Pure logic, headless.
 
 local Combat = require("models.combat")
+local Character = require("models.character")
 
 -- A hydrated arena: 1..cols by 1..rows of walkable ground, minus any obstacles, plus the authored
 -- enemy spawns that Combat.enemyHomeEdge reads. Mirrors the { type, walkable } cells hydrateTiles
@@ -138,6 +139,76 @@ return {
             local n = 0
             for _ in pairs(seen) do n = n + 1 end
             assert(n == 4, "a 4-unit surround wave touches all four edges, got " .. n)
+        end,
+    },
+
+    -- ---------------------------------------------------------------------------
+    -- previewWaveArrival: the committed plan states/battle.lua both draws and spawns from, so the
+    -- reinforcement telegraph and the bodies that land are one and the same.
+    -- ---------------------------------------------------------------------------
+    {
+        name = "previewWaveArrival lands each unit on the named edge, on its own free tile",
+        fn = function()
+            local plan = Combat.previewWaveArrival(combatWith(arena(8, 8)),
+                { composition = { "character_bandit", "character_bandit" }, from = "top" })
+            assert(plan, "a two-unit wave with a clear top edge resolves a plan")
+            assert(#plan.tiles == 2, "both units find a tile, got " .. #plan.tiles)
+            for _, t in ipairs(plan.tiles) do assert(t.y == 1, "a top wave lands on row 1") end
+            assert(not (plan.tiles[1].x == plan.tiles[2].x and plan.tiles[1].y == plan.tiles[2].y),
+                "two units in one wave never claim the same tile")
+            assert(plan.edge == "top" and #plan.chars == 2 and #plan.ids == 2, "the plan carries its roster")
+        end,
+    },
+    {
+        name = "previewWaveArrival is deterministic for a fixed edge",
+        fn = function()
+            local w = { composition = { "character_bandit", "character_bandit", "character_bandit" }, from = "left" }
+            local a = Combat.previewWaveArrival(combatWith(arena(8, 8)), w)
+            local b = Combat.previewWaveArrival(combatWith(arena(8, 8)), w)
+            assert(#a.tiles == #b.tiles, "the same board resolves the same count")
+            for i = 1, #a.tiles do
+                assert(a.tiles[i].x == b.tiles[i].x and a.tiles[i].y == b.tiles[i].y,
+                    "the same board resolves the same tiles -- what is drawn is what will spawn")
+            end
+        end,
+    },
+    {
+        name = "previewWaveArrival never commits a tile a unit already stands on",
+        fn = function()
+            -- A body on the outer corner of the top edge: the arrival skips it (the block, at commit time).
+            local c = combatWith(arena(8, 8), { unit("party", 1, 1) })
+            local plan = Combat.previewWaveArrival(c, { composition = { "character_bandit" }, from = "top" })
+            assert(plan and #plan.tiles == 1, "the wave still finds a tile past the held one")
+            assert(not (plan.tiles[1].x == 1 and plan.tiles[1].y == 1), "it does not commit the held tile")
+        end,
+    },
+    {
+        name = "previewWaveArrival evaluates a composition function exactly once",
+        fn = function()
+            local calls = 0
+            local plan = Combat.previewWaveArrival(combatWith(arena(8, 8)),
+                { from = "top", composition = function() calls = calls + 1; return { "character_bandit" } end })
+            assert(plan, "the wave resolves")
+            assert(calls == 1, "a composition function is fixed once at commit, not rolled per unit, got " .. calls)
+        end,
+    },
+    {
+        name = "previewWaveArrival's default 'back' fills the holes the opening formation left",
+        fn = function()
+            local c = combatWith(arena(8, 8, { enemies = { { x = 4, y = 8 } } }))
+            local plan = Combat.previewWaveArrival(c, { composition = { "character_bandit" } }) -- from nil = back
+            assert(plan.tiles[1].x == 4 and plan.tiles[1].y == 8,
+                "a back wave reuses an unoccupied original enemy spawn before spilling to the edge")
+        end,
+    },
+    {
+        name = "previewWaveArrival returns nil when there is nowhere to stand",
+        fn = function()
+            local units = {}
+            for y = 1, 8 do for x = 1, 8 do units[#units + 1] = unit("enemy", x, y) end end
+            local plan = Combat.previewWaveArrival(combatWith(arena(8, 8), units),
+                { composition = { "character_bandit" }, from = "top" })
+            assert(plan == nil, "a full board commits no arrival")
         end,
     },
 }

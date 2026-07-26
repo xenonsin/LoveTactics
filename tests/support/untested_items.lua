@@ -63,7 +63,6 @@ return {
     "ability_set_charge",
     "ability_shared_burden",
     "ability_shieldbreak",
-    "ability_silence",
     "ability_sleep",
     "ability_smite",
     "ability_snare_stake",

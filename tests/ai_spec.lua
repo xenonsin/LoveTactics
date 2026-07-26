@@ -663,6 +663,24 @@ return {
     -- Preemption and the shared threat map
     -- ---------------------------------------------------------------------
     {
+        name = "an acting plan names its target unit; a wait names none",
+        fn = function()
+            -- The plan descriptor carries the MARK, not just the aimed cell -- models/intent.lua
+            -- compares "who would this unit hit" against the party's own units, and a wide body is
+            -- aimed at its nearest cell, so tx,ty need not be any unit's position.
+            local c = Combat.new(arena(8, 8),
+                { unit(swordsman(), 4, 4) }, { unit("character_bandit", 4, 5) })
+            local knight, bandit = c.units[1], c.units[2]
+            local act = AI.plan(c, bandit)
+            assert(act.item, "the bandit acts")
+            assert(act.target == knight, "and the plan names the knight it struck, not just its cell")
+
+            local idle = Combat.new(arena(8, 8), {}, { unit("character_bandit", 1, 1) })
+            local waiting = AI.plan(idle, idle.units[1])
+            assert(waiting.wait and waiting.target == nil, "a wait comes for nobody")
+        end,
+    },
+    {
         name = "every plan carries a reason naming what decided it",
         fn = function()
             -- Not decoration: a priority system whose choices can't be read back is one nobody can

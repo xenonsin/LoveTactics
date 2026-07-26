@@ -34,6 +34,7 @@ local Hazard = require("models.hazard")
 local Status = require("models.status")
 local EncounterModel = require("models.encounter")
 local Tutorial = require("models.tutorial")
+local Intent = require("models.intent")
 local Sound = require("models.sound")
 local Conversation = require("models.conversation")
 local TutorialPrompt = require("ui.tutorial_prompt")
@@ -717,6 +718,11 @@ end
 -- dangerous to stand" is the very question a unit weighing a tile to stand on asks, and the two must
 -- not be allowed to drift apart -- an overlay that promises a tile is safe while the AI prices it as
 -- exposed teaches the player a rule the game isn't playing.
+-- Forward-declared: computeIntents is defined further down (it needs scriptedAction, which the AI
+-- prediction routes through), but computeDanger calls it so the two never drift out of step. The
+-- local is assigned before either ever runs -- both fire at runtime, well after the file has loaded.
+local computeIntents
+
 local function computeDanger()
     -- A lesson step may ask for a clean board (Tutorial.hidesDanger). Emptying the sets here rather
     -- than at each draw site is what makes that one decision instead of four: the purple move-band
@@ -725,10 +731,17 @@ local function computeDanger()
     if battle.tutorial and Tutorial.hidesDanger(battle.tutorial) then
         battle.dangerCells, battle.dangerSources = {}, {}
         battle.inspectFor = nil
+        battle.enemyIntents = {}
+        battle.retargetKey = nil
         return
     end
     battle.dangerCells, battle.dangerSources = Combat.threatMap(battle.combat, "party")
     battle.inspectFor = nil -- board changed: a lingering hover preview is rebuilt on the next frame
+    -- Predictions ride the exact same cadence as the danger map, and for the same reason: the moment
+    -- the board changes an old prediction is a lie, and the move-preview cache below is keyed on a
+    -- board that just moved, so it is dropped here too.
+    computeIntents()
+    battle.retargetKey = nil
 end
 
 -- Auto-arm the unit's default action at the start of its turn, so its effective range shows by
@@ -861,46 +874,22 @@ local function spawnReinforcements()
     end
 end
 
--- Where a single wave unit lands, given the edge Combat.waveEdges resolved for it. For the default
--- (behind the enemy line) an unused ORIGINAL enemy spawn is preferred -- reserves filling the holes
--- the opening formation left -- before falling back to the resolved edge. A wave that names a side
--- skips straight to that edge. Nil only when there is nowhere to stand, in which case the caller
--- skips that unit rather than stacking it. Which side a wave comes from lives in models/combat.lua
--- (Combat.resolveWaveEdge): pure, board-state logic that the headless tests can reach.
-local function waveTile(from, edge, w, h)
-    local arena, combat = battle.arena, battle.combat
-    w, h = w or 1, h or 1
-    if from == nil or from == "back" then
-        for _, e in ipairs(arena.enemies or {}) do
-            -- The whole footprint must fit on the reused spawn tile, so a big reserve won't half-land
-            -- on a hole the opening formation left (freeEdgeTile below takes the same w,h fallback).
-            if Combat.footprintFree(combat, w, h, e.x, e.y) then
-                return e.x, e.y
-            end
-        end
-    end
-    return Combat.freeEdgeTile(combat, edge, w, h)
-end
-
--- Walk `wave`'s composition onto the board from its edge. Shared by the one-shot and recurring
--- paths below; a unit with nowhere to stand is skipped rather than stacked.
-local function fireWave(wave, ctx)
-    local ids = wave.composition
-    if type(ids) == "function" then ids = ids(ctx) end
-    ids = ids or {}
-    -- Resolve every unit's arrival edge up front (once), so `surround` can spread the wave
-    -- and `flank`/`open` read one consistent snapshot of the board rather than shifting as
-    -- earlier arrivals of the same wave fill tiles.
-    local edges = Combat.waveEdges(battle.combat, wave.from, #ids, ctx)
-    for j, id in ipairs(ids) do
-        -- Instantiate first so the arrival tile can be chosen for the newcomer's actual footprint.
-        local char = Character.instantiate(id)
-        local fp = char.footprint or { w = 1, h = 1 }
-        local x, y = waveTile(wave.from, edges[j], fp.w, fp.h)
-        if x then
-            local unit = Combat.addUnit(battle.combat, char, "enemy", x, y)
+-- Walk a COMMITTED wave plan onto the board (Combat.previewWaveArrival built it a couple of turns ago
+-- and it has been telegraphed since). For every landing tile still free, a body; for every one a unit
+-- now stands on, NOTHING -- a tile the player has marched onto in the meantime turns its reinforcement
+-- back, so holding the marked ground denies the muster outright. The chars were instantiated when the
+-- plan was committed, so nothing is rolled twice between the promise and the arrival.
+local function fireWave(plan)
+    if not plan then return end
+    for i, t in ipairs(plan.tiles) do
+        local char = plan.chars[i]
+        if Combat.footprintFree(battle.combat, t.w, t.h, t.x, t.y) then
+            local unit = Combat.addUnit(battle.combat, char, "enemy", t.x, t.y)
             Combat.logEvent(battle.combat, "action",
                 string.format("%s joins the fight!", unit.char.name or "A demon"), unit)
+        else
+            Combat.logEvent(battle.combat, "action",
+                string.format("%s is turned back -- the ground is held.", (char and char.name) or "A reinforcement"))
         end
     end
 end
@@ -920,6 +909,15 @@ end
 --
 -- Each one-shot wave fires once; both kinds arrive through Combat.addUnit, so a newcomer joins the
 -- turn order, the board and every query with no further wiring. Generic cousin of spawnReinforcements.
+--
+-- A wave does not simply appear. LEAD_TICKS before it is due it COMMITS -- Combat.previewWaveArrival
+-- resolves its edge, its landing tiles and its roster once, off the live board, and that plan is held.
+-- refreshView telegraphs the committed plan (overlays.reinforcements) and fireWave spawns FROM it, so
+-- the marker the player sees and the bodies that land are the same thing, and a dynamic edge cannot
+-- drift between the promise and the arrival. A crowded (`maxAlive`) or retired (`count`) wave drops its
+-- commit and shows nothing until it can fire again.
+local LEAD_TICKS = 2 * Status.TICKS_PER_TURN -- how far ahead a wave commits and starts telegraphing
+
 local function spawnWaves()
     local obj = battle.combat and battle.combat.objective
     local waves = obj and obj.waves
@@ -937,12 +935,24 @@ local function spawnWaves()
         end
         local capped = wave.count and st.fires >= wave.count
         local crowded = wave.maxAlive and Combat.aliveCount(battle.combat, "enemy") >= wave.maxAlive
-        if not capped and not crowded and clock >= st.nextAt then
-            fireWave(wave, ctx)
+        if capped or crowded then
+            -- Retired, or a top-up wave holding its breath while the board is full: no commit, so no
+            -- telegraph and nothing to fire until the board makes room (or, for `count`, ever again).
+            st.committed = nil
+        elseif clock >= st.nextAt then
+            -- Due. Fire from the plan committed in the lead window; if that window was skipped in one
+            -- clock jump (a very slow unit's turn elapsing many ticks at once), resolve it in place so
+            -- the wave still lands -- just without the early warning.
+            fireWave(st.committed or Combat.previewWaveArrival(battle.combat, wave, ctx))
             st.fires = st.fires + 1
+            st.committed = nil
             -- Recurring waves rearm relative to the fire that just happened (so a `maxAlive` stall
             -- doesn't bank up owed waves); a one-shot wave is retired.
             st.nextAt = wave.every and (clock + wave.every) or math.huge
+        elseif clock >= st.nextAt - LEAD_TICKS and not st.committed then
+            -- Entering the lead window: resolve the arrival once and HOLD it, so the telegraph is stable
+            -- (a random edge is fixed here, not re-rolled every frame) and the spawn reads the same plan.
+            st.committed = Combat.previewWaveArrival(battle.combat, wave, ctx)
         end
     end
 end
@@ -1913,6 +1923,111 @@ local function scriptedAction(unit)
     return act
 end
 
+-- The resolver the intent preview plans through: the SAME line executeEnemyAction takes, so a
+-- scripted mentor or boss is previewed doing what it will truly do, not what its bare AI would.
+local function intentResolver(unit)
+    return scriptedAction(unit) or Combat.planEnemyAction(battle.combat, unit)
+end
+
+-- Predict every hostile unit's turn -- who it strikes and the KIND of thing it does -- and cache it,
+-- so the board's target lines (ui/battle_map's drawTargetLines) and the timeline's intent icons read
+-- a decision made once rather than replanning per frame. Recomputed only on the seams computeDanger
+-- is (turn hand-off, after any committed walk or action); AI.plan is the expensive call, and danger
+-- already proves that cadence is enough. Assigned to the forward-declared local so computeDanger can
+-- reach it.
+--
+-- The whole read is a preference: Settings "enemy_intent" off leaves the cache empty and every
+-- surface that reads it goes quiet together, the way Tutorial.hidesDanger empties the danger sets.
+function computeIntents()
+    battle.enemyIntents = {}
+    if not battle.combat or not Settings.get("enemy_intent") then return end
+    for _, u in ipairs(battle.combat.units) do
+        -- Whoever raises a threat is whoever gets a prediction: hostile to the party, and not an inert
+        -- decoy (control "none" never advances, so it is coming for nobody). Mirrors Combat.threatMap's
+        -- own filter, so a body that draws a danger tile also draws a target line and never one without
+        -- the other.
+        if u.alive and u.side ~= "party" and u.control ~= "none" then
+            local ok, intent = pcall(Intent.of, battle.combat, u, intentResolver)
+            -- A prediction that throws is no line, never a crashed battle: the preview is a courtesy on
+            -- top of the fight, and must never be able to take it down.
+            if ok and intent then battle.enemyIntents[u] = intent end
+        end
+    end
+end
+
+-- One cached intent -> a board target line { from, to, kind, retargeted }, or nil when it comes for
+-- nobody (a wait/hold). The line leaves the foe's OWN body and points at the mark's -- so it always
+-- starts on a unit and reads as "this one is coming for that one". (It deliberately does NOT start
+-- from intent.fromTile, the tile the foe would strike FROM after moving: a kiter that steps back to
+-- shoot would then start its line on the empty retreat tile, and an approaching melee unit on a stub
+-- beside its target instead of a clear line all the way from where it stands.)
+local function intentLine(unit, intent, retargeted)
+    if not intent or intent.wait or not intent.target or not intent.target.alive then return nil end
+    return {
+        from = { x = unit.x, y = unit.y },
+        to = { x = intent.target.x, y = intent.target.y },
+        kind = intent.kind,
+        retargeted = retargeted or false,
+    }
+end
+
+-- The target lines to draw while a step onto (destX, destY) is being weighed -- surface B, the heart
+-- of the feature. For each foe that could reach that tile, re-derive its plan with the actor
+-- hypothetically standing there: if it would wheel onto the actor its line snaps to the destination
+-- (retargeted, drawn hot); if not, its line stays on whoever it is already going for (drawn calm), so
+-- a foe busy with someone else reads as safe to walk past.
+--
+-- Bounded to the foes in dangerSources[tile] -- the handful that can even reach it -- and cached by
+-- the previewed tile, so a step held under the cursor costs one replan, not one per frame. computeDanger
+-- clears the cache when the board moves.
+local function retargetLines(current, destX, destY)
+    local key = destX .. "," .. destY
+    if battle.retargetKey == key and battle.retargetActor == current then
+        return battle.retargetLines
+    end
+    battle.retargetKey, battle.retargetActor = key, current
+
+    local lines = {}
+    local from = battle.dangerSources and battle.dangerSources[key]
+    if from and Settings.get("enemy_intent")
+        and not (battle.tutorial and Tutorial.hidesDanger(battle.tutorial)) then
+        -- Resolve the threatening bodies BEFORE the actor is moved, so a unitAt lookup can't be fooled
+        -- by the actor now standing on the previewed tile.
+        local foes = {}
+        for _, src in ipairs(from) do
+            local foe = Combat.unitAt(battle.combat, src.x, src.y)
+            if foe and foe.alive and foe ~= current then foes[#foes + 1] = foe end
+        end
+        -- Nudge the actor onto the previewed tile for the duration of the replan, then restore. This is
+        -- the ONE mutation the whole feature makes; it must be undone even if a plan errors, so the
+        -- replans run inside a pcall and the restore is unconditional.
+        local ox, oy = current.x, current.y
+        current.x, current.y = destX, destY
+        local ok = pcall(function()
+            for _, foe in ipairs(foes) do
+                local intent = Intent.of(battle.combat, foe, intentResolver)
+                if intent and not intent.wait and intent.target and intent.target.alive then
+                    local hitsActor = intent.target == current
+                    lines[#lines + 1] = {
+                        -- From the foe's own body (not its projected strike tile) to whom it will hit:
+                        -- the actor's previewed tile if it would wheel onto us, else its real mark.
+                        from = { x = foe.x, y = foe.y },
+                        to = hitsActor and { x = destX, y = destY }
+                            or { x = intent.target.x, y = intent.target.y },
+                        kind = intent.kind,
+                        retargeted = hitsActor,
+                    }
+                end
+            end
+        end)
+        current.x, current.y = ox, oy
+        if not ok then lines = {} end
+    end
+
+    battle.retargetLines = lines
+    return lines
+end
+
 -- Resolve a turn the player doesn't drive: an AI unit plans and acts, while an inert one (a decoy,
 -- control "none") simply holds position -- it still occupies the turn order and burns a tick, so
 -- from the far side of the board it is indistinguishable from a real, cautious unit.
@@ -2130,6 +2245,10 @@ local function refreshView()
 
     -- Board highlights: the acting unit always, plus whichever unit the timeline is hovering.
     local overlays = { move = {}, range = {} }
+    -- The tile a step is being previewed onto, set by whichever branch below is steering one (an armed
+    -- walk-and-strike's stand tile, or a plain move into a foe's range). Consumed after the branches to
+    -- draw the retarget target lines -- "who comes for me if I stand here" (models/intent.lua).
+    local previewTile
     local hoverAbility = battle.hoverItem and battle.hoverItem.activeAbility
     -- The bands belong to a turn that can still be steered. The instant an action commits, the model
     -- has already charged the initiative and the hand-off is only waiting on the blow to finish
@@ -2200,14 +2319,10 @@ local function refreshView()
                     route = r and r.path or nil
                 end
                 overlays.path = route
-                -- If a walk-and-strike steps the actor onto a tile some foe can reach-and-strike,
-                -- pulse a red line from each threatening foe to that projected stand tile -- the same
-                -- "here is who could hit me there" read move mode gives, now for an armed attack that
-                -- moves into the line of fire before it swings.
-                local from = battle.dangerSources and battle.dangerSources[tx .. "," .. ty]
-                if from then
-                    overlays.threatLine = { to = { x = tx, y = ty }, from = from }
-                end
+                -- A walk-and-strike that steps the actor onto a threatened tile weighs the same
+                -- question a plain move does -- who comes for me if I stand there -- so the retarget
+                -- target lines are drawn for the projected stand tile below.
+                previewTile = { x = tx, y = ty }
             end
         end
     elseif steerable and isParty then
@@ -2238,20 +2353,42 @@ local function refreshView()
             -- The route the actor will walk to the cursor tile, drawn as an arrow over the move wash
             -- (nil unless the cursor is a plain walk target -- see updateMovePath).
             overlays.path = battle.movePath and battle.movePath.cells or nil
-            -- A red line pulses from each foe that threatens the tile under the cursor toward it, so
-            -- the move being weighed reads as "here is who could hit me there". Only the purple
-            -- movement tiles (a step the actor can actually take into a foe's range) draw it -- not
-            -- every threatened tile on the board.
+            -- A step onto a purple tile -- one the actor can reach that a foe can also strike -- is a
+            -- move INTO range, so it draws the retarget target lines below: does each threatening foe
+            -- actually come for me if I stand here, or stay on whoever it was already going for?
             local ck = battle.map.cursor.x .. "," .. battle.map.cursor.y
-            local from = riskyKeys[ck] and battle.dangerSources and battle.dangerSources[ck]
-            if from then
-                overlays.threatLine = { to = { x = battle.map.cursor.x, y = battle.map.cursor.y }, from = from }
+            if riskyKeys[ck] then
+                previewTile = { x = battle.map.cursor.x, y = battle.map.cursor.y }
             end
         end
     end
     overlays.current = { x = current.x, y = current.y, unit = current }
     local hover = battle.hoverUnit
     if hover and hover.alive then overlays.hover = { x = hover.x, y = hover.y } end
+
+    -- Target lines (models/intent.lua): who each enemy will strike, and what it will do. Three tiers,
+    -- in precedence order -- while steering a step the question is "who comes for me HERE", and only
+    -- when no step is being weighed does the resting picture (survey or hover) show:
+    --   1. a step onto a threatened tile   -> the retarget read for the foes that reach it (surface B)
+    --   2. the "Threats" survey toggle on   -> every engaged foe's line at once (decision D1)
+    --   3. hovering a single foe            -> just that one's line (surface A / the timeline hover)
+    if previewTile then
+        local rl = retargetLines(current, previewTile.x, previewTile.y)
+        if rl and #rl > 0 then overlays.targetLines = rl end
+    end
+    if not overlays.targetLines and battle.enemyIntents then
+        local lines = {}
+        if battle.showEnemyRanges then
+            for u, intent in pairs(battle.enemyIntents) do
+                local l = intentLine(u, intent)
+                if l then lines[#lines + 1] = l end
+            end
+        elseif hover and hover.alive and hover.side ~= "party" and battle.enemyIntents[hover] then
+            local l = intentLine(hover, battle.enemyIntents[hover])
+            if l then lines[#lines + 1] = l end
+        end
+        if #lines > 0 then overlays.targetLines = lines end
+    end
 
     -- The combat log points back at the board: the line under the cursor names its subjects
     -- (Combat.logEvent's units), and each one still standing gets a ring here and a ring on its
@@ -2320,6 +2457,23 @@ local function refreshView()
         end
     end
     overlays.unitFields = unitFields
+
+    -- Imminent reinforcements: the committed-but-not-yet-landed waves (spawnWaves holds a plan from
+    -- LEAD_TICKS before a wave is due). The board marks WHERE the muster walks on and counts down to
+    -- WHEN, so the player can read it -- and march a body onto a marked tile to turn that arrival back.
+    local reinforcements
+    local clock = battle.combat.clock or 0
+    for _, st in ipairs(battle.waveState or {}) do
+        if st.committed and clock < st.nextAt then
+            local p = st.committed
+            reinforcements = reinforcements or {}
+            reinforcements[#reinforcements + 1] = {
+                tiles = p.tiles, count = #p.tiles, edge = p.edge,
+                ticksUntil = math.max(0, st.nextAt - clock),
+            }
+        end
+    end
+    overlays.reinforcements = reinforcements
 
     -- Walls (conjured blockers) are always visible to both sides too. Keep a per-frame "x,y" lookup
     -- for click-to-strike (wallAt), mirroring battle.trapCells.
@@ -2424,6 +2578,10 @@ local function refreshView()
         preview = bannerPreview,
         -- Units the hovered combat-log line is about, so their cards light up with their tiles.
         logHighlight = logHighlight,
+        -- Each engaged foe's predicted action (models/intent.lua), so its turn-order card can show
+        -- the Slay-the-Spire intent icon + incoming number. Same cache the board's target lines read,
+        -- so icon and line can never disagree. Empty when the player has the read switched off.
+        intents = battle.enemyIntents,
     })
 
     -- Telegraph every in-progress channel's blast on the board -- not just the local armed preview, so

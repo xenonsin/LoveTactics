@@ -5,9 +5,9 @@ return {
     cast  = { "character_knight" },
 
     script = {
-        { "character_knight", "It's gone. All of it. My oath was to this ground, and the ground is ash.", tag = 1 },
-        { "character_knight", "So I swear a new one, and not to ground this time. To you.", tag = 2 },
-        { "character_knight", "We shall hold.", tag = 3 },
-        { "character_knight", "To the capital, then. Its walls still stand... for now.", tag = 4 },
+        { "character_knight", "The village is ash. But the people are away, and you're still standing. That was all I was charged with.", tag = 1 },
+        { "character_knight", "My oath was never to this ground, {name}. Not the walls, not the fields.", tag = 2 },
+        { "character_knight", "It was always you. To keep you alive, whatever else burns.", tag = 3 },
+        { "character_knight", "So we hold, and we go. To the capital, while its walls still stand.", tag = 4 },
     },
 }

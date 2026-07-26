@@ -87,6 +87,17 @@ Settings.defs = {
         kind = "toggle",
     },
     {
+        key = "enemy_intent",
+        -- ON by default: perfect information is the whole design, and Into the Breach's evidence is that
+        -- it makes players play MORE tactically, not less. But it is the one read that changes the felt
+        -- difficulty of a fight -- some players want the fog back -- so it earns a switch of its own.
+        name = "Show enemy intent",
+        description = "Reveals who each enemy will strike and what it will do -- a target line on the "
+            .. "board and an icon on the turn order. Turn it off to fight without knowing.",
+        default = true,
+        kind = "toggle",
+    },
+    {
         key = "danger_vignette",
         name = "Low-health screen edge",
         -- OFF by default, unlike every other option here: a red wash creeping in from the edges of

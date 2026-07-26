@@ -1161,6 +1161,12 @@ function AI.plan(combat, unit)
                         return {
                             move = pick.moved and { x = pick.x, y = pick.y } or nil,
                             item = pick.item, tx = pick.tx, ty = pick.ty,
+                            -- The mark itself, not just the cell it stands on: a preview (models/intent.lua)
+                            -- has to compare "who would this unit hit" against the party's own units, and a
+                            -- bare tile can't answer that -- a wide body is aimed at its nearest cell, not
+                            -- its anchor, so tx,ty need not be any unit's position. Carried straight off the
+                            -- winning candidate, which already resolved it.
+                            target = pick.target,
                             -- How deep to hold a chargeable wind-up, when the rule named a depth.
                             -- Carried straight through from the rule rather than scored: how long to
                             -- commit is an authoring decision about THIS foe on THIS rule ("snap at

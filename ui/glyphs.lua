@@ -68,4 +68,86 @@ Glyphs.RESOURCE = {
     health  = Glyphs.healthHeart,
 }
 
+-- ---------------------------------------------------------------------------
+-- Intent marks (models/intent.lua): what an enemy is about to do, on its turn-order card and beside
+-- its target line. One shape per kind, in the same fill-the-box, set-your-own-colour contract as the
+-- resource glyphs, so the panel lays out a box and the mark draws to it. Kept legible down to ~10px:
+-- each is one bold silhouette, no interior detail that silts up at that size.
+-- ---------------------------------------------------------------------------
+
+-- Attack: two crossed swords -- hilts at the bottom corners, blades crossing up to the tips. A bare
+-- crossed X was rejected because it reads as "cancel / dead"; what makes this pair read as WEAPONS
+-- instead is the hilt detail at the bottom -- a pommel dot and a short crossguard on each -- so it is
+-- unmistakably two blades meeting, not a strike-through. (An upright single sword was also tried and
+-- collapsed into a "+", reading as GAINING; the crossed pair carries the aggression the X never did.)
+function Glyphs.intentAttack(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local lw = love.graphics.getLineWidth()
+    love.graphics.setLineWidth(math.max(1.6, w * 0.15))
+    local lhx, lhy = x + w * 0.16, y + h * 0.92 -- left hilt (bottom-left)
+    local rhx, rhy = x + w * 0.84, y + h * 0.92 -- right hilt (bottom-right)
+    love.graphics.line(lhx, lhy, x + w * 0.84, y + h * 0.08) -- blade up-right
+    love.graphics.line(rhx, rhy, x + w * 0.16, y + h * 0.08) -- blade up-left
+    love.graphics.line(x + w * 0.08, y + h * 0.70, x + w * 0.34, y + h * 0.83) -- left crossguard
+    love.graphics.line(x + w * 0.92, y + h * 0.70, x + w * 0.66, y + h * 0.83) -- right crossguard
+    love.graphics.setLineWidth(lw)
+    local pr = math.max(1, w * 0.10)
+    love.graphics.circle("fill", lhx, lhy, pr) -- pommels
+    love.graphics.circle("fill", rhx, rhy, pr)
+end
+
+-- Cast: a four-point spark -- an offensive SPELL, told from the swords by having no crossing strokes
+-- and from the signature sigil (ui/combat_panel's drawSigil) by being solid and small rather than an
+-- eight-point star. A bright core sells it as "energy", not "blade".
+function Glyphs.intentCast(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local cx, cy = x + w / 2, y + h / 2
+    local o, i = math.min(w, h) * 0.5, math.min(w, h) * 0.16
+    love.graphics.polygon("fill",
+        cx, cy - o, cx + i, cy - i, cx + o, cy, cx + i, cy + i,
+        cx, cy + o, cx - i, cy + i, cx - o, cy, cx - i, cy - i)
+end
+
+-- Support: an up-chevron -- a rising arrow for "it is about to LIFT one of its own" (a heal or a
+-- buff). Points up so it is the mirror of the debuff's down-chevron; the pair reads as one opposed
+-- gesture, good vs. ill, which is exactly the split support/debuff is.
+function Glyphs.intentSupport(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local lw = love.graphics.getLineWidth()
+    love.graphics.setLineWidth(math.max(1.8, w * 0.18))
+    love.graphics.line(x + w * 0.15, y + h * 0.66, x + w * 0.5, y + h * 0.28)
+    love.graphics.line(x + w * 0.5, y + h * 0.28, x + w * 0.85, y + h * 0.66)
+    love.graphics.setLineWidth(lw)
+end
+
+-- Debuff: a down-chevron -- the falling counterpart, "it is about to drag YOU down" (a stun, a root,
+-- a hex). Same stroke as support, flipped, so the two never blur into each other even at 10px.
+function Glyphs.intentDebuff(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local lw = love.graphics.getLineWidth()
+    love.graphics.setLineWidth(math.max(1.8, w * 0.18))
+    love.graphics.line(x + w * 0.15, y + h * 0.34, x + w * 0.5, y + h * 0.72)
+    love.graphics.line(x + w * 0.5, y + h * 0.72, x + w * 0.85, y + h * 0.34)
+    love.graphics.setLineWidth(lw)
+end
+
+-- Wait: a hollow ring -- "coming for nobody". A held turn is the absence of a strike, so its mark is
+-- the quietest, an outline with nothing inside where the others carry a solid shape.
+function Glyphs.intentWait(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local lw = love.graphics.getLineWidth()
+    love.graphics.setLineWidth(math.max(1.4, w * 0.12))
+    love.graphics.circle("line", x + w / 2, y + h / 2, math.min(w, h) * 0.34)
+    love.graphics.setLineWidth(lw)
+end
+
+-- Which mark speaks for which intent kind, so a caller maps a kind straight to a glyph.
+Glyphs.INTENT = {
+    attack  = Glyphs.intentAttack,
+    cast    = Glyphs.intentCast,
+    support = Glyphs.intentSupport,
+    debuff  = Glyphs.intentDebuff,
+    wait    = Glyphs.intentWait,
+}
+
 return Glyphs

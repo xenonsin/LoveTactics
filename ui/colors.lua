@@ -44,6 +44,19 @@ local Colors = {
     AOE     = { 1.00, 0.42, 0.30 }, -- armed blast footprint
 }
 
+-- Intent kinds (models/intent.lua): the colour a predicted enemy action wears on its target line and
+-- its turn-order icon. Reuses the overlay vocabulary where it already means the same thing -- an
+-- attack is RANGE red, a heal/buff is SUPPORT green, a debuff borrows STAMINA's amber -- and CAST
+-- takes MANA's purple, because a spell is the one intent already tied to that pool. `wait` is a muted
+-- grey: a unit coming for nobody should read as the quietest mark on the board.
+Colors.INTENT = {
+    attack  = Colors.RANGE,
+    cast    = Colors.MANA,
+    support = Colors.SUPPORT,
+    debuff  = { 0.95, 0.62, 0.22 },
+    wait    = { 0.60, 0.62, 0.68 },
+}
+
 -- The side colour for a "party"/"enemy" side string -- the unit's identity everywhere it's drawn.
 function Colors.side(side)
     return side == "party" and Colors.PARTY or Colors.ENEMY

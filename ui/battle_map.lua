@@ -29,6 +29,7 @@ local StatusBadge = require("ui.status_badge")
 local Colors = require("ui.colors")
 local FieldFx = require("ui.field_fx")
 local BurstFx = require("ui.burst_fx")
+local Glyphs = require("ui.glyphs")
 local SpriteShader = require("shaders.sprite")
 
 -- The two boundary colours for the sprite dissolve/materialize (shaders/sprite.lua): a warm ember eats
@@ -252,12 +253,113 @@ function BattleMap:draw()
     self:drawWalls() -- conjured blockers stand on the ground, above overlays, under the units
     self:drawProps() -- scattered furniture (barrels, crates) stands beside the walls
     self:drawTraps() -- revealed traps sit above the ground/overlays, under the units
+    self:drawReinforcements() -- where the next enemy muster lands + its countdown, above overlays, under units
     self:drawUnits()
     self:drawHighlights()
     self.bursts:draw(self) -- impacts, blooms and bolts, over the bodies and highlights, under the readouts
     self:drawUnitInfo() -- HP bars + turn numbers + status badges sit above the highlight fills
     self:drawCursor()
     love.graphics.setColor(1, 1, 1)
+end
+
+-- Where the next enemy muster walks on, and the count of ticks until it does. Fed by
+-- states/battle.lua's overlays.reinforcements (the committed-but-not-yet-landed waves). Deliberately
+-- NOT the field shader the hazards use -- a solid outline, an inward arrow and a per-tile countdown, so
+-- a landing zone never reads as dangerous GROUND. The readout lives INSIDE each tile, opposite the
+-- arrival arrow, so it neither collides with the arrow nor reaches into a neighbouring tile. Standing a
+-- body on a marked tile turns that arrival back (states/battle.lua fireWave), so this is an invitation
+-- to act, not just a warning.
+local MUSTER = { 0.88, 0.24, 0.18 } -- a saturated muster red, apart from the orange of a hostile field
+
+function BattleMap:drawReinforcements()
+    local waves = self.overlays.reinforcements
+    if not waves then return end
+    -- Flatten to per-cell markers and let the SOONEST arrival own a contested cell: two waves whose
+    -- lead windows overlap can commit to the same tile, and one readout per tile is the honest picture
+    -- (the earlier wave lands there first; the later one is turned back by that very body).
+    local order = {}
+    for _, wave in ipairs(waves) do
+        for _, tile in ipairs(wave.tiles) do
+            order[#order + 1] = { tile = tile, edge = wave.edge, ticks = wave.ticksUntil or 0 }
+        end
+    end
+    table.sort(order, function(a, b) return a.ticks < b.ticks end)
+
+    local s = self.size
+    local pulse = 0.5 + 0.5 * math.sin(love.timer.getTime() * 4)
+    local font = self.numberFont
+    local seen = {}
+    for _, m in ipairs(order) do
+        local key = m.tile.x .. "," .. m.tile.y
+        if not seen[key] then
+            seen[key] = true
+            local wx, wy = self:cellToPixel(m.tile.x, m.tile.y)
+            local tw, th = (m.tile.w or 1) * s, (m.tile.h or 1) * s
+            -- Fill + outline, inset 3px so nothing ever touches -- let alone overlaps -- a neighbour tile.
+            love.graphics.setColor(MUSTER[1], MUSTER[2], MUSTER[3], 0.12 + 0.10 * pulse)
+            love.graphics.rectangle("fill", wx + 3, wy + 3, tw - 6, th - 6, 4, 4)
+            love.graphics.setColor(MUSTER[1], MUSTER[2], MUSTER[3], 0.55 + 0.35 * pulse)
+            love.graphics.setLineWidth(2)
+            love.graphics.rectangle("line", wx + 3, wy + 3, tw - 6, th - 6, 4, 4)
+            love.graphics.setLineWidth(1)
+            self:drawMusterArrow(wx, wy, tw, th, m.edge, 0.6 + 0.4 * pulse)
+            self:drawMusterCount(wx, wy, tw, th, m.edge, tostring(m.ticks), font)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- A filled triangle hard against the arrival edge of a tile, pointing INWARD, so the side the muster
+-- marches in from reads at a glance.
+function BattleMap:drawMusterArrow(wx, wy, tw, th, edge, alpha)
+    love.graphics.setColor(MUSTER[1], MUSTER[2], MUSTER[3], alpha)
+    local cx, cy = wx + tw / 2, wy + th / 2
+    local a = math.min(tw, th) * 0.18
+    local m = 7
+    local p
+    if edge == "bottom" then
+        p = { cx, wy + th - m - a * 1.5, cx - a, wy + th - m, cx + a, wy + th - m }
+    elseif edge == "left" then
+        p = { wx + m + a * 1.5, cy, wx + m, cy - a, wx + m, cy + a }
+    elseif edge == "right" then
+        p = { wx + tw - m - a * 1.5, cy, wx + tw - m, cy - a, wx + tw - m, cy + a }
+    else -- top, and the default "back" muster reading top-of-board
+        p = { cx, wy + m + a * 1.5, cx - a, wy + m, cx + a, wy + m }
+    end
+    love.graphics.polygon("fill", p)
+end
+
+-- The tick countdown for ONE landing tile, drawn INSIDE it: an hourglass + ticks-until on a small dark
+-- backing, held to the side of the tile OPPOSITE the arrival arrow and clamped to the tile's interior,
+-- so it collides with neither the arrow nor a neighbour. Every tile of a wave shows the same count --
+-- the number of marked tiles is itself the incoming body count, so it needs no separate tally. (No text
+-- ever leaves the tile: the backing width is capped at the tile's inset interior.)
+function BattleMap:drawMusterCount(wx, wy, tw, th, edge, ticks, font)
+    local gh = math.min(13, th * 0.26)
+    local gw = gh * 0.66
+    local rowH = math.max(gh, font:getHeight())
+    local padX, padY = 4, 2
+    local bw = math.min(gw + 3 + font:getWidth(ticks) + padX * 2, tw - 8)
+    local bh = rowH + padY * 2
+    -- Opposite the arrow: a top/back muster's arrow hugs the top, so the count sits low; a left arrow
+    -- hugs the left, so the count sits right; and so on. Keeps a fixed gap between the two marks.
+    local bx, by
+    if edge == "left" then
+        bx, by = wx + tw - bw - 6, wy + (th - bh) / 2
+    elseif edge == "right" then
+        bx, by = wx + 6, wy + (th - bh) / 2
+    elseif edge == "bottom" then
+        bx, by = wx + (tw - bw) / 2, wy + 6
+    else -- top / back
+        bx, by = wx + (tw - bw) / 2, wy + th - bh - 6
+    end
+
+    love.graphics.setColor(0.06, 0.05, 0.07, 0.72)
+    love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
+    Glyphs.hourglass(bx + padX, by + (bh - gh) / 2, gw, gh, MUSTER[1], MUSTER[2], MUSTER[3], 0.95)
+    love.graphics.setFont(font)
+    love.graphics.setColor(0.97, 0.95, 0.91, 1)
+    love.graphics.print(ticks, bx + padX + gw + 3, by + (bh - font:getHeight()) / 2)
 end
 
 -- Objective ground (self.overlays.objective): the tiles a `reach` or `hold` objective is won on,
@@ -614,17 +716,17 @@ function BattleMap:drawMovePath()
     local prevJoin = love.graphics.getLineJoin()
     love.graphics.setLineJoin("bevel")
     love.graphics.setColor(0, 0, 0, 0.55)
-    love.graphics.setLineWidth(6)
+    love.graphics.setLineWidth(3)
     love.graphics.line(pts)
     love.graphics.setColor(1, 1, 1, 0.95)
-    love.graphics.setLineWidth(3)
+    love.graphics.setLineWidth(1.5)
     love.graphics.line(pts)
 
     -- Arrowhead at the destination, pointed along the final segment.
     local n = #pts
     local ex, ey = pts[n - 1], pts[n]
     local ang = math.atan2(ey - pts[n - 2], ex - pts[n - 3])
-    local hl = s * 0.30
+    local hl = s * 0.15
     local a1, a2 = ang + math.rad(150), ang - math.rad(150)
     love.graphics.setColor(0, 0, 0, 0.55)
     love.graphics.polygon("fill", ex + math.cos(ang) * 2, ey + math.sin(ang) * 2,
@@ -1009,22 +1111,54 @@ function BattleMap:drawHighlights()
         love.graphics.setLineWidth(1)
     end
 
-    -- Threat lines: a pulsing red line from each foe that could strike the cursor tile toward that
-    -- tile, so a move onto a threatened square reads as "here is who can hit me" (Triangle Strategy).
-    local tl = self.overlays.threatLine
-    if tl and tl.from then
-        local twx, twy = self:cellToPixel(tl.to.x, tl.to.y)
-        local tcx, tcy = twx + s / 2, twy + s / 2
-        local pulse = 0.4 + 0.4 * math.sin((self.time or 0) * 6)
-        love.graphics.setColor(1, 0.2, 0.2, 0.35 + 0.5 * pulse)
-        love.graphics.setLineWidth(2 + 2 * pulse)
-        for _, fr in ipairs(tl.from) do
-            local fwx, fwy = self:cellToPixel(fr.x, fr.y)
-            love.graphics.line(fwx + s / 2, fwy + s / 2, tcx, tcy)
-        end
-        love.graphics.circle("fill", tcx, tcy, 4) -- convergence dot, so a single line still reads
-        love.graphics.setLineWidth(1)
+    self:drawTargetLines()
+end
+
+-- Target lines (models/intent.lua, assembled in states/battle.lua): a line from each enemy to the
+-- mark it will strike, tinted by the KIND of thing it is about to do -- red for a blow, purple for a
+-- spell, green toward an ally it will mend, amber for a hex. So "who is this one going for, and what
+-- will it do" reads off the board without opening anything (Into the Breach / Slay the Spire).
+--
+-- A `retargeted` line is the answer to a step being weighed: this foe would WHEEL onto the actor if
+-- it stood on the previewed tile. It is drawn hot -- thicker and pulsing -- so the wall of red that
+-- means "do not stand here" is unmistakable, while a calm line to some other body means "busy with
+-- them, safe to pass". The arrowhead lands on the target, the origin carries a small dot, so a single
+-- line still reads as a direction and not just a streak.
+function BattleMap:drawTargetLines()
+    local lines = self.overlays.targetLines
+    if not lines or #lines == 0 then return end
+    local s = self.size
+    local pulse = 0.5 + 0.5 * math.sin((self.time or 0) * 6)
+    for _, l in ipairs(lines) do
+        local col = Colors.INTENT[l.kind] or Colors.RANGE
+        local fwx, fwy = self:cellToPixel(l.from.x, l.from.y)
+        local twx, twy = self:cellToPixel(l.to.x, l.to.y)
+        local fx, fy = fwx + s / 2, fwy + s / 2
+        local tx, ty = twx + s / 2, twy + s / 2
+        local hot = l.retargeted
+        local a = hot and (0.55 + 0.4 * pulse) or 0.55
+        local w = hot and (1.25 + pulse) or 1
+
+        -- Dark backing stroke, then the coloured line -- legible over same-hue ground the way the
+        -- overlay boundaries are (drawOverlays).
+        love.graphics.setColor(0, 0, 0, 0.45 * a + 0.15)
+        love.graphics.setLineWidth(w + 1)
+        love.graphics.line(fx, fy, tx, ty)
+        love.graphics.setColor(col[1], col[2], col[3], a)
+        love.graphics.setLineWidth(w)
+        love.graphics.line(fx, fy, tx, ty)
+
+        -- Origin dot (which foe) and an arrowhead at the mark (whom), pointed along the line.
+        love.graphics.circle("fill", fx, fy, hot and 1.75 or 1.25)
+        local ang = math.atan2(ty - fy, tx - fx)
+        local hl = s * (hot and 0.15 or 0.12)
+        local a1, a2 = ang + math.rad(152), ang - math.rad(152)
+        love.graphics.polygon("fill", tx, ty,
+            tx + hl * math.cos(a1), ty + hl * math.sin(a1),
+            tx + hl * math.cos(a2), ty + hl * math.sin(a2))
     end
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(1, 1, 1)
 end
 
 function BattleMap:drawCursor()
