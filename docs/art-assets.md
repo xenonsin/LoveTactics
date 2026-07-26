@@ -322,6 +322,63 @@ flat disposition wash, kept for a machine whose driver refuses the GLSL.
 icons each. CC BY 3.0 requires this reach **players**, not just the repository — it belongs on the
 credits screen. See [Attribution obligation](#attribution-obligation).
 
+## The permanent icon system — compose, don't commission
+
+The pipeline above is a **sourcing stage, not the final look**: it recolours a shared line-art set
+(game-icons.net) and reuses 227 drawings across 513 assets. That reuse is easy to read as a debt to
+be repaid by commissioning 500 bespoke icons. It is not — because no item's identity was ever carried
+by a unique drawing. It is carried by a handful of fields the blueprint already declares:
+
+- **family** — 15 total (`Item.ARCHETYPES`): sword, greatsword, axe, mace, hammer, dagger, spear,
+  bow, longbow, staff, wand, shield, censer, unarmed, natural.
+- **type** — `weapon` / `ability` / `armor` / `utility` / `material`.
+- **element / strike** — the damage tag (`slash`, `fire`, `ice`, …) already on `tags`.
+- **class** — the vendor shelf (`fighter`, `rogue`, `priest`, …), ~7.
+- **tier** — derivable from `repRank` / `price` / `discipline`.
+
+The Carrion Axe *is* axe + slash + fighter; the Culling Stroke *is* slash + fighter + barbarian. The
+picture is a pure function of tags the item carries — exactly as a hazard's picture is a function of
+its `fire`/`ice` tag. So the resolution to the reuse limitation is the one the hazards already found:
+**compose the icon from tags at build time; do not draw it.**
+
+### Two moves, either or both
+
+**Composition — the item paperdoll.** `base silhouette (per family, 15) × material/element tint ×
+property badge × frame (class colour + tier)`. Fifteen base shapes, tinted and badged, read as
+hundreds of distinct icons. Two of the four layers already exist: the `badges/` author folder is 59
+medallions — the property-badge layer, already drawn — and colour is already baked at export (see
+[Colour is baked in](#colour-is-baked-in-at-render-time)), now keyed on element/class rather than a
+flat per-bucket constant. The art this actually needs is **~15 clean family silhouettes, not 500
+items**.
+
+**Restyle — the hazard shader, one layer up.** What reads as *temporary* about the current set is the
+flat clipart treatment, not the count. One consistent build-time pass over all 502 — bevel, inner
+shadow, material fill, a plate behind — makes the whole library cohere as a single house style, and
+item #503 inherits it for nothing. Applied on its own this may retire the word "temporary" **without
+replacing game-icons.net at all**: the source stays, the look becomes ours.
+
+### What still gets commissioned
+
+The signature relics (~8 per companion) and the generals' gear are the pieces a player studies in a
+panel; those earn bespoke art. That surface is dozens, and the roadmap already isolates it (the
+signature relics; the 248 items with a bespoke case). Everything else stays composed.
+
+### Why this is not a downgrade
+
+The icon's job here is **category legibility, not identity** — [Known limitation: icon
+reuse](#known-limitation-icon-reuse) already records that names and tooltips identify an item and that
+the reuse is inherent and fine. A family+element+badge composition delivers exactly the legibility the
+panel needs; 500 unique drawings was an artefact of counting items rather than counting meanings.
+
+### Migration
+
+`icon-build` today runs `SVG → recolour → rasterize at 128px`. The permanent form swaps the middle
+step for a composer that reads `(family, type, element, class, tier) → base + tint + badge + frame`;
+`icon-map` already resolves the family it keys on, so the inputs are the tags the pipeline matches
+today. It stays **generated**, which preserves the one property that cannot be lost — a new item costs
+zero art. When built it becomes a fourth pipeline verb (`icon-compose`) beside `icon-map` and
+`icon-build`, and this section moves from plan to record.
+
 ## Adding new art
 
 1. Reference the path from a data file or widget as usual — a missing file is safe.
