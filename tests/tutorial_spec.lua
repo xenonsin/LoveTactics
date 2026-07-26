@@ -204,6 +204,17 @@ local function playVillage(stopAt)
         if not current then break end
         Tutorial.reconcile(t, isAlive)
         if Tutorial.done(t) then break end
+        -- The intent telegraph previews every foe's turn on each hand-off (states/battle.lua's
+        -- computeIntents, through intentResolver -> scriptedAction -> scriptFor with peek). Simulating
+        -- it here proves a preview never SPENDS a scripted turn: a consuming peek would eat the third
+        -- imp's one move before it acts, drop it to the AI a tile short of the mentor's guard, and the
+        -- playthrough assertions below (an imp left standing when the grunt lands) would fail. This is
+        -- the regression the board-reads-the-future telegraph introduced.
+        for _, u in ipairs(combat.units) do
+            if u.alive and u.side == "enemy" then
+                Tutorial.scriptFor(t, u.scriptKey or u.char.id, true)
+            end
+        end
         order[#order + 1] = current.scriptKey
         if os.getenv("TRACE") then
             local at = {}
@@ -704,6 +715,34 @@ return {
                 "a spent queue yields nil, not a repeat of the last turn")
             assert(Tutorial.scriptFor(t, "character_avatar") == nil,
                 "the player's own character is never scripted")
+        end,
+    },
+    {
+        name = "a preview peek reads a scripted turn without spending it",
+        fn = function()
+            -- The intent telegraph previews a scripted unit's turn -- to draw its target line -- through
+            -- the same scriptFor the real turn calls. A preview must PEEK: read the entry without
+            -- popping the queue. Otherwise it eats the turn before the unit ever acts, dropping it to
+            -- the AI. That is exactly how the board-reads-the-future telegraph broke the village -- the
+            -- third imp's one move to the mentor's flank was spent by the preview, so on its real turn
+            -- it fell back to the AI, stopped a tile short of her guard, and survived the lesson.
+            local def = Tutorial.defs[TUTORIAL]
+            local t = Tutorial.new(TUTORIAL)
+            local key = "7,3" -- the third imp, keyed by its spawn cell: a single authored move
+            local queue = def.script[key]
+            assert(queue and #queue == 1, "the third imp has exactly one authored turn")
+            local entry = queue[1]
+
+            -- Any number of peeks return the entry and leave the cursor where it was.
+            for _ = 1, 5 do
+                assert(Tutorial.scriptFor(t, key, true) == entry, "a peek reads the authored turn")
+            end
+            assert((t.cursors[key] or 0) == 0, "a peek spends nothing: the cursor never moves")
+
+            -- The real turn still gets it, exactly once; then the queue is dry.
+            assert(Tutorial.scriptFor(t, key) == entry, "the real turn still gets the authored move")
+            assert(Tutorial.scriptFor(t, key) == nil, "and it was spent once, not repeated")
+            assert(Tutorial.scriptFor(t, key, true) == nil, "a peek past the end yields nil too")
         end,
     },
     {

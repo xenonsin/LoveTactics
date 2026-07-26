@@ -18,7 +18,7 @@
 -- CATEGORY):
 --
 --   chevron  animated arrows. `uDir` points and scrolls them: -1 down for a hostile zone, +1 up for a
---            friendly one. The colour (orange for a threat, green for your buff, red for the enemy's)
+--            friendly one. The colour (red for a threat, green for your buff, red for the enemy's)
 --            is the controller's, not the shape's.
 --   cross    a filled tile of small medical crosses -- a heal zone. Blue where it mends your side, red
 --            where it mends theirs.
@@ -96,18 +96,23 @@ float depth(vec2 tc) {
 // the bright core rather than the body. The composite below spends the first on alpha and the second
 // on brightening the tint, so both shapes get their highlight from one rule.
 
-// Chevrons in board space, pointed and scrolled along uDir. Subtracting the per-column ramp is what
-// tilts flat rows into V's, and driving the scroll by uDir is what makes a friendly zone's arrows
-// climb while a hostile zone's fall.
+// A filled tile of small, separate chevron glyphs -- the arrow twin of the heal crosses: a grid of
+// individual marks that twinkle out of phase and drift gently along uDir, over a faint background wash
+// so a lone tile still reads as a zone. The apex flips with uDir (a boon points up, a threat points
+// down) and the whole sheet drifts the way the arrows point.
 vec2 pat_chevron(vec2 P, vec2 tc, float t) {
-    float rows = 3.2;                                 // chevrons per board unit, vertically
-    float cols = 3.2;
-    float col = abs(fract(P.x * cols) - 0.5) * 2.0;   // 0 at a column's centre, 1 at its edge
-    float y = P.y * rows - uDir * t * 1.25 - col * 0.85; // apex leads the arms, whole sheet scrolls
-    float band = fract(y);
-    float bar = smoothstep(0.34, 0.14, abs(band - 0.5)); // one thick arrow per period
-    float cover = clamp(bar * 0.92 + 0.12, 0.0, 1.0);    // a faint wash so a lone tile isn't bare arrows
-    return vec2(cover, bar);
+    float bg = 0.34;                                  // the faint background fill (as the crosses have)
+    float s = 3.0;                                    // arrows per board unit (matches the crosses)
+    vec2 drift = vec2(0.0, uDir * t * 0.4);           // the sheet drifts the way the arrows point
+    vec2 cellId = floor(P * s + drift);
+    vec2 g = fract(P * s + drift) - 0.5;
+    float twinkle = 0.62 + 0.38 * sin(t * 2.2 + hash21(cellId) * TAU);
+    // The V's stroke: g.y*uDir = |g.x| - 0.10, so the apex sits at the top for a boon (uDir +1) and at
+    // the bottom for a threat (uDir -1); the arm bound stops it before it fills the cell.
+    float d = abs(g.y * uDir - abs(g.x) + 0.10);
+    float arrow = smoothstep(0.13, 0.0, d) * step(abs(g.x), 0.34) * twinkle;
+    float cover = clamp(bg + arrow, 0.0, 1.0);
+    return vec2(cover, arrow);
 }
 
 // A filled tile of small crosses: the background is the flat coverage that makes it read as a zone,

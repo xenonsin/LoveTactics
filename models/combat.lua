@@ -4189,6 +4189,13 @@ local function killUnit(combat, target)
         if u.alive and u.summoner == target then Combat.dismiss(combat, u) end
     end
 
+    -- A Taunt is a compulsion toward one specific body; when that body falls there is nothing left to
+    -- go for, so drag it off everyone it was pointing at. The AI already ignores a taunt whose taunter
+    -- is dead (models/ai.lua), but the status -- and its badge -- would otherwise linger for its whole
+    -- duration; stripping it here keeps the board honest. Each foe holds at most one, refreshed rather
+    -- than stacked, but filter on `.taunter` anyway so a future multi-taunter case stays correct.
+    Status.removePointingAt(combat, "status_taunt", "taunter", target)
+
     -- Every surviving ally of the fallen banks an `allyDown` -- what a signature that answers a
     -- comrade's death gates on (Combat.tally). A summon/decoy leaving the field is not a comrade lost,
     -- so only a real fallen combatant (one that leaves a corpse) sends the news.
@@ -4473,9 +4480,20 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     if target.mortallyWounded then return 0 end
     -- An adjacent guardian (Oathward, Martyr's Vow) may take the blow in the target's place. The
     -- redirected hit re-enters here on the guardian, so its own armor, barrier and traits all apply.
+    -- The shove does NOT ride along, though: a knockback is aimed at the ORIGINAL target and would fling
+    -- the interposing guardian off the attacker->guardian line -- straight away from the ally it just
+    -- stepped in front of, which is the opposite of the effect. The martyr holds its ground and takes the
+    -- damage; only the blow is redirected, not the geometry meant for someone else. A fresh opts (never
+    -- the caller's, which an area sweep may reuse across targets) drops the shove and keeps the rest.
     local guardian = Combat.tryRedirect(combat, target, base, tags)
     if guardian then
-        return Combat.dealFlatDamage(combat, guardian, base, tags, source, attacker, opts)
+        local redirected = opts
+        if opts and opts.knockback then
+            redirected = {}
+            for k, v in pairs(opts) do redirected[k] = v end
+            redirected.knockback = nil
+        end
+        return Combat.dealFlatDamage(combat, guardian, base, tags, source, attacker, redirected)
     end
     -- A barrier of the incoming school (physical/magical, the same switch mitigation reads) negates
     -- the blow outright: consume that one ward, deal nothing, and return BEFORE the trait dispatch --
@@ -5291,6 +5309,12 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         placeTrap = function() return nil end,
         placeHazard = function() return nil end,
         placeWall = function() return nil end,
+        -- Burying a charge and setting one off are board mutations, so both are inert here -- a dry run
+        -- that planted a real fuse (and logged it) on every hover was the Saboteur's whole preview bug.
+        -- plantCharge hands back a throwaway so a chained effect using the returned charge doesn't fault;
+        -- detonate reports nobody hit, since a preview must never deal the blast it is only describing.
+        plantCharge = function() return {} end,
+        detonate = function() return 0 end,
         -- A dry run must not take the caster off the board -- and it must not PRICE it either. The
         -- panel shows what a self-destruct does to everyone standing around it; the bomber's own
         -- departure is the ability, not a casualty of it, and neither the hover nor the AI's outcome
@@ -5510,6 +5534,10 @@ function Combat.abilityOutput(unit, item)
             return nil
         end,
         placeWall = function() return nil end,
+        -- No board and no clock here, so a fuse can neither be laid nor set off; both report nothing,
+        -- like the other placers. plantCharge hands back a stand-in so a chained effect doesn't fault.
+        plantCharge = function() return {} end,
+        detonate = function() return 0 end,
         -- There is no board to leave here, and the row quotes what the ability DOES rather than what
         -- it costs the thing using it (the same reason `retreat` reports nothing).
         expendSelf = function() return false end,
@@ -7120,6 +7148,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             end
             return prop
         end,
+        -- Bury a fused charge on a tile, owned by the acting unit's side (the Saboteur's Sapper's Line).
+        -- Combat.plantCharge already logs a party placement and stays quiet for an enemy's, the same
+        -- rule placeTrap follows. Routed through fx (rather than called on Combat directly) so the two
+        -- dry runs above can hand back an inert stand-in and never plant a real fuse under the cursor.
+        plantCharge = function(px, py, opts) return Combat.plantCharge(combat, unit, px, py, opts) end,
+        -- Set off every charge THIS unit has laid, at once (the Detonator), returning how many went up.
+        detonate = function() return Combat.detonateAll(combat, unit) end,
         -- The prop or visible trap standing on a tile, as (object, kind) -- what a throw grabs when the
         -- tile it aimed at holds furniture rather than a body. Scoped to the actor's side, so it can
         -- never turn up a trap that side has not detected.

@@ -31,8 +31,9 @@ return {
         cost = { stat = "stamina", amount = 4 },
         description = "Detonates all of your planted charges at once.",
         effect = function(fx)
-            local Combat = require("models.combat")
-            local n = Combat.detonateAll(fx.combat, fx.user)
+            -- Through fx.detonate, not Combat.detonateAll: a dry run reports zero and sets off nothing,
+            -- so previewing this never actually blasts the board it is only describing.
+            local n = fx.detonate()
             if n == 0 then fx.log("action", "Nothing is wired. The plunger goes down on an empty line.") end
         end,
     },

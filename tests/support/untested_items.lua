@@ -182,7 +182,6 @@ return {
     "utility_lent_aegis",
     "utility_mana_wellspring",
     "utility_marksmans_lens",
-    "utility_martyrs_icon",
     "utility_maw_of_the_unfed",
     "utility_miasma_flask",
     "utility_miasmal_plate",

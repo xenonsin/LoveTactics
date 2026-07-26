@@ -16,7 +16,7 @@
 -- them. So a field now reads by what it MEANS to the player, in four looks the shader draws with two
 -- shapes (chevrons and crosses -- see shaders/field.lua) that this file colours and points:
 --
---   hostile     orange chevrons falling  -- ground that damages or debuffs one of your units
+--   hostile     red chevrons falling      -- ground that damages or debuffs one of your units
 --   buff        green chevrons rising     -- a zone that strengthens your side (red, rising, for theirs)
 --   heal        blue crosses              -- ground that mends your side (red for theirs)
 --
@@ -72,7 +72,7 @@ FieldFx.STYLE = STYLE
 -- hazards, statuses and telegraphs -- one place that decides what "hostile" looks like, so a hostile
 -- hazard, a burning body and an attack's telegraph cannot come to different conclusions.
 local CATEGORY = {
-    hostile    = { shape = "chevron", color = { 1.00, 0.46, 0.14 }, dir = -1 }, -- orange, falling
+    hostile    = { shape = "chevron", color = { 1.00, 0.18, 0.14 }, dir = -1 }, -- red, falling
     buff_ally  = { shape = "chevron", color = { 0.36, 0.86, 0.46 }, dir =  1 }, -- green, rising
     buff_enemy = { shape = "chevron", color = { 0.92, 0.26, 0.26 }, dir =  1 }, -- red, rising
     heal_ally  = { shape = "cross",   color = { 0.38, 0.64, 0.96 }, dir =  0 }, -- blue crosses
@@ -459,7 +459,7 @@ end
 -- border, tinted by category (hostile orange / friendly green / heal blue). Loses the shapes, the
 -- stacking and the animation, and still says correctly whether the ground helps or hurts.
 local FALLBACK = {
-    hostile    = { 0.95, 0.46, 0.20 },
+    hostile    = { 0.95, 0.20, 0.16 },
     buff_ally  = { 0.36, 0.86, 0.46 },
     buff_enemy = { 0.92, 0.26, 0.26 },
     heal_ally  = { 0.38, 0.64, 0.96 },

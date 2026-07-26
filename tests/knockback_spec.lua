@@ -279,6 +279,42 @@ return {
         end,
     },
     {
+        name = "a martyr who intercepts a shoving blow takes the damage but holds its ground",
+        fn = function()
+            -- The bug: when a knockback attack (Iron Mace) would kill an ally beside a Martyr's Icon
+            -- bearer, the redirect carried the SHOVE onto the interposing martyr and flung it off the
+            -- attacker->martyr line -- away from the very ally it stepped in front of. The martyr takes
+            -- the blow; the geometry aimed at someone else stays behind.
+            local bandit = Character.instantiate("character_bandit")
+            bandit.inventory = {}
+            Character.addItem(bandit, Item.instantiate("weapon_iron_mace"))
+
+            -- A guard-free base (character_knight grants its own Oathward, which would bounce the blow
+            -- back off the ally and confuse the case): the Icon is the only guard on the field.
+            local martyr = Character.instantiate("character_bandit")
+            martyr.inventory = {}
+            Character.addItem(martyr, Item.instantiate("utility_martyrs_icon"))
+
+            local ally = Character.instantiate("character_bandit")
+
+            -- Party: martyr at (5,4), the doomed ally at (4,4); enemy bandit at (3,4), in mace reach.
+            local c = Combat.new(arena(8, 8),
+                { unit(martyr, 5, 4), unit(ally, 4, 4) },
+                { unit(bandit, 3, 4) })
+            local mu, au, bu = c.units[1], c.units[2], c.units[3]
+            au.char.stats.health.current = 1     -- the mace is lethal to the ally, so the vow fires
+            mu.char.stats.health.current = 999   -- the martyr is tough enough to outlive the blow
+            local martyrHP = hp(mu)
+            c.turn = { unit = bu, moved = false, moveCost = 0 }
+
+            assert(Combat.useItem(c, bu, bandit.inventory[1], 4, 4), "the mace swings at the ally")
+            assert(au.alive and hp(au) == 1, "the ally never took the blow -- the martyr caught it")
+            assert(mu.alive and hp(mu) < martyrHP, "the martyr took the damage instead")
+            assert(mu.x == 5 and mu.y == 4,
+                "and was NOT shoved by a knockback meant for the ally (x=" .. mu.x .. ", y=" .. mu.y .. ")")
+        end,
+    },
+    {
         name = "the Pull ability refuses a target it cannot see, without spending the turn",
         fn = function()
             local knight = Character.instantiate("character_knight")

@@ -280,6 +280,24 @@ function Status.remove(combat, unit, id)
     end
 end
 
+-- Strip every instance of status `id` whose per-instance `field` points at `who`, across every unit
+-- on the field. For statuses that bind one unit to another (Taunt's `.taunter`, stamped by Shout):
+-- when `who` leaves the field the bond has no other end, so the status -- and its badge -- should go
+-- with it. Fires each removed status's onExpire so it unwinds exactly as a natural expiry would.
+function Status.removePointingAt(combat, id, field, who)
+    for _, unit in ipairs(combat.units or {}) do
+        local list = unit.statuses
+        if list then
+            for i = #list, 1, -1 do
+                if list[i].id == id and list[i][field] == who then
+                    local s = table.remove(list, i)
+                    if s.def.onExpire then s.def.onExpire(ctxFor(combat, unit, s)) end
+                end
+            end
+        end
+    end
+end
+
 -- Strip every DEBUFF from `unit` (a status whose def sets `debuff = true`: Burn, Wet, Stun, Root,
 -- Silenced, Frozen, Mired). Buffs (Regeneration, Aegis, a barrier) are left untouched. Returns the
 -- number removed. Backs Cure (data/items/ability/ability_cure.lua) through Combat.cleanse; an aura

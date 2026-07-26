@@ -306,6 +306,23 @@ return {
         end,
     },
     {
+        name = "a taunter's death strips the Taunt it was holding off every foe",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { mkunit(6, 5, { stats = { health = 1 } }) }, -- the taunter, one blow from falling
+                { mkunit(5, 5, {}), mkunit(4, 5, {}) })       -- two foes it had provoked
+            local taunter, foeA, foeB = c.units[1], c.units[2], c.units[3]
+            for _, foe in ipairs({ foeA, foeB }) do
+                local st = Status.apply(c, foe, "status_taunt")
+                st.taunter = taunter
+            end
+            Combat.dealFlatDamage(c, taunter, 9999, {}, "test")
+            assert(not taunter.alive, "the taunter has fallen")
+            assert(not Status.get(foeA, "status_taunt"), "the first foe's Taunt is gone")
+            assert(not Status.get(foeB, "status_taunt"), "the second foe's Taunt is gone")
+        end,
+    },
+    {
         name = "Shout taunts every foe in its area and marks who provoked them",
         fn = function()
             local c = Combat.new(arena(8, 8),

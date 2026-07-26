@@ -33,14 +33,14 @@ return {
         consumesItem = true,
         description = "Plants three fused charges in a line from the aimed tile.",
         effect = function(fx)
-            local Combat = require("models.combat")
             -- The lane runs away from the sapper: whichever axis the aim leans on, extended.
             local dx = (fx.tx > fx.user.x and 1) or (fx.tx < fx.user.x and -1) or 0
             local dy = (fx.ty > fx.user.y and 1) or (fx.ty < fx.user.y and -1) or 0
             if dx == 0 and dy == 0 then dy = 1 end
+            -- Through fx.plantCharge, not Combat.plantCharge: the dry-run previews hand back an inert
+            -- stand-in, so aiming this over a tile never buries a real fuse (or logs one) every frame.
             for i = 0, 2 do
-                Combat.plantCharge(fx.combat, fx.user, fx.tx + dx * i, fx.ty + dy * i,
-                    { fuse = 2, amount = 12 + fx.level * 2 })
+                fx.plantCharge(fx.tx + dx * i, fx.ty + dy * i, { fuse = 2, amount = 12 + fx.level * 2 })
             end
         end,
     },

@@ -71,7 +71,7 @@ function BattleMap.new(arena, opts)
     self.numberFont = opts.numberFont or love.graphics.newFont(12)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
-    self.overlays = { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {}, props = {} }
+    self.overlays = { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {}, props = {}, charges = {} }
 
     -- On-screen tile size. Defaults to the arena's logical tileSize but can be overridden so the
     -- board renders a little smaller than its data size, opening breathing room around it. All
@@ -139,7 +139,7 @@ end
 --   traps  -> runtime trap objects the viewer can see (own + detected), drawn under the units
 --   logSubjects -> { x, y, unit } marks for the units the hovered combat-log line is about (white)
 function BattleMap:setOverlays(overlays)
-    self.overlays = overlays or { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {}, props = {} }
+    self.overlays = overlays or { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {}, props = {}, charges = {} }
 end
 
 -- Build the tileset quads + SpriteBatch for the mapped art types, or record that we
@@ -216,6 +216,15 @@ end
 -- as already-known so nobody knits in at the opening bell; after that any fresh, living unit does. Runs
 -- off the combat unit list alone, so it needs no cue from the model -- a summon appears in that list the
 -- instant it is placed. Timers tick down here; ui/battle_map.lua's drawUnits reads them.
+-- A unit the model has placed but states/battle.lua is still holding off the board -- a body summoned
+-- by a cast whose approach walk is replaying (overlays.heldUnits). It must not be drawn, and must not
+-- be marked "known" or start materializing, until the cast that conjures it plays: revealed then, it
+-- knits in WITH the blow rather than popping onto the field while the summoner is still walking in.
+function BattleMap:heldUnit(u)
+    local held = self.overlays and self.overlays.heldUnits
+    return (held and held[u]) or false
+end
+
 function BattleMap:trackArrivals(dt)
     if not self.combat then return end
     if not self.known then
@@ -224,7 +233,8 @@ function BattleMap:trackArrivals(dt)
         return
     end
     for _, u in ipairs(self.combat.units) do
-        if u.alive and not self.known[u] then
+        -- A held summon is left untracked, so its knit-in begins the frame it is revealed, not now.
+        if u.alive and not self.known[u] and not self:heldUnit(u) then
             self.known[u] = true
             if self:spriteFx() then self.materialize[u] = MATERIALIZE_TIME end
         end
@@ -253,6 +263,7 @@ function BattleMap:draw()
     self:drawWalls() -- conjured blockers stand on the ground, above overlays, under the units
     self:drawProps() -- scattered furniture (barrels, crates) stands beside the walls
     self:drawTraps() -- revealed traps sit above the ground/overlays, under the units
+    self:drawCharges() -- buried fuses the viewer can see, with their countdown, beside the traps
     self:drawReinforcements() -- where the next enemy muster lands + its countdown, above overlays, under units
     self:drawUnits()
     self:drawHighlights()
@@ -303,7 +314,11 @@ function BattleMap:drawReinforcements()
             love.graphics.rectangle("line", wx + 3, wy + 3, tw - 6, th - 6, 4, 4)
             love.graphics.setLineWidth(1)
             self:drawMusterArrow(wx, wy, tw, th, m.edge, 0.6 + 0.4 * pulse)
-            self:drawMusterCount(wx, wy, tw, th, m.edge, tostring(m.ticks), font)
+            -- The numeric countdown is whole ticks (ceil, so it reads 5..1 and hits 0 at arrival). The
+            -- whole telegraph only surfaces once the muster is one turn out -- states/battle.lua gates the
+            -- overlay to <= TICKS_PER_TURN ticks -- so WHERE and WHEN land together, and the board never
+            -- carries a long, distant clock.
+            self:drawMusterCount(wx, wy, tw, th, m.edge, tostring(math.ceil(m.ticks)), font)
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
@@ -452,6 +467,35 @@ function BattleMap:drawTraps()
             end
         end
     end
+end
+
+-- Buried charges (self.overlays.charges): the Saboteur's fuses, each a plain record
+-- { x, y, side, fuse, spent } (models/combat.lua's Combat.plantCharge). Per-side visibility is the
+-- state's call -- like traps, it hands over only the fuses the viewer is allowed to see. Drawn as a
+-- small corner pip (a dark disc with a spark rim, tinted by owner side) carrying the turns left on
+-- the fuse, kept to the bottom-left so it still reads when a body is standing on the charge.
+function BattleMap:drawCharges()
+    local s = self.size
+    for _, c in ipairs(self.overlays.charges or {}) do
+        if not c.spent then
+            local wx, wy = self:cellToPixel(c.x, c.y)
+            local rad = s * 0.16
+            local cx, cy = wx + rad + 6, wy + s - rad - 6
+            local r, g, b = 0.90, 0.55, 0.30 -- an enemy fuse smoulders amber...
+            if c.side == "party" then r, g, b = 0.40, 0.70, 0.95 end -- ...a party fuse reads blue, like its traps
+            love.graphics.setColor(0.06, 0.06, 0.08, 0.9)
+            love.graphics.circle("fill", cx, cy, rad)
+            love.graphics.setColor(r, g, b, 0.95)
+            love.graphics.setLineWidth(2)
+            love.graphics.circle("line", cx, cy, rad)
+            love.graphics.setLineWidth(1)
+            -- The countdown: turns left on the fuse, so a two-turn line reads its clock at a glance.
+            love.graphics.setFont(self.numberFont)
+            love.graphics.setColor(r, g, b, 1)
+            love.graphics.printf(tostring(c.fuse or 0), cx - rad, cy - 7, rad * 2, "center")
+        end
+    end
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- Walls (self.overlays.walls): conjured blockers, one runtime object per tile ({ x, y, side,
@@ -615,14 +659,10 @@ function BattleMap:drawOverlays()
         love.graphics.setLineWidth(1)
     end
     -- "Threats" survey: the full enemy danger zone (every tile a foe could reach-and-strike),
-    -- purple, painted first so the actor's own blue/red bands sit on top of it. A very faint violet
-    -- haze underneath it (the same field shader the hazards use) makes the surveyed ground read as
-    -- *unsafe air* rather than as another flat band -- deliberately the quietest field on the board,
-    -- since it can cover half of it.
-    self.fields:drawTelegraph(self, self.overlays.enemyRanges, {
-        category = "hostile", color = Colors.DANGER, alpha = 0.11, intensity = 0.7,
-        group = "telegraph:danger",
-    })
+    -- purple, painted first so the actor's own blue/red bands sit on top of it. It reads as a flat
+    -- band and nothing more: the falling chevron is reserved for HAZARD GROUND now (ui/field_fx.lua),
+    -- and threatened air is not ground -- a foe could strike here, but there is nothing underfoot to
+    -- step in. Borrowing the hazard shader for it made a whole half-board of empty tiles look salted.
     paint(self.overlays.enemyRanges, Colors.DANGER)
     -- Default-attack (threat) reach in red, under the blue move band. Its cells are the tiles
     -- beyond movement the unit could still strike, so it never overlaps the move set.
@@ -648,13 +688,17 @@ function BattleMap:drawOverlays()
     -- for a friendly area cast, red for a hostile one. Cells can extend past the range set (a blast
     -- that clips tiles you couldn't aim at directly), so it paints its own fill + a bold border.
     if self.overlays.aoe then
-        -- The blast previews ITSELF by CATEGORY: a support cast shows the green chevrons of the buff it
-        -- lays, an attack the orange chevrons of the threat it leaves -- the same look the resulting
-        -- ground will draw, so the promise and the result are visibly one thing.
-        self.fields:drawTelegraph(self, self.overlays.aoe, {
-            category = FieldFx.telegraphCategory(self.overlays.aoeSupport),
-            group = "telegraph:aoe",
-        })
+        -- A BOON previews as the ground it lays: a buff's rising chevrons, a heal's crosses -- the same
+        -- look the resulting field will draw, so the promise and the result are visibly one thing. A
+        -- HOSTILE blast does not, and must not: it leaves no hazard behind, and the falling chevron is
+        -- reserved for ground that actually harbours one (ui/field_fx.lua). Its red fill + bold outline
+        -- below is the whole telegraph -- a box over the tiles it hits, not a stain on them.
+        if self.overlays.aoeSupport then
+            self.fields:drawTelegraph(self, self.overlays.aoe, {
+                category = FieldFx.telegraphCategory(self.overlays.aoeSupport),
+                group = "telegraph:aoe",
+            })
+        end
         local c = self.overlays.aoeSupport and Colors.SUPPORT or Colors.AOE
         local r, g, b = c[1], c[2], c[3]
         for _, c in ipairs(self.overlays.aoe) do
@@ -676,12 +720,15 @@ function BattleMap:drawOverlays()
     -- Pulses in an ominous magenta-violet to read as "imminent detonation", distinct from the steady
     -- armed-AoE wash above. Read straight off unit.channel, so it persists across every unit's turn.
     if self.overlays.channelAoe then
-        -- Same self-preview as the armed blast above, and louder: this one is already committed and
-        -- the only question left is who is still standing on it when it lands.
-        self.fields:drawTelegraph(self, self.overlays.channelAoe, {
-            category = FieldFx.telegraphCategory(self.overlays.channelSupport),
-            intensity = 1.0, group = "telegraph:channel",
-        })
+        -- Same rule as the armed blast above: a supporting channel previews as the ground it lays
+        -- (rising chevrons / heal crosses), but an offensive one leaves no hazard, so it wears only the
+        -- pulsing detonation box below -- the falling chevron stays reserved for real hazard ground.
+        if self.overlays.channelSupport then
+            self.fields:drawTelegraph(self, self.overlays.channelAoe, {
+                category = FieldFx.telegraphCategory(self.overlays.channelSupport),
+                intensity = 1.0, group = "telegraph:channel",
+            })
+        end
         local t = 0.5 + 0.5 * math.sin(love.timer.getTime() * 5) -- 0..1 pulse
         for _, c in ipairs(self.overlays.channelAoe) do
             local wx, wy = self:cellToPixel(c.x, c.y)
@@ -755,7 +802,10 @@ function BattleMap:drawUnits()
     -- skipped entirely (it's hidden and unreachable anyway), as is one whose killing blow the fx
     -- controller is still holding back (fx:awaiting) -- the body must not drop before the counter lands.
     for _, u in ipairs(self.combat.units) do
-        if u.corpse and not u.alive and not Combat.unitAt(self.combat, u.x, u.y)
+        -- A held summon that arrived dead (conjured onto a trap) is withheld like a living one -- its
+        -- body, corpse and all, waits for the cast that made it rather than dropping ahead of the walk.
+        if u.corpse and not u.alive and not self:heldUnit(u)
+            and not Combat.unitAt(self.combat, u.x, u.y)
             and not (self.fx and self.fx:awaiting(u)) then
             local wx, wy = self:cellToPixel(u.x, u.y)
             -- Centre the corpse token over the body's whole footprint (its anchor cell for a 1×1).
@@ -779,6 +829,7 @@ function BattleMap:drawUnits()
         local offX, offY, flash, fade = 0, 0, 0, 0
         local glow, gr, gg, gb = 0, 0, 0, 0
         local awaiting = false
+        if self:heldUnit(u) then goto continue end -- a summon not yet revealed draws nothing
         if self.fx then
             offX, offY, flash, fade = self.fx:spriteState(u, s)
             glow, gr, gg, gb = self.fx:castGlow(u)
@@ -859,6 +910,7 @@ function BattleMap:drawUnits()
                 end
             end
         end
+        ::continue::
     end
 end
 
@@ -909,7 +961,11 @@ function BattleMap:drawUnitInfo()
         -- (awaiting), matching drawUnits and the turn strip; the fade dims them out with the body.
         local fade = self.fx and self.fx:deathFade(u)
         local awaiting = self.fx and self.fx:awaiting(u)
-        if u.alive or fade or awaiting then
+        -- A held summon draws no body (drawUnits skips it), so it carries no readouts either -- they
+        -- would otherwise float over an empty tile ahead of the cast that conjures it.
+        if self:heldUnit(u) then
+            -- nothing
+        elseif u.alive or fade or awaiting then
             local wx, wy = self:unitOrigin(u)
             local alpha = fade and (1 - fade) or 1
             self:drawHpBar(u, wx, wy, alpha)

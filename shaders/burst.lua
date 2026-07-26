@@ -87,15 +87,25 @@ float env(float age, float hold) {
 // p is centred coordinates, roughly -1..1 across the quad. The point of impact is the origin.
 
 vec2 pat_slash(vec2 p, float age) {
-    float ang = uShape.y + (uSeed - 0.5) * 2.5;      // each swing at its own angle
+    // A blade arc SWUNG from the attacker's side onto the target. Rotate into a frame where +x is the
+    // blow's travel (uShape.y is attacker -> victim, so the attacker sits toward -x); a small per-swing
+    // jitter keeps repeats from stacking, but the arc always tracks the real strike direction.
+    float ang = uShape.y + (uSeed - 0.5) * 0.3;
     p = rot(-ang) * p;
-    // A thin arc bowed across the point, thrown outward (its radius grows) as the blow follows through.
-    float radius = 0.15 + age * 0.85;
-    float d = abs(length(p) - radius);
-    float along = smoothstep(0.9, 0.0, abs(p.x));    // only the middle of the sweep, not a full ring
-    float arc = smoothstep(0.16, 0.0, d) * along;
+    // A crescent that pivots from behind the attacker's side: an arc of a circle centred toward -x whose
+    // radius grows as the swing follows through, so the lit edge sweeps across the point from the near
+    // side out past the far side over the burst's life -- a blade arcing FROM the attacker THROUGH the
+    // body, not an expanding ring and not a random diagonal. The `front` mask keeps only the
+    // target-facing half of that circle (its concave side toward the attacker), which is what reads as a
+    // swung blade rather than a full ring closing in.
+    vec2  c    = vec2(-0.6, 0.0);
+    float R    = 0.6 + age * 0.95;                   // the arc's radius grows as the blow follows through
+    float edge = smoothstep(0.14, 0.0, abs(length(p - c) - R));
+    float front = smoothstep(-0.1, 0.65, p.x - c.x); // only the leading, target-side stretch of the arc
+    float span = smoothstep(1.4, 0.2, length(p));    // fade toward the tile's edges
     float e = env(age, 0.15);
-    return vec2(arc * e, arc * e);
+    float arc = edge * front * span * e;
+    return vec2(arc, arc);
 }
 
 vec2 pat_pierce(vec2 p, float age) {

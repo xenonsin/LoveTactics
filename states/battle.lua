@@ -83,8 +83,9 @@ local IMPACT_PAUSE = 0.5
 -- The left column's controls fold behind a single hamburger toggle. Closed (the default), only
 -- MENU_BUTTON is drawn and the whole column below it belongs to the docked tooltips -- which is what
 -- buys the terrain box its guaranteed room in drawTileTooltip. Open, the entries drop beneath it.
--- Every entry also has a key/pad binding of its own (Esc / pad B = forfeit, L / left-shoulder = log,
--- T / left-stick = threats), so the menu is a mouse affordance and never the only way to reach them.
+-- Every entry also has a key binding of its own (Esc / pad B = forfeit, L / left-shoulder = log,
+-- T / left-stick = threats, A = auto), so the menu is a mouse affordance and never the only way to
+-- reach them.
 local MENU_BUTTON = { x = 16, y = 16, w = 36, h = 36 }
 -- Clickable "Forfeit" entry so a mouse-only player can bail out (counts as a loss). Wait/Focus/
 -- Defend is not here: it lives in a long button under the item grid (ui/combat_panel.lua).
@@ -94,19 +95,24 @@ local logButton = { x = 16, y = 104, w = 130, h = 36 }
 -- Toggles the danger overlay that paints EVERY enemy's reach-and-strike range purple across the
 -- whole board (also T / gamepad left-stick), so the player can survey all threats at once.
 local rangesButton = { x = 16, y = 148, w = 130, h = 36 }
+-- Hands the WHOLE player side to the AI (also A): sets battle.autoAll, which arms auto-battle for
+-- every player-controlled unit on its turn -- the same think-pause the Tactics-tab switch grants a
+-- single unit. Any input still takes the current turn straight back (reclaimAutoTurn); the flag then
+-- re-arms the next unit, so "auto" holds across the side until the button is pressed off.
+local autoButton = { x = 16, y = 192, w = 130, h = 36 }
 -- Debug-only shortcuts that decide the fight instantly, so a developer can jump straight to the win
 -- or loss follow-up (spoils screen, overworld onWin/onLoss) without playing the encounter out. Gated
 -- on Debug.enabled -- they never render or take a click in a release build. Sat side by side under
 -- the rest of the menu.
-local winButton = { x = 16, y = 192, w = 62, h = 36 }
-local loseButton = { x = 84, y = 192, w = 62, h = 36 }
+local winButton = { x = 16, y = 236, w = 62, h = 36 }
+local loseButton = { x = 84, y = 236, w = 62, h = 36 }
 
 -- The y the docked tooltip stack may rise to: just under the hamburger while the menu is closed, or
 -- under its last visible entry while it is open, so the menu and the tooltips never draw over each
 -- other. Read as drawTileTooltip's `dockTop`.
 local function menuBottom()
     if not battle.menuOpen then return MENU_BUTTON.y + MENU_BUTTON.h + 8 end
-    local last = Debug.enabled and winButton or rangesButton
+    local last = Debug.enabled and winButton or autoButton
     return last.y + last.h + 8
 end
 
@@ -130,6 +136,7 @@ end
 local function overMenuEntry(x, y)
     if not battle.menuOpen then return false end
     return pointIn(forfeitButton, x, y) or pointIn(logButton, x, y) or pointIn(rangesButton, x, y)
+        or pointIn(autoButton, x, y)
         or (Debug.enabled and (pointIn(winButton, x, y) or pointIn(loseButton, x, y)))
 end
 
@@ -380,6 +387,7 @@ end
 local function win()
     battle.over = true
     battle.walk = nil -- nobody finishes their stroll once the battle is decided
+    battle.heldObjects = nil -- and the final board shows every zone it holds, walk unfinished or not
     ScreenFx.vignette(0) -- a won fight is not a dying one: drop any low-HP edge before the panel opens
     Combat.logEvent(battle.combat, "system", "Victory!")
     -- A won fight is not a lost life: any party member who fell is carried out to the overworld at a
@@ -393,6 +401,7 @@ end
 local function lose()
     battle.over = true
     battle.walk = nil
+    battle.heldObjects = nil
     Combat.logEvent(battle.combat, "system", "Defeat.")
     -- The colour drains out of the world as the defeat panel closes over it -- a grey that says the run
     -- is lost more plainly than any banner. Not motion, so it plays even under reduced effects; cleared
@@ -829,7 +838,7 @@ local function beginTurn()
         -- turn straight back (see battle.keypressed / mousepressed). That is what makes the feature
         -- safe to hand a player -- it can always be taken back, on the turn it matters, without
         -- opening a menu.
-        if current.char.autoBattle then
+        if current.char.autoBattle or battle.autoAll then
             battle.aiTimer = AI_DELAY
             battle.autoPending = current
         end
@@ -1039,6 +1048,11 @@ end
 local function advanceTurn(carried)
     pacedTurn(battle.current)
     local events = Combat.drainFx(battle.combat)
+    -- The blow is about to play (ingest below): the ground this action laid -- a summoned zone, a
+    -- raised wall, a keg set down, a status painting its field -- was held off the board through the
+    -- approach walk (holdLanding). Release it now so it blooms in WITH the impact rather than before
+    -- the caster ever arrived to make it.
+    battle.heldObjects = nil
     if carried then
         battle.fx:hold(carried, -1) -- the approach has finished; the blow may be seen now
         if events then
@@ -1170,6 +1184,36 @@ local function busy()
         or (battle.current ~= nil and battle.current.channel ~= nil)
 end
 
+-- Play one tile of the captured route: slide the sprite onto the tile this step enters, and float any
+-- cue (a sprung trap, a hazard's bite, an overwatch shot) it triggered. Returns false once the route
+-- is exhausted, so the caller can end the walk. The unit's model position is already the END of the
+-- route, so the slide is named against the tile this step arrives on, not against unit.x/unit.y.
+local function walkStep(w)
+    w.i = w.i + 1
+    local step = w.steps[w.i]
+    if not step then return false end
+    w.timer = MOVE_STEP
+    battle.fx:setSlide(w.unit, step.fromX, step.fromY, MOVE_STEP, nil, step.x, step.y)
+    -- A trap that sprang, a hazard that bit, an overwatch shot -- float its number on arrival. No
+    -- actor leans in: this is damage taken while walking, not a strike the unit made.
+    battle.fx:ingest(step.fx, nil)
+    return true
+end
+
+-- Begin replaying `steps` as `unit`'s walk, calling `onDone` when it comes to rest. The first step is
+-- played AT ONCE, before any frame is drawn -- because the model already teleported `unit` to the
+-- route's end, and until a slide is set the sprite draws at that end. A draw can land between the
+-- walk's creation and updateWalk's first tick (an AI move begins mid-update, after updateWalk already
+-- ran for the frame), and without this prime that draw would flash the sprite on its destination tile
+-- for a frame before the walk snaps it back to the origin. Priming here places it on the origin from
+-- frame one.
+local function beginWalk(unit, steps, onDone)
+    local w = { steps = steps, i = 0, timer = 0, onDone = onDone, unit = unit }
+    battle.walk = w
+    walkStep(w)
+    return w
+end
+
 -- Send `unit` walking to (x, y), calling `onDone` once it comes to rest -- on the destination, or
 -- on the tile it died on. Returns false, having changed nothing, if the move is illegal. The move
 -- is spent the instant the walk starts: the blue reachable band and the red threat band both clear,
@@ -1187,7 +1231,7 @@ local function startWalk(unit, x, y, onDone, cells)
     -- uses to push the model forward one tile at a time. The model is finished before the first
     -- frame of the walk is drawn.
     local steps = Combat.runMove(battle.combat, plan)
-    battle.walk = { steps = steps, i = 0, timer = 0, onDone = onDone, unit = unit }
+    beginWalk(unit, steps, onDone)
     battle.reachable, battle.moveCells = {}, {}
     battle.threatCells, battle.attackReach = {}, {}
     -- The armed/hovered ability's band was built over the move budget this walk just spent, so it is
@@ -1211,19 +1255,7 @@ local function updateWalk(dt)
     local w = battle.walk
     w.timer = w.timer - dt
     if w.timer > 0 then return end
-    w.i = w.i + 1
-    local step = w.steps[w.i]
-    if step then
-        w.timer = MOVE_STEP
-        -- Slide the sprite from the tile it left to the tile this step lands on. Both are named:
-        -- the unit's model position is already the END of the route, so it cannot stand in for
-        -- "where this step arrives" the way it can for a single step (see CombatFx:setSlide).
-        battle.fx:setSlide(w.unit, step.fromX, step.fromY, MOVE_STEP, nil, step.x, step.y)
-        -- A trap that sprang, a hazard that bit, an overwatch shot -- float its number on arrival.
-        -- No actor leans in: this is damage taken while walking, not a strike the unit made.
-        battle.fx:ingest(step.fx, nil)
-        return
-    end
+    if walkStep(w) then return end
     battle.walk = nil
     if w.onDone then w.onDone() end
 end
@@ -1238,8 +1270,43 @@ end
 -- approach started being walked after the strike had already landed. Without this a unit's health
 -- visibly falls while its attacker is still three tiles away.
 --
+-- Identity set of every placed board object standing right now: hazards, walls, props, and the
+-- statuses units carry. Snapshotted the instant before an action resolves so holdLanding can tell the
+-- ground the action LAYS from the ground already there -- membership by table identity, so a zone that
+-- is merely refreshed (Hazard.place returning the existing one) still counts as already-present.
+local function boardObjects()
+    local set = {}
+    for _, h in ipairs(battle.combat.hazards or {}) do set[h] = true end
+    for _, w in ipairs(battle.combat.walls or {}) do set[w] = true end
+    for _, p in ipairs(battle.combat.props or {}) do set[p] = true end
+    for _, u in ipairs(battle.combat.units or {}) do
+        set[u] = true -- the body itself, so a summon conjured this turn reads as freshly arrived
+        for _, st in ipairs(u.statuses or {}) do set[st] = true end
+    end
+    return set
+end
+
+-- A live object list narrowed to what may be drawn this frame -- everything except the ground an
+-- in-flight walk-then-cast has laid but not yet been seen to lay (battle.heldObjects, see holdLanding).
+-- Returns the list untouched when nothing is held, so the common case allocates nothing.
+local function shownObjects(list)
+    local held = battle.heldObjects
+    if not held or not list then return list end
+    local out = {}
+    for _, o in ipairs(list) do
+        if not held[o] then out[#out + 1] = o end
+    end
+    return out
+end
+
 -- Returns the held list, to be handed to advanceTurn when the feet stop.
-local function holdLanding()
+--
+-- `pre` (optional) is a boardObjects() snapshot taken the instant before the action resolved: with it,
+-- every hazard, wall, prop or carried-status field the action LAID (anything now on the board that was
+-- not in the snapshot) is stashed in battle.heldObjects, which the overlay pass hides until advanceTurn
+-- reveals it when the blow plays. Without this the fx cues wait for the feet but the GROUND does not --
+-- a summoned zone flashes onto the board while the caster is still three tiles away walking in.
+local function holdLanding(pre)
     local events = Combat.drainFx(battle.combat)
     if events then
         battle.fx:hold(events, 1)
@@ -1247,6 +1314,20 @@ local function holdLanding()
         -- target in the model, so without this the victim stands on its knocked-back tile all through
         -- the approach and then snaps home to be shoved again once the feet stop.
         battle.fx:pinSlides(events)
+    end
+    if pre then
+        local held
+        local function scan(list)
+            for _, o in ipairs(list or {}) do
+                if not pre[o] then held = held or {}; held[o] = true end
+            end
+        end
+        scan(battle.combat.hazards)
+        scan(battle.combat.walls)
+        scan(battle.combat.props)
+        scan(battle.combat.units) -- a body summoned this turn (drawUnits/trackArrivals honour the set)
+        for _, u in ipairs(battle.combat.units or {}) do scan(u.statuses) end
+        battle.heldObjects = held
     end
     return events
 end
@@ -1280,6 +1361,11 @@ function netApplyRemote(cmd)
         if battle.netLog then battle.netLog("remote cmd arrived with no unit up -- dropped") end
         return
     end
+    -- Snapshotted before the command resolves so the ground it lays is held off the board until its
+    -- walk replays (holdLanding). Command.apply is atomic over move AND action, so unlike the local
+    -- paths a zone the approach itself sprang rides in the held set too -- a minor cosmetic nuance on
+    -- the remote side, where the whole turn arrives at once anyway.
+    local pre = boardObjects()
     local res, err = Command.apply(battle.combat, current, cmd)
     if not res then
         notify("Out of step with the other player.")
@@ -1299,13 +1385,12 @@ function netApplyRemote(cmd)
         end
     end
 
-    local blow = holdLanding()
+    local blow = holdLanding(pre)
     if res.moved and #res.moved > 0 then
         battle.reachable, battle.moveCells = {}, {}
         battle.threatCells, battle.attackReach = {}, {}
         battle.movePath = nil
-        battle.walk = { steps = res.moved, i = 0, timer = 0, unit = current,
-                        onDone = function() advanceTurn(blow) end }
+        beginWalk(current, res.moved, function() advanceTurn(blow) end)
     else
         advanceTurn(blow)
     end
@@ -1833,6 +1918,10 @@ local function confirm()
             -- drawn. Its cues stay in the queue while the route replays -- advanceTurn drains them
             -- when the feet stop, so the impact still reads after the approach rather than during
             -- it. Nothing about the exchange is decided by how long the animation took.
+            -- Snapshotted after the approach is spent but before the cast resolves, so only the ground
+            -- the CAST lays is held back -- anything the walk itself sprang (a trap's zone) is already
+            -- in `pre` and stays visible as the route replays.
+            local pre = boardObjects()
             local landed, why
             if current.alive then
                 landed, why = Combat.useItem(battle.combat, current, item, cx, cy, wu)
@@ -1840,7 +1929,7 @@ local function confirm()
             -- The approach is already walked and paid for; only the blow was refused. Name the reason
             -- so the turn doesn't just look like it evaporated.
             if not landed and why then refuse(why) end
-            local blow = holdLanding()
+            local blow = holdLanding(pre)
             -- Announced now, not when the animation finishes: the model already resolved the whole
             -- turn, and the peer should be told at once rather than after our playback -- their
             -- window has its own walk to watch.
@@ -1886,9 +1975,13 @@ end
 -- run dry, or when the authored strike cell no longer holds a living foe. That last case is why the
 -- weapon lookup lives here rather than in models/tutorial.lua: the lesson is pure data and knows
 -- nothing of the board, so the check for whether its script still makes sense belongs on this side.
-local function scriptedAction(unit)
+-- `peek` runs the plan WITHOUT spending the scripted turn: the intent preview (intentResolver) reads
+-- what a unit is about to do to draw its target line, and must not consume the queue entry the unit's
+-- real turn is owed. Only executeEnemyAction, which actually takes the turn, consumes. See
+-- Tutorial.scriptFor's `peek`.
+local function scriptedAction(unit, peek)
     if not battle.tutorial then return nil end
-    local entry = Tutorial.scriptFor(battle.tutorial, unit.scriptKey or unit.char.id)
+    local entry = Tutorial.scriptFor(battle.tutorial, unit.scriptKey or unit.char.id, peek)
     if not entry then return nil end
     local act = { move = entry.move }
     if entry.strike then
@@ -1926,7 +2019,7 @@ end
 -- The resolver the intent preview plans through: the SAME line executeEnemyAction takes, so a
 -- scripted mentor or boss is previewed doing what it will truly do, not what its bare AI would.
 local function intentResolver(unit)
-    return scriptedAction(unit) or Combat.planEnemyAction(battle.combat, unit)
+    return scriptedAction(unit, true) or Combat.planEnemyAction(battle.combat, unit)
 end
 
 -- Predict every hostile unit's turn -- who it strikes and the KIND of thing it does -- and cache it,
@@ -2068,6 +2161,9 @@ local function executeEnemyAction()
     -- and only the playback is left for the clock -- the same shape the player's strike takes above.
     -- Without one, there is nothing to replay and act_ resolves inline as it always did.
     if act.move and startWalk(current, act.move.x, act.move.y, nil) then
+        -- After the approach is spent, before the action resolves: only the ground THIS action lays is
+        -- held back through the walk, exactly as the player's strike above (holdLanding's `pre`).
+        local pre = boardObjects()
         if current.alive then
             local acted = act.item
                 and Combat.useItem(battle.combat, current, act.item, act.tx, act.ty, act.windup)
@@ -2076,7 +2172,7 @@ local function executeEnemyAction()
             if not acted then Combat.pass(battle.combat, current) end
         end
         -- A unit cut down on the approach raised nothing here and just hands the turn on.
-        local blow = holdLanding()
+        local blow = holdLanding(pre)
         battle.walk.onDone = function() advanceTurn(blow) end
         return
     end
@@ -2365,6 +2461,15 @@ local function refreshView()
     overlays.current = { x = current.x, y = current.y, unit = current }
     local hover = battle.hoverUnit
     if hover and hover.alive then overlays.hover = { x = hover.x, y = hover.y } end
+    -- The intent line answers "who is this one coming for" for whichever foe is under the cursor,
+    -- from EITHER surface: the timeline strip (battle.hoverUnit) or the board itself. A card hover
+    -- sets hoverUnit; a board hover only moves the map cursor, so fall back to the foe standing on
+    -- the cursor tile -- parity with the timeline card, which already shows the same read.
+    local intentHover = hover
+    if not (intentHover and intentHover.alive and intentHover.side ~= "party") then
+        local u = Combat.unitAt(battle.combat, battle.map.cursor.x, battle.map.cursor.y)
+        if u and u.alive and u.side ~= "party" then intentHover = u end
+    end
 
     -- Target lines (models/intent.lua): who each enemy will strike, and what it will do. Three tiers,
     -- in precedence order -- while steering a step the question is "who comes for me HERE", and only
@@ -2383,8 +2488,8 @@ local function refreshView()
                 local l = intentLine(u, intent)
                 if l then lines[#lines + 1] = l end
             end
-        elseif hover and hover.alive and hover.side ~= "party" and battle.enemyIntents[hover] then
-            local l = intentLine(hover, battle.enemyIntents[hover])
+        elseif intentHover and battle.enemyIntents[intentHover] then
+            local l = intentLine(intentHover, battle.enemyIntents[intentHover])
             if l then lines[#lines + 1] = l end
         end
         if #lines > 0 then overlays.targetLines = lines end
@@ -2436,9 +2541,30 @@ local function refreshView()
     for _, t in ipairs(battle.revealedTraps) do battle.trapCells[t.x .. "," .. t.y] = t end
     overlays.traps = battle.revealedTraps
 
+    -- Buried charges (the Saboteur's fuses). Like traps, they are the party's to see when the party
+    -- laid them and a hidden threat otherwise, so the board only ever shows the party's own -- an enemy
+    -- fuse stays under the ground until it goes off. Filtered here rather than in the widget, which
+    -- draws whatever list it is handed, exactly as revealedTraps is decided on this side.
+    local charges
+    for _, c in ipairs(battle.combat.charges or {}) do
+        if c.side == "party" and not c.spent then
+            charges = charges or {}
+            charges[#charges + 1] = c
+        end
+    end
+    overlays.charges = charges
+
     -- Hazards (fire/rain/sanctuary) are always visible to both sides, so the renderer draws the whole
-    -- live list -- no per-side visibility filter like traps have.
-    overlays.hazards = battle.combat.hazards
+    -- live list -- no per-side visibility filter like traps have. shownObjects withholds any a cast
+    -- has laid but not yet been seen to land (during its approach walk) -- see holdLanding.
+    overlays.hazards = shownObjects(battle.combat.hazards)
+
+    -- The bodies a cast has summoned this turn but whose conjuring blow has not yet played (their
+    -- summoner is still walking into range). The map keys unit lookups against this to keep them off the
+    -- board -- and out of its arrivals tracker -- until advanceTurn reveals them, so a summon knits in
+    -- WITH the cast rather than popping onto the field before the caster has moved. Non-unit members of
+    -- the held set (hazards, walls) never match a unit lookup, so handing the whole set over is safe.
+    overlays.heldUnits = battle.heldObjects
 
     -- The statuses a unit CARRIES that are worth painting as ground under it: a burning body should
     -- stand in flame, a frozen one in rime. Only the handful whose blueprint declares an `fx` block
@@ -2447,9 +2573,13 @@ local function refreshView()
     -- hazard already covers the tile, so a burning unit in the rain shows both (ui/field_fx.lua).
     local unitFields
     for _, u in ipairs(battle.combat.units) do
-        if u.alive then
+        -- A summoned body still held off the board (its cast's approach walk is replaying) carries no
+        -- ground either -- skip it whole, so its fields arrive with it rather than ahead of it.
+        if u.alive and not (battle.heldObjects and battle.heldObjects[u]) then
             for _, st in ipairs(u.statuses or {}) do
-                if st.def and st.def.fx then
+                -- Skip a field a cast just applied but hasn't been seen to land (held through its
+                -- approach walk, like the hazards above) -- it blooms in with the blow, not before it.
+                if st.def and st.def.fx and not (battle.heldObjects and battle.heldObjects[st]) then
                     unitFields = unitFields or {}
                     unitFields[#unitFields + 1] = { x = u.x, y = u.y, unit = u, status = st }
                 end
@@ -2461,23 +2591,30 @@ local function refreshView()
     -- Imminent reinforcements: the committed-but-not-yet-landed waves (spawnWaves holds a plan from
     -- LEAD_TICKS before a wave is due). The board marks WHERE the muster walks on and counts down to
     -- WHEN, so the player can read it -- and march a body onto a marked tile to turn that arrival back.
+    -- A wave commits early (LEAD_TICKS) so its plan is stable, but the telegraph is HELD BACK until the
+    -- muster is one turn out (TICKS_PER_TURN ticks): the warning surfaces inside the last turn only, so
+    -- the board is never carrying a long, distant clock. (The deny-by-standing mechanic reads the live
+    -- board at fireWave, so a wave can still be turned back whether or not it is currently telegraphed.)
     local reinforcements
     local clock = battle.combat.clock or 0
     for _, st in ipairs(battle.waveState or {}) do
-        if st.committed and clock < st.nextAt then
+        local ticksUntil = st.committed and (st.nextAt - clock)
+        if st.committed and clock < st.nextAt and ticksUntil <= Status.TICKS_PER_TURN then
             local p = st.committed
             reinforcements = reinforcements or {}
             reinforcements[#reinforcements + 1] = {
                 tiles = p.tiles, count = #p.tiles, edge = p.edge,
-                ticksUntil = math.max(0, st.nextAt - clock),
+                ticksUntil = math.max(0, ticksUntil),
             }
         end
     end
     overlays.reinforcements = reinforcements
 
     -- Walls (conjured blockers) are always visible to both sides too. Keep a per-frame "x,y" lookup
-    -- for click-to-strike (wallAt), mirroring battle.trapCells.
-    overlays.walls = battle.combat.walls
+    -- for click-to-strike (wallAt), mirroring battle.trapCells. The RENDER list withholds a wall a cast
+    -- is still walking in to raise (shownObjects); the lookup stays live -- input is held mid-walk, so
+    -- there is no click for it to answer either way.
+    overlays.walls = shownObjects(battle.combat.walls)
     battle.wallCells = {}
     for _, w in ipairs(battle.combat.walls or {}) do
         if w.alive then battle.wallCells[w.x .. "," .. w.y] = w end
@@ -2487,7 +2624,7 @@ local function refreshView()
     -- renderer gets the whole live list and the click handler gets an "x,y" lookup (propAt). Striking
     -- one is the ONLY way to set off an explosive barrel, so this lookup is what makes "shoot the keg"
     -- a click the player can find.
-    overlays.props = battle.combat.props
+    overlays.props = shownObjects(battle.combat.props)
     battle.propCells = {}
     for _, p in ipairs(battle.combat.props or {}) do
         if p.alive then battle.propCells[p.x .. "," .. p.y] = p end
@@ -3386,6 +3523,17 @@ function battle.drawHud()
     love.graphics.printf(rangesOn and "Threats ✓" or "Threats",
         rangesButton.x, rangesButton.y + rangesButton.h / 2 - 8, rangesButton.w, "center")
 
+    -- Whole-side auto-battle toggle: brighter (teal) when the AI is driving the player's units.
+    local autoOn = battle.autoAll
+    if autoOn then love.graphics.setColor(0.16, 0.26, 0.28) else love.graphics.setColor(0.15, 0.17, 0.18) end
+    love.graphics.rectangle("fill", autoButton.x, autoButton.y, autoButton.w, autoButton.h, 6, 6)
+    if autoOn then love.graphics.setColor(0.42, 0.80, 0.82) else love.graphics.setColor(0.36, 0.42, 0.44) end
+    love.graphics.rectangle("line", autoButton.x, autoButton.y, autoButton.w, autoButton.h, 6, 6)
+    if autoOn then love.graphics.setColor(0.80, 0.96, 0.98) else love.graphics.setColor(0.60, 0.66, 0.68) end
+    love.graphics.setFont(hudFont)
+    love.graphics.printf(autoOn and "Auto ✓" or "Auto",
+        autoButton.x, autoButton.y + autoButton.h / 2 - 8, autoButton.w, "center")
+
     -- Debug-only instant-decision buttons (green Win / red Lose), sat where Main Menu used to be.
     if Debug.enabled then
         love.graphics.setFont(hudFont)
@@ -3478,6 +3626,24 @@ local function reclaimAutoTurn()
     return true
 end
 
+-- Flip the whole-side auto-battle flag (the menu's Auto entry / the A key). Turning it ON arms the
+-- unit that is up right now, if that unit is the player's and its turn is still open, so the button
+-- feels immediate rather than waiting for the next turn boundary. Turning it OFF reclaims any pending
+-- auto turn, handing the current unit straight back.
+local function toggleAutoAll()
+    battle.autoAll = not battle.autoAll
+    if battle.autoAll then
+        local current = battle.current
+        if current and not battle.over and not battle.autoPending
+            and Combat.isPlayerControlled(current) and current.control ~= "remote" then
+            battle.aiTimer = AI_DELAY
+            battle.autoPending = current
+        end
+    else
+        reclaimAutoTurn()
+    end
+end
+
 function battle.keypressed(key)
     if battle.summary then battle.summary:keypressed(key); return end
     reclaimAutoTurn()
@@ -3495,6 +3661,10 @@ function battle.keypressed(key)
     end
     if key == "t" then -- toggle the all-enemy-attack-ranges danger overlay
         battle.showEnemyRanges = not battle.showEnemyRanges
+        return
+    end
+    if key == "a" then -- toggle whole-side auto-battle (hand the player's units to the AI)
+        toggleAutoAll()
         return
     end
     -- Scroll the turn-order strip toward later / earlier turns (read-only, so allowed once the
@@ -3614,6 +3784,10 @@ function battle.mousepressed(x, y, button)
         end
         if pointIn(rangesButton, x, y) then
             battle.showEnemyRanges = not battle.showEnemyRanges
+            return
+        end
+        if pointIn(autoButton, x, y) then
+            toggleAutoAll()
             return
         end
         if Debug.enabled and pointIn(winButton, x, y) then

@@ -421,7 +421,15 @@ end
 -- being a guess about initiative order.
 local function standing(entry) return entry ~= nil and entry.through ~= nil end
 
-function Tutorial.scriptFor(t, key)
+--
+-- `peek` asks the same question without SPENDING the answer: it returns the entry the next real
+-- turn would get but leaves the cursor untouched. This exists because the same call answers two
+-- different questions -- "what does this unit do now" (executeEnemyAction, which consumes) and "what
+-- WOULD it do" (the intent telegraph, which only reads to draw a target line). Popping the queue on a
+-- preview would eat a scripted unit's turn before it ever acts, so it would arrive at its real turn
+-- with an empty queue and drop to the AI -- which is exactly how the village's third imp used to walk
+-- one tile short of the mentor's guard and survive the lesson.
+function Tutorial.scriptFor(t, key, peek)
     if not t or Tutorial.done(t) then return nil end
     local queue = t.def.script and t.def.script[key]
     if not queue then return nil end
@@ -431,8 +439,8 @@ function Tutorial.scriptFor(t, key)
         entry = queue[i]
     until not (standing(entry) and t.index > entry.through) -- expired post: step over it
     -- A standing order is not spent by being used, so the cursor is left sitting BEFORE it and the
-    -- next turn offers it again. Anything else advances past it as usual.
-    t.cursors[key] = standing(entry) and (i - 1) or i
+    -- next turn offers it again. Anything else advances past it as usual. A peek spends nothing.
+    if not peek then t.cursors[key] = standing(entry) and (i - 1) or i end
     return entry
 end
 
