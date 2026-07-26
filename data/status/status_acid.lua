@@ -12,7 +12,7 @@ return {
     abbr = "Acd",
     description = "Corroded: defense and magic defense are reduced.",
     color = { 0.62, 0.78, 0.18 }, -- badge tint (caustic yellow-green)
-    fx = { pattern = "smoke" },   -- caustic fume, in its own colour rather than poison's
+    fx = { field = true },   -- draws ground under the afflicted body (a debuff: the hostile look, ui/field_fx.lua)
     duration = 8, -- ~1.5 turns at Status.TICKS_PER_TURN (was under one, and so barely landed)
     debuff = true, -- removable by Cure / Panacea
     statBonus = { defense = -6, magicDefense = -6 }, -- armor eaten away while it lasts

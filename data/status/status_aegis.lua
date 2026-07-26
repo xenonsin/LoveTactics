@@ -8,7 +8,7 @@ return {
     abbr = "Aeg",
     description = "Warded: raised Defense and Magic Defense.",
     color = { 0.55, 0.70, 0.95 }, -- badge tint (steel blue)
-    fx = { pattern = "ward" },    -- the lattice stands under whoever is being guarded
+    fx = { field = true },    -- draws ground under whoever is guarded (a buff: the rising-chevron look, ui/field_fx.lua)
     duration = 20, -- ~4 turns at Status.TICKS_PER_TURN, matching Blessing, its offensive mirror
     statBonus = { defense = 5, magicDefense = 5 },
 }

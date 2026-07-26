@@ -42,16 +42,16 @@
 --                      that answers only to its duration
 --   * disposition   -- "hostile" | "friendly" | "neutral": drives the enemy AI's avoid/seek (default
 --                      neutral). A "friendly" hazard only draws the side that owns it.
---   * tags          -- descriptive tags (e.g. { "fire" }). THREE jobs: a cast whose tags meet a
---                      hazard's dousedByTags removes it; the hazard lends these tags to the TILE it
---                      sits on (Combat.tileHasTag) -- which is how a Rain cloud's "conductable"
---                      makes drenched ground carry a bolt, just as water terrain does; and the FIRST
---                      tag the field shader recognises decides how the zone is drawn (fire -> flame,
---                      ice -> rime, see ui/field_fx.lua's TAG_PATTERN). So the descriptive tag leads
---                      and the mechanical one trails: { "water", "conductable" }, not the reverse.
---   * fx            -- optional visual override, read only by the view: { pattern, color, density,
---                      intensity }. Needed only where a zone wants a look its tags don't imply --
---                      Darkness is smoke in a colour no other smoke uses. Most defs declare none.
+--   * tags          -- descriptive tags (e.g. { "fire" }). TWO jobs: a cast whose tags meet a hazard's
+--                      dousedByTags removes it; and the hazard lends these tags to the TILE it sits on
+--                      (Combat.tileHasTag) -- which is how a Rain cloud's "conductable" makes drenched
+--                      ground carry a bolt, just as water terrain does. (The tags no longer decide how a
+--                      zone is DRAWN: the board reads a zone by what it means to the player -- threat,
+--                      buff or heal -- not by its element. See ui/field_fx.lua's hazardCategory.)
+--   * fx            -- optional VIEW override, read only by ui/field_fx.lua: { valence }. `valence`
+--                      ("hostile" | "friendly") overrides the field colour a zone's disposition would
+--                      give it, for the eye only -- Muster is neutral to the AI but reads friendly. Most
+--                      defs declare none, taking the look their disposition and effect already imply.
 --   * dousedByTags  -- tags that dispel this hazard when a matching cast covers its tile (e.g. water -> fire)
 --   * spread        -- { intoTag = "burnable" }: each tick, seed fresh hazards on adjacent tiles
 --                      carrying that tag (fire creeping through a forest). The tag is resolved

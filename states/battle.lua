@@ -613,20 +613,6 @@ local function aoeFootprint(item, cx, cy)
     return Combat.aoeCells(battle.combat, ab, cx, cy, battle.current)
 end
 
--- Every tag a cast of `item` carries, item-level and ability-level both -- the same pair
--- Combat.auraApplies reads across, for the same reason: a "fire" declared on the ability rather than
--- on the item is still fire. The board resolves the blast telegraph's shader field from these
--- (ui/field_fx.lua's patternFor), so a Fireball's footprint previews the flame it is about to leave.
-local function fieldTags(item)
-    if not item then return nil end
-    local ab = item.activeAbility
-    if not (ab and ab.tags) then return item.tags end
-    local out = {}
-    for _, t in ipairs(item.tags or {}) do out[#out + 1] = t end
-    for _, t in ipairs(ab.tags) do out[#out + 1] = t end
-    return out
-end
-
 -- The default-ACTION reach: every cell the unit could use its default action on this turn (the
 -- player-chosen action, Combat.defaultAction -- a strike, a heal, a summon), moving first if needed.
 -- Stores `battle.defaultAction` + `battle.attackReach` (cell -> cheapest stand tile, which spans the
@@ -2190,8 +2176,7 @@ local function refreshView()
 
         -- An AoE ability paints its blast footprint around the aimed cell, brighter than the wash.
         overlays.aoe = aoeFootprint(previewItem, battle.map.cursor.x, battle.map.cursor.y)
-        overlays.aoeSupport = support
-        overlays.aoeTags = fieldTags(previewItem) -- the blast previews its own element (see fieldTags)
+        overlays.aoeSupport = support -- the blast previews as a buff (green) or a threat (orange) by this
 
         -- Preview the move to reach the aimed cell, drawn as the same arrow move mode uses: onto the
         -- cell when it's a reposition (empty reachable tile), or to the stand tile the action fires
@@ -2444,14 +2429,15 @@ local function refreshView()
     -- Telegraph every in-progress channel's blast on the board -- not just the local armed preview, so
     -- an ENEMY winding up Meteor Storm paints the tiles it will hit, and the player can step clear.
     -- Read from unit.channel (the pending payload), independent of whose turn it is.
-    local channelAoe, channelTags
+    local channelAoe, channelSupport
     for _, u in ipairs(battle.combat.units) do
         local ch = u.alive and u.channel
         if ch then
             channelAoe = channelAoe or {}
-            -- The first channeler's element dresses the telegraph's field (several at once is rare
-            -- enough that one shared picture beats splitting the footprint by owner).
-            channelTags = channelTags or fieldTags(ch.item)
+            -- The first channeler's disposition dresses the telegraph: a supporting working previews as
+            -- the green chevrons of the buff it lays, an offensive one as the orange of a threat (several
+            -- channelling at once is rare enough that one shared picture beats splitting it by owner).
+            if channelSupport == nil then channelSupport = Combat.isSupportAbility(ch.ab) or false end
             -- Call Combat.aoeCells directly rather than aoeFootprint: the footprint helper gates on the
             -- ACTING unit's range set, but this is the channeler's own stored aim, cast turns ago.
             for _, c in ipairs(Combat.aoeCells(battle.combat, ch.ab, ch.tx, ch.ty, u)) do
@@ -2460,7 +2446,7 @@ local function refreshView()
         end
     end
     overlays.channelAoe = channelAoe
-    overlays.channelTags = channelTags
+    overlays.channelSupport = channelSupport
 
     overlays.hpPreview = bannerPreview -- per-unit incoming damage/heal, for on-board HP bars
 

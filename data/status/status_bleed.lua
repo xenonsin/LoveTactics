@@ -16,7 +16,7 @@ return {
     abbr = "Bld",
     description = "Bleeding: takes damage for every tile it moves through. Standing still costs nothing.",
     color = { 0.78, 0.16, 0.20 }, -- badge tint (arterial red)
-    fx = { pattern = "mire" },    -- a stain in the ground, not a cloud above it: mire's layer is right
+    fx = { field = true },    -- draws ground under the bleeding body (a debuff: the hostile look, ui/field_fx.lua)
     duration = 15, -- ~3 turns at Status.TICKS_PER_TURN: a wound that stays open long enough to cost
                    -- the victim real ground (it bites per tile crossed, not per tick)
     magnitude = 3, -- damage per tile entered

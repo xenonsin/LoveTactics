@@ -17,9 +17,13 @@ return {
     abbr = "Rgn",
     description = "Blessed: recovers health as time passes.",
     color = { 0.40, 0.85, 0.50 }, -- badge tint (restorative green)
+    -- Marks this as a MENDING condition, so a body wearing it (or a zone granting it) draws the blue
+    -- heal-crosses rather than a buff's chevrons -- read by ui/field_fx.lua's category resolver and by
+    -- Hazard.preview, which is how a Sanctuary is known to be a heal without the hazard saying so.
+    restorative = true,
     -- Only ever drawn where NO hallowed ground is already drawing it -- a potion's regeneration, not a
     -- Sanctuary's. The zone-bound grant is redundant with the zone by construction (ui/field_fx.lua).
-    fx = { pattern = "halo" },
+    fx = { field = true },
     duration = 15, -- ~3 turns at Status.TICKS_PER_TURN (only ever reached off a zone -- see above)
     magnitude = 8, -- health restored per turn's worth of ticks
     onTick = function(ctx)

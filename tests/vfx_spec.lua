@@ -101,16 +101,6 @@ return {
         end,
     },
     {
-        name = "every motif a field maps to is a real field pattern",
-        fn = function()
-            for motif, pattern in pairs(FieldFx.MOTIF_PATTERN) do
-                assert(Motif.SET[motif], "field maps an unknown motif: " .. motif)
-                assert(FieldFx.STYLE[pattern], motif .. " maps to unstyled field " .. tostring(pattern))
-                assert(FieldShader.PATTERNS[pattern], motif .. " maps to field with no shader id")
-            end
-        end,
-    },
-    {
         name = "a blow always draws SOMETHING -- an unknown motif still bursts",
         fn = function()
             assert(BurstFx.patternFor(nil) == BurstFx.DEFAULT_STRIKE, "a tagless blow draws the default")

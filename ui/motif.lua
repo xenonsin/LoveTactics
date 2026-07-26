@@ -21,8 +21,9 @@
 -- so the shape leads the element, and the Apothecary's Lancet bursts as a STAB that happens to leave
 -- poison behind rather than as a puff of gas -- which is exactly what it is. A spell's ability tags
 -- lead with the element instead ({ "fire", "arcane" }), so a Fireball blooms. Neither had to author a
--- word about how it looks, and the same ordering rule that makes hazards resolve correctly
--- (ui/field_fx.lua's TAG_PATTERN, which is now derived from this table) makes weapons resolve too.
+-- word about how it looks: the impact BURSTS (ui/burst_fx.lua's MOTIF_PATTERN) resolve their shape off
+-- this table. (Tile FIELDS no longer read it -- the board draws a zone by what it means to the player,
+-- not by its element; see ui/field_fx.lua.)
 --
 -- The archetype tags (dagger, mace, wand -- Item.ARCHETYPES) are deliberately NOT motifs. A family
 -- says which shelf sells the thing, not what it looks like when it lands; the shape tag beside it

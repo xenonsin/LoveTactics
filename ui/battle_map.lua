@@ -518,7 +518,7 @@ function BattleMap:drawOverlays()
     -- *unsafe air* rather than as another flat band -- deliberately the quietest field on the board,
     -- since it can cover half of it.
     self.fields:drawTelegraph(self, self.overlays.enemyRanges, {
-        pattern = "smoke", color = Colors.DANGER, alpha = 0.11, intensity = 0.7,
+        category = "hostile", color = Colors.DANGER, alpha = 0.11, intensity = 0.7,
         group = "telegraph:danger",
     })
     paint(self.overlays.enemyRanges, Colors.DANGER)
@@ -546,12 +546,11 @@ function BattleMap:drawOverlays()
     -- for a friendly area cast, red for a hostile one. Cells can extend past the range set (a blast
     -- that clips tiles you couldn't aim at directly), so it paints its own fill + a bold border.
     if self.overlays.aoe then
-        -- The blast previews ITSELF: the pattern is resolved from the armed item's own tags through
-        -- the same rule a hazard uses, so a Fireball's footprint shows the flame it is about to
-        -- leave, in the same picture the resulting Fire hazard will draw. An ability whose tags name
-        -- no family (a plain physical sweep) simply gets no field and keeps the flat wash below.
+        -- The blast previews ITSELF by CATEGORY: a support cast shows the green chevrons of the buff it
+        -- lays, an attack the orange chevrons of the threat it leaves -- the same look the resulting
+        -- ground will draw, so the promise and the result are visibly one thing.
         self.fields:drawTelegraph(self, self.overlays.aoe, {
-            pattern = FieldFx.patternFor(self.overlays.aoeTags),
+            category = FieldFx.telegraphCategory(self.overlays.aoeSupport),
             group = "telegraph:aoe",
         })
         local c = self.overlays.aoeSupport and Colors.SUPPORT or Colors.AOE
@@ -578,7 +577,7 @@ function BattleMap:drawOverlays()
         -- Same self-preview as the armed blast above, and louder: this one is already committed and
         -- the only question left is who is still standing on it when it lands.
         self.fields:drawTelegraph(self, self.overlays.channelAoe, {
-            pattern = FieldFx.patternFor(self.overlays.channelTags),
+            category = FieldFx.telegraphCategory(self.overlays.channelSupport),
             intensity = 1.0, group = "telegraph:channel",
         })
         local t = 0.5 + 0.5 * math.sin(love.timer.getTime() * 5) -- 0..1 pulse

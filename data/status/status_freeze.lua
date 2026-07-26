@@ -14,7 +14,7 @@ return {
     abbr = "Frz",
     description = "Iced over: delayed, and takes extra damage from impact and fire.",
     color = { 0.55, 0.80, 0.95 }, -- badge tint (glacier blue)
-    fx = { pattern = "rime" },    -- the ice takes the tile the frozen body is standing on
+    fx = { field = true },    -- draws ground under the frozen body (a debuff: the hostile look, ui/field_fx.lua)
     magnitude = 5,                -- ticks added to the target's initiative (the freeze delay)
     shovesInitiative = "magnitude", -- the delay the aim preview quotes (Status.initiativeShove); == onApply's shove
     -- A generous window so the impact/fire vulnerability actually survives the caster's own turn: a

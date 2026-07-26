@@ -16,6 +16,11 @@ return {
     tags = { "banner" },
     duration = 6,
     disposition = "neutral", -- it draws the owner in and pushes the foe out; neither reading is right
+    -- ...but the EYE reads it as the wearer's own ground: a knight musters their line. `fx.valence`
+    -- overrides the neutral disposition for the field colour only (ui/field_fx.lua), so the cuirass
+    -- draws the green rising chevrons of a buff rather than the orange of a threat. The AI still plans
+    -- against the neutral disposition above; this is a view hint and nothing more.
+    fx = { valence = "friendly" },
     onEnter = function(ctx)
         if ctx.isAlly(ctx.unit) then
             ctx.applyStatus(ctx.unit, "status_heroism")

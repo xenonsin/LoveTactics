@@ -1,7 +1,6 @@
 -- Tile FIELDS: the shader-driven ground every zone, aura, carried status and telegraph on the battle
--- board is painted with. Owns the one shader (shaders/field.lua), decides which of its ten patterns
--- each thing resolves to, and composites everything standing on a cell instead of letting the last
--- one drawn win.
+-- board is painted with. Owns the one shader (shaders/field.lua), decides which CATEGORY each thing
+-- reads as, and composites everything standing on a cell instead of letting the last one drawn win.
 --
 -- One instance per board (ui/battle_map.lua creates it in :new and ticks it from :update):
 --   fx:update(dt)
@@ -9,139 +8,156 @@
 --   fx:drawTelegraph(map, cells, opts)           -- an armed/channelled footprint, over them
 --
 -- ---------------------------------------------------------------------------
--- THREE SOURCES, ONE VOCABULARY
+-- FOUR CATEGORIES, ONE VOCABULARY
 --
--- A field can come from a hazard (fire, rain, a Sanctuary, the square a banner holds -- see
--- models/hazard.lua, where zones and auras are already one concept), from a STATUS a unit carries
--- (a burning body should stand in flame), or from a TELEGRAPH (the footprint an armed ability is
--- about to cover). All three resolve their pattern through the same TAG_PATTERN table, which is
--- what keeps the vocabulary honest: a Fire hazard, a Burning unit and a Fireball's blast preview
--- all reach `flame` off the same "fire" tag, with nothing authored anywhere to say so.
+-- The board used to paint by ELEMENT -- flame, rime, rain, spark -- a picture per tag. That read as
+-- clutter the moment two zones sat near each other, and it told the player the wrong thing: what a
+-- patch of ground is made of matters far less in a tactics game than whether it will help them or hurt
+-- them. So a field now reads by what it MEANS to the player, in four looks the shader draws with two
+-- shapes (chevrons and crosses -- see shaders/field.lua) that this file colours and points:
 --
--- STACKING is the reason this exists at all. The board's old picture drew one flat rect per hazard,
--- so rain drifting over a Sanctuary simply covered it. Here every field on a cell is collected,
--- ordered by LAYER (stain under the body under the mist under the glow), and its alpha normalised
--- against the others so three fields read as three rather than as one opaque smear -- alpha-over
--- composites as 1 - product(1 - a), so scaling the sum under a cap is all it takes.
+--   hostile     orange chevrons falling  -- ground that damages or debuffs one of your units
+--   buff        green chevrons rising     -- a zone that strengthens your side (red, rising, for theirs)
+--   heal        blue crosses              -- ground that mends your side (red for theirs)
 --
--- The order must be DETERMINISTIC, and combat.hazards is not a stable list: Hazard.tick and
--- Hazard.douse both use table.remove, which reshuffles every index after the one they drop. So the
--- sort never touches list position -- it reads layer, then pattern, then group, then an ordinal
--- stamped the first frame a field was seen. Two zones that expire in the wrong order cannot make an
+-- The category of a HAZARD comes from its disposition, whether it heals, and whose side owns it -- not
+-- from its tags, so nothing in data/hazards had to be told how it looks (Muster is the one exception:
+-- it reads friendly by an `fx.valence` override, because its disposition is neutral). The category of a
+-- carried STATUS comes from its debuff/restorative nature. A TELEGRAPH takes the category of the cast
+-- it previews. All three resolve through FieldFx.CATEGORY, which keeps them agreeing with each other.
+--
+-- STACKING is the reason the compositing survives. Every field on a cell is collected, ordered by
+-- LAYER, and its alpha normalised against the others so two fields read as two rather than as one
+-- opaque smear -- alpha-over composites as 1 - product(1 - a), so scaling the sum under a cap is all it
+-- takes. The order must be DETERMINISTIC, and combat.hazards is not a stable list (Hazard.tick and
+-- Hazard.douse both use table.remove): the sort reads layer, pattern, group, then an ordinal stamped
+-- the first frame a field was seen -- never list position -- so a zone expiring cannot make an
 -- unrelated tile flicker.
 --
--- Nothing here touches the GPU at require-time, and the shader is compiled LAZILY on the first draw
--- under a pcall: a driver that rejects the GLSL latches :drawFallback (the old tinted wash) forever
--- and the board still plays and still reads. Same tolerance models/sprite.lua gives missing art.
+-- Nothing here touches the GPU at require-time, and the shader compiles LAZILY on the first draw under
+-- a pcall: a driver that rejects the GLSL latches :drawFallback (a flat tinted wash) forever and the
+-- board still plays and still reads. Same tolerance models/sprite.lua gives missing art.
 -- ---------------------------------------------------------------------------
 
 local FieldShader = require("shaders.field")
-local Motif = require("ui.motif")
+local Hazard = require("models.hazard")
 
 local FieldFx = {}
 FieldFx.__index = FieldFx
 
--- Total alpha one tile's fields may add up to. Below the cap nothing is scaled at all, so a lone
--- field looks exactly as its style declares; above it every field on the cell is scaled by the same
--- factor, which preserves their RATIO -- the loud one stays the loud one.
+-- Whose eyes the board is drawn for. The player is always the party, so "mine" (blue/green) vs
+-- "theirs" (red) is measured against this. Kept as a field rather than a bare literal so a hotseat or
+-- spectator view could one day point it elsewhere.
+FieldFx.VIEWER = "party"
+
+-- Total alpha one tile's fields may add up to. Below the cap nothing is scaled at all, so a lone field
+-- looks exactly as its style declares; above it every field on the cell is scaled by the same factor,
+-- which preserves their RATIO -- the loud one stays the loud one.
 FieldFx.CAP = 0.88
 FieldFx.RAMP = 0.35        -- seconds a newly placed field takes to bloom in
 FieldFx.FADE_TICKS = 5     -- remaining ticks over which a field thins out as it runs down
 FieldFx.QUIET = 0.55       -- ground fields dim to this while an ability is armed, so the telegraph wins
 
--- Bottom-to-top compositing order. A stain is IN the ground, a field sits ON it, a mist hangs above
--- it and a glow is light thrown over all three -- which is also the order they have to draw in for
--- any two of them to read as two.
-local LAYER_ORDER = { stain = 1, field = 2, mist = 3, glow = 4 }
-
--- Per-pattern presentation: which layer it belongs to, how it blends, its default tint, and its base
--- density (the alpha a single instance contributes before normalisation). A blueprint's own `fx`
--- block overrides the tint and scales the density; the layer and blend are the pattern's own, so a
--- def cannot author itself out of the compositing order.
+-- Per-shape presentation: which compositing layer it belongs to, how it blends, and its base density
+-- (the alpha a single instance contributes before normalisation). The colour is NOT here -- it is the
+-- category's, sent per entry -- so one shape serves every colour it is asked to wear.
 local STYLE = {
-    flame  = { layer = "field", blend = "alpha", color = { 1.00, 0.45, 0.13 }, alpha = 0.62 },
-    smoke  = { layer = "mist",  blend = "alpha", color = { 0.42, 0.56, 0.28 }, alpha = 0.72 },
-    rime   = { layer = "field", blend = "alpha", color = { 0.68, 0.90, 1.00 }, alpha = 0.62 },
-    rain   = { layer = "mist",  blend = "alpha", color = { 0.45, 0.66, 0.92 }, alpha = 0.58 },
-    spark  = { layer = "glow",  blend = "add",   color = { 0.62, 0.76, 1.00 }, alpha = 0.62 },
-    mire   = { layer = "stain", blend = "alpha", color = { 0.34, 0.26, 0.12 }, alpha = 0.72 },
-    rune   = { layer = "stain", blend = "alpha", color = { 0.66, 0.48, 0.96 }, alpha = 0.55 },
-    halo   = { layer = "glow",  blend = "add",   color = { 1.00, 0.90, 0.60 }, alpha = 0.44 },
-    banner = { layer = "glow",  blend = "add",   color = { 0.98, 0.72, 0.30 }, alpha = 0.46 },
-    ward   = { layer = "field", blend = "alpha", color = { 0.55, 0.78, 0.95 }, alpha = 0.50 },
+    chevron = { layer = "field", blend = "alpha", alpha = 0.56 },
+    cross   = { layer = "field", blend = "alpha", alpha = 0.64 },
 }
 FieldFx.STYLE = STYLE
 
--- Motif -> pattern: which GROUND each element leaves. Ten pictures for fourteen motifs, because two
--- pairs genuinely share one: holy and light both pool as a halo, a banner and the morale it raises are
--- one square of cloth. The motifs with no entry (slash, pierce, impact, wind, acid) leave no ground at
--- all -- a sword stroke is a thing that happens, not a thing that stays -- and Motif.tagTable drops
--- them rather than making this file invent a field for them.
-local MOTIF_PATTERN = {
-    fire = "flame",
-    poison = "smoke", dark = "smoke",
-    ice = "rime",
-    water = "rain",
-    lightning = "spark",
-    earth = "mire",
-    arcane = "rune", control = "rune",
-    holy = "halo", light = "halo",
-    banner = "banner", morale = "banner",
-    structure = "ward",
+-- Category -> the look it draws: which shape, in what colour, pointed which way (uDir: +1 rising for a
+-- boon, -1 falling for a threat, 0 for the directionless cross). THE resolution table, shared by
+-- hazards, statuses and telegraphs -- one place that decides what "hostile" looks like, so a hostile
+-- hazard, a burning body and an attack's telegraph cannot come to different conclusions.
+local CATEGORY = {
+    hostile    = { shape = "chevron", color = { 1.00, 0.46, 0.14 }, dir = -1 }, -- orange, falling
+    buff_ally  = { shape = "chevron", color = { 0.36, 0.86, 0.46 }, dir =  1 }, -- green, rising
+    buff_enemy = { shape = "chevron", color = { 0.92, 0.26, 0.26 }, dir =  1 }, -- red, rising
+    heal_ally  = { shape = "cross",   color = { 0.38, 0.64, 0.96 }, dir =  0 }, -- blue crosses
+    heal_enemy = { shape = "cross",   color = { 0.92, 0.26, 0.26 }, dir =  0 }, -- red crosses
 }
-FieldFx.MOTIF_PATTERN = MOTIF_PATTERN
+FieldFx.CATEGORY = CATEGORY
 
--- Tag -> pattern. THE resolution rule, shared by hazards, statuses and telegraphs alike -- and now
--- DERIVED from the one motif vocabulary (ui/motif.lua) that the impact bursts and sprite modes read
--- too, so a Fireball's ground and a Fireball's blast cannot come to different conclusions about what
--- fire is. Read in the order a def lists its tags, so a hazard tagged { "water", "conductable" } takes
--- `rain` and one tagged { "lightning", "conductable" } takes `spark` -- the descriptive tag leads, the
--- mechanical one trails, and neither def had to say a word about how it looks.
-local TAG_PATTERN = Motif.tagTable(MOTIF_PATTERN)
-FieldFx.TAG_PATTERN = TAG_PATTERN
-
--- Last resort for a zone whose tags say nothing this table knows: fall back on what the enemy AI
--- already reads off it. Never reached by any shipped hazard (tests/field_fx_spec.lua asserts all 24
--- resolve by tag), but a new blueprint with an unfamiliar tag gets a picture rather than nothing.
-local DISPOSITION_PATTERN = { hostile = "smoke", friendly = "halo", neutral = "smoke" }
+-- Bottom-to-top compositing order. Everything is one layer today (both shapes paint ON the ground),
+-- but the machinery is kept so a shape authored later can slot under or over the rest without a rewrite.
+local LAYER_ORDER = { stain = 1, field = 2, mist = 3, glow = 4 }
 
 -- ---------------------------------------------------------------------------
--- Pure decisions (no love.graphics -- tests/field_fx_spec.lua drives these directly)
+-- Category resolution (pure -- no love.graphics -- tests/field_fx_spec.lua drives these directly)
 -- ---------------------------------------------------------------------------
 
--- The pattern name for a thing carrying `tags`, or nil if nothing resolves. An `explicit` name (a
--- def's `fx.pattern`) wins outright, which is how a def takes a family its tags don't imply --
--- Halting Ground is tagged "control" and wants the rune circle, Darkness is tagged "dark" and wants
--- smoke in a colour no other smoke uses.
-function FieldFx.patternFor(tags, explicit)
-    if explicit and STYLE[explicit] then return explicit end
-    for _, t in ipairs(tags or {}) do
-        local p = TAG_PATTERN[t]
-        if p then return p end
+-- Does standing in this hazard mend anybody? Memoised by def (the registry hands out stable
+-- singletons), because the honest answer is a dry-run: Hazard.preview fires the zone's onEnter against
+-- an allied stand-in and reports the heal and the statuses it grants, and a zone heals if it heals
+-- directly or grants a status marked `restorative` (Regeneration). Derived rather than declared, so a
+-- Sanctuary and a Renewal Banner are known to be heals without either file saying "I am blue".
+local healCache = setmetatable({}, { __mode = "k" })
+local function hazardHeals(id, def)
+    local cached = healCache[def]
+    if cached ~= nil then return cached end
+    local result = false
+    if id then
+        local pv = Hazard.preview(id)
+        if pv then
+            if (pv.heal or 0) > 0 then result = true end
+            for _, s in ipairs(pv.statuses or {}) do
+                if s.def and s.def.restorative then result = true break end
+            end
+        end
     end
-    return nil
+    healCache[def] = result
+    return result
 end
 
--- The pattern for a HAZARD blueprint: its tags, then its disposition as a backstop.
-function FieldFx.hazardPattern(def)
-    def = def or {}
-    return FieldFx.patternFor(def.tags, def.fx and def.fx.pattern)
-        or DISPOSITION_PATTERN[def.disposition]
-        or "smoke"
+-- The category a HAZARD reads as, from the party's point of view. A friendly zone is a heal or a buff,
+-- coloured for whichever side owns it; everything else (hostile, and the neutral zones folded in with
+-- it) is a threat on the ground. `fx.valence` lets a def override the disposition its AI uses -- Muster
+-- is neutral to the planner but reads friendly to the eye.
+function FieldFx.hazardCategory(hazard)
+    local def = hazard.def or {}
+    local valence = (def.fx and def.fx.valence) or def.disposition
+    if valence == "friendly" then
+        local mine = Hazard.allied(hazard, FieldFx.VIEWER)
+        if hazardHeals(hazard.id, def) then
+            return mine and "heal_ally" or "heal_enemy"
+        end
+        return mine and "buff_ally" or "buff_enemy"
+    end
+    return "hostile"
 end
+
+-- The category a carried STATUS reads as, under a body on `unitSide`. A restorative condition mends (a
+-- heal, coloured for whose body it is on), a `debuff` harms (a threat), and anything else is a boon.
+function FieldFx.statusCategory(def, unitSide)
+    local mine = (unitSide == FieldFx.VIEWER)
+    if def.restorative then return mine and "heal_ally" or "heal_enemy" end
+    if def.debuff then return "hostile" end
+    return mine and "buff_ally" or "buff_enemy"
+end
+
+-- The category a TELEGRAPH reads as: an armed cast the player is steering. A support cast previews as a
+-- buff (its own side), everything else as a threat. `heals` upgrades a support preview to a heal.
+function FieldFx.telegraphCategory(support, heals)
+    if support then return heals and "heal_ally" or "buff_ally" end
+    return "hostile"
+end
+
+-- ---------------------------------------------------------------------------
+-- Stacking + edges (pure)
+-- ---------------------------------------------------------------------------
 
 local function layerRank(entry)
     local style = STYLE[entry.pattern]
     return (style and LAYER_ORDER[style.layer]) or 9
 end
 
--- Order one tile's fields bottom-up and normalise their alphas under the cap. Returns a NEW list
--- (the entries themselves are shared and their `alpha` is rewritten in place -- they are rebuilt
--- every frame, so there is nothing to preserve).
---
--- Sorted on layer, then pattern, then group, then the ordinal stamped when the field was first seen
--- -- four stable properties and not one list index, which is what makes the picture immune to
--- combat.hazards being reshuffled by a table.remove somewhere else entirely.
+-- Order one tile's fields bottom-up and normalise their alphas under the cap. Returns a NEW list (the
+-- entries themselves are shared and their `alpha` is rewritten in place -- they are rebuilt every
+-- frame, so there is nothing to preserve). Sorted on layer, then pattern, then group, then the ordinal
+-- stamped when the field was first seen -- four stable properties and not one list index, which is what
+-- makes the picture immune to combat.hazards being reshuffled by a table.remove somewhere else.
 function FieldFx.stack(entries)
     local out = {}
     for i, e in ipairs(entries) do out[i] = e end
@@ -161,10 +177,10 @@ function FieldFx.stack(entries)
     return out
 end
 
--- Which of (x, y)'s four sides are the FIELD's boundary: 1 where the neighbour does not carry this
--- same field, 0 where it does. `present` is a set keyed "x,y" holding every cell of one group.
--- Feathering only the 1s is what turns a 3x3 footprint into one patch of ground instead of nine
--- separately-outlined squares.
+-- Which of (x, y)'s four sides are the FIELD's boundary: 1 where the neighbour does not carry this same
+-- field, 0 where it does. `present` is a set keyed "x,y" holding every cell of one group. Feathering
+-- only the 1s is what turns a 3x3 footprint into one patch of ground instead of nine separately-
+-- outlined squares.
 function FieldFx.edgeMask(present, x, y)
     present = present or {}
     local function boundary(nx, ny) return present[nx .. "," .. ny] and 0 or 1 end
@@ -231,8 +247,8 @@ end
 -- Collection
 -- ---------------------------------------------------------------------------
 
--- Build this frame's field entries from the overlays, plus the per-group presence sets the edge
--- masks are read from. Returns entries, presence.
+-- Build this frame's field entries from the overlays, plus the per-group presence sets the edge masks
+-- are read from. Returns entries, presence.
 function FieldFx:collect(overlays)
     local entries, presence = {}, {}
 
@@ -242,59 +258,57 @@ function FieldFx:collect(overlays)
         set[x .. "," .. y] = true
     end
 
-    -- Hazards: every zone and aura on the board, always visible to both sides (states/battle.lua
-    -- hands over the whole live list -- there is no per-side filter like traps have).
+    -- Hazards: every zone and aura on the board, always visible to both sides (states/battle.lua hands
+    -- over the whole live list -- there is no per-side filter like traps have).
     for _, h in ipairs(overlays.hazards or {}) do
         if h.alive then
-            local def = h.def or {}
-            local pat = FieldFx.hazardPattern(def)
-            local style = STYLE[pat]
-            local fx = def.fx or {}
+            local cat = FieldFx.hazardCategory(h)
+            local look = CATEGORY[cat]
+            local style = STYLE[look.shape]
             local birth, ord = self:track(h)
-            -- Blooms in over RAMP, thins out over its last FADE_TICKS -- so a fire about to gutter
-            -- out looks like one, without opening a tooltip. An owned zone quotes a huge duration
-            -- and really answers to its owner's life, so it simply never reaches the fade.
+            -- Blooms in over RAMP, thins out over its last FADE_TICKS -- so a zone about to lapse looks
+            -- like one, without opening a tooltip. An owned zone quotes a huge duration and really
+            -- answers to its owner's life, so it simply never reaches the fade.
             local ramp = math.min(1, (self.time - birth) / FieldFx.RAMP)
             local decay = math.min(1, math.max(0, (h.remaining or 99) / FieldFx.FADE_TICKS))
             entries[#entries + 1] = {
-                x = h.x, y = h.y, pattern = pat, group = h.id, ord = ord,
-                color = fx.color or style.color,
-                alpha = style.alpha * (fx.density or 1),
-                intensity = fx.intensity or 1,
-                fade = ramp * decay,
+                x = h.x, y = h.y, pattern = look.shape, dir = look.dir,
+                group = h.id, ord = ord, color = look.color,
+                alpha = style.alpha, intensity = 1, fade = ramp * decay,
             }
             mark(h.id, h.x, h.y)
         end
     end
 
-    -- Statuses a unit carries: only the handful whose def declares an `fx` block. Grouped by status
-    -- id, so two adjacent burning bodies share one sheet of flame.
+    -- Statuses a unit carries: only the handful whose def declares an `fx` block (battle.lua gates
+    -- them). Grouped by status id, so two adjacent burning bodies share one run of chevrons.
     --
     -- Two rules keep a unit from disappearing under its own conditions:
     --
     --  1. THE GROUND SPEAKS FIRST. A field is skipped where a hazard on that same tile already draws
-    --     the same pattern. This matters more than it looks: a ZONE-BOUND status (Regeneration,
-    --     Mired) exists only while a zone granting it sits under its bearer -- so its field would
-    --     always be a second copy of the Sanctuary's own halo, on the Sanctuary's own tile. The
-    --     mechanic that makes those statuses zone-bound is the same one that makes their field
-    --     redundant, and one check covers both.
+    --     this same category. This matters more than it looks: a ZONE-BOUND status (Regeneration,
+    --     Mired) exists only while a zone granting it sits under its bearer -- so its field would always
+    --     be a second copy of the zone's own look, on the zone's own tile.
     --
-    --  2. AT MOST TWO PER BODY. Beyond that a unit is standing in a stack of its own afflictions and
-    --     the badges (ui/status_badge.lua) are the complete read anyway. Taken in first-seen order --
-    --     the ordinal, not list position, so it does not shuffle as statuses come and go.
+    --  2. AT MOST TWO PER BODY. Beyond that a unit is standing in a stack of its own afflictions and the
+    --     badges (ui/status_badge.lua) are the complete read anyway. Taken in first-seen order -- the
+    --     ordinal, not list position, so it does not shuffle as statuses come and go.
     local ground = {}
-    for _, e in ipairs(entries) do ground[e.x .. "," .. e.y .. ":" .. e.pattern] = true end
+    for _, e in ipairs(entries) do
+        ground[e.x .. "," .. e.y .. ":" .. e.pattern .. ":" .. (e.dir or 0)] = true
+    end
 
     local carried, perUnit = {}, {}
     for _, f in ipairs(overlays.unitFields or {}) do
         local def = (f.status and f.status.def) or {}
-        local fx = def.fx
-        local pat = fx and FieldFx.patternFor(nil, fx.pattern)
-        local key = pat and (f.x .. "," .. f.y .. ":" .. pat)
-        if pat and not ground[key] then
-            ground[key] = true -- and no second status of this pattern on this tile either
+        local unit = f.unit or {}
+        local cat = FieldFx.statusCategory(def, unit.side)
+        local look = CATEGORY[cat]
+        local key = f.x .. "," .. f.y .. ":" .. look.shape .. ":" .. look.dir
+        if not ground[key] then
+            ground[key] = true -- and no second status of this category on this tile either
             local _, ord = self:track(f.status)
-            carried[#carried + 1] = { f = f, pat = pat, fx = fx, def = def, ord = ord }
+            carried[#carried + 1] = { f = f, look = look, ord = ord }
         end
     end
     table.sort(carried, function(a, b) return a.ord < b.ord end)
@@ -302,23 +316,21 @@ function FieldFx:collect(overlays)
         local n = (perUnit[c.f.unit] or 0)
         if n < 2 then
             perUnit[c.f.unit] = n + 1
-            local f, pat, fx, def, ord = c.f, c.pat, c.fx, c.def, c.ord
-            local style = STYLE[pat]
+            local f, look, ord = c.f, c.look, c.ord
+            local style = STYLE[look.shape]
             local birth = self:track(f.status)
             local ramp = math.min(1, (self.time - birth) / FieldFx.RAMP)
-            -- A zone-bound status (`source` set) never ages -- it ends when the ground under it does
-            -- -- so it must not be read as perpetually about to expire.
+            -- A zone-bound status (`source` set) never ages -- it ends when the ground under it does --
+            -- so it must not be read as perpetually about to expire.
             local decay = f.status.source and 1
                 or math.min(1, math.max(0, (f.status.remaining or 99) / FieldFx.FADE_TICKS))
             local group = "status:" .. tostring(f.status.id)
             entries[#entries + 1] = {
-                x = f.x, y = f.y, pattern = pat, group = group, ord = ord,
-                color = fx.color or def.color or style.color,
-                -- Quieter than a zone by default: this is a condition on a body, and the body has to
-                -- stay the thing you look at.
-                alpha = style.alpha * (fx.density or 0.62),
-                intensity = fx.intensity or 0.9,
-                fade = ramp * decay,
+                x = f.x, y = f.y, pattern = look.shape, dir = look.dir,
+                group = group, ord = ord, color = look.color,
+                -- Quieter than a zone: this is a condition on a body, and the body has to stay the
+                -- thing you look at.
+                alpha = style.alpha * 0.72, intensity = 0.9, fade = ramp * decay,
             }
             mark(group, f.x, f.y)
         end
@@ -331,21 +343,25 @@ end
 -- Draw
 -- ---------------------------------------------------------------------------
 
--- One shader bind for the whole board; uPattern and the blend mode change only when the sorted run
--- moves on to the next family, so an 8x8 board costs a handful of state changes rather than one per
--- tile.
+-- One shader bind for the whole board; uPattern, uDir and the blend mode change only when the sorted
+-- run moves on to the next look, so a board costs a handful of state changes rather than one per tile.
 function FieldFx:paint(map, ordered, presence, quiet)
     local sh = self.shaderObj
     local size = map.size
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setShader(sh)
     sh:send("uTime", self.time)
-    local curPattern, curBlend
+    local curPattern, curBlend, curDir
     for _, e in ipairs(ordered) do
         local style = STYLE[e.pattern]
         if e.pattern ~= curPattern then
             curPattern = e.pattern
             sh:send("uPattern", FieldShader.PATTERNS[e.pattern])
+        end
+        local dir = e.dir or 0
+        if dir ~= curDir then
+            curDir = dir
+            sh:send("uDir", dir)
         end
         if style.blend ~= curBlend then
             curBlend = style.blend
@@ -365,8 +381,8 @@ function FieldFx:paint(map, ordered, presence, quiet)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
--- The ground fields: hazards and carried statuses, drawn in ui/battle_map.lua's old drawHazards slot
--- -- under the move/range overlays, the units and the HP bars, which is where scenery belongs.
+-- The ground fields: hazards and carried statuses, drawn in ui/battle_map.lua's old drawHazards slot --
+-- under the move/range overlays, the units and the HP bars, which is where scenery belongs.
 function FieldFx:draw(map, overlays)
     overlays = overlays or {}
     if not self:shader() then return self:drawFallback(map, overlays) end
@@ -374,9 +390,9 @@ function FieldFx:draw(map, overlays)
     local entries, presence = self:collect(overlays)
     if #entries == 0 then return end
 
-    -- Normalise per TILE (that is where the compositing happens), then flatten and re-sort so the
-    -- whole board draws one family at a time. Sorting globally cannot disturb the per-tile order:
-    -- the leading key is the layer, which is shared by every tile.
+    -- Normalise per TILE (that is where the compositing happens), then flatten and re-sort so the whole
+    -- board draws one look at a time. Sorting globally cannot disturb the per-tile order: the leading
+    -- key is the layer, which is shared by every tile.
     local byCell = {}
     for _, e in ipairs(entries) do
         local k = e.x .. "," .. e.y
@@ -392,6 +408,7 @@ function FieldFx:draw(map, overlays)
         local ra, rb = layerRank(a), layerRank(b)
         if ra ~= rb then return ra < rb end
         if a.pattern ~= b.pattern then return a.pattern < b.pattern end
+        if (a.dir or 0) ~= (b.dir or 0) then return (a.dir or 0) < (b.dir or 0) end
         if a.group ~= b.group then return tostring(a.group) < tostring(b.group) end
         return (a.ord or 0) < (b.ord or 0)
     end)
@@ -403,28 +420,29 @@ end
 
 -- A TELEGRAPH: the footprint an armed or channelling ability is about to cover, drawn OVER the
 -- interaction overlays rather than under them (ui/battle_map.lua's drawOverlays calls this) and
--- deliberately outside the ground fields' alpha budget -- the thing about to happen must not be
--- dimmed by the ground it is about to happen on.
+-- deliberately outside the ground fields' alpha budget -- the thing about to happen must not be dimmed
+-- by the ground it is about to happen on.
 --
--- `opts` = { pattern, color, alpha, intensity, group }. Taking the pattern from the ARMED ITEM's
--- tags is the whole point: a Fireball previews the flame it is about to leave, in the same picture
--- the resulting hazard will draw, so the promise and the result are visibly the same thing.
+-- `opts` = { category, color, alpha, intensity, group }. Taking the CATEGORY from the armed cast is the
+-- whole point: a heal previews as the blue crosses it is about to lay, an attack as the orange chevrons
+-- of the threat it leaves -- the promise and the result are visibly the same thing. `color` overrides
+-- the category's own (the enemy-reach preview borrows the danger red).
 function FieldFx:drawTelegraph(map, cells, opts)
     if not cells or #cells == 0 then return end
     opts = opts or {}
-    local pat = opts.pattern
-    if not (pat and STYLE[pat]) then return end
+    local look = CATEGORY[opts.category or "hostile"]
+    if not (look and STYLE[look.shape]) then return end
     if not self:shader() then return end
 
-    local style = STYLE[pat]
-    local group = opts.group or ("telegraph:" .. pat)
+    local style = STYLE[look.shape]
+    local group = opts.group or ("telegraph:" .. (opts.category or "hostile"))
     local presence = { [group] = {} }
     local ordered = {}
     for _, c in ipairs(cells) do
         presence[group][c.x .. "," .. c.y] = true
         ordered[#ordered + 1] = {
-            x = c.x, y = c.y, pattern = pat, group = group, ord = 0,
-            color = opts.color or style.color,
+            x = c.x, y = c.y, pattern = look.shape, dir = look.dir, group = group, ord = 0,
+            color = opts.color or look.color,
             alpha = opts.alpha or (style.alpha * 0.55),
             intensity = opts.intensity or 0.85,
             fade = 1,
@@ -437,22 +455,23 @@ end
 -- Fallback
 -- ---------------------------------------------------------------------------
 
--- What the board drew before the shader existed, kept for the machine whose driver refuses the
--- GLSL: a translucent tile wash plus a border, tinted by disposition (hostile orange / friendly
--- green / neutral blue). Loses the identity, the stacking and the animation, and still says
--- correctly where the ground is dangerous.
+-- What the board draws for the machine whose driver refuses the GLSL: a translucent tile wash plus a
+-- border, tinted by category (hostile orange / friendly green / heal blue). Loses the shapes, the
+-- stacking and the animation, and still says correctly whether the ground helps or hurts.
 local FALLBACK = {
-    hostile  = { 0.95, 0.45, 0.25 },
-    friendly = { 0.40, 0.85, 0.50 },
+    hostile    = { 0.95, 0.46, 0.20 },
+    buff_ally  = { 0.36, 0.86, 0.46 },
+    buff_enemy = { 0.92, 0.26, 0.26 },
+    heal_ally  = { 0.38, 0.64, 0.96 },
+    heal_enemy = { 0.92, 0.26, 0.26 },
 }
-local FALLBACK_NEUTRAL = { 0.55, 0.72, 0.95 }
 
 function FieldFx:drawFallback(map, overlays)
     local s = map.size
     for _, h in ipairs(overlays.hazards or {}) do
         if h.alive then
             local wx, wy = map:cellToPixel(h.x, h.y)
-            local c = FALLBACK[h.def and h.def.disposition] or FALLBACK_NEUTRAL
+            local c = FALLBACK[FieldFx.hazardCategory(h)] or FALLBACK.hostile
             love.graphics.setColor(c[1], c[2], c[3], 0.30)
             love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
             love.graphics.setColor(c[1], c[2], c[3], 0.80)
