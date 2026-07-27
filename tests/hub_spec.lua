@@ -64,7 +64,7 @@ return {
             assert(before.locked, "no amount of prestige should open a quest-gated door")
 
             local after = findIn(
-                Building.list({ prestige = 1, completedQuests = { arena_debut = true } }),
+                Building.list({ prestige = 1, completedQuests = { slot_01_arena_debut = true } }),
                 "dueling_grounds")
             assert(not after.locked, "finishing the debut should open it, at any prestige")
 
@@ -78,7 +78,7 @@ return {
         name = "quest registry discovers def files by filename",
         fn = function()
             assert(Quest.defs.bandit_ambush, "bandit_ambush missing")
-            assert(Quest.defs.warlord_keep, "warlord_keep missing")
+            assert(Quest.defs.slot_03_warlord_keep, "warlord_keep missing")
         end,
     },
     {
@@ -94,7 +94,7 @@ return {
             -- chain instead. `vault_heist` opens the Undercroft and has no prerequisite of its own.
             local hasHard = false
             for _, q in ipairs(Quest.available(playerAt(3))) do
-                if q.id == "vault_heist" then hasHard = true end
+                if q.id == "slot_01_vault_heist" then hasHard = true end
             end
             assert(hasHard, "vault_heist should be available at prestige 3")
         end,
@@ -106,7 +106,7 @@ return {
             Quest.available(playerAt(3))
             assert(Building.defs.quest_board.locked == nil, "building blueprint mutated")
             assert(Building.defs.quest_board.name == "Quest Board", "building name changed")
-            assert(Quest.defs.warlord_keep.id == nil, "quest blueprint mutated")
+            assert(Quest.defs.slot_03_warlord_keep.id == nil, "quest blueprint mutated")
         end,
     },
 }

@@ -32,13 +32,13 @@ return {
     -- The last scene in the game, played over the frozen final frame before the credits roll.
     outro = "gate_below_ending",
     requiredQuests = {
-        "general_wrath",
-        "general_lust",
-        "general_gluttony",
-        "general_sloth",
-        "general_pride",
-        "general_greed",
-        "general_envy",
+        "slot_10_general_wrath",
+        "slot_10_general_lust",
+        "slot_10_general_gluttony",
+        "slot_10_general_sloth",
+        "slot_10_general_pride",
+        "slot_10_general_greed",
+        "slot_10_general_envy",
     },
     map = {
         biome = "underworld",

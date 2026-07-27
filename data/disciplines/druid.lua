@@ -10,5 +10,5 @@ return {
     name    = "Druid",
     classes = { "hunter" },
     exemplar = "character_druid", -- NEW, pending
-    requiredQuests = { "the_manufactured_cull" },
+    requiredQuests = { "slot_04_the_manufactured_cull" },
 }

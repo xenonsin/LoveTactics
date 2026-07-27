@@ -333,15 +333,15 @@ return {
                 return false
             end
 
-            assert(boardHas("arena_debut"), "the debut is the prestige-1 board")
-            assert(not boardHas("the_padded_card"), "slot 2 waits on slot 1")
+            assert(boardHas("slot_01_arena_debut"), "the debut is the prestige-1 board")
+            assert(not boardHas("slot_02_the_padded_card"), "slot 2 waits on slot 1")
 
-            p.completedQuests.arena_debut = true
-            assert(not boardHas("arena_debut"), "a completed quest leaves the board")
+            p.completedQuests.slot_01_arena_debut = true
+            assert(not boardHas("slot_01_arena_debut"), "a completed quest leaves the board")
             -- ...and the slot behind it arrives, which is the whole point of the chain: the debut is
             -- what opens the Colosseum's second card AND the Cathedral's first (docs/story.md).
-            assert(boardHas("the_padded_card"), "clearing slot 1 opens slot 2")
-            assert(boardHas("haunted_mill"), "the debut opens the Cathedral's line")
+            assert(boardHas("slot_02_the_padded_card"), "clearing slot 1 opens slot 2")
+            assert(boardHas("slot_01_haunted_mill"), "the debut opens the Cathedral's line")
         end,
     },
     {
@@ -350,9 +350,9 @@ return {
             local p = playerAt(5) -- prestige is not the gate here; reputation is
             -- The Cathedral's line runs in order, so put slots 1-2 behind it: what is left holding
             -- slot 3 back is then the reputation rank alone, which is what this case is about.
-            p.completedQuests.arena_debut = true
-            p.completedQuests.haunted_mill = true
-            p.completedQuests.fallen_confessor = true
+            p.completedQuests.slot_01_arena_debut = true
+            p.completedQuests.slot_01_haunted_mill = true
+            p.completedQuests.slot_02_fallen_confessor = true
 
             local function boardHas(id)
                 for _, q in ipairs(Quest.available(p)) do
@@ -361,10 +361,10 @@ return {
                 return false
             end
 
-            assert(not boardHas("rite_of_ashes"), "rite_of_ashes needs Cathedral rank 2")
+            assert(not boardHas("slot_03_rite_of_ashes"), "rite_of_ashes needs Cathedral rank 2")
 
             Player.addReputation(p, "cathedral", Vendor.defs.cathedral.ranks[2])
-            assert(boardHas("rite_of_ashes"), "rite_of_ashes should appear at Cathedral rank 2")
+            assert(boardHas("slot_03_rite_of_ashes"), "rite_of_ashes should appear at Cathedral rank 2")
         end,
     },
     {
@@ -398,7 +398,7 @@ return {
 
             local quest
             for _, q in ipairs(Quest.available(p)) do
-                if q.id == "arena_debut" then quest = q end
+                if q.id == "slot_01_arena_debut" then quest = q end
             end
             assert(quest, "arena_debut should be available at prestige 1")
 
@@ -407,7 +407,7 @@ return {
             assert(p.gold == quest.rewardGold, "gold should be granted")
             assert(p.prestige == 1 + quest.rewardPrestige, "prestige should be granted")
             assert(Player.reputation(p, "colosseum") == quest.rewardRep, "sponsor reputation should be granted")
-            assert(Player.hasCompleted(p, "arena_debut"), "the quest should be marked completed")
+            assert(Player.hasCompleted(p, "slot_01_arena_debut"), "the quest should be marked completed")
 
             -- A second payout is refused: the objective tile could otherwise be re-cleared.
             local gold, prestige = p.gold, p.prestige
@@ -423,12 +423,12 @@ return {
         name = "Quest.available carries requiredQuests and rewardItems through the field copy",
         fn = function()
             local p = playerAt(10)
-            p.completedQuests.general_wrath = true
+            p.completedQuests.slot_10_general_wrath = true
 
             local gate, general
             for _, q in ipairs(Quest.available(p)) do
                 if q.id == "the_gate_below" then gate = q end
-                if q.id == "general_wrath" then general = q end
+                if q.id == "slot_10_general_wrath" then general = q end
             end
 
             assert(gate, "the Gate should be on the board once one general is dead")
@@ -436,7 +436,7 @@ return {
                 "the Gate must carry its seven prerequisites")
 
             -- general_wrath is completed above, so read rewardItems off the blueprint's own copy.
-            assert(Quest.defs.general_wrath.rewardItems[1] == "armor_mail_of_the_unappeased",
+            assert(Quest.defs.slot_10_general_wrath.rewardItems[1] == "armor_mail_of_the_unappeased",
                 "Ira should drop her mail")
             assert(general == nil, "and a completed, non-repeatable general leaves the board")
         end,
@@ -455,13 +455,13 @@ return {
 
             assert(gateEntry() == nil, "with no generals dead, the Gate is not even rumoured")
 
-            p.completedQuests.general_wrath = true
+            p.completedQuests.slot_10_general_wrath = true
             local gate = gateEntry()
             assert(gate, "one key reveals it")
             assert(gate.locked, "but it cannot be entered")
             assert(gate.keysHeld == 1 and gate.keysNeeded == 7, "and it counts what is missing")
 
-            p.completedQuests.general_greed = true
+            p.completedQuests.slot_10_general_greed = true
             gate = gateEntry()
             assert(gate.keysHeld == 2 and gate.locked, "two of seven is still short")
 
@@ -477,7 +477,7 @@ return {
         name = "a locked Gate recites only the hints of the generals already killed",
         fn = function()
             local p = playerAt(10)
-            p.completedQuests.general_wrath = true
+            p.completedQuests.slot_10_general_wrath = true
 
             local gate
             for _, q in ipairs(Quest.available(p)) do
@@ -485,7 +485,7 @@ return {
             end
 
             assert(gate.hints and #gate.hints == 1, "one dead general gives up one fragment")
-            assert(gate.hints[1] == Quest.defs.general_wrath.gateHint,
+            assert(gate.hints[1] == Quest.defs.slot_10_general_wrath.gateHint,
                 "and it is that general's own fragment")
         end,
     },
@@ -493,7 +493,7 @@ return {
         name = "prestige and reputation stay HARD gates: a locked quest still needs the standing",
         fn = function()
             local p = playerAt(1) -- the Gate wants prestige 10
-            p.completedQuests.general_wrath = true
+            p.completedQuests.slot_10_general_wrath = true
 
             for _, q in ipairs(Quest.available(p)) do
                 assert(q.id ~= "the_gate_below",
@@ -509,14 +509,14 @@ return {
             -- A general is slot 10 of a line that runs in order, so the nine in front of it have to
             -- be done. Standing alone no longer puts Ira on the board -- the line does.
             for _, id in ipairs({
-                "arena_debut", "the_padded_card", "warlord_keep", "the_perennial_roster",
-                "the_intake", "blood_in_the_sand", "no_third_state", "naming_the_day",
-                "what_the_house_does",
+                "slot_01_arena_debut", "slot_02_the_padded_card", "slot_03_warlord_keep", "slot_04_the_perennial_roster",
+                "slot_05_the_intake", "slot_06_blood_in_the_sand", "slot_07_no_third_state", "slot_08_naming_the_day",
+                "slot_09_what_the_house_does",
             }) do p.completedQuests[id] = true end
 
             local quest
             for _, q in ipairs(Quest.available(p)) do
-                if q.id == "general_wrath" then quest = q end
+                if q.id == "slot_10_general_wrath" then quest = q end
             end
             assert(quest, "at Legend with the line behind her, Ira should be on the board")
 
@@ -605,7 +605,7 @@ return {
                 p.gold = 777
                 p.prestige = 4
                 Player.addReputation(p, "arcanum", 65)
-                p.completedQuests.arena_debut = true
+                p.completedQuests.slot_01_arena_debut = true
 
                 assert(Save.write(p), "save should write")
                 assert(Save.exists(), "the save file should exist")
@@ -615,7 +615,7 @@ return {
                 assert(loaded.gold == 777, "gold should survive")
                 assert(loaded.prestige == 4, "prestige should survive")
                 assert(Player.reputation(loaded, "arcanum") == 65, "reputation should survive")
-                assert(Player.hasCompleted(loaded, "arena_debut"), "completed quests should survive")
+                assert(Player.hasCompleted(loaded, "slot_01_arena_debut"), "completed quests should survive")
             end)
         end,
     },
@@ -728,7 +728,7 @@ return {
             local p = playerAt(1)
             local quest
             for _, q in ipairs(Quest.available(p)) do
-                if q.id == "arena_debut" then quest = q end
+                if q.id == "slot_01_arena_debut" then quest = q end
             end
             assert(quest and quest.rewardPrestige > 0, "arena_debut should grant prestige")
 

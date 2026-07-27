@@ -10,5 +10,5 @@ return {
     name    = "Sentinel",
     classes = { "knight" },
     exemplar = "character_grey_knight",
-    requiredQuests = { "greywatch" },
+    requiredQuests = { "slot_05_greywatch" },
 }

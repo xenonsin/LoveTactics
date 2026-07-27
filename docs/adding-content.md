@@ -64,7 +64,7 @@ return {
     requiredPrestige = 1,  -- appears once the player's prestige reaches this
     -- optional gates:
     requiredRep = { vendor = "cathedral", rank = 2 }, -- hidden until you have their trust
-    requiredQuests = { "general_wrath", ... },        -- ALL must be done; see below.
+    requiredQuests = { "slot_10_general_wrath", ... },        -- ALL must be done; see below.
     -- ONE entry is how a vendor line chains: every sin quest names the slot before it, so the line
     -- runs in authored order and prestige only gates the line's entry. A one-key gate hides the
     -- quest until it is met; a multi-key gate shows it locked (the Gate Below).
@@ -156,8 +156,8 @@ spec proves the rule above. The grammar:
 | --------------------------------- | --------------------------------------------- |
 | `{ has = "character_priest" }`              | the character is on the roster (recruited)     |
 | `{ notHas = "character_priest" }`           | …and its negation                              |
-| `{ done = "vault_heist" }`        | the quest is completed                         |
-| `{ notDone = "vault_heist" }`     | …and its negation                              |
+| `{ done = "slot_01_vault_heist" }`        | the quest is completed                         |
+| `{ notDone = "slot_01_vault_heist" }`     | …and its negation                              |
 | `{ prestige = 3 }`                | player prestige is **at least** 3              |
 | `{ all = { c1, c2 } }`            | every sub-condition holds                      |
 | `{ any = { c1, c2 } }`            | at least one holds                             |

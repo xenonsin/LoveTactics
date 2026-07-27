@@ -11,5 +11,5 @@ return {
     name    = "Elementalist",
     classes = { "mage" },
     exemplar = "character_mage",
-    requiredQuests = { "the_praised_working" },
+    requiredQuests = { "slot_03_the_praised_working" },
 }

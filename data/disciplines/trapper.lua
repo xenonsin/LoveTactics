@@ -7,5 +7,5 @@ return {
     name    = "Trapper",
     classes = { "hunter" },
     exemplar = "character_trapper", -- NEW, pending
-    requiredQuests = { "the_silent_wood" },
+    requiredQuests = { "slot_05_the_silent_wood" },
 }

@@ -10,5 +10,5 @@ return {
     name    = "Beastmaster",
     classes = { "hunter" },
     exemplar = "character_kaya",
-    requiredQuests = { "the_starving_dark" },
+    requiredQuests = { "slot_03_the_starving_dark" },
 }

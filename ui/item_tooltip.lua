@@ -327,6 +327,9 @@ local function buildBlocks(item, actor, innerW, out)
             if out.steal then
                 blocks[#blocks + 1] = { kind = "stat", label = "Steals", value = "One item" }
             end
+            if out.reveal then
+                blocks[#blocks + 1] = { kind = "stat", label = "Reveals", value = "Enemy kit", valueColor = SUMMON }
+            end
         end
 
         if ab.target then

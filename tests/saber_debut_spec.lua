@@ -1,4 +1,4 @@
--- The debut bout's tuning (data/quests/arena_debut.lua), and the two seams built for it.
+-- The debut bout's tuning (data/quests/colosseum/slot_01_arena_debut.lua), and the two seams built for it.
 --
 -- The complaint this answers: Saber telegraphed for four ticks, swung a two-tile line at ground the
 -- target had already left, and then spent six more recovering. Three things changed, and each of them
@@ -380,7 +380,7 @@ return {
         fn = function()
             -- The bell opens on the whole team -- the boss twin and two trappers -- rather than holding a
             -- body back for a summon. The composition names three, and the board must seat every one.
-            local comp = Quest.defs["arena_debut"].map.objective.composition()
+            local comp = Quest.defs["slot_01_arena_debut"].map.objective.composition()
             assert(#comp == 3, "three bodies open the bout, got " .. #comp)
             assert(comp[1] == "character_saber_bout", "Saber's twin leads the line")
             local trappers = 0
@@ -402,7 +402,7 @@ return {
         name = "the approach fields the netter before the boss -- the trapper undercard",
         fn = function()
             local Encounter = require("models.encounter")
-            local always = Quest.defs["arena_debut"].map.encounters.always
+            local always = Quest.defs["slot_01_arena_debut"].map.encounters.always
             local listed = false
             for _, e in ipairs(always) do if e.id == "encounter_arena_undercard" then listed = true end end
             assert(listed, "the approach lists the trapper undercard among its always-stops")
@@ -422,7 +422,7 @@ return {
             -- A rooted body can still drink (Root blocks the step, not the hand -- status_root sets
             -- blocksMove, not disablesActions), so a self-cleanse buys the move back. The scene must
             -- actually grant one; the fight is balanced on the player having it.
-            local always = Quest.defs["arena_debut"].map.encounters.always
+            local always = Quest.defs["slot_01_arena_debut"].map.encounters.always
             local convId
             for _, e in ipairs(always) do
                 if e.id == "encounter_event" and e.conversation == "arena_debut_kit" then convId = e.conversation end
@@ -454,13 +454,13 @@ return {
             -- The bout no longer rolls a random castle field: it names data/arenas/colosseum_sand.lua,
             -- and the authored funnel walls, hidden snares and soft-ground patches have to reach the
             -- built combat -- carried by Arena.build (models/arena.lua's traps/hazards seam).
-            assert(Quest.defs["arena_debut"].map.objective.layout == "colosseum_sand",
+            assert(Quest.defs["slot_01_arena_debut"].map.objective.layout == "colosseum_sand",
                 "the objective names the authored board")
 
             local built = Arena.build({}, {
                 layout = "colosseum_sand", biome = "castle",
                 party = { "character_avatar", "character_knight" },
-                composition = Quest.defs["arena_debut"].map.objective.composition,
+                composition = Quest.defs["slot_01_arena_debut"].map.objective.composition,
                 objective = { type = "assassinate", target = "character_saber_bout" },
                 seed = 1,
             })

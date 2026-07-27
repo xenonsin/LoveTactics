@@ -1,0 +1,41 @@
+-- Near the head of the Undercroft's ten (docs/story.md, "The Undercroft", slot 2). How Clem is recruited
+-- (character_clem.lua): the Bank keeps a deniable firm of fixers on retainer, and Clem was its finest
+-- blade until she broke and turned the craft around -- she now burns the Bank's writs and frees the
+-- ruined. The house marks its own retired edge, and hires you to bring her in.
+--
+-- `rewardCharacter` grants her on the win (Player.recruit refuses a duplicate). You are sent to collect
+-- her; the confront (the opening) has her over the debtors she is freeing, and the victory `outro`
+-- (clem_joins) is where her plea reveals the machine and she joins -- saying nothing of Aurea yet.
+--
+-- `boss` on her blueprint keeps the fight honest (no execute, no Charm); her defeat recruits rather than
+-- kills, exactly as the Cathedral keeps Amana (data/quests/cathedral/slot_02_fallen_confessor.lua) and the Colosseum keeps
+-- Saber (data/quests/colosseum/slot_01_arena_debut.lua). The reward IS the companion.
+--
+-- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
+-- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
+return {
+    name = "The Retired Blade",
+    description = "The Bank's own quiet hand has turned on it -- burning notes, freeing the ruined. The " ..
+        "house wants her collected. Bring her in.",
+    difficulty = "Normal",
+    sponsor = "undercroft",
+    rewardItems = { "weapon_nightjar" },
+    rewardGold = 90,
+    rewardRep = 30,
+    rewardPrestige = 1,
+    requiredQuests = { "slot_01_vault_heist" }, -- slot 2: the line runs in order
+    requiredPrestige = 3,
+    rewardCharacter = "character_clem",
+    outro = "clem_joins",
+    map = {
+        biome = "castle",
+        encounters = { min = 3, max = 5 },
+        objective = {
+            name = "The Jubilee",
+            composition = function() return { "character_clem" } end,
+            opening = "undercroft_clem_confront",
+            win = { type = "killAll" },
+        },
+        keyCount = 1,
+    },
+}

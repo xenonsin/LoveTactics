@@ -66,7 +66,7 @@ return {
     {
         name = "the debut quest's boss is the Saber twin, and the win ends when she falls",
         fn = function()
-            local def = Quest.defs["arena_debut"]
+            local def = Quest.defs["slot_01_arena_debut"]
             assert(def, "arena_debut exists")
             local list = def.map.objective.composition({ prestige = 1 })
             local hasBout = false

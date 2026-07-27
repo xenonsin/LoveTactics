@@ -10,5 +10,5 @@ return {
     name    = "Thief",
     classes = { "rogue" },
     exemplar = "character_thief", -- NEW, pending
-    requiredQuests = { "one_client" },
+    requiredQuests = { "slot_04_one_client" },
 }

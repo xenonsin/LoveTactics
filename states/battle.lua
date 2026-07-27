@@ -24,6 +24,7 @@ local CombatLog = require("ui.combat_log")
 local StatusTooltip = require("ui.status_tooltip")
 local ItemTooltip = require("ui.item_tooltip")
 local TileTooltip = require("ui.tile_tooltip")
+local InventoryPeek = require("ui.inventory_peek")
 local ActionPreview = require("ui.action_preview")
 local Character = require("models.character")
 local Item = require("models.item")
@@ -3098,6 +3099,11 @@ function battle.enter(self, opts)
         onWait = function() waitTurn() end, -- the long Wait button under the item grid
     })
     battle.panel.fx = battle.fx
+    -- The read-only kit card for a foe assayed by the Assayer's Eye (ui/inventory_peek.lua). `peekUnit`
+    -- is the foe currently in focus; see updatePeekFocus (kept open while the cursor is over the foe or
+    -- the card itself).
+    battle.peek = InventoryPeek.new()
+    battle.peekUnit = nil
     -- The log toggles into a thin, board-width strip in the bottom gutter, directly under the
     -- board (derived from the map so it stays aligned no matter the arena size).
     local m = battle.map
@@ -3385,13 +3391,53 @@ function battle.drawCoach()
     })
 end
 
+-- Decide which assayed foe (if any) the inventory-peek card should show this frame. The card stays
+-- open while the cursor rests on the foe OR on the card itself, so the player can travel from one to
+-- the other to hover its items; hovering some OTHER unit dismisses it, while hovering empty ground
+-- (or the card) leaves it be. A foe that has fallen drops focus.
+function battle.updatePeekFocus()
+    local mx, my = battle.mouseX, battle.mouseY
+    if battle.peekUnit and not battle.peekUnit.alive then battle.peekUnit = nil end
+    if not mx then return end
+    -- Over the card already: keep it, so its own slots stay hoverable.
+    if battle.peekUnit and battle.peek:contains(mx, my) then return end
+    -- The unit under the cursor, from either surface: the timeline strip, else the board tile.
+    local hovered = battle.panel:unitAt(mx, my)
+    if not hovered then
+        local cx, cy = battle.map:cellAt(mx, my)
+        if cx then hovered = Combat.unitAt(battle.combat, cx, cy) end
+    end
+    if hovered then
+        if hovered.side ~= "party" and hovered.alive and Combat.inventoryRevealed(hovered) then
+            battle.peekUnit = hovered
+        else
+            battle.peekUnit = nil -- a different unit (or an un-assayed foe) dismisses the card
+        end
+    end
+    -- hovered == nil (empty ground, a side column): leave peekUnit as it was -- the card is sticky.
+end
+
+-- Draw the inventory-peek card for the focused foe, anchored to its board token and clamped to the
+-- board region (clear of both side columns). Drawn over the board but under the tooltip pass, so a
+-- hovered slot's ItemTooltip lands on top.
+function battle.drawPeek()
+    local u = battle.peekUnit
+    if not (u and u.alive) then return end
+    local m = battle.map
+    local ax = m.originX + (u.x - 0.5) * m.size
+    local ay = m.originY + (u.y - 0.5) * m.size
+    battle.peek:draw(u, ax, ay, LEFT_W, Scale.WIDTH - PANEL_W)
+end
+
 function battle.draw()
     love.graphics.setColor(0.04, 0.05, 0.07)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
+    battle.updatePeekFocus()
     battle.drawLeftColumn()
     battle.map:draw()
     battle.fx:drawFloaters(battle.map) -- damage / heal numbers, above the board
+    battle.drawPeek() -- the assayed-foe kit card, over the board and under the tooltip pass
     battle.panel:draw()
     battle.drawHud()
     battle.log:draw()
@@ -3422,10 +3468,19 @@ function battle.draw()
     -- item/status/breakdown tooltip during its draw pass, so the board's tile tooltip must not also
     -- fire here and stack on top of it.
     if mx and not battle.log:contains(mx, my) then
-        local st = battle.panel:statusAt(mx, my)
-        local boardSt = not st and battle.map:statusAt(mx, my)
-        local item = not st and not boardSt and battle.panel:itemAt(mx, my)
-        if st then
+        -- An assayed foe's kit card owns the hover while the cursor is over it: a slot shows that item's
+        -- full tooltip (priced against nobody -- it isn't the player's to cast), and the rest of the card
+        -- swallows the tile tooltip so the board underneath it doesn't bleed through.
+        local peekItem = battle.peekUnit and battle.peek:itemAt(mx, my)
+        local overPeek = battle.peekUnit and battle.peek:contains(mx, my)
+        local st = not overPeek and battle.panel:statusAt(mx, my)
+        local boardSt = not overPeek and not st and battle.map:statusAt(mx, my)
+        local item = not overPeek and not st and not boardSt and battle.panel:itemAt(mx, my)
+        if peekItem then
+            ItemTooltip.draw(peekItem, mx, my, Scale.WIDTH - PANEL_W, nil)
+        elseif overPeek then
+            -- over the card but not a slot: no other tooltip
+        elseif st then
             StatusTooltip.draw(st, mx, my, Scale.WIDTH)
         elseif boardSt then
             StatusTooltip.draw(boardSt, mx, my, Scale.WIDTH - PANEL_W)
@@ -3896,6 +3951,9 @@ function battle.mousepressed(x, y, button)
     -- and the board, which mousepressed does NOT gate on battle.over).
     if battle.summary then battle.summary:mousepressed(x, y, button); return end
     reclaimAutoTurn()
+    -- A click on the assayed-foe kit card is swallowed here: the card floats OVER the board, so an
+    -- unguarded click would fall through and attack whatever tile sits under it.
+    if battle.peekUnit and battle.peek:contains(x, y) then return end
     if button == 1 and pointIn(MENU_BUTTON, x, y) then
         battle.menuOpen = not battle.menuOpen
         return

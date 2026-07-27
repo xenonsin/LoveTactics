@@ -142,7 +142,7 @@ return {
             local player = Player.new()
             player.prestige = 12
             player.gold = 4321
-            player.completedQuests = { general_wrath = true, the_gate_below = true }
+            player.completedQuests = { slot_10_general_wrath = true, the_gate_below = true }
             player.reputation = { bastion = 300 }
             player.visitedVendors = { bastion = true }
             player.pendingSummary = { "stale" }

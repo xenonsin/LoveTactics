@@ -8,5 +8,5 @@ return {
     name    = "Bulwark",
     classes = { "knight" },
     exemplar = "character_greywatch_captain",
-    requiredQuests = { "held_position" },
+    requiredQuests = { "slot_03_held_position" },
 }
