@@ -101,6 +101,13 @@ local rangesButton = { x = 16, y = 148, w = 130, h = 36 }
 -- single unit. Any input still takes the current turn straight back (reclaimAutoTurn); the flag then
 -- re-arms the next unit, so "auto" holds across the side until the button is pressed off.
 local autoButton = { x = 16, y = 192, w = 130, h = 36 }
+-- Playback-speed cycler, drawn only while whole-side auto is ON (it is meaningless otherwise -- the
+-- player sets the pace of their own turns by taking them). Sits flush to the right of the Auto
+-- button as a paired control. Clicking it -- or F / gamepad right-stick -- steps battle.autoSpeed
+-- through SPEED_STEPS, which scales the gameplay clock in battle.update. Unlike every other input,
+-- adjusting speed does NOT reclaim the auto turn: changing how fast the AI plays is not taking over.
+local speedButton = { x = 150, y = 192, w = 56, h = 36 }
+local SPEED_STEPS = { 1, 2, 3 }
 -- Debug-only shortcuts that decide the fight instantly, so a developer can jump straight to the win
 -- or loss follow-up (spoils screen, overworld onWin/onLoss) without playing the encounter out. Gated
 -- on Debug.enabled -- they never render or take a click in a release build. Sat side by side under
@@ -138,6 +145,7 @@ local function overMenuEntry(x, y)
     if not battle.menuOpen then return false end
     return pointIn(forfeitButton, x, y) or pointIn(logButton, x, y) or pointIn(rangesButton, x, y)
         or pointIn(autoButton, x, y)
+        or (battle.autoAll and pointIn(speedButton, x, y))
         or (Debug.enabled and (pointIn(winButton, x, y) or pointIn(loseButton, x, y)))
 end
 
@@ -1344,8 +1352,10 @@ local function holdLanding(pre)
         battle.fx:hold(events, 1)
         -- The same argument, for position rather than health: a blow that shoves has ALREADY moved its
         -- target in the model, so without this the victim stands on its knocked-back tile all through
-        -- the approach and then snaps home to be shoved again once the feet stop.
-        battle.fx:pinSlides(events)
+        -- the approach and then snaps home to be shoved again once the feet stop. The unit still walking
+        -- in is exempt (see pinSlides): a hit-and-run blow shoves the striker itself, and pinning the
+        -- body the walk is driving would freeze it on its destination instead of walking it there.
+        battle.fx:pinSlides(events, battle.walk and battle.walk.unit)
     end
     if pre then
         local held
@@ -3080,6 +3090,9 @@ function battle.enter(self, opts)
     -- and a battle that opened over its own tooltip column would be a worse first frame than one that
     -- didn't. See MENU_BUTTON / menuBottom.
     battle.menuOpen = false
+    -- Auto-battle playback speed carries across fights as a preference (like autoAll itself), so a
+    -- player who likes 3x keeps it -- but seed it the first time so battle.update's multiply is safe.
+    battle.autoSpeed = battle.autoSpeed or 1
     -- Timed reinforcements (objective.waves): each wave's firing state (count + next tick), and the
     -- context a wave's `composition(ctx)` scales itself against. Reset per battle so a replayed fight
     -- starts with every wave still pending. See spawnWaves.
@@ -3215,6 +3228,12 @@ function battle.update(dt)
     -- scaled -- ScreenFx's own shake/flash/freeze decays advance on real dt back in main.lua, so the
     -- freeze ends on its own and its shake still plays. A summary overlay ignores it (the fight is over).
     if not battle.summary then dt = dt * ScreenFx.timeScale() end
+
+    -- Whole-side auto-battle can run fast-forwarded: the speed cycler scales the ENTIRE gameplay clock
+    -- (think-pauses, walks, hit animations, fx), so 2x/3x is a true fast-forward of the fight, not just
+    -- a shorter AI delay. Only while autoAll -- the player's own turns always play at 1x. Multiplied
+    -- after the hit-stop scale so a killing blow still freezes (0 * speed == 0).
+    if battle.autoAll and not battle.summary then dt = dt * (battle.autoSpeed or 1) end
 
     -- The victory/defeat overlay animates over the frozen board (map/fx still tick below so the frame
     -- keeps breathing behind it).
@@ -3719,6 +3738,20 @@ function battle.drawHud()
     love.graphics.printf(autoOn and "Auto ✓" or "Auto",
         autoButton.x, autoButton.y + autoButton.h / 2 - 8, autoButton.w, "center")
 
+    -- Playback-speed cycler, paired to the right of Auto and only while Auto is on. Its label is the
+    -- current multiplier (1x/2x/3x); it brightens with the same teal as the Auto button so the two
+    -- read as one control.
+    if autoOn then
+        love.graphics.setColor(0.16, 0.26, 0.28)
+        love.graphics.rectangle("fill", speedButton.x, speedButton.y, speedButton.w, speedButton.h, 6, 6)
+        love.graphics.setColor(0.42, 0.80, 0.82)
+        love.graphics.rectangle("line", speedButton.x, speedButton.y, speedButton.w, speedButton.h, 6, 6)
+        love.graphics.setColor(0.80, 0.96, 0.98)
+        love.graphics.setFont(hudFont)
+        love.graphics.printf(tostring(battle.autoSpeed or 1) .. "x",
+            speedButton.x, speedButton.y + speedButton.h / 2 - 8, speedButton.w, "center")
+    end
+
     -- Debug-only instant-decision buttons (green Win / red Lose), sat where Main Menu used to be.
     if Debug.enabled then
         love.graphics.setFont(hudFont)
@@ -3829,8 +3862,21 @@ local function toggleAutoAll()
     end
 end
 
+-- Step the auto-battle playback speed to the next rung of SPEED_STEPS, wrapping 3x back to 1x. Only
+-- meaningful while autoAll is on (its button hides otherwise); callers gate on that. Deliberately
+-- does not touch autoPending -- see the speedButton note: changing pace is not taking the turn back.
+local function cycleAutoSpeed()
+    local cur = battle.autoSpeed or 1
+    local idx = 1
+    for i, v in ipairs(SPEED_STEPS) do if v == cur then idx = i break end end
+    battle.autoSpeed = SPEED_STEPS[idx % #SPEED_STEPS + 1]
+end
+
 function battle.keypressed(key)
     if battle.summary then battle.summary:keypressed(key); return end
+    -- Speed cycler (F): handled BEFORE reclaimAutoTurn so fast-forwarding the AI does not count as
+    -- taking the turn back. Only while auto is running -- otherwise F falls through as an ordinary key.
+    if key == "f" and battle.autoAll then cycleAutoSpeed(); return end
     reclaimAutoTurn()
     if key == "f5" then
         Arena.save(battle.arena, (battle.arena.biome or "arena") .. "_" .. os.time())
@@ -3884,6 +3930,9 @@ end
 
 function battle.gamepadpressed(joystick, button)
     if battle.summary then battle.summary:gamepadpressed(joystick, button); return end
+    -- Right-stick click cycles the auto playback speed while auto is running -- handled before the
+    -- reclaim so it fast-forwards rather than seizing the turn (mirrors the F key / speed button).
+    if button == "rightstick" and battle.autoAll then cycleAutoSpeed(); return end
     reclaimAutoTurn()
     if button == "leftshoulder" then
         -- While aiming a chargeable signature the bumpers tune its wind-up depth; otherwise the left
@@ -3950,6 +3999,12 @@ function battle.mousepressed(x, y, button)
     -- The summary overlay swallows every click while it is up (it sits over the forfeit/log buttons
     -- and the board, which mousepressed does NOT gate on battle.over).
     if battle.summary then battle.summary:mousepressed(x, y, button); return end
+    -- Speed cycler, handled before reclaimAutoTurn so a click on it fast-forwards the AI instead of
+    -- handing the turn back. Only live while the drawer is open AND auto is running (its own draw gate).
+    if battle.menuOpen and battle.autoAll and button == 1 and pointIn(speedButton, x, y) then
+        cycleAutoSpeed()
+        return
+    end
     reclaimAutoTurn()
     -- A click on the assayed-foe kit card is swallowed here: the card floats OVER the board, so an
     -- unguarded click would fall through and attack whatever tile sits under it.

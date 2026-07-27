@@ -148,9 +148,16 @@ end
 --
 -- Deliberately ungated (unlike a live forced slide): a pin is a unit standing still, and must never be
 -- a reason the turn hand-off waits. Only the real slide that follows it gates.
-function CombatFx:pinSlides(events)
+--
+-- `walking` is the unit whose approach walk is replaying right now (states/battle.lua battle.walk), if
+-- any -- and it is NEVER pinned. A pin assumes its subject is standing still on the shove's origin, but
+-- a hit-and-run blow (wolf Fangs) shoves the STRIKER, and the striker is the same body still walking in.
+-- Pinning it would clobber the walk slide walkStep is driving and stamp the sprite onto the shove's
+-- origin -- so the wolf flashes at its destination instead of walking there. The walk plays that unit's
+-- motion, and playBeat's forcedSlide arms its give-ground once the feet stop, so it needs no pin.
+function CombatFx:pinSlides(events, walking)
     for _, e in ipairs(events) do
-        if e.type == "slide" then
+        if e.type == "slide" and e.unit ~= walking then
             local dist = math.abs(e.fromX - e.unit.x) + math.abs(e.fromY - e.unit.y)
             if dist > 0 then
                 self:setSlide(e.unit, e.fromX, e.fromY, dist * CHARGE_STEP, false, nil, nil, math.huge)
