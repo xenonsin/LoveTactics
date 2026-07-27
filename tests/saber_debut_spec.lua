@@ -376,20 +376,20 @@ return {
         end,
     },
     {
-        name = "the opener fields Saber and two trappers, with a gate spawn for each",
+        name = "the opener fields Saber and one trapper, with a gate spawn for each",
         fn = function()
-            -- The bell opens on the whole team -- the boss twin and two trappers -- rather than holding a
-            -- body back for a summon. The composition names three, and the board must seat every one.
+            -- The bell opens on the whole team -- the boss twin and one trapper -- rather than holding a
+            -- body back for a summon. The composition names two, and the board must seat every one.
             local comp = Quest.defs["slot_01_arena_debut"].map.objective.composition()
-            assert(#comp == 3, "three bodies open the bout, got " .. #comp)
+            assert(#comp == 2, "two bodies open the bout, got " .. #comp)
             assert(comp[1] == "character_saber_bout", "Saber's twin leads the line")
             local trappers = 0
             for _, id in ipairs(comp) do if id == "character_trapper" then trappers = trappers + 1 end end
-            assert(trappers == 2, "two trappers on the sand at the bell, got " .. trappers)
+            assert(trappers == 1, "one trapper on the sand at the bell, got " .. trappers)
 
             local sand = require("data.arenas.colosseum_sand")
-            assert(#sand.enemySpawns >= 3,
-                "the board seats all three, got " .. #sand.enemySpawns .. " enemy spawns")
+            assert(#sand.enemySpawns >= 2,
+                "the board seats both, got " .. #sand.enemySpawns .. " enemy spawns")
         end,
     },
 

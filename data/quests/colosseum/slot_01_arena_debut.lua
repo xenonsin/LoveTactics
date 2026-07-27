@@ -130,12 +130,12 @@ return {
             -- specFor off the objective, exactly as the flight leg names the Demon Champion's arena.
             layout = "colosseum_sand",
             -- Saber (the boss TWIN -- data/characters/character_saber_bout.lua -- so nothing about the
-            -- bout follows her home) and two Trappers from the house that booked her, a team because
+            -- bout follows her home) and a Trapper from the house that booked her, a team because
             -- everything on this sand is a team. A trapper is a NETTER, not a wall
             -- (data/characters/character_trapper.lua): it roots the body Saber is about to commit to,
-            -- which is the setup her whole telegraphed swing was missing. Both are on the sand at the
+            -- which is the setup her whole telegraphed swing was missing. It is on the sand at the
             -- bell -- the pressure is honest and there in the opening line, not held back as a summon --
-            -- and they are deliberately soft, so a party that reads the fight drops them first and the
+            -- and it is deliberately soft, so a party that reads the fight drops it first and the
             -- pins stop.
             composition = function()
                 return { "character_saber_bout", "character_trapper" }

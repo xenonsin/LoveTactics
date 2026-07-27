@@ -37,6 +37,7 @@ local MAX_PER_ROW = 4
 
 local BUTTON_H = 44
 local BOTTOM_PAD = 22
+local REVIEW_H = 30   -- the slim "Review Combat Log" button under the action row
 
 -- Pacing (seconds), timed off `elapsed`. The banner lands, then gold counts up, then loot cards rise.
 local BANNER_IN  = 0.50   -- title fades + scales in over this
@@ -68,6 +69,9 @@ function BattleSummary.new(opts)
     self.actions = opts.actions or {}
     self.finished = false
     self.subtitle = opts.encounter and opts.encounter.name or nil
+    -- Optional "Review Combat Log" affordance: a callback that opens the fight's log OVER this panel
+    -- (states/battle.lua). Laid out below the action row when present; does NOT dismiss the panel.
+    self.onReviewLog = opts.onReviewLog
 
     local spoils = opts.spoils or {}
     self.gold = math.max(0, spoils.gold or 0)
@@ -112,7 +116,12 @@ function BattleSummary.new(opts)
     end
     if not hasGold and not hasLoot then y = y + 10 end
     self.buttonRelY = y + 8
-    local BOX_H = self.buttonRelY + BUTTON_H + BOTTOM_PAD
+    local afterButtons = self.buttonRelY + BUTTON_H
+    if self.onReviewLog then
+        self.reviewRelY = afterButtons + 12
+        afterButtons = self.reviewRelY + REVIEW_H
+    end
+    local BOX_H = afterButtons + BOTTOM_PAD
 
     self.boxW, self.boxH = BOX_W, BOX_H
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
@@ -133,6 +142,17 @@ function BattleSummary.new(opts)
     end
     self.focusBtn = 1              -- keyboard/gamepad highlight; defaults to the primary action
     self.cancelBtn = count         -- Esc / B / the X close: the last action (the safe exit)
+
+    -- The review-log button sits centred under the action row. It is outside the button focus ring
+    -- (steering left/right stays on the actions / loot cards); mouse clicks it, keyboard/gamepad reach
+    -- it by its own key (L / Y), so its label carries that hint.
+    if self.onReviewLog then
+        local rw = 220
+        self.reviewButton = {
+            x = self.boxX + BOX_W / 2 - rw / 2, y = self.boxY + self.reviewRelY,
+            w = rw, h = REVIEW_H, hovered = false,
+        }
+    end
 
     -- Cards rise from the box centre (from under the banner) to their settled slots.
     self.sourceX = self.boxX + BOX_W / 2
@@ -183,6 +203,12 @@ end
 
 function BattleSummary:isRevealed()
     return self.elapsed >= self.fullyRevealedAt
+end
+
+-- Open the combat-log review (opts.onReviewLog). Available once the reveal has settled, like the
+-- action buttons; it opens a modal over this panel and does NOT dismiss it.
+function BattleSummary:reviewLog()
+    if self.onReviewLog and self:isRevealed() then self.onReviewLog() end
 end
 
 -- Fast-forward past the reveal to the final state (a confirm mid-animation).
@@ -410,6 +436,19 @@ function BattleSummary:draw()
             love.graphics.setColor(0.95, 0.95, 0.95)
             love.graphics.printf(self.actions[i].label or "", b.x, b.y + b.h / 2 - 9, b.w, "center")
         end
+        if self.reviewButton then
+            local b = self.reviewButton
+            love.graphics.setColor(0.15, 0.16, 0.21)
+            love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
+            love.graphics.setColor(b.hovered and 0.65 or 0.42, b.hovered and 0.70 or 0.47, b.hovered and 0.82 or 0.58)
+            love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
+            love.graphics.setFont(self.hintFont)
+            local label = "Review Combat Log"
+            if InputMode.isGamepad() then label = label .. "  (Y)"
+            elseif InputMode.isKeyboard() then label = label .. "  (L)" end
+            love.graphics.setColor(b.hovered and 0.95 or 0.80, b.hovered and 0.97 or 0.84, 0.96)
+            love.graphics.printf(label, b.x, b.y + b.h / 2 - 8, b.w, "center")
+        end
     else
         love.graphics.setFont(self.hintFont)
         love.graphics.setColor(0.55, 0.6, 0.7)
@@ -437,6 +476,9 @@ function BattleSummary:mousemoved(x, y)
     for _, b in ipairs(self.buttons) do
         b.hovered = self:isRevealed() and inRect(b, x, y)
     end
+    if self.reviewButton then
+        self.reviewButton.hovered = self:isRevealed() and inRect(self.reviewButton, x, y)
+    end
     self.mouseOverCard = false
     if self:isRevealed() then
         for i = 1, self.n do
@@ -451,6 +493,7 @@ function BattleSummary:cursorKind(x, y)
         for _, b in ipairs(self.buttons) do
             if inRect(b, x, y) then return "hand" end
         end
+        if self.reviewButton and inRect(self.reviewButton, x, y) then return "hand" end
         for i = 1, self.n do
             if inRect(self:cardRect(i), x, y) then return "hand" end
         end
@@ -471,6 +514,7 @@ function BattleSummary:mousepressed(x, y, button)
     for i, b in ipairs(self.buttons) do
         if inRect(b, x, y) then self:select(i); return end
     end
+    if self.reviewButton and inRect(self.reviewButton, x, y) then self:reviewLog(); return end
     for i = 1, self.n do
         if inRect(self:cardRect(i), x, y) then self.focus = i; break end
     end
@@ -504,6 +548,8 @@ function BattleSummary:keypressed(key)
         self:steer(1)
     elseif key == "return" or key == "kpenter" or key == "space" then
         self:confirm()
+    elseif key == "l" then
+        self:reviewLog()
     end
 end
 
@@ -516,6 +562,8 @@ function BattleSummary:gamepadpressed(_, button)
         self:steer(1)
     elseif button == "a" or button == "start" then
         self:confirm()
+    elseif button == "y" then
+        self:reviewLog()
     end
 end
 

@@ -450,19 +450,17 @@ return {
     ["line.prologue_arrival.7"] = { en = "...That plate. That's Bastion steel. You're a sworn knight of the Order?", ja = "" },  -- TODO
     ["line.prologue_arrival.8"] = { en = "I held the eastern wall. The wall is ash now. I brought out who I could.", ja = "" },  -- TODO
     ["line.prologue_arrival.9"] = { en = "Forgive me, ser. We don't see many of the Order come through on foot these days. Pass -- you, and the ones at your back.", ja = "" },  -- TODO
-    ["line.prologue_flee.1"] = { en = "It's gone. All of it. My oath was to this ground, and the ground is ash.", ja = "" },  -- TODO
-    ["line.prologue_flee.2"] = { en = "So I swear a new one, and not to ground this time. To you.", ja = "" },  -- TODO
-    ["line.prologue_flee.3"] = { en = "We shall hold.", ja = "" },  -- TODO
-    ["line.prologue_flee.4"] = { en = "To the capital, then. Its walls still stand... for now.", ja = "" },  -- TODO
+    ["line.prologue_flee.1"] = { en = "The village is ash. But the people are away, and you're still standing. That was all I was charged with.", ja = "" },  -- TODO
+    ["line.prologue_flee.2"] = { en = "My oath was never to this ground, {name}. Not the walls, not the fields.", ja = "" },  -- TODO
+    ["line.prologue_flee.3"] = { en = "It was always you. To keep you alive, whatever else burns.", ja = "" },  -- TODO
+    ["line.prologue_flee.4"] = { en = "So we hold, and we go. To the capital, while its walls still stand.", ja = "" },  -- TODO
     ["line.prologue_flier.1"] = { en = "Bounties, escorts, standing contracts... half of these want a company three times our size.", ja = "" },  -- TODO
     ["line.prologue_flier.2"] = { en = "This one doesn't.", ja = "" },  -- TODO
     ["line.prologue_flier.3"] = { en = "The Colosseum. A debut bout, a single fight on the sand, in front of a crowd.", ja = "" },  -- TODO
     ["line.prologue_flier.4"] = { en = "A blood sport. Is this what we're reduced to?", ja = "" },  -- TODO
     ["line.prologue_flier.5"] = { en = "Pride has buried more soldiers than the demons have, {name}. I'll not let it bury us. We earn today, we eat tonight, and we choose our war when we can.", ja = "" },  -- TODO
-    ["line.prologue_intro.1"] = { en = "Fire on the eastern fields -- demons, real ones, not a soldier's tale! Run, child, run!", ja = "" },  -- TODO
-    ["line.prologue_intro.2"] = { en = "{name}. Behind me, and stay there. This is the part of the oath I have been waiting to keep.", ja = "" },  -- TODO
-    ["line.prologue_intro.3"] = { en = "They serve the Demon Lord. If the capital falls after us, there is nowhere left to run to.", ja = "" },  -- TODO
-    ["line.prologue_intro.4"] = { en = "Then we hold this lane. You have watched me drill this a hundred times, {name} -- now you do it. Move when I move, strike what I strike.", ja = "" },  -- TODO
+    ["line.prologue_intro.1"] = { en = "Fire on the eastern fields! Demons! The Demon Lord's army is here! Run for your lives!", ja = "" },  -- TODO
+    ["line.prologue_intro.2"] = { en = "To me, {name}, and stay close! We must hold and protect these people as they escape.", ja = "" },  -- TODO
     ["line.prologue_ruins.1"] = { en = "I can still see the smoke from here. That's not just our roofs, is it.", ja = "" },  -- TODO
     ["line.prologue_ruins.10"] = { en = "I am certain of the walls. I am less certain of the road -- the army that did this is walking it too, and it is not in a hurry. Stay close, {name}, and we will get there before they do.", ja = "" },  -- TODO
     ["line.prologue_ruins.2"] = { en = "No. Look past the fords -- every steading down the valley is burning, and the ones that aren't are already cold. They came through the whole of it in a night.", ja = "" },  -- TODO
@@ -489,19 +487,19 @@ return {
     ["line.tutorial_flight.1"] = { en = "Walk to the chest ahead -- use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
-    ["line.tutorial_village.1"] = { en = "Like that. Now yours, {name} -- close the ground and put it down.", ja = "" },  -- TODO
+    ["line.tutorial_village.1"] = { en = "Close the distance and strike without fear, {name}!", ja = "" },  -- TODO
     ["line.tutorial_village.10"] = { en = "{select} on the lit tile to move there.", ja = "" },  -- TODO
     ["line.tutorial_village.11"] = { en = "{select} on Clear Out in your grid to ready it.", ja = "" },  -- TODO
     ["line.tutorial_village.12"] = { en = "{select} on your own tile to spin.", ja = "" },  -- TODO
     ["line.tutorial_village.13"] = { en = "{select} on Jolt to ready it. Its cost is purple: that is mana, not stamina.", ja = "" },  -- TODO
     ["line.tutorial_village.14"] = { en = "{select} on the grunt to jolt it.", ja = "" },  -- TODO
     ["line.tutorial_village.15"] = { en = "{select} on the grunt to strike it -- its card slid down the order, so you act before it does.", ja = "" },  -- TODO
-    ["line.tutorial_village.2"] = { en = "More of them, and they will not come near enough for a blade. Use your techniques. Get in among those two, where both can reach you.", ja = "" },  -- TODO
+    ["line.tutorial_village.2"] = { en = "There's more to the north. Slay them both before they do even more damage.", ja = "" },  -- TODO
     ["line.tutorial_village.3"] = { en = "Now take it in hand.", ja = "" },  -- TODO
     ["line.tutorial_village.4"] = { en = "Turn on your heel, {name}. Open them both at once.", ja = "" },  -- TODO
-    ["line.tutorial_village.5"] = { en = "That one is bigger. Take this too -- I never had the knack for it, and you may. It draws on something you have far less of than breath, so you get one.", ja = "" },  -- TODO
+    ["line.tutorial_village.5"] = { en = "That big one is about to strike, use your magic, {name}!", ja = "" },  -- TODO
     ["line.tutorial_village.6"] = { en = "Let it have the spark. It will not know which way it is facing.", ja = "" },  -- TODO
-    ["line.tutorial_village.7"] = { en = "There -- it is reeling, and you are not. That is what the spark bought you: a turn it does not get. Finish it, {name}.", ja = "" },  -- TODO
+    ["line.tutorial_village.7"] = { en = "While it's stunned, {name}. Let's finish this!", ja = "" },  -- TODO
     ["line.tutorial_village.8"] = { en = "Not that, {name}. Do as I showed you.", ja = "" },  -- TODO
     ["line.tutorial_village.9"] = { en = "{select} on the imp to move in range and attack with your weapon.", ja = "" },  -- TODO
     ["line.undercroft_clem_confront.1"] = { en = "That one there is ours -- was ours. Best hand we ever ran, and now she burns our writs and walks our debtors out the back. Theft, plain theft. Collect her.", ja = "" },  -- TODO

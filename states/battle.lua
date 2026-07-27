@@ -43,6 +43,7 @@ local CoachBubble = require("ui.coach_bubble")
 local Glyphs = require("ui.glyphs")
 local Spoils = require("models.spoils")
 local BattleSummary = require("ui.panels.battle_summary")
+local CloseButton = require("ui.close_button")
 local Debug = require("models.debug")
 local ScreenFx = require("ui.screen_fx")
 local Settings = require("models.settings")
@@ -334,6 +335,28 @@ local function releaseParty()
     end
 end
 
+-- ---- Combat log review (opened from the victory/defeat panel) ---------------
+-- The summary panel offers a "Review Combat Log" button; pressing it opens this modal read of the
+-- whole fight over the panel -- a full-height, scrollable CombatLog of its own (sized large, not the
+-- thin in-battle gutter strip) with an X / Esc / B back to the summary. While it is up it intercepts
+-- input ahead of the summary. See ui/panels/battle_summary.lua and ui/combat_log.lua.
+local function openLogReview()
+    if battle.logReview then return end
+    local w = 560
+    local x = Scale.WIDTH / 2 - w / 2
+    local y = 90
+    local h = Scale.HEIGHT - y - 90
+    battle.logReview = {
+        x = x, y = y, w = w, h = h,
+        log = CombatLog.new(battle.combat, { x = x + 12, y = y + 44, w = w - 24, h = h - 56, visible = true }),
+        close = CloseButton.new(x + w, y),
+    }
+end
+
+local function closeLogReview()
+    battle.logReview = nil
+end
+
 -- Hand a decided fight to its summary overlay, then let the player choose how to leave it -- the
 -- state's own onWin/onLoss/onRetry is deferred until a panel button is pressed. A win offers one button
 -- ("Continue") and rolls the combat/elite spoils the panel reveals and passes to onWin; an objective
@@ -409,6 +432,8 @@ local function finishBattle(result)
         spoils = spoils,
         encounter = battle.encounter,
         actions = actions,
+        -- The log survives the fight; let the player read back how it went before leaving the panel.
+        onReviewLog = openLogReview,
     })
 end
 
@@ -2945,6 +2970,7 @@ function battle.enter(self, opts)
     battle.encounter = opts.encounter or { kind = "combat", name = "Battle" }
     battle.prestige = opts.prestige or 1 -- the company's prestige, used to roll the victory spoils
     battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided
+    battle.logReview = nil               -- the summary's "Review Combat Log" modal, when opened
     battle.over = false
     battle.showInitiative = true -- initiative numbers on the turn order (F6 toggles)
 
@@ -3522,6 +3548,29 @@ function battle.draw()
     -- The victory/defeat overlay owns the frame once the fight is decided: drawn last, over the
     -- frozen board, HUD and every tooltip.
     if battle.summary then battle.summary:draw() end
+    -- The log-review modal sits above even the summary panel (drawn last of all).
+    if battle.logReview then battle.drawLogReview() end
+end
+
+-- Full-height, scrollable read of the fight's combat log, opened from the summary panel's "Review
+-- Combat Log" button. A dim scrim over the panel, a titled frame, the log inside it, and an X back.
+function battle.drawLogReview()
+    local r = battle.logReview
+    if not r then return end
+    love.graphics.setColor(0, 0, 0, 0.55)
+    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+    love.graphics.setColor(0.10, 0.11, 0.15)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 10, 10)
+    love.graphics.setColor(0.40, 0.45, 0.58, 0.9)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 10, 10)
+    love.graphics.setLineWidth(1)
+    love.graphics.setFont(titleFont)
+    love.graphics.setColor(0.90, 0.92, 0.98)
+    love.graphics.printf("Combat Log", r.x, r.y + 12, r.w, "center")
+    r.log:draw()
+    r.close:draw()
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- The refusal notice: why the last activation was turned down (see notify). A red-rimmed banner
@@ -3873,6 +3922,13 @@ local function cycleAutoSpeed()
 end
 
 function battle.keypressed(key)
+    if battle.logReview then
+        if key == "escape" or key == "l" then closeLogReview()
+        elseif key == "up" or key == "pageup" then battle.logReview.log:wheelmoved(0, 1)
+        elseif key == "down" or key == "pagedown" then battle.logReview.log:wheelmoved(0, -1)
+        end
+        return
+    end
     if battle.summary then battle.summary:keypressed(key); return end
     -- Speed cycler (F): handled BEFORE reclaimAutoTurn so fast-forwarding the AI does not count as
     -- taking the turn back. Only while auto is running -- otherwise F falls through as an ordinary key.
@@ -3929,6 +3985,13 @@ function battle.keypressed(key)
 end
 
 function battle.gamepadpressed(joystick, button)
+    if battle.logReview then
+        if button == "b" or button == "y" then closeLogReview()
+        elseif button == "dpup" then battle.logReview.log:wheelmoved(0, 1)
+        elseif button == "dpdown" then battle.logReview.log:wheelmoved(0, -1)
+        end
+        return
+    end
     if battle.summary then battle.summary:gamepadpressed(joystick, button); return end
     -- Right-stick click cycles the auto playback speed while auto is running -- handled before the
     -- reclaim so it fast-forwards rather than seizing the turn (mirrors the F key / speed button).
@@ -3970,6 +4033,11 @@ end
 function battle.mousemoved(x, y, dx, dy)
     battle.mouseX, battle.mouseY = x, y -- drives the status tooltip (board + panel hit-tests)
     battle.log:mousemoved(x, y)         -- drives the combat log's damage-breakdown hover
+    if battle.logReview then
+        battle.logReview.log:mousemoved(x, y)
+        battle.logReview.close:mousemoved(x, y)
+        return
+    end
     if battle.summary then battle.summary:mousemoved(x, y); return end
     -- Hovering the panel's Wait button previews the delay slot on the timeline.
     local overPanel = battle.panel:mousemoved(x, y)
@@ -3984,6 +4052,7 @@ end
 -- first when the cursor is inside it, so its own history still scrolls; contains() is false while
 -- the log is closed, so a wheel over the board falls through to the strip.
 function battle.wheelmoved(dx, dy)
+    if battle.logReview then battle.logReview.log:wheelmoved(dx, dy); return end
     if battle.summary then return end -- the overlay has no scroll of its own; swallow it
     if battle.mouseX and battle.log:contains(battle.mouseX, battle.mouseY) then
         battle.log:wheelmoved(dx, dy)
@@ -3996,6 +4065,14 @@ function battle.wheelmoved(dx, dy)
 end
 
 function battle.mousepressed(x, y, button)
+    -- The log-review modal (over the summary) claims the click first: the X or a click outside its
+    -- frame closes it back to the panel; a click inside is inert (the log scrolls by wheel).
+    if battle.logReview then
+        local r = battle.logReview
+        local inFrame = x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
+        if r.close:mousepressed(x, y, button) or (button == 1 and not inFrame) then closeLogReview() end
+        return
+    end
     -- The summary overlay swallows every click while it is up (it sits over the forfeit/log buttons
     -- and the board, which mousepressed does NOT gate on battle.over).
     if battle.summary then battle.summary:mousepressed(x, y, button); return end
@@ -4062,6 +4139,9 @@ end
 function battle.cursorKind()
     local mx, my = battle.mouseX, battle.mouseY
     if not mx then return "arrow" end
+    if battle.logReview then
+        return battle.logReview.close:contains(mx, my) and "hand" or "arrow"
+    end
     if battle.summary then return battle.summary:cursorKind(mx, my) end
     -- Off the board: the clickable UI wants a pointing hand.
     if pointIn(MENU_BUTTON, mx, my) or overMenuEntry(mx, my)
