@@ -68,6 +68,62 @@ return {
         end,
     },
     {
+        name = "Item.growth charts a weapon's Damage curve, with the right levels flagged as changed",
+        fn = function()
+            local curve = Item.defs.weapon_iron_sword.activeAbility.damage
+            local g = Item.growth("weapon_iron_sword")
+            assert(g and g.maxLevel == Item.MAX_LEVEL, "growth spans 0..MAX_LEVEL")
+            assert(g.primaryLabel == "Damage", "the primary stat leads")
+            local dmg
+            for _, s in ipairs(g.stats) do if s.label == "Damage" then dmg = s end end
+            assert(dmg and dmg.primary, "Damage is a charted, primary-flagged stat")
+            for lvl = 0, Item.MAX_LEVEL do
+                assert(dmg.values[lvl] == curve[lvl + 1], "value at level " .. lvl .. " matches the curve")
+            end
+            assert(dmg.min == curve[1] and dmg.max == curve[#curve], "min/max are the curve endpoints")
+            -- The iron sword steps up every single level, so every level >= 1 is flagged changed.
+            for lvl = 1, Item.MAX_LEVEL do
+                assert(dmg.changed[lvl], "level " .. lvl .. " is a step up")
+            end
+            assert(g.footprint == nil, "a single-target strike lays no footprint")
+        end,
+    },
+    {
+        name = "Item.growth splits scaling stats from flat ones (a chainmail's movement penalty)",
+        fn = function()
+            local g = Item.growth("armor_chainmail")
+            local labels = {}
+            for _, s in ipairs(g.stats) do labels[s.label] = true end
+            assert(labels["Defense"], "defense scales and is charted")
+            assert(labels["Resist slash"], "a per-tag resist scales and is charted")
+            assert(not labels["Movement"], "the flat movement penalty is NOT a scaling bar")
+            local flatMove
+            for _, f in ipairs(g.flat) do if f.label == "Movement" then flatMove = f end end
+            assert(flatMove and flatMove.value == -1, "it lands in the flat list at its constant value")
+        end,
+    },
+    {
+        name = "Item.growth surfaces a footprint that opens up (First Motion's line into a cone)",
+        fn = function()
+            local g = Item.growth("weapon_first_motion")
+            assert(g.footprint, "an area weapon reports a footprint")
+            -- Base is a line; the cone opens at +6 (data/items/weapon/weapon_first_motion.lua).
+            assert(g.footprint.levels[0].shape == "line", "it starts as a line")
+            assert(g.footprint.levels[Item.MAX_LEVEL].shape == "cone", "and ends a cone")
+            local hasBase, hasCone = false, false
+            for _, lvl in ipairs(g.footprint.changedAt) do
+                if lvl == 0 then hasBase = true end
+                if g.footprint.levels[lvl].shape == "cone" and not hasCone then hasCone = lvl end
+            end
+            assert(hasBase, "the base form is a filmstrip frame")
+            assert(hasCone == 6, "the cone is flagged as a change at +6, got " .. tostring(hasCone))
+            -- Damage still charts as a normal scaling stat alongside the footprint.
+            local hasDamage = false
+            for _, s in ipairs(g.stats) do if s.label == "Damage" then hasDamage = true end end
+            assert(hasDamage, "Damage charts beside the footprint")
+        end,
+    },
+    {
         name = "an ability item is forgeable at the vendor, not the blacksmith",
         fn = function()
             local spell = Item.instantiate("ability_fireball")

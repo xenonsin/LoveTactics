@@ -265,6 +265,20 @@ end
 -- blueprint; the objective tile reads the quest's `map.objective`.
 local function specFor(opts, partyIds, seed)
     local spec = { biome = opts.biome, party = partyIds, seed = seed }
+    -- The player's persistent marching formation (models/player.lua), resolved from its charId->cell map
+    -- into a list ordered to MATCH partyIds so Arena.build's bindUnits seats each member on their chosen
+    -- tile. Honored on generated AND curated boards alike (Arena.build reseats an authored board's spawns
+    -- when a real formation is present); absent for a build/duel (no opts.formation), which fall back to
+    -- the even auto-placement as before. A scripted prologue fight passes none, so it keeps its authored
+    -- spawns.
+    if opts.formation then
+        local Player = require("models.player")
+        local slots = {}
+        for i, id in ipairs(partyIds) do slots[i] = opts.formation[id] end
+        spec.formation = slots
+        spec.formationCols = Player.FORMATION_COLS
+        spec.formationRows = Player.FORMATION_ROWS
+    end
     -- A quest may name the exact board to fight on instead of rolling one (the prologue's tutorial,
     -- whose lesson is authored against specific tiles). Nil everywhere else, so ordinary fights keep
     -- their random pick. See Arena.pickLayout.
@@ -1631,6 +1645,50 @@ local function tryDamageWall(unit, tx, ty)
     strike()
 end
 
+-- A board object on (x, y) an OFFENSIVE weapon can break -- a revealed enemy trap, a wall, or a prop
+-- (the barrel) -- paired with the Combat.strike* verb that breaks it, or nil. Same precedence the
+-- move-mode confirm() picks a strike target with (trap, then wall, then prop). This is the armed-mode
+-- counterpart: the auto-armed default weapon lights a barrel's tile red, so it must be clickable to
+-- strike without first disarming to move freely.
+local function strikeableObjectAt(unit, x, y)
+    local trap = revealedEnemyTrapAt(unit, x, y)
+    if trap then return trap, "trap" end
+    local wall = wallAt(x, y)
+    if wall then return wall, "wall" end
+    local prop = propAt(x, y)
+    if prop then return prop, "prop" end
+    return nil
+end
+
+-- Break a board object with the ARMED item, walking to the firing tile (entry.fromX/fromY, out of the
+-- item's own reach) first when the blow can't land from where the unit stands. The armed-mode sibling
+-- of tryDamageProp/Wall/Trap, which strike with the default action in move mode; `kind` selects the
+-- Combat.strike* verb, `entry` is the rangeReach stand tile. Combat.strike* re-checks range/cost and
+-- returns (false, why) on refusal, which is surfaced the same way an armed cast's refusal is.
+local function strikeArmedObject(unit, item, kind, tx, ty, entry)
+    local strikeFn = (kind == "trap" and Combat.strikeTrap)
+        or (kind == "wall" and Combat.strikeWall)
+        or Combat.strikeProp
+    local function strike()
+        local ok, why = strikeFn(battle.combat, unit, item, tx, ty)
+        if ok then
+            advanceTurn()
+        elseif why then
+            notify(string.format("%s: %s", item.name or "That item", tostring(why)))
+        end
+    end
+    if entry.fromX ~= unit.x or entry.fromY ~= unit.y then
+        if Combat.hasMoved(battle.combat) then
+            notify("Out of reach from here -- already moved this turn")
+            return
+        end
+        return startWalk(unit, entry.fromX, entry.fromY, function()
+            if unit.alive then strike() else advanceTurn() end
+        end)
+    end
+    strike()
+end
+
 -- What an armed click on (cx, cy) resolves to, for the currently armed item (the turn-start default
 -- or an explicitly armed one):
 --   { kind = "act",  entry, cells }  -- a valid target here (a foe/ally to hit, a legal tile to
@@ -1661,6 +1719,15 @@ local function armedActionAt(cx, cy)
     local hasTarget = occ and occ.alive and (support and occ.side == battle.current.side
         or not support and occ.side ~= battle.current.side)
     if needsOccupant and not hasTarget then
+        -- No unit to hit here, but an OFFENSIVE strike can still break a board object standing on the
+        -- tile -- a barrel, a wall, a revealed enemy trap -- exactly as the move-mode default action
+        -- does. The red band already lit the tile, so a click has to land the blow rather than fall
+        -- through to a reposition (or nothing).
+        if not support then
+            local obj, kind = strikeableObjectAt(battle.current, cx, cy)
+            local entry = obj and battle.rangeReach and battle.rangeReach[cx .. "," .. cy]
+            if entry then return { kind = "act", strikeKind = kind, object = obj, entry = entry } end
+        end
         if battle.reachable and battle.reachable[cx .. "," .. cy] then
             local mp = movePathTo(cx, cy)
             return { kind = "move", x = cx, y = cy, cells = mp and mp.cells or nil }
@@ -1722,6 +1789,15 @@ local function actionPreviewFor(cx, cy)
             local steps = mp and (#mp.cells - 1) or node.steps
             return { kind = "move", actor = current, steps = steps,
                      moveCost = Combat.moveInitiative(current, cost) }
+        end
+        -- Breaking a board object: same preview shape (and "break" cursor) the move-mode default
+        -- action uses on a trap/wall/prop, but priced from the armed item's own attack stat.
+        if plan.strikeKind then
+            local obj = plan.object
+            local dmg = Combat.computeTrapDamage(current, item)
+            return { kind = "strikeTrap", item = item, actor = current, trap = obj, support = false,
+                     trapDamage = dmg, trapLethal = dmg >= (obj.health or 0),
+                     spend = Combat.abilitySpend(current, item.activeAbility) }
         end
         local preview = Combat.previewAbility(battle.combat, current, item, cx, cy)
         local entry = preview and unit and preview.entries[unit] or nil
@@ -1869,6 +1945,13 @@ local function confirm()
                 observeAction("move", current, current.x, current.y)
                 computeThreat(current) computeDanger() computeRange(current, item)
             end, plan.cells)
+            return
+        end
+        -- Breaking a board object (a barrel, a wall, a revealed enemy trap) the armed weapon reaches:
+        -- the armed-mode counterpart of the move-mode trap/wall/prop branch below, walking into reach
+        -- first when the firing tile isn't the one the unit stands on.
+        if plan.strikeKind then
+            strikeArmedObject(current, item, plan.strikeKind, cx, cy, plan.entry)
             return
         end
         -- Walk-and-strike: if the stand tile for this target -- the steered route's endpoint, or the
@@ -2532,6 +2615,17 @@ local function refreshView()
             if not moveKeys[k] then ranges[#ranges + 1] = c end
         end
         overlays.enemyRanges = ranges
+        -- With the whole danger picture up, paint each foe's predicted-intent icon on its own body too
+        -- (ui/battle_map's drawIntentBadges) -- the same read its timeline card and target line carry,
+        -- so "what is this one about to do" answers off the board without tracing a line to a card. Same
+        -- cache both other surfaces read (battle.enemyIntents), so the three can never disagree.
+        overlays.intentBadges = battle.enemyIntents
+    elseif intentHover and battle.enemyIntents and battle.enemyIntents[intentHover] then
+        -- Off the survey, one hovered foe still gets its badge ON THE BODY, alongside the target line
+        -- above -- so "what is this one about to do" answers right on the sprite, not only by tracing
+        -- its line to a timeline card. A single-entry map: drawIntentBadges keys off each unit, so only
+        -- the hovered body is marked.
+        overlays.intentBadges = { [intentHover] = battle.enemyIntents[intentHover] }
     end
 
     -- Traps the party can currently see (its own + detected enemy traps): a per-frame lookup for

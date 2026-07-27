@@ -207,6 +207,18 @@ function Save.snapshot(player)
     -- Omitted while zero so a save that has never finished the game diffs clean.
     local ngPlus = (player.ngPlus or 0) > 0 and player.ngPlus or nil
 
+    -- The persistent marching grid: charId -> { col, row } (models/player.lua). Purely additive, so
+    -- Save.VERSION does not move -- an older save loads with no formation, which reads as "everyone
+    -- auto-placed", exactly the pre-formation behaviour. Kept by charId (never by roster index) so it
+    -- survives untouched; omitted while empty so a save that never arranged one diffs clean.
+    local formation
+    for id, slot in pairs(player.formation or {}) do
+        if slot and slot.col and slot.row then
+            formation = formation or {}
+            formation[id] = { col = slot.col, row = slot.row }
+        end
+    end
+
     return {
         version = Save.VERSION,
         gold = player.gold,
@@ -224,6 +236,7 @@ function Save.snapshot(player)
         recipes = recipes,
         visitedVendors = visitedVendors,
         announcedDisciplines = announcedDisciplines,
+        formation = formation,
         roster = roster,
         party = party,
         stash = stash,
@@ -344,6 +357,16 @@ function Save.restore(snap)
         if seen then announcedDisciplines[disciplineId] = true end
     end
 
+    -- The marching grid, charId -> { col, row }. An entry for a character no longer in the roster is
+    -- harmless -- Player.formationSlot only ever reads it by a live char's id -- so it is kept as-is
+    -- rather than filtered, the same forgiving default the flags above take.
+    local formation = {}
+    for id, slot in pairs(snap.formation or {}) do
+        if type(slot) == "table" and slot.col and slot.row then
+            formation[id] = { col = slot.col, row = slot.row }
+        end
+    end
+
     return {
         gold = snap.gold or 0,
         prestige = snap.prestige or 1,
@@ -357,6 +380,7 @@ function Save.restore(snap)
         recipes = recipes,
         visitedVendors = visitedVendors,
         announcedDisciplines = announcedDisciplines,
+        formation = formation,
         roster = roster,
         party = party,
         stash = stash,

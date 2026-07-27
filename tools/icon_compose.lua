@@ -7,13 +7,17 @@
 --
 -- Where icon-build draws ONE game-icons glyph per asset, this draws the icon as a pure function of
 -- the tags the blueprint already declares -- exactly the way shaders/field.lua draws a hazard from
--- its fire/ice tag. Four layers, four data channels, none of them a commission:
+-- its fire/ice tag. Three data channels, none of them a commission:
 --
---   1. BASE    the family silhouette (Item.archetype -> FAMILY_BASE) -- 15 shapes cover every weapon;
---              a typeless item (ability/armor/utility/material) falls back to TYPE_BASE.
+--   1. BASE    a weapon REUSES its family silhouette (Item.archetype -> FAMILY_BASE) -- 15 shapes
+--              cover every weapon and shield. Every OTHER item draws its own UNIQUE glyph from the
+--              per-item map (tools/icons/map.lua), falling back to the ability cost-pool shape or the
+--              generic TYPE_BASE only when the map names nothing.
 --   2. TINT    the base is recoloured by the item's element/strike tag (ELEMENT_TINT).
---   3. FRAME   a rounded border in the item's CLASS colour (the vendor shelf), thickening with tier.
---   4. BADGE   a corner disc in the item's TYPE colour, and `repRank` tier pips along the bottom.
+--   3. PIPS    `repRank` tier diamonds along the bottom, in the item's CLASS colour (the vendor shelf).
+--
+-- (An earlier revision framed the art in a class-colour border and stamped a type-colour disc in the
+-- corner; both were dropped -- the frame fought the action slot's own border and the disc read busy.)
 --
 -- The 15 base slugs are canonical game-icons picks (reuse, not commission -- the decision recorded in
 -- the doc). Preview runs (`icon-compose` / `icon-compose all`) land under vendor/compose-preview/ --
@@ -23,6 +27,17 @@
 
 local Registry = require("models.registry")
 local Item = require("models.item")
+
+-- The per-item glyph map (tools/icons/map.lua, mostly hand-corrected) -- the source of a UNIQUE
+-- silhouette per item. Weapons and armour are content to reuse a shared family/type shape, but every
+-- other item (an ability, a charm, a flask, a material) draws its own mapped glyph, so two spells no
+-- longer land on the same swirl. Optional: absent map just means everything falls back to the family/
+-- type bases below.
+local IconMap = nil
+do
+    local ok, m = pcall(require, "tools.icons.map")
+    if ok and type(m) == "table" then IconMap = m end
+end
 
 local M = {}
 
@@ -61,6 +76,16 @@ local TYPE_BASE = {
 }
 local DEFAULT_BASE = "lorc/gems"
 
+-- An ability has no weapon family, so its silhouette is drawn from the pool it SPENDS instead: a mana
+-- spell and a stamina technique read as different things at a glance -- the same physical/magical
+-- split the school aura draws, but stated in the base so it survives even when there's no school tag.
+-- (No ability costs health today; the blood-drop is here so one would compose rather than fall back.)
+local ABILITY_BASE = {
+    mana = "lorc/magic-swirl",   -- a spell woven from mana
+    stamina = "lorc/muscle-up",  -- a martial technique paid in exertion
+    health = "lorc/drop",        -- blood magic, paid in health
+}
+
 -- 2. TINT -- element/strike -> foreground colour. Scanned against the item's tags in this table's
 -- favour: an element wins over the physical/melee mechanics tags, which name no colour and are absent
 -- here. A physical strike (slash/pierce/blunt) or no element at all lands on steel.
@@ -75,7 +100,12 @@ local ELEMENT_TINT = {
 }
 local STEEL = "#dce1e6"
 
--- 3. FRAME -- class (vendor shelf) -> border colour.
+-- SCHOOL -- physical vs magical, the damage school the item's tags already declare (see
+-- models/combat.lua's magical/defense switch). With no backing plate, magic reads as a soft aura in
+-- the element tint blooming behind the silhouette (added in compose); a physical strike, and anything
+-- schoolless (armor, a flask, a charm), is the bare silhouette with no halo.
+
+-- 3. PIPS -- class (vendor shelf) -> tier-diamond colour.
 local CLASS_COLOR = {
     fighter = "#c0562f",
     rogue = "#6f9a52",
@@ -85,17 +115,6 @@ local CLASS_COLOR = {
     cleric = "#d8c15f",
 }
 local CLASS_DEFAULT = "#9aa0a8"
-
--- 4. BADGE -- type -> corner disc colour.
-local TYPE_COLOR = {
-    weapon = "#c9603a",
-    ability = "#8a6fd0",
-    armor = "#5f8fb0",
-    utility = "#6fae72",
-    material = "#b0894f",
-    consumable = "#6fae72",
-}
-local TYPE_DEFAULT = "#888e96"
 
 local function projectPath(rel)
     return love.filesystem.getSource() .. "/" .. rel
@@ -109,10 +128,55 @@ local function tintFor(def)
     return STEEL
 end
 
--- The base silhouette slug: family first (a weapon), then type (everything else).
+-- The item's damage school -- "magical", "physical", or nil for a schoolless item. Read across the
+-- item's own tags AND its ability's, the same widening Combat.auraApplies uses, so an ability that
+-- declares `magical` on the ability rather than on the item still reads as magic. Magical wins a tie.
+local function schoolFor(def)
+    local ab = def.activeAbility
+    local function has(tag)
+        for _, t in ipairs(def.tags or {}) do if t == tag then return true end end
+        if ab and ab.tags then for _, t in ipairs(ab.tags) do if t == tag then return true end end end
+        return false
+    end
+    if has("magical") then return "magical" end
+    if has("physical") then return "physical" end
+    return nil
+end
+
+-- The pool an ability primarily spends (the priciest cost entry; ties keep the authored order), or
+-- nil for a free ability. Drives the ability silhouette, so a spell and a martial technique diverge.
+local function costPool(def)
+    local ab = def.activeAbility
+    if not ab then return nil end
+    local best
+    for _, c in ipairs(Item.costs(ab)) do
+        if not best or (c.amount or 0) > (best.amount or 0) then best = c end
+    end
+    return best and best.stat
+end
+
+-- The item's own mapped glyph from tools/icons/map.lua, or nil if unmapped (or the map named no icon
+-- yet). Keyed by the sprite path the game loads by -- the same key icon-build renders under.
+local function mappedBase(def)
+    if not IconMap or type(def.sprite) ~= "string" then return nil end
+    local entry = IconMap[def.sprite:gsub("^assets/", "")]
+    return entry and entry.icon or nil
+end
+
+-- The base silhouette slug. Weapons (and shields, a weapon family) REUSE the shared family shape --
+-- an axe should read as an axe. Every other item takes its own unique mapped glyph; only when the map
+-- has nothing does it fall back to an ability's cost-pool shape, then the generic type base.
 local function baseFor(def)
     local family = Item.archetype(def)
     if family and FAMILY_BASE[family] then return FAMILY_BASE[family] end
+
+    local mapped = mappedBase(def)
+    if mapped then return mapped end
+
+    if def.type == "ability" then
+        local pool = costPool(def)
+        if pool and ABILITY_BASE[pool] then return ABILITY_BASE[pool] end
+    end
     return TYPE_BASE[def.type] or DEFAULT_BASE
 end
 
@@ -135,32 +199,39 @@ end
 local function compose(def)
     local tint = tintFor(def)
     local classColor = CLASS_COLOR[def.class] or CLASS_DEFAULT
-    local typeColor = TYPE_COLOR[def.type] or TYPE_DEFAULT
     local tier = tonumber(def.repRank) or 0
 
     local inner, err = foreground(baseFor(def), tint)
     if not inner then return nil, err end
 
+    local school = schoolFor(def)
+
+    -- No backing plate: the icon is a bare silhouette on a transparent canvas, so it sits inside the
+    -- action slot's own frame rather than fighting it with a second one.
     local parts = { '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">' }
 
-    -- Layer 1 backing: a dark plate so the icon reads on any panel.
-    parts[#parts + 1] = '<rect x="24" y="24" width="464" height="464" rx="72" fill="#1b1f25"/>'
+    -- Magic reads as lit: a soft radial aura in the element tint blooms behind the silhouette, so a
+    -- fire spell glows orange and an ice one blue, while a physical swing is the bare silhouette. This
+    -- is the at-a-glance physical/magical tell -- with no plate to carry it, an elementless spell
+    -- glows in steel (still a halo, where a physical strike has none).
+    if school == "magical" then
+        parts[#parts + 1] = string.format(
+            '<defs><radialGradient id="glow" cx="50%%" cy="46%%" r="52%%">'
+            .. '<stop offset="0%%" stop-color="%s" stop-opacity="0.5"/>'
+            .. '<stop offset="100%%" stop-color="%s" stop-opacity="0"/>'
+            .. '</radialGradient></defs>'
+            .. '<rect x="24" y="24" width="464" height="464" rx="72" fill="url(#glow)"/>',
+            tint, tint)
+    end
 
     -- Layer 1 base: the family/type silhouette, tinted, scaled to ~62% and nudged up to clear the pips.
     parts[#parts + 1] = string.format(
         '<g transform="translate(96 82) scale(0.625)" fill="%s">%s</g>', tint, inner)
 
-    -- Layer 3 frame: the class border, thickening with tier.
-    local frameW = 12 + tier * 4
-    parts[#parts + 1] = string.format(
-        '<rect x="30" y="30" width="452" height="452" rx="66" fill="none" stroke="%s" stroke-width="%d"/>',
-        classColor, frameW)
-
-    -- Layer 4 badge: the type disc, top-right.
-    parts[#parts + 1] = string.format(
-        '<circle cx="396" cy="116" r="72" fill="%s" stroke="#12151a" stroke-width="12"/>', typeColor)
-
-    -- Layer 4 tier pips: `repRank` diamonds along the bottom, in the class colour.
+    -- Tier pips: `repRank` diamonds along the bottom, in the class colour. (The class border and the
+    -- type disc that used to sit over the art were removed: the border fought the action slot's own
+    -- frame, and the corner disc read as visual noise. Class still speaks through the pips; type
+    -- lives in the silhouette and the slot's badges.)
     if tier > 0 then
         local cy, half, gap = 452, 13, 40
         local start = 256 - (tier - 1) * gap / 2

@@ -6750,14 +6750,22 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
             local ca = ab.channelAfflict
             local statusId = (type(ca) == "table" and ca.status) or ca
             local afflictFor = (type(ca) == "table" and ca.duration) or (timeTicks + 1)
-            local seen = {}
+            local seen, afflicted = {}, {}
             for _, cell in ipairs(Combat.aoeCells(combat, ab, tx, ty, unit)) do
                 local occ = Combat.unitAt(combat, cell.x, cell.y)
                 if occ and occ.alive and not seen[occ] then
                     seen[occ] = true
+                    afflicted[#afflicted + 1] = occ
                     Status.apply(combat, occ, statusId, { duration = afflictFor })
                 end
             end
+            -- The flinch is a grip that lasts exactly as long as the wind-up hangs over its victims:
+            -- it is lifted the moment she STOPS channeling and the blow lands (Combat.resolveChannel),
+            -- because there is no longer an incoming swing to cower from -- the flat `duration` is only
+            -- a fade-out for the interrupt case. Recorded on the channel so the resolve can find the
+            -- bodies it stamped; an interrupt (Saber cut down mid-swing) deliberately does NOT lift it
+            -- -- the fear rides the body, not the ground (tests/saber_debut_spec.lua).
+            unit.channel.afflict = { status = statusId, units = afflicted }
         end
         -- The wind-up is an action too: a cast beat on begin-channel, then a second when it resolves
         -- (resolveCast, turns later). So a channeled spell reads both as it is loosed and as it lands.
@@ -7537,6 +7545,15 @@ function Combat.resolveChannel(combat, unit)
     if not pending then return false end
     unit.channel = nil
     Status.remove(combat, unit, "status_channeling")
+    -- Lift the wind-up's flinch: whoever was made to Cower under the telegraphed swing
+    -- (channelAfflict) is released the moment she stops channeling, because the blow has now landed
+    -- and there is no incoming swing left to cower from. Only on resolve -- an interrupt leaves it, so
+    -- cutting Saber down does not un-flinch the body she stamped (tests/saber_debut_spec.lua).
+    if pending.afflict then
+        for _, occ in ipairs(pending.afflict.units) do
+            if occ.alive then Status.remove(combat, occ, pending.afflict.status) end
+        end
+    end
     Combat.logEvent(combat, "action",
         string.format("%s's %s resolves.", unitName(unit), pending.item.name or "channel"), unit)
     local ok, info = resolveCast(combat, unit, pending.item, pending.ab, pending.tx, pending.ty, true,

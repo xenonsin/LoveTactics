@@ -268,6 +268,9 @@ function game:openEncounter(cell)
             opening = kind == "objective" and mp.objective and mp.objective.opening or nil,
             prestige = game.prestige,
             party = game.player and game.player.party or {},
+            -- The player's persistent marching grid (charId -> cell); specFor resolves it onto the party's
+            -- spawns. See models/player.lua and the Formation tab of ui/panels/party.lua.
+            formation = game.player and game.player.formation,
             -- The player's stash, by reference: an item stolen mid-battle by a thief with a full
             -- grid is appended straight to it, so a theft survives whatever the battle does next.
             stash = game.player and game.player.stash,

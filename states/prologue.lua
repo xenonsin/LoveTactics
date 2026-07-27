@@ -256,15 +256,16 @@ end
 function prologue.begin()
     local p = Player.active
     local avatar = Character.instantiate("character_avatar")
-    local body = (p and p.body == 2) and 2 or 1 -- body 1 is the default if creation was skipped
-    avatar.sprite = "assets/chars/avatar_" .. body .. ".png"
-    avatar.portrait = "assets/portraits/avatar_" .. body .. ".png"
     -- The name is typed at creation, so the avatar is named before the first line is spoken --
     -- Rowan is sworn to you and has to be able to say it. Falls back to the blueprint's "Stranger".
     if p and p.name then avatar.name = p.name end
     prologue.avatar = avatar
     p.roster = { avatar }
     p.party = { avatar }
+    -- Stamp the chosen body's sprite/portrait onto the avatar (Player.applyAvatarBody, which the load
+    -- path also runs). The board draws a unit only when char.sprite is a loaded image, so this is what
+    -- keeps the avatar from falling back to the bare letter token; it reads p.body, defaulting to body 1.
+    Player.applyAvatarBody(p)
     -- The hub reads this on the first visit to stage the arrival (the guard scene over the city) and
     -- coach the Quest Board (states/hub.lua). Set only for a New Game -- a loaded save never runs this
     -- state, so its hub opens straight to free play with no flag to see.

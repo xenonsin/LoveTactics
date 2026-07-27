@@ -10,6 +10,7 @@ local Character = require("models.character")
 local Growth = require("models.growth")
 local Item = require("models.item")
 local Save = require("models.save")
+local Sprite = require("models.sprite")
 local Vendor = require("models.vendor")
 
 local Player = {}
@@ -23,6 +24,17 @@ Player.active = nil
 -- Hard cap on the active party. The roster (owned characters) is unbounded;
 -- only this many can be deployed at once.
 Player.MAX_PARTY = 4
+
+-- The marching grid: the persistent formation the player arranges once in the hub (the Formation tab
+-- of the Loadout panel) and every procedural battle then seats the party into. A grid of columns x
+-- rows where ROW 1 IS THE FRONT LINE -- the row nearest the enemy -- so stacking two members in one
+-- column puts one in front and one screened behind. Sized to hold the whole party (MAX_PARTY) with
+-- room to spread OR bunch; a 4-wide grid maps onto the board's 8-wide near band with the same even
+-- spacing the auto-placement already used (models/arena.lua), so an untouched formation reproduces
+-- today's placement exactly. See [[trait_formation_fighter]]: this is what makes opening-bell
+-- adjacency the player's choice rather than a coin flip.
+Player.FORMATION_COLS = 4
+Player.FORMATION_ROWS = 2
 
 -- Base overworld fog-of-war vision radius (tiles seen around the player). A party
 -- member carrying an item with a larger visionRadius (e.g. a torch) raises it.
@@ -55,6 +67,48 @@ function Player.addToParty(player, char)
     end
     player.party[#player.party + 1] = char
     return true
+end
+
+-- ---------------------------------------------------------------------------
+-- Marching formation (persistent placement; see Player.FORMATION_COLS/ROWS)
+-- ---------------------------------------------------------------------------
+--
+-- Stored on `player.formation` as charId -> { col, row } (1-based; row 1 is the front line). Keyed by
+-- CHARACTER ID, not by party index, so it survives recruiting, benching and a save/load round trip
+-- untouched -- a member keeps their assigned cell whether or not they are currently deployed. A member
+-- with no entry falls back to the arena's auto-spread (models/arena.lua), so an empty formation, and
+-- thus a fresh or pre-formation save, behaves exactly as before the feature existed.
+
+-- The { col, row } cell assigned to `char`, or nil if it has none (fall back to auto-placement).
+function Player.formationSlot(player, char)
+    if not (player and player.formation and char) then return nil end
+    return player.formation[char.id]
+end
+
+-- Assign `char` to grid cell (col, row), evicting whoever already sits there -- a cell holds at most
+-- one member, so placing onto an occupied cell SWAPS the two when the mover already had a cell, and
+-- otherwise simply displaces the occupant back to unplaced. Clamped to the grid. Returns nothing;
+-- persistence is the caller's call (the Formation editor saves on panel close, like the rest of it).
+function Player.setFormationSlot(player, char, col, row)
+    if not (player and char) then return end
+    player.formation = player.formation or {}
+    col = math.max(1, math.min(Player.FORMATION_COLS, col))
+    row = math.max(1, math.min(Player.FORMATION_ROWS, row))
+    local mine = player.formation[char.id]
+    -- Whoever is on the target cell yields it: they take the mover's old cell (a true swap) if the
+    -- mover had one, else they are unplaced.
+    for id, slot in pairs(player.formation) do
+        if id ~= char.id and slot.col == col and slot.row == row then
+            if mine then slot.col, slot.row = mine.col, mine.row else player.formation[id] = nil end
+            break
+        end
+    end
+    player.formation[char.id] = { col = col, row = row }
+end
+
+-- Drop `char` out of the formation (back to auto-placement). No-op if it had no cell.
+function Player.clearFormationSlot(player, char)
+    if player and player.formation and char then player.formation[char.id] = nil end
 end
 
 -- The stash: every item the player owns that isn't sitting in some character's 3x3 grid. It has no
@@ -147,6 +201,29 @@ function Player.recruit(player, charId, opts)
     return char
 end
 
+-- The created avatar wears one of two bodies (`player.body`, 1 or 2 -- which sprite set, chosen at
+-- character creation; body 1 is the default when creation was skipped). That choice lives on the player,
+-- NOT the avatar blueprint, so it has to be re-stamped onto the avatar instance every time one is built:
+-- freshly in the prologue (states/prologue.lua) and again after a save/load, where restoreCharacter
+-- rebuilds every roster member from its blueprint and would otherwise leave the avatar on body 1's art.
+--
+-- The sprite must be a LOADED IMAGE, not a path string: the board draws a unit only when char.sprite is
+-- userdata (ui/battle_map.lua drawUnits), so a bare path reads as "no art" and falls back to the letter
+-- token. So it is loaded here exactly as Character.instantiate does, and the raw paths are kept on the
+-- *Path fields to match the instance shape (the debug editor and Save both read those).
+function Player.applyAvatarBody(player)
+    if not player then return end
+    local body = (player.body == 2) and 2 or 1
+    for _, char in ipairs(player.roster or {}) do
+        if char.id == "character_avatar" then
+            char.spritePath = "assets/chars/avatar_" .. body .. ".png"
+            char.portraitPath = "assets/portraits/avatar_" .. body .. ".png"
+            char.sprite = Sprite.load(char.spritePath)
+            char.portrait = Sprite.load(char.portraitPath)
+        end
+    end
+end
+
 -- Build fresh mutable player state for a new game. Party members reference the
 -- same instances held in the roster, so a character is instantiated once.
 function Player.new()
@@ -174,6 +251,7 @@ function Player.new()
         authorId = nil,
         roster = roster,
         party = {},
+        formation = {}, -- charId -> { col, row }; the persistent marching grid (see Player.setFormationSlot)
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
         reputation = {},      -- vendor id -> reputation points (see Player.addReputation)
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board
@@ -519,6 +597,10 @@ function Player.start(fresh)
     -- prestige 1, but a loaded save whose stored levels lag (a schema migration, a recruit granted at
     -- higher prestige) is squared away here before anything reads the roster.
     Player.syncLevels(Player.active)
+    -- Re-stamp the avatar's chosen body art. restoreCharacter rebuilds the avatar from its blueprint
+    -- (body 1's default), so a loaded body-2 avatar would otherwise show body 1; a fresh game has no
+    -- avatar in the roster yet (the prologue builds it and applies the body itself), so this no-ops there.
+    Player.applyAvatarBody(Player.active)
     return Player.active
 end
 

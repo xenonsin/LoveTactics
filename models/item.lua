@@ -33,6 +33,15 @@ function Item.classOf(item)
     return item and item.class
 end
 
+-- The player-facing name of a shelf `class` ("fighter" -> "Fighter"), or nil for a class-less item.
+-- The single owner of the wording, so every surface that names an item's base shelf -- the tooltip's
+-- Class row, the shop and forge detail columns -- capitalizes it the same way. Sits beside
+-- Discipline.displayName: a discipline is the locked deeper cut of a shelf, the class is the shelf.
+function Item.classDisplayName(class)
+    if not class then return nil end
+    return (tostring(class):gsub("^%l", string.upper))
+end
+
 -- The fifteen weapon families. A weapon carries exactly one of these among its `tags`, and that tag
 -- names the base mechanics the weapon inherits -- an axe cleaves, a hammer stuns, a dagger bleeds.
 -- See docs/weapons.md for the contract each family owes.
@@ -193,6 +202,14 @@ Item.MAX_LEVEL = 10
 
 local function titleCase(s)
     return (tostring(s):gsub("^%l", string.upper))
+end
+
+-- Sorted keys of a map, so pairs-driven rows (armor bonuses/resists) chart deterministically.
+local function sortedKeys(t)
+    local keys = {}
+    for k in pairs(t) do keys[#keys + 1] = k end
+    table.sort(keys)
+    return keys
 end
 
 -- Resolve one authored magnitude to its value at `level`. A TUNED magnitude is a list over the levels
@@ -356,6 +373,139 @@ end
 -- stat for a level to move. An item with no magnitude (a plain torch) can't be upgraded.
 function Item.isUpgradable(item)
     return item ~= nil and Item.primaryStat(item) ~= nil
+end
+
+-- primaryStat's companion: where that names the ONE headline magnitude, this names ALL of an item's
+-- scaling stats, as an ordered list of { label, key, value }. It reads the very fields eachMagnitude
+-- bakes (so it can never chart a stat the forge doesn't actually raise), quoting each at the given
+-- instance's level. `value` is always a NUMBER here. The aoe footprint is deliberately left out --
+-- its geometry is shown as a drawn shape (ui/footprint_diagram.lua), not a number -- and so are the
+-- pure flags (careful/twin/preserve), which have no magnitude for a level to move.
+local function statBreakdown(item)
+    local out = {}
+    local function add(label, key, value)
+        if type(value) == "number" then out[#out + 1] = { label = label, key = key, value = value } end
+    end
+    local ab = item.activeAbility
+    if ab then
+        for _, m in ipairs(ABILITY_MAGNITUDES) do add(m[2], m[1], ab[m[1]]) end
+        for _, key in ipairs(ABILITY_SECONDARY_MAGNITUDES) do add(titleCase(key), key, ab[key]) end
+    end
+    if item.bonus then
+        -- Lead with defense / magic defense (the armor headline), then the rest alphabetically.
+        add("Defense", "defense", item.bonus.defense)
+        add("Magic Defense", "magicDefense", item.bonus.magicDefense)
+        for _, k in ipairs(sortedKeys(item.bonus)) do
+            if k ~= "defense" and k ~= "magicDefense" then add(titleCase(k), k, item.bonus[k]) end
+        end
+    end
+    if item.resist then
+        for _, tag in ipairs(sortedKeys(item.resist)) do add("Resist " .. tag, "resist:" .. tag, item.resist[tag]) end
+    end
+    if item.maxBonus then
+        for _, k in ipairs(sortedKeys(item.maxBonus)) do add("Max " .. titleCase(k), "max:" .. k, item.maxBonus[k]) end
+    end
+    if item.unarmedBonus then
+        for _, k in ipairs(sortedKeys(item.unarmedBonus)) do add("Fist " .. titleCase(k), "fist:" .. k, item.unarmedBonus[k]) end
+    end
+    local wb = item.waitBehavior
+    if wb then
+        add("Brace", "wb:defense", wb.defense)
+        add("Focus Mana", "wb:mana", wb.mana)
+        add("Overwatch Stamina", "wb:stamina", wb.stamina)
+        add("Covers", "wb:covers", wb.covers)
+        add("Air Duration", "wb:duration", wb.duration)
+        add("Air Amount", "wb:amount", wb.amount)
+    end
+    if item.incense then add("Incense", "incense", item.incense.amount) end
+    local aura = item.aura
+    if aura then
+        add("Aura Amount", "aura:amount", aura.amountBonus)
+        add("Aura Range", "aura:range", aura.rangeBonus)
+        add("Aura Tempo", "aura:speed", aura.speedBonus)
+        add("Lifesteal", "aura:lifesteal", aura.lifesteal)
+        if aura.status and aura.status.opts then add("Aura Effect", "aura:status", aura.status.opts.magnitude) end
+    end
+    return out
+end
+
+-- Chart every stat's whole forge path, level 0..MAX_LEVEL, for the blacksmith's growth sheet. It bakes
+-- a fresh instance at each level -- so every number is exactly what a forge would produce, never an
+-- estimate -- and reads its scaling stats off statBreakdown. Accepts an item instance or a bare blueprint
+-- id; returns nil for an unknown id. Pure logic (Item.instantiate is headless-safe), so the sheet is
+-- fully testable without a window. Shape:
+--   {
+--     id, maxLevel, primaryLabel,
+--     stats = { { label, key, primary, numeric = true, min, max,
+--                 values  = { [0..maxLevel] = n },      -- the value at each level
+--                 changed = { [1..maxLevel] = true } }, -- levels where it stepped UP from the one below
+--               ... },                                  -- ONLY stats that move; primary first when it moves
+--     flat  = { { label, value }, ... },  -- magnitudes present but identical at every level (a movement penalty)
+--     footprint = nil | {
+--       levels    = { [0..maxLevel] = { shape, length, width, radius } },  -- the aoe form at each level
+--       changedAt = { levels },  -- level 0 plus every level whose footprint differs from the one below
+--     },
+--   }
+function Item.growth(idOrItem)
+    local id = type(idOrItem) == "table" and idOrItem.id or idOrItem
+    if not Item.defs[id] then return nil end
+    local max = Item.MAX_LEVEL
+
+    -- One baked instance per level, plus the stat labels in the order they first appear.
+    local perLevel, order, seen = {}, {}, {}
+    for lvl = 0, max do
+        local inst = Item.instantiate(id, 1, lvl)
+        local map = {}
+        for _, s in ipairs(statBreakdown(inst)) do
+            map[s.label] = s.value
+            if not seen[s.label] then seen[s.label] = true; order[#order + 1] = { label = s.label, key = s.key } end
+        end
+        perLevel[lvl] = { map = map, aoe = inst.activeAbility and inst.activeAbility.aoe }
+    end
+
+    local _, primaryLabel = Item.primaryStat(Item.instantiate(id, 1, 0))
+
+    local stats, flat = {}, {}
+    for _, o in ipairs(order) do
+        local values, changed, moved, lo, hi = {}, {}, false, nil, nil
+        for lvl = 0, max do
+            local v = perLevel[lvl].map[o.label]
+            values[lvl] = v
+            if v ~= nil then
+                lo = (lo == nil or v < lo) and v or lo
+                hi = (hi == nil or v > hi) and v or hi
+            end
+            if lvl > 0 and values[lvl] ~= values[lvl - 1] then changed[lvl] = true; moved = true end
+        end
+        if moved then
+            stats[#stats + 1] = { label = o.label, key = o.key, primary = (o.label == primaryLabel),
+                numeric = true, min = lo, max = hi, values = values, changed = changed }
+        else
+            flat[#flat + 1] = { label = o.label, value = values[0] }
+        end
+    end
+
+    -- The footprint's whole life, when the ability lays one. Its shape/length/width/radius are per-level
+    -- lists the forge resolves, so a line that opens into a cone reads the exact form at each step. Only
+    -- the levels where the footprint actually changes (level 0 always included) need a filmstrip thumbnail.
+    local footprint
+    local baseAoe = perLevel[0].aoe
+    if baseAoe and (baseAoe.shape or baseAoe.radius or baseAoe.length) then
+        local levels, changedAt, prev = {}, {}, nil
+        for lvl = 0, max do
+            local a = perLevel[lvl].aoe or {}
+            local f = { shape = a.shape, length = a.length, width = a.width, radius = a.radius }
+            levels[lvl] = f
+            if not prev or f.shape ~= prev.shape or f.length ~= prev.length
+                or f.width ~= prev.width or f.radius ~= prev.radius then
+                changedAt[#changedAt + 1] = lvl
+            end
+            prev = f
+        end
+        footprint = { levels = levels, changedAt = changedAt }
+    end
+
+    return { id = id, maxLevel = max, primaryLabel = primaryLabel, stats = stats, flat = flat, footprint = footprint }
 end
 
 -- Bake `item.level` into every magnitude (resolving each per-level list to this level's tuned value)

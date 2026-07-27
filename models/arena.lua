@@ -229,6 +229,78 @@ local function placeUnits(rowList, count, cols, occupied)
     return spawns
 end
 
+-- The board cell a marching-grid slot maps to. Grid ROW 1 is the FRONT line -- it "faces the enemy"
+-- (states/party_select.lua), and the enemy holds the FAR edge (low y) while the party lands on the near
+-- rows -- so the front rank must sit one row TOWARD the enemy from the party's home edge, not on it:
+-- front (row 1) -> rows-frows+1, back (row frows) -> rows (the home edge). Deeper grid rows step BACK
+-- toward that edge. Grid columns spread across the full board width with the SAME even spacing
+-- placeUnits uses. See models/player.lua for the grid the player edits.
+local function formationCell(slot, fcols, frows, cols, rows)
+    local x = math.floor(slot.col * (cols + 1) / (fcols + 1) + 0.5)
+    x = math.max(1, math.min(cols, x))
+    local y = math.max(1, math.min(rows, rows - frows + slot.row))
+    return x, y
+end
+
+-- Seat the party by the player's persistent marching grid. `slots` is a list ordered to MATCH the party
+-- (entry i is member i's { col, row } grid cell, or nil for a member left unplaced), so the spawns come
+-- back in the same order and Arena.build's bindUnits seats each member on their chosen tile. A placed
+-- member takes its mapped board cell, nudged to the nearest free tile on a clash (a stale slot from a
+-- differently-sized grid can otherwise collide); the unplaced remainder auto-spreads across the near
+-- rows into whatever the placed members left free, so a half-arranged formation still seats everyone.
+local function placePartyFormation(slots, fcols, frows, count, cols, rows, occupied, walkable)
+    walkable = walkable or function() return true end
+    local spawns = {}
+    local unplaced = {}
+    for i = 1, count do
+        local slot = slots[i]
+        if slot then
+            local x, y = formationCell(slot, fcols, frows, cols, rows)
+            -- On a clash OR an unwalkable tile, step along the near row and then to the back near row
+            -- until a free walkable tile turns up: two members mapping to one cell never share it, and a
+            -- curated board's near-row wall (a colosseum shoulder pillar) never buries a member.
+            local guard = 0
+            while (occupied[key(x, y)] or not walkable(x, y)) and guard < cols * 2 do
+                guard = guard + 1
+                x = (x % cols) + 1
+                if x == 1 then y = (y == rows) and (rows - 1) or rows end
+            end
+            occupied[key(x, y)] = true
+            spawns[i] = { x = x, y = y }
+        else
+            unplaced[#unplaced + 1] = i
+        end
+    end
+    -- Everyone without a grid cell falls back to the even auto-spread, over the tiles the formation
+    -- left open (placeUnits skips occupied cells).
+    local filler = placeUnits({ rows, rows - 1 }, #unplaced, cols, occupied)
+    for j, idx in ipairs(unplaced) do
+        spawns[idx] = filler[j] or { x = 1, y = rows }
+    end
+    return spawns
+end
+
+-- A curated board's authored partySpawns are the FALLBACK for a party that arranged nothing. When the
+-- player actually brought a marching formation, seat the party by it here too -- the same grid a
+-- generated board honors in generateLayout, applied over the curated tiles (so its own near-row walls
+-- get nudged around). Reseats in place; returns nothing.
+--
+-- Only fires when at least one member is actually placed: an empty/never-touched formation keeps the
+-- authored spawns untouched, which is what leaves the prologue's scripted fights (fought before a hub
+-- exists to arrange a formation in) standing exactly where they were authored to. Skipped when the
+-- fight carries AI allies, whose seating is the authored board's job (bindAllies), not the grid's.
+local function reseatByFormation(layout, formation, fcols, frows, partyCount)
+    if not formation then return end
+    local placed = false
+    for i = 1, partyCount do if formation[i] then placed = true break end end
+    if not placed then return end
+    local Player = require("models.player")
+    fcols, frows = fcols or Player.FORMATION_COLS, frows or Player.FORMATION_ROWS
+    local function walkable(x, y) return walkableAt(layout, x, y) end
+    layout.partySpawns = placePartyFormation(formation, fcols, frows, partyCount,
+        layout.cols, layout.rows, {}, walkable)
+end
+
 -- A deliberately fresh seed, for a caller that wants a board it has never seen. The one place the
 -- clock is allowed to pick, so "this arena came from nowhere" is a greppable decision rather than
 -- something that happens by omission.
@@ -263,7 +335,18 @@ function Arena.generateLayout(params)
     end
 
     local occupied = {}
-    local partySpawns = placeUnits({ rows, rows - 1 }, params.party or 0, cols, occupied)
+    -- The party seats by the player's marching grid when one was threaded through, else by the plain
+    -- even auto-spread. Curated boards apply the same grid too, but later (Arena.build's reseatByFormation),
+    -- since their tiles aren't built here.
+    local partySpawns
+    if params.formation then
+        local Player = require("models.player")
+        local fcols = params.formationCols or Player.FORMATION_COLS
+        local frows = params.formationRows or Player.FORMATION_ROWS
+        partySpawns = placePartyFormation(params.formation, fcols, frows, params.party or 0, cols, rows, occupied)
+    else
+        partySpawns = placeUnits({ rows, rows - 1 }, params.party or 0, cols, occupied)
+    end
     local enemySpawns = placeUnits({ 1, 2 }, params.enemies or 0, cols, occupied)
 
     -- Scatter terrain only on the neutral middle band so it never walls off a side.
@@ -328,6 +411,7 @@ local function hydrateLayout(def)
         hazards = def.hazards or {}, -- authored hazards: { { id, x, y, side, duration }, ... } (Combat.new places them)
         props = def.props or {}, -- authored props: { { id, x, y }, ... } (barrels/crates a curated map stands)
         biome = def.biome,
+        curated = true, -- an authored board: its partySpawns are the fallback a real formation reseats (Arena.build)
     }
 end
 
@@ -361,6 +445,8 @@ function Arena.pickLayout(spec, partyCount, enemyCount)
         return Arena.generateLayout({
             biome = spec.biome, seed = spec.seed,
             party = partyCount, enemies = enemyCount,
+            formation = spec.formation, formationCols = spec.formationCols,
+            formationRows = spec.formationRows,
         })
     end
     return hydrateLayout(curated[pick].def)
@@ -488,7 +574,17 @@ function Arena.build(ctx, spec)
         layout = Arena.generateLayout({
             biome = spec.biome, seed = spec.seed,
             party = #partyIds + #allyIds, enemies = #enemyIds,
+            formation = spec.formation, formationCols = spec.formationCols,
+            formationRows = spec.formationRows,
         })
+    end
+
+    -- A curated board keeps its authored spawns until the player brings an arranged formation; then the
+    -- party seats by the grid on the sand too, not just on generated maps. Only curated layouts need this
+    -- (a generated one already seated by the grid in generateLayout), and only when there are no allies to
+    -- share the near rows.
+    if layout.curated and #allyIds == 0 then
+        reseatByFormation(layout, spec.formation, spec.formationCols, spec.formationRows, #partyIds)
     end
 
     return {

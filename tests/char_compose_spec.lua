@@ -1,7 +1,7 @@
 -- Regression guard for the character-token composer's GUESSING (tools/char_compose.lua) -- the same
 -- "which picture does this blueprint resolve to?" contract the item pipeline guards for families.
 --
--- Only the pure logic is exercised (kindOf / slugFor / tintFor / frameFor / elementOf / tokenId): it
+-- Only the pure logic is exercised (kindOf / slugFor / tintFor / elementOf / tokenId): it
 -- touches no love.graphics and no resvg, so a wrong guess turns a test red without rendering anything.
 -- Deliberately NOT asserted here: that a resolved slug names a file on disk. The game-icons set lives
 -- under vendor/ (gitignored, fetched by tools/icons/fetch.ps1), so a fresh clone has no icons and a
@@ -40,8 +40,18 @@ return {
     {
         name = "a class humanoid resolves to its class silhouette",
         fn = function()
-            assert(slug("character_saber") == "cathelineau/swordman", "fighter -> swordman")
+            -- Each of the seven shelves has a body of its own, so no two disciplines share a look --
+            -- the archer (hunter) and Rowan (knight) used to both come out the generic swordman.
+            assert(slug("character_saber") == "delapouite/sword-brandish", "fighter -> sword-brandish")
+            assert(slug("character_knight") == "delapouite/knight-banner", "knight -> knight-banner")
+            assert(slug("character_archer") == "delapouite/archer", "hunter -> archer")
+            assert(slug("character_ren") == "lorc/bubbling-flask", "alchemist -> bubbling-flask")
             assert(slug("character_mage") == "delapouite/wizard-face", "mage -> wizard face")
+            -- The generic body stays the plain swordman -- distinct from the fighter's raised blade --
+            -- so a classless mook never wears a discipline's silhouette.
+            assert(slug("character_bandit") == "cathelineau/swordman", "classless -> swordman default")
+            -- The player's avatar is classless too, but reads as a person of its own, not a rank mook.
+            assert(slug("character_avatar") == "delapouite/person", "avatar -> person, not swordman")
         end,
     },
     {
@@ -84,7 +94,7 @@ return {
     },
     {
         -- The whole point of the boss silhouette: a classless general is otherwise a rank swordman, and
-        -- only the gold frame would tell them apart. The overlord figure lifts them.
+        -- only the gold badge would tell them apart. The overlord figure lifts them.
         name = "a classless boss (a general) is lifted to the overlord silhouette",
         fn = function()
             assert(slug("character_general_wrath") == Char.BOSS_SILHOUETTE, "wrath general -> overlord")
@@ -94,7 +104,7 @@ return {
     },
     {
         -- ... but a boss that HAS a class keeps its role look -- Amana is priest + boss, and should read
-        -- priest, not overlord. Class wins; the gold frame still marks the boss.
+        -- priest, not overlord. Class wins; the gold badge still marks the boss.
         name = "a classed boss keeps its class silhouette, not the overlord",
         fn = function()
             local def, id = resolve("character_amana")
@@ -119,18 +129,17 @@ return {
         end,
     },
     {
-        -- The load-bearing invariant: EVERY shipped blueprint resolves to a real slug/tint/frame, so no
+        -- The load-bearing invariant: EVERY shipped blueprint resolves to a real slug/tint, so no
         -- character can slip through to a nil silhouette that would crash compose(). A new blueprint that
         -- resolves to nothing turns this red the moment it is added.
-        name = "every character blueprint resolves to a non-empty slug, tint and frame",
+        name = "every character blueprint resolves to a non-empty slug and tint",
         fn = function()
             local count = 0
             for key, def in pairs(defs) do
                 local id = Char.tokenId(key)
-                local s, t, f = Char.slugFor(def, id), Char.tintFor(def, id), Char.frameFor(def, id)
+                local s, t = Char.slugFor(def, id), Char.tintFor(def, id)
                 assert(type(s) == "string" and #s > 0, key .. " resolved to no silhouette")
                 assert(type(t) == "string" and t:sub(1, 1) == "#", key .. " resolved to no tint")
-                assert(type(f) == "string" and f:sub(1, 1) == "#", key .. " resolved to no frame")
                 assert(KNOWN_KINDS[Char.kindOf(def, id)] or def.kind, key .. " resolved to an unknown kind")
                 count = count + 1
             end

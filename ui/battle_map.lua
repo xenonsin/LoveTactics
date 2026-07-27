@@ -269,6 +269,7 @@ function BattleMap:draw()
     self:drawHighlights()
     self.bursts:draw(self) -- impacts, blooms and bolts, over the bodies and highlights, under the readouts
     self:drawUnitInfo() -- HP bars + turn numbers + status badges sit above the highlight fills
+    self:drawIntentBadges() -- the Threats-survey intent icons, on each foe's body, above every readout
     self:drawCursor()
     love.graphics.setColor(1, 1, 1)
 end
@@ -845,9 +846,10 @@ function BattleMap:drawUnits()
             local disc = math.min(bw, bh) * 0.32
             local a = fade > 0 and (1 - fade) or (Status.untargetable(u) and 0.40 or 1)
             local tint = 1 - fade -- fade toward black as it dies
-            -- No side ring: a faction outline here would sit right on top of the range band's own
-            -- boundary stroke (drawOverlays) and the two reds read as one mark. The unit's side is
-            -- carried by its HP bar instead -- see drawHpBar / ui/colors.lua.
+            -- The token carries no baked frame (tools/char_compose.lua): its border is drawn HERE, in
+            -- the unit's side colour (blue ours / red theirs), so allegiance reads off the body itself
+            -- and not only the HP bar. It hugs the token PLATE (inset from the tile edge), which keeps
+            -- it clear of the tile-edge range band -- the collision that once argued against a ring.
             local sprite = u.char.sprite
             if type(sprite) == "userdata" then
                 local sw, sh = sprite:getDimensions()
@@ -890,6 +892,20 @@ function BattleMap:drawUnits()
                     love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
                     love.graphics.setBlendMode("alpha")
                 end
+                -- Side frame, traced onto the token's own plate. The plate is the token art's inner rect
+                -- (SVG viewBox 512, rect inset 24 with corner radius 72 -- tools/char_compose.lua), so the
+                -- fractions below map that rect into the sprite's drawn box and the border lands exactly
+                -- on the plate edge. Blue for ours, red (or green for an uncommanded ally) for theirs; a
+                -- boss's border runs heavier. Multiplied by `tint`/`a` so it fades and dims with the body.
+                local dw, dh = sw * scale, sh * scale
+                local dmin = math.min(dw, dh)
+                local sc = Colors.unit(u)
+                love.graphics.setLineWidth(math.max(1.5, dmin * (u.char.boss and 0.045 or 0.03)))
+                love.graphics.setColor(sc[1] * tint, sc[2] * tint, sc[3] * tint, a)
+                love.graphics.rectangle("line",
+                    cx - dw / 2 + 0.046875 * dw, cy - dh / 2 + 0.046875 * dh,
+                    0.90625 * dw, 0.90625 * dh, 0.140625 * dmin, 0.140625 * dmin)
+                love.graphics.setLineWidth(1)
             else
                 -- Token fallback: colored disc with the unit's initial, in the unit's side colour.
                 local c = Colors.unit(u)
@@ -989,6 +1005,19 @@ local BADGE_W, BADGE_MIN_W, BADGE_H, BADGE_GAP, BADGE_INSET = 18, 11, 12, 2, 4
 -- A rect carries either `st` (a status) or `more` (the count the row had no room for).
 function BattleMap:statusBadgeRects(u, wx, wy)
     local list = u.statuses
+    -- Hold back any affliction whose landing cue a pending beat still owes (a thrown Root riding the
+    -- bolt to its mark): its badge surfaces WITH the impact, not the instant the model applied it, the
+    -- same beat its "+n more" slot and hover hit-test wait for (ui/combat_fx.lua statusPending).
+    if list and self.fx then
+        local shown
+        for _, st in ipairs(list) do
+            if not self.fx:statusPending(st) then
+                shown = shown or {}
+                shown[#shown + 1] = st
+            end
+        end
+        list = shown or {}
+    end
     if not list or #list == 0 then return {} end
     local s = self.size
     -- Lay the badge row along the bottom of the body's whole footprint (its one cell for a 1×1 unit),
@@ -1214,6 +1243,68 @@ function BattleMap:drawTargetLines()
             tx + hl * math.cos(a2), ty + hl * math.sin(a2))
     end
     love.graphics.setLineWidth(1)
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- Predicted-intent icons on the bodies (self.overlays.intentBadges: a slice of the enemyIntents cache,
+-- set either while the Threats survey is up -- every engaged foe -- or on a lone-foe hover -- just that
+-- one). Each foe wears the same Slay-the-Spire mark its turn-order card shows -- centred on its sprite --
+-- so "what is this one about to do" reads off the board, not just off a card at the edge. The target
+-- lines answer WHO it comes for; this answers WHAT, right where the body stands, alongside the line.
+function BattleMap:drawIntentBadges()
+    local intents = self.overlays and self.overlays.intentBadges
+    if not intents or not self.combat then return end
+    local s = self.size
+    for _, u in ipairs(self.combat.units) do
+        local intent = u.alive and not self:heldUnit(u) and intents[u]
+        if intent then
+            local wx, wy = self:unitOrigin(u)
+            self:drawIntentBadge(intent, wx + (u.w or 1) * s / 2, wy + (u.h or 1) * s / 2)
+        end
+    end
+end
+
+-- Radius of the intent glyph on a board body -- larger than the timeline card's 10px, since it sits
+-- over a full-tile sprite rather than on a slim card and has to hold its own against the art.
+local INTENT_BADGE_ICON = 13
+
+-- One intent icon + its incoming number, centred on (cx, cy). Mirrors ui/combat_panel's drawIntentRead
+-- exactly -- kind glyph, tinted by kind, plus the deterministic damage (attack/cast) or heal (support)
+-- figure -- so the board mark and the card mark are the same thing. A dark pill backs it (as the turn
+-- number is backed) so it stays legible over any sprite; the number is dropped for a debuff or a hold,
+-- where the mark alone already says "status" / "coming for nobody".
+function BattleMap:drawIntentBadge(intent, cx, cy)
+    local kind = intent.kind or "wait"
+    local col = Colors.INTENT[kind] or Colors.RANGE
+    local glyph = Glyphs.INTENT[kind] or Glyphs.INTENT.wait
+    local n
+    if kind == "attack" or kind == "cast" then
+        if intent.amount and intent.amount > 0 then n = math.floor(intent.amount + 0.5) end
+    elseif kind == "support" then
+        if intent.heal and intent.heal > 0 then n = math.floor(intent.heal + 0.5) end
+    end
+    local iconW = INTENT_BADGE_ICON
+    love.graphics.setFont(self.numberFont)
+    local numText = n and tostring(n) or nil
+    local gap = numText and 3 or 0
+    local numW = numText and self.numberFont:getWidth(numText) or 0
+    local padX, padY = 4, 3
+    local bw = iconW + gap + numW + padX * 2
+    local bh = iconW + padY * 2
+    local bx, by = cx - bw / 2, cy - bh / 2
+
+    love.graphics.setColor(0, 0, 0, 0.62)
+    love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
+    love.graphics.setColor(col[1], col[2], col[3], 0.85)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("line", bx + 0.5, by + 0.5, bw - 1, bh - 1, 4, 4)
+
+    local ix = bx + padX
+    glyph(ix, cy - iconW / 2, iconW, iconW, col[1], col[2], col[3], 1)
+    if numText then
+        love.graphics.setColor(col[1], col[2], col[3], 1)
+        love.graphics.print(numText, ix + iconW + gap, cy - self.numberFont:getHeight() / 2)
+    end
     love.graphics.setColor(1, 1, 1)
 end
 

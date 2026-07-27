@@ -122,6 +122,28 @@ return {
             assert(Status.has(f, "status_cowering"), "and the body she made flinch is flinching still")
         end,
     },
+    {
+        name = "the flinch lifts when she stops channeling -- the blow lands and there is nothing left to cower from",
+        fn = function()
+            -- The counterpart to the interrupt case above: on a clean RESOLVE the swing has fallen, so
+            -- the grip it kept on the bodies under it is released rather than left to punish them a
+            -- second time. The cowering rode the wind-up, not a flat window that outlives the blow.
+            local map = Fixture.new(8, 8)
+            local her = Fixture.unit("character_saber", 4, 4)
+            local foe = Fixture.unit("character_bandit", 4, 5)
+            local combat = Fixture.combat(map, her, foe)
+            local s, f = combat.units[1], combat.units[2]
+            local blade = Fixture.itemNamed(s.char, "weapon_first_motion")
+
+            Fixture.openTurn(combat, s)
+            assert(Combat.useItem(combat, s, blade, 4, 5), "she begins the wind-up")
+            assert(Status.has(f, "status_cowering"), "the foe cowers while the swing hangs over it")
+
+            Combat.resolveChannel(combat, s)
+            assert(not Status.has(f, "status_cowering"),
+                "and once the blow lands and she stops channeling, the flinch is gone")
+        end,
+    },
 
     -- THE AI'S WIND-UP DEPTH ------------------------------------------------------------------------
     {

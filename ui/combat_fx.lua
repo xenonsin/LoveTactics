@@ -59,6 +59,8 @@ function CombatFx.new()
     self.pending = {}  -- beats waiting their turn: { t = seconds left, events = cue list }
     self.hp = {}       -- unit -> shown HP value, eased toward hp.current
     self.held = {}     -- unit -> how many pending beats still owe it a hit; its HP bar waits on them
+    self.heldStatus = {} -- status instance -> how many pending beats still owe it its landing; its
+                         -- badge waits on them (a thrown Root, held through the bolt's flight)
     -- The point-effect controller (ui/burst_fx.lua), shared in by states/battle.lua once the board it
     -- draws on exists. Optional: the headless model tests build a CombatFx with none, and every call
     -- below guards on it, so an exchange resolves identically with or without a board to paint on.
@@ -122,6 +124,13 @@ function CombatFx:hold(events, delta)
         if e.type == "damage" or e.type == "heal" or e.type == "death" then
             local n = (self.held[e.unit] or 0) + delta
             self.held[e.unit] = n > 0 and n or nil
+        elseif e.type == "status" and e.status then
+            -- The badge's twin of the health hold above: the status is on the unit in the model the
+            -- instant the blow resolves, but a thrown affliction (Bolas' Root) must not paint its badge
+            -- until the bolt is seen to land. Counted per status instance so the badge surfaces the
+            -- moment this beat plays (:update's hold(-1)), exactly with the impact -- see statusPending.
+            local n = (self.heldStatus[e.status] or 0) + delta
+            self.heldStatus[e.status] = n > 0 and n or nil
         end
     end
 end
@@ -155,6 +164,14 @@ end
 -- already killed (and to hold its corpse token back) until the counter that felled it actually plays.
 function CombatFx:awaiting(unit)
     return self.held[unit] ~= nil
+end
+
+-- Is `status` a fresh affliction whose landing cue a pending beat still owes? True from the instant the
+-- model applies it until the beat that lands it plays -- the window a thrown Root spends riding the bolt
+-- to its target. The badge draw reads it to keep the badge off the body until the hit is seen to land,
+-- so an affliction never surfaces ahead of the blow that carries it (ui/battle_map.lua statusBadgeRects).
+function CombatFx:statusPending(status)
+    return self.heldStatus[status] ~= nil
 end
 
 -- The tile gap between two units, king's-move: an attacker two or more tiles from the body it struck

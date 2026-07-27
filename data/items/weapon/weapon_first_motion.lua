@@ -88,10 +88,14 @@ return {
         -- between her ground game and the house's -- the trappers PIN a runner outright with their
         -- bolas (character_trapper's Root); her own swing only makes the ones under it give ground.
         --
-        -- `channelAfflict` rides the wind-up's length by default, so a deeper hold cows longer; the
-        -- explicit duration overrides that with a flat window. Side-agnostic, as an unowned zone would
-        -- have been -- if an ally is somehow standing in the strike zone, it cowers too.
-        channelAfflict = { status = "status_cowering", duration = 10 },
+        -- The flinch lasts exactly as long as the swing hangs overhead: it is LIFTED the moment she
+        -- stops channeling and the blow lands (Combat.resolveChannel), because there is no longer an
+        -- incoming swing to cower from -- keeping foes crippled after the blow already fell would punish
+        -- them twice for one telegraph. Being cut down mid-wind-up does NOT lift it, though: an interrupt
+        -- leaves the fear on the body (tests/saber_debut_spec.lua), where it rides the wind-up's own
+        -- length by default and fades on its own. Side-agnostic, as an unowned zone would have been --
+        -- if an ally is somehow standing in the strike zone, it cowers too.
+        channelAfflict = { status = "status_cowering" },
         cost = { stat = "stamina", amount = 15 },
         damage = { 22, 24, 27, 29, 32, 34, 37, 39, 42, 44, 47 },
         -- The overhead blow doesn't stop at the first body: it drives THROUGH the tiles in front (the

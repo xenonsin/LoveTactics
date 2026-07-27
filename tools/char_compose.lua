@@ -12,16 +12,20 @@
 -- still drops in a painted head crop later; `assets` mode SKIPS any id that already has real art on disk,
 -- exactly the way icon-build leaves purchased art alone (docs/art-assets.md, "compose, don't commission").
 --
--- Four layers, four data channels, none of them a commission:
+-- Three baked layers, three data channels, none of them a commission:
 --
 --   1. BASE   a silhouette. Guessed in two tiers, like icon-map: a direct creature/name match first
 --             (a boar token looks like a boar), then a `kind` fallback (humanoid/beast/elemental/
 --             construct/demon/undead/object). `kind` is itself derived from the blueprint, or set
 --             explicitly as `kind = "beast"` to correct a guess -- the overrides.lua pattern.
 --   2. TINT   the silhouette is recoloured by element (elementals), else by kind, else class/steel.
---   3. FRAME  a rounded border in the character's class colour (the vendor shelf), thicker for a boss.
---             NOT the battlefield side: side is runtime and the board already carries it on the HP bar.
---   4. BADGE  a gold disc for a boss/general; ordinary units carry none.
+--   3. BADGE  a gold disc for a boss/general; ordinary units carry none.
+--
+-- There is DELIBERATELY no baked frame. A token's border is its battlefield SIDE -- blue for ours, red
+-- for theirs -- and side is a runtime fact the blueprint cannot know (one archer token serves a party
+-- archer and an enemy one). So the board draws that frame itself, in the unit's side colour, around the
+-- token (ui/battle_map.lua drawUnits). Baking a class-of-shelf colour here would only fight it. The
+-- token is a plate + silhouette (+ a boss's gold disc); the frame lands at draw time.
 --
 -- The base slugs are canonical game-icons picks (reuse, not commission). Output mirrors icon-compose:
 -- vendor/compose-preview/chars/ by default, so a prototype run can never clobber the shipped set; only
@@ -68,17 +72,33 @@ local CREATURE_MATCH = {
 }
 
 -- 1b. Humanoid silhouette by class -- the fallback when nothing in CREATURE_MATCH fires and the body is
--- a person. Class is the same vendor-shelf field items key their frame on.
+-- a person. Class is the same vendor-shelf field items key their frame on, and this table is the ONE
+-- place a discipline earns a body of its own: each of the seven shelves (docs/classes.md) reads as a
+-- different armed person, so an archer (hunter) never wears the knight's silhouette. Keep this list to
+-- the seven live classes -- a key no character carries (the old cleric/ranger/archer) is dead weight,
+-- and a class with no entry silently collapses onto HUMANOID_DEFAULT, which is how every discipline but
+-- fighter used to come out an identical swordman.
 local CLASS_SILHOUETTE = {
-    fighter = "cathelineau/swordman",
-    mage = "delapouite/wizard-face",
-    priest = "lorc/prayer",
-    cleric = "lorc/prayer",
-    rogue = "darkzaitzev/hooded-figure",
-    ranger = "delapouite/archer",
-    archer = "delapouite/archer",
+    fighter = "delapouite/sword-brandish",   -- wrath: the raised blade, mid-swing
+    knight = "delapouite/knight-banner",     -- sloth: the wall that holds its post
+    rogue = "darkzaitzev/hooded-figure",     -- greed: the hood
+    hunter = "delapouite/archer",            -- gluttony: the bow at draw
+    mage = "delapouite/wizard-face",         -- pride: the caster
+    priest = "lorc/prayer",                  -- lust: the supplicant
+    alchemist = "lorc/bubbling-flask",       -- envy: the borrowed brew, not a blade
 }
+-- The neutral rank-and-file body: a classless humanoid enemy (bandit, champion) and any class with no
+-- silhouette of its own. Deliberately NOT the fighter's sword-brandish, so a mook reads as a mook and a
+-- wrath-shelf combatant reads as the discipline.
 local HUMANOID_DEFAULT = "cathelineau/swordman"
+
+-- The player's own avatar (the classless "Stranger" survivor). A plain standing figure of its own,
+-- so YOUR body on the board reads as a person and not one more rank swordman. It is the one blueprint
+-- with TWO runtime sprites -- body 1/2, chosen at creation (states/prologue.lua builds
+-- assets/chars/avatar_<body>.png) -- and both use this figure; the composed token is a placeholder for
+-- the eventual painted portrait, which is where the two bodies actually differ. run() emits both files.
+local AVATAR_SILHOUETTE = "delapouite/person"
+local AVATAR_BODIES = { "assets/chars/avatar_1.png", "assets/chars/avatar_2.png" }
 
 -- The imposing figure for a boss/general who has NO class and no creature look of their own -- the seven
 -- sin generals are exactly this: `boss = true`, classless, and otherwise indistinguishable from a rank
@@ -124,17 +144,9 @@ local KIND_TINT = {
 }
 local STEEL = "#dce1e6"
 
--- 3. FRAME -- class (vendor shelf) colour, shared with tools/icon_compose.lua; else a per-kind border so
--- a classless creature still frames in a colour that says what it is.
-local CLASS_COLOR = {
-    fighter = "#c0562f", rogue = "#6f9a52", priest = "#d8c15f",
-    mage = "#6f82d4", ranger = "#4f9a86", cleric = "#d8c15f",
-}
-local KIND_FRAME = {
-    humanoid = "#9aa0a8", beast = "#6f9a52", elemental = "#6f82d4",
-    construct = "#8a8f96", demon = "#8a4fb0", undead = "#5f8f78",
-    object = "#a98f5f",
-}
+-- 3. BADGE -- the boss/general disc colour. There is no class/kind FRAME any more: a token's border is
+-- its runtime side (blue/red), drawn by the board, not the vendor shelf it was bought from. See the
+-- header note and ui/battle_map.lua drawUnits.
 local BOSS_GOLD = "#e6c14a"
 
 local function projectPath(rel)
@@ -173,6 +185,7 @@ end
 -- The silhouette slug: creature/name match first, then class (humanoid) or element (elemental), then the
 -- kind bucket. Mirrors icon-map's "name first, family fallback".
 local function slugFor(def, id)
+    if id:find("avatar", 1, true) then return AVATAR_SILHOUETTE end
     for _, row in ipairs(CREATURE_MATCH) do
         if id:find(row[1], 1, true) then return row[2] end
     end
@@ -195,11 +208,6 @@ local function tintFor(def, id)
     return KIND_TINT[kind] or STEEL
 end
 
-local function frameFor(def, id)
-    if def.class and CLASS_COLOR[def.class] then return CLASS_COLOR[def.class] end
-    return KIND_FRAME[kindOf(def, id)] or "#9aa0a8"
-end
-
 -- Pull the recoloured foreground out of a vendored game-icons SVG -- drop the <svg> wrapper and the
 -- full-canvas background rect, recolour the #fff foreground. Same surgery as icon_compose.foreground.
 local function foreground(slug, tint)
@@ -212,10 +220,10 @@ local function foreground(slug, tint)
     return inner
 end
 
--- Compose the four layers into one 512x512 SVG. Everything here is a function of `def`/`id`.
+-- Compose the baked layers into one 512x512 SVG. Everything here is a function of `def`/`id`. No frame
+-- is drawn -- the border is the runtime side, added by the board (see the header note).
 local function compose(def, id)
     local tint = tintFor(def, id)
-    local frame = frameFor(def, id)
     local boss = def.boss and true or false
 
     local inner, err = foreground(slugFor(def, id), tint)
@@ -230,14 +238,8 @@ local function compose(def, id)
     parts[#parts + 1] = string.format(
         '<g transform="translate(92 92) scale(0.64)" fill="%s">%s</g>', tint, inner)
 
-    -- Frame: the class/kind border, thicker for a boss so a general reads as heavier without a legend.
-    local frameW = boss and 22 or 12
-    local frameColor = boss and BOSS_GOLD or frame
-    parts[#parts + 1] = string.format(
-        '<rect x="30" y="30" width="452" height="452" rx="66" fill="none" stroke="%s" stroke-width="%d"/>',
-        frameColor, frameW)
-
-    -- Badge: a gold disc, top-right, only for a boss/general.
+    -- Badge: a gold disc, top-right, only for a boss/general -- the one baked mark of rank, since the
+    -- frame that used to also thicken for a boss is now the runtime side border.
     if boss then
         parts[#parts + 1] = string.format(
             '<circle cx="396" cy="116" r="60" fill="%s" stroke="#12151a" stroke-width="12"/>', BOSS_GOLD)
@@ -342,6 +344,30 @@ function M.run(args)
         end
     end
 
+    -- The avatar's ADDITIONAL bodies. The blueprint names only body 1 (def.sprite = avatar_1.png), so
+    -- the loop above never writes avatar_2.png -- yet states/prologue.lua loads it for a body-2 player,
+    -- who would otherwise fall back to the bare letter token. Emit every avatar body from the one
+    -- blueprint (same figure); assets mode only, since preview already galleried the avatar once.
+    if toAssets and defs["character_avatar"] then
+        for _, target in ipairs(AVATAR_BODIES) do
+            if doneTarget[target] then
+                -- body 1 already came through the main loop above; nothing more to do
+            elseif not force and love.filesystem.getInfo(target) then
+                doneTarget[target] = true
+                skipped = skipped + 1 -- real art already on disk; leave it
+            else
+                local svg = compose(defs["character_avatar"], "avatar")
+                local stageRel = PREVIEW_ROOT .. "/staging/" .. target:match("([^/]+)%.png$") .. ".svg"
+                if svg and writeFile(stageRel, svg) and rasterize(stageRel, target) then
+                    rendered = rendered + 1
+                    doneTarget[target] = true
+                else
+                    failures[#failures + 1] = target .. " -- avatar body compose failed"
+                end
+            end
+        end
+    end
+
     print("")
     print(string.format("  composed %d token(s) into %s/", rendered, toAssets and ASSET_ROOT or PREVIEW_ROOT))
     if toAssets then print(string.format("  skipped  %d (real art on disk, shared file, or no sprite path -- `force` overwrites art)", skipped)) end
@@ -355,13 +381,12 @@ function M.run(args)
 end
 
 -- The pure guessing logic, exposed for tests/char_compose_spec.lua. These touch no love API, so the
--- spec exercises the whole "which silhouette/tint/frame does this blueprint resolve to" contract
--- headlessly -- the same way the item pipeline's family/class picks are regression-guarded. The four
+-- spec exercises the whole "which silhouette/tint does this blueprint resolve to" contract headlessly
+-- -- the same way the item pipeline's family/class picks are regression-guarded. The
 -- BOSS/HUMANOID/DEFAULT slugs are exposed too so a test names the constant rather than a bare string.
 M.kindOf = kindOf
 M.slugFor = slugFor
 M.tintFor = tintFor
-M.frameFor = frameFor
 M.elementOf = elementOf
 M.tokenId = tokenId
 M.HUMANOID_DEFAULT = HUMANOID_DEFAULT

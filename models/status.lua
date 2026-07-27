@@ -799,7 +799,10 @@ function Status.apply(combat, unit, id, opts)
         local Combat = require("models.combat")
         -- A view-side cue so the condition landing makes a sound (ui/combat_fx.lua -> "battle.status").
         -- Like every fx cue it is silent under a headless run and a dry preview, which never drain it.
-        Combat.pushFx(combat, { type = "status", unit = unit })
+        -- Carries the status instance so the view can hold its BADGE off the body until this cue plays:
+        -- a thrown Root is on the target in the model the instant Bolas resolves, but its badge must not
+        -- surface until the bolt is seen to land (ui/combat_fx.lua :hold / statusPending).
+        Combat.pushFx(combat, { type = "status", unit = unit, status = status })
         local entry = Combat.logEvent(combat, "status",
             string.format("%s is afflicted with %s.", (unit.char and unit.char.name) or "Unit", def.name or id),
             unit)

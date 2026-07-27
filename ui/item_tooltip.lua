@@ -68,6 +68,7 @@ local POWER = { 0.95, 0.72, 0.48 } -- ability Power row (the offensive balance s
 local HEAL = { 0.55, 0.90, 0.58 }  -- ability heal row
 local SUMMON = { 0.78, 0.62, 0.96 } -- ability "Summons" row (matches the ability item accent)
 local DISC = { 0.82, 0.70, 0.96 } -- the discipline row: a taxonomy label, tinted like the caster accent
+local CLASS = { 0.70, 0.74, 0.82 } -- the base-class row: the same taxonomy slot, cooler/dimmer than a discipline
 local BRACE = { 0.55, 0.72, 0.92 } -- a shield's Defend brace-defense (matches the Defending badge tint)
 -- The range-diagram band tint: green for a friendly cast, red for a hostile one (matches the
 -- board's green/red targeting overlays and the action preview's SUPPORT/OFFENSE accents).
@@ -116,19 +117,25 @@ function ItemTooltip.printFlavor(text, x, y, w, font)
     return math.max(1, #wrapped) * font:getHeight()
 end
 
--- The discipline `item` falls under, drawn as a tinted label right-aligned in a `w`-wide column at
--- (x, y). Draws nothing and returns false for the many items that carry none, so a caller can put it
--- on a line it shares with other text. `font` defaults to the tooltip's small face.
+-- The taxonomy `item` falls under, drawn as a tinted label right-aligned in a `w`-wide column at
+-- (x, y): its discipline if it carries one, otherwise its base shelf `class`. Draws nothing and
+-- returns false only for a class-less, discipline-less item (a natural weapon, a universal good), so a
+-- caller can put it on a line it shares with other text. `font` defaults to the tooltip's small face.
 --
 -- The inline detail columns -- the shop shelf, the forge -- build their own text rather than hovering
 -- this tooltip, so they call this instead of repeating the lookup: one owner for both the wording and
--- the tint means the deeper cut reads identically wherever an item is shown.
+-- the tint means the deeper cut (and the shelf under it) read identically wherever an item is shown.
 function ItemTooltip.printDiscipline(item, x, y, w, font)
     local name = item and Discipline.displayName(item.discipline)
+    local tint = DISC
+    if not name and item then
+        name = Item.classDisplayName(item.class)
+        tint = CLASS
+    end
     if not name then return false end
     local _, _, small = fonts()
     love.graphics.setFont(font or small)
-    love.graphics.setColor(DISC[1], DISC[2], DISC[3], 1)
+    love.graphics.setColor(tint[1], tint[2], tint[3], 1)
     love.graphics.printf(name, x, y, w, "right")
     return true
 end
@@ -190,12 +197,17 @@ local function buildBlocks(item, actor, innerW, out)
         blocks[#blocks + 1] = { kind = "desc", text = item.description }
     end
 
-    -- The discipline this item belongs to (a shop taxonomy; docs/classes.md). Sparse -- most items
-    -- carry none -- so the row shows only when set, named for the player and tinted as a taxonomy label.
+    -- The taxonomy this item belongs to (a shop taxonomy; docs/classes.md). If it carries a discipline
+    -- -- the locked deeper cut -- that names the row; otherwise its base shelf `class` does, since a
+    -- discipline is sparse (most items carry none) but nearly everything sits on some shelf. Only a
+    -- truly class-less good (a natural weapon, a universal supply) shows neither.
     local discName = Discipline.displayName(item.discipline)
     if discName then
         blocks[#blocks + 1] = { kind = "sep" }
         blocks[#blocks + 1] = { kind = "stat", label = "Discipline", value = discName, valueColor = DISC }
+    elseif item.class then
+        blocks[#blocks + 1] = { kind = "sep" }
+        blocks[#blocks + 1] = { kind = "stat", label = "Class", value = Item.classDisplayName(item.class), valueColor = CLASS }
     end
 
     if item.tags and #item.tags > 0 then
