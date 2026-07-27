@@ -5407,6 +5407,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         teleport = function() return false end,
         charge = function() return 0 end,
         steal = function() return nil end,
+        reveal = function() end, -- knowledge only; nothing to preview on the timeline
         -- Inert to the unit, but records where the pull would land its turn: a hasten cuts the target's
         -- current initiative, so its next turn slides EARLIER on the strip (Haste on an ally). No cause
         -- name -- the ghost reads "rushed forward" rather than a status.
@@ -5630,6 +5631,8 @@ function Combat.abilityOutput(unit, item)
         teleport = function() return false end,
         charge = function(_, distance) out.charge = distance or 1; return 0 end,
         steal = function() out.steal = true; return nil end,
+        -- Record that the ability lays a foe's kit open, so the tooltip can name it (like `steal`).
+        reveal = function() out.reveal = true end,
         hasten = function() return 0 end,
         -- No board here, so the corpse/reanimation helpers report nothing; `raise` records what it
         -- would call so the inventory tooltip can name it, like `summon` does.
@@ -6543,6 +6546,20 @@ function Combat.itemBlockReason(unit, item)
     return nil
 end
 
+-- Lay a unit's whole kit open to the party (the Assayer's Eye): from now on the battle UI may show
+-- its item grid and each item's tooltip. Just a flag on the body -- the reveal is a piece of KNOWLEDGE,
+-- not a change to the fight, so it never touches initiative, resources or the board -- and it holds for
+-- the rest of the fight (units are rebuilt per battle, so nothing carries out). Idempotent, which is
+-- what lets the dry-run/preview fx call it harmlessly.
+function Combat.revealInventory(combat, unit)
+    if unit then unit.inventoryRevealed = true end
+end
+
+-- Has this unit's kit been assayed (Combat.revealInventory)? Drives the inventory-peek panel.
+function Combat.inventoryRevealed(unit)
+    return unit ~= nil and unit.inventoryRevealed == true
+end
+
 -- Lift one item from `victim`'s grid into `thief`'s. Items the blueprint marks `noSteal` (a
 -- beast's fangs) can't be taken. Among the rest, the highest `stealPriority` wins -- that's how a
 -- Decoy makes itself the obvious thing to grab -- and ties are broken at random.
@@ -6844,8 +6861,11 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
         -- (resolveCast, turns later). So a channeled spell reads both as it is loosed and as it lands.
         Combat.pushFx(combat, { type = "cast", unit = unit, tx = tx, ty = ty,
             support = Combat.isSupportAbility(ab), tags = Combat.fxTags(item, ab) })
-        Combat.logEvent(combat, "action",
+        local channelEntry = Combat.logEvent(combat, "action",
             string.format("%s begins channeling %s.", unitName(unit), item.name or "an ability"), unit)
+        -- Hang the item on the line so the combat-log panel can show its full tooltip on hover --
+        -- what the spell being channeled actually is (same as the cast line in resolveCast).
+        if channelEntry then channelEntry.item = item end
         -- Bill the TELL, not the depth: the resolution slot comes back after timeTicks, so a hasted
         -- wind-up resolves sooner while the effect still scores its bonus on the undiscounted `held`.
         endTurn(combat, unit, timeTicks, true)
@@ -7412,6 +7432,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             if not tgt then return nil end
             return Combat.steal(combat, unit, tgt)
         end,
+        -- Lay a foe's whole kit open (the Assayer's Eye): the battle UI may thereafter show its item
+        -- grid and each item's tooltip. Pure knowledge -- it moves and costs nothing -- so it is safe
+        -- to run on the dry-run/preview fx too (where it merely records that the ability reveals).
+        reveal = function(tgt) Combat.revealInventory(combat, tgt) end,
         -- Rush a unit forward in the initiative order by cutting its current initiative. Mutating
         -- initiative straight from an effect mirrors what Stun does from a status hook.
         hasten = function(tgt, fraction)
@@ -7989,7 +8013,7 @@ function Combat.outcomeFor(combat, side)
         return "win"
     elseif obj.type == "survive" then
         -- Outlast a clock: win once the elapsed ticks pass the authored `duration`. The consecrated
-        -- rite in data/quests/rite_of_ashes.lua is the live user.
+        -- rite in data/quests/cathedral/slot_03_rite_of_ashes.lua is the live user.
         if combat.clock >= (obj.duration or math.huge) then return "win" end
         return nil
     elseif obj.type == "defend" then
