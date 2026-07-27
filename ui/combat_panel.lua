@@ -91,6 +91,7 @@ local RES_COLOR = { health = Colors.PARTY, mana = Colors.MANA, stamina = Colors.
 local COST_FALLBACK = { 0.75, 0.75, 0.80 }
 local SPEED_COLOR = { 0.95, 0.85, 0.55 } -- gold, matching the timeline/initiative accent
 local WARN_COLOR = { 0.95, 0.40, 0.38 }  -- red cost badge on an ability the actor can't afford
+local COUNTER_COLOR = { 0.72, 0.62, 0.95 } -- lavender charge badge: what a purse item currently holds
 
 -- How far the ray at angle `a` travels from a rectangle's centre before it meets the rectangle's
 -- edge, given the half-extents. What makes the cooldown wedge below fill its slot corner-to-corner
@@ -1120,6 +1121,8 @@ function CombatPanel:drawBadgeAt(bx, by, iconKind, amount, color, a)
         self:drawSummonRing(ix, iy, iconW, 10, color[1], color[2], color[3], a)
     elseif iconKind == "sigil" then
         self:drawSigil(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+    elseif iconKind == "charges" then
+        Glyphs.charges(ix, iy, iconW, 10, color[1], color[2], color[3], a)
     else -- a cost: `iconKind` is the resource it's paid in, and each pool has its own shape
         local glyph = RES_GLYPH[iconKind] or Glyphs.manaGem
         glyph(ix, iy, iconW, 10, color[1], color[2], color[3], a)
@@ -1286,6 +1289,18 @@ function CombatPanel:drawItemGrid()
                     local label = res and res.amount
                         or (math.floor((ab.reserve.percent or 0) * 100 + 0.5) .. "%")
                     self:drawBadge(sx, sy, sw, "left", "lock", label, c, short and 1 or dim, row)
+                    row = row + 1
+                end
+                -- A charge/counter item's purse (the Gleaning Rod, the Reliquary of Tallies): what it
+                -- currently holds, in its own lavender badge under the cost, so the count reads at a
+                -- glance -- and shows 0, red, when empty (the same state that greys the slot and refuses
+                -- the click, blocked.kind == "empty"). Always drawn when the ability declares a counter,
+                -- so an emptying purse never blinks from a number straight to blank.
+                if ab.counter then
+                    local n = ab.counter(self.view.current, item) or 0
+                    local empty = n <= 0
+                    self:drawBadge(sx, sy, sw, "left", "charges", n,
+                        empty and WARN_COLOR or COUNTER_COLOR, empty and 1 or dim, row)
                     row = row + 1
                 end
                 if ab.speed then

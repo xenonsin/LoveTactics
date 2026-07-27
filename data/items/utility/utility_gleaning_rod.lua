@@ -36,6 +36,11 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 6 }, -- cheap: the charges are the real price
+        -- The purse itself, banked on the item by trait_gleaning. Surfacing it lets the grid draw the
+        -- count (0 when dry) and refuse the cast while it's empty (Combat.itemBlockReason), so a dry rod
+        -- greys out rather than wasting a turn -- see the Reliquary of Tallies, built the same way.
+        counter = function(_, item) return (item and item.charges) or 0 end,
+        counterEmpty = "The rod is dry -- nothing has been worked near it",
         effect = function(fx)
             local body = fx.unitAt(fx.tx, fx.ty)
             if not body then return end

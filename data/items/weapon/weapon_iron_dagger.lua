@@ -26,8 +26,7 @@ return {
         cost = { stat = "stamina", amount = 5 },
         damage = { 5, 5, 6, 7, 7, 8, 9, 9, 10, 11, 12 }, -- modest: the wound does the rest of the work
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_bleed")
+            fx.damage(fx.target, { inflicts = "status_bleed" }) -- the wound rides the blow: a guardian who takes it bleeds
         end,
     },
 }

@@ -32,10 +32,9 @@ return {
         cost = { stat = "stamina", amount = 6 },
         damage = { 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9 }, -- a shade under an iron bow's: the light is the rest
         effect = function(fx)
-            fx.damage(fx.target)
-            if fx.target and fx.target.alive then
-                fx.applyStatus(fx.target, "status_limned")
-            end
+            -- The light rides the shaft: it marks whoever the arrow hits, and only a survivor -- the
+            -- .alive guard the carried path enforces for free.
+            fx.damage(fx.target, { inflicts = "status_limned" })
         end,
     },
 }

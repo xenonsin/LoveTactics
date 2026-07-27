@@ -31,9 +31,8 @@ return {
         -- Under an iron dagger's, which is already the modest end of the game. Two debuffs is the sale.
         damage = { 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9 },
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_bleed")
-            fx.applyStatus(fx.target, "status_mired")
+            -- Both debuffs ride the blow, so a guardian who takes the hit is the one cut and mired.
+            fx.damage(fx.target, { inflicts = { "status_bleed", "status_mired" } })
         end,
     },
 }

@@ -28,9 +28,8 @@ return {
         cost = { stat = "stamina", amount = 5 },
         damage = { 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 10 }, -- under an iron dagger's: two afflictions is the trade
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_bleed")
-            fx.applyStatus(fx.target, "status_poison")
+            -- Both afflictions ride the blow, so a guardian who takes the hit takes the wound and the venom.
+            fx.damage(fx.target, { inflicts = { "status_bleed", "status_poison" } })
         end,
     },
 }

@@ -34,11 +34,10 @@ return {
         damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9 },
         effect = function(fx)
             -- Strike FIRST, suspend second, and the order is load-bearing: a suspended body cannot be
-            -- acted on, so a mace that lifted before it hit would never land its own blow.
-            fx.damage(fx.target)
-            if fx.target and fx.target.alive then
-                fx.applyStatus(fx.target, "status_suspended")
-            end
+            -- acted on, so a mace that lifted before it hit would never land its own blow. Riding the
+            -- blow keeps that order (the carried status lands after the wound) and sends the lift to
+            -- whoever actually takes the hit -- a guardian who steps in front of it, only if it survives.
+            fx.damage(fx.target, { inflicts = "status_suspended" })
         end,
     },
 }

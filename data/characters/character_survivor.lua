@@ -14,7 +14,7 @@
 return {
     name = "Survivor",
     archetype = "holdGround",
-    sprite = "assets/chars/caravan_master.png",
+    sprite = "assets/chars/survivor.png",
     stats = {
         health = 24, mana = 0, stamina = 5,
         staminaRegen = 1,

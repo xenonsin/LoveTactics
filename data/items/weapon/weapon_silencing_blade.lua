@@ -36,8 +36,7 @@ return {
             local pool = fx.target and fx.target.char and fx.target.char.stats
                 and fx.target.char.stats.mana
             local held = pool and pool.current or 0
-            fx.damage(fx.target, { amount = fx.amount + math.floor(held / 10) })
-            fx.applyStatus(fx.target, "status_silenced")
+            fx.damage(fx.target, { amount = fx.amount + math.floor(held / 10), inflicts = "status_silenced" })
         end,
     },
 }

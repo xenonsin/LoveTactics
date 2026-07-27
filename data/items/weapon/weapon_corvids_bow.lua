@@ -35,10 +35,9 @@ return {
         -- Under an iron bow's: taking an enemy archer's reach away is worth more than the arrow.
         damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9 },
         effect = function(fx)
-            fx.damage(fx.target)
-            if fx.target and fx.target.alive then
-                fx.applyStatus(fx.target, "status_blind")
-            end
+            -- Blind rides the shaft: it lands on whoever the arrow hits (a guardian who steps in), and
+            -- only if it connects with a survivor -- the .alive guard the carried path enforces for free.
+            fx.damage(fx.target, { inflicts = "status_blind" })
         end,
     },
 }

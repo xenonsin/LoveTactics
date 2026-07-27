@@ -8,6 +8,7 @@ local Item = require("models.item")
 local Combat = require("models.combat")
 local Trap = require("models.trap")
 local Wall = require("models.wall")
+local Prop = require("models.prop")
 
 -- A flat, all-walkable arena (mirrors tests/combat_spec.lua). `blocked` lists {x, y} cells made
 -- impassable, standing in for a wall the shove can slam a unit into.
@@ -315,6 +316,67 @@ return {
         end,
     },
     {
+        name = "a guardian who takes a Bolas blow is the one left Rooted, not the ally it was aimed at",
+        fn = function()
+            -- The bug: Bolas dealt its damage through the redirect (the guardian took the hit) but
+            -- applied Root on the line AFTER, straight onto the original target -- so the ally the
+            -- knight stepped in front of was pinned by a snare that never reached it. Root now rides
+            -- the blow (opts.inflicts), so the whole snare follows the body the hit lands on.
+            local Status = require("models.status")
+
+            local hunter = Character.instantiate("character_bandit")
+            hunter.inventory = {}
+            Character.addItem(hunter, Item.instantiate("ability_bolas"))
+
+            -- character_knight grants its own (undeclared) Oathward: it soaks the first hit on an
+            -- adjacent ally each turn -- the redirect under test.
+            local knight = Character.instantiate("character_knight")
+            local ally = Character.instantiate("character_bandit")
+
+            -- Party: the doomed ally at (4,4) with the knight beside it at (5,4); the hunter at (3,4),
+            -- in Bolas reach of the ally.
+            local c = Combat.new(arena(8, 8),
+                { unit(ally, 4, 4), unit(knight, 5, 4) },
+                { unit(hunter, 3, 4) })
+            local au, ku, hu = c.units[1], c.units[2], c.units[3]
+            local allyHP, knightHP = hp(au), hp(ku)
+            c.turn = { unit = hu, moved = false, moveCost = 0 }
+
+            assert(Combat.useItem(c, hu, hunter.inventory[1], 4, 4), "the bolas is thrown at the ally")
+            assert(hp(au) == allyHP, "the ally never took the blow -- the knight caught it")
+            assert(hp(ku) < knightHP, "the knight took the damage instead")
+            assert(Status.has(ku, "status_root"), "and is the one left Rooted by the snare it caught")
+            assert(not Status.has(au, "status_root"), "the ally the blow was aimed at is not pinned")
+        end,
+    },
+    {
+        name = "a two-rider blow (Envenomed Kris) carries BOTH afflictions onto the guardian that takes it",
+        fn = function()
+            -- The list form of opts.inflicts: a hit that carries more than one status hands every one of
+            -- them to whoever the blow lands on. A guardian who steps in front of the kris is cut AND poisoned.
+            local Status = require("models.status")
+
+            local rogue = Character.instantiate("character_bandit")
+            rogue.inventory = {}
+            Character.addItem(rogue, Item.instantiate("weapon_envenomed_kris"))
+
+            local knight = Character.instantiate("character_knight") -- its innate Oathward takes the first hit
+            local ally = Character.instantiate("character_bandit")
+
+            local c = Combat.new(arena(8, 8),
+                { unit(ally, 4, 4), unit(knight, 5, 4) },
+                { unit(rogue, 3, 4) })
+            local au, ku, ru = c.units[1], c.units[2], c.units[3]
+            c.turn = { unit = ru, moved = false, moveCost = 0 }
+
+            assert(Combat.useItem(c, ru, rogue.inventory[1], 4, 4), "the kris cuts at the ally")
+            assert(Status.has(ku, "status_bleed") and Status.has(ku, "status_poison"),
+                "the knight who caught the blow carries both the wound and the venom")
+            assert(not Status.has(au, "status_bleed") and not Status.has(au, "status_poison"),
+                "and the ally it was aimed at carries neither")
+        end,
+    },
+    {
         name = "the Pull ability refuses a target it cannot see, without spending the turn",
         fn = function()
             local knight = Character.instantiate("character_knight")
@@ -330,6 +392,83 @@ return {
             assert(not ok and reason == "no line of sight", "the cast is refused, got: " .. tostring(reason))
             assert(bandit.y == 6, "nothing moved")
             assert(c.turn ~= nil, "and the turn was never spent")
+        end,
+    },
+
+    -- -----------------------------------------------------------------------
+    -- Object layer: push and pull reach any body, prop or trap
+    -- -----------------------------------------------------------------------
+    {
+        name = "pullObject drags a prop up against the puller and stops there, unharmed",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 4) }, { unit("character_bandit", 8, 8) })
+            local knight = c.units[1]
+            local crate = Prop.place(c, 6, 4, "prop_crate")
+
+            local ok, moved = Combat.pullObject(c, knight, crate, "prop")
+            assert(ok, "a clear line means the furniture can be hooked")
+            assert(crate.alive, "a drag is not a slam -- the crate takes nothing")
+            assert(crate.x == 3 and crate.y == 4, "hauled up beside the puller and no further")
+            assert(moved == 3, "it crossed every tile between them but one")
+        end,
+    },
+    {
+        name = "pullObject needs a clear line of sight, same as pulling a body",
+        fn = function()
+            local a = arena(8, 8)
+            a.tiles[4][4] = { type = "mountain", moveCost = 2, walkable = true, sightCost = 2 }
+            local c = Combat.new(a, { unit("character_knight", 4, 3) }, { unit("character_bandit", 8, 8) })
+            local knight = c.units[1]
+            local crate = Prop.place(c, 4, 6, "prop_crate")
+
+            local ok, reason = Combat.pullObject(c, knight, crate, "prop")
+            assert(not ok and reason == "no line of sight", "you can't hook what you can't see")
+            assert(crate.y == 6, "and it hasn't budged")
+        end,
+    },
+    {
+        name = "the Push ability shoves a prop, and a trap, three tiles down the lane",
+        fn = function()
+            local function pushAt(placer)
+                local knight = Character.instantiate("character_knight")
+                knight.inventory = {}
+                Character.addItem(knight, Item.instantiate("ability_push"))
+                local c = Combat.new(arena(10, 10), { unit(knight, 3, 5) }, { unit("character_bandit", 10, 10) })
+                local ku = c.units[1]
+                local obj = placer(c) -- something standing on (4,5), adjacent to the caster
+                c.turn = { unit = ku, moved = false, moveCost = 0 }
+                assert(Combat.useItem(c, ku, knight.inventory[1], 4, 5), "an adjacent tile holding a thing is a legal aim")
+                return obj
+            end
+
+            local crate = pushAt(function(c) return Prop.place(c, 4, 5, "prop_crate") end)
+            assert(crate.alive and crate.x == 7 and crate.y == 5, "the crate is shoved the full three tiles")
+
+            -- The party's own spike trap, so the caster can see it to grab it.
+            local trap = pushAt(function(c) return Trap.place(c, 4, 5, "spike_trap", "party") end)
+            assert(trap.alive and trap.x == 7 and trap.y == 5, "a visible trap is shoved just the same")
+        end,
+    },
+    {
+        name = "the Pull ability hauls a prop, and a trap, up against the caster",
+        fn = function()
+            local function pullFrom(placer)
+                local knight = Character.instantiate("character_knight")
+                knight.inventory = {}
+                Character.addItem(knight, Item.instantiate("ability_pull"))
+                local c = Combat.new(arena(10, 10), { unit(knight, 3, 5) }, { unit("character_bandit", 10, 10) })
+                local ku = c.units[1]
+                local obj = placer(c) -- something standing on (6,5), three tiles out with a clear line
+                c.turn = { unit = ku, moved = false, moveCost = 0 }
+                assert(Combat.useItem(c, ku, knight.inventory[1], 6, 5), "a tile in reach with a clear line is a legal aim")
+                return obj
+            end
+
+            local crate = pullFrom(function(c) return Prop.place(c, 6, 5, "prop_crate") end)
+            assert(crate.alive and crate.x == 4 and crate.y == 5, "the crate is dragged up beside the caster")
+
+            local trap = pullFrom(function(c) return Trap.place(c, 6, 5, "spike_trap", "party") end)
+            assert(trap.alive and trap.x == 4 and trap.y == 5, "a visible trap is dragged in just the same")
         end,
     },
 }

@@ -39,10 +39,9 @@ return {
         -- has plenty of, and a caster with a good physical attack would not need the rest of its shelf.
         damage = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8 },
         effect = function(fx)
-            fx.damage(fx.target) -- tags default to the item's, so the bolt is physical
-            if fx.target and fx.target.alive then
-                fx.applyStatus(fx.target, "status_unravelled")
-            end
+            -- tags default to the item's, so the bolt is physical; the unravelling rides it, landing on
+            -- whoever the bolt hits and only if they survive (the .alive guard, enforced by the carried path).
+            fx.damage(fx.target, { inflicts = "status_unravelled" })
         end,
     },
 }

@@ -138,7 +138,7 @@ return {
             -- and they are deliberately soft, so a party that reads the fight drops them first and the
             -- pins stop.
             composition = function()
-                return { "character_saber_bout", "character_trapper", "character_trapper" }
+                return { "character_saber_bout", "character_trapper" }
             end,
             opening = "colosseum_debut_confront",
             -- Assassinate, not killAll: the bout ends when SABER goes down, which is both the fiction

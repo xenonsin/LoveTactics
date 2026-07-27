@@ -33,6 +33,7 @@ return {
     portrait = "assets/portraits/amana.png", -- large VN portrait for conversations (falls back if missing)
     class = "priest",
     boss = true,
+    overworldAbility = "kept_trust", -- devotion: mends the most-wounded after each fight, returned intact
     -- She does not kill (damage 5), so she must not be left on the aggressive default that would send
     -- her up to punch. `support` reads the company's wounds before the enemy's throats (models/ai.lua).
     archetype = "support",

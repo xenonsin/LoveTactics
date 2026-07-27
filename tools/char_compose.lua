@@ -69,6 +69,13 @@ local CREATURE_MATCH = {
     { "totem", "delapouite/totem" },
     { "banner", "delapouite/flag-objective" },
     { "standard", "delapouite/flag-objective" },
+    -- The escort/defend NPCs the road and flight legs are fought over. They are classless humanoids, so
+    -- without a name of their own they collapse onto the rank swordman -- the very look the units guarding
+    -- them wear. A cornered civilian reads as a raised-hands plea; the caravan reads as the wagon it is (a
+    -- thing to escort, tinted wood by `kind = "object"` on its blueprint, not steel). The caravan MASTER
+    -- keeps the default body: he holds at the gate as one more figure in the line, not the rolling column.
+    { "caravan_driver", "delapouite/caravan" },
+    { "survivor", "sbed/help" },
 }
 
 -- 1b. Humanoid silhouette by class -- the fallback when nothing in CREATURE_MATCH fires and the body is

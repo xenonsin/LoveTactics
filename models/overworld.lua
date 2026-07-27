@@ -58,9 +58,11 @@ end
 -- made heavy quests feel like a slog. A sqrt span keeps encounter density roughly
 -- constant while the map stays traversable, and both sides are hard-capped so no
 -- roll can produce a marathon maze. Dimensions are kept odd for a centred lattice
--- and floored at a playable minimum. Play-area caps of 45x31 become ~49x35 once
--- the margin ring is added.
-local DIM_MAX_COLS, DIM_MAX_ROWS = 45, 31
+-- and floored at a playable minimum. Play-area caps of 27x19 become ~31x23 once
+-- the margin ring is added -- deliberately compact: a Dream Quest board is dense
+-- and readable, every tile a choice, not a marathon warren to shuffle a token
+-- through (see the plan / docs on the overworld redesign).
+local DIM_MAX_COLS, DIM_MAX_ROWS = 27, 19
 -- Tight biomes need a physically smaller footprint. A biome's node `spacing` sets how much of the
 -- area is trail: a castle/underworld (spacing 2, 1-tile walls) packs roughly twice the corridor into
 -- the same rectangle as a forest (spacing 4, 3-tile-thick fill). Sizing on encounter count alone --
@@ -72,9 +74,9 @@ local BASELINE_SPACING = 4
 local function deriveDims(encounters, keyCount, spacing)
     local content = (encounters or 0) + (keyCount or 0)
     local tightness = math.sqrt((spacing or BASELINE_SPACING) / BASELINE_SPACING)
-    local span = math.floor(5.5 * math.sqrt(content) * tightness) -- ~11 at content=4 (forest)
-    local cols = math.max(17, math.min(DIM_MAX_COLS, 15 + span))
-    local rows = math.max(13, math.min(DIM_MAX_ROWS, 13 + math.floor(span * 0.6)))
+    local span = math.floor(4.0 * math.sqrt(content) * tightness) -- ~8 at content=4 (forest)
+    local cols = math.max(13, math.min(DIM_MAX_COLS, 13 + span))
+    local rows = math.max(11, math.min(DIM_MAX_ROWS, 11 + math.floor(span * 0.6)))
     if cols % 2 == 0 then cols = cols + 1 end
     if rows % 2 == 0 then rows = rows + 1 end
     return cols, rows
@@ -108,6 +110,12 @@ function Overworld.generate(params)
     -- Corridor spacing is resolved before sizing so a tight biome gets a smaller footprint (deriveDims).
     self.spacing = params.spacing or biomeDef.spacing or 4
 
+    -- Vision is per-map, not a global constant: a rolled board reveals a NEIGHBOURHOOD (radius 3) so the
+    -- player can read the encounters ahead and plan a route (reveal-then-choose). The tutorial's authored
+    -- flight leg keeps the tighter radius 2 (set in fromLayout) so its next leg stays a mystery. A party
+    -- torch still widens whatever this is -- states/game.lua maxes the two.
+    self.visionRadius = params.visionRadius or 3
+
     -- Play area: honour explicit cols/rows, otherwise scale with the encounters
     -- (and keys) so the map never sprawls into empty wandering. See deriveDims.
     local dCols, dRows = deriveDims(self.encounterTarget, params.keyCount, self.spacing)
@@ -139,6 +147,8 @@ function Overworld.generate(params)
     self:decorate()
     self:placeObjectiveAndGates(params)
     self:placeEncounters(params)
+    self:pruneDeadStubs()       -- trim barren spur-and-return corridors (no RNG)
+    self:assignEncounterTiers() -- difficulty tell for the fog (drawn from rng LAST)
 
     return self
 end
@@ -174,6 +184,9 @@ function Overworld.fromLayout(params)
     self.tilesetDef = Tileset.get(self.tilesetId)
     self.margin = 0
     self.spacing = 1
+    -- Authored legs keep the tight radius 2: their choreography spaces the stops so the fog only lifts
+    -- off the next one as you reach it (see data/overworld/tutorial_flight.lua). Rolled maps use 3.
+    self.visionRadius = params.visionRadius or 2
     self.originX, self.originY = 0, 0
     self.keyIds = {}
     self.gateCells = {}
@@ -555,25 +568,37 @@ function Overworld:placeObjectiveAndGates(params)
             end
         end
     end
-    objective = pick or objective
+    -- The objective MUST land on a strict dead-end, or its spine gate can simply be walked around (a
+    -- degree-2 tile has a second route the gate never covers). On a compact, braided board the top
+    -- distance band can hold no dead-end at all; when it doesn't, fall back to the FARTHEST dead-end
+    -- there is rather than a plain far tile, and only accept a non-dead-end if the map has none.
+    local farDeadEnd, farDeadD
+    for _, e in ipairs(deadEnds) do
+        if not farDeadD or e.d > farDeadD then farDeadD = e.d; farDeadEnd = e.cell end
+    end
+    objective = pick or farDeadEnd or objective
     self.objective = { x = objective.x, y = objective.y }
     objective.encounter = {
         kind = "objective",
         name = params.objective and params.objective.name or "Objective",
     }
 
-    local K = params.keyCount or 0
-    if K <= 0 then return end
-
-    -- Spine: objective -> ... -> start (via BFS parents). Gate the tiles right
-    -- before the objective; each needs a distinct key.
+    -- Spine: objective -> ... -> start (via BFS parents) = the critical path. Persist it as a set of
+    -- cell keys so encounter placement can keep skippable combats OFF it -- a wounded party must always
+    -- be able to route around to the boss. Built unconditionally, even with no keys.
     local spine = {}
+    self.spineKeys = {}
     local cur = objective
     while cur do
         spine[#spine + 1] = cur
+        self.spineKeys[cellKey(cur)] = true
         cur = parent[cellKey(cur)]
     end
 
+    local K = params.keyCount or 0
+    if K <= 0 then return end
+
+    -- Gate the tiles right before the objective; each needs a distinct key.
     local firstGateDist = objd
     for i = 2, math.min(K + 1, #spine - 1) do
         local g = spine[i]
@@ -676,6 +701,20 @@ function Overworld:placeEncounters(params)
     for _, c in ipairs(rest) do cands[#cands + 1] = c end
     for i = deadQuota + 1, #deadEnds do cands[#cands + 1] = deadEnds[i] end
 
+    -- Skippable combats: keep combat/elite OFF the objective->start spine so a wounded party can always
+    -- route around to the boss. Off-spine tiles are filled first (dead-end bias preserved within each
+    -- half); on-spine tiles only take non-combat stops (a combat rolled onto one is re-seated as a
+    -- non-combat, or skipped if the pool has none). Ascent maps opt out -- there combat IS the route.
+    if self.spineKeys and not params.ascent then
+        local off, on = {}, {}
+        for _, c in ipairs(cands) do
+            if self.spineKeys[cellKey(c)] then on[#on + 1] = c else off[#off + 1] = c end
+        end
+        cands = {}
+        for _, c in ipairs(off) do cands[#cands + 1] = c end
+        for _, c in ipairs(on) do cands[#cands + 1] = c end
+    end
+
     local placed = {}
     local next_ = 1
 
@@ -744,15 +783,34 @@ function Overworld:placeEncounters(params)
         local c = cands[i]
         local ok = true
         for _, p in ipairs(placed) do
-            if math.abs(p.x - c.x) + math.abs(p.y - c.y) < 3 then ok = false; break end
+            if math.abs(p.x - c.x) + math.abs(p.y - c.y) < 2 then ok = false; break end
         end
         if ok then
             local pick = self:pickEncounter(pool)
-            c.encounter = { kind = pick.kind, id = pick.id, name = pick.name }
-            placed[#placed + 1] = c
+            -- No combat on the spine: re-seat as a non-combat stop, or skip this tile if the pool has
+            -- none (leaving the critical path open to walk straight through).
+            local onSpine = self.spineKeys and not params.ascent and self.spineKeys[cellKey(c)]
+            if onSpine and (pick.kind == "combat" or pick.kind == "elite") then
+                pick = self:pickNonCombat(pool)
+            end
+            if pick then
+                c.encounter = { kind = pick.kind, id = pick.id, name = pick.name }
+                placed[#placed + 1] = c
+            end
         end
     end
     self.encounterCount = #placed
+end
+
+-- Weighted pick restricted to the pool's non-combat entries (treasure/event/rest/town), or nil if the
+-- pool is all combat. Used to keep the objective spine walkable -- a stop there is never a forced fight.
+function Overworld:pickNonCombat(pool)
+    local sub = {}
+    for _, e in ipairs(pool) do
+        if e.kind ~= "combat" and e.kind ~= "elite" then sub[#sub + 1] = e end
+    end
+    if #sub == 0 then return nil end
+    return self:pickEncounter(sub)
 end
 
 -- Weighted pick from a pool of { kind, weight, id?, name? } entries.
@@ -765,6 +823,57 @@ function Overworld:pickEncounter(pool)
         if r <= 0 then return e end
     end
     return pool[1]
+end
+
+-- Trim barren dead-end spurs. A corridor that terminates in nothing is pure spur-and-return walking,
+-- the very thing that made the old sprawling maze a slog. Iteratively revert any degree-<=1 "path" leaf
+-- that carries no encounter/gate/key (and is neither start nor objective) back to forest, until no such
+-- leaf remains. Only true leaves are removed, so connectivity and solvability are preserved -- nothing
+-- ever routes THROUGH a leaf. Bridges are left alone so a river crossing is never half-erased. Uses no
+-- RNG, so it cannot perturb the seeded map (same seed still reproduces).
+function Overworld:pruneDeadStubs()
+    local function protected(c)
+        return c.encounter or c.gate or c.key
+            or (self.start and self.start.x == c.x and self.start.y == c.y)
+            or (self.objective and self.objective.x == c.x and self.objective.y == c.y)
+    end
+    local changed = true
+    while changed do
+        changed = false
+        for y = 1, self.rows do
+            for x = 1, self.cols do
+                local c = self.cells[y][x]
+                if c.tile == "path" and not protected(c) and #self:pathNeighbors(x, y) <= 1 then
+                    c.tile = "forest"
+                    c.river = nil
+                    changed = true
+                end
+            end
+        end
+    end
+end
+
+-- Difficulty tell for the fog: every combat/elite encounter gets a `tier` (1..3) the renderer shows as
+-- pips so the player can read a fight's danger BEFORE committing to the tile (reveal-then-choose), and
+-- #5 scales its reward by the same tier. Deeper on the board reads tougher. Drawn from self.rng LAST --
+-- after every placement pass -- so it never shifts the seeded geometry, yet stays deterministic. Walked
+-- in a stable grid order so the rng draws reproduce. Non-combat stops (treasure/rest/event) get no tier.
+function Overworld:assignEncounterTiers()
+    local dist = self:bfsDistances(self:startCell())
+    local maxD = 1
+    for _, d in pairs(dist) do if d > maxD then maxD = d end end
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local e = self.cells[y][x].encounter
+            if e and (e.kind == "combat" or e.kind == "elite") then
+                local base = (e.kind == "elite") and 3 or 1
+                local depth = (dist[cellKey(self.cells[y][x])] or 0) / maxD -- 0..1
+                local t = base + (depth >= 0.66 and 1 or 0)
+                if self.rng:random() < 0.25 then t = t + 1 end -- the occasional spike
+                e.tier = math.max(1, math.min(3, t))
+            end
+        end
+    end
 end
 
 -- ---------------------------------------------------------------------------

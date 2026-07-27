@@ -40,8 +40,7 @@ return {
         cost = { stat = "stamina", amount = 6 },
         damage = { 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 10 }, -- under the iron dagger: the reflex is what you bought
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_bleed")
+            fx.damage(fx.target, { inflicts = "status_bleed" })
         end,
     },
 }

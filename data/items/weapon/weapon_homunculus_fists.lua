@@ -17,9 +17,9 @@ return {
         cost = { stat = "stamina", amount = 5 },
         damage = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 },
         effect = function(fx)
-            if fx.damage(fx.target) > 0 then
-                fx.applyStatus(fx.target, "status_poison")
-            end
+            -- Poison rides the blow: it lands on whoever the strike hits, and only a connecting hit --
+            -- the > 0 guard the carried path enforces for free.
+            fx.damage(fx.target, { inflicts = "status_poison" })
         end,
     },
 }

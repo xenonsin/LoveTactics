@@ -24,8 +24,7 @@ return {
         speed = 5,
         damage = 3, -- token: the clock below is the weapon
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_poison")
+            fx.damage(fx.target, { inflicts = "status_poison" })
         end,
     },
 }

@@ -68,6 +68,19 @@ Glyphs.RESOURCE = {
     health  = Glyphs.healthHeart,
 }
 
+-- Charges: a stack of three banked bars -- the mark for a purse an item fills and spends whole (the
+-- Gleaning Rod's spell-charges, the Reliquary of Tallies' owed dead). Told from the pool glyphs above
+-- (a charge is a COUNT the item holds, not a resource the caster pays) and from the hourglass (ticks):
+-- a small pile that reads as "how much is banked", down to 0 when the purse is empty.
+function Glyphs.charges(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    local barH = h * 0.22
+    local gap = (h - barH * 3) / 2
+    for i = 0, 2 do
+        love.graphics.rectangle("fill", x, y + i * (barH + gap), w, barH, barH * 0.5, barH * 0.5)
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- Intent marks (models/intent.lua): what an enemy is about to do, on its turn-order card and beside
 -- its target line. One shape per kind, in the same fill-the-box, set-your-own-colour contract as the

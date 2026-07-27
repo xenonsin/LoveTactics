@@ -19,8 +19,7 @@ return {
         cost = { stat = "stamina", amount = 6 },
         damage = { 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 12 },
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_sundered")
+            fx.damage(fx.target, { inflicts = "status_sundered" })
         end,
     },
 }

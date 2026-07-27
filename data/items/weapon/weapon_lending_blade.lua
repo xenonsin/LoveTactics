@@ -31,8 +31,9 @@ return {
         cost = { stat = "stamina", amount = 8 },
         damage = { 5, 6, 7, 8, 8, 9, 10, 11, 12, 13, 14 },
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_given_guard")
+            -- The strip rides the blow, so it lands on whoever the swing hits -- a guardian who steps in
+            -- front of it has their own guard taken instead.
+            fx.damage(fx.target, { inflicts = "status_given_guard" })
             -- ...and the guard has to land on somebody. The FIRST living ally beside the swordsman, not
             -- the best one: choosing the recipient is the player's job, and they do it by standing
             -- somewhere. With nobody adjacent the loan simply is not made -- the strip still happens, so

@@ -21,6 +21,7 @@ local QuantityPopup = require("ui.quantity_popup")
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip") -- printFlavor (sheared italic story line) + printDiscipline
 local GlossaryPanel = require("ui.glossary_panel")
+local GrowthLadder = require("ui.growth_ladder") -- the level-by-level honing path shown on the Upgrade tab
 local Glossary = require("models.glossary")
 local Vendor = require("models.vendor")
 local Player = require("models.player")
@@ -465,6 +466,22 @@ function Shop:drawDetail()
         ItemTooltip.printFlavor(item.flavor, x, y + 48 + descH + 6, w, self.bodyFont)
     end
 
+    -- The Upgrade tab shows PROGRESSION rather than a snapshot: the item's whole honing path as a level
+    -- ladder (ui/growth_ladder.lua), current row gold, the level this vendor's button buys green, and
+    -- levels past this standing's reach dimmed. Buy/Sell keep the quick-stats + glossary snapshot below.
+    if self.mode == "upgrade" then
+        love.graphics.setFont(self.smallFont)
+        love.graphics.setColor(0.55, 0.60, 0.70)
+        love.graphics.print("HONING PATH", x, y + 130)
+        local ladderTop = y + 148
+        local ladderBottom = (self.boxY + BOX_H - 96) - 12
+        GrowthLadder.draw(Item.growth(item.id), x, ladderTop, w, ladderBottom - ladderTop, {
+            current = item.level or 0,
+            nextLevel = row.cost and row.cost.level, -- current+1, or nil at max
+            lockedFrom = Vendor.abilityLevelCap(self.rank) + 1, -- first level this standing can't reach
+            rowFont = self.glossFont, headFont = self.smallFont,
+        })
+    else
     -- Quick stats. The item's primary stat -- the one magnitude that defines it (armor's defense, a
     -- blade's Power), quoted at its current level -- leads the block for ANY item, armor included.
     local sy = y + 130
@@ -510,6 +527,7 @@ function Shop:drawDetail()
         love.graphics.line(x, glossY - 6, x + w, glossY - 6)
         GlossaryPanel.drawColumn(entries, x, glossY, w, glossMaxH,
             { nameFont = self.smallFont, descFont = self.glossFont, capFont = self.glossFont })
+    end
     end
 
     -- The transaction line for this mode.

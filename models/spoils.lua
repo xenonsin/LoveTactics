@@ -49,12 +49,15 @@ local function rnd(...)
     return math.random(...)
 end
 
--- Gold for beating `count` enemies at `prestige`. An override short-circuits the whole computation.
-local function rollGold(count, prestige, kind, override)
+-- Gold for beating `count` enemies at `prestige`, scaled by the encounter's difficulty tier (`scale`,
+-- default 1) so a tougher side-fight pays materially more -- the risk/reward that makes engaging a
+-- fight before the boss worth the attrition. An override short-circuits the whole computation (it is
+-- an exact, authored payout and is never rescaled).
+local function rollGold(count, prestige, kind, override, scale)
     if override then return math.max(0, math.floor(override)) end
     local base = GOLD_PER_ENEMY * math.max(1, count) * math.max(1, prestige)
     local jitter = 0.85 + rnd() * 0.30 -- +/-15% so two identical fights don't pay identically
-    local gold = base * jitter
+    local gold = base * jitter * (scale or 1)
     if kind == "elite" then gold = gold * ELITE_GOLD_MULT end
     return math.max(1, math.floor(gold + 0.5))
 end
@@ -115,7 +118,10 @@ end
 -- 0-2 loot ids. An override list is used verbatim (unknown ids dropped so a typo can't crash the
 -- later Item.instantiate). Otherwise: a likely first drop and an unlikely second, both richer and
 -- more probable for an elite.
-local function rollLoot(prestige, kind, override, enemyUnits)
+-- `scale` (default 1) is the difficulty-tier bump. A gentler curve than gold uses -- sqrt(scale) --
+-- widens the price band and lifts both drop chances, so a tier-3 fight tends to pay a richer, likelier
+-- drop without a low-prestige map suddenly raining top-shelf gear.
+local function rollLoot(prestige, kind, override, enemyUnits, scale)
     if override then
         local out = {}
         for _, id in ipairs(override) do
@@ -123,9 +129,11 @@ local function rollLoot(prestige, kind, override, enemyUnits)
         end
         return out
     end
+    local bump = math.sqrt(scale or 1)
     local elite = kind == "elite"
     local maxPrice = 40 + math.max(1, prestige) * 60
     if elite then maxPrice = maxPrice * 1.5 end
+    maxPrice = maxPrice * bump
     local band = lootCandidates(maxPrice)
     local carried = carriedCandidates(enemyUnits)
 
@@ -137,10 +145,10 @@ local function rollLoot(prestige, kind, override, enemyUnits)
     end
 
     local out = {}
-    if rnd() < (elite and 0.90 or 0.55) then
+    if rnd() < math.min(0.95, (elite and 0.90 or 0.55) * bump) then
         local id = draw(); if id then out[#out + 1] = id end
     end
-    if rnd() < (elite and 0.45 or 0.18) then
+    if rnd() < math.min(0.80, (elite and 0.45 or 0.18) * bump) then
         local id = draw(); if id then out[#out + 1] = id end
     end
     return out
@@ -152,6 +160,8 @@ end
 --   opts.kind        "combat" | "elite" (elite pays richer); anything else treated as common
 --   opts.rewardGold  encounter override: exact gold, skipping the computation
 --   opts.loot        encounter override: an explicit id list, skipping the roll
+--   opts.rewardScale difficulty-tier multiplier (default 1); scales the gold and, gentler, the loot.
+--                    Absent/1 reproduces the pre-tier payout exactly. Overrides ignore it.
 --
 -- `enemyUnits` now feeds BOTH halves: its length sets the gold, and its grids are the drop table.
 -- Passing `count` alone still works and still pays gold, it just has no bodies to loot, so the
@@ -161,9 +171,10 @@ function Spoils.roll(opts)
     local count = opts.count or (opts.enemyUnits and #opts.enemyUnits) or 1
     local prestige = opts.prestige or 1
     local kind = opts.kind or "combat"
+    local scale = opts.rewardScale or 1
     return {
-        gold = rollGold(count, prestige, kind, opts.rewardGold),
-        loot = rollLoot(prestige, kind, opts.loot, opts.enemyUnits),
+        gold = rollGold(count, prestige, kind, opts.rewardGold, scale),
+        loot = rollLoot(prestige, kind, opts.loot, opts.enemyUnits, scale),
     }
 end
 

@@ -28,8 +28,8 @@ return {
             -- or an ally's Root), not the blade for a condition it did not make.
             local pinned = fx.hasStatus(fx.target, "status_root")
             local bonus = pinned and math.floor(fx.amount * 0.5) or 0
-            fx.damage(fx.target, { amount = fx.amount + bonus })
-            fx.applyStatus(fx.target, "status_bleed") -- daggers bleed (docs/weapons.md)
+            -- Daggers bleed (docs/weapons.md); the wound rides the blow, so a guardian who takes it bleeds.
+            fx.damage(fx.target, { amount = fx.amount + bonus, inflicts = "status_bleed" })
         end,
     },
 }

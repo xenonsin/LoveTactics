@@ -93,6 +93,19 @@ return {
         end,
     },
     {
+        -- The escort/defend NPCs earn a body of their own so they don't read as the rank swordman the
+        -- units guarding them wear. The caravan is the wagon it drives (wood-tinted via `kind`); the
+        -- survivor is a raised-hands plea. The caravan MASTER keeps the default, holding at the gate.
+        name = "the escort/defend NPCs resolve to their own silhouettes",
+        fn = function()
+            assert(slug("character_survivor") == "sbed/help", "survivor -> raised-hands plea")
+            assert(slug("character_caravan_driver") == "delapouite/caravan", "caravan_driver -> wagon")
+            local cd, cdid = resolve("character_caravan_driver")
+            assert(Char.tintFor(cd, cdid) == "#c9b58a", "the caravan is wood-tinted, not steel")
+            assert(slug("character_caravan_master") == Char.HUMANOID_DEFAULT, "the master keeps the rank body")
+        end,
+    },
+    {
         -- The whole point of the boss silhouette: a classless general is otherwise a rank swordman, and
         -- only the gold badge would tell them apart. The overlord figure lifts them.
         name = "a classless boss (a general) is lifted to the overlord silhouette",
@@ -117,13 +130,14 @@ return {
         -- a wrongly-guessed body is fixed with one line rather than any art.
         name = "an explicit kind override wins over the derived kind",
         fn = function()
-            -- `survivor` has no creature match and no class, so it would derive as humanoid; the override
-            -- makes it a beast and the silhouette follows.
-            local def, id = resolve("character_survivor")
+            -- `bandit` has no creature match and no class, so it would derive as humanoid; the override
+            -- makes it a beast and the silhouette follows. (survivor/caravan_driver now carry name-matches
+            -- of their own, so they no longer serve as the "falls through to humanoid" example.)
+            local def, id = resolve("character_bandit")
             local forced = {}
             for k, v in pairs(def) do forced[k] = v end
             forced.kind = "beast"
-            assert(Char.kindOf(def, id) == "humanoid", "survivor derives as humanoid without an override")
+            assert(Char.kindOf(def, id) == "humanoid", "bandit derives as humanoid without an override")
             assert(Char.kindOf(forced, id) == "beast", "the override wins")
             assert(Char.slugFor(forced, id) == "lorc/wolf-head", "beast -> wolf head silhouette")
         end,

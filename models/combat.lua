@@ -133,18 +133,29 @@ local function manhattan(ax, ay, bx, by)
     return math.abs(ax - bx) + math.abs(ay - by)
 end
 
--- Unwrap a hit's `opts.inflicts` -- the status a blow CARRIES (see Combat.dealFlatDamage) -- into the
--- id and the Status.apply opts it rides with. Accepts a bare id ("status_stun") or a table naming one
--- ({ id = "status_stun", magnitude = 6 }). Returns nil for a hit that carries nothing.
+-- Unwrap a hit's `opts.inflicts` -- the status(es) a blow CARRIES (see Combat.dealFlatDamage) -- into
+-- a list of { id, opts } pairs, one per status, where `opts` is the Status.apply table it rides with.
+-- Accepts a bare id ("status_stun"), a single table naming one ({ id = "status_stun", magnitude = 6 }),
+-- or a LIST mixing the two ({ "status_bleed", { id = "status_poison", duration = 8 } }) -- an envenomed
+-- blade that carries two riders on one hit. Returns an empty list for a hit that carries nothing.
 --
 -- Shared by the live path and BOTH damage previews, which is the whole reason it is a function: a
 -- carried status is invisible to the tooltip's fx.applyStatus recorder, so a preview that didn't
 -- unwrap it here would quietly stop naming the stun the player is about to land.
-local function carriedStatus(opts)
+local function carriedStatuses(opts)
     local carried = opts and opts.inflicts
-    if not carried then return nil end
-    if type(carried) == "string" then return carried, nil end
-    return carried.id, carried
+    if not carried then return {} end
+    if type(carried) == "string" then return { { id = carried } } end
+    if carried.id then return { { id = carried.id, opts = carried } } end
+    local out = {}
+    for _, c in ipairs(carried) do
+        if type(c) == "string" then
+            out[#out + 1] = { id = c }
+        elseif c.id then
+            out[#out + 1] = { id = c.id, opts = c }
+        end
+    end
+    return out
 end
 
 -- The cardinal unit step from (ax, ay) toward (bx, by) along the DOMINANT axis (an exact diagonal
@@ -3542,6 +3553,34 @@ function Combat.pull(combat, source, target)
     return true, moved
 end
 
+-- Drag a standing OBJECT (a prop, a visible trap) toward `source` until it stands adjacent -- the
+-- object-layer twin of Combat.pull, exactly as Combat.hurlObject is Combat.knockback's. Needs a clear
+-- line of sight (you cannot hook what you cannot see), re-aims the direction EVERY step so a diagonal
+-- target ends up beside the puller rather than marched past it on one axis, and stops short at the
+-- first tile it cannot enter (an edge, terrain, another object or a body -- canHurlInto's rule).
+--
+-- A drag is not a slam: NOTHING takes impact here. That is the whole point of it over a throw -- a
+-- barrel hauled up to your line arrives intact (Combat.hurlObject would burst it on the first thing it
+-- hit), so pull is how you reposition a bomb without setting it off. Returns (true, tilesMoved) or
+-- (false, reason).
+function Combat.pullObject(combat, source, obj, kind)
+    if not (obj and obj.alive) then return false, "dead" end
+    if not Combat.hasLineOfSight(combat, source.x, source.y, obj.x, obj.y) then
+        return false, "no line of sight"
+    end
+    local moved = 0
+    while Combat.cellGap(obj.x, obj.y, source) > 1 do
+        local dx, dy = signDominant(source.x - obj.x, source.y - obj.y)
+        if not canHurlInto(combat, obj.x + dx, obj.y + dy) then break end
+        if kind == "prop" then Prop.moveTo(obj, obj.x + dx, obj.y + dy)
+        else obj.x, obj.y = obj.x + dx, obj.y + dy end
+        moved = moved + 1
+        Combat.logEvent(combat, "move",
+            string.format("%s is dragged to (%d, %d).", obj.name or "an object", obj.x, obj.y))
+    end
+    return true, moved
+end
+
 -- Set `unit` down on (x, y) in a blink, setting off whatever the tile holds (a trap, a hazard) --
 -- the self-relocation a Leaping Crash makes before it bursts. No move cost and no line check: a
 -- teleport, not a walk. Returns true once placed (false for a dead/nil unit).
@@ -4667,9 +4706,20 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- Accepts an id, or { id = ..., ... } carrying Status.apply opts (a `magnitude` scaled off Power).
     -- Only a survivor is worth controlling, so each path below inflicts before it dispatches, and the
     -- death path (which never dispatches) skips it -- no stunning a corpse.
+    -- The attacker rides along as `applier` (as fx.applyStatus does for a status applied the ordinary
+    -- way), so an onStatusApplied hook on the striker still fires -- the Stripped Plate that wears what
+    -- its Sunder strips, a bounty that credits its setter. A flat source (trap, burn tick) has no
+    -- attacker and so sets none, exactly as it did before. A fresh opts per status, never the caller's.
     local function inflictCarried()
-        local id, carryOpts = carriedStatus(opts)
-        if id then Status.apply(combat, target, id, carryOpts) end
+        for _, c in ipairs(carriedStatuses(opts)) do
+            local o = c.opts
+            if attacker then
+                o = {}
+                if c.opts then for k, v in pairs(c.opts) do o[k] = v end end
+                if o.applier == nil then o.applier = attacker end
+            end
+            Status.apply(combat, target, c.id, o)
+        end
     end
     -- A blow may CARRY a shove (the Iron Mace, the Sworn Aegis): `opts.knockback = { distance, amount }`
     -- drives the target back along the line from its attacker the instant the hit lands. It is folded
@@ -5241,10 +5291,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
             end
             -- A status the blow CARRIES (a hammer's stun) never passes through fx.applyStatus, so
             -- record it here or the tooltip would show the damage and silently drop the stun.
-            local carriedId, carryOpts = carriedStatus(opts)
-            if carriedId then
-                local cdef = Status.defs[carriedId]
-                e.statuses[#e.statuses + 1] = { id = carriedId, def = cdef, opts = carryOpts }
+            for _, c in ipairs(carriedStatuses(opts)) do
+                local cdef = Status.defs[c.id]
+                e.statuses[#e.statuses + 1] = { id = c.id, def = cdef, opts = c.opts }
                 -- ...and flag the one thing the COUNTER preview needs to know about it: a carried
                 -- status that shuts down reflexes means the on-hit answers won't fire, because it
                 -- lands before them (Combat.dealFlatDamage). Recorded from the hit itself rather than
@@ -5253,7 +5302,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
                 if cdef and cdef.disablesReactions then e.suppressesCounters = true end
                 -- A carried stun/freeze shoves the target down the order the moment the blow lands, so
                 -- project its delayed turn onto the timeline (Jolt, Ice Bolt inflict this way).
-                shoveInitiative(tgt, carriedId, carryOpts)
+                shoveInitiative(tgt, c.id, c.opts)
             end
             if d > 0 then
                 for _, st in ipairs(auraStatuses) do
@@ -5347,6 +5396,13 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
             return 0
         end,
         pull = function() return false end,
+        -- The object layer answers where a throw/drag GRABS from (read-only, truthful) but moves
+        -- nothing: a shoved prop deals no damage to a unit, so there is no row for it to record. Present
+        -- so a Push/Heave/Pull effect that reads the tile's furniture completes rather than faulting
+        -- mid-build (the reason the whole table exists -- see Combat.abilityOutput's tail).
+        objectAt = function(px, py) return Combat.throwableAt(combat, px, py, unit.side) end,
+        hurl = function() return 0, false end,
+        pullObject = function() return false end,
         teleportUser = function() return false end,
         teleport = function() return false end,
         charge = function() return 0 end,
@@ -5493,9 +5549,8 @@ function Combat.abilityOutput(unit, item)
             out.damage = out.damage + d
             -- A carried status (see Combat.dealFlatDamage) bypasses fx.applyStatus, so the inventory
             -- tooltip has to read it off the hit itself to keep naming it.
-            local carriedId, carryOpts = carriedStatus(opts)
-            if carriedId then
-                out.statuses[#out.statuses + 1] = { id = carriedId, def = Status.defs[carriedId], opts = carryOpts }
+            for _, c in ipairs(carriedStatuses(opts)) do
+                out.statuses[#out.statuses + 1] = { id = c.id, def = Status.defs[c.id], opts = c.opts }
             end
             -- A folded shove (opts.knockback) never reaches fx.knockback either, so record its distance
             -- here or the tooltip drops "drives the target back" for the mace and the aegis.
@@ -5565,6 +5620,12 @@ function Combat.abilityOutput(unit, item)
         knockback = function(_, distance) out.knockback = distance or 1; return 0, false end,
         retreat = function() return 0 end, -- the caster's own step-back moves nobody the row quotes
         pull = function() out.pull = true; return false end,
+        -- No board here, so there is no furniture to grab: the object layer reports nothing and moves
+        -- nothing. Present for the reason the tail of this table spells out -- a missing helper faults
+        -- while the effect is still building its arguments, and the tooltip goes blank rather than wrong.
+        objectAt = function() return nil end,
+        hurl = function() return 0, false end,
+        pullObject = function() return false end,
         teleportUser = function() return false end,
         teleport = function() return false end,
         charge = function(_, distance) out.charge = distance or 1; return 0 end,
@@ -6452,6 +6513,18 @@ function Combat.itemBlockReason(unit, item)
                 text = text or "Cannot be used right now" }
         end
     end
+    -- A charge/counter item with an empty purse (the Gleaning Rod with no banked charge, the Reliquary
+    -- of Tallies with nothing owed): there is nothing to spend, so the cast is refused rather than
+    -- fired for no effect and a wasted turn. `ab.counter` reads the item's current count -- the very
+    -- number the grid badge shows -- so the greyed slot, the refused click and the badge can never
+    -- disagree. Kept after affordability so a caster who is ALSO out of mana is told the fixable thing.
+    if ab.counter then
+        local n = ab.counter(unit, item) or 0
+        if n <= 0 then
+            return { kind = "empty", reason = "empty", count = n,
+                text = ab.counterEmpty or "Empty -- nothing banked to spend yet" }
+        end
+    end
     -- A signature gated behind an in-battle requirement (land N blows, heal N times, weather a hit)
     -- stays locked until the tally is met -- Combat.unlockMet reads the per-unit counters the seams
     -- bank, and an ability with no `unlock` is always met. Kept LAST among the gates: a locked
@@ -7298,6 +7371,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         pull = function(tgt)
             if not tgt then return false end
             return Combat.pull(combat, unit, tgt)
+        end,
+        -- Drag a standing OBJECT (a prop, a visible trap) up against the caster -- the object-layer
+        -- twin of fx.pull, as fx.hurl is fx.knockback's (see Combat.pullObject). A drag hurts nothing,
+        -- so a barrel pulled in arrives intact.
+        pullObject = function(obj, kind)
+            if not obj then return false end
+            return Combat.pullObject(combat, unit, obj, kind)
         end,
         -- Teleport the CASTER onto a tile, springing whatever it lands on (Leaping Crash's jump).
         teleportUser = function(x, y) return Combat.teleportUnit(combat, unit, x, y) end,

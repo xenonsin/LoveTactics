@@ -21,8 +21,10 @@ return {
         cost = { stat = "stamina", amount = 7 },
         damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8 },
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_root")
+            -- Root rides the blow (opts.inflicts) rather than landing on the line after it, so a
+            -- guardian who takes the hit in the target's place (Sworn Aegis, Oathward) is the one left
+            -- pinned -- the whole snare follows the body the blow lands on, not the body it was aimed at.
+            fx.damage(fx.target, { inflicts = "status_root" })
         end,
     },
 }

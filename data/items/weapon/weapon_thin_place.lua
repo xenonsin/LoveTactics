@@ -36,8 +36,7 @@ return {
         -- almost none of. Modest on paper; most of it arrives.
         damage = { 5, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11 },
         effect = function(fx)
-            fx.damage(fx.target) -- tags default to the item's, so the cut is magical
-            fx.applyStatus(fx.target, "status_bleed")
+            fx.damage(fx.target, { inflicts = "status_bleed" }) -- tags default to the item's, so the cut is magical
         end,
     },
 }

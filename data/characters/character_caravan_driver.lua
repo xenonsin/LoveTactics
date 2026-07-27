@@ -24,7 +24,11 @@
 return {
     name = "Caravan Driver",
     archetype = "escort",
-    sprite = "assets/chars/caravan_master.png",
+    sprite = "assets/chars/caravan_driver.png",
+    -- The board token is the wagon it drives, not the driver -- what the escort objective points at is
+    -- the rolling column, and a wooden wagon reads as a thing to shepherd rather than one more fighter.
+    -- `object` tints it wood (tools/char_compose.lua); the caravan silhouette is matched by id there too.
+    kind = "object",
     stats = {
         health = 38, mana = 0, stamina = 8,
         staminaRegen = 1,

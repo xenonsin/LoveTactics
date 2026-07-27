@@ -20,8 +20,7 @@ return {
         cost = { stat = "mana", amount = 12 },
         damage = { 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11 }, -- light: the root is the payload, not the hit
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_root")
+            fx.damage(fx.target, { inflicts = "status_root" })
         end,
     },
 }

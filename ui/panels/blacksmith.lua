@@ -18,6 +18,7 @@ local Player = require("models.player")
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip") -- printFlavor (sheared italic story line) + printDiscipline
 local FootprintDiagram = require("ui.footprint_diagram") -- the drawn area shape, for a footprint that opens as it forges
+local GrowthLadder = require("ui.growth_ladder") -- the level-by-level upgrade path (replaces the old bar skyline)
 local Colors = require("ui.colors")
 local Scale = require("scale")
 local InputMode = require("input_mode")
@@ -31,14 +32,10 @@ local BOX_W, BOX_H = 900, 520
 local LIST_TOP = 110
 local ROW_H, ROW_SPACING, MAX_VISIBLE = 34, 6, 8
 
--- Growth-sheet palette (level bars + filmstrip). OWNED = a level already forged, GHOST = one not yet
--- reached, MARK = the current level, NEXT = the level the forge button would buy, UP = an improvement.
+-- Growth-sheet palette (the footprint filmstrip + cost band; the level table owns its own colours).
+-- MARK = the current level, UP = an improvement, DIM = captions.
 local DIM = { 0.55, 0.60, 0.70 }
-local BRIGHT = { 0.92, 0.93, 0.97 }
-local OWNED = { 0.62, 0.68, 0.80 }
-local GHOST = { 0.34, 0.37, 0.46 }
 local MARK = { 0.95, 0.85, 0.55 }
-local NEXT = { 0.55, 0.90, 0.58 }
 local UP = { 0.55, 0.90, 0.58 }
 
 function BlacksmithPanel.new(opts)
@@ -196,61 +193,6 @@ function BlacksmithPanel:draw()
     love.graphics.setColor(1, 1, 1)
 end
 
--- Bar geometry shared by the axis header and every stat row, derived from the detail column (x, w).
-local LABEL_W, VALUE_W = 104, 56
-
--- One stat's whole forge path as a mini bar chart: 11 columns (levels 0..10), each column's HEIGHT the
--- value at that level, so the growth reads as a rising skyline. The current level is gold, the level the
--- Forge button would buy is green, already-forged levels are solid and unreached ones ghosted -- and a
--- level that steps the stat UP wears a green cap, so "what improves here" is legible without a number.
--- The right column quotes the exact value now, over the value at max.
-function BlacksmithPanel:drawStatBar(stat, x, y, w, rowH, current, nextLevel)
-    local maxLevel = Item.MAX_LEVEL
-    local barsX = x + LABEL_W
-    local barsW = w - LABEL_W - VALUE_W
-    local colStep = barsW / (maxLevel + 1)
-    local colW = math.max(2, colStep - 3)
-    local baseline = y + rowH - 3
-    local barMaxH = rowH - 5
-    local span = (stat.max ~= stat.min) and (stat.max - stat.min) or 1
-
-    love.graphics.setFont(self.smallFont)
-    local labelCol = stat.primary and BRIGHT or DIM
-    love.graphics.setColor(labelCol[1], labelCol[2], labelCol[3])
-    love.graphics.print(stat.label, x, y + (rowH - self.smallFont:getHeight()) / 2)
-
-    for i = 0, maxLevel do
-        local v = stat.values[i]
-        if v then
-            -- Floor the fill so the smallest value still shows a stub, then scale the rest to the span.
-            local frac = 0.20 + 0.80 * ((v - stat.min) / span)
-            local h = math.max(2, math.floor(barMaxH * frac))
-            local cx = barsX + i * colStep
-            local col, a
-            if i == current then col, a = MARK, 1
-            elseif i == nextLevel then col, a = NEXT, 1
-            elseif i < current then col, a = OWNED, 0.95
-            else col, a = GHOST, 0.85 end
-            love.graphics.setColor(col[1], col[2], col[3], a)
-            love.graphics.rectangle("fill", cx, baseline - h, colW, h, 1, 1)
-            -- A green cap marks a level that raises the stat (only the ones not yet forged, so the eye
-            -- goes to the gains still ahead). The current/next columns already carry their own colour.
-            if stat.changed[i] and i > current and i ~= nextLevel then
-                love.graphics.setColor(UP[1], UP[2], UP[3], 0.55)
-                love.graphics.rectangle("fill", cx, baseline - h - 2, colW, 2)
-            end
-        end
-    end
-
-    -- Value column: what the stat is at the CURRENT level, over its value at max.
-    local vx = x + w - VALUE_W
-    local nowV = stat.values[current] or stat.values[maxLevel]
-    love.graphics.setColor(BRIGHT[1], BRIGHT[2], BRIGHT[3])
-    love.graphics.printf(tostring(nowV), vx, y, VALUE_W, "right")
-    love.graphics.setColor(DIM[1], DIM[2], DIM[3])
-    love.graphics.printf("max " .. tostring(stat.max), vx, y + 12, VALUE_W, "right")
-end
-
 -- The footprint filmstrip: a small drawn picture of the area shape at each level it changes (a line
 -- opening into a cone). The form the item is on RIGHT NOW is boxed in gold; the rest sit muted. Nothing
 -- to show for a single-target weapon (growth.footprint is nil) or a shape that never moves past base.
@@ -372,42 +314,28 @@ function BlacksmithPanel:drawDetail()
     local nextLevel = current + 1
     if nextLevel > Item.MAX_LEVEL then nextLevel = nil end
 
-    -- Growth sheet header + level axis ends over the bar columns.
+    -- Growth caption, then the level ladder: every level 0..10 with the value each grants, current row
+    -- gold and next-forge row green (ui/growth_ladder.lua). No standing gates the forge, so nothing is
+    -- locked here. The ladder gets its FULL height on the left; when the ability's area footprint opens
+    -- as it forges (a static shape is not growth), the filmstrip sits to its right rather than below --
+    -- so the ladder never has to give up rows to make room. The cost band pins near the bottom.
     local sheetY = y + 96
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(DIM[1], DIM[2], DIM[3])
     love.graphics.print("GROWTH", x, sheetY)
-    love.graphics.print("0", x + LABEL_W, sheetY)
-    love.graphics.printf("10", x + LABEL_W, sheetY, w - LABEL_W - VALUE_W, "right")
 
-    -- Bars, then (only when the ability's area footprint actually OPENS as it forges -- a static shape
-    -- is not growth and would just steal rows from the real stats) the filmstrip below them, then the
-    -- cost band pinned near the bottom. Rows are capped to the room above whichever section comes next.
     local showStrip = growth and growth.footprint and #growth.footprint.changedAt > 1
-    local costBandY = self.boxY + BOX_H - 150
-    local stripY = showStrip and (costBandY - 76) or nil
-    local barsTop = sheetY + 16
-    local barsBottom = (stripY or costBandY) - 6
-    local rowH = 24
-    local maxRows = math.max(1, math.floor((barsBottom - barsTop) / rowH))
+    local costBandY = self.boxY + BOX_H - 138 -- leaves the ladder room for all 11 levels + header
+    local ladderTop = sheetY + 18
+    local ladderH = costBandY - 6 - ladderTop
+    local ladderW = showStrip and 210 or w
+    GrowthLadder.draw(growth, x, ladderTop, ladderW, ladderH, {
+        current = current, nextLevel = nextLevel,
+        rowFont = self.smallFont, headFont = self.smallFont,
+    })
 
-    local stats = growth and growth.stats or {}
-    local shown = math.min(#stats, maxRows)
-    for i = 1, shown do
-        self:drawStatBar(stats[i], x, barsTop + (i - 1) * rowH, w, rowH, current, nextLevel)
-    end
-    if #stats > shown then
-        love.graphics.setFont(self.smallFont)
-        love.graphics.setColor(DIM[1], DIM[2], DIM[3])
-        love.graphics.print("+" .. (#stats - shown) .. " more", x, barsTop + shown * rowH)
-    elseif #stats == 0 then
-        love.graphics.setFont(self.smallFont)
-        love.graphics.setColor(DIM[1], DIM[2], DIM[3])
-        love.graphics.print("This piece has no scaling stat to chart.", x, barsTop)
-    end
-
-    if stripY then
-        self:drawFootprintStrip(growth.footprint, x, stripY, w, current)
+    if showStrip then
+        self:drawFootprintStrip(growth.footprint, x + ladderW + 16, ladderTop + 8, w - ladderW - 16, current)
     end
 
     self:drawCostBand(item, growth, x, costBandY, w)

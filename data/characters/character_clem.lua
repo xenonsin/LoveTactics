@@ -31,6 +31,7 @@ return {
     portrait = "assets/portraits/clem.png", -- large VN portrait for conversations (falls back if missing)
     class = "rogue",
     boss = true,
+    overworldAbility = "jubilee", -- clemency: mints a cut on top of every side-fight win
     archetype = "aggressive", -- a glass-cannon skirmisher; she opens the wound and takes the kill
     stats = {
         health = 54, mana = 0, stamina = 17,

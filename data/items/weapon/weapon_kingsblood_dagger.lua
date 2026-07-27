@@ -47,9 +47,9 @@ return {
             -- rather than rewarding the blade for the cut it is making right now.
             local open = fx.hasStatus(fx.target, "status_bleed")
             local reopen = open and math.floor(fx.amount * 0.5) or 0
-            fx.damage(fx.target, { amount = fx.amount + reopen })
-            -- Daggers bleed (docs/weapons.md); this one cuts deeper than the ordinary 3.
-            fx.applyStatus(fx.target, "status_bleed", { magnitude = 5 })
+            -- Daggers bleed (docs/weapons.md); this one cuts deeper than the ordinary 3. The wound rides
+            -- the blow, so a guardian who takes the hit takes the deeper cut too.
+            fx.damage(fx.target, { amount = fx.amount + reopen, inflicts = { id = "status_bleed", magnitude = 5 } })
         end,
     },
 }

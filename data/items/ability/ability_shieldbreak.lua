@@ -20,9 +20,10 @@ return {
         cost = { stat = "stamina", amount = 9 },
         damage = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 },
         effect = function(fx)
-            fx.damage(fx.target)
+            -- The Sunder rides the blow, so it lands on whoever the strike hits -- a guardian who steps
+            -- in front of it is the one broken open.
+            fx.damage(fx.target, { inflicts = "status_sundered" })
             fx.knockback(fx.target, 2, { amount = 0 })
-            fx.applyStatus(fx.target, "status_sundered")
         end,
     },
 }

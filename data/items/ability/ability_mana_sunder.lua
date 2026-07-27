@@ -21,9 +21,9 @@ return {
         damage = { 5, 6, 7, 8, 8, 9, 10, 11, 12, 13, 14 },
         restore = { 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30 }, -- fx.amount: the mana burned off
         effect = function(fx)
-            fx.damage(fx.target)
+            -- The Silence rides the blow, so a guardian who takes the strike is the one gagged.
+            fx.damage(fx.target, { inflicts = "status_silenced" })
             fx.drain(fx.target, "mana", fx.amount) -- burned, not siphoned: the Spellbreaker keeps nothing
-            fx.applyStatus(fx.target, "status_silenced")
         end,
     },
 }

@@ -37,6 +37,13 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 8 },
+        -- The purse this box holds: one charge per comrade lost, the same tally the effect spends.
+        -- Surfacing it lets the grid draw the count (0 when empty) and refuse the cast while it's empty
+        -- (Combat.itemBlockReason), so an empty reliquary greys out rather than wasting a turn on nothing.
+        counter = function(unit)
+            return unit and unit.char and require("models.combat").tallyCount(unit, "allyDown") or 0
+        end,
+        counterEmpty = "The reliquary is empty -- nothing has been owed yet",
         effect = function(fx)
             local body = fx.unitAt(fx.tx, fx.ty)
             if not body then return end

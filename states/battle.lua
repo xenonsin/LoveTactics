@@ -343,12 +343,17 @@ local function finishBattle(result)
     if result == "win" then
         local kind = battle.encounter and battle.encounter.kind
         if kind == "combat" or kind == "elite" then
+            -- Difficulty tier (1..3, stamped on the encounter by models/overworld.lua) scales the
+            -- payout: a tougher side-fight is worth more, the risk/reward for spending HP before the
+            -- boss. Tier 1 (or an unstamped fight) pays exactly as before.
+            local TIER_GOLD = { [1] = 1.0, [2] = 1.6, [3] = 2.4 }
             spoils = Spoils.roll({
                 enemyUnits = battle.enemyUnits,
                 prestige = battle.prestige,
                 kind = kind,
                 rewardGold = battle.encounter.rewardGold,
                 loot = battle.encounter.loot,
+                rewardScale = TIER_GOLD[battle.encounter.tier or 1] or 1.0,
             })
         end
         -- Gold picked off the enemy DURING the fight (Combat.skimGold, the Skimmer's Cut) rides out on
@@ -1209,7 +1214,11 @@ local function walkStep(w)
     w.timer = MOVE_STEP
     battle.fx:setSlide(w.unit, step.fromX, step.fromY, MOVE_STEP, nil, step.x, step.y)
     -- A trap that sprang, a hazard that bit, an overwatch shot -- float its number on arrival. No
-    -- actor leans in: this is damage taken while walking, not a strike the unit made.
+    -- actor leans in: this is damage taken while walking, not a strike the unit made. This step's cues
+    -- were held up front (beginWalk) so a unit felled LATER in the route keeps its HP bar and turn-strip
+    -- card until the tile that fells it actually plays; release this step's hold as it plays so its blow
+    -- lands live -- awaiting (while held) hands off to the death fade (once ingested) with no gap.
+    if step.fx then battle.fx:hold(step.fx, -1) end
     battle.fx:ingest(step.fx, nil)
     return true
 end
@@ -1224,6 +1233,14 @@ end
 local function beginWalk(unit, steps, onDone)
     local w = { steps = steps, i = 0, timer = 0, onDone = onDone, unit = unit }
     battle.walk = w
+    -- The model resolved the ENTIRE route in startWalk, so every trap/overwatch death down the line has
+    -- ALREADY set alive=false -- which drops that unit from Combat.buildTimeline at once. Hold every
+    -- step's cues now so a unit felled partway keeps its HP bar and turn-strip card (fx:awaiting) until
+    -- walkStep plays the tile that fells it; without this its card blinks off the timeline the instant the
+    -- walk begins, a whole route before it is seen to die. walkStep releases each step's hold as it plays.
+    for _, step in ipairs(steps) do
+        if step.fx then battle.fx:hold(step.fx, 1) end
+    end
     walkStep(w)
     return w
 end
@@ -2553,6 +2570,9 @@ local function refreshView()
         local u = Combat.unitAt(battle.combat, battle.map.cursor.x, battle.map.cursor.y)
         if u and u.alive and u.side ~= "party" then intentHover = u end
     end
+    -- The foe whose on-body intent badge a bare hover would paint (set in the intent block below), held
+    -- back until the aimed action is known so it can be dropped when the actor is striking that foe.
+    local hoverIntentFoe
 
     -- Target lines (models/intent.lua): who each enemy will strike, and what it will do. Three tiers,
     -- in precedence order -- while steering a step the question is "who comes for me HERE", and only
@@ -2624,8 +2644,10 @@ local function refreshView()
         -- Off the survey, one hovered foe still gets its badge ON THE BODY, alongside the target line
         -- above -- so "what is this one about to do" answers right on the sprite, not only by tracing
         -- its line to a timeline card. A single-entry map: drawIntentBadges keys off each unit, so only
-        -- the hovered body is marked.
-        overlays.intentBadges = { [intentHover] = battle.enemyIntents[intentHover] }
+        -- the hovered body is marked. But the decision waits until the aimed action is known below: a
+        -- foe the actor is about to STRIKE must not wear its own incoming-damage badge, or that number
+        -- (what the foe will deal) reads as the damage the PLAYER would deal. See hoverIntentFoe.
+        hoverIntentFoe = intentHover
     end
 
     -- Traps the party can currently see (its own + detected enemy traps): a per-frame lookup for
@@ -2751,6 +2773,20 @@ local function refreshView()
             end
         end
     end
+    -- Now the aimed action is known: paint the hovered foe's intent badge on its body UNLESS the actor
+    -- is aiming an offensive strike right at it. Aiming it, its incoming-damage number sits on the very
+    -- body being targeted and reads as the damage the PLAYER deals; the tile tooltip already prices that
+    -- strike. Out of reach (no offensive plan on it), the badge answers "what will this threat do" -- the
+    -- read a bare hover is for. Support casts and repositions don't confuse the number, so they keep it.
+    if hoverIntentFoe then
+        local a = battle.hoverAction
+        local aimingFoe = a and a.target == hoverIntentFoe
+            and (a.kind == "attack" or (a.kind == "ability" and not a.support))
+        if not aimingFoe then
+            overlays.intentBadges = { [hoverIntentFoe] = battle.enemyIntents[hoverIntentFoe] }
+        end
+    end
+
     -- Hovering an ability SLOT (the cursor is on the panel, so there's no aimed board action) prices
     -- the same spend onto the actor's bars, beside the range it already previews -- so what a cast
     -- would take reads before committing to arm it, not only once it's aimed.

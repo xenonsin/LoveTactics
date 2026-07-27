@@ -16,9 +16,9 @@ return {
         cost = { stat = "stamina", amount = 5 },
         damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 },
         effect = function(fx)
-            if fx.damage(fx.target) > 0 then
-                fx.applyStatus(fx.target, "status_wet")
-            end
+            -- Wet rides the blow: it lands on whoever the strike hits, and only a connecting hit --
+            -- the > 0 guard the carried path enforces for free.
+            fx.damage(fx.target, { inflicts = "status_wet" })
         end,
     },
 }

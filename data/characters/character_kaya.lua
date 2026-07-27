@@ -29,6 +29,7 @@ return {
     sprite = "assets/chars/kaya.png",
     portrait = "assets/portraits/kaya.png", -- large VN portrait for conversations (falls back if missing)
     class = "hunter",
+    overworldAbility = "forage", -- temperance: forages a little gold from newly explored tiles, capped per run
     stats = {
         health = 66, mana = 20, stamina = 15,
         staminaRegen = 2,

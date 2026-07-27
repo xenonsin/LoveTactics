@@ -65,6 +65,44 @@ return {
         end,
     },
     {
+        -- The overworld redesign's risk/reward: a tougher tier pays materially more, so engaging a
+        -- fight before the boss is a real gamble against attrition. Averaged over many rolls to see
+        -- past the +/-15% jitter.
+        name = "a higher difficulty tier (rewardScale) pays materially more gold",
+        fn = function()
+            local function avgGold(scale)
+                local sum = 0
+                for _ = 1, 300 do
+                    sum = sum + Spoils.roll({ enemyUnits = roster(3), prestige = 3, kind = "combat",
+                        loot = {}, rewardScale = scale }).gold
+                end
+                return sum / 300
+            end
+            local t1, t3 = avgGold(1.0), avgGold(2.4)
+            assert(t3 > t1 * 1.8, "a tier-3 fight should pay far more than tier-1, got "
+                .. t1 .. " vs " .. t3)
+        end,
+    },
+    {
+        -- Regression guard: absent rewardScale (or 1) reproduces the pre-tier payout exactly, so an
+        -- objective/quest reward (which never passes a scale) is untouched.
+        name = "rewardScale absent or 1 reproduces the base payout",
+        fn = function()
+            -- Spoils draws from love.math under LÖVE, so seed THAT (fall back to math for a bare run).
+            local function seed(n)
+                if love and love.math and love.math.setRandomSeed then love.math.setRandomSeed(n)
+                else math.randomseed(n) end
+            end
+            -- loot = {} short-circuits the loot roll, so only gold's single jitter draw consumes RNG.
+            seed(42)
+            local a = Spoils.roll({ count = 3, prestige = 3, kind = "combat", loot = {} }).gold
+            seed(42)
+            local b = Spoils.roll({ count = 3, prestige = 3, kind = "combat", loot = {},
+                rewardScale = 1 }).gold
+            assert(a == b, "rewardScale=1 must equal the absent case, got " .. a .. " vs " .. b)
+        end,
+    },
+    {
         name = "rewardGold overrides the computation exactly",
         fn = function()
             local s = Spoils.roll({ enemyUnits = roster(4), prestige = 4, kind = "elite",

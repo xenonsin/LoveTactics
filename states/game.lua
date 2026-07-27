@@ -21,6 +21,8 @@ local RestReveal = require("ui.panels.rest")
 local EncounterModel = require("models.encounter")
 local Party = require("ui.panels.party")
 local Consumables = require("ui.panels.consumables")
+local PartyStatus = require("ui.party_status")
+local OverworldAbility = require("models.overworld_ability")
 local CoachBubble = require("ui.coach_bubble")
 local Locale = require("models.locale")
 
@@ -59,6 +61,9 @@ local backButton = { x = 16, y = 16, w = 110, h = 36 }
 local itemsButton = { x = 138, y = 16, w = 110, h = 36 }
 -- Clickable "Use" button: opens the consumables screen to drink a restorative draught between fights.
 local useButton = { x = 260, y = 16, w = 110, h = 36 }
+-- Clickable "Party" button: opens the party panel -- HP/mana readout + the marching-grid editor -- so
+-- the formation can be re-set between fights while the attrition is in view.
+local partyButton = { x = 382, y = 16, w = 110, h = 36 }
 
 local function rectContains(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
@@ -92,6 +97,46 @@ local function openConsumables()
         player = game.player,
         onClose = function() game.activePanel = nil end,
     })
+end
+
+-- The party panel (HP/mana readout + marching-grid editor) and its always-on HP strip ride on every
+-- normal quest, but not the flight tutorial: that leg's HUD is deliberately spare and its coach bubble
+-- lives where the strip would sit.
+local function partyVisible()
+    return game.tutorial ~= "flight"
+end
+
+-- Open the party panel over the overworld (same modal slot as the encounter panel).
+local function openParty()
+    game.activePanel = PartyStatus.new({
+        player = game.player,
+        abilityState = game.abilityState, -- so the panel can show what each companion has banked
+        onClose = function() game.activePanel = nil end,
+    })
+end
+
+-- A transient on-screen line an ability pushes when it fires (Amana mends X, Kaya forages, ...). Fades
+-- over TOAST_LIFE; the newest sits on top. Capped so a flurry of wins can't stack off the screen.
+local TOAST_LIFE = 3.2
+function game:pushToast(text)
+    game.toasts = game.toasts or {}
+    table.insert(game.toasts, 1, { text = text, t = TOAST_LIFE })
+    while #game.toasts > 5 do table.remove(game.toasts) end
+end
+
+-- Fire a companion overworld-ability event (models/overworld_ability.lua) for the active party, carrying
+-- the per-run scratch (game.abilityState, reset each quest in enter), a toast notifier, and any event
+-- extras (cell, spoils).
+local function fireAbility(event, extra)
+    local ctx = {
+        player = game.player,
+        party = game.player and game.player.party,
+        grid = game.grid,
+        state = game.abilityState,
+        notify = function(text) game:pushToast(text) end,
+    }
+    if extra then for k, v in pairs(extra) do ctx[k] = v end end
+    OverworldAbility.dispatch(event, ctx)
 end
 
 -- Open the Party screen over the overworld (same modal slot as the encounter panel).
@@ -179,10 +224,18 @@ function game.enter(self, quest, prestige, player, onComplete)
     end
     game.activePanel = nil
     game.complete = false
+    -- Per-run scratch for companion overworld abilities (banked vigils/doses/steps/forage). Reset each
+    -- quest, like the fog -- it is a fresh run, not a holiday.
+    game.abilityState = {}
+    game.toasts = {} -- transient ability feedback lines (see game:pushToast)
     game.map = OverworldMap.new(game.grid, {
         onEncounter = function(cell) game:openEncounter(cell) end,
-        -- Fog-of-war radius from the active party (a torch-carrier widens it).
-        visionRadius = Player.visionRadius(player),
+        -- Every landed tile drives the per-step abilities (Kaya's forage, Saber's steps, ...).
+        onArrive = function(cell) fireAbility("step", { cell = cell }) end,
+        -- Fog-of-war radius: the map's own reveal-a-neighbourhood radius (3 for a rolled board, 2 for an
+        -- authored leg -- see models/overworld.lua), widened by a torch-carrier AND by Gyeom's Ledger.
+        visionRadius = math.max(game.grid.visionRadius or 2, Player.visionRadius(player))
+            + OverworldAbility.visionBonus(player),
     })
 
     -- Overworld tutorial state (only the prologue's flight leg sets `tutorial = "flight"`). The coach
@@ -251,6 +304,12 @@ function game:openEncounter(cell)
     end
 
     if kind == "combat" or kind == "elite" or kind == "objective" then
+        -- The battle launch itself, deferred behind a fight-or-slip confirm for side fights (below).
+        local function startBattle()
+        -- Companion overworld abilities spend their banked readiness onto the party's carried resources
+        -- right before the fight builds its units (the party chars ride in by reference): Rowan's Vigil
+        -- readies the front line, Saber's Held Swing pours her banked steps into her opening.
+        fireAbility("battleStart", { cell = cell })
         -- Tutorial leg only (the prologue's flight): snapshot the party BEFORE the fight so the defeat
         -- panel's "Try Again" can restart THIS same encounter with a whole party -- consumed potions and
         -- any downed member undone. In-memory only, no disk save. The cell is not yet marked `cleared`
@@ -352,6 +411,10 @@ function game:openEncounter(cell)
                         for _, id in ipairs(spoils.loot or {}) do Player.grantItem(game.player, id) end
                         Player.save()
                     end
+                    -- Companion abilities react to the win (Amana mends, Ren distils a dose, Rowan banks a
+                    -- vigil, Clem takes her cut, Gyeom studies), then save so their effects persist.
+                    fireAbility("encounterCleared", { cell = cell, spoils = spoils })
+                    if game.player then Player.save() end
                     State.current = game
                 end
             end,
@@ -377,6 +440,14 @@ function game:openEncounter(cell)
             -- the panel shows Try Again alone.
             onLoss = (not game.tutorial) and function() State.switch(require("states.hub")) end or nil,
         })
+        end -- startBattle
+
+        -- Stepping onto a fight enters it immediately -- no confirm. You skip a fight by routing AROUND
+        -- it: combats never sit on the objective spine (models/overworld.lua), and the marker's danger
+        -- pips + the party strip already let you judge it before you commit the step. The boss takes
+        -- Ren's dose pour first.
+        if kind == "objective" then fireAbility("objectiveReached", { cell = cell }) end
+        startBattle()
         return
     end
 
@@ -466,6 +537,15 @@ local function toHub()
 end
 
 function game.update(dt)
+    -- Ability toasts fade regardless of whether a panel is open (they were pushed as the player
+    -- returned from a fight, and should keep counting down while they read the result).
+    if game.toasts then
+        for i = #game.toasts, 1, -1 do
+            local toast = game.toasts[i]
+            toast.t = toast.t - dt
+            if toast.t <= 0 then table.remove(game.toasts, i) end
+        end
+    end
     if game.activePanel then
         game.activePanel:update(dt)
     else
@@ -555,6 +635,39 @@ function game.drawHud()
             useButton.w, "center")
     end
 
+    -- Party button, beside Use. Opens the HP/mana + marching-grid panel.
+    if partyVisible() then
+        love.graphics.setColor(0.20, 0.23, 0.32)
+        love.graphics.rectangle("fill", partyButton.x, partyButton.y, partyButton.w, partyButton.h, 6, 6)
+        love.graphics.setColor(0.5, 0.55, 0.7)
+        love.graphics.rectangle("line", partyButton.x, partyButton.y, partyButton.w, partyButton.h, 6, 6)
+        love.graphics.setColor(0.95, 0.95, 0.95)
+        love.graphics.setFont(hudFont)
+        love.graphics.printf("Party", partyButton.x, partyButton.y + partyButton.h / 2 - 8,
+            partyButton.w, "center")
+    end
+
+    -- Always-on party HP/mana strip: the run's attrition, legible while routing (models/player.lua).
+    -- Pass the mouse (logical space) so the per-companion ability badge shows its tooltip on hover.
+    if partyVisible() then
+        local mx, my
+        if InputMode.isMouse() then mx, my = Scale.toGame(love.mouse.getPosition()) end
+        PartyStatus.drawStrip(game.player, 16, 60, mx, my, game.abilityState)
+    end
+
+    -- Companion-ability toasts, stacked just under the party strip so ability feedback groups with the
+    -- party it comes from. Newest on top; each fades over its life.
+    if game.toasts and #game.toasts > 0 then
+        love.graphics.setFont(hudFont)
+        local baseY = 60 + PartyStatus.stripHeight(#(game.player and game.player.party or {})) + 6
+        for i, toast in ipairs(game.toasts) do
+            local a = math.min(1, toast.t / 0.6) -- fade out over the last 0.6s
+            love.graphics.setColor(0.85, 0.9, 0.7, a)
+            love.graphics.print(toast.text, 18, baseY + (i - 1) * 20)
+        end
+        love.graphics.setColor(1, 1, 1)
+    end
+
     -- Quest name + objective hint.
     love.graphics.setFont(titleFont)
     love.graphics.setColor(0.95, 0.85, 0.55)
@@ -576,11 +689,12 @@ function game.drawHud()
     -- otherwise. The items key only appears once the Loadout button itself does.
     local items = game.itemsVisible and (InputMode.isGamepad() and "Y: items      " or "I: items      ") or ""
     local use = useVisible() and (InputMode.isGamepad() and "X: use      " or "U: use      ") or ""
+    local party = partyVisible() and (InputMode.isGamepad() and "LB: party      " or "P: party      ") or ""
     -- The "back to hub" hint is dropped alongside the button itself during the flight tutorial.
     local back = backVisible() and (InputMode.isGamepad() and "Back: hub" or "Esc: hub") or ""
     local hint = InputMode.isGamepad()
-        and ("Move: D-pad / Stick      " .. items .. use .. back)
-        or ("Move: WASD / Arrows / click adjacent tile      " .. items .. use .. back)
+        and ("Move: D-pad / Stick      " .. items .. use .. party .. back)
+        or ("Move: WASD / Arrows / click adjacent tile      " .. items .. use .. party .. back)
     love.graphics.printf(hint, 0, Scale.HEIGHT - 30, Scale.WIDTH, "center")
     love.graphics.setColor(1, 1, 1)
 end
@@ -600,7 +714,8 @@ function game:cursorKind(x, y)
         return game.activePanel.cursorKind and game.activePanel:cursorKind(x, y) or "arrow"
     end
     if (backVisible() and backContains(x, y)) or (game.itemsVisible and rectContains(itemsButton, x, y))
-        or (useVisible() and rectContains(useButton, x, y)) then
+        or (useVisible() and rectContains(useButton, x, y))
+        or (partyVisible() and rectContains(partyButton, x, y)) then
         return "hand"
     end
     return "arrow"
@@ -615,6 +730,8 @@ function game.mousepressed(x, y, button)
         openLoadout()
     elseif button == 1 and useVisible() and rectContains(useButton, x, y) then
         openConsumables()
+    elseif button == 1 and partyVisible() and rectContains(partyButton, x, y) then
+        openParty()
     else
         game.map:mousepressed(x, y, button)
     end
@@ -640,6 +757,8 @@ function game.keypressed(key)
         openLoadout()
     elseif key == "u" and useVisible() then
         openConsumables()
+    elseif key == "p" and partyVisible() then
+        openParty()
     else
         game.map:keypressed(key)
     end
@@ -654,6 +773,8 @@ function game.gamepadpressed(joystick, button)
         openLoadout()
     elseif button == "x" and useVisible() then
         openConsumables()
+    elseif button == "leftshoulder" and partyVisible() then
+        openParty()
     else
         game.map:gamepadpressed(joystick, button)
     end

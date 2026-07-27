@@ -37,8 +37,7 @@ return {
         cost = { stat = "stamina", amount = 5 },
         damage = { 5, 5, 6, 7, 7, 8, 9, 9, 10, 11, 12 },
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_bleed")
+            fx.damage(fx.target, { inflicts = "status_bleed" })
         end,
     },
 }

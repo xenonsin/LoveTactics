@@ -28,8 +28,7 @@ return {
         cost = { stat = "mana", amount = 5 },
         damage = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 }, -- under a plain wand's: what it opens is the point
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_acid")
+            fx.damage(fx.target, { inflicts = "status_acid" })
         end,
     },
 }

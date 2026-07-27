@@ -28,8 +28,7 @@ return {
         cost = { stat = "stamina", amount = 4 }, -- cheap, and it usually pays for itself back
         damage = { 4, 4, 5, 5, 6, 7, 7, 8, 9, 9, 10 }, -- under an iron dagger's: what it takes is the point
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_bleed")
+            fx.damage(fx.target, { inflicts = "status_bleed" }) -- the wound rides the blow
             -- Take, then keep: drain reports what was actually there to take (a foe already exhausted
             -- yields nothing), and exactly that much is handed to the rogue -- never more. The Drain
             -- Mana pattern (data/items/ability/ability_drain_mana.lua), pointed at the pool that buys

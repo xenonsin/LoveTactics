@@ -39,6 +39,7 @@ function OverworldMap.new(grid, opts)
     local self = setmetatable({}, OverworldMap)
     self.grid = grid
     self.onEncounter = opts.onEncounter
+    self.onArrive = opts.onArrive -- fired on EVERY landed tile (per-step abilities: forage, scouting)
     self.font = opts.font or love.graphics.newFont(16)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.heldDir = nil   -- { dx, dy } of the direction currently held (any input)
@@ -151,6 +152,9 @@ end
 -- it opened an encounter panel, so the caller can halt any in-progress hold-to-move.
 function OverworldMap:arrive()
     local c = self.grid:get(self.px, self.py)
+    -- Every landed tile: the per-step abilities hook (Kaya's forage, Saber's steps, Gyeom's scouting).
+    -- Fired before keys/encounters so a step's reward is banked even on a tile that also opens a fight.
+    if self.onArrive then self.onArrive(c) end
     if c.key and not self.keysHeld[c.key.keyId] then
         self.keysHeld[c.key.keyId] = true
         c.picked = true
@@ -288,6 +292,14 @@ function OverworldMap:tokenRect()
     local wx, wy = self.grid:cellToPixel(self:visualCell())
     local s = self.grid.size
     return { x = wx - math.floor(self.camX or 0), y = wy - math.floor(self.camY or 0), w = s, h = s }
+end
+
+-- Difficulty-tier pip colour: green (1) -> amber (2) -> red (3). The tell the fog reveals, so a
+-- combat/elite's danger can be read before the player commits to its tile (reveal-then-choose).
+local function tierColor(tier)
+    if tier >= 3 then return 0.95, 0.35, 0.32 end
+    if tier == 2 then return 0.90, 0.75, 0.30 end
+    return 0.35, 0.85, 0.40
 end
 
 local function markerColor(kind)
@@ -508,6 +520,22 @@ function OverworldMap:drawMarkers()
                 local icon = MarkerIcon[kind] or MarkerIcon.combat
                 local pad = s * 0.28
                 icon(wx + pad, wy + pad, s - pad * 2, s - pad * 2, 1, 1, 1, a)
+
+                -- Difficulty tell: 1-3 pips along the bottom of the cell for a combat/elite. Read from
+                -- a seen tile (the fog only dims it), this is what lets the player weigh a fight's danger
+                -- against their attrition BEFORE stepping on it.
+                local tier = c.encounter.tier
+                if tier and (kind == "combat" or kind == "elite") then
+                    local pr, pg, pb = tierColor(tier)
+                    local pipR = math.max(1.5, s * 0.06)
+                    local gap = pipR * 2 + 2
+                    local startX = wx + s / 2 - (tier * gap - 2) / 2 + pipR
+                    local py = wy + s - pipR - 3
+                    for i = 1, tier do
+                        love.graphics.setColor(pr, pg, pb, a)
+                        love.graphics.circle("fill", startX + (i - 1) * gap, py, pipR)
+                    end
+                end
                 love.graphics.setColor(1, 1, 1)
             end
         end

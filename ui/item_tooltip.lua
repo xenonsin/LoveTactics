@@ -373,6 +373,14 @@ local function buildBlocks(item, actor, innerW, out)
                 value = cost.amount .. " " .. titleCase(cost.stat),
                 valueColor = short and WARN or RES_COLOR[cost.stat] }
         end
+        -- A charge/counter item quotes what it currently holds -- the purse the cast spends (the
+        -- Gleaning Rod's banked charges, the Reliquary of Tallies' owed dead) -- red at 0, where the
+        -- cast is refused (blocked.kind == "empty"). The same count the grid badge shows.
+        if ab.counter then
+            local n = ab.counter(actor, item) or 0
+            blocks[#blocks + 1] = { kind = "stat", label = "Charges", icon = "charges",
+                value = tostring(n), valueColor = (n <= 0) and WARN or VALUE }
+        end
         -- A reservation is spent AND locked: the share of the pool's MAXIMUM this ability pays on the
         -- cast and keeps locked away for as long as what it summons survives.
         if ab.reserve then
@@ -635,6 +643,10 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
                 local gw = 7
                 local vx = cx + b.valueW - body:getWidth(b.value)
                 Glyphs.hourglass(vx - GLYPH_GAP - gw, ty + 2, gw, bodyH - 4, vc[1], vc[2], vc[3], 1)
+            elseif b.icon == "charges" then
+                local gw = 7
+                local vx = cx + b.valueW - body:getWidth(b.value)
+                Glyphs.charges(vx - GLYPH_GAP - gw, ty + 2, gw, bodyH - 4, vc[1], vc[2], vc[3], 1)
             end
             ty = ty + b.lines * bodyH + 1
         end

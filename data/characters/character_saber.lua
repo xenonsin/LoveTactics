@@ -28,6 +28,7 @@ return {
     sprite = "assets/chars/saber.png",
     portrait = "assets/portraits/saber.png", -- large VN portrait for conversations (falls back if missing)
     class = "fighter",
+    overworldAbility = "held_swing", -- patience: steps since her last fight bank into her next opening
     stats = {
         health = 84, mana = 0, stamina = 20,
         staminaRegen = 2,

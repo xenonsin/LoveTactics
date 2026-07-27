@@ -178,8 +178,8 @@ return {
                 })
                 local playCols = grid.cols - 2 * grid.margin
                 local playRows = grid.rows - 2 * grid.margin
-                assert(playCols <= 45, "play cols exceeded cap: " .. playCols)
-                assert(playRows <= 31, "play rows exceeded cap: " .. playRows)
+                assert(playCols <= 27, "play cols exceeded cap: " .. playCols)
+                assert(playRows <= 19, "play rows exceeded cap: " .. playRows)
             end
         end,
     },
@@ -472,6 +472,90 @@ return {
             assert(throughShare >= 0.25,
                 "at least a quarter of encounters should sit on through-tiles, got "
                 .. throughShare)
+        end,
+    },
+    {
+        -- Skippable combats: the objective must be reachable without clearing a fight, so no
+        -- combat/elite may sit on the start->objective spine (a wounded party routes around).
+        -- The generator persists that spine as grid.spineKeys.
+        name = "no combat/elite encounter sits on the objective spine (non-ascent)",
+        fn = function()
+            local function key(x, y) return y * 100000 + x end
+            for seed = 1, 30 do
+                local grid = Overworld.generate({
+                    seed = seed, biome = "forest", encounterCount = { min = 6, max = 10 },
+                    keyCount = 1, objective = { name = "Boss" },
+                    encounters = { { kind = "combat", weight = 3 }, { kind = "elite", weight = 1 },
+                                   { kind = "treasure", weight = 1 } },
+                })
+                assert(grid.spineKeys, "generate should persist a spine")
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local c = grid:get(x, y)
+                        local e = c.encounter
+                        if e and (e.kind == "combat" or e.kind == "elite") then
+                            assert(not grid.spineKeys[key(x, y)],
+                                "seed " .. seed .. ": a " .. e.kind .. " sits on the spine at "
+                                .. x .. "," .. y)
+                        end
+                    end
+                end
+            end
+        end,
+    },
+    {
+        -- pruneDeadStubs trims barren spur-and-return corridors. It must never strip a tile that
+        -- carries content or breaks connectivity: after it runs, every trail tile is still reachable
+        -- and no plain "path" leaf is left empty.
+        name = "pruneDeadStubs leaves no barren path leaf and keeps the trail connected",
+        fn = function()
+            for seed = 1, 25 do
+                local grid = Overworld.generate({
+                    seed = seed, biome = "forest", encounterCount = { min = 5, max = 8 },
+                    keyCount = 1, objective = { name = "Boss" },
+                    encounters = { { kind = "combat", weight = 1 } },
+                })
+                -- still fully connected (pruning removed only leaves)
+                local reached = 0
+                for _ in pairs(grid:reachable(grid:startCell())) do reached = reached + 1 end
+                local walkable = 0
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        if typeWalkable(grid:get(x, y).tile) then walkable = walkable + 1 end
+                    end
+                end
+                assert(reached == walkable, "seed " .. seed .. ": prune disconnected the trail")
+                -- still solvable (content never stripped)
+                assert((grid:solve()), "seed " .. seed .. ": prune broke solvability")
+                -- no barren plain-path leaf remains
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local c = grid:get(x, y)
+                        local isLeaf = #grid:pathNeighbors(x, y) <= 1
+                        local barren = c.tile == "path" and not c.encounter and not c.gate and not c.key
+                            and not (grid.start.x == x and grid.start.y == y)
+                            and not (grid.objective.x == x and grid.objective.y == y)
+                        assert(not (isLeaf and barren),
+                            "seed " .. seed .. ": barren path leaf left at " .. x .. "," .. y)
+                    end
+                end
+            end
+        end,
+    },
+    {
+        -- Reveal-then-choose: a rolled map lights a neighbourhood (radius 3) so encounters can be read
+        -- ahead and routed around; an authored leg keeps the tighter radius 2 that its choreography
+        -- spaces the stops for. Vision is per-map, not a global constant.
+        name = "vision radius is 3 for a rolled map and 2 for an authored layout",
+        fn = function()
+            local rolled = Overworld.generate({ seed = 5, biome = "forest", encounterCount = 4,
+                encounters = { { kind = "combat", weight = 1 } } })
+            assert(rolled.visionRadius == 3, "rolled map should reveal a neighbourhood (radius 3)")
+            local authored = Overworld.fromLayout({
+                biome = "forest", objective = { name = "X" },
+                layoutDef = { biome = "forest", map = { "S.X" } },
+            })
+            assert(authored.visionRadius == 2, "authored layout should keep the tight radius 2")
         end,
     },
     {

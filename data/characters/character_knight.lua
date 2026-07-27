@@ -13,6 +13,7 @@ return {
     -- Innate growth class: the fallback (and tie-break) for the level-up growth system when this
     -- character has no cast history yet. See models/growth.lua and data/growth/<class>.lua.
     class = "knight",
+    overworldAbility = "vigil", -- guardian: clean wins bank a vigil; the front line opens the next fight ready
     stats = {
         health = 70, mana = 15, stamina = 15, -- resource stats
         staminaRegen = 2, -- stamina recovered per elapsed tick (a flat stat, not a resource)

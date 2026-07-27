@@ -21,8 +21,7 @@ return {
         damage = { 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9 },
         requiresAdjacent = { type = "weapon", tag = "bow" },
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_cripple")
+            fx.damage(fx.target, { inflicts = "status_cripple" })
         end,
     },
 }

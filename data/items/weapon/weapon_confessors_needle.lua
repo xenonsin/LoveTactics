@@ -27,18 +27,20 @@ return {
             -- Judgment: an ordinary failing foe is executed near death; a MARKED one from far higher,
             -- so the Mark of Heresy is what widens the sentence. Sized off max HP so it means the same
             -- against a boss as a rat (the standing execute idiom -- see weapon_kingsblood_dagger).
+            -- Daggers bleed (docs/weapons.md), and the wound rides whichever blow lands, so a guardian
+            -- who takes the hit takes the cut too. (An execute simply fells the target; no bleeding a corpse.)
+            local bleed = "status_bleed"
             if hp and hp.max > 0 then
                 local marked = fx.hasStatus(fx.target, "status_mark")
                 local window = (marked and 0.30 or 0.12) + 0.01 * fx.level
                 if (hp.current / hp.max) <= window then
-                    fx.damage(fx.target, { amount = hp.max, raw = true })
+                    fx.damage(fx.target, { amount = hp.max, raw = true, inflicts = bleed })
                 else
-                    fx.damage(fx.target)
+                    fx.damage(fx.target, { inflicts = bleed })
                 end
             else
-                fx.damage(fx.target)
+                fx.damage(fx.target, { inflicts = bleed })
             end
-            fx.applyStatus(fx.target, "status_bleed") -- daggers bleed (docs/weapons.md)
         end,
     },
 }

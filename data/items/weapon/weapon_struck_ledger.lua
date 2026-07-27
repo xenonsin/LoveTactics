@@ -35,10 +35,9 @@ return {
         -- Half an iron bow's, and that is the design rather than a tax. See the header.
         damage = { 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7 },
         effect = function(fx)
-            fx.damage(fx.target)
-            if fx.target and fx.target.alive then
-                fx.applyStatus(fx.target, "status_struck_ledger")
-            end
+            -- The bounty rides the blow: it lands on whoever the shot hits, and only a surviving hit --
+            -- the .alive guard the carried path enforces for free.
+            fx.damage(fx.target, { inflicts = "status_struck_ledger" })
         end,
     },
 }
