@@ -93,6 +93,31 @@ local ITALIC_PATH = "assets/fonts/ui-italic.ttf"           -- Alegreya Italic
 local BODY_ITALIC_PATH = "assets/fonts/ui-body-italic.ttf" -- Alegreya Sans Italic
 local displayCache, bodyCache, italicCache, bodyItalicCache = {}, {}, {}, {}
 local hasDisplay, hasBody, hasItalic, hasBodyItalic = nil, nil, nil, nil
+
+-- Text crispness at any window size. The whole game is authored in a 1280x720 logical space and
+-- letterbox-scaled UP to the real window (see scale.lua); a font's glyph atlas is baked ONCE at its
+-- point size, so when the window is maximised/fullscreened that fixed atlas gets transform-scaled up
+-- and the text goes soft -- the "Turn Order / Current Turn / Actions / Wait" captions were the first
+-- to show it. LOVE's newFont(path, size, hinting, DPISCALE) bakes the atlas at size*dpiscale pixels
+-- while still reporting every metric (getWidth/getHeight) in LOGICAL units -- so baking at the largest
+-- scale the window can ever reach keeps text 1:1 crisp when maximised, downsamples cleanly when the
+-- window is smaller, and needs ZERO changes to any layout/widget code. Computed once from the desktop
+-- size (the ceiling on how large the window can grow), clamped and guarded for the headless runner.
+local fontDpi
+local function fontDpiScale()
+    if fontDpi then return fontDpi end
+    fontDpi = 1
+    if love.window and love.window.getDesktopDimensions then
+        local ok, dw, dh = pcall(love.window.getDesktopDimensions)
+        if ok and dw and dh and dw > 0 and dh > 0 then
+            -- Match scale.lua's fit: the window can grow until the logical space fills the desktop.
+            fontDpi = math.min(dw / 1280, dh / 720)
+        end
+    end
+    -- Never bake SMALLER than the logical size (a sub-1 desktop is nonsense); cap for atlas-memory sanity.
+    fontDpi = math.max(1, math.min(fontDpi, 4))
+    return fontDpi
+end
 function Theme.display(size)
     size = size or 15
     local f = displayCache[size]
@@ -100,7 +125,7 @@ function Theme.display(size)
     if hasDisplay == nil then
         hasDisplay = love.filesystem.getInfo(FONT_PATH) ~= nil
     end
-    f = hasDisplay and love.graphics.newFont(FONT_PATH, size) or love.graphics.newFont(size)
+    f = hasDisplay and love.graphics.newFont(FONT_PATH, size, "normal", fontDpiScale()) or love.graphics.newFont(size)
     displayCache[size] = f
     return f
 end
@@ -111,7 +136,7 @@ function Theme.body(size)
     if hasBody == nil then
         hasBody = love.filesystem.getInfo(BODY_PATH) ~= nil
     end
-    f = hasBody and love.graphics.newFont(BODY_PATH, size) or love.graphics.newFont(size)
+    f = hasBody and love.graphics.newFont(BODY_PATH, size, "normal", fontDpiScale()) or love.graphics.newFont(size)
     bodyCache[size] = f
     return f
 end
@@ -123,7 +148,7 @@ function Theme.displayItalic(size)
     local f = italicCache[size]
     if f then return f end
     if hasItalic == nil then hasItalic = love.filesystem.getInfo(ITALIC_PATH) ~= nil end
-    f = hasItalic and love.graphics.newFont(ITALIC_PATH, size) or Theme.display(size)
+    f = hasItalic and love.graphics.newFont(ITALIC_PATH, size, "normal", fontDpiScale()) or Theme.display(size)
     italicCache[size] = f
     return f
 end
@@ -133,7 +158,7 @@ function Theme.bodyItalic(size)
     local f = bodyItalicCache[size]
     if f then return f end
     if hasBodyItalic == nil then hasBodyItalic = love.filesystem.getInfo(BODY_ITALIC_PATH) ~= nil end
-    f = hasBodyItalic and love.graphics.newFont(BODY_ITALIC_PATH, size) or Theme.body(size)
+    f = hasBodyItalic and love.graphics.newFont(BODY_ITALIC_PATH, size, "normal", fontDpiScale()) or Theme.body(size)
     bodyItalicCache[size] = f
     return f
 end

@@ -25,6 +25,7 @@
 -- runs down to the anchor, so it says which bar it speaks for either way.
 
 local Glyphs = require("ui.glyphs")
+local Theme = require("ui.theme")
 
 local PoolCallout = {}
 PoolCallout.__index = PoolCallout
@@ -37,7 +38,7 @@ local TIP = 5   -- height of the caret sitting on the bar at the projected level
 
 local font
 local function pillFont()
-    font = font or love.graphics.newFont(12)
+    font = font or Theme.body(12)
     return font
 end
 

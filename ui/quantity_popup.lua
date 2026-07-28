@@ -17,6 +17,7 @@
 
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
+local Theme = require("ui.theme")
 
 local QuantityPopup = {}
 QuantityPopup.__index = QuantityPopup
@@ -37,10 +38,10 @@ function QuantityPopup.new(opts)
     self.onConfirm = opts.onConfirm
     self.onCancel = opts.onCancel
 
-    self.titleFont = love.graphics.newFont(20)
-    self.labelFont = love.graphics.newFont(14)
-    self.valueFont = love.graphics.newFont(34)
-    self.btnFont = love.graphics.newFont(16)
+    self.titleFont = Theme.display(20)
+    self.labelFont = Theme.body(14)
+    self.valueFont = Theme.display(34)
+    self.btnFont = Theme.body(16)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2

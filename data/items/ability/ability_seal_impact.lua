@@ -1,11 +1,11 @@
--- Seal: Impact -- a brief, absolute ward granting Immune: Impact (data/status/status_immune_impact.lua): every
+-- Immunity: Impact -- a brief, absolute ward granting Immune: Impact (data/status/status_immune_impact.lua): every
 -- impact-tagged hit is voided to 0 for a short window. Short and premium on purpose -- the answer to the one
 -- big blow, not a stance to live in. A deliberate BORROW that says so: warding an ally is usually the
 -- priest's work (docs/classes.md), but a CATEGORICAL immunity to a damage type is arcane mastery
 -- overreaching, which is pride's own sin -- the mage seals the type off where the priest only softens it.
 -- It is the true 0 that no amount of Resistant: Impact can reach. See docs/vulnerability.md.
 return {
-    name = "Seal: Impact",
+    name = "Immunity: Impact",
     description = "Wards yourself or an ally with Immune: Impact.",
     flavor = "The hammer falls on a body excused from the appointment.",
     sprite = "assets/items/ability_seal_impact.png",

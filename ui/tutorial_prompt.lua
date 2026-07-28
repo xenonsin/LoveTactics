@@ -23,14 +23,15 @@ local Scale = require("scale")
 local Colors = require("ui.colors")
 local Sprite = require("models.sprite")
 local utf8 = require("utf8")
+local Theme = require("ui.theme")
 
 local TutorialPrompt = {}
 
 local nameFont, bodyFont, initialFont
 local function fonts()
-    nameFont = nameFont or love.graphics.newFont(15)
-    bodyFont = bodyFont or love.graphics.newFont(16)
-    initialFont = initialFont or love.graphics.newFont(40)
+    nameFont = nameFont or Theme.display(15)
+    bodyFont = bodyFont or Theme.body(16)
+    initialFont = initialFont or Theme.display(40)
     return nameFont, bodyFont, initialFont
 end
 

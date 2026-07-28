@@ -25,11 +25,12 @@ local PartyStatus = require("ui.party_status")
 local OverworldAbility = require("models.overworld_ability")
 local CoachBubble = require("ui.coach_bubble")
 local Locale = require("models.locale")
+local Theme = require("ui.theme")
 
 local game = {}
 
-local titleFont = love.graphics.newFont(22)
-local hudFont = love.graphics.newFont(16)
+local titleFont = Theme.display(22)
+local hudFont = Theme.body(16)
 
 -- Flight-leg coach lines (data/conversations/tutorial_flight.lua), keyed by node id and resolved
 -- through Locale so {select}/localization behave exactly as they do in a spoken line. Loaded once.

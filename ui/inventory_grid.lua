@@ -89,9 +89,9 @@ function InventoryGrid.new(opts)
     self.cursor = 1       -- keyboard/gamepad cursor cell (1..9)
     self.picked = nil     -- the cell currently picked up, or nil
     self.hover = nil      -- mouse-hover cell, or nil
-    self.nameFont = love.graphics.newFont(11)
-    self.bigFont = love.graphics.newFont(22)
-    self.countFont = love.graphics.newFont(12)
+    self.nameFont = Theme.body(11)
+    self.bigFont = Theme.display(22)
+    self.countFont = Theme.body(12)
     self.gridW = COLS * self.slot + (COLS - 1) * self.gap
     self.gridH = ROWS * self.slot + (ROWS - 1) * self.gap
     return self

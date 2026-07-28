@@ -17,6 +17,7 @@
 local ScreenFx = require("ui.screen_fx")
 local BurstFx = require("ui.burst_fx")
 local Sound = require("models.sound")
+local Theme = require("ui.theme")
 
 local CombatFx = {}
 CombatFx.__index = CombatFx
@@ -65,8 +66,8 @@ function CombatFx.new()
     -- draws on exists. Optional: the headless model tests build a CombatFx with none, and every call
     -- below guards on it, so an exchange resolves identically with or without a board to paint on.
     self.bursts = nil
-    self.font = love.graphics.newFont(18)
-    self.bigFont = love.graphics.newFont(24)
+    self.font = Theme.body(18)
+    self.bigFont = Theme.body(24)
     return self
 end
 

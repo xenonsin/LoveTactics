@@ -1,11 +1,11 @@
--- Seal: Poison -- a brief, absolute ward granting Immune: Poison (data/status/status_immune_poison.lua): every
+-- Immunity: Poison -- a brief, absolute ward granting Immune: Poison (data/status/status_immune_poison.lua): every
 -- poison-tagged hit is voided to 0 for a short window. Short and premium on purpose -- the answer to the one
 -- big blow, not a stance to live in. A deliberate BORROW that says so: warding an ally is usually the
 -- priest's work (docs/classes.md), but a CATEGORICAL immunity to a damage type is arcane mastery
 -- overreaching, which is pride's own sin -- the mage seals the type off where the priest only softens it.
 -- It is the true 0 that no amount of Resistant: Poison can reach. See docs/vulnerability.md.
 return {
-    name = "Seal: Poison",
+    name = "Immunity: Poison",
     description = "Wards yourself or an ally with Immune: Poison.",
     flavor = "The venom looks for a vein and finds a theorem.",
     sprite = "assets/items/ability_seal_poison.png",

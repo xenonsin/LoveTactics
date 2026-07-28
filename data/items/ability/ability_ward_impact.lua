@@ -2,7 +2,7 @@
 -- (data/status/status_resistant_impact.lua): -8 to every impact-tagged hit for a time. Warding is the Cathedral's
 -- own keyword (docs/classes.md), single-element rather than the Magical Barrier's single-school. The
 -- ACTIVE mirror of the Vulnerable openers -- read the intent telegraph, ward the target of the incoming
--- blow the turn before it lands. It floors at 1 and never reaches immunity (that is the mage's Seal: Impact).
+-- blow the turn before it lands. It floors at 1 and never reaches immunity (that is the mage's Immunity: Impact).
 -- One of the ward line; see docs/vulnerability.md.
 return {
     name = "Ward: Impact",

@@ -53,9 +53,9 @@ function CombatLog.new(combat, opts)
     self.visible = opts.visible ~= false
     self.scroll = 0 -- visual lines scrolled up from the newest (0 = following the tail)
 
-    self.font = love.graphics.newFont(13)
+    self.font = Theme.body(13)
     self.lineH = self.font:getHeight() + 3
-    self.detailFont = love.graphics.newFont(12) -- body of the hover breakdown tooltip
+    self.detailFont = Theme.body(12) -- body of the hover breakdown tooltip
     self.mx, self.my = nil, nil                 -- last known mouse (for the hover tooltip)
 
     self.x = opts.x or 16

@@ -17,6 +17,7 @@
 
 local Player = require("models.player")
 local Colors = require("ui.colors")
+local Theme = require("ui.theme")
 
 local FormationGrid = {}
 FormationGrid.__index = FormationGrid
@@ -32,9 +33,9 @@ function FormationGrid.new(opts)
     self.gap = opts.gap or 14
     self.showResources = opts.showResources ~= false
     self.onChange = opts.onChange
-    self.font = opts.font or love.graphics.newFont(15)
-    self.smallFont = opts.smallFont or love.graphics.newFont(12)
-    self.headFont = opts.headFont or love.graphics.newFont(22)
+    self.font = opts.font or Theme.body(15)
+    self.smallFont = opts.smallFont or Theme.body(12)
+    self.headFont = opts.headFont or Theme.display(22)
 
     local cols = Player.FORMATION_COLS
     local total = cols * self.cell + (cols - 1) * self.gap

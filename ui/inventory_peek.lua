@@ -14,6 +14,7 @@
 
 local Scale = require("scale")
 local Colors = require("ui.colors")
+local Theme = require("ui.theme")
 
 local InventoryPeek = {}
 InventoryPeek.__index = InventoryPeek
@@ -31,8 +32,8 @@ local CARD_H = TITLE_H + GRID_H + PAD * 2
 
 function InventoryPeek.new()
     local self = setmetatable({}, InventoryPeek)
-    self.titleFont = love.graphics.newFont(13)
-    self.initFont = love.graphics.newFont(16)
+    self.titleFont = Theme.display(13)
+    self.initFont = Theme.display(16)
     self.rect = nil     -- {x, y, w, h} of the last-drawn card, for contains()
     self.slots = {}     -- last-drawn slot rects {x, y, w, h, item}, for itemAt()
     return self

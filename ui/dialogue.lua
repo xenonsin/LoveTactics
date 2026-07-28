@@ -33,10 +33,9 @@ Dialogue.__index = Dialogue
 -- which also covers Latin) and it is used for every dialogue font; without it we fall back to the
 -- built-in font (fine for English). Lazy: only called from :new (never at require-time).
 local function uiFont(size)
-    if love.filesystem.getInfo("assets/fonts/ui.ttf") then
-        return love.graphics.newFont("assets/fonts/ui.ttf", size)
-    end
-    return love.graphics.newFont(size)
+    -- Route through Theme so the dialogue face is baked dpi-aware (crisp when the window is
+    -- maximised, see Theme.display) rather than at a fixed atlas size that softens on upscale.
+    return Theme.display(size)
 end
 
 -- Text box geometry (a wide bar along the bottom), and how tall a portrait stands.

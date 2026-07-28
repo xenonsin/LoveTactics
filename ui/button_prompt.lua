@@ -10,12 +10,14 @@
 --
 -- Lazy fonts (newed on first draw) keep this require-safe under headless tests.
 
+local Theme = require("ui.theme")
+
 local ButtonPrompt = {}
 
 local glyphFont, labelFont
 local function fonts()
-    glyphFont = glyphFont or love.graphics.newFont(12)
-    labelFont = labelFont or love.graphics.newFont(13)
+    glyphFont = glyphFont or Theme.body(12)
+    labelFont = labelFont or Theme.body(13)
     return glyphFont, labelFont
 end
 

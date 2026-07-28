@@ -6,13 +6,15 @@
 -- breaks a single word, so a 3-character abbr ("Hst", "Brn") simply overflowed both edges of the
 -- 15px box it was centred in; scaling it down keeps it inside the border instead.
 
+local Theme = require("ui.theme")
+
 local StatusBadge = {}
 
 local PAD = 2 -- px kept clear of the badge's border on each side
 
 local labelFont
 local function font()
-    labelFont = labelFont or love.graphics.newFont(10)
+    labelFont = labelFont or Theme.body(10)
     return labelFont
 end
 

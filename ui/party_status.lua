@@ -17,6 +17,7 @@ local CloseButton = require("ui.close_button")
 local FormationGrid = require("ui.formation_grid")
 local OverworldAbility = require("models.overworld_ability")
 local Sprite = require("models.sprite")
+local Theme = require("ui.theme")
 
 local PartyStatus = {}
 PartyStatus.__index = PartyStatus
@@ -119,8 +120,8 @@ end
 -- The ability tooltip: a titled box near the hovered badge, so the passive can explain itself.
 local tipTitleFont, tipBodyFont
 local function drawTooltip(bx, by, info)
-    tipTitleFont = tipTitleFont or love.graphics.newFont(15)
-    tipBodyFont = tipBodyFont or love.graphics.newFont(13)
+    tipTitleFont = tipTitleFont or Theme.display(15)
+    tipBodyFont = tipBodyFont or Theme.body(13)
     local W = 250
     local pad = 10
     local tx = bx + 12
@@ -156,8 +157,8 @@ local stripFont, stripHeadFont
 function PartyStatus.drawStrip(player, x, y, mx, my, abilityState)
     local party = shownParty(player)
     if #party == 0 then return end
-    stripFont = stripFont or love.graphics.newFont(13)
-    stripHeadFont = stripHeadFont or love.graphics.newFont(16)
+    stripFont = stripFont or Theme.body(13)
+    stripHeadFont = stripHeadFont or Theme.display(16)
     x = x or 16
     y = y or 60
     -- A faint backing so the portraits + bars read over any tile.
@@ -189,8 +190,8 @@ function PartyStatus.new(opts)
     self.player = opts.player
     self.abilityState = opts.abilityState -- per-run ability scratch, for the banked-state line
     self.onClose = opts.onClose
-    self.titleFont = love.graphics.newFont(26)
-    self.hintFont = love.graphics.newFont(14)
+    self.titleFont = Theme.display(26)
+    self.hintFont = Theme.body(14)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2

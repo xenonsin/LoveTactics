@@ -16,6 +16,7 @@
 local Scale = require("scale")
 local Sprite = require("models.sprite")
 local Tileset = require("models.tileset")
+local Theme = require("ui.theme")
 
 local OverworldMap = {}
 OverworldMap.__index = OverworldMap
@@ -40,7 +41,7 @@ function OverworldMap.new(grid, opts)
     self.grid = grid
     self.onEncounter = opts.onEncounter
     self.onArrive = opts.onArrive -- fired on EVERY landed tile (per-step abilities: forage, scouting)
-    self.font = opts.font or love.graphics.newFont(16)
+    self.font = opts.font or Theme.body(16)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.heldDir = nil   -- { dx, dy } of the direction currently held (any input)
     self.moveTimer = 0   -- seconds until the next auto-repeat step

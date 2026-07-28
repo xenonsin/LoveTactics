@@ -31,6 +31,7 @@ local FieldFx = require("ui.field_fx")
 local BurstFx = require("ui.burst_fx")
 local Glyphs = require("ui.glyphs")
 local SpriteShader = require("shaders.sprite")
+local Theme = require("ui.theme")
 
 -- The two boundary colours for the sprite dissolve/materialize (shaders/sprite.lua): a warm ember eats
 -- a felled body, a cold arcane light knits a summoned one into being.
@@ -67,8 +68,8 @@ function BattleMap.new(arena, opts)
     self.combat = opts.combat
     self.rightMargin = opts.rightMargin or 0
     self.leftMargin = opts.leftMargin or 0
-    self.font = opts.font or love.graphics.newFont(14)
-    self.numberFont = opts.numberFont or love.graphics.newFont(12)
+    self.font = opts.font or Theme.body(14)
+    self.numberFont = opts.numberFont or Theme.body(12)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
     self.overlays = { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {}, props = {}, charges = {} }

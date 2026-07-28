@@ -48,6 +48,7 @@ local CloseButton = require("ui.close_button")
 local Debug = require("models.debug")
 local ScreenFx = require("ui.screen_fx")
 local Settings = require("models.settings")
+local Cursor = require("ui.cursor")
 
 local battle = {}
 
@@ -1676,8 +1677,11 @@ local function armSlot(n)
     if not current or not Combat.isPlayerControlled(current) then return end
     -- Remember the slot so keyboard play can float its tooltip (battle.draw): pressing the key is how a
     -- pad/keyboard player reads an item, so it must answer even for a passive slot armItem can't arm.
-    battle.keySlot = current.char.inventory[n] and n or nil
-    armItem(current.char.inventory[n])
+    -- A SECOND press of the slot already selected toggles it back off -- the arm and its tooltip clear
+    -- together. armItem itself undoes the underlying arm/blink on the repeat; we mirror that in keySlot.
+    local item = current.char.inventory[n]
+    battle.keySlot = (item and battle.keySlot ~= n) and n or nil
+    armItem(item)
 end
 
 -- Gamepad Y cycles through the current unit's ability items (past the end -> back to move).
@@ -2604,6 +2608,14 @@ local function refreshView()
     -- draw the retarget target lines -- "who comes for me if I stand here" (models/intent.lua).
     local previewTile
     local hoverAbility = battle.hoverItem and battle.hoverItem.activeAbility
+    -- Keyboard/pad has no hover, so the selected slot (battle.keySlot) stands in for it: selecting an
+    -- ability previews its range the way a mouse hover does -- even when the item can't be ARMED right
+    -- now (no line, an unpayable cost). Otherwise a cursor player who picks such a slot sees nothing on
+    -- the board, while a mouse player hovering the same slot reads its reach. Mouse play carries no
+    -- keySlot, so keyItem stays nil there and hoverAbility above owns the preview -- the two never both apply.
+    local keyItem = (not InputMode.isMouse() and battle.keySlot
+        and current.char.inventory[battle.keySlot]) or nil
+    local keyAbility = keyItem and keyItem.activeAbility
     -- The bands belong to a turn that can still be steered. The instant an action commits, the model
     -- has already charged the initiative and the hand-off is only waiting on the blow to finish
     -- reading (battle.pendingAdvance) -- so a move band and an attack range left up through it invite
@@ -2611,7 +2623,7 @@ local function refreshView()
     -- damage number fades. The unit marker, hover and the "Threats" survey below are unaffected: those
     -- describe the board, not what this unit may still do.
     local steerable = battle.pendingAdvance == nil
-    if steerable and isParty and ((battle.mode == "armed" and battle.armedItem) or hoverAbility) then
+    if steerable and isParty and ((battle.mode == "armed" and battle.armedItem) or hoverAbility or keyAbility) then
         -- Armed (the turn-start default, or an explicitly armed item), or previewing a hovered ability
         -- slot: show the EFFECTIVE range -- the movement band PLUS the action's reach beyond it, so the
         -- player reads where the unit can step and where it can act from there. Aiming a cell that needs
@@ -2620,7 +2632,7 @@ local function refreshView()
         -- the board always belongs to the ability under the cursor. When the hover ends the preview
         -- item falls back to the armed one and the sets rebuild -- rangeFor tracks what they were
         -- built for, so this costs a recompute only when the previewed ability actually changes.
-        local previewItem = (hoverAbility and battle.hoverItem) or battle.armedItem
+        local previewItem = (hoverAbility and battle.hoverItem) or (keyAbility and keyItem) or battle.armedItem
         local armed = battle.mode == "armed" and previewItem == battle.armedItem
         local support = armed and battle.armedSupport
             or Combat.isSupportAbility(previewItem.activeAbility)
@@ -2920,8 +2932,15 @@ local function refreshView()
     -- click on the hovered cell would do, or nil when nothing is aimed. Cleared each frame so it can't
     -- go stale on the enemy's turn or once the mouse leaves the board.
     battle.hoverAction = nil
-    if isParty and battle.mouseX then
-        local cx, cy = battle.map:cellAt(battle.mouseX, battle.mouseY)
+    if isParty then
+        -- Mouse aims by the pointer; keyboard/pad aims by the board cursor tile -- so the intent read
+        -- (banner damage/heal previews AND the context-cursor glyph) tracks whichever device is live.
+        local cx, cy
+        if InputMode.isMouse() then
+            if battle.mouseX then cx, cy = battle.map:cellAt(battle.mouseX, battle.mouseY) end
+        else
+            cx, cy = battle.map.cursor.x, battle.map.cursor.y
+        end
         local action = cx and actionPreviewFor(cx, cy)
         battle.hoverAction = action or nil
         if action then
@@ -3609,6 +3628,19 @@ function battle.draw()
     battle.updatePeekFocus()
     battle.drawLeftColumn()
     battle.map:draw()
+    -- Keyboard / pad aiming: the OS pointer is idle, so the context-cursor glyph (sword / wand /
+    -- heal / boots / reticle -- whatever a confirm would do) is drawn CENTRED on the aimed tile, so
+    -- the same intent the mouse reads under its pointer rides the board cursor. Only when the player
+    -- controls the turn and something actionable is aimed -- otherwise the tile cursor stands alone.
+    if not InputMode.isMouse() and not battle.over and not busy()
+        and battle.current and Combat.isPlayerControlled(battle.current) then
+        local kind = battle.boardCursorKind()
+        if kind then
+            local tx, ty = battle.map:cellToPixel(battle.map.cursor.x, battle.map.cursor.y)
+            local half = battle.map.size / 2
+            Cursor.draw(kind, tx + half, ty + half)
+        end
+    end
     battle.fx:drawFloaters(battle.map) -- damage / heal numbers, above the board
     battle.drawPeek() -- the assayed-foe kit card, over the board and under the tooltip pass
     battle.panel:draw()
@@ -4284,8 +4316,17 @@ function battle.cursorKind()
     if busy() or (battle.current and not Combat.isPlayerControlled(battle.current)) then
         return battle.map:cellAt(mx, my) and "wait" or "arrow"
     end
+    if not battle.hoverAction then return "arrow" end -- a board tile with no valid action
+    return battle.boardCursorKind() or "arrow"
+end
+
+-- The context-cursor glyph for whatever the stashed hoverAction would DO on the aimed cell, or nil
+-- when nothing actionable is aimed. Shared by cursorKind (mouse: drawn at the pointer) and the
+-- keyboard/pad path (drawn centred on the cursor tile, see battle.draw), so both surfaces read the
+-- exact same intent off the one hoverAction.
+function battle.boardCursorKind()
     local a = battle.hoverAction
-    if not a then return "arrow" end -- a board tile with no valid action
+    if not a then return nil end
     if a.kind == "move" then return a.blink and "blink" or "move" end
     if a.kind == "strikeTrap" then return "break" end
     if a.kind == "place" then return "target" end
@@ -4296,7 +4337,7 @@ function battle.cursorKind()
         return itemHasTag(a.item, "magical") and "cast" or "attack"
     end
     if a.kind == "ability" and a.support then return "heal" end
-    return "arrow"
+    return nil
 end
 
 return battle

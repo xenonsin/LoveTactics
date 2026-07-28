@@ -24,6 +24,7 @@
 -- other is how a block silently starts overlapping what sits beneath it.
 
 local Scale = require("scale")
+local Theme = require("ui.theme")
 
 local W = 226   -- the floating box's width: narrower than the tooltip (244), since this is the aside
 local PAD = 8
@@ -44,9 +45,9 @@ local KIND_LABEL = { status = "STATUS", keyword = "KEYWORD" }
 
 local nameFont, descFont, capFont
 local function defaultFonts()
-    nameFont = nameFont or love.graphics.newFont(12)
-    descFont = descFont or love.graphics.newFont(11)
-    capFont = capFont or love.graphics.newFont(10)
+    nameFont = nameFont or Theme.display(12)
+    descFont = descFont or Theme.body(11)
+    capFont = capFont or Theme.body(10)
     return nameFont, descFont, capFont
 end
 

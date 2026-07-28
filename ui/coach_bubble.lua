@@ -17,13 +17,14 @@
 -- No love.graphics at require-time (the font is built lazily), so it loads under the headless tests.
 
 local Scale = require("scale")
+local Theme = require("ui.theme")
 
 local CoachBubble = {}
 
 local font, keyFont
 local function fonts()
-    font = font or love.graphics.newFont(13)
-    keyFont = keyFont or love.graphics.newFont(12)
+    font = font or Theme.body(13)
+    keyFont = keyFont or Theme.body(12)
     return font, keyFont
 end
 

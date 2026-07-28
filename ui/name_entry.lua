@@ -16,6 +16,7 @@
 local Scale = require("scale")
 local InputMode = require("input_mode")
 local ButtonPrompt = require("ui.button_prompt")
+local Theme = require("ui.theme")
 
 local NameEntry = {}
 NameEntry.__index = NameEntry
@@ -41,9 +42,9 @@ function NameEntry.new(opts)
     self.text = ""
     self.row, self.col = 1, 1
 
-    self.titleFont = love.graphics.newFont(30)
-    self.fieldFont = love.graphics.newFont(34)
-    self.keyFont = love.graphics.newFont(22)
+    self.titleFont = Theme.display(30)
+    self.fieldFont = Theme.display(34)
+    self.keyFont = Theme.body(22)
 
     self.axisActive = false
     self:layout()

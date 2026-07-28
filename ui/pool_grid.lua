@@ -56,9 +56,9 @@ function PoolGrid.new(opts)
     self.picked = nil   -- the cell currently picked up, or nil
     self.hover = nil
     self.focused = false
-    self.nameFont = love.graphics.newFont(11)
-    self.smallFont = love.graphics.newFont(11)
-    self.bigFont = love.graphics.newFont(20)
+    self.nameFont = Theme.body(11)
+    self.smallFont = Theme.body(11)
+    self.bigFont = Theme.display(20)
 
     -- Cells tile between the two scroll arrows.
     self.gridY = self.y + ARROW_H
