@@ -31,7 +31,7 @@ return {
         range = 2,
         speed = 5,
         cost = { stat = "mana", amount = 10 },
-        description = "Spends a consumable from your grid to raise a sentry scaled by what it cost.",
+        description = "Consume a draught from your grid to raise a sentry scaled by what it cost.",
         effect = function(fx)
             -- The cheapest consumable in the grid, so an artificer is never forced to feed its Panacea
             -- to the machine: the still's own reagents are what this is meant to eat.

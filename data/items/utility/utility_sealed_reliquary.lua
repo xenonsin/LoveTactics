@@ -24,7 +24,7 @@
 -- whether it is there.
 return {
     name = "The Sealed Reliquary",
-    description = "Refuses one single-target spell aimed at its bearer, then relocks after a while.",
+    description = "Deflects one spell aimed at you, then recharges.",
     flavor = "The Cathedral will confirm that it is empty. It will not explain why it is locked.",
     sprite = "assets/items/utility_sealed_reliquary.png",
     type = "utility",

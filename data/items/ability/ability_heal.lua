@@ -3,7 +3,7 @@
 -- repeatable mana spell rather than a one-shot consumable -- the priest's signature.
 return {
     name = "Heal",
-    description = "Mends a nearby ally.",
+    description = "Heals a nearby ally.",
     flavor = "The Cathedral's whole reputation, restored one body at a time.",
     sprite = "assets/items/ability_heal.png",
     type = "ability",

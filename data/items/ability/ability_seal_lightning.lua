@@ -6,7 +6,7 @@
 -- It is the true 0 that no amount of Resistant: Lightning can reach. See docs/vulnerability.md.
 return {
     name = "Seal: Lightning",
-    description = "Wards yourself or an ally with Immune: Lightning for a short time.",
+    description = "Wards yourself or an ally with Immune: Lightning.",
     flavor = "For one breath the storm is told no, and the storm obeys.",
     sprite = "assets/items/ability_seal_lightning.png",
     type = "ability",

@@ -20,7 +20,7 @@
 -- fire mage is a way to turn their turn off.
 return {
     name = "Tidesbreak",
-    description = "Knockback and inflicts Wet on the far tile.",
+    description = "Knockback 1 and inflicts Wet on the far tile.",
     flavor = "The tide does not push. It arrives, and afterwards the beach is somewhere else.",
     sprite = "assets/items/tidesbreak.png",
     type = "weapon",

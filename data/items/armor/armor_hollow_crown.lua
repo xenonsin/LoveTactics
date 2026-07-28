@@ -11,7 +11,7 @@
 -- forges an enemy's relic -- so only its base value is ever seen.
 return {
     name = "The Hollow Crown",
-    description = "As its wearer is worn down, it raises the fallen generals to fight again.",
+    description = "At 75%, 50%, and 25% health: summon a fallen general.",
     flavor = "As it fails, it wears the dead. It had no sin of its own -- the seven were its appetites.",
     sprite = "assets/items/sig_hollow_crown.png",
     type = "armor", -- a crown: `bound` (not the type) is what locks it in place

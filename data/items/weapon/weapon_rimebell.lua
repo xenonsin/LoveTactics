@@ -17,7 +17,7 @@
 -- your own line -- which is why the mace can afford to keep a full two tiles of shove.
 return {
     name = "Rimebell",
-    description = "Drives the target back two tiles, freezing over every tile they are dragged across.",
+    description = "Knockback 2, freezing over every tile they are dragged across.",
     flavor = "The head is always cold. The armourer who forged it is no longer with the Bastion, and no longer with anyone.",
     sprite = "assets/items/rimebell.png",
     type = "weapon",

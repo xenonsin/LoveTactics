@@ -16,7 +16,7 @@
 -- the hardest-hitting mace on the shelf. In the open field it is a shove and an apology.
 return {
     name = "The Long Fall",
-    description = "Drives the target four tiles back. Deals almost nothing -- what it sells is where they land.",
+    description = "Knockback 4. Deals almost nothing -- what it sells is where they land.",
     flavor = "The Bastion does not teach it as a weapon. It is filed under groundskeeping.",
     sprite = "assets/items/long_fall.png",
     type = "weapon",

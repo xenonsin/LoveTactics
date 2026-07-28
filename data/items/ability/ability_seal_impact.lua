@@ -6,7 +6,7 @@
 -- It is the true 0 that no amount of Resistant: Impact can reach. See docs/vulnerability.md.
 return {
     name = "Seal: Impact",
-    description = "Wards yourself or an ally with Immune: Impact for a short time.",
+    description = "Wards yourself or an ally with Immune: Impact.",
     flavor = "The hammer falls on a body excused from the appointment.",
     sprite = "assets/items/ability_seal_impact.png",
     type = "ability",

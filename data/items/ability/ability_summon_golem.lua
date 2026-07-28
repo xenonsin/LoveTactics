@@ -25,7 +25,7 @@
 -- how `reserve`, `scaling`, `duration` and the one-at-a-time rule work.
 return {
     name = "Summon Golem",
-    description = "Binds a heavy clay golem that guards whoever stands beside it. Reserves a third of your max mana.",
+    description = "Summons a heavy clay golem that guards whoever stands beside it. Reserves a third of your max mana.",
     flavor = "The Crucible will not make you braver. It will sell you something that already is.",
     sprite = "assets/items/ability_summon_golem.png",
     type = "ability",

@@ -19,7 +19,7 @@
 -- a timer -- the same reservation buys a permanent body here and a temporary one there.
 return {
     name = "Summon Wolf",
-    description = "Calls a wolf to your side. One at a time; reserves a quarter of your max mana while it lives.",
+    description = "Summons a wolf to your side. One at a time; reserves a quarter of your max mana while it lives.",
     flavor = "Called for good, not bound for a while. It stands until something takes it down.",
     sprite = "assets/items/ability_summon_wolf.png",
     type = "ability",

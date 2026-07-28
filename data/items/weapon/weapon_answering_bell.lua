@@ -19,7 +19,7 @@
 -- reflex"). It still escalates per answer in a round like everything else that answers.
 return {
     name = "The Answering Bell",
-    description = "Drives the target back two tiles -- and drives back anyone who strikes you in melee, too.",
+    description = "Knockback 2 -- and any melee attacker takes Knockback 2 too.",
     flavor = "It is not that it hits back. It is that there is, quite suddenly, more room.",
     sprite = "assets/items/answering_bell.png",
     type = "weapon",

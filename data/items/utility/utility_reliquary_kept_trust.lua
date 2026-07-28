@@ -27,7 +27,7 @@
 -- `price`; `class = "priest"` still tallies priest growth. Its ward against magic climbs with the forge.
 return {
     name = "Reliquary of the Kept Trust",
-    description = "Once you have mended thrice, ward the whole company -- and keep none of it for yourself.",
+    description = "Once you have healed thrice, ward the whole company -- and keep none of it for yourself.",
     flavor = "A trust is a thing you hold and hand back whole. She has never once opened it for herself.",
     sprite = "assets/items/sig_reliquary_kept_trust.png",
     type = "utility",

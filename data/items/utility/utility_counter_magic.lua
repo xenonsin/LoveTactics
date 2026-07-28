@@ -9,7 +9,7 @@
 -- priest's turn instead of its own pool.
 return {
     name = "Unraveller's Sigil",
-    description = "Unravels a single-target spell aimed at you, for mana. Then it recharges.",
+    description = "Deflects one spell aimed at you, for mana. Then it recharges.",
     flavor = "Put it on a knight and it fires twice in a battle, and after that it is a brooch.",
     sprite = "assets/items/counter_magic.png",
     type = "utility",

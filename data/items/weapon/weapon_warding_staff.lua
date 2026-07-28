@@ -14,7 +14,7 @@
 -- charged. What it solves is the counter-battery duel.
 return {
     name = "Warding Staff",
-    description = "Replaces Wait with Focus: recover mana, and raise a ward that negates the next spell aimed at you.",
+    description = "Replaces Wait with Focus: recover mana, and raise a ward that deflects the next spell aimed at you.",
     flavor = "The Arcanum's second lesson about mana is that you have to stop to get it back. This is the third lesson.",
     sprite = "assets/items/warding_staff.png",
     type = "weapon",

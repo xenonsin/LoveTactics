@@ -6,7 +6,7 @@
 -- It is the true 0 that no amount of Resistant: Water can reach. See docs/vulnerability.md.
 return {
     name = "Seal: Water",
-    description = "Wards yourself or an ally with Immune: Water for a short time.",
+    description = "Wards yourself or an ally with Immune: Water.",
     flavor = "The flood arrives at a door that has decided not to exist.",
     sprite = "assets/items/ability_seal_water.png",
     type = "ability",

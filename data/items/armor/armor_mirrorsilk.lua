@@ -18,7 +18,7 @@
 -- Cloth: a square of pace, as all silk now is.
 return {
     name = "Mirrorsilk",
-    description = "Unravels a single-target spell aimed at you, for mana.",
+    description = "Deflects one spell aimed at you, for mana.",
     flavor = "The Arcanum weaves it on a loom that must be watched. Nobody has explained what happens if it is not.",
     sprite = "assets/items/armor_mirrorsilk.png",
     type = "armor",

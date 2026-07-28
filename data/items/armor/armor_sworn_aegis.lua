@@ -35,7 +35,7 @@ return {
     -- The oath's answer (see the header): locked until she has weathered four blows, then a sweep that
     -- strikes and shoves the whole adjacent ring. A self-centred area cast -- friend and self spared.
     activeAbility = {
-        description = "Strikes every adjacent foe and shoves them two tiles back.",
+        description = "Strikes every adjacent foe with Knockback 2.",
         arget = "tile",       -- aim a nearby tile; the diamond around it is the shout's reach
         allowOccupied = true,
         range = 1,

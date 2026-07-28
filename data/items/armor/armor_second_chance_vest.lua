@@ -15,7 +15,7 @@
 -- argument this vest is making.
 return {
     name = "Second-Chance Vest",
-    description = "On a physical attack: evade it, then recharge.",
+    description = "On a physical attack: deflect it, then recharge.",
     flavor = "The Undercroft sells it to first-timers. Nobody there has ever called it generosity.",
     sprite = "assets/items/armor_second_chance_vest.png",
     type = "armor",

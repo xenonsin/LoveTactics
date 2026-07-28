@@ -6,7 +6,7 @@
 -- It is the true 0 that no amount of Resistant: Holy can reach. See docs/vulnerability.md.
 return {
     name = "Seal: Holy",
-    description = "Wards yourself or an ally with Immune: Holy for a short time.",
+    description = "Wards yourself or an ally with Immune: Holy.",
     flavor = "Even judgment can be shown the door, if the door is drawn well enough.",
     sprite = "assets/items/ability_seal_holy.png",
     type = "ability",

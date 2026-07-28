@@ -11,7 +11,7 @@
 -- either way it is the same journey, told in each layer's currency.
 return {
     name = "Push",
-    description = "Drives a body, barrel or trap on an adjacent tile three tiles back; a collision hurts both sides.",
+    description = "Knockback 3 on an adjacent body, barrel or trap; a collision hurts both sides.",
     flavor = "No damage of its own. The wall, the fire and the spikes do all of the talking.",
     sprite = "assets/items/ability_push.png",
     type = "ability",

@@ -6,7 +6,7 @@
 -- arrives on a timer rather than all at once.
 return {
     name = "Renewal",
-    description = "Grants an ally Regeneration, mending them at the start of each of their turns.",
+    description = "Grants an ally Regeneration, healing them at the start of each of their turns.",
     flavor = "It wants to land before the wounds come, which is the hardest thing the Cathedral teaches.",
     sprite = "assets/items/ability_renewal.png",
     type = "ability",

@@ -18,7 +18,7 @@
 -- teaching the player not to stand near their own allies.
 return {
     name = "Reckoning",
-    description = "Spends all Zeal: a holy blow scaled by the pool, mending every adjacent ally as much as it dealt.",
+    description = "Consume all Zeal for a holy blow, +3 damage per point, healing adjacent allies as much as it dealt.",
     flavor = "The account had been open a long while. She closed it in one motion, for everyone at once.",
     sprite = "assets/items/ability_reckoning.png",
     type = "ability",
@@ -35,9 +35,9 @@ return {
         damage = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 },
         unlock = {
             when = function(unit) return require("models.combat").chargePool(unit, "zeal") >= 1 end,
-            text = "Bank Zeal by felling and mending",
+            text = "Bank Zeal by felling and healing",
         },
-        description = "Spends all Zeal; +3 damage per point, and every adjacent ally is mended for what it dealt.",
+        description = "Consume all Zeal; +3 damage per point, and every adjacent ally is healed for what it dealt.",
         effect = function(fx)
             local spent = fx.spendCharge("zeal")
             local dealt = fx.damage(fx.target, { amount = fx.amount + spent * 3 })

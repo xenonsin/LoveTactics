@@ -94,6 +94,26 @@ return {
         end,
     },
     {
+        name = "a knockback ability surfaces the Knockback keyword off the dry run",
+        fn = function()
+            -- Knockback is not a declarative field -- it rides inside the effect closure -- so the
+            -- glossary reads it off `out.knockback` the dry run records, not off Keyword.forItem.
+            local item = {
+                activeAbility = {
+                    target = "enemy", range = 1,
+                    effect = function(fx) fx.knockback(fx.target, 2) end,
+                },
+            }
+            local kb = find(everything(item), "keyword_knockback")
+            assert(kb, "a knockback ability did not surface the Knockback keyword")
+            assert(kb.kind == "keyword", "Knockback surfaced as " .. tostring(kb.kind))
+            assert(kb.name == "Knockback", "the Knockback entry was renamed to " .. tostring(kb.name))
+            -- ...and it stays behind the keyword opt-in, exactly like every declared keyword.
+            assert(not find(Glossary.forItem(item), "keyword_knockback"),
+                "Knockback surfaced with keywords switched off")
+        end,
+    },
+    {
         name = "a status named twice is defined once",
         fn = function()
             local item = {

@@ -65,6 +65,11 @@ local LEAKS = {
     "bleeds",
 }
 
+-- Healing is written "heal", never mend/mends/mending/mended (docs/item-text.md). Whole-word,
+-- case-insensitive: item NAMES and flavor may still say "Mending" (a Totem of Mending), but a
+-- description is rules text and uses the one canonical verb.
+local MEND_WORDS = { "mend", "mends", "mending", "mended" }
+
 local function eachItem()
     local out = {}
     for id, def in pairs(Item.defs) do out[#out + 1] = { id = id, def = def } end
@@ -109,6 +114,21 @@ return {
                         assert(not desc:find("%f[%a]" .. word .. "%f[%A]"),
                             it.id .. ' buries a status in "' .. word .. '" -- name it as the'
                                 .. ' capitalized noun the glossary defines (docs/item-text.md)')
+                    end
+                end
+            end
+        end,
+    },
+    {
+        name = "healing is written \"heal\", never mend/mends/mending (docs/item-text.md)",
+        fn = function()
+            for _, it in ipairs(eachItem()) do
+                for _, desc in ipairs(descriptions(it.def)) do
+                    local low = desc:lower()
+                    for _, word in ipairs(MEND_WORDS) do
+                        assert(not low:find("%f[%a]" .. word .. "%f[%A]"),
+                            it.id .. ' says "' .. word .. '" -- healing is written as "heal" in rules'
+                                .. ' text; save mend for the item name or flavor (docs/item-text.md)')
                     end
                 end
             end

@@ -6,7 +6,7 @@
 -- It is the true 0 that no amount of Resistant: Fire can reach. See docs/vulnerability.md.
 return {
     name = "Seal: Fire",
-    description = "Wards yourself or an ally with Immune: Fire for a short time.",
+    description = "Wards yourself or an ally with Immune: Fire.",
     flavor = "Resistance argues with the fire. This does not argue.",
     sprite = "assets/items/ability_seal_fire.png",
     type = "ability",

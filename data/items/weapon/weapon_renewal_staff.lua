@@ -19,7 +19,7 @@
 -- it is given rather than sold.
 return {
     name = "The Renewal Staff",
-    description = "Replaces Wait with Focus: recover mana, and leave ground behind you where allies mend.",
+    description = "Replaces Wait with Focus: recover mana, and leave ground behind you where allies heal.",
     flavor = "The Cathedral teaches that rest is a place rather than an interval. The staff was made to make that literally true.",
     sprite = "assets/items/renewal_staff.png",
     type = "weapon",

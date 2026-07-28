@@ -13,7 +13,7 @@
 -- wants elemental reagents they are cheap to add; what would not be cheap is un-adding them.
 return {
     name = "Wildcraft Reagent",
-    description = "Mends an ally and cleanses their afflictions.",
+    description = "Heals an ally and cleanses their afflictions.",
     flavor = "Whatever the ground was doing, it was doing it very vigorously. That is most of herbalism.",
     sprite = "assets/items/consumable_wildcraft_reagent.png",
     type = "consumable",
@@ -26,7 +26,7 @@ return {
         speed = 2,
         consumesItem = true,
         healing = { 18, 18, 20, 20, 22, 22, 24, 24, 26, 26, 28 },
-        description = "Mends an ally and cleanses their afflictions.",
+        description = "Heals an ally and cleanses their afflictions.",
         effect = function(fx)
             fx.heal(fx.target, fx.amount)
             fx.cleanse(fx.target)

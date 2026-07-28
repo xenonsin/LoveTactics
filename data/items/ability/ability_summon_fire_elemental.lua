@@ -11,7 +11,7 @@
 -- gone by the endgame; hold it and you are down a quarter of your mana until you spend it.
 return {
     name = "Summon Fire Elemental",
-    description = "Binds a fire elemental. One at a time; reserves a quarter of your max mana.",
+    description = "Summons a fire elemental. One at a time; reserves a quarter of your max mana.",
     flavor = "A binding lapses. The Arcanum finds that reassuring; the elemental does not.",
     sprite = "assets/items/ability_summon_fire_elemental.png",
     type = "ability",

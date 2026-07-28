@@ -15,7 +15,7 @@
 -- without it anyway: a crusader does not stop believing at four tiles.
 return {
     name = "Vow of the March",
-    description = "Zeal also banks whenever any enemy falls, or anyone on your side is mended.",
+    description = "Zeal also banks whenever any enemy falls, or anyone on your side is healed.",
     flavor = "He took the vow at the gate and has not looked at his own hands since.",
     sprite = "assets/items/utility_vow_of_the_march.png",
     type = "utility",

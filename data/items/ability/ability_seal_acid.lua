@@ -6,7 +6,7 @@
 -- It is the true 0 that no amount of Resistant: Acid can reach. See docs/vulnerability.md.
 return {
     name = "Seal: Acid",
-    description = "Wards yourself or an ally with Immune: Acid for a short time.",
+    description = "Wards yourself or an ally with Immune: Acid.",
     flavor = "It reaches for the flesh and closes on the memory of it.",
     sprite = "assets/items/ability_seal_acid.png",
     type = "ability",

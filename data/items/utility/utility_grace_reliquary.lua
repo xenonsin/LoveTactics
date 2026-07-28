@@ -3,7 +3,7 @@
 -- slow, positional font of life. A priest-class relic, sold at the Cathedral.
 return {
     name = "Reliquary of Grace",
-    description = "Allies adjacent to you mend a little each tick.",
+    description = "Allies adjacent to you heal a little each tick.",
     flavor = "The Cathedral gilds the case. What is inside it is a great deal less presentable.",
     sprite = "assets/items/grace_reliquary.png",
     type = "utility",

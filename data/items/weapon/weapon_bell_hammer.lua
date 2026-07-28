@@ -11,7 +11,7 @@
 -- are bad. Swing this at a man with a wall behind him and the point lands immediately.
 return {
     name = "Bell-Hammer",
-    description = "Drives the target back a single tile, and a collision hurts twice as much.",
+    description = "Knockback 1, and a collision hurts twice as much.",
     flavor = "Short in the handle, unkind about walls. The Bastion's armourers call it the second opinion.",
     sprite = "assets/items/bell_hammer.png",
     type = "weapon",

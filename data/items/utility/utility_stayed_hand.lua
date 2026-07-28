@@ -20,7 +20,7 @@
 -- to one enormous swing will get no help from it at all.
 return {
     name = "The Stayed Hand",
-    description = "At the edge of death, cleanses its wearer and lifts them out of reach for a moment.",
+    description = "On dropping to 25% health: cleanse you and lift you out of reach.",
     flavor = "Nobody agrees on whose hand. Everyone who has felt it agrees it was not theirs.",
     sprite = "assets/items/utility_stayed_hand.png",
     type = "utility",

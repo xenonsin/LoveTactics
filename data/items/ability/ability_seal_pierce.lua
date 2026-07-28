@@ -6,7 +6,7 @@
 -- It is the true 0 that no amount of Resistant: Pierce can reach. See docs/vulnerability.md.
 return {
     name = "Seal: Pierce",
-    description = "Wards yourself or an ally with Immune: Pierce for a short time.",
+    description = "Wards yourself or an ally with Immune: Pierce.",
     flavor = "The point arrives certain. Certainty is the first thing the working takes.",
     sprite = "assets/items/ability_seal_pierce.png",
     type = "ability",

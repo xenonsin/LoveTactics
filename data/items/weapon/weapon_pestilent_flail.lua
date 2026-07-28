@@ -7,7 +7,7 @@
 -- discipline stocks it on the Crucible's shelf too, and using it grows both knight and alchemist.
 return {
     name = "Pestilent Flail",
-    description = "Drives a foe back two tiles and inflicts Poison on it and everything adjacent.",
+    description = "Knockback 2 and inflicts Poison on it and everything adjacent.",
     flavor = "The Bastion forges the head. The Crucible only ever has to suggest what to pack it with.",
     sprite = "assets/items/weapon_pestilent_flail.png",
     type = "weapon",

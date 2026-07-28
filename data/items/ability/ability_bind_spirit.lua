@@ -21,7 +21,7 @@
 -- legs that walks over and stands on them.
 return {
     name = "Bind Spirit",
-    description = "Calls a wind spirit with a Gagging Storm bound into it -- the squall follows wherever it goes.",
+    description = "Summons a wind spirit carrying a Gagging Storm that follows it.",
     flavor = "It asked the wind to come along. The wind has never really understood the difference between yes and here.",
     sprite = "assets/items/ability_bind_spirit.png",
     type = "ability",
@@ -35,7 +35,7 @@ return {
         range = 2,
         speed = 6,
         reserve = { stat = "mana", percent = 0.25 },
-        description = "Summons a wind spirit carrying a Silencing storm that travels with it.",
+        description = "Summons a wind spirit carrying a Gagging Storm that travels with it.",
         effect = function(fx)
             local spirit = fx.summon("character_wind_elemental", fx.tx, fx.ty, {
                 scaling = { health = 1, magicDamage = 0.5 },

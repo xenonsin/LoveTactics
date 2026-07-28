@@ -15,7 +15,7 @@
 -- never camp in a heal zone, and until now the Totemist had nothing to offer them.
 return {
     name = "Totem of Mending",
-    description = "Plants a totem granting Regeneration -- allies who touch its ground carry the mending away with them.",
+    description = "Plants a totem granting Regeneration -- allies who touch its ground carry the healing away with them.",
     flavor = "You are not meant to stay. You are meant to come back through.",
     sprite = "assets/items/ability_totem_of_mending.png",
     type = "ability",

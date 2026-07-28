@@ -6,7 +6,7 @@
 -- It is the true 0 that no amount of Resistant: Slash can reach. See docs/vulnerability.md.
 return {
     name = "Seal: Slash",
-    description = "Wards yourself or an ally with Immune: Slash for a short time.",
+    description = "Wards yourself or an ally with Immune: Slash.",
     flavor = "The edge passes through where the body agreed, briefly, not to be.",
     sprite = "assets/items/ability_seal_slash.png",
     type = "ability",

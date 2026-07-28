@@ -20,7 +20,7 @@
 -- a rate, and spending it early for a small effect is a real mistake the player will make once.
 return {
     name = "The Gleaning Rod",
-    description = "Banks a charge from every spell cast nearby; spend them all to wound or to mend.",
+    description = "Banks a charge from every spell cast nearby; spend them all to wound or to heal.",
     flavor = "The Arcanum considers it vulgar. It has never satisfactorily explained on what grounds.",
     sprite = "assets/items/utility_gleaning_rod.png",
     type = "utility",

@@ -11,7 +11,7 @@
 -- an enemy's relic -- so only its base value is ever seen.
 return {
     name = "The Unappeased Heart",
-    description = "Sharpens with every blow she takes, and worse the nearer she is to death.",
+    description = "Increase damage by 1 per blow you take, plus up to +20 by the fraction of health missing.",
     flavor = "Ira's heart, still beating for a fight that is over. It does not come off her.",
     sprite = "assets/items/sig_unappeased_heart.png",
     type = "utility", -- `bound` (not the type) is what locks it in place

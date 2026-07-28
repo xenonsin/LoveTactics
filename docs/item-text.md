@@ -41,8 +41,9 @@ prose-frame lead like `Toggle:`) so they cannot quietly drift.
    - **Readable noun, not the participle badge:** `Silence`, `Halt`, `Haste` — not `Silenced`,
      `Halted`, `Hasted`. The glossary links either way, and the noun reads as rules text.
    - **Verb by valence:** **inflicts** a debuff (`inflicts Poison`), **grants** a buff (`grants
-     Haste`), **applies** a mixed/neutral one (`applies Reckless`, `applies Drunk`). A **positional**
-     effect stays an action verb — `"Knocks a foe back"`, never `"inflicts Knockback"`.
+     Haste`), **applies** a mixed/neutral one (`applies Reckless`, `applies Drunk`). A **displacement**
+     effect is the `Knockback` keyword, written with its tile count — `"Knockback 2"`, never `"drives the
+     target back two tiles"` / `"shoves them back"` / `"Knocks a foe back"`.
    - **Never bury a status in a lowercase verb** — "poisons it", "roots it", "silences it" hide a word
      the glossary is standing by to define; name it. (A lowercase common-English use that is *not* the
      game status is fine — "the fire burns" — but if the item applies Burn, say Burn.)
@@ -64,8 +65,9 @@ prose-frame lead like `Toggle:`) so they cannot quietly drift.
    (`ui/footprint_diagram.lua`), so don't spell it out — cut `"the two tiles ahead"`, `"a wide arc"`,
    `"three tiles down the line"`, `"in the target area"`, keeping only per-tile nuance the picture
    can't carry (`"on the near tile"`, `"friend and foe"`). A *placed* zone or hazard (a 3×3 banner,
-   a wall) is not the attack footprint and keeps its shape; so do knockback and range distances,
-   which have their own rows. An area effect ends with the canonical scope phrase **`in area`**
+   a wall) is not the attack footprint and keeps its shape. **Range** distance has its own row and is not
+   restated; **knockback** distance is the exception — it rides in the `Knockback N` keyword (below) even
+   though a row echoes it. An area effect ends with the canonical scope phrase **`in area`**
    (`"Inflicts Frozen in area."`), not "in the target area" / "on everyone hit"; a foe-only or
    summoned-only filter is kept as the noun (`"Sears enemies in area."`), but "friend and foe" is not.
 7. **Triggered effects use the trigger frame:** `On <trigger>: <effect>.` The trigger is the
@@ -82,7 +84,13 @@ prose-frame lead like `Toggle:`) so they cannot quietly drift.
 Several effect shapes have one canonical wording so the corpus reads uniform. Clauses under a frame
 (`On <trigger>:`, `For each <X>:`) and directives (`Increase damage…`) are written imperatively.
 
-- **Knockback is a named effect** — write `Knockback`, never "drives them back a pace" / "shoves back".
+- **Knockback is a keyword with a tile count** — write `Knockback N`, where N is the tiles the target is
+  driven straight back (`"Knockback 2"`, `"Knockback 4"`). Never "drives them back a pace" / "shoves back" /
+  "slams three tiles back" / a bare `Knockback` with no number. It reads as a plain effect clause:
+  `"Knockback 2 and inflicts Poison."`, `"Inflicts Wet and Knockback 2."` The term is defined in the
+  glossary (`data/keywords/keyword_knockback.lua`, surfaced from the dry run's `out.knockback`), and the
+  tooltip also carries a `Knockback: N tiles` row — the same reinforcement a named status gets from its
+  hourglass row, so writing the count in the text is not a banned row-restatement here.
 - **Scaling is a directive:** `Increase|Decrease damage for each <condition>.` — `"Increase damage for
   each foe in area."`, `"Increase damage for each foe you have killed this battle."` Never "lands
   harder for every…", "devastating against a lone foe, weaker for every extra body".
@@ -111,6 +119,16 @@ Several effect shapes have one canonical wording so the corpus reads uniform. Cl
   `"For each corpse in area, summon an allied, uncontrollable zombie."`
 - **`Consume` is the verb for spending a resource** (not Spends): `"Spends all Defiance…"` →
   `"Consume all Defiance…"`
+- **`heal` is the verb for restoring health** (not mend / mends / mending): `"Mends a nearby ally."` →
+  `"Heals a nearby ally."`, `"mending every adjacent ally"` → `"healing every adjacent ally"`. (`Restores`
+  stays the verb for a *resource* potion — `"Restores stamina"`, `"Restores mana"`, `"Restores health"`.)
+- **`Deflect` is the one verb for negating the next incoming attack** — a reactive reflex that cancels a
+  hit outright, whether a single-target spell or a physical blow. Never Refuses / Unravels / Answers /
+  Evades / "turns aside" / "negates" for this: `"Unravels a single-target spell aimed at you"` →
+  `"Deflects one spell aimed at you"`; `"Evades a physical attack"` → `"Deflects the next physical
+  attack"`. It is a plain verb (capital at sentence start, lowercase mid-sentence), not a glossary term.
+  A *Barrier* status (a body carries a ward that swallows a blow) and a *parry/riposte* (turn aside, then
+  answer) are their own named concepts — those keep their own words, not Deflect.
 - **A wind-up / channeled ability uses the prefix `Channeled: <effect>.`** — replaces "Winds up,
   then…", "Drawn over a full turn". (`Channeled:` and `Toggle:` are mechanical labels, **exempt** from
   the banned prose frames — which are only `Triggered:`/`Passive:`/`Active:`.)

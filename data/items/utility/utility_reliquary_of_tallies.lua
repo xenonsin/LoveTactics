@@ -19,7 +19,7 @@
 -- see killUnit). No new bookkeeping: the box is reading a number the battle was already keeping.
 return {
     name = "The Reliquary of Tallies",
-    description = "Fills with every comrade lost; spend it to mend an ally or wound a foe.",
+    description = "Fills with every comrade lost; spend it to heal an ally or wound a foe.",
     flavor = "The Cathedral keeps one in every chapter house. They are always, always full.",
     sprite = "assets/items/utility_reliquary_of_tallies.png",
     type = "utility",

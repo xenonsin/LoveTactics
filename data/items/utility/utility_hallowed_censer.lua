@@ -10,7 +10,7 @@
 -- climbing with the level.
 return {
     name = "Hallowed Censer",
-    description = "You and adjacent allies mend a little health each tick.",
+    description = "You and adjacent allies heal a little each tick.",
     flavor = "The ground a priest stands on is consecrated by the standing. It never leaves your hand.",
     sprite = "assets/items/sig_hallowed_censer.png",
     type = "utility", -- a censer: `bound` (not the type) is what locks it in place

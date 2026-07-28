@@ -24,7 +24,7 @@
 -- ceremonial half, and reachable by a Monk.
 return {
     name = "Scouring Mercy",
-    description = "Sears one body, then mends it for considerably more over the following turns.",
+    description = "Sears one body, then grants it Regeneration.",
     flavor = "It is a cleansing. The Cathedral is quite firm that the screaming is incidental to it.",
     sprite = "assets/items/ability_scouring_mercy.png",
     type = "ability",

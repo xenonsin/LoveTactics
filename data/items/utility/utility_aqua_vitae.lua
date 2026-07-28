@@ -30,7 +30,7 @@ return {
     bound = true,
     bonus = { magicDamage = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } },
     activeAbility = {
-        description = "Conjures a copy of your strongest ally, fighting at your side. It is not fragile.",
+        description = "Summons a copy of your strongest ally, fighting at your side. It is not fragile.",
         target = "self",
         range = 1,
         speed = 6,

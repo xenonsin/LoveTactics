@@ -20,7 +20,7 @@
 -- nothing, leaving the spend to the effect where it belongs.
 return {
     name = "Flurry",
-    description = "Throws three bare-handed strikes in one motion. Spends 3 chi.",
+    description = "Throws three bare-handed strikes in one motion. Consume 3 chi.",
     flavor = "The Cathedral counts prayers. The ascetic counts knuckles, and arrives at the same number.",
     sprite = "assets/items/ability_flurry.png",
     type = "ability",
@@ -38,7 +38,7 @@ return {
             when = function(unit) return require("models.combat").chi(unit) >= 3 end,
             text = "Gather 3 chi",
         },
-        description = "Spends 3 chi to throw three bare-handed strikes, each scaled by your fist charms.",
+        description = "Consume 3 chi to throw three bare-handed strikes, each scaled by your fist charms.",
         effect = function(fx)
             fx.spendChi(3)
             local fists = fx.user.char and fx.user.char.unarmed

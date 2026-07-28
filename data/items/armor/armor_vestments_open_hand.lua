@@ -18,7 +18,7 @@
 -- Cloth, so it costs a square of pace: a priest whose aura is the item wants to be standing still.
 return {
     name = "Vestments of the Open Hand",
-    description = "Allies adjacent to you, and you, mend a little health each tick.",
+    description = "Allies adjacent to you, and you, heal a little each tick.",
     flavor = "The Cathedral cuts them without pockets. A hand that is holding something is not open.",
     sprite = "assets/items/armor_vestments_open_hand.png",
     type = "armor",

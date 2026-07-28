@@ -2,7 +2,7 @@
 -- reservation, scaling, duration and one-at-a-time rule work. A frail but hard-hitting glass cannon.
 return {
     name = "Summon Lightning Elemental",
-    description = "Binds a lightning elemental. One at a time; reserves a quarter of your max mana.",
+    description = "Summons a lightning elemental. One at a time; reserves a quarter of your max mana.",
     flavor = "A glass cannon with a temper. It will not be alive long enough to regret it.",
     sprite = "assets/items/ability_summon_lightning_elemental.png",
     type = "ability",

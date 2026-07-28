@@ -6,7 +6,7 @@
 -- It is the true 0 that no amount of Resistant: Dark can reach. See docs/vulnerability.md.
 return {
     name = "Seal: Dark",
-    description = "Wards yourself or an ally with Immune: Dark for a short time.",
+    description = "Wards yourself or an ally with Immune: Dark.",
     flavor = "The mage does not fear the dark. The mage has read further into it than it has.",
     sprite = "assets/items/ability_seal_dark.png",
     type = "ability",

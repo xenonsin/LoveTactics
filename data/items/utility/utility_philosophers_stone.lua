@@ -11,7 +11,7 @@
 -- has seen yours. It will point this very ability at your strongest, and it will not be fragile then.
 return {
     name = "Philosopher's Stone",
-    description = "Conjures a duplicate of an enemy that fights for you. It dies to a single hit.",
+    description = "Summons a duplicate of an enemy that fights for you. It dies to a single hit.",
     flavor = "A mage copies itself, which is Pride. An alchemist copies someone else, which is Envy. The general has no shape until it has seen yours.",
     sprite = "assets/items/philosophers_stone.png",
     type = "utility",

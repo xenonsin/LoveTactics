@@ -3,7 +3,7 @@
 -- fighter-class charm, sold at the Colosseum -- it pays out only when the fight has turned against you.
 return {
     name = "Veteran's Resolve",
-    description = "Cornered below 40% health, you raise a barrier and hit harder.",
+    description = "On first dropping below 40% health: raise a barrier and gain +4 Damage this battle.",
     flavor = "A battered campaign medal. It pays out only once the fight has already turned against you.",
     sprite = "assets/items/veterans_resolve.png",
     type = "utility",

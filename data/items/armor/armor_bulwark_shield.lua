@@ -21,7 +21,7 @@
 -- and pays the escalating answer price twice for the privilege.
 return {
     name = "Bulwark",
-    description = "Replaces Wait with Defend. Melee attackers are driven two tiles back.",
+    description = "Replaces Wait with Defend. Melee attackers take Knockback 2.",
     flavor = "The Bastion teaches the boss before the rim. A door that opens outward is still a door.",
     sprite = "assets/items/armor_bulwark_shield.png",
     type = "armor",

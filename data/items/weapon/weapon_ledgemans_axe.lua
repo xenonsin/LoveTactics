@@ -14,7 +14,7 @@
 -- thrown two paces exactly as readily. Aim it along the enemy rank, not across a melee.
 return {
     name = "Ledgeman's Axe",
-    description = "Cleaves a wide arc, hurling the outer two tiles back and leaving the centre standing alone.",
+    description = "Cleaves a wide arc: Knockback 2 on the outer tiles, the centre left standing alone.",
     flavor = "A ledgeman is paid to take one tree out of a stand without touching its neighbours. This does the opposite, and is paid better.",
     sprite = "assets/items/ledgemans_axe.png",
     type = "weapon",

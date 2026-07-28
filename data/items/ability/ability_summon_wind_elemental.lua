@@ -2,7 +2,7 @@
 -- scaling, duration and one-at-a-time rule work. A blindingly fast scout -- frail, but everywhere.
 return {
     name = "Summon Wind Elemental",
-    description = "Binds a wind elemental. One at a time; reserves a quarter of your max mana.",
+    description = "Summons a wind elemental. One at a time; reserves a quarter of your max mana.",
     flavor = "Frail, and everywhere. The Arcanum has never once persuaded one to sit still.",
     sprite = "assets/items/ability_summon_wind_elemental.png",
     type = "ability",

@@ -14,7 +14,7 @@
 -- shelves, one combo, and this is the one that can run it alone.
 return {
     name = "Wetstone Mace",
-    description = "Inflicts Wet on the target and drives it back two tiles; the charged head bites deeper on anything already Wet.",
+    description = "Inflicts Wet and Knockback 2; the charged head bites deeper on anything already Wet.",
     flavor = "The quenching trough is not for cooling it. Nobody at the forge has ever been able to explain what it is for.",
     sprite = "assets/items/wetstone_mace.png",
     type = "weapon",

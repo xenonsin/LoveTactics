@@ -31,7 +31,7 @@ return {
         support = true,
         cost = { stat = "mana", amount = 12 },
         healing = { 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 29 }, -- Combat.abilityMagnitude reads this
-        description = "Mends and wards an ally, then takes their afflictions onto yourself.",
+        description = "Heals and wards an ally, then takes their afflictions onto yourself.",
         effect = function(fx)
             local t = fx.target
             if not t then return end

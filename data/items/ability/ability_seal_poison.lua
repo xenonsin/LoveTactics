@@ -6,7 +6,7 @@
 -- It is the true 0 that no amount of Resistant: Poison can reach. See docs/vulnerability.md.
 return {
     name = "Seal: Poison",
-    description = "Wards yourself or an ally with Immune: Poison for a short time.",
+    description = "Wards yourself or an ally with Immune: Poison.",
     flavor = "The venom looks for a vein and finds a theorem.",
     sprite = "assets/items/ability_seal_poison.png",
     type = "ability",

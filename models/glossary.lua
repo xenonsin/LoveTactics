@@ -123,6 +123,13 @@ function Glossary.forItem(item, actor, out, opts)
         for _, id in ipairs(Keyword.forItem(item)) do
             add("keyword", id, Keyword.defs[id])
         end
+        -- Knockback is not a declarative field -- it rides inside effect closures (fx.damage's
+        -- `knockback` opt, fx.knockback) -- so Keyword.forItem cannot see it. The dry run does: it
+        -- records the distance in `out.knockback`, exactly as it records statuses and hazards. Surface
+        -- the keyword off that, so a "Knockback N" description has its term defined beside the tooltip.
+        if out and out.knockback and out.knockback > 0 then
+            add("keyword", "keyword_knockback", Keyword.defs["keyword_knockback"])
+        end
     end
     return entries
 end

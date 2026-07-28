@@ -8,7 +8,7 @@
 -- and dear in stamina -- you buy the displacement, not the damage.
 return {
     name = "Iron Mace",
-    description = "Drives the target back two tiles. A collision hurts everyone in it.",
+    description = "Knockback 2. A collision hurts everyone in it.",
     flavor = "You are not buying the damage. You are buying where they end up.",
     sprite = "assets/items/mace.png",
     type = "weapon",

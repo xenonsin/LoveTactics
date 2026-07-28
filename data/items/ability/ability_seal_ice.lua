@@ -6,7 +6,7 @@
 -- It is the true 0 that no amount of Resistant: Ice can reach. See docs/vulnerability.md.
 return {
     name = "Seal: Ice",
-    description = "Wards yourself or an ally with Immune: Ice for a short time.",
+    description = "Wards yourself or an ally with Immune: Ice.",
     flavor = "The frost reaches the skin and finds it was never invited.",
     sprite = "assets/items/ability_seal_ice.png",
     type = "ability",

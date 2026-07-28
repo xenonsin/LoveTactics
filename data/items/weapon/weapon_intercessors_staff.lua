@@ -20,7 +20,7 @@
 -- WIELDER, so the two stack rather than compete -- the staff feeds the ward, the charm feeds the priest.
 return {
     name = "Intercessor's Staff",
-    description = "Names one ally at the start of battle. Every blow this staff lands mends them instead of you.",
+    description = "Names one ally at the start of battle. Every blow this staff lands heals them instead of you.",
     flavor = "She was not asked. The Cathedral has never once thought to ask.",
     sprite = "assets/items/intercessors_staff.png",
     type = "weapon",

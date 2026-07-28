@@ -6,7 +6,7 @@
 -- Colosseum.
 return {
     name = "Duelist's Reflex",
-    description = "Automatically evades a physical attack now and then. Magic still lands.",
+    description = "Deflects the next physical attack, then recharges. Magic still lands.",
     flavor = "Trained instinct, sold by the yard. The Colosseum has never been short of duelists to copy.",
     sprite = "assets/items/duelists_reflex.png",
     type = "utility",

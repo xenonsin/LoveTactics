@@ -21,7 +21,7 @@
 -- for a cure to do.
 return {
     name = "The Unspent Heart",
-    description = "Mends its wearer hard while untouched; any wound stops it for several turns.",
+    description = "Heals its wearer hard while untouched; any wound stops it for several turns.",
     flavor = "The Crucible sold it as salvage and did not say salvage of what.",
     sprite = "assets/items/armor_unspent_heart.png",
     type = "armor",

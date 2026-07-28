@@ -5,7 +5,7 @@
 -- the timeline bent so the next one arrives almost at once. Pairs with Emplace Sentry.
 return {
     name = "Overcharge",
-    description = "Hastes a friendly construct or ally: its next actions come far sooner.",
+    description = "Grants Haste to a friendly construct or ally.",
     flavor = "The Crucible does not build them to last. It builds them to be worth overspending.",
     sprite = "assets/items/ability_overcharge.png",
     type = "ability",
