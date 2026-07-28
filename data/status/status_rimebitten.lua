@@ -19,7 +19,7 @@ return {
     name = "Rimebitten",
     abbr = "Rime",
     description = "Rimebitten: takes extra cold damage every time anything hits it.",
-    color = { 0.62, 0.84, 0.94 }, -- badge tint (pale ice)
+    color = { 0.629, 0.815, 0.899 }, -- badge tint (pale ice)
     fx = { field = true },    -- draws ground under the rime-bitten body (a debuff: the hostile look, ui/field_fx.lua)
     duration = 12,                -- ~2.5 turns: a window your side is meant to spend
     magnitude = 4,                -- the bite per hit; the granting spell raises it per level

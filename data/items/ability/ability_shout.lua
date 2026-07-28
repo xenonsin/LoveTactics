@@ -5,7 +5,7 @@
 -- to take them. Allies caught in the area are untouched -- only foes are provoked.
 return {
     name = "Shout",
-    description = "Inflicts Taunt on nearby foes: they must attack you with their default weapon.",
+    description = "Inflicts Taunt on nearby foes.",
     flavor = "The knight's answer to Sloth: draw the blows onto the one built to take them.",
     sprite = "assets/items/ability_shout.png",
     type = "ability",

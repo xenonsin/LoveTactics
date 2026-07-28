@@ -16,25 +16,28 @@
 -- answered by a light on Rowan, wherever the player has to look to find him.
 
 local Scale = require("scale")
+local Theme = require("ui.theme")
 local ItemTooltip = require("ui.item_tooltip")
 local StatusTooltip = require("ui.status_tooltip")
 
 local CombatLog = {}
 CombatLog.__index = CombatLog
 
--- Per-kind text colour. Anything unmapped falls back to a neutral light grey.
+-- Per-kind text colour, pitched to read on the dark log ground (ui/theme.lua): the hue carries the
+-- kind, bright enough to glow on the shadowed panel. The neutral kinds (action, wait) are the theme's
+-- bone ink / muted outright.
 local KIND_COLOR = {
-    system = { 0.95, 0.85, 0.55 }, -- battle begins / victory / defeat
-    action = { 0.86, 0.88, 0.94 }, -- "X attacks with / uses Y"
-    move   = { 0.55, 0.72, 0.95 }, -- movement
-    damage = { 0.93, 0.55, 0.48 }, -- damage dealt
-    death  = { 0.98, 0.42, 0.40 }, -- a unit is defeated
-    heal   = { 0.50, 0.86, 0.52 }, -- healing
-    status = { 0.80, 0.64, 0.96 }, -- status applied / worn off
-    trap   = { 0.96, 0.72, 0.38 }, -- trap placed / triggered / destroyed
-    wait   = { 0.62, 0.65, 0.72 }, -- wait / hold position
+    system = Theme.accentAmber,      -- battle begins / victory / defeat
+    action = Theme.ink,              -- "X attacks with / uses Y"
+    move   = { 0.55, 0.72, 0.95 },   -- movement
+    damage = { 0.93, 0.55, 0.48 },   -- damage dealt
+    death  = { 0.98, 0.42, 0.40 },   -- a unit is defeated
+    heal   = { 0.50, 0.86, 0.52 },   -- healing
+    status = { 0.80, 0.64, 0.96 },   -- status applied / worn off
+    trap   = { 0.96, 0.72, 0.38 },   -- trap placed / triggered / destroyed
+    wait   = Theme.muted,            -- wait / hold position
 }
-local FALLBACK_COLOR = { 0.82, 0.84, 0.90 }
+local FALLBACK_COLOR = Theme.ink
 
 local PAD = 12        -- inner horizontal padding (text wrap margin)
 local VPAD = 8        -- inner vertical padding (kept tight so the short strip fits ~5+ lines)
@@ -151,11 +154,11 @@ function CombatLog:draw()
 
     -- Panel background + subtle border (no title bar -- the strip sits under the board and the
     -- space is reserved for log lines, so every pixel of height counts).
-    love.graphics.setColor(0.08, 0.09, 0.13, 0.90)
-    love.graphics.rectangle("fill", self.x, self.y, self.w, self.h, 8, 8)
-    love.graphics.setColor(0.35, 0.40, 0.52, 0.85)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", self.x, self.y, self.w, self.h, 5, 5)
+    Theme.set(Theme.frame)
     love.graphics.setLineWidth(1)
-    love.graphics.rectangle("line", self.x, self.y, self.w, self.h, 8, 8)
+    love.graphics.rectangle("line", self.x, self.y, self.w, self.h, 5, 5)
 
     local contentTop, wrapW, visibleCount = self:contentMetrics()
 
@@ -186,7 +189,7 @@ function CombatLog:draw()
             -- also tells the player which lines are worth hovering. Keyed off the ENTRY, so a long
             -- event wrapped over several lines lights up as the one event it is.
             if hoveredEntry and line.entry == hoveredEntry then
-                love.graphics.setColor(1, 1, 1, 0.07)
+                Theme.set(Theme.frame, 0.12)
                 love.graphics.rectangle("fill", self.x + 2, y - 1, self.w - 4, self.lineH, 3, 3)
             end
             local c = line.color
@@ -199,11 +202,11 @@ function CombatLog:draw()
     -- "more above / below" affordance so scroll state is legible.
     love.graphics.setFont(self.font)
     if startIdx > 1 then
-        love.graphics.setColor(0.6, 0.65, 0.75, 0.9)
+        Theme.set(Theme.muted, 0.9)
         love.graphics.printf("^ older", self.x, contentTop - 2, self.w - PAD, "right")
     end
     if self.scroll > 0 then
-        love.graphics.setColor(0.6, 0.65, 0.75, 0.9)
+        Theme.set(Theme.muted, 0.9)
         love.graphics.printf("v newer", self.x, self.y + self.h - VPAD - self.lineH, self.w - PAD, "right")
     end
 
@@ -245,9 +248,9 @@ function CombatLog:drawDetail(detail, mx, my)
     bx = math.max(4, math.min(bx, Scale.WIDTH - w - 4))
     local by = math.max(4, math.min(my + 14, Scale.HEIGHT - h - 4))
 
-    love.graphics.setColor(0.07, 0.08, 0.11, 0.97)
+    Theme.set(Theme.panel)
     love.graphics.rectangle("fill", bx, by, w, h, 6, 6)
-    love.graphics.setColor(0.55, 0.42, 0.40, 0.9) -- warm edge, matching the damage kind's hue
+    Theme.set(Theme.accentWeapon, 0.9) -- warm edge, matching the damage kind's hue
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", bx, by, w, h, 6, 6)
 
@@ -255,18 +258,18 @@ function CombatLog:drawDetail(detail, mx, my)
     local lx, rx = bx + pad, bx + w - pad
     local ty = by + pad
 
-    love.graphics.setColor(0.93, 0.55, 0.48, 1)
+    Theme.set(Theme.accentWeapon)
     love.graphics.print("Damage breakdown", lx, ty)
     ty = ty + lineH
 
     for _, r in ipairs(rows) do
         if r.strong then
             -- Rule off the total from the working above it.
-            love.graphics.setColor(0.35, 0.40, 0.52, 0.8)
+            Theme.set(Theme.frame, 0.8)
             love.graphics.line(lx, ty + 1, rx, ty + 1)
             ty = ty + 3
         end
-        local labelColor = r.strong and { 0.98, 0.98, 1.0 } or { 0.80, 0.82, 0.88 }
+        local labelColor = r.strong and Theme.ink or Theme.muted
         love.graphics.setColor(labelColor[1], labelColor[2], labelColor[3], 1)
         love.graphics.print(r.label, lx, ty)
         if r.value ~= nil then
@@ -288,7 +291,7 @@ function CombatLog:drawDetail(detail, mx, my)
     end
 
     if hasNote then
-        love.graphics.setColor(0.62, 0.65, 0.72, 1)
+        Theme.set(Theme.muted)
         love.graphics.print(rows.note, lx, ty)
     end
 end

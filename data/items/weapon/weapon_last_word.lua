@@ -19,7 +19,7 @@
 -- not avenging anybody in particular; the shot is simply worth more once the company has started paying.
 return {
     name = "The Last Word",
-    description = "A drawn shaft that lands far harder for every ally who has fallen this battle.",
+    description = "Channeled: Increase damage by 60% per fallen ally this battle.",
     flavor = "The Lodge does not issue it to hunters who have not lost anyone. There would be no point.",
     sprite = "assets/items/last_word.png",
     type = "weapon",

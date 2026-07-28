@@ -16,7 +16,7 @@
 -- utility_stayed_hand is the charm form; the hem is for a priest with no cell to spare.
 return {
     name = "Hem of the Stayed Hand",
-    description = "At the edge of death, cleanses you and lifts you out of reach for a while.",
+    description = "On reaching death's door: cleanse you and lift you out of reach.",
     flavor = "The Cathedral maintains that nobody is ever taken. It says the word is gathered, and will not be drawn further.",
     sprite = "assets/items/armor_hem_of_the_stayed_hand.png",
     type = "armor",

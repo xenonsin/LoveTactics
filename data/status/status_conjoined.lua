@@ -31,7 +31,7 @@ return {
     name = "Conjoined",
     abbr = "Cnj",
     description = "Conjoined: takes half of every wound the others in the binding suffer.",
-    color = { 0.58, 0.38, 0.72 }, -- badge tint (Arcanum violet -- the sigil ink)
+    color = { 0.558, 0.393, 0.673 }, -- badge tint (Arcanum violet -- the sigil ink)
     duration = 20, -- ~4 turns at Status.TICKS_PER_TURN: long enough to be worth setting up and spending
     debuff = true, -- removable by Cure, one body at a time
     resistible = "magical", -- a working, so a strong mind buys back some of the binding

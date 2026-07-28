@@ -11,7 +11,7 @@
 -- them would not be a breach, it would be a chase.
 return {
     name = "Breaker's Harness",
-    description = "A shove that slams into a wall or a body Stuns what it hit.",
+    description = "Stuns any foe your shove slams into a wall or another body.",
     flavor = "Half the wall is doing the work. He only ever intended to supply the other half.",
     sprite = "assets/items/armor_breakers_harness.png",
     type = "armor",

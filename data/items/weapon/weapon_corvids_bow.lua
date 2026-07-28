@@ -18,7 +18,7 @@
 -- best quest weapons here.
 return {
     name = "Corvid's Bow",
-    description = "Fires at range and blinds: the target's own abilities can no longer reach far.",
+    description = "Inflicts Blind.",
     flavor = "Crows go for the eyes because the rest of it can wait. The Lodge found this insight portable.",
     sprite = "assets/items/corvids_bow.png",
     type = "weapon",

@@ -19,7 +19,7 @@
 -- single body are not fights a single spell gets to end.
 return {
     name = "Polymorph",
-    description = "Turns a foe into a pig: it can move, and nothing else. Bosses are unmoved.",
+    description = "Inflicts Polymorph. Bosses are unmoved.",
     flavor = "You do not have to beat the champion if the champion is livestock.",
     sprite = "assets/items/ability_polymorph.png",
     type = "ability",

@@ -12,7 +12,7 @@
 -- Its own damage is under an iron sword's. It should be: the sword is not what this weapon does.
 return {
     name = "Duelist's Edge",
-    description = "Strikes an adjacent foe. When struck in melee, binds the attacker in place instead of cutting back.",
+    description = "Strikes an adjacent foe. On melee hit taken: inflict Duelbound on the attacker.",
     flavor = "The Bastion's fencing masters teach that the hard part was never landing the blow. It was making them stay for the second one.",
     sprite = "assets/items/duelists_edge.png",
     type = "weapon",

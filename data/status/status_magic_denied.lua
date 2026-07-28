@@ -25,7 +25,7 @@ return {
     name = "Magic Denied",
     abbr = "NoMag",
     description = "Cut off from magic: no spell, enchanted weapon, or arcane relic will work.",
-    color = { 0.45, 0.45, 0.52 }, -- badge tint (leaden grey: the absence of the arcane violet)
+    color = { 0.452, 0.452, 0.513 }, -- badge tint (leaden grey: the absence of the arcane violet)
     duration = math.huge,         -- "while worn" == "this battle"; see the note above
     -- There is no countdown to show -- the number is infinity, and a tooltip reading "inf" ticks is
     -- worse than no number at all. The badge still stands the whole battle (that is the point: the

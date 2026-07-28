@@ -16,7 +16,7 @@
 -- censer belongs to this shelf and no other, so both of its directions are lust's.
 return {
     name = "Censer",
-    description = "Wreathes you in smoke: allies standing beside you are Blessed.",
+    description = "Grants Blessing to adjacent allies.",
     flavor = "The smoke goes where the priest goes. So, in the end, does everyone else.",
     sprite = "assets/items/censer.png",
     type = "weapon",

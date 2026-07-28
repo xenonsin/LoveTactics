@@ -4,7 +4,7 @@
 -- takes casting away.
 return {
     name = "Mana Sunder",
-    description = "Strikes a foe, burns its mana away, and Silences it: no mana, and no casting either.",
+    description = "Strikes a foe, burns its mana away, and inflicts Silenced.",
     flavor = "Not the spell. The saying of spells.",
     sprite = "assets/items/ability_mana_sunder.png",
     type = "ability",

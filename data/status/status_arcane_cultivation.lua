@@ -12,7 +12,7 @@ return {
     name = "Arcane Cultivation",
     abbr = "Arc",
     description = "Borrowed talent: raised Magic Damage.",
-    color = { 0.55, 0.45, 0.85 }, -- badge tint (steeped violet)
+    color = { 0.548, 0.466, 0.795 }, -- badge tint (steeped violet)
     duration = 45, -- ~9 turns at Status.TICKS_PER_TURN, matching its muscular twin
     statBonus = { magicDamage = 10 },
 }

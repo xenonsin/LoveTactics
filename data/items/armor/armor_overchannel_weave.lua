@@ -17,7 +17,7 @@
 -- Cloth: a square of pace.
 return {
     name = "Overchannel Weave",
-    description = "When mana runs dry, spells are paid for in health instead.",
+    description = "On empty mana: spells cost health instead.",
     flavor = "The Arcanum grades it as a teaching aid. It is worn almost exclusively by people it has finished teaching.",
     sprite = "assets/items/armor_overchannel_weave.png",
     type = "armor",

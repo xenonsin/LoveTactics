@@ -10,6 +10,7 @@
 -- and its fonts are lazy, so the module loads under the headless test runner.
 
 local Scale = require("scale")
+local Theme = require("ui.theme")
 
 local Notification = {}
 
@@ -25,8 +26,8 @@ local WIDTH = 320
 
 local bodyFont, labelFont
 local function fonts()
-    bodyFont = bodyFont or love.graphics.newFont(15)
-    labelFont = labelFont or love.graphics.newFont(12)
+    bodyFont = bodyFont or Theme.body(15)
+    labelFont = labelFont or Theme.body(12)
     return bodyFont, labelFont
 end
 
@@ -85,8 +86,8 @@ function Notification.draw()
         local h = math.max(textH, n.icon and ICON or 0) + PAD * 2
         local bx = x + slide
 
-        love.graphics.setColor(0.09, 0.10, 0.14, 0.94 * a)
-        love.graphics.rectangle("fill", bx, y, WIDTH, h, 8, 8)
+        Theme.set(Theme.panel, 0.94 * a)
+        love.graphics.rectangle("fill", bx, y, WIDTH, h, Theme.R, Theme.R)
         love.graphics.setColor(n.color[1], n.color[2], n.color[3], 0.4 * a)
         love.graphics.rectangle("line", bx, y, WIDTH, h, 8, 8)
         love.graphics.setColor(n.color[1], n.color[2], n.color[3], 0.9 * a)
@@ -108,7 +109,7 @@ function Notification.draw()
             ty = ty + lf:getHeight() + 2
         end
         love.graphics.setFont(f)
-        love.graphics.setColor(0.92, 0.93, 0.97, a)
+        Theme.set(Theme.ink, a)
         love.graphics.printf(n.text, tx, ty, textW, "left")
 
         y = y + h + GAP

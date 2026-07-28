@@ -17,7 +17,7 @@
 -- interaction it was forged for.
 return {
     name = "Kingsfall",
-    description = "Winds up, then falls on one tile. Nothing breaks the wind-up -- not a stun, not ice, not silence.",
+    description = "Channeled: the wind-up cannot be broken.",
     flavor = "They hit him with everything they had, in the correct order, at the correct moment. Then the sword arrived.",
     sprite = "assets/items/kingsfall.png",
     type = "weapon",

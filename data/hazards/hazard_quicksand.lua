@@ -9,7 +9,7 @@
 -- bog itself down -- so it doubles as area denial, funnelling foes onto firmer ground.
 return {
     name = "Quicksand",
-    description = "Sucking ground: doubles the movement and ability costs of any unit standing in it.",
+    description = "Inflicts Mired on units in it.",
     tags = { "earth" },
     duration = 20,            -- ticks the churned ground persists: ~4 turns, the area-denial it is for
     disposition = "hostile",  -- the enemy AI steps around it

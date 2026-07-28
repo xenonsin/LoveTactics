@@ -19,7 +19,7 @@ return {
     name = "Halted",
     abbr = "Hlt",
     description = "Halted: cannot use any ability. Movement and reflexes are untouched.",
-    color = { 0.62, 0.58, 0.44 }, -- badge tint (dust and old brass -- an order, not a wound)
+    color = { 0.598, 0.564, 0.445 }, -- badge tint (dust and old brass -- an order, not a wound)
     duration = 5,  -- ~1 turn at Status.TICKS_PER_TURN: the one action it takes away
     debuff = true, -- removable by Cure
     disablesActions = true,

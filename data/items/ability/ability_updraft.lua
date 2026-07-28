@@ -22,7 +22,7 @@
 -- a mage cannot carry all three well.
 return {
     name = "Updraft",
-    description = "Lifts one body out of the fight: it cannot act, answer, move, or be targeted.",
+    description = "Inflicts Suspended on one body.",
     flavor = "A perfectly reversible working. The Arcanum notes that most objections concern the interval.",
     sprite = "assets/items/ability_updraft.png",
     type = "ability",

@@ -4,7 +4,7 @@
 -- allowOccupied) so you may center it on a clustered enemy.
 return {
     name = "Blizzard",
-    description = "Deals ice damage and inflicts Frozen on everyone in the area, friend and foe.",
+    description = "Inflicts Frozen in area.",
     flavor = "A storm does not check whose line it is falling on. Neither does the mage who called it.",
     sprite = "assets/items/ability_blizzard.png",
     type = "ability",

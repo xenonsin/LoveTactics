@@ -8,7 +8,7 @@
 -- the turn (there is nothing to raise), so hold it until the field is bloodied.
 return {
     name = "Raise Dead",
-    description = "Raises every corpse in the area as a zombie that fights for you, but obeys no orders.",
+    description = "For each corpse in area, summon an allied, uncontrollable zombie.",
     flavor = "Hold it until the field is bloodied. The Arcanum notes there is no lecture attached.",
     sprite = "assets/items/ability_raise_dead.png",
     type = "ability",

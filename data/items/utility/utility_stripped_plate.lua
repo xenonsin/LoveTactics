@@ -14,7 +14,7 @@
 -- appear on the far side of it has no use for the breach it just made.
 return {
     name = "Stripped Plate",
-    description = "Every foe you Sunder leaves armour behind -- you wear it, for the rest of the battle.",
+    description = "Every foe you Sunder leaves armour behind; you wear it this battle.",
     flavor = "Plate is expensive. Someone was always going to pick it up, and he was always going to be closest.",
     sprite = "assets/items/utility_stripped_plate.png",
     type = "utility",

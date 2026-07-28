@@ -19,7 +19,7 @@
 -- bleeding is what the rogue does on its OWN turn, and the slip is what it does on yours.
 return {
     name = "Slipknife",
-    description = "Deals damage and inflicts Bleed. When struck from any range, appear beside the attacker and cut.",
+    description = "Deals damage and inflicts Bleed. On hit taken: appear beside the attacker and cut.",
     flavor = "You do not block a knife like this one. You turn around.",
     sprite = "assets/items/slipknife.png",
     type = "weapon",

@@ -20,9 +20,11 @@ return {
         speed = 4,
         consumesItem = true,
         effect = function(fx)
-            local corpse = fx.corpseAt(fx.tx, fx.ty)
-            if corpse and corpse.side == fx.user.side then
-                fx.reanimate(corpse, (fx.amount or 50) / 100)
+            -- The incapacitated body on the tile (still inside its window); a corpse gone cold is past
+            -- reviving and fx.downedAt no longer returns it.
+            local body = fx.downedAt(fx.tx, fx.ty)
+            if body and body.side == fx.user.side then
+                fx.reanimate(body, (fx.amount or 50) / 100)
             end
         end,
     },

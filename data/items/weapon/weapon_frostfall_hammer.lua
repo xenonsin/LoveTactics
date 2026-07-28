@@ -16,7 +16,7 @@
 -- ice it had just made. See the header of data/status/status_freeze.lua.
 return {
     name = "Frostfall Hammer",
-    description = "Freezes rather than stuns -- and the ice makes its own next blow land far harder.",
+    description = "Inflicts Frozen instead of Stun.",
     flavor = "The head is always wet, and never in a way anyone likes to think about for long.",
     sprite = "assets/items/frostfall_hammer.png",
     type = "weapon",

@@ -17,7 +17,7 @@
 -- that "the rest of it" and "three turns" are usually the same sentence.
 return {
     name = "Borrowed Hands",
-    description = "Your magic attack rises to match the best in your party, for the rest of the battle.",
+    description = "Raises your Magic Damage to the highest in your party this battle.",
     flavor = "It is not that she cannot do it herself. It is that somebody nearby does it better.",
     sprite = "assets/items/consumable_borrowed_hands.png",
     type = "consumable",
@@ -34,7 +34,7 @@ return {
         range = 0,
         speed = 2,
         consumesItem = true,
-        description = "Raises your magic attack to the party's highest.",
+        description = "Raises your Magic Damage to the party's highest.",
         effect = function(fx)
             local best, mine = 0, 0
             for _, u in ipairs(fx.combat.units) do

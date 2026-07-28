@@ -8,7 +8,7 @@
 -- goes with the enemy's. A ground-target support cast, aimed at a cell in range.
 return {
     name = "Banish",
-    description = "Unmakes every summoned creature in the area. Real flesh is untouched.",
+    description = "Unmakes summoned creatures in area.",
     flavor = "A word of unmaking, not a killing. The Cathedral is very careful about that distinction.",
     sprite = "assets/items/ability_banish.png",
     type = "ability",

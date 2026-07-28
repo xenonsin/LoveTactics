@@ -18,7 +18,7 @@
 -- shelves.
 return {
     name = "Reliquary Mantle",
-    description = "Shrugs off the first debuff to touch you, then must recharge.",
+    description = "On a debuff taken: shrug it off, then recharge.",
     flavor = "There is a bone in the collar. The Cathedral will not say whose and does not consider the question devout.",
     sprite = "assets/items/armor_reliquary_mantle.png",
     type = "armor",

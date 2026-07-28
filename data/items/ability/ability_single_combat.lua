@@ -24,7 +24,7 @@
 -- own business, and the spell has an opinion about the challenge rather than about the sword.
 return {
     name = "Single Combat",
-    description = "Binds the caster and one foe in place; the survivor keeps some of the other's strength.",
+    description = "Inflicts Duelbound on the caster and a foe.",
     flavor = "Name, rank, and the ground. The rest of the field is asked, politely, to look elsewhere.",
     sprite = "assets/items/ability_single_combat.png",
     type = "ability",

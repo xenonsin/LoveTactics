@@ -15,7 +15,7 @@
 -- in the grid, rather than overriding it -- a hungry weapon charmed hungrier drinks at 83%.
 return {
     name = "Crimson Greataxe",
-    description = "Cleaves the arc in front, healing you for a share of everything it opens.",
+    description = "On damage dealt: heal.",
     flavor = "The masters do not say where the crimson comes from. Wrath feeds on blood, and the arena is paying.",
     sprite = "assets/items/crimson_greataxe.png",
     type = "weapon",

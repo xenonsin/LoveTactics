@@ -41,6 +41,7 @@ local Conversation = require("models.conversation")
 local TutorialPrompt = require("ui.tutorial_prompt")
 local CoachBubble = require("ui.coach_bubble")
 local Glyphs = require("ui.glyphs")
+local Theme = require("ui.theme")
 local Spoils = require("models.spoils")
 local BattleSummary = require("ui.panels.battle_summary")
 local CloseButton = require("ui.close_button")
@@ -50,9 +51,9 @@ local Settings = require("models.settings")
 
 local battle = {}
 
-local titleFont = love.graphics.newFont(22)
-local hudFont = love.graphics.newFont(16)
-local hintFont = love.graphics.newFont(13) -- control hint: smaller so it fits on one line above the board
+local titleFont = Theme.display(22)
+local hudFont = Theme.display(16)
+local hintFont = Theme.body(13) -- control hint: dense, so it keeps the plain body face and fits one line
 
 local PANEL_W = CombatPanel.WIDTH
 -- A left column, mirroring the right combat panel, that houses the buttons and the docked
@@ -86,7 +87,7 @@ local IMPACT_PAUSE = 0.5
 -- MENU_BUTTON is drawn and the whole column below it belongs to the docked tooltips -- which is what
 -- buys the terrain box its guaranteed room in drawTileTooltip. Open, the entries drop beneath it.
 -- Every entry also has a key binding of its own (Esc / pad B = forfeit, L / left-shoulder = log,
--- T / left-stick = threats, A = auto), so the menu is a mouse affordance and never the only way to
+-- T / left-stick = threats, V / pad A = auto), so the menu is a mouse affordance and never the only way to
 -- reach them.
 local MENU_BUTTON = { x = 16, y = 16, w = 36, h = 36 }
 -- Clickable "Forfeit" entry so a mouse-only player can bail out (counts as a loss). Wait/Focus/
@@ -97,7 +98,7 @@ local logButton = { x = 16, y = 104, w = 130, h = 36 }
 -- Toggles the danger overlay that paints EVERY enemy's reach-and-strike range purple across the
 -- whole board (also T / gamepad left-stick), so the player can survey all threats at once.
 local rangesButton = { x = 16, y = 148, w = 130, h = 36 }
--- Hands the WHOLE player side to the AI (also A): sets battle.autoAll, which arms auto-battle for
+-- Hands the WHOLE player side to the AI (also V / gamepad A): sets battle.autoAll, which arms auto-battle for
 -- every player-controlled unit on its turn -- the same think-pause the Tactics-tab switch grants a
 -- single unit. Any input still takes the current turn straight back (reclaimAutoTurn); the flag then
 -- re-arms the next unit, so "auto" holds across the side until the button is pressed off.
@@ -248,7 +249,7 @@ function battle.drawObjective(x, y, w)
     local remaining = objectiveRemaining(obj, battle.combat)
     local wArrived, wTotal = objectiveWaves(obj, battle.combat)
     local gw, gap, numGap = 11, 12, 5
-    local col = { 0.95, 0.85, 0.35 }
+    local col = Theme.accentAmber
     local clockLabel = remaining and tostring(remaining) or nil
     local waveLabel = wArrived and ("Wave " .. wArrived .. "/" .. wTotal) or nil
 
@@ -257,7 +258,7 @@ function battle.drawObjective(x, y, w)
     elseif waveLabel then tailW = gap + hudFont:getWidth(waveLabel) end
     local sx = x + (w - (textW + tailW)) / 2
 
-    love.graphics.setColor(0.85, 0.85, 0.9)
+    Theme.set(Theme.ink)
     love.graphics.print(text, sx, y)
     if clockLabel then
         local cx = sx + textW + gap
@@ -820,6 +821,28 @@ local function windupFloor(item)
     return lo
 end
 
+-- Could `unit` land `item`'s SIGHT-GATED enemy strike on an actual foe this turn -- from where it
+-- stands, or from any tile it could walk to and shoot from (the walk-and-strike band)? True unless
+-- there is no such foe. Only meaningful for a `requiresSight` enemy ability: a weapon that must SEE
+-- its mark (The Held Breath, whose draw grants Unseen the instant it commits) must not be armable
+-- when nothing is in its line, or it degrades into a free reposition/stealth crutch aimed at open
+-- ground. Reads the live `battle.reachable`, so once the unit has moved it only asks what it can hit
+-- from where it now stands. Uses Combat.attackReach -- the same LOS-gated, stand-tile-aware reach the
+-- range band and Combat.useItem agree on -- and checks whether any target cell holds a living enemy.
+local function canSightAFoe(unit, item)
+    local ab = item and item.activeAbility
+    if not (ab and ab.requiresSight and ab.target == "enemy") then return true end
+    local range = (ab.range or 1) + Combat.adjacencyRangeBonus(unit.char, item)
+    local reachForRange = battle.blinking and {} or battle.reachable
+    local reach = Combat.attackReach(battle.combat, unit, range, reachForRange,
+        true, Combat.abilityMinRange(ab))
+    for _, cell in pairs(reach) do
+        local occ = Combat.unitAt(battle.combat, cell.x, cell.y)
+        if occ and occ.alive and occ.side ~= unit.side then return true end
+    end
+    return false
+end
+
 local function armDefaultAction(current)
     -- A tutorial step whose whole lesson is "ready your weapon" has to start with it sheathed --
     -- otherwise the step is satisfied before the player touches anything, and the click it is asking
@@ -828,12 +851,86 @@ local function armDefaultAction(current)
     local action = battle.defaultAction
     if not (action and action.activeAbility) then return end
     if Combat.itemBlockReason(current, action) then return end
+    -- A sight-gated bow with nothing in its line doesn't auto-arm: the turn opens in move mode
+    -- instead, exactly as it should be "not activatable with no line of sight". The player can walk
+    -- into a shot and arm it then (canSightAFoe accounts for walk-and-strike stand tiles).
+    if not canSightAFoe(current, action) then return end
     battle.armedItem = action
     battle.windup = windupFloor(action) -- a chargeable signature (First Motion) opens at its floor, not +0
     battle.mode = "armed"
     battle.armedSupport = battle.defaultSupport
     battle.armedTile = action.activeAbility.target == "tile"
     computeRange(current, action)
+end
+
+-- ---------------------------------------------------------------------------
+-- Keyboard/gamepad target assist. A mouse aims itself; a cursor player picks a target by snapping the
+-- aim onto the nearest valid one when an item (or the turn's default weapon) is selected, then cycling
+-- the ring with Tab / the shoulder buttons and confirming with Enter / A. All three read the reach
+-- sets computeRange/computeThreat already built for the current aiming context -- they never recompute
+-- reach, so the assist can never light a target the confirm path would then refuse.
+-- ---------------------------------------------------------------------------
+
+-- The valid confirm targets for the current aiming context, nearest-first from the actor: the living
+-- bodies an armed unit-target strike/support (or, in move mode, the default action) could legally land
+-- on, each carrying its aim cell. Enemy abilities list foes, support abilities list allies; a tile- or
+-- self-target ability has no unit to cycle and returns empty, as does an enemy turn or a spent context.
+local function targetCells()
+    local current = battle.current
+    if not current or not Combat.isPlayerControlled(current) or battle.over then return {} end
+    local reach, support, ab
+    if battle.mode == "armed" and battle.armedItem then
+        ab = battle.armedItem.activeAbility
+        reach, support = battle.rangeReach, battle.armedSupport
+    elseif battle.mode == "move" and battle.defaultAction then
+        ab = battle.defaultAction.activeAbility
+        reach, support = battle.attackReach, battle.defaultSupport
+    end
+    if not (ab and reach) then return {} end
+    if ab.target ~= "enemy" and ab.target ~= "ally" then return {} end
+    local list = {}
+    for _, entry in pairs(reach) do
+        local occ = Combat.unitAt(battle.combat, entry.x, entry.y)
+        if occ and occ.alive
+            and (support and occ.side == current.side or not support and occ.side ~= current.side) then
+            list[#list + 1] = { x = entry.x, y = entry.y,
+                d = math.abs(entry.x - current.x) + math.abs(entry.y - current.y) }
+        end
+    end
+    -- Nearest-first, then a stable board order (top-to-bottom, left-to-right) so the cycle ring is the
+    -- same every time and "the nearest valid target" is unambiguous when two are equidistant.
+    table.sort(list, function(a, b)
+        if a.d ~= b.d then return a.d < b.d end
+        if a.y ~= b.y then return a.y < b.y end
+        return a.x < b.x
+    end)
+    return list
+end
+
+-- Snap the cursor onto the nearest valid target for the current aiming context. Called when a cursor
+-- player selects an item or the turn's default weapon, so the aim lands on something at once. A no-op
+-- under mouse (which aims itself), and when the context has no unit target to snap to.
+local function snapToNearestTarget()
+    if InputMode.isMouse() then return end
+    local list = targetCells()
+    if #list == 0 then return end
+    battle.map.cursor.x, battle.map.cursor.y = list[1].x, list[1].y
+end
+
+-- Step the aim to the next (dir +1) or previous (dir -1) valid target, wrapping the nearest-first ring.
+-- If the cursor is already on a target, advance from there; otherwise land on the nearest (forward) or
+-- farthest (back). Returns true when it moved the aim, so a caller can treat the press as consumed.
+local function cycleTarget(dir)
+    local list = targetCells()
+    if #list == 0 then return false end
+    local cx, cy = battle.map.cursor.x, battle.map.cursor.y
+    local idx
+    for i, c in ipairs(list) do
+        if c.x == cx and c.y == cy then idx = i break end
+    end
+    local nextIdx = idx and ((idx - 1 + dir) % #list + 1) or (dir > 0 and 1 or #list)
+    battle.map.cursor.x, battle.map.cursor.y = list[nextIdx].x, list[nextIdx].y
+    return true
 end
 
 -- Start the current unit's turn: MOVE mode + reachable set for a unit the player commands, or an
@@ -859,6 +956,7 @@ local function beginTurn()
     battle.armedItem = nil
     battle.windup = 0 -- a chargeable wind-up never carries its depth across turns
     battle.hoverItem = nil
+    battle.keySlot = nil -- the keyboard-selected slot (its item's tooltip); a new actor's grid is a new set of slots
     battle.notice = nil -- a refusal belonged to the turn it was refused on
     battle.rangeCells = {}
     battle.rangeReach = {}
@@ -906,6 +1004,9 @@ local function beginTurn()
             battle.map.cursor.x, battle.map.cursor.y = hoverX, hoverY
         else
             battle.map.cursor.x, battle.map.cursor.y = current.x, current.y
+            -- Keyboard/pad: the turn opened with the default weapon armed (armDefaultAction), so land
+            -- the aim on the nearest foe now -- the player confirms with Enter/A, or cycles the ring.
+            snapToNearestTarget()
         end
     else
         battle.aiTimer = AI_DELAY
@@ -1547,6 +1648,14 @@ local function armItem(item)
     -- The grayed slot and its tooltip carry the same reason, but only for a player who goes looking:
     -- an outright click on the slot has to answer for itself.
     if refuseIfBlocked(current, item) then return end
+    -- A sight-gated strike (a bow, The Held Breath) can't be armed with nothing in its line -- there
+    -- is no shot to take, and arming it anyway would just be a way to walk around under its banner.
+    -- Accounts for tiles the unit could move to and fire from, so a foe you can reach-and-shoot still
+    -- arms; only a truly line-less turn is refused. Said out loud, like the block refusal above.
+    if not canSightAFoe(current, item) then
+        notify(string.format("%s: no line of sight", item.name or "That item"))
+        return
+    end
     battle.armedItem = item
     battle.windup = windupFloor(item) -- a chargeable signature opens at its floor, not +0
     battle.mode = "armed"
@@ -1558,11 +1667,16 @@ local function armItem(item)
     -- has to be computed under the NEW step, not the arm step that is now finished.
     observeAction("arm", current, current.x, current.y, nil, item.id)
     computeRange(current, item)
+    -- Keyboard/pad: arming an item aims it at the nearest valid target at once (mouse aims itself).
+    snapToNearestTarget()
 end
 
 local function armSlot(n)
     local current = battle.current
     if not current or not Combat.isPlayerControlled(current) then return end
+    -- Remember the slot so keyboard play can float its tooltip (battle.draw): pressing the key is how a
+    -- pad/keyboard player reads an item, so it must answer even for a passive slot armItem can't arm.
+    battle.keySlot = current.char.inventory[n] and n or nil
     armItem(current.char.inventory[n])
 end
 
@@ -1580,8 +1694,16 @@ local function cycleAbilityItem()
         if it == battle.armedItem then idx = i break end
     end
     for i = idx + 1, #items do
-        if not Combat.itemBlockReason(current, items[i]) then armItem(items[i]) return end
+        if not Combat.itemBlockReason(current, items[i]) then
+            armItem(items[i])
+            -- Float the tooltip for the slot the pad just landed on, same as a numpad press (armSlot).
+            for slot, it in ipairs(current.char.inventory) do
+                if it == items[i] then battle.keySlot = slot break end
+            end
+            return
+        end
     end
+    battle.keySlot = nil -- cycled past the end, back to plain move: nothing selected, no tooltip
     cancelArm()
 end
 
@@ -2728,12 +2850,19 @@ local function refreshView()
         -- A summoned body still held off the board (its cast's approach walk is replaying) carries no
         -- ground either -- skip it whole, so its fields arrive with it rather than ahead of it.
         if u.alive and not (battle.heldObjects and battle.heldObjects[u]) then
+            -- The body's carried ground has to travel WITH it. The model finishes a whole walk at once
+            -- (startWalk), so u.x/u.y is already the destination while the sprite is still sliding in from
+            -- the origin -- pin the field to the bare cell and a bleeding unit's field detaches and waits
+            -- at the destination through the entire walk. The same slide offset the sprite rides (the one
+            -- the damage floaters use too, so it tracks a shove as well as a walk) keeps the field under
+            -- the feet. Per-unit, not per-status.
+            local offX, offY = battle.fx:slideOffset(u, battle.map.size)
             for _, st in ipairs(u.statuses or {}) do
                 -- Skip a field a cast just applied but hasn't been seen to land (held through its
                 -- approach walk, like the hazards above) -- it blooms in with the blow, not before it.
                 if st.def and st.def.fx and not (battle.heldObjects and battle.heldObjects[st]) then
                     unitFields = unitFields or {}
-                    unitFields[#unitFields + 1] = { x = u.x, y = u.y, unit = u, status = st }
+                    unitFields[#unitFields + 1] = { x = u.x, y = u.y, unit = u, status = st, offX = offX, offY = offY }
                 end
             end
         end
@@ -3475,8 +3604,7 @@ function battle.drawPeek()
 end
 
 function battle.draw()
-    love.graphics.setColor(0.04, 0.05, 0.07)
-    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+    Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
 
     battle.updatePeekFocus()
     battle.drawLeftColumn()
@@ -3512,7 +3640,16 @@ function battle.draw()
     -- When the cursor is over the open combat log, that panel owns the hover: it draws its own
     -- item/status/breakdown tooltip during its draw pass, so the board's tile tooltip must not also
     -- fire here and stack on top of it.
-    if mx and not battle.log:contains(mx, my) then
+    if not InputMode.isMouse() and battle.keySlot then
+        -- Keyboard / pad play: the mouse isn't driving, so nothing is hovered -- float the selected slot's
+        -- tooltip anchored to the slot itself, so a numpad/pad press reads the item the way a hover would.
+        local cur = battle.current
+        local item = cur and Combat.isPlayerControlled(cur) and cur.char.inventory[battle.keySlot]
+        if item then
+            local sx, sy, sw, sh = battle.panel:slotRect(battle.keySlot)
+            ItemTooltip.draw(item, sx + sw / 2, sy + sh / 2, Scale.WIDTH, cur)
+        end
+    elseif mx and InputMode.isMouse() and not battle.log:contains(mx, my) then
         -- An assayed foe's kit card owns the hover while the cursor is over it: a slot shows that item's
         -- full tooltip (priced against nobody -- it isn't the player's to cast), and the rest of the card
         -- swallows the tile tooltip so the board underneath it doesn't bleed through.
@@ -3559,14 +3696,14 @@ function battle.drawLogReview()
     if not r then return end
     love.graphics.setColor(0, 0, 0, 0.55)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
-    love.graphics.setColor(0.10, 0.11, 0.15)
-    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 10, 10)
-    love.graphics.setColor(0.40, 0.45, 0.58, 0.9)
-    love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 10, 10)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.setLineWidth(1.5)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
     love.graphics.setLineWidth(1)
     love.graphics.setFont(titleFont)
-    love.graphics.setColor(0.90, 0.92, 0.98)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf("Combat Log", r.x, r.y + 12, r.w, "center")
     r.log:draw()
     r.close:draw()
@@ -3706,9 +3843,9 @@ end
 -- Backdrop for the left column (mirrors the right combat panel). The buttons and the docked
 -- tile/action tooltips render on top of it; the board is centred in the gap to its right.
 function battle.drawLeftColumn()
-    love.graphics.setColor(0.10, 0.11, 0.15, 0.86)
+    Theme.set(Theme.panel)
     love.graphics.rectangle("fill", 0, 0, LEFT_W, Scale.HEIGHT)
-    love.graphics.setColor(0.30, 0.33, 0.42)
+    Theme.set(Theme.frame)
     love.graphics.setLineWidth(1)
     love.graphics.line(LEFT_W, 0, LEFT_W, Scale.HEIGHT)
     love.graphics.setColor(1, 1, 1)
@@ -3723,11 +3860,11 @@ function battle.drawHud()
     -- The hamburger itself: three bars, brighter while the menu is open so its state reads at a
     -- glance (the same on/off treatment the toggles below use).
     local menuOpen = battle.menuOpen
-    if menuOpen then love.graphics.setColor(0.22, 0.24, 0.32) else love.graphics.setColor(0.15, 0.16, 0.20) end
+    if menuOpen then Theme.set(Theme.panel) else Theme.set(Theme.panel2) end
     love.graphics.rectangle("fill", MENU_BUTTON.x, MENU_BUTTON.y, MENU_BUTTON.w, MENU_BUTTON.h, 6, 6)
-    if menuOpen then love.graphics.setColor(0.62, 0.68, 0.85) else love.graphics.setColor(0.38, 0.42, 0.52) end
+    Theme.set(Theme.frame, menuOpen and 1 or 0.7)
     love.graphics.rectangle("line", MENU_BUTTON.x, MENU_BUTTON.y, MENU_BUTTON.w, MENU_BUTTON.h, 6, 6)
-    if menuOpen then love.graphics.setColor(0.88, 0.92, 1.0) else love.graphics.setColor(0.66, 0.70, 0.80) end
+    if menuOpen then Theme.set(Theme.ink) else Theme.set(Theme.muted) end
     love.graphics.setLineWidth(2)
     for i = 0, 2 do
         local by = MENU_BUTTON.y + 11 + i * 7
@@ -3743,80 +3880,42 @@ function battle.drawHud()
         return
     end
 
-    -- Forfeit button.
-    love.graphics.setColor(0.28, 0.18, 0.20)
-    love.graphics.rectangle("fill", forfeitButton.x, forfeitButton.y, forfeitButton.w, forfeitButton.h, 6, 6)
-    love.graphics.setColor(0.7, 0.4, 0.4)
-    love.graphics.rectangle("line", forfeitButton.x, forfeitButton.y, forfeitButton.w, forfeitButton.h, 6, 6)
-    love.graphics.setColor(0.95, 0.9, 0.9)
-    love.graphics.setFont(hudFont)
-    love.graphics.printf("Forfeit", forfeitButton.x, forfeitButton.y + forfeitButton.h / 2 - 8,
-        forfeitButton.w, "center")
-
-    -- Combat-log toggle: brighter when the panel is open so its state reads at a glance.
-    local logOn = battle.log and battle.log.visible
-    if logOn then love.graphics.setColor(0.20, 0.26, 0.22) else love.graphics.setColor(0.15, 0.17, 0.16) end
-    love.graphics.rectangle("fill", logButton.x, logButton.y, logButton.w, logButton.h, 6, 6)
-    if logOn then love.graphics.setColor(0.55, 0.80, 0.55) else love.graphics.setColor(0.35, 0.40, 0.38) end
-    love.graphics.rectangle("line", logButton.x, logButton.y, logButton.w, logButton.h, 6, 6)
-    if logOn then love.graphics.setColor(0.85, 0.98, 0.85) else love.graphics.setColor(0.6, 0.66, 0.62) end
-    love.graphics.setFont(hudFont)
-    love.graphics.printf(logOn and "Log ✓" or "Log", logButton.x, logButton.y + logButton.h / 2 - 8,
-        logButton.w, "center")
-
-    -- All-enemy-ranges toggle: brighter (purple) when the danger overlay is on, matching the
-    -- purple the threatened tiles are washed in.
-    local rangesOn = battle.showEnemyRanges
-    if rangesOn then love.graphics.setColor(0.26, 0.18, 0.30) else love.graphics.setColor(0.16, 0.15, 0.18) end
-    love.graphics.rectangle("fill", rangesButton.x, rangesButton.y, rangesButton.w, rangesButton.h, 6, 6)
-    if rangesOn then love.graphics.setColor(0.72, 0.45, 0.92) else love.graphics.setColor(0.40, 0.36, 0.44) end
-    love.graphics.rectangle("line", rangesButton.x, rangesButton.y, rangesButton.w, rangesButton.h, 6, 6)
-    if rangesOn then love.graphics.setColor(0.90, 0.80, 0.98) else love.graphics.setColor(0.62, 0.60, 0.66) end
-    love.graphics.setFont(hudFont)
-    love.graphics.printf(rangesOn and "Threats ✓" or "Threats",
-        rangesButton.x, rangesButton.y + rangesButton.h / 2 - 8, rangesButton.w, "center")
-
-    -- Whole-side auto-battle toggle: brighter (teal) when the AI is driving the player's units.
-    local autoOn = battle.autoAll
-    if autoOn then love.graphics.setColor(0.16, 0.26, 0.28) else love.graphics.setColor(0.15, 0.17, 0.18) end
-    love.graphics.rectangle("fill", autoButton.x, autoButton.y, autoButton.w, autoButton.h, 6, 6)
-    if autoOn then love.graphics.setColor(0.42, 0.80, 0.82) else love.graphics.setColor(0.36, 0.42, 0.44) end
-    love.graphics.rectangle("line", autoButton.x, autoButton.y, autoButton.w, autoButton.h, 6, 6)
-    if autoOn then love.graphics.setColor(0.80, 0.96, 0.98) else love.graphics.setColor(0.60, 0.66, 0.68) end
-    love.graphics.setFont(hudFont)
-    love.graphics.printf(autoOn and "Auto ✓" or "Auto",
-        autoButton.x, autoButton.y + autoButton.h / 2 - 8, autoButton.w, "center")
-
-    -- Playback-speed cycler, paired to the right of Auto and only while Auto is on. Its label is the
-    -- current multiplier (1x/2x/3x); it brightens with the same teal as the Auto button so the two
-    -- read as one control.
-    if autoOn then
-        love.graphics.setColor(0.16, 0.26, 0.28)
-        love.graphics.rectangle("fill", speedButton.x, speedButton.y, speedButton.w, speedButton.h, 6, 6)
-        love.graphics.setColor(0.42, 0.80, 0.82)
-        love.graphics.rectangle("line", speedButton.x, speedButton.y, speedButton.w, speedButton.h, 6, 6)
-        love.graphics.setColor(0.80, 0.96, 0.98)
+    -- Every left-column button shares one themed look: a slate plate with a bone-gold frame + ink
+    -- label when off, and the control's OWN accent on the border + label when active, so the toggle
+    -- state still reads by colour.
+    local function toggleBtn(btn, label, on, accent)
+        Theme.set(on and Theme.panel or Theme.panel2)
+        love.graphics.rectangle("fill", btn.x, btn.y, btn.w, btn.h, Theme.R, Theme.R)
+        love.graphics.setLineWidth(on and 1.5 or 1)
+        if on then love.graphics.setColor(accent[1], accent[2], accent[3]) else Theme.set(Theme.frame) end
+        love.graphics.rectangle("line", btn.x, btn.y, btn.w, btn.h, Theme.R, Theme.R)
+        love.graphics.setLineWidth(1)
+        if on then love.graphics.setColor(accent[1], accent[2], accent[3]) else Theme.set(Theme.ink) end
         love.graphics.setFont(hudFont)
-        love.graphics.printf(tostring(battle.autoSpeed or 1) .. "x",
-            speedButton.x, speedButton.y + speedButton.h / 2 - 8, speedButton.w, "center")
+        love.graphics.printf(label, btn.x, btn.y + btn.h / 2 - 8, btn.w, "center")
+    end
+
+    -- Forfeit is a danger action -- its frame + label stay a muted red even when idle.
+    toggleBtn(forfeitButton, "Forfeit", true, { 0.78, 0.45, 0.45 })
+
+    local logOn = battle.log and battle.log.visible
+    toggleBtn(logButton, logOn and "Log ✓" or "Log", logOn, { 0.55, 0.80, 0.55 })
+
+    local rangesOn = battle.showEnemyRanges
+    toggleBtn(rangesButton, rangesOn and "Threats ✓" or "Threats", rangesOn, { 0.72, 0.45, 0.92 })
+
+    local autoOn = battle.autoAll
+    toggleBtn(autoButton, autoOn and "Auto ✓" or "Auto", autoOn, { 0.42, 0.80, 0.82 })
+
+    -- Playback-speed cycler, paired to the right of Auto and only while Auto is on.
+    if autoOn then
+        toggleBtn(speedButton, tostring(battle.autoSpeed or 1) .. "x", true, { 0.42, 0.80, 0.82 })
     end
 
     -- Debug-only instant-decision buttons (green Win / red Lose), sat where Main Menu used to be.
     if Debug.enabled then
-        love.graphics.setFont(hudFont)
-        love.graphics.setColor(0.16, 0.24, 0.17)
-        love.graphics.rectangle("fill", winButton.x, winButton.y, winButton.w, winButton.h, 6, 6)
-        love.graphics.setColor(0.45, 0.70, 0.48)
-        love.graphics.rectangle("line", winButton.x, winButton.y, winButton.w, winButton.h, 6, 6)
-        love.graphics.setColor(0.82, 0.92, 0.82)
-        love.graphics.printf("Win", winButton.x, winButton.y + winButton.h / 2 - 8, winButton.w, "center")
-
-        love.graphics.setColor(0.26, 0.16, 0.17)
-        love.graphics.rectangle("fill", loseButton.x, loseButton.y, loseButton.w, loseButton.h, 6, 6)
-        love.graphics.setColor(0.70, 0.45, 0.45)
-        love.graphics.rectangle("line", loseButton.x, loseButton.y, loseButton.w, loseButton.h, 6, 6)
-        love.graphics.setColor(0.92, 0.82, 0.82)
-        love.graphics.printf("Lose", loseButton.x, loseButton.y + loseButton.h / 2 - 8, loseButton.w, "center")
+        toggleBtn(winButton, "Win", true, { 0.45, 0.75, 0.50 })
+        toggleBtn(loseButton, "Lose", true, { 0.78, 0.45, 0.45 })
     end
 
     battle.drawHudText(boardX, boardW)
@@ -3828,15 +3927,23 @@ end
 function battle.drawHudText(boardX, boardW)
     -- Encounter name + objective, centred over the battlefield region.
     love.graphics.setFont(titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
-    love.graphics.printf(battle.encounter.name or "Battle", boardX, 20, boardW, "center")
+    local name = battle.encounter.name or "Battle"
+    local cx, cyTitle = boardX + boardW / 2, 20 + titleFont:getHeight() / 2
+    local halfTitle = titleFont:getWidth(name) / 2
+    Theme.crest(cx - halfTitle - 20, cyTitle, 9)
+    Theme.crest(cx + halfTitle + 20, cyTitle, 9)
+    Theme.set(Theme.accentAmber)
+    love.graphics.printf(name, boardX, 20, boardW, "center")
 
     battle.drawObjective(boardX, 52, boardW)
 
-    -- Contextual control hint, worded for the device last used: mouse/keyboard phrasing ("Click...")
-    -- by default, pad-button phrasing (D-pad cursor + face buttons: A confirm, Y switch, X wait,
-    -- B cancel) in gamepad mode, so the gamepad player never reads a "Click" they can't do.
+    -- Contextual control hint, worded for the device last used, so it never names an input the player
+    -- can't reach: mouse phrasing ("Click..."), keyboard phrasing (Enter confirm, Tab aim, number keys
+    -- switch, Esc cancel) and pad-button phrasing (D-pad cursor + face buttons: A confirm, Y switch,
+    -- X wait, B cancel; the bumpers step the aim). The armed line surfaces the keyboard/pad target
+    -- assist -- Tab / LB·RB cycle the valid targets the selection just auto-aimed at.
     local pad = InputMode.isGamepad()
+    local kbd = InputMode.isKeyboard()
     local hint
     local lesson = battle.tutorial and Tutorial.step(battle.tutorial)
     if lesson and battle.current and Combat.isPlayerControlled(battle.current) and not battle.over then
@@ -3847,24 +3954,35 @@ function battle.drawHudText(boardX, boardW)
         hint = ""
     elseif battle.current and Combat.isPlayerControlled(battle.current) and not battle.over then
         if battle.mode == "armed" then
-            local verb
-            -- A tile cast places something -- a trap, a summoned creature -- so name it rather than
-            -- calling everything a trap.
-            if battle.armedTile then
-                local name = (battle.armedItem and battle.armedItem.name) or "it"
-                verb = pad and ("Aim a tile, A to place " .. name) or ("Click a tile to place " .. name)
-            elseif battle.armedSupport then
-                verb = pad and "A on an ally to support" or "Click an ally to support"
-            else
-                verb = pad and "A on a target to strike" or "Click a target to strike"
+            local name = (battle.armedItem and battle.armedItem.name) or "it"
+            -- More than one valid target in reach: the selection auto-aimed at the nearest, and cycling
+            -- the ring now buys something. With one (or none) the cycle hint is left off.
+            local canAim = #targetCells() > 1
+            if pad then
+                local verb = battle.armedTile and ("Aim a tile, A to place " .. name)
+                    or battle.armedSupport and "A on an ally to support"
+                    or "A on a target to strike"
+                hint = verb .. (canAim and "  ·  LB/RB to aim" or "")
+                    .. "  ·  Y to switch  ·  B to cancel"
+            elseif kbd then
+                local verb = battle.armedTile and ("Move to a tile, Enter to place " .. name)
+                    or battle.armedSupport and "Enter on an ally to support"
+                    or "Enter on a target to strike"
+                hint = verb .. (canAim and "  ·  Tab to aim next" or "")
+                    .. "  ·  number keys to switch  ·  Esc to cancel"
+            else -- mouse
+                local verb = battle.armedTile and ("Click a tile to place " .. name)
+                    or battle.armedSupport and "Click an ally to support"
+                    or "Click a target to strike"
+                hint = verb .. "  ·  click the item / Esc to cancel"
             end
-            hint = pad and (verb .. "  ·  Y to switch  ·  B to cancel")
-                or (verb .. "  ·  click the item / Esc to cancel")
         elseif Combat.hasMoved(battle.combat) then
             hint = pad and "A on a foe in range to attack  ·  Y to switch item  ·  X to hold this turn"
+                or kbd and "Enter on a foe in range to attack  ·  number keys to switch  ·  Space to hold this turn"
                 or "Click a foe in range to attack  ·  click an item  ·  Wait to hold this turn"
         else
             hint = pad and "A on a blue tile to move  ·  a foe in red range to attack  ·  Y to arm  ·  X to delay"
+                or kbd and "Enter on a blue tile to move  ·  a foe in red range to attack  ·  number keys to arm  ·  Space to delay"
                 or "Click a blue tile to move  ·  a foe in red range to attack  ·  an item  ·  Wait to delay"
         end
     else
@@ -3874,7 +3992,7 @@ function battle.drawHudText(boardX, boardW)
     -- the toggle-able combat log. Small font so the longest hint stays on one line, clear of the
     -- board top.
     love.graphics.setFont(hintFont)
-    love.graphics.setColor(0.55, 0.6, 0.7)
+    Theme.set(Theme.muted)
     love.graphics.printf(hint, boardX, 82, boardW, "center")
     love.graphics.setColor(1, 1, 1)
 end
@@ -3893,7 +4011,7 @@ local function reclaimAutoTurn()
     return true
 end
 
--- Flip the whole-side auto-battle flag (the menu's Auto entry / the A key). Turning it ON arms the
+-- Flip the whole-side auto-battle flag (the menu's Auto entry / the V key / gamepad A). Turning it ON arms the
 -- unit that is up right now, if that unit is the player's and its turn is still open, so the button
 -- feels immediate rather than waiting for the next turn boundary. Turning it OFF reclaims any pending
 -- auto turn, handing the current unit straight back.
@@ -3950,7 +4068,9 @@ function battle.keypressed(key)
         battle.showEnemyRanges = not battle.showEnemyRanges
         return
     end
-    if key == "a" then -- toggle whole-side auto-battle (hand the player's units to the AI)
+    if key == "v" then -- toggle whole-side auto-battle (hand the player's units to the AI)
+        -- NOT "a": that belongs to WASD cursor movement (ui/battle_map -- the "A" is left), so the
+        -- keyboard auto toggle sits on V. The on-screen Auto button and gamepad A are unchanged.
         toggleAutoAll()
         return
     end
@@ -3966,7 +4086,11 @@ function battle.keypressed(key)
     if battle.over then return end
     if key == "return" or key == "kpenter" then
         confirm()
-    elseif key == "tab" or key == "kp0" or key == "0" or key == "space" then
+    elseif key == "tab" then
+        -- Cycle the aim through the valid targets (Shift+Tab steps back). A no-op when there is nothing
+        -- to aim at -- Wait still lives on Space / 0 / numpad-0, so the turn is never stranded.
+        cycleTarget(love.keyboard.isDown("lshift", "rshift") and -1 or 1)
+    elseif key == "kp0" or key == "0" or key == "space" then
         waitTurn()
     elseif key == "escape" then
         if battle.mode == "armed" then cancelArm()
@@ -3998,14 +4122,21 @@ function battle.gamepadpressed(joystick, button)
     if button == "rightstick" and battle.autoAll then cycleAutoSpeed(); return end
     reclaimAutoTurn()
     if button == "leftshoulder" then
-        -- While aiming a chargeable signature the bumpers tune its wind-up depth; otherwise the left
-        -- bumper toggles the combat log as usual (allowed even when the battle is over).
-        if battle.mode == "armed" and adjustWindup(-1) then return end
+        -- While aiming: the bumpers tune a chargeable signature's wind-up depth, else step the aim
+        -- through the valid targets (LB back, RB forward). Disarmed, the left bumper toggles the combat
+        -- log as usual (allowed even when the battle is over).
+        if battle.mode == "armed" then
+            if adjustWindup(-1) then return end
+            if cycleTarget(-1) then return end
+        end
         battle.log:toggle()
         return
     end
     if button == "rightshoulder" then
-        if battle.mode == "armed" and adjustWindup(1) then return end
+        if battle.mode == "armed" then
+            if adjustWindup(1) then return end
+            if cycleTarget(1) then return end
+        end
         battle.panel:cyclePage() -- page the turn-order strip, wrapping back to the actor
         return
     end

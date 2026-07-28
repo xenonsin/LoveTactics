@@ -4,7 +4,7 @@
 -- a ground-target area cast.
 return {
     name = "Thunder Storm",
-    description = "Deals lightning damage and inflicts Stun on everyone in the area, friend and foe.",
+    description = "Inflicts Stun in area.",
     flavor = "Rain first. The Arcanum will not remind you, and will notice that you forgot.",
     sprite = "assets/items/ability_thunder_storm.png",
     type = "ability",

@@ -16,7 +16,7 @@
 -- and that is the poacher's real skill, and the reason the discipline reads as patience.
 return {
     name = "The Long Wait",
-    description = "Your attacks against Rooted or Marked foes cannot be countered.",
+    description = "Attacks against a Rooted or Marked foe cannot be countered.",
     flavor = "It has been in the wire since dawn. He has been in the hedge rather longer.",
     sprite = "assets/items/utility_the_long_wait.png",
     type = "utility",

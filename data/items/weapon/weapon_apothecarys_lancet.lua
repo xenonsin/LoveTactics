@@ -13,7 +13,7 @@
 -- data/items/weapon/weapon_envenomed_kris.lua is where the two ideas are finally bought together.
 return {
     name = "Apothecary's Lancet",
-    description = "Deals light damage and inflicts Poison, which burns on however the victim moves.",
+    description = "Deals light damage and inflicts Poison.",
     flavor = "The Alchemist calls it a delivery mechanism. It is, in fairness, a very small knife.",
     sprite = "assets/items/apothecarys_lancet.png",
     type = "weapon",

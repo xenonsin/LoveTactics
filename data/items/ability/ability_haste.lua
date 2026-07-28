@@ -8,7 +8,7 @@
 -- Combat.abilityReserve.
 return {
     name = "Haste",
-    description = "Rushes an ally up the turn order and halves its ability and movement costs for a while.",
+    description = "Grants Haste.",
     flavor = "The Arcanum's kindest spell, and the one it least enjoys being asked for.",
     sprite = "assets/items/ability_haste.png",
     type = "ability",

@@ -9,7 +9,7 @@ return {
     name = "Roaring",
     abbr = "Ror",
     description = "Drawing breath to call the horde. Break its concentration.",
-    color = { 0.85, 0.35, 0.15 }, -- badge tint (ember orange)
+    color = { 0.742, 0.358, 0.204 }, -- badge tint (ember orange)
     duration = 999,
     hideDuration = true,
     debuff = false,

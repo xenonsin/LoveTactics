@@ -5,7 +5,7 @@
 -- is genuinely "this is the fourth time I have come for you" rather than a status anyone can Cure off.
 return {
     name = "En Garde",
-    description = "Strikes a foe; each consecutive strike on the SAME foe hits harder. Switch targets and it resets.",
+    description = "Strikes a foe. Increase damage for each consecutive strike on the same foe; switching targets resets it.",
     flavor = "The first exchange teaches. The fourth one kills. He is only ever interested in the fourth.",
     sprite = "assets/items/ability_en_garde.png",
     type = "ability",

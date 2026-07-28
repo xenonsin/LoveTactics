@@ -24,7 +24,7 @@ return {
     name = "Sundered",
     abbr = "Sund",
     description = "Sundered: every trait, guard and reflex it carries is silent.",
-    color = { 0.42, 0.38, 0.44 }, -- badge tint (dead grey-violet: a thing gone quiet)
+    color = { 0.416, 0.382, 0.434 }, -- badge tint (dead grey-violet: a thing gone quiet)
     duration = 12,                -- ~2.5 turns: a window, never a removal
     debuff = true,
     resistible = "magical",

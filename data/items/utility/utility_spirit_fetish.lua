@@ -5,7 +5,7 @@
 -- Coveted Blood (docs/classes.md) -- a zone that is wherever the bearer is.
 return {
     name = "Spirit Fetish",
-    description = "Lays a heartening zone around you that travels with you: allies (and your spirits) beside you are Inspired.",
+    description = "Grants Inspiration to adjacent allies.",
     flavor = "The wind does more when it remembers who called it.",
     sprite = "assets/items/utility_spirit_fetish.png",
     type = "utility",

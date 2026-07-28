@@ -24,7 +24,7 @@
 -- codebase (docs/weapons.md, "reach is the gate").
 return {
     name = "Darkness",
-    description = "Unnatural dark: nothing can see a line across it. Walking through is untouched.",
+    description = "Blocks line of sight across it. Units may still move through.",
     tags = { "dark" },
     -- The one field on the board that SUBTRACTS light. "dark" already resolves to smoke; the near-black
     -- violet and the raised density are what make it read as a hole in the board rather than as another

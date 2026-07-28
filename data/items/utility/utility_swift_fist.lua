@@ -4,7 +4,7 @@
 -- crafted weapon. Stack it with Iron/Drunken Fist and each of the two hits carries the added Power.
 return {
     name = "Swift Fist",
-    description = "Your bare-handed strike lands twice. Does nothing for a weapon.",
+    description = "Bare-handed strikes land twice. Does nothing for a weapon.",
     flavor = "Two blows in the time of one, which the monks insist is only practice.",
     sprite = "assets/items/swift_fist.png",
     type = "utility",

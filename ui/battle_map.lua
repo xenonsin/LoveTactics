@@ -282,6 +282,9 @@ end
 -- body on a marked tile turns that arrival back (states/battle.lua fireWave), so this is an invitation
 -- to act, not just a warning.
 local MUSTER = { 0.88, 0.24, 0.18 } -- a saturated muster red, apart from the orange of a hostile field
+-- The downed clock's hourglass: a warm amber that reads as a call to ACT (get to the body), distinct
+-- from the muster red (a threat arriving) and from the status_downed badge's cold grey (the body itself).
+local DOWNED_CLOCK = { 0.96, 0.78, 0.34 }
 
 function BattleMap:drawReinforcements()
     local waves = self.overlays.reinforcements
@@ -373,6 +376,34 @@ function BattleMap:drawMusterCount(wx, wy, tw, th, edge, ticks, font)
     love.graphics.setColor(0.06, 0.05, 0.07, 0.72)
     love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
     Glyphs.hourglass(bx + padX, by + (bh - gh) / 2, gw, gh, MUSTER[1], MUSTER[2], MUSTER[3], 0.95)
+    love.graphics.setFont(font)
+    love.graphics.setColor(0.97, 0.95, 0.91, 1)
+    love.graphics.print(ticks, bx + padX + gw + 3, by + (bh - font:getHeight()) / 2)
+end
+
+-- The downed clock: an hourglass + ticks-until-cold, drawn where the body's HP BAR would sit -- it
+-- literally replaces the health read on a fallen but still-revivable (incapacitated) unit. A fallen body
+-- draws no HP bar and no status badges of its own (both run only for the living), so this is the whole
+-- visible read of the window the party has to reach the body -- the same number status_downed's
+-- `remaining` carries, in the whole ticks the badge would show. Drawn in drawUnitInfo (above the
+-- highlights) so it stays legible like the HP bars it stands in for. Nothing draws for a corpse gone
+-- cold (no status, its petrified sprite is the read) or a never-revivable one (never had the status) --
+-- the clock's presence or absence is what tells a body you can still save from one you cannot.
+function BattleMap:drawDownedClock(u, cx, cy)
+    local st = Status.get(u, "status_downed")
+    if not st then return end
+    local ticks = tostring(math.max(0, math.ceil(st.remaining or 0)))
+    local font = self.numberFont
+    local gh = 12
+    local gw = gh * 0.66
+    local padX, padY = 4, 2
+    local bw = gw + 3 + font:getWidth(ticks) + padX * 2
+    local bh = math.max(gh, font:getHeight()) + padY * 2
+    local bx, by = cx - bw / 2, cy - bh / 2
+    love.graphics.setColor(0.06, 0.05, 0.07, 0.80)
+    love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
+    Glyphs.hourglass(bx + padX, by + (bh - gh) / 2, gw, gh,
+        DOWNED_CLOCK[1], DOWNED_CLOCK[2], DOWNED_CLOCK[3], 0.95)
     love.graphics.setFont(font)
     love.graphics.setColor(0.97, 0.95, 0.91, 1)
     love.graphics.print(ticks, bx + padX + gw + 3, by + (bh - font:getHeight()) / 2)
@@ -790,6 +821,43 @@ function BattleMap:drawMovePath()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- Is unit `u`'s body actually on the board this frame? Covers BOTH fallen states -- a still-revivable
+-- incapacitated body and a corpse gone cold -- since either lies on its tile and draws the same way. A
+-- body draws only when it is truly fallen, not withheld as a summon (heldUnit), not hidden under a
+-- living unit that now stands on the tile, and not still owed a killing blow the fx controller has not
+-- played (awaiting) -- the same gate the body draw and its readouts both key off, so the two never
+-- disagree about whether a body is present.
+function BattleMap:corpseVisible(u)
+    return (u.corpse or u.incapacitated) and not u.alive and not self:heldUnit(u)
+        and not Combat.unitAt(self.combat, u.x, u.y)
+        and not (self.fx and self.fx:awaiting(u))
+end
+
+-- A fallen body drawn as its OWN battle sprite, drained of life rather than reduced to an anonymous
+-- token: a still-revivable body (incapacitated) greys out under a running rescue clock, one past
+-- reviving (a corpse gone cold) has gone to cold crystal. Either way it stays recognisably the unit you
+-- know, so the party can see WHO is down and weigh a turn spent reaching the body. Runs through the sprite shader
+-- (grayscale / petrify); a token-only unit or a driver that refused the shader returns false, and the
+-- caller falls back to the subtle drained token an ordinary corpse draws.
+function BattleMap:drawFallenSprite(u, cx, cy, bw, bh, mode)
+    local sprite = u.char.sprite
+    if type(sprite) ~= "userdata" then return false end
+    local shader = self:spriteFx()
+    if not shader then return false end
+    local sw, sh = sprite:getDimensions()
+    local scale = math.min((bw - 8) / sw, (bh - 8) / sh)
+    love.graphics.setShader(shader)
+    shader:send("uMode", SpriteShader.MODES[mode])
+    shader:send("uAmount", 1.0)
+    shader:send("uEdge", DISSOLVE_EDGE) -- unread by these modes, but the uniform must be set
+    shader:send("uTime", self.time or 0)
+    -- An incapacitated body sits a touch more spectral than a cold corpse, which reads as solid stone.
+    love.graphics.setColor(1, 1, 1, mode == "petrify" and 0.85 or 0.7)
+    love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
+    love.graphics.setShader()
+    return true
+end
+
 -- Unit bodies: sprite/token + side ring. HP bars and turn numbers are a separate pass
 -- (drawUnitInfo) drawn AFTER the highlights so those readouts stay legible on top.
 -- An untargetable (Invisible) unit is drawn faded: the player still sees where their own hidden
@@ -797,27 +865,47 @@ end
 function BattleMap:drawUnits()
     if not self.combat then return end
     local s = self.size
-    -- Corpses first, so a living unit standing on a fallen one always draws on top. A corpse is drawn
-    -- as a faint, desaturated token with no side ring -- present enough to mark the tile for a Revive
-    -- or Raise Dead, subtle enough not to clutter the board. A body a living unit now stands over is
-    -- skipped entirely (it's hidden and unreachable anyway), as is one whose killing blow the fx
-    -- controller is still holding back (fx:awaiting) -- the body must not drop before the counter lands.
+    -- Corpses first, so a living unit standing on a fallen one always draws on top. A body a living
+    -- unit now stands over is skipped entirely (it's hidden and unreachable anyway), as is one whose
+    -- killing blow the fx controller is still holding back -- the body must not drop before the counter
+    -- lands. See corpseVisible for the full gate.
+    --
+    -- A body that still MEANS something -- one you can still revive (incapacitated) or one that just
+    -- slipped past reviving and went cold (a former-revivable corpse) -- is drawn as its own battle
+    -- sprite, drained of life, so the party reads WHO is down at a glance (drawFallenSprite). An
+    -- ordinary, never-revivable corpse (a demon) stays a faint desaturated token: present enough to mark
+    -- the tile for a Raise Dead, subtle enough not to clutter the board with bodies no one is going to
+    -- act on. A cold corpse is a body that once had a window (char.revivable) and is now a `corpse`.
     for _, u in ipairs(self.combat.units) do
-        -- A held summon that arrived dead (conjured onto a trap) is withheld like a living one -- its
-        -- body, corpse and all, waits for the cast that made it rather than dropping ahead of the walk.
-        if u.corpse and not u.alive and not self:heldUnit(u)
-            and not Combat.unitAt(self.combat, u.x, u.y)
-            and not (self.fx and self.fx:awaiting(u)) then
+        if self:corpseVisible(u) then
             local wx, wy = self:cellToPixel(u.x, u.y)
-            -- Centre the corpse token over the body's whole footprint (its anchor cell for a 1×1).
             local bw, bh = (u.w or 1) * s, (u.h or 1) * s
-            local cr = math.min(bw, bh) * 0.24
-            love.graphics.setColor(0.30, 0.30, 0.34, 0.45)
-            love.graphics.circle("fill", wx + bw / 2, wy + bh / 2, cr)
-            love.graphics.setColor(0.12, 0.12, 0.14, 0.45)
-            love.graphics.setLineWidth(2)
-            love.graphics.circle("line", wx + bw / 2, wy + bh / 2, cr)
-            love.graphics.setLineWidth(1)
+            local cx, cy = wx + bw / 2, wy + bh / 2
+            local coldCorpse = u.corpse and u.char and u.char.revivable ~= false
+            local drew = false
+            if u.incapacitated or coldCorpse then
+                drew = self:drawFallenSprite(u, cx, cy, bw, bh, coldCorpse and "petrify" or "grayscale")
+            end
+            if not drew then
+                -- Token fallback: a never-revivable corpse, or a body whose sprite/shader path was unavailable.
+                local cr = math.min(bw, bh) * 0.24
+                if coldCorpse then
+                    -- Past reviving: a colder, harder token (an icy shard tint).
+                    love.graphics.setColor(0.42, 0.52, 0.66, 0.50)
+                    love.graphics.circle("fill", cx, cy, cr)
+                    love.graphics.setColor(0.72, 0.84, 0.96, 0.55)
+                    love.graphics.setLineWidth(2)
+                    love.graphics.circle("line", cx, cy, cr)
+                    love.graphics.setLineWidth(1)
+                else
+                    love.graphics.setColor(0.30, 0.30, 0.34, 0.45)
+                    love.graphics.circle("fill", cx, cy, cr)
+                    love.graphics.setColor(0.12, 0.12, 0.14, 0.45)
+                    love.graphics.setLineWidth(2)
+                    love.graphics.circle("line", cx, cy, cr)
+                    love.graphics.setLineWidth(1)
+                end
+            end
         end
     end
     for _, u in ipairs(self.combat.units) do
@@ -952,6 +1040,7 @@ end
 -- HP bars + turn-order numbers, drawn last (above highlights) so they're never tinted.
 function BattleMap:drawUnitInfo()
     if not self.combat then return end
+    local s = self.size
     local orderIndex = {}
     local order = Combat.turnOrder(self.combat)
     -- Anchor the acting unit at #1 until the UI hands off: its initiative is charged the instant it acts
@@ -987,6 +1076,13 @@ function BattleMap:drawUnitInfo()
             self:drawHpBar(u, wx, wy, alpha)
             self:drawTurnNumber(orderIndex[u] or self.lastOrderIndex[u], wx, wy, alpha)
             if u.alive then self:drawStatusBadges(u, wx, wy) end
+        elseif Status.get(u, "status_downed") and self:corpseVisible(u) then
+            -- A fallen but revivable body: its rescue clock stands in for the HP bar it no longer has,
+            -- on the same bottom-of-tile line, above the highlights so it reads like the bar it replaces.
+            local wx, wy = self:unitOrigin(u)
+            local boxW, boxH = (u.w or 1) * s, (u.h or 1) * s
+            self:drawDownedClock(u, wx + boxW / 2, wy + boxH - 10)
+            if self.lastOrderIndex[u] then self.lastOrderIndex[u] = nil end
         elseif self.lastOrderIndex[u] then
             self.lastOrderIndex[u] = nil -- fully gone: drop its stale number
         end

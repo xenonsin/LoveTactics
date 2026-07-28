@@ -16,6 +16,7 @@ local InputMode = require("input_mode")
 local Player = require("models.player")
 local Build = require("models.build")
 local Builds = require("models.builds")
+local Theme = require("ui.theme")
 
 local Pvp = {}
 Pvp.__index = Pvp
@@ -28,9 +29,9 @@ function Pvp.new(opts)
     local self = setmetatable({}, Pvp)
     self.player = opts.player or Player.active
     self.onClose = opts.onClose
-    self.titleFont = love.graphics.newFont(28)
-    self.bodyFont = love.graphics.newFont(17)
-    self.smallFont = love.graphics.newFont(13)
+    self.titleFont = Theme.display(28)
+    self.bodyFont = Theme.body(17)
+    self.smallFont = Theme.body(13)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
@@ -149,23 +150,23 @@ function Pvp:draw()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf("Dueling Grounds", self.boxX, self.boxY + 26, BOX_W, "center")
 
     love.graphics.setFont(self.bodyFont)
-    love.graphics.setColor(0.78, 0.8, 0.88)
+    Theme.set(Theme.ink)
     love.graphics.printf(
         self.published and "Your build is on the sand." or "You have left no build to be fought.",
         self.boxX + 30, self.boxY + 76, BOX_W - 60, "center")
 
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.55, 0.6, 0.7)
+    Theme.set(Theme.muted)
     local pool = self.opponents == 1 and "1 build waiting" or (self.opponents .. " builds waiting")
     love.graphics.printf(pool .. "   -   everyone fights at level " .. Build.NORMAL_LEVEL,
         self.boxX + 30, self.boxY + 104, BOX_W - 60, "center")
@@ -173,16 +174,16 @@ function Pvp:draw()
     for i, b in ipairs(self.buttons) do
         local on = b.hovered or (not InputMode.isMouse() and self.cursor == i)
         local live = b.key ~= "match" or self.opponents > 0
-        if not live then
-            love.graphics.setColor(0.16, 0.16, 0.19)
-        else
-            love.graphics.setColor(on and 0.35 or 0.22, on and 0.45 or 0.28, on and 0.35 or 0.24)
-        end
-        love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
-        love.graphics.setColor(live and 0.6 or 0.32, live and 0.7 or 0.34, live and 0.55 or 0.38)
-        love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
+        if not live then Theme.set(Theme.slot, 0.6)
+        else Theme.set(on and Theme.panel or Theme.panel2) end
+        love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, Theme.R, Theme.R)
+        love.graphics.setLineWidth(on and 1.5 or 1)
+        if not live then Theme.set(Theme.frame, 0.5)
+        elseif on then Theme.set(Theme.accentAmber) else Theme.set(Theme.frame) end
+        love.graphics.rectangle("line", b.x, b.y, b.w, b.h, Theme.R, Theme.R)
+        love.graphics.setLineWidth(1)
         love.graphics.setFont(self.bodyFont)
-        love.graphics.setColor(live and 0.95 or 0.45, live and 0.95 or 0.45, live and 0.95 or 0.5)
+        Theme.set(live and Theme.ink or Theme.muted)
         love.graphics.printf(b.label, b.x, b.y + b.h / 2 - 11, b.w, "center")
     end
 

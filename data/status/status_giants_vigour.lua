@@ -15,7 +15,7 @@ return {
     name = "Giant's Vigour",
     abbr = "Gnt",
     description = "Borrowed strength: raised Damage.",
-    color = { 0.78, 0.45, 0.28 }, -- badge tint (ox-blood and rust)
+    color = { 0.707, 0.444, 0.308 }, -- badge tint (ox-blood and rust)
     duration = 45, -- ~9 turns at Status.TICKS_PER_TURN: most of a fight, which is what you paid for
     statBonus = { damage = 10 },
 }

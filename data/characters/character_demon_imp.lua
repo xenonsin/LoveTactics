@@ -16,6 +16,7 @@
 return {
     name = "Imp",
     sprite = "assets/chars/demon_imp.png",
+    revivable = false, -- a demon does not come back: no downed window, and no revive takes it
     stats = {
         health = 14, mana = 0, stamina = 8,
         staminaRegen = 2,

@@ -20,7 +20,7 @@
 -- side.
 return {
     name = "The Unravelling Wand",
-    description = "A physical bolt at range that no ward can turn, leaving the target open to every spell that follows.",
+    description = "Fires a physical bolt that no ward can turn and inflicts Unravelled.",
     flavor = "The Arcanum spent two centuries making things that wards could not stop. This one simply is not magic.",
     sprite = "assets/items/unravelling_wand.png",
     type = "weapon",

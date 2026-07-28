@@ -4,7 +4,7 @@
 -- fist charms (Shadow, Swift, Drunken) to build a monk whose punch outclasses a sword.
 return {
     name = "Iron Fist",
-    description = "Your bare-handed strike hits markedly harder. Does nothing for a weapon.",
+    description = "Bare-handed strikes hit markedly harder. Does nothing for a weapon.",
     flavor = "Hands hardened past a weapon's need. The Cathedral does not ask how, and is not told.",
     sprite = "assets/items/iron_fist.png",
     type = "utility",

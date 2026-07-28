@@ -16,7 +16,7 @@
 -- that is the counterplay -- the answer to a warden is dry ground.
 return {
     name = "Beat the Bounds",
-    description = "Every enemy standing in any hazard is Rooted and takes damage.",
+    description = "Inflicts Root on every enemy standing in a hazard, and deals damage.",
     flavor = "Once a year the parish walks its own edges, striking them, so that everyone remembers where they are.",
     sprite = "assets/items/ability_beat_the_bounds.png",
     type = "ability",
@@ -31,7 +31,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 9 },
         damage = { 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10 },
-        description = "Roots and damages every enemy standing in a hazard, wherever it is and whoever laid it.",
+        description = "Inflicts Root on and damages every enemy standing in a hazard, wherever it is and whoever laid it.",
         effect = function(fx)
             local Hazard = require("models.hazard")
             local caught = 0

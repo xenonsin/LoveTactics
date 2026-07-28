@@ -13,7 +13,7 @@ return {
     name = "Invisible",
     abbr = "Inv",
     description = "Unseen: enemies cannot target this unit until its next turn.",
-    color = { 0.60, 0.70, 0.92 }, -- badge tint (pale blue)
+    color = { 0.610, 0.694, 0.879 }, -- badge tint (pale blue)
     duration = 99,          -- generous fallback; it really ends via onTurnStart (see below)
     hideDuration = true,    -- the fallback countdown is meaningless -- hide it in the tooltip
     hideLog = true,         -- announcing "afflicted with Invisible" would give the Decoy away

@@ -19,7 +19,7 @@ return {
     name = "Reckless",
     abbr = "Rck",
     description = "Guard dropped: raised Damage, and far weaker defenses.",
-    color = { 0.88, 0.32, 0.16 }, -- badge tint (raw orange -- rage without Fury's blood-red)
+    color = { 0.769, 0.339, 0.215 }, -- badge tint (raw orange -- rage without Fury's blood-red)
     duration = 20, -- ~4 turns at Status.TICKS_PER_TURN: a commitment, not a swing
     debuff = true, -- a negative statBonus is a debuff; the priest may talk you down
     statBonus = { damage = 12, defense = -10, magicDefense = -10 },

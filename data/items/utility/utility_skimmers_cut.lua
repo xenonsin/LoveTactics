@@ -22,7 +22,7 @@
 -- share the man who thins the coins keeps for himself.
 return {
     name = "Skimmer's Cut",
-    description = "Every blow you land on a living foe lifts a little coin, paid out with the spoils.",
+    description = "On damage dealt: gain gold.",
     flavor = "The Undercroft's term of art, and not a metaphor: the share the man who thins the coins keeps.",
     sprite = "assets/items/skimmers_cut.png",
     type = "utility",

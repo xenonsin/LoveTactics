@@ -17,7 +17,7 @@
 -- weapon than the iron greatsword in a long fight and a strictly worse one in a short one.
 return {
     name = "The Sealed Hour",
-    description = "Winds up, then falls on one tile and seals the wound: all damage and healing on that foe is held, then settles at once.",
+    description = "Channeled: inflicts Sealed Hour.",
     flavor = "The blow lands on time. The consequences are filed for later.",
     sprite = "assets/items/sealed_hour.png",
     type = "weapon",

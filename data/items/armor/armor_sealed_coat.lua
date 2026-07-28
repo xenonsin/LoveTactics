@@ -17,7 +17,7 @@
 -- Cloth: a square of pace.
 return {
     name = "The Sealed Coat",
-    description = "Holds a seal against one aimed spell, and renews it a while after it is spent.",
+    description = "Holds a seal against one aimed spell, and renews after it is spent.",
     flavor = "The Arcanum stitches the seal shut and considers the question of what is inside settled.",
     sprite = "assets/items/armor_sealed_coat.png",
     type = "armor",

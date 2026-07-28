@@ -11,7 +11,7 @@
 -- enemy roster, which is why the two are worth carrying as a pair rather than as alternatives.
 return {
     name = "Sunderer's Answer",
-    description = "Strikes an adjacent foe. When struck in melee, silences every trait, guard and reflex the attacker carries.",
+    description = "Strikes an adjacent foe. On melee hit taken: inflict Sundered on the attacker.",
     flavor = "Everything they were carrying is still on them. None of it is listening.",
     sprite = "assets/items/sunderers_answer.png",
     type = "weapon",

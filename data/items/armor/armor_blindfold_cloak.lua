@@ -17,7 +17,7 @@
 -- Cloth, so it costs a square of pace.
 return {
     name = "Blindfold Cloak",
-    description = "Carries a square of Darkness with you: no line of sight crosses it, either way.",
+    description = "Carries Darkness with you.",
     flavor = "The Warren took it off a poacher who had worked out that the surest way to hunt is to stop being watched.",
     sprite = "assets/items/armor_blindfold_cloak.png",
     type = "armor",

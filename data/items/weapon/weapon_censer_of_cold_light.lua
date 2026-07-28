@@ -16,7 +16,7 @@
 -- in a party running both.
 return {
     name = "Censer of Cold Light",
-    description = "Wreathes you in harsh light: nothing standing near you can hide from being targeted.",
+    description = "Inflicts Limned on adjacent foes.",
     flavor = "It gives off no heat and casts no shadow, and the Cathedral's censer-bearers do not like carrying it.",
     sprite = "assets/items/censer_cold_light.png",
     type = "weapon",

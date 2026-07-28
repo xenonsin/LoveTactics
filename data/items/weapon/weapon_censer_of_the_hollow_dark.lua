@@ -21,7 +21,7 @@
 -- pick up (docs/weapons.md: the object never changes, only the voice it is swung in).
 return {
     name = "Censer of the Hollow Dark",
-    description = "Wreathes you in unnatural dark: nothing can see a line across it, in either direction.",
+    description = "Carries Darkness with you.",
     flavor = "The censer-bearer is told not to look into it. The Cathedral has never explained what the instruction is protecting.",
     sprite = "assets/items/censer_hollow_dark.png",
     type = "weapon",

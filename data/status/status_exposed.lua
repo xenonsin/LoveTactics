@@ -17,7 +17,7 @@ return {
     name = "Exposed",
     abbr = "Exp",
     description = "Exposed: takes extra damage from piercing hits.",
-    color = { 0.72, 0.20, 0.32 }, -- badge tint (open red)
+    color = { 0.642, 0.234, 0.328 }, -- badge tint (open red)
     duration = 10,
     debuff = true, -- removable by Cure, though walking out of the cloud is cheaper
     vulnerable = { pierce = 8 },

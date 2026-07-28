@@ -23,7 +23,7 @@
 -- in front of it gets. Against a naked skirmisher it is a bad spear. That is the intended shape.
 return {
     name = "Mailpiercer",
-    description = "Skewers the two tiles ahead, ignoring armour entirely, and Halts whoever is in the far one.",
+    description = "Ignores armour entirely and inflicts Halt on the far tile.",
     flavor = "The Bastion's answer to a shield wall is not a bigger shield.",
     sprite = "assets/items/mailpiercer.png",
     type = "weapon",

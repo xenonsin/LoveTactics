@@ -8,7 +8,7 @@
 -- turret with no wrong angle, which is a different and much worse item.
 return {
     name = "Sentry Bolt",
-    description = "A tripod-mounted crossbow arm. No shot closer than two tiles.",
+    description = "Fires. No shot closer than two tiles.",
     flavor = "It does not aim so much as wait for the aim to become correct.",
     sprite = "assets/items/sentry_bolt.png",
     type = "weapon",

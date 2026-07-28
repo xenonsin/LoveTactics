@@ -22,7 +22,7 @@
 -- with it before the lines have met has thrown it away.
 return {
     name = "The Red Thirst",
-    description = "For a short while, drinks back most of the damage its bearer deals.",
+    description = "Grants the bearer The Red Thirst.",
     flavor = "The Colosseum pours it, watches, and writes the number down. It has never sold one twice to the same fighter.",
     sprite = "assets/items/utility_red_thirst.png",
     type = "utility",

@@ -13,7 +13,7 @@
 -- the game grants a square, and this one is where the rule was first written down.
 return {
     name = "Crusader's Tabard",
-    description = "Banks Zeal for every kill and every mend. Felling a foe heals you, more for the Zeal you hold.",
+    description = "On kill: heal, more for the Zeal held. Banks Zeal on every kill and mend.",
     flavor = "Two hands' work, the same colours on both. One of them closes wounds and one of them opens them.",
     sprite = "assets/items/armor_crusaders_tabard.png",
     type = "armor",

@@ -17,7 +17,7 @@
 -- is by definition adjacent to the fighter, which is where the rest of the melee was heading.
 return {
     name = "The Mired Maul",
-    description = "Stuns, and turns the ground the blow lands on to quicksand: everything there moves and acts for double.",
+    description = "Inflicts Stun, and turns the ground the blow lands on to quicksand: everything there moves and acts for double.",
     flavor = "The head is packed with river clay. The armourers say it is for the weight. It is not for the weight.",
     sprite = "assets/items/mired_maul.png",
     type = "weapon",

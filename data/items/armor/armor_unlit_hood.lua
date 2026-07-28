@@ -14,7 +14,7 @@
 -- since the turn it buys back is spent standing somewhere nobody is looking.
 return {
     name = "The Unlit Hood",
-    description = "Struck and still standing, slip out of sight until your next turn.",
+    description = "On surviving a hit: turn Invisible until your next turn.",
     flavor = "The Undercroft's oldest joke is that it was never dyed black. Nothing was ever done to it at all.",
     sprite = "assets/items/armor_unlit_hood.png",
     type = "armor",

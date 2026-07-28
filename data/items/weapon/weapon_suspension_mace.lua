@@ -18,7 +18,7 @@
 -- whole in the sense that matters -- alive, and now with your whole party's cooldowns spent.
 return {
     name = "Suspension Mace",
-    description = "Lifts the target clean off the field: it cannot act, be acted on, or answer until it returns.",
+    description = "Inflicts Suspended.",
     flavor = "Every other mace in the armoury is an argument about where. This one declined to have that argument.",
     sprite = "assets/items/suspension_mace.png",
     type = "weapon",

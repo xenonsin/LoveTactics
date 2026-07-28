@@ -16,7 +16,7 @@ return {
     name = "Reflect Steel",
     abbr = "RefS",
     description = "Mirrored: single-target physical blows rebound onto the attacker.",
-    color = { 0.85, 0.88, 0.95 }, -- badge tint (mirror-bright steel)
+    color = { 0.853, 0.879, 0.940 }, -- badge tint (mirror-bright steel)
     duration = 10, -- ~2 turns at Status.TICKS_PER_TURN: shorter than the arcane mirror, as before,
                    -- but long enough that a melee attacker actually has to decide something
     reflects = "physical",

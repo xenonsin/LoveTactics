@@ -20,7 +20,7 @@
 -- mage is the one carrying it.
 return {
     name = "Rimebite",
-    description = "Leaves cold in a foe: it takes extra damage every time anything hits it.",
+    description = "Inflicts Rimebitten.",
     flavor = "It is not the cold that does it. It is that the wound keeps remembering the cold.",
     sprite = "assets/items/ability_rimebite.png",
     type = "ability",

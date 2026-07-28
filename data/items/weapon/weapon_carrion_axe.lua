@@ -14,7 +14,7 @@
 -- against data/items/weapon/weapon_reapers_due.lua, which reads the same graveyard as a damage stat.
 return {
     name = "Carrion Axe",
-    description = "Cleaves a wide arc, and devours any corpse in the swing to mend the wielder.",
+    description = "For each corpse in area consume it and heal.",
     flavor = "The Lodge insists it is a butchering tool. Nobody at the Lodge has ever butchered anything with it.",
     sprite = "assets/items/carrion_axe.png",
     type = "weapon",

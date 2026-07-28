@@ -17,7 +17,7 @@
 -- `when` predicate over the shared pool rather than a counted per-item unlock.
 return {
     name = "Asura Strike",
-    description = "Spends ALL your chi in one blow -- damage rises steeply with every point held.",
+    description = "Consume all your chi in one blow. Increase damage by 6 per chi.",
     flavor = "He had been counting since the door closed. He stopped counting.",
     sprite = "assets/items/ability_asura_strike.png",
     type = "ability",
@@ -36,7 +36,7 @@ return {
             when = function(unit) return require("models.combat").chi(unit) >= 1 end,
             text = "Gather chi",
         },
-        description = "Spends every point of chi at once. Each point spent adds heavily to the blow.",
+        description = "Consume all chi at once. Increase damage by 6 per chi.",
         effect = function(fx)
             -- Takes the whole pool and reports what it took, so the blow is scaled by exactly what was
             -- spent. Inert in a dry run (it reports without draining), which is what lets the damage

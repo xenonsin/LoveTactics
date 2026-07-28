@@ -5,7 +5,7 @@
 -- each strike takes back.
 return {
     name = "Desperate Strike",
-    description = "Hits harder the more health you have lost, up to double at death's door.",
+    description = "Increase damage by 1% per 1% of missing health.",
     flavor = "The Colosseum noticed the pattern long before it thought to sell it back to you.",
     sprite = "assets/items/ability_desperate_strike.png",
     type = "ability",

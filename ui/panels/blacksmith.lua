@@ -22,6 +22,7 @@ local GrowthLadder = require("ui.growth_ladder") -- the level-by-level upgrade p
 local Colors = require("ui.colors")
 local Scale = require("scale")
 local InputMode = require("input_mode")
+local Theme = require("ui.theme")
 
 local BlacksmithPanel = {}
 BlacksmithPanel.__index = BlacksmithPanel
@@ -34,18 +35,18 @@ local ROW_H, ROW_SPACING, MAX_VISIBLE = 34, 6, 8
 
 -- Growth-sheet palette (the footprint filmstrip + cost band; the level table owns its own colours).
 -- MARK = the current level, UP = an improvement, DIM = captions.
-local DIM = { 0.55, 0.60, 0.70 }
-local MARK = { 0.95, 0.85, 0.55 }
-local UP = { 0.55, 0.90, 0.58 }
+local DIM = Theme.muted
+local MARK = Theme.accentAmber
+local UP = { 0.55, 0.90, 0.58 } -- an improvement: kept heal-green (semantic)
 
 function BlacksmithPanel.new(opts)
     opts = opts or {}
     local self = setmetatable({}, BlacksmithPanel)
     self.onClose = opts.onClose
-    self.titleFont = love.graphics.newFont(28)
-    self.headFont = love.graphics.newFont(18)
-    self.bodyFont = love.graphics.newFont(15)
-    self.smallFont = love.graphics.newFont(12) -- bar labels, level captions, the growth-sheet fine print
+    self.titleFont = Theme.display(28)
+    self.headFont = Theme.display(18)
+    self.bodyFont = Theme.body(15)
+    self.smallFont = Theme.body(12) -- bar labels, level captions, the growth-sheet fine print
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
@@ -151,23 +152,23 @@ function BlacksmithPanel:draw()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf(self.title, self.boxX, self.boxY + 20, BOX_W, "center")
 
     -- Gold, top-left: one of the two things a forge spends.
     love.graphics.setFont(self.bodyFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf(self.player.gold .. " gold", self.boxX + 24, self.boxY + 66, 240, "left")
 
     if not self:hasItems() then
         love.graphics.setFont(self.bodyFont)
-        love.graphics.setColor(0.85, 0.85, 0.9)
+        Theme.set(Theme.ink)
         love.graphics.printf("No weapons or armor to forge.", self.boxX, self.boxY + BOX_H / 2, BOX_W, "center")
     else
         self.menu:draw()
@@ -182,7 +183,7 @@ function BlacksmithPanel:draw()
     end
 
     love.graphics.setFont(self.bodyFont)
-    love.graphics.setColor(0.55, 0.6, 0.7)
+    Theme.set(Theme.muted)
     -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
     local hint = InputMode.isGamepad()
         and "A: Forge    D-pad: Scroll    B: Close"
@@ -211,7 +212,7 @@ function BlacksmithPanel:drawFootprintStrip(footprint, x, y, w, current)
     local sx = x
     for _, lvl in ipairs(footprint.changedAt) do
         local isNow = (lvl == currentForm)
-        love.graphics.setColor(0.10, 0.11, 0.15, 0.9)
+        Theme.set(Theme.slot)
         love.graphics.rectangle("fill", sx, sy, box, box, 3, 3)
         FootprintDiagram.draw(footprint.levels[lvl], sx, sy, box, isNow and MARK or Colors.AOE)
         if isNow then
@@ -298,16 +299,16 @@ function BlacksmithPanel:drawDetail()
     local growth = self.growth
 
     love.graphics.setFont(self.headFont)
-    love.graphics.setColor(0.95, 0.95, 0.95)
+    Theme.set(Theme.ink)
     love.graphics.printf(item.name, x, y, w - 40, "left")
 
     love.graphics.setFont(self.bodyFont)
-    love.graphics.setColor(0.6, 0.65, 0.75)
+    Theme.set(Theme.muted)
     love.graphics.printf(item.type .. "   (level " .. (item.level or 0) .. " / " .. Item.MAX_LEVEL .. ")",
         x, y + 26, w, "left")
     ItemTooltip.printDiscipline(item, x, y + 26, w, self.bodyFont)
 
-    love.graphics.setColor(0.8, 0.82, 0.88)
+    Theme.set(Theme.ink)
     love.graphics.printf(item.description or "", x, y + 50, w, "left")
 
     local current = item.level or 0

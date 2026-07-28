@@ -4,7 +4,7 @@
 -- ground-target support cast (target = "tile", allowOccupied, support) so its footprint previews green.
 return {
     name = "Aegis",
-    description = "Wards allies in an area, raising their Defense and Magic Defense.",
+    description = "Grants Aegis in area.",
     flavor = "The Cathedral's light does not ask who deserves it, only who is standing close enough.",
     sprite = "assets/items/ability_aegis.png",
     type = "ability",

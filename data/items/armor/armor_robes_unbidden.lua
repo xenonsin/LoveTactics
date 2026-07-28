@@ -20,7 +20,7 @@
 -- Cloth: a square of pace.
 return {
     name = "Robes Unbidden",
-    description = "Your will cannot be taken: Charm sheds off you the instant it lands.",
+    description = "Grants immunity to Charm.",
     flavor = "Given, never issued. The Cathedral has no record of who decides and has never been asked twice.",
     sprite = "assets/items/armor_robes_unbidden.png",
     type = "armor",

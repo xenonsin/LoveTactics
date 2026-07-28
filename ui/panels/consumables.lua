@@ -22,6 +22,7 @@ local InputMode = require("input_mode")
 local Character = require("models.character")
 local Player = require("models.player")
 local Scale = require("scale")
+local Theme = require("ui.theme")
 
 local Consumables = {}
 Consumables.__index = Consumables
@@ -61,11 +62,11 @@ function Consumables.new(opts)
     self.onClose = opts.onClose
     self.title = opts.title or "Use Items"
 
-    self.titleFont = love.graphics.newFont(26)
-    self.headFont = love.graphics.newFont(17)
-    self.bodyFont = love.graphics.newFont(15)
-    self.smallFont = love.graphics.newFont(13)
-    self.tinyFont = love.graphics.newFont(11)
+    self.titleFont = Theme.display(26)
+    self.headFont = Theme.display(17)
+    self.bodyFont = Theme.body(15)
+    self.smallFont = Theme.body(13)
+    self.tinyFont = Theme.body(11)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
@@ -163,17 +164,17 @@ function Consumables:draw()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf(self.title, self.boxX, self.boxY + 18, BOX_W, "center")
 
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.75, 0.78, 0.86)
+    Theme.set(Theme.muted)
     love.graphics.print("Party", self.leftX, self.contentY - 20)
     love.graphics.print("Potions", self.rightX, self.contentY - 20)
 

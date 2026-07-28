@@ -18,7 +18,7 @@ return {
     name = "Heroism",
     abbr = "Hro",
     description = "Borrowed nerve: raised defenses, and cannot be Halted.",
-    color = { 0.92, 0.72, 0.30 }, -- badge tint (brass and courage)
+    color = { 0.828, 0.670, 0.337 }, -- badge tint (brass and courage)
     duration = 45, -- ~9 turns at Status.TICKS_PER_TURN, matching the rest of the shelf
     statBonus = { defense = 8, magicDefense = 8 },
     grantsImmunity = { "status_halted" }, -- a nerve you drank is still a nerve: no order lands on it

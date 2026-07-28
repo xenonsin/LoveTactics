@@ -18,7 +18,7 @@
 -- chosen against your own people as well as theirs, and that is the discipline of the item.
 return {
     name = "Censer of the Grasping Hollow",
-    description = "Wreathes you in sucking ground: whatever steps into the smoke is rooted where it stands.",
+    description = "Inflicts Root on adjacent foes.",
     flavor = "The Cathedral's exorcists carried it. What they were exorcising was reportedly not in a hurry either.",
     sprite = "assets/items/censer_grasping_hollow.png",
     type = "weapon",

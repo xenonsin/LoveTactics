@@ -17,7 +17,7 @@
 -- rest of the party rather than with this weapon.
 return {
     name = "The Long Count",
-    description = "Winds up, then falls on one tile -- harder for every turn you have taken in this battle.",
+    description = "Channeled: Increase damage by 12% per turn taken this battle.",
     flavor = "Its first swing of the day is an embarrassment. Nobody who has seen the twentieth brings that up.",
     sprite = "assets/items/long_count.png",
     type = "weapon",

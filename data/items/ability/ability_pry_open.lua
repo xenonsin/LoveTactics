@@ -3,7 +3,7 @@
 -- from anyone, lands clean. Greed's guile pointed at a shield instead of a purse.
 return {
     name = "Pry Open",
-    description = "Strikes a foe and Sunders it: its guards and reflexes go quiet, opening it to the party.",
+    description = "Strikes a foe and inflicts Sundered.",
     flavor = "Every lock is a promise that the door will hold. She has never once believed one.",
     sprite = "assets/items/ability_pry_open.png",
     type = "ability",

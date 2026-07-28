@@ -19,6 +19,7 @@ local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
 local AdjacencyLinks = require("ui.adjacency_links")
+local Theme = require("ui.theme")
 
 local InventoryGrid = {}
 InventoryGrid.__index = InventoryGrid
@@ -260,12 +261,11 @@ function InventoryGrid:draw()
             -- Name band along the bottom, scaled to fit on one line.
             love.graphics.setColor(0, 0, 0, 0.6)
             love.graphics.rectangle("fill", sx + 1, sy + sh - 16, sw - 2, 15, 0, 0, 6, 6)
-            love.graphics.setFont(self.nameFont)
-            local name = item.name or "?"
-            local nw = self.nameFont:getWidth(name)
-            local sc = math.min(1, (sw - 8) / nw)
+            -- Fit the name on a native sans font (never scaled -- a scaled font blurs); long names step down.
+            local font, name = Theme.fitText(Theme.body, item.name or "?", sw - 8, 11, 8)
+            love.graphics.setFont(font)
             love.graphics.setColor(0.95, 0.95, 0.97)
-            love.graphics.print(name, sx + sw / 2 - (nw * sc) / 2, sy + sh - 15, 0, sc, sc)
+            love.graphics.print(name, sx + sw / 2 - font:getWidth(name) / 2, sy + sh - 15)
         end
     end
 

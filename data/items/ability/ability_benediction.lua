@@ -15,7 +15,7 @@
 -- it with the Vigil Beads and the wind-up becomes a promise rather than a hope.
 return {
     name = "Benediction",
-    description = "A channelled blessing that mends every ally on the field, harder for the wind-up held.",
+    description = "Channeled: mends every ally. Increase healing for each tick held.",
     flavor = "It is not addressed to any of them. That is why it reaches all of them.",
     sprite = "assets/items/ability_benediction.png",
     type = "ability",
@@ -32,7 +32,7 @@ return {
         support = true,
         cost = { stat = "mana", amount = 18 },
         healing = { 10, 11, 12, 14, 15, 16, 18, 19, 20, 22, 23 }, -- Combat.abilityMagnitude reads this
-        description = "Channels, then mends every ally on the field; the wind-up served raises the mend.",
+        description = "Channeled: mends every ally, more for the wind-up held.",
         effect = function(fx)
             local mend = fx.amount + (fx.windup or 0) * 4
             for _, u in ipairs(fx.combat.units) do

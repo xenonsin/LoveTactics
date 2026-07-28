@@ -12,7 +12,7 @@
 -- party owns is a liability while it holds.
 return {
     name = "Sleeper's Maul",
-    description = "Puts the target to sleep rather than stunning it -- far longer, and broken the moment anyone strikes it.",
+    description = "Inflicts Sleep instead of Stun.",
     flavor = "The Colosseum crowd hates it. It is the only weapon there that makes the fight quieter.",
     sprite = "assets/items/sleepers_maul.png",
     type = "weapon",

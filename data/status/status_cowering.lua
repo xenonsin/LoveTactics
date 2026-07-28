@@ -14,7 +14,7 @@ return {
     name = "Cowering",
     abbr = "Cwr",
     description = "Flinching from an incoming blow: moves fewer spaces.",
-    color = { 0.66, 0.62, 0.72 }, -- badge tint (wan violet-grey)
+    color = { 0.657, 0.623, 0.709 }, -- badge tint (wan violet-grey)
     duration = 6,                 -- ticks the flinch lasts; overridden to the wind-up's length on grant
     debuff = true,                -- removable by Cure
     statBonus = { movement = -2 },

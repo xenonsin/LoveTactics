@@ -4,7 +4,7 @@
 -- A ground-target area cast; hostile, so its footprint previews red.
 return {
     name = "Holy Light",
-    description = "Sears enemies in an area. Allies within are unharmed.",
+    description = "Sears enemies in area.",
     flavor = "The one spell the Cathedral trusts a priest to drop into a crowd.",
     sprite = "assets/items/ability_holy_light.png",
     type = "ability",

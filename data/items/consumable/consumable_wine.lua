@@ -4,7 +4,7 @@
 -- gamble on not getting hit back.
 return {
     name = "Wine",
-    description = "Inflicts Drunk on an ally: more Damage, a looser guard.",
+    description = "Applies Drunk.",
     flavor = "You drink to hit harder and gamble on not being hit back. The priest sells it anyway.",
     sprite = "assets/items/wine.png",
     type = "consumable",

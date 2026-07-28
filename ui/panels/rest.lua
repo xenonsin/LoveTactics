@@ -17,6 +17,7 @@
 
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
+local Theme = require("ui.theme")
 
 local Rest = {}
 Rest.__index = Rest
@@ -40,9 +41,9 @@ function Rest.new(opts)
     self.onDone = opts.onDone
     self.t = 0
 
-    self.titleFont = love.graphics.newFont(28)
-    self.bodyFont = love.graphics.newFont(16)
-    self.smallFont = love.graphics.newFont(13)
+    self.titleFont = Theme.display(28)
+    self.bodyFont = Theme.body(16)
+    self.smallFont = Theme.body(13)
 
     local rows = math.max(1, #self.entries)
     self.boxW = BOX_W
@@ -94,16 +95,16 @@ function Rest:draw()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, self.boxW, self.boxH, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, self.boxW, self.boxH, 10, 10)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf("A Moment's Rest", self.boxX, self.boxY + 22, self.boxW, "center")
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.72, 0.76, 0.84)
+    Theme.set(Theme.muted)
     love.graphics.printf("The party makes camp -- wounds mend and reserves return.",
         self.boxX + 30, self.boxY + 58, self.boxW - 60, "center")
 
@@ -116,11 +117,11 @@ function Rest:draw()
 
     -- Continue button.
     local b = self.button
-    love.graphics.setColor(b.hovered and 0.28 or 0.20, b.hovered and 0.38 or 0.26, b.hovered and 0.30 or 0.24)
-    love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
-    love.graphics.setColor(0.55, 0.75, 0.58)
-    love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
-    love.graphics.setColor(0.95, 0.97, 0.95)
+    Theme.set(b.hovered and Theme.panel or Theme.panel2)
+    love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, Theme.R, Theme.R)
+    love.graphics.setColor(0.55, 0.75, 0.58) -- rest = mending; the Continue button keeps a heal-green frame
+    love.graphics.rectangle("line", b.x, b.y, b.w, b.h, Theme.R, Theme.R)
+    Theme.set(Theme.ink)
     love.graphics.setFont(self.bodyFont)
     love.graphics.printf("Continue", b.x, b.y + b.h / 2 - 9, b.w, "center")
 
@@ -133,12 +134,12 @@ function Rest:drawRow(e, rowY, p)
     local px = self.boxX + 30
     local py = rowY + (ROW_H - PORTRAIT) / 2
 
-    love.graphics.setColor(0.09, 0.10, 0.14)
-    love.graphics.rectangle("fill", px, py, PORTRAIT, PORTRAIT, 5, 5)
+    Theme.set(Theme.slot)
+    love.graphics.rectangle("fill", px, py, PORTRAIT, PORTRAIT, Theme.R, Theme.R)
     love.graphics.setFont(self.bodyFont)
     drawPortrait(char, px, py, PORTRAIT)
-    love.graphics.setColor(0.4, 0.44, 0.55)
-    love.graphics.rectangle("line", px, py, PORTRAIT, PORTRAIT, 5, 5)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", px, py, PORTRAIT, PORTRAIT, Theme.R, Theme.R)
 
     local barX = px + PORTRAIT + 14
     local barW = self.boxX + self.boxW - 30 - barX
@@ -146,7 +147,7 @@ function Rest:drawRow(e, rowY, p)
 
     -- Name above the bar.
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.88, 0.90, 0.95)
+    Theme.set(Theme.ink)
     love.graphics.print(char and char.name or "?", barX, rowY + 6)
 
     -- The animated HP value: from the wound walked in with, up to full.
@@ -155,7 +156,7 @@ function Rest:drawRow(e, rowY, p)
     local startFrac = max > 0 and from / max or 1
 
     -- Track.
-    love.graphics.setColor(0.20, 0.22, 0.28)
+    Theme.set(Theme.barTrack)
     love.graphics.rectangle("fill", barX, barY, barW, BAR_H, 3, 3)
     -- The portion that was already there when we sat down reads dim; the mend that fills over it reads
     -- bright, so the eye lands on what the rest actually restored.
@@ -163,11 +164,11 @@ function Rest:drawRow(e, rowY, p)
     love.graphics.rectangle("fill", barX, barY, barW * startFrac, BAR_H, 3, 3)
     love.graphics.setColor(0.42, 0.82, 0.48)
     love.graphics.rectangle("fill", barX, barY, barW * fillFrac, BAR_H, 3, 3)
-    love.graphics.setColor(0.45, 0.55, 0.5)
+    Theme.set(Theme.barOutline, Theme.barOutline[4] or 1)
     love.graphics.rectangle("line", barX, barY, barW, BAR_H, 3, 3)
 
     -- Numeric HP, counting up with the bar.
-    love.graphics.setColor(0.92, 0.95, 0.93)
+    Theme.set(Theme.ink)
     love.graphics.printf(math.floor(shown + 0.5) .. " / " .. max, barX, barY + 1, barW - 6, "right")
 end
 

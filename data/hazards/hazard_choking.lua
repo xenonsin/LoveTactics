@@ -14,7 +14,7 @@
 -- is deliberate -- you can walk out of a blessing, but you cannot walk out of a lungful.
 return {
     name = "Choking Fumes",
-    description = "A censer's poisoned smoke: foes standing within are Poisoned.",
+    description = "Inflicts Poison on foes in it.",
     tags = { "poison" },
     duration = 12,           -- as Incense: renewed each beat by the censer, and gone within a turn without one
     disposition = "hostile", -- the enemy AI steps around it, which is itself a way to push a line

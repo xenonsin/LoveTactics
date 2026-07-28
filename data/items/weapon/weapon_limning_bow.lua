@@ -14,7 +14,7 @@
 -- practice means firing at the assassin before it goes and keeping it visible for the rest of the party.
 return {
     name = "Limning Bow",
-    description = "Fires at range and leaves the target Limned: lit up, and targetable however well it hides.",
+    description = "Inflicts Limned.",
     flavor = "The Lodge's trackers do not call it a bow. They call it the lamp, which annoys the bowyers.",
     sprite = "assets/items/limning_bow.png",
     type = "weapon",

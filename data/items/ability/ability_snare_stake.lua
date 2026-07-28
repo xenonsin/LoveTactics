@@ -20,7 +20,7 @@
 -- -- the same reasoning a barrier's upgrade buys coverage rather than a bigger number.
 return {
     name = "The Snare Stake",
-    description = "Sets a hidden stake: roots the first enemy across it, and draws no blood.",
+    description = "Plants a trap that inflicts Root on the first enemy across it.",
     flavor = "The Lodge's oldest tool, and the only one it never improved. There was nothing to improve.",
     sprite = "assets/items/ability_snare_stake.png",
     type = "ability",

@@ -10,7 +10,7 @@
 -- for the scarce pool. The Arcanum's entry-rank weapon.
 return {
     name = "Wand",
-    description = "Looses a bolt of force at range, with no point-blank dead zone.",
+    description = "Looses a bolt of force.",
     flavor = "The Arcanum's first focus: worked yew, and a great deal of condescension.",
     sprite = "assets/items/wand.png",
     type = "weapon",

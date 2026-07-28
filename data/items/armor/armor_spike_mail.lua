@@ -4,7 +4,7 @@
 -- the more they hit you, the more they bleed for it.
 return {
     name = "Spike Mail",
-    description = "Melee attackers take a share of the damage they deal back.",
+    description = "On melee hit taken: the attacker takes a share of its own damage.",
     flavor = "The more they hit you, the more they pay for it. Some fighters find that restful.",
     sprite = "assets/items/spike_mail.png",
     type = "armor",

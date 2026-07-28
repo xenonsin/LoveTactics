@@ -5,7 +5,7 @@ return {
     name = "Cripple",
     abbr = "Crp",
     description = "Crippled: moves fewer spaces each turn.",
-    color = { 0.72, 0.45, 0.20 }, -- badge tint (rust)
+    color = { 0.642, 0.430, 0.234 }, -- badge tint (rust)
     duration = 8, -- ~1.5 turns at Status.TICKS_PER_TURN (was under one, and so barely landed)
     debuff = true,               -- removable by Cure
     statBonus = { movement = -2 },

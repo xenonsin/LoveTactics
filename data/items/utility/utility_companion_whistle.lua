@@ -3,7 +3,7 @@
 -- the Archer -- can field a free companion by slotting this. A hunter-class piece, sold at the Lodge.
 return {
     name = "Companion Whistle",
-    description = "A wolf joins you at the start of every battle.",
+    description = "Starts each battle with a wolf at your side.",
     flavor = "Worn smooth by use. The Lodge does not ask where the last wolf went.",
     sprite = "assets/items/companion_whistle.png",
     type = "utility",

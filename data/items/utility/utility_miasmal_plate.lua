@@ -5,7 +5,7 @@
 -- Blood (docs/classes.md) -- a zone that is wherever the bearer is -- carrying no censer and no edge.
 return {
     name = "Miasmal Plate",
-    description = "Lays choking fumes around you that travel with you: adjacent foes are Poisoned.",
+    description = "Inflicts Poison on adjacent foes.",
     flavor = "The Bastion asked what had happened to the shine. He said he had stopped polishing it.",
     sprite = "assets/items/utility_miasmal_plate.png",
     type = "utility", -- a charm, not armour: the walking cloud IS the item (cf. utility_coveted_blood)

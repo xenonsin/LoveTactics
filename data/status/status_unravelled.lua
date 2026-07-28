@@ -20,7 +20,7 @@ return {
     name = "Unravelled",
     abbr = "Unrv",
     description = "Unravelled: takes extra damage from every magical hit.",
-    color = { 0.70, 0.42, 0.86 }, -- badge tint (picked-loose violet)
+    color = { 0.668, 0.439, 0.798 }, -- badge tint (picked-loose violet)
     duration = 10,
     debuff = true,
     vulnerable = { magical = 7 },

@@ -9,7 +9,7 @@
 -- a crusader. The rank-3 answer on a shelf whose other blades only answer back.
 return {
     name = "Demon Bane",
-    description = "Deals holy damage. Demonic flesh takes far more.",
+    description = "Deals holy damage, and demons take extra.",
     flavor = "Holy arms are the Cathedral's to forge, and somebody else's to carry.",
     sprite = "assets/items/demon_bane.png",
     type = "weapon",

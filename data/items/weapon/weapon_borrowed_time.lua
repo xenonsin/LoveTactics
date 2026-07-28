@@ -31,7 +31,7 @@ return {
     bound = true,
     class = "rogue",
     activeAbility = {
-        description = "A heavy coup on a foe, striking far harder the lower its health -- and the whole party is Hasted.",
+        description = "Increase damage by 0.6% per 1% of the foe's missing health. Grants the whole party Haste.",
         target = "enemy",
         range = 1,
         speed = 2,

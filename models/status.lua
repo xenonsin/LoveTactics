@@ -442,6 +442,28 @@ function Status.barrierAgainst(unit, magical)
     return nil
 end
 
+-- Is `unit` IMMUNE to a hit carrying any of `tags` -- the categorical version of resistance, granted by
+-- a status declaring `immune = { fire = true, ... }` (Immune: Fire and its kin). Returns the first such
+-- status, or nil. Read by Combat.mitigatedDamage (the preview) and Combat.dealFlatDamage (the live hit),
+-- which void the blow to 0 exactly as a barrier does -- but this spends NOTHING to do it, which is the
+-- whole reason the items that grant it are short and rare. Mirrors Status.barrierAgainst in shape.
+--
+-- Distinct from resistance on purpose: resistance is a subtraction that floors at 1 (a scratch is still
+-- a hit -- it counters, feeds Rimebitten, wakes a sleeper), while immunity is categorical and returns a
+-- true 0. No amount of the former ever reaches the latter; immunity is a different thing you buy, not a
+-- pile of the same one. It voids even the `raw` path, because it is a ward and not armor.
+function Status.immuneToDamage(unit, tags)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        local im = s.def.immune
+        if im then
+            for _, t in ipairs(tags or {}) do
+                if im[t] then return s end
+            end
+        end
+    end
+    return nil
+end
+
 -- The CAST WARD on `unit` -- a status declaring `negates = "cast"` -- or nil. Its own kind of ward, and
 -- deliberately not folded into Status.barrierAgainst above: a barrier is spent by DAMAGE and answers
 -- whatever lands, while this is spent by a SPELL BEING AIMED and answers nothing else. A cast ward

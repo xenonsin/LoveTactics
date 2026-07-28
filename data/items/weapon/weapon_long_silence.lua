@@ -16,7 +16,7 @@
 -- -- the asymmetry is the point of putting the effect on a bow.
 return {
     name = "The Long Silence",
-    description = "A drawn shaft that silences: the target cannot spend mana on anything until it lifts.",
+    description = "Channeled: inflicts Silence.",
     flavor = "Five tiles is further than a conversation carries. The Lodge considers this the whole design brief.",
     sprite = "assets/items/long_silence.png",
     type = "weapon",

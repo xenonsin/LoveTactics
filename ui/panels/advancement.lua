@@ -13,6 +13,7 @@
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
 local InputMode = require("input_mode")
+local Theme = require("ui.theme")
 
 local Advancement = {}
 Advancement.__index = Advancement
@@ -54,10 +55,10 @@ function Advancement.new(opts)
     self.entries = self.reward.advancement or {}
     self.scroll = 0 -- first visible entry index - 1
 
-    self.titleFont = love.graphics.newFont(28)
-    self.headFont = love.graphics.newFont(18)
-    self.bodyFont = love.graphics.newFont(15)
-    self.smallFont = love.graphics.newFont(13)
+    self.titleFont = Theme.display(28)
+    self.headFont = Theme.display(18)
+    self.bodyFont = Theme.body(15)
+    self.smallFont = Theme.body(13)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
@@ -105,18 +106,18 @@ function Advancement:draw()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf("Quest Complete", self.boxX, self.boxY + 22, BOX_W, "center")
 
     -- Reward header.
     love.graphics.setFont(self.headFont)
-    love.graphics.setColor(0.85, 0.88, 0.94)
+    Theme.set(Theme.ink)
     love.graphics.printf(self:rewardLine(), self.boxX + 24, self.boxY + 66, BOX_W - 48, "center")
 
     -- A companion who just joined outranks every other line on this panel: gold and standing change
@@ -137,7 +138,7 @@ function Advancement:draw()
     end
 
     love.graphics.setFont(self.headFont)
-    love.graphics.setColor(0.7, 0.74, 0.82)
+    Theme.set(Theme.muted)
     love.graphics.print("The company grows", self.listX, self.boxY + 122)
 
     self:drawList()
@@ -173,8 +174,8 @@ function Advancement:drawList()
 end
 
 function Advancement:drawEntry(entry, x, y, w, h)
-    love.graphics.setColor(0.15, 0.16, 0.21)
-    love.graphics.rectangle("fill", x, y, w, h, 6, 6)
+    Theme.set(Theme.panel2)
+    love.graphics.rectangle("fill", x, y, w, h, Theme.R, Theme.R)
 
     local char = entry.char or {}
     local ps = h - 8

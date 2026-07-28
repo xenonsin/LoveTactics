@@ -26,7 +26,7 @@
 -- surging again would need another full action, and the surge you are spending is that action.
 return {
     name = "Surge",
-    description = "Act again immediately. The time it costs is paid when you finally stop.",
+    description = "Acts again immediately; the time it costs is paid when you finally stop.",
     flavor = "The pause between two blows is where most people decide to stop. He has removed the pause.",
     sprite = "assets/items/ability_charge.png", -- placeholder until its own art exists
     type = "ability",

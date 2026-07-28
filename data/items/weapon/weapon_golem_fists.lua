@@ -14,7 +14,7 @@
 -- inventories.
 return {
     name = "Golem Fists",
-    description = "Slabs of fired clay. Slow, heavy, and not really the point.",
+    description = "Strikes an adjacent foe, slow and heavy.",
     flavor = "The Crucible spent its care on the shoulders. The hands were what was left over.",
     sprite = "assets/items/golem_fists.png",
     type = "weapon",

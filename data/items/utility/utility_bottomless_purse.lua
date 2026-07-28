@@ -18,7 +18,7 @@
 -- keyed off the QUEST finished, never off this item (questGate in models/quest.lua).
 return {
     name = "Bottomless Purse",
-    description = "The Golden Touch: strike an adjacent foe and lift an item off it into your own hands.",
+    description = "Strikes an adjacent foe and lifts an item off it into your hands.",
     flavor = "Aurea's purse, and it has never once been full. Stitched inside the lip: " ..
         "\"beneath the vault that was never full\".",
     sprite = "assets/items/bottomless_purse.png",
@@ -27,7 +27,7 @@ return {
     noSteal = true, -- you took it off her; nothing takes it back
     bonus = { defense = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } },
     activeAbility = {
-        description = "Lift an item off an adjacent foe and take it for your own.",
+        description = "Lifts an item off an adjacent foe and takes it for your own.",
         target = "enemy",
         range = 1,
         speed = 4,

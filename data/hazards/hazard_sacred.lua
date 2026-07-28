@@ -5,7 +5,7 @@
 -- needs a zone id of its own.
 return {
     name = "Sacred Ground",
-    description = "A sacred banner's shadow: allies standing within are Blessed.",
+    description = "Grants Blessing to allies in it.",
     tags = { "holy" },
     duration = 9999, -- answers to the banner's life, not a clock (Hazard.dropOwnedBy)
     disposition = "friendly",

@@ -11,7 +11,7 @@ return {
     name = "Inspiration",
     abbr = "Insp",
     description = "Inspired: raised Damage and Defense while the banner stands near.",
-    color = { 0.95, 0.60, 0.30 }, -- badge tint (rally orange)
+    color = { 0.854, 0.577, 0.340 }, -- badge tint (rally orange)
     -- Never reached while the banner stands: a zone-bound status does not age (models/status.lua's
     -- Status.tick skips it), so this is only the backstop for an Inspiration handed out by something
     -- that is not a zone.

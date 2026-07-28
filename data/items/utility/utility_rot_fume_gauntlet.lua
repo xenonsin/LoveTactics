@@ -15,7 +15,7 @@
 -- which is the most honest sentence this discipline has.
 return {
     name = "Rot-Fume Gauntlet",
-    description = "Your blows land harder for every poisoned body on the field -- your own included.",
+    description = "Increase damage for each Poisoned body on the field, your own included.",
     flavor = "The smell arrives first. By the time it is unbearable, the arithmetic has already happened.",
     sprite = "assets/items/utility_rot_fume_gauntlet.png",
     type = "utility",

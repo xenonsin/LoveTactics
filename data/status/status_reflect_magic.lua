@@ -16,7 +16,7 @@ return {
     name = "Reflect Magic",
     abbr = "RefM",
     description = "Mirrored: single-target spells rebound onto the caster.",
-    color = { 0.72, 0.60, 0.98 }, -- badge tint (arcane violet, mirror-bright)
+    color = { 0.713, 0.612, 0.930 }, -- badge tint (arcane violet, mirror-bright)
     duration = 15, -- ~3 turns at Status.TICKS_PER_TURN. Short, as a window must be -- but a window
                    -- under one turn was not short, it was closed before anyone could cast into it.
     reflects = "magical",

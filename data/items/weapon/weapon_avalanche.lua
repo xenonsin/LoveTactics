@@ -14,7 +14,7 @@
 -- turn order as well as you can. Held at full depth this is the longest commitment in the game.
 return {
     name = "Avalanche",
-    description = "Winds up, and holds it longer to widen the fall from one tile into a three-tile arc.",
+    description = "Channeled: hold longer to widen the arc.",
     flavor = "Snow does not decide to come down. It only decides how much of the mountain is coming with it.",
     sprite = "assets/items/avalanche.png",
     type = "weapon",
@@ -24,7 +24,7 @@ return {
     price = 900,
     repRank = 4,
     activeAbility = {
-        description = "Hold the wind-up longer to widen the blow: two extra ticks turns one tile into a three-tile arc.",
+        description = "Holding the wind-up longer widens the blow: two extra ticks turn one tile into a three-tile arc.",
         target = "tile",
         allowOccupied = true,
         range = 1,

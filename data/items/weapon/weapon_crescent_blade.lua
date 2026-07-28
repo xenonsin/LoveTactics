@@ -25,7 +25,7 @@
 --      say in mana AND stamina (Trait.answerCost) -- a crescent blade guards a doorway expensively.
 return {
     name = "Crescent Blade",
-    description = "Looses a crescent of force three tiles down the line you aim it, cutting through armor rather than at it.",
+    description = "Damage ignores armor.",
     flavor = "The Bastion's smiths tempered it in something they will not name. It has never needed sharpening, and it has never been lent out.",
     sprite = "assets/items/crescent_blade.png",
     type = "weapon",

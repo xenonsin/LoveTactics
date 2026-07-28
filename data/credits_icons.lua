@@ -8,7 +8,7 @@ return {
     url = "https://game-icons.net",
     licence = "CC BY 3.0",
     licenceUrl = "https://creativecommons.org/licenses/by/3.0/",
-    count = 590,
+    count = 593,
     -- Author -> icons used. Sorted by name when written, so the file diffs cleanly.
     authors = {
         { name = "carl-olsen", count = 2 },
@@ -18,7 +18,7 @@ return {
         { name = "delapouite", count = 231 },
         { name = "faithtoken", count = 1 },
         { name = "generalace135", count = 1 },
-        { name = "lorc", count = 272 },
+        { name = "lorc", count = 275 },
         { name = "lucasms", count = 7 },
         { name = "sbed", count = 34 },
         { name = "skoll", count = 5 },

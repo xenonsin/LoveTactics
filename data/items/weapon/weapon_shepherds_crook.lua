@@ -20,7 +20,7 @@
 -- recipient to still have anything left to spend.
 return {
     name = "Shepherd's Crook",
-    description = "Hooks an ally and moves them two tiles. Deals no damage to anyone.",
+    description = "Hooks an ally and moves them two tiles.",
     flavor = "The Bastion issues one per company and never explains it. The companies that work it out do not give it back.",
     sprite = "assets/items/shepherds_crook.png",
     type = "weapon",

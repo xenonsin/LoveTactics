@@ -21,7 +21,7 @@
 -- your double onto one is a legitimate way to clear it.
 return {
     name = "Shadow Trade",
-    description = "Trade places with one of your clones, at any distance.",
+    description = "Trades places with one of your clones, at any distance.",
     flavor = "He had been standing there the whole time. It simply had not been him.",
     sprite = "assets/items/ability_shadow_trade.png",
     type = "ability",

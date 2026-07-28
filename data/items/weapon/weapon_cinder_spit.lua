@@ -9,7 +9,7 @@
 -- (data/tutorials/village.lua). Keeping their distance is how they survive to be the lesson.
 return {
     name = "Cinder Spit",
-    description = "Spits a mouthful of hellfire at a foe two tiles off.",
+    description = "Spits hellfire at a foe.",
     flavor = "A lesser demon's whole argument, and it makes it from as far back as it can.",
     sprite = "assets/items/cinder_spit.png",
     type = "weapon",

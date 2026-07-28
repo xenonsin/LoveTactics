@@ -5,7 +5,7 @@
 -- thing that lives by its weapon: a heavy hitter drops to slapping for a few turns.
 return {
     name = "Disarm",
-    description = "Inflicts Disarmed: the foe cannot use its weapon for a time. Deals no damage.",
+    description = "Inflicts Disarm.",
     flavor = "A splash of solvent -- the Crucible's answer to anything that lives by its grip.",
     sprite = "assets/items/ability_disarm.png",
     type = "ability",

@@ -10,7 +10,7 @@
 -- returns nil) and the blow and the bounty still land, so it is never a wasted turn, only a smaller haul.
 return {
     name = "Shakedown",
-    description = "A blow that steals an item off the target and shakes a little coin loose for the party.",
+    description = "Steals an item and gold from a foe.",
     flavor = "Everything a man owns is only his until someone decides otherwise. The Undercroft decides constantly.",
     sprite = "assets/items/ability_shakedown.png",
     type = "ability",

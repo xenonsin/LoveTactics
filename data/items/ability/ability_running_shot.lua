@@ -14,7 +14,7 @@
 -- player can see, and a skirmisher who spends everything on the approach has nothing left to leave with.
 return {
     name = "Running Shot",
-    description = "A shot that hits harder for every tile you covered this turn.",
+    description = "Fires a shot. Increase damage by 3 per tile you covered this turn.",
     flavor = "The bow is not the difficult part. Neither is the horse.",
     sprite = "assets/items/ability_running_shot.png",
     type = "ability",
@@ -30,7 +30,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
         damage = { 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 12 },
-        description = "Damage rises with the ground you covered before taking the shot.",
+        description = "Increase damage by 3 per tile covered before the shot.",
         effect = function(fx)
             local moved = require("models.combat").tilesMovedThisTurn(fx.user)
             fx.damage(fx.target, { amount = fx.amount + moved * 3 })

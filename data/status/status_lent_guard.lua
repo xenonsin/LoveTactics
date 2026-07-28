@@ -12,7 +12,7 @@ return {
     name = "Lent Guard",
     abbr = "Lent",
     description = "Wearing somebody else's guard: defense is raised while it holds.",
-    color = { 0.72, 0.78, 0.90 }, -- badge tint (borrowed steel)
+    color = { 0.724, 0.776, 0.879 }, -- badge tint (borrowed steel)
     duration = 12,
     magnitude = 6,
     magnitudeStat = "defense", -- routes the instance's magnitude straight into the defense fold

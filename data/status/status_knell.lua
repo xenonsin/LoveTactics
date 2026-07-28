@@ -28,7 +28,7 @@ return {
     name = "Knell",
     abbr = "Knl",
     description = "Marked for an hour: when the count runs out, this unit dies.",
-    color = { 0.55, 0.20, 0.28 }, -- badge tint (a deep funeral red, unlike anything else on the strip)
+    color = { 0.499, 0.219, 0.283 }, -- badge tint (a deep funeral red, unlike anything else on the strip)
     fx = { field = true },    -- draws ground under the marked body (a debuff: the hostile look, ui/field_fx.lua)
     duration = 20, -- ~4 turns at Status.TICKS_PER_TURN: long enough to cure, short enough to fear
     debuff = true, -- the whole counterplay: Cure and Panacea lift it

@@ -19,15 +19,16 @@ local Trap = require("models.trap")
 local Prop = require("models.prop")
 local Colors = require("ui.colors")
 local Glyphs = require("ui.glyphs")
+local Theme = require("ui.theme")
 local PoolCallout = require("ui.pool_callout")
 
 local TileTooltip = {}
 
 local titleFont, bodyFont, smallFont
 local function fonts()
-    titleFont = titleFont or love.graphics.newFont(15)
-    bodyFont = bodyFont or love.graphics.newFont(12)
-    smallFont = smallFont or love.graphics.newFont(11)
+    titleFont = titleFont or Theme.display(15) -- name/heading: the serif chrome voice
+    bodyFont = bodyFont or Theme.body(12)      -- dense data: the companion sans
+    smallFont = smallFont or Theme.body(11)
     return titleFont, bodyFont, smallFont
 end
 
@@ -56,9 +57,9 @@ local DEFAULT_COLOR = { 0.86, 0.87, 0.92 }
 local PARTY_COLOR = Colors.PARTY
 local ENEMY_COLOR = Colors.ENEMY
 
-local MUTED = { 0.62, 0.65, 0.72 }
-local VALUE = { 0.90, 0.91, 0.95 }
-local DESC = { 0.80, 0.82, 0.88 }
+local MUTED = Theme.muted
+local VALUE = Theme.ink
+local DESC = Theme.ink
 
 local GLYPH_GAP = 4 -- between a row's glyph and the value it marks (matches ui/item_tooltip.lua)
 local BAR_GLYPH_W = 7 -- the resource mark ahead of a pool bar's HP/MP/SP tag
@@ -242,9 +243,9 @@ local HAZARD_COLOR = {
     neutral  = { 0.55, 0.72, 0.95 }, -- rain blue
 }
 
--- Append the hazards on the tile (info.hazards): a heading then, per hazard, its name (tinted by
--- disposition) with the remaining duration on the right, and a flavour line. Ordered to sit ABOVE
--- the terrain section but BELOW any occupant, so a fire/sanctuary reads between the two.
+-- Append the hazards on the tile (info.hazards): per hazard, its name (tinted by disposition) with
+-- the remaining duration on the right, and its mechanical line. Ordered to sit ABOVE the terrain
+-- section but BELOW any occupant, so a fire/sanctuary reads between the two.
 -- Returns true if it appended a hazard section (so the empty-tile caller knows to add a divider
 -- before the terrain that follows). A leading divider is added only when the box already has content
 -- above (an occupant); on an empty tile the hazard leads, so no leading divider.
@@ -252,8 +253,6 @@ local function appendHazard(blocks, info)
     local hazards = info.hazards
     if not hazards or #hazards == 0 then return false end
     if #blocks > 0 then blocks[#blocks + 1] = { kind = "sep" } end
-    blocks[#blocks + 1] = { kind = "head", text = #hazards > 1 and "Hazards" or "Hazard",
-        color = { 0.85, 0.86, 0.92 } }
     for _, h in ipairs(hazards) do
         local def = h.def or {}
         blocks[#blocks + 1] = { kind = "status",
@@ -475,12 +474,11 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
         by = math.max(opts.dockTop or 4, bottomY - h)
     end
 
-    local accent = accentFor(info)
-    love.graphics.setColor(0.08, 0.09, 0.12, 0.96)
-    love.graphics.rectangle("fill", bx, by, w, h, 6, 6)
-    love.graphics.setColor(accent[1], accent[2], accent[3], 0.9)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", bx, by, w, h, 4, 4)
+    Theme.set(Theme.frame) -- bone-gold trim; faction/terrain still rides the title colour + the Side row
     love.graphics.setLineWidth(1)
-    love.graphics.rectangle("line", bx, by, w, h, 6, 6)
+    love.graphics.rectangle("line", bx, by, w, h, 4, 4)
 
     -- Pool projections are collected while the rows are drawn and floated after them, so a pill
     -- always layers over the box rather than under the row below it.
@@ -499,7 +497,7 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             love.graphics.printf(b.text, bx + pad, ty, innerW, "left")
             ty = ty + b.lines * bodyH + 2
         elseif b.kind == "sep" then
-            love.graphics.setColor(0.30, 0.33, 0.40, 0.8)
+            Theme.set(Theme.frame, 0.24)
             love.graphics.line(bx + pad, ty + 4, bx + w - pad, ty + 4)
             ty = ty + 8
         elseif b.kind == "head" then
@@ -536,7 +534,7 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             -- its far end and the unreserved fill visibly shrinks by exactly what was committed.
             local scale = b.fullMax or b.max
             local ratio = (scale > 0) and math.max(0, math.min(1, b.cur / scale)) or 0
-            love.graphics.setColor(0, 0, 0, 0.5)
+            Theme.set(Theme.barTrack)
             love.graphics.rectangle("fill", bx + pad, barY, innerW, barH, 2, 2)
             if b.reserved and scale > 0 then
                 -- The locked-away tail: the pool colour, dimmed and hatched by opacity alone.
@@ -578,6 +576,8 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
                 love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
                 love.graphics.rectangle("fill", bx + pad, barY, innerW * ratio, barH, 2, 2)
             end
+            Theme.set(Theme.barOutline, Theme.barOutline[4] or 1)
+            love.graphics.rectangle("line", bx + pad, barY, innerW, barH, 2, 2)
             ty = ty + bodyH + barH + 4
         elseif b.kind == "status" then -- status name (in its colour) left, remaining duration right
             love.graphics.setFont(body)
@@ -595,11 +595,13 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
                 Glyphs.hourglass(vx - GLYPH_GAP - gw, ty + 2, gw, bodyH - 4, MUTED[1], MUTED[2], MUTED[3], 1)
             end
             ty = ty + bodyH + 1
-        else -- stat: label left, value right
+        else -- stat: label left, value right, a dotted leader walking between them (as ui/item_tooltip)
             love.graphics.setFont(body)
             love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
             love.graphics.print(b.label, bx + pad, ty)
             local vc = b.valueColor or VALUE
+            local valueLeft = bx + pad + innerW - body:getWidth(b.value)
+            Theme.leader(bx + pad + body:getWidth(b.label) + 6, valueLeft - 6, ty + bodyH - 3)
             love.graphics.setColor(vc[1], vc[2], vc[3], 1)
             love.graphics.printf(b.value, bx + pad, ty, innerW, "right")
             ty = ty + bodyH + 1

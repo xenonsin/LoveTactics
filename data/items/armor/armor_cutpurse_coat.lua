@@ -10,7 +10,7 @@
 -- durable enough to trade would be paying them for the wrong behaviour.
 return {
     name = "Cutpurse's Coat",
-    description = "Every blow you land on a living foe lifts a little coin, paid with the spoils.",
+    description = "On damage dealt: gain gold.",
     flavor = "The lining is all pockets. The Undercroft charges apprentices for the tailoring and nothing for the lesson.",
     sprite = "assets/items/armor_cutpurse_coat.png",
     type = "armor",

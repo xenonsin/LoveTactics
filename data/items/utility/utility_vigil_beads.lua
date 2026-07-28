@@ -16,7 +16,7 @@
 -- status -- the same line weapon_kingsfall draws, moved from the weapon to the caster.
 return {
     name = "Vigil Beads",
-    description = "Your channelled spells cannot be interrupted, by anything.",
+    description = "Channelled spells cannot be interrupted, by anything.",
     flavor = "One bead per interruption she has already declined. It is not a short string.",
     sprite = "assets/items/utility_vigil_beads.png",
     type = "utility",

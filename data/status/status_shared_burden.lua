@@ -19,7 +19,7 @@ return {
     name = "Shared Burden",
     abbr = "Bnd",
     description = "Bonded: half of every wound taken is borne by the one who swore it.",
-    color = { 0.72, 0.76, 0.88 }, -- badge tint (pale steel)
+    color = { 0.724, 0.758, 0.862 }, -- badge tint (pale steel)
     duration = 30, -- ~6 turns at Status.TICKS_PER_TURN: a promise with a fight's worth of life in it
     sharesDamage = 0.5,
 }

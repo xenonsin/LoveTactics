@@ -20,7 +20,7 @@
 -- fire mage is a way to turn their turn off.
 return {
     name = "Tidesbreak",
-    description = "Skewers and soaks the two tiles ahead, driving them back a pace as you step into it.",
+    description = "Knockback and inflicts Wet on the far tile.",
     flavor = "The tide does not push. It arrives, and afterwards the beach is somewhere else.",
     sprite = "assets/items/tidesbreak.png",
     type = "weapon",
@@ -37,12 +37,17 @@ return {
         damage = { 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 10 },
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
+            -- The spear convention (docs/weapons.md): Wet lands on the FAR tile only. Capture the far
+            -- body BEFORE the shove, which moves it off the tile the check would otherwise read.
+            local dx, dy = fx.tx - fx.user.x, fx.ty - fx.user.y
+            local farX, farY = fx.tx + dx, fx.ty + dy
             for _, u in ipairs(fx.aoeUnits()) do
+                local isFar = (u.x == farX and u.y == farY)
                 -- The shove rides IN the blow, so a body the thrust kills is still thrown before it
                 -- drops (the rule the Iron Mace's header sets out). One tile only: this is a wall
                 -- taking ground, not a mace clearing a room.
                 fx.damage(u, { knockback = { distance = 1, amount = 0 } })
-                if u.alive then fx.applyStatus(u, "status_wet") end
+                if u.alive and isFar then fx.applyStatus(u, "status_wet") end
             end
             -- ...and the wielder follows into the vacated cell, if the line actually cleared it. Checked
             -- rather than assumed: a rank pinned against a wall does not move, and the spearman must not

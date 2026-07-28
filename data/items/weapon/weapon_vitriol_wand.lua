@@ -12,7 +12,7 @@
 -- has already landed has corroded armor that is no longer in anyone's way.
 return {
     name = "Vitriol Wand",
-    description = "Looses a caustic bolt at range, laying Acid: the target's defenses are eaten away.",
+    description = "Inflicts Acid.",
     flavor = "It barely stings. That is not what it is for.",
     sprite = "assets/items/vitriol_wand.png",
     type = "weapon",

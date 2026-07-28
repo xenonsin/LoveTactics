@@ -13,7 +13,7 @@
 -- nobody buys.
 return {
     name = "Scent Marker",
-    description = "Bursts over an area: Marks every foe caught in it. Deals no damage.",
+    description = "Inflicts Mark in area.",
     flavor = "The Lodge renders it from the last kill. The next one never does understand why it was already being watched.",
     sprite = "assets/items/scent_marker.png",
     type = "consumable",

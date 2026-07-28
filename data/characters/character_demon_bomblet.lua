@@ -31,6 +31,7 @@
 return {
     name = "Bomblet",
     sprite = "assets/chars/demon_imp.png", -- reuses the imp art until its own exists
+    revivable = false, -- a demon does not come back (and it bursts on death regardless)
     unarmed = false, -- no natural weapon at all: it cannot strike, only detonate
     stats = {
         health = 10, mana = 0, stamina = 0,

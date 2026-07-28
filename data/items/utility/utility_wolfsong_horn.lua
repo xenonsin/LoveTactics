@@ -28,7 +28,7 @@ return {
     name = "Wolfsong Horn",
     -- The wolf-alive gate is a RULE the player must know, so it stays in the description, not the flavor
     -- (docs/item-text.md): flavor is never load-bearing.
-    description = "A wolf starts at your side. Sound the horn while it lives to root every foe within two tiles of you or the wolf.",
+    description = "Starts each battle with a wolf. While it lives, the horn inflicts Root on foes within two tiles of you or it.",
     flavor = "Raised beside a wolf, and it still comes when the horn sounds. What the horn calls, it calls but once.",
     sprite = "assets/items/sig_wolfsong_horn.png",
     type = "utility", -- a horn: `bound` (not the type) is what locks it in place
@@ -38,7 +38,7 @@ return {
     traits = { "trait_wolf_companion" },
     bonus = { speed = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3 } }, -- levels 0..10
     activeAbility = {
-        description = "Roots every foe within two tiles of you or your wolf. Charges as the wolf draws blood; usable only while the wolf lives.",
+        description = "Inflicts Root on every foe within two tiles of you or your wolf. Charges as the wolf draws blood; only while it lives.",
         target = "self", -- centred on Kaya; the effect also reaches around the wolf
         range = 1,
         speed = 6,

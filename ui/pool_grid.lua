@@ -25,6 +25,7 @@
 --   pool:keypressed(key); pool:gamepadpressed(joystick, button); pool:cancelPickup()
 
 local Item = require("models.item")
+local Theme = require("ui.theme")
 
 local PoolGrid = {}
 PoolGrid.__index = PoolGrid
@@ -35,11 +36,11 @@ local ARROW_H = 20 -- clickable scroll arrows above and below the grid
 
 -- Icon/plate tint per item type, matching ui/item_tooltip.lua and the old stash list.
 local TYPE_COLOR = {
-    weapon = { 0.90, 0.58, 0.48 },
-    armor = { 0.58, 0.72, 0.92 },
-    consumable = { 0.52, 0.85, 0.55 },
-    ability = { 0.78, 0.62, 0.96 },
-    utility = { 0.92, 0.82, 0.52 },
+    weapon = { 0.789, 0.361, 0.354 },
+    armor = { 0.391, 0.549, 0.812 },
+    consumable = { 0.361, 0.671, 0.480 },
+    ability = { 0.568, 0.414, 0.786 },
+    utility = { 0.865, 0.707, 0.341 },
 }
 local DEFAULT_COLOR = { 0.80, 0.80, 0.86 }
 
@@ -252,12 +253,11 @@ function PoolGrid:drawCell(i, sx, sy)
     -- Name band along the bottom, scaled to fit one line.
     love.graphics.setColor(0, 0, 0, 0.55)
     love.graphics.rectangle("fill", sx + 1, sy + CELL - 15, CELL - 2, 14, 0, 0, 6, 6)
-    love.graphics.setFont(self.nameFont)
-    local name = item.name or "?"
-    local nw = self.nameFont:getWidth(name)
-    local sc = math.min(1, (CELL - 6) / nw)
+    -- Fit the name on a native sans font (never scaled -- a scaled font blurs); long names step down.
+    local font, name = Theme.fitText(Theme.body, item.name or "?", CELL - 6, 11, 8)
+    love.graphics.setFont(font)
     love.graphics.setColor(col[1] * dim, col[2] * dim, col[3] * dim)
-    love.graphics.print(name, sx + CELL / 2 - (nw * sc) / 2, sy + CELL - 14, 0, sc, sc)
+    love.graphics.print(name, sx + CELL / 2 - font:getWidth(name) / 2, sy + CELL - 14)
 
     -- Corner badge: a store price, or a stack count.
     love.graphics.setFont(self.smallFont)

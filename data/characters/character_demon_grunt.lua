@@ -21,6 +21,7 @@
 return {
     name = "Demon Grunt",
     sprite = "assets/chars/demon_grunt.png",
+    revivable = false, -- a demon does not come back: no downed window, and no revive takes it
     stats = {
         -- Stamina is 15, not the ~0.25 cut the scarcity pass would give it (which was 10). Its Rending
         -- Claws cost 12 to swing (below), so a 10-stamina grunt could never attack at all -- it would be

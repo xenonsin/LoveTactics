@@ -14,6 +14,6 @@ return {
     name = "Intercession",
     abbr = "Int",
     description = "Named by an intercessor: their blows mend you.",
-    color = { 0.85, 0.80, 0.55 }, -- badge tint (candle gold, the Cathedral's own)
+    color = { 0.811, 0.769, 0.559 }, -- badge tint (candle gold, the Cathedral's own)
     duration = 9999, -- answers to the battle, not a clock
 }

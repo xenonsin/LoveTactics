@@ -15,7 +15,7 @@
 -- attacker was standing in. Shot from inside a fire, you end up in the fire.
 return {
     name = "Slipstep Leathers",
-    description = "When struck from any range, appear beside the attacker for a swing's stamina and cut.",
+    description = "On hit taken: appear beside the attacker and cut, for a swing's stamina.",
     flavor = "The Undercroft's answer to archers, which for a long time was to employ them instead.",
     sprite = "assets/items/armor_slipstep_leathers.png",
     type = "armor",

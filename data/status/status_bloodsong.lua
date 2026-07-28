@@ -17,7 +17,7 @@ return {
     name = "Bloodsong",
     abbr = "Bsng",
     description = "Bloodsong: drinks back a share of the damage it deals.",
-    color = { 0.84, 0.34, 0.36 }, -- badge tint (banner red)
+    color = { 0.768, 0.366, 0.382 }, -- badge tint (banner red)
     duration = 6,                 -- the backstop; the smoke under it is what really holds this up
     lifesteal = 0.25,             -- the shared share: a quarter, against the Red Thirst's three
 }

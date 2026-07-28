@@ -10,7 +10,7 @@
 -- the faster thing in the room, not both of them standing still.
 return {
     name = "Ball Bearings",
-    description = "Scatters underfoot: Cripples everything in a small area. Deals no damage.",
+    description = "Inflicts Cripple in area.",
     flavor = "The Undercroft sells dignity by the handful. This is what it costs a charging line of it.",
     sprite = "assets/items/ball_bearings.png",
     type = "consumable",

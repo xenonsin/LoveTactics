@@ -9,7 +9,7 @@
 -- dead weight in a fight where the party lands no marks, which makes it a wager on your own setup.
 return {
     name = "Marksman's Lens",
-    description = "Your ranged attacks deal extra damage against a Marked foe.",
+    description = "Ranged attacks deal extra damage against a Marked foe.",
     flavor = "The Lodge grinds them from river-glass. A mark is only a suggestion until you look through one of these.",
     sprite = "assets/items/marksmans_lens.png",
     type = "utility",

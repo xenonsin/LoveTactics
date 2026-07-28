@@ -20,7 +20,7 @@
 -- anything at all.
 return {
     name = "Wand of the Second Utterance",
-    description = "A bolt at range that lets one ally's next channelled working resolve instantly, with no wind-up.",
+    description = "Grants Second Utterance.",
     flavor = "Saying it once was always enough. The Arcanum spent four hundred years finding out who had to say it.",
     sprite = "assets/items/second_utterance_wand.png",
     type = "weapon",

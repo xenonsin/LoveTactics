@@ -26,6 +26,7 @@ return {
     boss = true,
     archetype = "aggressive", -- a slow menace that hunts; explicit for readability
     sprite = "assets/chars/demon_grunt.png",
+    revivable = false, -- a demon does not come back: no downed window, and no revive takes it
     stats = {
         health = 115, mana = 0, stamina = 24, -- stamina affords claws + Cleave + repeated Roars
         damage = 14, magicDamage = 0,          -- base; the stage-3 enrage adds up to +20 as it empties

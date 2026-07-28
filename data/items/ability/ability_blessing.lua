@@ -4,7 +4,7 @@
 -- Aegis). A ground-target support cast, so its footprint previews green.
 return {
     name = "Blessing",
-    description = "Blesses allies in an area, raising their Damage and Magic Damage.",
+    description = "Grants Blessing in area.",
     flavor = "A benediction delivered at volume. The Cathedral has never believed in whispering.",
     sprite = "assets/items/ability_blessing.png",
     type = "ability",

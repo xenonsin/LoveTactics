@@ -26,6 +26,7 @@ local InputMode = require("input_mode")
 local Item = require("models.item")
 local Scale = require("scale")
 local Colors = require("ui.colors")
+local Theme = require("ui.theme")
 
 local BattleSummary = {}
 BattleSummary.__index = BattleSummary
@@ -89,12 +90,12 @@ function BattleSummary.new(opts)
     end
     self.n = #self.items
 
-    self.bannerFont = love.graphics.newFont(44)
-    self.subFont = love.graphics.newFont(16)
-    self.goldFont = love.graphics.newFont(26)
-    self.nameFont = love.graphics.newFont(13)
-    self.hintFont = love.graphics.newFont(15)
-    self.titleFont = love.graphics.newFont(30) -- the card icon-letter fallback font
+    self.bannerFont = Theme.display(44)
+    self.subFont = Theme.body(16)
+    self.goldFont = Theme.display(26)
+    self.nameFont = Theme.body(13)
+    self.hintFont = Theme.body(15)
+    self.titleFont = Theme.display(30) -- the card icon-letter fallback font
 
     local hasGold = self.gold > 0
     local hasLoot = self.n > 0
@@ -332,12 +333,11 @@ function BattleSummary:drawCard(item, count, cx, cy, alpha, scale, focused)
 
     love.graphics.setColor(0, 0, 0, 0.6 * alpha)
     love.graphics.rectangle("fill", x + 1, y + h - 17 * scale, w - 2, 16 * scale, 0, 0, 6, 6)
-    love.graphics.setFont(self.nameFont)
-    local name = item.name or "?"
-    local nw = self.nameFont:getWidth(name)
-    local sc = math.min(1, (w - 8) / nw)
+    -- Fit the name on a native font (never scaled -- a scaled font blurs); long names step down a size.
+    local font, name = Theme.fitText(Theme.body, item.name or "?", w - 8, 13, 10)
+    love.graphics.setFont(font)
     love.graphics.setColor(0.92, 0.92, 0.96, alpha)
-    love.graphics.print(name, cx - (nw * sc) / 2, y + h - 16 * scale, 0, sc, sc)
+    love.graphics.print(name, cx - font:getWidth(name) / 2, y + h - 16 * scale)
 
     if count and count > 1 then
         love.graphics.setFont(self.nameFont)
@@ -360,11 +360,11 @@ function BattleSummary:draw()
     local accent = self.win and Colors.PARTY or Colors.ENEMY
     local bx, by = self.boxX, self.boxY
 
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", bx, by, self.boxW, self.boxH, 10, 10)
-    love.graphics.setColor(accent[1], accent[2], accent[3], 0.85)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", bx, by, self.boxW, self.boxH, Theme.R, Theme.R)
+    love.graphics.setColor(accent[1], accent[2], accent[3], 0.85) -- border carries win(blue)/loss(red)
     love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", bx, by, self.boxW, self.boxH, 10, 10)
+    love.graphics.rectangle("line", bx, by, self.boxW, self.boxH, Theme.R, Theme.R)
     love.graphics.setLineWidth(1)
 
     self:drawParticles()

@@ -21,7 +21,7 @@
 -- everything is what the resistance curve already sells, at a curve's price.
 return {
     name = "Deadhand Grip",
-    description = "The weapon cannot be struck from this hand: immune to Disarmed.",
+    description = "Immune to Disarm.",
     flavor = "The Undercroft teaches you to take a blade off a man. It charges extra to teach the reverse.",
     sprite = "assets/items/deadhand_grip.png",
     type = "utility",

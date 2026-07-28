@@ -1,6 +1,6 @@
 return {
     name = "Iron Bow",
-    description = "Fires an arrow at range. Cannot shoot a foe standing next to you.",
+    description = "Fires an arrow. Cannot shoot an adjacent foe.",
     flavor = "The Lodge's first bow. It teaches distance before it teaches aim.",
     sprite = "assets/items/bow.png",
     type = "weapon",

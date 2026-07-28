@@ -30,7 +30,7 @@
 -- upgrade should make the sentence harder to outrun, not make sentences cheap enough to hand out.
 return {
     name = "Toll the Knell",
-    description = "Names an hour for one foe. When the count runs out they die, whatever their health. Cleansable.",
+    description = "Inflicts Knell on one foe.",
     flavor = "He did not do anything to her. He simply said when, and was not contradicted.",
     sprite = "assets/items/ability_knell.png",
     type = "ability",

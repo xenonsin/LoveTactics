@@ -15,7 +15,7 @@
 -- permanent no-hiding zone the enemy simply has to route around forever.
 return {
     name = "Witchlight",
-    description = "Harsh light: nothing standing in it can hide from being targeted.",
+    description = "Applies Limned to units in it.",
     tags = { "light" },
     -- "light" resolves to the same halo the holy ground wears, and this is not holy ground. The cold
     -- blue-white is what the description promises: a hard, colourless light, not a blessing.

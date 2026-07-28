@@ -17,7 +17,7 @@
 -- (Combat.itemBlockReason), rather than leaving the player to discover the limit by clicking.
 return {
     name = "Harrier's Bow",
-    description = "A shot that does not end your turn: fire, then spend your move.",
+    description = "Fires without ending your turn, leaving your move to spend.",
     flavor = "Loosed at the gallop, from the wrong shoulder, going away. It is not a good shot. It is an unanswerable one.",
     sprite = "assets/items/weapon_harriers_bow.png",
     type = "weapon",

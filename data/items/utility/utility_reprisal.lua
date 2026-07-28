@@ -9,7 +9,7 @@
 -- makes the wall bite.
 return {
     name = "Reprisal",
-    description = "When struck in melee, you counter EVERY adjacent foe at once -- the more around you, the more it hurts.",
+    description = "On melee hit taken: counter every adjacent foe. Increase damage for each adjacent foe.",
     flavor = "One of them swung. That was, on reflection, a decision that concerned all of them.",
     sprite = "assets/items/utility_reprisal.png",
     type = "utility",

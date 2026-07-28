@@ -160,17 +160,22 @@ outside the count and are not listed here.
 | Q | `weapon_wolfs_portion` | **Inverted frenzy** ⚠️: devastating into one body, falling off hard for every extra. The family's duel weapon, and a stated deviation. |
 
 ### `spear` — knight
+
+**Family rule:** a spear's status lands on the **far tile** — the point reaches past the near body to
+the rank behind (`far = the aimed cell + one more step along the thrust`). `weapon_sworn_lance` is the
+one exception: it *pairs* the two tiles, so it needs both.
+
 | | Weapon | Its extra over the base |
 |---|---|---|
 | S1 | `weapon_iron_spear` | the base: skewers a 2-tile line |
-| S2 | `weapon_boar_spear` | The crossbar: the **near** tile is Rooted and cannot back off the point. |
-| S3 | `weapon_exposing_pike` | The line is left **Exposed** (+8 from every pierce hit) — and pierce is what every spear, bow and half the daggers already carry. Its damage stat is the party. |
+| S2 | `weapon_boar_spear` | The crossbar: the **far** tile is Rooted and cannot back off the point. |
+| S3 | `weapon_exposing_pike` | The **far** tile is left **Exposed** (+8 from every pierce hit) — and pierce is what every spear, bow and half the daggers already carry. Its damage stat is the party. |
 | S4 | `weapon_mailpiercer` | The line lands **`raw`** (no defense, no resist) and the **far** tile is left **Halted**. |
 | S4 | `weapon_marching_standard` | The thrust **plants a standard** — Rally ground for as long as the pole stands. Raised for free by a swing, and it never silences the weapon that raised it (`noClaim`). |
 | Q | `weapon_second_rank` | Reaches a **third tile while an ally stands directly behind you**. The pike drill as a weapon — the only item that reads the tile at your back. |
-| Q | `weapon_disarming_pike` | Both tiles are **Disarmed**: no weapon usable, bare fists still fine. Worthless against a beast, which is the honest reading of a disarm. |
+| Q | `weapon_disarming_pike` | The **far** tile is **Disarmed**: no weapon usable, bare fists still fine. Worthless against a beast, which is the honest reading of a disarm. |
 | Q | `weapon_knell_point` | The **far** tile is marked for death (`status_knell`). Must be thrust *through* somebody, so the enemy's own front rank gates it. |
-| Q | `weapon_tidesbreak` | Soaks the line (`water`, `status_wet`), drives it back a pace, and **the bearer steps into the gap** — the only weapon that advances its wielder. |
+| Q | `weapon_tidesbreak` | Soaks the **far** tile (`water`, `status_wet`), drives the line back a pace, and **the bearer steps into the gap** — the only weapon that advances its wielder. |
 | Q | `weapon_sworn_lance` | Both tiles are **sworn to each other**: either that ends a turn apart bleeds for it. Acedia's rule, taken off her — the line is what pairs them. |
 
 ### `mace` — knight

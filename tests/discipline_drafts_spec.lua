@@ -106,7 +106,10 @@ return {
             h.char.stats.mana.current = 99
 
             Combat.dealFlatDamage(combat, v, 9999, { "physical" }, "a blow")
-            assert(v.corpse, "the victim left a corpse at (5,5)")
+            -- A felled human is incapacitated first; age its window out so the body is a raisable corpse
+            -- before Corpse Burst reads it.
+            Status.tick(combat, 15)
+            assert(v.corpse, "the victim's body has gone cold to a corpse at (5,5)")
 
             local hp0 = by.char.stats.health.current
             assert(Fixture.strike(combat, h, { x = 5, y = 5 }, "ability_corpse_burst"), "Corpse Burst casts on the body's tile")

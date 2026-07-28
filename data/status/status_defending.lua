@@ -10,7 +10,7 @@ return {
     name = "Defending",
     abbr = "Def",
     description = "Braced: raised physical defense until this unit's next turn.",
-    color = { 0.45, 0.65, 0.85 }, -- badge tint (blue)
+    color = { 0.466, 0.630, 0.795 }, -- badge tint (blue)
     duration = 99,          -- generous fallback; it really ends via onTurnStart (see below)
     hideDuration = true,    -- the fallback countdown is meaningless -- hide it in the tooltip
     magnitude = 8,          -- default +defense when the granting shield sets no waitBehavior.defense

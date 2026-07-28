@@ -12,7 +12,7 @@
 -- lives off other people having something to take.
 return {
     name = "Sap",
-    description = "A short blow that drains the target's stamina into your own reserves.",
+    description = "Deals damage and drains the target's stamina into your own.",
     flavor = "The Undercroft's first lesson in economy: a man too winded to swing is a man you have already robbed.",
     sprite = "assets/items/ability_sap.png",
     type = "ability",

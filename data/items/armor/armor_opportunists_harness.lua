@@ -14,7 +14,7 @@
 -- that has already spent its nine cells.
 return {
     name = "Opportunist's Harness",
-    description = "When you afflict a foe with a debuff you gain Haste. Then it must recharge.",
+    description = "On inflicting a debuff: gain Haste, then recharge.",
     flavor = "Undercroft tailoring: the buckles are placed for someone who intends to be elsewhere shortly.",
     sprite = "assets/items/armor_opportunists_harness.png",
     type = "armor",

@@ -3,7 +3,7 @@
 -- that fights physically, so its Power scales `damage` rather than `magicDamage`.
 return {
     name = "Summon Earth Elemental",
-    description = "Binds an earth elemental for a time. One at a time; reserves a quarter of your max mana.",
+    description = "Binds an earth elemental. One at a time; reserves a quarter of your max mana.",
     flavor = "The tank of the set, and the only one that argues with its fists rather than the weather.",
     sprite = "assets/items/ability_summon_earth_elemental.png",
     type = "ability",

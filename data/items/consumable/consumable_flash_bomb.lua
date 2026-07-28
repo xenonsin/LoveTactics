@@ -4,7 +4,7 @@
 -- hits allies too, so mind your own line.
 return {
     name = "Flash Bomb",
-    description = "Inflicts Blind on everything in the target area. Deals no damage.",
+    description = "Inflicts Blind in area.",
     flavor = "A rogue's apology to a line of archers: they never do see who was leaving.",
     sprite = "assets/items/flash_bomb.png",
     type = "consumable",

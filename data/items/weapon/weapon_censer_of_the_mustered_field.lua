@@ -12,7 +12,7 @@
 -- censer rewards allies who come to you; this rewards you going to them.
 return {
     name = "Censer of the Mustered Field",
-    description = "Wreathes you in smoke: allies beside you stand braced, and enemies beside you stand open.",
+    description = "Braces adjacent allies and inflicts Exposed on adjacent foes.",
     flavor = "The Cathedral swings it at the head of a column. Nobody has ever been sure whether that is a blessing or a threat.",
     sprite = "assets/items/censer_mustered.png",
     type = "weapon",

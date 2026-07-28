@@ -15,7 +15,7 @@
 -- have wired your knight to the enemy's champion, which is a real way to lose a fighter.
 return {
     name = "Splitting Maul",
-    description = "Cleaves a wide arc and binds everything it caught: each of them takes half of every wound the others suffer.",
+    description = "Inflicts Conjoined.",
     flavor = "One blow to make them a crowd. After that you only ever have to hit the crowd once.",
     sprite = "assets/items/splitting_maul.png",
     type = "weapon",

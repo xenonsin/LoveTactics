@@ -18,7 +18,7 @@ return {
     name = "Suspended",
     abbr = "Susp",
     description = "Suspended: lifted off the field -- cannot act, be acted on, or answer.",
-    color = { 0.74, 0.82, 0.94 }, -- badge tint (thin air)
+    color = { 0.745, 0.814, 0.917 }, -- badge tint (thin air)
     duration = 10,
     shovesInitiative = "duration",
     debuff = true,

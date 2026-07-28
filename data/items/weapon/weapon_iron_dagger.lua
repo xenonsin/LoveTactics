@@ -11,7 +11,7 @@
 -- this same idea, faster still and far dearer.
 return {
     name = "Iron Dagger",
-    description = "Deals damage and inflicts Bleed, which taxes every tile the victim walks.",
+    description = "Deals damage and inflicts Bleed.",
     flavor = "The Undercroft's first blade. It does not need to kill you; it only needs you to keep moving.",
     sprite = "assets/items/dagger.png",
     type = "weapon",

@@ -17,7 +17,7 @@ return {
     name = "Unclosing Wound",
     abbr = "Uncl",
     description = "Unclosing: cannot be healed by any means.",
-    color = { 0.62, 0.10, 0.16 }, -- badge tint (dark arterial red)
+    color = { 0.540, 0.141, 0.187 }, -- badge tint (dark arterial red)
     duration = 10,                -- ~2 turns: long enough to finish what it was opened for
     debuff = true,
     resistible = "physical",      -- warded by defense + statusResist, halved on every repeat

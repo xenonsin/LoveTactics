@@ -7,7 +7,7 @@ return {
     name = "Blessing",
     abbr = "Bls",
     description = "Blessed: raised Damage and Magic Damage.",
-    color = { 0.95, 0.85, 0.45 }, -- badge tint (gilded gold)
+    color = { 0.880, 0.798, 0.472 }, -- badge tint (gilded gold)
     duration = 20, -- ~4 turns at Status.TICKS_PER_TURN: the "while" a turn spent casting is worth
     statBonus = { damage = 5, magicDamage = 5 },
 }

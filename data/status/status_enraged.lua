@@ -10,7 +10,7 @@ return {
     name = "Enraged",
     abbr = "Enr",
     description = "Worse the nearer it is to death: every wound sharpens its next blow.",
-    color = { 0.85, 0.2, 0.15 }, -- badge tint (arterial red)
+    color = { 0.742, 0.243, 0.204 }, -- badge tint (arterial red)
     duration = 999,       -- it does not cool; it lasts the battle
     hideDuration = true,  -- the countdown is meaningless -- the magnitude is the story
     magnitude = 0,        -- overwritten each hit with the total damage banked (display only)

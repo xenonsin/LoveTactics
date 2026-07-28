@@ -20,7 +20,7 @@ return {
     name = "Struck Ledger",
     abbr = "Ldgr",
     description = "Priced: lit up, and worth coin to the company when it falls.",
-    color = { 0.90, 0.76, 0.30 }, -- badge tint (coin gold)
+    color = { 0.811, 0.700, 0.335 }, -- badge tint (coin gold)
     duration = 25,                -- ~5 turns for the price to be collected
     magnitude = 40,               -- the coin it settles for; the granting ability raises it per level
     debuff = true,

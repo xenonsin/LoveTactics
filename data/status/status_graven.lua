@@ -20,7 +20,7 @@ return {
     name = "Graven",
     abbr = "Grv",
     description = "Inside your own circle: ability and movement costs are reduced.",
-    color = { 0.62, 0.55, 0.92 }, -- badge tint (arcane violet, the Arcanum's own)
+    color = { 0.621, 0.563, 0.871 }, -- badge tint (arcane violet, the Arcanum's own)
     -- Never reached while the circle holds: a zone-bound status does not age (Status.tick skips it), so
     -- this is only the backstop for a Graven handed out by something that is not a zone.
     duration = 8,

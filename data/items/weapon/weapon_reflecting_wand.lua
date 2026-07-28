@@ -19,7 +19,7 @@
 -- a read on the enemy caster's kit rather than a blanket answer to magic.
 return {
     name = "The Reflecting Wand",
-    description = "Mirrors an ally at range: the next single-target spell aimed at them rebounds onto its caster.",
+    description = "Grants Reflect Magic.",
     flavor = "It does not argue with the spell. It agrees with it, and then asks where it was going.",
     sprite = "assets/items/reflecting_wand.png",
     type = "weapon",

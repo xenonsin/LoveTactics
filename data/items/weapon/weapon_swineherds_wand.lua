@@ -19,7 +19,7 @@
 -- have no decision in it at all.
 return {
     name = "The Swineherd's Wand",
-    description = "A bolt at range that turns its target into a pig: it can walk, and it can do nothing else.",
+    description = "Inflicts Polymorph.",
     flavor = "The Arcanum records it as a transmutation. Everyone else records it as the reason nobody argues with the Arcanum.",
     sprite = "assets/items/swineherds_wand.png",
     type = "weapon",

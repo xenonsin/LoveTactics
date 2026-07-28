@@ -16,7 +16,7 @@
 -- knows or cares.
 return {
     name = "Ancestor Mask",
-    description = "Your summoned creatures take no damage from hazards.",
+    description = "Summoned creatures take no damage from hazards.",
     flavor = "The dead of this field do not mind the weather on it. It has been theirs a long time.",
     sprite = "assets/items/utility_ancestor_mask.png",
     type = "utility",

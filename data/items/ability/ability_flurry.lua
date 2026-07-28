@@ -20,7 +20,7 @@
 -- nothing, leaving the spend to the effect where it belongs.
 return {
     name = "Flurry",
-    description = "Three bare-handed strikes in one motion. Needs 3 chi, and spends it.",
+    description = "Throws three bare-handed strikes in one motion. Spends 3 chi.",
     flavor = "The Cathedral counts prayers. The ascetic counts knuckles, and arrives at the same number.",
     sprite = "assets/items/ability_flurry.png",
     type = "ability",

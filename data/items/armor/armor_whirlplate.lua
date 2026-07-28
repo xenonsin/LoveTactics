@@ -22,7 +22,7 @@
 -- party's own line learns to leave a tile of room around.
 return {
     name = "Whirlplate",
-    description = "When struck in melee, cuts everything adjacent rather than only the attacker.",
+    description = "On melee hit taken: cut every adjacent foe.",
     flavor = "The Colosseum's armourers charge extra for the hinge and nothing at all for the warning.",
     sprite = "assets/items/armor_whirlplate.png",
     type = "armor",

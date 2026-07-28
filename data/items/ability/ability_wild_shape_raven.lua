@@ -24,7 +24,7 @@
 -- Cure does nothing -- you did this to yourself.
 return {
     name = "Wild Shape: Raven",
-    description = "Take a raven's body: fast, fragile, and armed at range. Reserves mana while worn.",
+    description = "Turns you into a raven, gaining Raven Shape. Reserves mana while worn.",
     flavor = "The other shapes ask what you are willing to give up. This one asks how far you can see.",
     sprite = "assets/items/ability_wild_shape_raven.png",
     type = "ability",

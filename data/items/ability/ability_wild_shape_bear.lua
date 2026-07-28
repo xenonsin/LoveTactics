@@ -18,7 +18,7 @@
 -- fight asks: do you need to be everywhere, or unmoved?
 return {
     name = "Wild Shape: Bear",
-    description = "Take a bear's body: armored and heavy-handed. Reserves mana while worn.",
+    description = "Turns you into a bear, gaining Bear Shape. Reserves mana while worn.",
     flavor = "Do you need to be everywhere, or unmoved? The bear is the second answer.",
     sprite = "assets/items/ability_wild_shape_bear.png",
     type = "ability",

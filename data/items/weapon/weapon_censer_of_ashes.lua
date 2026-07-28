@@ -17,7 +17,7 @@
 -- fled it. You can walk out of a blessing. You cannot walk out of a lungful.
 return {
     name = "Censer of Ashes",
-    description = "Wreathes you in acrid smoke: foes standing beside you are Poisoned.",
+    description = "Inflicts Poison on adjacent foes.",
     flavor = "The same rite, read aloud in a colder voice.",
     sprite = "assets/items/censer_of_ashes.png",
     type = "weapon",

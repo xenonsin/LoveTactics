@@ -13,7 +13,7 @@
 -- and a fighter carrying both has an opener and a closer rather than two greatswords.
 return {
     name = "Headsman's Cleaver",
-    description = "A short wind-up, then a heavy blow -- far heavier against a foe already under half health.",
+    description = "Channeled: Increase damage by 80% against a foe under half health.",
     flavor = "The long wind-up is for people who might still move.",
     sprite = "assets/items/headsmans_cleaver.png",
     type = "weapon",

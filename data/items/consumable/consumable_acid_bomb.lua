@@ -7,7 +7,7 @@
 -- working (Envy). Carries no "magical" tag; the corrosion cares nothing for magic defense to apply.
 return {
     name = "Acid Bomb",
-    description = "Deals damage in the target area and inflicts Acid, cutting defense.",
+    description = "Inflicts Acid in area.",
     flavor = "The Crucible's answer to armor: not taking the plate off a body -- that is Greed -- but making it stop working.",
     sprite = "assets/items/acid_bomb.png",
     type = "consumable",

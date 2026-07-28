@@ -16,7 +16,7 @@ return {
     name = "Regeneration",
     abbr = "Rgn",
     description = "Blessed: recovers health as time passes.",
-    color = { 0.40, 0.85, 0.50 }, -- badge tint (restorative green)
+    color = { 0.420, 0.787, 0.502 }, -- badge tint (restorative green)
     -- Marks this as a MENDING condition, so a body wearing it (or a zone granting it) draws the blue
     -- heal-crosses rather than a buff's chevrons -- read by ui/field_fx.lua's category resolver and by
     -- Hazard.preview, which is how a Sanctuary is known to be a heal without the hazard saying so.

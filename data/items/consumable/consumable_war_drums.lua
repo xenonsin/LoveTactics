@@ -14,7 +14,7 @@
 -- beat again.
 return {
     name = "War Drums",
-    description = "Beat once: every ally beside you is Inspired -- raised Damage and Defense for a short while.",
+    description = "Allies adjacent to you gain Inspiration.",
     flavor = "The Colosseum sells the cadence, not the courage. The courage was always yours; the drum only names the moment.",
     sprite = "assets/items/consumable_war_drums.png",
     type = "consumable",

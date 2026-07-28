@@ -15,7 +15,7 @@
 -- to be enterable from somewhere.
 return {
     name = "Plaguebearer's Draught",
-    description = "Poisons you, and every enemy standing beside you. You become the source.",
+    description = "Inflicts Poison on you and every adjacent enemy; you become the source.",
     flavor = "The first plague doctors were not immune. They were simply willing, which is cheaper.",
     sprite = "assets/items/consumable_plaguebearers_draught.png",
     type = "consumable",
@@ -34,7 +34,7 @@ return {
         range = 0,
         speed = 2,
         consumesItem = true,
-        description = "Poisons you and every adjacent enemy.",
+        description = "Inflicts Poison on you and every adjacent enemy.",
         effect = function(fx)
             fx.applyStatus(fx.user, "status_poison")
             for _, u in ipairs(fx.unitsNear(fx.user.x, fx.user.y, 1)) do

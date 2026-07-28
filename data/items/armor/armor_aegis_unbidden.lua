@@ -18,7 +18,7 @@
 -- in the stat it already had. The deviation is which bar it fills, not how full.
 return {
     name = "The Aegis Unbidden",
-    description = "Replaces Wait with Defend: brace against spells as well as steel -- the only shield that does.",
+    description = "Replaces Wait with Defend, warding against spells as well as steel.",
     flavor = "The Cathedral gave it to the Bastion without being asked, which is how it got the name and most of the argument.",
     sprite = "assets/items/aegis_unbidden.png",
     type = "armor",

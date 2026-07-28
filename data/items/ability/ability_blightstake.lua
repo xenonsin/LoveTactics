@@ -25,7 +25,7 @@
 -- distance, with a shot ready for whoever comes to pull it out.
 return {
     name = "The Blightstake",
-    description = "Hammers in a rooted stake that spits poison at whatever comes nearest.",
+    description = "Plants a stake that spits Poison at whatever comes nearest.",
     flavor = "The Lodge calls it a marker. Nothing that has walked past one has agreed.",
     sprite = "assets/items/ability_blightstake.png",
     type = "ability",

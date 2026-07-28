@@ -30,7 +30,7 @@ return {
     name = "Sleep",
     abbr = "Slp",
     description = "Asleep: pushed far down the turn order, until something wakes it.",
-    color = { 0.55, 0.60, 0.85 }, -- badge tint (dusk blue)
+    color = { 0.559, 0.601, 0.811 }, -- badge tint (dusk blue)
     duration = 14,                -- the shove, the badge, and the refund cap: see "THE ONE NUMBER"
     shovesInitiative = "duration", -- so the aim preview reads the shove off the SAME (resisted) remaining onApply does
     debuff = true,                -- Cure/Panacea rouse it early

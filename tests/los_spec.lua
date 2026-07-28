@@ -127,6 +127,28 @@ return {
         end,
     },
     {
+        name = "a sight-gated shot at empty ground is refused: line of sight is to a target, not bare tiles",
+        fn = function()
+            -- Open lane, no foe on the aimed cell. Empty ground trivially passes hasLineOfSight, so
+            -- without the target gate the shot would commit at nothing -- and a weapon whose draw pays
+            -- an on-commit reward (The Held Breath's Unseen) could farm it as a free reposition. The
+            -- refusal reads the same as a blocked line, because that is what it is: no mark to see.
+            local open = Combat.new(arena(6, 1),
+                { unit("character_archer", 1, 1) }, { unit("character_bandit", 4, 1) })
+            local archer = open.units[1]
+            local bow = itemById(archer.char, "weapon_iron_bow")
+            openTurn(open, archer)
+            local ok, reason = Combat.useItem(open, archer, bow, 3, 1) -- (3,1) is empty, in range, clear line
+            assert(not ok and reason == "no line of sight",
+                "a shot at an empty tile is refused: " .. tostring(reason))
+
+            -- The very same bow, aimed at the foe on a clear line, still lands -- the gate only bites
+            -- the shot at nothing.
+            local ok2, res = Combat.useItem(open, archer, bow, 4, 1)
+            assert(ok2 and res.damageDealt > 0, "the shot at the actual foe still connects")
+        end,
+    },
+    {
         name = "abilityTargets drops a foe hidden behind cover, and lists it once the line clears",
         fn = function()
             -- Mage's Fireball (range 3, requiresSight). Foe within range but behind a wall.

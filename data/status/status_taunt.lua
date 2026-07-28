@@ -6,7 +6,7 @@ return {
     name = "Taunt",
     abbr = "Tnt",
     description = "Enraged: must attack the taunter with its default weapon.",
-    color = { 0.90, 0.40, 0.30 }, -- badge tint (angry red)
+    color = { 0.811, 0.415, 0.335 }, -- badge tint (angry red)
     duration = 15, -- ~3 turns at Status.TICKS_PER_TURN: long enough to hold a foe's attention
     debuff = true,
 }

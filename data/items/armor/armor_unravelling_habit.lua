@@ -19,7 +19,7 @@
 -- Cloth: a square of pace, and the wearer wants to be much closer to the enemy than a caster likes.
 return {
     name = "Unravelling Habit",
-    description = "Carries picked-loose ground with you: everything standing in it takes more from magic.",
+    description = "Inflicts Unravelled on adjacent units.",
     flavor = "The Arcanum's weavers unmake it a thread at a time and insist that this is the finished state.",
     sprite = "assets/items/armor_unravelling_habit.png",
     type = "armor",

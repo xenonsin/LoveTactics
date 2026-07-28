@@ -15,7 +15,7 @@
 -- standard-bearer being cut down -- about a turn, which is the right amount of grace.
 return {
     name = "Bloodsong",
-    description = "Red smoke: allies standing in it drink back a share of what they deal.",
+    description = "Grants Bloodsong to allies in it.",
     tags = { "banner" },
     fx = { color = { 0.86, 0.14, 0.20 } }, -- the colours are red: the weave, in the standard's own hue
     duration = 6,

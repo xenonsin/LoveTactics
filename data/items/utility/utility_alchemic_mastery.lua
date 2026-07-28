@@ -7,7 +7,7 @@
 -- See Combat.auraApplies / adjacencyAura and the `amountBonus` fold in Combat.useItem's fx.amount.
 return {
     name = "Alchemic Mastery",
-    description = "Adjacent consumables strike with greater power.",
+    description = "Adjacent consumables hit harder.",
     flavor = "Dead weight on its own. Every bomb in the satchel would like to sit beside it.",
     sprite = "assets/items/alchemic_mastery.png",
     type = "utility",

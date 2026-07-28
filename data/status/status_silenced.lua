@@ -7,7 +7,7 @@ return {
     name = "Silenced",
     abbr = "Sil",
     description = "Silenced: mana abilities cannot be cast.",
-    color = { 0.55, 0.55, 0.62 }, -- badge tint (muted grey)
+    color = { 0.552, 0.552, 0.613 }, -- badge tint (muted grey)
     duration = 15, -- ~3 turns at Status.TICKS_PER_TURN: long enough to actually gag a caster
     debuff = true, -- removable by Cure
     silencesMana = true,

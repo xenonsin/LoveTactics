@@ -8,7 +8,7 @@
 -- and a standard holding it for as long as the standard lives.
 return {
     name = "Renewing Ground",
-    description = "A renewal banner's shadow: allies standing within recover health.",
+    description = "Grants Regeneration to allies in it.",
     tags = { "holy" },
     duration = 9999, -- answers to the banner's life, not a clock (Hazard.dropOwnedBy)
     disposition = "friendly",

@@ -20,7 +20,7 @@ return {
     name = "Sealed Hour",
     abbr = "Hour",
     description = "Sealed: all damage and healing is held, then settles at once when it ends.",
-    color = { 0.92, 0.88, 0.98 }, -- badge tint (suspended pale violet)
+    color = { 0.918, 0.883, 0.970 }, -- badge tint (suspended pale violet)
     duration = 12,                -- ~2.5 turns of held time
     defers = true,
     onExpire = function(ctx)

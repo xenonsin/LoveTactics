@@ -15,6 +15,8 @@
 --   map:mousemoved(x, y); map:mousepressed(x, y, button)
 --   map:keypressed(key); map:gamepadpressed(joystick, button)
 
+local Theme = require("ui.theme")
+
 local BuildingMap = {}
 BuildingMap.__index = BuildingMap
 
@@ -27,7 +29,7 @@ function BuildingMap.new(buildings, opts)
     local self = setmetatable({}, BuildingMap)
     self.buildings = buildings
     self.onActivate = opts.onActivate
-    self.font = opts.font or love.graphics.newFont(18)
+    self.font = opts.font or Theme.display(18)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
     self.selected = self:firstSelectable() or 1
@@ -87,26 +89,21 @@ function BuildingMap:draw()
     for i, b in ipairs(self.buildings) do
         local active = (i == self.selected) and not b.locked
 
-        if b.locked then
-            love.graphics.setColor(0.15, 0.15, 0.18, 0.7)
-        elseif active then
-            love.graphics.setColor(0.35, 0.40, 0.55, 0.75)
-        else
-            love.graphics.setColor(0.20, 0.23, 0.32, 0.6)
-        end
-        love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 8, 8)
+        -- Hotspot plates sit over the painted city, so they stay a touch translucent.
+        if b.locked then Theme.set(Theme.slot, 0.7)
+        elseif active then Theme.set(Theme.panel, 0.85)
+        else Theme.set(Theme.panel2, 0.7) end
+        love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, Theme.R, Theme.R)
 
-        if active then
-            love.graphics.setColor(0.95, 0.85, 0.55)
-        elseif b.locked then
-            love.graphics.setColor(0.4, 0.4, 0.45)
-        else
-            love.graphics.setColor(0.5, 0.55, 0.7)
-        end
-        love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 8, 8)
+        love.graphics.setLineWidth(active and 1.5 or 1)
+        if active then Theme.set(Theme.accentAmber)
+        elseif b.locked then Theme.set(Theme.frame, 0.5)
+        else Theme.set(Theme.frame) end
+        love.graphics.rectangle("line", b.x, b.y, b.w, b.h, Theme.R, Theme.R)
+        love.graphics.setLineWidth(1)
 
         local label = b.locked and ("? (prestige " .. b.unlockPrestige .. ")") or b.name
-        love.graphics.setColor(0.95, 0.95, 0.95)
+        Theme.set(active and Theme.accentAmber or (b.locked and Theme.muted or Theme.ink))
         love.graphics.printf(label, b.x, b.y + b.h / 2 - 10, b.w, "center")
     end
     love.graphics.setColor(1, 1, 1)

@@ -14,7 +14,7 @@
 -- discipline draught on the grocer's shelf turn one (docs/classes.md).
 return {
     name = "Bitterroot Draught",
-    description = "Cleanses your afflictions and briefly proofs you against hazards.",
+    description = "Cleanses your afflictions and proofs you against hazards.",
     flavor = "It tastes the way the ground smells. That is not a coincidence and it is not an accident.",
     sprite = "assets/items/consumable_bitterroot_draught.png",
     type = "consumable",
@@ -29,7 +29,7 @@ return {
         range = 0,
         speed = 2,
         consumesItem = true,
-        description = "Cleanses you and grants a short proofing against hazards.",
+        description = "Cleanses you and proofs you against hazards.",
         effect = function(fx)
             fx.cleanse(fx.user)
             fx.applyStatus(fx.user, "status_regen")

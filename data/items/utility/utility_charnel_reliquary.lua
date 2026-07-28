@@ -13,7 +13,7 @@
 -- them when they do -- which, for a Necromancer, is not much of a gamble.
 return {
     name = "Charnel Reliquary",
-    description = "Each body that falls near you raises your Magic Damage for the rest of the battle.",
+    description = "Each body that falls near you raises your Magic Damage this battle.",
     flavor = "Every grave is a lesson, the Arcanum notes, and it charges tuition for the ones it keeps.",
     sprite = "assets/items/utility_charnel_reliquary.png",
     type = "utility",

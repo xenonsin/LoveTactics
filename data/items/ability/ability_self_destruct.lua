@@ -33,7 +33,7 @@
 -- of this rule is a death you plan for, not a button you press.
 return {
     name = "Self-Destruct",
-    description = "Winds up, then bursts -- everything nearby takes the blast, allies included.",
+    description = "Channeled: bursts in area, allies included.",
     flavor = "It was never meant to come home. It has stopped pretending otherwise.",
     sprite = "assets/items/ability_blast_charge.png", -- placeholder until its own art exists
     type = "ability",

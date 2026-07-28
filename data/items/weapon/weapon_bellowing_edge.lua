@@ -11,7 +11,7 @@
 -- healer, and a fast way to die for one without.
 return {
     name = "Bellowing Edge",
-    description = "Winds up, then falls on one tile. The impact taunts every foe within two tiles onto you.",
+    description = "Channeled: inflicts Taunt on foes within two tiles.",
     flavor = "The wind-up was never the problem. Getting them to still be standing there was.",
     sprite = "assets/items/bellowing_edge.png",
     type = "weapon",

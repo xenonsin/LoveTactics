@@ -36,7 +36,7 @@
 -- Combat.useItem clamps it to the range.
 return {
     name = "The First Motion",
-    description = "Winds up, drives through the tiles in front (a cone when forged). Bonus scales to +60% into a full-health foe.",
+    description = "Channeled: Increase damage by up to +60% against a full-health foe.",
     flavor = "She was taught that a bout is won in the first exchange or not at all. It is the only " ..
         "thing they taught her that she kept.",
     sprite = "assets/items/first_motion.png",
@@ -49,7 +49,7 @@ return {
     bound = true,
     class = "fighter",
     activeAbility = {
-        description = "Hold the wind-up longer to strike harder; the health bonus scales to +60% of the swing against a full-health foe.",
+        description = "Increase damage the longer the wind-up is held, up to +60% against a full-health foe.",
         target = "tile",       -- aim an adjacent tile: it sets the facing the blow drives along
         allowOccupied = true,
         range = 1,

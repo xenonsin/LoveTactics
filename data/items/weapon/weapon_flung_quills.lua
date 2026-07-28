@@ -16,7 +16,7 @@
 -- what keeps it out of the bow family's roster of five (tests/weapon_spec.lua).
 return {
     name = "Flung Quills",
-    description = "Looses a stiffened pinion feather at a foe two or three tiles off.",
+    description = "Looses a pinion feather at a foe.",
     flavor = "It sheds them on purpose. Whatever is left in the wing is the part it still needs.",
     sprite = "assets/items/flung_quills.png",
     type = "weapon",

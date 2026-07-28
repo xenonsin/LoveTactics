@@ -21,7 +21,7 @@
 -- shelf could not previously express.
 return {
     name = "The Throughline",
-    description = "A thrust that carries into the tile behind the target, harder per adjacent dagger.",
+    description = "The tile behind takes 40% damage and Bleed, +20% per adjacent dagger.",
     flavor = "The Undercroft teaches the angle, not the blade. The angle is the part that costs money.",
     sprite = "assets/items/weapon_throughline.png",
     type = "weapon",

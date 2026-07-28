@@ -17,7 +17,7 @@ return {
     name = "The Red Thirst",
     abbr = "Thst",
     description = "Thirsting: drinks back most of the damage it deals.",
-    color = { 0.76, 0.14, 0.20 }, -- badge tint (deep arterial)
+    color = { 0.665, 0.188, 0.234 }, -- badge tint (deep arterial)
     duration = 12,                -- ~2.5 turns of drinking
     lifesteal = 0.75,             -- the share of its own damage the bearer mends for
 }

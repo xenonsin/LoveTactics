@@ -21,7 +21,7 @@
 -- making rather than a tax.
 return {
     name = "The Grasping Hollow",
-    description = "Opens sucking ground: it roots whatever steps into it, and draws no blood.",
+    description = "Leaves Grasping Hollow in area.",
     flavor = "The Bastion's engineers call it a delay. Everyone who has crossed one calls it something else.",
     sprite = "assets/items/ability_grasping_hollow.png",
     type = "ability",

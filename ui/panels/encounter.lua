@@ -14,6 +14,7 @@
 
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
+local Theme = require("ui.theme")
 
 local Encounter = {}
 Encounter.__index = Encounter
@@ -42,8 +43,8 @@ function Encounter.new(opts)
     self.encounter = opts.encounter or { kind = "combat" }
     self.onResolve = opts.onResolve
     self.onClose = opts.onClose
-    self.titleFont = love.graphics.newFont(30)
-    self.bodyFont = love.graphics.newFont(18)
+    self.titleFont = Theme.display(30)
+    self.bodyFont = Theme.body(18)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
@@ -75,29 +76,28 @@ function Encounter:draw()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf(self.encounter.name or self.encounter.kind,
         self.boxX, self.boxY + 34, BOX_W, "center")
 
     love.graphics.setFont(self.bodyFont)
-    love.graphics.setColor(0.85, 0.85, 0.9)
+    Theme.set(Theme.ink)
     love.graphics.printf(KIND_TEXT[self.encounter.kind] or "",
         self.boxX + 30, self.boxY + 96, BOX_W - 60, "center")
 
     -- Resolve button.
     local b = self.button
-    love.graphics.setColor(b.hovered and 0.35 or 0.22, b.hovered and 0.45 or 0.28,
-        b.hovered and 0.35 or 0.24)
-    love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
-    love.graphics.setColor(0.6, 0.7, 0.55)
-    love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
-    love.graphics.setColor(0.95, 0.95, 0.95)
+    Theme.set(b.hovered and Theme.panel or Theme.panel2)
+    love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, Theme.R, Theme.R)
+    love.graphics.setColor(0.6, 0.7, 0.55) -- a "set out" green frame
+    love.graphics.rectangle("line", b.x, b.y, b.w, b.h, Theme.R, Theme.R)
+    Theme.set(Theme.ink)
     love.graphics.printf(self.resolveLabel, b.x, b.y + b.h / 2 - 10, b.w, "center")
 
     self.closeButton:draw()

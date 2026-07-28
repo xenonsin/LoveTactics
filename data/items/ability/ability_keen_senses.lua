@@ -16,7 +16,7 @@
 -- same way; this one is sold as an ability because that is the shelf a priest shops from.
 return {
     name = "Keen Senses",
-    description = "Triggered: when attacked, strike first for stamina, before the blow lands.",
+    description = "On being attacked: strike first before the blow lands.",
     flavor = "The choice of when to stop countering is never offered. It was made when you walked into range.",
     sprite = "assets/items/ability_keen_senses.png",
     type = "ability",

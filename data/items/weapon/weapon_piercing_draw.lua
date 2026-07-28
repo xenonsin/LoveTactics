@@ -15,7 +15,7 @@
 -- shooting lane rather than spread across it -- which is exactly the formation heavy infantry adopt.
 return {
     name = "Piercing Draw",
-    description = "A drawn shaft that runs three tiles deep and ignores armour entirely.",
+    description = "Channeled: Damage ignores armor.",
     flavor = "The Lodge's bowyers describe the arrow as 'unhelpful'. They have never explained who they mean it is unhelpful to.",
     sprite = "assets/items/piercing_draw.png",
     type = "weapon",

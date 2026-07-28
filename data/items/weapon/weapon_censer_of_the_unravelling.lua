@@ -17,7 +17,7 @@
 -- the difference is the whole reason both are worth having.
 return {
     name = "Censer of the Unravelling",
-    description = "Wreathes you in picked-loose air: everything near you takes more from magic. Including you.",
+    description = "Inflicts Unravelled on adjacent units, you included.",
     flavor = "The Arcanum lent it to the Cathedral, once, and has been notably polite about it ever since.",
     sprite = "assets/items/censer_unravelling.png",
     type = "weapon",

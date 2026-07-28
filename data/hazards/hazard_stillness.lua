@@ -17,7 +17,7 @@
 -- on this board and the hardest to get any other way.
 return {
     name = "Stillness",
-    description = "Stilled ground: nothing standing in it may take an action.",
+    description = "Inflicts Halted on units in it.",
     tags = { "arcane" },
     duration = 15,           -- ~3 turns of held time
     disposition = "hostile",

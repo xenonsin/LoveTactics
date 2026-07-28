@@ -338,6 +338,41 @@ return {
         end,
     },
     {
+        name = "a fire bomb dropped on a barrel sets it off, and the blast takes both sides",
+        fn = function()
+            -- Knight at (3,4) stands OUTSIDE the bomb's own 3x3 (aimed at (5,4), so x in 4..6) but
+            -- adjacent to the barrel at (4,4) -- so the only thing that can touch it is the keg's blast.
+            -- The bandit on the aim tile wears the bomb AND the blast.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_knight", 3, 4) }, { unit("character_bandit", 5, 4) })
+            local knight, bandit = c.units[1], c.units[2]
+            local bomb = grant(knight, "consumable_fire_bomb")
+            local barrel = Prop.place(c, 4, 4, "prop_explosive_barrel")
+            local kBefore, bBefore = hp(knight), hp(bandit)
+
+            Combat.startTurn(c, knight)
+            assert(Combat.useItem(c, knight, bomb, 5, 4), "the bomb bursts, catching the barrel in its 3x3")
+            assert(not barrel.alive, "fire damage over a keg is a hit, and a hit sets it off")
+            assert(hp(bandit) < bBefore, "the foe wears the bomb and then the blast")
+            assert(hp(knight) < kBefore, "and the party beside the keg -- clear of the bomb -- wears its blast")
+        end,
+    },
+    {
+        name = "a fire bomb scorches a flammable crate without needing a barrel",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
+            local knight = c.units[1]
+            local bomb = grant(knight, "consumable_fire_bomb")
+            local crate = Prop.place(c, 2, 1, "prop_crate")
+            local before = crate.health
+
+            Combat.startTurn(c, knight)
+            Combat.useItem(c, knight, bomb, 2, 1)
+            assert(crate.health < before, "the fire eats into a flammable crate caught in the blast")
+        end,
+    },
+    {
         name = "Prop.preview quotes the blast without a board to fire it on",
         fn = function()
             local out = Prop.preview("prop_explosive_barrel", 24)

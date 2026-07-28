@@ -14,7 +14,7 @@
 -- stack: open with the blade while the pool is deep, finish with the vessel once it is dry.
 return {
     name = "Silencing Blade",
-    description = "Silences on the hit, and bites harder for every point of mana the target still holds.",
+    description = "Inflicts Silence. Increase damage by 1 per 10 mana the target holds.",
     flavor = "Whatever he was about to say, he was going to need the whole breath for it.",
     sprite = "assets/items/weapon_silencing_blade.png",
     type = "weapon",

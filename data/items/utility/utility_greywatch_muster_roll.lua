@@ -11,7 +11,7 @@
 -- because the decision it prices was made before the first initiative was rolled.
 return {
     name = "Greywatch Muster Roll",
-    description = "Opens each battle with bonus defense for every ally already standing beside you.",
+    description = "Increase defense at battle start for each adjacent ally.",
     flavor = "Forty-one names, and the order read them out for fifteen years as though it knew what " ..
         "the number counted.",
     sprite = "assets/items/greywatch_muster_roll.png",

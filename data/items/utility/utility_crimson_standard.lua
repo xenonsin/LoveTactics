@@ -22,7 +22,7 @@
 -- not, which is the correct shape for a thing built entirely out of thirst.
 return {
     name = "The Crimson Standard",
-    description = "Allies standing beside its bearer drink back a share of the damage they deal.",
+    description = "Grants Bloodsong to adjacent allies.",
     flavor = "Wrath's only sacrament. The Colosseum sells it to anyone who can lift it and does not ask why.",
     sprite = "assets/items/utility_crimson_standard.png",
     type = "utility",

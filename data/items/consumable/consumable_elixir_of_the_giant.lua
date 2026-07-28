@@ -17,7 +17,7 @@
 -- fighter their courage on a turn the fighter had something better to do.
 return {
     name = "Elixir of the Giant",
-    description = "Raises an ally's Damage for most of the battle.",
+    description = "Raises an ally's Damage.",
     flavor = "Ogre marrow, mostly. The Crucible would rather you did not ask which part is 'mostly'.",
     sprite = "assets/items/consumable_elixir_of_the_giant.png",
     type = "consumable",

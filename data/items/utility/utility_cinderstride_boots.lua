@@ -25,7 +25,7 @@
 -- nothing at all.
 return {
     name = "Cinderstride Boots",
-    description = "The tile you step off bursts into flame. The fire is real -- do not walk back through it.",
+    description = "Sets the tile you step off alight.",
     flavor = "The Collegium files them under 'walking hazard' and means it in both senses.",
     sprite = "assets/items/cinderstride_boots.png",
     type = "utility",

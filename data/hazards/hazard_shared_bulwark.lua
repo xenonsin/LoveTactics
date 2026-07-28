@@ -17,7 +17,7 @@
 -- roughly one blow per body per beat, which is a real ceiling and the reason it cannot simply win.
 return {
     name = "Shared Bulwark",
-    description = "Covered ground: allies standing in it turn aside the next physical blow.",
+    description = "Grants a Physical Barrier to allies in it.",
     tags = { "structure" },
     duration = 6,
     disposition = "friendly",

@@ -16,7 +16,7 @@
 -- number on this file.
 return {
     name = "Bogwalker's Coat",
-    description = "Lays Quicksand around you as you go: anything standing in it pays double to move or act.",
+    description = "Inflicts Mired on adjacent foes.",
     flavor = "The Warren's trappers stopped carrying stakes the year somebody worked out how to carry the ground instead.",
     sprite = "assets/items/armor_bogwalkers_coat.png",
     type = "armor",

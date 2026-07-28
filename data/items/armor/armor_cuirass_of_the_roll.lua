@@ -16,7 +16,7 @@
 -- expensive build rather than an oversight.
 return {
     name = "Cuirass of the Roll",
-    description = "Opens each battle with bonus defense for every ally already standing beside you.",
+    description = "Increase defense at battle start for each adjacent ally.",
     flavor = "The Bastion reads the roll before the gate opens. Answering to your own name is the smallest part of it.",
     sprite = "assets/items/armor_cuirass_of_the_roll.png",
     type = "armor",

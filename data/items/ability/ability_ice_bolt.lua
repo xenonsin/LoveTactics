@@ -4,7 +4,7 @@
 -- The single-target ice counterpart to Fire Bolt. Scales with magic.
 return {
     name = "Ice Bolt",
-    description = "Deals damage and inflicts Frozen: delayed, and brittle to crush and fire.",
+    description = "Deals damage and inflicts Frozen.",
     flavor = "The shard is only the setup. The hammer that follows is the argument.",
     sprite = "assets/items/ability_ice_bolt.png",
     type = "ability",

@@ -11,7 +11,7 @@
 -- A boss weapon: no `class`, no `price`. It is fast and cheap so she swings often -- every swing a meal.
 return {
     name = "Gralloch Knife",
-    description = "Guts what it cuts: heals the wielder for a share of the wound on every hit.",
+    description = "On damage dealt: heal.",
     flavor = "The stroke that opens a carcass to be dressed. On her it never stops at the carcass.",
     sprite = "assets/items/gralloch_knife.png",
     type = "weapon",

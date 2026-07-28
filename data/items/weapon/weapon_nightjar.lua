@@ -18,7 +18,7 @@
 -- rogue shelf is priced around -- and it does nothing at all on the turn the rogue picks wrong.
 return {
     name = "Nightjar",
-    description = "A quick, bleeding cut. Kill with it and you cannot be seen or targeted until your next turn.",
+    description = "Deals damage and inflicts Bleed. A kill leaves you Invisible until your next turn.",
     flavor = "The bird is named for the noise it makes, which is nothing, and for when it makes it.",
     sprite = "assets/items/nightjar.png",
     type = "weapon",

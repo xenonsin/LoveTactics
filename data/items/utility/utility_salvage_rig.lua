@@ -13,7 +13,7 @@
 -- The burst has no caster and provokes no answer. A wreck is not a swing.
 return {
     name = "Salvage Rig",
-    description = "When one of your constructs is destroyed it bursts, damaging its neighbours and refunding you mana.",
+    description = "On a construct's death: it bursts, damaging neighbours and refunding mana.",
     flavor = "Everything in the workshop is built to come apart. It saves so much time later.",
     sprite = "assets/items/utility_salvage_rig.png",
     type = "utility",

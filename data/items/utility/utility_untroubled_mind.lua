@@ -18,7 +18,7 @@
 -- same thing as being proof against force, and this item is very specifically about the former.
 return {
     name = "Untroubled Mind",
-    description = "The self stays its own: immune to Charm and Sleep.",
+    description = "Immune to Charm and Sleep.",
     flavor = "Recited until the reciting needs no attention. There is then nothing unattended to sit down in.",
     sprite = "assets/items/untroubled_mind.png",
     type = "utility",

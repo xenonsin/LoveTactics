@@ -32,6 +32,7 @@ local Combat = require("models.combat")
 local Sprite = require("models.sprite")
 local Scale = require("scale")
 local InputMode = require("input_mode")
+local Theme = require("ui.theme")
 
 local Shop = {}
 Shop.__index = Shop
@@ -44,11 +45,11 @@ local MODE_LABEL = { buy = "Buy", sell = "Sell", upgrade = "Upgrade" }
 
 -- Detail accent per item type (matches ui/item_tooltip.lua).
 local TYPE_COLOR = {
-    weapon = { 0.90, 0.58, 0.48 },
-    armor = { 0.58, 0.72, 0.92 },
-    consumable = { 0.52, 0.85, 0.55 },
-    ability = { 0.78, 0.62, 0.96 },
-    utility = { 0.92, 0.82, 0.52 },
+    weapon = { 0.789, 0.361, 0.354 },
+    armor = { 0.391, 0.549, 0.812 },
+    consumable = { 0.361, 0.671, 0.480 },
+    ability = { 0.568, 0.414, 0.786 },
+    utility = { 0.865, 0.707, 0.341 },
 }
 local DEFAULT_COLOR = { 0.85, 0.85, 0.9 }
 
@@ -76,14 +77,14 @@ function Shop.new(opts)
     self.title = self.def.name or opts.title or "Shop"
     self.mode = "buy"
 
-    self.titleFont = love.graphics.newFont(28)
-    self.headFont = love.graphics.newFont(18)
-    self.bodyFont = love.graphics.newFont(15)
-    self.smallFont = love.graphics.newFont(13)
+    self.titleFont = Theme.display(28)
+    self.headFont = Theme.display(18)
+    self.bodyFont = Theme.body(15)
+    self.smallFont = Theme.body(13)
     -- One step below `small`, for the glossary block at the foot of the detail column: it is reference
     -- text under the stats rather than a stat, and the smaller face is what lets three definitions fit
     -- in the room between the stat block and the price.
-    self.glossFont = love.graphics.newFont(12)
+    self.glossFont = Theme.body(12)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
@@ -339,13 +340,13 @@ end
 function Shop:draw()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf(self.title, self.boxX, self.boxY + 18, BOX_W, "center")
 
     self:drawVendor()
@@ -356,7 +357,7 @@ function Shop:draw()
         self:drawDetail()
     else
         love.graphics.setFont(self.bodyFont)
-        love.graphics.setColor(0.6, 0.63, 0.72)
+        Theme.set(Theme.muted)
         local empty = (self.mode == "buy" and "Nothing for sale.")
             or (self.mode == "sell" and "Your stash is empty.") or "Nothing to upgrade here."
         love.graphics.printf(empty, self.listLeft, self.boxY + 200, self.listW, "center")
@@ -371,10 +372,10 @@ end
 function Shop:drawVendor()
     local x, y, w = self.vendorX, self.vendorY, self.vendorW
     local h = self.boxY + BOX_H - 44 - y
-    love.graphics.setColor(0.09, 0.10, 0.14)
-    love.graphics.rectangle("fill", x, y, w, h, 8, 8)
-    love.graphics.setColor(0.4, 0.44, 0.55)
-    love.graphics.rectangle("line", x, y, w, h, 8, 8)
+    Theme.set(Theme.slot)
+    love.graphics.rectangle("fill", x, y, w, h, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", x, y, w, h, Theme.R, Theme.R)
 
     local portraitH = h - 92
     local pad = 12
@@ -389,15 +390,15 @@ function Shop:drawVendor()
         love.graphics.setColor(tint[1], tint[2], tint[3])
         love.graphics.rectangle("fill", px, py, pw, ph, 8, 8)
         love.graphics.setFont(self.titleFont)
-        love.graphics.setColor(0.92, 0.93, 0.97)
+        Theme.set(Theme.ink)
         love.graphics.printf((self.def.name or "?"):sub(1, 1), px, py + ph / 2 - 20, pw, "center")
     end
 
     local ty = y + portraitH + 2
     love.graphics.setFont(self.bodyFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.print(self.player.gold .. " gold", x + 12, ty)
-    love.graphics.setColor(0.7, 0.78, 0.9)
+    Theme.set(Theme.ink)
     local rep = Player.reputation(self.player, self.vendorId)
     local standing = Vendor.rankName(self.vendorId, self.rank)
     local toNext, nextRank = Vendor.nextRank(self.vendorId, rep)
@@ -406,7 +407,7 @@ function Shop:drawVendor()
     end
     love.graphics.printf(standing, x + 12, ty + 22, w - 24, "left")
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.6, 0.63, 0.72)
+    Theme.set(Theme.muted)
     love.graphics.printf(self.def.description or "", x + 12, ty + 44, w - 24, "left")
 end
 
@@ -415,11 +416,13 @@ function Shop:drawModeSelector()
     for _, m in ipairs(MODES) do
         local r = self.segRects[m]
         local active = (self.mode == m)
-        love.graphics.setColor(active and 0.32 or 0.18, active and 0.36 or 0.2, active and 0.48 or 0.26)
-        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 6, 6)
-        love.graphics.setColor(active and 0.6 or 0.4, active and 0.72 or 0.44, active and 0.9 or 0.54)
-        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 6, 6)
-        love.graphics.setColor(active and 0.95 or 0.7, active and 0.9 or 0.72, active and 0.6 or 0.78)
+        Theme.set(active and Theme.panel or Theme.panel2)
+        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
+        love.graphics.setLineWidth(active and 1.5 or 1)
+        Theme.set(active and Theme.accentAmber or Theme.frame)
+        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
+        love.graphics.setLineWidth(1)
+        Theme.set(active and Theme.accentAmber or Theme.muted)
         love.graphics.printf(MODE_LABEL[m], r.x, r.y + r.h / 2 - 10, r.w, "center")
     end
 end
@@ -429,8 +432,8 @@ function Shop:drawLockedOverlay()
     for i, row in ipairs(self.rows) do
         local slot = self.menu.items[i]
         if row.locked and slot and slot.x then
-            love.graphics.setColor(0.12, 0.13, 0.18, 0.6)
-            love.graphics.rectangle("fill", slot.x, slot.y, slot.w, slot.h, 8, 8)
+            Theme.set(Theme.mount, 0.6)
+            love.graphics.rectangle("fill", slot.x, slot.y, slot.w, slot.h, Theme.R, Theme.R)
         end
     end
 end
@@ -446,7 +449,7 @@ function Shop:drawDetail()
     love.graphics.setColor(accent[1], accent[2], accent[3])
     love.graphics.printf(item.name or "?", x, y, w, "left")
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.6, 0.63, 0.72)
+    Theme.set(Theme.muted)
     love.graphics.printf((item.type or "item"):upper(), x, y + 26, w, "left")
     -- The discipline this item falls under, opposite its type on the same line. It is the shelf's own
     -- answer to "why is this here and not on the open rack": a priced row in the locked deeper cut
@@ -455,7 +458,7 @@ function Shop:drawDetail()
     ItemTooltip.printDiscipline(item, x, y + 26, w, self.smallFont)
 
     love.graphics.setFont(self.bodyFont)
-    love.graphics.setColor(0.8, 0.82, 0.88)
+    Theme.set(Theme.ink)
     local desc = item.description or ""
     love.graphics.printf(desc, x, y + 48, w, "left")
 
@@ -487,9 +490,9 @@ function Shop:drawDetail()
     local sy = y + 130
     love.graphics.setFont(self.smallFont)
     local function statLine(label, value, valueColor)
-        love.graphics.setColor(0.6, 0.64, 0.72)
+        Theme.set(Theme.muted)
         love.graphics.print(label, x, sy)
-        local vc = valueColor or { 0.9, 0.91, 0.96 }
+        local vc = valueColor or Theme.ink
         love.graphics.setColor(vc[1], vc[2], vc[3])
         love.graphics.printf(value, x, sy, w, "right")
         sy = sy + 20
@@ -572,7 +575,7 @@ function Shop:drawFooter()
             self.messageOk and 0.6 or 0.55)
         love.graphics.printf(self.message, self.boxX, self.boxY + BOX_H - 52, BOX_W, "center")
     end
-    love.graphics.setColor(0.55, 0.6, 0.7)
+    Theme.set(Theme.muted)
     -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
     local hint = InputMode.isGamepad()
         and "A: confirm    LB/RB: Buy/Sell/Upgrade    D-pad: scroll    B: close"

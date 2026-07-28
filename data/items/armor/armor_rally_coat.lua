@@ -19,7 +19,7 @@
 -- cannot yet sell it), and the first piece of it that is not a polearm.
 return {
     name = "Rally Coat",
-    description = "Carries a banner's ground with you: allies standing beside you are Inspired.",
+    description = "Grants Inspiration to adjacent allies.",
     flavor = "The Colosseum stitches the company colours into the lining, where only the wearer's own line can see them.",
     sprite = "assets/items/armor_rally_coat.png",
     type = "armor",

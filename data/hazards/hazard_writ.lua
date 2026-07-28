@@ -17,7 +17,7 @@
 -- exempt -- which is the only thing that keeps a fire-and-forget nuke honest.
 return {
     name = "Writ of Fire",
-    description = "A burning mark: takes everything standing on it when it finally comes due.",
+    description = "Deals fire damage to everything on it when its duration ends. Doused by water.",
     tags = { "fire" },
     duration = 6,             -- ~1 turn's grace: long enough to run, short enough to be a threat
     disposition = "hostile",  -- the enemy AI reads it as ground to be off

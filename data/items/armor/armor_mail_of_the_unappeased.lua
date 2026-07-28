@@ -15,7 +15,7 @@
 -- stashing it, wearing it, or losing it can never cost you the endgame.
 return {
     name = "Mail of the Unappeased",
-    description = "Sharpens with every blow you take, and worse the nearer you are to death.",
+    description = "Increase damage by 1 per blow you take, plus up to +20 by the fraction of health missing.",
     flavor = "Ira's mail, still warm. Scratched inside the collar: \"beneath the sand, where the " ..
         "roaring was loudest\".",
     sprite = "assets/items/mail_of_the_unappeased.png",

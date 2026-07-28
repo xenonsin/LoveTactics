@@ -30,7 +30,7 @@ return {
     traits = { "trait_ledger_diligence" },
     bonus = { magicDamage = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } }, -- the suppressed floor; the little she shows
     activeAbility = {
-        description = "Releases the strength she kept hidden: one heavy magical strike on a foe.",
+        description = "Strikes for heavy magical damage.",
         target = "enemy",
         range = 3,
         requiresSight = true, -- a released bolt still needs a clear line

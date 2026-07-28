@@ -17,8 +17,9 @@ local Scale = require("scale")
 
 local creation = {}
 
-local titleFont = love.graphics.newFont(40)
-local promptFont = love.graphics.newFont(20)
+local Theme = require("ui.theme")
+local titleFont = Theme.display(40)
+local promptFont = Theme.display(20)
 
 -- `mode` is "body" (the menu) or "name" (the entry widget); `widget` is whichever owns input now.
 local widget
@@ -62,15 +63,14 @@ function creation.draw()
     end
 
     -- Fill the logical area explicitly (letterbox bars are cleared to black), matching states/menu.lua.
-    love.graphics.setColor(0.10, 0.11, 0.15)
-    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+    Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
 
     love.graphics.setFont(titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf("A New Journey", 0, 150, Scale.WIDTH, "center")
 
     love.graphics.setFont(promptFont)
-    love.graphics.setColor(0.6, 0.65, 0.78)
+    Theme.set(Theme.muted)
     love.graphics.printf("Who will you be?", 0, 230, Scale.WIDTH, "center")
 
     widget:draw()

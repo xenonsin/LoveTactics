@@ -22,7 +22,7 @@
 -- fought this; now you are it -- which is the shape every relic in this game takes.
 return {
     name = "Volatile Carapace",
-    description = "When you fall, it bursts -- everything nearby takes the blast, allies included.",
+    description = "On death: bursts, hitting everything nearby, allies included.",
     flavor = "The Crucible logs it as a containment vessel. The containment is understood to be temporary.",
     sprite = "assets/items/armor_volatile_carapace.png",
     type = "armor",

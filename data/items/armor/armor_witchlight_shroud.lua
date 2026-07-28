@@ -19,7 +19,7 @@
 -- Cloth: a square of pace.
 return {
     name = "Witchlight Shroud",
-    description = "Carries a square of Witchlight: nothing standing in it can hide from being targeted.",
+    description = "Inflicts Limned on adjacent foes.",
     flavor = "The Arcanum lights its own corridors with it, which tells you what it was built to find.",
     sprite = "assets/items/armor_witchlight_shroud.png",
     type = "armor",

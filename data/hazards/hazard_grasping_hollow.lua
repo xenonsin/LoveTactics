@@ -19,7 +19,7 @@
 -- the hollow does not need to be big, because what it takes is the step AFTER the one into it.
 return {
     name = "Grasping Hollow",
-    description = "Sucking ground: roots whatever steps into it.",
+    description = "Inflicts Root on units that enter.",
     tags = { "earth" },
     -- Quicksand's churn, in a bruised violet: this one is not mud, it is something under the mud, and
     -- the two must not read as the same patch of ground.

@@ -15,7 +15,7 @@ return {
     name = "Charm",
     abbr = "Chm",
     description = "Charmed: fights for the enemy that turned it, until it comes to its senses.",
-    color = { 0.90, 0.45, 0.80 }, -- badge tint (magenta)
+    color = { 0.837, 0.469, 0.755 }, -- badge tint (magenta)
     duration = 10, -- ~2 turns at Status.TICKS_PER_TURN: long enough for the victim to actually act
     debuff = true,
     onExpire = function(ctx)

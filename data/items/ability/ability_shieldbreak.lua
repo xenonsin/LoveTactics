@@ -4,7 +4,7 @@
 -- Breach: sloth's wall mechanics turned outward, against someone else's wall.
 return {
     name = "Shieldbreak",
-    description = "Knocks a foe back and Sunders it: its guards, reflexes and traits fall silent.",
+    description = "Knocks a foe back and inflicts Sundered.",
     flavor = "A shield is only worth what the arm behind it still believes. This unteaches the belief.",
     sprite = "assets/items/ability_shieldbreak.png",
     type = "ability",

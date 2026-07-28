@@ -4,7 +4,7 @@
 -- own: it is setup, said in a censer's voice rather than a bowstring's. Costs mana, as the faithful do.
 return {
     name = "Mark of Heresy",
-    description = "Brands a foe a heretic: its defense and magic defense drop, marking it for judgment.",
+    description = "Inflicts Mark.",
     flavor = "The verdict comes later. The Mark is only the reading of the charge.",
     sprite = "assets/items/ability_mark_of_heresy.png",
     type = "ability",

@@ -23,30 +23,33 @@ local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local Glossary = require("models.glossary")
 local RangeDiagram = require("ui.range_diagram")
+local FootprintDiagram = require("ui.footprint_diagram") -- the drawn AREA shape (line/arc/cone/blast)
 local GlossaryPanel = require("ui.glossary_panel")
 local Glyphs = require("ui.glyphs")
 local Colors = require("ui.colors")
+local Theme = require("ui.theme")
 
 local ItemTooltip = {}
 
 local titleFont, bodyFont, smallFont, powerFont
 local function fonts()
-    titleFont = titleFont or love.graphics.newFont(15)
-    bodyFont = bodyFont or love.graphics.newFont(12)
-    smallFont = smallFont or love.graphics.newFont(11)
-    powerFont = powerFont or love.graphics.newFont(22) -- the headline Power value
+    titleFont = titleFont or Theme.display(15)
+    bodyFont = bodyFont or Theme.body(12)
+    smallFont = smallFont or Theme.body(11)
+    powerFont = powerFont or Theme.display(22) -- the headline Power value
     return titleFont, bodyFont, smallFont, powerFont
 end
 
 -- Accent color per item type (title + type-line tint).
+-- Accent per item type, pitched bright to read on the dark tooltip ground (ui/theme.lua).
 local TYPE_COLOR = {
-    weapon = { 0.90, 0.58, 0.48 },
-    armor = { 0.58, 0.72, 0.92 },
-    consumable = { 0.52, 0.85, 0.55 },
-    ability = { 0.78, 0.62, 0.96 },
-    utility = { 0.92, 0.82, 0.52 },
+    weapon = { 0.789, 0.361, 0.354 },
+    armor = { 0.391, 0.549, 0.812 },
+    consumable = { 0.361, 0.671, 0.480 },
+    ability = { 0.568, 0.414, 0.786 },
+    utility = { 0.865, 0.707, 0.341 },
 }
-local DEFAULT_COLOR = { 0.90, 0.90, 0.95 }
+local DEFAULT_COLOR = Theme.ink
 
 -- Cost value tint per resource stat (matches the item-grid cost badges). Health is PARTY blue: a
 -- cost only ever prices the player's own actor, whose HP bar is blue.
@@ -58,22 +61,25 @@ local RES_COLOR = {
 
 local TARGET_LABEL = { enemy = "Enemy", ally = "Ally", self = "Self", tile = "Tile" }
 
-local MUTED = { 0.62, 0.65, 0.72 }
-local VALUE = { 0.90, 0.91, 0.95 }
-local DESC = { 0.80, 0.82, 0.88 }
-local FLAVOR = { 0.70, 0.68, 0.78 } -- the story line at the foot: dimmer than DESC, so it reads as an aside
-local WARN = { 0.95, 0.45, 0.42 } -- the row at fault + the note, when the ability can't be cast
-local MET = { 0.70, 0.88, 0.45 }  -- a satisfied requirement (matches the grid's connector line)
-local POWER = { 0.95, 0.72, 0.48 } -- ability Power row (the offensive balance stat)
-local HEAL = { 0.55, 0.90, 0.58 }  -- ability heal row
-local SUMMON = { 0.78, 0.62, 0.96 } -- ability "Summons" row (matches the ability item accent)
-local DISC = { 0.82, 0.70, 0.96 } -- the discipline row: a taxonomy label, tinted like the caster accent
-local CLASS = { 0.70, 0.74, 0.82 } -- the base-class row: the same taxonomy slot, cooler/dimmer than a discipline
-local BRACE = { 0.55, 0.72, 0.92 } -- a shield's Defend brace-defense (matches the Defending badge tint)
+-- Text tints, all pitched for the parchment ground (ui/theme.lua): the neutral rows are the theme's
+-- ink/muted, and every coloured row is darkened so its hue reads on the light stock.
+local MUTED = Theme.muted
+local VALUE = Theme.ink
+local DESC = Theme.ink
+local FLAVOR = Theme.muted -- the story line at the foot: dimmer than DESC, so it reads as an aside
+local WARN = { 0.789, 0.361, 0.354 } -- the row at fault + the note, when the ability can't be cast
+local MET = { 0.361, 0.671, 0.480 }  -- a satisfied requirement (matches the grid's connector line)
+local TITLE = { 0.865, 0.707, 0.341 } -- the item NAME: bone-gold, matching the mock (not the type accent)
+local POWER = { 0.865, 0.707, 0.341 } -- the headline value (Damage/Power): gold, matching the mock
+local HEAL = { 0.467, 0.725, 0.566 }  -- ability heal row
+local SUMMON = { 0.568, 0.414, 0.786 } -- ability "Summons" row (matches the ability item accent)
+local DISC = { 0.568, 0.414, 0.786 } -- the discipline row: a taxonomy label, tinted like the caster accent
+local CLASS = Theme.muted -- the base-class row: the same taxonomy slot, cooler/dimmer than a discipline
+local BRACE = { 0.391, 0.549, 0.812 } -- a shield's Defend brace-defense (matches the Defending badge tint)
 -- The range-diagram band tint: green for a friendly cast, red for a hostile one (matches the
 -- board's green/red targeting overlays and the action preview's SUPPORT/OFFENSE accents).
-local RANGE_FRIENDLY = { 0.45, 0.85, 0.50 }
-local RANGE_HOSTILE = { 0.95, 0.52, 0.46 }
+local RANGE_FRIENDLY = { 0.361, 0.671, 0.480 }
+local RANGE_HOSTILE = { 0.789, 0.361, 0.354 }
 local GLYPH_GAP = 4 -- between a stat row's glyph and the value it marks
 local STAT_GAP = 8  -- least space kept between a stat row's label and its value column
 
@@ -81,21 +87,18 @@ local function titleCase(s)
     return (tostring(s):gsub("^%l", string.upper))
 end
 
--- Fake italic for the flavor line. The project ships no font asset and LOVE's default face has no
--- italic cut, so the slant is a shear: x' = x + FLAVOR_SHEAR * y, pivoting on the block's top edge,
--- which slides each glyph's foot left while its head stays put. The text is therefore drawn inset by
--- that overhang and wrapped to a column narrower by the same amount, so the lean lands inside the
--- padding rather than across the tooltip's border.
-local FLAVOR_SHEAR = -0.18
-
--- The inset and the wrap width for a flavor line drawn with `font` in a `w`-wide column. Measure and
--- draw MUST both size themselves from this: wrapping to one width and drawing at another is how a
--- measured box height silently stops matching the text inside it. The overhang scales with the line
--- height, so a panel's larger font leans further and needs a wider inset than the tooltip's.
-local function flavorLayout(font, w)
-    local inset = math.ceil(-FLAVOR_SHEAR * font:getHeight())
-    return inset, w - inset
+-- The flavor line is set in a REAL italic cut (Alegreya Italic, via Theme.bodyItalic) -- LOVE cannot
+-- synthesize a slant, so an italic aside needs a genuine italic face or it renders upright. Memoized at
+-- the body size the tooltip wraps at. (This replaces an old shear-transform fake italic, from before the
+-- game shipped a font asset.)
+local flavorFontCached
+local function flavorFont()
+    flavorFontCached = flavorFontCached or Theme.bodyItalic(12)
+    return flavorFontCached
 end
+-- A hair off the right edge so an italic tail clears the border; measure and draw MUST share it, or a
+-- measured box height silently stops matching the text inside it.
+local FLAVOR_GUARD = 3
 
 -- Draw `text` as a sheared italic aside, wrapped into a `w`-wide column at (x, y). Returns the
 -- height consumed, so callers laying out their own column can advance past it -- the shop and
@@ -103,17 +106,12 @@ end
 -- defaults to the tooltip's own body font; a caller with its own type scale passes that instead, so
 -- the flavor matches the column it sits in.
 function ItemTooltip.printFlavor(text, x, y, w, font)
-    local _, body = fonts()
-    font = font or body
-    local inset, textW = flavorLayout(font, w)
+    font = font or flavorFont()
+    local textW = w - FLAVOR_GUARD
     local _, wrapped = font:getWrap(text, textW)
     love.graphics.setFont(font)
     love.graphics.setColor(FLAVOR[1], FLAVOR[2], FLAVOR[3], 1)
-    love.graphics.push()
-    love.graphics.translate(x + inset, y)
-    love.graphics.shear(FLAVOR_SHEAR, 0)
-    love.graphics.printf(text, 0, 0, textW, "left")
-    love.graphics.pop()
+    love.graphics.printf(text, x, y, textW, "left")
     return math.max(1, #wrapped) * font:getHeight()
 end
 
@@ -177,20 +175,23 @@ end
 -- section with a `warn` block spelling the reason out.
 local function buildBlocks(item, actor, innerW, out)
     local blocks = {}
-    local typeCol = TYPE_COLOR[item.type] or DEFAULT_COLOR
     -- The one reason this item can't be activated (nil when it can, or when it's passive).
     local blocked = Combat.itemBlockReason(actor, item)
 
-    blocks[#blocks + 1] = { kind = "title", text = item.name or "Item", color = typeCol }
-    blocks[#blocks + 1] = { kind = "type", text = (item.type and item.type:upper()) or "ITEM", color = typeCol }
+    -- The header is a TWO-COLUMN row (the mock's flex `.th`): the bone-gold NAME + muted type eyebrow on
+    -- the left, and -- when the item has one -- the big headline value + its label on the RIGHT, on the
+    -- SAME row as the name (not a separate row below). One block draws both columns.
+    local header = { kind = "header", name = item.name or "Item",
+        typeText = (item.type and item.type:upper()) or "ITEM" }
+    blocks[#blocks + 1] = header
 
-    -- Primary stat: the one magnitude that defines the item (a blade's Power, armor's defense), quoted
-    -- at its current upgrade level. It leads the tooltip as a headline; the upgrade level itself rides
-    -- on the " +n" name. `primaryLabel` names the stat so the armor bonus block can skip it below and
-    -- not print the same number twice.
+    -- Primary stat: the one magnitude that defines the item (a blade's Power, armor's defense), quoted at
+    -- its current upgrade level. `primaryLabel` names the stat so the armor bonus block can skip it below
+    -- and not print the same number twice.
     local primaryValue, primaryLabel, primaryKey = Item.primaryStat(item)
     if primaryValue then
-        blocks[#blocks + 1] = { kind = "power", label = primaryLabel:upper(), value = primaryValue }
+        header.value = primaryValue
+        header.valueLabel = primaryLabel:upper()
     end
 
     if item.description and item.description ~= "" then
@@ -348,6 +349,15 @@ local function buildBlocks(item, actor, innerW, out)
         local diagram = RangeDiagram.layout(ab, innerW)
         if diagram then
             blocks[#blocks + 1] = { kind = "rangediag", layout = diagram,
+                color = Combat.isSupportAbility(ab) and RANGE_FRIENDLY or RANGE_HOSTILE }
+        end
+        -- The AREA footprint: the tiles the cast actually sweeps (a spear's line, an axe's arc, a
+        -- blast's square), drawn around the caster. Shape is structured `aoe` data, so it belongs in
+        -- a picture, not the description. Skipped for a single-target cast (no aoe) and for a
+        -- board-dependent footprint (aoe.cells), which FootprintDiagram cannot picture off-board.
+        local aoe = ab.aoe
+        if aoe and not aoe.cells and (aoe.shape or (aoe.radius and aoe.radius > 0)) then
+            blocks[#blocks + 1] = { kind = "footprintdiag", aoe = aoe, box = 60,
                 color = Combat.isSupportAbility(ab) and RANGE_FRIENDLY or RANGE_HOSTILE }
         end
         if ab.speed then
@@ -536,17 +546,17 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
     -- Measure: sum each block's height (wrapping desc against innerW, cached for the draw pass).
     local h = pad
     for _, b in ipairs(blocks) do
-        if b.kind == "title" then h = h + titleH + 3
-        elseif b.kind == "type" then h = h + smallH + 4
-        elseif b.kind == "power" then h = h + powerH + 4
+        if b.kind == "header" then
+            -- reserve the taller of the two columns: title+eyebrow (left) vs value+label (right)
+            local leftH = titleH + 3 + smallH
+            h = h + math.max(leftH, b.value and (powerH + smallH) or 0) + 4
         elseif b.kind == "desc" or b.kind == "warn" then
             local _, lines = body:getWrap(b.text, innerW)
             b.lines = math.max(1, #lines)
             h = h + b.lines * bodyH + 2
         elseif b.kind == "flavor" then
-            -- Wrapped against the shear-inset column, exactly as ItemTooltip.printFlavor draws it.
-            local _, textW = flavorLayout(body, innerW)
-            local _, lines = body:getWrap(b.text, textW)
+            -- Wrapped in the italic face, exactly as ItemTooltip.printFlavor draws it.
+            local _, lines = flavorFont():getWrap(b.text, innerW - FLAVOR_GUARD)
             b.lines = math.max(1, #lines)
             h = h + b.lines * bodyH + 2
         elseif b.kind == "note" then
@@ -556,6 +566,7 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
         elseif b.kind == "sep" then h = h + 8
         elseif b.kind == "head" then h = h + bodyH + 2
         elseif b.kind == "rangediag" then h = h + b.layout.height + 4
+        elseif b.kind == "footprintdiag" then h = h + smallH + 2 + b.box + 4
         else -- stat: the value wraps in the column left over beside the label
             local vx, vw, lines = statLayout(body, b.label, b.value, innerW)
             b.valueX, b.valueW, b.lines = vx, vw, lines
@@ -571,46 +582,47 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
     bx = math.max(4, math.min(bx, maxX))
     local by = math.max(4, math.min(my + 16, Scale.HEIGHT - h - 4))
 
-    local accent = TYPE_COLOR[item.type] or DEFAULT_COLOR
-    love.graphics.setColor(0.08, 0.09, 0.12, 0.96)
-    love.graphics.rectangle("fill", bx, by, w, h, 6, 6)
-    love.graphics.setColor(accent[1], accent[2], accent[3], 0.9)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", bx, by, w, h, 4, 4)
+    Theme.set(Theme.frame) -- bone-gold border: the mock frames the tooltip in trim, not the type accent
     love.graphics.setLineWidth(1)
-    love.graphics.rectangle("line", bx, by, w, h, 6, 6)
+    love.graphics.rectangle("line", bx, by, w, h, 4, 4)
 
     local ty = by + pad
     for _, b in ipairs(blocks) do
-        if b.kind == "title" then
+        if b.kind == "header" then
+            -- Left column: bone-gold name, muted type eyebrow beneath it.
             love.graphics.setFont(title)
-            love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
-            love.graphics.print(b.text, bx + pad, ty)
-            ty = ty + titleH + 3
-        elseif b.kind == "type" then
+            love.graphics.setColor(TITLE[1], TITLE[2], TITLE[3], 1)
+            love.graphics.print(b.name, bx + pad, ty)
             love.graphics.setFont(small)
-            love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.85)
-            love.graphics.print(b.text, bx + pad, ty)
-            ty = ty + smallH + 4
-        elseif b.kind == "power" then
-            -- Headline: a muted stat caption bottom-aligned to the big tinted value on the right.
-            love.graphics.setFont(small)
-            love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
-            love.graphics.print(b.label, bx + pad, ty + (powerH - smallH) - 2)
-            love.graphics.setFont(power)
-            love.graphics.setColor(POWER[1], POWER[2], POWER[3], 1)
-            love.graphics.printf(tostring(b.value), bx + pad, ty, innerW, "right")
-            ty = ty + powerH + 4
+            love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 0.9)
+            love.graphics.print(b.typeText, bx + pad, ty + titleH + 3)
+            -- Right column (same row as the name): the big headline value, its label beneath it.
+            if b.value then
+                love.graphics.setFont(power)
+                love.graphics.setColor(POWER[1], POWER[2], POWER[3], 1)
+                love.graphics.printf(tostring(b.value), bx + pad, ty - 1, innerW, "right")
+                love.graphics.setFont(small)
+                love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
+                love.graphics.printf(b.valueLabel, bx + pad, ty + powerH - 2, innerW, "right")
+            end
+            local leftH = titleH + 3 + smallH
+            ty = ty + math.max(leftH, b.value and (powerH + smallH) or 0) + 4
         elseif b.kind == "desc" then
             love.graphics.setFont(body)
             love.graphics.setColor(DESC[1], DESC[2], DESC[3], 1)
             love.graphics.printf(b.text, bx + pad, ty, innerW, "left")
             ty = ty + b.lines * bodyH + 2
         elseif b.kind == "sep" then
-            love.graphics.setColor(0.30, 0.33, 0.40, 0.8)
+            -- A faint group divider. Kept subtle (the mock leans on dotted leaders + spacing, not bold
+            -- rules) so the dense real tooltip still groups without a ladder of hard lines.
+            Theme.set(Theme.frame, 0.24)
             love.graphics.line(bx + pad, ty + 4, bx + w - pad, ty + 4)
             ty = ty + 8
         elseif b.kind == "head" then
             love.graphics.setFont(body)
-            love.graphics.setColor(0.95, 0.85, 0.55, 1)
+            Theme.set(Theme.accentAmber)
             love.graphics.print(b.text, bx + pad, ty)
             ty = ty + bodyH + 2
         elseif b.kind == "rangediag" then
@@ -618,6 +630,14 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
             local gx = bx + pad + math.floor((innerW - b.layout.width) / 2)
             RangeDiagram.draw(b.layout, gx, ty + 2, b.color)
             ty = ty + b.layout.height + 4
+        elseif b.kind == "footprintdiag" then
+            -- A "Shape" caption over the drawn footprint, so it never reads as a second reach map.
+            love.graphics.setFont(small)
+            love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 0.9)
+            love.graphics.print("Shape", bx + pad, ty)
+            local gx = bx + pad + math.floor((innerW - b.box) / 2)
+            FootprintDiagram.draw(b.aoe, gx, ty + smallH + 2, b.box, b.color)
+            ty = ty + smallH + 2 + b.box + 4
         elseif b.kind == "flavor" then
             ItemTooltip.printFlavor(b.text, bx + pad, ty, innerW)
             ty = ty + b.lines * bodyH + 2
@@ -631,12 +651,15 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
             love.graphics.setColor(WARN[1], WARN[2], WARN[3], 1)
             love.graphics.printf(b.text, bx + pad, ty, innerW, "left")
             ty = ty + b.lines * bodyH + 2
-        else -- stat: label left, value right
+        else -- stat: label left, value right, a dotted leader walking the eye between them
             love.graphics.setFont(body)
             love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
             love.graphics.print(b.label, bx + pad, ty)
             local vc = b.valueColor or VALUE
             local cx = bx + pad + b.valueX
+            local valueLeft = cx + b.valueW - body:getWidth(b.value)
+            if b.icon == "hourglass" or b.icon == "charges" then valueLeft = valueLeft - GLYPH_GAP - 7 end
+            Theme.leader(bx + pad + body:getWidth(b.label) + 6, valueLeft - 6, ty + bodyH - 3)
             love.graphics.setColor(vc[1], vc[2], vc[3], 1)
             love.graphics.printf(b.value, cx, ty, b.valueW, "right")
             -- An optional glyph riding just ahead of the VALUE (never the label), tinted to match it:

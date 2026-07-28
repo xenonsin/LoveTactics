@@ -23,6 +23,7 @@ local ItemTooltip = require("ui.item_tooltip")
 local InputMode = require("input_mode")
 local Item = require("models.item")
 local Scale = require("scale")
+local Theme = require("ui.theme")
 
 local LootReveal = {}
 LootReveal.__index = LootReveal
@@ -91,10 +92,10 @@ function LootReveal.new(opts)
     end
     local n = math.max(1, #self.items)
 
-    self.titleFont = love.graphics.newFont(30)
-    self.bodyFont = love.graphics.newFont(18)
-    self.nameFont = love.graphics.newFont(13)
-    self.hintFont = love.graphics.newFont(15)
+    self.titleFont = Theme.display(30)
+    self.bodyFont = Theme.body(18)
+    self.nameFont = Theme.body(13)
+    self.hintFont = Theme.body(15)
 
     -- Box sized to the card grid width, with a fixed vertical layout stacked title -> cards -> chest
     -- -> button, so the Take button always clears the chest.
@@ -379,12 +380,11 @@ function LootReveal:drawCard(item, count, cx, cy, alpha, scale, focused)
 
     love.graphics.setColor(0, 0, 0, 0.6 * alpha)
     love.graphics.rectangle("fill", x + 1, y + h - 17 * scale, w - 2, 16 * scale, 0, 0, 6, 6)
-    love.graphics.setFont(self.nameFont)
-    local name = item.name or "?"
-    local nw = self.nameFont:getWidth(name)
-    local sc = math.min(1, (w - 8) / nw)
+    -- Fit the name on a native font (never scaled -- a scaled font blurs); long names step down a size.
+    local font, name = Theme.fitText(Theme.body, item.name or "?", w - 8, 13, 10)
+    love.graphics.setFont(font)
     love.graphics.setColor(0.92, 0.92, 0.96, alpha)
-    love.graphics.print(name, cx - (nw * sc) / 2, y + h - 16 * scale, 0, sc, sc)
+    love.graphics.print(name, cx - font:getWidth(name) / 2, y + h - 16 * scale)
 
     -- Stack badge in the top-right corner when the chest gave more than one of this item.
     if count and count > 1 then
@@ -414,13 +414,13 @@ function LootReveal:draw()
     end
 
     local bx, by = self.boxX + ox, self.boxY + oy
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", bx, by, self.boxW, self.boxH, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", bx, by, self.boxW, self.boxH, 10, 10)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", bx, by, self.boxW, self.boxH, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", bx, by, self.boxW, self.boxH, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf(self.title, bx, by + TITLE_TOP, self.boxW, "center")
 
     -- Closed intro: the description sits where the cards will later land.

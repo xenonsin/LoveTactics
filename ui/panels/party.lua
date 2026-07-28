@@ -153,11 +153,11 @@ function Party.new(opts)
     self.filterCursor = 1
     self.filterOpen = false -- the stash filter dropdown starts closed, behind its "Filter" toggle
 
-    self.titleFont = love.graphics.newFont(28)
-    self.headFont = love.graphics.newFont(18)
-    self.bodyFont = love.graphics.newFont(15)
-    self.smallFont = love.graphics.newFont(13)
-    self.tinyFont = love.graphics.newFont(11)
+    self.titleFont = require("ui.theme").display(28)
+    self.headFont = require("ui.theme").display(18)
+    self.bodyFont = require("ui.theme").body(15)
+    self.smallFont = require("ui.theme").body(13)
+    self.tinyFont = require("ui.theme").body(11)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
@@ -1210,13 +1210,14 @@ function Party:draw()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
+    local Theme = require("ui.theme")
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf(self.title, self.boxX, self.boxY + 18, BOX_W, "center")
 
     self:drawModeSelector()

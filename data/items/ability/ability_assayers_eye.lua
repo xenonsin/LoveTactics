@@ -9,7 +9,7 @@
 -- pockets. Envy's verb -- to want the coveting exact.
 return {
     name = "Assayer's Eye",
-    description = "Lays a foe's whole kit open for the rest of the battle: hover the foe to read every item it carries.",
+    description = "Lays a foe's whole kit open this battle: hover the foe to read every item it carries.",
     flavor = "An assay tells you what a thing is truly made of. Envy asks the same of a man's pockets.",
     sprite = "assets/items/ability_assayers_eye.png",
     type = "ability",

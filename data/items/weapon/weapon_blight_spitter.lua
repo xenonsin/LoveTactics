@@ -11,7 +11,7 @@
 -- data/items/ability/ability_blightstake.lua -- and this file is where it is actually paid.
 return {
     name = "Blight Spitter",
-    description = "Spits a mouthful of rot at one target, poisoning it.",
+    description = "Inflicts Poison.",
     flavor = "Whatever is in the cloth was alive once, and is now extremely motivated.",
     sprite = "assets/items/weapon_blight_spitter.png",
     type = "weapon",

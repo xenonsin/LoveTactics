@@ -13,7 +13,7 @@
 -- ability spends a cell and nothing else, the pelt spends the armour slot and brings a hide with it.
 return {
     name = "Stalker's Pelt",
-    description = "Strike first when attacked, spending a swing's stamina. Kill them and the blow never lands.",
+    description = "On being attacked: strike first; a kill stops the blow before it lands.",
     flavor = "The Warren skins what it teaches you to hear coming. The lesson and the coat are the same animal.",
     sprite = "assets/items/armor_stalkers_pelt.png",
     type = "armor",

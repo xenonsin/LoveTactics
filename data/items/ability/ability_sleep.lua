@@ -21,7 +21,7 @@
 -- know what the cast buys before spending on it.
 return {
     name = "Sleep",
-    description = "Puts a foe far down the turn order. Any damage wakes it.",
+    description = "Inflicts Sleep.",
     flavor = "Do not sleep the thing you are about to kill. Sleep the one you intend to ignore.",
     sprite = "assets/items/ability_sleep.png",
     type = "ability",

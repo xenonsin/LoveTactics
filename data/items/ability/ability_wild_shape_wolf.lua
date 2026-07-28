@@ -29,7 +29,7 @@
 -- you have already paid for it.
 return {
     name = "Wild Shape: Wolf",
-    description = "Take a wolf's body: fast and sharp-toothed. Reserves mana while worn.",
+    description = "Turns you into a wolf, gaining Wolf Shape. Reserves mana while worn.",
     flavor = "You give up the thing you are good at to become the thing you were keeping at a distance.",
     sprite = "assets/items/ability_wild_shape_wolf.png",
     type = "ability",

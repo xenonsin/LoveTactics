@@ -14,7 +14,7 @@
 -- and everything on that ground -- including a raised zombie of your own -- eats the same dark burst.
 return {
     name = "Corpse Burst",
-    description = "Consumes every corpse in the area and blasts the ground with dark power -- harder for each body spent.",
+    description = "For each corpse in area consume it. Increase damage by 6 per corpse.",
     flavor = "The Arcanum keeps a ledger of what a body is worth. It turns out to be worth roughly one more body.",
     sprite = "assets/items/ability_corpse_burst.png",
     type = "ability",

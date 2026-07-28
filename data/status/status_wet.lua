@@ -29,7 +29,7 @@ return {
     name = "Wet",
     abbr = "Wet",
     description = "Soaked: takes extra lightning and ice damage, resists fire, and conducts to nearby water.",
-    color = { 0.40, 0.62, 0.92 }, -- badge tint (rain blue)
+    color = { 0.425, 0.603, 0.846 }, -- badge tint (rain blue)
     fx = { field = true },    -- draws ground under the drenched body (a debuff: the hostile look, ui/field_fx.lua)
     duration = 15,  -- ~3 turns at Status.TICKS_PER_TURN: long enough to soak a cluster, then Jolt it
     debuff = true, -- removable by Cure

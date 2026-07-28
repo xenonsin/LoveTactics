@@ -21,7 +21,7 @@ return {
     name = "Hasted",
     abbr = "Hst",
     description = "Quickened: ability and movement costs are halved.",
-    color = { 0.95, 0.85, 0.45 }, -- badge tint (gold, matching the initiative accent)
+    color = { 0.880, 0.798, 0.472 }, -- badge tint (gold, matching the initiative accent)
     duration = 20, -- ~4 turns at Status.TICKS_PER_TURN: several quickened turns, not two
     costMultiplier = 0.5,
 }

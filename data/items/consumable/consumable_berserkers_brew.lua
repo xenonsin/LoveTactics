@@ -4,7 +4,7 @@
 -- the rampage is real, and so is the wide-open guard that pays for it. Consumed on use.
 return {
     name = "Berserker's Brew",
-    description = "Grants an extra action now, but leaves you Reckless: you take more damage for a time.",
+    description = "Grants an extra action now, but leaves you Reckless.",
     flavor = "The Crucible does not sell courage. It sells the part of you that forgets to be careful.",
     sprite = "assets/items/consumable_berserkers_brew.png",
     type = "consumable",

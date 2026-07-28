@@ -6,7 +6,7 @@
 -- tool -- taking not a foe's gold but the foe itself.
 return {
     name = "Charm",
-    description = "Turns a foe to your side -- likelier the more wounded it is. Bosses are unmoved.",
+    description = "Inflicts Charm, likelier the more wounded it is. Bosses are unmoved.",
     flavor = "Greed's real tool: not taking a foe's gold, but taking the foe.",
     sprite = "assets/items/ability_charm.png",
     type = "ability",

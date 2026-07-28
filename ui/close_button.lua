@@ -12,6 +12,8 @@
 -- `mousepressed` returns true when the click landed on the button, so the caller
 -- can decide what closing means.
 
+local Theme = require("ui.theme")
+
 local CloseButton = {}
 CloseButton.__index = CloseButton
 
@@ -36,17 +38,13 @@ function CloseButton:contains(px, py)
 end
 
 function CloseButton:draw()
-    if self.hovered then
-        love.graphics.setColor(0.6, 0.25, 0.28)
-    else
-        love.graphics.setColor(0.25, 0.20, 0.24)
-    end
-    love.graphics.rectangle("fill", self.x, self.y, self.w, self.h, 6, 6)
-    love.graphics.setColor(0.7, 0.55, 0.6)
-    love.graphics.rectangle("line", self.x, self.y, self.w, self.h, 6, 6)
+    if self.hovered then love.graphics.setColor(0.52, 0.24, 0.24) else Theme.set(Theme.panel2) end
+    love.graphics.rectangle("fill", self.x, self.y, self.w, self.h, Theme.R, Theme.R)
+    if self.hovered then love.graphics.setColor(0.78, 0.44, 0.44) else Theme.set(Theme.frame) end
+    love.graphics.rectangle("line", self.x, self.y, self.w, self.h, Theme.R, Theme.R)
 
     -- The "X" glyph, drawn as two crossing lines so it needs no font.
-    love.graphics.setColor(0.95, 0.9, 0.9)
+    Theme.set(self.hovered and { 0.95, 0.85, 0.85 } or Theme.ink)
     love.graphics.setLineWidth(2)
     local pad = 8
     love.graphics.line(self.x + pad, self.y + pad,

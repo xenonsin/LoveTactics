@@ -13,7 +13,7 @@ return {
     name = "Frozen",
     abbr = "Frz",
     description = "Iced over: delayed, and takes extra damage from impact and fire.",
-    color = { 0.55, 0.80, 0.95 }, -- badge tint (glacier blue)
+    color = { 0.564, 0.772, 0.896 }, -- badge tint (glacier blue)
     fx = { field = true },    -- draws ground under the frozen body (a debuff: the hostile look, ui/field_fx.lua)
     magnitude = 5,                -- ticks added to the target's initiative (the freeze delay)
     shovesInitiative = "magnitude", -- the delay the aim preview quotes (Status.initiativeShove); == onApply's shove

@@ -22,7 +22,7 @@
 -- an assassin's, and a genuinely different build from the one Stillshade wants.
 return {
     name = "A Price on the Head",
-    description = "Marks a foe: it cannot hide, and its death pays the company in coin.",
+    description = "Inflicts Struck Ledger.",
     flavor = "The Undercroft does not want it dead. The Undercroft wants the receipt.",
     sprite = "assets/items/ability_price_on_the_head.png",
     type = "ability",

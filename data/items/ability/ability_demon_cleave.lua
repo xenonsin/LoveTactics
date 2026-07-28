@@ -8,7 +8,7 @@
 -- catch its own Bomblets in it too, which is fine -- a Volatile it pops just bursts.
 return {
     name = "Demon's Cleave",
-    description = "Winds up a heavy sweep, cutting everything in a wide arc in front of it.",
+    description = "Channeled: a heavy sweep.",
     flavor = "It draws the blow back far enough that you can see it coming. Whether you move is your affair.",
     sprite = "assets/items/great_claws.png", -- placeholder until its own art exists
     type = "ability",

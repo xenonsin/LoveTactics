@@ -19,7 +19,7 @@
 -- targets forfeits Tempo whether it was banked by pressing or by parrying -- one pool, one rule.
 return {
     name = "Main-Gauche",
-    description = "A left-hand dagger that parries. Bleeds on the hit, and banks Tempo for every blow it turns aside.",
+    description = "Parries as a left-hand dagger, inflicting Bleed on a hit and banking Tempo for every blow it turns aside.",
     flavor = "The right hand is the argument. This one is the punctuation.",
     sprite = "assets/items/weapon_main_gauche.png",
     type = "weapon",

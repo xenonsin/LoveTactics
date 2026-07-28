@@ -6,7 +6,7 @@ return {
     name = "Mark",
     abbr = "Mrk",
     description = "Marked: defense and magic defense are reduced, inviting a finishing blow.",
-    color = { 0.85, 0.30, 0.30 }, -- badge tint (crimson)
+    color = { 0.769, 0.331, 0.331 }, -- badge tint (crimson)
     duration = 10, -- ~2 turns at Status.TICKS_PER_TURN: a mark someone can still act on
     debuff = true,                -- removable by Cure
     statBonus = { defense = -5, magicDefense = -5 },

@@ -17,7 +17,7 @@
 -- Cloth: a square of pace, which a caster at range can afford better than anyone.
 return {
     name = "Warding Chasuble",
-    description = "Your heals also lay a Physical Barrier on their target: one blow, negated.",
+    description = "Heals also grant the target a Physical Barrier.",
     flavor = "The Cathedral vests its field healers in it and its cloistered ones in nothing at all.",
     sprite = "assets/items/armor_warding_chasuble.png",
     type = "armor",

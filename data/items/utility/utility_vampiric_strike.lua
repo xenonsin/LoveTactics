@@ -5,7 +5,7 @@
 -- (Combat.auraApplies / adjacencyAura), through the new `lifesteal` fold in Combat.useItem's fx.damage.
 return {
     name = "Vampiric Strike",
-    description = "Adjacent weapons heal you for a share of the damage they deal.",
+    description = "Adjacent weapons heal you on the damage they deal.",
     flavor = "Put a blade beside it, or three. Each swing mends what the last one cost you.",
     sprite = "assets/items/vampiric_strike.png",
     type = "utility",

@@ -22,7 +22,7 @@
 -- rather than to carry another charm.
 return {
     name = "The Answering Din",
-    description = "A shock through the ground that hits harder for every body caught in it.",
+    description = "Sends a shock through the ground. Increase damage by 3 per extra body caught.",
     flavor = "One man hears a knock. Six hear an argument. The Arcanum finds this very funny.",
     sprite = "assets/items/ability_answering_din.png",
     type = "ability",

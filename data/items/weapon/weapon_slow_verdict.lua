@@ -14,7 +14,7 @@
 -- durable and expensive here, longer and fragile there.
 return {
     name = "The Slow Verdict",
-    description = "The slowest swing in the game, for a stun that lasts twice as long.",
+    description = "Inflicts Stun that lasts twice as long, at the slowest swing speed there is.",
     flavor = "The Colosseum times it with a water clock rather than a count. Nobody has ever complained that it was rushed.",
     sprite = "assets/items/slow_verdict.png",
     type = "weapon",

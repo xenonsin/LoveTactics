@@ -18,7 +18,7 @@
 -- zone is intact and it still cannot answer a foe in its face. Only the damage curve is inverted.
 return {
     name = "Windward",
-    description = "Fires at range, hitting hardest at the very edge of its dead zone and weaker with every tile past it.",
+    description = "Increase damage the farther the target, peaking at the range edge.",
     flavor = "The Lodge teaches distance first because distance is easy to teach. This one is for afterwards.",
     sprite = "assets/items/windward.png",
     type = "weapon",

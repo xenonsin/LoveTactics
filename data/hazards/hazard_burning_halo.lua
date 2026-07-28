@@ -16,7 +16,7 @@
 -- endings, neither of them written here -- see the contract at the top of models/hazard.lua.
 return {
     name = "Burning Halo",
-    description = "A ring of white fire: enemies in it burn, and cannot see far enough to shoot.",
+    description = "Inflicts Burn and Blind on foes in it. Doused by water.",
     tags = { "fire" },
     duration = 6,
     disposition = "hostile",

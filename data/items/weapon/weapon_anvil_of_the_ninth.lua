@@ -17,7 +17,7 @@
 -- The obvious way to lose with it: swinging it while the party needs a second attack immediately.
 return {
     name = "Anvil of the Ninth",
-    description = "A crushing stun -- and the swing leaves you Halted, unable to use any ability until it lifts.",
+    description = "Inflicts Stun, and the swing leaves you Halted.",
     flavor = "The Ninth were not required to be clever. They were required to be there afterwards, and mostly they were.",
     sprite = "assets/items/anvil_of_the_ninth.png",
     type = "weapon",

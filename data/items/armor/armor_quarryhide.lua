@@ -14,7 +14,7 @@
 -- already in the grid rather than a particular school. Nothing here cares what kills it.
 return {
     name = "Quarryhide",
-    description = "When you stun or freeze a foe, Mark it for the kill. Then it must recharge.",
+    description = "On inflicting Stun or Freeze: inflict Mark, then recharge.",
     flavor = "The Warren tans it from things that were caught rather than run down. The distinction matters to them.",
     sprite = "assets/items/armor_quarryhide.png",
     type = "armor",

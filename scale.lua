@@ -17,12 +17,20 @@
 --   -- mouse callbacks:
 --   local gx, gy = Scale.toGame(x, y)
 --
--- Since the whole frame is composited into a 1280x720 canvas before it reaches the
--- window (see below), the letterbox scaling is also the natural seam for full-screen
--- POST-PROCESSING: the canvas is blitted through shaders/screen.lua (vignette, desat,
--- punch, flash) and offset by a screen shake, both driven by ui/screen_fx.lua. All of it
--- is guarded -- a driver that refuses the canvas or the shader latches back to the plain
--- translate/scale/scissor path forever, and the game plays on exactly as it did before.
+-- The frame is composited into a canvas sized to the REAL WINDOW (not the 1280x720 logical
+-- space): Scale.start binds it and applies the letterbox translate+scale up front, so every
+-- image, shape and glyph rasterises at native display resolution, and Scale.finish blits the
+-- canvas 1:1 to the window. That is the whole point of the canvas -- drawing the logical space
+-- straight into a 720p target and upscaling the flattened result is what made full-screen soft;
+-- transforming first, rasterising at native res, keeps it crisp at any window size. (Bitmap fonts
+-- are the one partial exception -- baked at their point size, then transform-scaled -- but they
+-- sharpen too, and everything else is exact.)
+--
+-- Because the whole frame lands in that canvas, the blit is also the natural seam for full-screen
+-- POST-PROCESSING: the canvas is drawn through shaders/screen.lua (vignette, desat, punch, flash)
+-- and offset by a screen shake, both driven by ui/screen_fx.lua. All of it is guarded -- a driver
+-- that refuses the canvas or the shader latches back to the plain translate/scale/scissor path
+-- forever, and the game plays on exactly as it did before.
 --
 -- This file must not touch love.graphics at require-time so it loads under the
 -- headless test suite (see CLAUDE.md). The canvas and shader are built lazily on the
@@ -54,6 +62,16 @@ function Scale.resize(windowW, windowH)
     Scale.scale = s
     Scale.offsetX = math.floor((windowW - Scale.WIDTH * s) / 2)
     Scale.offsetY = math.floor((windowH - Scale.HEIGHT * s) / 2)
+    Scale.windowW = windowW
+    Scale.windowH = windowH
+    -- The canvas is sized to the real window, so a resize retires it; ensureCanvas rebuilds it at
+    -- the new size on the next frame. (noCanvas stays latched -- a driver that failed once still
+    -- gets the fallback path.) Release the old target rather than leaning on the GC, since dragging
+    -- a resizable edge fires resize every frame.
+    if Scale.canvas and (Scale.canvasW ~= windowW or Scale.canvasH ~= windowH) then
+        pcall(function() Scale.canvas:release() end)
+        Scale.canvas = nil
+    end
 end
 
 -- Build the logical-space canvas and the post shader, once, guarded. A failure latches `noCanvas`:
@@ -62,15 +80,18 @@ end
 function Scale.ensureCanvas()
     if Scale.canvas then return Scale.canvas end
     if Scale.noCanvas then return nil end
-    local okC, canvas = pcall(love.graphics.newCanvas, Scale.WIDTH, Scale.HEIGHT)
+    local w = Scale.windowW or love.graphics.getWidth()
+    local h = Scale.windowH or love.graphics.getHeight()
+    local okC, canvas = pcall(love.graphics.newCanvas, w, h)
     if not okC or not canvas then
         Scale.noCanvas = true
         return nil
     end
     Scale.canvas = canvas
-    -- A still frame blits the canvas 1:1 into a 720p window, so point sampling keeps the UI exactly as
-    -- crisp as drawing straight to the window did. Scale.finish switches this to linear for the frames
-    -- that are actually resampled (a non-720p window, or a shake's overscale).
+    Scale.canvasW = w
+    Scale.canvasH = h
+    -- The canvas is window-sized, so a still frame blits it 1:1 -- point sampling is exact. Scale.finish
+    -- switches this to linear only for the frames a shake overscales the canvas past a whole pixel.
     canvas:setFilter("nearest", "nearest")
     Scale.canvasFilter = "nearest"
     -- The shader is optional on top of the canvas: if it will not compile we keep the canvas (so shake
@@ -80,14 +101,20 @@ function Scale.ensureCanvas()
     return canvas
 end
 
--- Begin drawing in logical space. With the canvas, that space IS the canvas (1280x720, identity
--- transform) and the letterbox scale is deferred to Scale.finish. Without it, fall back to blacking the
--- window and applying the translate/scale/scissor directly, exactly as before.
+-- Begin drawing in logical space. With the canvas, the letterbox translate+scale is applied UP FRONT
+-- (into the window-sized canvas), so the logical space rasterises at native display resolution; the
+-- scissor clips to the logical rect so nothing bleeds into the bars. Without the canvas, fall back to
+-- blacking the window and applying the same translate/scale/scissor directly, exactly as before.
 function Scale.start()
     local canvas = Scale.ensureCanvas()
     if canvas then
         love.graphics.setCanvas(canvas)
         love.graphics.clear(0, 0, 0, 1)
+        love.graphics.push()
+        love.graphics.translate(Scale.offsetX, Scale.offsetY)
+        love.graphics.scale(Scale.scale, Scale.scale)
+        love.graphics.setScissor(Scale.offsetX, Scale.offsetY,
+            Scale.WIDTH * Scale.scale, Scale.HEIGHT * Scale.scale)
         Scale.usingCanvas = true
     else
         Scale.usingCanvas = false
@@ -103,7 +130,10 @@ end
 -- Configure the post shader from ui/screen_fx.lua's current amounts. Sent every active blit rather than
 -- cached, since these change every frame a fight is loud.
 local function sendPost(shader, post)
-    shader:send("uTexel", { 1 / Scale.WIDTH, 1 / Scale.HEIGHT })
+    -- uTexel drives the blur tap distance. The canvas is now native-res, so a real-pixel texel
+    -- (1/canvasW) would shrink the blur's logical radius at high resolutions; multiply by the letterbox
+    -- scale so uBlur keeps meaning "logical pixels" exactly as it did on the old 1280x720 canvas.
+    shader:send("uTexel", { Scale.scale / Scale.canvasW, Scale.scale / Scale.canvasH })
     shader:send("uPunch", post.punch)
     shader:send("uBlur", post.blur)
     shader:send("uDesat", post.desat)
@@ -120,8 +150,8 @@ end
 local function shakeOverscale(sx, sy)
     if sx == 0 and sy == 0 then return 1 end
     local need = math.max(
-        1 + 2 * math.abs(sx) / (Scale.WIDTH * Scale.scale),
-        1 + 2 * math.abs(sy) / (Scale.HEIGHT * Scale.scale))
+        1 + 2 * math.abs(sx) / Scale.canvasW,
+        1 + 2 * math.abs(sy) / Scale.canvasH)
     return math.min(need, SHAKE_OVERSCALE_MAX)
 end
 
@@ -140,22 +170,24 @@ function Scale.finish()
         return
     end
 
-    -- Unbind the canvas and blit it to the window through the letterbox transform, offset by the screen
-    -- shake and (when anything is live) the post shader. The overscale keeps the shake from baring the
-    -- letterbox seam. The window itself is cleared black first, so the bars stay clean.
+    -- Drop the logical-space scissor and transform, unbind the canvas, and blit it to the window. The
+    -- canvas is already window-sized (the letterbox is baked into its contents), so a still frame draws
+    -- it 1:1 at the origin. A shake offsets it by (sx, sy) real pixels and overscales it just enough to
+    -- keep the moved edges covered. The window is cleared black first so the bars stay clean.
+    love.graphics.setScissor()
+    love.graphics.pop()
     love.graphics.setCanvas()
     love.graphics.clear(0, 0, 0, 1)
 
     local sx, sy = ScreenFx.shakeOffset()
     local over = shakeOverscale(sx, sy)
-    local s = Scale.scale * over
-    -- Centre the overscaled canvas in the letterbox area, then add the shake.
-    local dx = Scale.offsetX - (Scale.WIDTH * Scale.scale * (over - 1)) / 2 + sx
-    local dy = Scale.offsetY - (Scale.HEIGHT * Scale.scale * (over - 1)) / 2 + sy
+    -- Centre the overscaled canvas over the window, then add the shake.
+    local dx = -(Scale.canvasW * (over - 1)) / 2 + sx
+    local dy = -(Scale.canvasH * (over - 1)) / 2 + sy
 
-    -- Whole-pixel destination and an integer scale -> every canvas texel lands on exactly one window
-    -- pixel, so point sampling is lossless; otherwise smooth it.
-    if s == math.floor(s) and dx == math.floor(dx) and dy == math.floor(dy) then
+    -- A still frame lands the canvas 1:1 on the window -> point sampling is lossless; a shake resamples
+    -- it (non-integer overscale), so smooth that.
+    if over == 1 and sx == 0 and sy == 0 then
         setFilter("nearest")
     else
         setFilter("linear")
@@ -166,10 +198,10 @@ function Scale.finish()
     if post.active and Scale.screenShader then
         love.graphics.setShader(Scale.screenShader)
         sendPost(Scale.screenShader, post)
-        love.graphics.draw(Scale.canvas, dx, dy, 0, s, s)
+        love.graphics.draw(Scale.canvas, dx, dy, 0, over, over)
         love.graphics.setShader()
     else
-        love.graphics.draw(Scale.canvas, dx, dy, 0, s, s)
+        love.graphics.draw(Scale.canvas, dx, dy, 0, over, over)
     end
 end
 

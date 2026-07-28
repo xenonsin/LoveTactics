@@ -10,7 +10,7 @@
 -- better hatchet -- and a fighter who wants the crowd dead faster already has the Wedge for that.
 return {
     name = "Tithe-Axe",
-    description = "Cleaves a wide arc. Every foe it opens pays the company coin.",
+    description = "On damage dealt: gain gold.",
     flavor = "The Colosseum's quartermasters do not call it looting. They call it the tithe, and they take theirs first.",
     sprite = "assets/items/tithe_axe.png",
     type = "weapon",

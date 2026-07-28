@@ -22,7 +22,7 @@
 -- case, and it reads at the table as exactly what the player wanted to buy.
 return {
     name = "The Pale Vesture",
-    description = "Turns its wearer thin: physical blows barely land, and magic bites far deeper.",
+    description = "Its wearer takes almost nothing from physical blows, and much more from magic.",
     flavor = "Worn once by a man who walked out of a siege. He is not recorded as having survived the walk.",
     sprite = "assets/items/utility_pale_vesture.png",
     type = "utility",

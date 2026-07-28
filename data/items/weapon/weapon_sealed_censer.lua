@@ -23,7 +23,7 @@
 -- indiscriminate, costs nothing, and never stops.
 return {
     name = "The Sealed Censer",
-    description = "Wreathes you in screaming static: nothing standing near you can spend mana on anything. Nothing.",
+    description = "Inflicts Magic Denied on adjacent units.",
     flavor = "The Cathedral swung it through the Arcanum's great hall exactly once, and the treaty that followed is four hundred pages long.",
     sprite = "assets/items/sealed_censer.png",
     type = "weapon",

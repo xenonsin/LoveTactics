@@ -14,6 +14,7 @@ local CloseButton = require("ui.close_button")
 local Scale = require("scale")
 local InputMode = require("input_mode")
 local Debug = require("models.debug")
+local Theme = require("ui.theme")
 
 local QuestBoard = {}
 QuestBoard.__index = QuestBoard
@@ -30,9 +31,9 @@ function QuestBoard.new(opts)
     opts = opts or {}
     local self = setmetatable({}, QuestBoard)
     self.onClose = opts.onClose
-    self.titleFont = love.graphics.newFont(30)
-    self.headFont = love.graphics.newFont(20)
-    self.bodyFont = love.graphics.newFont(16)
+    self.titleFont = Theme.display(30)
+    self.headFont = Theme.display(20)
+    self.bodyFont = Theme.body(16)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
@@ -125,19 +126,19 @@ function QuestBoard:draw()
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
     -- Panel frame.
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
 
     -- Title.
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf("Quest Board", self.boxX, self.boxY + 24, BOX_W, "center")
 
     if #self.quests == 0 then
         love.graphics.setFont(self.bodyFont)
-        love.graphics.setColor(0.85, 0.85, 0.9)
+        Theme.set(Theme.ink)
         love.graphics.printf("No quests available.", self.boxX, self.boxY + BOX_H / 2,
             BOX_W, "center")
     else
@@ -149,7 +150,7 @@ function QuestBoard:draw()
     end
 
     love.graphics.setFont(self.bodyFont)
-    love.graphics.setColor(0.55, 0.6, 0.7)
+    Theme.set(Theme.muted)
     -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
     local hint = InputMode.isGamepad()
         and "A: Start    D-pad: Scroll    B: Close"
@@ -192,25 +193,25 @@ function QuestBoard:drawDetail()
     local y = self.boxY + LIST_TOP - 12
 
     love.graphics.setFont(self.headFont)
-    love.graphics.setColor(0.95, 0.95, 0.95)
+    Theme.set(Theme.ink)
     love.graphics.printf(quest.name, x, y, w, "left")
 
     -- The sponsor is the reason to pick one quest over another, so it reads in the accent
     -- color directly under the name, with the player's standing beside it.
     love.graphics.setFont(self.bodyFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf(quest.sponsorName, x, y + 30, w, "left")
 
     if quest.sponsor then
         local rank = Player.repRank(self.player, quest.sponsor)
-        love.graphics.setColor(0.6, 0.65, 0.75)
+        Theme.set(Theme.muted)
         love.graphics.printf(Vendor.rankName(quest.sponsor, rank), x, y + 50, w, "left")
     end
 
-    love.graphics.setColor(0.8, 0.82, 0.88)
+    Theme.set(Theme.ink)
     love.graphics.printf(quest.description, x, y + 78, w, "left")
 
-    love.graphics.setColor(0.6, 0.65, 0.75)
+    Theme.set(Theme.muted)
     love.graphics.printf("Difficulty: " .. tostring(quest.difficulty), x, y + 168, w, "left")
 
     -- A locked quest has no reward to offer yet, only a tally and whatever the dead have given up.

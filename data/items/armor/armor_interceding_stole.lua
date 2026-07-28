@@ -19,7 +19,7 @@
 -- outlive by one turn.
 return {
     name = "The Interceding Stole",
-    description = "Once per battle, take a lethal blow meant for an adjacent ally.",
+    description = "On a lethal blow to an adjacent ally: take it yourself. Once per battle.",
     flavor = "The Cathedral embroiders the name of the intended on the inside. It is filled in afterwards.",
     sprite = "assets/items/armor_interceding_stole.png",
     type = "armor",

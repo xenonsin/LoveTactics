@@ -13,7 +13,7 @@
 -- nothing for it. The charm is worthless in the fight you win in two turns.
 return {
     name = "Butcher's Tally",
-    description = "Every death on the field, either side, raises your Damage for the rest of the battle.",
+    description = "Every death on the field, either side, raises your Damage this battle.",
     flavor = "The stable hands cut a notch per body. They have never once asked whose.",
     sprite = "assets/items/butchers_tally.png",
     type = "utility",

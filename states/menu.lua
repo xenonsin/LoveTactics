@@ -2,11 +2,12 @@ local State = require("states")
 local Menu = require("ui.menu")
 local Player = require("models.player")
 local Scale = require("scale")
+local Theme = require("ui.theme")
 
 local menu = {}
 
-local titleFont = love.graphics.newFont(48)
-local hintFont = love.graphics.newFont(16)
+local titleFont = Theme.display(48)
+local hintFont = Theme.body(16)
 
 -- Two independent menus: the main one (centered, the shipped screen) and, in a dev build, a compact
 -- debug column pinned to the top-left corner. They are separate widgets so debug entries can never
@@ -295,27 +296,26 @@ end
 function menu.draw()
     local screenW = Scale.WIDTH
 
-    -- Fill the logical area explicitly: letterbox bars are cleared to black, so
-    -- setBackgroundColor (which paints the whole real window) can't be used here.
-    love.graphics.setColor(0.10, 0.11, 0.15)
-    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+    -- Fill the logical area explicitly (letterbox bars are cleared to black, so setBackgroundColor
+    -- can't be used): the theme's atmospheric ground behind the title + menu.
+    Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
 
     love.graphics.setFont(titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf("LoveTactics", 0, 120, screenW, "center")
 
     widget:draw()
 
     if debugWidget then
         love.graphics.setFont(hintFont)
-        love.graphics.setColor(0.5, 0.55, 0.7)
+        Theme.set(Theme.muted)
         love.graphics.print("Debug", DEBUG_MARGIN, DEBUG_MARGIN)
         debugWidget:draw()
     end
 
     if Player.hasSave() then
         love.graphics.setFont(hintFont)
-        love.graphics.setColor(0.5, 0.55, 0.7)
+        Theme.set(Theme.muted)
         love.graphics.printf("New Game erases your save.", 0, Scale.HEIGHT - 48, screenW, "center")
     end
 

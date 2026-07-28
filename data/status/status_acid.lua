@@ -11,7 +11,7 @@ return {
     name = "Acid",
     abbr = "Acd",
     description = "Corroded: defense and magic defense are reduced.",
-    color = { 0.62, 0.78, 0.18 }, -- badge tint (caustic yellow-green)
+    color = { 0.565, 0.689, 0.223 }, -- badge tint (caustic yellow-green)
     fx = { field = true },   -- draws ground under the afflicted body (a debuff: the hostile look, ui/field_fx.lua)
     duration = 8, -- ~1.5 turns at Status.TICKS_PER_TURN (was under one, and so barely landed)
     debuff = true, -- removable by Cure / Panacea

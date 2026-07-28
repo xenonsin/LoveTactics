@@ -13,7 +13,7 @@
 -- rogue changes the ground under the cursor, the hunter seeds it in advance.
 return {
     name = "Spiteful Caltrops",
-    description = "Scatters barbed, tainted caltrops: Bleeds everything in a small area. Deals no direct damage.",
+    description = "Inflicts Bleed in area.",
     flavor = "A caltrop only trips a man. The Undercroft asked what it would take to make one hold a grudge.",
     sprite = "assets/items/spiteful_caltrops.png",
     type = "consumable",

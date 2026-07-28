@@ -6,7 +6,7 @@ return {
     name = "Drunk",
     abbr = "Drk",
     description = "Reckless: +3 Damage, but -3 defense and -3 magic defense.",
-    color = { 0.80, 0.45, 0.75 }, -- badge tint (wine purple)
+    color = { 0.753, 0.463, 0.711 }, -- badge tint (wine purple)
     duration = 24,                 -- a good while: several turns of swagger
     statBonus = { damage = 3, defense = -3, magicDefense = -3 },
 }

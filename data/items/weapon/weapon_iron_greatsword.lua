@@ -8,7 +8,7 @@
 -- Two-handed, so Dual Wield can pair it only once forged to +5. A fighter's capstone weapon.
 return {
     name = "Iron Greatsword",
-    description = "Winds up a turn, then falls on one tile for devastating damage.",
+    description = "Channeled.",
     flavor = "The turn you spend raising it is the turn everyone else spends deciding where to stand.",
     sprite = "assets/items/greatsword.png",
     type = "weapon",

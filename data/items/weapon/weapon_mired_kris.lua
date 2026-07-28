@@ -17,7 +17,7 @@
 -- Its own damage is the worst on the shelf, and that is correct. Nothing about this knife is the knife.
 return {
     name = "The Mired Kris",
-    description = "A quick, bleeding cut that also Mires: moving costs blood, and acting costs double.",
+    description = "Deals damage and inflicts Bleed and Mired.",
     flavor = "The Undercroft does not sell it to people who want someone dead. It sells it to people who want someone stuck.",
     sprite = "assets/items/mired_kris.png",
     type = "weapon",

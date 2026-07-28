@@ -23,10 +23,11 @@ local Player = require("models.player")
 
 local ps = {}
 
-local titleFont = love.graphics.newFont(30)
-local headFont = love.graphics.newFont(20)
-local bodyFont = love.graphics.newFont(16)
-local smallFont = love.graphics.newFont(13)
+local Theme = require("ui.theme")
+local titleFont = Theme.display(30)
+local headFont = Theme.display(20)
+local bodyFont = Theme.body(16)
+local smallFont = Theme.body(13)
 
 -- Marching grid of deploy cells (Player.FORMATION_COLS x Player.FORMATION_ROWS). Row 1 is drawn at the
 -- TOP and is the front line; deeper rows step back toward the party's own edge. Kept deliberately compact
@@ -365,11 +366,10 @@ function ps.drawFormation()
 end
 
 function ps.draw()
-    love.graphics.setColor(0.08, 0.09, 0.12)
-    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+    Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
 
     love.graphics.setFont(titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf(mode.title or "Choose Your Party", 0, 28, Scale.WIDTH, "center")
     -- A quest names itself and its difficulty; any other caller says its own piece instead.
     local subtitle = mode.subtitle

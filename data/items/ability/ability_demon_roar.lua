@@ -13,7 +13,7 @@
 -- (a summoned Volatile that is dismissed does not burst -- data/traits/trait_volatile.lua).
 return {
     name = "Demon's Roar",
-    description = "Winds up a bellow that calls Bomblets and quickens the champion. Break its concentration.",
+    description = "Channeled: summons Bomblets and quickens the champion.",
     flavor = "The horde answers the loudest throat.",
     sprite = "assets/items/ability_meteor_storm.png", -- placeholder until its own art exists
     type = "ability",

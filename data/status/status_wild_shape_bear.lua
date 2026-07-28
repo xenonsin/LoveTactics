@@ -10,7 +10,7 @@ return {
     name = "Bear Shape",
     abbr = "Bear",
     description = "Wearing a bear's body: armored, heavy-handed, and holding your mana to stay that way.",
-    color = { 0.55, 0.40, 0.28 }, -- badge tint (bear brown)
+    color = { 0.513, 0.390, 0.291 }, -- badge tint (bear brown)
     duration = 20,
     illusion = true, -- dispellable, exactly as the wolf shape is; see data/status/wild_shape_wolf.lua
     onExpire = function(ctx)

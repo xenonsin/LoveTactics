@@ -17,7 +17,7 @@
 -- uncomfortable place for the party's alchemist to be, and is the item's whole price.
 return {
     name = "Choking Apron",
-    description = "Carries poisoned smoke with you: foes standing in it are Poisoned, allies are not.",
+    description = "Inflicts Poison on adjacent foes.",
     flavor = "The Crucible's benches are ventilated. The aprons were the cheaper half of the solution.",
     sprite = "assets/items/armor_choking_apron.png",
     type = "armor",

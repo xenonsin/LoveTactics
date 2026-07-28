@@ -12,7 +12,7 @@
 -- resummoned, and it falls if the bearer does (the trait sustains it, like the Archer's wolf).
 return {
     name = "Falconer's Glove",
-    description = "A hawk starts at your side and Marks the nearest foe at the opening bell.",
+    description = "Starts each battle with a hawk at your side; it inflicts Mark on the nearest foe at the opening bell.",
     flavor = "The Lodge trains the bird, not the hunter. The bird already knows which one is going to die.",
     sprite = "assets/items/falconers_glove.png",
     type = "utility",

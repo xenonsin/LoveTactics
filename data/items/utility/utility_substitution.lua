@@ -15,7 +15,7 @@
 -- negated blow from being strictly better than a dodge.
 return {
     name = "Substitution",
-    description = "A blow that would hit you kills one of your clones instead, and you swap to its tile.",
+    description = "Redirects a blow that would hit you onto a clone, swapping you to its tile.",
     flavor = "Two of them fell. Only one of them had ever been there.",
     sprite = "assets/items/utility_substitution.png",
     type = "utility",

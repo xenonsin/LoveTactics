@@ -4,7 +4,7 @@
 -- Battlemage, paid for in stamina so a sword-and-spell brawler is never out of fuel.
 return {
     name = "Arcane Cleave",
-    description = "A melee strike that lands as magical damage and sets the target Burning.",
+    description = "Inflicts Burn.",
     flavor = "The Arcanum would call it inelegant. The Arcanum has never been hit by it.",
     sprite = "assets/items/ability_arcane_cleave.png",
     type = "ability",

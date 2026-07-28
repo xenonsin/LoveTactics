@@ -17,6 +17,7 @@ local Menu = require("ui.menu")
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
 local InputMode = require("input_mode")
+local Theme = require("ui.theme")
 
 local SystemMenu = {}
 SystemMenu.__index = SystemMenu
@@ -33,8 +34,8 @@ function SystemMenu.new(opts)
     -- know which screen it was opened over.
     self.returnTo = opts.returnTo
 
-    self.titleFont = love.graphics.newFont(26)
-    self.hintFont = love.graphics.newFont(15)
+    self.titleFont = Theme.display(26)
+    self.hintFont = Theme.body(15)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
@@ -77,19 +78,19 @@ function SystemMenu:draw()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
-    love.graphics.setColor(0.12, 0.13, 0.18)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf("Menu", self.boxX, self.boxY + 34, BOX_W, "center")
 
     self.widget:draw()
 
     love.graphics.setFont(self.hintFont)
-    love.graphics.setColor(0.55, 0.6, 0.7)
+    Theme.set(Theme.muted)
     local hint = InputMode.isGamepad() and "B to close" or "Click X, or Esc to close"
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 34, BOX_W, "center")
 

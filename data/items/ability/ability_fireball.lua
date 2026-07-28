@@ -1,6 +1,6 @@
 return {
     name = "Fireball",
-    description = "Bursts on a tile for fire damage in an area, and leaves the ground burning.",
+    description = "Leaves Fire in area.",
     flavor = "The Arcanum's loudest argument, and the one it is proudest of winning.",
     sprite = "assets/items/ability_fireball.png",
     type = "ability",

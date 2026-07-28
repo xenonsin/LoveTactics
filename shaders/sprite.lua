@@ -25,7 +25,7 @@ local Noise = require("shaders.noise")
 
 local Sprite = {}
 
-Sprite.ORDER = { "dissolve", "materialize", "petrify" }
+Sprite.ORDER = { "dissolve", "materialize", "petrify", "grayscale" }
 
 Sprite.MODES = {}
 for i, name in ipairs(Sprite.ORDER) do Sprite.MODES[name] = i - 1 end
@@ -67,6 +67,17 @@ vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
         vec3 rgb = mix(texel.rgb * color.rgb, uEdge, edge * 0.85);
         // The very lip glows a touch hotter than opaque so it reads as heat/light, not just a colour.
         rgb += uEdge * edge * 0.4;
+        return vec4(rgb, texel.a * color.a);
+    }
+
+    // GRAYSCALE: drain the colour to a plain, dimmed grey and hold -- no facets, no sheen. This is the
+    // downed body still lying in wait: recognisably the same unit (its silhouette and shading survive)
+    // but life gone out of it, told from the crystalline PETRIFY by being soft and flat rather than
+    // stone. uAmount is "how far drained" so a partial application reads; the board sends it full.
+    if (uMode == M_GRAYSCALE) {
+        float lum = dot(texel.rgb, vec3(0.299, 0.587, 0.114));
+        vec3 drained = vec3(lum) * 0.62;              // desaturate AND dim, so it reads as "out"
+        vec3 rgb = mix(texel.rgb * color.rgb, drained, clamp(uAmount, 0.0, 1.0));
         return vec4(rgb, texel.a * color.a);
     }
 

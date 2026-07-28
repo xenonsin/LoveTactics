@@ -19,10 +19,11 @@ local Locale = require("models.locale")
 local Scale = require("scale")
 local ScreenFx = require("ui.screen_fx")
 local Sound = require("models.sound")
+local Theme = require("ui.theme")
 
 local hub = {}
 
-local titleFont = love.graphics.newFont(28)
+local titleFont = Theme.display(28)
 
 local map           -- BuildingMap widget
 local background    -- love Image, or a path string if the asset is missing
@@ -279,12 +280,11 @@ function hub.draw()
         love.graphics.draw(background, 0, 0,
             0, screenW / background:getWidth(), screenH / background:getHeight())
     else
-        love.graphics.setColor(0.09, 0.08, 0.11)
-        love.graphics.rectangle("fill", 0, 0, screenW, screenH)
+        Theme.drawMount(screenW, screenH)
     end
 
     love.graphics.setFont(titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf("The Hub", 0, 24, screenW, "center")
 
     map:draw()

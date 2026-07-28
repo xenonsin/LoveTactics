@@ -21,7 +21,7 @@
 -- data/items/weapon/weapon_lending_blade.lua runs on.
 return {
     name = "The Given Hour",
-    description = "Winds up, then falls on one tile -- and hands the turn it cost to an ally beside you.",
+    description = "Channeled: hands the turn it cost to an adjacent ally.",
     flavor = "He never did work out what to do with the hour. He was, by then, extremely good at giving it away.",
     sprite = "assets/items/given_hour.png",
     type = "weapon",

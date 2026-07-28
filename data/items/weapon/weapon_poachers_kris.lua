@@ -7,7 +7,7 @@
 -- Lodge's shelf too once Poacher is unlocked -- a rogue blade on a hunter's rack, which is the point.
 return {
     name = "Poacher's Kris",
-    description = "Inflicts Bleed, and strikes far harder into a Rooted foe.",
+    description = "Inflicts Bleed. Deal 50% more damage to a Rooted foe.",
     flavor = "The snare is the Lodge's. The knife that follows is not.",
     sprite = "assets/items/weapon_poachers_kris.png",
     type = "weapon",

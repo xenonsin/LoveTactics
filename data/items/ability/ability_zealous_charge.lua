@@ -4,7 +4,7 @@
 -- exactly where wrath wants a holy warrior to be.
 return {
     name = "Zealous Charge",
-    description = "A holy strike that heals you more for every enemy adjacent to you.",
+    description = "On damage dealt: heal, more for each adjacent enemy.",
     flavor = "The saints did not retreat to pray. They prayed with their backs to nothing.",
     sprite = "assets/items/ability_zealous_charge.png",
     type = "ability",

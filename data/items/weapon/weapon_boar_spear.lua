@@ -12,7 +12,7 @@
 -- board-control weapon at rank 2.
 return {
     name = "Boar Spear",
-    description = "Skewers the two tiles ahead, and roots whatever is on the near one in place.",
+    description = "Inflicts Root on the far tile.",
     flavor = "The crossbar is not there to hurt the boar. It is there so the boar stays at the far end of the spear.",
     sprite = "assets/items/boar_spear.png",
     type = "weapon",
@@ -31,11 +31,13 @@ return {
         damage = { 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11 }, -- a shade under an iron spear's: the bar is the rest
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
+            -- The spear convention (docs/weapons.md): a status lands on the FAR tile, the point
+            -- reaching past the near body. Far = the aimed cell continued one step along the thrust.
+            local dx, dy = fx.tx - fx.user.x, fx.ty - fx.user.y
+            local farX, farY = fx.tx + dx, fx.ty + dy
             for _, u in ipairs(fx.aoeUnits()) do
                 fx.damage(u)
-                -- The near tile IS the aimed cell -- a `line` footprint runs away from the wielder
-                -- starting there -- so the crossbar needs no geometry of its own.
-                if u.alive and u.x == fx.tx and u.y == fx.ty then
+                if u.alive and u.x == farX and u.y == farY then
                     fx.applyStatus(u, "status_root")
                 end
             end

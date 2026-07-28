@@ -13,7 +13,7 @@ return {
     name = "Wrath",
     abbr = "Wth",
     description = "Awake, and worse for it: every blow it takes sharpens the next one it lands.",
-    color = { 0.8, 0.15, 0.15 }, -- badge tint (arterial red)
+    color = { 0.700, 0.200, 0.200 }, -- badge tint (arterial red)
     duration = 999,       -- rage does not cool; it lasts the battle
     hideDuration = true,  -- the countdown is meaningless -- the magnitude is the story
     magnitude = 0,        -- overwritten each hit with the total damage banked

@@ -14,7 +14,7 @@
 -- ticks; against an archer who simply waits it out, it is twenty-six mana and a turn.
 return {
     name = "Reflect Steel",
-    description = "Mirrors an ally for a time: single-target physical blows rebound onto the attacker.",
+    description = "Grants an ally Reflect Steel.",
     flavor = "Each ward sits with the class that has to walk into the thing it wards against.",
     sprite = "assets/items/ability_reflect_steel.png",
     type = "ability",

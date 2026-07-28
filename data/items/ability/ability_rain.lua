@@ -5,7 +5,7 @@
 -- (target = "tile", allowOccupied): aim at any walkable cell in range, occupied or not.
 return {
     name = "Rain",
-    description = "Soaks an area, inflicting Wet on those within. Douses fire.",
+    description = "Inflicts Wet on an area and douses fire.",
     flavor = "The setup for a Jolt, and the Arcanum's one concession to patience.",
     sprite = "assets/items/ability_rain.png",
     type = "ability",

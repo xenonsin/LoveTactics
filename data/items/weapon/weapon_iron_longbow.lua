@@ -15,7 +15,7 @@
 -- a bow that costs a turn and reaches further.
 return {
     name = "Iron Longbow",
-    description = "Drawn over a full turn, then looses from far beyond a bow's reach.",
+    description = "Channeled.",
     flavor = "You stand where nothing can close on you while you draw, or you do not get the shot at all.",
     sprite = "assets/items/longbow.png",
     type = "weapon",

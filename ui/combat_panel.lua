@@ -28,6 +28,7 @@ local AdjacencyLinks = require("ui.adjacency_links")
 local StatusBadge = require("ui.status_badge")
 local Glyphs = require("ui.glyphs")
 local Colors = require("ui.colors")
+local Theme = require("ui.theme")
 local PoolCallout = require("ui.pool_callout")
 
 local CombatPanel = {}
@@ -37,10 +38,10 @@ local PANEL_W = 320
 CombatPanel.WIDTH = PANEL_W -- so states can reserve the same right-side margin
 local SLIM_H = 34      -- a non-current turn card: small portrait, name, one thin HP bar (no numbers)
 local CURRENT_H = 82   -- the acting unit's card: taller, larger portrait, full numbered HP/MP/SP
-local ENTRY_GAP = 4   -- gap between slim cards; kept tight so the strip fits 9 turns (current + 8) without scrolling
+local ENTRY_GAP = 6   -- gap between slim cards (a little air, matching the mock's spacing)
 local NUM_GUTTER = 20  -- left column holding each card's turn number, kept clear of the portrait
 local INTENT_COL = 30  -- right column reserved on a foe's slim card for its predicted intent (icon + number)
-local CURRENT_TOP_GAP = 24 -- extra room above the acting card for its "Current Turn" caption
+local CURRENT_TOP_GAP = 34 -- room above the acting card for its "Current Turn" caption + breathing space
 -- Item slots are rectangular (wider than tall) and kept compact so the turn-order
 -- strip above them gets the bulk of the panel height.
 local SLOT_W = 96
@@ -89,9 +90,9 @@ local BAR_LABELS = { health = "HP", mana = "MP", stamina = "SP" }
 -- whose HP bar is blue, so "this spends your health" reads in the colour that health already has.
 local RES_COLOR = { health = Colors.PARTY, mana = Colors.MANA, stamina = Colors.STAMINA }
 local COST_FALLBACK = { 0.75, 0.75, 0.80 }
-local SPEED_COLOR = { 0.95, 0.85, 0.55 } -- gold, matching the timeline/initiative accent
-local WARN_COLOR = { 0.95, 0.40, 0.38 }  -- red cost badge on an ability the actor can't afford
-local COUNTER_COLOR = { 0.72, 0.62, 0.95 } -- lavender charge badge: what a purse item currently holds
+local SPEED_COLOR = { 0.865, 0.707, 0.341 } -- gold, matching the timeline/initiative accent
+local WARN_COLOR = { 0.789, 0.361, 0.354 }  -- red cost badge on an ability the actor can't afford
+local COUNTER_COLOR = { 0.568, 0.414, 0.786 } -- lavender charge badge: what a purse item currently holds
 
 -- How far the ray at angle `a` travels from a rectangle's centre before it meets the rectangle's
 -- edge, given the half-extents. What makes the cooldown wedge below fill its slot corner-to-corner
@@ -155,7 +156,7 @@ local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal, reser
     delta = delta or 0
     alpha = alpha or 1
     local ratio = (max > 0) and math.max(0, math.min(1, cur / max)) or 0
-    love.graphics.setColor(0, 0, 0, 0.5 * alpha)
+    Theme.set(Theme.barTrack, 0.9 * alpha)
     love.graphics.rectangle("fill", x, y, w, h, 2, 2)
     if reserved and reserved > 0 and max > 0 then
         local resW = w * (reserved / max)
@@ -183,6 +184,9 @@ local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal, reser
         love.graphics.setColor(color[1], color[2], color[3], 0.95 * alpha)
         love.graphics.rectangle("fill", x, y, w * ratio, h, 2, 2)
     end
+    -- A hairline sepia outline so the fill doesn't bleed into the light parchment (see ui/theme.lua).
+    Theme.set(Theme.barOutline, (Theme.barOutline[4] or 1) * alpha)
+    love.graphics.rectangle("line", x, y, w, h, 2, 2)
 end
 
 function CombatPanel.new(combat, opts)
@@ -194,10 +198,13 @@ function CombatPanel.new(combat, opts)
     self.onHoverUnit = opts.onHoverUnit
     self.onWait = opts.onWait -- the long Wait/Focus/Defend button under the item grid
 
-    self.headFont = love.graphics.newFont(16)
-    self.nameFont = love.graphics.newFont(14)
-    self.smallFont = love.graphics.newFont(12)
-    self.slotFont = love.graphics.newFont(11)  -- item name inside a grid slot
+    -- Chrome wears the display face (Theme.display -> the engraved serif, falling back to the default
+    -- until the ttf lands); dense numeric read-outs stay on the plain body face for legibility.
+    self.headFont = Theme.display(16)
+    self.nameFont = Theme.display(14)
+    self.smallFont = Theme.body(12)
+    self.captionFont = Theme.display(12) -- section captions (Current Turn / Actions) wear the serif, matching Turn Order
+    -- (item names in a grid slot fit a native sans via Theme.fitText -- see drawSlot; never scaled)
 
     self.x = Scale.WIDTH - PANEL_W
     self.w = PANEL_W
@@ -211,10 +218,13 @@ function CombatPanel.new(combat, opts)
     self.waitBtn = { x = self.gridX, w = self.gridW, h = 34 }
     self.waitBtn.y = Scale.HEIGHT - 16 - self.waitBtn.h
     self.waitHover = false
-    self.gridY = self.waitBtn.y - 10 - self.gridH
-    -- Turn strip lives above the item grid.
-    self.stripTop = 44
-    self.stripBottom = self.gridY - 20
+    self.gridY = self.waitBtn.y - 14 - self.gridH
+    -- Turn strip lives above the item grid; stripTop leaves the "Turn Order" caption clear breathing
+    -- room above it (top + bottom margin around the header).
+    self.stripTop = 52
+    -- Room between the acting card and the Actions grid below it -- enough for the centered "Actions"
+    -- caption to breathe above and below without floating far from the grid.
+    self.stripBottom = self.gridY - 32
 
     self.view = { order = {}, items = {}, isPartyTurn = false }
     self.hoverIndex = nil
@@ -444,15 +454,16 @@ end
 function CombatPanel:draw()
     -- Panel background. Softened (lower opacity, a dim 1px divider) so it frames the board
     -- without walling it in -- mirrors states/battle.lua drawLeftColumn.
-    love.graphics.setColor(0.10, 0.11, 0.15, 0.86)
+    Theme.set(Theme.panel)
     love.graphics.rectangle("fill", self.x, 0, self.w, Scale.HEIGHT)
-    love.graphics.setColor(0.30, 0.33, 0.42)
+    -- The long panel/board seam is internal structure, not a framed edge -- a cool hairline, so it
+    -- separates the two without a gold rule running the height of the screen.
+    Theme.set(Theme.hairline)
     love.graphics.setLineWidth(1)
     love.graphics.line(self.x, 0, self.x, Scale.HEIGHT)
 
     love.graphics.setFont(self.headFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
-    love.graphics.printf("Turn Order", self.x, 14, self.w, "center")
+    Theme.caption("Turn Order", self.x, 20, self.w)
 
     self:drawTurnStrip()
     self:drawItemGrid()
@@ -481,14 +492,16 @@ function CombatPanel:drawWaitButton()
             label = (song and song.name) or "Perform"
         end
     end
-    if enabled then love.graphics.setColor(hot and 0.24 or 0.18, hot and 0.30 or 0.24, hot and 0.42 or 0.34)
-    else love.graphics.setColor(0.14, 0.15, 0.18) end
+    if enabled then Theme.set(hot and Theme.panel or Theme.panel2)
+    else Theme.set(Theme.slot) end
     love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
-    if enabled then love.graphics.setColor(0.5, 0.65, 0.85) else love.graphics.setColor(0.3, 0.32, 0.38) end
+    Theme.set(Theme.frame, enabled and 1 or 0.5)
     love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
-    if enabled then love.graphics.setColor(0.9, 0.94, 1) else love.graphics.setColor(0.5, 0.52, 0.58) end
+    if enabled then Theme.set(Theme.ink) else Theme.set(Theme.muted) end
     love.graphics.setFont(self.nameFont)
-    love.graphics.printf(label, b.x, b.y + b.h / 2 - 9, b.w, "center")
+    -- UPPERCASE and letter-tracked, matching the section captions -- this button is a chrome header,
+    -- not prose.
+    Theme.printTracked(string.upper(label), b.x, b.y + b.h / 2 - 9, b.w)
 end
 
 -- Is (px, py) over the Wait button?
@@ -646,33 +659,19 @@ function CombatPanel:drawCard(entry, y, num, h, alpha)
     if dx ~= 0 or dy ~= 0 then love.graphics.pop() end
 end
 
--- A single framed module wrapping the acting unit's (tall) card and the action grid below it, so the
--- current turn reads as "this unit and its actions" rather than a card floating over a separate grid.
--- Drawn behind both: the card plate and the grid slots land on top. When the actor is scrolled out of
--- view the frame simply starts at the Actions header, still bracketing the grid.
+-- The "Current Turn" section caption above the acting card. NO enclosing box: the mock lets the
+-- current card, the Actions grid and the Wait button sit as separate bordered elements in the panel's
+-- negative space, not wrapped in one module. Each carries its own frame -- the card its bone-gold
+-- border + carved corners (drawEntry), the grid its slots, the Wait button its plate -- so the section
+-- reads by its caption and the breathing room around it, not by a bracket.
 function CombatPanel:drawActivePanel()
     local cardTop
     for _, e in ipairs(self:entryLayout()) do
-        -- The framed slot is fixed (the layout reserves CURRENT_H for it), so the frame stays put and
-        -- the incoming card slides + grows into it -- no frame pop, and nothing to overrun above.
         if (e.entry.unit == self.view.current) and not e.entry.preview then cardTop = e.y break end
     end
-    local x, w = self.x + 5, self.w - 10
-    -- With the actor in view the frame opens above its card to hold the "Current Turn" caption;
-    -- scrolled out, it just brackets the grid from the Actions header.
-    local top = cardTop and (cardTop - 22) or (self.gridY - 20)
-    -- Reach past the item grid to enclose the Wait button too, so the whole "this unit and its
-    -- actions" module -- portrait, grid, and the Wait/Focus/Defend bar -- reads as one framed turn.
-    local bottom = self.waitBtn.y + self.waitBtn.h + 8
-    love.graphics.setColor(0.15, 0.17, 0.22, 0.55)
-    love.graphics.rectangle("fill", x, top, w, bottom - top, 9, 9)
-    love.graphics.setColor(0.95, 0.85, 0.55, 0.32)
-    love.graphics.setLineWidth(1)
-    love.graphics.rectangle("line", x, top, w, bottom - top, 9, 9)
     if cardTop then
-        love.graphics.setFont(self.smallFont)
-        love.graphics.setColor(0.95, 0.85, 0.55, 0.85)
-        love.graphics.printf("Current Turn", x, top + 4, w, "center")
+        love.graphics.setFont(self.captionFont)
+        Theme.caption("Current Turn", self.x + 5, cardTop - 24, self.w - 10)
     end
 end
 
@@ -687,21 +686,21 @@ function CombatPanel:drawScrollBar()
     local bx, bw = self.x + self.w - 5, 3
     local by, bh = self.stripTop, self:upcomingBottom() - self.stripTop
 
-    love.graphics.setColor(0, 0, 0, 0.45)
+    Theme.set(Theme.frame, 0.25)
     love.graphics.rectangle("fill", bx, by, bw, bh, 2, 2)
 
     -- The window covers visibleCount/total of the upcoming entries; scroll 0 pins the thumb to the
     -- bottom, because the strip counts upward from "now".
     local thumbH = math.max(24, bh * (self:visibleCount() / total))
     local t = self.scroll / max
-    love.graphics.setColor(0.95, 0.85, 0.55, 0.75)
+    Theme.set(Theme.frame, 0.7)
     love.graphics.rectangle("fill", bx, by + (1 - t) * (bh - thumbH), bw, thumbH, 2, 2)
 end
 
 -- A gold dashed rectangle border, used to mark preview (ghost) entries as hypothetical and to
 -- dissolve out as a just-committed ghost solidifies into its real card (`alpha` fades it).
 function CombatPanel:dashedRect(x, y, w, h, alpha)
-    love.graphics.setColor(0.95, 0.85, 0.55, alpha or 0.9)
+    Theme.set(Theme.accentAmber, alpha or 0.9)
     love.graphics.setLineWidth(1)
     local dash, gap = 6, 4
     local xx = x
@@ -763,7 +762,7 @@ function CombatPanel:drawTurnNumber(num, cardX, cardTop, cardH, p)
     if not num then return end
     local font = (p > 0.5) and self.headFont or self.nameFont
     love.graphics.setFont(font)
-    love.graphics.setColor(lerp(0.82, 0.98, p), lerp(0.85, 0.88, p), lerp(0.95, 0.5, p), lerp(0.9, 1, p))
+    if p > 0.5 then Theme.set(Theme.accentAmber, lerp(0.9, 1, p)) else Theme.set(Theme.ink, 0.9) end
     love.graphics.printf(tostring(num), cardX + 1, cardTop + cardH / 2 - font:getHeight() / 2, NUM_GUTTER - 2, "center")
 end
 
@@ -776,8 +775,9 @@ function CombatPanel:drawInitiative(entry, ex, ew, ey)
     local text = string.format("%.1f", entry.initiative)
     local tw = self.smallFont:getWidth(text)
     local iconW, gap = 7, 3
-    self:drawHourglass(ex + ew - 6 - tw - gap - iconW, ey + 4, iconW, 9, 0.98, 0.9, 0.6, 0.95)
-    love.graphics.setColor(0.98, 0.9, 0.6, 0.95)
+    local ia = Theme.accentAmber
+    self:drawHourglass(ex + ew - 6 - tw - gap - iconW, ey + 4, iconW, 9, ia[1], ia[2], ia[3], 0.95)
+    Theme.set(Theme.accentAmber, 0.95)
     love.graphics.printf(text, ex, ey + 3, ew - 6, "right")
 end
 
@@ -830,7 +830,8 @@ function CombatPanel:drawPoolBars(unit, rx, rw, topY, alpha)
     for i, r in ipairs(rows) do
         local rowY = topY + (i - 1) * 13
         local c = barColor(r.res, unit)
-        -- The tag/glyph tint: the bar's colour lifted toward white so it stays legible at 9px.
+        -- The tag/glyph tint: the bar's colour lifted toward white so it stays legible at 9px on the
+        -- dark card.
         local tr, tg, tb = c[1] * 0.6 + 0.28, c[2] * 0.6 + 0.28, c[3] * 0.6 + 0.28
         love.graphics.setColor(tr, tg, tb, 0.95 * alpha)
         love.graphics.print(BAR_LABELS[r.res.key], rx, rowY + (barH - self.smallFont:getHeight()) / 2)
@@ -856,7 +857,7 @@ function CombatPanel:drawPoolBars(unit, rx, rw, topY, alpha)
                 color = (r.delta > 0 and Colors.HEALING) or (r.lethal and Colors.LETHAL) or Colors.PENDING,
             })
         end
-        love.graphics.setColor(0.94, 0.95, 0.98, alpha)
+        Theme.set(Theme.ink, alpha)
         love.graphics.printf(r.text, rx + rw - valueColW, rowY + (barH - self.smallFont:getHeight()) / 2,
             valueColW, "right")
     end
@@ -869,7 +870,7 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
 
     -- Preview ghost: a faded, dashed hypothetical slot showing where the actor would land, not stats.
     if entry.preview then
-        love.graphics.setColor(0.42, 0.38, 0.20, 0.40)
+        Theme.set(Theme.panel2, 0.5)
         love.graphics.rectangle("fill", ex, ey, ew, h, 6, 6)
         love.graphics.setLineWidth(1)
         self:dashedRect(ex, ey, ew, h)
@@ -878,10 +879,10 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
         self:drawPortrait(unit, ex + NUM_GUTTER, ey + 3, ps, 0.55)
         local rx = ex + NUM_GUTTER + ps + 8
         love.graphics.setFont(self.nameFont)
-        love.graphics.setColor(0.95, 0.85, 0.55, 0.95)
+        Theme.set(Theme.accentAmber, 0.95)
         love.graphics.print(unit.char.name or "?", rx, ey + 3)
         love.graphics.setFont(self.smallFont)
-        love.graphics.setColor(0.9, 0.82, 0.6, 0.9)
+        Theme.set(Theme.muted, 0.95)
         love.graphics.print(entry.previewLabel or "would act here", rx, ey + 18)
         return
     end
@@ -902,17 +903,24 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     local st = sd and sd.t or 0
     local ca = alpha or ((st > 0) and lerp(1, 0.35, st) or 1)
 
-    -- Plate fill + border lerp from the muted, side-tinted slim card to the opaque gold current card.
-    local fr, fg, fb
-    if isParty then fr, fg, fb = lerp(0.17, 0.20, p), lerp(0.22, 0.27, p), lerp(0.31, 0.38, p)
-    else fr, fg, fb = lerp(0.29, 0.36, p), lerp(0.17, 0.20, p), lerp(0.17, 0.20, p) end
-    love.graphics.setColor(fr, fg, fb, lerp(0.72, 1, p) * ca)
-    love.graphics.rectangle("fill", ex, dy, ew, dh, 6, 6)
-    local sc = Colors.unit(unit)
-    local br, bg, bb, ba = sc[1] * 0.9, sc[2] * 0.9, sc[3] * 0.9, 0.35
+    -- Plate: a slate card inset (panel2), lightening toward the panel surface as it grows current so
+    -- the acting card reads as raised. The BORDER is bone-gold TRIM, not faction -- faction already
+    -- lives in the HP bar (Colors.side), so the strip reads as one etched plate rather than a stack of
+    -- red/blue boxes (matching the mock). The "Current Turn" frame (drawActivePanel) brackets the actor.
+    local s0, s1 = Theme.panel2, Theme.panel
+    love.graphics.setColor(lerp(s0[1], s1[1], p), lerp(s0[2], s1[2], p), lerp(s0[3], s1[3], p),
+        lerp(0.85, 1, p) * ca)
+    love.graphics.rectangle("fill", ex, dy, ew, dh, 4, 4)
     love.graphics.setLineWidth(1)
-    love.graphics.setColor(lerp(br, 0.95, p), lerp(bg, 0.85, p), lerp(bb, 0.55, p), lerp(ba, 1, p) * ca)
-    love.graphics.rectangle("line", ex, dy, ew, dh, 6, 6)
+    -- The border blends from the quiet default frame (an upcoming card) to the SPOTLIGHT gold as the
+    -- card grows current -- so the acting unit's plate is the one place the bright accent appears in the
+    -- strip, and the eye lands on it. An upcoming card stays a dim bronze edge.
+    local fr, ac = Theme.frame, Theme.accentAmber
+    Theme.set({ lerp(fr[1], ac[1], p), lerp(fr[2], ac[2], p), lerp(fr[3], ac[3], p) }, lerp(0.35, 1.0, p) * ca)
+    love.graphics.rectangle("line", ex, dy, ew, dh, 4, 4)
+    -- Carved corner ornaments on the acting card only (the mock's `.current` engraved plate), fading in
+    -- as the card grows current so a slim upcoming card stays plain -- in the same spotlight gold.
+    if p > 0.6 then Theme.corners(ex, dy, ew, dh, 8, { ac[1], ac[2], ac[3], (p - 0.6) / 0.4 * ca }) end
 
     self:drawInitiative(entry, ex, ew, dy)
 
@@ -926,12 +934,12 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
         self:drawPortrait(unit, ex + NUM_GUTTER, dy + 3, ps, 1)
         local rx = ex + NUM_GUTTER + ps + 8
         love.graphics.setFont(self.nameFont)
-        love.graphics.setColor(0.80, 0.66, 0.98) -- arcane violet, matching the Channeling badge tint
+        love.graphics.setColor(0.640, 0.511, 0.822) -- arcane violet, matching the Channeling badge tint
         love.graphics.print(unit.channel.item.name or "Channeling", rx, dy + 3)
         love.graphics.setFont(self.smallFont)
         local iconW = 7
-        self:drawHourglass(rx, dy + 21, iconW, 9, 0.80, 0.66, 0.98, 0.9)
-        love.graphics.setColor(0.80, 0.66, 0.98, 0.9)
+        self:drawHourglass(rx, dy + 21, iconW, 9, 0.640, 0.511, 0.822, 0.9)
+        love.graphics.setColor(0.640, 0.511, 0.822, 0.9)
         love.graphics.print("channel resolves here", rx + iconW + 4, dy + 20)
         for _, r in ipairs(self:statusBadgeRects(unit, ex, ew, dy)) do
             StatusBadge.draw(r.st, r.x, r.y, r.w, r.h)
@@ -941,7 +949,18 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
 
     -- Portrait + name sized by prominence; content alpha (ca) fades a just-handed-off card up.
     local ps = dh - lerp(6, 12, p)
-    self:drawPortrait(unit, ex + NUM_GUTTER, dy + lerp(3, 6, p), ps, ca)
+    local px, py = ex + NUM_GUTTER, dy + lerp(3, 6, p)
+    self:drawPortrait(unit, px, py, ps, ca)
+    -- Faction ring on the acting card's portrait (the mock's `.current .big` inset ring): with the card
+    -- border now bone-gold trim, faction rides here as a portrait accent -- blue ours / red theirs.
+    -- Fades in with prominence so a slim upcoming card's portrait stays plain.
+    if p > 0.5 then
+        local fc = Colors.unit(unit)
+        love.graphics.setColor(fc[1], fc[2], fc[3], (p - 0.5) / 0.5 * ca)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", px, py, ps, ps, 4, 4)
+        love.graphics.setLineWidth(1)
+    end
     self:drawTurnNumber(num, ex, dy, dh, p)
 
     local rx = ex + NUM_GUTTER + ps + lerp(8, 10, p)
@@ -953,11 +972,12 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     -- column so the HP bar stops short of it rather than running underneath.
     local intent = (not isCurrent) and (not isParty) and self.view.intents and self.view.intents[unit]
     if intent and p < 0.5 then rw = rw - INTENT_COL end
-    -- Name: the small card's font scaled up toward the head font on the current card; colour warms to gold.
-    local nsc = lerp(1, self.headFont:getHeight() / self.nameFont:getHeight(), p)
-    love.graphics.setFont(self.nameFont)
-    love.graphics.setColor(lerp(0.9, 0.97, p), lerp(0.9, 0.94, p), lerp(0.94, 0.72, p), ca)
-    love.graphics.print(unit.char.name or "?", rx, dy + lerp(4, 8, p), 0, nsc, nsc)
+    -- Name: the slim card's font, promoting to the head font on the current card (like drawTurnNumber);
+    -- colour warms to gold. We swap between two native faces rather than scaling one -- fonts are never
+    -- scaled (a scaled bitmap font blurs), so the steady acting card stays crisp.
+    love.graphics.setFont((p > 0.5) and self.headFont or self.nameFont)
+    Theme.set(Theme.ink, ca)
+    love.graphics.print(unit.char.name or "?", rx, dy + lerp(4, 8, p))
 
     for _, r in ipairs(self:statusBadgeRects(unit, ex, ew, dy)) do
         StatusBadge.draw(r.st, r.x, r.y, r.w, r.h)
@@ -1141,12 +1161,16 @@ function CombatPanel:drawItemGrid()
     -- the time it buys are the same quantity. Wheel / +- / bumpers tune it (battle.lua).
     local wu = self.view.armedWindup
     if wu then
-        love.graphics.setColor(SPEED_COLOR[1], SPEED_COLOR[2], SPEED_COLOR[3])
+        Theme.set(Theme.accentAmber)
         love.graphics.printf(string.format("Wind-up %d/%d  (lands in %d)", wu.ticks, wu.max, wu.ticks),
-            self.x, self.gridY - 16, self.w, "center")
+            self.x, self.gridY - 24, self.w, "center")
     else
-        love.graphics.setColor(0.7, 0.72, 0.8)
-        love.graphics.printf("Actions", self.x, self.gridY - 16, self.w, "center")
+        love.graphics.setFont(self.captionFont)
+        -- Center the caption in the gap between the acting card (bottom at stripBottom) and the grid
+        -- top, so it carries equal breathing room above and below.
+        local capY = self.stripBottom + (self.gridY - self.stripBottom - self.captionFont:getHeight()) / 2
+        Theme.caption("Actions", self.x, capY, self.w)
+        love.graphics.setFont(self.smallFont)
     end
 
     local isPartyTurn = self.view.isPartyTurn
@@ -1157,7 +1181,7 @@ function CombatPanel:drawItemGrid()
     -- scaling off adjacent weapons, Rain of Arrows' bow requirement), tinted by relationship kind
     -- to match the loadout legend. Both go down before the item contents, so a wire reads over the
     -- plate but never covers an icon, a badge or a name.
-    love.graphics.setColor(0.16, 0.17, 0.22, isPartyTurn and 1 or 0.5)
+    Theme.set(Theme.slot, isPartyTurn and 1 or 0.5)
     for i = 1, COLS * ROWS do
         local sx, sy, sw, sh = self:slotRect(i)
         love.graphics.rectangle("fill", sx, sy, sw, sh, 5, 5)
@@ -1238,14 +1262,13 @@ function CombatPanel:drawItemGrid()
             -- Name band overlaid along the bottom, single line scaled to fit.
             love.graphics.setColor(0, 0, 0, 0.6 * dim)
             love.graphics.rectangle("fill", sx + 1, sy + sh - NAME_H, sw - 2, NAME_H - 1, 0, 0, 5, 5)
-            love.graphics.setFont(self.slotFont)
-            local name = item.name or "?"
-            local nw = self.slotFont:getWidth(name)
-            local sc = math.min(1, (sw - 8) / nw)
-            local nh = self.slotFont:getHeight() * sc
+            -- Fit the name to the slot on a native font (never scaled); long names step down a size or
+            -- two and ellipsize past that. The sans data face, not the serif.
+            local font, name = Theme.fitText(Theme.body, item.name or "?", sw - 8, 11, 8)
+            love.graphics.setFont(font)
+            local nw, nh = font:getWidth(name), font:getHeight()
             love.graphics.setColor(0.94 * dim + 0.05, 0.94 * dim + 0.05, 0.96 * dim + 0.05)
-            love.graphics.print(name, sx + sw / 2 - (nw * sc) / 2,
-                sy + sh - NAME_H + (NAME_H - nh) / 2, 0, sc, sc)
+            love.graphics.print(name, sx + sw / 2 - nw / 2, sy + sh - NAME_H + (NAME_H - nh) / 2)
 
             -- Stack count ("xN") for a stackable consumable, in a pill just above the name band so
             -- it clears the top-corner cost/speed badges. Shown for any real stack (>1) and for a
@@ -1271,8 +1294,13 @@ function CombatPanel:drawItemGrid()
                 local row = 0
                 -- A badge per pool the cast draws on, stacked in authored order, so a weapon paid for
                 -- in two shows two. Only the pool that is actually short flips to red -- with two
-                -- badges up, reddening both would blame a pool the caster can well afford.
-                for _, cost in ipairs(Item.costs(ab)) do
+                -- badges up, reddening both would blame a pool the caster can well afford. Priced
+                -- through Combat.abilityCosts (not raw Item.costs) so the badge carries the actor's
+                -- status cost multiplier -- a Mired unit's swing reads doubled, matching the gate that
+                -- refuses it and the tooltip that quotes it.
+                local costs = self.view.current and Combat.abilityCosts(self.view.current, ab)
+                    or Item.costs(ab)
+                for _, cost in ipairs(costs) do
                     local short = blocked and blocked.kind == "cost" and blocked.stat == cost.stat
                     local c = short and WARN_COLOR or (RES_COLOR[cost.stat] or COST_FALLBACK)
                     self:drawBadge(sx, sy, sw, "left", cost.stat, cost.amount, c, short and 1 or dim, row)
@@ -1343,13 +1371,13 @@ function CombatPanel:drawItemGrid()
                 love.graphics.setColor(0.85, 0.35, 0.35) -- offensive armed (strike / trap)
             end
         elseif blinkOn then love.graphics.setColor(0.60, 0.45, 0.95) -- Blink toggled on (violet)
-        elseif usable and self.hoverIndex == i then love.graphics.setColor(0.95, 0.85, 0.55)
+        elseif usable and self.hoverIndex == i then Theme.set(Theme.accentAmber) -- hovered
         -- A signature that has met its requirement and is ready to unleash: an amber border set apart
         -- from an ordinary usable slot's blue, so the eye catches the moment it comes online.
         elseif usable and item and item.activeAbility and item.activeAbility.unlock then
             love.graphics.setColor(0.95, 0.72, 0.28)
-        elseif usable then love.graphics.setColor(0.4, 0.6, 0.85)
-        else love.graphics.setColor(0.35, 0.37, 0.45) end
+        elseif usable then Theme.set(Theme.frame)      -- ready: full bone-gold trim (was faction blue)
+        else Theme.set(Theme.frame, 0.55) end           -- idle: dimmer trim (icon dim shows unusable)
         local readySig = usable and item and item.activeAbility and item.activeAbility.unlock
         love.graphics.setLineWidth((armed or readySig) and 2 or 1)
         love.graphics.rectangle("line", sx, sy, sw, sh, 5, 5)

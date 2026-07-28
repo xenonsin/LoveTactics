@@ -14,7 +14,7 @@
 -- not "damage over time", and reading it as the latter is how a player wastes a slot.
 return {
     name = "Tempered Gut",
-    description = "Inured to the Crucible's own: immune to Poison and Acid.",
+    description = "Immune to Poison and Acid.",
     flavor = "Taken in doses too small to kill. The Crucible is very precise about how small.",
     sprite = "assets/items/tempered_gut.png",
     type = "utility",

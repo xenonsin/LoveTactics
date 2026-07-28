@@ -19,7 +19,7 @@
 -- board rather than a target.
 return {
     name = "The Conductor",
-    description = "A bolt at range that arcs to every soaked body on the field, wherever it is standing.",
+    description = "Fires a bolt that arcs to every Wet body on the field, wherever it stands.",
     flavor = "The Arcanum's third-years are taught to make water. The fourth-years are taught what it is for.",
     sprite = "assets/items/conductor.png",
     type = "weapon",

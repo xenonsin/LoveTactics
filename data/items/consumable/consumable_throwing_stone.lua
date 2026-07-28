@@ -6,7 +6,7 @@
 -- stack eternal.
 return {
     name = "Stone",
-    description = "Deals physical damage to a foe at range.",
+    description = "Deals damage to a foe.",
     flavor = "The cheapest thing on the Crucible's shelf, and the humblest thing its charms will consent to empower.",
     sprite = "assets/items/throwing_stone.png",
     type = "consumable",

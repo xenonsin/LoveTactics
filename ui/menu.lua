@@ -27,6 +27,7 @@
 
 local Scale = require("scale")
 local Sound = require("models.sound")
+local Theme = require("ui.theme")
 
 local Menu = {}
 Menu.__index = Menu
@@ -52,7 +53,7 @@ function Menu.new(items, opts)
     self.spacing = opts.spacing or DEFAULTS.spacing
     self.startY = opts.startY
     self.centerX = opts.centerX
-    self.font = opts.font or love.graphics.newFont(24)
+    self.font = opts.font or Theme.display(24)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false  -- edge detection so a held stick moves one step
 
@@ -220,7 +221,7 @@ function Menu:drawScrollHints()
     if not (first and first.x and last and last.x) then return end
 
     local cx = first.x + first.w / 2
-    love.graphics.setColor(0.5, 0.55, 0.7)
+    Theme.set(Theme.muted)
     if self.scroll > 0 then
         love.graphics.polygon("fill", cx - 7, first.y - 8, cx + 7, first.y - 8, cx, first.y - 16)
     end
@@ -236,21 +237,16 @@ function Menu:draw()
         if item.x then
             local active = (i == self.selected) and self.focused
 
-            if active then
-                love.graphics.setColor(0.35, 0.40, 0.55)
-            else
-                love.graphics.setColor(0.20, 0.23, 0.32)
-            end
-            love.graphics.rectangle("fill", item.x, item.y, item.w, item.h, 8, 8)
+            -- Selected row: raised (lighter) plate + bone-gold border + gold label; unselected: an
+            -- inset plate with the frame trim and ink label.
+            Theme.set(active and Theme.panel or Theme.panel2)
+            love.graphics.rectangle("fill", item.x, item.y, item.w, item.h, Theme.R, Theme.R)
+            love.graphics.setLineWidth(active and 1.5 or 1)
+            Theme.set(active and Theme.accentAmber or Theme.frame)
+            love.graphics.rectangle("line", item.x, item.y, item.w, item.h, Theme.R, Theme.R)
+            love.graphics.setLineWidth(1)
 
-            if active then
-                love.graphics.setColor(0.95, 0.85, 0.55)
-            else
-                love.graphics.setColor(0.5, 0.55, 0.7)
-            end
-            love.graphics.rectangle("line", item.x, item.y, item.w, item.h, 8, 8)
-
-            love.graphics.setColor(0.95, 0.95, 0.95)
+            Theme.set(active and Theme.accentAmber or Theme.ink)
             local th = self.font:getHeight()
             local ty = item.y + item.h / 2 - th / 2
             local value = Menu.valueOf(item)
@@ -259,7 +255,7 @@ function Menu:draw()
                 -- label would put every row's text in a different place relative to its value, and a
                 -- column of settings is read by scanning that value column.
                 love.graphics.printf(item.label, item.x + VALUE_PAD, ty, item.w - VALUE_PAD * 2, "left")
-                love.graphics.setColor(0.95, 0.85, 0.55)
+                Theme.set(Theme.accentAmber)
                 love.graphics.printf(value, item.x + VALUE_PAD, ty, item.w - VALUE_PAD * 2, "right")
             else
                 love.graphics.printf(item.label, item.x, ty, item.w, "center")

@@ -13,7 +13,7 @@
 -- simply lands in place.
 return {
     name = "Talons",
-    description = "A hawk's talons: a quick, shallow rake, then back to where the turn began.",
+    description = "Rakes an adjacent foe, then returns to where the turn began.",
     flavor = "Enough to draw blood and break a line of sight. It is gone before the blood is.",
     sprite = "assets/chars/hawk.png",
     type = "weapon",

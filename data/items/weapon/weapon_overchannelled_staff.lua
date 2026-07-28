@@ -19,7 +19,7 @@
 -- itself to the edge and not over it, which is the one mercy the design allows.
 return {
     name = "The Overchannelled Staff",
-    description = "Replaces Wait with Focus: recover far more mana than any staff, and pay for it in your own blood.",
+    description = "Replaces Wait with Focus: recover about twice a staff's mana, paid for in your own health.",
     flavor = "The Arcanum has never banned it. The Arcanum has simply never had to replace one.",
     sprite = "assets/items/overchannelled_staff.png",
     type = "weapon",

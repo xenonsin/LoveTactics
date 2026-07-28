@@ -13,7 +13,7 @@
 -- scaling in the game whose own mechanic is what feeds it.
 return {
     name = "The Reaper's Due",
-    description = "Cleaves a wide arc, landing harder for every foe you have already killed this battle.",
+    description = "Increase damage by 25% per kill this battle.",
     flavor = "It is not a well-made axe. It is only an axe that has been used a great deal, and has opinions about that.",
     sprite = "assets/items/reapers_due.png",
     type = "weapon",

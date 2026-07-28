@@ -11,7 +11,7 @@
 -- Priced above its two siblings, because a refusal is worth more than a bonus and both houses know it.
 return {
     name = "Elixir of Heroism",
-    description = "Raises an ally's defenses for most of the battle, and makes them proof against Halt.",
+    description = "Raises an ally's defenses and grants immunity to Halt.",
     flavor = "Courage, distilled. The Crucible is careful to sell only the distillate.",
     sprite = "assets/items/consumable_elixir_of_heroism.png",
     type = "consumable",

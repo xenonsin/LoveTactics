@@ -32,7 +32,7 @@ return {
     price = 400,
     repRank = 4,
     activeAbility = {
-        description = "Held longer, it hits harder -- past the safe window it bursts on the alchemist.",
+        description = "Increase damage the longer it is held; past the safe window it bursts on the alchemist.",
         target = "tile",
         allowOccupied = true,
         range = 4,

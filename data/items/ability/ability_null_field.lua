@@ -3,7 +3,7 @@
 -- spoken in the caster's own idiom: pride's own element turned against pride.
 return {
     name = "Null Field",
-    description = "Inflicts Silenced: the foe cannot cast mana abilities for a time.",
+    description = "Inflicts Silence.",
     flavor = "The Arcanum teaches that the art cannot be unmade. The Arcanum has not met a Spellbreaker.",
     sprite = "assets/items/ability_null_field.png",
     type = "ability",

@@ -20,7 +20,7 @@
 -- Bastion selling immovability to its own is the shelf talking about itself.
 return {
     name = "Rooted Stance",
-    description = "Drilled past the point of being moveable: immune to Stun.",
+    description = "Immune to Stun.",
     flavor = "Not a trick and not an enchantment. Several years, mostly spent standing still on purpose.",
     sprite = "assets/items/rooted_stance.png",
     type = "utility",

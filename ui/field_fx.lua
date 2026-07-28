@@ -72,11 +72,11 @@ FieldFx.STYLE = STYLE
 -- hazards, statuses and telegraphs -- one place that decides what "hostile" looks like, so a hostile
 -- hazard, a burning body and an attack's telegraph cannot come to different conclusions.
 local CATEGORY = {
-    hostile    = { shape = "chevron", color = { 1.00, 0.18, 0.14 }, dir = -1 }, -- red, falling
-    buff_ally  = { shape = "chevron", color = { 0.36, 0.86, 0.46 }, dir =  1 }, -- green, rising
-    buff_enemy = { shape = "chevron", color = { 0.92, 0.26, 0.26 }, dir =  1 }, -- red, rising
-    heal_ally  = { shape = "cross",   color = { 0.38, 0.64, 0.96 }, dir =  0 }, -- blue crosses
-    heal_enemy = { shape = "cross",   color = { 0.92, 0.26, 0.26 }, dir =  0 }, -- red crosses
+    hostile    = { shape = "chevron", color = { 0.749, 0.239, 0.231 }, dir = -1 }, -- red, falling
+    buff_ally  = { shape = "chevron", color = { 0.239, 0.608, 0.380 }, dir =  1 }, -- green, rising
+    buff_enemy = { shape = "chevron", color = { 0.749, 0.239, 0.231 }, dir =  1 }, -- red, rising
+    heal_ally  = { shape = "cross",   color = { 0.275, 0.463, 0.776 }, dir =  0 }, -- blue crosses
+    heal_enemy = { shape = "cross",   color = { 0.749, 0.239, 0.231 }, dir =  0 }, -- red crosses
 }
 FieldFx.CATEGORY = CATEGORY
 
@@ -248,9 +248,11 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Build this frame's field entries from the overlays, plus the per-group presence sets the edge masks
--- are read from. Returns entries, presence.
-function FieldFx:collect(overlays)
+-- are read from. Returns entries, presence. `map` is the board widget, read only for the slide a
+-- CARRIED zone rides (a censer's cloud, a banner's square) so it walks WITH its bearer.
+function FieldFx:collect(map, overlays)
     local entries, presence = {}, {}
+    local fx = map and map.fx
 
     local function mark(group, x, y)
         local set = presence[group]
@@ -271,9 +273,18 @@ function FieldFx:collect(overlays)
             -- answers to its owner's life, so it simply never reaches the fade.
             local ramp = math.min(1, (self.time - birth) / FieldFx.RAMP)
             local decay = math.min(1, math.max(0, (h.remaining or 99) / FieldFx.FADE_TICKS))
+            -- A zone a UNIT holds open (a censer's cloud, a banner's rally square) is carried tile-by-
+            -- tile in the model the instant its bearer walks (Hazard.carry, resolved up front in
+            -- runMove) -- so h.x/h.y is already the destination while the sprite is still sliding in.
+            -- Ride the SAME slide the bearer's sprite does (the model tile plus this offset lands the
+            -- zone under the feet), so the aura walks with its bearer instead of teleporting ahead of
+            -- it. 0 for a zone owned by nothing, or by a body that isn't moving.
+            local offX, offY = 0, 0
+            if fx and h.owner then offX, offY = fx:slideOffset(h.owner, map.size) end
             entries[#entries + 1] = {
                 x = h.x, y = h.y, pattern = look.shape, dir = look.dir,
                 group = h.id, ord = ord, color = look.color,
+                offX = offX, offY = offY,
                 alpha = style.alpha, intensity = 1, fade = ramp * decay,
             }
             mark(h.id, h.x, h.y)
@@ -328,6 +339,9 @@ function FieldFx:collect(overlays)
             entries[#entries + 1] = {
                 x = f.x, y = f.y, pattern = look.shape, dir = look.dir,
                 group = group, ord = ord, color = look.color,
+                -- The body's in-flight slide, so a carried field walks (and is shoved) WITH its bearer
+                -- rather than pinning to the tile the model already moved it to (states/battle.lua).
+                offX = f.offX, offY = f.offY,
                 -- Quieter than a zone: this is a condition on a body, and the body has to stay the
                 -- thing you look at.
                 alpha = style.alpha * 0.72, intensity = 0.9, fade = ramp * decay,
@@ -373,8 +387,9 @@ function FieldFx:paint(map, ordered, presence, quiet)
         sh:send("uEdge", { l, r, t, b })
         sh:send("uShape", { e.intensity, e.fade })
         sh:send("uTint", { c[1], c[2], c[3], e.alpha * quiet })
+        -- A carried status rides its bearer's in-flight slide (e.offX/offY); ground fields have none.
         local wx, wy = map:cellToPixel(e.x, e.y)
-        love.graphics.draw(self.px, wx, wy, 0, size, size)
+        love.graphics.draw(self.px, wx + (e.offX or 0), wy + (e.offY or 0), 0, size, size)
     end
     love.graphics.setShader()
     love.graphics.setBlendMode("alpha")
@@ -387,7 +402,7 @@ function FieldFx:draw(map, overlays)
     overlays = overlays or {}
     if not self:shader() then return self:drawFallback(map, overlays) end
 
-    local entries, presence = self:collect(overlays)
+    local entries, presence = self:collect(map, overlays)
     if #entries == 0 then return end
 
     -- Normalise per TILE (that is where the compositing happens), then flatten and re-sort so the whole
@@ -459,11 +474,11 @@ end
 -- border, tinted by category (hostile orange / friendly green / heal blue). Loses the shapes, the
 -- stacking and the animation, and still says correctly whether the ground helps or hurts.
 local FALLBACK = {
-    hostile    = { 0.95, 0.20, 0.16 },
-    buff_ally  = { 0.36, 0.86, 0.46 },
-    buff_enemy = { 0.92, 0.26, 0.26 },
-    heal_ally  = { 0.38, 0.64, 0.96 },
-    heal_enemy = { 0.92, 0.26, 0.26 },
+    hostile    = { 0.749, 0.239, 0.231 },
+    buff_ally  = { 0.239, 0.608, 0.380 },
+    buff_enemy = { 0.749, 0.239, 0.231 },
+    heal_ally  = { 0.275, 0.463, 0.776 },
+    heal_enemy = { 0.749, 0.239, 0.231 },
 }
 
 function FieldFx:drawFallback(map, overlays)

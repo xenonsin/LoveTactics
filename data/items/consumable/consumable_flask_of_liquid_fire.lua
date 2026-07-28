@@ -6,7 +6,7 @@
 -- fixed power, no `magical` tag, and the same fire hazard laid across its footprint.
 return {
     name = "Flask of Liquid Fire",
-    description = "Deals fire damage in the target area and leaves the ground burning.",
+    description = "Leaves Fire in area.",
     flavor = "Cheap, loud, and no substitute for a mage -- which the Crucible tells you before it takes your gold.",
     sprite = "assets/items/flask_of_liquid_fire.png",
     type = "consumable",

@@ -13,7 +13,7 @@
 -- have made spreading your attention merely worse; a multiplier makes it a different fight.
 return {
     name = "Coup Droit",
-    description = "A straight thrust at a Duelbound foe, multiplied by every point of Tempo you spend.",
+    description = "Thrusts at a Duelbound foe. Increase damage by 40% per Tempo spent.",
     flavor = "Everything before this was a question. She had been listening to the answers.",
     sprite = "assets/items/ability_coup_droit.png",
     type = "ability",
@@ -35,7 +35,7 @@ return {
             when = function(unit) return require("models.combat").chargePool(unit, "tempo") >= 1 end,
             text = "Hold Tempo by pressing one foe",
         },
-        description = "Spends all Tempo; the thrust is multiplied by what it spent. Duelbound foes only.",
+        description = "Consume all Tempo. Increase damage by 40% per Tempo spent. Duelbound foes only.",
         -- The duel gate lives in the EFFECT rather than in `usable`, because `usable` is handed only
         -- (unit, item) -- a pure read of the bearer and its grid, with no target in scope
         -- (Combat.itemBlockReason). So the button stays live and the thrust declines on arrival,

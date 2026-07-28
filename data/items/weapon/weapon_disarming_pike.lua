@@ -17,7 +17,7 @@
 -- of its hands. It is a weapon for fighting armed men, which is the honest reading of a disarm.
 return {
     name = "The Disarming Pike",
-    description = "Skewers the two tiles ahead and strikes the weapons from both: they cannot use any weapon until it wears off.",
+    description = "Inflicts Disarm on the far tile.",
     flavor = "The Bastion's drill masters spend a whole season on this one motion, and the recruits spend all of it asking why they cannot just stab him.",
     sprite = "assets/items/disarming_pike.png",
     type = "weapon",
@@ -35,9 +35,14 @@ return {
         damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9 },
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
+            -- The spear convention (docs/weapons.md): Disarm lands on the FAR tile only.
+            local dx, dy = fx.tx - fx.user.x, fx.ty - fx.user.y
+            local farX, farY = fx.tx + dx, fx.ty + dy
             for _, u in ipairs(fx.aoeUnits()) do
                 fx.damage(u)
-                if u.alive then fx.applyStatus(u, "status_disarmed") end
+                if u.alive and u.x == farX and u.y == farY then
+                    fx.applyStatus(u, "status_disarmed")
+                end
             end
         end,
     },

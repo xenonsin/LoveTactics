@@ -17,7 +17,7 @@
 -- utility_gleaning_rod is the charm form. Cloth: a square of pace.
 return {
     name = "Gleaner's Mantle",
-    description = "Banks a charge whenever anyone nearby works a spell.",
+    description = "On a nearby cast: bank a charge.",
     flavor = "The Arcanum rules that ambient working is unowned. The ruling was written by people wearing these.",
     sprite = "assets/items/armor_gleaners_mantle.png",
     type = "armor",

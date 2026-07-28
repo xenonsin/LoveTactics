@@ -34,7 +34,7 @@
 -- Sloth guards a body it can reach; pride edits what a body is and walks away.
 return {
     name = "Conjunction",
-    description = "Binds foes in an area: a wound on any one of them is felt by all the others at half strength.",
+    description = "Inflicts Conjoined in area.",
     flavor = "The Arcanum does not consider this cruelty. It considers it a correction of a bookkeeping error.",
     sprite = "assets/items/ability_conjunction.png",
     type = "ability",

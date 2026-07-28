@@ -11,7 +11,7 @@
 -- best sword, and this one has to be the WRONG sword sometimes to be an interesting right one.
 return {
     name = "The Unclosing Edge",
-    description = "Strikes an adjacent foe. When struck in melee, opens a wound on the attacker that cannot be healed.",
+    description = "Strikes an adjacent foe. On melee hit taken: inflict Unclosing Wound on the attacker.",
     flavor = "It does not kill anyone. It only decides, quietly, which of them the priest is going to have to give up on.",
     sprite = "assets/items/unclosing_edge.png",
     type = "weapon",

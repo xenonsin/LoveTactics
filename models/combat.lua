@@ -4038,6 +4038,10 @@ function Combat.mitigatedDamage(target, base, tags, opts)
     -- the negation. Combat.dealFlatDamage makes the same check and is the one that CONSUMES the
     -- barrier -- this read never mutates, so a hovered target never spends someone's ward.
     if Status.barrierAgainst(target, magical) then return 0 end
+    -- A per-type immunity (Immune: Fire and kin) voids a hit carrying that tag outright -- before armor,
+    -- resist, vulnerability, and even the raw path below. Sits beside the barrier read above and, like
+    -- it, never mutates, so a hovered target reads the negation without spending anything.
+    if Status.immuneToDamage(target, tags) then return 0 end
     -- Raw (armor-piercing) damage skips defense and tag resists entirely -- a Penetrating Strike
     -- that lands its full Power on the flesh. Barriers and vulnerabilities still apply (a ward is
     -- not armor). Floors at 1 like any hit.
@@ -4084,6 +4088,14 @@ function Combat.damageBreakdown(target, base, tags, opts, baseParts, dmg)
         end
     else
         add("Base", base)
+    end
+    -- A per-type immunity voids the blow entirely: show where the power came from, then say it landed
+    -- for nothing, and stop -- so the receipt reads 0 for the same reason mitigatedDamage returned 0,
+    -- rather than tallying an armor sum the immunity made irrelevant.
+    if Status.immuneToDamage(target, tags) then
+        add("Immune to this type", nil)
+        add("Damage", 0, true)
+        return rows
     end
     local magical = hasTag(tags, "magical")
     local vuln = Status.vulnerability(target, tags)
@@ -4204,7 +4216,31 @@ local function killUnit(combat, target)
     -- A summoned creature and a decoy leave nothing -- they were never truly there -- so they are
     -- skipped, which also keeps a raised zombie or a dismissed wolf from itself becoming a corpse.
     if not target.summoned and not target.decoyOf then
-        target.corpse = true
+        -- Two states a body can land in, and it is one OR the other, never both at once:
+        --   * A revivable unit is INCAPACITATED first, not yet a corpse. It carries a countdown
+        --     (status_downed) as the window in which the same character can still be brought back where
+        --     it lies (Combat.reanimate). It is NOT a corpse yet, so nothing that reads the dead --
+        --     Raise Dead, Corpse Burst, the Ledger's Due -- can touch it while the window is open. Let
+        --     the count run out and the body TURNS TO A CORPSE (status_downed onExpire flips the flags):
+        --     past reviving for this battle, but now a real body the necromancer's shelf can feed on.
+        --   * A NON-revivable body (a demon) skips the window entirely and is a corpse at once: there was
+        --     never anything to count, because nothing was ever going to raise it, so it is harvestable
+        --     from the moment it drops.
+        -- Only a real fallen unit reaches here (summons/decoys leave no body). The incapacitation is
+        -- silent by design (status_downed hideLog): the "defeated!" line below is the news.
+        --
+        -- `noRevive` is stamped by a felling blow that DENIES the window (opts.denyRevival -- the
+        -- Necromancer's severing kit: weapon_the_unreturning, ability_sever_the_thread). It forces the
+        -- corpse path even on a revivable unit, so the body skips status_downed entirely and is
+        -- harvestable at once -- no Revive, no scroll, no Salts this battle. It reads exactly like a
+        -- demon's death: there was never a window to reach. Stamped just before this in dealFlatDamage's
+        -- fatal branch, and (for the necromancer) the payoff is that the corpse is raisable NOW.
+        if target.char.revivable and not target.noRevive then
+            target.incapacitated = true
+            Status.apply(combat, target, "status_downed")
+        else
+            target.corpse = true
+        end
     end
 
     -- A decoy wears its caster's name, so "Archer is defeated!" would read as the real thing dying.
@@ -4539,6 +4575,17 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- an absorbed hit is not a "wound survived", so it grants no rage and advances no threshold phase.
     -- A ward may stand for several blows (its `magnitude`, which the granting spell raises as it is
     -- forged), so spend ONE hit rather than the whole status and say what is left standing.
+    -- A per-type IMMUNITY (Immune: Fire) voids the blow before anything else touches it -- before the
+    -- barrier, before the reflexes, before the trait dispatch. An immune body takes nothing and, unlike
+    -- a barrier, spends nothing to do so: no charge, no ward consumed. Returned here as a 0, so an immune
+    -- hit grants no rage, advances no threshold phase and provokes no counter, exactly as an absorbed one
+    -- does. Placed ahead of the barrier so a blow you are already immune to cannot waste a ward charge.
+    local immune = Status.immuneToDamage(target, tags)
+    if immune then
+        Combat.logEvent(combat, "status",
+            string.format("%s is immune to the blow (%s).", unitName(target), immune.name or immune.id), target)
+        return 0
+    end
     local barrier = Status.barrierAgainst(target, hasTag(tags or {}, "magical"))
     if barrier then
         -- What the ward SWALLOWED, banked on the instance. Almost every barrier ignores this; the
@@ -4763,6 +4810,12 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- The felling blow banks a `kill` toward any signature the attacker gates on kills. Only a
         -- real attack passes an attacker; a trap or a burn tick fells with none and tallies nothing.
         if attacker then Combat.tally(attacker, "kill", 1) end
+        -- A blow that DENIES REVIVAL (opts.denyRevival -- the Necromancer's severing kit) stamps the
+        -- body so killUnit routes it straight to a corpse, skipping the incapacitation window. Set only
+        -- on the fatal path, so a severing weapon that merely wounds does nothing -- it is the KILL that is
+        -- final, not the hit. Carried through the guard-redirect above with the rest of opts, so a
+        -- guardian that throws itself in front of the blow is denied the window too.
+        if opts and opts.denyRevival then target.noRevive = true end
         -- A killing blow that also SHOVES throws the body before it drops: mark the target mortally
         -- wounded -- doomed, but still on its feet and on the board -- so the shove can move it and
         -- hurt whatever it slams into (Combat.knockback carries only the living, and the collision it
@@ -5090,20 +5143,39 @@ end
 -- ---------------------------------------------------------------------------
 -- Corpses (reanimation / raising)
 --
--- A "real" unit that dies stays in combat.units flagged `corpse` (killUnit), lying on its last tile.
--- It is not alive -- unitAt / turnOrder / aliveCount all ignore it, so a living unit may walk over it
--- and the objectives resolve as normal -- but it is still THERE to be brought back:
---   * Combat.reanimate -- Revive: the same character stands up again at a fraction of its health.
---   * Combat.raiseZombie -- Raise Dead: the body is consumed and a fresh zombie takes its place.
--- Either path clears `corpse`, so a body can only be used once.
+-- A "real" unit that dies stays in combat.units, lying on its last tile, in one of two states:
+--   * INCAPACITATED (`incapacitated`) -- a revivable body still inside its window. It can be brought
+--     back as the same character (Combat.reanimate: Revive, the scroll, Reviving Salts), but it is NOT
+--     a corpse yet, so the necromancer's shelf cannot read it.
+--   * CORPSE (`corpse`) -- a harvestable body: a non-revivable unit (a demon) from the moment it falls,
+--     or a revivable one AFTER its window ran out (status_downed onExpire flipped it). Past reviving,
+--     but now raisable / consumable / readable:
+--       * Combat.raiseZombie -- Raise Dead: the body is consumed and a fresh zombie takes its place.
+--       * Combat.consumeCorpse -- Corpse Burst / the Ledger's Due: the body is spent outright.
+-- Neither is alive -- unitAt / turnOrder / aliveCount all ignore both, so a living unit may walk over
+-- either and the objectives resolve as normal. Reanimating / raising / consuming clears the flag, so a
+-- given body can only be used once.
 -- ---------------------------------------------------------------------------
 
--- The corpse on (x, y), or nil. A tile with a LIVING unit on it has no reachable corpse (you can't
--- work on a body someone is standing on) -- Revive's "as long as no one is on top of the tile".
+-- The corpse on (x, y), or nil -- a HARVESTABLE body, what the necromancer's shelf reads (Raise Dead,
+-- Corpse Burst, the Ledger's Due). An incapacitated body is deliberately NOT one (see Combat.downedAt).
+-- A tile with a LIVING unit on it has no reachable corpse (you can't work on a body someone is standing
+-- on) -- the "as long as no one is on top of the tile" rule these effects share.
 function Combat.corpseAt(combat, x, y)
     if Combat.unitAt(combat, x, y) then return nil end
     for _, u in ipairs(combat.units) do
         if u.corpse and not u.alive and u.x == x and u.y == y then return u end
+    end
+    return nil
+end
+
+-- The incapacitated body on (x, y), or nil -- what Revive and its kin work on (Combat.reanimate). The
+-- mirror of Combat.corpseAt for the OTHER fallen state: the revive window is open here, the body is not
+-- yet a corpse, and the same occupied-tile rule holds (you cannot reach a body under a living unit).
+function Combat.downedAt(combat, x, y)
+    if Combat.unitAt(combat, x, y) then return nil end
+    for _, u in ipairs(combat.units) do
+        if u.incapacitated and not u.alive and u.x == x and u.y == y then return u end
     end
     return nil
 end
@@ -5125,10 +5197,19 @@ end
 -- Revive (and the revive scroll). The unit keeps its identity -- its id, its kit, its traits -- so an
 -- escorted ally brought back still counts for a protect objective.
 function Combat.reanimate(combat, corpse, fraction)
-    if not corpse or corpse.alive or not corpse.corpse then return false end
+    -- Only an INCAPACITATED body comes back -- one still inside its revive window. This is the single
+    -- gate the Revive spell, the revive scroll, Reviving Salts and a Phoenix Down all honour at once:
+    --   * a body whose window has CLOSED is now a corpse (not `incapacitated`) and is refused -- past
+    --     reviving for the battle, exactly as its "goes cold" line said;
+    --   * a body that never comes back at all (a demon, revivable = false) is a corpse from the start
+    --     and was never incapacitated, so it is refused by the same test.
+    -- A successful revive wipes the body's statuses below, which is what silently cancels its
+    -- status_downed countdown (so onExpire never fires and it never turns to a corpse).
+    if not corpse or corpse.alive or not corpse.incapacitated then return false end
     if Combat.unitAt(combat, corpse.x, corpse.y) then return false end
     fraction = fraction or 0.5
     corpse.alive = true
+    corpse.incapacitated = false
     corpse.corpse = false
     corpse.statuses = {}
     local hp = corpse.char.stats.health
@@ -5150,11 +5231,18 @@ end
 function Combat.reviveFallenParty(combat, fraction)
     fraction = fraction or 0.2
     for _, u in ipairs(combat.units) do
-        if u.side == "party" and not u.alive and u.corpse
-            and not u.summoned and not u.decoyOf then
+        if u.side == "party" and not u.alive and (u.incapacitated or u.corpse)
+            and not u.summoned and not u.decoyOf
+            -- Either fallen state is carried out: a member still INCAPACITATED when the fight ended, and
+            -- one whose window ran out and TURNED TO A CORPSE alike (the closed in-battle window is a
+            -- fight-length penalty, and the company still carries its own out once the fight is won). A
+            -- body that never comes back stays down even in victory (a recruited demon would be lost for
+            -- good), and one already spent -- consumed or raised -- left no `corpse` to carry.
+            and u.char.revivable ~= false then
             local hp = u.char.stats.health
             hp.current = math.max(1, math.floor((hp.max or 0) * fraction))
             u.alive = true
+            u.incapacitated = false
             u.corpse = false
             u.statuses = {}
         end
@@ -5421,6 +5509,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         random = function() return 1 end,
         cleanse = function() return 0 end,
         corpseAt = function(x, y) return Combat.corpseAt(combat, x, y) end,
+        downedAt = function(x, y) return Combat.downedAt(combat, x, y) end,
         corpsesIn = function(cells)
             return Combat.corpsesIn(combat, cells or Combat.aoeCells(combat, ab, tx, ty, unit))
         end,
@@ -5639,6 +5728,7 @@ function Combat.abilityOutput(unit, item)
         random = function() return 1 end,
         cleanse = function() return 0 end,
         corpseAt = function() return nil end,
+        downedAt = function() return nil end,
         corpsesIn = function() return {} end,
         reanimate = function() return false end,
         raise = function(_, charId, opts)
@@ -6733,6 +6823,17 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
         if ab.target == "ally" and target.side ~= unit.side then return false, "invalid target" end
         if ab.target == "self" and target ~= unit then return false, "invalid target" end
     end
+    -- A sight-gated single-target strike needs a real foe in its line -- line of sight is to a TARGET,
+    -- not to bare ground, and empty ground trivially passes unitHasSight above. Without this the shot
+    -- could be committed at an empty tile purely to bank its on-draw reward (The Held Breath's Unseen
+    -- lands the instant the draw COMMITS, in the channel branch below) -- a weapon that must see its
+    -- mark turned into a free invisibility aimed at nothing. The gate the arm/aim UI already enforces,
+    -- restated in the model so no path (the AI, a network peer) can reach past it. An AoE cast is
+    -- exempt: it aims at a cell, not a body, so it may legitimately fall on open ground.
+    if ab.requiresSight and ab.target == "enemy" and not ab.aoe
+        and not (target and target.alive and target.side ~= unit.side) then
+        return false, "no line of sight"
+    end
 
     -- Affordability was settled by itemBlockReason above (nothing has been spent since), so the
     -- cast is committed from here: pay the cost. The reservation isn't taken until the effect
@@ -7452,8 +7553,12 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             if not tgt then return 0 end
             return Combat.cleanse(combat, tgt)
         end,
-        -- The reachable corpse on a tile, or nil (Revive picks the body it stands over).
+        -- The reachable corpse on a tile, or nil -- a harvestable body (Raise Dead / the Ledger's Due
+        -- pick the body they stand over). An incapacitated body is NOT one; Revive reads fx.downedAt.
         corpseAt = function(x, y) return Combat.corpseAt(combat, x, y) end,
+        -- The reachable INCAPACITATED body on a tile, or nil (Revive / Reviving Salts pick the body they
+        -- stand over -- one still inside its window, which fx.reanimate then brings back).
+        downedAt = function(x, y) return Combat.downedAt(combat, x, y) end,
         -- Every corpse under a set of cells, defaulting to this ability's own AoE footprint (Raise Dead
         -- sweeping its blast for bodies).
         corpsesIn = function(cells)
@@ -7535,6 +7640,26 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     local footprint = ab.aoe and Combat.aoeCells(combat, ab, tx, ty, unit) or { { x = tx, y = ty } }
     if hasTag(castTags, "water") then
         Hazard.douse(combat, footprint, castTags)
+    end
+
+    -- Fire catches: a cast carrying the "fire" tag sets alight any FLAMMABLE prop across its
+    -- footprint (`flammable` -- a powder keg, a supply crate; models/prop.lua). The element's answer
+    -- to the board's furniture, sitting between the water and lightning interactions because it is the
+    -- same kind of thing: fire does to a keg what it does to a body. A barrel (health 1) bursts and
+    -- takes the ring with it; a tougher crate scorches down over several such hits. This is what the
+    -- `flammable` tag was for, and it is what the barrel means by "a spilled AoE sets it off".
+    --
+    -- Gated on the cast actually DEALING damage, so a fire working that only laid a hazard down does
+    -- not detonate a barrel it merely floated a flame over -- catching it is then the standing fire's
+    -- slow work, not the placement's. Prop.at returns only the living, so a keg the chain already
+    -- splintered is simply gone from a later cell, and nothing is hit twice.
+    if effectiveAmount and effectiveAmount > 0 and hasTag(castTags, "fire") then
+        for _, c in ipairs(footprint) do
+            local prop = Prop.at(combat, c.x, c.y)
+            if prop and Prop.hasTag(prop, "flammable") then
+                Prop.damage(combat, prop, effectiveAmount, unit)
+            end
+        end
     end
 
     -- Water carries a charge: a cast carrying the "lightning" tag arcs out of its footprint into any

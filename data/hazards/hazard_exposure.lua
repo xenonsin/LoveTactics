@@ -12,7 +12,7 @@
 -- tick, no damage, no spread -- there is nothing in here but a condition on somebody else's arithmetic.
 return {
     name = "Coveted Blood",
-    description = "A cloying haze: foes standing within take extra damage from piercing hits.",
+    description = "Inflicts Exposed on foes in it.",
     tags = { "poison" },
     -- The same smoke the Choking Fumes wear, in a cloying rose rather than the censer's sick green:
     -- these two clouds mean different things and must not read as one, which is exactly the mistake

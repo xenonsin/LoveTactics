@@ -20,6 +20,6 @@ return {
     name = "Second Utterance",
     abbr = "2nd",
     description = "Your next channeled spell resolves at once, with no wind-up.",
-    color = { 0.62, 0.55, 0.92 }, -- badge tint (arcane violet, matching Graven and the Arcanum)
+    color = { 0.621, 0.563, 0.871 }, -- badge tint (arcane violet, matching Graven and the Arcanum)
     duration = 12, -- ~2 turns at Status.TICKS_PER_TURN: the exchange that earned it, and not the next
 }

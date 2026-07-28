@@ -3,7 +3,7 @@
 -- blue reachable set with no code of its own.
 return {
     name = "Boots of Speed",
-    description = "Move one extra tile each turn.",
+    description = "Grants bonus Movement.",
     flavor = "Every road needs a faster boot, and no guild ever managed to keep them to itself.",
     sprite = "assets/items/boots_of_speed.png",
     type = "utility",

@@ -4,7 +4,7 @@
 -- drunk, and your punches turn savage; sober up, and it does nothing. A gambler's charm.
 return {
     name = "Drunken Fist",
-    description = "While Drunk, your bare-handed strike hits far harder. Sober, it does nothing.",
+    description = "Bare-handed strikes hit far harder while Drunk; nothing while sober.",
     flavor = "A gambler's charm, sold by a priest who has made his peace with the arrangement.",
     sprite = "assets/items/drunken_fist.png",
     type = "utility",

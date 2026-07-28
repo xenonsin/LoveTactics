@@ -18,7 +18,7 @@
 -- and an assassin in the same party have to talk about where this goes.
 return {
     name = "The Witchlight Bow",
-    description = "Fires at range and leaves harsh light where the shaft lands: nothing standing in it can hide.",
+    description = "Leaves Witchlight where it lands.",
     flavor = "The Lodge burned three of them before someone thought to ask what the light was for rather than what it was made of.",
     sprite = "assets/items/witchlight_bow.png",
     type = "weapon",

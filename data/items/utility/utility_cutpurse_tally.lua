@@ -9,7 +9,7 @@
 -- your party sets the table, which is the read the Undercroft rewards.
 return {
     name = "Cutpurse's Tally",
-    description = "Your blows deal extra damage for every debuff already on the target.",
+    description = "Blows deal extra damage for every debuff already on the target.",
     flavor = "The Undercroft keeps a running count of what a man is worth. So does this.",
     sprite = "assets/items/cutpurse_tally.png",
     type = "utility",

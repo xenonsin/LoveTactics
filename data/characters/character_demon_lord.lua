@@ -11,6 +11,7 @@ return {
     name = "The Hollow Crown",
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/demon_lord.png",
+    revivable = false, -- a demon does not come back: no downed window, and no revive takes it
     stats = {
         health = 420, mana = 0, stamina = 25,
         damage = 20, magicDamage = 20,

@@ -20,7 +20,7 @@
 -- party's mage would be a way to kill your own mage.
 return {
     name = "Reckless Stance",
-    description = "Drops your guard: raised Damage, far weaker defenses, for several turns.",
+    description = "Applies Reckless.",
     flavor = "There is a way of fighting that assumes you will still be alive at the end of it. This is the other one.",
     sprite = "assets/items/ability_fury.png", -- placeholder until its own art exists
     type = "ability",

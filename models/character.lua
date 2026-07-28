@@ -271,6 +271,12 @@ function Character.instantiate(id, progress)
         -- A general/boss blueprint sets `boss = true`; carried through so an ability can refuse to work
         -- on one (Coup de Grace won't execute a boss, Charm won't turn it). Nil for an ordinary unit.
         boss = def.boss,
+        -- Can this body be brought back once it falls? Default true; a blueprint opts OUT with
+        -- `revivable = false` (demons do not come back). A non-revivable unit skips the whole downed
+        -- window (models/combat.lua killUnit / reanimate): it dies to a plain corpse with no countdown,
+        -- and every revive path refuses it. Baked to a clean boolean here (`~= false`), so absent/true
+        -- both read as revivable and only an explicit false opts out.
+        revivable = def.revivable ~= false,
         -- Board footprint: how many cells this body covers, as { w, h } anchored at its top-left.
         -- A blueprint's `footprint = { w = 2, h = 2 }` makes a 2×2 ogre; absent (the case for every
         -- ordinary character) normalizes to 1×1, the single tile the whole engine assumed before.

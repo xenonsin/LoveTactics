@@ -16,7 +16,7 @@
 -- not into a melee your friends are already in.
 return {
     name = "The Stillness",
-    description = "Winds up, then falls on one tile and stills the ground: nothing standing there may act.",
+    description = "Channeled: leaves Stillness.",
     flavor = "The blow is not what stops them. The blow is only what makes the place where stopping happens.",
     sprite = "assets/items/the_stillness.png",
     type = "weapon",

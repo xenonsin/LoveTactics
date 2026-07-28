@@ -21,12 +21,13 @@ local Settings = require("models.settings")
 local Sound = require("models.sound")
 local Scale = require("scale")
 local InputMode = require("input_mode")
+local Theme = require("ui.theme")
 
 local settings = {}
 
-local titleFont = love.graphics.newFont(40)
-local bodyFont = love.graphics.newFont(16)
-local rowFont = love.graphics.newFont(20)
+local titleFont = Theme.display(40)
+local bodyFont = Theme.body(16)
+local rowFont = Theme.display(20)
 
 local ROW_W, ROW_H, ROW_SPACING = 620, 46, 10
 local LIST_TOP = 178
@@ -122,11 +123,10 @@ end
 function settings.draw()
     -- Fill the logical area explicitly: letterbox bars are cleared to black, so setBackgroundColor
     -- (which paints the whole real window) can't be used here. Mirrors states/menu.lua.
-    love.graphics.setColor(0.10, 0.11, 0.15)
-    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+    Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
 
     love.graphics.setFont(titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
+    Theme.set(Theme.accentAmber)
     love.graphics.printf("Settings", 0, 100, Scale.WIDTH, "center")
 
     widget:draw()
@@ -137,12 +137,12 @@ function settings.draw()
     local item = widget:selectedItem()
     if item and item.description then
         love.graphics.setFont(bodyFont)
-        love.graphics.setColor(0.62, 0.66, 0.76)
+        Theme.set(Theme.ink)
         love.graphics.printf(item.description, Scale.WIDTH / 2 - ROW_W / 2, DESC_Y, ROW_W, "left")
     end
 
     love.graphics.setFont(bodyFont)
-    love.graphics.setColor(0.45, 0.50, 0.62)
+    Theme.set(Theme.muted)
     local hint = InputMode.isGamepad()
         and "D-pad: move    A / Left / Right: change    B: back"
         or "Arrows: move    Enter / Left / Right: change    Esc: back"

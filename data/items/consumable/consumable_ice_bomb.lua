@@ -8,7 +8,7 @@
 -- tag; the freeze is chemistry, and takes hold whatever the target's magic defense.
 return {
     name = "Ice Bomb",
-    description = "Inflicts Frozen on everything in the target area. Deals no damage.",
+    description = "Inflicts Frozen in area.",
     flavor = "Supercooled brine, sold by a shop that will not insure you against carrying it badly.",
     sprite = "assets/items/ice_bomb.png",
     type = "consumable",

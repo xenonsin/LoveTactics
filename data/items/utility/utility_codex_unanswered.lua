@@ -17,7 +17,7 @@
 -- in models/quest.lua), so stashing it, wearing it, or losing it can never cost the endgame.
 return {
     name = "The Codex Unanswered",
-    description = "A single-target spell aimed at you is answered and unravelled, for mana.",
+    description = "Answers and unravels a single-target spell aimed at you, for mana.",
     flavor = "Sublimitas's book, and it has never met a spell it did not already know. Tooled on the " ..
         "spine: \"where the shelves answer only themselves, and the readers were spent\".",
     sprite = "assets/items/codex_unanswered.png",

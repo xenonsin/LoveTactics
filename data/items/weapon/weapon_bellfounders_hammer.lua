@@ -18,7 +18,7 @@
 -- line, which is a genuinely bad turn -- the same rule the axe's arc runs on.
 return {
     name = "Bellfounder's Hammer",
-    description = "Stuns the target, and rattles a shorter stun into everything standing around them.",
+    description = "Inflicts Stun on the target, and a shorter Stun on everything standing around it.",
     flavor = "A bellfounder strikes once and the whole village hears about it. The principle transfers.",
     sprite = "assets/items/bellfounders_hammer.png",
     type = "weapon",

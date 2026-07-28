@@ -5,7 +5,7 @@
 -- friendly inspiration becomes hostile lockdown.
 return {
     name = "Halting Ground",
-    description = "A warden's line: foes that cross it are Halted.",
+    description = "Inflicts Halted on foes that cross it.",
     tags = { "control" },
     -- A warden's line, not a wizard's circle: the same rune the arcane zones wear, in the standard's
     -- amber rather than the Arcanum's violet.

@@ -5,7 +5,7 @@
 -- douses fire on the tile it hits. Positional utility, not raw damage.
 return {
     name = "Water Ball",
-    description = "Slams a foe three tiles back and soaks the area, inflicting Wet.",
+    description = "Slams a foe three tiles back and inflicts Wet across the area.",
     flavor = "Positional utility, not raw damage -- a sentence no fighter has ever finished reading.",
     sprite = "assets/items/ability_water_ball.png",
     type = "ability",

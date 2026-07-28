@@ -26,7 +26,7 @@
 -- reach for.
 return {
     name = "The Halting Rank",
-    description = "Halts every adjacent foe: none of them may use an ability on its next turn.",
+    description = "Inflicts Halt on adjacent foes.",
     flavor = "The Bastion beats the rim once. The drill is that nothing on the far side of it has anything to say.",
     sprite = "assets/items/armor_halting_rank.png",
     type = "armor",

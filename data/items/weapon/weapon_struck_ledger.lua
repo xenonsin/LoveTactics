@@ -18,7 +18,7 @@
 -- this instead of killing it faster is a run where the party is rich and the quest went badly.
 return {
     name = "The Struck Ledger",
-    description = "Fires at range and prices the target: lit up, and worth coin to the company when it dies.",
+    description = "Inflicts Struck Ledger.",
     flavor = "The Undercroft's assessors do not attend battles. They send the arrows and read the receipts.",
     sprite = "assets/items/struck_ledger.png",
     type = "weapon",

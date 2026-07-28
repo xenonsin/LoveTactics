@@ -18,7 +18,7 @@
 -- the mage free area denial it never paid for.
 return {
     name = "Graven Circle",
-    description = "Cut sigils: the mage who graved them casts and moves for less while standing within.",
+    description = "Grants Graven to its caster while in it.",
     tags = { "arcane" },
     duration = 20, -- the sigils scuff out on their own; the ability re-scales this by its forge level
     disposition = "friendly",

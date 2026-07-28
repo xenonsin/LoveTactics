@@ -11,7 +11,7 @@ return {
     name = "Disarmed",
     abbr = "Dis",
     description = "Disarmed: weapons cannot be used (bare fists still can).",
-    color = { 0.72, 0.55, 0.30 }, -- badge tint (rusted bronze)
+    color = { 0.660, 0.523, 0.321 }, -- badge tint (rusted bronze)
     duration = 15, -- ~3 turns at Status.TICKS_PER_TURN: long enough to actually cost a swing
     debuff = true, -- removable by Cure / Panacea
     disablesWeapon = true,

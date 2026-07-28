@@ -11,7 +11,7 @@
 -- weathering, not for being surrounded. Reprisal already pays for the crowd.
 return {
     name = "Answering Blow",
-    description = "Spends all your Defiance to strike every adjacent foe, harder for every point spent.",
+    description = "Consume all Defiance to strike every adjacent foe. Increase damage by 4 per point spent.",
     flavor = "He had been keeping a tally. He read it out to all of them at once.",
     sprite = "assets/items/ability_answering_blow.png",
     type = "ability",
@@ -33,7 +33,7 @@ return {
             when = function(unit) return require("models.combat").chargePool(unit, "defiance") >= 1 end,
             text = "Bank Defiance by weathering blows",
         },
-        description = "Spends all Defiance; every adjacent foe takes the blow, +4 per point spent.",
+        description = "Consume all Defiance. Every adjacent foe takes the blow, +4 per point spent.",
         effect = function(fx)
             local spent = fx.spendCharge("defiance")
             for _, u in ipairs(fx.aoeUnits()) do

@@ -4,7 +4,7 @@
 -- carrying the "water" tag. Left behind across a Fireball's blast (data/items/ability/ability_fireball.lua).
 return {
     name = "Fire",
-    description = "Blazing ground: burns those who enter and spreads into forest. Doused by water.",
+    description = "Inflicts Burn on units that enter, and spreads into forest. Doused by water.",
     tags = { "fire" },
     duration = 15,            -- ticks the flames persist: ~3 turns at Status.TICKS_PER_TURN
     disposition = "hostile",  -- the enemy AI steps around it

@@ -12,7 +12,7 @@
 -- wearer is by definition in the middle of it. There is no version of this item that is safe to use.
 return {
     name = "Muster",
-    description = "Mustered ground: allies stand braced in it, and enemies stand open.",
+    description = "Grants Heroism to allies in it; inflicts Exposed on foes.",
     tags = { "banner" },
     duration = 6,
     disposition = "neutral", -- it draws the owner in and pushes the foe out; neither reading is right

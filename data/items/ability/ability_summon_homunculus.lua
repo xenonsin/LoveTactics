@@ -5,7 +5,7 @@
 -- summon it into a crowd and let the rot do the work.
 return {
     name = "Summon Homunculus",
-    description = "Binds a frail homunculus for a time. One at a time; reserves a fifth of your max mana.",
+    description = "Binds a frail homunculus. One at a time; reserves a fifth of your max mana.",
     flavor = "Cheap, expendable, and rotting the entire time. The Crucible built it that way deliberately.",
     sprite = "assets/items/ability_summon_homunculus.png",
     type = "ability",

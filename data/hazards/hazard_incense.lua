@@ -13,7 +13,7 @@
 -- whoever swings it is standing in the middle of the cloud.
 return {
     name = "Incense",
-    description = "A censer's smoke: allies standing within are Blessed.",
+    description = "Grants Blessing to allies in it.",
     tags = { "holy" },
     -- NOT a banner's 9999. Nothing is planted here -- this ground answers to a censer that is renewing
     -- it every beat (Combat.layIncense refreshes the cloud from Combat.rebase and Combat.enterTile). The

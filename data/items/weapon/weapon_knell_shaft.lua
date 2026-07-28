@@ -20,7 +20,7 @@
 -- the wrong axis for a fixed countdown), so a warded body is marked exactly as surely as an unwarded one.
 return {
     name = "The Knell-Shaft",
-    description = "A drawn shaft that marks its target for death: when the count runs out, it dies.",
+    description = "Channeled: inflicts Knell.",
     flavor = "The arrow is not what kills him. The arrow is only the part that is delivered.",
     sprite = "assets/items/knell_shaft.png",
     type = "weapon",

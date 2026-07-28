@@ -4,7 +4,7 @@
 -- draws a connector line to the bow that satisfies the requirement.
 return {
     name = "Rain of Arrows",
-    description = "A volley blanketing an area. Requires an adjacent bow.",
+    description = "Looses a volley across an area. Requires an adjacent bow.",
     flavor = "The Lodge does not aim this one. It decides where the sky should be full of arrows.",
     sprite = "assets/items/ability_rain_of_arrows.png",
     type = "ability",

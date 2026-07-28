@@ -9,7 +9,7 @@
 -- mostly flavor here (compare a lightning WEAPON, where Wet's vulnerability bites).
 return {
     name = "Lightning Bomb",
-    description = "Inflicts Stun on everything in the target area. Deals no damage.",
+    description = "Inflicts Stun in area.",
     flavor = "Brass, packed by hands that have learned not to linger over the seam.",
     sprite = "assets/items/lightning_bomb.png",
     type = "consumable",

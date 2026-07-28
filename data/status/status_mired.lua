@@ -12,7 +12,7 @@ return {
     name = "Mired",
     abbr = "Mir",
     description = "Sinking: ability and movement costs are doubled.",
-    color = { 0.72, 0.60, 0.36 }, -- badge tint (muddy tan)
+    color = { 0.670, 0.572, 0.375 }, -- badge tint (muddy tan)
     -- ~3 turns at Status.TICKS_PER_TURN, though it is only ever a backstop: Quicksand is the only
     -- thing that grants Mired, and a zone-bound status never ages -- the sand's own life is the timer.
     duration = 15,

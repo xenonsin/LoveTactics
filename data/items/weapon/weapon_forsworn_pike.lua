@@ -19,7 +19,7 @@
 -- it, or losing it can never cost you the endgame.
 return {
     name = "The Forsworn Pike",
-    description = "Swears your enemies into pairs. Each one that ends its turn apart from its partner is bitten.",
+    description = "Inflicts Sworn on the foes it hits, pairing them.",
     flavor = "She planted it in the gateway and walked out past it. Cut into the shaft: \"past the " ..
         "gate that was opened from within\".",
     sprite = "assets/items/forsworn_pike.png",

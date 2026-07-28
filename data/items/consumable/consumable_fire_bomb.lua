@@ -8,7 +8,7 @@
 -- Everflask sitting beside it in the grid turns a cheap pot into a real threat.
 return {
     name = "Fire Bomb",
-    description = "Deals fire damage in the target area and inflicts Burn.",
+    description = "Inflicts Burn in area.",
     flavor = "The Crucible sells it by the crate. The fire is chemistry, and it does the same to a wizard as to a knight.",
     sprite = "assets/items/fire_bomb.png",
     type = "consumable",

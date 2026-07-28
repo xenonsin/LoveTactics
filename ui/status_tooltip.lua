@@ -6,13 +6,14 @@
 
 local Scale = require("scale")
 local Glyphs = require("ui.glyphs")
+local Theme = require("ui.theme")
 
 local StatusTooltip = {}
 
 local titleFont, bodyFont
 local function fonts()
-    titleFont = titleFont or love.graphics.newFont(14)
-    bodyFont = bodyFont or love.graphics.newFont(12)
+    titleFont = titleFont or Theme.display(14)
+    bodyFont = bodyFont or Theme.body(12)
     return titleFont, bodyFont
 end
 
@@ -52,11 +53,11 @@ function StatusTooltip.draw(status, mx, my, maxRight)
     bx = math.max(4, math.min(bx, maxX))
     local by = math.max(4, math.min(my + 16, Scale.HEIGHT - h - 4))
 
-    love.graphics.setColor(0.08, 0.09, 0.12, 0.96)
-    love.graphics.rectangle("fill", bx, by, w, h, 6, 6)
-    love.graphics.setColor(col[1], col[2], col[3], 0.9)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", bx, by, w, h, Theme.R, Theme.R)
+    love.graphics.setColor(col[1], col[2], col[3], 0.9) -- border carries the status's own colour
     love.graphics.setLineWidth(1)
-    love.graphics.rectangle("line", bx, by, w, h, 6, 6)
+    love.graphics.rectangle("line", bx, by, w, h, Theme.R, Theme.R)
 
     local ty = by + pad
     love.graphics.setFont(title)
@@ -66,7 +67,7 @@ function StatusTooltip.draw(status, mx, my, maxRight)
 
     love.graphics.setFont(body)
     if #descLines > 0 then
-        love.graphics.setColor(0.85, 0.86, 0.9, 1)
+        Theme.set(Theme.ink)
         love.graphics.printf(desc, bx + pad, ty, innerW, "left")
         ty = ty + #descLines * lineH + 4
     end

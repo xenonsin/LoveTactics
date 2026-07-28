@@ -6,7 +6,7 @@ return {
     name = "Blind",
     abbr = "Bln",
     description = "Blinded: ability range is reduced (never below adjacent).",
-    color = { 0.35, 0.33, 0.45 }, -- badge tint (dim slate)
+    color = { 0.350, 0.333, 0.435 }, -- badge tint (dim slate)
     duration = 8, -- ~1.5 turns at Status.TICKS_PER_TURN (was under one, and so barely landed)
     debuff = true,                -- removable by Cure
     rangeMalus = 2,

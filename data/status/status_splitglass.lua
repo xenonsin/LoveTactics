@@ -17,7 +17,7 @@ return {
     name = "Splitglass",
     abbr = "Splt",
     description = "Splitglass: the next few hits of any kind are turned aside entirely.",
-    color = { 0.68, 0.86, 0.90 }, -- badge tint (cracked pale cyan)
+    color = { 0.686, 0.839, 0.873 }, -- badge tint (cracked pale cyan)
     duration = 12,                -- ~2.5 turns: too strong to be allowed to sit
     magnitude = 2,                -- hits it turns aside; the granting ability raises it per level
     negates = "any",

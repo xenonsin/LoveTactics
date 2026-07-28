@@ -18,7 +18,7 @@
 -- blade, but does nothing about a wound already open"). The deviation here is only the strike.
 return {
     name = "The Thin Place",
-    description = "A quick magical cut that leaves an ordinary bleed: the stab is turned by wards, the wound by nothing.",
+    description = "Inflicts Bleed. The stab is turned by wards, the wound by nothing.",
     flavor = "The Undercroft's fences will not handle it. They say the blade is thinner than the space it goes into.",
     sprite = "assets/items/thin_place.png",
     type = "weapon",

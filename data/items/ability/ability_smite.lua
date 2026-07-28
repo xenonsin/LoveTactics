@@ -4,7 +4,7 @@
 -- heal-on-kill. Carries `holy`, so demonic flesh takes far more (utility_demonic_essence.lua).
 return {
     name = "Smite",
-    description = "A holy strike that leaves consecrated ground: allies who stand on it regenerate.",
+    description = "Strikes for holy damage and consecrates the ground, granting Regeneration to allies who stand on it.",
     flavor = "The blow is for them. The ground it blesses is for you.",
     sprite = "assets/items/ability_smite.png",
     type = "ability",

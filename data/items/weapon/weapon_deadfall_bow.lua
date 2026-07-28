@@ -18,7 +18,7 @@
 -- is not the sale and it is not meant to be a compromise; the trap is the weapon.
 return {
     name = "Deadfall Bow",
-    description = "Drawn over a full turn, then driven into the ground: it arms a trap where it lands instead of loosing.",
+    description = "Channeled: arms a trap where it lands.",
     flavor = "The Lodge's trappers do not draw on the animal. They draw on the path.",
     sprite = "assets/items/deadfall_bow.png",
     type = "weapon",

@@ -11,7 +11,7 @@
 -- from the rogue's throw-it-now denial (compare the Ball Bearings).
 return {
     name = "Snare Stake Kit",
-    description = "Plants a hidden stake: Roots the first enemy across it, and draws no blood.",
+    description = "Plants a trap that inflicts Root on the first enemy across it.",
     flavor = "The Lodge never improved the stake. It did learn to sell you a bundle of them.",
     sprite = "assets/items/snare_stake_kit.png",
     type = "consumable",

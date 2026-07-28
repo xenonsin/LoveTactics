@@ -13,7 +13,7 @@
 -- wants elemental reagents they are cheap to add; what would not be cheap is un-adding them.
 return {
     name = "Wildcraft Reagent",
-    description = "A field-brewed restorative. Mends, and clears what ails you.",
+    description = "Mends an ally and cleanses their afflictions.",
     flavor = "Whatever the ground was doing, it was doing it very vigorously. That is most of herbalism.",
     sprite = "assets/items/consumable_wildcraft_reagent.png",
     type = "consumable",

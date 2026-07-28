@@ -4,7 +4,7 @@
 -- lengthened, never a crafted weapon. Stacks with the other fist charms.
 return {
     name = "Shadow Fist",
-    description = "Your bare-handed strike reaches one tile farther. Does nothing for a weapon.",
+    description = "Bare-handed strikes reach one tile farther. Does nothing for a weapon.",
     flavor = "An arm does not do that. The Cathedral's monks decline to discuss which part is the arm.",
     sprite = "assets/items/shadow_fist.png",
     type = "utility",

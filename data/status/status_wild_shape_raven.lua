@@ -13,7 +13,7 @@ return {
     name = "Raven Shape",
     abbr = "Ravn",
     description = "Wearing a raven's body: fast, fragile, and still shooting.",
-    color = { 0.42, 0.44, 0.55 }, -- badge tint (blue-black pinion)
+    color = { 0.423, 0.440, 0.534 }, -- badge tint (blue-black pinion)
     duration = 30,
     -- A lie told about a body, so Dispel Illusions strips it and the reserved mana returns with it --
     -- the shape's real counterplay, and the one a hunter has to respect (Cure cannot touch it).

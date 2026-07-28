@@ -7,7 +7,7 @@
 -- on enemy ground: it deals no damage, it only lifts illusions.
 return {
     name = "Dispel Illusions",
-    description = "Reveals every hidden unit and shatters every illusion in the area.",
+    description = "Reveals hidden units and shatters illusions in area.",
     flavor = "The Cathedral sweeps for deceit weekly, and weekly it finds some.",
     sprite = "assets/items/ability_dispel_illusions.png",
     type = "ability",

@@ -3,7 +3,7 @@
 -- `scaling`, `duration` and the one-at-a-time rule work. A sturdy body that leaves foes Wet.
 return {
     name = "Summon Water Elemental",
-    description = "Binds a water elemental for a time. One at a time; reserves a quarter of your max mana.",
+    description = "Binds a water elemental. One at a time; reserves a quarter of your max mana.",
     flavor = "It leaves everything it touches wet, and everything wet is ready for a jolt.",
     sprite = "assets/items/ability_summon_water_elemental.png",
     type = "ability",

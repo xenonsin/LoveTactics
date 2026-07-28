@@ -21,6 +21,7 @@
 
 local Scale = require("scale")
 local Colors = require("ui.colors")
+local Theme = require("ui.theme")
 
 local ActionPreview = {}
 
@@ -30,18 +31,18 @@ ActionPreview.WIDTH = 186
 
 local titleFont, bodyFont, smallFont
 local function fonts()
-    titleFont = titleFont or love.graphics.newFont(15)
-    bodyFont = bodyFont or love.graphics.newFont(12)
-    smallFont = smallFont or love.graphics.newFont(11)
+    titleFont = titleFont or Theme.display(15)
+    bodyFont = bodyFont or Theme.body(12)
+    smallFont = smallFont or Theme.body(11)
     return titleFont, bodyFont, smallFont
 end
 
 local OFFENSE = { 0.95, 0.52, 0.46 } -- title/border tint for a strike / trap action
 local SUPPORT = { 0.45, 0.85, 0.50 } -- ...for a heal / buff
 local MOVE = { 0.48, 0.70, 0.98 }    -- ...for a move (matches the blue reachable overlay)
-local MUTED = { 0.62, 0.65, 0.72 }
-local VALUE = { 0.90, 0.91, 0.95 }
-local DESC = { 0.80, 0.82, 0.88 }
+local MUTED = Theme.muted
+local VALUE = Theme.ink
+local DESC = Theme.ink
 local DAMAGE = { 0.95, 0.45, 0.42 }
 local HEAL = { 0.55, 0.90, 0.58 }
 local LETHAL = { 1.00, 0.35, 0.32 }
@@ -327,8 +328,8 @@ function ActionPreview.draw(action, charBox, maxRight, opts)
     end
 
     local accent = accentFor(action)
-    love.graphics.setColor(0.08, 0.09, 0.12, 0.96)
-    love.graphics.rectangle("fill", bx, by, w, h, 6, 6)
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", bx, by, w, h, Theme.R, Theme.R)
     love.graphics.setColor(accent[1], accent[2], accent[3], 0.9)
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", bx, by, w, h, 6, 6)
@@ -338,10 +339,12 @@ function ActionPreview.draw(action, charBox, maxRight, opts)
         if b.kind == "title" then
             -- Squeezed to the panel width rather than spilling past its border: a tile cast titles
             -- itself "Place <ability>", and an ability name is free to be long.
-            love.graphics.setFont(title)
+            -- Fit the title on a native font (never scaled -- a scaled font blurs); a long name steps
+            -- down a couple sizes, then ellipsizes.
+            local tf, ttext = Theme.fitText(Theme.display, b.text, innerW, 15, 12)
+            love.graphics.setFont(tf)
             love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
-            local sc = math.min(1, innerW / title:getWidth(b.text))
-            love.graphics.print(b.text, bx + pad, ty + (titleH - titleH * sc) / 2, 0, sc, sc)
+            love.graphics.print(ttext, bx + pad, ty + (titleH - tf:getHeight()) / 2)
             ty = ty + titleH + 3
         elseif b.kind == "sub" then
             love.graphics.setFont(small)

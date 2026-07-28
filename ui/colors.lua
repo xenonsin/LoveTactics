@@ -13,35 +13,42 @@
 --     UNIT, so they never compete for the same mark.
 --   * PENDING (the slice an aimed action is about to spend) is drawn ON TOP of a pool bar, so it
 --     must contrast every pool colour at once -- red, blue, purple AND gold. That rules out red (it
---     would vanish on a foe's bar) and amber (it would vanish on a stamina bar), which leaves white.
+--     would vanish on a foe's bar) and amber (it would vanish on a stamina bar), which leaves a warm
+--     near-white (bone), still the lightest thing on any bar.
 --     LETHAL can afford to be amber because it only ever draws on a HEALTH bar, and health is only
 --     ever blue or red -- never gold.
+--
+-- These hues are RESHADED to the Etched Atmosphere chrome (ui/theme.lua): every value is a deep
+-- ENAMEL jewel tone -- saturation kept for legibility, value dropped so nothing reads "neon" over the
+-- dusty bronze-and-bone frame. They resolve from five hue families (steel = ours/mobility, ember =
+-- theirs/offence, amethyst = arcane, bronze = exertion/value, verdigris = ally/support) so a new
+-- overlay or intent inherits a family instead of inventing a colour. The MEANINGS are unchanged.
 --
 -- Plain data, no love.graphics at require-time, so it loads under the headless test runner.
 
 local Colors = {
     -- Faction. Also the health-bar fill, on the board and in the HUD.
-    PARTY   = { 0.40, 0.70, 1.00 },
-    ENEMY   = { 0.95, 0.35, 0.32 },
+    PARTY   = { 0.275, 0.463, 0.776 },
+    ENEMY   = { 0.749, 0.239, 0.231 },
     -- An ally that fights on our side but ISN'T ours to command -- a rescued survivor, an escort, a
     -- raised body. Green so it never reads as a controllable party member (blue) nor as a foe (red).
-    ALLY    = { 0.40, 0.82, 0.45 },
+    ALLY    = { 0.239, 0.608, 0.380 },
 
     -- Resource pools (health comes from the faction colours above).
-    MANA    = { 0.62, 0.42, 0.95 },
-    STAMINA = { 0.90, 0.75, 0.30 },
+    MANA    = { 0.486, 0.302, 0.745 },
+    STAMINA = { 0.839, 0.651, 0.216 },
 
     -- Deltas an aimed action previews on a pool bar.
-    PENDING = { 0.96, 0.96, 0.99 }, -- about to be spent (any pool)
-    LETHAL  = { 1.00, 0.78, 0.22 }, -- about to be lost, and it kills (health bars only)
-    HEALING = { 0.55, 0.92, 0.58 }, -- about to be gained
+    PENDING = { 0.937, 0.906, 0.839 }, -- about to be spent (any pool)
+    LETHAL  = { 0.887, 0.756, 0.451 }, -- about to be lost, and it kills (health bars only)
+    HEALING = { 0.467, 0.725, 0.566 }, -- about to be gained
 
     -- Tile overlay bands.
-    RANGE   = { 1.00, 0.32, 0.30 }, -- offensive reach
-    SUPPORT = { 0.35, 0.85, 0.40 }, -- heal / buff reach
-    MOVE    = { 0.30, 0.60, 1.00 }, -- reachable move tiles
-    DANGER  = { 0.65, 0.30, 0.90 }, -- tiles a foe could also strike
-    AOE     = { 1.00, 0.42, 0.30 }, -- armed blast footprint
+    RANGE   = { 0.749, 0.239, 0.231 }, -- offensive reach
+    SUPPORT = { 0.239, 0.608, 0.380 }, -- heal / buff reach
+    MOVE    = { 0.275, 0.463, 0.776 }, -- reachable move tiles
+    DANGER  = { 0.486, 0.302, 0.745 }, -- tiles a foe could also strike
+    AOE     = { 0.749, 0.239, 0.231 }, -- armed blast footprint
 }
 
 -- Intent kinds (models/intent.lua): the colour a predicted enemy action wears on its target line and
@@ -53,8 +60,8 @@ Colors.INTENT = {
     attack  = Colors.RANGE,
     cast    = Colors.MANA,
     support = Colors.SUPPORT,
-    debuff  = { 0.95, 0.62, 0.22 },
-    wait    = { 0.60, 0.62, 0.68 },
+    debuff  = { 0.865, 0.707, 0.341 },
+    wait    = { 0.604, 0.627, 0.675 },
 }
 
 -- The side colour for a "party"/"enemy" side string -- the unit's identity everywhere it's drawn.

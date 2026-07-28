@@ -16,7 +16,7 @@
 -- Pairs with anything that swings twice. Beside a bow that fires two shafts it is a heal per shaft.
 return {
     name = "Ravener's Hide",
-    description = "Every blow you land feeds you: heal on the hit, and a long trade only fattens you.",
+    description = "On damage dealt: heal, growing the longer the fight lasts.",
     flavor = "The Warren keeps it in a locked case and is very clear that this is for the case's benefit.",
     sprite = "assets/items/armor_raveners_hide.png",
     type = "armor",

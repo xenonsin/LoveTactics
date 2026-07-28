@@ -17,7 +17,7 @@
 -- wearing it, or losing it can never cost the endgame.
 return {
     name = "Maw of the Unfed",
-    description = "Your strikes feed you: heal on every blow you land.",
+    description = "On damage dealt: heal.",
     flavor = "A trophy taken from the warden she killed first, and it has never once been full. Cut into " ..
         "the horn: \"at the heart of the wood the hunt hollowed out\".",
     sprite = "assets/items/maw_of_the_unfed.png",

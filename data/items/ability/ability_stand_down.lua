@@ -18,7 +18,7 @@
 -- Deals nothing. `support = true` reads it green: it is a refusal, not a blow.
 return {
     name = "Stand Down",
-    description = "Halts one foe: it cannot use any ability on its next turn. It may still move.",
+    description = "Inflicts Halt.",
     flavor = "The order does not care whether it is obeyed. It only cares that it was given.",
     sprite = "assets/items/ability_shout.png", -- placeholder until its own art exists
     type = "ability",

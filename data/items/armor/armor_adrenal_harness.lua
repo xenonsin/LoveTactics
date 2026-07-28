@@ -18,7 +18,7 @@
 -- utility_adrenal_surge is the charm form.
 return {
     name = "Adrenal Harness",
-    description = "Taking a hit pulls your next turn sooner.",
+    description = "On hit taken: your next turn comes sooner.",
     flavor = "The Colosseum sells it to fighters who have noticed that the crowd pays for the second round.",
     sprite = "assets/items/armor_adrenal_harness.png",
     type = "armor",

@@ -14,7 +14,7 @@
 -- The root is on the HOLDER only. It is a self-inflicted price, not a zone.
 return {
     name = "Tower Shield",
-    description = "Replaces Wait with Defend: a far deeper brace, but you cannot move until it lifts.",
+    description = "Replaces Wait with Defend for a heavy brace, but inflicts Root on you until it lifts.",
     flavor = "The Bastion's recruits are taught to plant it before they are taught to carry it anywhere.",
     sprite = "assets/items/tower_shield.png",
     type = "armor",

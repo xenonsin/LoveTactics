@@ -19,7 +19,7 @@
 -- geometry.
 return {
     name = "The Held Breath",
-    description = "Drawn over a full turn -- and while you draw, you cannot be seen or targeted.",
+    description = "Channeled: you are Invisible while drawing.",
     flavor = "The trick was never the shot. It was the part beforehand, where everybody is looking for you.",
     sprite = "assets/items/held_breath.png",
     type = "weapon",

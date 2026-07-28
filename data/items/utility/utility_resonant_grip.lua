@@ -16,7 +16,7 @@
 -- Spells are untouched: a Fireball keeps being fire. Only the steel remembers.
 return {
     name = "Resonant Grip",
-    description = "Your weapon strikes carry the element of your last cast.",
+    description = "Weapon strikes carry the element of your last cast.",
     flavor = "The heat does not leave the hand. It is simply told, afterwards, where to go.",
     sprite = "assets/items/utility_resonant_grip.png",
     type = "utility",

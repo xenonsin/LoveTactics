@@ -16,7 +16,7 @@
 -- Cloth, so it costs a square of pace -- and the whole point of it is to be standing where the line is.
 return {
     name = "Censer-Cloth Habit",
-    description = "Carries Sacred Ground with you: allies standing in it are Blessed.",
+    description = "Grants Blessing to adjacent allies.",
     flavor = "Woven from the strips they wrap a censer's chain in, once the chain has been retired.",
     sprite = "assets/items/armor_censer_cloth_habit.png",
     type = "armor",

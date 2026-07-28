@@ -19,7 +19,7 @@ return {
     name = "Not Yet",
     abbr = "NotY",
     description = "Cannot be killed: any blow leaves it standing at a sliver instead.",
-    color = { 0.98, 0.90, 0.62 }, -- badge tint (a held candle)
+    color = { 0.933, 0.866, 0.631 }, -- badge tint (a held candle)
     duration = 10,                -- ~2 turns: a window, not a state
     preventsDeath = true,
 }

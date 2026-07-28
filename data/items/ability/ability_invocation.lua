@@ -4,7 +4,7 @@
 -- word: pride's channel spent on the priest's judgment, a bigger blessing for the longer wait.
 return {
     name = "Invocation",
-    description = "Winds up, then calls down holy fire on an area. Channelled: disrupted by hard control.",
+    description = "Channeled: sears enemies in area.",
     flavor = "The longer the prayer, the fewer the words needed at the end of it.",
     sprite = "assets/items/ability_invocation.png",
     type = "ability",

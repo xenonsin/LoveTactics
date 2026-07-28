@@ -8,7 +8,7 @@ return {
     name = "Fury",
     abbr = "Fry",
     description = "Cannot die; at the end, heals for half the damage dealt while raging.",
-    color = { 0.85, 0.20, 0.20 }, -- badge tint (blood red)
+    color = { 0.751, 0.246, 0.246 }, -- badge tint (blood red)
     duration = 20, -- ~4 turns at Status.TICKS_PER_TURN: a window with room to actually rage in
     preventsDeath = true,
     onApply = function(ctx)

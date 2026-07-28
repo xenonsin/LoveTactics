@@ -17,7 +17,7 @@
 -- to keep the fight happening on the tiles they picked.
 return {
     name = "Unravelling",
-    description = "Picked-loose ground: everything standing in it takes more from magic.",
+    description = "Inflicts Unravelled on units in it.",
     tags = { "arcane" },
     duration = 14,           -- ~3 turns for the party's casters to spend
     disposition = "hostile",

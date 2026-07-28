@@ -19,7 +19,7 @@
 -- when the mark never comes due.
 return {
     name = "Knell-Point",
-    description = "Skewers the two tiles ahead, and marks whatever stands in the second rank for death.",
+    description = "Inflicts Knell on the far tile.",
     flavor = "The bell is rung when the thrust lands. What it is counting down to has already been decided.",
     sprite = "assets/items/knell_point.png",
     type = "weapon",

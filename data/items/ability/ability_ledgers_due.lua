@@ -24,7 +24,7 @@
 -- Price -- the Undercroft settles more generously with somebody visibly in the trade.
 return {
     name = "The Ledger's Due",
-    description = "Spends a corpse for coin: nothing can raise or revive it afterwards.",
+    description = "Consume a corpse for gold; nothing can raise or revive it afterwards.",
     flavor = "Every name in the book has a number beside it. The book does not ask how the name got there.",
     sprite = "assets/items/ability_ledgers_due.png",
     type = "ability",

@@ -10,7 +10,7 @@
 -- by the measure, and the Crucible sells it two streets away regardless.
 return {
     name = "Elixir of the Adept",
-    description = "Raises an ally's Magic Damage for most of the battle.",
+    description = "Raises an ally's Magic Damage.",
     flavor = "The Arcanum has never once acknowledged that this works. It has never denied it either.",
     sprite = "assets/items/consumable_elixir_of_the_adept.png",
     type = "consumable",

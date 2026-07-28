@@ -6,7 +6,7 @@
 -- No `class`/`price`: not gear anyone shops for; it is what the thing is, not something it holds.
 return {
     name = "Volatile Core",
-    description = "When its bearer falls, it bursts.",
+    description = "On death: bursts.",
     flavor = "A demon bred hollow and filled with fire. It was never meant to come home.",
     sprite = "assets/items/sig_unappeased_heart.png", -- placeholder until its own art exists
     type = "utility",

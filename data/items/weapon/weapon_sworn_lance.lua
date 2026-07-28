@@ -19,7 +19,7 @@
 -- battle, so a single good thrust into a formation shapes the rest of the fight.
 return {
     name = "The Sworn Lance",
-    description = "Skewers the two tiles ahead and swears them to each other: either one that ends a turn apart bleeds for it.",
+    description = "Inflicts Sworn on both.",
     flavor = "She bound your people to each other to prove that they would leave each other. The Bastion had the pike reforged and did not argue the point.",
     sprite = "assets/items/sworn_lance.png",
     type = "weapon",

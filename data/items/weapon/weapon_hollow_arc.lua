@@ -19,7 +19,7 @@
 -- useless. It is an axe for a party built around the Arcanum, and a liability in a line of steel.
 return {
     name = "The Hollow Arc",
-    description = "Cleaves a wide arc with magic, leaving everything it caught Hollowed: weak to magic, and hard for steel to touch.",
+    description = "Inflicts Hollowed.",
     flavor = "The edge is real. What it opens is not, particularly.",
     sprite = "assets/items/hollow_arc.png",
     type = "weapon",

@@ -15,7 +15,7 @@ return {
     name = "Wolf Shape",
     abbr = "Wolf",
     description = "Wearing a wolf's body: fast, sharp-toothed, and holding your mana to stay that way.",
-    color = { 0.62, 0.66, 0.72 }, -- badge tint (wolf grey)
+    color = { 0.623, 0.657, 0.709 }, -- badge tint (wolf grey)
     duration = 30,
     -- A lie told about a body -- a hunter that says it's a wolf -- so Dispel Illusions strips it, and
     -- the shape's reserved mana comes back with it. This is the shape's real counterplay, and the one

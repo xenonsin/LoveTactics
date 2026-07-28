@@ -20,7 +20,7 @@
 -- It answers physical blows only, so a spell goes straight through the stance and lands on time.
 return {
     name = "Shield of the Kept Wound",
-    description = "Replaces Wait with Defend: swallow the next few blows entirely, then take all of it at once.",
+    description = "Replaces Wait with Defend and gains Kept Wound.",
     flavor = "The Bastion's field surgeons ask that whoever is carrying it tells them beforehand.",
     sprite = "assets/items/kept_wound_shield.png",
     type = "armor",

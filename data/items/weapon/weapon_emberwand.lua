@@ -14,7 +14,7 @@
 -- willing to stand behind.
 return {
     name = "Emberwand",
-    description = "Looses a bolt at range that sets the ground alight where it lands.",
+    description = "Looses a bolt that leaves Fire where it lands.",
     flavor = "The Arcanum teaches that fire is a tool. It also teaches that tools are held at arm's length.",
     sprite = "assets/items/emberwand.png",
     type = "weapon",

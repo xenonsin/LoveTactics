@@ -9,7 +9,7 @@
 -- split). The elemental debuff is what makes it the Battlemage's rather than any enchanter's.
 return {
     name = "Spellstrike",
-    description = "Adjacent weapons deal magical damage and set their targets Burning.",
+    description = "Adjacent weapons deal magical damage and inflict Burn.",
     flavor = "The Arcanum spent centuries deciding steel could not hold a spell. Nobody asked the steel.",
     sprite = "assets/items/utility_spellstrike.png",
     type = "utility",

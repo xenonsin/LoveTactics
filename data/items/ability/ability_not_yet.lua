@@ -24,7 +24,7 @@
 -- the one gate on this shelf a Monk can meet.
 return {
     name = "Not Yet",
-    description = "For a short while the target cannot be killed, and is left standing at a sliver.",
+    description = "Makes the target unkillable, and leaves it standing at low health.",
     flavor = "Two words, said quickly, over somebody who was not going to get a longer sentence.",
     sprite = "assets/items/ability_not_yet.png",
     type = "ability",

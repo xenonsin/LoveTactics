@@ -3,7 +3,7 @@
 -- See Combat.waitBehavior / Combat.defend and data/status/defending.lua.
 return {
     name = "Buckler",
-    description = "Replaces Wait with Defend: brace for a burst of physical defense.",
+    description = "Replaces Wait with Defend.",
     flavor = "The Bastion issues one to every recruit, before it issues them an opinion.",
     sprite = "assets/items/buckler.png",
     type = "armor",

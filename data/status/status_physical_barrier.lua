@@ -16,7 +16,7 @@ return {
     name = "Physical Barrier",
     abbr = "PBar",
     description = "Warded: the next physical attack is negated.",
-    color = { 0.70, 0.78, 0.90 }, -- badge tint (steely blue)
+    color = { 0.705, 0.773, 0.876 }, -- badge tint (steely blue)
     duration = 20, -- ~4 turns at Status.TICKS_PER_TURN, matching the magical barrier
     magnitude = 1, -- blows it swallows before it is spent; the granting spell raises it
     negates = "physical",

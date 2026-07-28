@@ -4,7 +4,7 @@
 -- disarm a soldier. Sight-gated, so cover shields a mage from being hushed across the board.
 return {
     name = "Silence",
-    description = "Inflicts Silenced: the foe cannot cast mana abilities for a time.",
+    description = "Inflicts Silence.",
     flavor = "It gags a caster. It does not disarm a soldier, and the Cathedral knows the difference.",
     sprite = "assets/items/ability_silence.png",
     type = "ability",

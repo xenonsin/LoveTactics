@@ -20,7 +20,7 @@ return {
     name = "Kept Wound",
     abbr = "Kept",
     description = "Kept: absorbs physical blows, then bursts for everything it swallowed.",
-    color = { 0.80, 0.44, 0.52 }, -- badge tint (held blood)
+    color = { 0.751, 0.454, 0.520 }, -- badge tint (held blood)
     duration = 15,                -- ~3 turns for the enemy to feed it
     magnitude = 2,                -- blows it swallows; the granting spell raises it per level
     negates = "physical",

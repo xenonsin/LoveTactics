@@ -150,10 +150,11 @@ function credits.enter(self, opts)
     -- again under a roll which has already finished is worse than silence.
     require("models.sound").music("music.credits")
 
-    credits.titleFont = credits.titleFont or love.graphics.newFont(52)
-    credits.headingFont = credits.headingFont or love.graphics.newFont(24)
-    credits.lineFont = credits.lineFont or love.graphics.newFont(18)
-    credits.hintFont = credits.hintFont or love.graphics.newFont(15)
+    local Theme = require("ui.theme")
+    credits.titleFont = credits.titleFont or Theme.display(52)
+    credits.headingFont = credits.headingFont or Theme.display(24)
+    credits.lineFont = credits.lineFont or Theme.body(18)
+    credits.hintFont = credits.hintFont or Theme.body(15)
 
     local def = require("data.credits")
     local ok, iconsDef = pcall(require, "data.credits_icons")
@@ -214,15 +215,15 @@ function credits.draw()
             if y > -h and y < Scale.HEIGHT then
                 if entry.kind == "title" then
                     love.graphics.setFont(credits.titleFont)
-                    love.graphics.setColor(0.95, 0.85, 0.55)
+                    require("ui.theme").set(require("ui.theme").accentAmber)
                     love.graphics.printf(entry.text, 0, y, Scale.WIDTH, "center")
                 elseif entry.kind == "heading" then
                     love.graphics.setFont(credits.headingFont)
-                    love.graphics.setColor(0.72, 0.66, 0.48)
+                    require("ui.theme").set(require("ui.theme").muted)
                     love.graphics.printf(entry.text, 0, y + 10, Scale.WIDTH, "center")
                 elseif entry.kind == "line" then
                     love.graphics.setFont(credits.lineFont)
-                    love.graphics.setColor(0.82, 0.83, 0.88)
+                    require("ui.theme").set(require("ui.theme").ink)
                     love.graphics.printf(entry.text, 0, y, Scale.WIDTH, "center")
                 end
             end

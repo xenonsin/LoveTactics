@@ -18,7 +18,7 @@
 -- behind rather than inside.
 return {
     name = "Sunfall",
-    description = "A drawn shaft that lands burning, leaving a ring of white fire that scorches and blinds.",
+    description = "Channeled: Inflicts Burn and Blind.",
     flavor = "It is not the sun. The Lodge is quite firm on this and has stopped being asked.",
     sprite = "assets/items/sunfall.png",
     type = "weapon",

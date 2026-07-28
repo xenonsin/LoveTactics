@@ -13,7 +13,7 @@
 -- really for, and it is why the storm is worth the turn even against a line that will just walk out.
 return {
     name = "Gagging Storm",
-    description = "Screaming static: nothing standing in it can spend mana on a working.",
+    description = "Inflicts Silenced on units in it.",
     tags = { "lightning", "conductable" }, -- it is a storm: a bolt cast into it carries, as it should
     duration = 12,            -- ~2.5 turns
     disposition = "hostile",

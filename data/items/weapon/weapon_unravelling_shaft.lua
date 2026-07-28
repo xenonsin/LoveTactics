@@ -18,7 +18,7 @@
 -- against an enemy caster is a real way to lose people. It is a zone for the enemy's half of the board.
 return {
     name = "The Unravelling Shaft",
-    description = "Fires at range and picks the ground loose where it lands: everything standing there takes more from magic.",
+    description = "Inflicts Unravelled in area.",
     flavor = "The fletching is somebody's unpicked stole. The Cathedral has asked about this twice.",
     sprite = "assets/items/unravelling_shaft.png",
     type = "weapon",

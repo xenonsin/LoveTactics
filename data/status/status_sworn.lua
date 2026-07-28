@@ -18,7 +18,7 @@ return {
     name = "Sworn",
     abbr = "Swn",
     description = "Sworn to another. End your turn apart from them and it bites.",
-    color = { 0.38, 0.32, 0.50 }, -- badge tint (a cold liturgical violet)
+    color = { 0.376, 0.326, 0.477 }, -- badge tint (a cold liturgical violet)
     duration = 999,       -- an imposed oath does not wear off; it lasts the battle
     hideDuration = true,  -- the countdown is meaningless -- where you are standing is the story
     magnitude = 6,        -- damage taken for a turn ended apart; the trait overwrites it

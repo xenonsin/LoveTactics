@@ -3,7 +3,7 @@
 -- reads the trait). A mage-class relic, sold at the Arcanum; the answer to the game's mana scarcity.
 return {
     name = "Mana Wellspring",
-    description = "Your mana slowly returns, alone of all the pools.",
+    description = "Mana slowly returns, alone of all the pools.",
     flavor = "A stone that weeps blue light, and the Arcanum's answer to its own worst rule.",
     sprite = "assets/items/mana_wellspring.png",
     type = "utility",

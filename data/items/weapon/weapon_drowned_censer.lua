@@ -18,7 +18,7 @@
 -- keep walking.
 return {
     name = "The Drowned Censer",
-    description = "Wreathes you in rain: everything near you is left soaked, whichever side it is on.",
+    description = "Inflicts Wet on adjacent units.",
     flavor = "It has not been dry since it was made. The Cathedral stopped trying some time ago.",
     sprite = "assets/items/drowned_censer.png",
     type = "weapon",

@@ -23,7 +23,7 @@ return {
     name = "Sealed Ward",
     abbr = "Seal",
     description = "Sealed: the next single-target spell aimed at it is refused outright.",
-    color = { 0.86, 0.80, 0.52 }, -- badge tint (old gold: a seal, not a shield)
+    color = { 0.815, 0.765, 0.531 }, -- badge tint (old gold: a seal, not a shield)
     duration = 40,                -- ~8 turns: the relic holds it up, so it waits to be tested
     magnitude = 1,                -- workings it refuses before it is spent
     negates = "cast",

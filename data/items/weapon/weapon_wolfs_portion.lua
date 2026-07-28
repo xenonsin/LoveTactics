@@ -21,7 +21,7 @@
 -- guards with him and you have thrown the turn away.
 return {
     name = "Wolf's Portion",
-    description = "Cleaves a wide arc -- devastating against a lone foe, and weaker for every extra body it catches.",
+    description = "Decrease damage by 35% per extra foe in the arc, down to 25%.",
     flavor = "The wolf that eats first eats everything. The pack is the part that goes wrong.",
     sprite = "assets/items/wolfs_portion.png",
     type = "weapon",

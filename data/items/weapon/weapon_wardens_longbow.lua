@@ -16,7 +16,7 @@
 -- to stand still in front of something that can reach you.
 return {
     name = "Warden's Longbow",
-    description = "Drawn over a full turn, and held longer for a heavier shaft -- up to three extra ticks of draw.",
+    description = "Channeled: hold longer for +25% damage per extra tick, up to three.",
     flavor = "A warden's watch is mostly waiting. The bow was made by someone who understood that this was the skill.",
     sprite = "assets/items/wardens_longbow.png",
     type = "weapon",
@@ -26,7 +26,7 @@ return {
     price = 300,
     repRank = 2,
     activeAbility = {
-        description = "Hold the draw longer for a heavier shaft: each extra tick adds a quarter of the shot.",
+        description = "Holding the draw longer draws a heavier shaft: each extra tick adds a quarter of the shot.",
         target = "enemy",
         range = 5,    -- the family's reach: two tiles past a bow
         minRange = 2, -- and the family's dead zone

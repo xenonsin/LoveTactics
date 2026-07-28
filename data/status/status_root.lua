@@ -6,7 +6,7 @@ return {
     name = "Root",
     abbr = "Rt",
     description = "Cannot move this turn, and still burns time as if it had walked.",
-    color = { 0.55, 0.75, 0.45 }, -- badge tint (green)
+    color = { 0.543, 0.710, 0.460 }, -- badge tint (green)
     duration = 6,                 -- ticks the root lasts
     debuff = true,                -- removable by Cure
     blocksMove = true,

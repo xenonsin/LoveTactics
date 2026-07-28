@@ -1,0 +1,26 @@
+-- Seal: Lightning -- a brief, absolute ward granting Immune: Lightning (data/status/status_immune_lightning.lua): every
+-- lightning-tagged hit is voided to 0 for a short window. Short and premium on purpose -- the answer to the one
+-- big blow, not a stance to live in. A deliberate BORROW that says so: warding an ally is usually the
+-- priest's work (docs/classes.md), but a CATEGORICAL immunity to a damage type is arcane mastery
+-- overreaching, which is pride's own sin -- the mage seals the type off where the priest only softens it.
+-- It is the true 0 that no amount of Resistant: Lightning can reach. See docs/vulnerability.md.
+return {
+    name = "Seal: Lightning",
+    description = "Wards yourself or an ally with Immune: Lightning for a short time.",
+    flavor = "For one breath the storm is told no, and the storm obeys.",
+    sprite = "assets/items/ability_seal_lightning.png",
+    type = "ability",
+    tags = { "protective", "arcane" },
+    class = "mage",
+    price = 260,
+    repRank = 3,
+    activeAbility = {
+        target = "ally", -- includes the caster
+        range = 2,
+        speed = 3,
+        cost = { stat = "mana", amount = 14 },
+        effect = function(fx)
+            fx.applyStatus(fx.target, "status_immune_lightning")
+        end,
+    },
+}

@@ -14,7 +14,7 @@
 -- which is exactly the bluff the ward is for.
 return {
     name = "Reflect Magic",
-    description = "Mirrors an ally for a time: single-target spells rebound onto the caster.",
+    description = "Grants an ally Reflect Magic.",
     flavor = "Against a mage who then declines to cast at it, it bought nothing. That is the bluff.",
     sprite = "assets/items/ability_reflect_magic.png",
     type = "ability",

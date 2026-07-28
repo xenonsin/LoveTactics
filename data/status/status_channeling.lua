@@ -10,7 +10,7 @@ return {
     name = "Channeling",
     abbr = "Ch",
     description = "Winding up a powerful spell; disrupted by hard control or forced movement.",
-    color = { 0.65, 0.45, 0.95 }, -- badge tint (arcane violet)
+    color = { 0.568, 0.414, 0.786 }, -- badge tint (arcane violet)
     duration = 99,                -- safety cap; overridden per-cast to the wind-up + 1
     -- The countdown is that safety cap, not the wind-up: it never counts the move cost the caster paid
     -- on the cast turn, and it carries the +1 tick of slack. The resolve slot lives on the timeline

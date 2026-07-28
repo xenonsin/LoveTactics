@@ -19,7 +19,7 @@
 -- which is what keeps it a read on the enemy's kit rather than a general-purpose shield.
 return {
     name = "Wand of the Sealed Ward",
-    description = "Seals an ally at range: the next single-target spell aimed at them is refused outright. Deals no damage.",
+    description = "Grants Sealed Ward.",
     flavor = "The Arcanum is very clear that it is not a shield. A shield would have to be hit.",
     sprite = "assets/items/sealed_ward_wand.png",
     type = "weapon",

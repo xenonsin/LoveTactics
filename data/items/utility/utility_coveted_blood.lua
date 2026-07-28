@@ -25,7 +25,7 @@
 -- follows: an upgrade buys a stronger blessing, never a wider one (see Combat.layIncense).
 return {
     name = "Coveted Blood",
-    description = "Lays a cloud around you: foes standing in it take extra damage from piercing hits.",
+    description = "Inflicts Exposed on adjacent foes.",
     flavor = "It is not that she wants them dead. It is that she wants to have been necessary.",
     sprite = "assets/items/utility_coveted_blood.png",
     type = "utility",

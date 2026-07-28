@@ -492,17 +492,18 @@ function Dialogue:draw()
 
     -- Scene title, top-left -- suppressed over a live scene, where that corner belongs to whatever
     -- is already running (the battle keeps its own controls there).
+    local Theme = require("ui.theme")
     if self.title and not self.overScene then
         love.graphics.setFont(self.titleFont)
-        love.graphics.setColor(0.95, 0.85, 0.55)
+        Theme.set(Theme.accentAmber)
         love.graphics.print(self.title, 40, 28)
     end
 
     -- The text box.
-    love.graphics.setColor(0.08, 0.09, 0.13, 0.92)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, self.boxW, self.boxH, 10, 10)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, self.boxW, self.boxH, 10, 10)
+    Theme.set(Theme.panel, 0.94)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
 
     -- Over a live scene, the speaker instead stands at the box's left end (see :drawSideBust).
     if self.overScene and activeMember then self:drawSideBust(activeMember) end
@@ -525,9 +526,11 @@ function Dialogue:draw()
             plateX = math.max(self.boxX, math.min(plateX, self.boxX + self.boxW - plateW))
         end
         local plateY = self.boxY - 20
-        love.graphics.setColor(0.20, 0.34, 0.62)
-        love.graphics.rectangle("fill", plateX, plateY, plateW, 32, 6, 6)
-        love.graphics.setColor(0.95, 0.96, 1)
+        Theme.set(Theme.slot)
+        love.graphics.rectangle("fill", plateX, plateY, plateW, 32, Theme.R, Theme.R)
+        Theme.set(Theme.frame)
+        love.graphics.rectangle("line", plateX, plateY, plateW, 32, Theme.R, Theme.R)
+        Theme.set(Theme.accentAmber)
         love.graphics.printf(speakerName, plateX, plateY + 5, plateW, "center")
     end
 
@@ -544,10 +547,10 @@ function Dialogue:draw()
         -- A system banner -- a party join, "[<name> has joined your Party]". It has no speaker (so no
         -- portrait and no name plate were drawn), and reads as an announcement rather than a spoken
         -- line: centred in the box and in the party accent, the same gold the recruit toast used.
-        love.graphics.setColor(0.95, 0.85, 0.55)
+        Theme.set(Theme.accentAmber)
         love.graphics.printf(shown, textX, self.boxY + self.boxH / 2 - self.textFont:getHeight() / 2, textW, "center")
     else
-        love.graphics.setColor(0.9, 0.9, 0.94)
+        Theme.set(Theme.ink)
         love.graphics.printf(shown, textX, textY, textW, "left")
     end
 

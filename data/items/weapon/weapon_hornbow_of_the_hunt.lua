@@ -16,7 +16,7 @@
 -- kill. Its range 5 stops being a safety margin and becomes the damage stat.
 return {
     name = "Hornbow of the Hunt",
-    description = "Fires at long range. Every tile past point-blank adds to the shot's power.",
+    description = "Increase damage for each tile past point-blank.",
     flavor = "Strung with sinew from something the Lodge will not name. Nobody there asks what becomes of a hunter who never stops being hungry.",
     sprite = "assets/items/hornbow_of_the_hunt.png",
     type = "weapon",

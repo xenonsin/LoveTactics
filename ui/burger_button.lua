@@ -13,6 +13,8 @@
 -- Deliberately the same shape as ui/close_button.lua: the two are a pair (one opens the modal, one
 -- shuts it), and a second widget with a different contract would be one more thing to remember.
 
+local Theme = require("ui.theme")
+
 local BurgerButton = {}
 BurgerButton.__index = BurgerButton
 
@@ -37,19 +39,15 @@ function BurgerButton:contains(px, py)
 end
 
 function BurgerButton:draw()
-    if self.hovered then
-        love.graphics.setColor(0.26, 0.28, 0.38, 0.95)
-    else
-        -- Sits over a painted city, so it carries its own slightly translucent plate rather than
-        -- trusting the background behind it to be dark enough for the bars to read.
-        love.graphics.setColor(0.12, 0.13, 0.18, 0.8)
-    end
-    love.graphics.rectangle("fill", self.x, self.y, self.w, self.h, 6, 6)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.x, self.y, self.w, self.h, 6, 6)
+    -- Sits over a painted city, so it carries its own slightly translucent plate rather than trusting
+    -- the background behind it to be dark enough for the bars to read.
+    Theme.set(self.hovered and Theme.panel or Theme.panel2, self.hovered and 0.95 or 0.85)
+    love.graphics.rectangle("fill", self.x, self.y, self.w, self.h, Theme.R, Theme.R)
+    Theme.set(self.hovered and Theme.accentAmber or Theme.frame)
+    love.graphics.rectangle("line", self.x, self.y, self.w, self.h, Theme.R, Theme.R)
 
     -- Three bars, drawn as rectangles so the glyph needs no font.
-    love.graphics.setColor(self.hovered and 1 or 0.88, self.hovered and 0.95 or 0.88, 0.92)
+    Theme.set(self.hovered and Theme.accentAmber or Theme.ink)
     local barW = self.w - BAR_INSET * 2
     local stack = BAR_H * 3 + BAR_GAP * 2
     local top = self.y + (self.h - stack) / 2

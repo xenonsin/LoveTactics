@@ -16,7 +16,7 @@
 -- in it feeds the swing exactly as a foe would, and takes the boosted hit for the privilege.
 return {
     name = "Butcher's Wedge",
-    description = "Cleaves the arc in front. Each extra body caught adds to what all of them take.",
+    description = "Increase damage for each foe in area.",
     flavor = "The Colosseum hands it to whoever they mean to send against a mob. It is the one weapon that gets better the worse the odds are.",
     sprite = "assets/items/butchers_wedge.png",
     type = "weapon",

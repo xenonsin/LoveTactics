@@ -17,7 +17,7 @@
 -- sorcery, which is the narrow reading and the fair one.
 return {
     name = "The Whitening",
-    description = "Winds up, then falls on one tile for magical damage -- turned by Magic Defense, and untouched by armour.",
+    description = "Channeled: Damage ignores armor.",
     flavor = "The smiths who made it were asked for something that could get through the Bastion's plate. Nobody specified through.",
     sprite = "assets/items/whitening.png",
     type = "weapon",

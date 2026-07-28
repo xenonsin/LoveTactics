@@ -14,7 +14,7 @@
 -- is the number the blow lands.
 return {
     name = "Empty Vessel",
-    description = "You strike far harder against enemies whose mana is spent.",
+    description = "Increase damage against enemies whose mana is spent.",
     flavor = "Empty the jug first. What happens to the jug afterwards is a much shorter conversation.",
     sprite = "assets/items/utility_empty_vessel.png",
     type = "utility",

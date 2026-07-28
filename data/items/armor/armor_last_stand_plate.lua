@@ -19,7 +19,7 @@
 -- utility_veterans_resolve grants the same rule from a cell.
 return {
     name = "Last Stand Plate",
-    description = "Falling below 40% health once: raise a barrier and gain +4 Damage for the battle.",
+    description = "On first dropping below 40% health: raise a barrier and gain +4 Damage this battle.",
     flavor = "The Colosseum's armourers fit it to fighters they have watched lose. It is not offered to the others.",
     sprite = "assets/items/armor_last_stand_plate.png",
     type = "armor",

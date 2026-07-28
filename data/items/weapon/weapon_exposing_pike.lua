@@ -13,7 +13,7 @@
 -- people's hits land is worth spreading, where a root is worth rationing.
 return {
     name = "Exposing Pike",
-    description = "Skewers the two tiles ahead and leaves them Exposed: every piercing hit lands harder on them.",
+    description = "Inflicts Exposed on the far tile.",
     flavor = "The Bastion drills two ranks of pikes for a reason. The first rank is not the one that kills you.",
     sprite = "assets/items/exposing_pike.png",
     type = "weapon",
@@ -33,9 +33,14 @@ return {
         damage = { 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10 },
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
+            -- The spear convention (docs/weapons.md): the point opens only the FAR rank.
+            local dx, dy = fx.tx - fx.user.x, fx.ty - fx.user.y
+            local farX, farY = fx.tx + dx, fx.ty + dy
             for _, u in ipairs(fx.aoeUnits()) do
                 fx.damage(u)
-                if u.alive then fx.applyStatus(u, "status_exposed") end
+                if u.alive and u.x == farX and u.y == farY then
+                    fx.applyStatus(u, "status_exposed")
+                end
             end
         end,
     },

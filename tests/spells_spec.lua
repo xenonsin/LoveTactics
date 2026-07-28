@@ -206,14 +206,14 @@ return {
         end,
     },
     {
-        name = "a fallen ally leaves a corpse that Revive brings back at half health",
+        name = "a fallen ally lies incapacitated where Revive brings them back at half health",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1), unit("character_knight", 2, 1) }, {})
             local priest, knight = c.units[1], c.units[2]
             -- Fell the knight.
             Combat.dealFlatDamage(c, knight, 9999, { "physical" }, "a blow")
-            assert(not knight.alive and knight.corpse, "the knight left a corpse")
-            assert(Combat.corpseAt(c, 2, 1) == knight, "the corpse is found on its tile")
+            assert(not knight.alive and knight.incapacitated, "the knight lies incapacitated")
+            assert(Combat.downedAt(c, 2, 1) == knight, "the downed body is found on its tile")
 
             local revive = Item.instantiate("ability_revive")
             openTurn(c, priest)
@@ -231,7 +231,7 @@ return {
             local priest, knight, bandit = c.units[1], c.units[2], c.units[3]
             Combat.dealFlatDamage(c, knight, 9999, { "physical" }, "a blow")
             bandit.x, bandit.y = 2, 1 -- stand the foe on the body
-            assert(Combat.corpseAt(c, 2, 1) == nil, "a body under a living unit is unreachable")
+            assert(Combat.downedAt(c, 2, 1) == nil, "a body under a living unit is unreachable")
             assert(not Combat.reanimate(c, knight, 0.5), "reanimation refuses the occupied tile")
         end,
     },
@@ -241,7 +241,11 @@ return {
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 5, 5) })
             local mage, bandit = c.units[1], c.units[2]
             Combat.dealFlatDamage(c, bandit, 9999, { "physical" }, "a blow")
-            assert(bandit.corpse, "the bandit left a corpse")
+            -- A felled human is INCAPACITATED first, not a corpse: age its window out so the body goes
+            -- cold to a raisable corpse before Raise Dead can read it.
+            assert(bandit.incapacitated and not bandit.corpse, "the bandit is incapacitated, not yet a corpse")
+            Status.tick(c, 15)
+            assert(bandit.corpse, "the window ran out: the bandit is now a corpse")
 
             local raise = Item.instantiate("ability_raise_dead")
             mage.x, mage.y = 5, 6

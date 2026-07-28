@@ -20,7 +20,7 @@
 -- utility_survivors_reflex is the charm form.
 return {
     name = "Everdraught Bandolier",
-    description = "Bloodied by a blow, you drink a healing potion at once -- no turn spent.",
+    description = "On hit taken: drink a healing potion, no turn spent.",
     flavor = "The Crucible fits it free to anyone who buys the potions to fill it, which is the entire idea.",
     sprite = "assets/items/armor_everdraught_bandolier.png",
     type = "armor",

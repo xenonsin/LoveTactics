@@ -22,7 +22,7 @@
 -- that land off the map are harmlessly skipped by fx.unitAt.
 return {
     name = "Hailfall Longbow",
-    description = "Drawn over a turn, then drops five arrows on random tiles in a wide spread. Hits allies too.",
+    description = "Channeled: hits five random tiles in area, allies included.",
     flavor = "Aim is a courtesy the Lodge extends to single animals. A herd gets weather instead.",
     sprite = "assets/items/hailfall_longbow.png",
     type = "weapon",

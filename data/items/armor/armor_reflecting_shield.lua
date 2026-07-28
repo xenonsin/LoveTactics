@@ -18,7 +18,7 @@
 -- does not swing. It is the attack, arriving at the wrong address.
 return {
     name = "Reflecting Shield",
-    description = "Replaces Wait with Defend: brace, and the next physical blow aimed at you rebounds onto its attacker.",
+    description = "Replaces Wait with Defend and gains Reflect Steel.",
     flavor = "The Bastion's smiths insist the finish is functional. Nobody has asked what function.",
     sprite = "assets/items/reflecting_shield.png",
     type = "armor",

@@ -20,7 +20,7 @@ return {
     name = "Limned",
     abbr = "Limn",
     description = "Limned: lit up, and targetable however well it is hidden.",
-    color = { 0.98, 0.94, 0.72 }, -- badge tint (flare white-gold)
+    color = { 0.948, 0.914, 0.727 }, -- badge tint (flare white-gold)
     duration = 8,                 -- the backstop; the light under it is what really holds this up
     debuff = true,                -- a Cure lifts it, at the price of the cure
     revealsBearer = true,

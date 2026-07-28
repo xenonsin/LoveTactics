@@ -18,7 +18,7 @@
 -- and then spend the turn, which is two commitments, and both of them are visible to the enemy.
 return {
     name = "The Martyr's Shield",
-    description = "Replaces Wait with Defend: brace, and take half of every wound your neighbours suffer.",
+    description = "Replaces Wait with Defend, taking half of every wound your neighbours suffer.",
     flavor = "The Bastion's oath does not say you will protect them. It says you will be there instead.",
     sprite = "assets/items/martyrs_shield.png",
     type = "armor",

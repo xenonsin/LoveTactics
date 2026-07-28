@@ -16,7 +16,7 @@
 -- sources at once -- which is the intended, and the reason it sits where it does on the shelf.
 return {
     name = "Censer of the Red Hour",
-    description = "Wreathes you in red smoke: allies standing in it drink back a share of everything they deal.",
+    description = "Grants Bloodsong to adjacent allies.",
     flavor = "The Cathedral files it under mercy, on the grounds that it keeps people alive. The filing is not popular.",
     sprite = "assets/items/censer_red_hour.png",
     type = "weapon",

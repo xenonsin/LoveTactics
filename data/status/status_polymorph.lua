@@ -22,7 +22,7 @@ return {
     name = "Polymorph",
     abbr = "Pig",
     description = "A pig: it can move, and it can do nothing else.",
-    color = { 0.95, 0.65, 0.72 }, -- badge tint (pink)
+    color = { 0.912, 0.658, 0.718 }, -- badge tint (pink)
     duration = 12,
     debuff = true,             -- Cure/Panacea break the spell early
     -- A lie told about a body: this one is a knight and says it's a pig. So Dispel Illusions unravels

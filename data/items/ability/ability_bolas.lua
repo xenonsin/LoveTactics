@@ -4,7 +4,7 @@
 -- bow shot, so it needs no weapon beside it -- the snare IS the tool.
 return {
     name = "Bolas",
-    description = "Deals damage and inflicts Root at range, pinning a foe for the kill.",
+    description = "Deals damage and inflicts Root.",
     flavor = "The Lodge tracks. The Undercroft collects. This is the knot where the two trades meet.",
     sprite = "assets/items/ability_bolas.png",
     type = "ability",

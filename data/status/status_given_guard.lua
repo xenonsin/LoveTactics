@@ -17,7 +17,7 @@ return {
     name = "Given Guard",
     abbr = "Givn",
     description = "Guard given away: defense is lowered while it holds.",
-    color = { 0.58, 0.54, 0.50 }, -- badge tint (bare, unarmoured)
+    color = { 0.571, 0.537, 0.502 }, -- badge tint (bare, unarmoured)
     duration = 12,
     magnitude = -6,
     magnitudeStat = "defense",

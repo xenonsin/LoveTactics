@@ -5,7 +5,7 @@
 -- it can't be stolen off a demon, and a copy of one never carries its maker's flesh.
 return {
     name = "Demonic Essence",
-    description = "Holy damage bites far deeper.",
+    description = "Its wearer takes extra holy damage.",
     flavor = "Not gear at all -- the stuff a demon is made of, and it comes off nothing living.",
     sprite = "assets/items/demonic_essence.png",
     type = "utility",

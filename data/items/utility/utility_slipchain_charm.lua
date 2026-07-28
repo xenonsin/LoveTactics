@@ -11,7 +11,7 @@
 -- is what the resistance curve already sells, at a curve's price.
 return {
     name = "Slipchain Charm",
-    description = "The bearer cannot be pinned: immune to Rooted and Mired.",
+    description = "Immune to Root and Mired.",
     flavor = "The Undercroft's first rule is to never be where the blow lands. Its second is to never be held there.",
     sprite = "assets/items/slipchain_charm.png",
     type = "utility",

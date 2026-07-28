@@ -11,7 +11,7 @@
 -- wall so that everything else in the party can swing at what is behind it.
 return {
     name = "Tinker's Maul",
-    description = "Strips a foe's brace and wards, then stuns them. Hits softly -- what it is for is opening things.",
+    description = "Strips a foe's guards and wards, then inflicts Stun.",
     flavor = "Every apprentice is told it is for dressing plate. Every journeyman finds out what it is really for.",
     sprite = "assets/items/tinkers_maul.png",
     type = "weapon",

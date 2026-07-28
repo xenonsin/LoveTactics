@@ -19,7 +19,7 @@
 -- Halts because of what it IS, and the Writ is for everything else the warden owns.
 return {
     name = "Marchstone",
-    description = "Carries a warden's line with you: foes entering the ring around you are Halted.",
+    description = "Inflicts Halt on adjacent foes.",
     flavor = "The old stones marked the parish edge. This one was pried up and has been walking ever since.",
     sprite = "assets/items/utility_marchstone.png",
     type = "utility",

@@ -12,7 +12,7 @@
 -- fusion pointed at holding a place open.
 return {
     name = "The Long Prayer",
-    description = "A channelled blessing: lays sanctified ground, wider for every tick you held it.",
+    description = "Channeled: leaves Sacred Ground in area, wider for each tick held.",
     flavor = "The words are short. It is the pauses between them that do the work.",
     sprite = "assets/items/ability_the_long_prayer.png",
     type = "ability",
@@ -28,7 +28,7 @@ return {
         windup = 4, -- winds up before it fires (Combat reads `windup`)
         support = true,
         cost = { stat = "mana", amount = 16 },
-        description = "Channels, then sanctifies a circle that widens with the wind-up served.",
+        description = "Channeled: leaves Sacred Ground in area, wider for the wind-up held.",
         effect = function(fx)
             -- One tile of reach per two ticks held, floored at 1: an interrupted prayer still leaves a
             -- patch of holy ground rather than nothing, so the wind-up is a scale and not a gate.
