@@ -1,12 +1,12 @@
--- Ira's rule, and the line's thesis in one hook (docs/story.md, "The Colosseum: wrath, designed").
+-- Ira's rule, and the line's thesis in one hook (docs/story.md, docs/wrath-line-beats.md).
 --
--- She was blind from birth and raised in the Perennial's program to feel nothing -- no fear response,
--- no pain response, no attachment. The first sensation of her life was rage, and it is still the only
--- one that reaches her. So this is NOT anger-scaling. It is the threshold of sensation, and the
--- threshold is nearly death: the closer she is to dying, the more of her comes back.
+-- The Perennial's owned champion, she held a sullen wrath down for years -- resentment suppressed under
+-- a lifetime of discipline. Then she pacted for freedom and got an uncontrollable rage instead. So this
+-- is NOT generic berserker anger-scaling. It is the RESTRAINT breaking: the closer she is to death, the
+-- less of the person is left holding the leash, and the rage she bought rises past her control.
 --
--- She is not most dangerous when she is winning. She is most AWAKE when she is dying, and she goes
--- looking for it -- and short of that, she will take being hit at all.
+-- She is not most dangerous when she is winning. She is most UNLEASHED when she is dying, and a long
+-- trade is what looses her -- and short of that, every blow that lands wakes a little more of it.
 --
 -- WHAT CHANGED, and why. This used to bank a flat bonus per blow survived and nothing else, which
 -- reads as a generic berserker: hit it, it gets angry, and forty scratches were worth more than one
@@ -14,8 +14,8 @@
 -- she is to gone, so a party that opens big and a party that whittles no longer arrive at the same
 -- place by the same road.
 --
--- MONOTONIC on purpose (`want > have`): healing her does not calm her down. Nothing she has ever felt
--- has gone away, and rage a potion could soothe would be a mood rather than a self.
+-- MONOTONIC on purpose (`want > have`): healing her does not calm her down. The rage is not a mood she
+-- chose and cannot un-choose; a potion cannot hand her back the leash she bargained away.
 --
 -- The bonus lives in `ctx.addBonus`, which writes the unit's per-battle `bonus` table -- never the
 -- shared character instance -- so it does not follow the blueprint into the next battle, nor follow a
@@ -26,14 +26,15 @@
 -- The `wrath` status alongside grants NOTHING: it exists so the player can watch the number climb and
 -- work out, before it is too late, that a long trade is how she wins. The counterplay is Saber's, and
 -- it is the same axis read backwards (data/items/weapon/weapon_first_motion.lua): Ira scales as her
--- own health falls, Saber scales with her target's. Grind Ira down and you are waking her up.
+-- own health falls, Saber scales with her target's. Grind Ira down and you are only loosing the rage.
 -- TWO SOURCES, and the second one exists to close a hole the first leaves open. Missing health alone
 -- means a party that chips her with many small, heavily mitigated blows barely moves the curve while
 -- very much fighting her -- her own armour would be quietly protecting the player from her rule. So
 -- every blow that lands counts as well, whatever it was worth.
 --
--- That is also the truer reading of her. What reaches her is CONTACT. A blow that glances off is
--- still someone touching her, and she was raised in a place where nothing did.
+-- That is also the truer reading of her. What looses the rage is CONTACT. A blow that glances off is
+-- still a hand laid on a woman who spent her life not permitted to answer one -- and now she can only
+-- answer, and cannot stop.
 --
 --   bonus = floor(magnitude x fraction of health gone)  +  perBlow x blows survived
 --

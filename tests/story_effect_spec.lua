@@ -97,7 +97,7 @@ return {
     {
         name = "the flight events' choice effects are well-formed and grant real items",
         fn = function()
-            for _, id in ipairs({ "flight_event_shrine", "flight_event_survivor" }) do
+            for _, id in ipairs({ "conversation_flight_event_shrine", "conversation_flight_event_survivor" }) do
                 local def = Conversation.defs[id]
                 assert(def, "event conversation exists: " .. id)
                 local sawEffect = false

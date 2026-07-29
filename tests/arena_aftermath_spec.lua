@@ -2,14 +2,14 @@
 -- walk (its inline `followUp`) where Saber catches the party at the gate out and asks in. This pins the
 -- data wiring states/game.lua leans on -- the meet objective, its join scene, and the held-then-drained
 -- join banner -- so the flow can't rot without a test going red. Headless, pure. See
--- data/quests/colosseum/slot_01_arena_debut.lua, data/conversations/arena_saber_joins.lua, states/game.lua.
+-- data/quests/colosseum/quest_colosseum_slot_01.lua, data/conversations/arena_saber_joins.lua, states/game.lua.
 
 local Quest = require("models.quest")
 local Player = require("models.player")
 local Character = require("models.character")
 local Conversation = require("models.conversation")
 
-local JOIN_SCENE = "arena_saber_joins"
+local JOIN_SCENE = "conversation_colosseum_slot_01_join"
 
 local function clearJoins()
     for i = #Conversation.pendingJoins, 1, -1 do Conversation.pendingJoins[i] = nil end
@@ -19,7 +19,7 @@ return {
     {
         name = "the debut still earns Saber, and hands off to a scripted follow-up leg",
         fn = function()
-            local def = Quest.defs["slot_01_arena_debut"]
+            local def = Quest.defs["quest_colosseum_slot_01"]
             assert(def, "arena_debut exists")
             assert(def.rewardCharacter == "character_saber", "Saber is still the debut's reward")
             local leg = def.followUp
@@ -30,7 +30,7 @@ return {
     {
         name = "the follow-up leg ends on a non-combat meeting that plays the join scene",
         fn = function()
-            local obj = Quest.defs["slot_01_arena_debut"].followUp.map.objective
+            local obj = Quest.defs["quest_colosseum_slot_01"].followUp.map.objective
             assert(obj.meet, "the objective is a non-combat meeting, not a fight")
             assert(obj.conversation == JOIN_SCENE, "reaching it plays Saber's join scene")
             -- A meeting objective needs no composition (there is no battle); a stray one would mean the

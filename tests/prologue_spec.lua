@@ -14,8 +14,8 @@ local Conversation = require("models.conversation")
 -- not played as a scene -- it is the village fight's speech-bubble text (models/tutorial.lua) -- but
 -- it lives in the same folder and must resolve like any other. See states/hub.lua for the arrival.
 local PROLOGUE_SCENES = {
-    "prologue_intro", "prologue_flee", "prologue_arrival",
-    "prologue_flier", "prologue_victory", "tutorial_village",
+    "conversation_prologue_intro", "conversation_prologue_flee", "conversation_prologue_arrival",
+    "conversation_prologue_flier", "conversation_colosseum_slot_01_outro", "conversation_tutorial_village",
 }
 
 return {
@@ -66,7 +66,7 @@ return {
     {
         name = "the debut quest's boss is the Saber twin, and the win ends when she falls",
         fn = function()
-            local def = Quest.defs["slot_01_arena_debut"]
+            local def = Quest.defs["quest_colosseum_slot_01"]
             assert(def, "arena_debut exists")
             local list = def.map.objective.composition({ prestige = 1 })
             local hasBout = false

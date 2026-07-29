@@ -39,6 +39,11 @@ local DISSOLVE_EDGE = { 1.00, 0.55, 0.16 }
 local MATERIALIZE_EDGE = { 0.55, 0.74, 1.00 }
 local MATERIALIZE_TIME = 0.45 -- seconds a newly-arrived unit spends knitting in
 
+-- The player-turn cue (drawTurnCue): a one-shot ring burst plus a steady bobbing chevron over the
+-- acting party unit, so control landing on YOU pulls the eye rather than resting on the calm gold ring.
+local TURN_FLARE_TIME = 0.7           -- seconds the turn-start ring burst plays out
+local TURN_CUE = { 0.99, 0.86, 0.42 } -- warm gold, keyed to the acting-unit ring in drawHighlights
+
 local BattleMap = {}
 BattleMap.__index = BattleMap
 
@@ -108,6 +113,7 @@ function BattleMap.new(arena, opts)
     -- present at the opening bell are NOT treated as summoned. Compiled lazily on first use.
     self.materialize = {}
     self.known = nil -- nil until the first update seeds it with the starting roster
+    self.turnFlare = nil -- a live { unit, t } while the turn-start ring burst plays (flareTurn)
     return self
 end
 
@@ -191,6 +197,10 @@ function BattleMap:update(dt)
     self.fields:update(dt) -- the field shader's shared clock + per-field birth ramps
     self.bursts:update(dt) -- impact bursts age out; bolts in flight advance and land
     self:trackArrivals(dt)  -- a unit that appears mid-battle (a summon, a reinforcement) knits in
+    if self.turnFlare then  -- the one-shot turn-start burst ages out; the chevron persists off self.time
+        self.turnFlare.t = self.turnFlare.t + dt
+        if self.turnFlare.t >= TURN_FLARE_TIME then self.turnFlare = nil end
+    end
     -- Poll the analog stick for cursor movement (edge-detected so a held stick moves
     -- one cell per push, matching ui/menu.lua).
     if not love.joystick then return end
@@ -251,6 +261,13 @@ function BattleMap:moveCursor(dx, dy)
     self.cursor.y = math.max(1, math.min(self.arena.rows, self.cursor.y + dy))
 end
 
+-- Kick off the turn-start flourish on `unit` -- rings burst outward from its body over TURN_FLARE_TIME
+-- (drawTurnCue reads this). Purely cosmetic; states/battle.lua fires it from advanceTurn, only when
+-- control lands on a player-controlled unit, so an enemy's turn never flares.
+function BattleMap:flareTurn(unit)
+    self.turnFlare = { unit = unit, t = 0 }
+end
+
 -- ---------------------------------------------------------------------------
 -- Draw
 -- ---------------------------------------------------------------------------
@@ -270,6 +287,7 @@ function BattleMap:draw()
     self:drawHighlights()
     self.bursts:draw(self) -- impacts, blooms and bolts, over the bodies and highlights, under the readouts
     self:drawUnitInfo() -- HP bars + turn numbers + status badges sit above the highlight fills
+    self:drawTurnCue() -- whose turn it is (player only): a chevron over the head + the turn-start burst
     self:drawIntentBadges() -- the Threats-survey intent icons, on each foe's body, above every readout
     self:drawCursor()
     love.graphics.setColor(1, 1, 1)
@@ -1088,6 +1106,48 @@ function BattleMap:drawUnitInfo()
             self.lastOrderIndex[u] = nil -- fully gone: drop its stale number
         end
     end
+end
+
+-- Whose move it is, made unmissable -- but only when it is the PLAYER's. Two layers over the acting
+-- party unit: a steady chevron bobbing over its head (so the eye can re-find it any time during the
+-- turn) and, right as control lands, a burst of gold rings expanding off the body (flareTurn). Enemy
+-- and neutral turns draw nothing here; they keep the calmer standing ring from drawHighlights.
+function BattleMap:drawTurnCue()
+    local cur = self.overlays and self.overlays.current
+    local u = cur and cur.unit
+    if not u or not self.combat or not Combat.isPlayerControlled(u) then return end
+    local s = self.size
+    local wx, wy = self:cellToPixel(cur.x, cur.y)
+    local bw, bh = (u.w or 1) * s, (u.h or 1) * s
+    local cx = wx + bw / 2
+
+    -- One-shot ring burst from the body centre: two staggered rings that expand and fade out. Only while
+    -- the flare is live and still pointed at this unit (a fast hand-off could already have retargeted it).
+    local flare = self.turnFlare
+    if flare and flare.unit == u then
+        local cy = wy + bh / 2
+        for i = 0, 1 do
+            local p = (flare.t / TURN_FLARE_TIME) - i * 0.28 -- the second ring trails the first
+            if p > 0 and p < 1 then
+                local rad = bh * 0.42 + p * bh * 0.9
+                love.graphics.setColor(TURN_CUE[1], TURN_CUE[2], TURN_CUE[3], (1 - p) * 0.7)
+                love.graphics.setLineWidth(3 * (1 - p) + 1)
+                love.graphics.circle("line", cx, cy, rad)
+            end
+        end
+        love.graphics.setLineWidth(1)
+    end
+
+    -- The persistent marker: a downward chevron bobbing just above the head, dark-backed so it reads over
+    -- any sprite or terrain. Points AT the unit, so it says "this one" rather than floating free.
+    local tipY = wy - 6 + 3 * math.sin((self.time or 0) * 4)
+    local hw = math.max(7, s * 0.16) -- half-width of the caret
+    local hh = hw * 0.85
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.polygon("fill", cx - hw - 1, tipY - hh - 1, cx + hw + 1, tipY - hh - 1, cx, tipY + 1)
+    love.graphics.setColor(TURN_CUE[1], TURN_CUE[2], TURN_CUE[3], 0.92)
+    love.graphics.polygon("fill", cx - hw, tipY - hh, cx + hw, tipY - hh, cx, tipY)
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- Badge row geometry. The row must live inside the tile, which is only BADGE_INSET*2 shy of 60px

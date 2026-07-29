@@ -168,7 +168,7 @@ Disciplines: **Thief · Assassin · Ninja · Inquisitor · Saboteur · Poacher**
 | 1 | Cutpurse | N | the gap |
 | 2 | Bandit · Archer | E | `character_bandit`, `character_archer` |
 | 3 | Bandit Chief | E | `character_bandit_chief` |
-| 4 | — | N | one recurring mark for the line; `the_shadowless` and `the_confession` both want one |
+| 4 | — | N | one recurring mark for the line; `quest_undercroft_the_shadowless` and `quest_cathedral_the_confession` both want one |
 
 ### The Arcanum — mage
 

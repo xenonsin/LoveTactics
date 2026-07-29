@@ -7,5 +7,5 @@ return {
     name    = "Warlord",
     classes = { "fighter" },
     exemplar = "character_warlord",
-    requiredQuests = { "slot_03_warlord_keep" },
+    requiredQuests = { "quest_colosseum_slot_03" },
 }

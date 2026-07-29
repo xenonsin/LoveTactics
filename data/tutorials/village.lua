@@ -64,12 +64,12 @@
 -- ============================================================================================
 return {
     arena    = "tutorial_village",
-    lines    = "tutorial_village",
+    lines    = "conversation_tutorial_village",
     -- Played once, over the board, before a single turn resolves (states/battle.lua fields it on
     -- enter; a conversation is an overlay on a FROZEN state, so the lane is visible behind it). It
     -- exists to give Rowan's opening kill somewhere to land: without it her demonstration resolves in
     -- the first half-second of the fight, while the player is still working out what a tile is.
-    opening  = "prologue_village",
+    opening  = "conversation_prologue_village",
     speaker  = "character_rowan",     -- whose panel and portrait carry the narrative half
     scripted = { "character_rowan" }, -- Rowan runs her authored turns, not the player's hands
     -- THE TURN ORDER IS AUTHORED, like everything else here. See Tutorial.startInitiative /

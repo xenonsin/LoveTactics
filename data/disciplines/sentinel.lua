@@ -10,5 +10,5 @@ return {
     name    = "Sentinel",
     classes = { "knight" },
     exemplar = "character_sentinel", -- was character_grey_knight (a story-disguised encounter unit); dedicated exemplar authored
-    requiredQuests = { "slot_05_greywatch" },
+    requiredQuests = { "quest_bastion_slot_05" },
 }

@@ -7,5 +7,5 @@ return {
     name    = "Assassin",
     classes = { "rogue" },
     exemplar = "character_assassin", -- NEW, pending
-    requiredQuests = { "slot_05_accounts_settled" },
+    requiredQuests = { "quest_undercroft_slot_05" },
 }

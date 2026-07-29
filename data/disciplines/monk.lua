@@ -10,5 +10,5 @@ return {
     name    = "Monk",
     classes = { "priest" },
     exemplar = "character_monk", -- NEW, pending
-    requiredQuests = { "slot_04_purge_in_the_fold" },
+    requiredQuests = { "quest_cathedral_slot_04" },
 }

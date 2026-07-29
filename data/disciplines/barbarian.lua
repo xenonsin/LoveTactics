@@ -6,5 +6,5 @@ return {
     name    = "Barbarian",
     classes = { "fighter" },
     exemplar = "character_barbarian", -- NEW, pending
-    requiredQuests = { "slot_06_blood_in_the_sand" },
+    requiredQuests = { "quest_colosseum_slot_06" },
 }

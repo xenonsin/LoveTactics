@@ -39,7 +39,10 @@ return {
         range = 9,
         speed = 4,
         cost = { stat = "mana", amount = 14 },
-        support = true, -- it lands nothing on the turn it is cast; the damage row belongs to the mark
+        support = false, -- hostile fire laid on the ground, so it must preview RED. It lands nothing on
+                         -- the turn it is cast (the damage belongs to the mark), but a hazard placement
+                         -- scores 0 immediate outcome and the AI's outcome gate drops it regardless
+                         -- (models/ai.lua) -- so this only sets the colour, not how the planner weighs it.
         requiresAdjacent = { tag = "fire" },
         effect = function(fx)
             -- Everything about this spell is on the hazard, including the damage: the mark is the

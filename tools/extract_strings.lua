@@ -241,14 +241,27 @@ local function writeFile(rel, text)
     f:close()
 end
 
-local function conversationIds()
-    local ids = {}
-    for _, file in ipairs(love.filesystem.getDirectoryItems("data/conversations")) do
-        local id = file:match("^(.+)%.lua$")
-        if id then ids[#ids + 1] = id end
+-- Every conversation on disk as ordered { id, rel, req } records. Recurses into subfolders exactly
+-- as models/registry.lua does (conversations are organised into per-vendor folders), keeping the id
+-- the BARE filename -- ids stay globally unique across the tree -- while `rel` is the path to rewrite
+-- in place and `req` the dotted module path to load. Sorted by id so a re-stamp is order-stable.
+local function conversationFiles()
+    local out = {}
+    local function scan(subdir, subreq)
+        for _, file in ipairs(love.filesystem.getDirectoryItems(subdir)) do
+            local path = subdir .. "/" .. file
+            local info = love.filesystem.getInfo(path)
+            if info and info.type == "directory" then
+                scan(path, subreq .. "." .. file)
+            else
+                local id = file:match("^(.+)%.lua$")
+                if id then out[#out + 1] = { id = id, rel = path, req = subreq .. "." .. id } end
+            end
+        end
     end
-    table.sort(ids)
-    return ids
+    scan("data/conversations", "data.conversations")
+    table.sort(out, function(a, b) return a.id < b.id end)
+    return out
 end
 
 -- ---------------------------------------------------------------------------
@@ -381,15 +394,15 @@ function M.run()
     local records, seenNames = {}, {}
     local stamped = 0
 
-    for _, convId in ipairs(conversationIds()) do
-        local def = require("data.conversations." .. convId)
+    local convs = conversationFiles()
+    for _, conv in ipairs(convs) do
+        local def = require(conv.req)
         if stampTags(def) then
-            local rel = "data/conversations/" .. convId .. ".lua"
             -- Read the authored header BEFORE overwriting the file it lives in.
-            writeFile(rel, serializeConversation(def, authoredHeader(rel)))
+            writeFile(conv.rel, serializeConversation(def, authoredHeader(conv.rel)))
             stamped = stamped + 1
         end
-        collect(convId, def, records, seenNames)
+        collect(conv.id, def, records, seenNames)
     end
 
     local cells, otherLangs = loadExistingCells()
@@ -401,7 +414,7 @@ function M.run()
     for _, lang in ipairs(otherLangs) do os.remove(sourcePath("data/lang/" .. lang .. ".lua")) end
 
     print(string.format("extract-strings: %d string(s) across %d conversation(s); stamped %d file(s); languages: %s.",
-        #records, #conversationIds(), stamped, table.concat(otherLangs, ", ")))
+        #records, #convs, stamped, table.concat(otherLangs, ", ")))
 end
 
 -- Exposed for tests/extract_strings_spec.lua: the pure half of the rewrite -- reading an authored

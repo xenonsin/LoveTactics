@@ -37,8 +37,8 @@
 return {
     name = "The First Motion",
     description = "Channeled: Increase damage by up to +60% against a full-health foe.",
-    flavor = "She was taught that a bout is won in the first exchange or not at all. It is the only " ..
-        "thing they taught her that she kept.",
+    flavor = "A bout is won in the first exchange or not at all. Everything she loves about the " ..
+        "craft is folded into that one sentence.",
     sprite = "assets/items/first_motion.png",
     type = "weapon",
     -- Its own archetype, NOT the sword family (docs/weapons.md): a greatsword's verb is the wind-up,

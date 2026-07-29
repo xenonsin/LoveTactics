@@ -1,5 +1,5 @@
 -- The Demon Lord, and the end of everything the seven ladders were counting toward. Enemy blueprint;
--- the objective of data/quests/the_gate_below.lua. See docs/story.md.
+-- the objective of data/quests/quest_the_gate_below.lua. See docs/story.md.
 --
 -- It has no sin. The seven were its appetites, and you have spent the whole game taking them off it
 -- one at a time -- which is why its `traits` are the only thing it brings: as it fails, it puts the

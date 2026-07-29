@@ -202,14 +202,17 @@ return {
         -- differs from hitting her forty times for one by exactly what it should.
         name = "wrath_rising scales with how close to death it is, and shows it as a badge",
         fn = function()
-            local ira = Character.instantiate("character_general_wrath")
-            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit(ira, 5, 5) })
+            -- The RULE in isolation, on a neutral carrier -- not character_general_wrath herself, whose
+            -- Unappeased Heart now ALSO carries the phase trigger (trait_boss_phases) and would shed her
+            -- into her demon body the instant this test grinds her past 40% (tests/general_wrath_spec.lua
+            -- pins that behaviour). charWithTraits attaches exactly the curve and nothing else.
+            local raging = charWithTraits("character_bandit", { "trait_wrath_rising" })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit(raging, 5, 5) })
             local boss = c.units[2]
             local def = Trait.defs.trait_wrath_rising
             local peak, perBlow = def.magnitude, def.perBlow
             local hp = boss.char.stats.health
-            -- Her grid already grants damage of its own (the Unappeased Heart), so the rule's
-            -- contribution is measured against that baseline rather than against zero.
+            -- An empty grid but for the rule itself, so its contribution is measured against zero.
             local rested = boss.bonus.damage or 0
 
             -- Halfway down: half the health curve, plus the one blow it took to read it.
@@ -266,8 +269,10 @@ return {
         -- rather than a self, so the bonus only ever climbs.
         name = "wrath_rising never cools: healing her does not take the rage back",
         fn = function()
-            local ira = Character.instantiate("character_general_wrath")
-            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit(ira, 5, 5) })
+            -- The rule in isolation (see the note in the sibling test): Ira herself would transform at
+            -- 40%, so the curve is measured on a neutral body carrying exactly trait_wrath_rising.
+            local raging = charWithTraits("character_bandit", { "trait_wrath_rising" })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit(raging, 5, 5) })
             local boss = c.units[2]
             local hp = boss.char.stats.health
 

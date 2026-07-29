@@ -549,6 +549,7 @@ function Item.instantiate(id, quantity, level)
         resist = deepCopy(def.resist),         -- armor: tag -> flat damage reduction
         unarmedBonus = deepCopy(def.unarmedBonus), -- "fist" charms: buff the bare-handed strike
         maxBonus = deepCopy(def.maxBonus),     -- resource passives: raise a max health/stamina/mana ceiling
+        healthReserve = deepCopy(def.healthReserve), -- guard charm: { percent } of max health locked away at setup for the armor its `bonus` buys (Combat.applyReservations)
         waitBehavior = deepCopy(def.waitBehavior), -- swaps this holder's Wait -> Focus / Defend
         moveBehavior = deepCopy(def.moveBehavior), -- swaps this holder's walk -> teleport (Blink)
         charge = deepCopy(def.charge),         -- { key, from, max, resetOn }: a named pool this item banks (Combat.chargeDef)

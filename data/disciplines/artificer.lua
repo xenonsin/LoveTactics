@@ -3,10 +3,10 @@
 -- turn. (ability_emplace_sentry is the first legitimate stock, per docs/classes.md.)
 -- Exemplar: a sentry-engine builder (character_artificer, NEW -- pending), met as a BOSS/MENTOR.
 -- Gate: earned advancement -- requires a mage subclass AND an alchemist subclass unlocked, which
--- opens the_automaton_foundry (pending). See docs/disciplines-plan.md.
+-- opens quest_alchemist_the_automaton_foundry (pending). See docs/disciplines-plan.md.
 return {
     name    = "Artificer",
     classes = { "mage", "alchemist" },
     exemplar = "character_artificer", -- NEW, pending
-    requiredQuests = { "the_automaton_foundry" }, -- pending
+    requiredQuests = { "quest_alchemist_the_automaton_foundry" }, -- pending
 }

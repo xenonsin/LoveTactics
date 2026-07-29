@@ -1,5 +1,5 @@
 -- The general of Lust, and the end of the Cathedral's line (docs/story.md, "The Cathedral"). Enemy
--- blueprint; the objective of data/quests/general_lust.lua. The finale (data/quests/the_gate_below.lua)
+-- blueprint; the objective of data/quests/general_lust.lua. The finale (data/quests/quest_the_gate_below.lua)
 -- already reserves a slot for her -- "general_lust" sits in its requiredQuests.
 --
 -- WHO SHE IS: a human who made a pact with the Demon Lord for demonic power, then INFILTRATED the

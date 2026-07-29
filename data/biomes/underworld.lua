@@ -2,7 +2,7 @@
 -- corridors of cooling rock threaded by channels of something that is not water. Wide enough to walk,
 -- never wide enough to withdraw.
 --
--- Reached only through data/quests/the_gate_below.lua, once all seven generals are dead.
+-- Reached only through data/quests/quest_the_gate_below.lua, once all seven generals are dead.
 return {
     name = "The Underworld",
     tileset = "underworld", -- data/tilesets/underworld.lua (art for this biome)

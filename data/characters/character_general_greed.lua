@@ -1,5 +1,5 @@
 -- The general of Greed, and the end of the Undercroft's line (docs/story.md, "The Undercroft"). Enemy
--- blueprint; the objective of data/quests/general_greed.lua. The finale (data/quests/the_gate_below.lua)
+-- blueprint; the objective of data/quests/general_greed.lua. The finale (data/quests/quest_the_gate_below.lua)
 -- already reserves a slot for her -- "general_greed" sits in its requiredQuests.
 --
 -- WHO SHE IS: a debtor once, ruined and owned -- the thing at the bottom of an institution like her own.

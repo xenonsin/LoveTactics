@@ -1121,6 +1121,7 @@ local function beginTurn()
         return
     end
     if Combat.isPlayerControlled(current) then
+        battle.map:flareTurn(current) -- pull the eye to the unit whose move just began (ui/battle_map.lua)
         computeReachable(current)
         computeThreat(current)
         armDefaultAction(current) -- start with the default action armed (its range shown by default)

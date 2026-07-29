@@ -4,10 +4,10 @@
 -- Exemplar: the Forsworn Knight (character_forsworn_knight), met as a BOSS -- the fallen oath rotted
 -- from within is what this discipline already is.
 -- Gate: earned advancement -- requires a knight subclass AND an alchemist subclass unlocked, which
--- opens the_rot_beneath_the_plate (pending). See docs/disciplines-plan.md.
+-- opens quest_bastion_the_rot_beneath_the_plate (pending). See docs/disciplines-plan.md.
 return {
     name    = "Plague Knight",
     classes = { "knight", "alchemist" },
     exemplar = "character_plague_knight", -- was character_forsworn_knight (a story-critical Bastion enemy); dedicated exemplar authored
-    requiredQuests = { "the_rot_beneath_the_plate" }, -- pending
+    requiredQuests = { "quest_bastion_the_rot_beneath_the_plate" }, -- pending
 }

@@ -74,7 +74,7 @@ eight **vendors** are the shopkeepers of the town's shops; the **Demon Lord** is
 ### The seven generals — personified sins (Latin register; all women)
 | File | Name | Sin | Read |
 |---|---|---|---|
-| `general_wrath.png` | **Ira, the Unappeased** | Wrath | Blind from birth, raised into numbness, handed one feeling — rage. |
+| `general_wrath.png` | **Ira, the Unappeased** | Wrath | The house's manufactured champion; owned all her life, sullen wrath held down, wanting only to be free. |
 | `general_sloth.png` | **Acedia, the Unrelieved** | Sloth | The gatekeeper who "opened the gate"; imposes a false unity. |
 | `general_pride.png` | **Sublimitas, the Unequalled** | Pride | Untouchable, above all comers. |
 | `general_lust.png` | **Luxuria, the Unbidden** | Lust | A human-pacted demon-Saint. |

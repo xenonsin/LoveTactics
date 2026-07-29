@@ -3,18 +3,21 @@
 -- woman with a gender-neutral name, and the virtue is hinted, never labeled -- a saber is her blade,
 -- and in another tongue (sabr) it is patience itself.
 --
--- Her patience wears the face of JOY. She loves fighting for its own sake, so she is never in a hurry:
--- there is nowhere she would rather be than mid-bout, which is why she can hold the swing, never gets
--- greedy, and opens the same card for years without souring. That is contentment, not endurance -- the
--- exact pole opposite Ira's wrath, which is hunger that grows by feeding (trait_wrath_rising). Saber
--- already has enough, every fight, and so can wait forever for the one worth leaving the sand for.
+-- Her patience wears the face of JOY. A free agent of the sand -- no house, no program, belonging to
+-- no one -- she loves fighting for its own sake, so she is never in a hurry: there is nowhere she would
+-- rather be than mid-bout, which is why she can hold the swing, never gets greedy, and opens the same
+-- card for years without souring. That is contentment, not endurance -- and it is the exact pole
+-- opposite Ira (see character_general_wrath.lua): the foil is FREEDOM vs. BONDAGE. Saber fights because
+-- she is free and stays by choice; Ira fought because the sand was the only place she was ever free,
+-- and now cannot walk off it at all. Saber already has enough, every fight, and can walk off any time.
 --
 -- She is the arena's gatekeeper, and the debut bout is secretly her own audition: a seasoned
--- gladiator who has watched the Colosseum and its patron, Ira (see character_general_wrath.lua),
--- devour fighter after fighter, and who will not be eaten. She fights every newcomer waiting for the
--- pair who can beat her -- and her quarrel with the patron beneath the sand is the whole wrath line.
--- Beat her and she joins; the fighter you best in sport here is the foil to the general you kill in
--- earnest at the line's end.
+-- gladiator who has watched the Colosseum and its patron, Ira, devour fighter after fighter, and who
+-- will not be eaten. She fights every newcomer waiting for the pair who can beat her. She was never in
+-- the Perennial's program; her tie to the patron beneath the sand is SYMPATHY, not rivalry -- a free
+-- fighter looking at a caged one -- and freeing Ira the only way left is the whole wrath line. Beat her
+-- and she joins; the fighter you best in sport here is the foil to the general you free in earnest at
+-- the line's end.
 --
 -- THIS is the recruit -- the companion the player keeps. The bout that introduces her is fought by a
 -- boss TWIN (data/characters/character_saber_bout.lua) which extends this file with the boss flag, a

@@ -186,17 +186,17 @@ return {
     {
         name = "test evaluates the condition grammar against a context",
         fn = function()
-            local ctx = { roster = { character_priest = true }, quests = { slot_01_vault_heist = true }, prestige = 2 }
+            local ctx = { roster = { character_priest = true }, quests = { quest_undercroft_slot_01 = true }, prestige = 2 }
             assert(Conversation.test(nil, ctx), "no condition is unconditional")
             assert(Conversation.test({ has = "character_priest" }, ctx), "priest is on the roster")
             assert(not Conversation.test({ has = "character_mage" }, ctx), "mage is not")
             assert(Conversation.test({ notHas = "character_mage" }, ctx), "notHas inverts")
-            assert(Conversation.test({ done = "slot_01_vault_heist" }, ctx), "quest is completed")
-            assert(not Conversation.test({ done = "slot_01_arena_debut" }, ctx), "uncompleted quest fails")
-            assert(Conversation.test({ notDone = "slot_01_arena_debut" }, ctx), "notDone inverts")
+            assert(Conversation.test({ done = "quest_undercroft_slot_01" }, ctx), "quest is completed")
+            assert(not Conversation.test({ done = "quest_colosseum_slot_01" }, ctx), "uncompleted quest fails")
+            assert(Conversation.test({ notDone = "quest_colosseum_slot_01" }, ctx), "notDone inverts")
             assert(Conversation.test({ prestige = 2 }, ctx), "prestige is a MINIMUM, so equal passes")
             assert(not Conversation.test({ prestige = 3 }, ctx), "below the minimum fails")
-            assert(Conversation.test({ has = "character_priest", done = "slot_01_vault_heist" }, ctx), "sibling keys AND")
+            assert(Conversation.test({ has = "character_priest", done = "quest_undercroft_slot_01" }, ctx), "sibling keys AND")
             assert(not Conversation.test({ has = "character_priest", prestige = 9 }, ctx), "one failing key fails the AND")
             assert(Conversation.test({ any = { { has = "character_mage" }, { has = "character_priest" } } }, ctx), "any is an OR")
             assert(not Conversation.test({ all = { { has = "character_mage" }, { has = "character_priest" } } }, ctx), "all is an AND")
@@ -209,7 +209,7 @@ return {
         fn = function()
             assert(Conversation.guarantees({ has = "character_priest" }, "character_priest"), "a direct has")
             assert(not Conversation.guarantees({ has = "character_mage" }, "character_priest"), "a different character")
-            assert(not Conversation.guarantees({ done = "slot_01_vault_heist" }, "character_priest"), "an unrelated condition")
+            assert(not Conversation.guarantees({ done = "quest_undercroft_slot_01" }, "character_priest"), "an unrelated condition")
             assert(Conversation.guarantees({ all = { { done = "x" }, { has = "character_priest" } } }, "character_priest"),
                 "an `all` holds only if every member does, so one member requiring the priest is enough")
             assert(not Conversation.guarantees({ any = { { has = "character_priest" }, { done = "x" } } }, "character_priest"),
@@ -301,12 +301,12 @@ return {
         fn = function()
             local ctx = Conversation.context({
                 roster = { { id = "character_rowan" }, { id = "character_priest" } },
-                completedQuests = { slot_01_vault_heist = true },
+                completedQuests = { quest_undercroft_slot_01 = true },
                 prestige = 4,
             })
             assert(ctx.roster.character_rowan and ctx.roster.character_priest, "roster ids are flattened to a set")
             assert(ctx.roster.character_mage == nil, "an absent character is absent")
-            assert(ctx.quests.slot_01_vault_heist == true and ctx.prestige == 4, "quests and prestige carry over")
+            assert(ctx.quests.quest_undercroft_slot_01 == true and ctx.prestige == 4, "quests and prestige carry over")
             local empty = Conversation.context(nil)
             assert(next(empty.roster) == nil and empty.prestige == 1, "no player is an empty context")
         end,

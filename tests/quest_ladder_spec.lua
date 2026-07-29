@@ -234,8 +234,8 @@ return {
         -- of the Gate's location with nothing to show it went missing.
         name = "the Gate Below's seven prerequisites all exist and carry a gateHint",
         fn = function()
-            local gate = Quest.defs.the_gate_below
-            assert(gate, "the_gate_below is missing")
+            local gate = Quest.defs.quest_the_gate_below
+            assert(gate, "quest_the_gate_below is missing")
             local req = gate.requiredQuests or {}
             assert(#req == 7, "the Gate Below wants seven keys, not " .. #req)
             for _, id in ipairs(req) do

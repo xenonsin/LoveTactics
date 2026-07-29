@@ -1,5 +1,5 @@
 -- The general of Envy, and the end of the Crucible's line (docs/story.md, "The Crucible"). Enemy
--- blueprint; the objective of data/quests/general_envy.lua. The finale (data/quests/the_gate_below.lua)
+-- blueprint; the objective of data/quests/general_envy.lua. The finale (data/quests/quest_the_gate_below.lua)
 -- already reserves a slot for her -- "general_envy" sits in its requiredQuests.
 --
 -- WHO SHE IS: the college's masterpiece homunculus, the one that got far enough to WANT. What she wanted

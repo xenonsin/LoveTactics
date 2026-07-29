@@ -29,7 +29,7 @@ return {
     class = "rogue",
     -- Quest-only: `class` with no `price` tallies toward rogue growth but sits on no shelf, and the
     -- missing `price` also keeps it out of the random spoils pool (models/spoils.lua reads `price` as
-    -- the "is this ordinary stock?" marker). Granted by data/quests/undercroft/slot_09_a_new_bank.lua.
+    -- the "is this ordinary stock?" marker). Granted by data/quests/undercroft/quest_undercroft_slot_09.lua.
     --
     -- It held the shelf's top rung (340, rank 4) only because the Kingsblood -- the blade actually
     -- designated for it -- had been left unpriced. With the Kingsblood restored to 800 / rank 4 like

@@ -7,10 +7,10 @@
 -- Exemplar: Kaen (character_kaen, NEW -- pending), met as a BOSS -- you fight a shape that keeps not
 -- being there.
 -- Gate: earned advancement -- requires a rogue subclass AND a mage subclass unlocked, which opens
--- the_shadowless (pending). See docs/disciplines-plan.md.
+-- quest_undercroft_the_shadowless (pending). See docs/disciplines-plan.md.
 return {
     name    = "Ninja",
     classes = { "rogue", "mage" },
     exemplar = "character_kaen", -- NEW, pending
-    requiredQuests = { "the_shadowless" }, -- pending
+    requiredQuests = { "quest_undercroft_the_shadowless" }, -- pending
 }

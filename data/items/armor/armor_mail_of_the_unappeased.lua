@@ -5,7 +5,7 @@
 --
 -- It is a trap dressed as a reward, exactly as it was when she wore it. The payout only arrives when
 -- you are nearly dead, and armor this thin means you will get there. It asks you to want what she
--- wanted, and the reason she wanted it is that nothing else ever reached her.
+-- wanted, and what she wanted was a freedom the fight kept promising and never gave.
 --
 -- No `class` and no `price`: no vendor stocks it, no shelf can replace it. There is one.
 --

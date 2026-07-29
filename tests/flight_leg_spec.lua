@@ -143,7 +143,7 @@ return {
         fn = function()
             local always = {
                 { id = "encounter_treasure", loot = { "weapon_iron_bow" } },
-                { id = "encounter_event", conversation = "flight_event_shrine" },
+                { id = "encounter_event", conversation = "conversation_flight_event_shrine" },
                 "encounter_survivors_defend",
                 "encounter_rest",
             }
@@ -186,7 +186,7 @@ return {
             -- Payloads rode onto the cells.
             assert(placed[1].encounter.loot and placed[1].encounter.loot[1] == "weapon_iron_bow",
                 "the treasure carries its authored loot")
-            assert(placed[2].encounter.conversation == "flight_event_shrine",
+            assert(placed[2].encounter.conversation == "conversation_flight_event_shrine",
                 "the event carries its conversation")
 
             -- The objective sits beyond every stop.

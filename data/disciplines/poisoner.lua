@@ -6,5 +6,5 @@ return {
     name    = "Poisoner",
     classes = { "alchemist" },
     exemplar = "character_poisoner", -- NEW, pending
-    requiredQuests = { "slot_05_the_vats" },
+    requiredQuests = { "quest_alchemist_slot_05" },
 }

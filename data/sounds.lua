@@ -32,6 +32,8 @@ return {
         length = "<=0.25s", desc = "Back out / close a panel, or cancel a selected item in battle. A softer, lower bell -- a mellow 'step back'. (FF/KH cancel.)" },
     ["ui.denied"] = { file = "assets/audio/ui/denied.ogg", category = "sfx", volume = 0.7,
         length = "<=0.3s", desc = "Input refused (no stamina, an illegal move). A soft, muted low 'no' -- rounded and clearly negative, never a harsh buzzer. (FF/KH error.)" },
+    ["ui.type"] = { file = "assets/audio/ui/type.ogg", category = "sfx", volume = 0.35,
+        length = "<=0.08s", desc = "The typewriter tick under a conversation's text reveal (ui/dialogue.lua). Fires per few characters as a line types out, so it must be TINY and dry -- a soft rounded blip / key-tap, no pitch tail; a whole line is a run of these. Slightly pitch-varied at the call site. (FE/Undertale text blip.)" },
 
     -- Battle flow -- one-shot per combat event (states/battle.lua, ui/combat_fx.lua).
     ["battle.start"] = { file = "assets/audio/battle/start.ogg", category = "sfx",

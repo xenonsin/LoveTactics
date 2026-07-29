@@ -31,7 +31,7 @@ return {
   name    = "Ninja",
   classes = { "rogue", "mage" },     -- 2 parents = multiclass
   exemplar = "character_kaen",       -- the ninja you first meet
-  requiredQuests = { "the_shadowless" },        -- offered only once both parents have a subclass
+  requiredQuests = { "quest_undercroft_the_shadowless" },        -- offered only once both parents have a subclass
 }
 ```
 
@@ -135,27 +135,27 @@ harmless. A quest-level gate that could express it would be new engine work.
 
 | Discipline | Parents | Exemplar | | Disposition | Capstone quest (all written) |
 |---|---|---|---|---|---|
-| **Champion** | fighter × knight | Champion (`character_champion`) | E | boss | `champions_challenge` — The Champion's Challenge |
-| **Duelist** | fighter × rogue | a swaggering blade-for-hire | N | recruit | `the_tavern_duel` — The Tavern Duel |
-| **Skirmisher** | fighter × hunter | a raider outrider | N | boss | `the_running_fight` — The Running Fight |
-| **Battlemage** | fighter × mage | a spell-and-steel veteran | N | boss | `the_broken_siege` — The Broken Siege |
-| **Crusader** | fighter × priest | a holy-blade zealot | N | mentor / boss | `the_consecrated_march` — The Consecrated March |
-| **Warbrewer** | fighter × alchemist | a berserker-draught brawler | N | boss | `the_fighting_cellar` — The Fighting Cellar |
-| **Vanguard** | knight × rogue | a shieldbreaker turncoat | N | boss | `the_salted_gate` — The Salted Gate |
-| **Warden** | knight × hunter | a march-warden | N | mentor | `the_border_watch` — The Border Watch |
-| **Spellbreaker** | knight × mage | an anti-mage sword-oath | N | boss | `the_silenced_tower` — The Silenced Tower |
-| **Paladin** | knight × priest | a sworn holy knight | N | mentor | `the_oath_at_the_altar` — The Oath at the Altar |
-| **Plague Knight** | knight × alchemist | Forsworn Knight (`character_forsworn_knight`) | E | boss | `the_rot_beneath_the_plate` — The Rot Beneath the Plate |
-| **Poacher** | rogue × hunter | a bounty-jumping trapper | N | recruit | `the_marked_quarry` — The Marked Quarry |
-| **Ninja** | rogue × mage | Kaen | N | boss | `the_shadowless` — The Shadowless |
-| **Inquisitor** | rogue × priest | a witch-finder | N | boss | `the_confession` — The Confession |
-| **Saboteur** | rogue × alchemist | a demolitions ghost | N | recruit | `the_collapsed_vault` — The Collapsed Vault |
-| **Shaman** | hunter × mage | a spirit-caller | N | mentor | `the_spirit_wood` — The Spirit Wood |
-| **Totemist** | hunter × priest | a ward-carver | N | mentor | `the_standing_stones` — The Standing Stones |
-| **Herbalist** | hunter × alchemist | a field-apothecary | N | recruit | `the_poisoned_glade` — The Poisoned Glade |
-| **Theurge** | mage × priest | a channelling divine | N | mentor | `the_twin_liturgy` — The Twin Liturgy |
-| **Artificer** | mage × alchemist | a sentry-engine builder | N | boss / mentor | `the_automaton_foundry` — The Automaton Foundry |
-| **Apothecary** | priest × alchemist | Ren (`character_ren`)* | E | recruit | `apothecary_ren` — The Open Ward |
+| **Champion** | fighter × knight | Champion (`character_champion`) | E | boss | `quest_colosseum_champions_challenge` — The Champion's Challenge |
+| **Duelist** | fighter × rogue | a swaggering blade-for-hire | N | recruit | `quest_colosseum_the_tavern_duel` — The Tavern Duel |
+| **Skirmisher** | fighter × hunter | a raider outrider | N | boss | `quest_hunters_lodge_the_running_fight` — The Running Fight |
+| **Battlemage** | fighter × mage | a spell-and-steel veteran | N | boss | `quest_arcanum_the_broken_siege` — The Broken Siege |
+| **Crusader** | fighter × priest | a holy-blade zealot | N | mentor / boss | `quest_cathedral_the_consecrated_march` — The Consecrated March |
+| **Warbrewer** | fighter × alchemist | a berserker-draught brawler | N | boss | `quest_colosseum_the_fighting_cellar` — The Fighting Cellar |
+| **Vanguard** | knight × rogue | a shieldbreaker turncoat | N | boss | `quest_bastion_the_salted_gate` — The Salted Gate |
+| **Warden** | knight × hunter | a march-warden | N | mentor | `quest_bastion_the_border_watch` — The Border Watch |
+| **Spellbreaker** | knight × mage | an anti-mage sword-oath | N | boss | `quest_arcanum_the_silenced_tower` — The Silenced Tower |
+| **Paladin** | knight × priest | a sworn holy knight | N | mentor | `quest_cathedral_the_oath_at_the_altar` — The Oath at the Altar |
+| **Plague Knight** | knight × alchemist | Forsworn Knight (`character_forsworn_knight`) | E | boss | `quest_bastion_the_rot_beneath_the_plate` — The Rot Beneath the Plate |
+| **Poacher** | rogue × hunter | a bounty-jumping trapper | N | recruit | `quest_hunters_lodge_the_marked_quarry` — The Marked Quarry |
+| **Ninja** | rogue × mage | Kaen | N | boss | `quest_undercroft_the_shadowless` — The Shadowless |
+| **Inquisitor** | rogue × priest | a witch-finder | N | boss | `quest_cathedral_the_confession` — The Confession |
+| **Saboteur** | rogue × alchemist | a demolitions ghost | N | recruit | `quest_undercroft_the_collapsed_vault` — The Collapsed Vault |
+| **Shaman** | hunter × mage | a spirit-caller | N | mentor | `quest_hunters_lodge_the_spirit_wood` — The Spirit Wood |
+| **Totemist** | hunter × priest | a ward-carver | N | mentor | `quest_hunters_lodge_the_standing_stones` — The Standing Stones |
+| **Herbalist** | hunter × alchemist | a field-apothecary | N | recruit | `quest_alchemist_the_poisoned_glade` — The Poisoned Glade |
+| **Theurge** | mage × priest | a channelling divine | N | mentor | `quest_cathedral_the_twin_liturgy` — The Twin Liturgy |
+| **Artificer** | mage × alchemist | a sentry-engine builder | N | boss / mentor | `quest_alchemist_the_automaton_foundry` — The Automaton Foundry |
+| **Apothecary** | priest × alchemist | Ren (`character_ren`)* | E | recruit | `quest_alchemist_apothecary_ren` — The Open Ward |
 
 \* Apothecary (priest × alchemist) is what Ren already is — mends before she strikes. Reusing her makes
 this multiclass a companion capstone. Same choice-not-baked note as the subclasses.

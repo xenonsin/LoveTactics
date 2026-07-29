@@ -32,13 +32,13 @@ local game = {}
 local titleFont = Theme.display(22)
 local hudFont = Theme.body(16)
 
--- Flight-leg coach lines (data/conversations/tutorial_flight.lua), keyed by node id and resolved
--- through Locale so {select}/localization behave exactly as they do in a spoken line. Loaded once.
+-- Flight-leg coach lines (data/conversations/tutorial/conversation_tutorial_flight.lua), keyed by node
+-- id and resolved through Locale so {select}/localization behave exactly as in a spoken line. Loaded once.
 local FLIGHT_HINTS
 local function hintNode(id)
     if not FLIGHT_HINTS then
         FLIGHT_HINTS = {}
-        for _, node in ipairs(require("data.conversations.tutorial_flight").script) do
+        for _, node in ipairs(require("data.conversations.tutorial.conversation_tutorial_flight").script) do
             if node.id then FLIGHT_HINTS[node.id] = node end
         end
     end
@@ -385,7 +385,7 @@ function game:openEncounter(cell)
                     local followUp = game.quest and game.quest.followUp
                     local function goNext()
                         -- The campaign's last quest does not go home. `endsCampaign` is carried on the
-                        -- quest (data/quests/the_gate_below.lua) rather than a quest id compared here,
+                        -- quest (data/quests/quest_the_gate_below.lua) rather than a quest id compared here,
                         -- so this state never learns which file is the ending and a second one costs
                         -- no engine edit. New Game+ is offered because the run is, by definition, over.
                         if game.quest and game.quest.endsCampaign then
@@ -578,7 +578,7 @@ function game.drawCoach()
     if not step then return end
     if step == "move" and not game.activePanel then
         local node = hintNode("move_hint")
-        CoachBubble.draw(Locale.text("tutorial_flight", node), game.map:tokenRect(),
+        CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), game.map:tokenRect(),
             { prefer = "above", bounds = COACH_BOUNDS })
     elseif step == "loadout" and not game.activePanel and game.itemsVisible then
         local node = hintNode("loadout_hint")
@@ -586,13 +586,13 @@ function game.drawCoach()
         -- bounds that reaches up to the button so it can sit directly BELOW it, tail pointing up.
         local belowBounds = { x = 20, y = itemsButton.y,
             w = Scale.WIDTH - 40, h = Scale.HEIGHT - itemsButton.y - 44 }
-        CoachBubble.draw(Locale.text("tutorial_flight", node), itemsButton,
+        CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), itemsButton,
             { prefer = "below", key = loadoutKey(), bounds = belowBounds })
     elseif step == "equip" and game.activePanel and game.activePanel.coachAnchor then
         local anchor = game.activePanel:coachAnchor()
         if anchor then
             local node = hintNode("equip_hint")
-            local text, key = Locale.coachLine("tutorial_flight", node)
+            local text, key = Locale.coachLine("conversation_tutorial_flight", node)
             CoachBubble.draw(text, anchor, { prefer = "above", key = key, bounds = COACH_BOUNDS })
         end
     end

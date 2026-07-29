@@ -106,11 +106,12 @@ The bulk of the remaining authoring. 72 of 94 quests have no `intro`, `outro`, o
     `Player.addReputation` / `Vendor.rankFor`. No quest has to move when it happens.
 20. **Unresolved character TODOs** carried in the blueprints — Clem's flaw (forgives every debt but
     her own), Ren's flaw (the giver who never receives), Kaya's temperance-immunity fold-in.
-21. **The Ira contradiction — a decision, not a task.** Every general is meant to be a human who
-    pacted with the Demon Lord; Ira is written as a *manufactured* woman who never chose, and
-    `docs/story.md` says explicitly to leave the contradiction standing until it is resolved on
-    purpose, and not to quietly rewrite her. Either she is the one general the rule spares, or the
-    pact was the Perennial's, struck on her behalf. **Owed: a call.**
+21. **The Ira contradiction — RESOLVED (2026-07-28).** Every general is a human who pacted with the
+    Demon Lord, and Ira now fits the rule cleanly: the Perennial's owned champion, she *chose* the pact
+    herself, bargaining for freedom and getting an uncontrollable rage — the deeper cage — instead. The
+    earlier "manufactured woman who never chose / struck on her behalf" reading is retired; Saber's
+    program tie is severed (she is a free agent, never in the Perennial). The wrath line, its scenes and
+    blueprints, and `docs/story.md` + `docs/wrath-line-beats.md` are rewritten to this. **Done.**
 
 ## Done
 
@@ -131,13 +132,14 @@ The bulk of the remaining authoring. 72 of 94 quests have no `intro`, `outro`, o
   does not yet know the Saint is the demon, which is slot 7's to break, so she reaches for the Saint
   as the authority who would stop this if only she knew. Everything she says about the altar is
   sincere and wrong. Rowan and Saber answer hardest: one's order writes its dead into a roll of
-  martyrs by the same trick, the other came out of an intake that also took children.
+  martyrs by the same trick, the other knows the shape of a child-taking house from a career fought
+  alongside the Perennial (she was never taken herself).
 - **Ira's confront (item 3).** `colosseum_general_wrath_confront` — the last general to get a voice.
-  Written against the doc's hard rules: she never asks to die (that would let Saber off), the horror
-  stays bureaucratic (a handler *reassigned*, a form, not a murder), there is no one to be paid by,
-  and she reads the room by sound because she is blind from birth. It deliberately does **not** settle
-  whether she is the general the pact rule spares — no line claims she agreed to anything, per the
-  standing instruction not to quietly rewrite her.
+  Written against the doc's hard rules: she never asks to die (that would let Saber off), the register
+  stays quiet and interior (a life spent owned, not a grievance to be paid), and she reads the room by a
+  fighter's skill. She *chose* the pact for freedom and got the rage — killing her is the only door
+  still open, and Saber, not Ira, is the one who names it. (Rewritten from the retired "never chose"
+  scaffold in the 2026-07-28 wrath-line pass; see item 21.)
 - **The audio system (items 4–7).** `models/sound.lua` is the audio twin of `models/sprite.lua` and
   built to the same tolerance rule — a missing file is silence, never an error — which is the property
   that let 502 item icons land one at a time and is the only reason audio can arrive the same way.

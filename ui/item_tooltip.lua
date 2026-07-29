@@ -479,6 +479,22 @@ local function buildBlocks(item, actor, innerW, out)
         blocks[#blocks + 1] = { kind = "stat", label = "Resist", value = table.concat(parts, ", ") }
     end
 
+    -- A guard charm reserves a share of the bearer's health for the whole battle, and the armor above is
+    -- what that locked health buys. Named as a cost (WARN) with the lock spelled out, because a reserve
+    -- is not a wound you heal off -- Combat.unreservedMax lowers the ceiling, so the health cannot come
+    -- back. Quotes the percentage; against a known actor it resolves to that body's own number, exactly
+    -- as an ability's reserve row does above.
+    if item.healthReserve and item.healthReserve.percent then
+        local pct = math.floor(item.healthReserve.percent * 100 + 0.5)
+        local value = "-" .. pct .. "% Health"
+        local amount = actor and actor.char and Combat.healthReserveAmount(actor.char, item)
+        if amount and amount > 0 then value = "-" .. amount .. " Health (" .. pct .. "%)" end
+        blocks[#blocks + 1] = { kind = "sep" }
+        blocks[#blocks + 1] = { kind = "stat", label = "Reserves", value = value, valueColor = WARN }
+        blocks[#blocks + 1] = { kind = "note",
+            text = "Reserved health is locked away for the battle; it cannot be healed back." }
+    end
+
     -- Wait-swap: an item that changes how this holder's Wait acts (a shield's Defend, a focus charm,
     -- an overwatch scope) spells out the swap and how much it grants. A shield's brace-defense is
     -- resolved to the item's upgrade level, so it quotes what the current (forged) shield actually braces.

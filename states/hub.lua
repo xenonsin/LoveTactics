@@ -141,8 +141,8 @@ local function vendorScenes(building)
     local vendorId = building.vendor
     if not vendorId then return steps end
 
-    -- 1. First-visit greeting (data/conversations/vendor_<id>_intro.lua).
-    local introId = "vendor_" .. vendorId .. "_intro"
+    -- 1. First-visit greeting (data/conversations/<id>/conversation_<id>_vendor_intro.lua).
+    local introId = "conversation_" .. vendorId .. "_vendor_intro"
     if not Player.hasVisitedVendor(hub.player, vendorId) and Conversation.defs[introId] then
         steps[#steps + 1] = { id = introId, before = function()
             Player.markVendorVisited(hub.player, vendorId)
@@ -153,7 +153,7 @@ local function vendorScenes(building)
     -- {discipline} token names each one (set on the player for the scene's duration -- Locale.substitute).
     local vdef = Vendor.get(vendorId)
     local class = vdef and vdef.class
-    local announceId = "discipline_unlocked_" .. vendorId
+    local announceId = "conversation_" .. vendorId .. "_discipline_unlocked"
     if class and Conversation.defs[announceId] then
         for _, disciplineId in ipairs(Discipline.pendingAnnouncements(hub.player, class)) do
             local name = Discipline.defs[disciplineId] and Discipline.defs[disciplineId].name
@@ -213,7 +213,7 @@ local function openPanel(building)
     if hub.player and hub.player.hubIntro == "coach" then
         if building.id ~= INTRO_BUILDING then return end
         hub.player.hubIntro = nil -- the lesson is spent the moment the board is opened
-        Conversation.play("prologue_flier", function() launchPanel(building) end)
+        Conversation.play("conversation_prologue_flier", function() launchPanel(building) end)
         return
     end
     launchVendor(building)
@@ -243,7 +243,7 @@ function hub.enter()
     -- moves to its coaching stage, where the Quest Board is the only door that opens (see openPanel and
     -- hub.draw). A loaded save never carries this flag, so its hub opens straight to free play.
     if hub.player.hubIntro == "arrival" then
-        Conversation.play("prologue_arrival", function()
+        Conversation.play("conversation_prologue_arrival", function()
             hub.player.hubIntro = "coach"
         end)
         return -- nothing else opens over the arrival; there is no pending summary on a first visit

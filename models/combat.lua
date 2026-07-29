@@ -852,6 +852,41 @@ function Combat.applyPassives(combat)
     for _, unit in ipairs(combat.units) do applyUnitPassives(unit) end
 end
 
+-- The health an item wants to lock at setup: a share of the bearer's MAX health (item.healthReserve
+-- .percent), floored the same way an ability's reserve reads its pool (Combat.abilityReserve). This is
+-- the NOMINAL amount -- the never-lethal clamp against current health is applied where it is spent, in
+-- applyReservations. Reading off max (not the maxBonus-raised ceiling) keeps the toll a fixed fraction of
+-- the body itself, unmoved by whatever else is on the grid. The tooltip resolves the same number here.
+function Combat.healthReserveAmount(char, item)
+    local r = item and item.healthReserve
+    if not r or not r.percent then return 0 end
+    local hp = char.stats.health
+    local max = (type(hp) == "table") and hp.max or (hp or 0)
+    return math.floor(max * r.percent)
+end
+
+-- Item-carried health reservations: a fighter's guard charm (data/items/utility/utility_bloodlock_bracing.lua)
+-- locks a share of its bearer's health away for the whole battle, and its `bonus` grants the armor that
+-- lock buys. Runs once at setup, AFTER applyPassives has folded the defense/magicDefense in and Combat.new's
+-- releaseClaims has cleared any stale reservation -- so the lock is re-taken fresh every battle and never
+-- compounds. The bearer is its own holder: the reservation stands for as long as the unit is on the board,
+-- which for its own fight is the whole of it, and releaseClaims frees it at the bell regardless. It is
+-- never lethal and never larger than the bearer actually holds -- a fighter that walks in already wounded
+-- reserves only down to its last point of life, exactly the floor Combat.canReserve keeps for health.
+function Combat.applyReservations(combat)
+    for _, unit in ipairs(combat.units) do
+        for _, item in ipairs(Character.eachItem(unit.char)) do
+            local want = Combat.healthReserveAmount(unit.char, item)
+            if want > 0 then
+                local hp = unit.char.stats.health
+                local current = (type(hp) == "table") and hp.current or 0
+                local amount = math.min(want, math.max(0, current - 1))
+                if amount > 0 then Combat.reserve(unit.char, "health", amount, unit) end
+            end
+        end
+    end
+end
+
 -- Re-fold ONE unit's passives, for a unit whose grid changed after setup. The grid is fixed for the
 -- duration of a battle for everyone who walked into it -- so the only caller is models/transform.lua,
 -- where the body itself is exchanged and the "grid" changes wholesale because the character did. A
@@ -989,6 +1024,7 @@ function Combat.new(arena, partyUnits, enemyUnits)
     Combat.rebase(combat)
     combat.clock = 0
     Combat.applyPassives(combat)
+    Combat.applyReservations(combat)
 
     -- Passives (above) established each unit's resource ceilings, including any Endurance/Attunement
     -- raise. Stamina refills to its full effective ceiling for the party here -- addSide topped it to
@@ -8202,14 +8238,23 @@ function Combat.outcomeFor(combat, side)
         for _, u in ipairs(combat.units) do
             -- A summoned duplicate shares its origin's `char.id`, so it would otherwise read as the
             -- mark still standing. Only the real thing counts.
-            if u.alive and u.side == "enemy" and u.char.id == obj.target and not u.summoned then
-                return nil -- target still standing
+            --
+            -- The mark is matched THROUGH a transform. A general who sheds its human body for its demon
+            -- one (trait_boss_phases' `transform` response) is the SAME unit in a new shape, so its
+            -- current `char.id` no longer matches the id the quest named. Reading the shape's stashed
+            -- original (Transform.originalChar) keeps the mark stable across the swap -- without it the
+            -- fight would end the instant a general phased, and its second form would never be fought.
+            if u.alive and u.side == "enemy" and not u.summoned then
+                local original = Transform.originalChar(u)
+                if u.char.id == obj.target or (original and original.id == obj.target) then
+                    return nil -- target still standing, in whichever body it is wearing
+                end
             end
         end
         return "win"
     elseif obj.type == "survive" then
         -- Outlast a clock: win once the elapsed ticks pass the authored `duration`. The consecrated
-        -- rite in data/quests/cathedral/slot_03_rite_of_ashes.lua is the live user.
+        -- rite in data/quests/cathedral/quest_cathedral_slot_03.lua is the live user.
         if combat.clock >= (obj.duration or math.huge) then return "win" end
         return nil
     elseif obj.type == "defend" then

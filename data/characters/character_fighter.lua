@@ -20,11 +20,11 @@ return {
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
     -- Starting loadout (row-major; false = empty). The axe cleaves the rank in front (the fighter's
-    -- own `front` aoe), the hammer trades reach for a Stun, Fury spends the body's own tempo for a
-    -- harder swing, leather and a potion keep it upright. No relic -- the template is the base, not the
-    -- build-around.
+    -- own `front` aoe), the hammer trades reach for a Stun, leather and a potion keep it upright. No
+    -- relic and no discipline gear -- the template is the base, not the build-around, so Fury (a
+    -- barbarian cut now, data/items/ability/ability_fury.lua) is bought into a build, never issued here.
     startingItems = {
-        "weapon_iron_axe",   "weapon_iron_hammer", "ability_fury",
+        "weapon_iron_axe",   "weapon_iron_hammer", false,
         "armor_leather_armor", "consumable_healing_potion", false,
         false,               false,                false,
     },

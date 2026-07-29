@@ -1,10 +1,22 @@
 -- The general of Wrath, and the first of the seven the Colosseum's line was always walking toward
--- (see docs/story.md). Enemy blueprint; the objective of data/quests/general_wrath.lua.
+-- (see docs/story.md, docs/wrath-line-beats.md). Enemy blueprint; the objective of
+-- data/quests/colosseum/quest_colosseum_slot_10.lua.
 --
--- Her whole fight is one rule, and it is in `traits`: every blow she survives is added to her next
--- one (data/traits/wrath_rising.lua). Her opening stats are deliberately modest for a boss -- a
--- Warlord hits harder on turn one -- because the danger is not what she starts as. Trade with her and
--- you are building her. The counterplay is burst, control, and finishing before the rage compounds.
+-- WHO SHE IS. The Perennial's manufactured champion -- trained since birth, owned all her life, made
+-- to win and to kill on the house's schedule and never her own. The one thing she was never given is
+-- the one thing she wanted: to be free. The sand was the only place she ever moved on her own accord,
+-- so she fought superbly, and her SULLEN wrath -- resentment held down for years -- was the secret
+-- engine of her ferocity. Then she CHOSE the pact: promised freedom and the strength to take it, she
+-- bargained with the Demon Lord herself and got an uncontrollable rage instead -- a deeper cage with
+-- no door. This is phase one, the woman who still wants out; the bargain come due is her second form
+-- (character_general_wrath_demon).
+--
+-- HER FIGHT is one rule, and it rides on her Unappeased Heart relic (not `traits` -- character-level
+-- traits are never instantiated; only grid items grant them): her damage rises as her health FALLS,
+-- plus a per-blow contact term (data/traits/trait_wrath_rising.lua). Her opening stats are deliberately
+-- modest for a boss -- a Warlord hits harder on turn one -- because the danger is not what she starts
+-- as. Trade with her and you loose the thing she cannot control. The counterplay is burst, control, and
+-- ending it before the rage rises -- the same lesson every bout on the sand has taught since the debut.
 --
 -- Her mail carries the same rule for whoever lifts it off her (data/items/armor/armor_mail_of_the_unappeased.lua).
 return {

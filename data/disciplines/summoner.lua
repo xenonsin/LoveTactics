@@ -7,5 +7,5 @@ return {
     name    = "Summoner",
     classes = { "mage" },
     exemplar = "character_summoner", -- NEW, pending
-    requiredQuests = { "slot_05_donor_roll" },
+    requiredQuests = { "quest_arcanum_slot_05" },
 }

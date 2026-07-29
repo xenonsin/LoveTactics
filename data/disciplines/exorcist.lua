@@ -11,5 +11,5 @@ return {
     name    = "Exorcist",
     classes = { "priest" },
     exemplar = "character_amana",
-    requiredQuests = { "slot_03_rite_of_ashes" },
+    requiredQuests = { "quest_cathedral_slot_03" },
 }

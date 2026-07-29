@@ -11,5 +11,5 @@ return {
     name    = "Bombardier",
     classes = { "alchemist" },
     exemplar = "character_bombardier", -- NEW, pending
-    requiredQuests = { "slot_04_by_the_dram" },
+    requiredQuests = { "quest_alchemist_slot_04" },
 }

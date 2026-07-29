@@ -1,5 +1,5 @@
 -- The general of Pride, and the end of the Arcanum's line (docs/story.md, "The Arcanum"). Enemy
--- blueprint; the objective of data/quests/general_pride.lua. The finale (data/quests/the_gate_below.lua)
+-- blueprint; the objective of data/quests/general_pride.lua. The finale (data/quests/quest_the_gate_below.lua)
 -- already reserves a slot for her -- "general_pride" sits in its requiredQuests.
 --
 -- WHO SHE IS: a human who made a pact with the Demon Lord for perfect comprehension -- she has only to

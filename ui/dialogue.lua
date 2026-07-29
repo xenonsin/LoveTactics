@@ -17,6 +17,7 @@
 
 local Scale = require("scale")
 local Theme = require("ui.theme")
+local Sound = require("models.sound")
 local InputMode = require("input_mode")
 local Sprite = require("models.sprite")
 local Conversation = require("models.conversation")
@@ -45,6 +46,7 @@ local BOX_H = 150
 local BOX_BOTTOM_GAP = 24
 local PORTRAIT_H = 470 -- target portrait height; scaled down to fit its slot width if needed
 local REVEAL_CPS = 45  -- typewriter speed, characters per second
+local TYPE_MIN_GAP = 0.055 -- min seconds between typewriter key-taps, so a fast reveal doesn't machine-gun the cue
 -- Over a live scene there is no room for a full VN cast, so the speaker is shown as a single small
 -- bust at the box's left end, with the name plate above it and the line indented past both.
 local SIDE_PORTRAIT_W = 118
@@ -245,6 +247,7 @@ end
 function Dialogue:startPage()
     self.reveal = 0
     self.revealDone = false
+    self.typeClock = 0 -- throttle accumulator for the typewriter key-tap (see :tickTypewriter)
     self.pageText = self.pages[self.page] or ""
     self.textLen = utf8.len(self.pageText) or #self.pageText -- length in characters, for the reveal
 end
@@ -312,14 +315,38 @@ function Dialogue:moveChoice(delta)
     self.choiceSel = (self.choiceSel - 1 + delta) % count + 1
 end
 
+-- Whether any character in the half-open range (fromChar, toChar] of the current page is non-space,
+-- so a tick that only uncovered whitespace stays silent -- a run of spaces reads as a pause, not a
+-- stutter. Byte offsets are taken on CHARACTER boundaries (utf8) so a multibyte glyph is never split.
+function Dialogue:inkBetween(fromChar, toChar)
+    local s = utf8.offset(self.pageText, fromChar + 1)
+    if not s then return false end
+    local e = (utf8.offset(self.pageText, toChar + 1) or (#self.pageText + 1)) - 1
+    return self.pageText:sub(s, e):find("%S") ~= nil
+end
+
+-- The soft key-tap under the typewriter reveal. Fired for characters newly uncovered since the last
+-- tap, but throttled to TYPE_MIN_GAP so a fast reveal (or a low frame rate uncovering several chars in
+-- one frame) taps at a human cadence rather than a machine-gun. Silent over whitespace and until
+-- assets/audio/ui/type.ogg lands (models/sound.lua); a little pitch jitter keeps it from sounding
+-- perfectly mechanical.
+function Dialogue:tickTypewriter(fromChar, toChar, dt)
+    self.typeClock = (self.typeClock or 0) + dt
+    if toChar <= fromChar or self.typeClock < TYPE_MIN_GAP then return end
+    if not self:inkBetween(fromChar, toChar) then return end
+    self.typeClock = 0
+    Sound.play("ui.type", { pitch = 0.94 + love.math.random() * 0.12 })
+end
+
 function Dialogue:update(dt)
-    if not self.revealDone then
-        self.reveal = self.reveal + dt * REVEAL_CPS
-        if self.reveal >= self.textLen then
-            self.reveal = self.textLen
-            self.revealDone = true
-        end
+    if self.revealDone then return end
+    local before = math.floor(self.reveal)
+    self.reveal = self.reveal + dt * REVEAL_CPS
+    if self.reveal >= self.textLen then
+        self.reveal = self.textLen
+        self.revealDone = true
     end
+    self:tickTypewriter(before, math.floor(self.reveal), dt)
 end
 
 -- ---------------------------------------------------------------------------

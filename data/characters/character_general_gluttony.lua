@@ -1,6 +1,6 @@
 -- The general of Gluttony, and the end of the Hunter's Lodge line (docs/story.md, "The Hunter's Lodge").
 -- Enemy blueprint; the objective of data/quests/general_gluttony.lua. The finale
--- (data/quests/the_gate_below.lua) already reserves a slot for her -- "general_gluttony" sits in its
+-- (data/quests/quest_the_gate_below.lua) already reserves a slot for her -- "general_gluttony" sits in its
 -- requiredQuests.
 --
 -- WHO SHE IS: once the finest hunter the region ever produced, celebrated and real -- and the Grand

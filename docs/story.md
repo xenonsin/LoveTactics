@@ -84,13 +84,13 @@ Relics carry no `class` and no `price`, so no vendor stocks them and none can be
 `questGate` in `models/quest.lua`. Relics are meant to be *worn*, and a key you can misplace in a
 loadout screen is not a key. Moving, stashing, or losing a relic can never soft-lock the endgame.
 
-`data/quests/the_gate_below.lua` names all seven in `requiredQuests`. Prestige and reputation are hard
+`data/quests/quest_the_gate_below.lua` names all seven in `requiredQuests`. Prestige and reputation are hard
 gates (fail one and a quest is not on the board at all); `requiredQuests` is a **soft** lock. Kill your
 first general and the Gate appears on the board `locked`, counting *1 of 7 keys* and reciting the one
 fragment you have earned. Watching that count climb is the last stretch of the game.
 
 > `map.keyCount` on a quest is the **overworld's** locked-door puzzle (`models/overworld.lua`) — an
-> entirely different mechanic that happens to share the word. `the_gate_below` sets `keyCount = 0`.
+> entirely different mechanic that happens to share the word. `quest_the_gate_below` sets `keyCount = 0`.
 > Do not lock the last door twice.
 
 ## The three acts
@@ -104,7 +104,7 @@ The seven-general arc above is the middle of a three-act shape, not the whole of
   holstered until Act 1.
 - **Act 1 — the seven.** This document. Open-ended: seven vendor lines, seven companions, seven
   generals, in whatever order standing allows.
-- **Act 2 — the Gate Below.** `the_gate_below` and the Hollow Crown.
+- **Act 2 — the Gate Below.** `quest_the_gate_below` and the Hollow Crown.
 
 The Crown re-summons the generals you have killed as its health falls (see *The Demon Lord*) —
 which is the whole reason the middle act is a general hunt and not a fetch list. **That logic has
@@ -358,8 +358,8 @@ was safe from it. The chain costs nothing and removes the whole failure mode.
 
 The Cathedral's head is the one deliberate step outside its own line: `haunted_mill` waits on
 `arena_debut`, so the church opens after the debut on the sand rather than on a prestige number
-(`data/buildings/cathedral.lua` gates the door the same way). The Bastion's `bandit_ambush` and
-`caravan_road` sit outside the ten entirely — ordinary bounty work, available whenever the Bastion is,
+(`data/buildings/cathedral.lua` gates the door the same way). The Bastion's `quest_bastion_bandit_ambush` and
+`quest_bastion_caravan_road` sit outside the ten entirely — ordinary bounty work, available whenever the Bastion is,
 belonging to no chain.
 
 Reputation rank is now **redundant but retained**: with the order fixed, standing is a function of
@@ -436,110 +436,102 @@ shelf.
 The player arrives with **no house**. That matters: they are the only team on the sand with nothing
 behind it, and it is the entire reason the line's companion will sign with them.
 
-### The Perennial, and what it manufactures
+### The Perennial, and what it keeps
 
 *(Name provisional — it wants to sound like an institution a champion would be proud to wear, not a
 villain's lair.)*
 
 The reigning stable, champions for longer than anyone finds strange. Other houses recruit, buy and
-train. **This one produces.** It takes children and makes instruments, and it has been winning for a
-very long time because its product does not feel anything.
+train. **This one keeps.** It takes children — orphans, the poor, above all the war's refugees — and
+raises them as *property*: fighters bred and drilled to win and to kill on the house's schedule and
+never their own, who are never once in their lives allowed to choose, and never allowed to stop.
 
 That is the sin, and it is a business rather than a person: **wrath is not a woman here, it is a
-house that discovered rage outperforms morale.** Ira is not the Perennial's victim. She is its
-masterpiece.
+house that discovered owned rage outperforms free morale** — a fighter who cannot walk away is worth
+more than one who can. Ira is not the Perennial's victim in the ordinary sense. She is its
+masterpiece, and its prisoner.
 
-### Ira, and the one thing that ever reached her
+### Ira, and the one thing she was never given
 
-Blind from birth. Raised in the program: no fear response, no pain response, no attachment — nothing
-that could interfere with the work. She was superb, and she felt nothing about it, and that was the
-specification.
+Manufactured by the Perennial to be its champion: trained since birth, ruthless, superb — its finest
+work. But under the discipline is a whole person, and the one thing she has ever wanted is to be
+**free** — to make her own decisions, to belong to herself. She never has. She fights, wins and kills
+on the house's schedule and never her own.
 
-Then something got through, and what got through was **anger**.
+**The one place she was ever free was the sand.** Only mid-bout does she get to move on her own
+accord — the single span of her life the house does not script move by move. So she fought, and fought
+superbly, because combat was the only taste of freedom she was ever allowed. Her ferocity was never
+obedience; it was the one door in the cage that opened, and her **sullen wrath — resentment held down
+for years — was the secret engine of everything the crowd loved.**
 
-Not joy, not grief, not love. The first sensation of her life was rage — overwhelming, and *hers*, and
-the only evidence ever placed in her hands that there was a person inside the instrument. **She has
-been chasing it since.** Not for revenge. Because it is the only proof she exists.
+**Then she chose the pact.** Promised freedom and the strength to seize it, she bargained with the
+Demon Lord herself — and got strength and a rage she cannot govern. Not a door out but a deeper cage,
+one with no key and no door at all. She traded the house's chains for the rage's, and the rage's
+cannot be broken from the inside; now she cannot stop fighting even if she wanted to. **The bargain she
+made, come due, is her second form.**
 
-**What triggered it should stay small and bureaucratic, never operatic.** A handler assigned to her
-broke protocol — talked to her, described things to her, gave her a name. The first attachment of her
-life. The stable noticed, and **reassigned them.** Not a murder. A form.
-
-She has never learned where they went, whether they are alive, or whether they think of her. Which is
-crueller than a death and is the mechanical heart of the sin: **there is no one to be paid by.** No
-grave to visit, no throat to cut, no confession that would settle it. The debt cannot be closed
-because there is no debtor, so the only thing she can still do about it is feel it — and the only way
-to feel anything is to be hit.
-
-**Her rule is that, and it is already half-built.** `data/traits/trait_wrath_rising.lua` currently
-banks a bonus `onDamaged`; it wants rewriting so damage scales as her **health falls**. The
-difference is characterisation, not tuning: the threshold for sensation is that high. She has to be
-nearly destroyed before anything reaches her. She is not most dangerous when winning — she is most
-*awake* when dying, and she goes looking for it.
+**Her rule.** `data/traits/trait_wrath_rising.lua` scales her damage as her **health falls**, plus a
+per-blow contact term. The difference is characterisation, not tuning: as she is pushed toward death,
+the sullen restraint gives way and the rage rises past her control — the closer to gone, the less of
+the person is left holding the leash. She is not most dangerous when winning — she is most *unleashed*
+when dying, and a long trade is what looses her.
 
 Her kit should also be immune to fear, charm, and pain-based effects. Not because she is strong.
-Because **nothing gets in.** The immunities are the tragedy, not the power.
+Because **nothing controls her but the rage.** She cannot be reached, only released. The immunities are
+the tragedy, not the power.
 
-### The house that cannot admit what it built
+### The house that cannot admit what it keeps
 
-The Perennial does not fear Ira and does not appease her. It **schedules** her, and it cannot afford
-to say what she is, because saying it means saying what the program is.
+The Perennial does not fear Ira and does not free her. It **schedules** her, and it cannot afford to
+say what she is, because saying it means saying its champions are *owned* — and there are children in
+the intake tonight.
 
 That is the vendor serving its sin, and it is uglier than the Bastion's version. The Bastion took the
 easy path about something that had already happened. The Colosseum is **still running the intake**.
 
-### Saber, the same machine answered the other way
+### Saber, freedom answered the other way
 
-She came out of the same program, and the conditioning **failed on her**. She kept flinching, kept
-caring about the wrong things, felt everything they were trying to burn out. So she was washed out
-and put to ordinary use — a fighter, not an instrument.
+A **free agent of the sand** — no house, no program, come up nowhere in particular and belonging to no
+one, which is exactly the point. She fights for whoever books her because she loves the **craft**: the
+read, the moment, the pure self-expression of it. She is bright, warm, quick to laugh, and she takes on
+anyone — she laughs in victory and in defeat alike, because the win was never the thing; the fight was.
 
-Which means she has spent her life being told that feeling is a defect, and her virtue is not
-temperament but **the discipline she invented to survive having emotions in a place that punished
-them.** She could not stop feeling, so she learned to hold. That is patience, earned rather than
-possessed, and it is exactly the answer Ira refused.
+Her virtue is contentment worn as **joy**. She already has enough — every fight, the one in front of
+her is enough — so time does not press on her and she never gets greedy for the kill. That is patience,
+not endurance: a person who wants nothing she does not already have. Her patient style is why promoters
+slot her on the **undercard**; she does not sell the fast, bloody headline, and she is happy there.
 
-**She escaped, and she kept fighting anyway, because she loves it.** Not the killing — the craft, the
-read, the moment. The sport was never what was wrong. She fights for whoever books her, house to
-house, a free agent of the sand.
+**What she stopped for.** Ordered once to execute helpless people to pad a card, she put the sword down
+in front of a paying crowd — and the house had someone else finish it while she stood there. **The
+people died anyway.** Her one great refusal saved no one and cost her the card and any house that
+wanted a reliable name on a contract. It is why she signs only with a team that isn't a house, and why
+she is on the sand between enforcers and the condemned before anyone asks.
 
-**What she stopped for.** Ordered to execute helpless people to pad a card, she put the sword down in
-front of a paying crowd — and the house had someone else finish it while she stood there. **The
-people died anyway.** Her one great moral act saved no one and cost her the card, her name, and any
-house that wanted a reliable name on a contract. She has never known whether it was courage or vanity.
-
-**Her flaw, and it is not sullenness.** She loves the thing that makes Iras. Every superb bout she
-gives the crowd is an argument that the arena is fine — she is the acceptable face of it, the free
-agent who proves you can do this cleanly. The machine that built Ira exists because the sport sells.
-She tells herself the two are separable. They are not, and the back half of the line is where she has
-to hold that.
-
-**Her relationship to Ira is recognition, not love, and they were never partners.** Saber is not
-grieving a friend; she is looking at the version of herself the process completed, and she is the only
-person in the building who understands that the thing under the sand is a *manufactured woman* rather
-than a monster.
+**Her relationship to Ira is sympathy, not recognition.** She was never in the program; she is not
+looking at a version of herself. She is a **free fighter looking at a caged one**, and she is the
+person in the building who most understands what has been taken from Ira — because freedom on the sand
+is the whole of what fighting *means* to Saber. To her, a fighter who cannot choose to leave is the one
+unbearable thing.
 
 ### What the line does to her
 
-Saber's whole identity is one sentence: **I do not kill people who cannot choose.**
+Saber's whole identity is one sentence: **Everyone gets to walk off the sand.**
 
-Ira cannot choose. Blind from birth, raised into numbness, handed exactly one feeling and no equipment
-for any other. In the only sense this story recognises, she is **the most helpless person in the
-building** — and Saber has to kill her anyway.
+Ira can't. She fought her whole life for a freedom the house never gave and a pact then foreclosed;
+the only door left open to her is death. The line ends by requiring Saber to keep her promise the only
+way that remains — she cannot walk Ira off, so she carries her off, by ending it. It is **still right**:
+not because Ira couldn't choose, but because the thing she chose devoured her. That is not a twist. It
+is a mercy, and it is a price.
 
-The line ends by requiring her to break the rule she is built out of, and the cost is that **it is
-still right**. That is not a twist. It is a price.
+**The turn (slot 7) is the fact that kills Saber's hope of freeing her some other way:** there is no
+third state. The house allows Ira two — **win** and **kill** — and never a third: no *stop*, no
+*leave*. The one thing she ever wanted was never permitted, and the pact she made has sealed even that.
+Somewhere in that scene Ira is briefly reachable, and what surfaces is neither a monster nor a plea:
 
-**The turn (slot 7) is the fact that kills Saber's hope of freeing her:** there is no third state. The
-program did not leave one. Freedom, for Ira, is a return to the numbness — she is not choosing rage
-over peace, she is choosing existence over nothing, and she has already tried the alternative for
-twenty years. Somewhere in that scene Ira is briefly reachable, and what surfaces is neither a monster
-nor a plea:
+> *I bought my way out. This is what was on the other side of the door.*
 
-> *I know what you're offering. I had it. There was no one in it.*
-
-**She must never ask to die.** That would let Saber off. She wants to keep feeling, right to the end,
-and Saber has to do it to her regardless.
+**She must never ask to die.** That would let Saber off. She wanted to be free, not gone, right to the
+end — and Saber has to do it to her regardless.
 
 ### Her ability, and why it is the whole line in arithmetic
 
@@ -551,30 +543,32 @@ patience, they are downtime. This is patience as a verb: pick the moment, commit
 
 The two of them are **mathematically opposed on the same axis**, and every bout from the debut onward
 is teaching the player the lesson the general will examine them on. Ira wants a long trade because
-every blow wakes her up; Saber is worthless in a long trade and devastating on the opening.
+every blow looses the rage; Saber is worthless in a long trade and devastating on the opening. Under
+the numbers is the real foil: **freedom vs. bondage** — Saber ends a bout in one motion because nothing
+compels her to stay in it, and Ira feeds on the long trade because she can never leave.
 
 **Her second relic, late in the line:** one strike per battle at full value regardless of the target's
 health, **whenever she chooses**. v1 lets the arithmetic pick her moment; v2 gives her the moment.
 *Patience becomes a choice of when* — the same move as Rowan's declared ward, in a different idiom,
 with no downtime anywhere in it.
 
-She currently has **no signature item and no trait at all** (`data/characters/character_saber.lua` is
-a greatsword, a potion, and seven empty cells). Both relics are new work.
+Her first relic, `weapon_first_motion`, is built and bound in her grid (the target-health curve above);
+the **second relic is still new work** — the chosen strike of slot 8.
 
 ### The ten slots
 
 | # | Slot | Rank | The Colosseum's ten | What it costs Saber |
 |---|---|---|---|---|
 | 1 | Introduction | 1 | **Debut on the Sand** — beat the hired veteran; she signs with the only house that isn't one | nothing yet; she is enjoying herself |
-| 2 | The recruit | 1 | **The Padded Card** — `killAll`+`protect`; the card padded with slaughter | says nothing about why she knows |
+| 2 | The recruit | 1 | **The Padded Card** — `killAll`+`protect`; the card padded with slaughter | the first crack in "the sport is clean" |
 | 3 | Complication | 1 | stable against stable, the sport at its best | the player learns why she loves it |
-| 4 | Escalation | 2 | **The Perennial's Roster** — `killAll`; met as opponents | she recognises the training and won't say so |
-| 5 | The discovery | 2 | **The Intake** — `reach`; the program, not its output | admits she came out of it |
-| 6 | Complicity | 2 | **Blood in the Sand** — `killAll`+`protect`; the player is the draw now, and their undercard is padded for them | implicates them both; she asks whether they will keep the billing |
-| 7 | **The turn** | 3 | **No Third State** — `survive`; Ira, briefly reachable | the hope dies |
+| 4 | Escalation | 2 | **The Perennial's Roster** — `killAll`; met as opponents | reads them cold; they move like people not allowed to choose |
+| 5 | The discovery | 2 | **The Intake** — `reach`; the house, not its output | names it aloud — bought, not schooled; kept, not trained |
+| 6 | Complicity | 2 | **Blood in the Sand** — `killAll`+`protect`; the player is the draw now, and their undercard is padded for them | is reaching Ira worth feeding the house that made her? |
+| 7 | **The turn** | 3 | **No Third State** — `survive`; Ira, briefly reachable | the hope of freeing her some other way dies |
 | 8 | The break | 3 | **Naming the Day** — `assassinate`; she stops deferring | second relic; patience becomes a choice |
 | 9 | The approach | 3 | **What the House Does Instead** — `assassinate`; the stable cornered | — |
-| 10 | The general | 4 | **The Unappeased** — `assassinate` | she kills someone who cannot choose |
+| 10 | The general | 4 | **The Unappeased** — `assassinate` | she frees the fighter she wishes she could have walked off the sand |
 
 `arena_debut`, `warlord_keep`, `blood_in_the_sand` and `general_wrath` exist and map onto 1, 3-ish, 6
 and 10; the rest is new. Slot 7 needs Ira to speak **without being a fight**, and the only seam for
@@ -593,8 +587,8 @@ and `weapon_first_motion` (Saber's bound signature, scaling with the *target's* 
 tests in `tests/trait_spec.lua` and `tests/weapon_spec.lua`. Slot 1 (`arena_debut`) is rebuilt
 premise-first and grants Saber through the quest's own `rewardCharacter`.
 
-**Not built:** slots 2–5 and 7–9 (six new quests), Saber's second relic, and every scene past the
-debut.
+**Not built:** Saber's second relic (slot 8) and the slot-5 unbuyable reward. All ten quests and their
+scene scaffolds are now on disk — see `docs/wrath-line-beats.md` for the per-slot beat writing.
 
 ### Open questions, deliberately unresolved
 
@@ -603,9 +597,9 @@ slots 2–4 are where the player meets the house properly, and all three land th
 
 1. **The stable's name.** "The Perennial" throughout this section is a placeholder. It wants to sound
    like an institution a champion would be proud to wear, not a villain's lair.
-2. **Ira's handler** — the one who broke protocol, gave her a name, and was *reassigned by form*. Who
-   they were and what the paperwork said. This is load-bearing rather than colour: it is the reason
-   nothing can settle her, because there is no debtor and no grave, only a filing decision.
+2. **The terms of Ira's pact** — what freedom she was promised, and in whose words. This is load-bearing
+   rather than colour: she *chose* it, reaching for the one thing she was never given, and the cruelty
+   is that the door she bought opened onto a deeper cage. What the Demon Lord actually said matters.
 3. **Slot 7's seam.** The turn needs Ira to speak *without being a fight*, and every antagonist
    seam that exists is attached to a battle (`map.objective.opening`, `states/battle.lua`'s
    `openingConversation`). A quest-level `opening` plays over the overworld and could carry it, but
@@ -677,17 +671,16 @@ never touch is Amana, who **carries none of her blood** (see the foil, below). S
 the plan and the drain-and-turn note; both are new work over the shipped Rapture.
 
 **Killing her frees nothing automatically.** The blooded stay blooded and hers; the sleeper army is a
-standing threat that survives into Act 2 (`the_gate_below` / the Hollow Crown). You cannot break ten
+standing threat that survives into Act 2 (`quest_the_gate_below` / the Hollow Crown). You cannot break ten
 thousand seedings from the outside.
 
 ### Amana, the witness — the same sin answered the other way
 
 Amana is an **acolyte, not a soldier** — clergy track, **never blooded.** There was never any of
 Luxuria's blood in her to command, so there is nothing in her to turn: her immunity is not willpower
-and not a corruption she fought off, **she is simply not one of the made.** (This is the plainer, and
-better, version of the foil-immunity the Colosseum states for Saber, whose conditioning merely
-*failed*.) `trait_devotion_unbidden` makes charm and seizure **shed off her** for exactly that reason
-— no blood, nothing to seize.
+and not a corruption she fought off, **she is simply not one of the made.**
+`trait_devotion_unbidden` makes charm and seizure **shed off her** for exactly that reason — no blood,
+nothing to seize.
 
 What sets her against the Cathedral is what she **saw** — what almost no one in the church ever
 learns. Close enough to the blooding rites (which few acolytes witness) to work out what they do to
@@ -901,7 +894,7 @@ ladder's *shape*, which still wants standing as a **count of distinct completed 
 **The general's drop — Maw of the Unfed** (parallel to the Reliquary of the Unbidden): a trophy taken
 from the warden Gula killed to begin her fall, now the vessel of her appetite — carrying the
 heal-on-hit trait for whoever lifts it, `noSteal`, no `class`, no `price`, `gateHint` written into
-its flavor and consumed by `the_gate_below`. Her grid weapon beside it is a **gralloch knife** (the
+its flavor and consumed by `quest_the_gate_below`. Her grid weapon beside it is a **gralloch knife** (the
 gutting blade read as consumption — heal-on-hit), gluttony's reading of the hunter's kit the way the
 Censer of Ashes is lust's.
 
@@ -957,7 +950,7 @@ rule `trait_ravenous` (the shipped heal-on-hit half, `onCast`) on her **Maw of t
 `weapon_gralloch_knife` (heal-on-hit inline). Kaya's Wolfsong Horn was already forged. Three of the ten
 quests — slot 1 (`sacred_stag`), the recruit slot 2 (`the_guide`, a `survive` guide-join,
 `rewardCharacter = "character_kaya"`), slot 5 (`the_silent_wood`), and slot 10 (`general_gluttony`,
-rank-4 gated, drops the Maw + `gateHint`). `general_gluttony` is in `the_gate_below` `requiredQuests`.
+rank-4 gated, drops the Maw + `gateHint`). `general_gluttony` is in `quest_the_gate_below` `requiredQuests`.
 Four conversations — `vendor_hunters_lodge_intro`, `hunters_lodge_the_guide_confront`, `kaya_joins`,
 `hunters_lodge_general_gluttony_confront`. Coverage in `tests/gluttony_spec.lua`.
 
@@ -1010,7 +1003,7 @@ that denial is the sin.
 Livia is the college's masterpiece: the one homunculus that got far enough to **want**. What she wanted
 was the single thing that cannot be decanted into a flask — a *self*, a soul, to be *born* and not made.
 She did not pact for power. She pacted with the Demon Lord for **humanity** — and the bargain's cruelty
-(Ira's numbness, Gula's appetite) is exact: it gave her the power to **copy any human perfectly** —
+(Ira's caged rage, Gula's appetite) is exact: it gave her the power to **copy any human perfectly** —
 shape, skill, manner — and never once to *be* one. She can be anyone and is no one. **"Has no shape
 until it has seen yours"** is literal to the bone: she has no self, only the humans she wears, and she
 envies the one thing she can never counterfeit — an interior. She will settle for wearing yours.
@@ -1134,11 +1127,11 @@ Livia obeys the **two-phase** rule cleanly and is arguably its most literal cons
 that sheds a stolen human shape for the thing underneath is a transform, not a metaphor
 (`models/transform.lua`, which ships).
 
-She **breaks the *fallen human* rule on purpose, and is its second flagged exception.** Rule one is
-*every general was a human who pacted*; Ira is the standing exception — *a human made into a thing, who
-never chose.* Livia is the **exact inverse**: *a thing that wants to be human, who did choose* — she
-pacted, and for humanity rather than power. The two bracket the rule from opposite ends, and that is
-design, not drift: state it, do not smooth it.
+She **breaks the *fallen human* rule on purpose, and is its one flagged exception.** Rule one is
+*every general was a human who pacted* — Ira among them, a champion who pacted for freedom. Livia is the
+**inverse of the rule itself**: *a thing that wants to be human, who did choose* — she pacted, and for
+humanity rather than power. Where every other general was a person who bargained something away, she is
+a made thing bargaining to become a person; that is design, not drift: state it, do not smooth it.
 
 ### What is built, and what is not
 
@@ -1154,7 +1147,7 @@ Ren's signature `utility_aqua_vitae` (bound, `unlock = { event = "healDone", cou
 party a copy of its strongest — the benevolent inversion of the Glass). Three of the ten quests — the
 recruit slot 2 (`crucible_the_counterfeiter`, `rewardCharacter = "character_ren"`, `killAll`), slot 5
 (`the_vats`), and slot 10 (`general_envy`, rank-4 gated, drops the Glass + `gateHint`). `general_envy`
-is in `the_gate_below` `requiredQuests`. Four conversations — `vendor_alchemist_intro`,
+is in `quest_the_gate_below` `requiredQuests`. Four conversations — `vendor_alchemist_intro`,
 `crucible_the_counterfeiter_confront`, `ren_joins`, `crucible_general_envy_confront`. Coverage in
 `tests/envy_spec.lua`.
 
@@ -1311,7 +1304,7 @@ as a **count of distinct completed quests**.
 reliquary / bow / glass of the others): the vessel of Sublimitas's rule, carrying **"answers every
 spell with your own"** for whoever lifts it — worn, *you* now turn back what your foes cast at you, the
 same trap it was for her. `noSteal`, no `class`, no `price`, `gateHint` written into its flavor and
-consumed by `the_gate_below` (`"where the shelves answer only themselves"`).
+consumed by `quest_the_gate_below` (`"where the shelves answer only themselves"`).
 
 **Gyeom's signature is the Ledger** (`utility_ledger.lua`) — a grimoire she writes herself, bound, in
 the grid's center: **concealment, and release.** She fights **suppressed** — her displayed magic reads
@@ -1357,7 +1350,7 @@ ten quests — slot 1 (`grimoire_ruins`), the recruit slot 2 (`arcanum_the_radic
 `rewardCharacter = "character_gyeom"`, `killAll`), slot 5 (`donor_roll`), and slot 10 (`general_pride`,
 rank-4 gated, drops the Codex + `gateHint`). Four conversations — `vendor_arcanum_intro`,
 `arcanum_the_radical_confront`, `gyeom_joins` (the join banner), and `arcanum_general_pride_confront`.
-`general_pride` is in `the_gate_below` `requiredQuests` **and** Sublimitas is in `trait_hollow_crown`
+`general_pride` is in `quest_the_gate_below` `requiredQuests` **and** Sublimitas is in `trait_hollow_crown`
 `shades`. Coverage in `tests/pride_spec.lua` (Diligence banks and compounds; the Ledger releases at the
 fourth cast; Perfect Recall answers a spell and lets a sword through).
 
@@ -1572,7 +1565,7 @@ of its own beside the armor / spear / mail / reliquary / bow / mirror / tome of 
 the **Golden Touch** for whoever lifts it — worn, *you* now gild your foes and take their kit to gold,
 warded by the hoard you pile up and unable to stop taking, the same trap it was when she carried it.
 `noSteal`, no `class`, no `price`, `gateHint = "beneath the vault that was never full"`, written into its
-flavor and consumed by `the_gate_below`.
+flavor and consumed by `quest_the_gate_below`.
 
 **Clem's signature is Borrowed Time** (`weapon_borrowed_time.lua` — a blade, like Saber's, so the
 killer's own tool sits at her grid's centre; never a cleanse, which is the priest's verb, not the
@@ -1788,7 +1781,7 @@ signature `weapon_borrowed_time` (bound, `unlock = { event = "kill", count = 3 }
 hastes the whole party — the haste rides the active's effect, since the engine dispatches no `onKill`).
 Three of the ten quests — slot 1 (`vault_heist`), the recruit slot 2 (`undercroft_clem`,
 `rewardCharacter = "character_clem"`, `killAll`), slot 5 (`accounts_settled`), and slot 10
-(`general_greed`, rank-4 gated, drops the Purse + `gateHint`). `general_greed` is in `the_gate_below`
+(`general_greed`, rank-4 gated, drops the Purse + `gateHint`). `general_greed` is in `quest_the_gate_below`
 `requiredQuests`. Four conversations — `vendor_undercroft_intro`, `undercroft_clem_confront`,
 `clem_joins`, `undercroft_general_greed_confront`. Coverage in `tests/greed_spec.lua`.
 
@@ -1812,13 +1805,12 @@ them:
 1. **Every general was a human who made a pact with the Demon Lord.** The sin is what the bargain made
    of them; the Hollow Crown's seven appetites are seven people who said yes. Luxuria is written this
    way (a human who pacted for demonic power, then infiltrated the Cathedral). Acedia fits cleanly —
-   she already *negotiated* a corrupting bargain. **Ira does not, as written** — the Colosseum chapter
-   makes her a *manufactured* woman who "never chose," and that is a deliberate, load-bearing part of
-   her tragedy. Leave the contradiction standing until it is resolved on purpose: either Ira is the
-   one general the rule spares, or her "pact" is the Perennial's, struck on her behalf. **Do not quietly
-   rewrite her to fit.** **Livia (Envy) is a second, deliberate exception, and Ira's exact inverse** — a
-   *thing that wants to be human and did choose* against Ira's *human made into a thing who never chose*.
-   The two bracket the rule from opposite ends on purpose; see *The Crucible* above. **Sublimitas
+   she already *negotiated* a corrupting bargain. **Ira fits (resolved 2026-07-28):** the Perennial's
+   manufactured champion, owned all her life, she pacted with the Demon Lord *for freedom* and got an
+   uncontrollable rage — the deeper cage — instead; see *The Colosseum* above. The earlier "never chose /
+   struck on her behalf" reading is retired. **Livia (Envy) is the one deliberate exception** — a
+   *thing that wants to be human and did choose*, the inverse of the rule itself (a made thing bargaining
+   to become a person, not a person bargaining something away); see *The Crucible* above. **Sublimitas
    (Pride) fits cleanly** — a human who pacted for perfect comprehension and became certain of her own
    summit; see *The Arcanum* above.
 

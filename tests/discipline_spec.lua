@@ -130,7 +130,7 @@ end }
 --
 -- Naming one specific quest per parent is exact rather than over-strict BECAUSE the lines are chains:
 -- a later subclass gate cannot be reached without clearing the earlier one, so "any subclass of X"
--- and "X's first subclass gate" are the same set. See data/quests/colosseum/champions_challenge.lua.
+-- and "X's first subclass gate" are the same set. See data/quests/colosseum/quest_colosseum_champions_challenge.lua.
 tests[#tests + 1] = { name = "a multiclass capstone gates on a subclass quest of each parent", fn = function()
     -- Which quests gate a subclass, by parent class.
     local subclassGates = {}
@@ -330,7 +330,7 @@ tests[#tests + 1] = { name = "a newly unlocked discipline is pending at its pare
 
     -- Warlord (a fighter subclass) gates on warlord_keep. Clear it, and the discipline is pending at
     -- the fighter shelf.
-    p.completedQuests.slot_03_warlord_keep = true
+    p.completedQuests.quest_colosseum_slot_03 = true
     local pend = Discipline.pendingAnnouncements(p, "fighter")
     local found = false
     for _, id in ipairs(pend) do if id == "warlord" then found = true end end
@@ -355,8 +355,8 @@ tests[#tests + 1] = { name = "a multiclass announces at exactly one of its two p
     local p = Player.new()
 
     -- Champion (fighter x knight) needs a subclass of each parent, then its capstone. Clear the
-    -- shortest path: warlord_keep (fighter), held_position (knight), champions_challenge (capstone).
-    for _, q in ipairs({ "slot_03_warlord_keep", "slot_03_held_position", "champions_challenge" }) do
+    -- shortest path: warlord_keep (fighter), held_position (knight), quest_colosseum_champions_challenge (capstone).
+    for _, q in ipairs({ "quest_colosseum_slot_03", "quest_bastion_slot_03", "quest_colosseum_champions_challenge" }) do
         p.completedQuests[q] = true
     end
     assert(Discipline.isUnlocked(p, "champion"), "champion should be unlocked by the three quests")
@@ -381,7 +381,7 @@ tests[#tests + 1] = { name = "every vendor class has an announcement scene to pl
     local Vendor = require("models.vendor")
     local Conversation = require("models.conversation")
     -- Every discipline's parents are real vendor classes, and each of those vendors owns a
-    -- discipline_unlocked_<id> scene -- otherwise a shelf could unlock stock with no way to announce it.
+    -- conversation_<id>_discipline_unlocked scene -- otherwise a shelf could unlock stock with no way to announce it.
     local classToVendor = {}
     for id, def in pairs(Vendor.defs) do
         if def.class then classToVendor[def.class] = id end
@@ -393,7 +393,7 @@ tests[#tests + 1] = { name = "every vendor class has an announcement scene to pl
     for class in pairs(parents) do
         local vendorId = classToVendor[class]
         assert(vendorId, "no vendor sells the " .. class .. " shelf")
-        assert(Conversation.defs["discipline_unlocked_" .. vendorId],
+        assert(Conversation.defs["conversation_" .. vendorId .. "_discipline_unlocked"],
             vendorId .. " has no discipline_unlocked scene for its shelf")
     end
 end }

@@ -11,5 +11,5 @@ return {
     name    = "Necromancer",
     classes = { "mage" },
     exemplar = "character_necromancer", -- NEW, pending
-    requiredQuests = { "slot_04_the_inner_circle" },
+    requiredQuests = { "quest_arcanum_slot_04" },
 }

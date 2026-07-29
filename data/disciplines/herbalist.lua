@@ -3,10 +3,10 @@
 -- nature poisons and heals both.
 -- Exemplar: a field-apothecary (character_herbalist, NEW -- pending), met as a RECRUIT.
 -- Gate: earned advancement -- requires a hunter subclass AND an alchemist subclass unlocked, which
--- opens the_poisoned_glade (pending). See docs/disciplines-plan.md.
+-- opens quest_alchemist_the_poisoned_glade (pending). See docs/disciplines-plan.md.
 return {
     name    = "Herbalist",
     classes = { "hunter", "alchemist" },
     exemplar = "character_herbalist", -- NEW, pending
-    requiredQuests = { "the_poisoned_glade" }, -- pending
+    requiredQuests = { "quest_alchemist_the_poisoned_glade" }, -- pending
 }

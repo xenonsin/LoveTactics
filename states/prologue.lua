@@ -75,7 +75,7 @@ local FLIGHT_QUEST = {
     -- overworld is the one screen the prologue hands over with no explanation at all -- markers, fog,
     -- a road -- so Rowan names the aftermath and the errand while the player is looking straight at
     -- it. See data/conversations/prologue_ruins.lua for why it is here and not a beat earlier.
-    opening = "prologue_ruins",
+    opening = "conversation_prologue_ruins",
     map = {
         biome = "forest",
         tutorial = "flight",
@@ -103,11 +103,11 @@ local FLIGHT_QUEST = {
                     "consumable_healing_potion", "consumable_healing_potion", "consumable_healing_potion",
                 } },
                 -- Stop 2: priest (Heal) -- the roadside shrine's mending rite, granted by the scene's choices.
-                { id = "encounter_event", conversation = "flight_event_shrine" },
+                { id = "encounter_event", conversation = "conversation_flight_event_shrine" },
                 -- Stop 3: knight (Shout/Taunt) -- won holding the line for the survivors.
                 { id = "encounter_survivors_defend", loot = { "ability_shout" } },
                 -- Stop 4: alchemist (Disarm) -- a vial of solvent the survivor presses on you (scene choices).
-                { id = "encounter_event", conversation = "flight_event_survivor" },
+                { id = "encounter_event", conversation = "conversation_flight_event_survivor" },
                 -- Stop 5: rogue (Pickpocket) -- lifted on the way out of the extraction.
                 { id = "encounter_survivors_extract", loot = { "ability_pickpocket" } },
                 -- Stop 6: mage (Fire Bolt) + fighter (Power Strike) -- the last chest before the gate
@@ -123,7 +123,7 @@ local FLIGHT_QUEST = {
             -- objective's `opening` through to states/battle.lua). Rowan and the avatar exchange the
             -- last words before the first foe the game frames as a BOSS, with the champion already
             -- standing on the lane behind the text -- see data/conversations/flight_champion.lua.
-            opening = "flight_champion",
+            opening = "conversation_flight_champion",
             -- The capstone's own authored board (data/arenas/demon_champion.lua), read by
             -- states/battle.lua's specFor off the objective rather than the overworld map's `layout`.
             -- Its terrain answers the boss's three stages (the neck, the high ground, the treeline).
@@ -225,7 +225,7 @@ end
 -- Build the ordered beat list. Held as a builder so a fresh New Game always starts clean.
 local function buildBeats()
     return {
-        scene("prologue_intro"),
+        scene("conversation_prologue_intro"),
         action(function() Player.recruit(Player.active, "character_rowan") end), -- Rowan joins for the fight
         battle(VILLAGE_MAP),
         -- The oath is sworn once the village is held, and "[Rowan has joined your Party]" lands at the
@@ -234,7 +234,7 @@ local function buildBeats()
         -- fight's tutorial opening plays with `deferJoins` (states/battle.lua): an over-the-board scene
         -- refuses the banner and holds it for the next full scene, which is this one. Every companion is
         -- announced this way, so the prologue does not special-case its first one.
-        scene("prologue_flee"),
+        scene("conversation_prologue_flee"),
         overworld(FLIGHT_QUEST),
         -- The flight ends at the capital's gate, and the prologue with it: prologue.next past the last
         -- beat opens the hub. The arrival is the hub's to stage now (states/hub.lua reads the hubIntro
@@ -278,6 +278,11 @@ end
 -- Reached from character creation (a fresh New Game -> begin) or from resume() after a battle/overworld
 -- leg (pendingAdvance -> advance). Those are the only two callers, so a plain flag check suffices.
 function prologue.enter()
+    -- The prologue has no bed of its own -- its scenes play over a plain backdrop -- so silence the
+    -- track the previous screen left running (the title's `music.menu` on the first entry, a fight's
+    -- bed on a resume). Its battles and the overworld leg each set their own music on enter, and the
+    -- final beat hands off to the hub, which sets `music.hub`; so nothing here re-starts a bed.
+    require("models.sound").stopMusic()
     if prologue.pendingAdvance then
         prologue.pendingAdvance = false
         prologue.next()
