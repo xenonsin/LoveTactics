@@ -65,6 +65,22 @@ local function statusIds(item, out)
         end
     end
 
+    -- A censer/banner carries its cloud with it (item.incense): ground laid around the bearer every
+    -- time they move, afflicting whoever stands in it. The item names that status in its own
+    -- description ("Grants Bloodsong", "Inflicts Mired") but nothing here CASTS, so the dry run above
+    -- never sees it -- the same reason a laid hazard is previewed rather than run. Read its statuses off
+    -- the hazard preview exactly as the ability's `out.hazard` is read.
+    if item.incense and item.incense.hazard then
+        local hp = Hazard.preview(item.incense.hazard, item.incense.amount)
+        for _, st in ipairs(hp and hp.statuses or {}) do add(st.id) end
+    end
+
+    -- An immunity item NAMES the statuses it refuses ("Immune to Root and Mired") without ever putting
+    -- one on a body. The glossary's contract is to define whatever the tooltip drops (ui/item_tooltip
+    -- header), and a player reading a ward against Mired needs to know what Mired is as much as one on
+    -- the receiving end of it -- so the word is defined here too.
+    for _, id in ipairs(item.statusImmunity or {}) do add(id) end
+
     local ab = item.activeAbility
     -- The stance a channel puts the caster in the moment it commits -- landed on the caster, not the
     -- target, and so never surfaced by the dry run above.

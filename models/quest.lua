@@ -165,6 +165,19 @@ function Quest.available(player)
     return list
 end
 
+-- A single quest by id, as a fresh runtime copy (like the board entries in Quest.available) with its id
+-- stamped on. Used to rehydrate the quest behind a RESUMED overworld run (models/save.lua): the run stores
+-- only the quest id, and this rebuilds the object states/game.lua needs (map, name, opening, outro, ...).
+-- Returns nil for an id no longer in data/, so a run whose quest was removed is dropped rather than crashing.
+function Quest.get(id)
+    local def = id and Quest.defs[id]
+    if not def then return nil end
+    local q = {}
+    for k, v in pairs(def) do q[k] = v end
+    q.id = id
+    return q
+end
+
 -- Pay out a finished quest and persist. Called once, from the objective-win branch in
 -- states/game.lua. Returns a summary the UI can show, or nil if the quest was already
 -- completed and is not repeatable (a guard against double payout).

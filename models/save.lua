@@ -151,6 +151,77 @@ local function snapshotCharacter(char)
     return snap
 end
 
+-- ---------------------------------------------------------------------------
+-- Run persistence (the active overworld traversal; see states/game.lua)
+-- ---------------------------------------------------------------------------
+--
+-- So quitting mid-quest and choosing Continue drops the player back onto the map where they left off.
+-- Unlike the rest of the save this is a SNAPSHOT, not blueprint ids: an in-progress maze cannot be
+-- re-rolled to match (the encounter pool draws in unspecified `pairs` order, so the same seed would
+-- reshuffle the stops), so the board is stored whole. It is DELIBERATELY isolated from progression -- if
+-- the run is unreadable on load (a removed quest, a malformed board) it is dropped and the player simply
+-- resumes at the hub, roster and gold intact. states/game.lua parks the live grid + map widget on
+-- `player.activeRun` while a resumable quest is under way; only board quests do (the prologue's scripted
+-- legs have no hub to resume into).
+--
+-- UNLIKE the rest of the save this DOES persist current HP/mana/stamina (see the file header for why the
+-- player save doesn't): mid-run attrition is the point, and without it Continue would be a free heal --
+-- reload before a hard fight and the party is whole again. The values ride on the RUN, not the character
+-- snapshot, so a real return to the hub still restores everyone (Player.restore); only a resume keeps the
+-- wounds. Applied back in states/game.lua's resume path, which -- being a resume, not a hub visit -- is the
+-- one entry that does not refill them.
+
+-- Live `run` (grid + map widget references on player.activeRun) -> plain data. Nil if there is no run.
+-- `player` is passed so the party's current resource pools can be captured alongside the board.
+function Save.snapshotRun(run, player)
+    if not (run and run.grid and run.map) then return nil end
+    local keysHeld = {}
+    for keyId in pairs(run.map.keysHeld or {}) do keysHeld[keyId] = true end
+    -- Current resource pools per character id (the same key formation uses -- roster ids are unique).
+    -- Only pools that exist are stored; a member at full simply reloads to the same value.
+    local resources = {}
+    for _, char in ipairs(player and player.roster or {}) do
+        local pools
+        for _, stat in ipairs(Character.RESOURCE_STATS) do
+            local res = char.stats and char.stats[stat]
+            if type(res) == "table" and res.current then
+                pools = pools or {}
+                pools[stat] = res.current
+            end
+        end
+        if pools and char.id then resources[char.id] = pools end
+    end
+    return {
+        questId = run.questId,
+        prestige = run.prestige,
+        px = run.map.px,
+        py = run.map.py,
+        keysHeld = keysHeld,
+        abilityState = run.abilityState, -- companion overworld scratch (banked vigils/steps/...); plain data
+        resources = resources,
+        grid = run.grid:snapshot(),
+    }
+end
+
+-- Plain data -> a resume descriptor states/game.lua can enter with, or nil (drop the run, resume at hub).
+function Save.restoreRun(snap)
+    if type(snap) ~= "table" or not snap.questId or type(snap.grid) ~= "table" then return nil end
+    local quest = require("models.quest").get(snap.questId)
+    if not quest then return nil end -- quest content removed since the run was saved
+    local ok, grid = pcall(require("models.overworld").fromSnapshot, snap.grid)
+    if not ok or not grid then return nil end
+    return {
+        questId = snap.questId,
+        quest = quest,
+        prestige = snap.prestige or 1,
+        px = snap.px, py = snap.py,
+        keysHeld = snap.keysHeld or {},
+        abilityState = snap.abilityState or {},
+        resources = snap.resources or {}, -- charId -> { health/mana/stamina = current }; see snapshotRun
+        grid = grid,
+    }
+end
+
 function Save.snapshot(player)
     local roster, indexOf = {}, {}
     for i, char in ipairs(player.roster) do
@@ -219,10 +290,20 @@ function Save.snapshot(player)
         end
     end
 
+    -- The active overworld run, if one is under way (states/game.lua parks it on player.activeRun).
+    -- Isolated behind a pcall so a problem reading the live grid can never take the whole save down with
+    -- it -- a lost run is recoverable (resume at the hub), lost progression is not.
+    local run
+    if player.activeRun then
+        local ok, r = pcall(Save.snapshotRun, player.activeRun, player)
+        run = ok and r or nil
+    end
+
     return {
         version = Save.VERSION,
         gold = player.gold,
         prestige = player.prestige,
+        run = run,
         ngPlus = ngPlus,
         body = player.body, -- the created avatar's body (1/2); nil before character creation
         name = player.name, -- the name typed at creation (also on the avatar instance)
@@ -367,9 +448,16 @@ function Save.restore(snap)
         end
     end
 
+    -- The active overworld run, rehydrated into a resume descriptor (or nil when there is none, or it is
+    -- unreadable). states/menu.lua's Continue enters states.game with it; anything else drops the player at
+    -- the hub. Kept separate from `activeRun` (the LIVE grid+map builder states/game.lua parks while playing)
+    -- so the two never collide -- this one is consumed once, on resume.
+    local resumeRun = snap.run and Save.restoreRun(snap.run) or nil
+
     return {
         gold = snap.gold or 0,
         prestige = snap.prestige or 1,
+        resumeRun = resumeRun,
         ngPlus = snap.ngPlus or 0, -- absent on a save from before New Game+, and on any first run
         body = snap.body, -- nil for a save made before character creation set it
         name = snap.name,

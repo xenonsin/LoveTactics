@@ -473,12 +473,15 @@ end
 
 -- The long Wait button under the item grid. Its label mirrors the acting unit's wait behavior
 -- (item-swapped Focus / Defend, else Wait), matching the old corner button. Enabled only on a party
--- turn; brightens under the cursor. The battle state supplies onWait and reads waitHover (set in
--- mousemoved) to preview the delay slot on the timeline.
+-- turn; brightens under the cursor (waitHover) or while the keyboard Wait preview is armed
+-- (view.waitPreview). The battle state supplies onWait and reads waitHover (set in mousemoved) to
+-- preview the delay slot on the timeline.
 function CombatPanel:drawWaitButton()
     local b = self.waitBtn
     local enabled = self.view.isPartyTurn
-    local hot = enabled and self.waitHover
+    -- Brightens under the mouse (waitHover) OR while the keyboard Wait preview is armed (view.waitPreview,
+    -- the first of its two presses) -- both are the selection resting on Wait, so it lights the same way.
+    local hot = enabled and (self.waitHover or self.view.waitPreview)
     local label = "Wait"
     if self.view.current then
         local behavior = Combat.waitBehavior(self.view.current)

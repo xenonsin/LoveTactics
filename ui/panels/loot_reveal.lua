@@ -23,6 +23,7 @@ local ItemTooltip = require("ui.item_tooltip")
 local InputMode = require("input_mode")
 local Item = require("models.item")
 local Scale = require("scale")
+local Sound = require("models.sound")
 local Theme = require("ui.theme")
 
 local LootReveal = {}
@@ -173,6 +174,7 @@ function LootReveal:open()
     if self.opened then return end
     self.opened = true
     self.elapsed = 0
+    Sound.play("treasure.open") -- lid unlatches and begins to swing; the pop's flourish follows in burst()
 end
 
 -- Fast-forward past the animation straight to the fully-revealed state (confirm during the show).
@@ -204,6 +206,7 @@ function LootReveal:burst()
     self.burstDone = true
     self.shake = SHAKE_TIME
     self.glow = { age = 0 }
+    Sound.play("treasure.reveal") -- the pop: light burst + coin spray, the treasure payoff
     for _ = 1, 26 do self:spawnParticle(true) end
 end
 

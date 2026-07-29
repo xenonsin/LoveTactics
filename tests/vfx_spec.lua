@@ -111,6 +111,22 @@ return {
         end,
     },
     {
+        name = "a markless wound leaves no impact burst, but real blows still mark",
+        fn = function()
+            -- Bleed ticks per tile crossed; a crush burst on every step reads as a fresh punch. It
+            -- draws no strike (the number + ground field carry it) -- unlike a tagless blow, which does.
+            assert(not BurstFx.marks({ "bleed" }), "a bleed tick leaves no impact mark")
+            assert(BurstFx.marks({ "physical" }), "an elementless blow still marks")
+            assert(BurstFx.marks(nil), "a tagless blow still marks")
+            -- The suppression reaches the board: :strike drops a markless blow and keeps every other.
+            local fx = BurstFx.new()
+            fx:strike(1, 1, { "bleed" })
+            assert(#fx.bursts == 0, ":strike must spawn nothing for a markless wound")
+            fx:strike(1, 1, { "physical" })
+            assert(#fx.bursts == 1, ":strike must still spawn the default for a real blow")
+        end,
+    },
+    {
         name = "a burst's colour follows its motif, so one shape carries many elements",
         fn = function()
             -- poison and acid are the SAME shape (spray) told apart only by colour.

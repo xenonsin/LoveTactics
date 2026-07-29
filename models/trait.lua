@@ -888,6 +888,14 @@ local function ctxFor(combat, unit, trait, event)
         -- A free tile beside (x, y), or nil when the spot is hemmed in. What a hook calls before it
         -- summons or copies, because a body needs ground to stand on.
         openTileNear = function(x, y) return Combat.openTileNear(combat, x, y) end,
+        -- Paint a visual explosion on a tile (defaults to the bearer's own): the detonation a Volatile
+        -- bearer throws as it falls (data/traits/trait_volatile.lua). ctx.damage already bursts on each
+        -- body the blast catches; this is the ring from the CENTRE, so the burst reads even when it
+        -- catches nobody. Cosmetic -- it deals nothing. A trait hook only fires on a real event (never a
+        -- dry-run preview), so it needs no inert twin the way an ability's fx.burst does.
+        burst = function(x, y, tags, opts)
+            Combat.spawnBurst(combat, x or unit.x, y or unit.y, tags, opts)
+        end,
         log = function(kind, text, subjects) return Combat.logEvent(combat, kind, text, subjects) end,
     }
 

@@ -161,13 +161,40 @@ local function openLoadout()
     })
 end
 
+-- A resumable run is an ordinary board quest -- NOT the prologue's flight tutorial, a scripted aftermath
+-- leg, or any caller that reroutes completion with its own onComplete. Only those autosave an overworld the
+-- player can quit and drop back into (states/menu.lua's Continue); a scripted leg has no hub to resume to.
+-- Read after enter has set the three flags below.
+local function runResumable()
+    return not game.tutorial and not game.scripted and not game.onComplete
+end
+
+-- Drop the resumable-run autosave. A finished, abandoned, or lost quest must not leave a run on disk that
+-- Continue would drop the player back into. Callers persist (Player.save) straight after so disk agrees.
+-- No-op on scripted/tutorial legs, which never set activeRun in the first place.
+local function clearRun()
+    if game.player then game.player.activeRun = nil end
+end
+
+-- Persist the run if one is active (a resumable board quest). No-op otherwise, so it is safe to sprinkle at
+-- every point the board changes -- entering the map, stepping onto an encounter, and resolving one. The
+-- resolution saves matter: a treasure collected or an event resolved marks its cell cleared, and without
+-- persisting that a resume would replay the stop and grant its spoils twice (a combat win already saves).
+local function saveRun()
+    if game.player and game.player.activeRun then Player.save() end
+end
+
 -- prestige defaults to 1 when a quest is launched without it (e.g. dev/test).
+--
+-- `resume` (optional) is a descriptor from a saved run (models/save.lua Save.restoreRun): its pre-built
+-- grid, token position and per-run scratch are used INSTEAD of rolling a fresh map, so Continue lands the
+-- player exactly where they quit. Passed only by states/menu.lua; a board or scripted launch omits it.
 --
 -- `onComplete` (optional) reroutes the objective-win: when set, clearing the objective calls it
 -- INSTEAD of the normal pay-out-and-return-to-hub flow. The prologue uses this to run its flight leg
 -- as a real overworld traversal and then hand control back to its own sequencer (states/prologue.lua)
 -- rather than ending at the hub. A normal board quest passes no onComplete and behaves as before.
-function game.enter(self, quest, prestige, player, onComplete)
+function game.enter(self, quest, prestige, player, onComplete, resume)
     require("models.sound").music("music.overworld")
     game.quest = quest
     game.prestige = prestige or 1
@@ -194,11 +221,12 @@ function game.enter(self, quest, prestige, player, onComplete)
         end
     end
 
-    -- A `layout` names a hand-authored map (data/overworld/<id>.lua): a fixed trail with its stops
-    -- pinned in place, used where a rolled maze won't do -- the prologue's tutorial leg, where the
-    -- chest has to be the first thing ahead. The route's `always` list still supplies each stop's
-    -- content; the layout only fixes where each one sits. Every other quest generates a fresh map.
-    if mp.layout then
+    -- A resumed run brings its own board (the exact map, with fog and cleared stops) rather than rolling
+    -- or laying out a fresh one -- see Save.restoreRun. Its token position and keys are seated onto the map
+    -- widget below; the encounter pool / always list above is built but unused (harmless).
+    if resume then
+        game.grid = resume.grid
+    elseif mp.layout then
         game.grid = Overworld.fromLayout({
             layout = mp.layout,
             biome = mp.biome,
@@ -227,7 +255,7 @@ function game.enter(self, quest, prestige, player, onComplete)
     game.complete = false
     -- Per-run scratch for companion overworld abilities (banked vigils/doses/steps/forage). Reset each
     -- quest, like the fog -- it is a fresh run, not a holiday.
-    game.abilityState = {}
+    game.abilityState = resume and resume.abilityState or {}
     game.toasts = {} -- transient ability feedback lines (see game:pushToast)
     game.map = OverworldMap.new(game.grid, {
         onEncounter = function(cell) game:openEncounter(cell) end,
@@ -238,6 +266,31 @@ function game.enter(self, quest, prestige, player, onComplete)
         visionRadius = math.max(game.grid.visionRadius or 2, Player.visionRadius(player))
             + OverworldAbility.visionBonus(player),
     })
+
+    -- On a resume, seat the token where the player quit (the map widget otherwise spawns it at the start
+    -- cell). The grid already carries its fog and cleared stops from the snapshot; re-reveal around the
+    -- landing tile so the current vision disc is lit, then snap the camera straight there (no pan-in).
+    if resume then
+        game.map.px, game.map.py = resume.px or game.map.px, resume.py or game.map.py
+        game.map.keysHeld = resume.keysHeld or {}
+        -- Restore the party's attrition (HP/mana/stamina) captured with the run, clamped to each pool's
+        -- max. A resume is NOT a hub visit, so nothing else refills these -- reloading must not heal the
+        -- party (that would make Continue a free heal). Keyed by char id, like the run snapshot stored them.
+        for _, char in ipairs(game.player and game.player.roster or {}) do
+            local pools = resume.resources and resume.resources[char.id]
+            if pools then
+                for stat, current in pairs(pools) do
+                    local res = char.stats and char.stats[stat]
+                    if type(res) == "table" then
+                        res.current = math.max(0, math.min(res.max or current, current))
+                    end
+                end
+            end
+        end
+        game.grid:reveal(game.map.px, game.map.py, game.map.visionRadius)
+        game.map:updateCamera()
+        game.map:snapCamera()
+    end
 
     -- Overworld tutorial state (only the prologue's flight leg sets `tutorial = "flight"`). The coach
     -- runs move -> loadout -> equip; the Loadout button stays HIDDEN until the first chest is opened,
@@ -253,6 +306,32 @@ function game.enter(self, quest, prestige, player, onComplete)
     -- useVisible and the combat onWin below). True from the start everywhere else.
     game.useUnlocked = (mp.tutorial ~= "flight")
     game.coach = nil
+
+    -- Autosave the run so quitting mid-quest resumes onto the map (states/menu.lua's Continue). Only a
+    -- board quest is resumable (runResumable) -- a scripted/tutorial leg has no hub to return to. The live
+    -- grid + map widget are parked on the player so ANY later Player.save (a won fight's spoils, the next
+    -- encounter) re-snapshots the current board; cleared on the way out (clearRun / hub.enter backstop).
+    if runResumable() and quest and quest.id then
+        game.player.activeRun = {
+            questId = quest.id,
+            prestige = game.prestige,
+            grid = game.grid,
+            map = game.map,
+            abilityState = game.abilityState,
+        }
+        Player.save() -- the first autosave: entering the overworld (and, on a resume, re-establishing it)
+    else
+        clearRun()
+    end
+
+    -- A resume drops straight back into the board -- no opening scene (that plays once, on first entry),
+    -- and if the player quit standing on an un-engaged encounter, re-open it so Continue lands them right
+    -- at the fight/stop they were about to take (the "autosave before every encounter" this pairs with).
+    if resume then
+        local cell = game.grid:get(game.map.px, game.map.py)
+        if cell and cell.encounter and not cell.cleared then game:openEncounter(cell) end
+        return
+    end
 
     -- Last, once the map exists: a quest may open with a scene played OVER it. A conversation is a
     -- global overlay on a frozen state (main.lua), so the road, the markers and the fog sit there
@@ -278,6 +357,12 @@ function game:openEncounter(cell)
     local kind = cell.encounter.kind
     local mp = game.quest and game.quest.map or {}
 
+    -- Autosave before engaging any encounter, so quitting here resumes onto this very tile (states/menu
+    -- .lua's Continue re-opens it). The token is already standing on the encounter cell and the run's
+    -- cleared/fog state is current, so the snapshot captures exactly this moment. No-op on scripted/tutorial
+    -- legs (no activeRun). Each resolution below saves AGAIN, so the cleared stop persists past this point.
+    saveRun()
+
     -- A non-combat "meeting" objective: reaching the tile plays a scene and ends the leg instead of
     -- dropping into a fight. This is how the debut's aftermath walk finishes -- Saber catches the party
     -- at the gate out and asks in (arena_debut's followUp -> arena_saber_joins). She is already on the
@@ -292,6 +377,7 @@ function game:openEncounter(cell)
                 game.onComplete()
                 return
             end
+            clearRun() -- the quest is over; Quest.complete's save below then writes no run to resume
             game.reward = Quest.complete(game.player, game.quest)
             if game.player and game.reward then game.player.pendingSummary = game.reward end
             State.switch(require("states.hub"))
@@ -365,6 +451,7 @@ function game:openEncounter(cell)
                     -- The single payout seam: gold, prestige, and sponsor reputation are
                     -- granted here, once, and the game saves. Losing the quest (onLoss)
                     -- pays nothing, so a wipe costs the run.
+                    clearRun() -- quest cleared; Quest.complete's save (and the endsCampaign->credits path) writes no run
                     game.reward = Quest.complete(game.player, game.quest)
                     -- The sting that marks a quest actually ending. Until now the single loudest
                     -- silence in the game was here: the objective clears, the board goes quiet, and
@@ -416,6 +503,9 @@ function game:openEncounter(cell)
                     -- vigil, Clem takes her cut, Gyeom studies), then save so their effects persist.
                     fireAbility("encounterCleared", { cell = cell, spoils = spoils })
                     if game.player then Player.save() end
+                    -- Resuming the map does NOT re-run game.enter, so the overworld bed the battle
+                    -- swapped out for its victory sting has to be restored here by hand (idempotent).
+                    require("models.sound").music("music.overworld")
                     State.current = game
                 end
             end,
@@ -434,12 +524,20 @@ function game:openEncounter(cell)
                 Player.restore(game.player) -- a retry is a fresh attempt: the party opens whole
                 game.activePanel = nil
                 game.map:retreatFromEncounter()
+                -- Same seam as the won-combat resume above: restore the overworld bed the defeat
+                -- swapped out, since stepping back onto the map here skips game.enter.
+                require("models.sound").music("music.overworld")
                 State.current = game
             end or nil,
             -- "Return to Hub": give the fight up and fail the quest (no reward). Offered only once there
             -- is a hub to return to -- the prologue's flight leg (game.tutorial) has none yet, so there
             -- the panel shows Try Again alone.
-            onLoss = (not game.tutorial) and function() State.switch(require("states.hub")) end or nil,
+            onLoss = (not game.tutorial) and function()
+                -- A wipe fails the quest: drop its run so Continue can't resume a lost fight, and persist
+                -- the drop before heading home.
+                if game.player then game.player.activeRun = nil; Player.save() end
+                State.switch(require("states.hub"))
+            end or nil,
         })
         end -- startBattle
 
@@ -459,7 +557,11 @@ function game:openEncounter(cell)
     if kind == "event" then
         cell.cleared = true
         if cell.encounter.conversation then
-            require("models.conversation").play(cell.encounter.conversation)
+            -- Persist once the scene (and any effect its choice commits) resolves, so a resume neither
+            -- replays the conversation nor re-grants its spoils. saveRun is a no-op off a resumable run.
+            require("models.conversation").play(cell.encounter.conversation, saveRun)
+        else
+            saveRun() -- an eventless stop still cleared a cell worth persisting
         end
         return
     end
@@ -472,7 +574,7 @@ function game:openEncounter(cell)
         local enc = cell.encounter
         local def = enc.id and EncounterModel.get(enc.id)
         local loot = enc.loot or (def and def.loot) or {}
-        if #loot == 0 then cell.cleared = true; return end -- empty cache: nothing to reveal
+        if #loot == 0 then cell.cleared = true; saveRun(); return end -- empty cache: nothing to reveal
         game.activePanel = LootReveal.new({
             encounter = enc,
             loot = loot,
@@ -484,6 +586,8 @@ function game:openEncounter(cell)
                     game.coach = "loadout" -- the loot has somewhere to go now; introduce the panel
                 end
                 game.activePanel = nil
+                -- Persist the collected loot AND the cleared chest together, so a resume can't re-open it.
+                saveRun()
             end,
             onCancel = function() game.activePanel = nil end,
         })
@@ -496,6 +600,7 @@ function game:openEncounter(cell)
             cell.cleared = true
             game.activePanel = nil
             game:resolveNonCombat(cell)
+            saveRun() -- persist the cleared stop (a rest/town) so a resume doesn't re-offer it
         end,
         onClose = function() game.activePanel = nil end,
     })
@@ -534,6 +639,12 @@ function game:resolveNonCombat(cell)
 end
 
 local function toHub()
+    -- Abandoning a quest (Back / Esc) drops its run, so Continue won't resume the map they walked out of.
+    -- Persist the drop so disk agrees; the hub would clear it as a backstop regardless.
+    if game.player and game.player.activeRun then
+        game.player.activeRun = nil
+        Player.save()
+    end
     State.switch(require("states.hub"))
 end
 

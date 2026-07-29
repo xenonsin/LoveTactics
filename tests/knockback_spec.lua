@@ -202,6 +202,29 @@ return {
         end,
     },
     {
+        name = "pull raises a slide cue from the tile the body started on, without the shove's hold",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 5, 4) })
+            local knight, bandit = c.units[1], c.units[2]
+            Combat.pull(c, knight, bandit)
+
+            local slide
+            for _, e in ipairs(Combat.drainFx(c) or {}) do
+                if e.type == "slide" and e.unit == bandit then slide = e end
+            end
+            assert(slide, "the view is told to glide the body toward the puller, not to snap it")
+            assert(slide.fromX == 5 and slide.fromY == 4, "it departs the tile it was hooked from")
+            assert(not slide.hold, "a drag lands no blow to let read first, so it starts at once")
+
+            -- A body already adjacent has nowhere to be dragged, so nothing glides.
+            local c2 = Combat.new(arena(8, 8), { unit("character_rowan", 3, 4) }, { unit("character_bandit", 4, 4) })
+            Combat.pull(c2, c2.units[1], c2.units[2])
+            for _, e in ipairs(Combat.drainFx(c2) or {}) do
+                assert(e.type ~= "slide", "an already-adjacent target never moves, so no slide")
+            end
+        end,
+    },
+    {
         name = "pull needs a clear line of sight",
         fn = function()
             -- A mountain (sightCost 2) between the two blocks the line on its own.

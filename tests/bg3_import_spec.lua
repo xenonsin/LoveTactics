@@ -290,6 +290,42 @@ return {
                 or c.turn == nil, "a surge left over from an earlier turn does not re-open this one")
         end,
     },
+    {
+        -- The cases above grant the extra action DIRECTLY; this drives the ability through the real
+        -- cast path (Combat.useItem), where the bug lived: an ordinary active that only grants would
+        -- have its own closing endTurn spend the grant at once, netting zero. Surge is `free`, so the
+        -- cast leaves the turn open, the grant survives, and it buys a genuine second swing.
+        name = "Surge is a free action, so casting it keeps the turn and nets a real extra swing",
+        fn = function()
+            local c = Combat.new(arena(10, 10), { unit("character_warlord", 3, 3) },
+                { unit("character_bandit", 3, 4) })
+            local f, b = c.units[1], c.units[2]
+            equip(f.char, { [1] = "weapon_iron_sword", [2] = "ability_surge" })
+            -- Bankroll the stamina: Surge (12) plus two swings (8 each) outruns the warlord's pool, and
+            -- this test is about ordering, not affordability (cf. the flush helper's note above).
+            f.char.stats.stamina.max = 200
+            flush(f)
+            f.initiative = 0
+
+            openTurn(c, f)
+            assert(Combat.useItem(c, f, f.char.inventory[2], 3, 3), "Surge casts on self")
+            assert(c.turn ~= nil and c.turn.unit == f, "a free action leaves the turn open")
+            assert(Combat.freeActionsLeft(f) == 0, "the free action is spent")
+            assert((f.extraActions or 0) == 1,
+                "the grant survives the cast -- casting Surge did not end the turn and eat it")
+            assert(c.turn.moved == false, "no turn was re-opened yet, so the move is still in hand")
+
+            local hp = b.char.stats.health.current
+            assert(Combat.useItem(c, f, f.char.inventory[1], 3, 4), "the first swing lands")
+            assert(c.turn ~= nil and c.turn.unit == f, "the extra action hands the turn straight back")
+            assert(c.turn.moved, "and the second action buys no walk")
+            assert(f.initiative == 0, "the field gets no beat between the two swings")
+
+            assert(Combat.useItem(c, f, f.char.inventory[1], 3, 4), "the second swing lands")
+            assert(c.turn == nil, "the grant is spent, so this one really ends the turn")
+            assert(b.char.stats.health.current < hp or not b.alive, "both swings actually landed")
+        end,
+    },
 
     -- ---------------------------------------------------------------------
     -- Halted: the action gate

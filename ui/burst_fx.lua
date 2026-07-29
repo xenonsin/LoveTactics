@@ -54,6 +54,16 @@ BurstFx.MOTIF_PATTERN = MOTIF_PATTERN
 -- a hit the player cannot see landed reads as a hit that missed.
 BurstFx.DEFAULT_STRIKE = "crush"
 
+-- ...with one exception: a handful of damage kinds leave NO impact mark. These are wounds that tick as
+-- a body MOVES or endures, not blows that arrive from somewhere -- Bleed costs blood per tile crossed
+-- (data/status/status_bleed.lua), and stamping a fresh crush burst on every step reads as a punch
+-- landing out of nowhere each stride. The floating red number and the ground field under the bleeding
+-- body already carry the tick; a burst on top is noise. So a blow tagged with any of these draws no
+-- strike burst at all -- distinct from DEFAULT_STRIKE above, which is for a real blow whose element we
+-- simply do not picture, and which MUST still burst or the hit reads as a miss. The sound and number
+-- still play (they are spawned upstream in ui/combat_fx.lua, not here).
+BurstFx.MARKLESS = { bleed = true }
+
 -- Per-pattern presentation: how it blends and its default colour. `blend = "add"` for anything made of
 -- light (fire, a bolt, a blessing); `"alpha"` for the physical marks (a dust cloud, a gas puff) that
 -- sit ON the ground rather than glowing off it. The colour is a fallback -- an elemental burst is
@@ -121,6 +131,16 @@ BurstFx.FLIGHT_SCALE = 0.62
 -- ---------------------------------------------------------------------------
 -- Pure decisions (no love.graphics -- tests/vfx_spec.lua drives these directly)
 -- ---------------------------------------------------------------------------
+
+-- Does a blow carrying `tags` leave an impact MARK? False for the markless wounds (Bleed) above, true
+-- for everything else -- including a tagless or elementless blow, which still draws the blunt default.
+-- :strike consults this and simply does nothing for a markless blow.
+function BurstFx.marks(tags)
+    for _, t in ipairs(tags or {}) do
+        if BurstFx.MARKLESS[t] then return false end
+    end
+    return true
+end
 
 -- The burst shape a blow carrying `tags` draws: its motif's shape, else the blunt default. `explicit`
 -- (a caller's chosen pattern) wins, which is how a heal asks for `motes` outright.
@@ -230,6 +250,8 @@ end
 -- may carry an `angle` (the direction it was struck from, so a slash sweeps and a stab drives the
 -- right way) and `lethal` (a killing blow bursts a touch bigger and brighter).
 function BurstFx:strike(x, y, tags, opts)
+    -- A markless wound (Bleed) leaves no impact burst -- the number and the field say it already.
+    if not BurstFx.marks(tags) then return end
     opts = opts or {}
     local pattern = BurstFx.patternFor(tags, opts.pattern)
     local o = {

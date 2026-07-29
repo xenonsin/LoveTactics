@@ -62,6 +62,11 @@ fighters who win and kill on the house's schedule and never their own, who are n
 stop — and it wins, and has for longer than anyone finds strange, because a fighter who cannot walk
 away is worth more than one who can.
 
+The appetite the house feeds is itself wrath. The crowd has learned to *hate* the refugees the war keeps
+delivering to the gate — the same desperate the player was — and will pay to watch them put to the sword
+(slot 2). So wrath has two faces here: the **owned rage** the house farms on the supply side, and the
+**crowd's scapegoating hatred** it sells on the demand side. The house only ever prints what sells.
+
 The house **cannot admit what it built**, because saying what Ira is means saying its champions are
 *owned* — and the keeping is still going (there are children in the intake tonight). That is the vendor
 serving its sin, and it is uglier than the Bastion's version: the Bastion *declined to notice* an
@@ -181,17 +186,32 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
   `arena_debut_kit`, `prologue_victory`, `arena_saber_joins`.
 
 ### Slot 2 — The Padded Card · `killAll` + protect
-- **N** The promoter "warms up" the crowd with a bout that isn't one: the opponents are culls (debtors,
-  condemned) brought to die in front of people. Refuse the kill → the house sends its own enforcers to
-  fill the card. Wrath as a product the league sells.
-- **S** The first crack in "the sport is clean." She knows this play — she's a veteran of the sand and
-  has seen promoters run it for years — and she is first onto the sand between the enforcers and the
-  culls, because everyone gets to walk off it.
+- **N** The promoter's "warm-up" is a slaughter dressed as a bout. The house has carded the capital's
+  newest **refugees** — unarmed, desperate, off the same road the player fled down (see the prologue's
+  arrival) — against its own hardened killers, because the crowd has learned to *hate* the people the
+  war keeps pouring through the gate and will pay to watch the desperate bleed. **The village elder from
+  the prologue is among them** — one of the people the player and Rowan carried out of the fire, swept
+  off the bread line and onto the sand. The player fights on the refugees' side and *wins*: puts the
+  carded killers down, every refugee still standing at the bell. And that is exactly why the horror
+  lands — because they held, the crowd was denied its death the cheap way, so the house sends the one
+  thing that never fails to fill a card. **Ira walks onto the sand and kills the refugees anyway** —
+  wordless, obedient, the house's final answer. The first thing the player ever sees Ira do is take the
+  walk-off away. (She does not speak; slot 7 is her first word, and the elder's death is scripted, not a
+  fail-state — the player cannot save them here.)
+- **S** Saber knows this play cold — a veteran of the sand who has watched promoters run it for years —
+  and is first down between the killers and the refugees, because everyone gets to walk off it. She
+  holds her side, and wins it, and then watches Ira erase it. Her one law breaks in front of her for the
+  first time, and it is the exact shape of the thing that broke her once already (slot 10, tags 30–32:
+  *"they died anyway; someone else did it while she stood there"*) — done now by the fighter the line
+  will end on. This is the seed slot 10 pays off.
 - **Scenes** `colosseum_padded_card_intro`, `colosseum_padded_card_outro`.
-  - *intro:* promoter frames the "warm-up"; the player reads the far side (not fighters); the house
-    can't leave the card unfilled; Saber goes down first, between enforcers and culls; the choice lands.
-  - *outro:* the card is done, receipts clear, the house shrugs; the arena Saber loves just did that,
-    and she says so.
+  - *intro:* the promoter frames the "warm-up" and what the crowd is really here for; the player reads
+    the far side — refugees, not fighters — and clocks the village elder among them; the house prints
+    only what sells; Saber goes down first, between killers and refugees; the choice lands (hold the
+    line, or let the slaughter run).
+  - *outro:* the carded killers are down and the refugees are still standing — and *because* of that the
+    house sends its patron; Ira cuts them down without a word; the player's win is overruled; Saber names
+    what she just watched.
 
 ### Slot 3 — Siege of Warlord's Keep · `assassinate` the Warlord
 - **N** The Warlord once fought under the Colosseum's banner; they want him back or down. This is the
@@ -237,7 +257,9 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
 
 ### Slot 7 — No Third State · `survive` · THE TURN
 - **N** The house schedules them onto the sand with Ira herself, three quests before they may kill her —
-  not to win, just to survive to the bell. Ira is briefly reachable, and the discovery is that there's
+  not to win, just to survive to the bell. (The player first saw Ira at slot 2, wordless, doing the
+  house's killing; here she is first *reachable*, and first speaks.) Ira is briefly reachable, and the
+  discovery is that there's
   no bargain to strike: the house allows her two states, **win** and **kill**, and never a third — no
   *stop*, no *leave*. The one thing she ever wanted, to walk off, was never permitted, and now the pact
   she made has sealed even that. There is nothing to give her.
@@ -298,6 +320,9 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
   rule (a human who pacted)**, and repair the Livia cross-reference that pairs them as inverses.
 - Slots 2–9 stand-in enemy blueprints (Perennial fighters, culls) — `character_champion` /
   `character_survivor` placeholders, flagged in each quest header.
+- Slot 2 **village elder** — reuses the prologue's `elder` cast id in dialogue; wants a bespoke
+  board/protect blueprint (`character_village_elder`) so the person the player saved in the prologue is
+  the one Ira cuts down. `character_survivor` stands in for him and the other refugees until then.
 
 ## Companion coverage
 Every scene should let recruited companions speak (companions-speak-in-every-scene standard). The

@@ -351,6 +351,23 @@ function Combat.endBeat(combat)
     if combat then combat._fxBeat = math.max(0, (combat._fxBeat or 1) - 1) end
 end
 
+-- A purely VISUAL detonation on tile (x, y): the board paints a burst there (ui/combat_fx.lua reads the
+-- cue), shaped and tinted by `tags` -- fire blooms orange. It deals nothing itself; the wound a blast
+-- inflicts rides on its own damage cues, one per body caught. What a self-destruct
+-- (data/items/ability/ability_self_destruct.lua) and a Volatile bearer's death
+-- (data/traits/trait_volatile.lua) reach for, so the explosion reads from the tile it went off on even
+-- when the ring catches nobody at all. Carries its own coordinates rather than a unit reference, so it
+-- still draws after the bomber that raised it has already left the board (fx.expendSelf dismissed it).
+-- Headless-safe: pushFx is a no-op on a combat with no fx sink, and the two dry-run contexts stub
+-- fx.burst inert so a hovered/AI-previewed cast never queues a boom the board would then draw.
+function Combat.spawnBurst(combat, x, y, tags, opts)
+    opts = opts or {}
+    return Combat.pushFx(combat, {
+        type = "burst", x = x, y = y, tags = tags,
+        lethal = opts.lethal, radius = opts.radius,
+    })
+end
+
 -- Hand the accumulated fx events to the caller and clear the feed. Returns nil when nothing has
 -- happened since the last drain, so the battle state can cheaply tell an eventful action from a
 -- move-only/wait turn (which then needs no reaction pause).
@@ -3606,6 +3623,10 @@ function Combat.pull(combat, source, target)
     if not Combat.hasLineOfSight(combat, source.x, source.y, target.x, target.y) then
         return false, "no line of sight"
     end
+    -- Where the drag starts, so the view can glide the target across the lane rather than snapping it
+    -- to your feet (the model resolves the whole haul in this one atomic pass, springing every trap and
+    -- hazard it crosses as it goes -- see shoveStep -> enterTile).
+    local oX, oY = target.x, target.y
     local moved = 0
     while Combat.unitGap(source, target) > 1 do
         local dx, dy = signDominant(source.x - target.x, source.y - target.y)
@@ -3614,6 +3635,13 @@ function Combat.pull(combat, source, target)
         Combat.logEvent(combat, "move",
             string.format("%s is pulled to (%d, %d).", unitName(target), target.x, target.y), { target, source })
         if not target.alive then break end
+    end
+    -- Glide the body from where it stood to where the haul left it. No `hold`, unlike a shove: a pull
+    -- lands no blow on the origin tile, so there is no damage number to let read there first -- the drag
+    -- just starts. Nothing to slide if it never budged (moved == 0) or a trap felled it on the way (the
+    -- death fade plays where it dropped, and a corpse does not glide) -- exactly shoveDone's rule.
+    if moved > 0 and target.alive then
+        Combat.pushFx(combat, { type = "slide", unit = target, fromX = oX, fromY = oY })
     end
     return true, moved
 end
@@ -5523,6 +5551,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest)
         -- departure is the ability, not a casualty of it, and neither the hover nor the AI's outcome
         -- score has a row for it. See the live helper in resolveCast for why it is a dismissal.
         expendSelf = function() return false end,
+        -- A dry run must not queue a cue the board would draw: the explosion is a picture of the cast,
+        -- not part of what it DOES, so the hover panel has no row for it and it stays silent here.
+        burst = function() end,
         dispel = function() return { revealed = 0, wallsDestroyed = 0 } end,
         summon = function() return previewStandIn() end,
         copy = function() return previewStandIn() end,
@@ -5770,6 +5801,9 @@ function Combat.abilityOutput(unit, item)
         -- There is no board to leave here, and the row quotes what the ability DOES rather than what
         -- it costs the thing using it (the same reason `retreat` reports nothing).
         expendSelf = function() return false end,
+        -- Cosmetic only, and there is no board to paint on: a preview of what an ability DOES has no row
+        -- for the explosion it draws, so this reports and changes nothing.
+        burst = function() end,
         dispel = function() return { revealed = 0, wallsDestroyed = 0 } end,
         -- Record WHAT the ability summons -- and for how long -- so the inventory tooltip can name it
         -- and quote its duration, without building anything; the stand-in keeps a chained effect from
@@ -7347,6 +7381,15 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
                 end
             end
             return d
+        end,
+        -- Paint a visual explosion on a tile (defaults to the caster's own): the detonation READ,
+        -- separate from the wound. fx.damage already bursts on each body a blast catches, but a
+        -- self-centred blast that catches nobody would otherwise go off invisibly -- so the bomb throws
+        -- its own ring from where it stood (data/items/ability/ability_self_destruct.lua). Purely
+        -- cosmetic; it deals nothing. `tags` shapes/tints it (fire -> orange bloom); nil falls back to
+        -- the item's own fx tags.
+        burst = function(x, y, tags, opts)
+            Combat.spawnBurst(combat, x or unit.x, y or unit.y, tags or Combat.fxTags(item, ab), opts)
         end,
         heal = function(tgt, amount)
             if not tgt then return 0 end

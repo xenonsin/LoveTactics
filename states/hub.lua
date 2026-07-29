@@ -224,6 +224,15 @@ function hub.enter()
     -- The session's one player, carried across every hub visit. Rebuilding it here (as this
     -- once did, via Player.new) would discard gold, reputation, and everything bought.
     hub.player = Player.active or Player.start()
+    -- A run resumes into states.game, never here; reaching the hub means the quest is over, so drop any
+    -- resumable-run autosave (states/game.lua). A backstop for exit paths that don't clear it themselves,
+    -- and for a resume descriptor left unconsumed. Persist only when there was one, so an ordinary hub
+    -- visit doesn't rewrite the save.
+    if hub.player.activeRun or hub.player.resumeRun then
+        hub.player.activeRun = nil
+        hub.player.resumeRun = nil
+        Player.save()
+    end
     -- Coming home rests the company: health and mana refill. Attrition lasts a quest, not forever.
     Player.restore(hub.player)
     activePanel = nil

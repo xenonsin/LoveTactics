@@ -351,6 +351,17 @@ function CombatFx:playBeat(events, actor)
             else
                 Sound.play("battle.status")
             end
+        elseif e.type == "burst" then
+            -- A standalone detonation on a tile (models/combat.lua Combat.spawnBurst): a bomb going off,
+            -- drawn from the tile it went off ON rather than off a body it hit -- so it reads even when
+            -- the blast caught nobody, and even though the bomber that raised it (fx.expendSelf) is
+            -- already gone. The wound the blast deals rides on its own damage cues; this is the boom over
+            -- them: a big fire bloom, one down-pitched hit_fire so a whiff still sounds, and a short shake.
+            if self.bursts then
+                self.bursts:strike(e.x, e.y, e.tags, { radius = e.radius or 1.6, intensity = 1.3, lethal = e.lethal })
+            end
+            Sound.play("battle.hit_fire", { pitch = 0.85 })
+            ScreenFx.shake(4, 0.24)
         elseif e.type == "channel" then
             -- A powerful spell begins winding up (models/combat.lua on commit). Sound-only: the board's
             -- own telegraph draws the footprint, so this just voices the charge.

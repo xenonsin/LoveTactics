@@ -68,6 +68,13 @@ Theme.barOutline = { 0.000, 0.000, 0.000, 0.35 } -- a soft dark hairline
 Theme.accentWeapon = { 0.880, 0.450, 0.330 } -- #e0724f  a weapon accent / hostile heading (warm red)
 Theme.accentAmber  = { 0.831, 0.729, 0.447 } -- #d4ba72  the spotlight gold: focus / captions / initiative
 
+-- The navigation CURSOR ring -- the keyboard/gamepad selection mark that MOVES as you steer it. A cool
+-- steel (the "ours/mobility" family from ui/colors.lua), deliberately NOT the warm accentAmber: a screen
+-- that shows both a fixed focus (amber) and a live cursor (this) -- a picked-up item under a moving
+-- cursor, an edited roster member beside the rail cursor -- needs the two to read as two, and warm-vs-cool
+-- is the cleanest split. Toned to the enamel register so it sits on the slate without going neon.
+Theme.cursor       = { 0.435, 0.596, 0.835 } -- #6f98d5  the moving keyboard/pad selection ring
+
 -- The data layer, re-exported so a widget can require ONE module. These are ui/colors.lua verbatim --
 -- pass-through, not copies -- so faction/pool meaning stays defined in exactly one place.
 Theme.Colors = Colors

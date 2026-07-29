@@ -117,6 +117,38 @@ return {
             assert(Combat.planMove(combat, h, 4, 3), "only the ride is left open")
         end,
     },
+    {
+        -- The contract the battle UI keys on to CONTINUE an open turn instead of beginning a new one:
+        -- a free action must leave combat.turn set on the SAME unit. beginTurn(resume) reads the unit
+        -- off that open turn and, crucially, does NOT re-run Combat.startTurn -- which would wipe the
+        -- sole-action latch and the free budget and hand the move back, letting the shooter act again.
+        -- (That was the "the Harrier's Bow still lets you cast other items" bug: the fix lives in the UI,
+        -- but it depends on this model signal, so pin it here where a change to it will be caught.)
+        name = "a free action leaves the turn OPEN on the same unit (the UI's resume signal)",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local hero = Fixture.unit("character_kaya", 3, 3, { isolate = "bare",
+                items = { "weapon_harriers_bow", "weapon_iron_sword" } })
+            local foe = Fixture.unit("character_bandit", 3, 7,
+                { isolate = "bare", stats = { defense = 0, health = 900 } })
+            local combat = Fixture.combat(map, hero, foe)
+            local h, f = combat.units[1], combat.units[2]
+            h.char.stats.stamina.max, h.char.stats.stamina.current = 99, 99
+
+            Combat.startTurn(combat)
+            if Combat.currentUnit(combat) ~= h then return end
+
+            assert(Fixture.strike(combat, h, f, "weapon_harriers_bow"), "the free shot is loosed")
+            assert(combat.turn ~= nil, "a free action does not end the turn -- combat.turn stays set")
+            assert(combat.turn.unit == h, "and it is still the shooter's turn, the UI's resume signal")
+            assert(Combat.currentUnit(combat) == h, "who is still the unit up next")
+
+            -- Re-running startTurn here (the bug the UI fix avoids) is what wiped the latch: prove it
+            -- still would, so the regression is documented at the seam the fix protects.
+            Combat.startTurn(combat)
+            assert(not h.actionSpent, "startTurn re-run clears the sole-action latch -- why the UI must not")
+        end,
+    },
 
     -- BATTLEMAGE ------------------------------------------------------------------------------------
     {

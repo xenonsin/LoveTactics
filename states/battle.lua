@@ -150,6 +150,13 @@ local function pointIn(btn, x, y)
     return x >= btn.x and x <= btn.x + btn.w and y >= btn.y and y <= btn.y + btn.h
 end
 
+-- Whether the player may hand their side (or a single unit) to the AI. Auto-battle is disallowed for
+-- the whole of a tutorial fight -- a lesson exists to make the student take the actions themselves, so
+-- the Auto control is hidden, its key/pad bindings go dead, and any per-unit autoBattle flag is ignored.
+local function autoAllowed()
+    return not battle.tutorial
+end
+
 -- Whether a point is over one of the drawer's entries (never the hamburger itself, which is handled
 -- on its own as the toggle). False while the menu is closed: closed, those rects belong to the
 -- docked tooltip column. Shared by mousepressed -- which folds the drawer away on any click that
@@ -157,8 +164,8 @@ end
 local function overMenuEntry(x, y)
     if not battle.menuOpen then return false end
     return pointIn(forfeitButton, x, y) or pointIn(logButton, x, y) or pointIn(rangesButton, x, y)
-        or pointIn(autoButton, x, y) or pointIn(settingsButton, x, y)
-        or (battle.autoAll and pointIn(speedButton, x, y))
+        or (autoAllowed() and pointIn(autoButton, x, y)) or pointIn(settingsButton, x, y)
+        or (autoAllowed() and battle.autoAll and pointIn(speedButton, x, y))
         or (Debug.enabled and (pointIn(winButton, x, y) or pointIn(loseButton, x, y)))
 end
 
@@ -173,9 +180,9 @@ local function hoveredMenuButton(x, y)
     if pointIn(forfeitButton, x, y) then return "forfeit" end
     if pointIn(logButton, x, y) then return "log" end
     if pointIn(rangesButton, x, y) then return "threats" end
-    if pointIn(autoButton, x, y) then return "auto" end
+    if autoAllowed() and pointIn(autoButton, x, y) then return "auto" end
     if pointIn(settingsButton, x, y) then return "settings" end
-    if battle.autoAll and pointIn(speedButton, x, y) then return "speed" end
+    if autoAllowed() and battle.autoAll and pointIn(speedButton, x, y) then return "speed" end
     if Debug.enabled and pointIn(winButton, x, y) then return "win" end
     if Debug.enabled and pointIn(loseButton, x, y) then return "lose" end
     return nil
@@ -513,6 +520,7 @@ local function win()
     Combat.reviveFallenParty(battle.combat)
     releaseParty()
     Sound.play("battle.win")
+    Sound.music("music.victory") -- the tactical bed gives way to the exhale under the spoils panel
     finishBattle("win")
 end
 
@@ -527,6 +535,7 @@ local function lose()
     ScreenFx.grey(0.85)
     releaseParty()
     Sound.play("battle.loss")
+    Sound.music("music.defeat") -- the tactical bed gives way to the mournful bed under the grey
     finishBattle("loss")
 end
 
@@ -1027,6 +1036,37 @@ local function targetCells()
         reach, support = battle.attackReach, battle.defaultSupport
     end
     if not (ab and reach) then return {} end
+    -- A tile-target weapon with a footprint (an axe's cleave, a spear's line) aims a FACING, not a body:
+    -- there is no foe cell to snap onto directly. So offer the aim tiles whose resulting AoE actually
+    -- sweeps a unit of the target side, ranked by how many it catches -- a cursor player arms the axe and
+    -- lands at once on the tile that cleaves the most foes, then cycles among the other worthwhile facings.
+    -- A tile ability with no footprint (a trap, a summon) has no foe to aim at and yields nothing.
+    if ab.target == "tile" then
+        if not ab.aoe then return {} end
+        local list = {}
+        for _, entry in pairs(reach) do
+            local hits = 0
+            for _, u in ipairs(Combat.aoeUnits(battle.combat, ab, entry.x, entry.y, current)) do
+                if u.alive
+                    and (support and u.side == current.side or not support and u.side ~= current.side) then
+                    hits = hits + 1
+                end
+            end
+            if hits > 0 then
+                list[#list + 1] = { x = entry.x, y = entry.y, hits = hits,
+                    d = math.abs(entry.x - current.x) + math.abs(entry.y - current.y) }
+            end
+        end
+        -- Most caught first, then nearest, then a stable board order -- so the ring is the same every time
+        -- and "the best facing" is unambiguous when two sweep the same count at the same distance.
+        table.sort(list, function(a, b)
+            if a.hits ~= b.hits then return a.hits > b.hits end
+            if a.d ~= b.d then return a.d < b.d end
+            if a.y ~= b.y then return a.y < b.y end
+            return a.x < b.x
+        end)
+        return list
+    end
     if ab.target ~= "enemy" and ab.target ~= "ally" then return {} end
     local list = {}
     for _, entry in pairs(reach) do
@@ -1052,6 +1092,14 @@ end
 -- under mouse (which aims itself), and when the context has no unit target to snap to.
 local function snapToNearestTarget()
     if InputMode.isMouse() then return end
+    -- A self-target ability has no unit ring to cycle (targetCells is empty), yet its one legal cell is
+    -- the caster's own tile -- so aim there at once, sparing a cursor player from walking back onto self.
+    local current = battle.current
+    if current and battle.mode == "armed" and battle.armedItem
+        and battle.armedItem.activeAbility and battle.armedItem.activeAbility.target == "self" then
+        battle.map.cursor.x, battle.map.cursor.y = current.x, current.y
+        return
+    end
     local list = targetCells()
     if #list == 0 then return end
     battle.map.cursor.x, battle.map.cursor.y = list[1].x, list[1].y
@@ -1076,8 +1124,17 @@ end
 -- Start the current unit's turn: MOVE mode + reachable set for a unit the player commands, or an
 -- AI delay for anyone else (an enemy, or a summon fighting for them). Control -- not side -- picks
 -- the branch, so a player's summon takes an interactive turn and an inert decoy does not.
-local function beginTurn()
-    local current = Combat.startTurn(battle.combat)
+-- `resume` means the turn never actually ended: a free action (Battle Tonic, the Harrier's Bow) --
+-- or a surged extra action -- left `combat.turn` open on the SAME unit, and the player is simply
+-- carrying on with it. Beginning it afresh there would re-run Combat.startTurn, which WIPES every
+-- per-turn latch the open turn is still holding (freeActionsUsed, actionSpent, overwatch), hands the
+-- move back (moved -> false) and re-bumps the turnTaken tally -- so a free shot would refresh the whole
+-- turn and let the shooter act again. That is the "the Harrier's Bow still lets you cast other items"
+-- bug. On a resume we read the current unit off the open turn and leave every model latch untouched;
+-- only the UI overlays are recomputed for the continued turn.
+local function beginTurn(resume)
+    local current = resume and battle.combat.turn and battle.combat.turn.unit
+        or Combat.startTurn(battle.combat)
     battle.current = current
     -- Square a running lesson with a board that moved on: a step whose target died (to Rowan's own
     -- strike, a trap, an overwatch shot) is skipped, and a step whose actor died abandons the lesson
@@ -1098,6 +1155,7 @@ local function beginTurn()
     battle.throwStage, battle.throwFrom = nil, nil -- a two-stage throw never carries across turns either
     battle.throwCells, battle.throwSet = nil, nil
     battle.hoverItem = nil
+    battle.waitPreview = false -- the first-press Wait preview never carries to a new actor's turn
     battle.keySlot = nil -- the keyboard-selected slot (its item's tooltip); a new actor's grid is a new set of slots
     battle.notice = nil -- a refusal belonged to the turn it was refused on
     battle.rangeCells = {}
@@ -1109,8 +1167,11 @@ local function beginTurn()
     battle.movePath = nil
     if not current then return end
     -- A soft tick as the active unit changes -- but a more present cue when control returns to the
-    -- PLAYER, so they hear their turn begin rather than only see it.
-    Sound.play(Combat.isPlayerControlled(current) and "battle.playerturn" or "battle.turn")
+    -- PLAYER, so they hear their turn begin rather than only see it. Skipped on a resume: the same
+    -- turn is continuing after a free action, not beginning, so it should not re-announce itself.
+    if not resume then
+        Sound.play(Combat.isPlayerControlled(current) and "battle.playerturn" or "battle.turn")
+    end
     computeDanger() -- every turn, so the "Threats" survey toggle stays fresh on enemy turns too
     -- A unit surfacing mid-channel doesn't take an interactive turn -- its slot IS the spell resolving.
     -- Hold a beat on the telegraphed tiles (like the AI's think-pause) so the blast reads, then
@@ -1121,7 +1182,9 @@ local function beginTurn()
         return
     end
     if Combat.isPlayerControlled(current) then
-        battle.map:flareTurn(current) -- pull the eye to the unit whose move just began (ui/battle_map.lua)
+        if not resume then
+            battle.map:flareTurn(current) -- pull the eye to the unit whose move just began (ui/battle_map.lua)
+        end
         computeReachable(current)
         computeThreat(current)
         armDefaultAction(current) -- start with the default action armed (its range shown by default)
@@ -1134,7 +1197,7 @@ local function beginTurn()
         -- turn straight back (see battle.keypressed / mousepressed). That is what makes the feature
         -- safe to hand a player -- it can always be taken back, on the turn it matters, without
         -- opening a menu.
-        if current.char.autoBattle or battle.autoAll then
+        if autoAllowed() and (current.char.autoBattle or battle.autoAll) then
             battle.aiTimer = AI_DELAY
             battle.autoPending = current
         end
@@ -1300,7 +1363,12 @@ local function resolveAdvance()
     local result = Combat.evaluate(battle.combat)
     if result == "win" then win() return
     elseif result == "loss" then lose() return end
-    beginTurn()
+    -- A FREE action (or a surged extra action) leaves the model's `combat.turn` open on the same unit
+    -- rather than ending it; a normal action nils it in endTurn. So a still-set turn here means "carry
+    -- on the open turn", not "begin a new one" -- resume it (see beginTurn) so the per-turn latches the
+    -- open turn is holding survive. Every genuine turn boundary (a spent action, a wait, a death) has
+    -- already nilled combat.turn, so those still fall through to a fresh beginTurn.
+    beginTurn(battle.combat.turn ~= nil)
 end
 
 -- End of an action. Drain the model's animation cues (damage/heal/death) into the fx controller, then
@@ -2512,6 +2580,30 @@ local function waitTurn()
     end
 end
 
+-- The keyboard Wait (Space / 0 / numpad-0 with nothing aimed) is a two-press action, mirroring how the
+-- mouse already reads: the first press ARMS a preview -- the delay slot lit on the timeline, exactly the
+-- ghost the mouse shows on Wait-button hover (battle.waitPreview feeds it, see the ghost block in
+-- refreshView) -- and only the second press commits it. A stray tap therefore never burns the turn on a
+-- wait the player did not mean; any other input clears the preview (top of battle.keypressed / beginTurn).
+local function previewOrConfirmWait()
+    local current = battle.current
+    if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
+    if tutorialRefuses("wait") then return end -- a lesson forbidding wait nudges rather than previewing
+    if battle.waitPreview then
+        battle.waitPreview = false
+        waitTurn()
+    else
+        -- Arming the preview is the selection landing on Wait, so it takes the highlight the way any
+        -- action does: drop a still-armed item and the keyboard-selected slot so NO action stays lit
+        -- alongside it (the Wait button brightens off view.waitPreview, ui/combat_panel.lua). Exclusive,
+        -- exactly as choosing one action clears the rest.
+        cancelArm(true)
+        battle.keySlot = nil
+        battle.waitPreview = true
+        Sound.play("ui.move") -- a soft tick acknowledging the armed preview, like crossing onto a button
+    end
+end
+
 -- A tutorial's authored turn for this unit, translated into the same { move, item, tx, ty } plan
 -- shape planEnemyAction returns -- so a hand-scripted mentor and an ordinary enemy travel the exact
 -- same walk-then-act path below, with no second execution route to keep in step.
@@ -2820,9 +2912,11 @@ local function refreshView()
     local ghosts
     local pendingMove = (battle.combat.turn and battle.combat.turn.moveCost) or 0
     if isParty then
-        if battle.hoverWait then
+        if battle.hoverWait or battle.waitPreview then
             -- Whatever the Wait button actually runs -- a plain delay, or a Focus/Defend/Overwatch
             -- swap with its own speed cost -- so the ghost lands on the same slot the action will.
+            -- battle.hoverWait is the mouse hovering the Wait button; battle.waitPreview is the armed
+            -- first press of the keyboard Wait (see previewOrConfirmWait) -- both light the same slot.
             ghosts = { { initiative = Combat.waitInitiative(battle.combat, current) } }
         elseif battle.hoverItem and battle.hoverItem.activeAbility then
             -- A hovered (not yet armed) chargeable signature previews at its FLOOR -- where it would
@@ -3178,19 +3272,34 @@ local function refreshView()
     -- the board is never carrying a long, distant clock. (The deny-by-standing mechanic reads the live
     -- board at fireWave, so a wave can still be turned back whether or not it is currently telegraphed.)
     local reinforcements
+    local reinforceCells = {}
     local clock = battle.combat.clock or 0
     for _, st in ipairs(battle.waveState or {}) do
         local ticksUntil = st.committed and (st.nextAt - clock)
         if st.committed and clock < st.nextAt and ticksUntil <= Status.TICKS_PER_TURN then
             local p = st.committed
+            local ut = math.max(0, ticksUntil)
             reinforcements = reinforcements or {}
             reinforcements[#reinforcements + 1] = {
                 tiles = p.tiles, count = #p.tiles, edge = p.edge,
-                ticksUntil = math.max(0, ticksUntil),
+                ticksUntil = ut,
             }
+            -- Per-cell lookup so a hover over a marked landing tile reads the muster (drawTileTooltip),
+            -- the same way trapCells/wallCells back their hovers. tiles[i] is where chars[i] lands, so a
+            -- tile can name the very body walking onto it. The SOONEST arrival owns a contested tile,
+            -- matching the board's one-readout-per-tile rule (ui/battle_map.lua drawReinforcements).
+            for i, tile in ipairs(p.tiles) do
+                local key = tile.x .. "," .. tile.y
+                local prev = reinforceCells[key]
+                if not prev or ut < prev.ticksUntil then
+                    reinforceCells[key] = { edge = p.edge, ticksUntil = ut,
+                        char = p.chars and p.chars[i] }
+                end
+            end
         end
     end
     overlays.reinforcements = reinforcements
+    battle.reinforceCells = reinforceCells
 
     -- Walls (conjured blockers) are always visible to both sides too. Keep a per-frame "x,y" lookup
     -- for click-to-strike (wallAt), mirroring battle.trapCells. The RENDER list withholds a wall a cast
@@ -3303,6 +3412,7 @@ local function refreshView()
         items = Combat.isPlayerControlled(current) and current.char.inventory or {},
         itemOwner = Combat.isPlayerControlled(current) and current.char or nil, -- for adjacency link lines
         armedItem = battle.armedItem,
+        waitPreview = battle.waitPreview, -- first-press keyboard Wait: lights the Wait button like a hover
         -- The chargeable wind-up being tuned on the armed signature (nil unless a CHARGEABLE one is
         -- armed), so the actions header can read out how deep the blow is being held. Two numbers,
         -- not three: since the wind-up fields folded, the depth is the commitment the bonus is scored
@@ -4129,6 +4239,7 @@ function battle.drawTileTooltip(mx, my)
     local trap = battle.trapCells and battle.trapCells[cx .. "," .. cy]
     local wall = battle.wallCells and battle.wallCells[cx .. "," .. cy]
     local prop = battle.propCells and battle.propCells[cx .. "," .. cy]
+    local reinforce = battle.reinforceCells and battle.reinforceCells[cx .. "," .. cy]
     -- Whatever a click here would do (attack / move / place a trap / strike a trap or a barrel) is
     -- named by a companion panel on top, and its damage/heal is previewed on the occupant's resource
     -- bars (a unit's HP for a strike/heal, or a trap's or prop's HP for a strike on one).
@@ -4157,7 +4268,11 @@ function battle.drawTileTooltip(mx, my)
     elseif body and body.char then objInfo = { unit = body, preview = preview }
     elseif trap then objInfo = { trap = trap, preview = preview }
     elseif wall then objInfo = { wall = wall, preview = preview }
-    elseif prop then objInfo = { prop = prop, preview = preview } end
+    elseif prop then objInfo = { prop = prop, preview = preview }
+    -- Lowest precedence: a bare landing tile (nobody standing on it yet) reads as the incoming muster.
+    -- A unit already on the tile wins the box -- it has turned the wave back, and its own readout is the
+    -- more useful thing to show.
+    elseif reinforce then objInfo = { reinforce = reinforce } end
 
     -- The EXCHANGE, in resolution order (bottom-up, so the list reads last-beat-first): the counters
     -- that answer after the blow, then the blow, then any reflex that answers BEFORE it (Keen Senses).
@@ -4282,11 +4397,14 @@ function battle.drawHud()
     local rangesOn = battle.showEnemyRanges
     toggleBtn(rangesButton, rangesOn and "Threats ✓" or "Threats", rangesOn, { 0.72, 0.45, 0.92 })
 
+    -- Auto is hidden entirely during a tutorial fight -- the student must take their own turns.
     local autoOn = battle.autoAll
-    toggleBtn(autoButton, autoOn and "Auto ✓" or "Auto", autoOn, { 0.42, 0.80, 0.82 })
+    if autoAllowed() then
+        toggleBtn(autoButton, autoOn and "Auto ✓" or "Auto", autoOn, { 0.42, 0.80, 0.82 })
+    end
 
     -- Playback-speed cycler, paired to the right of Auto and only while Auto is on.
-    if autoOn then
+    if autoOn and autoAllowed() then
         toggleBtn(speedButton, tostring(battle.autoSpeed or 1) .. "x", true, { 0.42, 0.80, 0.82 })
     end
 
@@ -4397,6 +4515,7 @@ end
 -- feels immediate rather than waiting for the next turn boundary. Turning it OFF reclaims any pending
 -- auto turn, handing the current unit straight back.
 local function toggleAutoAll()
+    if not autoAllowed() then return end
     battle.autoAll = not battle.autoAll
     if battle.autoAll then
         local current = battle.current
@@ -4471,21 +4590,26 @@ function battle.keypressed(key)
         return
     end
     if battle.over then return end
+    -- Any key but the Wait keys drops a pending Wait preview: aiming, moving, arming, cancelling -- all
+    -- mean the player no longer means to wait, so the next Space/0 arms the preview afresh rather than
+    -- confirming a stale one. (Page-scroll returns above, so paging the strip leaves the preview intact.)
+    if not (key == "space" or key == "0" or key == "kp0") then battle.waitPreview = false end
     if key == "return" or key == "kpenter" then
         confirm()
     elseif key == "space" then
         -- Space confirms the highlighted action, like Enter -- but with nothing aimed at the cursor
-        -- (no move/target/strike lit) it falls back to Wait, so a bare press still ends the turn
-        -- rather than doing nothing. actionPreviewFor mirrors confirm()'s branching exactly, so "a
-        -- move is highlighted" is precisely "it returns a plan here".
+        -- (no move/target/strike lit) it falls back to the two-press Wait, so a bare press still ends the
+        -- turn rather than doing nothing. actionPreviewFor mirrors confirm()'s branching exactly, so "a
+        -- move is highlighted" is precisely "it returns a plan here". A live action confirms outright; the
+        -- Wait fallback previews on the first press and commits on the second (previewOrConfirmWait).
         local cursor = battle.map.cursor
-        if actionPreviewFor(cursor.x, cursor.y) then confirm() else waitTurn() end
+        if actionPreviewFor(cursor.x, cursor.y) then confirm() else previewOrConfirmWait() end
     elseif key == "tab" then
         -- Cycle the aim through the valid targets (Shift+Tab steps back). A no-op when there is nothing
         -- to aim at -- Wait still lives on Space / 0 / numpad-0, so the turn is never stranded.
         cycleTarget(love.keyboard.isDown("lshift", "rshift") and -1 or 1)
     elseif key == "kp0" or key == "0" then
-        waitTurn()
+        previewOrConfirmWait()
     elseif key == "escape" then
         -- A throw's landing phase backs up to its grab phase first; otherwise Esc disarms (or forfeits).
         if throwStepBack() then return end
@@ -4638,6 +4762,9 @@ function battle.mousepressed(x, y, button)
         return
     end
     reclaimAutoTurn()
+    -- A click is a fresh intent: drop any armed keyboard Wait preview so it can't confirm on a later
+    -- Space/0. The mouse Wait button runs its own one-click path (onWait) and needs no preview here.
+    battle.waitPreview = false
     -- A click on the assayed-foe kit card is swallowed here: the card floats OVER the board, so an
     -- unguarded click would fall through and attack whatever tile sits under it.
     if battle.peekUnit and battle.peek:contains(x, y) then return end
@@ -4661,7 +4788,7 @@ function battle.mousepressed(x, y, button)
             battle.showEnemyRanges = not battle.showEnemyRanges
             return
         end
-        if pointIn(autoButton, x, y) then
+        if autoAllowed() and pointIn(autoButton, x, y) then
             toggleAutoAll()
             return
         end

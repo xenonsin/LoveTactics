@@ -193,15 +193,16 @@ end
 
 function PoolGrid:draw()
     -- Backing well.
-    love.graphics.setColor(0.10, 0.11, 0.15)
+    Theme.set(Theme.slot)
     love.graphics.rectangle("fill", self.x, self.y, self.w, self.h, 6, 6)
-    love.graphics.setColor(self.focused and 0.60 or 0.30, self.focused and 0.70 or 0.34,
-        self.focused and 0.92 or 0.42)
+    -- Amber border when this region holds focus, quiet bronze otherwise (the cursor cell inside carries
+    -- the cool Theme.cursor ring, so region-focus and cell-cursor never read as one mark).
+    Theme.set(self.focused and Theme.accentAmber or Theme.frame)
     love.graphics.rectangle("line", self.x, self.y, self.w, self.h, 6, 6)
 
     if self:count() == 0 then
         love.graphics.setFont(self.nameFont)
-        love.graphics.setColor(0.5, 0.52, 0.6)
+        Theme.set(Theme.muted)
         local empty = self.mode == "store" and "Nothing for sale" or "Stash is empty"
         love.graphics.printf(empty, self.x, self.y + self.h / 2 - 8, self.w, "center")
         love.graphics.setColor(1, 1, 1)
@@ -211,9 +212,9 @@ function PoolGrid:draw()
     -- Scroll arrows, dimmed at the ends of the list (still drawn, so the column never reflows).
     love.graphics.setFont(self.smallFont)
     local canUp, canDown = self.offset > 0, self.offset < self:maxOffset()
-    love.graphics.setColor(0.7, 0.74, 0.85, canUp and 0.95 or 0.25)
+    Theme.set(Theme.muted, canUp and 0.95 or 0.25)
     love.graphics.printf("^", self.upArrow.x, self.upArrow.y + 4, self.upArrow.w, "center")
-    love.graphics.setColor(0.7, 0.74, 0.85, canDown and 0.95 or 0.25)
+    Theme.set(Theme.muted, canDown and 0.95 or 0.25)
     love.graphics.printf("v", self.downArrow.x, self.downArrow.y + 4, self.downArrow.w, "center")
 
     for i = 1, self:count() do
@@ -230,7 +231,7 @@ function PoolGrid:drawCell(i, sx, sy)
     local dim = lifted and 0.5 or 1
     local col = TYPE_COLOR[item.type] or DEFAULT_COLOR
 
-    love.graphics.setColor(0.16, 0.17, 0.22)
+    Theme.set(Theme.panel2)
     love.graphics.rectangle("fill", sx, sy, CELL, CELL, 6, 6)
 
     -- Icon: the item's art, or its initial on a type-tinted plate.
@@ -262,36 +263,36 @@ function PoolGrid:drawCell(i, sx, sy)
     -- Corner badge: a store price, or a stack count.
     love.graphics.setFont(self.smallFont)
     if self.mode == "store" then
-        love.graphics.setColor(0.95, 0.85, 0.55, dim)
+        Theme.set(Theme.accentAmber, dim)
         love.graphics.printf(tostring(cell.price) .. "g", sx, sy + 3, CELL - 4, "right")
     elseif (item.quantity or 1) > 1 then
-        love.graphics.setColor(0.90, 0.91, 0.96, dim)
+        Theme.set(Theme.ink, dim)
         love.graphics.printf("x" .. item.quantity, sx, sy + 3, CELL - 4, "right")
     end
 
     -- Rank-locked store cell: greyed, so seeing what standing buys is still possible.
     if cell.locked then
-        love.graphics.setColor(0.12, 0.13, 0.18, 0.6)
+        Theme.set(Theme.mount, 0.6)
         love.graphics.rectangle("fill", sx, sy, CELL, CELL, 6, 6)
-        love.graphics.setColor(0.9, 0.6, 0.55, 0.9)
+        Theme.set(Theme.accentWeapon, 0.9)
         love.graphics.printf("locked", sx, sy + CELL / 2 - 6, CELL, "center")
     end
 
     -- Overlays: picked (in hand), hover (mouse), the keyboard/gamepad cursor.
     if lifted then
-        love.graphics.setColor(0.95, 0.85, 0.35)
+        Theme.set(Theme.accentAmber)
         love.graphics.setLineWidth(3)
         love.graphics.rectangle("line", sx, sy, CELL, CELL, 6, 6)
         love.graphics.setLineWidth(1)
     end
     if self.hover == i then
-        love.graphics.setColor(0.95, 0.85, 0.55, 0.9)
+        Theme.set(Theme.accentAmber, 0.9)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", sx, sy, CELL, CELL, 6, 6)
         love.graphics.setLineWidth(1)
     end
     if self.focused and self.cursor == i then
-        love.graphics.setColor(0.6, 0.75, 0.95)
+        Theme.set(Theme.cursor)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", sx - 2, sy - 2, CELL + 4, CELL + 4, 7, 7)
         love.graphics.setLineWidth(1)

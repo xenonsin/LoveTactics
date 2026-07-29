@@ -877,6 +877,80 @@ function Overworld:assignEncounterTiers()
 end
 
 -- ---------------------------------------------------------------------------
+-- Run persistence (save/resume the active traversal; see models/save.lua)
+-- ---------------------------------------------------------------------------
+
+-- The per-cell fields worth persisting: the geometry the renderer/movement read (`tile`, plus the river
+-- decoration), and the mutable run state a resume must restore -- fog (`seen`), an engaged encounter
+-- (`cleared`), and a lifted key (`picked`). The `encounter`/`gate`/`key` sub-tables are plain data (ids,
+-- names, tiers, loot/conversation ids) and ride along whole. `x`/`y` equal the cell's own indices, so they
+-- are rebuilt from position rather than stored (this is most of the file's cells, so it matters).
+local CELL_FIELDS = { "tile", "river", "bridge", "seen", "cleared", "picked", "encounter", "gate", "key" }
+
+-- Snapshot the grid to plain data (no metatable, no love objects, no functions). The map cannot be
+-- regenerated from a seed on load -- the encounter pool is drawn in an unspecified (`pairs`) order, so the
+-- same seed would reshuffle the stops -- so the whole board is stored as-is. `tilesetDef` carries render
+-- data and is re-resolved from `tilesetId` on restore rather than serialized (see Overworld.fromSnapshot).
+function Overworld:snapshot()
+    local cells = {}
+    for y = 1, self.rows do
+        local row = {}
+        for x = 1, self.cols do
+            local c, out = self.cells[y][x], {}
+            for _, f in ipairs(CELL_FIELDS) do out[f] = c[f] end
+            row[x] = out
+        end
+        cells[y] = row
+    end
+    return {
+        cols = self.cols, rows = self.rows, size = self.size,
+        margin = self.margin, spacing = self.spacing,
+        tilesetId = self.tilesetId, biome = self.biome,
+        originX = self.originX, originY = self.originY,
+        visionRadius = self.visionRadius,
+        start = { x = self.start.x, y = self.start.y },
+        objective = self.objective and { x = self.objective.x, y = self.objective.y } or nil,
+        keyIds = self.keyIds,
+        cells = cells,
+    }
+end
+
+-- Rebuild an Overworld from Overworld:snapshot data. Same object shape and methods as generate(), so the
+-- renderer, fog and movement are none the wiser; `tilesetDef` is re-resolved here (never serialized). The
+-- generation-only scaffolding (spineKeys, gateCells map, rng) is not restored -- nothing at runtime reads it.
+function Overworld.fromSnapshot(data)
+    local self = setmetatable({}, Overworld)
+    self.size = data.size or 32
+    self.cols, self.rows = data.cols, data.rows
+    self.margin = data.margin or 0
+    self.spacing = data.spacing or 1
+    self.biome = data.biome
+    self.tilesetId = data.tilesetId
+    self.tilesetDef = Tileset.get(self.tilesetId)
+    self.originX = data.originX or 0
+    self.originY = data.originY or 0
+    self.visionRadius = data.visionRadius or 2
+    self.start = { x = data.start.x, y = data.start.y }
+    self.objective = data.objective and { x = data.objective.x, y = data.objective.y } or nil
+    self.keyIds = data.keyIds or {}
+    self.gateCells = {}
+    self.cells = {}
+    for y = 1, self.rows do
+        self.cells[y] = {}
+        local row = (data.cells and data.cells[y]) or {}
+        for x = 1, self.cols do
+            local src = row[x] or {}
+            local cell = { x = x, y = y, tile = src.tile or "forest" }
+            for _, f in ipairs(CELL_FIELDS) do
+                if f ~= "tile" then cell[f] = src[f] end
+            end
+            self.cells[y][x] = cell
+        end
+    end
+    return self
+end
+
+-- ---------------------------------------------------------------------------
 -- Runtime queries (used by ui/overworld_map.lua and states/game.lua)
 -- ---------------------------------------------------------------------------
 

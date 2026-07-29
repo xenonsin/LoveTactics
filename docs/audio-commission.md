@@ -2,9 +2,9 @@
 
 > **Generated** from [../data/sounds.lua](../data/sounds.lua) by `& "E:\LOVE\love.exe" . audio-commission` (use `lovec.exe` for console output). **Do not hand-edit** -- change a cue's `length`/`desc` in `data/sounds.lua` and regenerate. Direction, format, sourcing and the on-disk count live in [audio-assets.md](audio-assets.md) (and `. audio-report`).
 
-**43 cues** across 4 buckets. Each row is one sound to source or record; `Trim` is the in-engine mix level (blank = full), applied on top of a file delivered at a consistent working loudness.
+**48 cues** across 5 buckets. Each row is one sound to source or record; `Trim` is the in-engine mix level (blank = full), applied on top of a file delivered at a consistent working loudness.
 
-## music — 6
+## music — 8
 
 Streamed, looping beds -- one per place the player spends time. Seamless loops (tail meets head, no click); 44.1kHz stereo. `music.credits` is the one that ENDS.
 
@@ -13,11 +13,13 @@ Streamed, looping beds -- one per place the player spends time. Seamless loops (
 | `music.battle` | `assets/audio/music/battle.ogg` | 60-120s loop |  | Ordinary battles. Tactical tension, steady pulse, never frantic. |
 | `music.boss` | `assets/audio/music/boss.ogg` | 60-120s loop |  | The seven generals / objective fights. The wall of the run -- heavier, thematic, a real antagonist. |
 | `music.credits` | `assets/audio/music/credits.ogg` | 90-180s, ENDS |  | The ending roll. Resolution -- the one track with an authored close; plays once and stops. |
+| `music.defeat` | `assets/audio/music/defeat.ogg` | 40-90s loop | 0.8 | Plays the instant a fight is lost, under the grey defeat panel. Subdued, mournful but not crushing -- the run is over; loops quietly while the player decides to retry or return. |
 | `music.hub` | `assets/audio/music/hub.ogg` | 90-150s loop | 0.8 | The town / hub city. Warm, unhurried, safe -- plays under long reading and shopping. |
 | `music.menu` | `assets/audio/music/menu.ogg` | 60-120s loop | 0.8 | Title screen. Calm, inviting, sits under a still screen -- the game's face. |
 | `music.overworld` | `assets/audio/music/overworld.ogg` | 90-150s loop | 0.8 | The campaign map. Travelling, light forward motion, low tension. |
+| `music.victory` | `assets/audio/music/victory.ogg` | 40-90s loop | 0.8 | Plays the instant a fight is won, under the spoils panel. Warm, triumphant, unhurried -- the exhale after the battle bed; loops while the player reads the reward and the log. |
 
-## ui — 4
+## ui — 5
 
 The shared menu widget (mouse/keyboard/gamepad). Modelled on classic Final Fantasy menus: clean synth blips, not clicks. Mono, 44.1kHz.
 
@@ -27,6 +29,7 @@ The shared menu widget (mouse/keyboard/gamepad). Modelled on classic Final Fanta
 | `ui.confirm` | `assets/audio/ui/confirm.ogg` | <=0.25s |  | An item is chosen / an action committed in a menu. A warm, bright bell chime -- positive but soft, never sharp. (FF/KH confirm.) |
 | `ui.denied` | `assets/audio/ui/denied.ogg` | <=0.3s | 0.7 | Input refused (no stamina, an illegal move). A soft, muted low 'no' -- rounded and clearly negative, never a harsh buzzer. (FF/KH error.) |
 | `ui.move` | `assets/audio/ui/move.ogg` | <=0.15s | 0.5 | Cursor moves between menu items. Plays constantly, so soft, short and unobtrusive -- a gentle bell blip, warm, no click. (FF/KH cursor.) |
+| `ui.type` | `assets/audio/ui/type.ogg` | <=0.08s | 0.35 | The typewriter tick under a conversation's text reveal (ui/dialogue.lua). Fires per few characters as a line types out, so it must be TINY and dry -- a soft rounded blip / key-tap, no pitch tail; a whole line is a run of these. Slightly pitch-varied at the call site. (FE/Undertale text blip.) |
 
 ## battle — 30
 
@@ -74,4 +77,11 @@ Progress stings -- the moments the game marks. Mono, 44.1kHz.
 | `quest.complete` | `assets/audio/quest/complete.ogg` | 1-2s |  | An objective / quest clears. THE reward sting -- the moment the game most wants to celebrate. |
 | `quest.join` | `assets/audio/quest/join.ogg` | 1-1.5s |  | A companion joins the party (the join banner). A warm, welcoming flourish. |
 | `quest.levelup` | `assets/audio/quest/levelup.ogg` | 1-1.5s |  | A companion levels up. A rising, celebratory chime. |
+
+## treasure — 2
+
+| Cue | File | Length | Trim | Brief |
+|---|---|---|---|---|
+| `treasure.open` | `assets/audio/treasure/open.ogg` | <=0.5s | 0.8 | The player presses Open on a treasure chest and the lid swings up. A wooden creak + metal latch/clasp giving way -- the chest is being opened, before the payoff. |
+| `treasure.reveal` | `assets/audio/treasure/reveal.ogg` | 1-1.5s |  | The chest lid pops fully open on a burst of light and a spray of coins. THE treasure payoff -- a bright, sparkling flourish with a shimmer of falling gold; celebratory but shorter than quest.complete. |
 

@@ -110,6 +110,13 @@ return {
     ["quest.join"] = { file = "assets/audio/quest/join.ogg", category = "sfx",
         length = "1-1.5s", desc = "A companion joins the party (the join banner). A warm, welcoming flourish." },
 
+    -- Treasure -- the chest-opening loot reveal (ui/panels/loot_reveal.lua). Two beats: the lid
+    -- unlatches and swings, then it pops open on a burst of light and spilling coins.
+    ["treasure.open"] = { file = "assets/audio/treasure/open.ogg", category = "sfx", volume = 0.8,
+        length = "<=0.5s", desc = "The player presses Open on a treasure chest and the lid swings up. A wooden creak + metal latch/clasp giving way -- the chest is being opened, before the payoff." },
+    ["treasure.reveal"] = { file = "assets/audio/treasure/reveal.ogg", category = "sfx",
+        length = "1-1.5s", desc = "The chest lid pops fully open on a burst of light and a spray of coins. THE treasure payoff -- a bright, sparkling flourish with a shimmer of falling gold; celebratory but shorter than quest.complete." },
+
     -- Music beds -- streamed, looping, one per place the player spends time (states/*). Seamless loops
     -- (author tail-to-head), 44.1kHz stereo. `music.credits` is the exception: it ENDS (loop = false).
     ["music.menu"] = { file = "assets/audio/music/menu.ogg", category = "music", volume = 0.8,
@@ -122,6 +129,10 @@ return {
         length = "60-120s loop", desc = "Ordinary battles. Tactical tension, steady pulse, never frantic." },
     ["music.boss"] = { file = "assets/audio/music/boss.ogg", category = "music",
         length = "60-120s loop", desc = "The seven generals / objective fights. The wall of the run -- heavier, thematic, a real antagonist." },
+    ["music.victory"] = { file = "assets/audio/music/victory.ogg", category = "music", volume = 0.8,
+        length = "40-90s loop", desc = "Plays the instant a fight is won, under the spoils panel. Warm, triumphant, unhurried -- the exhale after the battle bed; loops while the player reads the reward and the log." },
+    ["music.defeat"] = { file = "assets/audio/music/defeat.ogg", category = "music", volume = 0.8,
+        length = "40-90s loop", desc = "Plays the instant a fight is lost, under the grey defeat panel. Subdued, mournful but not crushing -- the run is over; loops quietly while the player decides to retry or return." },
     ["music.credits"] = { file = "assets/audio/music/credits.ogg", category = "music", loop = false,
         length = "90-180s, ENDS", desc = "The ending roll. Resolution -- the one track with an authored close; plays once and stops." },
 }

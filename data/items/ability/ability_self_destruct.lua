@@ -62,6 +62,11 @@ return {
             { priority = "high", act = "cast", when = { subject = "any_foe", test = "exists" } },
         },
         effect = function(fx)
+            -- The detonation READ: a ring thrown from the bomber's own tile, so the blast is visible
+            -- even when it catches nobody (fx.damage below only bursts on the bodies it hits, and this
+            -- self-centred blast can whiff). Cosmetic -- the 12 is dealt below; this is only the boom.
+            -- Same picture the passive trait paints on a death (data/traits/trait_volatile.lua).
+            fx.burst(fx.user.x, fx.user.y, { "fire" })
             -- The blast, exactly as trait_volatile throws it: everything in the ring but the bomber
             -- itself, friend and FOE alike (no side filter). You can bait one into its own kind, and a
             -- clustered pack chain-reacts as each blast kills the next and its trait answers.

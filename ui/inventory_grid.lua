@@ -33,10 +33,10 @@ local COLS, ROWS = Character.COLS, Character.ROWS
 local function drawLock(x, y)
     love.graphics.setColor(0, 0, 0, 0.5)
     love.graphics.rectangle("fill", x - 7, y - 7, 14, 15, 3, 3) -- backing so it reads over any icon
-    love.graphics.setColor(0.72, 0.58, 0.22)                    -- shackle
+    Theme.set(Theme.frame)                                      -- shackle (quiet bronze)
     love.graphics.setLineWidth(2)
     love.graphics.arc("line", "open", x, y - 1, 4, math.pi, 2 * math.pi)
-    love.graphics.setColor(0.98, 0.82, 0.30)                    -- body
+    Theme.set(Theme.accentAmber)                                -- body (spotlight gold)
     love.graphics.rectangle("fill", x - 5, y - 1, 10, 7, 2, 2)
     love.graphics.setLineWidth(1)
 end
@@ -61,7 +61,7 @@ local function drawStar(cx, cy, r, pinned)
     if pinned then
         love.graphics.setColor(0, 0, 0, 0.55)
         love.graphics.circle("fill", cx, cy, r + 2)
-        love.graphics.setColor(0.98, 0.82, 0.30)
+        Theme.set(Theme.accentAmber)
         love.graphics.polygon("fill", starPoints(cx, cy, r))
         love.graphics.setColor(0.4, 0.3, 0.05)
         love.graphics.setLineWidth(1)
@@ -69,7 +69,7 @@ local function drawStar(cx, cy, r, pinned)
     else
         love.graphics.setColor(0, 0, 0, 0.35)
         love.graphics.circle("fill", cx, cy, r + 2)
-        love.graphics.setColor(0.85, 0.85, 0.55, 0.55)
+        Theme.set(Theme.accentAmber, 0.55)
         love.graphics.setLineWidth(1.5)
         love.graphics.polygon("line", starPoints(cx, cy, r))
     end
@@ -229,7 +229,7 @@ function InventoryGrid:draw()
         elseif item and Item.isBound(item) then
             love.graphics.setColor(0.24, 0.20, 0.14) -- a warm plate marks a bound (locked) cell
         else
-            love.graphics.setColor(0.16, 0.17, 0.22)
+            Theme.set(Theme.panel2) -- a plain item cell (card inset)
         end
         love.graphics.rectangle("fill", sx, sy, sw, sh, 6, 6)
     end
@@ -264,7 +264,7 @@ function InventoryGrid:draw()
             -- Fit the name on a native sans font (never scaled -- a scaled font blurs); long names step down.
             local font, name = Theme.fitText(Theme.body, item.name or "?", sw - 8, 11, 8)
             love.graphics.setFont(font)
-            love.graphics.setColor(0.95, 0.95, 0.97)
+            Theme.set(Theme.ink)
             love.graphics.print(name, sx + sw / 2 - font:getWidth(name) / 2, sy + sh - 15)
         end
     end
@@ -302,7 +302,7 @@ function InventoryGrid:draw()
             local w = self.countFont:getWidth(label)
             love.graphics.setColor(0, 0, 0, 0.6)
             love.graphics.rectangle("fill", sx + 3, sy + 3, w + 8, 16, 4, 4)
-            love.graphics.setColor(0.90, 0.91, 0.96)
+            Theme.set(Theme.ink)
             love.graphics.print(label, sx + 7, sy + 4)
         end
     end
@@ -323,19 +323,19 @@ function InventoryGrid:draw()
     -- Selection overlays: hover (mouse), the keyboard/gamepad cursor, and the picked-up cell.
     if self.hover then
         local sx, sy, sw, sh = self:slotRect(self.hover)
-        love.graphics.setColor(0.95, 0.85, 0.55, 0.9)
+        Theme.set(Theme.accentAmber, 0.9)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", sx, sy, sw, sh, 6, 6)
     end
     do
         local sx, sy, sw, sh = self:slotRect(self.cursor)
-        love.graphics.setColor(0.6, 0.75, 0.95)
+        Theme.set(Theme.cursor)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", sx - 2, sy - 2, sw + 4, sh + 4, 7, 7)
     end
     if self.picked then
         local sx, sy, sw, sh = self:slotRect(self.picked)
-        love.graphics.setColor(0.95, 0.85, 0.35)
+        Theme.set(Theme.accentAmber)
         love.graphics.setLineWidth(3)
         love.graphics.rectangle("line", sx, sy, sw, sh, 6, 6)
     end

@@ -17,7 +17,7 @@ number here — re-run the check.
 
 ## Snapshot
 
-As of 2026-07-28 — **42 of 43 present**, 1 outstanding. Regenerate with the command above.
+As of 2026-07-29 — **43 of 46 present**, 3 outstanding. Regenerate with the command above.
 Each cue in [../data/sounds.lua](../data/sounds.lua) carries a one-line commission spec above it — that
 file is the brief; this doc is the counts and the sourcing.
 
@@ -27,6 +27,7 @@ file is the brief; this doc is the counts and the sourcing.
 | `ui/` | 4 | 4 | `Sound.play(id)` — the shared menu widget (FF-style synth blips) |
 | `battle/` | 30 | 30 | `Sound.play(id)` — one-shot per combat event, incl. 11 damage-type impacts |
 | `quest/` | 3 | 3 | `Sound.play(id)` — progress stings |
+| `treasure/` | 0 | 2 | `Sound.play(id)` — the chest-opening loot reveal (unlatch + payoff pop) |
 
 **The split is: music is sourced, every other cue is a synthesized placeholder.** The five present
 music beds use real sourced (CC0) tracks; all SFX and stings are synthesized stand-ins (deterministic
@@ -132,6 +133,9 @@ Match the art direction: **bright fantasy, not grim dark** ([art-assets.md](art-
 - **The two big fights earn their own beds.** `music.battle` is workmanlike tactical tension;
   `music.boss` is the seven generals and must feel like the wall it is. `music.credits` is the one
   authored *ending* — it plays once and stops (`loop = false`), so it can have a real close.
+- **The decided fight swaps beds.** The moment a battle is won or lost the tactical bed gives way:
+  `music.victory` is the warm exhale under the spoils panel, `music.defeat` the subdued bed under the
+  grey. Both still loop while the player lingers on the summary — an outcome, not an authored ending.
 - **Mixing lives in data, not the file.** `data/sounds.lua` carries a per-cue `volume` trim; deliver
   each file at a consistent working loudness and let the trims balance it. Do not pre-duck a file to
   sit under the others — that bakes a mix decision into an asset that then can't be re-balanced.

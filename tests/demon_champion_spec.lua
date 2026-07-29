@@ -252,6 +252,46 @@ return {
         end,
     },
 
+    {
+        -- Both halves of the burst throw a visual detonation from the bomber's own tile, so the
+        -- explosion reads even when the ring catches nobody -- and the two look identical (same cue).
+        name = "both halves raise a burst cue on the bomber's tile; a preview raises none",
+        fn = function()
+            local function burstOn(events, x, y)
+                for _, e in ipairs(events or {}) do
+                    if e.type == "burst" and e.x == x and e.y == y then return true end
+                end
+                return false
+            end
+
+            -- The passive half: killed by something else, the trait's onDeath paints the ring.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 5, 5) },              -- out of the blast, so nothing else bursts
+                { unit("character_demon_bomblet", 2, 2) })
+            Combat.dealFlatDamage(c, c.units[2], 9999, nil, "test")
+            assert(burstOn(Combat.drainFx(c), 2, 2), "the passive death throws a burst from the tile it fell on")
+
+            -- The active half: pulling the pin paints the same ring where the bomber stood, even with
+            -- nobody in reach to catch a damage cue of their own.
+            local c2 = Combat.new(arena(8, 8),
+                { unit("character_rowan", 8, 8) },
+                { unit("character_demon_bomblet", 3, 3) })
+            local bomblet = c2.units[2]
+            assert(Combat.useItem(c2, bomblet, bomblet.char.inventory[2], 3, 3), "it pulls its own pin")
+            Combat.drainFx(c2) -- clear the wind-up's channel cue
+            assert(Combat.resolveChannel(c2, bomblet), "the wound-up burst resolves")
+            assert(burstOn(Combat.drainFx(c2), 3, 3), "the deliberate burst throws the same ring, whiff and all")
+
+            -- ...but a dry-run preview must not queue a boom the board would then draw.
+            local c3 = Combat.new(arena(8, 8),
+                { unit("character_rowan", 3, 4) },
+                { unit("character_demon_bomblet", 3, 3) })
+            local bomb = c3.units[2].char.inventory[2]
+            Combat.previewAbility(c3, c3.units[2], bomb, 3, 3)
+            assert(Combat.drainFx(c3) == nil, "hovering the self-destruct raises no cue at all -- least of all a burst")
+        end,
+    },
+
     -- ----- the generic Heave throw (usable on ally OR foe) -----
     {
         name = "Heave throws an adjacent body -- and it works on a friendly, proving it is generic",

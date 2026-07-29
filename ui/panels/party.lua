@@ -35,6 +35,7 @@ local Item = require("models.item")
 local Growth = require("models.growth")
 local Debug = require("models.debug")
 local Scale = require("scale")
+local Theme = require("ui.theme")
 
 local Party = {}
 Party.__index = Party
@@ -1028,18 +1029,18 @@ function Party:drawFilterButton()
         for _ in pairs(f.selected or {}) do active = active + 1 end
     end
     local open = self.filterOpen
-    love.graphics.setColor(open and 0.26 or 0.16, open and 0.30 or 0.17, open and 0.40 or 0.22, 0.95)
+    Theme.set(open and Theme.panel or Theme.panel2)
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
-    love.graphics.setColor(active > 0 and 0.95 or 0.4, active > 0 and 0.82 or 0.42, active > 0 and 0.4 or 0.5)
+    Theme.set(active > 0 and Theme.accentAmber or Theme.frame)
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
 
     local bx, barW = r.x + 8, 12
-    love.graphics.setColor(0.86, 0.88, 0.92)
+    Theme.set(Theme.ink)
     for k = 0, 2 do
         love.graphics.rectangle("fill", bx, r.y + 6 + k * 4, barW, 2, 1, 1)
     end
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.9, 0.92, 0.96)
+    Theme.set(Theme.ink)
     local label = active > 0 and ("Filter (" .. active .. ")") or "Filter"
     love.graphics.print(label, bx + barW + 6, r.y + (r.h - self.smallFont:getHeight()) / 2)
     love.graphics.setColor(1, 1, 1)
@@ -1050,16 +1051,16 @@ end
 function Party:drawFilters()
     if not (self.filters and self.filterOpen and self.dropdownRect) then return end
     local r = self.dropdownRect
-    love.graphics.setColor(0.10, 0.11, 0.15) -- fully opaque so the stash beneath doesn't bleed through
+    Theme.set(Theme.panel) -- fully opaque so the stash beneath doesn't bleed through
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 6, 6)
-    love.graphics.setColor(0.5, 0.55, 0.7)
+    Theme.set(Theme.frame)
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 6, 6)
 
     love.graphics.setFont(self.tinyFont)
     local th = self.tinyFont:getHeight()
 
     for _, filter in ipairs(self.filters) do
-        love.graphics.setColor(0.62, 0.65, 0.74)
+        Theme.set(Theme.muted)
         love.graphics.print(filter.label, self.filterLabelX, filter.labelY + (CHIP_H - th) / 2)
     end
 
@@ -1070,23 +1071,19 @@ function Party:drawFilters()
 
         -- On reads as a lit chip, off as a hollow one; the cursor is a separate ring, so a focused
         -- chip still says whether it is selected.
-        if on then
-            love.graphics.setColor(0.26, 0.34, 0.50)
-        else
-            love.graphics.setColor(0.15, 0.16, 0.21)
-        end
+        Theme.set(on and Theme.panel2 or Theme.slot)
         love.graphics.rectangle("fill", chip.x, chip.y, chip.w, chip.h, 4, 4)
-        love.graphics.setColor(on and 0.55 or 0.30, on and 0.70 or 0.33, on and 0.92 or 0.41)
+        Theme.set(on and Theme.accentAmber or Theme.frame)
         love.graphics.rectangle("line", chip.x, chip.y, chip.w, chip.h, 4, 4)
 
         if cursored then
-            love.graphics.setColor(0.95, 0.85, 0.55)
+            Theme.set(Theme.cursor)
             love.graphics.setLineWidth(2)
             love.graphics.rectangle("line", chip.x - 2, chip.y - 2, chip.w + 4, chip.h + 4, 5, 5)
             love.graphics.setLineWidth(1)
         end
 
-        love.graphics.setColor(on and 0.95 or 0.66, on and 0.96 or 0.68, on and 1 or 0.76)
+        Theme.set(on and Theme.ink or Theme.muted)
         love.graphics.printf(self:chipLabel(filter, chip.option), chip.x, chip.y + (CHIP_H - th) / 2, chip.w, "center")
     end
     love.graphics.setColor(1, 1, 1)
@@ -1210,7 +1207,6 @@ function Party:draw()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
-    local Theme = require("ui.theme")
     Theme.set(Theme.panel)
     love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
     Theme.set(Theme.frame)
@@ -1250,17 +1246,17 @@ function Party:drawRail()
     -- Vertical scroll hint chevrons when the roster overflows.
     if #self.chars > self.railVisible then
         love.graphics.setFont(self.smallFont)
-        love.graphics.setColor(0.6, 0.64, 0.75, self.railOffset > 0 and 0.9 or 0.2)
+        Theme.set(Theme.muted, self.railOffset > 0 and 0.9 or 0.2)
         love.graphics.printf("^", self.railX, self.railY - 16, self.railW, "center")
         local maxOff = #self.chars - self.railVisible
-        love.graphics.setColor(0.6, 0.64, 0.75, self.railOffset < maxOff and 0.9 or 0.2)
+        Theme.set(Theme.muted, self.railOffset < maxOff and 0.9 or 0.2)
         love.graphics.printf("v", self.railX, self.railY + self.railH + 2, self.railW, "center")
     end
 end
 
 function Party:drawRailPortrait(char, i, rx, ry, rw, rh)
     local focused = (i == self.charIndex)
-    love.graphics.setColor(focused and 0.22 or 0.15, focused and 0.26 or 0.16, focused and 0.34 or 0.21)
+    Theme.set(focused and Theme.panel or Theme.panel2)
     love.graphics.rectangle("fill", rx, ry, rw, rh, 6, 6)
 
     local sprite = char.sprite
@@ -1271,32 +1267,32 @@ function Party:drawRailPortrait(char, i, rx, ry, rw, rh)
         local scale = math.min(ps / sw, ps / sh)
         love.graphics.draw(sprite, px + ps / 2, py + ps / 2, 0, scale, scale, sw / 2, sh / 2)
     else
-        love.graphics.setColor(0.3, 0.32, 0.4)
+        Theme.set(Theme.slot)
         love.graphics.rectangle("fill", px, py, ps, ps, 5, 5)
         love.graphics.setFont(self.headFont)
-        love.graphics.setColor(0.9, 0.9, 0.95)
+        Theme.set(Theme.ink)
         love.graphics.printf((char.name or "?"):sub(1, 1), px, py + ps / 2 - 12, ps, "center")
     end
 
     love.graphics.setFont(self.tinyFont)
-    love.graphics.setColor(0.85, 0.87, 0.92)
+    Theme.set(Theme.ink)
     love.graphics.printf(char.name or "?", rx + 2, ry + rh - 16, rw - 4, "center")
 
     if self:inParty(char) then
-        love.graphics.setColor(0.95, 0.82, 0.4)
+        Theme.set(Theme.accentAmber)
         love.graphics.circle("fill", rx + rw - 8, ry + 8, 4)
     end
 
-    -- Warm-gold ring marks the EDITED member (whose grid/stats show); the cyan cursor ring marks
-    -- where rail navigation currently points -- distinct colors so the two never read as one.
+    -- Warm amber ring marks the EDITED member (whose grid/stats show); the cool cursor ring marks where
+    -- rail navigation currently points -- distinct colors so the two never read as one.
     if focused then
-        love.graphics.setColor(0.95, 0.82, 0.4)
+        Theme.set(Theme.accentAmber)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", rx, ry, rw, rh, 6, 6)
         love.graphics.setLineWidth(1)
     end
     if self.focus == "rail" and i == self.railCursor then
-        love.graphics.setColor(0.6, 0.75, 0.95)
+        Theme.set(Theme.cursor)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", rx - 2, ry - 2, rw + 4, rh + 4, 7, 7)
         love.graphics.setLineWidth(1)
@@ -1311,7 +1307,7 @@ function Party:drawFocus()
 
     local ps = 168
     local px = x + (self.focusW - ps) / 2
-    love.graphics.setColor(0.09, 0.10, 0.14)
+    Theme.set(Theme.slot)
     love.graphics.rectangle("fill", px, y, ps, ps, 8, 8)
     local sprite = char.sprite
     if type(sprite) == "userdata" then
@@ -1321,26 +1317,26 @@ function Party:drawFocus()
         love.graphics.draw(sprite, px + ps / 2, y + ps / 2, 0, scale, scale, sw / 2, sh / 2)
     else
         love.graphics.setFont(self.titleFont)
-        love.graphics.setColor(0.8, 0.82, 0.9)
+        Theme.set(Theme.ink)
         love.graphics.printf((char.name or "?"):sub(1, 1), px, y + ps / 2 - 18, ps, "center")
     end
-    love.graphics.setColor(0.4, 0.44, 0.55)
+    Theme.set(Theme.frame)
     love.graphics.rectangle("line", px, y, ps, ps, 8, 8)
 
     love.graphics.setFont(self.headFont)
-    love.graphics.setColor(0.95, 0.95, 0.97)
+    Theme.set(Theme.ink)
     love.graphics.printf(char.name or "?", x, y + ps + 6, self.focusW, "center")
 
     -- Level + growth class: level tracks the player's prestige, and the member gains the stats of its
     -- most-used class on each level-up (models/growth.lua). The usage breakdown underneath shows what
     -- it is trending toward, which the player steers by which items they cast in battle.
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.72, 0.76, 0.84)
+    Theme.set(Theme.muted)
     love.graphics.printf("Lv " .. tostring(char.level or 1) .. "  -  Growing as "
         .. classLabel(Growth.dominantClass(char)), x, y + ps + 30, self.focusW, "center")
     local breakdown = usageBreakdown(char)
     if breakdown ~= "" then
-        love.graphics.setColor(0.55, 0.58, 0.66)
+        Theme.set(Theme.muted, 0.8)
         love.graphics.printf(breakdown, x, y + ps + 46, self.focusW, "center")
     end
 
@@ -1367,9 +1363,9 @@ function Party:drawFocus()
             else
                 value = tostring(stat)
             end
-            love.graphics.setColor(0.6, 0.64, 0.72)
+            Theme.set(Theme.muted)
             love.graphics.print(row.label, cx, sy)
-            love.graphics.setColor(0.92, 0.93, 0.97)
+            Theme.set(Theme.ink)
             love.graphics.printf(value, cx, sy, colW - 16, "right")
             if delta and sign ~= 0 and delta[row.key] and delta[row.key] ~= 0 then
                 local change = sign * delta[row.key]
@@ -1404,7 +1400,7 @@ function Party:drawMemberGrid()
     self.grid:setHeldItem(incoming)
 
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.75, 0.78, 0.86)
+    Theme.set(Theme.muted)
     love.graphics.print("Inventory", self.grid.x, self.gridLabelY)
     self.grid:draw()
 
@@ -1416,14 +1412,14 @@ function Party:drawMemberGrid()
         love.graphics.setLineWidth(3)
         love.graphics.line(self.grid.x, ly + 8, self.grid.x + 26, ly + 8)
         love.graphics.setLineWidth(1)
-        love.graphics.setColor(0.8, 0.82, 0.88)
+        Theme.set(Theme.ink)
         love.graphics.print(row.label, self.grid.x + 36, ly)
         ly = ly + 24
     end
     -- Default-action star: the same gold mark drawn on an ability cell, so the badge on the grid
     -- reads without hunting for what it means (hover the badge itself for the fuller tooltip).
     InventoryGrid.drawStar(self.grid.x + 13, ly + 8, 8, true)
-    love.graphics.setColor(0.8, 0.82, 0.88)
+    Theme.set(Theme.ink)
     love.graphics.print("Default action (click the star to set)", self.grid.x + 36, ly)
 end
 
@@ -1434,19 +1430,13 @@ function Party:drawModeSelector()
     for _, m in ipairs(self.modes) do
         local r = self.segRects[m]
         local active = (self.mode == m)
-        if active then
-            love.graphics.setColor(0.26, 0.30, 0.40)
-            love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
-            love.graphics.setColor(0.95, 0.85, 0.55)
-            love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
-        else
-            love.graphics.setColor(0.16, 0.17, 0.22)
-            love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
-            love.graphics.setColor(0.35, 0.38, 0.48)
-            love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
-        end
-        love.graphics.setColor(active and 0.98 or 0.62, active and 0.88 or 0.65,
-            active and 0.58 or 0.74)
+        Theme.set(active and Theme.panel or Theme.panel2)
+        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
+        love.graphics.setLineWidth(active and 1.5 or 1)
+        Theme.set(active and Theme.accentAmber or Theme.frame)
+        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
+        love.graphics.setLineWidth(1)
+        Theme.set(active and Theme.accentAmber or Theme.muted)
         love.graphics.printf(MODE_LABEL[m], r.x, r.y + (r.h - self.smallFont:getHeight()) / 2, r.w, "center")
     end
     love.graphics.setColor(1, 1, 1)
@@ -1454,7 +1444,7 @@ end
 
 function Party:drawPool()
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.75, 0.78, 0.86)
+    Theme.set(Theme.muted)
     local label = self.debugAll and "Catalog (all items)" or "Stash"
     love.graphics.print(label .. " (" .. self.pool:count() .. ")", self.pool.x, self.poolHeaderY)
     self.pool:draw()
@@ -1466,12 +1456,12 @@ function Party:drawDebugToggle()
     local r = self.debugRect
     if not r then return end
     local on = self.debugAll
-    love.graphics.setColor(on and 0.28 or 0.16, on and 0.22 or 0.17, on and 0.14 or 0.22, 0.9)
+    Theme.set(on and Theme.panel or Theme.panel2)
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
-    love.graphics.setColor(on and 0.95 or 0.4, on and 0.7 or 0.42, on and 0.35 or 0.5)
+    Theme.set(on and Theme.accentWeapon or Theme.frame)
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(on and 0.98 or 0.66, on and 0.85 or 0.68, on and 0.55 or 0.76)
+    Theme.set(on and Theme.accentWeapon or Theme.muted)
     love.graphics.printf("Debug: All Items " .. (on and "ON" or "OFF") .. "  [F1]",
         r.x, r.y + (r.h - self.smallFont:getHeight()) / 2, r.w, "center")
     love.graphics.setColor(1, 1, 1)
@@ -1590,15 +1580,15 @@ function Party:drawStarTooltip(cell)
     local x = math.min(self.mx + 16, Scale.WIDTH - W - 8)
     local y = math.min(self.my + 16, Scale.HEIGHT - h - 8)
 
-    love.graphics.setColor(0.10, 0.11, 0.15, 0.97)
+    Theme.set(Theme.panel, 0.97)
     love.graphics.rectangle("fill", x, y, W, h, 6, 6)
-    love.graphics.setColor(0.98, 0.82, 0.30)
+    Theme.set(Theme.frame)
     love.graphics.rectangle("line", x, y, W, h, 6, 6)
     love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(0.98, 0.86, 0.45)
+    Theme.set(Theme.accentAmber)
     love.graphics.print(title, x + pad, y + pad)
     love.graphics.setFont(self.tinyFont)
-    love.graphics.setColor(0.82, 0.84, 0.9)
+    Theme.set(Theme.ink)
     love.graphics.printf(body, x + pad, y + pad + self.smallFont:getHeight() + 4, W - pad * 2, "left")
     love.graphics.setColor(1, 1, 1)
 end

@@ -145,6 +145,26 @@ return {
         end,
     },
     {
+        name = "an incense cloud's status is defined by the item that carries the cloud",
+        fn = function()
+            -- Nothing casts on a censer/banner: the status rides the hazard laid around the bearer
+            -- (item.incense), which no ability dry run sees. The Crimson Standard's own description
+            -- says "Grants Bloodsong", so the word must have an entry behind it.
+            local entries = Glossary.forItem(Item.instantiate("utility_crimson_standard"))
+            assert(find(entries, "status_bloodsong"), "the standard's incense status was not defined")
+        end,
+    },
+    {
+        name = "an immunity item defines the status it names",
+        fn = function()
+            -- The Slipchain reads "Immune to Root and Mired" -- it never inflicts either, but the
+            -- tooltip drops both nouns, so the glossary defines them.
+            local entries = Glossary.forItem(Item.instantiate("utility_slipchain_charm"))
+            assert(find(entries, "status_mired"), "the immunity item's named status was not defined")
+            assert(find(entries, "status_root"), "the immunity item's second named status was not defined")
+        end,
+    },
+    {
         name = "statuses lead, keywords follow",
         fn = function()
             local item = {

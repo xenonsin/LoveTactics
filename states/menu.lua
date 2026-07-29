@@ -205,7 +205,16 @@ local function buildMenu()
             label = "Continue",
             action = function()
                 Player.start()
-                State.switch(require("states.hub"))
+                -- A save made mid-quest carries a resumable overworld run (models/save.lua): drop the
+                -- player straight back onto that map where they quit, rather than home to the hub. Consumed
+                -- once here (cleared so a bounce back to the menu doesn't re-resume a stale descriptor).
+                local run = Player.active and Player.active.resumeRun
+                if run then
+                    Player.active.resumeRun = nil
+                    State.switch(require("states.game"), run.quest, run.prestige, Player.active, nil, run)
+                else
+                    State.switch(require("states.hub"))
+                end
             end,
         }
     end

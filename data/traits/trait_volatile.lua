@@ -30,6 +30,10 @@ return {
     onDeath = function(ctx)
         local blast = ctx.def.magnitude or 0
         if blast <= 0 then return end
+        -- The detonation READ, from the tile it fell on: the same ring the active half paints
+        -- (data/items/ability/ability_self_destruct.lua), so a bomber cut down and a bomber that pulled
+        -- its own pin look identical. Cosmetic; the blast damage is dealt in the loop below.
+        ctx.burst(ctx.unit.x, ctx.unit.y, { "fire" })
         for _, u in ipairs(ctx.unitsNear(ctx.unit.x, ctx.unit.y, ctx.def.radius or 1)) do
             if u ~= ctx.unit and u.alive then
                 ctx.damage(u, blast, { "fire" })

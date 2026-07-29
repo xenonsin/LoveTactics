@@ -8,7 +8,8 @@
 --
 --   TileTooltip.draw(info, mx, my, maxRight)
 --     info = { cell = <arena tile>, bonus = <fieldBonus bag>, unit = <combat unit|nil>,
---              trap = <revealed trap|nil>, wall = <wall|nil>, prop = <prop|nil> }
+--              trap = <revealed trap|nil>, wall = <wall|nil>, prop = <prop|nil>,
+--              reinforce = <{ edge, ticksUntil, char }|nil> }  -- a telegraphed muster landing tile
 --
 -- Content is assembled once into an ordered list of blocks that is both measured and drawn, so the
 -- computed box height can never drift from what's rendered. No love.graphics at require-time.
@@ -56,6 +57,14 @@ local DEFAULT_COLOR = { 0.86, 0.87, 0.92 }
 
 local PARTY_COLOR = Colors.PARTY
 local ENEMY_COLOR = Colors.ENEMY
+
+-- The muster red the board marks a landing zone in (ui/battle_map.lua MUSTER) -- a threat arriving,
+-- kept apart from the orange of a hostile field. The reinforcement box borrows it so the tooltip and
+-- the tile the player is hovering read as the same warning.
+local MUSTER_COLOR = { 0.88, 0.24, 0.18 }
+
+-- The side a muster walks in from, in board terms (the resolved edge; see Combat.resolveWaveEdge).
+local EDGE_LABEL = { top = "Top edge", bottom = "Bottom edge", left = "Left flank", right = "Right flank" }
 
 local MUTED = Theme.muted
 local VALUE = Theme.ink
@@ -122,6 +131,9 @@ local function accentFor(info)
     -- rust-red or pine the board draws it in, which is what ties the tooltip to the block on the tile.
     if info.prop then
         return (info.prop.def and info.prop.def.color) or DEFAULT_COLOR
+    end
+    if info.reinforce then
+        return MUSTER_COLOR
     end
     return TILE_COLOR[(info.cell or {}).type] or DEFAULT_COLOR
 end
@@ -402,6 +414,31 @@ local function buildBlocks(info)
             blocks[#blocks + 1] = { kind = "sep" }
             appendTerrain(blocks, info, true)
         end
+    elseif info.reinforce then
+        -- A telegraphed landing tile: no body stands here yet, so the box describes the muster that is
+        -- about to walk onto it -- what, from which edge, and the countdown to arrival (the same clock
+        -- the tile itself carries). It closes on the deny-by-standing rule, because that is the only
+        -- move the marker asks the player to make.
+        local r = info.reinforce
+        blocks[#blocks + 1] = { kind = "title", text = "Reinforcements", color = MUSTER_COLOR }
+        blocks[#blocks + 1] = { kind = "desc", text = "An enemy muster is marching onto this tile." }
+        local char = r.char
+        if char and char.name then
+            blocks[#blocks + 1] = { kind = "stat", label = "Incoming", value = char.name,
+                valueColor = ENEMY_COLOR }
+        end
+        blocks[#blocks + 1] = { kind = "stat", label = "Marches in from",
+            value = EDGE_LABEL[r.edge] or "the field edge" }
+        -- ceil to match the whole-tick number drawn inside the tile (ui/battle_map.lua drawMusterCount),
+        -- so the tooltip and the marker never quote two different counts for the one arrival.
+        blocks[#blocks + 1] = { kind = "status", name = "Lands in", color = MUSTER_COLOR,
+            remaining = math.ceil(r.ticksUntil or 0) }
+        blocks[#blocks + 1] = { kind = "desc", text = "Stand a unit on this tile to turn the arrival back." }
+        if info.cell then
+            appendHazard(blocks, info)
+            blocks[#blocks + 1] = { kind = "sep" }
+            appendTerrain(blocks, info, true)
+        end
     else
         if appendHazard(blocks, info) then blocks[#blocks + 1] = { kind = "sep" } end
         appendTerrain(blocks, info, false)
@@ -434,7 +471,7 @@ end
 -- draw, so it can't disagree with what gets drawn. Lets a caller stacking several boxes into a fixed
 -- column work out what fits BEFORE it commits any of them to the screen (states/battle.lua).
 function TileTooltip.measure(info, width)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop) then return 0 end
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce) then return 0 end
     local _, body = fonts()
     return measureBlocks(buildBlocks(info), ((width or 210) - 9 * 2), body)
 end
@@ -445,7 +482,7 @@ end
 -- so it never covers the board highlights (the blast footprint) the player is reading. No-op when
 -- there is no tile to describe.
 function TileTooltip.draw(info, mx, my, maxRight, opts)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop) then return end
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce) then return end
     local title, body, small = fonts()
     local pad, w = 9, (opts and opts.width) or 210
     local innerW = w - pad * 2
