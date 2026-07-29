@@ -60,7 +60,7 @@ return {
             end
             assert(cast["character_saber"], "Saber speaks")
             assert(cast["character_avatar"], "the avatar is addressed")
-            assert(cast["character_knight"], "Rowan is present")
+            assert(cast["character_rowan"], "Rowan is present")
             local resolved = Conversation.resolve(def, Conversation.context(nil))
             assert(#resolved.script > 0, "the scene has playable lines")
         end,

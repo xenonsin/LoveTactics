@@ -17,18 +17,74 @@ number here — re-run the check.
 
 ## Snapshot
 
-As of 2026-07-24 — **0 of 23 present**, 23 outstanding. Regenerate with the command above.
+As of 2026-07-28 — **42 of 43 present**, 1 outstanding. Regenerate with the command above.
+Each cue in [../data/sounds.lua](../data/sounds.lua) carries a one-line commission spec above it — that
+file is the brief; this doc is the counts and the sourcing.
 
 | bucket | have | needed | plays through |
 |---|---|---|---|
-| `music/` | 0 | 6 | `Sound.music(id)` — streamed, looped bed (one per place the player spends time) |
-| `ui/` | 0 | 4 | `Sound.play(id)` — the shared menu widget |
-| `battle/` | 0 | 10 | `Sound.play(id)` — one-shot per combat event |
-| `quest/` | 0 | 3 | `Sound.play(id)` — progress stings |
+| `music/` | 5 | 6 | `Sound.music(id)` — streamed, looped bed (one per place the player spends time) |
+| `ui/` | 4 | 4 | `Sound.play(id)` — the shared menu widget (FF-style synth blips) |
+| `battle/` | 30 | 30 | `Sound.play(id)` — one-shot per combat event, incl. 11 damage-type impacts |
+| `quest/` | 3 | 3 | `Sound.play(id)` — progress stings |
+
+**The split is: music is sourced, every other cue is a synthesized placeholder.** The five present
+music beds use real sourced (CC0) tracks; all SFX and stings are synthesized stand-ins (deterministic
+DSP, licence-free) until real ones are recorded or sourced. **`music.boss` is intentionally absent**:
+boss/objective fights run without a bed (ordinary battles use the sourced `battle` track; the Mock
+Battle asks for it too via `encounter.music`, since it is objective-kind but not a boss). Every cue
+stays declared and wired, so a real file dropped at any path starts playing with no code change — the
+one outstanding item above is `music.boss`, by choice.
+
+The `battle/` bucket grew from 10 to 30. The action-loop and turn cues: **playerturn** (control returns
+to the player, distinct from the neutral **turn** tick), **select** (arm an ability), **confirm**
+(commit an action), **wait** (hold the turn — wait/focus/defend/overwatch), **cast** (an offensive
+activation — the swing under an attack's impact, or an ability firing; support casts stay silent and
+let their heal/buff cue speak), **channel** (a powerful spell begins winding up — a telegraph goes up,
+either side), **step** (one footstep per tile walked), and **buff** / **debuff** (a condition landing,
+split by valence — the view reads `def.debuff`, falling back to the neutral **status** cue when it
+can't tell). Wired in [models/combat.lua](../models/combat.lua) (channel), [states/battle.lua](battle.lua)
+and [ui/combat_fx.lua](combat_fx.lua), pinned by `tests/audio_wiring_spec.lua`.
+
+The other 11 are **damage-type impacts** — `battle.hit_<motif>` for slash, pierce, impact, fire, ice,
+lightning, holy, dark, poison, water, acid. [ui/combat_fx.lua](combat_fx.lua) `playHit` reads
+`Motif.of(tags)` — the *same* element reading the impact burst uses ([ui/motif.lua](motif.lua)) — so a
+blow's sound and its burst always name one element; a blow whose type has no cue falls back to the
+generic `battle.hit`/`battle.crit`. A heavy typed blow rings its own cue pitched down, so it still
+reads as "more" without a separate crit sound.
 
 The whole system (roadmap items 4–7) is built: `models/sound.lua`, `data/sounds.lua`,
-`. audio-report`, and persisted master/music/effects volumes in the settings screen. **Only the
-content — and the last of the wiring — is left. That is roadmap item 8.**
+`. audio-report`, and persisted master/music/effects volumes in the settings screen. **A first-pass
+CC0 fill now backs every cue** (roadmap item 8) — see [First-pass fill](#first-pass-fill) for what
+each cue is and how to swap it. Every file lives in the gitignored `assets/` (like all other art
+buckets), so it is local-only and never committed.
+
+## First-pass fill
+
+Every cue is backed by a placeholder — **all SFX/stings are synthesized** (ffmpeg DSP, licence-free)
+and the **music beds are sourced CC0 tracks**. Nothing owes attribution (synth is original; the music
+is CC0), so nothing was added to the credits roll. Each file is mono 44.1 kHz (SFX) or stereo 44.1 kHz
+(music) at its cue path; a better file at the same path replaces it with no code change. The synth SFX
+were tuned by construction, not by ear (they can't be auditioned here), so they are rough stand-ins —
+worth a listen and an easy retune/swap.
+
+| source | covers |
+|---|---|
+| **Synthesized** (ffmpeg lavfi — deterministic DSP, not AI, no licence) | EVERY non-music cue — all `ui/*` (FF/KH-style soft bells); all `battle/*` (impacts, whooshes, shimmers, stings, the 11 damage-type hits); all `quest/*` stings |
+| [RandomMind — *Medieval:* series](https://opengameart.org/users/randommind) (OpenGameArt, CC0) | `music/menu` (Harvest Season) `hub` (Market Day, purpose-made loop) `overworld` (Exploration) `credits` (Victory Theme) |
+| [Emma_MA — QaziJamJam (orchestral battle theme)](https://opengameart.org/content/qazijamjam-orchestral-battle-theme) (OpenGameArt, CC0) | `music/battle` — orchestral, strings/brass/woodwinds/drums |
+| _(none yet)_ | `music/boss` — pulled for now; boss/objective fights run silent until a track lands |
+
+The synthesized SFX are built from a few recipes: **impacts** (hit/crit/hit_impact) are a filtered
+noise burst over a short pitched body; **cuts/whooshes** (slash, pierce, miss, cast, step) are
+enveloped band/low/high-passed noise; **death/start** are pitch sweeps (down / up) over noise;
+**shimmers, ticks and stings** (status, buff/debuff, turn, heal, win/loss, quest/*) are soft sine-bell
+arpeggios with exponential decay; the **8 elemental hits** and the arcane **channel** riser use the
+same noise/sweep toolkit. All deliberately simple stand-ins — swap any for a real file at its path.
+
+The music (sourced) is seamless where the source ships a purpose-cut loop (RandomMind's Market Day,
+Epic Combat is tagged loopable); `music/menu` and `music/overworld` loop a full track, so a musical
+(not clicky) seam is possible — flagged for a future pass.
 
 ## Every cue is wired
 
@@ -96,55 +152,26 @@ Match the art direction: **bright fantasy, not grim dark** ([art-assets.md](art-
 
 ## The cues
 
-Lengths and moods are targets for whoever records or sources them, not hard gates.
+The full per-cue list — every sound, its file, target length, mix trim and a one-line brief — is a
+**generated document**, [audio-commission.md](audio-commission.md), so it can never drift from what
+the game actually asks for. The spec lives on each cue as `length`/`desc` fields in
+[../data/sounds.lua](../data/sounds.lua); regenerate the doc after changing them:
 
-### Music — 6, one per place the player spends time
+```powershell
+& "E:\LOVE\lovec.exe" . audio-commission     # writes docs/audio-commission.md from data/sounds.lua
+```
 
-| path | where | length | mood |
-|---|---|---|---|
-| `music/menu.ogg` | title screen | 60–120 s loop | calm, inviting, sits under a still screen; the game's face |
-| `music/hub.ogg` | the town / hub city | 90–150 s loop | warm, unhurried, safe; plays under long reading and shopping |
-| `music/overworld.ogg` | the campaign map | 90–150 s loop | travelling, light forward motion, low tension |
-| `music/battle.ogg` | ordinary battles | 60–120 s loop | tactical tension, steady pulse, never frantic |
-| `music/boss.ogg` | the seven generals (objective fights) | 60–120 s loop | the wall of the run; heavier, thematic, a real antagonist |
-| `music/credits.ogg` | the ending roll (`loop = false`) | 90–180 s, **ends** | resolution; the one track with an authored close |
+Adding a cue without a `length`+`desc` fails `tests/sound_spec.lua`, so the brief is complete by
+construction — a cue nobody can source cannot be added. Lengths and moods there are targets for
+whoever records or sources them, not hard gates.
 
-### UI — 4, on the shared menu widget
+Two things worth keeping in mind that the generated table does not spell out:
 
-| path | fires when | length | notes |
-|---|---|---|---|
-| `ui/move.ogg` | selection moves between menu items | ≤120 ms | played constantly — must be tiny and unobtrusive (trim 0.5) |
-| `ui/confirm.ogg` | an item is chosen | ≤200 ms | positive, crisp |
-| `ui/cancel.ogg` | back / close a panel | ≤200 ms | softer, "step back" (trim 0.8) |
-| `ui/denied.ogg` | input rejected (no stamina, illegal move) | ≤250 ms | a clear "no", not harsh (trim 0.7) |
-
-### Battle — 10, one-shot per combat event
-
-Coarse on purpose — one hit, one death, whatever the weapon. A per-weapon layer can come later via
-an item `sound` field; these are the floor that makes combat stop being silent. Siblings must be
-**distinguishable**: hit ≠ heal ≠ status, crit reads as "more" than hit, miss reads as "nothing
-landed."
-
-| path | fires when | length | mood |
-|---|---|---|---|
-| `battle/start.ogg` | a battle begins | ≤600 ms | a curtain-up hit; the fight is on |
-| `battle/hit.ogg` | damage lands | ≤250 ms | a solid connect (trim 0.8) |
-| `battle/crit.ogg` | a heavy blow lands (≥12 dmg — see note above) | ≤400 ms | a bigger, brighter version of hit |
-| `battle/miss.ogg` | a blow is voided (dodge / smoke / substitute) | ≤200 ms | a whiff / air, clearly "no contact" (trim 0.6) |
-| `battle/death.ogg` | a unit drops to 0 HP | ≤700 ms | a fall/finality, weighty but not grim |
-| `battle/heal.ogg` | healing is applied | ≤500 ms | warm, ascending, unmistakably positive (trim 0.7) |
-| `battle/status.ogg` | a status or field lands on a unit | ≤500 ms | magical/shimmer, neutral (trim 0.6) |
-| `battle/turn.ogg` | the active unit changes | ≤150 ms | a soft tick; plays every turn, keep tiny (trim 0.5) |
-| `battle/win.ogg` | the battle is won | 1–2 s | a short victory flourish |
-| `battle/loss.ogg` | the battle is lost | 1–2 s | a short, gentle defeat — bright-fantasy, not funereal |
-
-### Quest / progress — 3, stings
-
-| path | fires when | length | mood |
-|---|---|---|---|
-| `quest/complete.ogg` | an objective/quest clears | 1–2 s | the reward sting — the moment the game most obviously lacks |
-| `quest/levelup.ogg` | a companion levels | 1–1.5 s | a rising, celebratory chime |
-| `quest/join.ogg` | a companion joins the party (the banner) | 1–1.5 s | a warm, welcoming flourish |
+- **Battle siblings must be distinguishable**: hit ≠ heal ≠ status, buff ≠ debuff, crit reads as
+  "more" than hit, miss reads as "nothing landed."
+- **Damage-type impacts** (`battle.hit_<element>`) are chosen by the blow's element the same way the
+  impact burst is ([ui/motif.lua](../ui/motif.lua)), so a blow's sound and its picture always agree;
+  a type with no cue of its own falls back to the generic `battle.hit`.
 
 ## Sourcing
 

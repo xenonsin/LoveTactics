@@ -69,7 +69,7 @@ return {
     {
         name = "the Ice Bomb freezes everything in its 3x3 blast",
         fn = function()
-            local thrower = Character.instantiate("character_knight")
+            local thrower = Character.instantiate("character_rowan")
             equip(thrower, { "consumable_ice_bomb" })
             local c = Combat.new(arena(8, 8), { unit(thrower, 2, 2) },
                 { unit("character_bandit", 4, 2), unit("character_bandit", 4, 3) })
@@ -84,7 +84,7 @@ return {
     {
         name = "the Lightning Bomb stuns everything in its 3x3 blast",
         fn = function()
-            local thrower = Character.instantiate("character_knight")
+            local thrower = Character.instantiate("character_rowan")
             equip(thrower, { "consumable_lightning_bomb" })
             local c = Combat.new(arena(8, 8), { unit(thrower, 2, 2) },
                 { unit("character_bandit", 4, 2), unit("character_bandit", 4, 3) })
@@ -106,7 +106,7 @@ return {
         fn = function()
             local priest = Character.instantiate("character_priest")
             equip(priest, { "ability_renewal" })
-            local c = Combat.new(arena(8, 8), { unit(priest, 2, 2), unit("character_knight", 3, 2) },
+            local c = Combat.new(arena(8, 8), { unit(priest, 2, 2), unit("character_rowan", 3, 2) },
                 { unit("character_bandit", 8, 8) })
             local ally = c.units[2]
             openTurn(c, c.units[1])
@@ -137,7 +137,7 @@ return {
     {
         name = "a Banner's ground inspires allies in the 3x3 around it, but not foes or itself",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2), unit("character_knight", 5, 4) },
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2), unit("character_rowan", 5, 4) },
                 { unit("character_bandit", 6, 4) })
             local archer, knight, bandit = c.units[1], c.units[2], c.units[3]
 
@@ -153,7 +153,7 @@ return {
     {
         name = "a Banner's Inspiration is zone-bound: it does not age, and ends the beat an ally leaves",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2), unit(bare("character_knight"), 5, 4) },
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2), unit(bare("character_rowan"), 5, 4) },
                 { unit("character_bandit", 8, 8) })
             local archer, knight = c.units[1], c.units[2]
             plantBanner(c, archer, 4, 4, "hazard_rally")
@@ -177,7 +177,7 @@ return {
             -- A BARE knight: a blueprint's stock kit carries a guard reflex, and Combat.dealFlatDamage
             -- offers an adjacent guardian the blow first -- so a kitted knight standing in the square
             -- would throw itself in front of the axe and the banner would never fall at all.
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2), unit(bare("character_knight"), 5, 4) },
+            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2), unit(bare("character_rowan"), 5, 4) },
                 { unit("character_bandit", 8, 8) })
             local archer, knight, bandit = c.units[1], c.units[2], c.units[3]
             local banner = plantBanner(c, archer, 4, 4, "hazard_rally")
@@ -217,7 +217,7 @@ return {
             -- The banner is never charged an initiative, so were it still counted in Combat.rebase's
             -- minimum it would sit at 0 forever, pin the rebase amount to 0, and freeze every status,
             -- hazard and summon duration in the battle.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 6, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 6, 4) })
             local knight = c.units[1]
             local banner = Summon.spawn(c, knight, "character_banner", 4, 4, { control = "none", timeless = true })
 
@@ -253,7 +253,7 @@ return {
         name = "the Wolfsong Horn charges as the wolf draws blood, and only sounds while the wolf lives",
         fn = function()
             local c = Combat.new(arena(10, 10),
-                { unit("character_archer", 5, 5) },
+                { unit("character_kaya", 5, 5) },
                 { unit("character_bandit", 5, 9) }) -- prey for the wolf to bite
             local u = c.units[1]
             local wolf = u.wolfCompanion
@@ -287,7 +287,7 @@ return {
         name = "the Quieting Howl roots every foe within two tiles of Kaya or her wolf, and spares the distant",
         fn = function()
             local c = Combat.new(arena(16, 16),
-                { unit("character_archer", 5, 5) },
+                { unit("character_kaya", 5, 5) },
                 { unit("character_bandit", 5, 7),   -- two tiles from Kaya
                   unit("character_bandit", 10, 11), -- one tile from where the wolf will stand
                   unit("character_bandit", 1, 1) }) -- far from both

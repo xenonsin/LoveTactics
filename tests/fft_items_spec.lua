@@ -48,7 +48,7 @@ return {
     {
         name = "Mana Shield pays the wound out of mana, and the health pool never moves",
         fn = function()
-            local knight = bareChar("character_knight")
+            local knight = bareChar("character_rowan")
             give(knight, "utility_mana_shield")
             local c = Combat.new(arena(8, 8), { unit(knight, 3, 4) }, { unit("character_bandit", 5, 4) })
             local u = c.units[1]
@@ -64,7 +64,7 @@ return {
     {
         name = "a dry pool covers nothing, and the blow simply lands",
         fn = function()
-            local knight = bareChar("character_knight")
+            local knight = bareChar("character_rowan")
             give(knight, "utility_mana_shield")
             local c = Combat.new(arena(8, 8), { unit(knight, 3, 4) }, { unit("character_bandit", 5, 4) })
             local u = c.units[1]
@@ -81,7 +81,7 @@ return {
     {
         name = "no shield in the grid diverts nothing at all",
         fn = function()
-            local knight = bareChar("character_knight")
+            local knight = bareChar("character_rowan")
             local c = Combat.new(arena(8, 8), { unit(knight, 3, 4) }, { unit("character_bandit", 5, 4) })
             local u = c.units[1]
             u.char.stats.mana.current = 20
@@ -92,7 +92,7 @@ return {
     {
         name = "a wound routed through the damage core spends mana instead of health",
         fn = function()
-            local knight = bareChar("character_knight")
+            local knight = bareChar("character_rowan")
             give(knight, "utility_mana_shield")
             local c = Combat.new(arena(8, 8), { unit(knight, 3, 4) }, { unit("character_bandit", 5, 4) })
             local u = c.units[1]

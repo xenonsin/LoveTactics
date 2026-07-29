@@ -62,7 +62,7 @@ return {
     {
         name = "adding a duplicate consumable merges into one stacked slot",
         fn = function()
-            local c = Character.instantiate("character_knight")
+            local c = Character.instantiate("character_rowan")
             c.inventory = {}
             assert(Character.addItem(c, Item.instantiate("consumable_healing_potion")), "first potion added")
             assert(Character.addItem(c, Item.instantiate("consumable_healing_potion")), "second potion merged")
@@ -73,7 +73,7 @@ return {
     {
         name = "distinct items never merge",
         fn = function()
-            local c = Character.instantiate("character_knight")
+            local c = Character.instantiate("character_rowan")
             c.inventory = {}
             Character.addItem(c, Item.instantiate("consumable_healing_potion"))
             Character.addItem(c, Item.instantiate("weapon_iron_sword"))
@@ -83,7 +83,7 @@ return {
     {
         name = "a stack cannot merge past its cap; the overflow claims a new slot",
         fn = function()
-            local c = Character.instantiate("character_knight")
+            local c = Character.instantiate("character_rowan")
             c.inventory = {}
             local cap = Item.DEFAULT_MAX_STACK
             assert(Character.addItem(c, Item.instantiate("consumable_healing_potion", cap)), "seed a full stack")

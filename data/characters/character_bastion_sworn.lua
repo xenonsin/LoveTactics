@@ -2,7 +2,7 @@
 -- (data/quests/what_the_bastion_knows.lua). Not forsworn, not corrupted -- loyal, decorated, and
 -- standing between the player and the order's own record.
 --
--- Deliberately a SEPARATE blueprint from Rowan (data/characters/character_knight.lua), who is the
+-- Deliberately a SEPARATE blueprint from Rowan (data/characters/character_rowan.lua), who is the
 -- companion and whose display name is a proper one. A quest that spawned her blueprint as an enemy
 -- would put a squad of Rowans on the board.
 --

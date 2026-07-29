@@ -88,7 +88,7 @@ function duel.enter(_, role, mode, port)
 
     -- The same board on both sides, from the same seed -- the thing the whole protocol assumes.
     duel.combat = Combat.new(arena(),
-        { fighter("character_knight", 4, 8) }, { fighter("character_bandit", 4, 2) })
+        { fighter("character_rowan", 4, 8) }, { fighter("character_bandit", 4, 2) })
     -- Host drives the party, guest drives the enemy. Each machine only commands its own.
     duel.side = duel.isHost and "party" or "enemy"
     duel.combat.playerSide = duel.side
@@ -199,7 +199,7 @@ function duel.update(dt)
         State.switch(require("states.battle"), {
             encounter = { kind = "objective" }, biome = "castle", prestige = 1,
             seed = SEED,
-            party = team({ "character_knight", "character_archer" }),
+            party = team({ "character_rowan", "character_archer" }),
             enemyChars = team({ "character_bandit", "character_mage" }),
             playerSide = duel.side,
             session = duel.session,

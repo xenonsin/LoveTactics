@@ -29,7 +29,7 @@ return {
             -- targets must agree exactly -- if anything here rolled, this is the test that would flap.
             local first
             for _ = 1, 10 do
-                local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+                local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
                 local bandit = c.units[2]
                 local s = Status.apply(c, bandit, "status_sleep")
                 assert(s, "a fresh target is put under")
@@ -42,7 +42,7 @@ return {
     {
         name = "a bigger ward buys a shorter affliction",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
             local a, b = c.units[1], c.units[2]
             a.char.stats.magicDefense = 0
             b.char.stats.magicDefense = 24
@@ -59,7 +59,7 @@ return {
     {
         name = "diminishing returns: each repeat is halved, and eventually nothing lands",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
             local bandit = c.units[2]
             bandit.char.stats.magicDefense = 0 -- isolate the DR curve from the ward curve
 
@@ -81,7 +81,7 @@ return {
     {
         name = "a refused application still counts, so immunity cannot be reset by casting into it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
             local bandit = c.units[2]
             bandit.char.stats.magicDefense = 0
 
@@ -107,7 +107,7 @@ return {
     {
         name = "statusResist from armor wards on top of magicDefense",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
             local before = Status.resistRating(knight, "magical")
 
@@ -128,7 +128,7 @@ return {
         fn = function()
             -- Only a status that opts in (`resistible`) is scaled; everything else lands as authored,
             -- so this change cannot have quietly re-tuned the existing roster.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
             knight.char.stats.magicDefense = 100
             assert(Status.resistedDuration(knight, "status_regen", 10) == 10, "a buff is never resisted")

@@ -73,8 +73,8 @@ return {
     {
         name = "startingItems keeps its positional 3x3 grid, gaps included",
         fn = function()
-            local source = Character.defs.character_knight
-            local def = roundTrip(Character.instantiate("character_knight"))
+            local source = Character.defs.character_rowan
+            local def = roundTrip(Character.instantiate("character_rowan"))
 
             assert(#def.startingItems == Character.MAX_INVENTORY,
                 "every cell is written, so the grid reads as a grid")

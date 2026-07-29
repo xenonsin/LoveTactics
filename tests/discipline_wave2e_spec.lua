@@ -84,11 +84,11 @@ return {
         end,
     },
     {
-        name = "the Harrier's Bow is a free action: it fires and leaves the turn open",
+        name = "the Harrier's Bow is a sole action: it fires, leaves the turn open, but only to ride",
         fn = function()
             local map = Fixture.new(12, 12)
-            local hero = Fixture.unit("character_kaya", 3, 3,
-                { isolate = "bare", items = { "weapon_harriers_bow" } })
+            local hero = Fixture.unit("character_kaya", 3, 3, { isolate = "bare",
+                items = { "weapon_harriers_bow", "weapon_iron_sword", "consumable_battle_tonic" } })
             local foe = Fixture.unit("character_bandit", 3, 7,
                 { isolate = "bare", stats = { defense = 0, health = 900 } })
             local combat = Fixture.combat(map, hero, foe)
@@ -105,6 +105,16 @@ return {
             assert(Combat.freeActionsLeft(h) == 0, "the free action is spent")
             assert(combat.turn and combat.turn.unit == h,
                 "and the turn is still open -- fire, then ride")
+
+            -- ...but the shot is still the turn's ACTION: nothing may follow it but the move it left open.
+            local function held(id)
+                for _, it in ipairs(h.char.inventory) do if it and it.id == id then return it end end
+            end
+            assert(h.actionSpent, "the action is spent, not just the free budget")
+            assert(Combat.itemBlockReason(h, held("weapon_iron_sword")),
+                "so a second weapon is refused -- no fire-then-swing double attack")
+            assert(Combat.itemBlockReason(h, held("consumable_battle_tonic")), "nor a free drink after it")
+            assert(Combat.planMove(combat, h, 4, 3), "only the ride is left open")
         end,
     },
 
@@ -187,7 +197,7 @@ return {
         name = "the Dampening Oath taxes an enemy working at the spend, not at the button",
         fn = function()
             local map = Fixture.new(10, 10)
-            local warden = Fixture.unit("character_knight", 3, 3,
+            local warden = Fixture.unit("character_rowan", 3, 3,
                 { isolate = "bare", items = { "utility_dampening_oath" } })
             local caster = Fixture.unit("character_bandit", 3, 5, { isolate = "bare" })
             local combat = Combat.new(map, { warden }, { caster })
@@ -226,7 +236,7 @@ return {
         name = "Empty Vessel bites a spent caster and ignores a body that never had mana",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_knight", 3, 3,
+            local hero = Fixture.unit("character_rowan", 3, 3,
                 { isolate = "bare", items = { "utility_empty_vessel", "weapon_iron_sword" } })
             local caster = Fixture.unit("character_mage", 3, 4,
                 { isolate = "bare", stats = { defense = 0, health = 900 } })
@@ -248,7 +258,7 @@ return {
         name = "the Silencing Blade gags what it cuts, and reads the pool it cut into",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_knight", 3, 3,
+            local hero = Fixture.unit("character_rowan", 3, 3,
                 { isolate = "bare", items = { "weapon_silencing_blade" } })
             local caster = Fixture.unit("character_mage", 3, 4,
                 { isolate = "bare", stats = { defense = 0, health = 900 } })
@@ -291,6 +301,8 @@ return {
             assert(h.char.stats.stamina.current > 1, "stamina is back")
             assert(combat.turn and combat.turn.unit == h,
                 "and the turn is still open -- drunk BETWEEN doing things, not instead of them")
+            -- Unlike the Harrier's Bow, a free DRINK is not the turn's action: a real swing still follows.
+            assert(not h.actionSpent, "the drink spends no action -- it is a free extra, not a sole action")
         end,
     },
     {
@@ -300,8 +312,8 @@ return {
             local hero = Fixture.unit("character_saber", 3, 3, { isolate = "bare", items = {
                 "utility_round_for_the_house", "consumable_battle_tonic",
             } })
-            local ally = Fixture.unit("character_knight", 3, 4, { isolate = "bare" })
-            local far = Fixture.unit("character_knight", 8, 8, { isolate = "bare" })
+            local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
+            local far = Fixture.unit("character_rowan", 8, 8, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 9, 3, { isolate = "bare" })
             local combat = Combat.new(map, { hero, ally, far }, { foe })
             local h, a, d = combat.units[1], combat.units[2], combat.units[3]

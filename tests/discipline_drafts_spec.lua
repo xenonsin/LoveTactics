@@ -40,7 +40,7 @@ return {
         fn = function()
             local map = Fixture.new(8, 8)
             local hero = Fixture.unit("character_saber", 3, 3, { isolate = "bare", items = { "consumable_war_drums" } })
-            local ally = Fixture.unit("character_knight", 3, 4, { isolate = "bare" })
+            local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 3, 2, { isolate = "bare" })
             local combat = Combat.new(map, { hero, ally }, { foe })
             local h, a, f = combat.units[1], combat.units[2], combat.units[3]

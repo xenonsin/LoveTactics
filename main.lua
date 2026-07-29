@@ -8,6 +8,11 @@ local ScreenFx = require("ui.screen_fx")
 function love.load(args)
     -- Headless test entry: `& "E:\LOVE\lovec.exe" . test`
     if args and args[1] == "test" then
+        -- Silence playback for the run. Real audio now exists and love.audio is live under the headless
+        -- runner (t.window = false drops the window, not the audio device), so any cue a test fires would
+        -- play OUT LOUD. Muting the device master keeps every guard and Source path exercised -- the
+        -- sources still load and play, at zero gain -- while emitting nothing. See tests/sound_spec.lua.
+        if love.audio and love.audio.setVolume then love.audio.setVolume(0) end
         local ok = require("tests.runner").run()
         love.event.quit(ok and 0 or 1)
         return
@@ -33,6 +38,15 @@ function love.load(args)
     -- Counts declared cues (data/sounds.lua) against what is on disk. See tools/audio_report.
     if args and args[1] == "audio-report" then
         require("tools.audio_report").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
+    -- Audio COMMISSION doc: `& "E:\LOVE\lovec.exe" . audio-commission`
+    -- Generates docs/audio-commission.md from data/sounds.lua (each cue's length + desc). See
+    -- tools/audio_commission and docs/audio-assets.md.
+    if args and args[1] == "audio-commission" then
+        require("tools.audio_commission").run()
         love.event.quit(0)
         return
     end

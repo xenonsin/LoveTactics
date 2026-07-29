@@ -159,6 +159,13 @@ function Item.isChargeable(ab)
     return hi > lo
 end
 
+-- Is this a two-stage THROW (Heave): grab an adjacent target, THEN choose where it lands? Such an
+-- ability aims twice -- the battle UI runs a grab phase and a destination phase instead of the one
+-- aim every other ability takes. A tile-target ability without this flag stays single-aim.
+function Item.isThrow(ab)
+    return ab ~= nil and ab.throw == true
+end
+
 -- Stacking: only consumables occupy a single inventory slot as a countable stack (a bundle of
 -- health potions with a finite number of uses). Every other type is one-per-slot. A stack can
 -- grow up to `maxStack` (the blueprint may override Item.DEFAULT_MAX_STACK), so "limited uses"

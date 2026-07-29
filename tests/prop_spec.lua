@@ -99,7 +99,7 @@ return {
     {
         name = "a prop blocks its tile, and a second one cannot share it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 8, 8) })
             assert(Prop.place(c, 4, 4, "prop_crate"), "the crate stands on open ground")
             assert(Combat.objectBlocksAt(c, 4, 4), "and bars the way like any standing object")
             assert(not Prop.place(c, 4, 4, "prop_crate"), "one prop per tile")
@@ -109,7 +109,7 @@ return {
     {
         name = "a crate is soft cover: one lowers a line of sight, two together break it",
         fn = function()
-            local c = Combat.new(arena(10, 3), { unit("character_knight", 1, 2) }, { unit("character_bandit", 8, 2) })
+            local c = Combat.new(arena(10, 3), { unit("character_rowan", 1, 2) }, { unit("character_bandit", 8, 2) })
             assert(Combat.hasLineOfSight(c, 1, 2, 8, 2), "open ground sees clear across")
             Prop.place(c, 4, 2, "prop_crate")
             assert(Combat.hasLineOfSight(c, 1, 2, 8, 2), "one crate is cover, not a wall")
@@ -120,7 +120,7 @@ return {
     {
         name = "a barrel screens nothing -- you can always shoot over it, which is how you pop it",
         fn = function()
-            local c = Combat.new(arena(10, 3), { unit("character_knight", 1, 2) }, { unit("character_bandit", 8, 2) })
+            local c = Combat.new(arena(10, 3), { unit("character_rowan", 1, 2) }, { unit("character_bandit", 8, 2) })
             Prop.place(c, 4, 2, "prop_explosive_barrel")
             Prop.place(c, 5, 2, "prop_explosive_barrel")
             assert(Combat.hasLineOfSight(c, 1, 2, 8, 2), "a keg is waist-high; the shot goes over it")
@@ -134,7 +134,7 @@ return {
         name = "any blow at all sets off a barrel, and the blast takes both sides",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 4, 5) }, { unit("character_bandit", 4, 3) })
+                { unit("character_rowan", 4, 5) }, { unit("character_bandit", 4, 3) })
             local knight, bandit = c.units[1], c.units[2]
             local barrel = Prop.place(c, 4, 4, "prop_explosive_barrel")
             local kBefore, bBefore = hp(knight), hp(bandit)
@@ -149,7 +149,7 @@ return {
         name = "the blast reaches one tile and no further",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 4, 6) }, { unit("character_bandit", 4, 3) })
+                { unit("character_rowan", 4, 6) }, { unit("character_bandit", 4, 3) })
             local far, near = c.units[1], c.units[2]
             local before = hp(far)
             Prop.damage(c, Prop.place(c, 4, 4, "prop_explosive_barrel"), 1)
@@ -160,7 +160,7 @@ return {
         name = "kegs chain: setting off one sets off its neighbour, and the chain terminates",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
+                { unit("character_rowan", 1, 1) }, { unit("character_bandit", 8, 8) })
             local a = Prop.place(c, 4, 4, "prop_explosive_barrel")
             local b = Prop.place(c, 5, 4, "prop_explosive_barrel")
             local d = Prop.place(c, 6, 4, "prop_explosive_barrel")
@@ -174,7 +174,7 @@ return {
         name = "a barrel's blast splinters the inert props beside it",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
+                { unit("character_rowan", 1, 1) }, { unit("character_bandit", 8, 8) })
             local crate = Prop.place(c, 5, 4, "prop_crate")
             Prop.damage(c, Prop.place(c, 4, 4, "prop_explosive_barrel"), 1)
             assert(not crate.alive, "a crate standing next to a bomb does not survive the bomb")
@@ -184,7 +184,7 @@ return {
         name = "a body shoved into a barrel sets it off, with nothing written to say so",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 3, 4) }, { unit("character_bandit", 4, 4) })
+                { unit("character_rowan", 3, 4) }, { unit("character_bandit", 4, 4) })
             local knight, bandit = c.units[1], c.units[2]
             local barrel = Prop.place(c, 5, 4, "prop_explosive_barrel")
             local before = hp(bandit)
@@ -203,7 +203,7 @@ return {
         name = "Heave throws the prop on the tile it grabs",
         fn = function()
             local c = Combat.new(arena(10, 10),
-                { unit("character_knight", 3, 5) }, { unit("character_bandit", 10, 10) })
+                { unit("character_rowan", 3, 5) }, { unit("character_bandit", 10, 10) })
             local knight = c.units[1]
             local heave = grant(knight, "ability_heave")
             local crate = Prop.place(c, 4, 5, "prop_crate")
@@ -218,7 +218,7 @@ return {
         name = "a keg heaved into a body bursts on impact and hurts what it hit",
         fn = function()
             local c = Combat.new(arena(10, 10),
-                { unit("character_knight", 3, 5) }, { unit("character_bandit", 6, 5) })
+                { unit("character_rowan", 3, 5) }, { unit("character_bandit", 6, 5) })
             local knight, bandit = c.units[1], c.units[2]
             local heave = grant(knight, "ability_heave")
             local barrel = Prop.place(c, 4, 5, "prop_explosive_barrel")
@@ -234,7 +234,7 @@ return {
         name = "Heave picks up a trap it can see and puts it somewhere better",
         fn = function()
             local c = Combat.new(arena(10, 10),
-                { unit("character_knight", 3, 5) }, { unit("character_bandit", 10, 10) })
+                { unit("character_rowan", 3, 5) }, { unit("character_bandit", 10, 10) })
             local knight = c.units[1]
             local heave = grant(knight, "ability_heave")
             local trap = Trap.place(c, 4, 5, "spike_trap", "party") -- the party's own, so it is visible
@@ -248,7 +248,7 @@ return {
         name = "Heave cannot grab a trap its side has not found",
         fn = function()
             local c = Combat.new(arena(10, 10),
-                { unit("character_knight", 3, 5) }, { unit("character_bandit", 10, 10) })
+                { unit("character_rowan", 3, 5) }, { unit("character_bandit", 10, 10) })
             local knight = c.units[1]
             local trap = Trap.place(c, 4, 5, "spike_trap", "enemy") -- hidden: no detector in the party
             assert(not Combat.throwableAt(c, 4, 5, "party"), "you cannot heave what you have not detected")
@@ -260,7 +260,7 @@ return {
         name = "Heave throws a planted banner, and the ground it holds open goes with it",
         fn = function()
             local c = Combat.new(arena(10, 10),
-                { unit("character_knight", 3, 5) }, { unit("character_bandit", 10, 10) })
+                { unit("character_rowan", 3, 5) }, { unit("character_bandit", 10, 10) })
             local knight = c.units[1]
             local heave = grant(knight, "ability_heave")
 
@@ -288,7 +288,7 @@ return {
         fn = function()
             -- A banner heaved to the board's edge: the far column of its square would land off the map.
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 4, 5) }, { unit("character_bandit", 1, 1) })
+                { unit("character_rowan", 4, 5) }, { unit("character_bandit", 1, 1) })
             local banner = Combat.addUnit(c, Character.instantiate("character_banner"), "party", 5, 5,
                 { control = "none", timeless = true, summoned = true })
             for dy = -1, 1 do
@@ -313,7 +313,7 @@ return {
         name = "Powder Keg stands the same barrel the map scatters, scaled by its upgrade level",
         fn = function()
             local c = Combat.new(arena(10, 10),
-                { unit("character_knight", 3, 5) }, { unit("character_bandit", 10, 10) })
+                { unit("character_rowan", 3, 5) }, { unit("character_bandit", 10, 10) })
             local caster = c.units[1]
             local keg = grant(caster, "ability_powder_keg")
 
@@ -329,7 +329,7 @@ return {
         name = "a placed keg is a threat to whoever sets it off, not to a side",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 4, 5) }, { unit("character_bandit", 4, 3) })
+                { unit("character_rowan", 4, 5) }, { unit("character_bandit", 4, 3) })
             local knight = c.units[1]
             local barrel = Prop.place(c, 4, 4, "prop_explosive_barrel", { amount = 30 })
             local before = hp(knight)
@@ -344,7 +344,7 @@ return {
             -- adjacent to the barrel at (4,4) -- so the only thing that can touch it is the keg's blast.
             -- The bandit on the aim tile wears the bomb AND the blast.
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 3, 4) }, { unit("character_bandit", 5, 4) })
+                { unit("character_rowan", 3, 4) }, { unit("character_bandit", 5, 4) })
             local knight, bandit = c.units[1], c.units[2]
             local bomb = grant(knight, "consumable_fire_bomb")
             local barrel = Prop.place(c, 4, 4, "prop_explosive_barrel")
@@ -361,7 +361,7 @@ return {
         name = "a fire bomb scorches a flammable crate without needing a barrel",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
+                { unit("character_rowan", 1, 1) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             local bomb = grant(knight, "consumable_fire_bomb")
             local crate = Prop.place(c, 2, 1, "prop_crate")

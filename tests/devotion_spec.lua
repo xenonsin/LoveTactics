@@ -27,7 +27,7 @@ return {
         fn = function()
             local c = Combat.new(arena(6, 6),
                 { { char = Character.instantiate("character_general_lust"), x = 1, y = 1 } },
-                { { char = Character.instantiate("character_knight"), x = 2, y = 1 } })
+                { { char = Character.instantiate("character_rowan"), x = 2, y = 1 } })
             local luxuria, foe = c.units[1], c.units[2]
             assert(Trait.has(luxuria, "trait_rapture"), "Luxuria carries her rule")
 

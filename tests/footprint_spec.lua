@@ -77,7 +77,7 @@ return {
     {
         name = "cellGap / unitGap measure to the nearest cell of a wide body",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 6, 3) },
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 6, 3) },
                 { unit("character_ogre", 3, 3) })
             local ogre = named(c, "Ogre")
             local knight = c.units[1] -- the party unit, added first
@@ -122,7 +122,7 @@ return {
         name = "knockback slides the whole body, and stops against a unit blocking any destination cell",
         fn = function()
             -- Free lane first: shove the ogre two tiles east off a source to its west.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 3) },
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 3) },
                 { unit("character_ogre", 3, 3) })
             local ogre = named(c, "Ogre")
             local src = c.units[1]
@@ -133,7 +133,7 @@ return {
 
             -- Now a blocker sits where the body's leading cell would land: the slide stops short.
             local c2 = Combat.new(arena(8, 8),
-                { unit("character_knight", 1, 3), unit("character_knight", 6, 3) },
+                { unit("character_rowan", 1, 3), unit("character_rowan", 6, 3) },
                 { unit("character_ogre", 3, 3) })
             local ogre2 = named(c2, "Ogre")
             local src2 = c2.units[1] -- the one at (1,3), to the ogre's west
@@ -159,7 +159,7 @@ return {
         name = "a wide body is a legal melee target from beside any of its cells",
         fn = function()
             -- Knight at (5,3) is adjacent to the ogre's near cell (4,3), though two tiles from its anchor.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 5, 3) },
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 5, 3) },
                 { unit("character_ogre", 3, 3) })
             local knight = c.units[1]
             knight.char.inventory[1] = Item.instantiate("weapon_iron_sword")
@@ -175,7 +175,7 @@ return {
         name = "swapping bodies of different sizes is refused when the wide one wouldn't fit",
         fn = function()
             -- Knight in the far corner: swapping would push the ogre's 2x2 off the board edge.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 8, 8) },
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 8, 8) },
                 { unit("character_ogre", 3, 3) })
             local ogre = named(c, "Ogre")
             local knight = c.units[1]
@@ -183,7 +183,7 @@ return {
             assert(ogre.x == 3 and knight.x == 8, "nothing moved on the refused swap")
 
             -- Knight in open space: the ogre fits at its tile, so the swap goes through.
-            local c2 = Combat.new(arena(8, 8), { unit("character_knight", 5, 5) },
+            local c2 = Combat.new(arena(8, 8), { unit("character_rowan", 5, 5) },
                 { unit("character_ogre", 1, 1) })
             local ogre2 = named(c2, "Ogre")
             local knight2 = c2.units[1]
@@ -195,7 +195,7 @@ return {
     {
         name = "an ordinary 1x1 character is unchanged: single cell, single occupancy",
         fn = function()
-            local c = Combat.new(arena(8, 8), {}, { unit("character_knight", 4, 4) })
+            local c = Combat.new(arena(8, 8), {}, { unit("character_rowan", 4, 4) })
             local knight = c.units[1]
             assert(knight.w == 1 and knight.h == 1, "no footprint means 1x1")
             assert(#Combat.unitCells(knight) == 1, "one cell")

@@ -6,6 +6,6 @@
 return {
     name    = "Trapper",
     classes = { "hunter" },
-    exemplar = "character_trapper", -- NEW, pending
+    exemplar = "character_trapper_ambusher", -- character_trapper is the Colosseum debut spotter; dedicated exemplar authored
     requiredQuests = { "slot_05_the_silent_wood" },
 }

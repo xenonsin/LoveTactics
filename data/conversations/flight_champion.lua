@@ -15,13 +15,13 @@
 -- someone who has already walked the whole valley to get here and is not turning back at the gate.
 return {
     title = "The Champion",
-    cast  = { "character_knight", "character_avatar" },
+    cast  = { "character_rowan", "character_avatar" },
 
     script = {
-        { "character_knight", "Stop here, {name}. That one at the head of them is no imp -- it has a name where they carry none, and it leads this whole raiding party. This is the thing that has been walking the road behind us.", tag = 1 },
+        { "character_rowan", "Stop here, {name}. That one at the head of them is no imp -- it has a name where they carry none, and it leads this whole raiding party. This is the thing that has been walking the road behind us.", tag = 1 },
         { "character_avatar", "It's between us and the capital.", tag = 2 },
-        { "character_knight", "It is. And it will not fall to the swarm-work that served against the rest -- it takes blows the grunts could not, and the imps beside it only want to keep us busy while it reaches you.", tag = 3 },
+        { "character_rowan", "It is. And it will not fall to the swarm-work that served against the rest -- it takes blows the grunts could not, and the imps beside it only want to keep us busy while it reaches you.", tag = 3 },
         { "character_avatar", "Then we cut it down and the imps stop mattering.", tag = 4 },
-        { "character_knight", "Just so. Put it down and the road opens. Stay off its reach, let it come onto our line, and we end this at the gate rather than inside it. Ready when you are.", tag = 5 },
+        { "character_rowan", "Just so. Put it down and the road opens. Stay off its reach, let it come onto our line, and we end this at the gate rather than inside it. Ready when you are.", tag = 5 },
     },
 }

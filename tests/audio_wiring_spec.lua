@@ -67,7 +67,7 @@ return {
     {
         name = "a fresh status landing raises a `status` cue; a refresh of it raises none",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 1, 1) }, { unit("character_bandit", 3, 3) })
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 3, 3) })
             local bandit = c.units[2]
 
             Status.apply(c, bandit, "status_stun", { magnitude = 5 })
@@ -91,6 +91,38 @@ return {
             assert(fired(sounds, "battle.status"), "a status cue did not play battle.status")
             assert(#fx.floaters == 0, "a status cue floated a number it should not have")
             assert(not fx:busy(), "a status cue held the turn hand-off -- it must be sound-only")
+        end,
+    },
+    {
+        name = "the view splits a status cue by valence: debuff def -> battle.debuff, else battle.buff",
+        fn = function()
+            local u = { x = 1, y = 1, alive = true, char = { name = "mark" } }
+            local bad = soundsFor({ { type = "status", unit = u, status = { def = { debuff = true } }, beat = 0 } })
+            assert(fired(bad, "battle.debuff") and not fired(bad, "battle.buff"),
+                "a debuff status should ring battle.debuff")
+            local good = soundsFor({ { type = "status", unit = u, status = { def = { name = "Blessing" } }, beat = 0 } })
+            assert(fired(good, "battle.buff") and not fired(good, "battle.debuff"),
+                "a non-debuff status should ring battle.buff")
+        end,
+    },
+    {
+        name = "an offensive cast rings battle.cast; a support cast does not (its heal/buff cue speaks for it)",
+        fn = function()
+            local u = { x = 1, y = 1, alive = true, char = { name = "mark" } }
+            local offensive = soundsFor({ { type = "cast", unit = u, tx = 1, ty = 1, support = false, beat = 0 } })
+            assert(fired(offensive, "battle.cast"), "an offensive cast should ring battle.cast")
+            local support = soundsFor({ { type = "cast", unit = u, tx = 1, ty = 1, support = true, beat = 0 } })
+            assert(not fired(support, "battle.cast"), "a support cast must not ring battle.cast")
+        end,
+    },
+    {
+        name = "a channel cue (a wind-up starting) rings battle.channel and nothing visible",
+        fn = function()
+            local u = { x = 1, y = 1, alive = true, char = { name = "mark" } }
+            local sounds, fx = soundsFor({ { type = "channel", unit = u, beat = 0 } })
+            assert(fired(sounds, "battle.channel"), "a channel cue did not play battle.channel")
+            assert(#fx.floaters == 0, "a channel cue floated a number it should not have")
+            assert(not fx:busy(), "a channel cue held the turn hand-off -- it must be sound-only")
         end,
     },
     {
@@ -120,6 +152,22 @@ return {
             local kill = soundsFor({ { type = "damage", unit = u, amount = 30, lethal = true, beat = 0 } })
             assert(not fired(kill, "battle.hit") and not fired(kill, "battle.crit"),
                 "a lethal blow must not also ring a hit -- the death cue carries it")
+        end,
+    },
+    {
+        name = "a blow's impact is chosen by damage type: an element rings hit_<motif>, else the generic hit",
+        fn = function()
+            local u = { x = 1, y = 1, alive = true, char = { name = "mark" } }
+            local fire = soundsFor({ { type = "damage", unit = u, amount = 5, tags = { "fire" }, beat = 0 } })
+            assert(fired(fire, "battle.hit_fire") and not fired(fire, "battle.hit"),
+                "fire damage should ring battle.hit_fire, not the generic hit")
+            local slash = soundsFor({ { type = "damage", unit = u, amount = 5, tags = { "dagger", "slash", "physical" }, beat = 0 } })
+            assert(fired(slash, "battle.hit_slash"),
+                "a slash blow should ring battle.hit_slash (motif reads past the family/routing tags)")
+            -- No element/strike tag the sound layer knows -> the generic hit carries it.
+            local plain = soundsFor({ { type = "damage", unit = u, amount = 5, tags = { "physical", "melee" }, beat = 0 } })
+            assert(fired(plain, "battle.hit") and not fired(plain, "battle.hit_slash"),
+                "an untyped blow should fall back to the generic battle.hit")
         end,
     },
     {

@@ -95,7 +95,7 @@ return {
         name = "Defiant Stand taunts the ring and banks Defiance off the blows that answer",
         fn = function()
             local map = Fixture.new(8, 8)
-            local hero = Fixture.unit("character_knight", 3, 3,
+            local hero = Fixture.unit("character_rowan", 3, 3,
                 { isolate = "bare", items = { "ability_defiant_stand" } })
             local foe = Fixture.unit("character_bandit", 3, 4, { isolate = "bare" })
             local combat = Fixture.combat(map, hero, foe)
@@ -112,7 +112,7 @@ return {
         name = "Answering Blow spends the whole pool and scales every blow in the ring by it",
         fn = function()
             local map = Fixture.new(8, 8)
-            local hero = Fixture.unit("character_knight", 3, 3,
+            local hero = Fixture.unit("character_rowan", 3, 3,
                 { isolate = "bare", items = { "ability_answering_blow", "ability_defiant_stand" } })
             local a = Fixture.unit("character_bandit", 3, 4, { isolate = "bare", stats = { defense = 0, health = 300 } })
             local b = Fixture.unit("character_bandit", 2, 3, { isolate = "bare", stats = { defense = 0, health = 300 } })
@@ -258,7 +258,7 @@ return {
             local map = Fixture.new(8, 8)
             local hero = Fixture.unit("character_saber", 3, 3,
                 { isolate = "bare", items = { "ability_reckoning", "armor_crusaders_tabard" } })
-            local ally = Fixture.unit("character_knight", 2, 3, { isolate = "bare" })
+            local ally = Fixture.unit("character_rowan", 2, 3, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 3, 4, { isolate = "bare", stats = { defense = 0, health = 900 } })
             local combat = Combat.new(map, { hero, ally }, { foe })
             local h, a, f = combat.units[1], combat.units[2], combat.units[3]

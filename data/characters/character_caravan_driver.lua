@@ -17,7 +17,7 @@
 -- `advance` and press on. It still never moves TOWARD a foe -- it either walks for the exit or holds.
 --
 -- One blueprint per posture rather than a per-spawn override: the same reason
--- character_bastion_sworn is not character_knight with a flag.
+-- character_bastion_sworn is not character_rowan with a flag.
 --
 -- Fragile and slow, and it carries nothing, so it swings the default unarmed weapon. It is a clock,
 -- not a combatant: every turn it advances is a turn the party has to have cleared the road ahead.

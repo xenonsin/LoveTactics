@@ -57,7 +57,7 @@ return {
     {
         name = "a previewed parry names the reflex and the damage the live counter deals",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_sword" })
             local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
@@ -83,7 +83,7 @@ return {
     {
         name = "a blow that fells its target is answered by nothing, and the panel says so",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_sword" })
             local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
@@ -104,7 +104,7 @@ return {
         -- promise a third answer the exchange then refuses.
         name = "a reflex that can't be paid for is never promised, at whatever the price has climbed to",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_sword" })
             local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
@@ -133,7 +133,7 @@ return {
     {
         name = "the reach rules hold: a melee reflex is promised only from an adjacent tile",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_sword" })
             local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(8, 8), { unit(knight, 1, 1) }, { unit(bandit, 5, 1) })
             local k, b = c.units[1], c.units[2]
@@ -152,7 +152,7 @@ return {
     {
         name = "a riposte is previewed as turning the blow aside, and the live blow deals nothing",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_sword" })
             local duelist = fighter("character_bandit", {}, { "weapon_riposte_blade" })
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(duelist, 2, 1) })
             local k, d = c.units[1], c.units[2]
@@ -210,7 +210,7 @@ return {
             -- A blast is nobody's duel: it is aimed at ground, and everything standing there catches the
             -- same burst. There is no swing aimed at the swordsman to turn aside, so his Parry sleeps --
             -- which is also what keeps one bomb from being answered once per body it caught.
-            local knight = fighter("character_knight", {}, { "weapon_iron_axe" }) -- axes cleave: a 3-wide arc, an AoE
+            local knight = fighter("character_rowan", {}, { "weapon_iron_axe" }) -- axes cleave: a 3-wide arc, an AoE
             local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
@@ -226,7 +226,7 @@ return {
 
             -- The same swordsman still answers a blow aimed at HIM, so the case above is the blast
             -- talking and not a broken fixture.
-            local sword = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local sword = fighter("character_rowan", {}, { "weapon_iron_sword" })
             local c2 = Combat.new(arena(6, 6), { unit(sword, 1, 1) }, { unit(fighter("character_bandit", {}, { "weapon_iron_sword" }), 2, 1) })
             assert(soleCounter(c2, c2.units[1], c2.units[2]), "a single-target blow is answered as ever")
         end,
@@ -239,7 +239,7 @@ return {
         name = "a two-tile spit is beyond the blade -- neither a sword nor a sword-and-bow parries it",
         fn = function()
             for _, grid in ipairs({ { "weapon_iron_sword" }, { "weapon_iron_sword", "weapon_iron_longbow" } }) do
-                local knight = fighter("character_knight", {}, grid)
+                local knight = fighter("character_rowan", {}, grid)
                 local imp = fighter("character_demon_imp", {}, {}) -- carries its Cinder Spit (range 2)
                 local c = Combat.new(arena(8, 8), { unit(knight, 1, 1) }, { unit(imp, 3, 1) })
                 local k, i = c.units[1], c.units[2]
@@ -259,7 +259,7 @@ return {
         fn = function()
             -- mayCounter is the single rule both the hover panel and the onDamaged hooks read, so a
             -- reflex the panel promises is one the hook fires: assert they agree unit by unit.
-            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_sword" })
             local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
@@ -282,7 +282,7 @@ return {
         -- The stun now rides the blow (`inflicts`), landing between the wound and the on-hit hooks.
         name = "a hammer's stun rides the blow, so the reeling target never answers it",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_hammer" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_hammer" })
             local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" }) -- the sword carries Parry
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
@@ -305,7 +305,7 @@ return {
         -- this pair would pass just as well if hammers had quietly stopped provoking anything.
         name = "the same hammer without its stun is answered normally",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_hammer" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_hammer" })
             local bandit = fighter("character_bandit", {}, { "weapon_iron_sword" })
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(bandit, 2, 1) })
             local k, b = c.units[1], c.units[2]
@@ -332,7 +332,7 @@ return {
         -- broken by someone "simplifying" the suppression check upward past the pre-hit reflexes.
         name = "a riposte still turns a stunning blow aside: an unlanded hammer stuns no one",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_hammer" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_hammer" })
             local duelist = fighter("character_bandit", {}, { "weapon_riposte_blade" })
             local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit(duelist, 2, 1) })
             local k, d = c.units[1], c.units[2]
@@ -356,8 +356,8 @@ return {
         -- from the next tile answers. If this one ever fails, the fixture is broken and not the rule.
         name = "a brawler answers a blow struck from the tile beside it",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_sword" })
-            local brawler = fighter("character_knight", { "trait_melee_counter" }, { "weapon_iron_mace" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_sword" })
+            local brawler = fighter("character_rowan", { "trait_melee_counter" }, { "weapon_iron_mace" })
             local c = Combat.new(arena(6, 6), { unit(knight, 2, 1) }, { unit(brawler, 3, 1) })
             local k, b = c.units[1], c.units[2]
             local knightHP = k.char.stats.health.current
@@ -378,8 +378,8 @@ return {
         -- promised otherwise.
         name = "a blow that shoves its target out of melee is answered by nothing",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_mace" })
-            local brawler = fighter("character_knight", { "trait_melee_counter" }, { "weapon_iron_mace" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_mace" })
+            local brawler = fighter("character_rowan", { "trait_melee_counter" }, { "weapon_iron_mace" })
             local c = Combat.new(arena(6, 6), { unit(knight, 2, 1) }, { unit(brawler, 3, 1) })
             local k, b = c.units[1], c.units[2]
             local knightHP = k.char.stats.health.current
@@ -398,8 +398,8 @@ return {
         -- which is what keeps the fix from degrading into "a mace is never countered".
         name = "a shove barred by the board edge leaves the brawler in reach, and it answers",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_mace" })
-            local brawler = fighter("character_knight", { "trait_melee_counter" }, { "weapon_iron_mace" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_mace" })
+            local brawler = fighter("character_rowan", { "trait_melee_counter" }, { "weapon_iron_mace" })
             local c = Combat.new(arena(6, 6), { unit(knight, 2, 1) }, { unit(brawler, 1, 1) })
             local k, b = c.units[1], c.units[2]
             local knightHP = k.char.stats.health.current
@@ -420,8 +420,8 @@ return {
         -- "a mace is immune to armor spikes".
         name = "spikes bite the mace that shoved them: a reflecting reflex is the contact, not a swing",
         fn = function()
-            local knight = fighter("character_knight", {}, { "weapon_iron_mace" })
-            local thorny = fighter("character_knight", { "trait_thorns" }, { "weapon_iron_mace" })
+            local knight = fighter("character_rowan", {}, { "weapon_iron_mace" })
+            local thorny = fighter("character_rowan", { "trait_thorns" }, { "weapon_iron_mace" })
             local c = Combat.new(arena(6, 6), { unit(knight, 2, 1) }, { unit(thorny, 3, 1) })
             local k, b = c.units[1], c.units[2]
             local knightHP = k.char.stats.health.current

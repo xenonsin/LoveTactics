@@ -32,7 +32,7 @@ return {
             mortal.inventory = {}
             mortal.stats.defense = 0
 
-            local hero = Character.instantiate("character_knight")
+            local hero = Character.instantiate("character_rowan")
             hero.inventory = {}
             Character.addItem(hero, Item.instantiate("weapon_demon_bane"))
 

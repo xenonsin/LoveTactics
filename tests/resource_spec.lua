@@ -41,7 +41,7 @@ return {
     {
         name = "stamina regenerates proportional to elapsed ticks; mana does not",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             -- Both pools are dropped well clear of their ceilings so the regen has room to show.
             local stam0, mana0, ticks = 5, 5, 3
@@ -67,7 +67,7 @@ return {
     {
         name = "restoreResource clamps to max and returns the real delta",
         fn = function()
-            local knight = Character.instantiate("character_knight")
+            local knight = Character.instantiate("character_rowan")
             -- Leave a known gap to the ceiling, then over-restore: the claim is that the RETURN is
             -- the gap actually closed, whatever the ceiling happens to be.
             local gap = 3
@@ -82,7 +82,7 @@ return {
     {
         name = "battle start refills stamina but leaves mana (mana persists between battles)",
         fn = function()
-            local knight = Character.instantiate("character_knight")
+            local knight = Character.instantiate("character_rowan")
             knight.stats.stamina.current = 10 -- carried-over depletion
             knight.stats.mana.current = 3
             Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("character_bandit", 6, 6) })

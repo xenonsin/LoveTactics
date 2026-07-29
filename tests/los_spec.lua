@@ -190,7 +190,7 @@ return {
             -- can ever stand there, so it must be absent from the reach -- no red highlight, and
             -- click-to-attack can't target it. The open tile past it (in range) still lists.
             local c = Combat.new(arena(4, 1, { { x = 2, y = 1, sightCost = WALL, walkable = false } }),
-                { unit("character_knight", 1, 1) }, {})
+                { unit("character_rowan", 1, 1) }, {})
             local ar = Combat.attackReach(c, c.units[1], 2, {}, false)
             assert(ar["1,1"], "the unit's own (walkable) tile stays in reach")
             assert(ar["2,1"] == nil, "the adjacent impassable obstacle is excluded from reach")
@@ -210,13 +210,13 @@ return {
             -- Enemy at (1,1), party at (4,1), a wall between them on a single-row arena so it can't
             -- flank. It must NOT plan a blocked shot; it steps closer to open a line instead.
             local walled = Combat.new(arena(6, 1, { { x = 3, y = 1, sightCost = WALL, walkable = false } }),
-                { unit("character_knight", 4, 1) }, { bowman(1, 1) })
+                { unit("character_rowan", 4, 1) }, { bowman(1, 1) })
             local plan = Combat.planEnemyAction(walled, walled.units[2])
             assert(not plan.item, "the archer does not fire through the wall")
             assert(plan.move and plan.move.x == 2, "it advances toward the target to seek a line")
 
             -- Clear the lane: now the very same archer opens with a shot from range.
-            local open = Combat.new(arena(6, 1), { unit("character_knight", 4, 1) }, { bowman(1, 1) })
+            local open = Combat.new(arena(6, 1), { unit("character_rowan", 4, 1) }, { bowman(1, 1) })
             local shot = Combat.planEnemyAction(open, open.units[2])
             assert(shot.item and shot.tx == 4 and shot.ty == 1, "with a clear line it shoots in place")
         end,

@@ -25,11 +25,11 @@ local function unit(charOrId, x, y)
 end
 
 -- The two cases below measure the CLOCK against a known ability speed, so they need a unit whose
--- weapon speed they can state. `character_knight` used to be that by accident -- Rowan carried a
+-- weapon speed they can state. `character_rowan` used to be that by accident -- Rowan carried a
 -- sword (speed 3) -- until the prologue gave her an iron mace (speed 4), which silently changed the
 -- arithmetic of tests that were never about her. The sword goes in explicitly now.
 local function swordsman(x, y)
-    local char = Character.instantiate("character_knight")
+    local char = Character.instantiate("character_rowan")
     char.inventory[1] = Item.instantiate("weapon_iron_sword")
     return { char = char, x = x, y = y }
 end
@@ -42,7 +42,7 @@ return {
     {
         name = "stun adds ticks to the target's initiative, shoving it down the turn order",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 1, 2) })
             local knight, bandit = c.units[1], c.units[2]
             knight.initiative, bandit.initiative = 0.5, 0 -- bandit would act first
             assert(Combat.turnOrder(c)[1] == bandit, "bandit (0) acts first before the stun")
@@ -56,7 +56,7 @@ return {
     {
         name = "Status.initiativeShove reports the delay a hard-control status lands (0 for the rest)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             -- Stun/Freeze: a fixed shove, the opts value winning over the def default.
             assert(Status.initiativeShove(bandit, "status_stun") == 5, "stun's default shove is its magnitude")
@@ -116,7 +116,7 @@ return {
     {
         name = "Status.tick counts durations down by the elapsed ticks and expires at 0 (onExpire fires)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
             local knight = c.units[1]
 
             -- A temporary status def with an onExpire hook (removed afterward so it can't leak).
@@ -140,7 +140,7 @@ return {
     {
         name = "re-applying a status refreshes its remaining duration to the longer value",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
             local knight = c.units[1]
             Status.apply(c, knight, "status_root") -- duration 6
             Status.tick(c, 4)
@@ -177,7 +177,7 @@ return {
     {
         name = "Burn sears on the clock: a turn's worth of ticks costs its per-turn magnitude",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             bandit.char.stats.defense = 0 -- isolate the burn from defense mitigation
             local hp0 = bandit.char.stats.health.current
@@ -195,7 +195,7 @@ return {
     {
         name = "a status ticks for the stretch it was alive, then wears off -- never for a rebase it did not see",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             bandit.char.stats.defense = 0
             local hp0 = bandit.char.stats.health.current
@@ -222,7 +222,7 @@ return {
             -- The reason ctx.accrue banks a remainder: a rebase can elapse a fraction of a tick, and
             -- damage floors at 1, so paying each sliver immediately would sear far harder than the
             -- magnitude claims. Ten tenth-of-a-tick rebases must cost exactly what one whole tick does.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             bandit.char.stats.defense = 0
             local hp0 = bandit.char.stats.health.current
@@ -243,7 +243,7 @@ return {
             local priest = Character.instantiate("character_priest")
             priest.inventory = {}
             Character.addItem(priest, Item.instantiate("ability_haste"))
-            local knight = Character.instantiate("character_knight")
+            local knight = Character.instantiate("character_rowan")
             knight.inventory = {}
             Character.addItem(knight, Item.instantiate("weapon_iron_sword"))
 
@@ -315,7 +315,7 @@ return {
     {
         name = "Boots of Speed widen the reachable set without touching the base stat",
         fn = function()
-            local knight = Character.instantiate("character_knight")
+            local knight = Character.instantiate("character_rowan")
             knight.inventory = {} -- drop the chainmail, whose -1 movement would muddy the comparison
             local c = Combat.new(arena(8, 8), { unit(knight, 4, 4) }, { unit("character_bandit", 8, 8) })
             local u = c.units[1]

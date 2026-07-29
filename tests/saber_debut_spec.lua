@@ -459,7 +459,7 @@ return {
 
             local built = Arena.build({}, {
                 layout = "colosseum_sand", biome = "castle",
-                party = { "character_avatar", "character_knight" },
+                party = { "character_avatar", "character_rowan" },
                 composition = Quest.defs["slot_01_arena_debut"].map.objective.composition,
                 objective = { type = "assassinate", target = "character_saber_bout" },
                 seed = 1,

@@ -17,7 +17,7 @@
 -- data/quests/colosseum/champions_challenge.lua.
 --
 -- FIRST PASS. Scenes are not authored, so nothing is named. The sworn knight wants a bespoke
--- blueprint carrying the Aegis; `character_knight` stands in and projects nothing.
+-- blueprint carrying the Aegis; `character_rowan` stands in and projects nothing.
 return {
     name = "The Oath at the Altar",
     description = "She swore to hold this shrine and the people in it, in that order, and she has " ..
@@ -41,7 +41,7 @@ return {
                 for i = 1, 3 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_demon_grunt" end
                 return list
             end,
-            allies = { "character_knight", "character_survivor", "character_survivor" },
+            allies = { "character_rowan", "character_survivor", "character_survivor" },
             win = { type = "killAll", protect = "character_survivor" },
         },
         keyCount = 1,

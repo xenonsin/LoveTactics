@@ -22,15 +22,17 @@ local function unit(id, x, y) return { char = Character.instantiate(id), x = x, 
 
 return {
     {
-        name = "the Archer fields a free wolf at the opening bell (Wolf Companion)",
+        name = "Kaya fields a free wolf at the opening bell (Wolf Companion off her horn)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, { unit("character_bandit", 8, 8) })
+            -- The Wolfsong Horn's opening-bell wolf is Kaya's signature; the generic archer is now
+            -- relic-free and no longer carries the horn (character_kaya.lua / character_archer.lua).
+            local c = Combat.new(arena(8, 8), { unit("character_kaya", 2, 2) }, { unit("character_bandit", 8, 8) })
             local wolves = 0
             for _, u in ipairs(c.units) do
                 if u.alive and u.summoner and u.char.id == "character_wolf_grunt" then wolves = wolves + 1 end
             end
-            assert(wolves == 1, "one wolf stands beside the archer at combat start, got " .. wolves)
-            -- Free: the archer's mana pool was not reserved against it.
+            assert(wolves == 1, "one wolf stands beside Kaya at combat start, got " .. wolves)
+            -- Free: Kaya's mana pool was not reserved against it.
             assert((c.units[1].char.reservations == nil) or (#(c.units[1].char.reservations) == 0),
                 "the innate wolf costs no reservation")
         end,
@@ -40,7 +42,7 @@ return {
         fn = function()
             -- Knight beside a mage; a bandit strikes the mage.
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 2, 2), unit("character_mage", 3, 2) },
+                { unit("character_rowan", 2, 2), unit("character_mage", 3, 2) },
                 { unit("character_bandit", 3, 3) })
             local knight, mage, bandit = c.units[1], c.units[2], c.units[3]
             local kHp0, mHp0 = knight.char.stats.health.current, mage.char.stats.health.current
@@ -81,8 +83,12 @@ return {
     {
         name = "the Priest's Sanctified Presence mends an adjacent ally each tick",
         fn = function()
+            -- The generic priest is relic-free; the Hallowed Censer (Sanctified Presence) is Amana's
+            -- signature, so it is added here explicitly rather than pulled from a default kit.
+            local priestChar = Character.instantiate("character_priest")
+            Character.addItem(priestChar, Item.instantiate("utility_hallowed_censer"))
             local c = Combat.new(arena(8, 8),
-                { unit("character_priest", 2, 2), unit("character_knight", 3, 2) },
+                { { char = priestChar, x = 2, y = 2 }, unit("character_rowan", 3, 2) },
                 { unit("character_bandit", 8, 8) })
             local priest, knight = c.units[1], c.units[2]
             -- Wound the knight so there's room to heal.
@@ -99,7 +105,7 @@ return {
         name = "an item grants the same innate to anyone (traits are items)",
         fn = function()
             -- A knight carrying the Companion Whistle fields a wolf, exactly as the archer does innately.
-            local knight = Character.instantiate("character_knight")
+            local knight = Character.instantiate("character_rowan")
             Character.addItem(knight, Item.instantiate("utility_companion_whistle"))
             local c = Combat.new(arena(8, 8), { { char = knight, x = 2, y = 2 } }, { unit("character_bandit", 8, 8) })
             local wolves = 0

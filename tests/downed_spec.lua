@@ -49,7 +49,7 @@ return {
     {
         name = "revivable default: an ordinary character is revivable, a demon is not",
         fn = function()
-            assert(Character.instantiate("character_knight").revivable == true,
+            assert(Character.instantiate("character_rowan").revivable == true,
                 "an ordinary character is revivable by default")
             assert(Character.instantiate("character_demon_grunt").revivable == false,
                 "a demon blueprint opts out with revivable = false")
@@ -58,7 +58,7 @@ return {
     {
         name = "a felled revivable unit lands incapacitated (not a corpse) carrying the countdown",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2) },
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) },
                 { unit("character_bandit", 4, 4) })
             local hero = c.units[1]
             kill(c, hero)
@@ -75,7 +75,7 @@ return {
     {
         name = "the countdown running out turns the body to a corpse (harvestable, status gone)",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2) },
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) },
                 { unit("character_bandit", 4, 4) })
             local hero = c.units[1]
             kill(c, hero)
@@ -89,7 +89,7 @@ return {
     {
         name = "a revive inside the window succeeds and cancels the countdown",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2) },
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) },
                 { unit("character_bandit", 4, 4) })
             local hero = c.units[1]
             kill(c, hero)
@@ -103,7 +103,7 @@ return {
     {
         name = "a revive on a body gone cold is refused",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2) },
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) },
                 { unit("character_bandit", 4, 4) })
             local hero = c.units[1]
             kill(c, hero)
@@ -117,8 +117,8 @@ return {
         name = "Reviving Salts bring an incapacitated ally back at 25% through Combat.useItem",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { unit("character_knight", 2, 2, { items = { "consumable_reviving_salts" } }),
-                  unit("character_knight", 3, 2, { isolate = "bare", stats = { health = 100 } }) },
+                { unit("character_rowan", 2, 2, { items = { "consumable_reviving_salts" } }),
+                  unit("character_rowan", 3, 2, { isolate = "bare", stats = { health = 100 } }) },
                 { unit("character_bandit", 5, 5) })
             local reviver, faller = c.units[1], c.units[2]
             kill(c, faller)
@@ -134,7 +134,7 @@ return {
     {
         name = "a won battle carries even a gone-cold member out (reviveFallenParty)",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2, { stats = { health = 100 } }) },
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2, { stats = { health = 100 } }) },
                 { unit("character_bandit", 5, 5) })
             local hero = c.units[1]
             kill(c, hero)
@@ -147,7 +147,7 @@ return {
     {
         name = "a won battle carries a still-incapacitated member out too (reviveFallenParty)",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2, { stats = { health = 100 } }) },
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2, { stats = { health = 100 } }) },
                 { unit("character_bandit", 5, 5) })
             local hero = c.units[1]
             kill(c, hero)
@@ -159,7 +159,7 @@ return {
     {
         name = "a demon skips the whole window: a corpse at once, and no revive takes it",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2) },
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) },
                 { unit("character_demon_grunt", 4, 4) })
             local demon = c.units[2]
             assert(demon.char.revivable == false, "precondition: a demon is not revivable")

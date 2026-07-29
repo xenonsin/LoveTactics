@@ -23,7 +23,7 @@ return {
     {
         name = "a wall bars movement onto its tile (reachable routes around it)",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 1, 1) }, {})
             local knight = c.units[1]
             -- Wall the tile directly to the knight's right.
             assert(Wall.place(c, 2, 1, "illusory_wall"), "the wall is placed")
@@ -46,7 +46,7 @@ return {
     {
         name = "a wall can be struck down, and reopens the tile once it falls",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 1, 1) }, {})
             local knight = c.units[1]
             local wall = Wall.place(c, 2, 1, "illusory_wall")
 
@@ -59,7 +59,7 @@ return {
     {
         name = "a forced shove is stopped by a wall (knockback halts and hurts)",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 3, 3) }, { unit("character_bandit", 4, 3) })
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 4, 3) })
             local knight, bandit = c.units[1], c.units[2]
             Wall.place(c, 5, 3, "illusory_wall") -- directly behind the bandit's shove path
             local hp0 = bandit.char.stats.health.current
@@ -73,7 +73,7 @@ return {
     {
         name = "a timed wall fades once its duration runs out",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 1, 1) }, {})
             local wall = Wall.place(c, 2, 1, "illusory_wall") -- duration 18
             assert(wall.remaining == 18, "the wall starts at its full duration")
 

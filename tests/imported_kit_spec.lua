@@ -66,7 +66,7 @@ return {
         fn = function()
             -- Spike Mail carries Thorns: survive a melee blow and the attacker takes a share back.
             local function fight()
-                local wearer = equip(bare("character_knight"), { "armor_spike_mail" })
+                local wearer = equip(bare("character_rowan"), { "armor_spike_mail" })
                 local c = Combat.new(arena(8, 8), { unit(wearer, 3, 3) }, { unit(bare("character_bandit"), 3, 4) })
                 return c, c.units[1], c.units[2]
             end
@@ -93,7 +93,7 @@ return {
             -- The distinction the two flags exist to draw (see Status.traitsDisabled): a STUNNED body
             -- still runs onStatusApplied so a cleansing ward can shrug off the stun that landed, and a
             -- SUNDERED one does not.
-            local c = Combat.new(arena(8, 8), { unit(bare("character_knight"), 3, 3) },
+            local c = Combat.new(arena(8, 8), { unit(bare("character_rowan"), 3, 3) },
                 { unit(bare("character_bandit"), 6, 6) })
             local u = c.units[1]
             local fired = 0
@@ -115,7 +115,7 @@ return {
     {
         name = "an Unclosing Wound refuses every mend, whatever the source",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit(bare("character_knight"), 3, 3) },
+            local c = Combat.new(arena(8, 8), { unit(bare("character_rowan"), 3, 3) },
                 { unit(bare("character_bandit"), 6, 6) })
             local u = c.units[1]
             u.char.stats.health.current = 20
@@ -137,7 +137,7 @@ return {
         fn = function()
             -- The coating sits BESIDE the weapon in the 3x3 grid: slot 1 holds the blade, slot 2 the
             -- phial, and Combat.auraApplies is what carries one onto the other.
-            local alch = equip(bare("character_knight"), { "weapon_iron_sword", "consumable_thinblood_rime" })
+            local alch = equip(bare("character_rowan"), { "weapon_iron_sword", "consumable_thinblood_rime" })
             local c = Combat.new(arena(8, 8), { unit(alch, 3, 3) }, { unit(bare("character_bandit"), 3, 4) })
             local striker, victim = c.units[1], c.units[2]
             openTurn(c, striker)
@@ -187,7 +187,7 @@ return {
     {
         name = "Witchlight makes a hidden body targetable without taking its concealment away",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit(bare("character_knight"), 3, 3) },
+            local c = Combat.new(arena(8, 8), { unit(bare("character_rowan"), 3, 3) },
                 { unit(bare("character_bandit"), 5, 5) })
             local hidden = c.units[2]
 
@@ -203,7 +203,7 @@ return {
     {
         name = "a Witchlight Flare lays ground that keeps whoever stands in it lit",
         fn = function()
-            local thrower = equip(bare("character_knight"), { "consumable_witchlight_flare" })
+            local thrower = equip(bare("character_rowan"), { "consumable_witchlight_flare" })
             local c = Combat.new(arena(8, 8), { unit(thrower, 2, 2) }, { unit(bare("character_bandit"), 4, 2) })
             local lighter, sneak = c.units[1], c.units[2]
             Status.apply(c, sneak, "status_invisible")
@@ -220,7 +220,7 @@ return {
     {
         name = "a Sealed Hour banks damage instead of landing it, and settles the ledger on expiry",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit(bare("character_knight"), 3, 3) },
+            local c = Combat.new(arena(8, 8), { unit(bare("character_rowan"), 3, 3) },
                 { unit(bare("character_bandit"), 6, 6) })
             local u = c.units[1]
             u.char.stats.health.current = 40
@@ -240,7 +240,7 @@ return {
     {
         name = "mending poured into a Sealed Hour is held too, and lands whole when it ends",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit(bare("character_knight"), 3, 3) },
+            local c = Combat.new(arena(8, 8), { unit(bare("character_rowan"), 3, 3) },
                 { unit(bare("character_bandit"), 6, 6) })
             local u = c.units[1]
             u.char.stats.health.current = 30
@@ -260,7 +260,7 @@ return {
         name = "a Kept Wound absorbs blows and then bursts for everything it swallowed",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit(bare("character_knight"), 3, 3) },
+                { unit(bare("character_rowan"), 3, 3) },
                 { unit(bare("character_bandit"), 3, 4), unit(bare("character_bandit"), 4, 3) })
             local ward, near, alsoNear = c.units[1], c.units[2], c.units[3]
             Status.apply(c, ward, "status_kept_wound", { magnitude = 2 })
@@ -280,7 +280,7 @@ return {
     {
         name = "Splitglass turns aside both schools, where a single-school barrier turns aside one",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit(bare("character_knight"), 3, 3) },
+            local c = Combat.new(arena(8, 8), { unit(bare("character_rowan"), 3, 3) },
                 { unit(bare("character_bandit"), 6, 6) })
             local u = c.units[1]
             Status.apply(c, u, "status_splitglass", { magnitude = 2 })
@@ -301,7 +301,7 @@ return {
     {
         name = "Rimebitten bites every time anything lands on its bearer",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit(bare("character_knight"), 3, 3) },
+            local c = Combat.new(arena(8, 8), { unit(bare("character_rowan"), 3, 3) },
                 { unit(bare("character_bandit"), 6, 6) })
             local u = c.units[1]
             u.char.stats.health.current = 60
@@ -325,10 +325,10 @@ return {
         fn = function()
             -- A corridor one tile wide, with a foe standing in the middle of it.
             local a = arena(6, 1)
-            local walker = equip(bare("character_knight"), { "utility_sidelong_greaves" })
+            local walker = equip(bare("character_rowan"), { "utility_sidelong_greaves" })
             walker.stats.movement = 4
 
-            local blocked = Combat.new(a, { unit(bare("character_knight"), 1, 1) },
+            local blocked = Combat.new(a, { unit(bare("character_rowan"), 1, 1) },
                 { unit(bare("character_bandit"), 3, 1) })
             blocked.units[1].char.stats.movement = 4
             local wallOff = Combat.reachable(blocked, blocked.units[1])
@@ -345,7 +345,7 @@ return {
     {
         name = "the Backward Glance sends a body to where its PREVIOUS turn opened, not this one",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit(bare("character_knight"), 3, 3) },
+            local c = Combat.new(arena(8, 8), { unit(bare("character_rowan"), 3, 3) },
                 { unit(bare("character_bandit"), 6, 6) })
             local u = c.units[2]
 
@@ -368,7 +368,7 @@ return {
     {
         name = "a Struck Ledger pays the company when its bearer falls, and lights it until then",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit(bare("character_knight"), 3, 3) },
+            local c = Combat.new(arena(8, 8), { unit(bare("character_rowan"), 3, 3) },
                 { unit(bare("character_bandit"), 3, 4) })
             local killer, marked = c.units[1], c.units[2]
             Status.apply(c, marked, "status_struck_ledger", { magnitude = 60 })
@@ -406,7 +406,7 @@ return {
     {
         name = "the Gleaning Rod banks a charge off somebody else's spell, and spends the purse at once",
         fn = function()
-            local holder = equip(bare("character_knight"), { "utility_gleaning_rod" })
+            local holder = equip(bare("character_rowan"), { "utility_gleaning_rod" })
             local caster = equip(bare("character_mage"), { "ability_fire_bolt" })
             local c = Combat.new(arena(8, 8), { unit(holder, 3, 3), unit(caster, 3, 4) },
                 { unit(bare("character_bandit"), 3, 6) })
@@ -465,7 +465,7 @@ return {
     {
         name = "Single Combat roots both, and the survivor keeps something of the other",
         fn = function()
-            local knight = equip(bare("character_knight"), { "ability_single_combat", "weapon_iron_sword" })
+            local knight = equip(bare("character_rowan"), { "ability_single_combat", "weapon_iron_sword" })
             local c = Combat.new(arena(8, 8), { unit(knight, 3, 3) }, { unit(bare("character_bandit"), 3, 4) })
             local caller, called = c.units[1], c.units[2]
             openTurn(c, caller)

@@ -29,7 +29,7 @@
 -- sentence out loud; the party just keeps recognising it.
 return {
     title = "A Trust Returned",
-    cast  = { "character_amana", "character_avatar", { id = "character_knight", when = { has = "character_knight" } }, { id = "character_saber", when = { has = "character_saber" } }, { id = "character_gyeom", when = { has = "character_gyeom" } }, { id = "character_kaya", when = { has = "character_kaya" } }, { id = "character_ren", when = { has = "character_ren" } }, { id = "character_clem", when = { has = "character_clem" } } },
+    cast  = { "character_amana", "character_avatar", { id = "character_rowan", when = { has = "character_rowan" } }, { id = "character_saber", when = { has = "character_saber" } }, { id = "character_gyeom", when = { has = "character_gyeom" } }, { id = "character_kaya", when = { has = "character_kaya" } }, { id = "character_ren", when = { has = "character_ren" } }, { id = "character_clem", when = { has = "character_clem" } } },
 
     script = {
         { "character_amana", "Enough. You have me. The coin is yours whatever happens next -- I am not asking you to give that up.", tag = 1 },
@@ -47,11 +47,11 @@ return {
         } },
         { "character_amana", "And it kills. Most often, it simply kills. The body goes out the back and into a pit with no marker on it, and the register writes the child down as ascended to the Light.", tag = 12 },
         { "character_amana", "The roll of our glorious dead is a casualty list. Everyone reads it aloud on the feast day. Nobody has ever once counted it.", tag = 13 },
-        { when = { has = "character_knight" }, script = {
-            { "character_knight", "...Say that last part again.", tag = 14 },
+        { when = { has = "character_rowan" }, script = {
+            { "character_rowan", "...Say that last part again.", tag = 14 },
             { "character_amana", "The register writes them down as ascended.", tag = 15 },
-            { "character_knight", "My order carves a mark for each of its dead and teaches children the marks are days held. Same trick. Different stone.", tag = 16 },
-            { "character_knight", "I am sorry. Go on. I did not mean to make this mine.", tag = 17 },
+            { "character_rowan", "My order carves a mark for each of its dead and teaches children the marks are days held. Same trick. Different stone.", tag = 16 },
+            { "character_rowan", "I am sorry. Go on. I did not mean to make this mine.", tag = 17 },
         } },
         { when = { has = "character_saber" }, script = {
             { "character_saber", "How old are they when they take them?", tag = 18 },

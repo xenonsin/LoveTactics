@@ -56,7 +56,7 @@ return {
         name = "drainJoins on an empty queue leaves the scene untouched",
         fn = function()
             reset()
-            local resolved = { script = { { by = "character_knight", text = "We shall hold." } } }
+            local resolved = { script = { { by = "character_rowan", text = "We shall hold." } } }
             Conversation.drainJoins(resolved)
             assert(#resolved.script == 1, "no pending joins means no appended banner")
         end,

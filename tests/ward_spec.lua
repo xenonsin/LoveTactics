@@ -31,7 +31,7 @@ return {
     {
         name = "a barrier stands for as many hits as it was granted, then is spent",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             Status.apply(c, bandit, "status_physical_barrier", { magnitude = 3 })
 
@@ -65,7 +65,7 @@ return {
             local caster = armed("character_mage", { "ability_fire_bolt", "ability_fireball" })
             -- A BARE knight: the blueprint's own kit carries Parry, whose counter-swing would land on
             -- the mage and be indistinguishable here from a reflection. The mirror is what's on trial.
-            local c = Combat.new(arena(10, 10), { { char = armed("character_knight", {}), x = 5, y = 4 } },
+            local c = Combat.new(arena(10, 10), { { char = armed("character_rowan", {}), x = 5, y = 4 } },
                 { { char = caster, x = 5, y = 5 } })
             local knight, mage = c.units[1], c.units[2]
 
@@ -100,7 +100,7 @@ return {
         fn = function()
             -- Bare bodies on both sides: a blueprint's stock reflex (the knight's Parry) would answer
             -- the swing and muddy what the assertion is actually measuring.
-            local c = Combat.new(arena(8, 8), { { char = armed("character_knight", { "weapon_iron_sword" }), x = 1, y = 1 } },
+            local c = Combat.new(arena(8, 8), { { char = armed("character_rowan", { "weapon_iron_sword" }), x = 1, y = 1 } },
                 { { char = armed("character_bandit", {}), x = 1, y = 2 } })
             local knight, bandit = c.units[1], c.units[2]
             -- Both sides mirrored: the first mirror to catch the blow is the one that throws it, and
@@ -140,7 +140,7 @@ return {
     {
         name = "Sleep shoves the sleeper down the order, and any hit wakes it and refunds the rest",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
             local bandit = c.units[2]
             bandit.char.stats.magicDefense = 0
             local before = bandit.initiative
@@ -157,7 +157,7 @@ return {
     {
         name = "a natural sleep refunds nothing: the sleeper genuinely waited",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
             local bandit = c.units[2]
             bandit.char.stats.magicDefense = 0
             local before = bandit.initiative
@@ -173,7 +173,7 @@ return {
     {
         name = "the Skeptic's Harness denies its wearer magic, but not a potion or a blade",
         fn = function()
-            local char = armed("character_knight", { "armor_skeptics_harness", "ability_fire_bolt", "weapon_iron_sword",
+            local char = armed("character_rowan", { "armor_skeptics_harness", "ability_fire_bolt", "weapon_iron_sword",
                                            "consumable_healing_potion" })
             local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
@@ -189,7 +189,7 @@ return {
     {
         name = "the denial is not a debuff: a Panacea cannot wash it off and keep the armor",
         fn = function()
-            local char = armed("character_knight", { "armor_skeptics_harness", "ability_fire_bolt" })
+            local char = armed("character_rowan", { "armor_skeptics_harness", "ability_fire_bolt" })
             local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
 
@@ -205,7 +205,7 @@ return {
             a.tiles[1][2] = { type = "water", moveCost = 3, walkable = false, sightCost = 0 }
             a.tiles[2][2] = { type = "bog", moveCost = 2, walkable = true, sightCost = 0 }
 
-            local char = armed("character_knight", { "utility_zephyr_striders" })
+            local char = armed("character_rowan", { "utility_zephyr_striders" })
             local c = Combat.new(a, { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             assert(Combat.isFlying(knight), "the wearer is airborne")
@@ -231,7 +231,7 @@ return {
     {
         name = "the Survivor's Reflex drinks a healing potion when a blow leaves its bearer bloodied",
         fn = function()
-            local char = armed("character_knight", { "utility_survivors_reflex", "consumable_healing_potion" })
+            local char = armed("character_rowan", { "utility_survivors_reflex", "consumable_healing_potion" })
             local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
             local potion = char.inventory[2]
@@ -297,7 +297,7 @@ return {
     {
         name = "Adrenal Surge pulls its bearer's next turn sooner when it is hit",
         fn = function()
-            local char = armed("character_knight", { "utility_adrenal_surge" })
+            local char = armed("character_rowan", { "utility_adrenal_surge" })
             local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
             knight.initiative = 20

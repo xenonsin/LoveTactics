@@ -33,7 +33,7 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { { char = Character.instantiate("character_general_greed"), x = 2, y = 2 } },
-                { { char = Character.instantiate("character_knight"), x = 3, y = 2 } })
+                { { char = Character.instantiate("character_rowan"), x = 3, y = 2 } })
             local aurea, victim = c.units[1], c.units[2]
 
             local purse = itemNamed(aurea.char, "utility_bottomless_purse")

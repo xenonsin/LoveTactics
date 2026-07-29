@@ -35,7 +35,11 @@ return {
         range = 4,
         speed = 4,
         cost = { { stat = "mana", amount = 8 }, { stat = "stamina", amount = 6 } },
-        support = true, -- lands nothing; the AI weighs it as zoning rather than as a strike
+        support = false, -- hostile ground: previews RED. It lands no damage, but it is aimed AT the
+                         -- enemy, so it must not read as a friendly (green) cast. The AI never
+                         -- auto-casts it either way -- a hazard placement scores 0 immediate outcome
+                         -- and is dropped by the outcome gate (models/ai.lua) -- so this only sets the
+                         -- preview colour, it does not change how the planner weighs it.
         aoe = { radius = 1, shape = "square" },
         requiresAdjacent = { tag = "shield" },
         effect = function(fx)

@@ -17,7 +17,7 @@ return {
             local map = Fixture.new(10, 10)
             local hero = Fixture.unit("character_amana", 3, 3,
                 { isolate = "bare", items = { "ability_lay_on_hands" } })
-            local ally = Fixture.unit("character_knight", 3, 4, { isolate = "bare" })
+            local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 9, 9, { isolate = "bare", stats = { health = 300 } })
             local combat = Combat.new(map, { hero, ally }, { foe })
             local h, a = combat.units[1], combat.units[2]
@@ -40,7 +40,7 @@ return {
         name = "the Vow-Marked Plate hardens for each affliction borne, however it arrived",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_knight", 3, 3,
+            local hero = Fixture.unit("character_rowan", 3, 3,
                 { isolate = "bare", items = { "armor_vow_marked_plate" } })
             local foe = Fixture.unit("character_bandit", 9, 9, { isolate = "bare", stats = { health = 300 } })
             local combat = Fixture.combat(map, hero, foe)
@@ -66,7 +66,7 @@ return {
             local map = Fixture.new(10, 10)
             local hero = Fixture.unit("character_amana", 3, 3,
                 { isolate = "bare", items = { "ability_oathkeepers_litany" } })
-            local ally = Fixture.unit("character_knight", 3, 4, { isolate = "bare" })
+            local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 3, 2, { isolate = "bare", stats = { health = 300 } })
             local combat = Combat.new(map, { hero, ally }, { foe })
             local h, a, f = combat.units[1], combat.units[2], combat.units[3]
@@ -85,7 +85,7 @@ return {
         name = "the Plaguebearer's Draught makes the knight the source, and Contagion spreads from it",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_knight", 3, 3, { isolate = "bare", items = {
+            local hero = Fixture.unit("character_rowan", 3, 3, { isolate = "bare", items = {
                 "consumable_plaguebearers_draught", "utility_contagion",
             } })
             local near = Fixture.unit("character_bandit", 3, 4, { isolate = "bare", stats = { health = 300 } })
@@ -109,7 +109,7 @@ return {
         name = "contagion gathers before it applies, so it cannot chain a whole line in one turn",
         fn = function()
             local map = Fixture.new(12, 12)
-            local hero = Fixture.unit("character_knight", 1, 1, { isolate = "bare", items = { "utility_contagion" } })
+            local hero = Fixture.unit("character_rowan", 1, 1, { isolate = "bare", items = { "utility_contagion" } })
             local a = Fixture.unit("character_bandit", 5, 5, { isolate = "bare", stats = { health = 300 } })
             local b = Fixture.unit("character_bandit", 5, 6, { isolate = "bare", stats = { health = 300 } })
             local c = Fixture.unit("character_bandit", 5, 7, { isolate = "bare", stats = { health = 300 } })
@@ -127,7 +127,7 @@ return {
         name = "the Rot-Fume Gauntlet reads the whole field, the bearer's own sickness included",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_knight", 3, 3,
+            local hero = Fixture.unit("character_rowan", 3, 3,
                 { isolate = "bare", items = { "utility_rot_fume_gauntlet", "weapon_iron_sword" } })
             local foe = Fixture.unit("character_bandit", 3, 4,
                 { isolate = "bare", stats = { defense = 0, health = 900 } })
@@ -192,7 +192,7 @@ return {
             local map = Fixture.new(12, 12)
             local hero = Fixture.unit("character_amana", 2, 2,
                 { isolate = "bare", items = { "ability_benediction" } })
-            local far = Fixture.unit("character_knight", 10, 10, { isolate = "bare" })
+            local far = Fixture.unit("character_rowan", 10, 10, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 6, 6, { isolate = "bare", stats = { health = 300 } })
             local combat = Combat.new(map, { hero, far }, { foe })
             local h, a = combat.units[1], combat.units[2]
@@ -213,7 +213,7 @@ return {
             local map = Fixture.new(10, 10)
             local hero = Fixture.unit("character_ren", 3, 3,
                 { isolate = "bare", items = { "utility_shared_ledger", "ability_transfusion" } })
-            local ally = Fixture.unit("character_knight", 3, 4, { isolate = "bare" })
+            local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 9, 9, { isolate = "bare", stats = { health = 300 } })
             local combat = Combat.new(map, { hero, ally }, { foe })
             local h, a = combat.units[1], combat.units[2]
@@ -253,7 +253,7 @@ return {
             local map = Fixture.new(10, 10)
             local hero = Fixture.unit("character_ren", 3, 3,
                 { isolate = "bare", items = { "consumable_the_tithe" } })
-            local ally = Fixture.unit("character_knight", 3, 4, { isolate = "bare" })
+            local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 9, 9, { isolate = "bare", stats = { health = 300 } })
             local combat = Combat.new(map, { hero, ally }, { foe })
             local h, a = combat.units[1], combat.units[2]

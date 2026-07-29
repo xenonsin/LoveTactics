@@ -1,0 +1,32 @@
+-- Bulwark exemplar (knight subclass). Shove-lock: knockback that also Halts the displaced. Met as a
+-- mentor/ally -- the Road-Captain shows it in its unlock quest, but that body
+-- (character_greywatch_captain) is a story-disguised, encounter-tuned unit, so the discipline exemplar
+-- is authored here with the full Bulwark kit. Kit from data/disciplines/bulwark.lua.
+return {
+    name = "Bulwark",
+    sprite = "assets/chars/bastion_sworn.png",
+    class = "knight",
+    -- Taunts, then shoves attackers off the line and Halts them (models/ai.lua `defensive`).
+    archetype = "defensive",
+    stats = {
+        health = 112, mana = 15, stamina = 18,
+        staminaRegen = 2,
+        damage = 15, magicDamage = 4,
+        defense = 16, magicDefense = 8,
+        movement = 4,
+        speed = 3,
+    },
+    startingItems = {
+        "weapon_iron_mace",   "ability_push",   "ability_shout",
+        "ability_closed_ring", "ability_stand_down", "utility_rooted_stance",
+        "armor_halting_rank", "armor_unyielding_harness", "consumable_healing_potion",
+    },
+    defaultAction = "weapon_iron_mace",
+    -- Shove the nearest attacker off the line; the knockback Halts it.
+    ai = {
+        { priority = "high", act = "cast", item = "ability_push",
+          when = { subject = "any_foe", test = "within", value = 1 } },
+        { priority = "normal", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+    },
+}

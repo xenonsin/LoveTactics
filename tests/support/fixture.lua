@@ -18,7 +18,7 @@
 --     local Fixture = require("tests.support.fixture")
 --
 --     local c = Fixture.new(8, 8)
---     local hero = Fixture.unit("character_knight", 2, 2, { isolate = "bare", items = { "weapon_iron_sword" } })
+--     local hero = Fixture.unit("character_rowan", 2, 2, { isolate = "bare", items = { "weapon_iron_sword" } })
 --     local foe  = Fixture.unit("character_bandit", 2, 3, { stats = { defense = 0, health = 100 } })
 --     local combat = Fixture.combat(c, { hero }, { foe })
 

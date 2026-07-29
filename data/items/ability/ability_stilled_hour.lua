@@ -38,7 +38,11 @@ return {
         speed = 6, -- the slowest cast in the game: an hour costs an hour
         windup = 5,
         cost = { stat = "mana", amount = 30 },
-        support = true, -- it deals nothing; the AI weighs it as control rather than as a strike
+        support = false, -- hostile ground, so it must preview RED. It deals nothing on the cast, but
+                         -- it is aimed AT a foe cluster (see the ai rule below), and false is what
+                         -- points the planner's aim at foes rather than allies. A hazard placement
+                         -- scores 0 immediate outcome regardless, so this changes only the colour and
+                         -- the side its aim reads from, never how the outcome gate weighs it.
         aoe = { radius = 1, shape = "square" },
         requiresAdjacent = { tag = "arcane" },
         ai = { priority = "high", act = "cast",

@@ -15,7 +15,7 @@ local AI = require("models.ai")
 
 -- A knight with a hand-authored opening: reach for the potion when badly hurt, otherwise swing.
 local function authoredKnight()
-    local char = Character.instantiate("character_knight")
+    local char = Character.instantiate("character_rowan")
     char.name = "Vasska"
     char.archetype = "defensive"
     char.autoBattle = true
@@ -49,7 +49,7 @@ return {
 
             assert(#chars == 1, "one body in, one body out")
             local char = chars[1]
-            assert(char.id == "character_knight", "the right blueprint")
+            assert(char.id == "character_rowan", "the right blueprint")
             assert(char.name == "Vasska", "the name its author gave it")
             assert(char.archetype == "defensive", "and the posture they picked")
 
@@ -197,7 +197,7 @@ return {
     {
         name = "an over-forged weapon is clamped, and lesser gear is left as its owner brought it",
         fn = function()
-            local char = Character.instantiate("character_knight")
+            local char = Character.instantiate("character_rowan")
             char.inventory = {}
             char.inventory[1] = Item.instantiate("weapon_iron_sword", 1, Item.MAX_LEVEL)
             char.inventory[2] = Item.instantiate("weapon_iron_sword", 1, 1)
@@ -224,7 +224,7 @@ return {
         name = "the class tally decides the rebuild's growth, wherever the duelling level is set",
         fn = function()
             local function played(tally, level)
-                local c = Character.instantiate("character_knight")
+                local c = Character.instantiate("character_rowan")
                 c.level, c.classUse = 30, tally
                 return assert(Build.restore(roundTrip({ c }), { level = level }))[1]
             end
@@ -241,7 +241,7 @@ return {
             -- The tally survives the trip regardless, so raising the duelling level is a one-line
             -- change rather than a data migration.
             local carried = roundTrip({ (function()
-                local c = Character.instantiate("character_knight")
+                local c = Character.instantiate("character_rowan")
                 c.level, c.classUse = 30, { mage = 25 }
                 return c
             end)() })
@@ -255,7 +255,7 @@ return {
         name = "at the configured duelling level, two histories rebuild to the same body",
         fn = function()
             local function played(tally)
-                local c = Character.instantiate("character_knight")
+                local c = Character.instantiate("character_rowan")
                 c.level, c.classUse = 30, tally
                 return assert(Build.restore(roundTrip({ c })))[1]
             end
@@ -291,7 +291,7 @@ return {
         -- (Character.ensureBoundItems) and could easily have come back at its forged level.
         name = "a summoning relic is clamped like any other item, so what it calls is clamped too",
         fn = function()
-            local char = Character.instantiate("character_knight")
+            local char = Character.instantiate("character_rowan")
             char.inventory = {}
             char.inventory[1] = Item.instantiate("utility_wolfsong_horn", 1, Item.MAX_LEVEL)
 
@@ -312,7 +312,7 @@ return {
         -- "the opponent was weakened".
         name = "your own party is flattened on the same terms as the build it faces",
         fn = function()
-            local mine = Character.instantiate("character_knight")
+            local mine = Character.instantiate("character_rowan")
             mine.level, mine.classUse = 40, { fighter = 30 }
             mine.inventory = {}
             mine.inventory[1] = Item.instantiate("weapon_iron_sword", 1, Item.MAX_LEVEL)
@@ -324,7 +324,7 @@ return {
             -- And it is genuinely the same code path: an identical character on either side of the
             -- board should come out identical.
             local theirs = assert(Build.restore(roundTrip({ (function()
-                local c = Character.instantiate("character_knight")
+                local c = Character.instantiate("character_rowan")
                 c.level, c.classUse = 40, { fighter = 30 }
                 c.inventory = {}
                 c.inventory[1] = Item.instantiate("weapon_iron_sword", 1, Item.MAX_LEVEL)

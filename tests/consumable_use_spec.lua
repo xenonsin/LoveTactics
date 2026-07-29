@@ -27,7 +27,7 @@ return {
     {
         name = "partyRestoratives gathers grid + stash draughts and skips non-restoratives",
         fn = function()
-            local knight = bareChar("character_knight")
+            local knight = bareChar("character_rowan")
             Character.addItem(knight, Item.instantiate("consumable_healing_potion", 3))
             Character.addItem(knight, Item.instantiate("consumable_smoke_bomb", 1)) -- not a restorative
             local stash = { Item.instantiate("consumable_mana_potion", 2) }
@@ -54,7 +54,7 @@ return {
     {
         name = "partyRestoratives skips a depleted (quantity-0) stack",
         fn = function()
-            local knight = bareChar("character_knight")
+            local knight = bareChar("character_rowan")
             local potion = Item.instantiate("consumable_healing_potion", 1)
             potion.quantity = 0 -- spent
             Character.addItem(knight, potion)
@@ -64,7 +64,7 @@ return {
     {
         name = "canUseConsumableOn is false at a full pool, true when wounded",
         fn = function()
-            local knight = bareChar("character_knight")
+            local knight = bareChar("character_rowan")
             local potion = Item.instantiate("consumable_healing_potion", 1)
             assert(not Player.canUseConsumableOn(knight, potion), "full HP: a heal would be wasted")
             wound(knight, "health", knight.stats.health.max - 5)
@@ -74,7 +74,7 @@ return {
     {
         name = "useConsumableOn pours the leveled magnitude, clamps at max, and spends one",
         fn = function()
-            local knight = bareChar("character_knight")
+            local knight = bareChar("character_rowan")
             wound(knight, "health", knight.stats.health.max - 5)
             local potion = Item.instantiate("consumable_healing_potion", 2) -- level 0 heals 30
             local restored, stat = Player.useConsumableOn(knight, potion)
@@ -99,7 +99,7 @@ return {
     {
         name = "consumeRestorative drops an emptied stash stack from the list",
         fn = function()
-            local knight = bareChar("character_knight")
+            local knight = bareChar("character_rowan")
             wound(knight, "health", 1)
             local stashPotion = Item.instantiate("consumable_healing_potion", 1)
             local player = playerWith({ knight }, { stashPotion })
@@ -111,7 +111,7 @@ return {
     {
         name = "consumeRestorative keeps a spent grid stack in its cell (like combat)",
         fn = function()
-            local knight = bareChar("character_knight")
+            local knight = bareChar("character_rowan")
             wound(knight, "health", 1)
             local gridPotion = Item.instantiate("consumable_healing_potion", 1)
             Character.addItem(knight, gridPotion)

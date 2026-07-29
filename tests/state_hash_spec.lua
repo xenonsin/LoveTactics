@@ -36,7 +36,7 @@ end
 local function pair()
     local function build()
         return Combat.new(arena(8, 8, 77),
-            { unit("character_knight", 4, 8) }, { unit("character_bandit", 4, 1) })
+            { unit("character_rowan", 4, 8) }, { unit("character_bandit", 4, 1) })
     end
     return build(), build()
 end
@@ -172,7 +172,7 @@ return {
         fn = function()
             local function twins()
                 return Combat.new(arena(8, 8, 5),
-                    { unit("character_knight", 3, 8), unit("character_knight", 5, 8) }, {})
+                    { unit("character_rowan", 3, 8), unit("character_rowan", 5, 8) }, {})
             end
             local a, b = twins(), twins()
             assert(StateHash.of(a) == StateHash.of(b), "twin teams should match")

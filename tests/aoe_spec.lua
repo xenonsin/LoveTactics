@@ -80,7 +80,7 @@ return {
             -- Three foes clustered so a burst at (5,5) catches an edge and a corner too, plus an
             -- ally standing in the blast to prove friendly fire.
             local c = Combat.new(arena(8, 8),
-                { unit("character_mage", 5, 3), unit("character_knight", 4, 4) },
+                { unit("character_mage", 5, 3), unit("character_rowan", 4, 4) },
                 { unit("character_bandit", 5, 5), unit("character_bandit", 6, 6), unit("character_bandit", 4, 5) })
             local mage = c.units[1]
             local fireball = fireballOf(mage)
@@ -192,7 +192,7 @@ return {
         name = "Cleave needs an adjacent melee weapon, then carves the 3x1 arc in front (hits every unit)",
         fn = function()
             -- Three foes across the row south of the knight; the swing is aimed at the middle one.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) },
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) },
                 { unit("character_bandit", 2, 4), unit("character_bandit", 3, 4), unit("character_bandit", 4, 4) })
             local k = c.units[1]
             equip(k.char, { [5] = "ability_cleave" })
@@ -224,7 +224,7 @@ return {
         name = "Power Shot needs an adjacent ranged weapon, then pierces a straight line of foes",
         fn = function()
             -- Two foes down the row east of the archer, one right in front and one three tiles out.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) },
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) },
                 { unit("character_bandit", 4, 3), unit("character_bandit", 6, 3) })
             local k = c.units[1]
             equip(k.char, { [5] = "ability_powershot" })
@@ -254,7 +254,7 @@ return {
         name = "a data-file footprint (the Wolfsong Horn's howl) rings both Kaya and her wolf, de-duped and clamped",
         fn = function()
             local c = Combat.new(arena(16, 16),
-                { unit("character_archer", 5, 5) }, { unit("character_bandit", 1, 15) })
+                { unit("character_kaya", 5, 5) }, { unit("character_bandit", 1, 15) })
             local u = c.units[1]
             local horn
             for i = 1, Character.MAX_INVENTORY do

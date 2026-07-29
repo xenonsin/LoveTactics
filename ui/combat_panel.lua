@@ -1326,7 +1326,10 @@ function CombatPanel:drawItemGrid()
                 -- so an emptying purse never blinks from a number straight to blank.
                 if ab.counter then
                     local n = ab.counter(self.view.current, item) or 0
-                    local empty = n <= 0
+                    -- Red only when a zero count actually REFUSES the cast (a spent purse). A non-gating
+                    -- counter -- the Long Count's turn tally -- reads 0 as a floor to grow from, so it
+                    -- stays lavender rather than alarming the player about a slot that works fine.
+                    local empty = n <= 0 and ab.counterGates ~= false
                     self:drawBadge(sx, sy, sw, "left", "charges", n,
                         empty and WARN_COLOR or COUNTER_COLOR, empty and 1 or dim, row)
                     row = row + 1

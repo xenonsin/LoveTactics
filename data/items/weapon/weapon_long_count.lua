@@ -35,6 +35,20 @@ return {
         -- Well under an iron greatsword's, and that is the floor rather than the number: this is what it
         -- lands on turn one, before the count has anything in it.
         damage = { 12, 14, 15, 17, 18, 20, 21, 23, 24, 26, 28 },
+        -- The count made visible: the running tally of turns this bearer has taken, drawn as a badge on
+        -- the slot and quoted in the tooltip so the player can watch the blow grow rather than doing the
+        -- 12%-a-turn arithmetic in their head. It is the same `turnTaken` tally the effect below reads,
+        -- so the badge and the swing can never disagree -- this weapon IS a counter, and now it wears one.
+        --
+        -- `counterGates = false`: unlike the Gleaning Rod or the Reliquary of Tallies, an empty count does
+        -- NOT refuse the cast. The Long Count is a full greatsword on turn one -- its embarrassing first
+        -- swing is still a real swing -- so a reading of 0 is a floor to build from, not a spent purse. The
+        -- badge shows it plainly instead of greying the slot out.
+        counter = function(unit)
+            return unit and unit.char and require("models.combat").tallyCount(unit, "turnTaken") or 0
+        end,
+        counterGates = false,
+        counterLabel = "Turns",
         effect = function(fx)
             local t = fx.target
             if not t then return end

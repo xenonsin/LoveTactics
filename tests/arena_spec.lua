@@ -9,7 +9,7 @@ local Arena = require("models.arena")
 local function proceduralSpec(overrides)
     local spec = {
         biome = "__test_void", -- no curated arena tagged for this biome
-        party = { "character_knight", "character_mage", "character_archer" },
+        party = { "character_rowan", "character_mage", "character_archer" },
         composition = function(ctx)
             local list = {}
             for i = 1, 2 + (ctx.prestige or 1) do list[i] = "character_bandit" end

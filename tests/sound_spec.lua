@@ -1,11 +1,14 @@
 -- The audio layer: the tolerant loader, the cue table, and the volume arithmetic.
 --
--- The property under test throughout is TOLERANCE. The game ships no audio at all today, every cue is
--- already wired at its call site, and none of that may raise, log, or slow anything down. If these
--- cases ever start failing, the symptom in the game is not "no sound" -- it is a crash in a menu.
+-- The property under test throughout is TOLERANCE. A cue whose file is absent -- the state every cue
+-- was in before any audio landed, and the state a fresh clone with no assets/ is in -- must play
+-- nothing rather than raise, log, or slow anything down. If these cases ever start failing, the
+-- symptom in the game is not "no sound" -- it is a crash in a menu. The tolerance case exercises this
+-- against a cue pointed at a file that genuinely does not exist, so it holds whether or not the
+-- shipped cues have real audio behind them on this machine.
 --
 -- The suite runs with `t.window = false`, which drops the window but NOT love.audio, so these run
--- against the real module with no files behind it. That is exactly the state a player is in.
+-- against the real module. That is exactly the environment a player is in.
 
 local Sound = require("models.sound")
 local Settings = require("models.settings")
@@ -27,9 +30,11 @@ return {
         name = "a cue with no file behind it plays nothing instead of raising",
         fn = function()
             Sound.reset()
-            -- Every cue in the table is in this state today.
-            assert(Sound.play("ui.confirm") == nil, "a missing file should play nothing")
-            assert(Sound.play("battle.hit") == nil, "a missing file should play nothing")
+            -- Point a cue at a file that does not exist, so this holds regardless of what audio has
+            -- landed on this machine: the tolerance is a property of the loader, not of the content.
+            Sound.cues["test.missing"] = { file = "assets/audio/does_not_exist.ogg", category = "sfx" }
+            assert(Sound.play("test.missing") == nil, "a missing file should play nothing")
+            Sound.cues["test.missing"] = nil
         end,
     },
     {
@@ -139,6 +144,20 @@ return {
         end,
     },
     {
+        -- The commission doc (docs/audio-commission.md) is generated from these two fields, so a cue
+        -- without them is a cue nobody can source. Requiring them keeps the brief complete by
+        -- construction: you cannot add a cue and forget to say what it is.
+        name = "every cue carries its commission spec: a length and a description",
+        fn = function()
+            for id, def in pairs(Sound.cues) do
+                assert(type(def.desc) == "string" and def.desc ~= "",
+                    id .. " has no desc, so docs/audio-commission.md cannot brief it")
+                assert(type(def.length) == "string" and def.length ~= "",
+                    id .. " has no length target for the commission doc")
+            end
+        end,
+    },
+    {
         name = "no two cues claim the same file",
         fn = function()
             local byFile = {}
@@ -150,9 +169,9 @@ return {
         end,
     },
     {
-        -- The report is what makes the debt visible at all, so it has to survive the state the game is
-        -- actually in: every cue outstanding, nothing on disk.
-        name = "the audio report counts every cue while none of them exist",
+        -- The report is what makes the debt visible at all, so every cue must land in exactly one
+        -- bucket -- present or missing -- and the two together must account for the whole table.
+        name = "the audio report counts every cue, present or missing",
         fn = function()
             local Report = require("tools.audio_report")
             local buckets, total = Report.scan()

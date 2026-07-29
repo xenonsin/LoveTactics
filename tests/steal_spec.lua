@@ -121,7 +121,7 @@ return {
     {
         name = "an enemy thief with a full grid simply destroys what it took",
         fn = function()
-            local victim = Character.instantiate("character_knight")
+            local victim = Character.instantiate("character_rowan")
             equip(victim, { "weapon_iron_sword" })
             local thief = Character.instantiate("character_bandit")
             equip(thief, { "weapon_iron_bow", "armor_chainmail", "utility_torch", "armor_buckler", "utility_trap_sense",
@@ -157,7 +157,7 @@ return {
     {
         name = "an invisible unit is off the enemy's board entirely",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 2) }, { unit("character_bandit", 4, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 2) }, { unit("character_bandit", 4, 2) })
             local knight, bandit = c.units[1], c.units[2]
             local sword = itemNamed(bandit.char, "weapon_iron_sword") or bandit.char.unarmed
 
@@ -174,7 +174,7 @@ return {
         fn = function()
             local priest = Character.instantiate("character_priest")
             equip(priest, { "ability_heal" })
-            local c = Combat.new(arena(8, 8), { unit(priest, 2, 2), unit("character_knight", 3, 2) },
+            local c = Combat.new(arena(8, 8), { unit(priest, 2, 2), unit("character_rowan", 3, 2) },
                 { unit("character_bandit", 8, 8) })
             local cleric, knight = c.units[1], c.units[2]
             Status.apply(c, knight, "status_invisible")
@@ -189,7 +189,7 @@ return {
     {
         name = "invisibility lifts at the hidden unit's next turn",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             Status.apply(c, knight, "status_invisible")
             assert(Status.untargetable(knight), "hidden")

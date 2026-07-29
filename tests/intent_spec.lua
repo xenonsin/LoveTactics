@@ -35,7 +35,7 @@ local function unit(charOrId, x, y, tweak)
 end
 
 local function swordsman(archetype)
-    local char = Character.instantiate("character_knight")
+    local char = Character.instantiate("character_rowan")
     char.inventory[1] = Item.instantiate("weapon_iron_sword")
     char.archetype = archetype
     return char

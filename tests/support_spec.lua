@@ -47,7 +47,7 @@ return {
     {
         name = "isolate 'bare' empties the grid so the item under test is the only variable",
         fn = function()
-            local u = Fixture.unit("character_knight", 1, 1, { isolate = "bare" })
+            local u = Fixture.unit("character_rowan", 1, 1, { isolate = "bare" })
             assert(next(u.char.inventory) == nil, "the 3x3 grid is empty")
             assert(next(u.char.traits) == nil, "and no traits ride along")
         end,
@@ -55,8 +55,8 @@ return {
     {
         name = "isolate 'mechanics' strips the bound relic but leaves the ordinary kit",
         fn = function()
-            local plain = Fixture.unit("character_knight", 1, 1)
-            local isolated = Fixture.unit("character_knight", 1, 1, { isolate = "mechanics" })
+            local plain = Fixture.unit("character_rowan", 1, 1)
+            local isolated = Fixture.unit("character_rowan", 1, 1, { isolate = "mechanics" })
             assert(Fixture.itemNamed(plain.char, "armor_sworn_aegis"),
                 "the knight carries her bound relic as authored")
             assert(not Fixture.itemNamed(isolated.char, "armor_sworn_aegis"),
@@ -67,8 +67,8 @@ return {
     {
         name = "isolate defaults to 'none' -- the character exactly as authored",
         fn = function()
-            local u = Fixture.unit("character_knight", 1, 1)
-            local def = Character.defs.character_knight
+            local u = Fixture.unit("character_rowan", 1, 1)
+            local def = Character.defs.character_rowan
             assert(Character.itemCount(u.char) == #def.startingItems
                 or Character.itemCount(u.char) > 0, "the authored kit is intact")
             assert(Fixture.itemNamed(u.char, "armor_sworn_aegis"), "including the bound relic")
@@ -77,14 +77,14 @@ return {
     {
         name = "an unknown isolate level is rejected rather than quietly ignored",
         fn = function()
-            local ok = pcall(Fixture.unit, "character_knight", 1, 1, { isolate = "clean" })
+            local ok = pcall(Fixture.unit, "character_rowan", 1, 1, { isolate = "clean" })
             assert(not ok, "a typo'd isolation level must not silently mean 'none'")
         end,
     },
     {
         name = "a stats override sets a resource to full, and a flat stat to the number given",
         fn = function()
-            local u = Fixture.unit("character_knight", 1, 1,
+            local u = Fixture.unit("character_rowan", 1, 1,
                 { isolate = "bare", stats = { health = 100, defense = 0 } })
             assert(u.char.stats.health.max == 100 and u.char.stats.health.current == 100,
                 "a resource stat opens at full on the new max")
@@ -103,7 +103,7 @@ return {
     {
         name = "Fixture.combat accepts a lone unit as well as a list",
         fn = function()
-            local hero = Fixture.unit("character_knight", 2, 2, { isolate = "bare" })
+            local hero = Fixture.unit("character_rowan", 2, 2, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare" })
             local c = Fixture.combat(Fixture.new(6, 6), hero, foe)
             assert(#c.units == 2, "both sides are on the board")

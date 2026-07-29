@@ -17,6 +17,7 @@
 local ScreenFx = require("ui.screen_fx")
 local BurstFx = require("ui.burst_fx")
 local Sound = require("models.sound")
+local Motif = require("ui.motif")
 local Theme = require("ui.theme")
 
 local CombatFx = {}
@@ -277,6 +278,22 @@ function CombatFx:deferRanged(events, actor)
     return true
 end
 
+-- The impact sound for a surviving blow, chosen by its DAMAGE TYPE. `battle.hit_<motif>` when that
+-- element/strike carries its own cue (fire, ice, slash, ...); otherwise the generic `battle.hit`, or the
+-- heavier `battle.crit` for a big untyped blow. Motif.of reads the same tag order the burst does, so the
+-- sound a blow makes and the burst it throws always name the same element. A heavy TYPED hit rings its
+-- own cue pitched down a touch, so the element still reads as "more" without a separate crit sound.
+local function playHit(amount, tags)
+    local heavy = (amount or 0) >= HEAVY_HIT
+    local motif = Motif.of(tags)
+    local id = motif and ("battle.hit_" .. motif)
+    if id and Sound.cues[id] then
+        Sound.play(id, heavy and { pitch = 0.9 } or nil)
+    else
+        Sound.play(heavy and "battle.crit" or "battle.hit")
+    end
+end
+
 -- Play one beat's worth of cues -- the reactions for a single blow and everything simultaneous with it.
 function CombatFx:playBeat(events, actor)
     if self:deferRanged(events, actor) then return end
@@ -291,6 +308,10 @@ function CombatFx:playBeat(events, actor)
         if e.type == "cast" then
             self:cast(e.unit, e.tx, e.ty, e.support)
             if e.unit == actor then actorCast = true end
+            -- The activation itself makes a sound: the swing under an attack's impact, or an ability
+            -- firing. Only offensive casts ring it -- a support cast (heal/buff) is announced by its own
+            -- heal/buff cue below, so it would only double up here.
+            if not e.support then Sound.play("battle.cast") end
             -- A friendly cast (a heal, a blessing) rises as motes off the caster; an offensive cast
             -- leaves its mark through the damage bursts its blows spawn, so it gets none here.
             if self.bursts and e.support then self.bursts:support(e.unit.x, e.unit.y, "motes") end
@@ -298,9 +319,9 @@ function CombatFx:playBeat(events, actor)
             local cell = struck[e.unit] or e.unit
             self:hit(e.unit, e.amount, e.lethal)
             -- A killing blow's audio is the "death" cue below, not a hit on top of it; a surviving blow
-            -- rings hit, or the heavier "crit" when it lands hard. Silent until the files exist.
+            -- rings its damage-type impact (see playHit).
             if not e.lethal then
-                Sound.play((e.amount or 0) >= HEAVY_HIT and "battle.crit" or "battle.hit")
+                playHit(e.amount, e.tags)
             end
             if not firstTarget then firstTarget, firstTargetCell = e.unit, cell end
             if self.bursts then
@@ -320,7 +341,20 @@ function CombatFx:playBeat(events, actor)
         elseif e.type == "status" then
             -- A no-visual cue carried only for its sound: a status LANDING on a unit (models/status.lua
             -- pushes it on a fresh application). The badge/field the status paints is drawn elsewhere.
-            Sound.play("battle.status")
+            -- Buff and debuff ring differently so the player can tell "I was helped" from "I was hit";
+            -- a status of unknown valence falls back to the neutral status cue.
+            local def = e.status and e.status.def
+            if def and def.debuff then
+                Sound.play("battle.debuff")
+            elseif def then
+                Sound.play("battle.buff")
+            else
+                Sound.play("battle.status")
+            end
+        elseif e.type == "channel" then
+            -- A powerful spell begins winding up (models/combat.lua on commit). Sound-only: the board's
+            -- own telegraph draws the footprint, so this just voices the charge.
+            Sound.play("battle.channel")
         elseif e.type == "miss" then
             -- A blow that was voided outright -- dodged, smoked, substituted (models/combat.lua). No
             -- damage number floats, so the sound is the only tell that the attack landed nothing.

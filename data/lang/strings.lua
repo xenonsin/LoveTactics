@@ -578,7 +578,7 @@ return {
     ["name.character_greywatch_captain"] = { en = "Road-Captain", ja = "" },  -- TODO
     ["name.character_gyeom"] = { en = "Gyeom", ja = "" },  -- TODO
     ["name.character_kaya"] = { en = "Kaya", ja = "" },  -- TODO
-    ["name.character_knight"] = { en = "Rowan", ja = "" },  -- TODO
+    ["name.character_rowan"] = { en = "Rowan", ja = "" },  -- TODO
     ["name.character_mage"] = { en = "Mage", ja = "魔道士" },
     ["name.character_priest"] = { en = "Priest", ja = "僧侶" },
     ["name.character_ren"] = { en = "Ren", ja = "" },  -- TODO

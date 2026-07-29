@@ -39,7 +39,7 @@ end
 -- "A melee unit carrying an iron sword", as in combat_spec: the fixture describes the unit it needs
 -- rather than borrowing whichever blueprint happens to be equipped that way this month.
 local function swordsman(archetype)
-    local char = Character.instantiate("character_knight")
+    local char = Character.instantiate("character_rowan")
     char.inventory[1] = Item.instantiate("weapon_iron_sword")
     char.archetype = archetype
     return char
@@ -640,7 +640,7 @@ return {
             -- against an armoured target the archer's punch genuinely out-damages its own bow, and
             -- closing is the choice the outcome term prefers. Strip the mail and the bow wins on
             -- damage alone -- the positional judgement is never consulted and the test proves nothing.
-            local c = Combat.new(arena(8, 1), { unit("character_knight", 4, 1) }, { unit(bow, 1, 1) })
+            local c = Combat.new(arena(8, 1), { unit("character_rowan", 4, 1) }, { unit(bow, 1, 1) })
             local knight, archer = c.units[1], c.units[2]
 
             local threat = select(2, Combat.threatMap(c, "enemy", archer))

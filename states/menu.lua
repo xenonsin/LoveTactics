@@ -161,13 +161,15 @@ local function startMockBattle(layout)
     local pool = randomizablePool()
     local taken = {}
     local party = {}
-    for _, id in ipairs({ "character_knight", "character_mage", "character_archer", "character_priest" }) do
+    for _, id in ipairs({ "character_rowan", "character_mage", "character_archer", "character_priest" }) do
         local char = Character.instantiate(id)
         randomizeLoadout(char, pool, taken)
         party[#party + 1] = char
     end
     State.switch(require("states.battle"), {
-        encounter = { kind = "objective" },
+        -- Objective-kind so it draws its hand-picked roster (the objective block below), but it is a
+        -- practice bout, not a boss -- so it asks for the ordinary battle bed rather than music.boss.
+        encounter = { kind = "objective", music = "music.battle" },
         biome = "castle",
         prestige = 3,
         party = party,

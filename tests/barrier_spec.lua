@@ -23,7 +23,7 @@ return {
     {
         name = "a physical barrier negates the next physical hit, is consumed, and lets magic through",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             local hp0 = bandit.char.stats.health.current
 
@@ -41,7 +41,7 @@ return {
     {
         name = "a physical barrier does nothing against a magical hit",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             bandit.char.stats.magicDefense = 0
             local hp0 = bandit.char.stats.health.current
@@ -56,7 +56,7 @@ return {
     {
         name = "a magical barrier negates a magical hit but not a physical one",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             bandit.char.stats.defense = 0
 
@@ -74,7 +74,7 @@ return {
     {
         name = "the damage preview reports a warded hit as 0 without consuming the barrier",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 1, 2) })
             local bandit = c.units[2]
             Status.apply(c, bandit, "status_physical_barrier")
 

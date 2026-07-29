@@ -42,7 +42,7 @@ return {
     {
         name = "tileHasTag reads terrain, hazards and the occupant's statuses alike",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 5, 5) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 5, 5) }, {})
             local knight = c.units[1]
 
             assert(not Combat.tileHasTag(c, 2, 2, "conductable"), "plain ground conducts nothing")
@@ -68,7 +68,7 @@ return {
     {
         name = "taggedCellsAround returns adjacent tagged tiles, deduped and excluding the footprint",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
             -- Water at (4,4) and (5,4); the cast footprint is (4,5) and (5,5), directly below them.
             c.arena.tiles[4][4].tags = { "conductable" }
             c.arena.tiles[4][5].tags = { "conductable" }
@@ -146,7 +146,7 @@ return {
     {
         name = "the arc is side-agnostic: a charge in a puddle takes friend and foe alike",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 4), unit("character_knight", 5, 4) },
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 4), unit("character_rowan", 5, 4) },
                 { unit("character_bandit", 4, 4) })
             local mage, ally, foe = c.units[1], c.units[2], c.units[3]
 

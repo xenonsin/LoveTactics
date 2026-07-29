@@ -1,5 +1,5 @@
 -- Slot 2 of the Bastion's ten. Every other vendor line spends this slot recruiting its companion;
--- the knight's is already sworn to the player from the prologue (data/characters/character_knight.lua),
+-- the knight's is already sworn to the player from the prologue (data/characters/character_rowan.lua),
 -- so the Bastion spends it on Rowan herself -- and on the first crack in the icon.
 --
 -- WHO THEY ACTUALLY ARE. Sixty knights held Greywatch. When Acedia opened the gate and put the terms

@@ -48,7 +48,7 @@ return {
     {
         name = "a hazard may be placed on an occupied tile but not on a wall; a repeat refreshes it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 4) }, {})
             -- Occupied tile: unlike a trap, a hazard is meant to be stood in.
             assert(Hazard.place(c, 4, 4, "hazard_rain"), "a hazard can sit on an occupied tile")
             c.arena.tiles[3][3].walkable = false
@@ -99,7 +99,7 @@ return {
     {
         name = "a hazard summoned onto a unit affects it immediately (Fireball-on-foe path)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 4) }, {})
             local knight = c.units[1]
             assert(Hazard.place(c, 4, 4, "hazard_heal"), "drop a sanctuary under the knight")
             assert(Status.has(knight, "status_regen"), "standing where it was summoned granted Regeneration at once")
@@ -108,7 +108,7 @@ return {
     {
         name = "sanctuary Regeneration ends the moment its unit leaves the hallowed ground",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 4) }, {})
             local knight = c.units[1]
             -- A 3x1 strip of sanctuary; the knight starts on the middle tile.
             Hazard.place(c, 3, 4, "hazard_heal")
@@ -129,7 +129,7 @@ return {
     {
         name = "a source-less Regeneration (a spell/potion buff) is not an aura and survives moving",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 4) }, {})
             local knight = c.units[1]
             Status.apply(c, knight, "status_regen") -- no `source`: a plain buff, not tied to any tile
             openTurn(c, knight)
@@ -156,7 +156,7 @@ return {
     {
         name = "an enemy walking onto the party's sanctuary is not healed, but onto its own it is",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 1) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 1) })
             local bandit = c.units[2]
             Hazard.place(c, 4, 3, "hazard_heal", { side = "party" })
             Hazard.place(c, 4, 5, "hazard_heal", { side = "enemy" })
@@ -173,7 +173,7 @@ return {
     {
         name = "an unowned (arena-authored) sanctuary blesses whoever stands in it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, { unit("character_bandit", 5, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 4) }, { unit("character_bandit", 5, 5) })
             local knight, bandit = c.units[1], c.units[2]
             Hazard.place(c, 4, 4, "hazard_heal") -- no side: hallowed ground that was always there
             Hazard.place(c, 5, 5, "hazard_heal")
@@ -234,7 +234,7 @@ return {
             -- A knight rather than the mage whose shelf sells these: the mage's nine starting slots are
             -- full, and anyone may carry anything (docs/classes.md) -- the shelf is not an equip gate.
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 4, 4), unit("character_priest", 6, 6) },
+                { unit("character_rowan", 4, 4), unit("character_priest", 6, 6) },
                 { unit("character_bandit", 8, 8) })
             local wearer, ally, bandit = c.units[1], c.units[2], c.units[3]
             Character.addItem(wearer.char, Item.instantiate("utility_cinderstride_boots"))
@@ -267,7 +267,7 @@ return {
     {
         name = "a trail laid behind needs a tile to have come from: a blink leaves none",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 4) }, {})
             local knight = c.units[1]
             Character.addItem(knight.char, Item.instantiate("utility_cinderstride_boots"))
             knight.x, knight.y = 6, 6
@@ -280,7 +280,7 @@ return {
     {
         name = "the wearer doubling back into its own fire is burned like anyone else",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 4) }, {})
             local wearer = c.units[1]
             Character.addItem(wearer.char, Item.instantiate("utility_cinderstride_boots"))
             openTurn(c, wearer)
@@ -298,7 +298,7 @@ return {
             local Trap = require("models.trap")
             -- A knight, for the same reason as the Cinderstride case above: the archer who shops this
             -- shelf starts with all nine slots full, and class never gates who may carry what.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 4) }, { unit("character_bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 4) }, { unit("character_bandit", 8, 8) })
             local wearer, bandit = c.units[1], c.units[2]
             Character.addItem(wearer.char, Item.instantiate("utility_caltrop_greaves"))
             openTurn(c, wearer)
@@ -343,7 +343,7 @@ return {
         name = "Wet makes a lightning hit deal more damage (and the preview shares the same math)",
         fn = function()
             -- Mage's Jolt (tags lightning+magical) against a knight, before and after soaking it.
-            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_knight", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_rowan", 1, 2) })
             local mage, knight = c.units[1], c.units[2]
             local jolt = findItem(mage.char, "ability_jolt")
             assert(jolt, "the mage carries Jolt")
@@ -359,7 +359,7 @@ return {
     {
         name = "Regeneration restores health as the clock runs, at its per-turn magnitude",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
             local knight = c.units[1]
             local hp = knight.char.stats.health
             hp.current = hp.max - 20 -- wound it so a heal has room
@@ -380,7 +380,7 @@ return {
         name = "a water-tagged cast douses fire in its footprint (direct and via the Rain spell)",
         fn = function()
             -- Direct: Hazard.douse clears a dousable hazard on the given cells.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
             Hazard.place(c, 5, 5, "hazard_fire")
             assert(Hazard.douse(c, { { x = 5, y = 5 } }, { "water" }) == 1, "water doused the fire")
             assert(Hazard.at(c, 5, 5, "hazard_fire") == nil, "the fire is gone")
@@ -401,7 +401,7 @@ return {
     {
         name = "fire spreads to an adjacent burnable tile on tick, but not onto plain ground",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
             c.arena.tiles[2][3].tags = { "burnable" } -- (3,2) is forest-like; (1,2) stays plain ground
             Hazard.place(c, 2, 2, "hazard_fire")
 
@@ -413,7 +413,7 @@ return {
     {
         name = "tileBias reads negative under fire, positive under sanctuary, zero under rain",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
             Hazard.place(c, 1, 1, "hazard_fire")
             Hazard.place(c, 2, 2, "hazard_heal")
             Hazard.place(c, 3, 3, "hazard_rain")
@@ -426,7 +426,7 @@ return {
     {
         name = "tileBias only rewards a sanctuary's owning side, but fire burns whoever stands in it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
             Hazard.place(c, 2, 2, "hazard_heal", { side = "party" })
             Hazard.place(c, 4, 4, "hazard_fire", { side = "party" })
             assert(Hazard.tileBias(c, 2, 2, "party") > 0, "the party seeks its own sanctuary")
@@ -441,7 +441,7 @@ return {
             -- only the enemy's own hallowed ground scores a bias, so it must take that tile.
             local enemyChar = Character.instantiate("character_bandit")
             enemyChar.inventory = {}
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
             local enemy = c.units[2]
             enemy.char.stats.movement = 1
             Hazard.place(c, 4, 5, "hazard_heal", { side = "party" })
@@ -460,7 +460,7 @@ return {
             -- tie on distance, so the hazard bias decides. Fire on (5,4) -> it takes (4,5).
             local enemyChar = Character.instantiate("character_bandit")
             enemyChar.inventory = {} -- strip kit so only the range-1 unarmed remains (forces an advance)
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
             local enemy = c.units[2]
             enemy.char.stats.movement = 1
             Hazard.place(c, 5, 4, "hazard_fire")
@@ -476,7 +476,7 @@ return {
         fn = function()
             local enemyChar = Character.instantiate("character_bandit")
             enemyChar.inventory = {}
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 7, 7) }, { { char = enemyChar, x = 4, y = 4 } })
             local enemy = c.units[2]
             enemy.char.stats.movement = 1
             Hazard.place(c, 5, 4, "hazard_heal")

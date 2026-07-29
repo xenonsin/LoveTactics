@@ -43,7 +43,7 @@ return {
             -- Each of the seven shelves has a body of its own, so no two disciplines share a look --
             -- the archer (hunter) and Rowan (knight) used to both come out the generic swordman.
             assert(slug("character_saber") == "delapouite/sword-brandish", "fighter -> sword-brandish")
-            assert(slug("character_knight") == "delapouite/knight-banner", "knight -> knight-banner")
+            assert(slug("character_rowan") == "delapouite/knight-banner", "knight -> knight-banner")
             assert(slug("character_archer") == "delapouite/archer", "hunter -> archer")
             assert(slug("character_ren") == "lorc/bubbling-flask", "alchemist -> bubbling-flask")
             assert(slug("character_mage") == "delapouite/wizard-face", "mage -> wizard face")

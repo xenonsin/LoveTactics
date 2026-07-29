@@ -1,19 +1,32 @@
--- Enemy character blueprint. The tough foe behind an `elite` encounter. See
--- data/characters/bandit.lua for the shape.
+-- Champion exemplar (fighter x knight multiclass), and the tough foe behind an `elite` encounter.
+-- Riposte-wall: taunt the crowd, then counter every striker; Defiance banks per hit taken. Home shelf
+-- is knight for the taunt, fighter for the reprisal. Kit from data/disciplines/champion.lua.
+-- (Tests that use this body bare() its grid first, so the enriched kit below is safe.)
 return {
     name = "Champion",
     sprite = "assets/chars/champion.png",
+    boss = true,
+    class = "fighter",
+    -- Holds the middle, provokes the crowd, and punishes each attacker (models/ai.lua `defensive`).
+    archetype = "defensive",
     stats = {
-        health = 90, mana = 20, stamina = 18,
+        health = 130, mana = 20, stamina = 20,
         damage = 20, magicDamage = 6,
-        defense = 12, magicDefense = 8,
+        defense = 14, magicDefense = 8,
         movement = 4,
         speed = 3,
     },
-    startingItems = { "weapon_iron_sword" },
-    -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.
+    startingItems = {
+        "weapon_iron_greatsword", "ability_provoke",     "ability_defiant_stand",
+        "ability_answering_blow", "utility_reprisal",    "utility_crowds_favour",
+        "armor_bulwark_shield",   "consumable_healing_potion", false,
+    },
+    defaultAction = "weapon_iron_greatsword",
+    -- Provoke the crowd onto itself, then let the reprisal answer every striker.
     ai = {
-        { priority = "high", act = "attack", targetPref = "lowest_hp",
+        { priority = "high", act = "cast", item = "ability_provoke",
+          when = { subject = "any_foe", test = "within", value = 1 } },
+        { priority = "normal", act = "attack", targetPref = "lowest_hp",
           when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
     },
 }

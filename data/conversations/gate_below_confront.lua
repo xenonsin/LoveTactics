@@ -18,7 +18,7 @@
 -- roster the player brought decides which of the dead get answered.
 return {
     title = "The Hollow Crown",
-    cast  = { "character_demon_lord", "character_avatar", { id = "character_knight", when = { has = "character_knight" } }, { id = "character_saber", when = { has = "character_saber" } }, { id = "character_amana", when = { has = "character_amana" } }, { id = "character_gyeom", when = { has = "character_gyeom" } }, { id = "character_kaya", when = { has = "character_kaya" } }, { id = "character_ren", when = { has = "character_ren" } }, { id = "character_clem", when = { has = "character_clem" } } },
+    cast  = { "character_demon_lord", "character_avatar", { id = "character_rowan", when = { has = "character_rowan" } }, { id = "character_saber", when = { has = "character_saber" } }, { id = "character_amana", when = { has = "character_amana" } }, { id = "character_gyeom", when = { has = "character_gyeom" } }, { id = "character_kaya", when = { has = "character_kaya" } }, { id = "character_ren", when = { has = "character_ren" } }, { id = "character_clem", when = { has = "character_clem" } } },
 
     script = {
         { "character_demon_lord", "You came a long way down to meet me, and there is no me to meet.", tag = 1 },
@@ -31,9 +31,9 @@ return {
             { "character_demon_lord", "Come and be measured, little card-filler. You were always going to lose to somebody the house had already paid.", tag = 7 },
             { "character_saber", "That is her mouth and it is not her. She never once said a thing she had been paid to say -- that was the whole trouble with her.", tag = 8 },
         } },
-        { when = { has = "character_knight" }, script = {
+        { when = { has = "character_rowan" }, script = {
             { "character_demon_lord", "Hold until relieved. Nobody is coming, girl. Nobody was ever coming.", tag = 9 },
-            { "character_knight", "I know. I stopped waiting. You are forty-one days too late to frighten me with it.", tag = 10 },
+            { "character_rowan", "I know. I stopped waiting. You are forty-one days too late to frighten me with it.", tag = 10 },
         } },
         { when = { has = "character_gyeom" }, script = {
             { "character_demon_lord", "There is nothing in you I have not already surpassed.", tag = 11 },

@@ -7,6 +7,6 @@
 return {
     name    = "Bulwark",
     classes = { "knight" },
-    exemplar = "character_greywatch_captain",
+    exemplar = "character_bulwark", -- was character_greywatch_captain (a story-disguised encounter unit); dedicated exemplar authored
     requiredQuests = { "slot_03_held_position" },
 }

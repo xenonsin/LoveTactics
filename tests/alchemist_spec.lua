@@ -38,7 +38,7 @@ return {
         name = "Alchemic Mastery adds its amountBonus to an adjacent consumable's hit (preview and live)",
         fn = function()
             -- Foe two tiles east, so the radius-1 burst never reaches the caster's own tile.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 4, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 4, 2) })
             local k, bandit = c.units[1], c.units[2]
 
             -- No charm beside the bomb: the plain hit.
@@ -66,7 +66,7 @@ return {
         name = "Everflask spares an adjacent consumable's stack; without it the stack is spent",
         fn = function()
             -- Control: a bomb with no Everflask beside it decrements as usual.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 4, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 4, 2) })
             local k = c.units[1]
             equip(k.char, { [5] = "consumable_fire_bomb" })
             k.char.inventory[5].quantity = 3
@@ -76,7 +76,7 @@ return {
             assert(k.char.inventory[5].quantity == 2, "a bomb with no Everflask is spent (3 -> 2)")
 
             -- With an Everflask in the adjacent cell, the same throw leaves the stack untouched.
-            local c2 = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 4, 2) })
+            local c2 = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 4, 2) })
             local k2 = c2.units[1]
             equip(k2.char, { [5] = "consumable_fire_bomb", [4] = "utility_everflask" })
             k2.char.inventory[5].quantity = 3
@@ -91,7 +91,7 @@ return {
         name = "Long-Fuse Reagent extends an adjacent consumable's range (bonus + a foe it now reaches)",
         fn = function()
             -- A foe four tiles away: one past the bomb's base range of 3.
-            local c = Combat.new(arena(10, 4), { unit("character_knight", 2, 2) }, { unit("character_bandit", 6, 2) })
+            local c = Combat.new(arena(10, 4), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 6, 2) })
             local k, bandit = c.units[1], c.units[2]
 
             equip(k.char, { [5] = "consumable_fire_bomb" })
@@ -109,7 +109,7 @@ return {
     {
         name = "Acid strips armor: a hit lands harder while it clings, and Cure/Panacea restores it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 3, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
             local atk, target = c.units[1], c.units[2]
             atk.char.stats.damage = 20 -- well above the floor, so the whole armor swing is visible
             target.char.stats.defense = 10
@@ -129,7 +129,7 @@ return {
     {
         name = "Disarmed refuses a crafted weapon but not a potion, an ability, or the bare fists",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 3, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
             local k = c.units[1]
             equip(k.char, { [5] = "weapon_iron_sword", [6] = "consumable_fire_bomb" })
             k.char.stats.stamina.current = 99
@@ -148,7 +148,7 @@ return {
     {
         name = "Envenom infuses an adjacent weapon: it gains the poison tag and inflicts Poison on a hit",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 3, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
             local k, bandit = c.units[1], c.units[2]
             equip(k.char, { [5] = "weapon_iron_sword", [4] = "consumable_envenom" })
             k.char.stats.stamina.current = 99

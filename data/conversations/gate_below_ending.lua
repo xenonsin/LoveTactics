@@ -19,7 +19,7 @@
 -- whichever game the player actually played.
 return {
     title = "What Was Under It",
-    cast  = { "character_avatar", { id = "character_knight", when = { has = "character_knight" } }, { id = "character_saber", when = { has = "character_saber" } }, { id = "character_amana", when = { has = "character_amana" } }, { id = "character_gyeom", when = { has = "character_gyeom" } }, { id = "character_kaya", when = { has = "character_kaya" } }, { id = "character_ren", when = { has = "character_ren" } }, { id = "character_clem", when = { has = "character_clem" } } },
+    cast  = { "character_avatar", { id = "character_rowan", when = { has = "character_rowan" } }, { id = "character_saber", when = { has = "character_saber" } }, { id = "character_amana", when = { has = "character_amana" } }, { id = "character_gyeom", when = { has = "character_gyeom" } }, { id = "character_kaya", when = { has = "character_kaya" } }, { id = "character_ren", when = { has = "character_ren" } }, { id = "character_clem", when = { has = "character_clem" } } },
 
     script = {
         { "character_avatar", "...", tag = 1 },
@@ -33,9 +33,9 @@ return {
             { "character_amana", "Seven people said yes to it.", tag = 6 },
             { "character_amana", "That part does not come off. We killed the wanting. We did not un-ask the question, and it was asked of them, and every one of them answered.", tag = 7 },
         } },
-        { when = { has = "character_knight" }, script = {
-            { "character_knight", "Forty-one of mine answered it too, and they were not monsters when they did. They were cold, and tired, and somebody offered.", tag = 8 },
-            { "character_knight", "I have stopped being able to tell that story as though the ending was obvious.", tag = 9 },
+        { when = { has = "character_rowan" }, script = {
+            { "character_rowan", "Forty-one of mine answered it too, and they were not monsters when they did. They were cold, and tired, and somebody offered.", tag = 8 },
+            { "character_rowan", "I have stopped being able to tell that story as though the ending was obvious.", tag = 9 },
         } },
         { when = { has = "character_saber" }, script = {
             { "character_saber", "There is a reckoning owed under this floor and it is paid. I have wanted that since before I had a name that was mine to give out.", tag = 10 },

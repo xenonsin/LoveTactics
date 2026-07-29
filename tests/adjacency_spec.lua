@@ -65,7 +65,7 @@ return {
         name = "Omnislash damage scales per adjacent weapon, and the preview matches the live cast",
         fn = function()
             -- Base cast: no adjacent weapons -> 1x power.
-            local c0 = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c0 = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k0 = c0.units[1]
             equip(k0.char, { [5] = "ability_omnislash" })
             k0.char.stats.stamina.current = 99
@@ -75,7 +75,7 @@ return {
 
             -- Two adjacent weapons -> 3x power (1x base + 1x each). Every weapon adds `power` (6)
             -- pre-mitigation, so two weapons is exactly +12 damage over the base cast.
-            local c2 = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c2 = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k2, b2 = c2.units[1], c2.units[2]
             equip(k2.char, { [5] = "ability_omnislash", [4] = "weapon_iron_sword", [6] = "weapon_iron_sword" })
             k2.char.stats.stamina.current = 99
@@ -94,7 +94,7 @@ return {
     {
         name = "Rain of Arrows requires an adjacent bow to fire, then hits its 3x3 area",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 5) })
             local k = c.units[1]
             equip(k.char, { [5] = "ability_rain_of_arrows" })
             k.char.stats.stamina.current = 99
@@ -116,7 +116,7 @@ return {
     {
         name = "itemBlockReason names why an ability can't be activated (the gate the UI grays on)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 5) })
             local k = c.units[1]
             equip(k.char, { [5] = "ability_rain_of_arrows" })
             k.char.stats.stamina.current = 99
@@ -151,7 +151,7 @@ return {
         fn = function()
             -- Augmented: sword adjacent to the Fire Stone. The target has fire resist 3, so the
             -- fire tag being applied shaves 3 off the hit; and Burn is inflicted.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k, b = c.units[1], c.units[2]
             equip(k.char, { [5] = "consumable_fire_stone", [4] = "weapon_iron_sword" })
             k.char.stats.stamina.current = 99
@@ -162,7 +162,7 @@ return {
             assert(Status.has(b, "status_burn"), "an adjacent Fire Stone sets the target alight")
 
             -- Control: identical sword + target, but no Fire Stone adjacent -> no fire tag, no Burn.
-            local cc = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local cc = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local kk, bb = cc.units[1], cc.units[2]
             equip(kk.char, { [1] = "weapon_iron_sword" })
             kk.char.stats.stamina.current = 99
@@ -180,7 +180,7 @@ return {
         name = "a water-tagged weapon and a non-adjacent weapon both resist the Fire Stone aura",
         fn = function()
             -- Water weapon adjacent to the Fire Stone: exempt from the infusion.
-            local cw = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local cw = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local kw, bw = cw.units[1], cw.units[2]
             kw.char.inventory = {}
             kw.char.inventory[5] = Item.instantiate("consumable_fire_stone")
@@ -193,7 +193,7 @@ return {
             assert(not Status.has(bw, "status_burn"), "a water-tagged weapon resists the infusion")
 
             -- Sword NOT adjacent to the Fire Stone (opposite corner): no infusion.
-            local cn = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local cn = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local kn, bn = cn.units[1], cn.units[2]
             equip(kn.char, { [1] = "consumable_fire_stone", [9] = "weapon_iron_sword" })
             kn.char.stats.stamina.current = 99
@@ -205,7 +205,7 @@ return {
     {
         name = "adjacencyLinks reports aura / boost / requirement relationships (and none when apart)",
         fn = function()
-            local knight = Character.instantiate("character_knight")
+            local knight = Character.instantiate("character_rowan")
             knight.inventory = {}
             knight.inventory[5] = Item.instantiate("consumable_fire_stone")           -- aura source (center)
             knight.inventory[4] = Item.instantiate("weapon_iron_sword")           -- infused neighbor
@@ -220,7 +220,7 @@ return {
             assert(hasLink(links, 7, 8, "requirement"), "Rain of Arrows (7) requirement met by the bow (8)")
 
             -- Items placed apart form no relationship.
-            local apart = Character.instantiate("character_knight")
+            local apart = Character.instantiate("character_rowan")
             apart.inventory = {}
             apart.inventory[1] = Item.instantiate("consumable_fire_stone")
             apart.inventory[9] = Item.instantiate("weapon_iron_sword")

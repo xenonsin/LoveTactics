@@ -2073,6 +2073,10 @@ function Combat.startTurn(combat)
     if unit then
         unit.overwatch = nil
         unit.freeActionsUsed = nil
+        -- ...and the `soleAction` latch beside it (Harrier's Bow): a free action that still SPENDS the
+        -- turn's action, leaving only the move. Cleared here for the same reason -- a sole action never
+        -- reaches endTurn either, so turn start is the one beat that can refresh it.
+        unit.actionSpent = nil
         -- THE IDLE VEIL (the Ninja's Smoke Mantle): a bearer who drew no blood on its previous turn
         -- opens this one unseen. Measured off the `hitDealt` tally rather than a flag, because the
         -- tally is already kept and already monotonic -- "did the count move since I last stood here"
@@ -3131,13 +3135,21 @@ end
 -- (see Combat.previewCounters). Walks the same lane by the same rule as the live shove; it does not
 -- model a trap or hazard on the way killing the target, which only ever makes the preview's promised
 -- counter more likely, never less.
-function Combat.knockbackTile(combat, source, target, distance)
+function Combat.knockbackTile(combat, source, target, distance, opts)
     if not (source and target) then return target and target.x, target and target.y end
-    local dx, dy = signDominant(target.x - source.x, target.y - source.y)
+    -- Mirror Combat.knockback's aim: a thrown body (opts.dest set) walks the lane toward its chosen
+    -- landing, so the ghost rests where the live throw will; a plain shove keeps away-from-source.
+    -- (Explicit if/else so signDominant's two return values both survive.)
+    local dx, dy
+    if opts and opts.dest then dx, dy = signDominant(opts.dest.x - target.x, opts.dest.y - target.y)
+    else dx, dy = signDominant(target.x - source.x, target.y - source.y) end
     local x, y = target.x, target.y
     if dx == 0 and dy == 0 then return x, y end
+    local total = opts and opts.dest
+        and math.max(math.abs(opts.dest.x - target.x), math.abs(opts.dest.y - target.y))
+        or (distance or 1)
     local w, h = target.w or 1, target.h or 1
-    for _ = 1, (distance or 1) do
+    for _ = 1, total do
         -- Test the whole body at the next anchor, ignoring the target's own cells (it slides through
         -- them). footprintFree is exactly canShoveInto's rule (walkable, no object, no other unit),
         -- lifted to the footprint -- so the preview lands where the live shove below comes to rest.
@@ -3179,13 +3191,23 @@ function Combat.knockback(combat, source, target, distance, opts)
     opts = opts or {}
     if not (target and target.alive) then return 0, false end
     local amount = opts.amount or Combat.COLLISION_DAMAGE
-    local dx, dy = signDominant(target.x - source.x, target.y - source.y)
+    -- A THROWN body (Heave) picks its own lane: aimed toward opts.dest rather than straight away
+    -- from the source, and travelling only as far as that tile (Chebyshev), so the collision rule
+    -- below still bites when the aim runs it into a wall short of where it was pointed. Everything
+    -- else -- a plain shove -- keeps the fixed away-from-source direction and the `distance` arg.
+    -- (An explicit if/else, not `cond and f() or g()`: that idiom would truncate signDominant's two
+    -- return values to one and leave dy nil.)
+    local dx, dy
+    if opts.dest then dx, dy = signDominant(opts.dest.x - target.x, opts.dest.y - target.y)
+    else dx, dy = signDominant(target.x - source.x, target.y - source.y) end
     if dx == 0 and dy == 0 then return 0, false end
 
     -- Where the shove starts, so the view can glide the target out of it rather than snapping it
     -- across the lane (the model resolves the whole slide in this one atomic pass).
     local oX, oY = target.x, target.y
-    local total = distance or 1
+    local total = opts.dest
+        and math.max(math.abs(opts.dest.x - target.x), math.abs(opts.dest.y - target.y))
+        or (distance or 1)
     local moved = 0
     for _ = 1, total do
         local ok, blocker, kind = footprintCanShift(combat, target, dx, dy)
@@ -3490,11 +3512,18 @@ function Combat.hurlObject(combat, source, obj, kind, distance, opts)
     opts = opts or {}
     if not (source and obj and obj.alive) then return 0, false end
     local amount = opts.amount or Combat.COLLISION_DAMAGE
-    local dx, dy = signDominant(obj.x - source.x, obj.y - source.y)
+    -- Aimed toward opts.dest when Heave chose a landing (its lane and its reach both read off that
+    -- tile); otherwise the fixed straight-away-from-source throw. The object-layer twin of the same
+    -- override in Combat.knockback (explicit if/else so signDominant's two returns both survive).
+    local dx, dy
+    if opts.dest then dx, dy = signDominant(opts.dest.x - obj.x, opts.dest.y - obj.y)
+    else dx, dy = signDominant(obj.x - source.x, obj.y - source.y) end
     if dx == 0 and dy == 0 then return 0, false end
 
     local name = obj.name or "an object"
-    local total = distance or 1
+    local total = opts.dest
+        and math.max(math.abs(opts.dest.x - obj.x), math.abs(opts.dest.y - obj.y))
+        or (distance or 1)
     local moved = 0
     for _ = 1, total do
         local ok, blocker, bkind = canHurlInto(combat, obj.x + dx, obj.y + dy)
@@ -5283,7 +5312,7 @@ end
 -- Returns { entries = { [unit] = { unit, damage, heal, lethal, statuses = { { id, def, opts } } } },
 -- order = {entries...} } (order is affected-unit order), or nil for an ability with no effect.
 -- The effect is pcall-guarded so a data-file quirk in a dry run can never crash the tooltip.
-function Combat.previewAbility(combat, unit, item, tx, ty)
+function Combat.previewAbility(combat, unit, item, tx, ty, dest)
     local ab = item and item.activeAbility
     if not ab then return nil end
     local target = Combat.unitAt(combat, tx, ty)
@@ -5317,6 +5346,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
     local effectiveAmount = castAmount(combat, unit, ab, tx, ty, auraMods)
     local fx = {
         user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
+        dest = dest, -- a two-stage throw's chosen landing (Heave); nil for every single-aim ability
         amount = effectiveAmount, -- the ability's scaled magnitude; effects derive heal/status/etc. from it
         -- The item's upgrade level, as the other two fx tables already carry it (Combat.abilityOutput
         -- and the live cast). It belongs on all three for the reason docs/architecture.md gives about
@@ -5465,10 +5495,12 @@ function Combat.previewAbility(combat, unit, item, tx, ty)
         -- the tile the target's own answer would be thrown from -- and a counter is gated on reach.
         -- Without this the hover promises a parry the mace then shoves out of range of (see
         -- Combat.previewCounters); with it, the panel and the live exchange agree.
-        knockback = function(tgt, distance)
+        knockback = function(tgt, distance, opts)
             if tgt then
                 local e = entryFor(tgt)
-                e.restsX, e.restsY = Combat.knockbackTile(combat, unit, tgt, distance or 1)
+                -- `opts` carries a thrown body's dest (Heave phase 2) so the ghost rests where the
+                -- live throw will; a plain shove passes none and keeps away-from-caster.
+                e.restsX, e.restsY = Combat.knockbackTile(combat, unit, tgt, distance or 1, opts)
             end
             return 0, false
         end,
@@ -5612,9 +5644,25 @@ function Combat.abilityOutput(unit, item)
     if not ab or not ab.effect then return nil end
     unit = unit or previewStandIn()
     local dummy = dummyTarget()
+    -- Hand the effect a SHALLOW COPY of the caster as fx.user, not the caster itself. Most effects only
+    -- mutate the board through the inert helpers below, but a few BANK state directly on the unit --
+    -- weapon_unspent_blow's `fx.user.unspentBlows`, weapon_marching_standard's `fx.user.standard`. That
+    -- write is not inert: replayed once per hover frame it would advance the bank AND flip the branch the
+    -- effect takes, so the tooltip flickers between the ordinary hit and its banked payoff (and the real
+    -- count drifts just from hovering). The copy carries the current values, so a read still reports what
+    -- THIS swing would do, while the write lands on a table we throw away. Safe here because aoeUnits /
+    -- unitsNear below return only dummies, so no `u == fx.user` identity check can be fooled by the copy.
+    local userProxy = {}
+    for k, v in pairs(unit) do userProxy[k] = v end
+    -- A support cast aims at allies and gates its effect on `u.side == fx.user.side` (Blessing, Aegis,
+    -- Benediction), so a stand-in fixed to the enemy side would fall through every one of those branches
+    -- and the tooltip would name none of the statuses/heals the ability grants. Put the stand-in on the
+    -- caster's side for a support ability, so its friendly branch actually runs. Offensive casts (Holy
+    -- Light and the rest, gated the other way) keep the enemy-side dummy and their damage numbers.
+    if ab.support then dummy.side = unit.side end
     local out = { damage = 0, heal = 0, statuses = {}, multi = ab.aoe ~= nil }
     local fx = {
-        user = unit, target = dummy, item = item, combat = nil, tx = 0, ty = 0,
+        user = userProxy, target = dummy, item = item, combat = nil, tx = 0, ty = 0,
         amount = Combat.abilityMagnitude(ab),
         level = item and item.level or 0, -- so a summon/hazard/trap effect can quote its level-scaled output
         -- The charge this bearer holds, and an inert spend that only reports (see the note on the
@@ -6543,6 +6591,15 @@ function Combat.itemBlockReason(unit, item)
     end
     if not unit then return nil end
 
+    -- A sole action (Harrier's Bow) already taken this turn: it fires for free but it is still the
+    -- turn's ACTION, so nothing else may be used after it -- only the move it left open. Refuses EVERY
+    -- item (its own re-press included), so the skirmisher who shot is told to ride, not handed a second
+    -- attack. Checked before the free gate so the message names the rule that actually applies.
+    if unit.actionSpent then
+        return { kind = "acted", reason = "action spent",
+            text = "Already acted this turn -- move only" }
+    end
+
     -- A free action already spent this turn. Checked before the resource gates so a skirmisher whose
     -- free shot is gone is told THAT, rather than being told it can afford a shot it may not take --
     -- the free ability is usually still perfectly affordable, which is exactly what makes the greyed
@@ -6611,7 +6668,11 @@ function Combat.itemBlockReason(unit, item)
     -- fired for no effect and a wasted turn. `ab.counter` reads the item's current count -- the very
     -- number the grid badge shows -- so the greyed slot, the refused click and the badge can never
     -- disagree. Kept after affordability so a caster who is ALSO out of mana is told the fixable thing.
-    if ab.counter then
+    --
+    -- `counterGates = false` opts out of the refusal while keeping the badge: a counter that merely
+    -- SCALES the cast (the Long Count grows harder per turn taken, but swings fine at zero) is a readout,
+    -- not a purse, so an empty count is a floor rather than a wasted turn.
+    if ab.counter and ab.counterGates ~= false then
         local n = ab.counter(unit, item) or 0
         if n <= 0 then
             return { kind = "empty", reason = "empty", count = n,
@@ -6777,7 +6838,7 @@ end
 -- item if it's a consumable. Returns (true, result) or (false, reason). `result` is
 -- { damageDealt, healed } aggregated across the effect's helper calls. A channeled ability
 -- instead winds up here and resolves later via Combat.resolveChannel (see the channel branch).
-function Combat.useItem(combat, unit, item, tx, ty, windup)
+function Combat.useItem(combat, unit, item, tx, ty, windup, dest)
     if not unit.alive then return false, "dead" end
     local ab = item.activeAbility
     if not ab then return false, "no ability" end
@@ -6878,7 +6939,7 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
             Combat.logEvent(combat, "action",
                 string.format("%s speaks %s again, and it needs no winding.",
                     unitName(unit), item.name or "the working"), unit)
-            return resolveCast(combat, unit, item, ab, tx, ty)
+            return resolveCast(combat, unit, item, ab, tx, ty, nil, nil, nil, dest)
         end
         -- A chargeable wind-up (Saber's signature): the caster picks how long to hold the swing,
         -- anywhere in the ability's own [min, max] TOTAL ticks, and the effect reads both how long it
@@ -6908,6 +6969,10 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
         -- hangs for is timeTicks, which is what the badge below and endTurn (the resolution slot) bill.
         unit.channel = { item = item, ab = ab, tx = tx, ty = ty, windup = ticks, held = held }
         Status.apply(combat, unit, "status_channeling", { duration = timeTicks + 1 })
+        -- A view cue for the wind-up STARTING (the Channeling badge is silent -- hideLog). Pushed like
+        -- every other fx event so the view sounds it once, on the real cast, and never on a dry-run
+        -- preview (which does not drain fx). Both sides: an enemy Meteor Storm winding up rings it too.
+        Combat.pushFx(combat, { type = "channel", unit = unit })
         -- `channelStatus`: a status the caster gains ON COMMIT and carries through the wind-up, for the
         -- one thing an `effect` cannot express -- an effect runs when the cast RESOLVES, and this has to
         -- land on the beat the tell goes up, before the enemy's turn to punish it. Declared rather than
@@ -6973,7 +7038,7 @@ function Combat.useItem(combat, unit, item, tx, ty, windup)
         return true, { channeling = true }
     end
 
-    return resolveCast(combat, unit, item, ab, tx, ty)
+    return resolveCast(combat, unit, item, ab, tx, ty, nil, nil, nil, dest)
 end
 
 -- ---------------------------------------------------------------------------
@@ -7058,7 +7123,7 @@ end
 -- calls it turns later). `target` and `reserve` are derived HERE, not at cast-start, so a channel reads
 -- the LIVE board -- a foe that stepped out of the blast is simply gone from fx.aoeUnits(). `alreadyConsumed`
 -- is set by the channel path (which spent the stack at cast-start) so the stack isn't decremented twice.
-function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, held)
+function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, held, dest)
     local target = Combat.unitAt(combat, tx, ty)
     local reserve = Combat.abilityReserve(unit, ab)
 
@@ -7147,6 +7212,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     fx = {
         user = unit, target = target, item = item, combat = combat,
         tx = tx, ty = ty, -- the targeted cell, for tile-targeted abilities (e.g. placing a trap)
+        dest = dest, -- a two-stage throw's chosen landing (Heave); nil for every single-aim ability
         amount = effectiveAmount, -- effects derive heal/status/restore magnitude from it
         -- The item's upgrade level (0..N). What a summon/hazard/trap/wall scales off: the stronger the
         -- forged item, the tougher the creature it calls and the harder/longer-lived the ground it lays.
@@ -7737,6 +7803,11 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- one initiative slot is not a burst, it is a solo.
     if ab.free and Combat.freeActionsLeft(unit) > 0 then
         unit.freeActionsUsed = (unit.freeActionsUsed or 0) + 1
+        -- A SOLE ACTION (Harrier's Bow) is free of initiative and free of the move, but it is NOT free
+        -- of the turn's action: latch it so Combat.itemBlockReason refuses everything after it. The move
+        -- stays open (it is gated on combat.turn.moved, which this never sets), so "fire, then ride"
+        -- holds -- fire, then only ride. Battle Tonic declares no soleAction and keeps the whole turn.
+        if ab.soleAction then unit.actionSpent = true end
     else
         endTurn(combat, unit, ctl.speed)
     end

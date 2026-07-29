@@ -222,14 +222,14 @@ return {
         name = "resolve drops a gated block and re-points a goto that aimed into it",
         fn = function()
             local def = {
-                cast = { "character_knight", { id = "character_priest", when = { has = "character_priest" } } },
+                cast = { "character_rowan", { id = "character_priest", when = { has = "character_priest" } } },
                 script = {
-                    { "character_knight", "one", id = "start", goto = "banter" },
+                    { "character_rowan", "one", id = "start", goto = "banter" },
                     { when = { has = "character_priest" }, script = {
                         { "character_priest", "two", id = "banter" },
-                        { "character_knight", "three" },
+                        { "character_rowan", "three" },
                     } },
-                    { "character_knight", "four", id = "tail" },
+                    { "character_rowan", "four", id = "tail" },
                 },
             }
 
@@ -239,7 +239,7 @@ return {
             assert(withPriest.script[1].goto == "banter", "the goto is left alone")
 
             local without = Conversation.resolve(def, { roster = {}, quests = {}, prestige = 1 })
-            assert(#without.cast == 1 and without.cast[1] == "character_knight", "the priest is off stage")
+            assert(#without.cast == 1 and without.cast[1] == "character_rowan", "the priest is off stage")
             assert(#without.script == 2, "the whole banter block leaves, not just the priest's line")
             assert(without.script[2][2] == "four", "the surviving lines keep their order")
             assert(without.script[1].goto == "tail",
@@ -250,9 +250,9 @@ return {
         name = "resolve redirects to 'end' when nothing survives after the dropped node",
         fn = function()
             local def = {
-                cast = { "character_knight", { id = "character_priest", when = { has = "character_priest" } } },
+                cast = { "character_rowan", { id = "character_priest", when = { has = "character_priest" } } },
                 script = {
-                    { "character_knight", "one", goto = "last", choices = { { "go", goto = "last" } } },
+                    { "character_rowan", "one", goto = "last", choices = { { "go", goto = "last" } } },
                     { when = { has = "character_priest" }, script = { { "character_priest", "two", id = "last" } } },
                 },
             }
@@ -267,11 +267,11 @@ return {
         name = "resolve gives a synthetic id to a surviving redirect target that lacks one",
         fn = function()
             local def = {
-                cast = { "character_knight", { id = "character_priest", when = { has = "character_priest" } } },
+                cast = { "character_rowan", { id = "character_priest", when = { has = "character_priest" } } },
                 script = {
-                    { "character_knight", "one", goto = "gone" },
+                    { "character_rowan", "one", goto = "gone" },
                     { when = { has = "character_priest" }, script = { { "character_priest", "two", id = "gone" } } },
-                    { "character_knight", "three" }, -- no id of its own, but must be jumpable to
+                    { "character_rowan", "three" }, -- no id of its own, but must be jumpable to
                 },
             }
             local r = Conversation.resolve(def, { roster = {}, quests = {}, prestige = 1 })
@@ -284,7 +284,7 @@ return {
         name = "a nested block cannot escape a dropped parent",
         fn = function()
             local def = {
-                cast = { "character_knight", { id = "character_priest", when = { has = "character_priest" } } },
+                cast = { "character_rowan", { id = "character_priest", when = { has = "character_priest" } } },
                 script = {
                     { when = { has = "character_priest" }, script = {
                         { "character_priest", "outer" },
@@ -300,11 +300,11 @@ return {
         name = "context reads roster, completed quests and prestige off a player",
         fn = function()
             local ctx = Conversation.context({
-                roster = { { id = "character_knight" }, { id = "character_priest" } },
+                roster = { { id = "character_rowan" }, { id = "character_priest" } },
                 completedQuests = { slot_01_vault_heist = true },
                 prestige = 4,
             })
-            assert(ctx.roster.character_knight and ctx.roster.character_priest, "roster ids are flattened to a set")
+            assert(ctx.roster.character_rowan and ctx.roster.character_priest, "roster ids are flattened to a set")
             assert(ctx.roster.character_mage == nil, "an absent character is absent")
             assert(ctx.quests.slot_01_vault_heist == true and ctx.prestige == 4, "quests and prestige carry over")
             local empty = Conversation.context(nil)
@@ -329,15 +329,15 @@ return {
     {
         name = "speaker resolves name (English source) + portrait path from a blueprint",
         fn = function()
-            local who = Conversation.speaker("character_knight")
-            assert(who.name == Character.defs.character_knight.name, "should read the blueprint name in the source language")
-            assert(who.portrait == Character.defs.character_knight.portrait, "should read the blueprint portrait path")
+            local who = Conversation.speaker("character_rowan")
+            assert(who.name == Character.defs.character_rowan.name, "should read the blueprint name in the source language")
+            assert(who.portrait == Character.defs.character_rowan.portrait, "should read the blueprint portrait path")
         end,
     },
     {
         name = "speaker honors an explicit name/portrait override and falls back to the id",
         fn = function()
-            local o = Conversation.speaker("character_knight", { name = "Sir Nobody", portrait = "x.png" })
+            local o = Conversation.speaker("character_rowan", { name = "Sir Nobody", portrait = "x.png" })
             assert(o.name == "Sir Nobody" and o.portrait == "x.png", "overrides should win")
             local u = Conversation.speaker("not_a_real_id")
             assert(u.name == "not_a_real_id" and u.portrait == nil, "unknown speaker falls back to its id")

@@ -37,7 +37,9 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "mana", amount = 15 },
-        support = true, -- lands no damage: reads green, and the AI weighs it as control
+        support = false, -- hostile ground, so it must preview RED. It lands no damage, but a hazard
+                         -- placement scores 0 immediate outcome and the AI's outcome gate drops it
+                         -- regardless of this flag (models/ai.lua) -- so this only sets the colour.
         aoe = { radius = 1, shape = "square" },
         requiresAdjacent = { tag = "lightning" },
         effect = function(fx)

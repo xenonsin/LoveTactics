@@ -37,7 +37,7 @@ return {
             name = "The Sword-Oath",
             composition = function(ctx)
                 local list = { "character_champion" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_knight" end
+                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_rowan" end
                 return list
             end,
             win = { type = "assassinate", target = "character_champion" },

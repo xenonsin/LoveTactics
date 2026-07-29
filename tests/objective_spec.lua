@@ -101,7 +101,7 @@ return {
         name = "a reach objective is dealt endless reinforcements from its own roster",
         fn = function()
             local arena = Arena.build({}, {
-                party = { "character_knight" },
+                party = { "character_rowan" },
                 composition = function() return { "character_bandit", "character_bandit", "character_bandit", "character_bandit" } end,
                 objective = { type = "reach", region = "far" }, seed = 3,
             })
@@ -119,13 +119,13 @@ return {
         fn = function()
             local authored = { { at = 5, composition = { "character_bandit" } } }
             local reach = Arena.build({}, {
-                party = { "character_knight" }, composition = function() return { "character_bandit" } end,
+                party = { "character_rowan" }, composition = function() return { "character_bandit" } end,
                 objective = { type = "reach", region = "far", waves = authored }, seed = 4,
             })
             assert(reach.objective.waves == authored, "an authored wave list is never overwritten")
 
             local kill = Arena.build({}, {
-                party = { "character_knight" }, composition = function() return { "character_bandit" } end,
+                party = { "character_rowan" }, composition = function() return { "character_bandit" } end,
                 objective = { type = "killAll" }, seed = 4,
             })
             assert(kill.objective.waves == nil, "only reach fights get the endless-wave default")
@@ -137,7 +137,7 @@ return {
             -- The shape a quest blueprint hands over -- immutable, and reused next run.
             local blueprint = { type = "reach", region = "far" }
             local arena = Arena.build({}, {
-                party = { "character_knight" },
+                party = { "character_rowan" },
                 composition = function() return { "character_bandit" } end,
                 objective = blueprint, seed = 7,
             })
@@ -216,7 +216,7 @@ return {
         name = "an escorted reach is won only by the body the objective names",
         fn = function()
             local goal = { { x = 3, y = 1 } }
-            local scout = named("party", 3, 8, "character_knight")
+            local scout = named("party", 3, 8, "character_rowan")
             local driver = named("party", 4, 8, "character_caravan_driver")
             local combat = fakeCombat({ scout, driver },
                 { type = "reach", tiles = goal, who = "character_caravan_driver" })
@@ -304,13 +304,13 @@ return {
         -- its standing is the party's, mirrored -- not its own separate pursuit of the same goal.
         name = "an authored objective reads to the other side as the mirror of the party's",
         fn = function()
-            local walker = named("party", 1, 1, "character_knight")
+            local walker = named("party", 1, 1, "character_rowan")
             local won = fakeCombat({ walker, unit("enemy", 5, 5) },
                 { type = "reach", tiles = { { x = 1, y = 1 } } })
             assert(Combat.outcomeFor(won, "party") == "win", "the party reached the ground")
             assert(Combat.outcomeFor(won, "enemy") == "loss", "so the side meant to stop it failed")
 
-            local open = fakeCombat({ named("party", 4, 4, "character_knight"), unit("enemy", 5, 5) },
+            local open = fakeCombat({ named("party", 4, 4, "character_rowan"), unit("enemy", 5, 5) },
                 { type = "reach", tiles = { { x = 1, y = 1 } } })
             assert(Combat.outcomeFor(open, "party") == nil, "still walking")
             assert(Combat.outcomeFor(open, "enemy") == nil, "still stopping them")

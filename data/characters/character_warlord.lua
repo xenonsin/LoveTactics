@@ -10,7 +10,17 @@ return {
         movement = 4,
         speed = 2, -- heavy
     },
-    startingItems = { "weapon_iron_sword" },
+    -- The Warlord subclass (fighter): banner zones -- planted banners project stacking aura fields.
+    -- Enriched with the banner ACTIVES (Muster/Rally banner, War Drums) so it demonstrates the
+    -- discipline; the weapon and its stat line are left exactly as the quest boss was tuned (the aura
+    -- charm banners are deliberately NOT added, so nothing passively changes its combat numbers -- see
+    -- combat_spec / breakdown_spec, which spar against this body). Kit tag: data/disciplines/warlord.lua.
+    startingItems = {
+        "weapon_iron_sword",  "ability_muster_banner", "ability_rally_banner",
+        "consumable_war_drums", false,                 false,
+        false,                false,                   false,
+    },
+    defaultAction = "weapon_iron_sword",
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.
     ai = {
         { priority = "high", act = "attack", targetPref = "lowest_hp",

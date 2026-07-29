@@ -13,8 +13,11 @@ return {
             local p = Player.new()
             assert(p.gold == Player.defaults.gold, "gold should come from the defaults")
             assert(p.prestige == Player.defaults.prestige, "prestige should come from the defaults")
-            assert(#p.roster == 4, "roster should have 4 members")
-            assert(#p.party == 4, "party should have 4 members")
+            -- The party is earned through play, so the default is lean: just Rowan (the generic
+            -- Mage/Archer/Priest were retired from the roster -- see data/player.lua).
+            assert(#p.roster == 1, "roster should have 1 member (Rowan)")
+            assert(#p.party == 1, "party should have 1 member (Rowan)")
+            assert(p.roster[1].id == "character_rowan", "the lone default is Rowan")
             assert(next(p.reputation) == nil, "a new player owes nobody any reputation")
             assert(next(p.completedQuests) == nil, "a new player has completed no quests")
         end,
@@ -30,8 +33,13 @@ return {
         name = "party is capped at Player.MAX_PARTY",
         fn = function()
             local p = Player.new()
-            assert(#p.party == Player.MAX_PARTY, "party should start full at the cap")
-            local extra = Character.instantiate("character_knight")
+            -- The lean default starts with one member; fill the party to the cap first.
+            while #p.party < Player.MAX_PARTY do
+                assert(Player.addToParty(p, Character.instantiate("character_rowan")),
+                    "adding within the cap should succeed")
+            end
+            assert(#p.party == Player.MAX_PARTY, "party should reach the cap")
+            local extra = Character.instantiate("character_rowan")
             assert(Player.addToParty(p, extra) == false, "adding past the cap must be rejected")
             assert(#p.party == Player.MAX_PARTY, "party must not grow past the cap")
         end,
@@ -40,10 +48,11 @@ return {
         name = "removeFromParty frees a slot without touching the roster",
         fn = function()
             local p = Player.new()
+            local rosterBefore, partyBefore = #p.roster, #p.party
             local member = p.party[1]
             assert(Player.removeFromParty(p, member), "member should be removed")
-            assert(#p.party == Player.MAX_PARTY - 1, "party should have one fewer member")
-            assert(#p.roster == 4, "roster is unchanged by party removal")
+            assert(#p.party == partyBefore - 1, "party should have one fewer member")
+            assert(#p.roster == rosterBefore, "roster is unchanged by party removal")
             assert(Player.addToParty(p, member), "a freed slot accepts a new member")
         end,
     },
@@ -53,8 +62,8 @@ return {
         -- blueprint rather than baked in -- a rebalance must never turn this red.
         name = "resource stats split into { max, current }",
         fn = function()
-            local def = Character.defs.character_knight.stats
-            local c = Character.instantiate("character_knight")
+            local def = Character.defs.character_rowan.stats
+            local c = Character.instantiate("character_rowan")
             for _, stat in ipairs({ "health", "mana", "stamina" }) do
                 assert(type(c.stats[stat]) == "table", stat .. " should split into a table")
                 assert(c.stats[stat].max == def[stat], stat .. " max should come from the blueprint")
@@ -66,8 +75,8 @@ return {
         -- Likewise: a flat stat stays the plain number the blueprint wrote, whatever that number is.
         name = "flat stats stay plain numbers",
         fn = function()
-            local def = Character.defs.character_knight.stats
-            local c = Character.instantiate("character_knight")
+            local def = Character.defs.character_rowan.stats
+            local c = Character.instantiate("character_rowan")
             for _, stat in ipairs({ "damage", "magicDamage", "defense", "magicDefense" }) do
                 assert(type(c.stats[stat]) == "number", stat .. " should stay a plain number")
                 assert(c.stats[stat] == def[stat], stat .. " should match the blueprint")
@@ -77,7 +86,7 @@ return {
     {
         name = "starting inventory built from def item ids",
         fn = function()
-            local c = Character.instantiate("character_knight")
+            local c = Character.instantiate("character_rowan")
             -- Iron Mace, Chainmail, Healing Potion, Torch, and the bound Sworn Aegis relic (cell 5),
             -- which carries both her guard and her unlock-gated signature answer.
             assert(#c.inventory == 5, "expected 5 starting items, got " .. #c.inventory)
@@ -88,7 +97,7 @@ return {
     {
         name = "inventory hard cap of 9 is enforced",
         fn = function()
-            local c = Character.instantiate("character_knight")
+            local c = Character.instantiate("character_rowan")
             while #c.inventory < Character.MAX_INVENTORY do
                 assert(Character.addItem(c, Item.instantiate("weapon_iron_sword")), "add under cap")
             end
@@ -115,7 +124,7 @@ return {
     {
         name = "addItem fills the first empty grid cell and leaves later gaps intact",
         fn = function()
-            local c = Character.instantiate("character_knight")
+            local c = Character.instantiate("character_rowan")
             c.inventory = {} -- start clean; this test controls the layout (3 dense items in slots 1..3)
             Character.addItem(c, Item.instantiate("weapon_iron_sword"))
             Character.addItem(c, Item.instantiate("armor_chainmail"))
@@ -167,11 +176,11 @@ return {
         fn = function()
             -- Compare the blueprint against itself across the mutation, not against a literal: what
             -- is being asserted is that nothing CHANGED, which is true at any balance number.
-            local before = Character.defs.character_knight.stats.health
-            local c = Character.instantiate("character_knight")
+            local before = Character.defs.character_rowan.stats.health
+            local c = Character.instantiate("character_rowan")
             c.stats.health.current = 1
-            assert(Character.defs.character_knight.stats.health == before, "blueprint health mutated")
-            assert(type(Character.defs.character_knight.stats.health) == "number", "blueprint stat became a table")
+            assert(Character.defs.character_rowan.stats.health == before, "blueprint health mutated")
+            assert(type(Character.defs.character_rowan.stats.health) == "number", "blueprint stat became a table")
         end,
     },
 }

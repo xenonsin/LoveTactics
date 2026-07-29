@@ -41,7 +41,7 @@ end
 -- Resources are set absurdly high because this sweep is not about affordability: an item refused for
 -- "not enough mana" would be untested rather than tested, and the cost rule has its own case below.
 local function bench(itemId)
-    local caster = Fixture.unit("character_knight", 4, 4, {
+    local caster = Fixture.unit("character_rowan", 4, 4, {
         isolate = "bare",
         stats = { health = 500, mana = 500, stamina = 500 },
     })
@@ -268,7 +268,7 @@ return {
                 local def = it.def
                 if def.bonus or def.resist or def.traits or def.maxBonus or def.unarmedBonus then
                     swept = swept + 1
-                    local holder = Fixture.unit("character_knight", 2, 2, { isolate = "bare" })
+                    local holder = Fixture.unit("character_rowan", 2, 2, { isolate = "bare" })
                     holder.char.inventory[1] = Item.instantiate(it.id)
                     local foe = Fixture.unit("character_bandit", 5, 5, { isolate = "bare" })
                     local ran, result = pcall(Fixture.combat, Fixture.new(6, 6), holder, foe)

@@ -158,7 +158,7 @@ return {
     {
         name = "reachableList walks the board top-left to bottom-right, and loses nobody on the way",
         fn = function()
-            local c = Combat.new(arena(8, 8, 1), { unit("character_knight", 4, 4) }, {})
+            local c = Combat.new(arena(8, 8, 1), { unit("character_rowan", 4, 4) }, {})
             local u = c.units[1]
             local map = Combat.reachable(c, u)
             local list = Combat.reachableList(c, u, map)
@@ -184,7 +184,7 @@ return {
         fn = function()
             local answers = {}
             for i = 1, 12 do
-                local c = Combat.new(arena(8, 8, 1), { unit("character_knight", 4, 4) }, {})
+                local c = Combat.new(arena(8, 8, 1), { unit("character_rowan", 4, 4) }, {})
                 local reach = Combat.attackReach(c, c.units[1], 1)
                 local cell = reach["4,6"] -- the reachable/threat sets are keyed "x,y"
                 assert(cell, "a knight should be able to threaten 4,6 after moving")
@@ -205,7 +205,7 @@ return {
         fn = function()
             local plans = {}
             for i = 1, 12 do
-                local knight = Character.instantiate("character_knight")
+                local knight = Character.instantiate("character_rowan")
                 knight.traits = {}
                 knight.inventory[1] = Item.instantiate("weapon_iron_sword")
                 local bandit = Character.instantiate("character_bandit")
@@ -263,7 +263,7 @@ return {
         name = "runMove and moveUnit leave the board in the same place",
         fn = function()
             local function board()
-                local c = Combat.new(arena(8, 8, 3), { unit("character_knight", 4, 8) }, {})
+                local c = Combat.new(arena(8, 8, 3), { unit("character_rowan", 4, 8) }, {})
                 c.turn = { unit = c.units[1], moved = false, moveCost = 0 }
                 return c, c.units[1]
             end
@@ -287,7 +287,7 @@ return {
     {
         name = "the captured route is the tiles walked, in the order the feet took them",
         fn = function()
-            local c = Combat.new(arena(8, 8, 3), { unit("character_knight", 4, 8) }, {})
+            local c = Combat.new(arena(8, 8, 3), { unit("character_rowan", 4, 8) }, {})
             local u = c.units[1]
             c.turn = { unit = u, moved = false, moveCost = 0 }
 
@@ -317,7 +317,7 @@ return {
         -- route has to be able to set each tile's trap off ON that tile.
         name = "the walk drains its cues into the steps, not into the queue behind it",
         fn = function()
-            local c = Combat.new(arena(8, 8, 3), { unit("character_knight", 4, 8) }, {})
+            local c = Combat.new(arena(8, 8, 3), { unit("character_rowan", 4, 8) }, {})
             local u = c.units[1]
             c.turn = { unit = u, moved = false, moveCost = 0 }
             Combat.runMove(c, Combat.planMove(c, u, 4, 6))

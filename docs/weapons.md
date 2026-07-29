@@ -54,7 +54,7 @@ future `weapon/net.lua` would silently collide. The prefix is the id, so the fil
 only thing standing between the two.
 
 **Every registry follows this rule**, not just items: `status_burn`, `trait_dodge`,
-`character_knight`, `material_mythril`, `encounter_elite`, `conversation_wrath_intro`, `hazard_fire`.
+`character_rowan`, `material_mythril`, `encounter_elite`, `conversation_wrath_intro`, `hazard_fire`.
 The registries are separate tables and could not collide with each other, so this is a rule about
 *reading* rather than about correctness: an id says what kind of thing it names, at the call site,
 without the reader having to know which registry a bare `"wrath"` or `"mark"` came from. The game is
@@ -104,7 +104,7 @@ The prefix keeps all three apart: the tag stays bare, and each registry's id wea
 
 The prefix is *only* for registry ids. Namespaces that are not registries keep their bare words —
 a growth `class` (`class = "knight"`, from `data/growth/`), an item `tag`, an encounter `kind`
-(`kind = "elite"`), a refusal `reason`, a vendor's `sin`. `character_knight` and the `knight` growth
+(`kind = "elite"`), a refusal `reason`, a vendor's `sin`. `character_rowan` and the `knight` growth
 class are different things that happen to share a word, and only the first is an id.
 
 ## A named weapon must do something the base one cannot

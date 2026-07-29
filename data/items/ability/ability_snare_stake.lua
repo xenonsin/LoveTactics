@@ -34,7 +34,10 @@ return {
         range = 3,
         speed = 3,
         cost = { stat = "stamina", amount = 7 },
-        support = true, -- placing a thing; it lands nothing on the turn it is set
+        support = false, -- a hostile trap laid for the enemy, so it must preview RED. It lands nothing
+                         -- on the turn it is set, but a placement scores 0 immediate outcome and the
+                         -- AI's outcome gate drops it regardless (models/ai.lua) -- so this only sets
+                         -- the colour, it does not change how the planner weighs it.
         requiresAdjacent = { tag = "bow" },
         effect = function(fx)
             -- The trap's `amount` rides in as the root's DURATION rather than as damage (see the trap's

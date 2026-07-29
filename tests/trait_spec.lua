@@ -74,7 +74,7 @@ return {
                     end,
                 },
             }, function()
-                local knight = charWithTraits("character_knight", { "test_opener" })
+                local knight = charWithTraits("character_rowan", { "test_opener" })
                 local c = Combat.new(arena(6, 6),
                     { unit(knight, 1, 1) }, { unit(plainChar("character_bandit"), 4, 4) })
 
@@ -96,7 +96,7 @@ return {
                     onDamaged = function(ctx) ctx.trait.lastAmount = ctx.amount end,
                 },
             }, function()
-                local knight = charWithTraits("character_knight", { "test_watcher" })
+                local knight = charWithTraits("character_rowan", { "test_watcher" })
                 local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("character_bandit", 4, 4) })
                 local u = c.units[1]
 
@@ -116,7 +116,7 @@ return {
                     onDamaged = function(ctx) ctx.trait.hits = (ctx.trait.hits or 0) + 1 end,
                 },
             }, function()
-                local knight = charWithTraits("character_knight", { "test_counter" })
+                local knight = charWithTraits("character_rowan", { "test_counter" })
                 local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("character_bandit", 4, 4) })
                 local u = c.units[1]
 
@@ -141,7 +141,7 @@ return {
                     end,
                 },
             }, function()
-                local knight = charWithTraits("character_knight", { "test_selfharm" })
+                local knight = charWithTraits("character_rowan", { "test_selfharm" })
                 local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("character_bandit", 4, 4) })
                 local u = c.units[1]
                 local before = u.char.stats.health.current
@@ -166,7 +166,7 @@ return {
                     onDamaged = function(ctx) ctx.damage(ctx.attacker, 5) end,
                 },
             }, function()
-                local knight = charWithTraits("character_knight", { "test_riposter" })
+                local knight = charWithTraits("character_rowan", { "test_riposter" })
                 local c = Combat.new(arena(6, 6), { unit(knight, 1, 1) }, { unit("character_bandit", 2, 1) })
                 local defender, attacker = c.units[1], c.units[2]
 
@@ -184,7 +184,7 @@ return {
     {
         name = "an ordinary action's cues all share beat 0: nothing is deferred without a reaction",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit(plainChar("character_knight"), 1, 1) },
+            local c = Combat.new(arena(6, 6), { unit(plainChar("character_rowan"), 1, 1) },
                 { unit(plainChar("character_bandit"), 2, 1) })
             Combat.dealFlatDamage(c, c.units[2], 5, { "physical" }, nil, c.units[1])
 
@@ -317,7 +317,7 @@ return {
         name = "the damage preview never advances a trait",
         fn = function()
             local ira = Character.instantiate("character_general_wrath")
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 4, 5) }, { unit(ira, 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 5) }, { unit(ira, 4, 4) })
             local knight, boss = c.units[1], c.units[2]
 
             local before = boss.bonus.damage or 0
@@ -471,7 +471,7 @@ return {
         name = "the Hollow Crown wears a general as its health falls past a threshold",
         fn = function()
             local lord = Character.instantiate("character_demon_lord")
-            local c = Combat.new(arena(10, 10), { unit("character_knight", 1, 1) }, { unit(lord, 5, 5) })
+            local c = Combat.new(arena(10, 10), { unit("character_rowan", 1, 1) }, { unit(lord, 5, 5) })
             local boss = c.units[2]
 
             assert(#c.units == 2, "no shades before the first threshold")
@@ -504,10 +504,10 @@ return {
         fn = function()
             -- The one hook keyed to the FIELD rather than to its bearer (Trait.onAnyDeath). What makes
             -- it wrath's and not grief's is that it never asks whose death it was.
-            local fighter = plainChar("character_knight")
+            local fighter = plainChar("character_rowan")
             fighter.inventory[1] = Item.instantiate("utility_butchers_tally")
             local c = Combat.new(arena(10, 10),
-                { unit(fighter, 1, 1), unit(plainChar("character_knight"), 2, 1) },
+                { unit(fighter, 1, 1), unit(plainChar("character_rowan"), 2, 1) },
                 { unit(plainChar("character_bandit"), 8, 8), unit(plainChar("character_bandit"), 8, 7) })
             local bearer, comrade, foe = c.units[1], c.units[2], c.units[3]
             assert(Trait.has(bearer, "trait_blood_fever"), "the charm carries its rule to whoever holds it")
@@ -534,7 +534,7 @@ return {
             local def = Trait.defs.trait_blood_fever
             local perBody, cap = def.magnitude, def.maxStacks
 
-            local fighter = plainChar("character_knight")
+            local fighter = plainChar("character_rowan")
             fighter.inventory[1] = Item.instantiate("utility_butchers_tally")
             -- Two more bodies than the ceiling allows, so the cap is what stops the count and not
             -- the supply of corpses.

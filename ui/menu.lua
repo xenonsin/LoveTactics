@@ -43,6 +43,15 @@ local DEFAULTS = {
 
 local VALUE_PAD = 18 -- inset of a setting row's label and value from its button border
 
+-- A setting row that carries `sliderFraction`/`sliderSet` draws as a SLIDER: a thin track along the
+-- bottom of the row whose fill shows the level, and a click anywhere on it sets that level. This is
+-- what lets a mouse LOWER a volume -- clicking a position -- rather than only nudging it up by
+-- activating the row. Both the draw and the hit-test read the track from here so they cannot drift.
+local SLIDER_H = 4
+local function sliderTrack(item)
+    return item.x + VALUE_PAD, item.y + item.h - 9, item.w - VALUE_PAD * 2, SLIDER_H
+end
+
 function Menu.new(items, opts)
     opts = opts or {}
     local self = setmetatable({}, Menu)
@@ -246,6 +255,17 @@ function Menu:draw()
             love.graphics.rectangle("line", item.x, item.y, item.w, item.h, Theme.R, Theme.R)
             love.graphics.setLineWidth(1)
 
+            -- A slider row draws its level as a filled track along the bottom edge, so the value the
+            -- number states is also shown as a position the mouse can click to.
+            if item.sliderFraction then
+                local tx, ty2, tw, th2 = sliderTrack(item)
+                local frac = math.max(0, math.min(1, item.sliderFraction() or 0))
+                Theme.set(Theme.frame, 0.6)
+                love.graphics.rectangle("fill", tx, ty2, tw, th2, th2 / 2, th2 / 2)
+                Theme.set(Theme.accentAmber)
+                love.graphics.rectangle("fill", tx, ty2, tw * frac, th2, th2 / 2, th2 / 2)
+            end
+
             Theme.set(active and Theme.accentAmber or Theme.ink)
             local th = self.font:getHeight()
             local ty = item.y + item.h / 2 - th / 2
@@ -266,11 +286,17 @@ function Menu:draw()
     love.graphics.setColor(1, 1, 1)
 end
 
--- Mouse hover updates the selection so all three input methods stay in sync.
+-- Mouse hover updates the selection so all three input methods stay in sync, and sounds the SAME
+-- cursor-move cue keyboard/pad navigation does when it lands on a NEW row -- so hovering a button is
+-- audible without the two input paths drifting on which movements make a sound. Silent while the
+-- pointer sits still on a row (the selection only changes on a crossing) and off the list entirely.
 function Menu:mousemoved(x, y)
     for i, item in ipairs(self.items) do
         if isInside(item, x, y) then
-            self.selected = i
+            if self.selected ~= i then
+                self.selected = i
+                Sound.play("ui.move")
+            end
             return
         end
     end
@@ -281,7 +307,14 @@ function Menu:mousepressed(x, y, button)
     for i, item in ipairs(self.items) do
         if isInside(item, x, y) then
             self.selected = i
-            self:activate()
+            -- A slider row is SET by the click position (so the mouse can go down as well as up); a
+            -- plain row or toggle is activated as before.
+            if item.sliderSet then
+                local tx, _, tw = sliderTrack(item)
+                item.sliderSet((x - tx) / tw)
+            else
+                self:activate()
+            end
             return
         end
     end

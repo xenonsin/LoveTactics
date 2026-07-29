@@ -18,11 +18,11 @@
 -- blow lands into a board they have already been looking at.
 return {
     title = "The Lane",
-    cast  = { "character_knight" },
+    cast  = { "character_rowan" },
 
     script = {
-        { "character_knight", "Look at it, {name}. The mill, the eastern row, the well we drew from this morning -- all of it, inside a night.", tag = 1 },
-        { "character_knight", "This is not a raid. The Demon Lord's army empties whole valleys like this and moves on before the ash is cold.", tag = 2 },
-        { "character_knight", "Two of them have seen us, and they will not come to you. Watch how I take mine.", tag = 3 },
+        { "character_rowan", "Look at it, {name}. The mill, the eastern row, the well we drew from this morning -- all of it, inside a night.", tag = 1 },
+        { "character_rowan", "This is not a raid. The Demon Lord's army empties whole valleys like this and moves on before the ash is cold.", tag = 2 },
+        { "character_rowan", "Two of them have seen us, and they will not come to you. Watch how I take mine.", tag = 3 },
     },
 }

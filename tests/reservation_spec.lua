@@ -70,7 +70,7 @@ return {
     {
         name = "restoreResource and applyHeal stop at the reserved ceiling, not at max",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             local hp = knight.char.stats.health
             local ceiling = hp.max - 30
@@ -93,7 +93,7 @@ return {
     {
         name = "regen still fills to the ceiling once a reservation is active",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             local st = knight.char.stats.stamina
             Combat.reserve(knight.char, "stamina", 10, holder())
@@ -170,7 +170,7 @@ return {
     {
         name = "a previewed heal respects the reserved ceiling, exactly like the real one",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1), unit("character_knight", 2, 1) },
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1), unit("character_rowan", 2, 1) },
                 { unit("character_bandit", 8, 8) })
             local priest, knight = c.units[1], c.units[2]
             Character.addItem(priest.char, Item.instantiate("ability_heal"))

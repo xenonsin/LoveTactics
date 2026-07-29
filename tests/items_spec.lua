@@ -208,6 +208,23 @@ return {
         end,
     },
     {
+        -- Regression: the inventory-hover tooltip replays the ability effect every frame. The Unspent
+        -- Blow banks its swings on the UNIT (fx.user.unspentBlows), so a dry run that wrote through to
+        -- the real unit would advance the bank each frame AND flip the branch it takes (hold vs. spend),
+        -- flickering the tooltip and corrupting the count just from hovering.
+        name = "hovering the Unspent Blow never advances its banked swings",
+        fn = function()
+            local c = Combat.new(arena(6, 6),
+                { mkunit(2, 2, { items = { "weapon_unspent_blow" } }) },
+                { mkunit(2, 3, { stats = { defense = 0, health = 100 } }) })
+            local hero = c.units[1]
+            local blow = hero.char.inventory[1]
+            for _ = 1, 5 do Combat.abilityOutput(hero, blow) end
+            assert((hero.unspentBlows or 0) == 0,
+                "a dry-run of the Unspent Blow must not bank a swing on the caster")
+        end,
+    },
+    {
         name = "Fury cannot die, banks the damage it deals, and heals half of it when it ends",
         fn = function()
             local c = Combat.new(arena(6, 6),

@@ -27,7 +27,7 @@ return {
     {
         name = "instantiate seats the bound signature relic in the center, carrying the innate trait",
         fn = function()
-            local knight = Character.instantiate("character_knight")
+            local knight = Character.instantiate("character_rowan")
             local relic = knight.inventory[5]
             assert(relic and relic.id == "armor_sworn_aegis", "the Sworn Aegis sits in the center cell (5)")
             assert(Item.isBound(relic), "the relic is bound")
@@ -47,7 +47,7 @@ return {
         name = "the innate trait attaches (and fires) through the relic, not a character property",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { { char = Character.instantiate("character_knight"), x = 1, y = 1 } },
+                { { char = Character.instantiate("character_rowan"), x = 1, y = 1 } },
                 { { char = Character.instantiate("character_bandit"), x = 4, y = 4 } })
             local u = c.units[1]
             assert(Trait.has(u, "trait_oathward"), "the unit has Oathward, delivered by the grid relic")

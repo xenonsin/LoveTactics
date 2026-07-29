@@ -7,13 +7,13 @@
 -- debut (data/quests/arena_debut.lua), the only quest on the board at prestige 1. "So you do."
 return {
     title = "The Board",
-    cast  = { "character_knight", "character_avatar" },
+    cast  = { "character_rowan", "character_avatar" },
 
     script = {
         { "character_avatar", "Bounties, escorts, standing contracts... half of these want a company three times our size.", tag = 1 },
-        { "character_knight", "This one doesn't.", tag = 2 },
-        { "character_knight", "The Colosseum. A debut bout, a single fight on the sand, in front of a crowd.", tag = 3 },
+        { "character_rowan", "This one doesn't.", tag = 2 },
+        { "character_rowan", "The Colosseum. A debut bout, a single fight on the sand, in front of a crowd.", tag = 3 },
         { "character_avatar", "A blood sport. Is this what we're reduced to?", tag = 4 },
-        { "character_knight", "Pride has buried more soldiers than the demons have, {name}. I'll not let it bury us. We earn today, we eat tonight, and we choose our war when we can.", tag = 5 },
+        { "character_rowan", "Pride has buried more soldiers than the demons have, {name}. I'll not let it bury us. We earn today, we eat tonight, and we choose our war when we can.", tag = 5 },
     },
 }

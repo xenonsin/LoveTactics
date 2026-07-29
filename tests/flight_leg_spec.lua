@@ -30,7 +30,7 @@ return {
         fn = function()
             local a = Arena.build({ prestige = 1 }, {
                 biome = "__test_void", seed = 77,
-                party = { "character_knight", "character_mage" },
+                party = { "character_rowan", "character_mage" },
                 allies = { "character_survivor" },
                 composition = function() return { "character_demon_imp", "character_demon_imp" } end,
                 objective = { type = "defend", anchor = "center", turns = 5, protect = "character_survivor" },
@@ -52,7 +52,7 @@ return {
             local defend = Encounter.get("encounter_survivors_defend")
             local a = Arena.build({ prestige = 1 }, {
                 biome = "__test_void", seed = 123,
-                party = { "character_avatar", "character_knight" }, -- the flight party (avatar + Rowan)
+                party = { "character_avatar", "character_rowan" }, -- the flight party (avatar + Rowan)
                 allies = defend.allies,
                 composition = defend.composition,
                 objective = defend.objective,
@@ -81,7 +81,7 @@ return {
         fn = function()
             local a = Arena.build({ prestige = 1 }, {
                 biome = "__test_void", seed = 77,
-                party = { "character_knight", "character_mage" },
+                party = { "character_rowan", "character_mage" },
                 allies = { "character_caravan_driver" },
                 composition = function() return { "character_demon_imp" } end,
                 objective = { type = "reach", region = "far", protect = "character_caravan_driver" },
@@ -103,7 +103,7 @@ return {
                 waves = { { at = 10, composition = function() return { "character_demon_imp" } end } },
             }
             local c = Combat.new(flatArena(8, 8, obj),
-                { unit("character_knight", 1, 1), unit("character_survivor", 2, 2) },
+                { unit("character_rowan", 1, 1), unit("character_survivor", 2, 2) },
                 { unit("character_bandit", 6, 6) })
             assert(Combat.evaluate(c) == nil, "ongoing while a demon still stands")
 
@@ -117,7 +117,7 @@ return {
             assert(Combat.evaluate(c) == "win", "every wave arrived and every demon down wins the defend")
 
             local dead = Combat.new(flatArena(8, 8, obj),
-                { unit("character_knight", 1, 1), unit("character_survivor", 2, 2) },
+                { unit("character_rowan", 1, 1), unit("character_survivor", 2, 2) },
                 { unit("character_bandit", 6, 6) })
             dead.units[2].alive = false -- the survivor falls
             assert(Combat.evaluate(dead) == "loss", "the protectee dying fails the defend, waves or no waves")

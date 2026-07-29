@@ -46,7 +46,7 @@ return {
     {
         name = "tallies start at zero and bank the right event on dealing / taking a blow",
         fn = function()
-            local c = Combat.new(arena(10, 10), { unit("character_knight", 1, 1) }, { dummy(9, 9) })
+            local c = Combat.new(arena(10, 10), { unit("character_rowan", 1, 1) }, { dummy(9, 9) })
             local knight, bag = c.units[1], c.units[2]
             assert(Combat.tallyCount(knight, "hitDealt") == 0, "a fresh unit has no tally")
             assert(Combat.tallyCount(bag, "hitTaken") == 0, "and neither does its target")
@@ -65,7 +65,7 @@ return {
     {
         name = "beginning a turn banks a turnTaken; the killing blow banks a kill (never a hitTaken)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 2, 1) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 2, 1) })
             local acting = Combat.startTurn(c)
             assert(acting and Combat.tallyCount(acting, "turnTaken") == 1, "the actor banks a turnTaken")
 
@@ -80,7 +80,7 @@ return {
     {
         name = "an unlock gate greys a signature until its requirement is met, with progress",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
             local knight = c.units[1]
             local ans = Item.instantiate("armor_sworn_aegis") -- its signature active: weather 4 blows
             local blocked = Combat.itemBlockReason(knight, ans)
@@ -99,7 +99,7 @@ return {
     {
         name = "a repeatable unlock re-locks after firing; a `once` unlock stays open",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
             local knight = c.units[1]
             local ans = Item.instantiate("armor_sworn_aegis")
             for _ = 1, 4 do Combat.tally(knight, "hitTaken", 1) end
@@ -121,7 +121,7 @@ return {
     {
         name = "a `when` predicate gates a signature on board state (HP threshold), not a tally",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
             local knight = c.units[1]
             local item = { activeAbility = { unlock = {
                 when = function(u) return u.char.stats.health.current / u.char.stats.health.max < 0.5 end,
@@ -134,7 +134,7 @@ return {
     {
         name = "a gated signature never blocks the unit's basic loadout (turn-1 playability)",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 4, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 4, 2) })
             local knight = c.units[1]
             local mace = knight.char.inventory[1]
             local aegis = findItem(knight.char, "armor_sworn_aegis")

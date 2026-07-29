@@ -7,6 +7,11 @@
 -- Ground and Snapshot were all denied, and all three were versions of "a way to move or shoot for free".
 -- This is the version where the freedom is the WEAPON, so it costs a grid cell and a family slot.
 --
+-- The freedom is the MOVE, not a second attack. `soleAction = true`: the shot is still the turn's action,
+-- so nothing may be used after it -- only the move it left open. Without this the free shot stacked ON TOP
+-- of a full normal turn (fire, then swing a second weapon too), which is two attacks a turn, not the
+-- hit-and-run the header promises. "Fire, then ride" means exactly that -- fire, then only ride.
+--
 -- The family contract holds: the bow archetype's business is distance and line of sight
 -- (docs/weapons.md), and this keeps both. What it trades for the free shot is weight -- the damage curve
 -- sits below the plain iron bow's, because a shot you did not spend your turn on should not also be your
@@ -34,6 +39,7 @@ return {
         requiresSight = true,
         speed = 3,
         free = true, -- S2: bills no initiative and leaves the turn open (docs/classes.md)
+        soleAction = true, -- ...but still the turn's action: only the move stays open, never a second attack
         cost = { stat = "stamina", amount = 6 },
         damage = { 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10 }, -- under the iron bow: the freedom is the price
         effect = function(fx)

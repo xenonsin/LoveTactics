@@ -417,6 +417,13 @@ on a free ability bound how often you can afford it but not how often you can *p
 free action would loop forever. `Combat.itemBlockReason` greys the second one, so the limit is visible
 in the grid rather than discovered by a dead click.
 
+**A `soleAction` free ability is still the turn's action.** A plain free action (the Battle Tonic) is an
+*extra* — it leaves your normal action untouched, drunk between doing things. An attack cannot be that
+without handing out two attacks a turn (fire the free shot, then swing a real weapon too). So the
+Harrier's Bow adds `soleAction = true`: it fires for free — no initiative, no move spent — but it
+*latches* `unit.actionSpent`, and `Combat.itemBlockReason` then refuses every other item. Only the move
+it left open remains. "Fire, then ride" means exactly that: fire, then *only* ride.
+
 ### The subclasses
 
 Each is built from keywords its parent **already owns**. A subclass is a sharper reading of the shelf,

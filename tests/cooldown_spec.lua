@@ -37,7 +37,7 @@ return {
     {
         name = "a cooldown counts down through rebase ticks and clears at 0",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 1, 1) }, {})
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 1, 1) }, {})
             local u = c.units[1]
             Combat.setCooldown(u, "test", 8)
             assert(Combat.onCooldown(u, "test"), "on cooldown after being set")
@@ -54,7 +54,7 @@ return {
         name = "melee_counter answers every adjacent blow it can pay for -- no timer gates it",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { unitWithTraits("character_knight", 1, 1, { "trait_melee_counter" }) },
+                { unitWithTraits("character_rowan", 1, 1, { "trait_melee_counter" }) },
                 { unit("character_bandit", 1, 2) })
             local knight, bandit = c.units[1], c.units[2]
             local weapon = Combat.defaultWeapon(bandit.char)
@@ -83,7 +83,7 @@ return {
         name = "each answer in a round costs double the last, and acting again clears the tally",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { unitWithTraits("character_knight", 1, 1, { "trait_melee_counter" }) },
+                { unitWithTraits("character_rowan", 1, 1, { "trait_melee_counter" }) },
                 { unit("character_bandit", 1, 2) })
             local knight, bandit = c.units[1], c.units[2]
             local weapon = Combat.defaultWeapon(bandit.char)
@@ -133,7 +133,7 @@ return {
         name = "an exhausted defender simply eats the blow -- and is never billed for declining",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { unitWithTraits("character_knight", 1, 1, { "trait_melee_counter" }) },
+                { unitWithTraits("character_rowan", 1, 1, { "trait_melee_counter" }) },
                 { unit("character_bandit", 1, 2) })
             local knight, bandit = c.units[1], c.units[2]
             local weapon = Combat.defaultWeapon(bandit.char)
@@ -149,7 +149,7 @@ return {
         name = "melee_counter ignores a ranged hit (the attacker stood too far to answer in kind)",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { unitWithTraits("character_knight", 1, 1, { "trait_melee_counter" }) },
+                { unitWithTraits("character_rowan", 1, 1, { "trait_melee_counter" }) },
                 { unit("character_archer", 1, 3) }) -- two tiles away: a ranged strike
             local knight, archer = c.units[1], c.units[2]
             local bow = Combat.defaultWeapon(archer.char)
@@ -193,7 +193,7 @@ return {
             -- sharing the grid cannot lend the blade its range ("how can the bow parry?"). So an adjacent
             -- blow is cut back at and a distant one is not -- answering from three tiles off is a bowman's
             -- job, and needs a reflex built for it (the Reprisal Quiver below), not the blade.
-            local char = Character.instantiate("character_knight")
+            local char = Character.instantiate("character_rowan")
             char.inventory[1] = Item.instantiate("weapon_iron_sword") -- range 1, grants Parry
             char.inventory[2] = Item.instantiate("weapon_iron_bow")   -- range 3, dead zone 2
             local c = Combat.new(arena(8, 8), { { char = char, x = 1, y = 1 } },
@@ -231,7 +231,7 @@ return {
         name = "itemCooldown traces a recharging reflex back to the grid slot that granted it",
         fn = function()
             local ward = Item.instantiate("utility_cleansing_ward")
-            local char = Character.instantiate("character_knight")
+            local char = Character.instantiate("character_rowan")
             char.inventory[1] = ward
             local c = Combat.new(arena(6, 6), { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 1, 2) })
             local knight = c.units[1]
@@ -263,7 +263,7 @@ return {
         name = "a sword slot never reads as recharging, however hard its parry has been working",
         fn = function()
             local sword = Item.instantiate("weapon_iron_sword")
-            local char = Character.instantiate("character_knight")
+            local char = Character.instantiate("character_rowan")
             char.inventory[1] = sword
             local c = Combat.new(arena(6, 6), { { char = char, x = 1, y = 1 } }, { unit("character_bandit", 1, 2) })
             local knight, bandit = c.units[1], c.units[2]

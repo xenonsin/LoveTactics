@@ -48,6 +48,7 @@ local CloseButton = require("ui.close_button")
 local Debug = require("models.debug")
 local ScreenFx = require("ui.screen_fx")
 local Settings = require("models.settings")
+local SettingsMenu = require("ui.settings_menu")
 local Cursor = require("ui.cursor")
 
 local battle = {}
@@ -55,6 +56,12 @@ local battle = {}
 local titleFont = Theme.display(22)
 local hudFont = Theme.display(16)
 local hintFont = Theme.body(13) -- control hint: dense, so it keeps the plain body face and fits one line
+
+-- The in-battle settings overlay (see openSettings): reachable from the hamburger drawer without a
+-- state switch, since switching away and back would re-enter battle.enter and rebuild the fight.
+local overlayTitleFont = Theme.display(30)
+local overlayRowFont = Theme.display(18)
+local overlayBodyFont = Theme.body(14)
 
 local PANEL_W = CombatPanel.WIDTH
 -- A left column, mirroring the right combat panel, that houses the buttons and the docked
@@ -104,6 +111,9 @@ local rangesButton = { x = 16, y = 148, w = 130, h = 36 }
 -- single unit. Any input still takes the current turn straight back (reclaimAutoTurn); the flag then
 -- re-arms the next unit, so "auto" holds across the side until the button is pressed off.
 local autoButton = { x = 16, y = 192, w = 130, h = 36 }
+-- Opens the settings overlay (volumes, tooltips, effects) over the paused fight -- so a player can
+-- turn the music down mid-battle without abandoning the encounter.
+local settingsButton = { x = 16, y = 236, w = 130, h = 36 }
 -- Playback-speed cycler, drawn only while whole-side auto is ON (it is meaningless otherwise -- the
 -- player sets the pace of their own turns by taking them). Sits flush to the right of the Auto
 -- button as a paired control. Clicking it -- or F / gamepad right-stick -- steps battle.autoSpeed
@@ -115,15 +125,15 @@ local SPEED_STEPS = { 1, 2, 3 }
 -- or loss follow-up (spoils screen, overworld onWin/onLoss) without playing the encounter out. Gated
 -- on Debug.enabled -- they never render or take a click in a release build. Sat side by side under
 -- the rest of the menu.
-local winButton = { x = 16, y = 236, w = 62, h = 36 }
-local loseButton = { x = 84, y = 236, w = 62, h = 36 }
+local winButton = { x = 16, y = 280, w = 62, h = 36 }
+local loseButton = { x = 84, y = 280, w = 62, h = 36 }
 
 -- The y the docked tooltip stack may rise to: just under the hamburger while the menu is closed, or
 -- under its last visible entry while it is open, so the menu and the tooltips never draw over each
 -- other. Read as drawTileTooltip's `dockTop`.
 local function menuBottom()
     if not battle.menuOpen then return MENU_BUTTON.y + MENU_BUTTON.h + 8 end
-    local last = Debug.enabled and winButton or autoButton
+    local last = Debug.enabled and winButton or settingsButton
     return last.y + last.h + 8
 end
 
@@ -147,9 +157,62 @@ end
 local function overMenuEntry(x, y)
     if not battle.menuOpen then return false end
     return pointIn(forfeitButton, x, y) or pointIn(logButton, x, y) or pointIn(rangesButton, x, y)
-        or pointIn(autoButton, x, y)
+        or pointIn(autoButton, x, y) or pointIn(settingsButton, x, y)
         or (battle.autoAll and pointIn(speedButton, x, y))
         or (Debug.enabled and (pointIn(winButton, x, y) or pointIn(loseButton, x, y)))
+end
+
+-- An id for whichever HUD button the point is over, or nil -- so battle.mousemoved can sound a hover
+-- cue on the CROSSING from one button to the next (not every frame the pointer rests on one). The
+-- hamburger cues whether the drawer is open or shut; the entries only while it is open (closed, their
+-- rects belong to the tooltip column). Mirrors overMenuEntry, but names the button rather than just
+-- answering yes/no.
+local function hoveredMenuButton(x, y)
+    if pointIn(MENU_BUTTON, x, y) then return "menu" end
+    if not battle.menuOpen then return nil end
+    if pointIn(forfeitButton, x, y) then return "forfeit" end
+    if pointIn(logButton, x, y) then return "log" end
+    if pointIn(rangesButton, x, y) then return "threats" end
+    if pointIn(autoButton, x, y) then return "auto" end
+    if pointIn(settingsButton, x, y) then return "settings" end
+    if battle.autoAll and pointIn(speedButton, x, y) then return "speed" end
+    if Debug.enabled and pointIn(winButton, x, y) then return "win" end
+    if Debug.enabled and pointIn(loseButton, x, y) then return "lose" end
+    return nil
+end
+
+-- Tear the settings overlay down (its Back row, the X, Esc/B, or a click on the dim backdrop). Leaving
+-- the fight exactly as it was frozen -- update() is gated on this being nil, so nothing moved.
+local function closeSettings()
+    battle.settingsMenu = nil
+    battle.settingsClose = nil
+    battle.settings = nil
+end
+
+-- Raise the settings list as a modal over the paused fight. A centred panel sized to the option list,
+-- with the shared SettingsMenu widget inside it, an X and a click-off to close. NOT a state switch:
+-- battle.enter rebuilds the whole encounter, so leaving for the settings screen and coming back would
+-- restart the battle. This keeps the board frozen behind the panel and returns to it untouched.
+local function openSettings()
+    battle.menuOpen = false
+    local rows = #Settings.defs + 1 -- every option, plus the Back row
+    local rowH, rowSp, listW = 40, 8, 620
+    local listH = rows * rowH + (rows - 1) * rowSp
+    local padTop, padBottom = 64, 78 -- title above the list; description + hint below it
+    local panelW = listW + 60
+    local panelH = padTop + listH + padBottom
+    local panelX = (Scale.WIDTH - panelW) / 2
+    local panelY = (Scale.HEIGHT - panelH) / 2
+    battle.settings = { x = panelX, y = panelY, w = panelW, h = panelH }
+    battle.settingsMenu = SettingsMenu.build(closeSettings, {
+        buttonWidth = listW,
+        buttonHeight = rowH,
+        spacing = rowSp,
+        startY = panelY + padTop,
+        centerX = Scale.WIDTH / 2,
+        font = overlayRowFont,
+    })
+    battle.settingsClose = CloseButton.new(panelX + panelW, panelY)
 end
 
 -- Whether an item carries a given tag (Combat's own hasTag is private). Used by the context cursor
@@ -872,13 +935,89 @@ end
 -- reach, so the assist can never light a target the confirm path would then refuse.
 -- ---------------------------------------------------------------------------
 
+-- The 4 cardinal steps, as (dx, dy) pairs -- the lanes a throw (or any straight shove) travels. Only
+-- four, not eight: Combat.knockback/hurlObject resolve direction through signDominant, which collapses
+-- any aim onto its dominant axis (a 4-directional grid), so a diagonal landing could never be honoured.
+local THROW_DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
+
+-- The grabbable standing on (x, y) for the current actor, as (thing, kind): a body ("unit"), or a prop
+-- / a detected trap. nil when the tile holds nothing a throw could pick up. Mirrors the order Heave's
+-- own effect reads the tile in (a body first, then furniture).
+local function throwGrabbableAt(x, y)
+    local body = Combat.unitAt(battle.combat, x, y)
+    if body and body.alive then return body, "unit" end
+    local obj, kind = Combat.throwableAt(battle.combat, x, y, battle.current and battle.current.side)
+    if obj then return obj, kind end
+    return nil
+end
+
+-- Where a thing grabbed at (fromX, fromY) could be thrown: out along each of the 4 cardinal lines, up
+-- to `range` tiles, each ray adding every open tile it crosses AND the first blocked tile (a wall, a
+-- unit, a prop -- where the throw would slam), then stopping. Rays emanate from the GRABBED tile, not
+-- the thrower, matching Combat.knockback/hurlObject's lane. Returns a list of {x,y} and a lookup set
+-- keyed "x,y".
+local function throwLandingCells(fromX, fromY, range)
+    local combat = battle.combat
+    local cells, set = {}, {}
+    for _, d in ipairs(THROW_DIRS) do
+        local x, y = fromX, fromY
+        for _ = 1, range do
+            x, y = x + d[1], y + d[2]
+            local row = combat.arena and combat.arena.tiles and combat.arena.tiles[y]
+            local cell = row and row[x]
+            local blocked = not (cell and cell.walkable)
+                or Combat.objectBlocksAt(combat, x, y)
+                or Combat.unitAt(combat, x, y) ~= nil
+            local key = x .. "," .. y
+            if not set[key] then
+                set[key] = true
+                cells[#cells + 1] = { x = x, y = y }
+            end
+            if blocked then break end -- the ray slams here; nothing behind it can be reached
+        end
+    end
+    return cells, set
+end
+
 -- The valid confirm targets for the current aiming context, nearest-first from the actor: the living
 -- bodies an armed unit-target strike/support (or, in move mode, the default action) could legally land
 -- on, each carrying its aim cell. Enemy abilities list foes, support abilities list allies; a tile- or
 -- self-target ability has no unit to cycle and returns empty, as does an enemy turn or a spent context.
+-- A two-stage throw substitutes its own rings (its landings, or its grabbable neighbours).
 local function targetCells()
     local current = battle.current
     if not current or not Combat.isPlayerControlled(current) or battle.over then return {} end
+    -- A two-stage throw cycles its own rings: the ray of legal landings in the destination phase, and
+    -- the adjacent grabbables in the grab phase (neither is a unit-target ring the block below builds).
+    if battle.throwStage == "dest" and battle.throwCells then
+        local from = battle.throwFrom
+        local list = {}
+        for _, c in ipairs(battle.throwCells) do
+            list[#list + 1] = { x = c.x, y = c.y,
+                d = math.abs(c.x - from.x) + math.abs(c.y - from.y) }
+        end
+        table.sort(list, function(a, b)
+            if a.d ~= b.d then return a.d < b.d end
+            if a.y ~= b.y then return a.y < b.y end
+            return a.x < b.x
+        end)
+        return list
+    end
+    if battle.throwStage == "grab" then
+        local list = {}
+        for _, entry in pairs(battle.rangeReach or {}) do
+            if throwGrabbableAt(entry.x, entry.y) then
+                list[#list + 1] = { x = entry.x, y = entry.y,
+                    d = math.abs(entry.x - current.x) + math.abs(entry.y - current.y) }
+            end
+        end
+        table.sort(list, function(a, b)
+            if a.d ~= b.d then return a.d < b.d end
+            if a.y ~= b.y then return a.y < b.y end
+            return a.x < b.x
+        end)
+        return list
+    end
     local reach, support, ab
     if battle.mode == "armed" and battle.armedItem then
         ab = battle.armedItem.activeAbility
@@ -956,6 +1095,8 @@ local function beginTurn()
     battle.mode = "move"
     battle.armedItem = nil
     battle.windup = 0 -- a chargeable wind-up never carries its depth across turns
+    battle.throwStage, battle.throwFrom = nil, nil -- a two-stage throw never carries across turns either
+    battle.throwCells, battle.throwSet = nil, nil
     battle.hoverItem = nil
     battle.keySlot = nil -- the keyboard-selected slot (its item's tooltip); a new actor's grid is a new set of slots
     battle.notice = nil -- a refusal belonged to the turn it was refused on
@@ -967,7 +1108,9 @@ local function beginTurn()
     battle.attackReach = {}
     battle.movePath = nil
     if not current then return end
-    Sound.play("battle.turn") -- a soft tick as the active unit changes, both sides; silent until the file exists
+    -- A soft tick as the active unit changes -- but a more present cue when control returns to the
+    -- PLAYER, so they hear their turn begin rather than only see it.
+    Sound.play(Combat.isPlayerControlled(current) and "battle.playerturn" or "battle.turn")
     computeDanger() -- every turn, so the "Threats" survey toggle stays fresh on enemy turns too
     -- A unit surfacing mid-channel doesn't take an interactive turn -- its slot IS the spell resolving.
     -- Hold a beat on the telegraphed tiles (like the AI's think-pause) so the blast reads, then
@@ -1348,6 +1491,7 @@ local function walkStep(w)
     local step = w.steps[w.i]
     if not step then return false end
     w.timer = MOVE_STEP
+    Sound.play("battle.step") -- one footstep per tile of the route, either side's walk
     battle.fx:setSlide(w.unit, step.fromX, step.fromY, MOVE_STEP, nil, step.x, step.y)
     -- A trap that sprang, a hazard that bit, an overwatch shot -- float its number on arrival. No
     -- actor leans in: this is damage taken while walking, not a strike the unit made. This step's cues
@@ -1588,10 +1732,33 @@ local function lessonAddressesPlayer()
     return Combat.isPlayerControlled(current) and current.char.id == step.actor
 end
 
-local function cancelArm()
+-- Sheathe the armed item back to move mode. A player-initiated cancel (Esc, gamepad B, re-clicking
+-- the armed slot, cycling past the last ability) sounds the back cue; `quiet` suppresses it for the
+-- INTERNAL disarms -- switching to Blink, or the tutorial's per-frame auto-disarm -- which are not a
+-- cancel the player asked for and would otherwise blip every frame.
+local function cancelArm(quiet)
+    if not quiet and battle.mode == "armed" then Sound.play("ui.cancel") end
     battle.mode = "move"
     battle.armedItem = nil
     battle.windup = 0
+    battle.throwStage, battle.throwFrom = nil, nil
+    battle.throwCells, battle.throwSet = nil, nil
+end
+
+-- Back out one step of a two-stage throw: from the landing phase, drop the grabbed tile and return to
+-- the grab phase (rebuilding its adjacent reach); from the grab phase, disarm outright. Returns true
+-- when it consumed the cancel, so Esc / right-click / gamepad B can fall through to a full disarm only
+-- when there is no throw phase to step back from.
+local function throwStepBack()
+    if battle.throwStage == "dest" then
+        battle.throwStage, battle.throwFrom = "grab", nil
+        battle.throwCells, battle.throwSet = nil, nil
+        if battle.armedItem then computeRange(battle.current, battle.armedItem) end
+        snapToNearestTarget()
+        Sound.play("ui.cancel")
+        return true
+    end
+    return false
 end
 
 -- Adjust the wind-up the player is holding an armed CHARGEABLE channel at (Saber's signature),
@@ -1620,7 +1787,7 @@ end
 -- unit cannot afford even one jump, computeReachable simply keeps showing the walk (a silent
 -- fallback), so arming it is never a trap.
 local function toggleBlink(unit)
-    if battle.mode == "armed" then cancelArm() end
+    if battle.mode == "armed" then cancelArm(true) end
     unit.blinkArmed = not unit.blinkArmed
     computeReachable(unit)
     computeThreat(unit)
@@ -1663,6 +1830,10 @@ local function armItem(item)
     -- Friendly abilities (heal / buff) highlight green; offensive strikes and trap placements red.
     battle.armedSupport = Combat.isSupportAbility(item.activeAbility)
     battle.armedTile = item.activeAbility.target == "tile" -- tile-target (e.g. summon a trap)
+    -- A two-stage throw (Heave) opens in its GRAB phase: the first aim picks the adjacent target, a
+    -- second phase then picks where it lands (enterThrowDest). nil for every single-aim ability.
+    battle.throwStage = Item.isThrow(item.activeAbility) and "grab" or nil
+    battle.throwFrom, battle.throwCells, battle.throwSet = nil, nil, nil
     -- Observed BEFORE the range is built: arming may complete a tutorial step, and computeRange
     -- narrows against whatever step is current -- so the strike band that this arming just unlocked
     -- has to be computed under the NEW step, not the arm step that is now finished.
@@ -1670,6 +1841,9 @@ local function armItem(item)
     computeRange(current, item)
     -- Keyboard/pad: arming an item aims it at the nearest valid target at once (mouse aims itself).
     snapToNearestTarget()
+    -- A pick sound for SELECTING an action. Only reached on a player-initiated arm (armDefaultAction
+    -- inlines its own arm and never calls here), so the turn's auto-arm stays silent.
+    Sound.play("battle.select")
 end
 
 local function armSlot(n)
@@ -1935,6 +2109,18 @@ local function armedActionAt(cx, cy)
     return { kind = "act", entry = entry }
 end
 
+-- Advance a two-stage throw to its LANDING phase: remember the grabbed tile, light the ray of tiles it
+-- can be sent to, and (for a cursor player) snap the aim onto the nearest one. No cast yet -- the next
+-- confirm, on a lit landing, resolves the throw. snapToNearestTarget/targetCells key off throwStage.
+local function enterThrowDest(gx, gy)
+    local ab = battle.armedItem and battle.armedItem.activeAbility
+    battle.throwStage = "dest"
+    battle.throwFrom = { x = gx, y = gy }
+    battle.throwCells, battle.throwSet = throwLandingCells(gx, gy, (ab and ab.throwRange) or 3)
+    snapToNearestTarget()
+    Sound.play("battle.select")
+end
+
 -- What confirming on cell (cx, cy) would DO right now, as a descriptor the action-preview tooltip
 -- (ui/action_preview.lua) renders beside the character/tile tooltip. Mirrors confirm()'s branching
 -- so the preview always names the very action a click would take:
@@ -1957,6 +2143,37 @@ local function actionPreviewFor(cx, cy)
     if battle.mode == "armed" and battle.armedItem then
         local item = battle.armedItem
         if not item.activeAbility then return nil end
+        -- Two-stage throw: the landing phase previews the throw itself (aimed at the grabbed tile, sent
+        -- to the lit landing under the cursor, so the panel shows any slam damage); the grab phase names
+        -- the pick-up on an adjacent grabbable, or a reposition on an empty reachable tile.
+        if battle.throwStage == "dest" then
+            if not (battle.throwSet and battle.throwSet[cx .. "," .. cy]) then return nil end
+            local from = battle.throwFrom
+            local preview = Combat.previewAbility(battle.combat, current, item, from.x, from.y, { x = cx, y = cy })
+            return {
+                kind = "ability", item = item, actor = current,
+                target = Combat.unitAt(battle.combat, cx, cy), support = false,
+                spend = Combat.abilitySpend(current, item.activeAbility),
+                entries = preview and preview.entries or nil,
+                order = preview and preview.order or nil,
+            }
+        end
+        if battle.throwStage == "grab" then
+            if throwGrabbableAt(cx, cy) and battle.rangeReach and battle.rangeReach[cx .. "," .. cy] then
+                return { kind = "place", item = item, actor = current,
+                         target = Combat.unitAt(battle.combat, cx, cy), support = false,
+                         spend = Combat.abilitySpend(current, item.activeAbility) }
+            end
+            if battle.reachable and battle.reachable[cx .. "," .. cy] then
+                local mp = movePathTo(cx, cy)
+                local node = battle.reachable[cx .. "," .. cy]
+                local cost = mp and mp.cost or node.cost
+                local steps = mp and (#mp.cells - 1) or node.steps
+                return { kind = "move", actor = current, steps = steps,
+                         moveCost = Combat.moveInitiative(current, cost) }
+            end
+            return nil
+        end
         local plan = armedActionAt(cx, cy)
         if not plan then return nil end
         -- Aiming empty air with a single-target ability is a reposition (walk onto the tile). A
@@ -2052,6 +2269,64 @@ local function actionPreviewFor(cx, cy)
     return nil
 end
 
+-- Resolve a confirm during a two-stage throw (Heave). In the GRAB phase it picks up the adjacent
+-- target -- walking into reach first when needed, or repositioning on an empty tile -- and hands off to
+-- the landing phase (enterThrowDest); in the DESTINATION phase it flings the grabbed thing at the aimed
+-- landing. Split out of confirm() so a grab can never fall through to a one-click cast.
+local function confirmThrow(current, item, cx, cy)
+    if battle.throwStage == "dest" then
+        -- Only a lit landing resolves; a tile off the ray is a misclick that does nothing.
+        if not (battle.throwSet and battle.throwSet[cx .. "," .. cy]) then return end
+        local from = battle.throwFrom
+        local victim = Combat.unitAt(battle.combat, from.x, from.y) -- read before the throw clears it
+        -- The actor is already beside the grabbed tile (the grab phase saw to that), so the throw fires
+        -- in place -- no approach to hold cues behind, exactly like a plain in-place cast.
+        local ok, why = Combat.useItem(battle.combat, current, item, from.x, from.y, nil, { x = cx, y = cy })
+        if not ok then
+            notify(string.format("%s: %s", item.name or "That item", tostring(why or "cannot be used here")))
+            return
+        end
+        netFinishTurn({ kind = "use", cell = slotOf(current, item),
+                        tx = from.x, ty = from.y, dx = cx, dy = cy })
+        observeAction("attack", current, from.x, from.y, victim and victim.char.id, item.id)
+        advanceTurn()
+        return
+    end
+    -- GRAB phase. An empty reachable tile is a reposition (walk, stay in the grab phase); a tile holding
+    -- a grabbable is the pick-up (walking into reach first when it isn't already adjacent).
+    if not throwGrabbableAt(cx, cy) then
+        if battle.reachable and battle.reachable[cx .. "," .. cy] and not Combat.hasMoved(battle.combat) then
+            local mp = movePathTo(cx, cy)
+            netFinishTurn({ kind = "move", x = cx, y = cy, path = mp and mp.cells })
+            startWalk(current, cx, cy, function()
+                if not current.alive then advanceTurn() return end
+                observeAction("move", current, current.x, current.y)
+                computeThreat(current) computeDanger() computeRange(current, item)
+            end, mp and mp.cells)
+        end
+        return
+    end
+    local plan = armedActionAt(cx, cy)
+    if not (plan and plan.kind == "act" and plan.entry) then return end
+    local entry = plan.entry
+    if entry.fromX ~= current.x or entry.fromY ~= current.y then
+        -- Walk into reach first (one move per turn), then open the landing phase from beside the target.
+        if Combat.hasMoved(battle.combat) then
+            notify("Out of reach from here -- already moved this turn")
+            return
+        end
+        netFinishTurn({ kind = "move", x = entry.fromX, y = entry.fromY, path = plan.cells })
+        startWalk(current, entry.fromX, entry.fromY, function()
+            if not current.alive then advanceTurn() return end
+            observeAction("move", current, current.x, current.y)
+            computeThreat(current) computeDanger() computeRange(current, item)
+            enterThrowDest(cx, cy)
+        end, plan.cells)
+        return
+    end
+    enterThrowDest(cx, cy)
+end
+
 -- Confirm on the cursor cell: move there (does NOT end the turn -- the unit can still act or
 -- wait), use the default action on it (a strike on a foe, a heal on an ally -- moving into reach
 -- first), strike a trap/wall with an offensive default, or use the armed item on it (ends the turn).
@@ -2059,6 +2334,9 @@ local function confirm()
     local current = battle.current
     if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
     local cx, cy = battle.map.cursor.x, battle.map.cursor.y
+    -- A commit sound for CONFIRMING an action -- but only when the aimed cell actually resolves to one
+    -- (actionPreviewFor mirrors the branching below exactly), so a click on dead air stays silent.
+    if actionPreviewFor(cx, cy) then Sound.play("battle.confirm") end
     if battle.mode == "move" then
         local action, support = battle.defaultAction, battle.defaultSupport
         local target = Combat.unitAt(battle.combat, cx, cy)
@@ -2108,6 +2386,9 @@ local function confirm()
         end
     elseif battle.mode == "armed" and battle.armedItem then
         local item = battle.armedItem
+        -- A two-stage throw runs its own grab/landing flow; intercept before armedActionAt so a grab is
+        -- never resolved as a one-click cast.
+        if battle.throwStage then confirmThrow(current, item, cx, cy) return end
         local plan = armedActionAt(cx, cy)
         if not plan then return end
         -- Aiming an empty reachable tile is a reposition, not an attack on empty air: walk onto it and
@@ -2223,6 +2504,7 @@ local function waitTurn()
         or (kind == "overwatch" and Combat.overwatch)
         or Combat.wait
     if action(battle.combat, current) then
+        Sound.play("battle.wait") -- a soft hold/pass, whichever wait behaviour it was (wait/focus/defend/overwatch)
         observeAction("wait", current, current.x, current.y)
         netFinishTurn({ kind = "wait" })
         advanceTurn()
@@ -2516,7 +2798,7 @@ local function refreshView()
     -- path arrives at the step. Arming clears the step before the next frame, so this never fights
     -- the player's own click.
     if battle.tutorial and battle.armedItem and Tutorial.suppressesAutoArm(battle.tutorial) then
-        cancelArm()
+        cancelArm(true)
     end
 
     -- Keep the steerable move-route preview fresh. It runs in move mode AND armed mode: while an
@@ -2623,7 +2905,13 @@ local function refreshView()
     -- damage number fades. The unit marker, hover and the "Threats" survey below are unaffected: those
     -- describe the board, not what this unit may still do.
     local steerable = battle.pendingAdvance == nil
-    if steerable and isParty and ((battle.mode == "armed" and battle.armedItem) or hoverAbility or keyAbility) then
+    if steerable and isParty and battle.throwStage == "dest" then
+        -- Landing phase of a two-stage throw: the ONLY overlay is the ray of tiles the grabbed thing can
+        -- be sent to. No move band -- the grab already fixed where the actor stands -- and it reads as a
+        -- strike (red), since a thrown body/keg is offense wherever it lands.
+        overlays.range = battle.throwCells or {}
+        overlays.rangeSupport = false
+    elseif steerable and isParty and ((battle.mode == "armed" and battle.armedItem) or hoverAbility or keyAbility) then
         -- Armed (the turn-start default, or an explicitly armed item), or previewing a hovered ability
         -- slot: show the EFFECTIVE range -- the movement band PLUS the action's reach beyond it, so the
         -- player reads where the unit can step and where it can act from there. Aiming a cell that needs
@@ -3119,14 +3407,18 @@ function battle.enter(self, opts)
     battle.prestige = opts.prestige or 1 -- the company's prestige, used to roll the victory spoils
     battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided
     battle.logReview = nil               -- the summary's "Review Combat Log" modal, when opened
+    battle.settingsMenu = nil            -- the in-battle settings overlay, when opened
     battle.over = false
     battle.showInitiative = true -- initiative numbers on the turn order (F6 toggles)
 
     -- The bed, and the sting over the top of it. An `objective` encounter is the quest's real fight --
     -- a general, a boss, the Crown -- so it gets its own track; everything else is an ordinary bout on
-    -- the way there. Both are silent until the files exist (models/sound.lua), and Sound.music is
-    -- idempotent, so re-entering the same kind of fight does not restart the track.
-    Sound.music(battle.encounter.kind == "objective" and "music.boss" or "music.battle")
+    -- the way there. An encounter may also name its OWN bed (`encounter.music`) to override that pick --
+    -- the Mock Battle is objective-kind (so it draws its hand-picked roster) but wants the ordinary
+    -- battle bed, not the boss one. Both are silent until the files exist (models/sound.lua), and
+    -- Sound.music is idempotent, so re-entering the same kind of fight does not restart the track.
+    Sound.music(battle.encounter.music
+        or (battle.encounter.kind == "objective" and "music.boss" or "music.battle"))
     Sound.play("battle.start")
 
     -- Active party instances (from the player). Matched to their spawns by POSITION rather than by
@@ -3397,6 +3689,12 @@ local function updateDangerVignette()
 end
 
 function battle.update(dt)
+    -- The settings overlay freezes the fight: only the menu ticks, the board holds exactly where it
+    -- was, and closing the overlay resumes from there. Nothing below runs while it is up.
+    if battle.settingsMenu then
+        battle.settingsMenu:update(dt)
+        return
+    end
     -- Hit-stop: a killing blow freezes the SIMULATION for a beat (ui/screen_fx.lua sets the scale to 0),
     -- so the whole board holds while the death registers, then resumes. Only the gameplay clock is
     -- scaled -- ScreenFx's own shake/flash/freeze decays advance on real dt back in main.lua, so the
@@ -3719,6 +4017,45 @@ function battle.draw()
     if battle.summary then battle.summary:draw() end
     -- The log-review modal sits above even the summary panel (drawn last of all).
     if battle.logReview then battle.drawLogReview() end
+    -- The settings overlay sits above everything, over the frozen fight.
+    if battle.settingsMenu then battle.drawSettingsOverlay() end
+end
+
+-- The in-battle settings modal: a dim scrim over the frozen fight, a titled panel, the shared
+-- SettingsMenu list, the highlighted option's description, a control hint, and an X to close.
+function battle.drawSettingsOverlay()
+    local p = battle.settings
+    love.graphics.setColor(0, 0, 0, 0.72)
+    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+
+    Theme.set(Theme.panel2)
+    love.graphics.rectangle("fill", p.x, p.y, p.w, p.h, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", p.x, p.y, p.w, p.h, Theme.R, Theme.R)
+
+    love.graphics.setFont(overlayTitleFont)
+    Theme.set(Theme.accentAmber)
+    love.graphics.printf("Settings", p.x, p.y + 16, p.w, "center")
+
+    battle.settingsMenu:draw()
+
+    -- The highlighted row's description, in the gutter below the list.
+    local item = battle.settingsMenu:selectedItem()
+    if item and item.description then
+        love.graphics.setFont(overlayBodyFont)
+        Theme.set(Theme.ink)
+        love.graphics.printf(item.description, p.x + 30, p.y + p.h - 66, p.w - 60, "left")
+    end
+
+    love.graphics.setFont(overlayBodyFont)
+    Theme.set(Theme.muted)
+    local hint = InputMode.isGamepad()
+        and "D-pad: move    A / Left / Right: change    B: close"
+        or "Arrows: move    Enter / Left / Right or click: change    Esc: close"
+    love.graphics.printf(hint, p.x, p.y + p.h - 28, p.w, "center")
+
+    battle.settingsClose:draw()
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- Full-height, scrollable read of the fight's combat log, opened from the summary panel's "Review
@@ -3781,6 +4118,13 @@ function battle.drawTileTooltip(mx, my)
     local cell = battle.arena.tiles[cy] and battle.arena.tiles[cy][cx]
     if not cell then return end
     local unit = Combat.unitAt(battle.combat, cx, cy)
+    -- Combat.unitAt reports only the LIVING; a fallen body still lies on its tile and has no less to
+    -- say. When no living unit stands here, read the two fallen layers directly so a hover over a
+    -- downed enemy still opens its readout: an incapacitated body inside its rescue window (with the
+    -- Downed clock ticking on it), or one that has gone cold to a corpse. Incapacitated takes
+    -- precedence -- it is the body still worth acting on.
+    local body = not unit and (Combat.downedAt(battle.combat, cx, cy)
+        or Combat.corpseAt(battle.combat, cx, cy))
     local trap = battle.trapCells and battle.trapCells[cx .. "," .. cy]
     local wall = battle.wallCells and battle.wallCells[cx .. "," .. cy]
     local prop = battle.propCells and battle.propCells[cx .. "," .. cy]
@@ -3809,6 +4153,7 @@ function battle.drawTileTooltip(mx, my)
     -- Same precedence actionPreviewFor picks a strike target with (trap, then wall, then prop), so the
     -- box that opens describes the very thing a click would hit.
     if unit and unit.char then objInfo = { unit = unit, preview = preview }
+    elseif body and body.char then objInfo = { unit = body, preview = preview }
     elseif trap then objInfo = { trap = trap, preview = preview }
     elseif wall then objInfo = { wall = wall, preview = preview }
     elseif prop then objInfo = { prop = prop, preview = preview } end
@@ -3944,6 +4289,9 @@ function battle.drawHud()
         toggleBtn(speedButton, tostring(battle.autoSpeed or 1) .. "x", true, { 0.42, 0.80, 0.82 })
     end
 
+    -- Settings: a plain entry (never a toggle state), opening the overlay over the paused fight.
+    toggleBtn(settingsButton, "Settings", false, { 0.70, 0.70, 0.78 })
+
     -- Debug-only instant-decision buttons (green Win / red Lose), sat where Main Menu used to be.
     if Debug.enabled then
         toggleBtn(winButton, "Win", true, { 0.45, 0.75, 0.50 })
@@ -4072,6 +4420,12 @@ local function cycleAutoSpeed()
 end
 
 function battle.keypressed(key)
+    -- The settings overlay is the top-most modal: it eats every key while it is up. Esc closes it
+    -- (never forfeits the fight underneath), the rest work the list.
+    if battle.settingsMenu then
+        if key == "escape" then closeSettings() else battle.settingsMenu:keypressed(key) end
+        return
+    end
     if battle.logReview then
         if key == "escape" or key == "l" then closeLogReview()
         elseif key == "up" or key == "pageup" then battle.logReview.log:wheelmoved(0, 1)
@@ -4118,13 +4472,22 @@ function battle.keypressed(key)
     if battle.over then return end
     if key == "return" or key == "kpenter" then
         confirm()
+    elseif key == "space" then
+        -- Space confirms the highlighted action, like Enter -- but with nothing aimed at the cursor
+        -- (no move/target/strike lit) it falls back to Wait, so a bare press still ends the turn
+        -- rather than doing nothing. actionPreviewFor mirrors confirm()'s branching exactly, so "a
+        -- move is highlighted" is precisely "it returns a plan here".
+        local cursor = battle.map.cursor
+        if actionPreviewFor(cursor.x, cursor.y) then confirm() else waitTurn() end
     elseif key == "tab" then
         -- Cycle the aim through the valid targets (Shift+Tab steps back). A no-op when there is nothing
         -- to aim at -- Wait still lives on Space / 0 / numpad-0, so the turn is never stranded.
         cycleTarget(love.keyboard.isDown("lshift", "rshift") and -1 or 1)
-    elseif key == "kp0" or key == "0" or key == "space" then
+    elseif key == "kp0" or key == "0" then
         waitTurn()
     elseif key == "escape" then
+        -- A throw's landing phase backs up to its grab phase first; otherwise Esc disarms (or forfeits).
+        if throwStepBack() then return end
         if battle.mode == "armed" then cancelArm()
         elseif not tutorialRefuses("forfeit") then lose() end
     elseif KEYPAD_SLOT[key] then
@@ -4141,6 +4504,10 @@ function battle.keypressed(key)
 end
 
 function battle.gamepadpressed(joystick, button)
+    if battle.settingsMenu then
+        if button == "b" then closeSettings() else battle.settingsMenu:gamepadpressed(joystick, button) end
+        return
+    end
     if battle.logReview then
         if button == "b" or button == "y" then closeLogReview()
         elseif button == "dpup" then battle.logReview.log:wheelmoved(0, 1)
@@ -4182,6 +4549,7 @@ function battle.gamepadpressed(joystick, button)
     elseif button == "x" then
         waitTurn()
     elseif button == "b" then
+        if throwStepBack() then return end -- landing phase -> grab phase, before a full disarm
         if battle.mode == "armed" then cancelArm()
         elseif not tutorialRefuses("forfeit") then lose() end
     elseif button == "back" then
@@ -4195,6 +4563,16 @@ end
 
 function battle.mousemoved(x, y, dx, dy)
     battle.mouseX, battle.mouseY = x, y -- drives the status tooltip (board + panel hit-tests)
+    if battle.settingsMenu then
+        battle.settingsMenu:mousemoved(x, y)
+        battle.settingsClose:mousemoved(x, y)
+        return
+    end
+    -- Hover cue on the HUD buttons: a soft tick as the pointer crosses onto a new one (the hamburger,
+    -- or a drawer entry while it is open). Fires on the crossing only, so resting on a button is silent.
+    local hb = hoveredMenuButton(x, y)
+    if hb and hb ~= battle.hoverMenuBtn then Sound.play("ui.move") end
+    battle.hoverMenuBtn = hb
     battle.log:mousemoved(x, y)         -- drives the combat log's damage-breakdown hover
     if battle.logReview then
         battle.logReview.log:mousemoved(x, y)
@@ -4215,6 +4593,7 @@ end
 -- first when the cursor is inside it, so its own history still scrolls; contains() is false while
 -- the log is closed, so a wheel over the board falls through to the strip.
 function battle.wheelmoved(dx, dy)
+    if battle.settingsMenu then return end -- the short list needs no scroll; swallow it
     if battle.logReview then battle.logReview.log:wheelmoved(dx, dy); return end
     if battle.summary then return end -- the overlay has no scroll of its own; swallow it
     if battle.mouseX and battle.log:contains(battle.mouseX, battle.mouseY) then
@@ -4228,6 +4607,18 @@ function battle.wheelmoved(dx, dy)
 end
 
 function battle.mousepressed(x, y, button)
+    -- The settings overlay is the top-most modal: its X or a click on the dim backdrop closes it, a
+    -- click on a row works the list, and nothing falls through to the board underneath.
+    if battle.settingsMenu then
+        if battle.settingsClose:mousepressed(x, y, button) then
+            closeSettings()
+        elseif button == 1 and not pointIn(battle.settings, x, y) then
+            closeSettings()
+        else
+            battle.settingsMenu:mousepressed(x, y, button)
+        end
+        return
+    end
     -- The log-review modal (over the summary) claims the click first: the X or a click outside its
     -- frame closes it back to the panel; a click inside is inert (the log scrolls by wheel).
     if battle.logReview then
@@ -4273,6 +4664,10 @@ function battle.mousepressed(x, y, button)
             toggleAutoAll()
             return
         end
+        if pointIn(settingsButton, x, y) then
+            openSettings()
+            return
+        end
         if Debug.enabled and pointIn(winButton, x, y) then
             if not battle.over then win() end
             return
@@ -4302,6 +4697,10 @@ end
 function battle.cursorKind()
     local mx, my = battle.mouseX, battle.mouseY
     if not mx then return "arrow" end
+    if battle.settingsMenu then
+        if battle.settingsClose:contains(mx, my) then return "hand" end
+        return battle.settingsMenu:mouseOverItem(mx, my) and "hand" or "arrow"
+    end
     if battle.logReview then
         return battle.logReview.close:contains(mx, my) and "hand" or "arrow"
     end

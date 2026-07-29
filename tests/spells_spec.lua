@@ -63,7 +63,7 @@ return {
     {
         name = "Freeze delays the target and makes it vulnerable to impact and fire",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_knight", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_rowan", 1, 2) })
             local mage, knight = c.units[1], c.units[2]
             local init0 = knight.initiative
             Status.apply(c, knight, "status_freeze")
@@ -81,7 +81,7 @@ return {
     {
         name = "Ice Bolt freezes; Fire Bolt burns",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_knight", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_rowan", 1, 2) })
             local mage, knight = c.units[1], c.units[2]
             local iceBolt = Item.instantiate("ability_ice_bolt")
             openTurn(c, mage)
@@ -113,7 +113,7 @@ return {
     {
         name = "Aegis buffs allies in its blast, not enemies",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_priest", 3, 3), unit("character_knight", 3, 4) },
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 3, 3), unit("character_rowan", 3, 4) },
                                               { unit("character_bandit", 4, 3) })
             local priest, knight, bandit = c.units[1], c.units[2], c.units[3]
             local aegis = Item.instantiate("ability_aegis")
@@ -150,7 +150,7 @@ return {
         name = "the Dodge trait auto-evades a physical hit, then recharges; magic ignores it",
         fn = function()
             -- Give a knight the Duelist's Reflex (grants the passive Dodge trait). Combat.new attaches it.
-            local knightChar = Character.instantiate("character_knight")
+            local knightChar = Character.instantiate("character_rowan")
             Character.addItem(knightChar, Item.instantiate("utility_duelists_reflex"))
             local c = Combat.new(arena(8, 8), { { char = knightChar, x = 1, y = 1 } }, {})
             local knight = c.units[1]
@@ -179,7 +179,7 @@ return {
     {
         name = "Water Ball shoves a foe three tiles and leaves rain where it struck",
         fn = function()
-            local c = Combat.new(arena(10, 3), { unit("character_mage", 2, 2) }, { unit("character_knight", 3, 2) })
+            local c = Combat.new(arena(10, 3), { unit("character_mage", 2, 2) }, { unit("character_rowan", 3, 2) })
             local mage, knight = c.units[1], c.units[2]
             local waterBall = Item.instantiate("ability_water_ball")
             openTurn(c, mage)
@@ -208,7 +208,7 @@ return {
     {
         name = "a fallen ally lies incapacitated where Revive brings them back at half health",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1), unit("character_knight", 2, 1) }, {})
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1), unit("character_rowan", 2, 1) }, {})
             local priest, knight = c.units[1], c.units[2]
             -- Fell the knight.
             Combat.dealFlatDamage(c, knight, 9999, { "physical" }, "a blow")
@@ -226,7 +226,7 @@ return {
     {
         name = "Revive refuses a corpse a living unit is standing on",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1), unit("character_knight", 2, 1) },
+            local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1), unit("character_rowan", 2, 1) },
                                               { unit("character_bandit", 5, 5) })
             local priest, knight, bandit = c.units[1], c.units[2], c.units[3]
             Combat.dealFlatDamage(c, knight, 9999, { "physical" }, "a blow")
@@ -261,7 +261,7 @@ return {
     {
         name = "Meteor Storm scatters fire and damages foes in its zone",
         fn = function()
-            local c = Combat.new(arena(12, 12), { unit("character_mage", 6, 6) }, { unit("character_knight", 4, 4) })
+            local c = Combat.new(arena(12, 12), { unit("character_mage", 6, 6) }, { unit("character_rowan", 4, 4) })
             local mage, knight = c.units[1], c.units[2]
             -- Aim at (6,6): with random stubbed to 1, the first strike lands on (tx-2, ty-2) = (4,4).
             local meteor = Item.instantiate("ability_meteor_storm")

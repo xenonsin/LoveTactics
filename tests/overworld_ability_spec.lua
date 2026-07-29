@@ -41,24 +41,24 @@ return {
     {
         name = "dispatch runs only the matching event hook and namespaces each ability's scratch",
         fn = function()
-            local rowan = char("character_knight", "vigil", { 20, 20 }, nil, { 4, 12 })
+            local rowan = char("character_rowan", "vigil", { 20, 20 }, nil, { 4, 12 })
             local ctx = ctxFor({ rowan }, { cell = combatCell() })
             OverworldAbility.dispatch("encounterCleared", ctx)
-            assert(ctx.state["character_knight"], "the ability's bucket should be namespaced by char id")
-            assert(ctx.state["character_knight"].vigils == 1, "a clean combat win should bank one vigil")
+            assert(ctx.state["character_rowan"], "the ability's bucket should be namespaced by char id")
+            assert(ctx.state["character_rowan"].vigils == 1, "a clean combat win should bank one vigil")
             -- An event with no hook for this ability is a no-op (Vigil has no objectiveReached).
             OverworldAbility.dispatch("objectiveReached", ctx)
-            assert(ctx.state["character_knight"].vigils == 1, "objectiveReached must not touch vigils")
+            assert(ctx.state["character_rowan"].vigils == 1, "objectiveReached must not touch vigils")
         end,
     },
     {
         name = "Rowan's Vigil banks clean wins and spends them as a front-row health buffer",
         fn = function()
-            local rowan = char("character_knight", "vigil", { 10, 20 })
+            local rowan = char("character_rowan", "vigil", { 10, 20 })
             local ctx = ctxFor({ rowan }, { cell = combatCell() })
             OverworldAbility.dispatch("encounterCleared", ctx) -- clean win -> vigil 1
             OverworldAbility.dispatch("encounterCleared", ctx) -- clean win -> vigil 2
-            assert(ctx.state["character_knight"].vigils == 2, "two clean wins should bank two vigils")
+            assert(ctx.state["character_rowan"].vigils == 2, "two clean wins should bank two vigils")
             OverworldAbility.dispatch("battleStart", ctx)
             assert(rowan.stats.health.current == 16, "front row should gain 3*vigils health (10 -> 16)")
         end,
@@ -66,11 +66,11 @@ return {
     {
         name = "a casualty breaks Rowan's vigil streak",
         fn = function()
-            local rowan = char("character_knight", "vigil", { 20, 20 }, nil, { 12, 12 })
+            local rowan = char("character_rowan", "vigil", { 20, 20 }, nil, { 12, 12 })
             local downed = char("character_extra", nil, { 0, 18 })
             local ctx = ctxFor({ rowan, downed }, { cell = combatCell() })
             OverworldAbility.dispatch("encounterCleared", ctx)
-            assert(ctx.state["character_knight"].vigils == 0, "a downed member should reset the vigil to 0")
+            assert(ctx.state["character_rowan"].vigils == 0, "a downed member should reset the vigil to 0")
         end,
     },
     {

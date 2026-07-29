@@ -6,10 +6,12 @@
 -- differ between two machines may.
 --
 --   { kind = "move",    x, y, path = { {x,y}, ... } }   -- path optional: a steered route
---   { kind = "use",     cell, tx, ty, windup }          -- cell is an INVENTORY SLOT, not an item id;
+--   { kind = "use",     cell, tx, ty, windup, dx, dy }  -- cell is an INVENTORY SLOT, not an item id;
 --                                                        --   windup optional: the TOTAL ticks a
 --                                                        --   chargeable wind-up is held for (Saber's
 --                                                        --   signature). See the wire note below.
+--                                                        --   dx,dy optional: a two-stage THROW's landing
+--                                                        --   (Heave), with tx,ty the grabbed tile.
 --   { kind = "wait" }
 --   { kind = "blink",   x, y }
 --   { kind = "forfeit" }
@@ -79,6 +81,13 @@ function Command.wellFormed(cmd)
         -- this is the field that needs a version byte in front of it.
         if cmd.windup ~= nil and not (isCoord(cmd.windup) and cmd.windup >= 0) then
             return false, "use windup must be a whole count >= 0"
+        end
+        -- dx,dy are optional and come as a pair: a two-stage THROW (Heave) names WHERE it lands, while
+        -- tx,ty stay the grabbed tile. Either both are whole coords or neither is present; a lone one is
+        -- garbage. When absent the throw falls back to away-from-thrower, exactly as an AI cast does.
+        if (cmd.dx ~= nil) ~= (cmd.dy ~= nil) then return false, "use dx,dy come as a pair" end
+        if cmd.dx ~= nil and not (isCoord(cmd.dx) and isCoord(cmd.dy)) then
+            return false, "use needs whole dx,dy"
         end
     end
     return true
@@ -194,7 +203,11 @@ function Command.apply(combat, unit, cmd)
         if not unit.alive then return result end -- cut down on the approach
         local item, reason = Command.itemFor(unit, cmd)
         if not item then return nil, reason end
-        result.acted = Combat.useItem(combat, unit, item, cmd.tx, cmd.ty, cmd.windup) and true or false
+        -- A two-stage throw ships its landing as dx,dy; hand it to useItem as the destination so the
+        -- peer resolves the same lane. Absent (every other cast), dest is nil and the throw -- if any --
+        -- flings away from the thrower, matching the local fallback path.
+        local dest = cmd.dx and { x = cmd.dx, y = cmd.dy } or nil
+        result.acted = Combat.useItem(combat, unit, item, cmd.tx, cmd.ty, cmd.windup, dest) and true or false
         if not result.acted then
             -- The turn still has to end, or a peer would sit forever on a unit that did nothing.
             Combat.pass(combat, unit)

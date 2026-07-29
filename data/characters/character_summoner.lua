@@ -1,0 +1,31 @@
+-- Summoner exemplar (mage subclass). Reserve court: bank mana to field independent elementals. Met as
+-- a conjurer with an elemental court, a boss. Kit from data/disciplines/summoner.lua.
+return {
+    name = "Conjurer",
+    sprite = "assets/chars/mage.png",
+    boss = true,
+    class = "mage",
+    -- Hangs back and keeps an elemental court on the board (models/ai.lua `skirmish`).
+    archetype = "skirmish",
+    stats = {
+        health = 84, mana = 100, stamina = 10,
+        staminaRegen = 1,
+        damage = 5, magicDamage = 19,
+        defense = 5, magicDefense = 12,
+        movement = 4,
+        speed = 3,
+    },
+    startingItems = {
+        "weapon_staff",                  "ability_summon_earth_elemental", "ability_summon_ice_elemental",
+        "ability_summon_lightning_elemental", "ability_summon_water_elemental", "ability_summon_wind_elemental",
+        "ability_doppelganger",          "utility_mana_wellspring",        "consumable_healing_potion",
+    },
+    defaultAction = "weapon_staff",
+    -- Keep a court fielded; call a fresh elemental whenever a foe is on the board.
+    ai = {
+        { priority = "high", act = "cast", item = "ability_summon_lightning_elemental",
+          when = { subject = "any_foe", test = "exists" } },
+        { priority = "normal", act = "attack", item = "weapon_staff", targetPref = "lowest_hp",
+          when = { subject = "any_foe", test = "in_reach" } },
+    },
+}

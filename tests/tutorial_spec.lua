@@ -169,7 +169,7 @@ local function playVillage(stopAt)
     local t = Tutorial.new(TUTORIAL)
     local arena = Arena.build({ prestige = 1, biome = "forest" },
         { layout = ARENA, biome = "forest",
-          party = { "character_avatar", "character_knight" },
+          party = { "character_avatar", "character_rowan" },
           composition = function()
               return { "character_demon_imp", "character_demon_imp", "character_demon_imp",
                        "character_demon_imp", "character_demon_imp" }
@@ -669,9 +669,9 @@ return {
 
             assert(advanced({}), "the asked-for action advances the lesson")
             assert(not advanced({ kind = "wait" }), "a different action kind does not advance")
-            assert(not advanced({ actor = "character_knight" }), "another unit's action does not advance")
+            assert(not advanced({ actor = "character_rowan" }), "another unit's action does not advance")
             assert(not advanced({ y = good.y + 1 }), "the right action on the wrong cell does not advance")
-            assert(not advanced({ target = "character_knight" }), "hitting the wrong body does not advance")
+            assert(not advanced({ target = "character_rowan" }), "hitting the wrong body does not advance")
             -- The item clause is what lets the closing step ask for a NAMED ability: a Clear Out is aimed
             -- at the caster's own tile, so there is no victim to pin it by.
             assert(not advanced({ item = "weapon_iron_axe" }),
@@ -692,7 +692,7 @@ return {
         fn = function()
             local def = Tutorial.defs[TUTORIAL]
             local t = Tutorial.new(TUTORIAL)
-            local queue = def.script["character_knight"]
+            local queue = def.script["character_rowan"]
             assert(queue and #queue > 0, "Rowan has authored turns")
             for i = 1, #queue do
                 local entry = queue[i]
@@ -700,18 +700,18 @@ return {
                     -- A standing order is HELD, not spent: it comes up again on the next turn, and
                     -- only retires once the lesson passes the step it is posted through. Retired by
                     -- hand here so this walk still covers the whole queue in order.
-                    assert(Tutorial.scriptFor(t, "character_knight") == entry,
+                    assert(Tutorial.scriptFor(t, "character_rowan") == entry,
                         "Rowan's post is offered on the turn it comes up")
-                    assert(Tutorial.scriptFor(t, "character_knight") == entry,
+                    assert(Tutorial.scriptFor(t, "character_rowan") == entry,
                         "Rowan's post is still hers next turn -- a post is not spent by standing it")
                     t.index = entry.through + 1
                 else
-                    assert(Tutorial.scriptFor(t, "character_knight") == entry,
+                    assert(Tutorial.scriptFor(t, "character_rowan") == entry,
                         "Rowan's turn " .. i .. " is the authored one, in order")
                 end
             end
             -- Dry queue -> nil, which is how the battle state hands her back to the ordinary AI.
-            assert(Tutorial.scriptFor(t, "character_knight") == nil,
+            assert(Tutorial.scriptFor(t, "character_rowan") == nil,
                 "a spent queue yields nil, not a repeat of the last turn")
             assert(Tutorial.scriptFor(t, "character_avatar") == nil,
                 "the player's own character is never scripted")
@@ -749,7 +749,7 @@ return {
         name = "the tutorial takes control of Rowan and leaves the avatar to the player",
         fn = function()
             local t = Tutorial.new(TUTORIAL)
-            assert(Tutorial.controlFor(t, "character_knight") == "ai", "Rowan runs herself")
+            assert(Tutorial.controlFor(t, "character_rowan") == "ai", "Rowan runs herself")
             assert(Tutorial.controlFor(t, "character_avatar") == nil, "the avatar stays the player's")
         end,
     },
@@ -767,7 +767,7 @@ return {
             -- Position in `pace.order` IS the starting tick, so the opening pass reads straight off
             -- the data -- and the mentor is at the front of it.
             local seats = Tutorial.defs[TUTORIAL].pace.order
-            assert(seats[1] == "character_knight",
+            assert(seats[1] == "character_rowan",
                 "the student is seated ahead of the demonstration: " .. tostring(seats[1]))
             local seen = {}
             for i, k in ipairs(seats) do
@@ -784,10 +784,10 @@ return {
 
             -- ...and the pacing goes quiet with the lesson, like the scripts and the gates: the
             -- grunt fight at the end has to finish on the ordinary clock.
-            assert(Tutorial.paceTurn(t, "character_knight") ~= nil, "the mentor is paced during the lesson")
+            assert(Tutorial.paceTurn(t, "character_rowan") ~= nil, "the mentor is paced during the lesson")
             t.index = #Tutorial.defs[TUTORIAL].steps + 1
             assert(Tutorial.done(t), "the lesson is over")
-            assert(Tutorial.paceTurn(t, "character_knight") == nil,
+            assert(Tutorial.paceTurn(t, "character_rowan") == nil,
                 "the lesson's timeline outlived the lesson")
         end,
     },
@@ -815,7 +815,7 @@ return {
 
             -- She cleared it without leaving her post: every tile she might have advanced to is one
             -- the rest of the choreography needs empty.
-            local rowan = livingById(combat, "character_knight")
+            local rowan = livingById(combat, "character_rowan")
             assert(rowan, "the mentor did not survive her own demonstration")
             assert(rowan.x == 6 and rowan.y == 6,
                 "the mentor wandered off her post to (" .. rowan.x .. "," .. rowan.y .. ")")
@@ -823,7 +823,7 @@ return {
             -- ...and the post RETIRES with the phase it belonged to. The imps are done, so her next
             -- authored turn must be the shove at the grunt's cell -- not another turn of standing
             -- guard on an empty board, which is the failure the doubled entry used to cause.
-            local nextTurn = Tutorial.scriptFor(t, "character_knight")
+            local nextTurn = Tutorial.scriptFor(t, "character_rowan")
             assert(nextTurn and nextTurn.strike and nextTurn.strike.x == 6 and nextTurn.strike.y == 4,
                 "the mentor's post outlived the imps instead of retiring into the shove")
         end,
@@ -843,16 +843,16 @@ return {
             assert(#refusals == 0, "the board refused a step's own action: "
                 .. table.concat(refusals, ", "))
             assert(table.concat(order, " ") == table.concat({
-                "character_knight",  -- her demonstration: cross the lane, cut down the vanguard
+                "character_rowan",  -- her demonstration: cross the lane, cut down the vanguard
                 "character_avatar",  -- 1. the same, in one click
                 "4,2", "6,2",        -- the second wave closes and spits
                 "7,3",               -- ...and the third takes the long way to her flank
-                "character_knight",  -- her post answers it
+                "character_rowan",  -- her post answers it
                 "character_avatar",  -- 2-4. advance, ready, Clear Out -- and the grunt walks on
                 "6,1",               -- it charges, and the avatar's sword parries unbidden
-                "character_knight",  -- her mace answers, and shoves it two tiles clear
+                "character_rowan",  -- her mace answers, and shoves it two tiles clear
                 "character_avatar",  -- 5-6. ready the Jolt and throw it: the stun slides its card
-                "character_knight",  -- the turn that stun bought her
+                "character_rowan",  -- the turn that stun bought her
                 "character_avatar",  -- 7. and the killing blow is the player's
             }, " "), "the fight did not play in the authored order:\n  got:  "
                 .. table.concat(order, " -> "))
@@ -882,7 +882,7 @@ return {
             for _, kind in ipairs(Tutorial.KINDS) do
                 assert(Tutorial.allows(t, kind), "an abandoned lesson must allow " .. kind)
             end
-            assert(Tutorial.scriptFor(t, "character_knight") == nil,
+            assert(Tutorial.scriptFor(t, "character_rowan") == nil,
                 "an abandoned lesson stops driving its scripted units")
         end,
     },
@@ -1011,11 +1011,11 @@ return {
             -- ...and Rowan opens with a kill of her own, one beat ahead of the player: her first
             -- authored turn walks her up to a DIFFERENT imp and cuts it down. Different, or she
             -- takes the player's.
-            local hers = def.script["character_knight"][1]
+            local hers = def.script["character_rowan"][1]
             assert(hers and hers.move and hers.strike,
                 "Rowan's opening turn is no longer a walk-and-strike -- her demonstration is gone")
             local hersWalked = manhattan(hers.move, rowanSpawn)
-            assert(hersWalked <= Character.instantiate("character_knight").stats.movement,
+            assert(hersWalked <= Character.instantiate("character_rowan").stats.movement,
                 "Rowan cannot reach the tile her demonstration walks to (mind the chainmail)")
             assert(hersWalked >= 2, "Rowan's demonstration is only " .. hersWalked .. " tile of walking")
             assert(manhattan(hers.move, hers.strike) == 1, "Rowan's demonstration swings at thin air")
@@ -1122,7 +1122,7 @@ return {
             end
             local combat = Combat.new({ cols = 8, rows = 8, tiles = tiles },
                 { { char = Character.instantiate("character_avatar"), x = 5, y = 5 },
-                  { char = Character.instantiate("character_knight"), x = 6, y = 4 } },
+                  { char = Character.instantiate("character_rowan"), x = 6, y = 4 } },
                 { { char = Character.instantiate("character_demon_grunt"), x = 5, y = 4 } })
             local avatar, rowan, grunt = combat.units[1], combat.units[2], combat.units[3]
 

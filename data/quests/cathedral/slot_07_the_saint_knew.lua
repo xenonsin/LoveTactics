@@ -23,7 +23,7 @@
 --
 -- FIRST PASS. Scenes are not authored, so no `opening` is named (Conversation.play asserts on an
 -- unknown id). `character_anointed` is the blueprint this wants (story.md's not-built list);
--- `character_knight` and `character_champion` stand in.
+-- `character_rowan` and `character_champion` stand in.
 --
 -- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
 -- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
@@ -47,7 +47,7 @@ return {
             name = "The Escort",
             composition = function(ctx)
                 local list = { "character_champion" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_knight" end
+                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_rowan" end
                 return list
             end,
             -- TICKS to outlast (the unit the clock counts and the HUD quotes). Outlasting, not

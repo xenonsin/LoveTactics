@@ -13,7 +13,7 @@ local Conversation = require("models.conversation")
 -- (what `heal`/`maxHpCost` touch), so every effect has a body to act on.
 local function freshPlayer()
     local p = Player.new()
-    local char = Character.instantiate("character_knight")
+    local char = Character.instantiate("character_rowan")
     p.roster = { char }
     p.party = { char }
     return p

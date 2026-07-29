@@ -226,7 +226,7 @@ end
 local function buildBeats()
     return {
         scene("prologue_intro"),
-        action(function() Player.recruit(Player.active, "character_knight") end), -- Rowan joins for the fight
+        action(function() Player.recruit(Player.active, "character_rowan") end), -- Rowan joins for the fight
         battle(VILLAGE_MAP),
         -- The oath is sworn once the village is held, and "[Rowan has joined your Party]" lands at the
         -- end of this "Ashes" scene -- folded on by Conversation.drainJoins, because her recruit two

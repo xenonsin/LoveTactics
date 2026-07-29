@@ -635,7 +635,7 @@ return {
 
                 assert(#loaded.roster == #p.roster, "roster size should survive")
                 assert(#loaded.party == #p.party, "party size should survive")
-                assert(loaded.roster[1].id == "character_knight", "roster order should survive")
+                assert(loaded.roster[1].id == "character_rowan", "roster order should survive")
                 assert(loaded.roster[1].inventory[7], "the item should be back in cell 7")
                 assert(loaded.roster[1].inventory[7].id == "consumable_fire_stone", "the right item should be in cell 7")
                 assert(loaded.roster[1].inventory[1] == nil, "empty cells should stay empty")
@@ -759,7 +759,7 @@ return {
                 local grownMagic = knight.stats.magicDamage
                 local grownHealthMax = knight.stats.health.max
                 assert(knight.level == 5, "the knight reached level 5")
-                assert(grownMagic > Character.instantiate("character_knight").stats.magicDamage,
+                assert(grownMagic > Character.instantiate("character_rowan").stats.magicDamage,
                     "the mage growth actually raised magic")
 
                 Save.write(p)
@@ -782,7 +782,7 @@ return {
         fn = function()
             local objective = { type = "killAll", protect = "character_caravan_master" }
             local c = Combat.new(arena(8, 8, objective),
-                { unit("character_knight", 3, 6), unit("character_caravan_master", 4, 6, "ai") },
+                { unit("character_rowan", 3, 6), unit("character_caravan_master", 4, 6, "ai") },
                 { unit("character_bandit", 4, 1) })
 
             assert(Combat.evaluate(c) == nil, "the battle is undecided while everyone stands")
@@ -798,7 +798,7 @@ return {
         fn = function()
             local objective = { type = "killAll", protect = "character_caravan_master" }
             local c = Combat.new(arena(8, 8, objective),
-                { unit("character_knight", 3, 6), unit("character_caravan_master", 4, 6, "ai") },
+                { unit("character_rowan", 3, 6), unit("character_caravan_master", 4, 6, "ai") },
                 { unit("character_bandit", 4, 1) })
 
             c.units[3].alive = false -- the last enemy falls
@@ -809,7 +809,7 @@ return {
         name = "an escorted ally fights on the party's side but is not player-controlled",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 3, 6), unit("character_caravan_master", 4, 6, "ai") },
+                { unit("character_rowan", 3, 6), unit("character_caravan_master", 4, 6, "ai") },
                 { unit("character_bandit", 4, 1) })
 
             local knight, escortee = c.units[1], c.units[2]
@@ -831,7 +831,7 @@ return {
         fn = function()
             local built = Arena.build({ prestige = 1 }, {
                 biome = "forest",
-                party = { "character_knight", "character_mage" },
+                party = { "character_rowan", "character_mage" },
                 allies = { "character_caravan_master" },
                 composition = { "character_bandit" },
                 objective = { type = "killAll", protect = "character_caravan_master" },
@@ -857,7 +857,7 @@ return {
             -- Arena.resolveComposition defaults a nil composition to a lone bandit; allies must
             -- not inherit that fallback or every battle would gain a stray ally.
             local built = Arena.build({ prestige = 1 }, {
-                biome = "forest", party = { "character_knight" }, composition = { "character_bandit" }, seed = 7,
+                biome = "forest", party = { "character_rowan" }, composition = { "character_bandit" }, seed = 7,
             })
             assert(#built.allies == 0, "no allies were asked for, so none should spawn")
         end,

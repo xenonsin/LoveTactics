@@ -99,12 +99,12 @@ return {
         name = "an enemy that copies your knight does not satisfy an assassinate on the knight",
         fn = function()
             local c = Combat.new(arena(8, 8, { type = "assassinate", target = "character_bandit_chief" }),
-                { unit("character_knight", 1, 1) }, { unit("character_bandit_chief", 5, 5) })
+                { unit("character_rowan", 1, 1) }, { unit("character_bandit_chief", 5, 5) })
             local knight, chief = c.units[1], c.units[2]
 
             -- The mark copies its hunter: an enemy-side unit now carries char.id "knight".
             local shape = Summon.copyOf(c, chief, knight, 5, 4)
-            assert(shape.side == "enemy" and shape.char.id == "character_knight", "the enemy wears your face")
+            assert(shape.side == "enemy" and shape.char.id == "character_rowan", "the enemy wears your face")
             assert(shape.summoned, "and the shape is marked as a summon")
 
             -- And the reverse: copying the mark does not kill the mark.
@@ -120,7 +120,7 @@ return {
         name = "a copy of an escorted charge does not stand in for the charge itself",
         fn = function()
             local c = Combat.new(arena(8, 8, { type = "killAll", protect = "character_caravan_master" }),
-                { unit("character_knight", 1, 1), unit("character_caravan_master", 2, 1) }, { unit("character_bandit", 5, 5) })
+                { unit("character_rowan", 1, 1), unit("character_caravan_master", 2, 1) }, { unit("character_bandit", 5, 5) })
             local knight, charge = c.units[1], c.units[2]
 
             Summon.copyOf(c, knight, charge, 3, 1)
@@ -135,7 +135,7 @@ return {
     {
         name = "the shape is bound to whoever wore it: killing the copier dismisses the copy",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit_chief", 5, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit_chief", 5, 5) })
             local knight, chief = c.units[1], c.units[2]
 
             local shape = Summon.copyOf(c, chief, knight, 5, 4)
@@ -148,7 +148,7 @@ return {
     {
         name = "summoner = false leaves a shape that outlives its maker",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit_chief", 5, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit_chief", 5, 5) })
             local knight, chief = c.units[1], c.units[2]
 
             local shape = Summon.copyOf(c, chief, knight, 5, 4, { summoner = false })
@@ -162,7 +162,7 @@ return {
     {
         name = "an enemy's shape is AI-run; the player's is theirs to command",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit_chief", 5, 5) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit_chief", 5, 5) })
             local knight, chief = c.units[1], c.units[2]
 
             local theirs = Summon.copyOf(c, chief, knight, 5, 4)

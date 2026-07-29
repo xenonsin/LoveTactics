@@ -31,7 +31,7 @@
 -- course it is: it is the only account she has ever heard of somebody else's feeling doing something.
 return {
     title = "Ira, the Unappeased",
-    cast  = { "character_general_wrath", "character_avatar", { id = "character_saber", when = { has = "character_saber" } }, { id = "character_knight", when = { has = "character_knight" } }, { id = "character_amana", when = { has = "character_amana" } }, { id = "character_gyeom", when = { has = "character_gyeom" } }, { id = "character_kaya", when = { has = "character_kaya" } }, { id = "character_ren", when = { has = "character_ren" } }, { id = "character_clem", when = { has = "character_clem" } } },
+    cast  = { "character_general_wrath", "character_avatar", { id = "character_saber", when = { has = "character_saber" } }, { id = "character_rowan", when = { has = "character_rowan" } }, { id = "character_amana", when = { has = "character_amana" } }, { id = "character_gyeom", when = { has = "character_gyeom" } }, { id = "character_kaya", when = { has = "character_kaya" } }, { id = "character_ren", when = { has = "character_ren" } }, { id = "character_clem", when = { has = "character_clem" } } },
 
     script = {
         { "character_general_wrath", "You came down the stair together, and one of you is favouring a left foot. You have been fighting already.", tag = 1 },
@@ -65,8 +65,8 @@ return {
             { "character_general_wrath", "There was no beginning. There is no part of me from before it.", tag = 22 },
             { "character_amana", "...I know a house that does this. I did not know there were two.", tag = 23 },
         } },
-        { when = { has = "character_knight" }, script = {
-            { "character_knight", "And the stable never once said what it had made.", tag = 24 },
+        { when = { has = "character_rowan" }, script = {
+            { "character_rowan", "And the stable never once said what it had made.", tag = 24 },
             { "character_general_wrath", "It cannot. Saying what I am means saying what the programme is, and the programme is still running. There are children in the intake tonight.", tag = 25 },
         } },
         { when = { has = "character_gyeom" }, script = {

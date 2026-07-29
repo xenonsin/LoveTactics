@@ -259,7 +259,7 @@ return {
     {
         name = "bleed costs a tile of blood for every tile WALKED, and nothing for standing still",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit(plainChar("character_knight"), 1, 1) },
+            local c = Combat.new(arena(8, 8), { unit(plainChar("character_rowan"), 1, 1) },
                 { unit(plainChar("character_bandit"), 8, 8) })
             local knight = c.units[1]
             knight.char.stats.staminaRegen = 0
@@ -284,7 +284,7 @@ return {
         fn = function()
             -- Forced movement: shoved two tiles = two tiles of bleeding. Being dragged is still
             -- crossing the ground, which is the whole rule (Combat.enterTile's `reason`).
-            local c = Combat.new(arena(8, 8), { unit(plainChar("character_knight"), 3, 4) },
+            local c = Combat.new(arena(8, 8), { unit(plainChar("character_rowan"), 3, 4) },
                 { unit(plainChar("character_bandit"), 4, 4) })
             local knight, bandit = c.units[1], c.units[2]
             Status.apply(c, bandit, "status_bleed", { magnitude = 3, duration = 99 })
@@ -294,7 +294,7 @@ return {
             assert(hp(bandit) == before - 6, "two shoved tiles bled twice, got " .. (before - hp(bandit)))
 
             -- A teleport crosses no ground at all, so it costs nothing -- the premium a blink buys.
-            local c2 = Combat.new(arena(8, 8), { unit(plainChar("character_knight"), 1, 1) },
+            local c2 = Combat.new(arena(8, 8), { unit(plainChar("character_rowan"), 1, 1) },
                 { unit(plainChar("character_bandit"), 8, 8) })
             local k2 = c2.units[1]
             Status.apply(c2, k2, "status_bleed", { magnitude = 3, duration = 99 })
@@ -495,7 +495,7 @@ return {
     {
         name = "the Crescent Blade cuts three tiles down the line, and cuts with magic rather than edge",
         fn = function()
-            local hero = plainChar("character_knight")
+            local hero = plainChar("character_rowan")
             local blade = give(hero, "weapon_crescent_blade")
             local c = Combat.new(arena(8, 8), { unit(hero, 3, 1) },
                 { unit(plainChar("character_bandit"), 3, 2),
@@ -539,7 +539,7 @@ return {
     {
         name = "the Crescent Blade is paid for out of BOTH pools, and either one empty refuses the swing",
         fn = function()
-            local hero = plainChar("character_knight")
+            local hero = plainChar("character_rowan")
             local blade = give(hero, "weapon_crescent_blade")
             local c = Combat.new(arena(8, 8), { unit(hero, 3, 1) }, { unit(plainChar("character_bandit"), 3, 2) })
             local k = c.units[1]
@@ -575,7 +575,7 @@ return {
         fn = function()
             -- The keyword's reference user. One body is a plain cleave; three is the same swing landing
             -- harder on all three -- the inversion that makes being surrounded the point.
-            local hero = plainChar("character_knight")
+            local hero = plainChar("character_rowan")
             give(hero, "weapon_butchers_wedge")
             local c1 = Combat.new(arena(8, 8), { unit(hero, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local a1, lone = c1.units[1], c1.units[2]
@@ -584,7 +584,7 @@ return {
             assert(Combat.useItem(c1, a1, a1.char.inventory[1], 3, 4), "the lone swing lands")
             local solo = before1 - hp(lone)
 
-            local hero2 = plainChar("character_knight")
+            local hero2 = plainChar("character_rowan")
             give(hero2, "weapon_butchers_wedge")
             local c2 = Combat.new(arena(8, 8), { unit(hero2, 3, 3) },
                 { unit(plainChar("character_bandit"), 3, 4), unit(plainChar("character_bandit"), 2, 4),
@@ -604,7 +604,7 @@ return {
         fn = function()
             -- The tooltip must read the crowd before the player commits, or the number it quotes is a
             -- lie. Both the preview and the live cast run through Combat.castAmount for this reason.
-            local hero = plainChar("character_knight")
+            local hero = plainChar("character_rowan")
             local wedge = give(hero, "weapon_butchers_wedge")
             local c = Combat.new(arena(8, 8), { unit(hero, 3, 3) },
                 { unit(plainChar("character_bandit"), 3, 4), unit(plainChar("character_bandit"), 2, 4),
@@ -627,7 +627,7 @@ return {
     {
         name = "lifesteal: the Crimson Greataxe drinks a share of everything its arc opens",
         fn = function()
-            local hero = plainChar("character_knight")
+            local hero = plainChar("character_rowan")
             local axe = give(hero, "weapon_crimson_greataxe")
             local c = Combat.new(arena(8, 8), { unit(hero, 3, 3) },
                 { unit(plainChar("character_bandit"), 3, 4), unit(plainChar("character_bandit"), 2, 4) })
@@ -642,7 +642,7 @@ return {
             assert(hp(a) == 40 + res.healed, "the heal reached the wielder's own bar")
 
             -- It is the whole arc it drinks from, not just the aimed body: two foes feed it more.
-            local solo = plainChar("character_knight")
+            local solo = plainChar("character_rowan")
             local axe2 = give(solo, "weapon_crimson_greataxe")
             local c2 = Combat.new(arena(8, 8), { unit(solo, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local s = c2.units[1]
@@ -660,7 +660,7 @@ return {
         fn = function()
             -- The keyword folds into the same mods.lifesteal the aura feeds, so a hungry weapon charmed
             -- hungrier drinks deeper. Slot 2 is adjacent to slot 1 in the 3x3 grid.
-            local plain = plainChar("character_knight")
+            local plain = plainChar("character_rowan")
             local axe = give(plain, "weapon_crimson_greataxe")
             local c1 = Combat.new(arena(8, 8), { unit(plain, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local u1 = c1.units[1]
@@ -669,7 +669,7 @@ return {
             openTurn(c1, u1)
             local _, bare = Combat.useItem(c1, u1, axe, 3, 4)
 
-            local charmed = plainChar("character_knight")
+            local charmed = plainChar("character_rowan")
             local axe2 = give(charmed, "weapon_crimson_greataxe")
             charmed.inventory[2] = Item.instantiate("utility_vampiric_strike")
             local c2 = Combat.new(arena(8, 8), { unit(charmed, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
@@ -772,10 +772,10 @@ return {
     {
         name = "an Oathkeeper Shield braces the whole line, not just the one holding it",
         fn = function()
-            local warden = plainChar("character_knight")
+            local warden = plainChar("character_rowan")
             give(warden, "armor_oathkeeper_shield")
             local c = Combat.new(arena(8, 8),
-                { unit(warden, 3, 3), unit(plainChar("character_knight"), 3, 4), unit(plainChar("character_knight"), 7, 7) },
+                { unit(warden, 3, 3), unit(plainChar("character_rowan"), 3, 4), unit(plainChar("character_rowan"), 7, 7) },
                 { unit(plainChar("character_bandit"), 8, 8) })
             local holder, beside, away = c.units[1], c.units[2], c.units[3]
 
@@ -796,10 +796,10 @@ return {
         fn = function()
             -- The counterpart to the case above: `covers` is the Oathkeeper's extra, and the base
             -- shield must NOT have quietly gained it.
-            local warden = plainChar("character_knight")
+            local warden = plainChar("character_rowan")
             give(warden, "armor_buckler")
             local c = Combat.new(arena(8, 8),
-                { unit(warden, 3, 3), unit(plainChar("character_knight"), 3, 4) },
+                { unit(warden, 3, 3), unit(plainChar("character_rowan"), 3, 4) },
                 { unit(plainChar("character_bandit"), 8, 8) })
             local holder, beside = c.units[1], c.units[2]
 
@@ -926,7 +926,7 @@ return {
     {
         name = "the Mailpiercer ignores armour outright and Halts the second rank",
         fn = function()
-            local knight = plainChar("character_knight")
+            local knight = plainChar("character_rowan")
             local pike = give(knight, "weapon_mailpiercer")
             local c = Combat.new(arena(8, 8), { unit(knight, 3, 3) },
                 { unit(plainChar("character_bandit"), 3, 4), unit(plainChar("character_bandit"), 3, 5) })
@@ -954,7 +954,7 @@ return {
     {
         name = "the Marching Standard plants its colours as it thrusts, and never disarms its bearer",
         fn = function()
-            local knight = plainChar("character_knight")
+            local knight = plainChar("character_rowan")
             local pike = give(knight, "weapon_marching_standard")
             local c = Combat.new(arena(8, 8), { unit(knight, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local k = c.units[1]
@@ -1020,7 +1020,7 @@ return {
         name = "steadfast: Kingsfall's wind-up survives the stun that would break any other greatsword",
         fn = function()
             -- The control still lands in full; only the cancellation is refused (docs/weapons.md).
-            local her = plainChar("character_knight")
+            local her = plainChar("character_rowan")
             local blade = give(her, "weapon_kingsfall")
             local c = Combat.new(arena(8, 8), { unit(her, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local k, foe = c.units[1], c.units[2]
@@ -1034,7 +1034,7 @@ return {
             assert(k.channel, "but the wind-up did not break")
 
             -- The control-breaks-a-channel rule is still live for everyone else.
-            local other = plainChar("character_knight")
+            local other = plainChar("character_rowan")
             local plain = give(other, "weapon_iron_greatsword")
             local c2 = Combat.new(arena(8, 8), { unit(other, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local o, foe2 = c2.units[1], c2.units[2]
@@ -1104,7 +1104,7 @@ return {
     {
         name = "coversStatus: the Given Guard lends its wall away and goes without it",
         fn = function()
-            local knight = plainChar("character_knight")
+            local knight = plainChar("character_rowan")
             give(knight, "armor_given_guard")
             local c = Combat.new(arena(8, 8),
                 { unit(knight, 3, 3), unit(plainChar("character_mage"), 3, 4), unit(plainChar("character_mage"), 7, 7) },

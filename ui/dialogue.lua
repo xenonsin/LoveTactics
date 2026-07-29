@@ -16,6 +16,7 @@
 -- Lazy fonts (newed in :new, never at require-time) keep it load-safe under tests/ui_load_spec.
 
 local Scale = require("scale")
+local Theme = require("ui.theme")
 local InputMode = require("input_mode")
 local Sprite = require("models.sprite")
 local Conversation = require("models.conversation")
@@ -55,7 +56,7 @@ local ACTIVE_TINT = { 1, 1, 1 }
 local FALLBACK_ACTIVE = { 0.42, 0.45, 0.56 }
 local FALLBACK_INACTIVE = { 0.20, 0.21, 0.27 }
 
--- A cast entry is either an id string ("character_knight") or a table ({ id = "character_knight", name = ..., slot = ..
+-- A cast entry is either an id string ("character_rowan") or a table ({ id = "character_rowan", name = ..., slot = ..
 -- }); a script node is authored positionally as { "<speaker>", "<text>", id = .., goto = .., choices
 -- = { { "<text>", goto = .. }, .. } }. These normalize either shape to a table with `by`/`text`.
 local function castEntry(raw)

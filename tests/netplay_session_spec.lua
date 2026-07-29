@@ -35,7 +35,7 @@ end
 
 local function duel(seed)
     return Combat.new(arena(seed or 99),
-        { fighter("character_knight", 4, 8) }, { fighter("character_bandit", 4, 2) })
+        { fighter("character_rowan", 4, 8) }, { fighter("character_bandit", 4, 2) })
 end
 
 -- Two sessions wired to each other, each with its own recorder.

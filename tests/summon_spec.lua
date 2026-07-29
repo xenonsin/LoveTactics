@@ -170,7 +170,7 @@ return {
     {
         name = "a live enemy summon blocks killAll; killing its summoner dismisses it and resolves the fight",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 8, 8) })
             local bandit = c.units[2]
             local wolf = Summon.spawn(c, bandit, "character_wolf_grunt", 7, 8)
 
@@ -186,7 +186,7 @@ return {
     {
         name = "a summon of a still-living enemy keeps killAll open",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 8, 8) })
             local bandit = c.units[2]
             -- Give the wolf an independent summoner that never dies, so it outlives the bandit.
             local wolf = Summon.spawn(c, bandit, "character_wolf_grunt", 7, 8)
@@ -204,7 +204,7 @@ return {
         name = "a summoned duplicate of an assassination target does not count as the target",
         fn = function()
             local c = Combat.new(arena(8, 8, { type = "assassinate", target = "character_bandit_chief" }),
-                { unit("character_knight", 1, 1) }, { unit("character_bandit_chief", 8, 8) })
+                { unit("character_rowan", 1, 1) }, { unit("character_bandit_chief", 8, 8) })
             local chief = c.units[2]
 
             local double = Summon.copy(c, chief, 7, 8, { fragile = true })
@@ -237,7 +237,7 @@ return {
     {
         name = "a fragile summon dies to any hit at all",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 8, 8) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             local double = Summon.copy(c, knight, 3, 2, { fragile = true })
             assert(double.char.stats.health.current > 1, "it looks perfectly healthy")

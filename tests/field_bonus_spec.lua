@@ -86,7 +86,7 @@ return {
 
             -- The whole board case: sword-wielder on the mountain, ally between, foe two tiles off.
             local board = Combat.new(arena(6, 1, { { x = 3, y = 1, bonus = { range = 1 } } }),
-                { unit("character_knight", 3, 1), unit("character_knight", 2, 1) },
+                { unit("character_rowan", 3, 1), unit("character_rowan", 2, 1) },
                 { unit("character_bandit", 1, 1) })
             local k, foe = board.units[1], board.units[3]
             local sword = itemById(k.char, "weapon_iron_sword") or Combat.defaultAction(k.char)
@@ -170,7 +170,7 @@ return {
             -- wherever it stands and holds its ground on STANDOFF rather than on EXPOSURE -- see
             -- AI.riskScore, and tests/ai_spec.lua for that term on its own.
             local c = Combat.new(arena(8, 1, { { x = 1, y = 1, bonus = { range = 1 } } }),
-                { unit("character_knight", 5, 1) }, { bowman(1, 1) })
+                { unit("character_rowan", 5, 1) }, { bowman(1, 1) })
             local plan = Combat.planEnemyAction(c, c.units[2])
             assert(plan.item and not plan.move, "high ground lets it fire without repositioning")
             assert(plan.tx == 5 and plan.ty == 1, "it targets the 4-tile-away knight")

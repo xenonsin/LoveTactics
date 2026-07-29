@@ -41,7 +41,7 @@ return {
             name = "The Witch-Finder",
             composition = function(ctx)
                 local list = { "character_priest" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_knight" end
+                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_rowan" end
                 return list
             end,
             allies = { "character_survivor" },

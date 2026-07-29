@@ -74,10 +74,10 @@ return {
             local p = Player.new()
             p.party = {}
             for i = 1, Player.MAX_PARTY do
-                assert(Player.addToParty(p, p.roster[i] or Character.instantiate("character_knight")),
+                assert(Player.addToParty(p, p.roster[i] or Character.instantiate("character_rowan")),
                     "add " .. i .. " within the cap should succeed")
             end
-            assert(not Player.addToParty(p, Character.instantiate("character_knight")),
+            assert(not Player.addToParty(p, Character.instantiate("character_rowan")),
                 "adding past MAX_PARTY must fail")
             assert(#p.party == Player.MAX_PARTY, "party overfilled")
         end,
@@ -137,18 +137,20 @@ return {
         name = "a chosen party survives a save/load round trip by identity",
         fn = function()
             local p = Player.new()
+            -- The lean default roster is just Rowan; recruit a second identity to save alongside it.
+            Player.recruit(p, "character_saber", { rosterOnly = true })
             p.party = {}
             Player.addToParty(p, p.roster[1])
-            Player.addToParty(p, p.roster[3])
+            Player.addToParty(p, p.roster[2])
 
             local restored = Save.restore(Save.snapshot(p))
             assert(restored, "snapshot did not restore")
             assert(#restored.party == 2, "party size not preserved")
             assert(restored.party[1].id == p.roster[1].id, "first party member id changed")
-            assert(restored.party[2].id == p.roster[3].id, "second party member id changed")
+            assert(restored.party[2].id == p.roster[2].id, "second party member id changed")
             -- Party members must be the SAME instances as the restored roster, not copies.
             assert(restored.party[1] == restored.roster[1], "party[1] not aliased to roster")
-            assert(restored.party[2] == restored.roster[3], "party[2] not aliased to roster")
+            assert(restored.party[2] == restored.roster[2], "party[2] not aliased to roster")
         end,
     },
     {

@@ -18,7 +18,7 @@ return {
         name = "Breaker's Wedge Sunders whatever it shoves, off a weapon that knows nothing about it",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_knight", 3, 3,
+            local hero = Fixture.unit("character_rowan", 3, 3,
                 { isolate = "bare", items = { "utility_breakers_wedge", "weapon_iron_mace" } })
             local foe = Fixture.unit("character_bandit", 3, 4, { isolate = "bare", stats = { health = 300 } })
             local combat = Fixture.combat(map, hero, foe)
@@ -37,7 +37,7 @@ return {
         fn = function()
             -- Pinned against the map edge: the shove has nowhere to go, so it collides.
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_knight", 3, 2,
+            local hero = Fixture.unit("character_rowan", 3, 2,
                 { isolate = "bare", items = { "armor_breakers_harness", "ability_push" } })
             local foe = Fixture.unit("character_bandit", 3, 1, { isolate = "bare", stats = { health = 300 } })
             local combat = Fixture.combat(map, hero, foe)
@@ -72,7 +72,7 @@ return {
         name = "Warden's Writ makes ANY ground the bearer lays Halt, without naming a hazard",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_knight", 3, 3,
+            local hero = Fixture.unit("character_rowan", 3, 3,
                 { isolate = "bare", items = { "utility_wardens_writ", "ability_quicksand" } })
             local foe = Fixture.unit("character_bandit", 7, 7, { isolate = "bare", stats = { health = 300 } })
             local combat = Fixture.combat(map, hero, foe)
@@ -93,7 +93,7 @@ return {
         name = "the writ stamps the instance, never the blueprint -- another caster's sand is ordinary",
         fn = function()
             local map = Fixture.new(10, 10)
-            local warden = Fixture.unit("character_knight", 3, 3,
+            local warden = Fixture.unit("character_rowan", 3, 3,
                 { isolate = "bare", items = { "utility_wardens_writ", "ability_quicksand" } })
             local plain = Fixture.unit("character_mage", 3, 4, { isolate = "bare", items = { "ability_quicksand" } })
             local foe = Fixture.unit("character_bandit", 8, 8, { isolate = "bare", stats = { health = 300 } })
@@ -442,7 +442,7 @@ return {
             local map = Fixture.new(10, 10)
             local hero = Fixture.unit("character_amana", 3, 3,
                 { isolate = "bare", items = { "ability_totem_of_mending" } })
-            local ally = Fixture.unit("character_knight", 3, 4, { isolate = "bare" })
+            local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 9, 9, { isolate = "bare", stats = { health = 300 } })
             local combat = Combat.new(map, { hero, ally }, { foe })
             local h, a = combat.units[1], combat.units[2]

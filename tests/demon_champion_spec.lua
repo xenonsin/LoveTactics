@@ -134,7 +134,7 @@ return {
         name = "a Bomblet bursts when it dies, hitting what stands beside it",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 2, 3) },              -- durable enough to survive and be measured
+                { unit("character_rowan", 2, 3) },              -- durable enough to survive and be measured
                 { unit("character_demon_bomblet", 2, 2) })
             local knight, bomblet = c.units[1], c.units[2]
             assert(Trait.has(bomblet, "trait_volatile"), "the Bomblet carries the self-destruct rule")
@@ -165,7 +165,7 @@ return {
         name = "the Bomblet carries Self-Destruct, and it throws exactly the trait's blast",
         fn = function()
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 2, 3) },
+                { unit("character_rowan", 2, 3) },
                 { unit("character_demon_bomblet", 2, 2) })
             local knight, bomblet = c.units[1], c.units[2]
             local bomb = bomblet.char.inventory[2] -- grid cell 2 (see the blueprint)
@@ -188,7 +188,7 @@ return {
             -- ...and it is ONE blast, not two: the ability's own ring plus the trait answering the
             -- bomber's removal would silently double every self-destruct on the board.
             local c2 = Combat.new(arena(8, 8),
-                { unit("character_knight", 2, 3) },
+                { unit("character_rowan", 2, 3) },
                 { unit("character_demon_bomblet", 2, 2) })
             local knight2, bomblet2 = c2.units[1], c2.units[2]
             local was = knight2.char.stats.health.current
@@ -203,7 +203,7 @@ return {
             -- Interrupted: shoved or stunned mid-channel, the cast is wasted and the bomber stands there
             -- holding it. This is the answer the passive trait never allowed.
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 2, 3) },
+                { unit("character_rowan", 2, 3) },
                 { unit("character_demon_bomblet", 2, 2) })
             local knight, bomblet = c.units[1], c.units[2]
             local before = knight.char.stats.health.current
@@ -216,7 +216,7 @@ return {
             -- Killed mid-channel: the channel drops, but the DEATH is answered by the trait, so the
             -- blast lands anyway. Killing it in your own teeth is still the wrong answer.
             local c2 = Combat.new(arena(8, 8),
-                { unit("character_knight", 2, 3) },
+                { unit("character_rowan", 2, 3) },
                 { unit("character_demon_bomblet", 2, 2) })
             local knight2, bomblet2 = c2.units[1], c2.units[2]
             local was = knight2.char.stats.health.current
@@ -234,7 +234,7 @@ return {
             -- to be killed. (A self-target cast is aimed at the tile the caster WALKS to -- see
             -- AI.candidates -- which is what lets this be a plan at all.)
             local c = Combat.new(arena(8, 8),
-                { unit("character_knight", 5, 5) },
+                { unit("character_rowan", 5, 5) },
                 { unit("character_demon_bomblet", 5, 2) }) -- three tiles off: within its movement of 4
             local bomblet = c.units[2]
             local plan = AI.plan(c, bomblet)
@@ -245,7 +245,7 @@ return {
             -- ...and with nobody to catch it, it does NOT waste itself: the outcome gate refuses a burst
             -- that accomplishes nothing, and the posture just walks it closer.
             local c2 = Combat.new(arena(16, 16),
-                { unit("character_knight", 16, 16) },
+                { unit("character_rowan", 16, 16) },
                 { unit("character_demon_bomblet", 2, 2) })
             local far = AI.plan(c2, c2.units[2])
             assert(not far.item, "far from the party it holds its charge and approaches: " .. AI.explain(far))
@@ -273,7 +273,7 @@ return {
         name = "the Roar resolves into two Bomblets; interrupting the channel denies them",
         fn = function()
             -- Resolves: the wind-up pays off with two summoned Bomblets on the Champion's side.
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) },
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) },
                 { unit("character_demon_champion", 5, 5) })
             local champ = c.units[2]
             local roar = champ.char.inventory[2] -- grid cell 2
@@ -283,7 +283,7 @@ return {
             assert(countAlive(c, "character_demon_bomblet") == 2, "the Roar called two Bomblets")
 
             -- Interrupted: the channel is broken, and the call is fully wasted -- no Bomblets.
-            local c2 = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) },
+            local c2 = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) },
                 { unit("character_demon_champion", 5, 5) })
             local champ2 = c2.units[2]
             assert(Combat.useItem(c2, champ2, champ2.char.inventory[2], 5, 4), "the Roar begins")
@@ -301,7 +301,7 @@ return {
                 "the arena is authored and fixed (never randomly rolled)")
             local a = Arena.build({ prestige = 1 }, {
                 biome = "forest", seed = 1, layout = "demon_champion",
-                party = { "character_avatar", "character_knight" },
+                party = { "character_avatar", "character_rowan" },
                 composition = function()
                     return { "character_demon_champion", "character_demon_imp", "character_demon_imp" }
                 end,

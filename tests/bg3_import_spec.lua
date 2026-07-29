@@ -58,7 +58,7 @@ return {
     {
         name = "a coating is spent one charge per cast it sharpens, and stops applying when empty",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k, b = c.units[1], c.units[2]
             equip(k.char, { [5] = "consumable_fire_stone", [4] = "weapon_iron_sword" })
             local stone = k.char.inventory[5]
@@ -90,7 +90,7 @@ return {
     {
         name = "reading the grid never spends a coating -- only a resolved cast does",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k = c.units[1]
             equip(k.char, { [5] = "consumable_fire_stone", [4] = "weapon_iron_sword" })
             local stone = k.char.inventory[5]
@@ -115,7 +115,7 @@ return {
         fn = function()
             -- One ally and one foe, both inside a 3x3 blast centred on (5,6).
             local c = Combat.new(arena(10, 10),
-                { unit("character_mage", 5, 7), unit("character_knight", 5, 6) },
+                { unit("character_mage", 5, 7), unit("character_rowan", 5, 6) },
                 { unit("character_bandit", 4, 6) })
             local mage, knight, bandit = c.units[1], c.units[2], c.units[3]
             equip(mage.char, { [5] = "utility_careful_sigil", [4] = "ability_fireball" })
@@ -138,7 +138,7 @@ return {
         name = "without the sigil the same blast catches the same ally",
         fn = function()
             local c = Combat.new(arena(10, 10),
-                { unit("character_mage", 5, 7), unit("character_knight", 5, 6) },
+                { unit("character_mage", 5, 7), unit("character_rowan", 5, 6) },
                 { unit("character_bandit", 4, 6) })
             local mage, knight = c.units[1], c.units[2]
             equip(mage.char, { [4] = "ability_fireball" })
@@ -177,7 +177,7 @@ return {
         fn = function()
             -- One foe with an ALLY beside it: the fork must find nothing rather than hit the friend.
             local c = Combat.new(arena(10, 10),
-                { unit("character_mage", 3, 3), unit("character_knight", 6, 4) },
+                { unit("character_mage", 3, 3), unit("character_rowan", 6, 4) },
                 { unit("character_bandit", 6, 3) })
             local mage, knight, foe = c.units[1], c.units[2], c.units[3]
             equip(mage.char, { [5] = "utility_twinned_sigil", [4] = "ability_fire_bolt" })
@@ -297,7 +297,7 @@ return {
     {
         name = "Halted refuses every ability -- weapon, spell and potion alike",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k = c.units[1]
             equip(k.char, { [1] = "weapon_iron_sword", [2] = "ability_heal", [3] = "consumable_healing_potion" })
             flush(k)
@@ -317,7 +317,7 @@ return {
     {
         name = "Halted takes the action and leaves the reflex: a halted swordsman still parries",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k, b = c.units[1], c.units[2]
             equip(k.char, { [1] = "weapon_iron_sword" })
             equip(b.char, { [1] = "weapon_iron_sword" })
@@ -333,7 +333,7 @@ return {
     {
         name = "an Elixir of Heroism refuses the order outright rather than resisting it",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local k = c.units[1]
             Status.apply(c, k, "status_heroism")
             assert(Status.apply(c, k, "status_halted") == nil, "a heroic unit is proof against Halt")
@@ -348,7 +348,7 @@ return {
         name = "a bond moves half of every wound onto the one who swore it, at any distance",
         fn = function()
             local c = Combat.new(arena(12, 12),
-                { unit("character_knight", 1, 1), unit("character_mage", 9, 9) },
+                { unit("character_rowan", 1, 1), unit("character_mage", 9, 9) },
                 { unit("character_bandit", 9, 8) })
             local knight, mage = c.units[1], c.units[2]
             flush(knight); flush(mage)
@@ -370,7 +370,7 @@ return {
         name = "a bond never pays into itself, and is released when its swearer falls",
         fn = function()
             local c = Combat.new(arena(12, 12),
-                { unit("character_knight", 1, 1), unit("character_mage", 3, 3) },
+                { unit("character_rowan", 1, 1), unit("character_mage", 3, 3) },
                 { unit("character_bandit", 9, 9) })
             local knight, mage = c.units[1], c.units[2]
             flush(knight); flush(mage)
@@ -460,7 +460,7 @@ return {
         name = "a bond that kills its bearer fells them too -- the same toll, the other direction",
         fn = function()
             local c = Combat.new(arena(12, 12),
-                { unit("character_knight", 1, 1), unit("character_mage", 9, 9) },
+                { unit("character_rowan", 1, 1), unit("character_mage", 9, 9) },
                 { unit("character_bandit", 5, 5) })
             local knight, mage = c.units[1], c.units[2]
             local st = Status.apply(c, mage, "status_shared_burden")
@@ -478,7 +478,7 @@ return {
     {
         name = "a Bulwark drives its melee attacker two tiles back",
         fn = function()
-            local c = Combat.new(arena(12, 12), { unit("character_knight", 5, 5) },
+            local c = Combat.new(arena(12, 12), { unit("character_rowan", 5, 5) },
                 { unit("character_bandit", 5, 6) })
             local k, b = c.units[1], c.units[2]
             equip(k.char, { [1] = "armor_bulwark_shield" })
@@ -495,7 +495,7 @@ return {
     {
         name = "a shove is not a swing, so it is billed the trait's own cost and not a weapon's",
         fn = function()
-            local c = Combat.new(arena(12, 12), { unit("character_knight", 5, 5) },
+            local c = Combat.new(arena(12, 12), { unit("character_rowan", 5, 5) },
                 { unit("character_bandit", 5, 6) })
             local k = c.units[1]
             -- A greatsword in the grid would price a SWING at 16; the shove must ignore it entirely.
@@ -534,7 +534,7 @@ return {
     {
         name = "darkness stops arrows, not feet",
         fn = function()
-            local c = Combat.new(arena(12, 12), { unit("character_knight", 5, 5) }, { unit("character_bandit", 9, 9) })
+            local c = Combat.new(arena(12, 12), { unit("character_rowan", 5, 5) }, { unit("character_bandit", 9, 9) })
             local k = c.units[1]
             flush(k)
             Hazard.place(c, 5, 6, "hazard_darkness", {})
@@ -550,7 +550,7 @@ return {
     {
         name = "Wet amplifies lightning AND ice, and damps fire",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local b = c.units[2]
             b.resist = {}
 
@@ -567,7 +567,7 @@ return {
     {
         name = "a resistance can damp a hit but never heal one: mitigation still floors at 1",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
             local b = c.units[2]
             b.resist = {}
             Status.apply(c, b, "status_wet")
@@ -583,7 +583,7 @@ return {
         name = "Coveted Blood exposes foes standing in it and never its bearer's own line",
         fn = function()
             local c = Combat.new(arena(12, 12),
-                { unit("character_priest", 5, 5), unit("character_knight", 5, 4) },
+                { unit("character_priest", 5, 5), unit("character_rowan", 5, 4) },
                 { unit("character_bandit", 4, 5) })
             local al, knight, foe = c.units[1], c.units[2], c.units[3]
             equip(al.char, { [1] = "utility_coveted_blood" })

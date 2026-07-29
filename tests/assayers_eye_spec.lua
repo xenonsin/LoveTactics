@@ -26,7 +26,7 @@ return {
     {
         name = "Assayer's Eye lays a foe's inventory open to the party",
         fn = function()
-            local caster = unit("character_knight", 3, 4)
+            local caster = unit("character_rowan", 3, 4)
             local lens = Item.instantiate("ability_assayers_eye")
             caster.char.inventory[1] = lens
             local c = Combat.new(arena(8, 8), { caster }, { unit("character_bandit", 5, 4) })
@@ -45,7 +45,7 @@ return {
     {
         name = "the assay deals no damage and takes nothing",
         fn = function()
-            local caster = unit("character_knight", 3, 4)
+            local caster = unit("character_rowan", 3, 4)
             local lens = Item.instantiate("ability_assayers_eye")
             caster.char.inventory[1] = lens
             local c = Combat.new(arena(8, 8), { caster }, { unit("character_bandit", 5, 4) })
@@ -65,7 +65,7 @@ return {
     {
         name = "the tooltip dry-run records the reveal and no damage",
         fn = function()
-            local caster = unit("character_knight", 3, 4)
+            local caster = unit("character_rowan", 3, 4)
             local lens = Item.instantiate("ability_assayers_eye")
             local out = Combat.abilityOutput(caster, lens)
             assert(out, "the ability produces a dry-run output")

@@ -61,6 +61,32 @@ return {
         end,
     },
     {
+        -- The Long Count wears a counter too, but a SCALING one, not a purse: it reads the turns its
+        -- bearer has taken and grows the blow by them (weapon_long_count). `counterGates = false`, so a
+        -- reading of 0 is a floor to build from -- the cast is NEVER refused for an empty count, unlike
+        -- the two purses above. The badge shows the tally; the swing still lands on turn one.
+        name = "the Long Count's counter reads turns taken and never refuses an empty count",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", items = { "weapon_long_count" }, stats = { stamina = 40 } })
+            local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h = combat.units[1]
+            local blade = Fixture.itemNamed(h.char, "weapon_long_count")
+            local ab = blade.activeAbility
+
+            assert(ab.counter(h, blade) == 0, "it opens at zero -- no turns taken yet")
+            -- The whole point of counterGates = false: an empty count is castable, not greyed out.
+            assert(Combat.itemBlockReason(h, blade) == nil,
+                "and a zero count does NOT refuse the swing -- the first swing is still a real swing")
+
+            Combat.tally(h, "turnTaken", 5) -- five turns weathered
+            assert(ab.counter(h, blade) == 5, "the badge now reads the five turns it has outlasted")
+            assert(Combat.itemBlockReason(h, blade) == nil, "and it was never gated on the count")
+        end,
+    },
+    {
         name = "an unaffordable empty purse is told about the mana first, not the empty",
         fn = function()
             local map = Fixture.new(8, 8)

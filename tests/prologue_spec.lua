@@ -48,7 +48,7 @@ return {
             p.roster = { Character.instantiate("character_avatar") }
             p.party = { p.roster[1] }
 
-            local rowan = Player.recruit(p, "character_knight")
+            local rowan = Player.recruit(p, "character_rowan")
             assert(rowan and rowan.name == "Rowan", "Rowan joins as the first recruit")
             local saber = Player.recruit(p, "character_saber")
             assert(saber and saber.name == "Saber", "Saber joins as the second recruit")
@@ -102,9 +102,9 @@ return {
             local p = Player.new()
             p.roster = { Character.instantiate("character_avatar") } -- mirrors prologue.begin
             p.party = { p.roster[1] }
-            Player.recruit(p, "character_knight")
+            Player.recruit(p, "character_rowan")
             assert(p.party[1].id == "character_avatar", "the avatar holds the first spawn")
-            assert(p.party[2].id == "character_knight", "Rowan holds the second")
+            assert(p.party[2].id == "character_rowan", "Rowan holds the second")
         end,
     },
     {

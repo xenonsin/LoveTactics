@@ -1,7 +1,8 @@
 return {
     name = "Mage",
     sprite = "assets/chars/mage.png",
-    portrait = "assets/portraits/mage.png", -- large VN portrait for conversations (falls back if missing)
+    -- No portrait: retired from the player's party (data/player.lua). Only ever an enemy/ally/test
+    -- stand-in now, so it owes no painted VN portrait -- it falls back to the letter token if it speaks.
     -- Innate growth class: the fallback/tie-break for the level-up growth system (models/growth.lua).
     class = "mage",
     -- 42 health and 4 defense, standing next to a swordsman, is a corpse. Left to herself she keeps
@@ -16,17 +17,17 @@ return {
         movement = 4, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
-    -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. The
-    -- build-around is the Overflowing Focus relic in the center (data/items/utility/utility_overflowing_focus.lua):
-    -- a bound item -- never moved, stowed, sold, or stolen, only forged -- that pays a cast's mana
-    -- shortfall in blood (Overchannel). healing_potion stays in cell 1 (its default-weapon / basic-attack
-    -- ordering is unchanged). Fire Stone infuses adjacent weapons/abilities with fire + Burn; it sits
-    -- next to Fireball so the mage's spells set foes alight from the start (see fire_stone.lua). Summon
-    -- Fire Elemental reserves a quarter of the deep mana pool for as long as the elemental stands.
+    -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. This is the
+    -- RELIC-FREE generic mage: NO Overflowing Focus in the center (that bound Overchannel relic is a
+    -- companion signature, not a template's -- what makes a companion a companion). healing_potion stays
+    -- in cell 1 (its default-weapon / basic-attack ordering is unchanged). Fire Stone infuses adjacent
+    -- weapons/abilities with fire + Burn; it sits next to Fireball so the mage's spells set foes alight
+    -- from the start (see fire_stone.lua). Summon Fire Elemental reserves a quarter of the deep mana pool
+    -- for as long as the elemental stands.
     startingItems = {
-        "consumable_healing_potion", "ability_jolt",             "armor_silk_robes",
-        "weapon_parasitic_staff", "utility_overflowing_focus",   "consumable_fire_stone",
-        "ability_rain",   "ability_summon_fire_elemental", "ability_fireball",
+        "consumable_healing_potion", "ability_jolt",                  "armor_silk_robes",
+        "weapon_parasitic_staff",    "ability_fireball",              "consumable_fire_stone",
+        "ability_rain",              "ability_summon_fire_elemental", false,
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.

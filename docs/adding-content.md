@@ -41,7 +41,7 @@ keep casting Fireball with grows into a battlemage.
 - **Growth tables** live in `data/growth/<class>.lua` — one flat table of per-level stat gains per
   `Item.CLASSES` entry (`health`/`mana`/`stamina` gains raise the pool's `max`). Gains are
   deterministic (no RNG) and `movement` is deliberately never grown.
-- A character blueprint may set an innate **`class`** (`data/characters/character_knight.lua` → `"knight"`),
+- A character blueprint may set an innate **`class`** (`data/characters/character_rowan.lua` → `"knight"`),
   used as the growth class before it has cast anything and as the tie-break; a class-less blueprint
   falls back to `Growth.NEUTRAL_CLASS`.
 - Growth is baked onto `char.stats` and the running total kept in `char.growth`; the save stores
@@ -95,10 +95,10 @@ screen — the hub, the overworld, or **a battle mid-turn** — freezing it unti
 ```lua
 return {
   title = "Debut on the Sand",                 -- optional; shown top-left
-  cast  = { "character_knight", "character_priest", "colosseum" }, -- speaker ids, drawn left->right; non-speakers grey out
+  cast  = { "character_rowan", "character_priest", "colosseum" }, -- speaker ids, drawn left->right; non-speakers grey out
   script = {
     { "colosseum", "You want blood on the sand? Prove it." },  -- a node is { speaker, line }
-    { "character_knight",    "We only want the quest." },
+    { "character_rowan",    "We only want the quest." },
     { "colosseum", "Everything has a price. Which is it?",
       choices = {
         { "\"Coin.\"",  goto = "coin"  },       -- a choice jumps to a node's `id`
@@ -127,7 +127,7 @@ drops what does not apply before the widget ever sees it, so a priest who has no
 neither on stage nor in the script:
 
 ```lua
-cast = { "character_knight", "character_mage", { id = "character_priest", when = { has = "character_priest" } }, "colosseum" },
+cast = { "character_rowan", "character_mage", { id = "character_priest", when = { has = "character_priest" } }, "colosseum" },
 script = {
   { "colosseum", "Fresh blood for the sand." },
   -- One block, one condition: these lines stand or fall together.
@@ -1072,6 +1072,18 @@ the `fx.unitAt` branch already grabs it — and the 3x3 ground it holds open tra
 (`Hazard.carry`, called from `Combat.enterTile` for any displaced owner). See
 `data/items/ability/ability_heave.lua`.
 
+**Aim the landing (a two-stage throw).** The example above flings its load *straight away from the
+thrower*. Set `activeAbility.throw = true` (`Item.isThrow`) and the ability instead aims **twice**: the
+battle UI first grabs the adjacent target, then lets the player pick a landing along one of the 4
+cardinal lines out to `throwRange` (default 3) — the lane is straight, and `signDominant` makes shoves
+4-directional. The chosen tile arrives as `fx.dest`, which you pass
+straight through — `fx.knockback(body, throwRange, { amount = fx.amount, dest = fx.dest })` (and the
+`fx.hurl` twin). `Combat.knockback` / `Combat.hurlObject` read `opts.dest` to aim the lane toward it and
+cap the travel at that tile, so the same "a stopped throw slams both ends" rule still lands a keg in a
+wall or a body into a foe. With **no** `dest` (an AI cast, a legacy caller) it falls back to the plain
+away-from-thrower throw — which is what the Demon Champion's Bomblet lob still does. Heave is the one
+that ships today.
+
 ## The stash, and stealing into it
 
 `player.stash` is an unbounded list of every item nobody is carrying (`Player.addToStash` /
@@ -1114,7 +1126,7 @@ Don't hand-roll a board. `tests/support/fixture.lua` builds the two things a com
 ```lua
 local Fixture = require("tests.support.fixture")
 
-local hero = Fixture.unit("character_knight", 2, 2,
+local hero = Fixture.unit("character_rowan", 2, 2,
     { isolate = "bare", items = { "weapon_iron_sword" }, stats = { damage = 0 } })
 local foe  = Fixture.unit("character_bandit", 2, 3, { stats = { defense = 0, health = 100 } })
 local c    = Fixture.combat(Fixture.new(8, 8), hero, foe)

@@ -19,7 +19,7 @@
 -- `assassinate`: the inner circle's own champion, in the anointed's own colours. The rest is a wall.
 --
 -- FIRST PASS. Scenes are not authored, so nothing is named. `character_anointed` is the blueprint this
--- slot wants for the guard; `character_champion` and `character_knight` stand in.
+-- slot wants for the guard; `character_champion` and `character_rowan` stand in.
 --
 -- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
 -- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
@@ -43,7 +43,7 @@ return {
             name = "The Inner Circle's Own",
             composition = function(ctx)
                 local list = { "character_champion" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_knight" end
+                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_rowan" end
                 return list
             end,
             win = { type = "assassinate", target = "character_champion" },

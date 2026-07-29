@@ -53,7 +53,7 @@ end
 -- One duel, built from nothing but a seed and two rosters -- exactly what a peer would be handed.
 local function duel()
     return Combat.new(arena(8, 8, 4242),
-        { fighter("character_knight", 4, 8) },
+        { fighter("character_rowan", 4, 8) },
         { fighter("character_bandit", 4, 2) })
 end
 

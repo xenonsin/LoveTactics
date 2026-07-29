@@ -16,9 +16,7 @@
 -- have to strand the player at the title screen to get here.
 
 local State = require("states")
-local Menu = require("ui.menu")
-local Settings = require("models.settings")
-local Sound = require("models.sound")
+local SettingsMenu = require("ui.settings_menu")
 local Scale = require("scale")
 local InputMode = require("input_mode")
 local Theme = require("ui.theme")
@@ -43,68 +41,8 @@ local DESC_Y = HINT_Y - DESC_H - 10
 
 local widget
 
-local ON, OFF = "On", "Off"
-
 local function backToPrevious()
     State.switch(settings.previous or require("states.menu"))
-end
-
--- A range row's readout. Zero reads as "Off" rather than "0%": at zero a volume is not a quiet
--- setting, it is a disabled one, and the word says so at a glance down the column.
-local function rangeLabel(value, def)
-    if value == nil then value = def.default end
-    if value <= (def.min or 0) then return OFF end
-    return value .. "%"
-end
-
-local function buildMenu()
-    local items = {}
-    for _, def in ipairs(Settings.defs) do
-        local row = {
-            label = def.name,
-            description = def.description,
-            -- Read live, so the row shows what the preference IS rather than what it was when this
-            -- screen opened -- which is also what lets one `action` serve the click, Enter and the
-            -- d-pad without any of them having to refresh the label.
-            value = function()
-                local value = Settings.get(def.key)
-                if def.kind == "range" then return rangeLabel(value, def) end
-                return value and ON or OFF
-            end,
-        }
-
-        if def.kind == "range" then
-            -- `adjust` is ui/menu.lua's hook for a row with more than two states: left and right step
-            -- it, and Enter (which falls through to `action`) nudges it up so a click still does
-            -- something rather than nothing.
-            row.adjust = function(dir)
-                Settings.step(def.key, dir)
-                Settings.save()
-                -- Push the new level onto whatever is already playing, so the slider is audible while
-                -- you move it. A volume control you cannot hear until the next track is not a control.
-                Sound.refresh()
-                -- ... and give the effects slider something to be heard ON. Only for sfx: firing a
-                -- blip every step of the MUSIC slider would be the wrong sound for the thing changing.
-                if def.key ~= "volume_music" then Sound.play("ui.move") end
-            end
-            row.action = function() row.adjust(1) end
-        else
-            row.action = function()
-                Settings.toggle(def.key)
-                Settings.save()
-            end
-        end
-
-        items[#items + 1] = row
-    end
-    items[#items + 1] = { label = "Back", action = backToPrevious }
-    return Menu.new(items, {
-        buttonWidth = ROW_W,
-        buttonHeight = ROW_H,
-        spacing = ROW_SPACING,
-        startY = LIST_TOP,
-        font = rowFont,
-    })
 end
 
 -- Note the `self` first parameter. State.switch calls `state.enter(state, ...)`, so the state's own
@@ -113,7 +51,13 @@ end
 -- options menu. Every state's enter must lead with self, whether or not it uses it.
 function settings.enter(self, previous)
     settings.previous = previous
-    widget = buildMenu()
+    widget = SettingsMenu.build(backToPrevious, {
+        buttonWidth = ROW_W,
+        buttonHeight = ROW_H,
+        spacing = ROW_SPACING,
+        startY = LIST_TOP,
+        font = rowFont,
+    })
 end
 
 function settings.update(dt)

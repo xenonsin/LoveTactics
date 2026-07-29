@@ -95,7 +95,7 @@ return {
         fn = function()
             local priest = plainChar("character_priest")
             give(priest, "weapon_censer")
-            local ally = plainChar("character_knight")
+            local ally = plainChar("character_rowan")
             local c = Combat.new(arena(12, 12),
                 { unit(priest, 3, 3), unit(ally, 4, 3) },
                 { unit("character_bandit", 11, 11) })

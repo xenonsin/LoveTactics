@@ -70,8 +70,8 @@ return {
     -- exists to give Rowan's opening kill somewhere to land: without it her demonstration resolves in
     -- the first half-second of the fight, while the player is still working out what a tile is.
     opening  = "prologue_village",
-    speaker  = "character_knight",     -- whose panel and portrait carry the narrative half
-    scripted = { "character_knight" }, -- Rowan runs her authored turns, not the player's hands
+    speaker  = "character_rowan",     -- whose panel and portrait carry the narrative half
+    scripted = { "character_rowan" }, -- Rowan runs her authored turns, not the player's hands
     -- THE TURN ORDER IS AUTHORED, like everything else here. See Tutorial.startInitiative /
     -- Tutorial.paceTurn for the mechanism; this is why it exists.
     --
@@ -97,17 +97,17 @@ return {
     -- leave the order to initiative and it never lines up at all.
     pace = {
         order = {
-            "character_knight",  -- her demonstration: cross the lane, cut the vanguard down
+            "character_rowan",  -- her demonstration: cross the lane, cut the vanguard down
             "character_avatar",  -- 1. the same, in one click
             "4,2", "6,2",        -- the second wave closes and spits
             "7,3",               -- ...and the third takes the long way to her flank
-            "character_knight",  -- her post answers it
+            "character_rowan",  -- her post answers it
             "character_avatar",  -- 2-4. advance, ready, Clear Out -- and the grunt walks on
             "6,1",               -- it charges, and the avatar's sword parries unbidden
-            "character_knight",  -- her mace answers, and shoves it two tiles clear
+            "character_rowan",  -- her mace answers, and shoves it two tiles clear
             "character_avatar",  -- 5-6. ready the Jolt and throw it
             "6,1",               -- the turn the STUN takes away from it (see above)
-            "character_knight",  -- the blow that stun bought her
+            "character_rowan",  -- the blow that stun bought her
             "character_avatar",  -- 7. and the killing stroke is the player's
         },
     },
@@ -308,7 +308,7 @@ return {
         -- beat of the fight is supposed to be the two of them working on the same body. Her blow is
         -- what leaves the grunt inside a single sword-stroke of death, so the player's next click
         -- ends the battle. See the arithmetic note under `spawn` above.
-        character_knight = {
+        character_rowan = {
             -- The demonstration: she crosses to the vanguard on her side and cuts it down. Authored
             -- as a move-and-strike rather than a guard precisely because the WALK is half of what she
             -- is showing -- the player is about to be asked for the same two things in one click.

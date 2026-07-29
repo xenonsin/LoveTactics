@@ -256,6 +256,16 @@ local function buildBlocks(item, actor, innerW, out)
                 local def = st.def or {}
                 blocks[#blocks + 1] = { kind = "stat", label = "Applies",
                     value = def.name or st.id or "status", valueColor = def.color or VALUE }
+                -- How long the mark rides the target -- the same clock the badge counts down. A
+                -- Vulnerable opener, a Ward, or an Immunity is bought FOR its window, so the tooltip
+                -- has to price that window like it prices a hazard's lifespan just above. A
+                -- self-expiring status (hideDuration, e.g. Defending) carries a meaningless countdown
+                -- and opts out, exactly as its hover tooltip does.
+                local dur = (st.opts and st.opts.duration) or def.duration
+                if dur and dur > 0 and not def.hideDuration then
+                    blocks[#blocks + 1] = { kind = "stat", label = "Duration", icon = "hourglass",
+                        value = tostring(dur) }
+                end
             end
             -- Board effects the dry run recorded rather than performed. A summon still standing
             -- reddens the row that names it -- that creature is the reason the cast is refused.
@@ -391,8 +401,12 @@ local function buildBlocks(item, actor, innerW, out)
         -- cast is refused (blocked.kind == "empty"). The same count the grid badge shows.
         if ab.counter then
             local n = ab.counter(actor, item) or 0
-            blocks[#blocks + 1] = { kind = "stat", label = "Charges", icon = "charges",
-                value = tostring(n), valueColor = (n <= 0) and WARN or VALUE }
+            -- Red only when an empty count refuses the cast; a non-gating readout (the Long Count's turn
+            -- tally, `counterGates = false`) quotes 0 as an ordinary value. `counterLabel` lets a scaling
+            -- weapon name its count something truer than "Charges" (the Long Count calls them "Turns").
+            local gated = ab.counterGates ~= false
+            blocks[#blocks + 1] = { kind = "stat", label = ab.counterLabel or "Charges", icon = "charges",
+                value = tostring(n), valueColor = (n <= 0 and gated) and WARN or VALUE }
         end
         -- A reservation is spent AND locked: the share of the pool's MAXIMUM this ability pays on the
         -- cast and keeps locked away for as long as what it summons survives.

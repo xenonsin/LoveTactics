@@ -64,7 +64,7 @@ listed so the branches have something to branch *from*.
 | Class | Companion | Character |
 |---|---|---|
 | fighter | Saber | `character_saber` |
-| knight | Rowan | `character_knight` |
+| knight | Rowan | `character_rowan` |
 | rogue | Clem | `character_clem` |
 | hunter | Kaya | `character_kaya` |
 | mage | Gyeom | `character_mage` (Gyeom) |

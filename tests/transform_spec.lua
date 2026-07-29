@@ -33,7 +33,7 @@ return {
     {
         name = "a transform swaps the body but carries the health pool across, wounds and all",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
             knight.char.stats.health.current = 43 -- take a wound first
 
@@ -49,7 +49,7 @@ return {
     {
         name = "a pig has no actions at all -- no items, no fists",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
             Transform.apply(c, knight, "character_pig")
 
@@ -63,14 +63,14 @@ return {
     {
         name = "reverting restores the original body, keeping the damage taken as a pig",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
             Transform.apply(c, knight, "character_pig")
             Combat.dealFlatDamage(c, knight, 30, { "physical" }, "test")
             local afterHit = knight.char.stats.health.current
 
             Transform.revert(c, knight)
-            assert(knight.char.id == "character_knight", "the knight is itself again")
+            assert(knight.char.id == "character_rowan", "the knight is itself again")
             assert(knight.char.stats.health.current == afterHit, "wounds taken as a pig came back with it")
             assert(Combat.defaultWeapon(knight.char) ~= nil, "and it has its sword back")
         end,
@@ -78,7 +78,7 @@ return {
     {
         name = "one shape at a time: a pig cannot also become a bear",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_knight", 1, 1) }, { unit("character_bandit", 4, 4) })
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 4, 4) })
             local knight = c.units[1]
             assert(Transform.apply(c, knight, "character_pig"), "the first shape takes")
             assert(Transform.apply(c, knight, "character_dire_bear") == nil, "the second is refused")

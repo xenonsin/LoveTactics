@@ -15,14 +15,14 @@ end
 
 -- "A melee unit carrying an iron sword" -- what almost every fixture below actually wants.
 --
--- It used to be spelled `character_knight`, which WAS one by coincidence: Rowan's blueprint happened
+-- It used to be spelled `character_rowan`, which WAS one by coincidence: Rowan's blueprint happened
 -- to carry a sword. When the prologue gave her an iron mace instead (see
--- data/characters/character_knight.lua -- displacement is the knight's trade), thirteen tests about
+-- data/characters/character_rowan.lua -- displacement is the knight's trade), thirteen tests about
 -- initiative, damage scaling and default-weapon selection changed their answers overnight, none of
 -- which have anything to do with her. So the sword is put here ON PURPOSE now: these tests describe
 -- the unit they need instead of borrowing whoever happens to be equipped that way this month.
 local function swordsman()
-    local char = Character.instantiate("character_knight")
+    local char = Character.instantiate("character_rowan")
     char.inventory[1] = Item.instantiate("weapon_iron_sword")
     return char
 end

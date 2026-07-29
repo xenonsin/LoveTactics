@@ -38,7 +38,7 @@ local function withBackend(backend, fn)
 end
 
 local function teamFor(authorName)
-    local c = Character.instantiate("character_knight")
+    local c = Character.instantiate("character_rowan")
     c.name = authorName .. "'s knight"
     c.inventory = {}
     Character.addItem(c, Item.instantiate("weapon_iron_sword"))

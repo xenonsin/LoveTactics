@@ -59,7 +59,7 @@ return {
         fn = function()
             local priest = plainChar("character_priest")
             local staff = give(priest, "weapon_intercessors_staff")
-            local ward = plainChar("character_knight")
+            local ward = plainChar("character_rowan")
             local c = Combat.new(arena(8, 4),
                 { unit(priest, 1, 1), unit(ward, 2, 1) },
                 { unit(plainChar("character_bandit"), 1, 2) })
@@ -89,7 +89,7 @@ return {
             local priest = plainChar("character_priest")
             local staff = give(priest, "weapon_intercessors_staff")
             local c = Combat.new(arena(8, 4),
-                { unit(priest, 1, 1), unit(plainChar("character_knight"), 2, 1) },
+                { unit(priest, 1, 1), unit(plainChar("character_rowan"), 2, 1) },
                 { unit(plainChar("character_bandit"), 1, 2) })
             local p, w, foe = c.units[1], c.units[2], c.units[3]
             Trait.setup(c)
@@ -144,7 +144,7 @@ return {
             local hunter = plainChar("character_archer")
             give(hunter, "utility_hunting_horn")
             local c = Combat.new(arena(10, 4),
-                { unit(hunter, 2, 2), unit(plainChar("character_knight"), 3, 2), unit(plainChar("character_mage"), 9, 2) },
+                { unit(hunter, 2, 2), unit(plainChar("character_rowan"), 3, 2), unit(plainChar("character_mage"), 9, 2) },
                 { unit(plainChar("character_bandit"), 2, 3) })
             local h, near, far, foe = c.units[1], c.units[2], c.units[3], c.units[4]
 
@@ -225,7 +225,7 @@ return {
         name = "fx.retreat is present on every fx table, so a hit-and-run weapon cannot crash its own swing",
         fn = function()
             -- NOT plainChar: a wolf's fangs are its body, and emptying the grid would disarm it.
-            local c = Combat.new(arena(8, 3), { unit(plainChar("character_knight"), 4, 2) },
+            local c = Combat.new(arena(8, 3), { unit(plainChar("character_rowan"), 4, 2) },
                 { unit("character_wolf_grunt", 5, 2) })
             local w, prey = c.units[2], c.units[1]
             local fangs
@@ -280,7 +280,7 @@ return {
             local mage = plainChar("character_mage")
             local ability = give(mage, "ability_graven_circle")
             local c = Combat.new(arena(10, 6),
-                { unit(mage, 5, 3), unit(plainChar("character_knight"), 5, 4) },
+                { unit(mage, 5, 3), unit(plainChar("character_rowan"), 5, 4) },
                 { unit(plainChar("character_bandit"), 9, 3) })
             local m, ally = c.units[1], c.units[2]
 
@@ -367,7 +367,7 @@ return {
     {
         name = "Knell kills when its count runs out, whatever health is left",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit(plainChar("character_knight"), 1, 1) },
+            local c = Combat.new(arena(6, 6), { unit(plainChar("character_rowan"), 1, 1) },
                 { unit(plainChar("character_bandit"), 3, 3) })
             local victim = c.units[2]
             victim.char.stats.health.current = victim.char.stats.health.max
@@ -387,7 +387,7 @@ return {
         -- turning the one counterplay into the trigger. The kill fires from onTick instead.
         name = "curing a Knell saves the unit rather than killing it -- the whole counterplay",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit(plainChar("character_knight"), 1, 1) },
+            local c = Combat.new(arena(6, 6), { unit(plainChar("character_rowan"), 1, 1) },
                 { unit(plainChar("character_bandit"), 3, 3) })
             local victim = c.units[2]
             Status.apply(c, victim, "status_knell", { duration = 10 })

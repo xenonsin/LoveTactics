@@ -1,7 +1,8 @@
 return {
     name = "Priest",
     sprite = "assets/chars/priest.png",
-    portrait = "assets/portraits/priest.png", -- large VN portrait for conversations (falls back if missing)
+    -- No portrait: retired from the player's party (data/player.lua). Only ever an enemy/ally/test
+    -- stand-in now, so it owes no painted VN portrait -- it falls back to the letter token if it speaks.
     -- Innate growth class: the fallback/tie-break for the level-up growth system (models/growth.lua).
     class = "priest",
     -- Reads his allies before his enemies (models/ai.lua): mending outranks swinging, and he keeps
@@ -16,17 +17,16 @@ return {
         movement = 4, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
-    -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. The
-    -- build-around is the Hallowed Censer relic in the center (data/items/utility/utility_hallowed_censer.lua):
-    -- a bound item -- never moved, stowed, sold, or stolen, only forged -- that consecrates the ground
-    -- (Sanctified Presence). Around it, a support caster's kit: the Heal spell to mend at range, Jolt to
-    -- delay a pressing threat, silk robes for spell resistance, a potion as a fallback mend, and the two
-    -- ways to refuel the non-regenerating mana pool -- the focus stone (Wait -> Focus) and the parasitic
-    -- staff (siphons mana on hit).
+    -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. This is the
+    -- RELIC-FREE generic priest: NO Hallowed Censer in the center (that bound Sanctified-Presence relic is
+    -- Amana's signature -- see character_amana.lua -- not a template's). Around the empty center, a support
+    -- caster's kit: the Heal spell to mend at range, Jolt to delay a pressing threat, silk robes for spell
+    -- resistance, a potion as a fallback mend, and the two ways to refuel the non-regenerating mana pool --
+    -- the focus stone (Wait -> Focus) and the parasitic staff (siphons mana on hit).
     startingItems = {
-        "ability_heal",    "ability_jolt",        "armor_silk_robes",
-        "consumable_healing_potion",  "utility_hallowed_censer",  "utility_focus_stone",
-        "weapon_parasitic_staff", "ability_sanctuary",   false,
+        "ability_heal",              "ability_jolt",           "armor_silk_robes",
+        "consumable_healing_potion", "weapon_parasitic_staff", "utility_focus_stone",
+        "ability_sanctuary",         false,                    false,
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. Jolt (an offensive zap) keeps click-to-

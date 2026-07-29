@@ -56,7 +56,7 @@ return {
     {
         name = "dominantClass takes the most-cast class, breaks ties with the innate class",
         fn = function()
-            local knight = Character.instantiate("character_knight") -- innate class = knight
+            local knight = Character.instantiate("character_rowan") -- innate class = knight
 
             -- No casts yet: fall back to the innate class.
             assert(Growth.dominantClass(knight) == "knight", "empty tally uses the innate class")
@@ -79,7 +79,7 @@ return {
                 "a tie outside the innate class settles by name")
 
             -- Stated the other way round, so the assertion cannot pass by luck of insertion order.
-            local other = Character.instantiate("character_knight")
+            local other = Character.instantiate("character_rowan")
             other.classUse = { fighter = 4, mage = 4 }
             assert(Growth.dominantClass(other) == "fighter",
                 "the same tie settles the same way whichever was tallied first")
@@ -99,7 +99,7 @@ return {
     {
         name = "resolve grows a character deterministically along its most-used class",
         fn = function()
-            local knight = Character.instantiate("character_knight")
+            local knight = Character.instantiate("character_rowan")
             local baseMagic = knight.stats.magicDamage
             local baseManaMax = knight.stats.mana.max
             local baseHealthMax = knight.stats.health.max
@@ -124,7 +124,7 @@ return {
     {
         name = "resolve is idempotent and never runs backward",
         fn = function()
-            local knight = Character.instantiate("character_knight")
+            local knight = Character.instantiate("character_rowan")
             knight.classUse = { fighter = 5 }
             Growth.resolve(knight, 4)
             local magic = knight.stats.magicDamage
@@ -141,7 +141,7 @@ return {
         fn = function()
             -- The gains are additive per stat regardless of ordering, but the summary's `class` is the
             -- last level's dominant class -- proving each level resolves independently.
-            local knight = Character.instantiate("character_knight")
+            local knight = Character.instantiate("character_rowan")
             knight.classUse = { fighter = 3, mage = 1 }
             local summary = Growth.resolve(knight, 3)
             assert(summary.class == "fighter", "fighter leads, so the last level grew as fighter")
@@ -152,7 +152,7 @@ return {
     {
         name = "recordUse tallies class casts, ignoring a nil class",
         fn = function()
-            local knight = Character.instantiate("character_knight")
+            local knight = Character.instantiate("character_rowan")
             Character.recordUse(knight, "fighter")
             Character.recordUse(knight, "fighter")
             Character.recordUse(knight, "mage")
@@ -164,7 +164,7 @@ return {
     {
         name = "a party member's weapon strike feeds its class tally; an enemy's does not",
         fn = function()
-            local c = Combat.new(arena(6, 6), { unit("character_knight", 2, 2) }, { unit("character_bandit", 3, 2) })
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
             local knight, bandit = c.units[1], c.units[2]
 
             -- Deliberately an OFF-CLASS weapon: a knight swinging a Colosseum hammer. The tally must

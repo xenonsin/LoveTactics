@@ -8,6 +8,6 @@
 return {
     name    = "Plague Knight",
     classes = { "knight", "alchemist" },
-    exemplar = "character_forsworn_knight",
+    exemplar = "character_plague_knight", -- was character_forsworn_knight (a story-critical Bastion enemy); dedicated exemplar authored
     requiredQuests = { "the_rot_beneath_the_plate" }, -- pending
 }
