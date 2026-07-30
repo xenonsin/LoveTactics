@@ -310,6 +310,10 @@ local function markerColor(kind)
     if kind == "treasure" then return 0.35, 0.80, 0.55 end
     if kind == "event" then return 0.60, 0.60, 0.95 end   -- a story stop, not a fight
     if kind == "rest" then return 0.45, 0.80, 0.80 end     -- a safe breather
+    if kind == "relic_cache" then return 0.80, 0.52, 0.92 end -- a reliquary: a run relic waits inside
+    if kind == "shrine" then return 0.88, 0.40, 0.48 end       -- a sin's altar: a Vice for a toll
+    if kind == "fence" then return 0.90, 0.74, 0.32 end         -- a wandering market: relics for gold
+    if kind == "crossroads" then return 0.70, 0.72, 0.80 end     -- a branching dilemma: a gamble
     return 0.85, 0.25, 0.25 -- combat
 end
 
@@ -366,6 +370,53 @@ function MarkerIcon.treasure(x, y, w, h, r, g, b, a)
     love.graphics.rectangle("fill", x, y + h * 0.12, w, h * 0.26, 3, 3)
     love.graphics.setColor(r * 0.4, g * 0.4, b * 0.4, a)
     love.graphics.rectangle("fill", x + w * 0.42, y + h * 0.30, w * 0.16, h * 0.38)
+end
+
+-- A faceted gem: a reliquary holding a run relic (models/relic.lua).
+function MarkerIcon.relic_cache(x, y, w, h, r, g, b, a)
+    local cx = x + w / 2
+    local top = y + h * 0.12
+    local shoulder = y + h * 0.42
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.polygon("fill",
+        cx, top, x + w, shoulder, cx, y + h, x, shoulder)
+    -- Two facet lines catching the light, shaded off the base colour.
+    love.graphics.setColor(r * 0.45, g * 0.45, b * 0.45, a)
+    love.graphics.setLineWidth(1)
+    love.graphics.line(x, shoulder, x + w, shoulder)
+    love.graphics.line(cx, top, cx, y + h)
+end
+
+-- A signpost fork: a crossroads dilemma, two ways to weigh.
+function MarkerIcon.crossroads(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.setLineWidth(2)
+    local cx = x + w / 2
+    love.graphics.line(cx, y + h, cx, y + h * 0.5)        -- the post
+    love.graphics.line(cx, y + h * 0.5, x + w * 0.1, y + h * 0.2) -- left arm
+    love.graphics.line(cx, y + h * 0.5, x + w * 0.9, y + h * 0.2) -- right arm
+    love.graphics.setLineWidth(1)
+end
+
+-- A coin: a wandering fence selling relics for gold.
+function MarkerIcon.fence(x, y, w, h, r, g, b, a)
+    local cx, cy = x + w / 2, y + h / 2
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.circle("fill", cx, cy, w * 0.42)
+    love.graphics.setColor(r * 0.4, g * 0.4, b * 0.4, a)
+    love.graphics.setLineWidth(2)
+    love.graphics.line(cx, cy - h * 0.22, cx, cy + h * 0.22) -- a struck "coin" mark
+    love.graphics.setLineWidth(1)
+end
+
+-- An altar under a flame: a shrine that trades a Vice for a toll.
+function MarkerIcon.shrine(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    -- Altar block.
+    love.graphics.rectangle("fill", x + w * 0.18, y + h * 0.55, w * 0.64, h * 0.45, 2, 2)
+    -- A flame licking up off it.
+    love.graphics.polygon("fill", x + w * 0.5, y + h * 0.1,
+        x + w * 0.66, y + h * 0.5, x + w * 0.5, y + h * 0.42, x + w * 0.34, y + h * 0.5)
 end
 
 -- A tent: a safe camp to rest at.

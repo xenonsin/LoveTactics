@@ -74,12 +74,17 @@ return {
         end,
     },
     {
-        name = "Saber's Held Swing banks steps and pays them back as self-healing on the win, then resets",
+        name = "Saber's Held Swing banks new ground (once per tile), heals on the win, then resets",
         fn = function()
             local saber = char("character_saber", "held_swing", { 40, 84 })
             local ctx = ctxFor({ saber }, { cell = combatCell() })
-            for _ = 1, 10 do ctx.cell = { x = 1, y = 1 }; OverworldAbility.dispatch("step", ctx) end
-            assert(ctx.state["character_saber"].steps == 10, "ten steps should bank")
+            -- Ten DISTINCT tiles bank ten steps...
+            for i = 1, 10 do ctx.cell = { x = i, y = 1 }; OverworldAbility.dispatch("step", ctx) end
+            assert(ctx.state["character_saber"].steps == 10, "ten distinct tiles should bank ten steps")
+            -- ...but pacing over an already-walked tile banks nothing (no exploit).
+            local paced = { x = 1, y = 1, paced = true }
+            for _ = 1, 20 do ctx.cell = paced; OverworldAbility.dispatch("step", ctx) end
+            assert(ctx.state["character_saber"].steps == 10, "re-walking a paced tile must not bank more")
             ctx.cell = combatCell()
             OverworldAbility.dispatch("encounterCleared", ctx)
             assert(saber.stats.health.current == 45, "10 steps -> floor(10/2)=5 health (40 -> 45)")
@@ -150,6 +155,42 @@ return {
             OverworldAbility.dispatch("encounterCleared", ctx)
             assert(ctx.grid.revealedAt and ctx.grid.revealedAt.x == 5,
                 "the third fight should reveal the objective's seat")
+        end,
+    },
+    {
+        name = "Kaya's Forage senses a reliquary within two tiles of her step",
+        fn = function()
+            local revealed = {}
+            local grid = {
+                rows = 5, cols = 5, cells = {},
+                pathNeighbors = function() return { true, true } end,
+                reveal = function(_, x, y) revealed[x .. "," .. y] = true end,
+            }
+            for y = 1, 5 do grid.cells[y] = {}; for x = 1, 5 do grid.cells[y][x] = { x = x, y = y } end end
+            grid.cells[3][4].encounter = { kind = "relic_cache" } -- the cell at (x=4, y=3)
+            local kaya = char("character_kaya", "forage", { 40, 40 })
+            local ctx = { player = { party = { kaya }, gold = 0 }, party = { kaya }, grid = grid,
+                state = {}, cell = grid.cells[3][3] } -- step onto (3,3): the cache at (4,3) is within 2
+            OverworldAbility.dispatch("step", ctx)
+            assert(revealed["4,3"], "a reliquary within two tiles surfaces through the fog")
+        end,
+    },
+    {
+        name = "Gyeom's Ledger reveals every reliquary on the board when her study completes",
+        fn = function()
+            local revealed = {}
+            local grid = {
+                objective = { x = 1, y = 1 }, rows = 3, cols = 3, cells = {},
+                reveal = function(_, x, y) revealed[x .. "," .. y] = true end,
+            }
+            for y = 1, 3 do grid.cells[y] = {}; for x = 1, 3 do grid.cells[y][x] = { x = x, y = y } end end
+            grid.cells[2][2].encounter = { kind = "relic_cache" }
+            local gyeom = char("character_gyeom", "ledger", { 40, 40 })
+            local ctx = { player = { party = { gyeom } }, party = { gyeom }, grid = grid, state = {},
+                cell = { x = 2, y = 3, encounter = { kind = "combat" } } }
+            for _ = 1, 3 do OverworldAbility.dispatch("encounterCleared", ctx) end
+            assert(revealed["1,1"], "the objective's seat is revealed")
+            assert(revealed["2,2"], "and every reliquary on the board")
         end,
     },
     {

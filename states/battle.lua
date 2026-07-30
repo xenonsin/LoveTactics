@@ -259,6 +259,8 @@ local function objectiveText(obj)
         end
     elseif obj.type == "hold" then
         text = "Objective: hold the marked ground"
+    elseif obj.type == "control" then
+        text = "Objective: hold the moving node"
     elseif obj.type == "assassinate" then
         text = "Objective: defeat " .. charName(obj.target)
     else
@@ -284,6 +286,10 @@ local function objectiveRemaining(obj, combat)
         return math.max(0, math.ceil((obj.duration or 0) - (combat.clock or 0)))
     elseif obj.type == "hold" then
         return math.max(0, math.ceil((obj.duration or 0) - (combat.heldTicks or 0)))
+    elseif obj.type == "control" then
+        -- The moving-node fight counts DOWN to its tick limit -- the hourglass tail is how much of the
+        -- match is left, the same unit every other timed objective is quoted in.
+        return math.max(0, math.ceil((obj.maxTicks or 0) - (combat.clock or 0)))
     end
     return nil
 end
@@ -340,6 +346,40 @@ function battle.drawObjective(x, y, w)
         love.graphics.setColor(col[1], col[2], col[3])
         love.graphics.print(waveLabel, sx + textW + gap, y)
     end
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- A real-time clock as m:ss, floored (never shows a phantom extra second). Used by the chess-clock
+-- read-out on a draft battle.
+local function clockText(seconds)
+    seconds = math.max(0, math.floor(seconds or 0))
+    return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
+end
+
+-- The draft/PvP read-out: the two control scores flanking the board top, and this player's chess clock
+-- beneath their own. Only drawn for a draft battle (battle.isDraft), so a campaign fight shows none of
+-- it. The scores update live off the model (Combat.scoreFor), which bank in Combat.rebase.
+function battle.drawControlHud(boardX, boardW)
+    local combat = battle.combat
+    if not (combat and combat.objective and combat.objective.type == "control") then return end
+    local mySide = combat.playerSide or "party"
+    local foeSide = Combat.OPPOSING[mySide] or "enemy"
+
+    love.graphics.setFont(hudFont)
+    -- Your score + clock at the near (left) corner; the foe's score at the far (right) corner.
+    Theme.set(Theme.accentAmber)
+    love.graphics.print("YOU  " .. Combat.scoreFor(combat, mySide), boardX + 4, 20)
+    if battle.chessClock then
+        Theme.set(battle.chessClock[mySide] <= 10 and { 0.9, 0.45, 0.4 } or Theme.muted)
+        Glyphs.hourglass(boardX + 4, 44, 11, hudFont:getHeight() - 4,
+            (battle.chessClock[mySide] <= 10) and 0.9 or 0.6,
+            (battle.chessClock[mySide] <= 10) and 0.45 or 0.6,
+            (battle.chessClock[mySide] <= 10) and 0.4 or 0.6, 1)
+        love.graphics.print(clockText(battle.chessClock[mySide]), boardX + 20, 42)
+    end
+    Theme.set(Theme.ink)
+    local foe = "FOE  " .. Combat.scoreFor(combat, foeSide)
+    love.graphics.print(foe, boardX + boardW - 4 - hudFont:getWidth(foe), 20)
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -3462,7 +3502,17 @@ local function refreshView()
     -- whole battle, not just while something is armed: an objective tile nobody can see is an
     -- objective nobody can play, and the HUD line above promises "the marked ground".
     local obj = battle.combat.objective
-    if obj and obj.type == "defend" and obj.protect then
+    if obj and obj.type == "control" then
+        -- The moving score node: wash the tiles it currently sits on (they hop on the clock, so this
+        -- follows it), and mark it "held" when the LOCAL player solely controls it -- the same green
+        -- the hold objective uses to say the count is running, here reading from this player's side.
+        local tiles = Combat.controlTiles(battle.combat)
+        if #tiles > 0 then
+            overlays.objective = tiles
+            overlays.objectiveHeld =
+                (Combat.controlledBy(battle.combat, tiles) == (battle.combat.playerSide or "party")) or nil
+        end
+    elseif obj and obj.type == "defend" and obj.protect then
         -- A defend fight is fought over the survivors, not the ground: mark exactly the tiles the
         -- protectees stand on (read live, since they move) rather than the whole anchor row. The
         -- anchor region still lives in obj.tiles for enemy pathing -- it just isn't what the HUD
@@ -3521,6 +3571,13 @@ function battle.enter(self, opts)
     battle.settingsMenu = nil            -- the in-battle settings overlay, when opened
     battle.over = false
     battle.showInitiative = true -- initiative numbers on the turn order (F6 toggles)
+
+    -- Draft/PvP chess clock: a real-time budget per side that only runs on that side's turn, so slow
+    -- play loses. A REAL-TIME overlay -- the combat model itself stays tick-based and headless; this
+    -- lives entirely in the state. Nil in a campaign fight, which is untimed. `battle.isDraft` gates
+    -- the extra HUD (the two scores + the clock) so an ordinary battle draws none of it.
+    battle.isDraft = opts.draft or nil
+    battle.chessClock = opts.chessClock and { party = opts.chessClock, enemy = opts.chessClock } or nil
 
     -- The bed, and the sting over the top of it. An `objective` encounter is the quest's real fight --
     -- a general, a boss, the Crown -- so it gets its own track; everything else is an ordinary bout on
@@ -3597,6 +3654,10 @@ function battle.enter(self, opts)
         battle.partyUnits[#battle.partyUnits + 1] = {
             char = party[i], x = u.x, y = u.y,
             control = battle.tutorial and Tutorial.controlFor(battle.tutorial, u.id) or nil,
+            -- Trait ids this member's run relics grant (models/relic.lua), keyed by char identity in
+            -- states/game.lua; Trait.attach folds them in with the char's own. Nil when the member wears
+            -- none, or in a fight with no relics carried (a tutorial leg, a duel).
+            relicTraits = opts.relicTraits and opts.relicTraits[party[i]] or nil,
         }
     end
     -- Escorted allies fight on the party's side but are not the player's characters (they
@@ -3632,6 +3693,18 @@ function battle.enter(self, opts)
     if battle.session then
         for _, unit in ipairs(battle.combat.units) do
             unit.control = (unit.side == battle.combat.playerSide) and "player" or "remote"
+        end
+    end
+    -- Opening boons: statuses a run relic (or, later, a companion ability) queued to open this fight
+    -- under -- a barrier, Haste, an empower (models/relic.lua's grantBoon). Applied here, once the units
+    -- are built and traits are set, so they read as present from the first turn without touching a live
+    -- combat action. Matched to their unit by char identity (the same instance game.lua queued them for).
+    for _, boon in ipairs(opts.openingBoons or {}) do
+        for _, unit in ipairs(battle.combat.units) do
+            if unit.side == "party" and unit.char == boon.char and unit.alive then
+                Status.apply(battle.combat, unit, boon.id, boon.opts)
+                break
+            end
         end
     end
     -- A scripted lesson addresses units by name (Tutorial.scriptFor). A party member answers to its
@@ -3806,6 +3879,24 @@ function battle.update(dt)
         battle.settingsMenu:update(dt)
         return
     end
+
+    -- The chess clock runs on REAL time (this dt, before the gameplay scaling below), and only for the
+    -- LOCAL player while it is their live decision -- the side to move, actually in hand (not an
+    -- auto-battling or remote unit). It pauses during the opponent's turn and while a summary is up. Run
+    -- it out and the fight is conceded, exactly as a forfeit would. (A live duel's remote clock arrives
+    -- as a command; v1 vs a bot only the human is on the clock, which is what this guards for.)
+    if battle.chessClock and not battle.over and not battle.summary and battle.current then
+        local side = battle.current.side
+        if side == (battle.combat.playerSide or "party") and Combat.isPlayerControlled(battle.current) then
+            battle.chessClock[side] = battle.chessClock[side] - dt
+            if battle.chessClock[side] <= 0 then
+                battle.chessClock[side] = 0
+                Combat.logEvent(battle.combat, "system", "Out of time.")
+                lose()
+            end
+        end
+    end
+
     -- Hit-stop: a killing blow freezes the SIMULATION for a beat (ui/screen_fx.lua sets the scale to 0),
     -- so the whole board holds while the death registers, then resumes. Only the gameplay clock is
     -- scaled -- ScreenFx's own shake/flash/freeze decays advance on real dt back in main.lua, so the
@@ -4435,6 +4526,7 @@ function battle.drawHudText(boardX, boardW)
     love.graphics.printf(name, boardX, 20, boardW, "center")
 
     battle.drawObjective(boardX, 52, boardW)
+    if battle.isDraft then battle.drawControlHud(boardX, boardW) end
 
     -- Contextual control hint, worded for the device last used, so it never names an input the player
     -- can't reach: mouse phrasing ("Click..."), keyboard phrasing (Enter confirm, Tab aim, number keys

@@ -17,12 +17,19 @@ local Save = require("models.save")
 local Quest = require("models.quest")
 local EncounterPanel = require("ui.panels.encounter")
 local LootReveal = require("ui.panels.loot_reveal")
+local RelicReveal = require("ui.panels.relic_reveal")
+local Fence = require("ui.panels.fence")
+local Choice = require("ui.panels.choice")
+local Crossroads = require("models.crossroads")
+local RestChoice = require("ui.panels.rest_choice")
 local RestReveal = require("ui.panels.rest")
 local EncounterModel = require("models.encounter")
 local Party = require("ui.panels.party")
 local Consumables = require("ui.panels.consumables")
 local PartyStatus = require("ui.party_status")
+local RelicStrip = require("ui.relic_strip")
 local OverworldAbility = require("models.overworld_ability")
+local Relic = require("models.relic")
 local CoachBubble = require("ui.coach_bubble")
 local Locale = require("models.locale")
 local Theme = require("ui.theme")
@@ -140,6 +147,23 @@ local function fireAbility(event, extra)
     OverworldAbility.dispatch(event, ctx)
 end
 
+-- Fire a RELIC event (models/relic.lua) for the run's held relics, on the same four traversal events the
+-- abilities ride -- so a found relic and a companion perk react to the same step/win/fight without either
+-- knowing about the other. Carries the run's relic-state (game.relicState) and returns the dispatch ctx,
+-- whose `boons` a battleStart caller drains onto the party as opening statuses.
+local function fireRelics(event, extra)
+    local ctx = {
+        player = game.player,
+        party = game.player and game.player.party,
+        grid = game.grid,
+        state = game.relicState,
+        prestige = game.prestige,
+        notify = function(text) game:pushToast(text) end,
+    }
+    if extra then for k, v in pairs(extra) do ctx[k] = v end end
+    return Relic.dispatch(event, ctx)
+end
+
 -- Open the Party screen over the overworld (same modal slot as the encounter panel).
 local function openLoadout()
     -- During the flight tutorial, opening the loadout is the step that unlocks the equip lesson: the
@@ -240,7 +264,10 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
             rows = mp.rows,
             keyCount = mp.keyCount,
             objective = mp.objective,
-            encounterCount = { min = encSpec.min or 6, max = encSpec.max or encSpec.min or 6 },
+            -- Denser default boards (~8-11 stops) so a rolled run has room for the roguelike texture --
+            -- caches, rests and fights between them (guaranteed variety + a combat-share cap live in
+            -- Overworld:placeEncounters). A quest still overrides via its own mp.encounters.min/max.
+            encounterCount = { min = encSpec.min or 8, max = encSpec.max or encSpec.min or 11 },
             encounters = EncounterModel.pool(ctx),
             alwaysEncounters = always,
             -- A climb rather than a region: guaranteed encounters laid out in authored order by distance
@@ -256,11 +283,15 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
     -- Per-run scratch for companion overworld abilities (banked vigils/doses/steps/forage). Reset each
     -- quest, like the fog -- it is a fresh run, not a holiday.
     game.abilityState = resume and resume.abilityState or {}
+    -- Per-run relic inventory + scratch (models/relic.lua), reset each quest exactly like abilityState and
+    -- the fog: relics are CARRIED, not kept -- picked up on the expedition, gone when it ends.
+    game.relicState = resume and resume.relicState or Relic.newState()
     game.toasts = {} -- transient ability feedback lines (see game:pushToast)
     game.map = OverworldMap.new(game.grid, {
         onEncounter = function(cell) game:openEncounter(cell) end,
-        -- Every landed tile drives the per-step abilities (Kaya's forage, Saber's steps, ...).
-        onArrive = function(cell) fireAbility("step", { cell = cell }) end,
+        -- Every landed tile drives the per-step abilities (Kaya's forage, Saber's steps, ...) and the
+        -- per-step relics (Poacher's Map, a Vice's road-toll).
+        onArrive = function(cell) fireAbility("step", { cell = cell }); fireRelics("step", { cell = cell }) end,
         -- Fog-of-war radius: the map's own reveal-a-neighbourhood radius (3 for a rolled board, 2 for an
         -- authored leg -- see models/overworld.lua), widened by a torch-carrier AND by Gyeom's Ledger.
         visionRadius = math.max(game.grid.visionRadius or 2, Player.visionRadius(player))
@@ -318,6 +349,7 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
             grid = game.grid,
             map = game.map,
             abilityState = game.abilityState,
+            relicState = game.relicState,
         }
         Player.save() -- the first autosave: entering the overworld (and, on a resume, re-establishing it)
     else
@@ -397,6 +429,13 @@ function game:openEncounter(cell)
         -- right before the fight builds its units (the party chars ride in by reference): Rowan's Vigil
         -- readies the front line, Saber's Held Swing pours her banked steps into her opening.
         fireAbility("battleStart", { cell = cell })
+        -- Relics spend their opening readiness the same way: a battleStart dispatch queues each combat
+        -- relic's boon (a barrier, Haste, an empower) onto the party via grantBoon; battle setup drains
+        -- that queue onto the units at spawn. And the trait-relics (Martyr's Bell) resolve to the actual
+        -- members who wear them this fight, front-row or whole-party, by identity.
+        local relicCtx = fireRelics("battleStart", { cell = cell })
+        local openingBoons = Relic.openingBoons(relicCtx)
+        local relicTraits = Relic.combatTraitsByChar(game.relicState, game.player, game.player and game.player.party)
         -- Tutorial leg only (the prologue's flight): snapshot the party BEFORE the fight so the defeat
         -- panel's "Try Again" can restart THIS same encounter with a whole party -- consumed potions and
         -- any downed member undone. In-memory only, no disk save. The cell is not yet marked `cleared`
@@ -414,6 +453,11 @@ function game:openEncounter(cell)
             opening = kind == "objective" and mp.objective and mp.objective.opening or nil,
             prestige = game.prestige,
             party = game.player and game.player.party or {},
+            -- Run relics carried into this fight: `relicTraits` maps each party char to the trait ids its
+            -- relics grant (battle stamps them onto the unit); `openingBoons` is the queue of opening
+            -- statuses (barrier/Haste/empower) to lay on the named units at spawn. See models/relic.lua.
+            relicTraits = relicTraits,
+            openingBoons = openingBoons,
             -- The player's persistent marching grid (charId -> cell); specFor resolves it onto the party's
             -- spawns. See models/player.lua and the Formation tab of ui/panels/party.lua.
             formation = game.player and game.player.formation,
@@ -448,9 +492,9 @@ function game:openEncounter(cell)
                     if game.player and spoils and (spoils.gold or 0) > 0 then
                         Player.addGold(game.player, spoils.gold)
                     end
-                    -- The single payout seam: gold, prestige, and sponsor reputation are
-                    -- granted here, once, and the game saves. Losing the quest (onLoss)
-                    -- pays nothing, so a wipe costs the run.
+                    -- The single payout seam: gold and prestige are granted here, once, the quest is
+                    -- marked done (which is what advances the sponsor's standing), and the game saves.
+                    -- Losing the quest (onLoss) pays nothing, so a wipe costs the run.
                     clearRun() -- quest cleared; Quest.complete's save (and the endsCampaign->credits path) writes no run
                     game.reward = Quest.complete(game.player, game.quest)
                     -- The sting that marks a quest actually ending. Until now the single loudest
@@ -502,6 +546,8 @@ function game:openEncounter(cell)
                     -- Companion abilities react to the win (Amana mends, Ren distils a dose, Rowan banks a
                     -- vigil, Clem takes her cut, Gyeom studies), then save so their effects persist.
                     fireAbility("encounterCleared", { cell = cell, spoils = spoils })
+                    -- ...and the relics react to it too (Pilgrim's Coin pays, Alms Bowl mends, a Vice bites).
+                    fireRelics("encounterCleared", { cell = cell, spoils = spoils })
                     if game.player then Player.save() end
                     -- Resuming the map does NOT re-run game.enter, so the overworld bed the battle
                     -- swapped out for its victory sting has to be restored here by hand (idempotent).
@@ -545,7 +591,10 @@ function game:openEncounter(cell)
         -- it: combats never sit on the objective spine (models/overworld.lua), and the marker's danger
         -- pips + the party strip already let you judge it before you commit the step. The boss takes
         -- Ren's dose pour first.
-        if kind == "objective" then fireAbility("objectiveReached", { cell = cell }) end
+        if kind == "objective" then
+            fireAbility("objectiveReached", { cell = cell })
+            fireRelics("objectiveReached", { cell = cell })
+        end
         startBattle()
         return
     end
@@ -594,48 +643,249 @@ function game:openEncounter(cell)
         return
     end
 
+    -- A Reliquary: rolls ONE run relic (models/relic.lua) from the eligible shelf, biased by the
+    -- blueprint's tier and never a duplicate of what the run already holds, and offers it. TAKE grants it
+    -- into game.relicState; LEAVE (or the X) leaves the cell uncleared to reconsider. An empty shelf (the
+    -- run already holds everything eligible) pays a small gold consolation rather than an empty panel.
+    if kind == "relic_cache" then
+        local enc = cell.encounter
+        local def = enc.id and EncounterModel.get(enc.id)
+        local id = Relic.roll(Relic.pool({
+            prestige = game.prestige,
+            tier = enc.tier or (def and def.tier) or nil,
+            exclude = game.relicState,
+        }))
+        if not id then -- shelf exhausted: don't strand the player on an empty reliquary
+            cell.cleared = true
+            if game.player then Player.addGold(game.player, 15); game:pushToast("The reliquary is bare  +15g") end
+            saveRun()
+            return
+        end
+        game.activePanel = RelicReveal.new({
+            title = enc.name or "Reliquary",
+            relic = { id = id, info = Relic.info(id) },
+            onTake = function()
+                cell.cleared = true
+                Relic.grant(game.relicState, id)
+                game:pushToast("Relic taken: " .. (Relic.info(id).name or id))
+                game.activePanel = nil
+                saveRun()
+            end,
+            onLeave = function() game.activePanel = nil end,
+        })
+        return
+    end
+
+    -- A Sin's Altar: rolls a VICE relic and offers it for an upfront toll in gold. Pay and it's yours
+    -- (power with a standing cost); leave and the coin -- and the temptation -- stays in your purse. The
+    -- greed gamble made into a stop. An empty vice-shelf just clears (nothing to tempt with).
+    if kind == "shrine" then
+        local id = Relic.roll(Relic.pool({
+            prestige = game.prestige, alignment = "vice", exclude = game.relicState,
+        }))
+        if not id then cell.cleared = true; saveRun(); return end
+        local price = 20 + game.prestige * 8
+        local canPay = game.player and (game.player.gold or 0) >= price
+        game.activePanel = RelicReveal.new({
+            title = cell.encounter.name or "Sin's Altar",
+            relic = { id = id, info = Relic.info(id) },
+            priceLabel = "Offering: " .. price .. " gold",
+            canPay = canPay,
+            onTake = function()
+                if not (game.player and Player.spendGold(game.player, price)) then return end
+                cell.cleared = true
+                Relic.grant(game.relicState, id)
+                game:pushToast("The altar takes " .. price .. "g and gives: " .. (Relic.info(id).name or id))
+                game.activePanel = nil
+                saveRun()
+            end,
+            onLeave = function() game.activePanel = nil end,
+        })
+        return
+    end
+
+    -- The Fence: a wandering market. Rolls a small stock of run relics ONCE (stored on the cell so a
+    -- re-step shows the same shelf, never a fresh reroll) and sells them for gold. Leaving keeps the cell
+    -- so you can come back and spend later; a bought relic stays marked sold.
+    if kind == "fence" then
+        local enc = cell.encounter
+        if not enc.stock then
+            local exclude = {}
+            for _, hid in ipairs(game.relicState.held or {}) do exclude[hid] = true end
+            enc.stock = {}
+            for _ = 1, 3 do
+                local id = Relic.roll(Relic.pool({ prestige = game.prestige, exclude = exclude }))
+                if not id then break end
+                exclude[id] = true
+                local info = Relic.info(id)
+                local price = (info.tier == "rare" and 55 or 30) + game.prestige * 6
+                if info.alignment == "vice" then price = math.floor(price * 0.7) end -- a Vice sells cheaper
+                enc.stock[#enc.stock + 1] = { id = id, price = price, bought = false }
+            end
+        end
+        if #enc.stock == 0 then cell.cleared = true; saveRun(); return end
+        local stock = {}
+        for _, s in ipairs(enc.stock) do
+            stock[#stock + 1] = { id = s.id, info = Relic.info(s.id), price = s.price, bought = s.bought, src = s }
+        end
+        game.activePanel = Fence.new({
+            title = enc.name or "The Fence",
+            stock = stock,
+            gold = function() return (game.player and game.player.gold) or 0 end,
+            onBuy = function(entry)
+                if game.player and Player.spendGold(game.player, entry.price) then
+                    Relic.grant(game.relicState, entry.id)
+                    if entry.src then entry.src.bought = true end -- persist the sale on the cell's shelf
+                    game:pushToast("Bought: " .. (Relic.info(entry.id).name or entry.id))
+                    saveRun()
+                    return true
+                end
+                return false
+            end,
+            onClose = function() game.activePanel = nil; saveRun() end,
+        })
+        return
+    end
+
+    -- A Crossroads: a branching gamble (models/crossroads.lua) with real stakes -- a relic, coin, a wound.
+    -- Choosing commits and clears the stop; backing out (X/Esc) leaves it to reconsider. The mechanics come
+    -- in through a ctx of helpers, so the dilemma data never touches a model directly.
+    if kind == "crossroads" then
+        local rnd = function() return (love.math and love.math.random()) or math.random() end
+        local ctx = {
+            rnd = rnd,
+            notify = function(m) game:pushToast(m) end,
+            gold = function() return (game.player and game.player.gold) or 0 end,
+            addGold = function(n) if game.player then Player.addGold(game.player, n) end end,
+            reveal = function() game:restStudy() end,
+            drainParty = function(n)
+                for _, c in ipairs((game.player and game.player.party) or {}) do
+                    local hp = c.stats and c.stats.health
+                    if type(hp) == "table" then hp.current = math.max(1, (hp.current or hp.max) - n) end
+                end
+            end,
+            grantRelic = function(tier)
+                local id = Relic.roll(Relic.pool({ prestige = game.prestige, tier = tier, exclude = game.relicState }))
+                if not id then return nil end
+                Relic.grant(game.relicState, id)
+                game:pushToast("You gain: " .. (Relic.info(id).name or id))
+                return Relic.info(id).name or id
+            end,
+        }
+        local dilemma = Crossroads.roll(rnd)
+        local options = {}
+        for _, o in ipairs(dilemma.options) do
+            options[#options + 1] = {
+                label = o.label, desc = o.desc,
+                cb = function()
+                    cell.cleared = true
+                    o.resolve(ctx)
+                    game.activePanel = nil
+                    saveRun()
+                end,
+            }
+        end
+        game.activePanel = Choice.new({
+            title = cell.encounter.name or "Crossroads",
+            prompt = dilemma.prompt,
+            options = options,
+            onClose = function() game.activePanel = nil end, -- back out, reconsider
+        })
+        return
+    end
+
+    -- A Rest is a DECISION, not just a breather: Mend the party, Sharpen a lasting run edge, or Study the
+    -- ground (models/relic.lua + the fog reveal). One only; leaving (X/Esc) forgoes it and leaves the cell
+    -- to reconsider. The companions plug in here later (Amana strengthens Mend, Gyeom strengthens Study).
+    if kind == "rest" then
+        game.activePanel = RestChoice.new({
+            title = cell.encounter.name or "Make Camp",
+            onMend = function()
+                cell.cleared = true
+                game:restMend()
+                saveRun()
+            end,
+            onSharpen = function()
+                cell.cleared = true
+                local got = Relic.grant(game.relicState, "relic_honed_edge")
+                game:pushToast(got and "You hone your edge  (Honed Edge)" or "Your edge is already keen")
+                game.activePanel = nil
+                saveRun()
+            end,
+            onStudy = function()
+                cell.cleared = true
+                game:restStudy()
+                game:pushToast("You study the ground")
+                game.activePanel = nil
+                saveRun()
+            end,
+            onClose = function() game.activePanel = nil end,
+        })
+        return
+    end
+
     game.activePanel = EncounterPanel.new({
         encounter = cell.encounter,
         onResolve = function()
             cell.cleared = true
             game.activePanel = nil
             game:resolveNonCombat(cell)
-            saveRun() -- persist the cleared stop (a rest/town) so a resume doesn't re-offer it
+            saveRun() -- persist the cleared stop (a town) so a resume doesn't re-offer it
         end,
         onClose = function() game.activePanel = nil end,
     })
 end
 
--- Apply the outcome of a non-combat modal once the player confirms it. Treasure has its own reveal
--- panel (see openEncounter); this now handles only:
---   rest -> refill every resource on the roster to full (Player.restore), then replay the mend on a
---           reveal panel so the player SEES what a rest did -- each party member's HP bar sweeps up
---           to full (ui/panels/rest.lua). A rest hands over nothing else: it is a breather before a
---           hard fight, not a cache (loot rides on chests/events).
-function game:resolveNonCombat(cell)
-    local enc = cell.encounter
-    if enc.kind == "rest" then
-        if not game.player then return end
-        -- Snapshot each shown member's wound BEFORE the refill: the reveal animates from it, and once
-        -- Player.restore runs the live stat is already at max, so this is the only place the "before"
-        -- exists. Show the deployable party (who actually fight), falling back to the whole roster.
-        local shown = (game.player.party and #game.player.party > 0 and game.player.party)
-            or game.player.roster or {}
-        local entries = {}
-        for _, char in ipairs(shown) do
-            local hp = char.stats and char.stats.health
-            if type(hp) == "table" then
-                entries[#entries + 1] = { char = char, from = hp.current or hp.max, max = hp.max or 0 }
-            end
-        end
-        Player.restore(game.player)
-        if #entries > 0 then
-            game.activePanel = RestReveal.new({
-                entries = entries,
-                onDone = function() game.activePanel = nil end,
-            })
+-- MEND (a rest's first choice): refill every resource on the roster to full (Player.restore), then replay
+-- the mend on a reveal panel so the player SEES what it did -- each party member's HP bar sweeps up to
+-- full (ui/panels/rest.lua). Factored out of the rest resolution so RestChoice's Mend option and any
+-- back-compat non-combat path both reach the same code.
+function game:restMend()
+    if not game.player then return end
+    -- Snapshot each shown member's wound BEFORE the refill: the reveal animates from it, and once
+    -- Player.restore runs the live stat is already at max, so this is the only place the "before"
+    -- exists. Show the deployable party (who actually fight), falling back to the whole roster.
+    local shown = (game.player.party and #game.player.party > 0 and game.player.party)
+        or game.player.roster or {}
+    local entries = {}
+    for _, char in ipairs(shown) do
+        local hp = char.stats and char.stats.health
+        if type(hp) == "table" then
+            entries[#entries + 1] = { char = char, from = hp.current or hp.max, max = hp.max or 0 }
         end
     end
+    Player.restore(game.player)
+    if #entries > 0 then
+        game.activePanel = RestReveal.new({
+            entries = entries,
+            onDone = function() game.activePanel = nil end,
+        })
+    else
+        game.activePanel = nil
+    end
+end
+
+-- STUDY (a rest's third choice): lift the fog off the objective and every Reliquary on the board, so the
+-- run's back half can be planned around the boss and a looting route toward the caches. Reuses the grid's
+-- own reveal, the same one Gyeom's Ledger and the Cartographer's Eye relic use.
+function game:restStudy()
+    local grid = game.grid
+    if not grid then return end
+    if grid.objective then grid:reveal(grid.objective.x, grid.objective.y, 1) end
+    for y = 1, grid.rows do
+        for x = 1, grid.cols do
+            local e = grid.cells[y][x].encounter
+            if e and e.kind == "relic_cache" then grid:reveal(x, y, 1) end
+        end
+    end
+end
+
+-- Apply the outcome of a generic non-combat modal (a town) once the player confirms it. Treasure, rest
+-- and relic caches all have their own panels now (see openEncounter); this is the fallback for the plain
+-- "Enter/Resolve" stops that hand over nothing mechanical.
+function game:resolveNonCombat(cell)
+    local enc = cell.encounter
+    if enc.kind == "rest" then game:restMend() end -- back-compat: any path still routing rest here mends
 end
 
 local function toHub()
@@ -765,6 +1015,8 @@ function game.drawHud()
         local mx, my
         if InputMode.isMouse() then mx, my = Scale.toGame(love.mouse.getPosition()) end
         PartyStatus.drawStrip(game.player, 16, 60, mx, my, game.abilityState)
+        -- Run relics carried this quest, top-right (models/relic.lua) -- the snowball, legible while routing.
+        RelicStrip.draw(game.relicState, Scale.WIDTH - 16, 60, mx, my)
     end
 
     -- Companion-ability toasts, stacked just under the party strip so ability feedback groups with the

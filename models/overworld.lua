@@ -776,8 +776,36 @@ function Overworld:placeEncounters(params)
         end
     end
 
+    -- Guaranteed VARIETY (density + mix): a rolled board must never be a wall of fights. Seat at least one
+    -- of each "texture" kind the pool offers -- a Reliquary to stock the run's relics, a Rest to mend --
+    -- when `always` didn't already. Placed like the guaranteed ids above (front candidates, spacing a
+    -- preference), all non-combat so the objective spine stays walkable. Tunable via params.guaranteeKinds;
+    -- the default is what the roguelike inner loop needs to feel like one (see models/relic.lua).
+    for _, kind in ipairs(params.guaranteeKinds or { "relic_cache", "rest" }) do
+        local have = false
+        for _, p in ipairs(placed) do if p.encounter.kind == kind then have = true; break end end
+        if not have then
+            local entry
+            for _, e in ipairs(pool) do if e.kind == kind then entry = e; break end end
+            local c = entry and cands[next_]
+            if c then
+                next_ = next_ + 1
+                c.encounter = { kind = entry.kind, id = entry.id, name = entry.name }
+                placed[#placed + 1] = c
+            end
+        end
+    end
+
     -- Fill the rest up to the resolved count with weighted, spaced picks.
     local target = math.max(count, #placed)
+    -- Combat SHARE cap: the encounter pool is fight-heavy by blueprint COUNT (a dozen combat kinds, a
+    -- handful of texture ones), so weighted-random alone leaves a run mostly fights. Hold combat to at most
+    -- ~60% of the stops; a fight rolled past the cap is re-seated as a non-combat stop -- the same move the
+    -- spine rule makes -- so the pool's caches, rests and stops fill the gaps. Tunable via params.combatShare.
+    local isFight = function(k) return k == "combat" or k == "elite" end
+    local combatCap = math.floor(target * (params.combatShare or 0.6))
+    local combatPlaced = 0
+    for _, p in ipairs(placed) do if isFight(p.encounter.kind) then combatPlaced = combatPlaced + 1 end end
     for i = next_, #cands do
         if #placed >= target then break end
         local c = cands[i]
@@ -787,15 +815,16 @@ function Overworld:placeEncounters(params)
         end
         if ok then
             local pick = self:pickEncounter(pool)
-            -- No combat on the spine: re-seat as a non-combat stop, or skip this tile if the pool has
-            -- none (leaving the critical path open to walk straight through).
+            -- Re-seat a fight as a non-combat stop when it cannot stand here: on the walkable spine, or
+            -- once the combat-share cap is full. Keep the fight only if the pool has no texture left.
             local onSpine = self.spineKeys and not params.ascent and self.spineKeys[cellKey(c)]
-            if onSpine and (pick.kind == "combat" or pick.kind == "elite") then
-                pick = self:pickNonCombat(pool)
+            if isFight(pick.kind) and (onSpine or combatPlaced >= combatCap) then
+                pick = self:pickNonCombat(pool) or pick
             end
             if pick then
                 c.encounter = { kind = pick.kind, id = pick.id, name = pick.name }
                 placed[#placed + 1] = c
+                if isFight(pick.kind) then combatPlaced = combatPlaced + 1 end
             end
         end
     end

@@ -1014,6 +1014,9 @@ function Combat.new(arena, partyUnits, enemyUnits)
                 -- ally fights on the party's side but runs itself (control = "ai"/"none").
                 control = u.control or ((side == "party") and "player" or "ai"),
                 anchorX = u.x, anchorY = u.y, -- start tile; the leashed AI postures measure from it
+                -- Trait ids granted by the run's relics (models/relic.lua), resolved per-char by battle
+                -- setup. Trait.attach folds them in alongside the char's own; nil for enemies.
+                relicTraits = u.relicTraits,
             }
             unit.index = #combat.units + 1
             combat.units[unit.index] = unit
@@ -1125,6 +1128,10 @@ function Combat.rebase(combat)
     -- Here rather than in Combat.evaluate because this is the only place that knows how much time
     -- passed; evaluate runs per action and cannot tell a long one from a short one.
     Combat.accrueHold(combat, minInit)
+    -- The multiplayer `control` objective banks the same elapsed time toward whichever side held the
+    -- moving score node across it. Same reasoning as accrueHold: rebase is the only place that knows
+    -- how much time just passed. Both are no-ops unless the arena authored that objective.
+    Combat.accrueControl(combat, minInit)
     -- Re-lay every censer's smoke around its bearer BEFORE the zone cycle below. This is the half that
     -- movement cannot cover: Combat.enterTile keeps the cloud under a bearer that walks, but a bearer
     -- that never moves needs its ground to still be there when Hazard.tick asks who is standing in
@@ -5517,6 +5524,11 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest)
             shoveInitiative(tgt, id, opts)
             return nil
         end,
+        -- Banking a battle-scoped fact on the caster is a mutation: inert here, so replaying the effect
+        -- on every hover frame neither advances the count nor flips the branch it takes (Turning Year's
+        -- fire/frost, the Unspent Blow's tally). Reads stay a plain `fx.user.<field>` and are truthful,
+        -- since `fx.user` is the real unit -- the preview simply shows the branch THIS cast would run.
+        bank = function() end,
         -- Read-only, so the dry run may answer truthfully; the mutating ones are inert.
         hasStatus = function(tgt, id) return tgt ~= nil and Status.has(tgt, id) end,
         clearStatus = function() end,
@@ -5865,6 +5877,12 @@ function Combat.abilityOutput(unit, item)
             return { damageDealt = d }
         end,
         setSpeed = function() end,
+        -- Inert, like every mutator here: an effect that banks a battle-scoped fact on the caster
+        -- (Turning Year's fire/frost half, the Unspent Blow's tally) writes it through this rather than
+        -- assigning `fx.user.<field>`, so the inventory tooltip -- rebuilt on every hover -- neither
+        -- advances the count nor flips the branch. (The userProxy above backstops any stray direct
+        -- write for the same reason, but fx.bank is the path a data effect is meant to take.)
+        bank = function() end,
         -- Inert here: the dry run reports what an ability WOULD do, and "acts again" is not a thing
         -- the inventory tooltip can render. It is recorded so a describer could name it if one ever wants to.
         grantExtraAction = function(n) out.extraActions = (out.extraActions or 0) + (n or 1); return 0 end,
@@ -6882,6 +6900,10 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
             if not t then return 0 end
             return Combat.knockback(combat, t, user, distance or 1, { amount = 0 })
         end,
+        -- Battle-scoped state banked on the striker (a wand's fire/frost half): a sub-struck weapon
+        -- runs its effect here too (Dual Wield), and this path is not pcall-guarded, so the helper has
+        -- to exist or a swung weapon that banks would fault. Real, like the rest of strikeWith.
+        bank = function(key, value) if user then user[key] = value end end,
         damage = function(tgt, opts)
             if not tgt then return 0 end
             opts = opts or {}
@@ -7731,6 +7753,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- to the CASTER rather than to a target, which is the only shape the timeline can honour -- a
         -- unit whose turn is not open has no turn to re-open.
         grantExtraAction = function(n) return Combat.grantExtraAction(unit, n) end,
+        -- Stash a battle-scoped fact ON THE CASTER (a wand's fire/frost half, the Unspent Blow's banked
+        -- count, a planted standard). Effects must write such state THROUGH this helper rather than
+        -- assigning `fx.user.<field>` directly: the two damage previews replay the very same effect and
+        -- supply an INERT bank, so a hover neither advances the count nor flips the branch the effect
+        -- takes (the flicker fx.spendCharge / fx.setSpeed avoid the same way). Reads stay a plain
+        -- `fx.user.<field>` -- truthful in every builder because they mutate nothing.
+        bank = function(key, value) if unit then unit[key] = value end end,
         -- Write a line straight into the combat log, for an ability whose entry must not read as
         -- what it actually is (a Decoy reports a move, not a cast -- see `ab.silent`). Hands back
         -- the entry, so an effect can keep a handle on a line it may later have to correct.
@@ -8201,6 +8230,89 @@ function Combat.accrueHold(combat, elapsed)
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- The `control` objective: a moving score node, contested by BOTH sides.
+--
+-- The multiplayer/draft ruleset. Unlike the authored one-sided objectives above, this is genuinely
+-- symmetric: each side banks a point for every tick it SOLELY holds the node, the node relocates on
+-- a schedule, and the higher score at the tick limit wins. It is the one objective a duel other than
+-- killAll ever uses, so it answers for either side directly rather than mirroring the party's result.
+--
+-- Everything the node's POSITION depends on is a pure function of `combat.clock` and the authored
+-- schedule -- never wall-clock time, never RNG drawn here -- because a live duel is lockstep and both
+-- clients must agree on where the node is from the tick count alone, or the fight desyncs.
+--
+--   objective = {
+--       type = "control",
+--       maxTicks = 300,               -- the fight ends here; higher score wins
+--       nodes = { <tileList>, ... },  -- waypoints; nodes[i] is a list of { x, y }
+--       moveEvery = 60,               -- ticks between relocations (cycles through `nodes`)
+--   }
+-- A single fixed node is just `nodes = { tiles }` (or `tiles = ...`) with no `moveEvery`.
+-- ---------------------------------------------------------------------------
+
+-- Which waypoint is live right now, derived from the clock alone so two lockstep clients never
+-- disagree. Cycles through `nodes` every `moveEvery` ticks; a single node (or no schedule) stays 1.
+function Combat.controlNodeIndex(combat)
+    local obj = combat.objective
+    local nodes = (obj and obj.nodes) or {}
+    local every = obj and obj.moveEvery
+    if #nodes <= 1 or not every or every <= 0 then return 1 end
+    return (math.floor((combat.clock or 0) / every) % #nodes) + 1
+end
+
+-- The tiles of the node the fight is currently fought over: the live waypoint, or the fixed region.
+function Combat.controlTiles(combat)
+    local obj = combat.objective
+    if not obj or obj.type ~= "control" then return {} end
+    local nodes = obj.nodes or {}
+    if #nodes == 0 then return obj.tiles or {} end
+    return nodes[Combat.controlNodeIndex(combat)] or {}
+end
+
+-- Which side, if either, SOLELY controls `tiles` right now: a boot from the other side contests it
+-- and no one scores (the same rule holdsGround expresses for the one-sided `hold`, made two-sided).
+-- Returns "party", "enemy", or nil (contested or empty).
+function Combat.controlledBy(combat, tiles)
+    local party = Combat.occupies(combat, tiles, "party")
+    local enemy = Combat.occupies(combat, tiles, "enemy")
+    if party and not enemy then return "party" end
+    if enemy and not party then return "enemy" end
+    return nil
+end
+
+-- Bank the ticks that just elapsed toward whichever side held the node across them. Called from
+-- Combat.rebase (the only place that knows how much time passed). Records the last holder so a tied
+-- score can be broken by who held the point last (see Combat.controlWinner).
+function Combat.accrueControl(combat, elapsed)
+    local obj = combat.objective
+    if not obj or obj.type ~= "control" then return end
+    combat.score = combat.score or { party = 0, enemy = 0 }
+    local holder = Combat.controlledBy(combat, Combat.controlTiles(combat))
+    if holder then
+        combat.score[holder] = (combat.score[holder] or 0) + (elapsed or 0)
+        combat.lastHolder = holder
+    end
+end
+
+-- A side's banked control score.
+function Combat.scoreFor(combat, side)
+    return (combat.score or {})[side or "party"] or 0
+end
+
+-- Who wins a `control` fight on score: the higher total, then (tie) the side with more units still
+-- standing, then (still tied) whoever held the node last, then nil for a true draw. The tie-break is
+-- documented rather than incidental so both clients settle a photo finish identically.
+function Combat.controlWinner(combat)
+    local party, enemy = Combat.scoreFor(combat, "party"), Combat.scoreFor(combat, "enemy")
+    if party > enemy then return "party" end
+    if enemy > party then return "enemy" end
+    local pa, ea = Combat.aliveCount(combat, "party"), Combat.aliveCount(combat, "enemy")
+    if pa > ea then return "party" end
+    if ea > pa then return "enemy" end
+    return combat.lastHolder -- nil when neither has ever held it: a genuine draw
+end
+
 -- Have all of a wave-based `defend` fight's reinforcement waves walked on? A wave arrives once the
 -- clock passes its `at` tick (states/battle.lua spawnWaves runs BEFORE this fight is judged, so the
 -- moment the clock reaches the mark the bodies are already on the board). "All arrived" is therefore
@@ -8235,6 +8347,23 @@ function Combat.outcomeFor(combat, side)
     if Combat.aliveCount(combat, side) == 0 then return "loss" end
 
     local obj = combat.objective or { type = "killAll" }
+
+    -- `control` is the contested, two-sided objective the top comment said would one day have to grow
+    -- a per-side statement. It is symmetric, so it is stated ONCE here for whichever side is asking,
+    -- above the party-mirror clause below (which exists for the one-sided authored objectives). A wipe
+    -- is still a loss for the wiped side (handled at the top) and a win for the last side standing;
+    -- otherwise the tick limit decides it on score.
+    if obj.type == "control" then
+        if Combat.aliveCount(combat, foe) == 0 then return "win" end -- last side standing takes it
+        if (combat.clock or 0) >= (obj.maxTicks or math.huge) then
+            local winner = Combat.controlWinner(combat)
+            if winner == side then return "win" end
+            -- The other side's win, or a true draw: both read the tick limit as a loss. A draw taking
+            -- the loss slot is the documented floor of the tie-break -- nobody earned the round.
+            return "loss"
+        end
+        return nil
+    end
 
     -- Everything below this line is an objective a quest wrote for the party: a column to escort, a
     -- mark to kill, ground to hold. The other side is not pursuing its own version of it -- its job

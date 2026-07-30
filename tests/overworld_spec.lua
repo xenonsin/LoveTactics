@@ -64,6 +64,44 @@ return {
         end,
     },
     {
+        name = "density & mix: a rolled board guarantees texture and caps the combat share",
+        fn = function()
+            -- A fight-heavy pool (as the real registry is) plus the texture kinds. Without the guarantee
+            -- pass + combat-share cap, weighted-random would leave a run nearly all fights.
+            local pool = {
+                { kind = "combat", weight = 6 }, { kind = "elite", weight = 2 },
+                { kind = "relic_cache", weight = 1 }, { kind = "rest", weight = 1 },
+                { kind = "treasure", weight = 1 },
+            }
+            local function kindCounts(grid)
+                local counts, total = {}, 0
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local e = grid:get(x, y).encounter
+                        if e and e.kind ~= "objective" then
+                            counts[e.kind] = (counts[e.kind] or 0) + 1
+                            total = total + 1
+                        end
+                    end
+                end
+                return counts, total
+            end
+            -- A few seeds, since placement is seeded: the guarantees must hold on every roll.
+            for _, seed in ipairs({ 11, 42, 99, 2024 }) do
+                local grid = Overworld.generate({
+                    cols = 41, rows = 29, seed = seed, keyCount = 0,
+                    encounterCount = 10, encounters = pool, objective = { name = "Boss" },
+                })
+                local counts, total = kindCounts(grid)
+                assert((counts.relic_cache or 0) >= 1, "seed " .. seed .. ": at least one Reliquary is guaranteed")
+                assert((counts.rest or 0) >= 1, "seed " .. seed .. ": at least one Rest is guaranteed")
+                local fights = (counts.combat or 0) + (counts.elite or 0)
+                assert(fights <= math.ceil(total * 0.6) + 1,
+                    "seed " .. seed .. ": combat share capped (~60%), got " .. fights .. "/" .. total)
+            end
+        end,
+    },
+    {
         name = "each biome resolves its own tileset (art differs, walkability shared)",
         fn = function()
             local forest = Overworld.generate({ cols = 41, rows = 29, seed = 7, biome = "forest" })

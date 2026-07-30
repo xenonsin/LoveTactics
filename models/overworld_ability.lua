@@ -90,6 +90,34 @@ local function say(ctx, msg)
     if ctx.notify then ctx.notify(msg) end
 end
 
+-- Lift the fog off any RELIC CACHE (models/relic.lua) within `radius` of (x, y) -- how the prospector
+-- (Kaya) senses reliquaries as she passes. Guarded on grid.cells so it is a no-op under the test stubs
+-- and any grid that doesn't expose its cell table.
+local function revealCachesNear(grid, x, y, radius)
+    if not (grid and grid.cells and grid.reveal) then return end
+    for dy = -radius, radius do
+        local row = grid.cells[y + dy]
+        if row then
+            for dx = -radius, radius do
+                local c = row[x + dx]
+                if c and c.encounter and c.encounter.kind == "relic_cache" then grid:reveal(c.x, c.y, 1) end
+            end
+        end
+    end
+end
+
+-- Lift the fog off EVERY relic cache on the board at once -- the scholar (Gyeom) mapping the whole region
+-- when her study completes. Same guard as above.
+local function revealAllCaches(grid)
+    if not (grid and grid.cells and grid.reveal and grid.rows and grid.cols) then return end
+    for yy = 1, grid.rows do
+        for xx = 1, grid.cols do
+            local c = grid.cells[yy][xx]
+            if c and c.encounter and c.encounter.kind == "relic_cache" then grid:reveal(xx, yy, 1) end
+        end
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- The abilities
 -- ---------------------------------------------------------------------------
@@ -116,11 +144,15 @@ A.vigil = {
 }
 
 -- SABER -- The Held Swing (patience). She is never in a hurry, and contentment is its own mend: the
--- longer since her last fight, the cleaner she comes through the next one. Banks steps travelled; on the
--- win it pays back as self-healing scaled by the wait, then resets. (Health, not stamina -- see Rowan.)
--- Rushing squanders it; a patient route lets her shrug the next fight off.
+-- longer since her last fight, the cleaner she comes through the next one. Banks ground COVERED -- each
+-- tile counted once (cell.paced), the way Kaya's forage marks a tile once -- so pacing two tiles back and
+-- forth mints nothing; only new road pays. On the win it heals her scaled by the distance, then resets.
+-- (Health, not stamina -- see Rowan.) A patient route lets her shrug the next fight off; a wiggle does not.
 A.held_swing = {
-    step = function(_, bucket)
+    step = function(_, bucket, ctx)
+        local cell = ctx.cell
+        if not cell or cell.paced then return end -- a tile already walked banks nothing (no pacing exploit)
+        cell.paced = true
         bucket.steps = (bucket.steps or 0) + 1
     end,
     encounterCleared = function(char, bucket, ctx)
@@ -173,6 +205,9 @@ A.forage = {
         local cell = ctx.cell
         if not cell or cell.foraged then return end
         cell.foraged = true
+        -- The guide who runs the wild also reads it: reliquaries near her step surface through the fog,
+        -- so a party with Kaya can route to the run's relics instead of stumbling onto them.
+        revealCachesNear(ctx.grid, cell.x, cell.y, 2)
         bucket.gained = bucket.gained or 0
         if bucket.gained >= FORAGE_CAP then return end
         local deadEnd = ctx.grid and #ctx.grid:pathNeighbors(cell.x, cell.y) <= 1
@@ -198,7 +233,8 @@ A.ledger = {
         if bucket.study >= 3 and not bucket.revealed and ctx.grid and ctx.grid.objective then
             bucket.revealed = true
             ctx.grid:reveal(ctx.grid.objective.x, ctx.grid.objective.y, 1) -- the quarry's seat is read
-            say(ctx, "Gyeom reads the quarry's seat")
+            revealAllCaches(ctx.grid) -- ...and the whole region's reliquaries, mapped at a stroke
+            say(ctx, "Gyeom reads the quarry's seat -- and every reliquary")
         end
     end,
 }
@@ -264,8 +300,8 @@ local INFO = {
         blurb = "Clear a fight with no one downed to bank a Vigil. The front line opens the next fight "
             .. "with a health buffer -- one per Vigil. A casualty breaks the streak." },
     held_swing = { name = "Held Swing",
-        blurb = "The longer Saber goes without fighting, the more she heals herself on her next win. "
-            .. "Patience, not haste." },
+        blurb = "The more new ground Saber covers between fights, the more she heals herself on her next "
+            .. "win. Patience, not haste -- pacing in place mints nothing." },
     kept_trust = { name = "Kept Trust",
         blurb = "After every fight, Amana mends the most-wounded ally. Given freely, kept from no one." },
     aqua_vitae = { name = "Aqua Vitae",
@@ -273,10 +309,10 @@ local INFO = {
             .. "the whole party at once." },
     forage = { name = "Forage",
         blurb = "Kaya turns up a little gold from newly explored tiles -- dead-ends most of all -- up "
-            .. "to a cap each run." },
+            .. "to a cap each run, and senses nearby Reliquaries through the fog." },
     ledger = { name = "Ledger",
         blurb = "Gyeom reads the ground: +1 vision, and after three fights the fog lifts off the "
-            .. "objective." },
+            .. "objective and every Reliquary on the board." },
     jubilee = { name = "Jubilee",
         blurb = "Clem takes the collector's craft and runs it backward: her cut is minted and added on "
             .. "top of every side-fight win." },

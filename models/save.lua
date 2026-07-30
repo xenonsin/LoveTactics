@@ -198,6 +198,7 @@ function Save.snapshotRun(run, player)
         py = run.map.py,
         keysHeld = keysHeld,
         abilityState = run.abilityState, -- companion overworld scratch (banked vigils/steps/...); plain data
+        relicState = run.relicState,     -- run relics carried this quest ({ held, scratch }); plain data
         resources = resources,
         grid = run.grid:snapshot(),
     }
@@ -217,6 +218,7 @@ function Save.restoreRun(snap)
         px = snap.px, py = snap.py,
         keysHeld = snap.keysHeld or {},
         abilityState = snap.abilityState or {},
+        relicState = snap.relicState or { held = {}, scratch = {} }, -- run relics; see snapshotRun
         resources = snap.resources or {}, -- charId -> { health/mana/stamina = current }; see snapshotRun
         grid = grid,
     }
@@ -238,9 +240,6 @@ function Save.snapshot(player)
 
     local stash = {}
     for i, item in ipairs(player.stash or {}) do stash[i] = snapshotItem(item) end
-
-    local reputation = {}
-    for vendorId, points in pairs(player.reputation or {}) do reputation[vendorId] = points end
 
     local completedQuests = {}
     for questId, done in pairs(player.completedQuests or {}) do
@@ -311,7 +310,6 @@ function Save.snapshot(player)
         -- or every load would look like a new person and a player could be matched against the
         -- build their own previous session published. Nil on a save that never needed one.
         authorId = player.authorId,
-        reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,
         recipes = recipes,
@@ -406,9 +404,6 @@ function Save.restore(snap)
         end
     end
 
-    local reputation = {}
-    for vendorId, points in pairs(snap.reputation or {}) do reputation[vendorId] = points end
-
     local completedQuests = {}
     for questId in pairs(snap.completedQuests or {}) do completedQuests[questId] = true end
 
@@ -462,7 +457,6 @@ function Save.restore(snap)
         body = snap.body, -- nil for a save made before character creation set it
         name = snap.name,
         authorId = snap.authorId, -- nil on an older save; Player.authorId mints one on demand
-        reputation = reputation,
         completedQuests = completedQuests,
         materials = materials,
         recipes = recipes,

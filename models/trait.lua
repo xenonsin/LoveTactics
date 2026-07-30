@@ -931,6 +931,13 @@ function Trait.attach(unit)
             end
         end
     end
+    -- Run RELICS granted for this quest (models/relic.lua) ride in as innate-style traits, item-less: a
+    -- Martyr's Bell hands the whole line trait_second_wind for the run without touching any blueprint.
+    -- Battle setup stamps `unit.relicTraits` from the run's relic-state before Trait.setup runs, so they
+    -- attach and fire onCombatStart exactly like a character's own.
+    for _, id in ipairs(unit.relicTraits or {}) do
+        list[#list + 1] = Trait.instantiate(id, nil)
+    end
     unit.traits = list
     return list
 end
