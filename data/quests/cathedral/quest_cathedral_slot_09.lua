@@ -31,11 +31,10 @@ return {
     sponsor = "cathedral",
     rewardItems = { "armor_robes_unbidden" },
     rewardGold = 400,
-    rewardRep = 35,
     rewardPrestige = 2,
     requiredQuests = { "quest_cathedral_slot_08" }, -- slot 9: the line runs in order
     requiredPrestige = 1,
-    requiredRep = { vendor = "cathedral", rank = 3 }, -- Confessor
+    requiredSponsorQuests = { vendor = "cathedral", count = 6 }, -- 6 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 10, max = 13, always = { "encounter_elite", "encounter_elite" } },

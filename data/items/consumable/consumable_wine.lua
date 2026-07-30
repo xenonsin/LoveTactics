@@ -11,7 +11,7 @@ return {
     tags = { "drink" },
     class = "priest",
     price = 40,
-    repRank = 1,
+    unlockQuests = 0,
     activeAbility = {
         target = "ally", -- includes the user (a unit is its own ally)
         range = 1,

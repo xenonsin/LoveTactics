@@ -19,7 +19,7 @@ return {
     tags = { "slash", "physical" },
     class = "fighter",
     price = 220,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         -- Aimed at the caster's own tile: the ring is centred on the body that spins, so there is
         -- nothing to pick but yourself (states/battle.lua's computeRange gives a self-target exactly

@@ -24,7 +24,7 @@ return {
     tags = { "mace", "impact", "physical", "melee" },
     class = "knight",
     price = 520,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "enemy",
         range = 2, -- a hook has reach the family does not: it has to be able to fetch something

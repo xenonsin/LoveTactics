@@ -2,9 +2,10 @@
 -- quests a player may currently take, as fresh copies so the board can be sorted/mutated
 -- without touching the blueprints.
 --
--- Every quest names a `sponsor` (a vendor id). Completing it pays gold, prestige, and
--- reputation with that sponsor, which unlocks more of the sponsor's shelf. That loop --
--- pick a quest by who sponsors it, run it, spend the standing it earned -- is the game.
+-- Every quest names a `sponsor` (a vendor id). Completing it pays gold and prestige, and
+-- -- because a vendor's standing simply IS how many of its quests you have finished
+-- (Quest.sponsorProgress) -- unlocks more of that sponsor's shelf. That loop -- pick a quest
+-- by who sponsors it, run it, then spend at the shelf the finished quest just opened -- is the game.
 
 local Registry = require("models.registry")
 local Player = require("models.player")
@@ -16,12 +17,28 @@ local Quest = {}
 
 Quest.defs = Registry.load("data/quests", "data.quests")
 
--- Does the player meet a quest's reputation gate? `requiredRep = { vendor = id, rank = n }`
--- keeps a sponsor's later quests off the board until you have earned their trust.
-local function meetsRepGate(player, def)
-    local gate = def.requiredRep
+-- How many of vendor `vendorId`'s quests this player has finished. This IS the player's standing
+-- with that house: the shelf opens (Vendor.stock) and the ability bench's cap climbs
+-- (Vendor.abilityLevelCap) as this number grows. Counts every completed quest whose blueprint names
+-- the vendor as `sponsor` -- so it survives selling a relic or losing a save's reputation field, which
+-- no longer exists.
+function Quest.sponsorProgress(player, vendorId)
+    if not vendorId then return 0 end
+    local done = 0
+    for id in pairs(player.completedQuests or {}) do
+        local def = Quest.defs[id]
+        if def and def.sponsor == vendorId then done = done + 1 end
+    end
+    return done
+end
+
+-- Does the player meet a quest's sponsor-quest gate? `requiredSponsorQuests = { vendor = id, count = n }`
+-- keeps a sponsor's later quests off the board until you have finished enough of that sponsor's earlier
+-- ones -- the same quest count the shelf gates on.
+local function meetsSponsorQuestGate(player, def)
+    local gate = def.requiredSponsorQuests
     if not gate then return true end
-    return Player.repRank(player, gate.vendor) >= gate.rank
+    return Quest.sponsorProgress(player, gate.vendor) >= gate.count
 end
 
 -- Is the quest's sponsoring vendor open yet? A vendor's shop opens with its building
@@ -68,7 +85,7 @@ local function gateHints(player, def)
     return hints
 end
 
--- The quests this player may see: prestige met, reputation gate met, sponsor's shop open, and not
+-- The quests this player may see: prestige met, sponsor-quest gate met, sponsor's shop open, and not
 -- already completed (unless the quest is `repeatable`).
 --
 -- NOTHING SHIPPED SETS `repeatable`, AND NOTHING SHOULD. The design rule is that this game has no
@@ -79,11 +96,11 @@ end
 -- The field is still honoured here so a `repeatable` def cannot silently misbehave (the specs build
 -- synthetic ones to pin the double-payout and duplicate-recruit guards), not as an invitation.
 --
--- Prestige, reputation, and the sponsor's unlock are HARD gates: fail one and the quest is not on
--- the board at all. A
+-- Prestige, the sponsor-quest gate, and the sponsor's unlock are HARD gates: fail one and the quest is
+-- not on the board at all. A
 -- `requiredQuests` gate is SOFT: once the player holds at least one of the prerequisites, the quest
 -- appears `locked`, carrying its key count and the hints earned so far. Seeing what you have not yet
--- earned is the point of a ladder -- the same reason Vendor.stock returns rank-locked items flagged
+-- earned is the point of a ladder -- the same reason Vendor.stock returns quest-locked items flagged
 -- rather than hidden. The caller must refuse to start a locked quest (see ui/panels/quest_board.lua).
 --
 -- THE ONE-KEY CASE IS EFFECTIVELY HARD, and the sin lines lean on it. A quest naming a SINGLE
@@ -104,7 +121,7 @@ function Quest.available(player)
     local list = {}
     for id, def in pairs(Quest.defs) do
         local unlocked = prestige >= (def.requiredPrestige or 1)
-            and meetsRepGate(player, def) and meetsSponsorGate(player, def)
+            and meetsSponsorQuestGate(player, def) and meetsSponsorGate(player, def)
         local exhausted = Player.hasCompleted(player, id) and not def.repeatable
         local questsMet, keysHeld, keysNeeded = questGate(player, def)
         local locked = not questsMet
@@ -118,7 +135,6 @@ function Quest.available(player)
                 description = def.description,
                 difficulty = def.difficulty,
                 rewardGold = def.rewardGold,
-                rewardRep = def.rewardRep or 0,
                 rewardPrestige = def.rewardPrestige or 0,
                 rewardItems = def.rewardItems, -- item ids granted on completion (a general's relic)
                 -- A character id who JOINS on completion. This is how a class line's main companion
@@ -188,17 +204,18 @@ function Quest.complete(player, quest)
 
     local gold = quest.rewardGold or 0
     local prestige = quest.rewardPrestige or 0
-    local rep = quest.rewardRep or 0
 
     Player.addGold(player, gold)
     -- Prestige raises every roster member's level; the returned summary (who advanced, and their stat
     -- gains from their most-used class) rides out in the reward table for the advancement overlay.
     local advancement = Player.addPrestige(player, prestige)
 
-    local rankBefore
-    if quest.sponsor and rep > 0 then
-        rankBefore = Player.repRank(player, quest.sponsor)
-        Player.addReputation(player, quest.sponsor, rep)
+    -- The sponsor's standing is its finished-quest count, so completing this quest is what advances it.
+    -- Capture the count and its upgrade tier BEFORE marking done, so we can tell whether this completion
+    -- crossed a tier threshold -- the moment a new wave of stock lands on the shelf, worth announcing.
+    local tierBefore
+    if quest.sponsor then
+        tierBefore = Vendor.tier(Quest.sponsorProgress(player, quest.sponsor))
     end
 
     player.completedQuests = player.completedQuests or {}
@@ -239,11 +256,10 @@ function Quest.complete(player, quest)
 
     Player.save()
 
-    local rankAfter = quest.sponsor and Player.repRank(player, quest.sponsor)
+    local sponsorQuests = quest.sponsor and Quest.sponsorProgress(player, quest.sponsor)
     return {
         gold = gold,
         prestige = prestige,
-        rep = rep,
         received = received, -- item instances, for the reward panel to name
         materials = materials, -- { id = count } granted, for the reward panel to name
         -- The companion instance that just joined, or nil (including when they were already owned).
@@ -252,10 +268,10 @@ function Quest.complete(player, quest)
         recruited = recruited,
         advancement = advancement, -- roster members that leveled up, for the advancement overlay
         sponsor = quest.sponsor,
-        -- True when this quest pushed the player up a rank -- the moment new stock appears
-        -- on the sponsor's shelf, and the thing worth announcing.
-        rankedUp = rankBefore ~= nil and rankAfter > rankBefore,
-        rankName = quest.sponsor and Vendor.rankName(quest.sponsor, rankAfter or 1),
+        sponsorQuests = sponsorQuests, -- the sponsor's new finished-quest count (its standing), for the reward panel
+        -- True when this completion crossed a tier threshold -- the moment a fresh wave of stock
+        -- appears on the sponsor's shelf, and the thing worth announcing.
+        unlockedStock = tierBefore ~= nil and Vendor.tier(sponsorQuests or 0) > tierBefore,
     }
 end
 

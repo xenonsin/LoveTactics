@@ -1,5 +1,5 @@
--- The Crucible's mid-line contract, gated on reputation rather than prestige: it stays off the board
--- until the player is a Distiller (rank 2) with the Crucible. See `requiredRep` in models/quest.lua. Slot
+-- The Crucible's mid-line contract, gated on quests-completed rather than prestige: it stays off the board
+-- until the player has finished 3 of the Crucible's quests. See `requiredSponsorQuests` in models/quest.lua. Slot
 -- 5 of the ten (docs/story.md, "The Crucible") -- the discovery, where the player reaches the manufactory
 -- and finds the philosophy laid bare: the hollow discards with their eyes sewn shut, a self treated as
 -- inventory and a failed one as a spoiled batch.
@@ -13,11 +13,10 @@ return {
     difficulty = "Hard",
     sponsor = "alchemist",
     rewardGold = 220,
-    rewardRep = 45,
     rewardPrestige = 1,
     requiredQuests = { "quest_alchemist_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 4,
-    requiredRep = { vendor = "alchemist", rank = 2 }, -- Distiller or better
+    requiredSponsorQuests = { vendor = "alchemist", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },

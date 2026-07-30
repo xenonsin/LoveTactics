@@ -5,7 +5,5 @@ return {
     class = "knight",
     sprite = "assets/vendors/bastion.png", -- shopkeeper portrait; falls back to a placeholder
     description = "An order that measures a knight by what they refused to abandon.",
-    ranks = { 0, 40, 100, 200 },
-    rankNames = { "Squire", "Sworn", "Banneret", "Lord Commander" },
     sin = "sloth",
 }

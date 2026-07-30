@@ -19,7 +19,7 @@ return {
     class = "knight",
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 200,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile",       -- an adjacent tile, so what is shoved may be friend, foe or furniture
         allowOccupied = true,

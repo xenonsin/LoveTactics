@@ -21,6 +21,6 @@ return {
     class = "hunter",
     discipline = "shaman",
     price = 420,
-    repRank = 4,
+    unlockQuests = 10,
     traits = { "trait_ghost_wind" },
 }

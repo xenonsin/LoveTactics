@@ -29,7 +29,7 @@ return {
     class = "mage",
     discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
     price = 520,
-    repRank = 4,
+    unlockQuests = 10,
     aura = {
         appliesTo = { "ability", "weapon" },
         requiresTags = { "magical" },

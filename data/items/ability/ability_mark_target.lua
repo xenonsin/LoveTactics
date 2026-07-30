@@ -10,7 +10,7 @@ return {
     tags = { "utility" },
     class = "hunter",
     price = 180,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 5,

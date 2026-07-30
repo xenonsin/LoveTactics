@@ -34,9 +34,10 @@ return {
     sponsor = "bastion",
     intro = "conversation_bastion_slot_03_intro",
     outro = "conversation_bastion_slot_03_outro",
-    rewardItems = { "consumable_watchpost_draught", "weapon_unclosing_edge" },
+    -- weapon_disarming_pike is the Bastion's drill made a weapon -- a whole season on one motion that
+    -- takes an armed man's arms. It belongs to the slot about a garrison drilled to hold its position.
+    rewardItems = { "consumable_watchpost_draught", "weapon_unclosing_edge", "weapon_disarming_pike" },
     rewardGold = 130,
-    rewardRep = 20,
     rewardPrestige = 1,
     requiredQuests = { "quest_bastion_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 2,

@@ -154,23 +154,23 @@ return {
         end,
     },
     {
-        name = "shop stock marks a rank-gated item locked at low standing, unlocked at its rank",
+        name = "shop stock marks a quest-gated item locked with no quests done, unlocked at its quest count",
         fn = function()
-            -- Find any vendor selling an item that needs standing above rank 1.
+            -- Find any vendor selling an item that needs quests completed beyond the opening shelf.
             local vId, locked
             for vid in pairs(Vendor.defs) do
-                for _, e in ipairs(Vendor.stock(vid, 1)) do
+                for _, e in ipairs(Vendor.stock(vid, 0)) do
                     -- A discipline item carries a SECOND lock (its discipline must be unlocked), so it
-                    -- stays locked even at its repRank -- not what this rank-only test means to measure.
-                    if e.repRank > 1 and not e.discipline then vId, locked = vid, e break end
+                    -- stays locked even at its unlockQuests -- not what this quest-only test measures.
+                    if e.unlockQuests > 0 and not e.discipline then vId, locked = vid, e break end
                 end
                 if vId then break end
             end
-            if not locked then return end -- no rank-gated wares in data; nothing to assert
-            assert(locked.locked, "a rank-gated item should be locked at rank 1")
-            for _, e in ipairs(Vendor.stock(vId, locked.repRank)) do
+            if not locked then return end -- no quest-gated wares in data; nothing to assert
+            assert(locked.locked, "a quest-gated item should be locked with no quests done")
+            for _, e in ipairs(Vendor.stock(vId, locked.unlockQuests)) do
                 if e.id == locked.id then
-                    assert(not e.locked, "the same item should unlock at its own repRank")
+                    assert(not e.locked, "the same item should unlock once its quest count is met")
                 end
             end
         end,

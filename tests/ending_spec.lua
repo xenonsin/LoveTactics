@@ -143,7 +143,6 @@ return {
             player.prestige = 12
             player.gold = 4321
             player.completedQuests = { quest_colosseum_slot_10 = true, quest_the_gate_below = true }
-            player.reputation = { bastion = 300 }
             player.visitedVendors = { bastion = true }
             player.pendingSummary = { "stale" }
             local rosterSize = #player.roster
@@ -151,10 +150,11 @@ return {
             Player.newGamePlus(player)
 
             assert(player.ngPlus == 1, "the first carry-forward should read as New Game+ 1")
+            -- Clearing the completed-quest ledger is the whole reset: the board refills, the Gate re-locks,
+            -- and -- because a vendor's standing IS its finished-quest count -- every shelf drops back to
+            -- its opening stock.
             assert(next(player.completedQuests) == nil,
-                "completed quests survived -- the board would still be empty and the Gate still open")
-            assert(next(player.reputation) == nil,
-                "reputation survived -- every rank-gated shelf would still be unlocked")
+                "completed quests survived -- the board would still be empty, the Gate open, and every quest-gated shelf still unlocked")
             assert(player.prestige == 12, "prestige must carry: it is the company's level")
             assert(player.gold == 4321, "gold must carry")
             assert(#player.roster == rosterSize, "the roster must carry -- these are the same people")

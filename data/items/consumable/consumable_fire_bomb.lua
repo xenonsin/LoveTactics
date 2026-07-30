@@ -15,7 +15,7 @@ return {
     tags = { "fire" }, -- no "magical": the fire is chemistry, and cares nothing for magic defense
     class = "alchemist",
     price = 70,
-    repRank = 1,
+    unlockQuests = 0,
     activeAbility = {
         target = "tile", -- thrown at a foe and bursts around it, like Fireball
         allowOccupied = true,

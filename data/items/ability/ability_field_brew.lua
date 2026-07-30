@@ -13,7 +13,7 @@ return {
     class = "alchemist",
     discipline = "herbalist", -- hunter x alchemist; the Field-brewing mechanic's first stock
     price = 280,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

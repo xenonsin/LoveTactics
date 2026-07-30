@@ -15,7 +15,7 @@ return {
     class = "alchemist",
     discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
     price = 150,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile", -- thrown at a foe and bursts around it, like Fireball
         allowOccupied = true,

@@ -1,6 +1,6 @@
--- The Cathedral's second contract, and the first quest gated on reputation rather than prestige:
--- it stays off the board until the player is an Acolyte (rank 2) with the Cathedral. See
--- `requiredRep` in models/quest.lua.
+-- The Cathedral's second contract, and the first quest gated on quests-completed rather than prestige:
+-- it stays off the board until the player has finished 3 of the Cathedral's quests. See
+-- `requiredSponsorQuests` in models/quest.lua.
 --
 -- A `survive` objective: hold the consecrated ground while the rite burns down.
 --
@@ -13,11 +13,10 @@ return {
     sponsor = "cathedral",
     rewardItems = { "weapon_sealed_censer", "armor_interceding_stole" },
     rewardGold = 220,
-    rewardRep = 45,
     rewardPrestige = 1,
     requiredQuests = { "quest_cathedral_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 1,
-    requiredRep = { vendor = "cathedral", rank = 2 }, -- Acolyte or better
+    requiredSponsorQuests = { vendor = "cathedral", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "forest",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },

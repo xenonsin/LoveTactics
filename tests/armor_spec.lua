@@ -77,15 +77,16 @@ return {
         end,
     },
     {
-        name = "a quest-only armor names a class and no price; a buyable one names both and a rank",
+        name = "a quest-only armor names a class and no price; a buyable one names both and a quest gate",
         fn = function()
             for class in pairs(Item.CLASSES) do
                 for _, a in ipairs(armorsOf(class)) do
                     if a.def.price then
-                        assert(a.def.repRank, a.id .. " is for sale with no repRank: nothing gates it")
+                        assert(a.def.unlockQuests ~= nil,
+                            a.id .. " is for sale with no unlockQuests: nothing gates it")
                     else
-                        assert(not a.def.repRank,
-                            a.id .. " is quest-only but carries a repRank -- a rung on a shelf it is not on")
+                        assert(a.def.unlockQuests == nil,
+                            a.id .. " is quest-only but carries an unlockQuests -- a rung on a shelf it is not on")
                     end
                 end
             end

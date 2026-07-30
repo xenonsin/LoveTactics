@@ -498,9 +498,16 @@ function CombatPanel:drawWaitButton()
     if enabled then Theme.set(hot and Theme.panel or Theme.panel2)
     else Theme.set(Theme.slot) end
     love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
-    Theme.set(Theme.frame, enabled and 1 or 0.5)
+    -- Selected/hovered reads with the same weight an armed action slot does: a bright amber trim
+    -- at 2px, not just a quieter-vs-brighter fill. A keyboard/pad player crossing onto Wait has no
+    -- mouse cursor pointing at it, so the plate itself has to announce the selection loudly.
+    if hot then Theme.set(Theme.accentAmber) else Theme.set(Theme.frame, enabled and 1 or 0.5) end
+    love.graphics.setLineWidth(hot and 2 or 1)
     love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
-    if enabled then Theme.set(Theme.ink) else Theme.set(Theme.muted) end
+    love.graphics.setLineWidth(1)
+    if not enabled then Theme.set(Theme.muted)
+    elseif hot then Theme.set(Theme.accentAmber)
+    else Theme.set(Theme.ink) end
     love.graphics.setFont(self.nameFont)
     -- UPPERCASE and letter-tracked, matching the section captions -- this button is a chrome header,
     -- not prose.

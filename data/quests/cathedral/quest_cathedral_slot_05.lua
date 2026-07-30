@@ -33,11 +33,10 @@ return {
     sponsor = "cathedral",
     rewardItems = { "weapon_censer_of_the_hollow_dark", "armor_reliquary_mantle" },
     rewardGold = 220,
-    rewardRep = 45,
     rewardPrestige = 1,
     requiredQuests = { "quest_cathedral_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 1,
-    requiredRep = { vendor = "cathedral", rank = 2 }, -- Acolyte
+    requiredSponsorQuests = { vendor = "cathedral", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },

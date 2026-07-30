@@ -10,6 +10,6 @@ return {
     tags = { "relic", "holy" },
     class = "priest",
     price = 280,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_sanctified_presence" },
 }

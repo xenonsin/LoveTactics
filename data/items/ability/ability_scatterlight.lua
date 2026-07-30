@@ -23,7 +23,7 @@ return {
     class = "mage",
     discipline = "ninja",
     price = 480,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "self",
         range = 0,

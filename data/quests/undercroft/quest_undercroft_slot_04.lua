@@ -38,11 +38,10 @@ return {
     sponsor = "undercroft",
     rewardItems = { "weapon_mired_kris" },
     rewardGold = 180,
-    rewardRep = 30,
     rewardPrestige = 1,
     requiredQuests = { "quest_undercroft_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 3,
-    requiredRep = { vendor = "undercroft", rank = 2 }, -- Prowler
+    requiredSponsorQuests = { vendor = "undercroft", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 6, max = 8, always = { "encounter_elite" } },

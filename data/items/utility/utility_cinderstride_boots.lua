@@ -32,6 +32,6 @@ return {
     tags = { "boots", "fire" },
     class = "mage",
     price = 600,
-    repRank = 3,
+    unlockQuests = 6,
     trail = { hazard = "hazard_fire", duration = 8 },
 }

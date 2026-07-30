@@ -15,7 +15,7 @@ return {
     class = "rogue",
     discipline = "inquisitor", -- rogue x priest; the Judgment mechanic's first stock
     price = 260,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 1,

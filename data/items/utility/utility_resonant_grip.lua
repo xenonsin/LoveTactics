@@ -24,6 +24,6 @@ return {
     class = "fighter",
     discipline = "battlemage",
     price = 400,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_resonant_grip" },
 }

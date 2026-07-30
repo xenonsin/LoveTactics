@@ -18,7 +18,7 @@ return {
     traits = { "trait_parry" }, -- a sword, so it parries (docs/weapons.md) -- and the counter carries `holy` too
     class = "knight",
     price = 260,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 1,

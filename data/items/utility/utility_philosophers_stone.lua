@@ -18,7 +18,7 @@ return {
     tags = { "arcane", "illusion" },
     class = "alchemist",
     price = 800,
-    repRank = 4,
+    unlockQuests = 10,
     noCopy = true,
     activeAbility = {
         target = "enemy",

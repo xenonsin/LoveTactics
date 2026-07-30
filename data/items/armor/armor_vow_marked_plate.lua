@@ -22,7 +22,7 @@ return {
     class = "knight",
     discipline = "paladin",
     price = 460,
-    repRank = 4,
+    unlockQuests = 10,
     bonus = { defense = { 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11 }, movement = -2 },
     traits = { "trait_vow_marked" },
 }

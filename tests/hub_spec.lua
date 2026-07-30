@@ -6,7 +6,7 @@ local Building = require("models.building")
 local Quest = require("models.quest")
 local Player = require("models.player")
 
--- Quest.available filters on the whole player (prestige, reputation, completed quests),
+-- Quest.available filters on the whole player (prestige, sponsor-quest gates, completed quests),
 -- so specs build a throwaway player pinned to the prestige under test.
 local function playerAt(prestige)
     local p = Player.new()
@@ -77,7 +77,7 @@ return {
     {
         name = "quest registry discovers def files by filename",
         fn = function()
-            assert(Quest.defs.quest_bastion_bandit_ambush, "quest_bastion_bandit_ambush missing")
+            assert(Quest.defs.quest_bastion_slot_01, "quest_bastion_slot_01 missing")
             assert(Quest.defs.quest_colosseum_slot_03, "warlord_keep missing")
         end,
     },

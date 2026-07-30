@@ -18,7 +18,7 @@ return {
     class = "rogue",
     discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
     price = 380,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "enemy",
         range = 1,

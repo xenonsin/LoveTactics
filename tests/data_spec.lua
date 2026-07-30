@@ -18,8 +18,7 @@ return {
             assert(#p.roster == 1, "roster should have 1 member (Rowan)")
             assert(#p.party == 1, "party should have 1 member (Rowan)")
             assert(p.roster[1].id == "character_rowan", "the lone default is Rowan")
-            assert(next(p.reputation) == nil, "a new player owes nobody any reputation")
-            assert(next(p.completedQuests) == nil, "a new player has completed no quests")
+            assert(next(p.completedQuests) == nil, "a new player has completed no quests (and so stands at every shop's opening stock)")
         end,
     },
     {

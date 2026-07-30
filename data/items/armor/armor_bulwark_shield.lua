@@ -28,7 +28,7 @@ return {
     tags = { "shield" }, -- a Shield Bash charm beside it in the grid can bash with this
     class = "knight",
     price = 620,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_shield_shove" },
     bonus = { defense = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 15 } },
     resist = { physical = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 }, impact = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },

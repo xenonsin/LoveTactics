@@ -22,7 +22,7 @@ return {
     tags = { "cloth", "ice" },
     class = "alchemist",
     price = 230,
-    repRank = 2,
+    unlockQuests = 3,
     bonus = {
         magicDefense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 },
         statusResist = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },

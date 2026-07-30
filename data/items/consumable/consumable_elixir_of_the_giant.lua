@@ -24,7 +24,7 @@ return {
     tags = { "potion", "elixir", "restorative" },
     class = "alchemist",
     price = 140,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "ally", -- includes the user: a unit is its own ally
         range = 1,

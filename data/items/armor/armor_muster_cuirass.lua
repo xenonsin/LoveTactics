@@ -24,7 +24,7 @@ return {
     tags = { "heavy" },
     class = "knight",
     price = 440,
-    repRank = 4,
+    unlockQuests = 10,
     incense = { hazard = "hazard_muster", radius = 1 },
     bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
 }

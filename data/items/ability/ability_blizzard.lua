@@ -12,7 +12,7 @@ return {
     class = "mage",
     discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
     price = 380,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",
         allowOccupied = true, -- an area cast may center on an occupied tile

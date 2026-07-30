@@ -23,7 +23,7 @@ return {
     tags = { "censer", "impact", "physical", "light", "melee" },
     class = "priest",
     price = 480,
-    repRank = 4,
+    unlockQuests = 10,
     incense = {
         hazard = "hazard_witchlight",
         radius = 1,

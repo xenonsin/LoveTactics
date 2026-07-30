@@ -21,6 +21,6 @@ return {
     class = "mage",
     discipline = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
     price = 300,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_deaths_dividend" },
 }

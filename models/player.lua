@@ -1,7 +1,7 @@
 -- Player logic. Defaults live in data/player.lua; `Player.new` builds the
 -- mutable runtime state: the full roster of owned characters, the active
 -- party (a capped subset of the roster), the stash of unequipped items, and the
--- progression state (gold, prestige, per-vendor reputation, completed quests).
+-- progression state (gold, prestige, completed quests -- which double as vendor standing).
 --
 -- `Player.active` is the one live player for the session. States must read it via
 -- `Player.start()` rather than calling `Player.new()`, which discards all progress.
@@ -11,7 +11,6 @@ local Growth = require("models.growth")
 local Item = require("models.item")
 local Save = require("models.save")
 local Sprite = require("models.sprite")
-local Vendor = require("models.vendor")
 
 local Player = {}
 
@@ -253,8 +252,7 @@ function Player.new()
         party = {},
         formation = {}, -- charId -> { col, row }; the persistent marching grid (see Player.setFormationSlot)
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
-        reputation = {},      -- vendor id -> reputation points (see Player.addReputation)
-        completedQuests = {}, -- quest id -> true; keeps finished quests off the board
+        completedQuests = {}, -- quest id -> true; keeps finished quests off the board AND is a vendor's standing (Quest.sponsorProgress)
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
         visitedVendors = {},  -- vendor id -> true; a shop plays its intro scene the first time only (states/hub.lua)
@@ -280,7 +278,7 @@ function Player.new()
 end
 
 -- ---------------------------------------------------------------------------
--- Progression: gold, prestige, reputation
+-- Progression: gold, prestige
 -- ---------------------------------------------------------------------------
 
 function Player.addGold(player, amount)
@@ -315,23 +313,6 @@ function Player.syncLevels(player)
         if summary then summaries[#summaries + 1] = summary end
     end
     return summaries
-end
-
--- Reputation points with one vendor. Unknown vendors read as 0 rather than nil so
--- callers can do arithmetic without guarding.
-function Player.reputation(player, vendorId)
-    return (player.reputation or {})[vendorId] or 0
-end
-
-function Player.addReputation(player, vendorId, amount)
-    player.reputation = player.reputation or {}
-    player.reputation[vendorId] = Player.reputation(player, vendorId) + amount
-end
-
--- The player's standing with a vendor as a rank index (see Vendor.rankFor). Rank gates
--- which of a vendor's items are on the shelf.
-function Player.repRank(player, vendorId)
-    return Vendor.rankFor(vendorId, Player.reputation(player, vendorId))
 end
 
 function Player.hasCompleted(player, questId)
@@ -561,10 +542,10 @@ end
 --   at the power it finished at. It is also what every encounter's `composition` scales against, so the
 --   board scales up to meet them; the carry-over is a head start, not a holiday.
 --
---   RESETS -- completed quests and vendor reputation. Clearing the quest ledger puts all seventy line
---   slots back on the board AND re-locks the Gate Below, whose `requiredQuests` are unmet again.
---   Clearing reputation drops every vendor to rank 1, so the rank-gated shelves and the seven relics
---   have to be earned a second time. Between them, the ladder is a ladder again.
+--   RESETS -- the completed-quest ledger. Clearing it puts all seventy line slots back on the board,
+--   re-locks the Gate Below (whose `requiredQuests` are unmet again), AND -- because a vendor's standing
+--   IS its count of finished quests -- drops every shelf back to its opening stock, so the quest-gated
+--   wares and the seven relics have to be earned a second time. One reset, and the ladder is a ladder again.
 --
 --   PERSISTS DELIBERATELY -- visited-vendor and discipline-announcement flags. Those exist to make a
 --   one-time scene play once; replaying eight shop introductions is not a reward.
@@ -578,7 +559,6 @@ function Player.newGamePlus(player)
 
     player.ngPlus = (player.ngPlus or 0) + 1
     player.completedQuests = {}
-    player.reputation = {}
     -- The post-quest advancement overlay is owed to the run that just ended, not to the new one.
     player.pendingSummary = nil
 

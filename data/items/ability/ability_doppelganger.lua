@@ -22,7 +22,7 @@ return {
     class = "mage",
     discipline = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
     price = 350,
-    repRank = 3,
+    unlockQuests = 6,
     noCopy = true,
     activeAbility = {
         target = "tile",

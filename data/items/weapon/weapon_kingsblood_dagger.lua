@@ -33,7 +33,7 @@ return {
     -- sells it, buys it back, and takes a cut each time. You pay the Undercroft for the knife it named
     -- after somebody's blood, which is the joke.
     price = 800,
-    repRank = 4,
+    unlockQuests = 10,
     stealPriority = 2, -- a thief covets it above ordinary kit (below a Decoy's bait)
     activeAbility = {
         target = "enemy",

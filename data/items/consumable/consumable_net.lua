@@ -11,7 +11,7 @@ return {
     tags = { "snare" },
     class = "rogue",
     price = 90,
-    repRank = 1,
+    unlockQuests = 0,
     activeAbility = {
         target = "enemy",
         range = 3,

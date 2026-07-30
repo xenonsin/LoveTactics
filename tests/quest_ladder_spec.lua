@@ -2,16 +2,16 @@
 -- that exist? These are the invariants an audit keeps re-deriving by hand, pinned so they stop being
 -- something anyone has to remember.
 --
--- The reachability case is the important one, and it is not hypothetical. The Colosseum shipped
--- soft-locked: `arena_debut` + `warlord_keep` paid 85 reputation, `blood_in_the_sand` gated at rank 3
--- (100), and there was no way to earn the fifteen points that unlocked the quest that earned the rest.
--- docs/story.md calls that "a shipping bug, not a design note" and it survived for a long time because
--- nothing computed it. Now something does.
+-- The reachability case is the important one, and it is not hypothetical. The Colosseum once shipped
+-- soft-locked: a mid-line quest was gated on a standing there was no way to earn, because nothing
+-- computed whether the gate could be reached from the quests gated below it. Now something does.
 --
--- The model is deliberately conservative: for each quest, sum the reputation of that sponsor's quests
--- gated STRICTLY EARLIER (lower prestige, or equal prestige and a lower rank), and require it to cover
--- this quest's rank threshold. Strictly-earlier is the pessimistic reading -- a player might in
--- practice also have cleared a same-gate sibling first -- and pessimistic is what a lock check wants.
+-- A vendor's standing is now simply how many of its quests you have finished (Quest.sponsorProgress),
+-- so a quest's gate is `requiredSponsorQuests = { vendor, count }`. The model is deliberately
+-- conservative: for each quest, COUNT that sponsor's quests gated STRICTLY EARLIER (lower prestige, or
+-- equal prestige and a lower count), and require that many to be at least this quest's threshold.
+-- Strictly-earlier is the pessimistic reading -- a player might in practice also have cleared a
+-- same-gate sibling first -- and pessimistic is what a lock check wants.
 --
 -- Pure logic, headless.
 
@@ -20,7 +20,7 @@ local Item = require("models.item")
 local Character = require("models.character")
 local Vendor = require("models.vendor")
 
-local function rankOf(def) return (def.requiredRep and def.requiredRep.rank) or 1 end
+local function countOf(def) return (def.requiredSponsorQuests and def.requiredSponsorQuests.count) or 0 end
 local function prestigeOf(def) return def.requiredPrestige or 1 end
 
 -- Quests grouped by sponsor, ignoring the unsponsored finale (the Gate Below answers to no vendor).
@@ -60,27 +60,25 @@ end
 
 return {
     {
-        name = "every reputation gate is reachable from quests gated strictly earlier",
+        name = "every sponsor-quest gate is reachable from quests gated strictly earlier",
         fn = function()
             local bad = {}
             for sponsor, list in pairs(bySponsor()) do
-                local vdef = Vendor.defs[sponsor]
-                local ranks = (vdef and vdef.ranks) or {}
                 for _, e in ipairs(list) do
-                    local need = ranks[rankOf(e.def)] or 0
+                    local need = countOf(e.def)
                     if need > 0 then
                         local available = 0
                         for _, other in ipairs(list) do
                             local earlier = prestigeOf(other.def) < prestigeOf(e.def)
                                 or (prestigeOf(other.def) == prestigeOf(e.def)
-                                    and rankOf(other.def) < rankOf(e.def))
-                            -- A quest cannot pay for its own gate.
+                                    and countOf(other.def) < countOf(e.def))
+                            -- A quest cannot count toward its own gate.
                             if earlier and other.id ~= e.id then
-                                available = available + (other.def.rewardRep or 0)
+                                available = available + 1
                             end
                         end
                         if available < need then
-                            bad[#bad + 1] = string.format("%s (%s): needs %d, only %d earnable earlier",
+                            bad[#bad + 1] = string.format("%s (%s): needs %d quests done, only %d gated earlier",
                                 e.id, sponsor, need, available)
                         end
                     end
@@ -91,24 +89,25 @@ return {
         end,
     },
     {
-        -- A sponsor whose whole line cannot reach its own top rank can never sell its rank-4 relic or
+        -- A sponsor whose whole line cannot reach its own top gate can never sell its top-tier relic or
         -- offer its general. Checked separately from the per-quest gate above because a line can be
         -- individually reachable at every rung and still stop short of the last one.
-        name = "every vendor line can reach its own top rank on authored quests alone",
+        name = "every vendor line can reach its own top gate on authored quests alone",
         fn = function()
             local bad = {}
             for sponsor, list in pairs(bySponsor()) do
-                local vdef = Vendor.defs[sponsor]
-                local ranks = (vdef and vdef.ranks) or {}
-                local top = ranks[#ranks] or 0
-                local total = 0
-                for _, e in ipairs(list) do
-                    -- The general itself pays out AFTER it is gated, so it cannot fund its own gate.
-                    if rankOf(e.def) < #ranks then total = total + (e.def.rewardRep or 0) end
-                end
-                if total < top then
-                    bad[#bad + 1] = string.format("%s: %d reputation available below rank %d, needs %d",
-                        sponsor, total, #ranks, top)
+                local top = 0
+                for _, e in ipairs(list) do top = math.max(top, countOf(e.def)) end
+                if top > 0 then
+                    -- The general itself sits AT the top gate, so it cannot count toward reaching it.
+                    local below = 0
+                    for _, e in ipairs(list) do
+                        if countOf(e.def) < top then below = below + 1 end
+                    end
+                    if below < top then
+                        bad[#bad + 1] = string.format("%s: %d quests gated below the top gate of %d, needs %d",
+                            sponsor, below, top, top)
+                    end
                 end
             end
             table.sort(bad)

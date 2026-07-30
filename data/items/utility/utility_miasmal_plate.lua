@@ -13,6 +13,6 @@ return {
     class = "knight",
     discipline = "plague_knight", -- knight x alchemist; the Contagion mechanic's first stock
     price = 380,
-    repRank = 3,
+    unlockQuests = 6,
     incense = { hazard = "hazard_choking", radius = 1, amount = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
 }

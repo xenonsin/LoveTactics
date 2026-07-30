@@ -12,7 +12,7 @@ return {
     class = "fighter",
     discipline = "skirmisher", -- fighter x hunter; the Hit-and-run mechanic's first stock
     price = 240,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 1,

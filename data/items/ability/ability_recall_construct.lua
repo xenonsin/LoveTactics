@@ -23,7 +23,7 @@ return {
     class = "mage",
     discipline = "artificer",
     price = 340,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",
         range = 3,

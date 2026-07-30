@@ -36,11 +36,10 @@ return {
     sponsor = "hunters_lodge",
     rewardItems = { "weapon_struck_ledger", "armor_kennelbound_jerkin" },
     rewardGold = 180,
-    rewardRep = 30,
     rewardPrestige = 1,
     requiredQuests = { "quest_hunters_lodge_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 2,
-    requiredRep = { vendor = "hunters_lodge", rank = 2 }, -- Stalker
+    requiredSponsorQuests = { vendor = "hunters_lodge", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "forest",
         encounters = { min = 6, max = 8, always = { "encounter_wolf" } },

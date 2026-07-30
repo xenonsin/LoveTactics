@@ -34,11 +34,10 @@ return {
     sponsor = "alchemist",
     rewardItems = { "armor_volatile_carapace" },
     rewardGold = 400,
-    rewardRep = 35,
     rewardPrestige = 2,
     requiredQuests = { "quest_alchemist_slot_08" }, -- slot 9: the line runs in order
     requiredPrestige = 4,
-    requiredRep = { vendor = "alchemist", rank = 3 }, -- Transmuter
+    requiredSponsorQuests = { vendor = "alchemist", count = 6 }, -- 6 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 10, max = 13, always = { "encounter_elite", "encounter_elite" } },

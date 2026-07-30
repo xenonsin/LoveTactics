@@ -1,4 +1,4 @@
--- Tests for the progression layer: the save round trip, the gold/prestige/reputation
+-- Tests for the progression layer: the save round trip, the gold/prestige/quest-standing
 -- economy, vendor stock derivation and rank gating, quest sponsorship and completion, and
 -- the composable `protect` objective.
 --
@@ -65,45 +65,33 @@ return {
         end,
     },
     {
-        name = "reputation with an unknown vendor reads as zero rather than nil",
+        name = "Quest.sponsorProgress counts a vendor's finished quests; unknown vendors read zero",
         fn = function()
+            local Quest = require("models.quest")
             local p = Player.new()
-            assert(Player.reputation(p, "colosseum") == 0, "unseen vendor should read 0")
-            Player.addReputation(p, "colosseum", 15)
-            assert(Player.reputation(p, "colosseum") == 15, "reputation should accumulate")
+            assert(Quest.sponsorProgress(p, "colosseum") == 0, "unseen vendor should read 0")
+            p.completedQuests = {
+                quest_colosseum_slot_01 = true,
+                quest_colosseum_slot_02 = true,
+                quest_bastion_slot_01 = true, -- a different sponsor must not count toward the colosseum
+            }
+            assert(Quest.sponsorProgress(p, "colosseum") == 2, "only the colosseum's own quests count")
+            assert(Quest.sponsorProgress(p, "bastion") == 1, "each sponsor counts independently")
         end,
     },
     {
-        name = "repRank resolves exactly at each threshold boundary",
+        name = "Vendor.tier climbs one wave per TIERS threshold crossed, and caps at the top",
         fn = function()
-            local ranks = Vendor.defs.colosseum.ranks -- { 0, 40, 100, 200 }
-            local p = Player.new()
-
-            -- One point below a threshold is still the lower rank; landing on it promotes.
-            for i = 2, #ranks do
-                p.reputation.colosseum = ranks[i] - 1
-                assert(Player.repRank(p, "colosseum") == i - 1,
-                    "one short of threshold " .. i .. " should stay at rank " .. (i - 1))
-                p.reputation.colosseum = ranks[i]
-                assert(Player.repRank(p, "colosseum") == i,
-                    "hitting threshold " .. i .. " should promote to rank " .. i)
+            local T = Vendor.TIERS -- { 0, 3, 6, 10 }
+            for i = 2, #T do
+                assert(Vendor.tier(T[i] - 1) == i - 1,
+                    "one short of threshold " .. i .. " should stay a wave lower")
+                assert(Vendor.tier(T[i]) == i,
+                    "hitting threshold " .. i .. " should open wave " .. i)
             end
-
-            -- Rank never exceeds the top of the ladder, however much reputation piles up.
-            p.reputation.colosseum = 99999
-            assert(Player.repRank(p, "colosseum") == #ranks, "rank should cap at the top rung")
+            assert(Vendor.tier(99999) == #T, "tier should cap at the top wave")
         end,
     },
-    {
-        name = "nextRank counts down to the next rung, and reports nil at the top",
-        fn = function()
-            local toNext, rank = Vendor.nextRank("colosseum", 30)
-            assert(toNext == 10, "30 rep is 10 short of the 40 threshold")
-            assert(rank == 2, "the next rung is rank 2")
-            assert(Vendor.nextRank("colosseum", 200) == nil, "max standing has no next rung")
-        end,
-    },
-
     {
         name = "Player.restore refills every roster member's resources, leaving flat stats alone",
         fn = function()
@@ -146,8 +134,6 @@ return {
                                   "arcanum", "undercroft", "alchemist" }) do
                 local def = Vendor.defs[id]
                 assert(def, id .. " vendor missing")
-                assert(def.ranks[1] == 0, id .. " entry rank must be 0")
-                assert(#def.ranks == #def.rankNames, id .. " has a rank without a name")
                 assert(def.sin, id .. " names no sin")
                 assert(not claimed[def.sin], "two vendors claim " .. tostring(def.sin))
                 claimed[def.sin] = true
@@ -184,24 +170,24 @@ return {
         end,
     },
     {
-        name = "Vendor.stock shows rank-locked items, flagged rather than hidden",
+        name = "Vendor.stock shows quest-locked items, flagged rather than hidden",
         fn = function()
-            local low = Vendor.stock("colosseum", 1)
-            local high = Vendor.stock("colosseum", 4)
-            assert(#low == #high, "the shelf is the same length at every rank")
+            local low = Vendor.stock("colosseum", 0)
+            local high = Vendor.stock("colosseum", 999)
+            assert(#low == #high, "the shelf is the same length at every quest count")
 
-            -- A discipline item carries a SECOND lock (its discipline must be unlocked) that rank never
-            -- lifts, so it is not part of this rank-only measure -- count only rank-gated wares.
+            -- A discipline item carries a SECOND lock (its discipline must be unlocked) that quests never
+            -- lift, so it is not part of this quest-only measure -- count only quest-gated wares.
             local lockedAtLow, lockedAtHigh = 0, 0
             for _, e in ipairs(low) do if e.locked and not e.discipline then lockedAtLow = lockedAtLow + 1 end end
             for _, e in ipairs(high) do if e.locked and not e.discipline then lockedAtHigh = lockedAtHigh + 1 end end
 
-            assert(lockedAtLow > 0, "a rank-1 player should see items they cannot buy yet")
-            assert(lockedAtHigh == 0, "a top-rank player should have everything rank-unlocked")
+            assert(lockedAtLow > 0, "a player with no quests done should see items they cannot buy yet")
+            assert(lockedAtHigh == 0, "a player past every gate should have everything quest-unlocked")
         end,
     },
     {
-        name = "every class has a vendor, and every vendor has a rank-1 item to sell",
+        name = "every class has a vendor, and every vendor has an opening-shelf item to sell",
         fn = function()
             for class in pairs(Item.CLASSES) do
                 local vendorId
@@ -210,7 +196,7 @@ return {
                 end
                 assert(vendorId, "class '" .. class .. "' has no vendor")
 
-                local entry = Vendor.stock(vendorId, 1)[1]
+                local entry = Vendor.stock(vendorId, 0)[1]
                 assert(entry and not entry.locked,
                     vendorId .. " has nothing a new player can buy")
             end
@@ -225,7 +211,7 @@ return {
             local generalStock = {}
             for vid, vdef in pairs(Vendor.defs) do
                 if vdef.general then
-                    for _, e in ipairs(Vendor.stock(vid, #vdef.ranks)) do generalStock[e.id] = true end
+                    for _, e in ipairs(Vendor.stock(vid, 999)) do generalStock[e.id] = true end
                 end
             end
 
@@ -345,12 +331,13 @@ return {
         end,
     },
     {
-        name = "Quest.available hides a reputation-gated quest until the rank is earned",
+        name = "Quest.available hides a sponsor-quest-gated quest until enough of the house's quests are done",
         fn = function()
-            local p = playerAt(5) -- prestige is not the gate here; reputation is
-            -- The Cathedral's line runs in order, so put slots 1-2 behind it: what is left holding
-            -- slot 3 back is then the reputation rank alone, which is what this case is about.
-            p.completedQuests.quest_colosseum_slot_01 = true
+            local p = playerAt(5) -- prestige is not the gate here; the sponsor-quest count is
+            -- slot 3 gates on requiredSponsorQuests = { cathedral, count = 3 } (and, in order, on slot 2).
+            -- Put slots 1-2 behind it -- that clears the requiredQuests chain but leaves the Cathedral count
+            -- at 2, one short of 3, which is what holds slot 3 back and is what this case is about.
+            p.completedQuests.quest_colosseum_slot_01 = true -- a different house: must not count toward the Cathedral
             p.completedQuests.quest_cathedral_slot_01 = true
             p.completedQuests.quest_cathedral_slot_02 = true
 
@@ -361,20 +348,22 @@ return {
                 return false
             end
 
-            assert(not boardHas("quest_cathedral_slot_03"), "rite_of_ashes needs Cathedral rank 2")
+            assert(not boardHas("quest_cathedral_slot_03"),
+                "slot 3 needs 3 of the Cathedral's quests, and only 2 are done")
 
-            Player.addReputation(p, "cathedral", Vendor.defs.cathedral.ranks[2])
-            assert(boardHas("quest_cathedral_slot_03"), "rite_of_ashes should appear at Cathedral rank 2")
+            p.completedQuests.quest_cathedral_the_twin_liturgy = true -- a 3rd Cathedral quest
+            assert(boardHas("quest_cathedral_slot_03"),
+                "slot 3 should appear once 3 of the Cathedral's quests are done")
         end,
     },
     {
         name = "Quest.available hides a quest until its sponsor's shop has opened",
         fn = function()
             local Building = require("models.building")
-            -- quest_bastion_bandit_ambush is a prestige-1 quest sponsored by the Bastion, whose building does
-            -- not open until prestige 2. A player at prestige 1 must not see it -- it would point
+            -- quest_bastion_slot_01 heads the Bastion's line, sponsored by the Bastion, whose building
+            -- does not open until prestige 2. A player at prestige 1 must not see it -- it would point
             -- at a locked door.
-            assert(Quest.defs.quest_bastion_bandit_ambush.sponsor == "bastion", "quest_bastion_bandit_ambush should be a Bastion quest")
+            assert(Quest.defs.quest_bastion_slot_01.sponsor == "bastion", "quest_bastion_slot_01 should be a Bastion quest")
             assert(Building.vendorUnlockPrestige("bastion") == 2, "the Bastion should open at prestige 2")
 
             local function boardHas(player, id)
@@ -384,14 +373,14 @@ return {
                 return false
             end
 
-            assert(not boardHas(playerAt(1), "quest_bastion_bandit_ambush"),
-                "quest_bastion_bandit_ambush must stay hidden while the Bastion is still locked")
-            assert(boardHas(playerAt(2), "quest_bastion_bandit_ambush"),
-                "quest_bastion_bandit_ambush should appear once the Bastion opens at prestige 2")
+            assert(not boardHas(playerAt(1), "quest_bastion_slot_01"),
+                "quest_bastion_slot_01 must stay hidden while the Bastion is still locked")
+            assert(boardHas(playerAt(2), "quest_bastion_slot_01"),
+                "quest_bastion_slot_01 should appear once the Bastion opens at prestige 2")
         end,
     },
     {
-        name = "Quest.complete grants gold, prestige and sponsor reputation exactly once",
+        name = "Quest.complete grants gold and prestige, and advances the sponsor's standing, exactly once",
         fn = function()
             local p = playerAt(1)
             p.gold = 0
@@ -402,12 +391,15 @@ return {
             end
             assert(quest, "arena_debut should be available at prestige 1")
 
+            local before = Quest.sponsorProgress(p, "colosseum")
             local reward = Quest.complete(p, quest)
             assert(reward, "completing a fresh quest should pay out")
             assert(p.gold == quest.rewardGold, "gold should be granted")
             assert(p.prestige == 1 + quest.rewardPrestige, "prestige should be granted")
-            assert(Player.reputation(p, "colosseum") == quest.rewardRep, "sponsor reputation should be granted")
             assert(Player.hasCompleted(p, "quest_colosseum_slot_01"), "the quest should be marked completed")
+            assert(Quest.sponsorProgress(p, "colosseum") == before + 1,
+                "finishing the quest is what advances the Colosseum's standing")
+            assert(reward.sponsorQuests == before + 1, "the reward should report the sponsor's new quest count")
 
             -- A second payout is refused: the objective tile could otherwise be re-cleared.
             local gold, prestige = p.gold, p.prestige
@@ -490,7 +482,7 @@ return {
         end,
     },
     {
-        name = "prestige and reputation stay HARD gates: a locked quest still needs the standing",
+        name = "prestige stays a HARD gate: holding a key does not excuse the Gate's prestige requirement",
         fn = function()
             local p = playerAt(1) -- the Gate wants prestige 10
             p.completedQuests.quest_colosseum_slot_10 = true
@@ -505,13 +497,13 @@ return {
         name = "Quest.complete grants a relic into the stash exactly once",
         fn = function()
             local p = playerAt(5)
-            Player.addReputation(p, "colosseum", Vendor.defs.colosseum.ranks[4])
-            -- A general is slot 10 of a line that runs in order, so the nine in front of it have to
-            -- be done. Standing alone no longer puts Ira on the board -- the line does.
+            -- A general is slot 10 of a line that runs in order, so the nine in front of it have to be
+            -- done. Its own gate wants ten Colosseum quests finished, so a capstone (the_fighting_cellar)
+            -- rounds the count out past the nine slots -- exactly how a real playthrough reaches it.
             for _, id in ipairs({
                 "quest_colosseum_slot_01", "quest_colosseum_slot_02", "quest_colosseum_slot_03", "quest_colosseum_slot_04",
                 "quest_colosseum_slot_05", "quest_colosseum_slot_06", "quest_colosseum_slot_07", "quest_colosseum_slot_08",
-                "quest_colosseum_slot_09",
+                "quest_colosseum_slot_09", "quest_colosseum_the_fighting_cellar",
             }) do p.completedQuests[id] = true end
 
             local quest
@@ -580,31 +572,35 @@ return {
         end,
     },
     {
-        name = "Quest.complete reports a rank-up exactly when one crosses a threshold",
+        name = "Quest.complete flags unlocked stock exactly when a completion crosses a tier threshold",
         fn = function()
             local p = playerAt(1)
-            local quest = { id = "spec_quest", sponsor = "colosseum", rewardGold = 0,
-                            rewardPrestige = 0, rewardRep = 25 }
+            -- Two Colosseum quests done: count 2, still inside the opening tier (Vendor.TIERS = {0,3,6,10}).
+            p.completedQuests.quest_colosseum_slot_01 = true
+            p.completedQuests.quest_colosseum_slot_02 = true
 
-            local reward = Quest.complete(p, quest)
-            assert(reward.rankedUp == false, "25 rep is short of the rank-2 threshold of 40")
+            -- Completing a 3rd crosses into the next tier, so a fresh wave of stock lands on the shelf.
+            local crossing = { id = "quest_colosseum_slot_03", sponsor = "colosseum",
+                               rewardGold = 0, rewardPrestige = 0 }
+            local reward = Quest.complete(p, crossing)
+            assert(reward.unlockedStock == true, "the 3rd Colosseum quest crosses into the next stock tier")
 
-            p.completedQuests.spec_quest = nil -- allow a second payout for the spec
-            reward = Quest.complete(p, quest)
-            assert(reward.rankedUp == true, "50 rep should cross into rank 2")
-            assert(reward.rankName == Vendor.rankName("colosseum", 2), "the new rank should be named")
+            -- A 4th stays inside that tier (3 -> 4, both tier 2), so nothing new unlocks.
+            local within = { id = "quest_colosseum_slot_04", sponsor = "colosseum",
+                             rewardGold = 0, rewardPrestige = 0 }
+            reward = Quest.complete(p, within)
+            assert(reward.unlockedStock == false, "a completion inside the same tier unlocks nothing new")
         end,
     },
 
     -- ------------------------------------------------------------------- save
     {
-        name = "a save round trip preserves gold, prestige, reputation and completed quests",
+        name = "a save round trip preserves gold, prestige and completed quests",
         fn = function()
             withScratchSave(function()
                 local p = Player.new()
                 p.gold = 777
                 p.prestige = 4
-                Player.addReputation(p, "arcanum", 65)
                 p.completedQuests.quest_colosseum_slot_01 = true
 
                 assert(Save.write(p), "save should write")
@@ -614,8 +610,8 @@ return {
                 assert(loaded, "save should read back")
                 assert(loaded.gold == 777, "gold should survive")
                 assert(loaded.prestige == 4, "prestige should survive")
-                assert(Player.reputation(loaded, "arcanum") == 65, "reputation should survive")
-                assert(Player.hasCompleted(loaded, "quest_colosseum_slot_01"), "completed quests should survive")
+                assert(Player.hasCompleted(loaded, "quest_colosseum_slot_01"),
+                    "completed quests should survive -- and with them the vendor standing they represent")
             end)
         end,
     },

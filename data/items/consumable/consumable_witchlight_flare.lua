@@ -29,7 +29,7 @@ return {
     type = "consumable",
     tags = { "light" },
     price = 90, -- no class: the Market stocks it, and every party should carry one
-    repRank = 1,
+    unlockQuests = 0,
     maxStack = 3,
     activeAbility = {
         target = "tile",

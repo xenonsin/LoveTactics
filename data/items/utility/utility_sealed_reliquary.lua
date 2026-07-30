@@ -31,6 +31,6 @@ return {
     tags = { "holy" },
     class = "priest",
     price = 480,
-    repRank = 4,
+    unlockQuests = 10,
     traits = { "trait_sealed_reliquary" },
 }

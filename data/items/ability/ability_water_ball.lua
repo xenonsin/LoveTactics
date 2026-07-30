@@ -12,7 +12,7 @@ return {
     tags = { "water", "magical" },
     class = "mage",
     price = 260,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 3,

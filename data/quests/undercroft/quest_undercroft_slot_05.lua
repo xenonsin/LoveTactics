@@ -1,5 +1,5 @@
--- The Undercroft's mid-line contract, gated on reputation rather than prestige: it stays off the board
--- until the player is a Prowler (rank 2) with the Undercroft. See `requiredRep` in models/quest.lua.
+-- The Undercroft's mid-line contract, gated on quests-completed rather than prestige: it stays off the board
+-- until the player has finished 3 of the Undercroft's quests. See `requiredSponsorQuests` in models/quest.lua.
 -- Slot 5 of the ten (docs/story.md, "The Undercroft") -- the discovery, where the player sets the Bank's
 -- proud roll of "accounts settled in full" against what settling meant: the indentured worked to death
 -- and the noncompliant quietly closed. A casualty list read as an honor roll, the same trick the Bastion
@@ -18,11 +18,10 @@ return {
     sponsor = "undercroft",
     rewardItems = { "armor_opportunists_harness" },
     rewardGold = 220,
-    rewardRep = 45,
     rewardPrestige = 1,
     requiredQuests = { "quest_undercroft_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 3,
-    requiredRep = { vendor = "undercroft", rank = 2 }, -- Prowler or better
+    requiredSponsorQuests = { vendor = "undercroft", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },

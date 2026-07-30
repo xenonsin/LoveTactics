@@ -20,7 +20,7 @@ return {
     tags = { "caltrop" },
     class = "rogue",
     price = 130,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

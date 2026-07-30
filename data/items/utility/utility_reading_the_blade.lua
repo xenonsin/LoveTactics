@@ -23,6 +23,6 @@ return {
     class = "fighter",
     discipline = "duelist",
     price = 380,
-    repRank = 3,
+    unlockQuests = 6,
     charge = { key = "tempo", from = { "repeatStrike" }, max = 5, resetOn = "targetSwitch" },
 }

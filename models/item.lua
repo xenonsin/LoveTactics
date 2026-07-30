@@ -572,7 +572,7 @@ function Item.instantiate(id, quantity, level)
         class = def.class,                     -- which class vendor sells it; nil = sold by none
         discipline = def.discipline,           -- shop taxonomy: the locked discipline this item belongs to (docs/classes.md)
         price = def.price,                     -- vendor gold cost; nil means it is never sold
-        repRank = def.repRank,                 -- vendor rank needed to unlock it (default 1)
+        unlockQuests = def.unlockQuests,       -- how many of the vendor's quests must be done before it is on sale (default 0)
         level = math.max(0, level or 0),       -- upgrade level; 0 = a base, un-forged item
     }
 

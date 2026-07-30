@@ -21,7 +21,7 @@ return {
     class = "mage",
     discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
     price = 620,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

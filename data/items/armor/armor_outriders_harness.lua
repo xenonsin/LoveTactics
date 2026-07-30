@@ -22,7 +22,7 @@ return {
     class = "fighter",
     discipline = "skirmisher",
     price = 400,
-    repRank = 3,
+    unlockQuests = 6,
     bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
     traits = { "trait_outriders_harness" },
 }

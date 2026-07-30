@@ -25,7 +25,7 @@ return {
     tags = { "cloth", "arcane" },
     class = "mage",
     price = 560,
-    repRank = 4,
+    unlockQuests = 10,
     traits = { "trait_counter_magic" },
     bonus = { magicDefense = { 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13 }, movement = -1 },
     resist = { magical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },

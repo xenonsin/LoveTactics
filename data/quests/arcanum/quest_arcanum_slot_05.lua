@@ -1,5 +1,5 @@
--- The Arcanum's mid-line contract, gated on reputation rather than prestige: it stays off the board until
--- the player is an Adept (rank 2) with the Arcanum. See `requiredRep` in models/quest.lua. Slot 5 of the
+-- The Arcanum's mid-line contract, gated on quests-completed rather than prestige: it stays off the board until
+-- the player has finished 3 of the Arcanum's quests. See `requiredSponsorQuests` in models/quest.lua. Slot 5 of the
 -- ten (docs/story.md, "The Arcanum") -- the discovery, where the player is sent to retrieve the Arcanum's
 -- honor roll of "those who gave themselves to the work" and finds what became of them: a casualty list
 -- read as a roll of the noble dead, the same trick the Bastion plays with its martyrs.
@@ -17,11 +17,10 @@ return {
     sponsor = "arcanum",
     rewardItems = { "weapon_second_utterance_wand" },
     rewardGold = 220,
-    rewardRep = 45,
     rewardPrestige = 1,
     requiredQuests = { "quest_arcanum_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 3,
-    requiredRep = { vendor = "arcanum", rank = 2 }, -- Adept or better
+    requiredSponsorQuests = { vendor = "arcanum", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },

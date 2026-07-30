@@ -9,6 +9,6 @@ return {
     tags = { "charm" },
     class = "hunter",
     price = 260,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_executioners_eye" },
 }

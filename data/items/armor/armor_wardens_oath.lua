@@ -10,7 +10,7 @@ return {
     tags = { "plate" },
     class = "knight",
     price = 280,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_oathward" },
     bonus = { defense = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, movement = -1 },
     resist = { physical = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },

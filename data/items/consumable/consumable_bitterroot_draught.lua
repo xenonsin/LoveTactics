@@ -22,7 +22,7 @@ return {
     class = "alchemist",
     discipline = "herbalist",
     price = 120,
-    repRank = 3,
+    unlockQuests = 6,
     maxStack = 3,
     activeAbility = {
         target = "self",

@@ -27,7 +27,7 @@ return {
     class = "hunter",
     discipline = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
     price = 420,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",
         range = 1,

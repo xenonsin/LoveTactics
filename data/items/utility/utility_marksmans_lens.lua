@@ -16,6 +16,6 @@ return {
     tags = { "charm" },
     class = "hunter",
     price = 300,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_marksmans_lens" },
 }

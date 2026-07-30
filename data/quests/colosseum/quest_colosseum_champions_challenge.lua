@@ -38,7 +38,6 @@ return {
     difficulty = "Hard",
     sponsor = "colosseum",
     rewardGold = 250,
-    rewardRep = 10, -- deliberately small: capstones sit outside the ten and must not skew the ladder
     rewardPrestige = 1,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_bastion_slot_03" the first knight. Holding either is impossible without them.

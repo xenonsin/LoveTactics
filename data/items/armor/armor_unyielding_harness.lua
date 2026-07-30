@@ -29,7 +29,7 @@ return {
     class = "knight",
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 480,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_unyielding" },
     bonus = { defense = { 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 15 }, magicDefense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 }, movement = -2 },
     resist = { physical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },

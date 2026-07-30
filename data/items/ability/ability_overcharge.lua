@@ -13,7 +13,7 @@ return {
     class = "alchemist",
     discipline = "artificer", -- mage x alchemist; the Constructs mechanic's first stock
     price = 260,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "ally",
         range = 2,

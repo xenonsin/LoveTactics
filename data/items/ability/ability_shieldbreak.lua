@@ -12,7 +12,7 @@ return {
     class = "knight",
     discipline = "vanguard", -- knight x rogue; the Breach mechanic's first stock
     price = 280,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 1,

@@ -27,7 +27,7 @@ return {
     class = "alchemist",
     discipline = "apothecary",
     price = 160,
-    repRank = 4,
+    unlockQuests = 10,
     maxStack = 3,
     activeAbility = {
         target = "self",
@@ -49,8 +49,14 @@ return {
                 fx.log("action", "There is nobody here worth borrowing from.")
                 return
             end
-            fx.user.bonus = fx.user.bonus or {}
-            fx.user.bonus.magicDamage = (fx.user.bonus.magicDamage or 0) + gain
+            -- Bank a fresh COPY of the bonus table, never a mutation of the live one: the damage
+            -- preview replays this effect on every hover/aim frame, and an in-place `fx.user.bonus.x +=`
+            -- would ratchet the real caster's magic attack up each frame. Copy, add, then hand it to
+            -- fx.bank (real on the live cast, inert in the preview), so the raise lands once, on use.
+            local bonus = {}
+            if fx.user.bonus then for k, v in pairs(fx.user.bonus) do bonus[k] = v end end
+            bonus.magicDamage = (bonus.magicDamage or 0) + gain
+            fx.bank("bonus", bonus)
             fx.log("action", string.format("Borrowed hands: magic attack raised by %d.", gain), fx.user)
         end,
     },

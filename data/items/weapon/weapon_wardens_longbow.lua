@@ -24,7 +24,7 @@ return {
     hands = 2, -- two-handed, like every bow
     class = "hunter",
     price = 300,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         description = "Holding the draw longer draws a heavier shaft: each extra tick adds a quarter of the shot.",
         target = "enemy",

@@ -29,7 +29,7 @@ return {
     hands = 2, -- every bow is two-handed (docs/weapons.md)
     class = "hunter",
     price = 300,
-    repRank = 3,
+    unlockQuests = 6,
     -- The extra, whole. `speed` is the steep tempo the stance costs and deliberately does not scale
     -- with the forge (models/item.lua): an upgrade buys steadier shooting, never the turn back.
     waitBehavior = { kind = "overwatch", speed = 12, stamina = { 6, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3 } },

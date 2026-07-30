@@ -13,7 +13,7 @@ return {
     traits = { "trait_parry" }, -- swords parry (docs/weapons.md): answer a melee blow with one of your own
     class = "knight", -- the sword is the Bastion's shelf: a blade that answers is a wall's argument (docs/classes.md)
     price = 60,
-    repRank = 1,
+    unlockQuests = 0,
     activeAbility = {
         target = "enemy",
         range = 1, -- adjacent only (Manhattan distance)

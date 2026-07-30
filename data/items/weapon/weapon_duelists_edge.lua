@@ -21,7 +21,7 @@ return {
     traits = { "trait_binding_parry" }, -- NOT trait_parry: the bind replaces the cut, it does not join it
     class = "knight", -- a blade that answers is the Bastion's argument (docs/classes.md)
     price = 620,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "enemy",
         range = 1,

@@ -18,7 +18,6 @@ return {
     difficulty = "Normal",
     sponsor = "alchemist",
     rewardGold = 90,
-    rewardRep = 30,
     rewardPrestige = 1,
     requiredQuests = { "quest_alchemist_slot_01" }, -- slot 2: the line runs in order
     requiredPrestige = 4,

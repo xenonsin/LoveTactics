@@ -37,11 +37,10 @@ return {
     intro = "conversation_bastion_slot_05_intro",
     outro = "conversation_bastion_slot_05_outro",
     rewardGold = 220,
-    rewardRep = 25,
     rewardPrestige = 2,
     requiredQuests = { "quest_bastion_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 2,
-    requiredRep = { vendor = "bastion", rank = 2 }, -- Sworn
+    requiredSponsorQuests = { vendor = "bastion", count = 3 }, -- 3 of this house's quests done
     rewardItems = { "utility_greywatch_muster_roll", "weapon_answering_bell", "weapon_rimebell" },
     map = {
         biome = "castle",

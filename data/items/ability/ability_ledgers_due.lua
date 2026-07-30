@@ -31,7 +31,7 @@ return {
     tags = { "dark" },
     class = "rogue",
     price = 260,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile",
         range = 1, -- you have to be standing over it

@@ -11,7 +11,7 @@ return {
     type = "armor",
     class = "alchemist",
     price = 240,
-    repRank = 2,
+    unlockQuests = 3,
     bonus = { magicDefense = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 13, 14 }, defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 }, movement = -1 },
     resist = { fire = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, lightning = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, magical = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
 }

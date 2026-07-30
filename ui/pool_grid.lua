@@ -5,7 +5,7 @@
 --   * a STASH -- real owned Item instances (setItems(player.stash)); cell index maps 1:1 to the
 --     stash list, and a stackable consumable shows an "xN" count.
 --   * a STORE -- catalog entries from Vendor.stock (setStore(entries)); each cell is a buyable
---     TYPE (never consumed), showing its price and a greyed overlay when rank-locked.
+--     TYPE (never consumed), showing its price and a greyed overlay when quest-locked.
 --
 -- Like the grid and the old list it is PICK-THEN-PLACE: activating a cell picks it up (`picked`);
 -- the host panel reads that and performs the actual transfer (a plain move, a buy, or a sell). It
@@ -270,7 +270,7 @@ function PoolGrid:drawCell(i, sx, sy)
         love.graphics.printf("x" .. item.quantity, sx, sy + 3, CELL - 4, "right")
     end
 
-    -- Rank-locked store cell: greyed, so seeing what standing buys is still possible.
+    -- Quest-locked store cell: greyed, so seeing what more quests will buy is still possible.
     if cell.locked then
         Theme.set(Theme.mount, 0.6)
         love.graphics.rectangle("fill", sx, sy, CELL, CELL, 6, 6)

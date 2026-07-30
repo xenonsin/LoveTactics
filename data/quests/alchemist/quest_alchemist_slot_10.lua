@@ -15,12 +15,11 @@ return {
     difficulty = "Hard",
     sponsor = "alchemist",
     rewardGold = 500,
-    rewardRep = 80,
     rewardPrestige = 3,
     rewardItems = { "utility_envious_glass" },
     requiredQuests = { "quest_alchemist_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 4,
-    requiredRep = { vendor = "alchemist", rank = 4 }, -- Philosopher
+    requiredSponsorQuests = { vendor = "alchemist", count = 10 }, -- 10 of this house's quests done
     gateHint = "below the vats, where the shapeless envy the shaped",
     map = {
         biome = "castle",

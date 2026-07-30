@@ -1,8 +1,14 @@
--- Vendor logic. Blueprints live in data/vendors/<id>.lua: a class vendor's identity plus
--- its reputation ladder. Vendors are decoupled from hub geometry (data/buildings/) so a
--- quest can name a sponsor without knowing where its building stands, and from the player
--- (rank resolution takes a points number, not a player) so models/player.lua can depend on
--- this module without a require cycle.
+-- Vendor logic. Blueprints live in data/vendors/<id>.lua: a class vendor's identity.
+-- Vendors are decoupled from hub geometry (data/buildings/) so a quest can name a sponsor
+-- without knowing where its building stands, and from the player (every gate here takes a
+-- plain count of quests-completed, not a player) so models/player.lua and this module do
+-- not form a require cycle.
+--
+-- A shelf opens as you run the vendor's OWN quest line: each priced item names how many of
+-- that sponsor's quests you must have finished before it is on sale (`unlockQuests`, default
+-- 0 -- open from the start). There is no reputation score and no rank titles; the only number
+-- the player ever sees is "quests completed with this house", counted from the sponsor of
+-- each quest in player.completedQuests (models/quest.lua's Quest.sponsorProgress).
 --
 -- Stock is *derived, not authored*: a vendor sells every priced item whose `class` matches its
 -- own. Adding data/items/<slot>/<id>.lua with the right class puts it on that vendor's shelf.
@@ -42,36 +48,22 @@ function Vendor.list()
     return list
 end
 
--- Resolve reputation points to a rank index. `ranks` is an ascending list of thresholds
--- where ranks[1] is the entry rank, so the returned index is 1-based: rank 1 is the
--- lowest standing, #ranks the highest. An unknown vendor yields rank 1.
-function Vendor.rankFor(vendorId, points)
-    local def = Vendor.defs[vendorId]
-    if not def then return 1 end
+-- The quest-count thresholds a shelf's four waves of stock open at. Items author their gate as
+-- one of these numbers (`unlockQuests`), and the ability/recipe upgrade bench keys its level cap
+-- off which wave a player's quest count has reached (Vendor.abilityLevelCap). One list so the
+-- gear gates and the upgrade caps ramp together.
+Vendor.TIERS = { 0, 3, 6, 10 }
 
-    local rank = 1
-    for i, threshold in ipairs(def.ranks) do
-        if points >= threshold then rank = i end
+-- Which wave (1..#TIERS) `questsDone` completed quests has reached: the number of thresholds it
+-- has crossed. Used only for the upgrade-level cap; item stock gates on its own `unlockQuests`
+-- directly, not on this.
+function Vendor.tier(questsDone)
+    questsDone = questsDone or 0
+    local tier = 1
+    for i, threshold in ipairs(Vendor.TIERS) do
+        if questsDone >= threshold then tier = i end
     end
-    return rank
-end
-
-function Vendor.rankName(vendorId, rank)
-    local def = Vendor.defs[vendorId]
-    if not def then return "" end
-    return def.rankNames[rank] or ""
-end
-
--- Points still needed to reach the next rank, and that rank's index. Returns nil when the
--- player is already at the top -- the UI renders that as "max standing" rather than a bar.
-function Vendor.nextRank(vendorId, points)
-    local def = Vendor.defs[vendorId]
-    if not def then return nil end
-
-    local rank = Vendor.rankFor(vendorId, points)
-    local nextThreshold = def.ranks[rank + 1]
-    if not nextThreshold then return nil end
-    return nextThreshold - points, rank + 1
+    return tier
 end
 
 -- The shelf price of a base item scaled to `level`: +50% of the base per tier, rounded. A consumable
@@ -109,34 +101,37 @@ function Vendor.sells(def, item)
     return false
 end
 
--- Every item this vendor could ever sell, in shelf order (cheapest first). Rank-gated
--- items are included; `locked` marks the ones the player has not earned yet, so the shop
--- can show them greyed out -- seeing what reputation buys is the point of the ladder.
+-- Every item this vendor could ever sell, in shelf order (cheapest first). Quest-gated items are
+-- included; `locked` marks the ones the player has not earned yet, so the shop can show them greyed
+-- out -- seeing what the rest of the line unlocks is the point of the ladder.
+--
+-- `questsDone` is the count of this vendor's quests the player has finished (Quest.sponsorProgress).
+-- An item is locked until that count reaches its `unlockQuests`. Passed as a bare number (not a
+-- player) so this module stays player-free.
 --
 -- `recipes` is an optional plain { itemId = tier } map (the player's consumable recipe levels):
 -- a listed item is stocked at its tier, with `price` scaled to match, so buying it yields the
--- upgraded item. Kept a bare table (like `rank`) so this module stays player-free.
+-- upgraded item.
 --
 -- Returns fresh tables, never the blueprints (which stay immutable).
 -- `unlocked` is an optional bare set { disciplineId = true } of the player's unlocked disciplines
 -- (Discipline.unlockedSet). A discipline item is stocked either way but stays `locked` -- greyed like a
--- rank-locked ware -- until its discipline is unlocked, because seeing the deeper cut you can earn is
--- the point, same as the reputation ladder. Kept a bare set (like `rank`/`recipes`) so this module
--- stays player-free.
-function Vendor.stock(vendorId, rank, recipes, unlocked)
+-- quest-locked ware -- until its discipline is unlocked, because seeing the deeper cut you can earn is
+-- the point, same as the quest ladder.
+function Vendor.stock(vendorId, questsDone, recipes, unlocked)
     local def = Vendor.defs[vendorId]
     if not def then return {} end
-    rank = rank or 1
+    questsDone = questsDone or 0
 
     local stock = {}
     for id, item in pairs(Item.defs) do
         if item.price and Vendor.sells(def, item) then
-            -- The general store keeps no reputation ladder, so it gates nothing on standing: an item
-            -- that needs rank 2 at its own house (a Panacea) is simply on the shelf here. Class vendors
-            -- honour the item's repRank as before.
-            local repRank = def.general and 1 or (item.repRank or 1)
+            -- The general store runs no quest line, so it gates nothing on quests: an item that needs
+            -- ten quests at its own house (a Panacea) is simply on the shelf here. Class vendors honour
+            -- the item's own unlockQuests.
+            local unlockQuests = def.general and 0 or (item.unlockQuests or 0)
             local level = (recipes and recipes[id]) or 0
-            -- A discipline item is locked until its discipline is unlocked, on top of any rank gate.
+            -- A discipline item is locked until its discipline is unlocked, on top of any quest gate.
             local disciplineLocked = item.discipline ~= nil and not (unlocked and unlocked[item.discipline])
             stock[#stock + 1] = {
                 id = id,
@@ -146,15 +141,15 @@ function Vendor.stock(vendorId, rank, recipes, unlocked)
                 type = item.type,
                 level = level,
                 price = Vendor.priceFor(item.price, level),
-                repRank = repRank,
+                unlockQuests = unlockQuests,
                 discipline = item.discipline,
-                locked = (rank < repRank) or disciplineLocked,
+                locked = (questsDone < unlockQuests) or disciplineLocked,
             }
         end
     end
 
     table.sort(stock, function(a, b)
-        if a.repRank ~= b.repRank then return a.repRank < b.repRank end
+        if a.unlockQuests ~= b.unlockQuests then return a.unlockQuests < b.unlockQuests end
         if a.price ~= b.price then return a.price < b.price end
         return a.name < b.name
     end)
@@ -196,23 +191,24 @@ function Vendor.canUpgradeHere(vendorId, item)
     return false
 end
 
--- The highest ability level a given rank has earned the right to buy: rank 1 unlocks +1/+2, and each
--- further rank one more, so Legend (rank 4) can reach the +5 cap. A gate on the power curve that
--- mirrors the reputation ladder the whole game runs on.
-function Vendor.abilityLevelCap(rank)
-    return math.min(Item.MAX_LEVEL, (rank or 1) + 1)
+-- The highest ability level a player's quest count has earned the right to buy: the first wave
+-- unlocks +1/+2, and each further wave one more, so the top wave (Vendor.tier 4) reaches the +5 cap.
+-- A gate on the power curve that ramps with the same quest ladder the shelf itself opens on.
+function Vendor.abilityLevelCap(questsDone)
+    return math.min(Item.MAX_LEVEL, Vendor.tier(questsDone) + 1)
 end
 
--- The cost to refine `item` one level at a vendor of `rank` standing: gold that climbs with the level,
--- plus whether that level is yet unlocked by the rank. Returns nil once the item is at Item.MAX_LEVEL.
+-- The cost to refine `item` one level for a player `questsDone` quests into this house: gold that
+-- climbs with the level, plus whether that level is yet unlocked by their quest count. Returns nil
+-- once the item is at Item.MAX_LEVEL.
 --   { level = <target>, gold = <n>, locked = <bool> }
-function Vendor.upgradeCost(item, rank)
+function Vendor.upgradeCost(item, questsDone)
     local target = (item.level or 0) + 1
     if target > Item.MAX_LEVEL then return nil end
     return {
         level = target,
         gold = 60 * target, -- +1 costs 60g, +5 costs 300g
-        locked = target > Vendor.abilityLevelCap(rank),
+        locked = target > Vendor.abilityLevelCap(questsDone),
     }
 end
 
@@ -221,11 +217,10 @@ end
 -- spend it and return a FRESH instance at the new level, keeping its stack count (the caller swaps it
 -- into the slot it came from). Returns the new item, or nil + a reason ("class" | "max level" |
 -- "locked" | "gold"). ("class" here means "wrong bench" -- not this vendor's to upgrade.)
-function Vendor.upgradeItem(player, vendorId, item)
+function Vendor.upgradeItem(player, vendorId, item, questsDone)
     local Player = require("models.player")
     if not Vendor.canUpgradeHere(vendorId, item) then return nil, "class" end
-    local rank = Vendor.rankFor(vendorId, Player.reputation(player, vendorId))
-    local cost = Vendor.upgradeCost(item, rank)
+    local cost = Vendor.upgradeCost(item, questsDone)
     if not cost then return nil, "max level" end
     if cost.locked then return nil, "locked" end
     if player.gold < cost.gold then return nil, "gold" end
@@ -241,17 +236,18 @@ Vendor.upgradeAbility = Vendor.upgradeItem
 -- Consumable recipe upgrades (per-type)
 -- ---------------------------------------------------------------------------
 
--- The cost to raise a consumable's recipe one tier from `level` at a vendor of `rank` standing: gold
--- that climbs with the tier (the same 60g-per-level curve the instance bench charges), plus whether
--- that tier is yet unlocked by the rank. Returns nil once the recipe is at Item.MAX_LEVEL.
+-- The cost to raise a consumable's recipe one tier from `level` for a player `questsDone` quests into
+-- this house: gold that climbs with the tier (the same 60g-per-level curve the instance bench charges),
+-- plus whether that tier is yet unlocked by their quest count. Returns nil once the recipe is at
+-- Item.MAX_LEVEL.
 --   { level = <target>, gold = <n>, locked = <bool> }
-function Vendor.recipeUpgradeCost(level, rank)
+function Vendor.recipeUpgradeCost(level, questsDone)
     local target = (level or 0) + 1
     if target > Item.MAX_LEVEL then return nil end
     return {
         level = target,
         gold = 60 * target,
-        locked = target > Vendor.abilityLevelCap(rank),
+        locked = target > Vendor.abilityLevelCap(questsDone),
     }
 end
 
@@ -272,14 +268,13 @@ end
 -- that refines it (Vendor.canRefineHere), that the next tier is rank-unlocked, and that the gold is
 -- there; spend the gold and bump Player.recipeLevel. Returns the new tier, or nil + a reason ("class"
 -- | "max level" | "locked" | "gold"). ("class" here means "not the bench that refines this".)
-function Vendor.upgradeRecipe(player, vendorId, itemId)
+function Vendor.upgradeRecipe(player, vendorId, itemId, questsDone)
     local Player = require("models.player")
     local item = Item.defs[itemId] and Item.instantiate(itemId)
     if not Vendor.canRefineHere(vendorId, item) then
         return nil, "class"
     end
-    local rank = Vendor.rankFor(vendorId, Player.reputation(player, vendorId))
-    local cost = Vendor.recipeUpgradeCost(Player.recipeLevel(player, itemId), rank)
+    local cost = Vendor.recipeUpgradeCost(Player.recipeLevel(player, itemId), questsDone)
     if not cost then return nil, "max level" end
     if cost.locked then return nil, "locked" end
     if player.gold < cost.gold then return nil, "gold" end

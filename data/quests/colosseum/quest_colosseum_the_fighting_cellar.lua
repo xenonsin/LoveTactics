@@ -23,7 +23,6 @@ return {
     difficulty = "Hard",
     sponsor = "colosseum",
     rewardGold = 250,
-    rewardRep = 10,
     rewardPrestige = 1,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_alchemist_slot_04" the first alchemist. Holding either is impossible without them.

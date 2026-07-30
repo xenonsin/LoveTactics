@@ -10,6 +10,6 @@ return {
     tags = { "holy" },
     class = "priest",
     price = 260,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_martyrs_vow" },
 }

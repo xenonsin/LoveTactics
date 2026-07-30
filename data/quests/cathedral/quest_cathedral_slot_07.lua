@@ -35,11 +35,10 @@ return {
     sponsor = "cathedral",
     rewardItems = { "armor_hem_of_the_stayed_hand" },
     rewardGold = 300,
-    rewardRep = 30,
     rewardPrestige = 2,
     requiredQuests = { "quest_cathedral_slot_06" }, -- slot 7: the line runs in order
     requiredPrestige = 1,
-    requiredRep = { vendor = "cathedral", rank = 3 }, -- Confessor
+    requiredSponsorQuests = { vendor = "cathedral", count = 6 }, -- 6 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 8, max = 11, always = { "encounter_elite" } },

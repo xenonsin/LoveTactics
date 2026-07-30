@@ -32,13 +32,14 @@ return {
     sponsor = "bastion",
     intro = "conversation_bastion_slot_04_intro",
     outro = "conversation_bastion_slot_04_outro",
-    rewardItems = { "utility_closed_entry", "weapon_splitglass_saber" },
+    -- armor_reflecting_shield is the shield for a fight with one heavy attacker in it, which is exactly
+    -- this slot's assassinate against a single forsworn knight -- the mirror returns his own big blow.
+    rewardItems = { "utility_closed_entry", "weapon_splitglass_saber", "armor_reflecting_shield" },
     rewardGold = 180,
-    rewardRep = 25,
     rewardPrestige = 1,
     requiredQuests = { "quest_bastion_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 2,
-    requiredRep = { vendor = "bastion", rank = 2 }, -- Sworn
+    requiredSponsorQuests = { vendor = "bastion", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "forest",
         encounters = { min = 7, max = 9, always = { "encounter_forsworn" } },

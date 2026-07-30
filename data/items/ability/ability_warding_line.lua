@@ -12,7 +12,7 @@ return {
     class = "hunter",
     discipline = "warden", -- knight x hunter; the Lockdown-zone mechanic's first stock
     price = 240,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile",
         range = 4,

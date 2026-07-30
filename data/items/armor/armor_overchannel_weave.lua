@@ -24,7 +24,7 @@ return {
     tags = { "cloth", "arcane" },
     class = "mage",
     price = 380,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_overchannel" },
     bonus = { magicDefense = { 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9 }, movement = -1 },
     resist = { magical = { 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5 } },

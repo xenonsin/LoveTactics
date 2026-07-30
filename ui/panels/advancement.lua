@@ -92,13 +92,13 @@ end
 
 function Advancement:update(dt) end
 
--- The one-line reward header: gold / prestige / reputation, plus a rank-up shout when one landed.
+-- The one-line reward header: gold / prestige, plus a stock-unlocked shout when this quest opened a
+-- fresh wave of the sponsor's shelf.
 function Advancement:rewardLine()
     local r = self.reward
     local parts = {}
     if (r.gold or 0) > 0 then parts[#parts + 1] = r.gold .. " gold" end
     if (r.prestige or 0) > 0 then parts[#parts + 1] = "+" .. r.prestige .. " prestige" end
-    if (r.rep or 0) > 0 then parts[#parts + 1] = "+" .. r.rep .. " reputation" end
     return table.concat(parts, "    ")
 end
 
@@ -120,20 +120,20 @@ function Advancement:draw()
     Theme.set(Theme.ink)
     love.graphics.printf(self:rewardLine(), self.boxX + 24, self.boxY + 66, BOX_W - 48, "center")
 
-    -- A companion who just joined outranks every other line on this panel: gold and standing change
-    -- what you can buy, a recruit changes who you field. Drawn above the standing line and in the
+    -- A companion who just joined outranks every other line on this panel: gold and new stock change
+    -- what you can buy, a recruit changes who you field. Drawn above the stock-unlocked line and in the
     -- brightest colour the box uses, and the two never collide -- a quest that earns a companion is
-    -- the head of its vendor's line, so it is not also the one that ranks you up.
+    -- the head of its vendor's line, so it is not also the one that opens a fresh wave of its shelf.
     local joined = self.reward.recruited
     if joined then
         love.graphics.setFont(self.bodyFont)
         love.graphics.setColor(0.6, 0.95, 0.7)
         love.graphics.printf(tostring(joined.name or "A companion") .. " joins the company",
             self.boxX + 24, self.boxY + 92, BOX_W - 48, "center")
-    elseif self.reward.rankedUp then
+    elseif self.reward.unlockedStock then
         love.graphics.setFont(self.bodyFont)
         love.graphics.setColor(0.95, 0.82, 0.4)
-        love.graphics.printf("New standing: " .. tostring(self.reward.rankName),
+        love.graphics.printf("New stock unlocked at the sponsor's shop",
             self.boxX + 24, self.boxY + 92, BOX_W - 48, "center")
     end
 

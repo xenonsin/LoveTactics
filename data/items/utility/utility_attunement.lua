@@ -11,6 +11,6 @@ return {
     tags = { "charm" },
     class = "mage",
     price = 180,
-    repRank = 2,
+    unlockQuests = 3,
     maxBonus = { mana = { 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24 } },
 }

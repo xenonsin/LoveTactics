@@ -12,6 +12,6 @@ return {
     class = "priest",
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 180,
-    repRank = 2,
+    unlockQuests = 3,
     unarmedBonus = { damage = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 } },
 }

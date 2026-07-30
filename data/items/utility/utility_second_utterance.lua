@@ -22,6 +22,6 @@ return {
     tags = { "charm" },
     class = "mage",
     price = 520,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_second_utterance" },
 }

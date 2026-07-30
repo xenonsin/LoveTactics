@@ -26,5 +26,5 @@ return {
     tags = { "boots", "flying" },
     class = "rogue",
     price = 520,
-    repRank = 3,
+    unlockQuests = 6,
 }

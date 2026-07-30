@@ -14,12 +14,11 @@ return {
     difficulty = "Hard",
     sponsor = "undercroft",
     rewardGold = 500,
-    rewardRep = 80,
     rewardPrestige = 3,
     rewardItems = { "utility_bottomless_purse" },
     requiredQuests = { "quest_undercroft_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 3,
-    requiredRep = { vendor = "undercroft", rank = 4 }, -- Guildmaster
+    requiredSponsorQuests = { vendor = "undercroft", count = 10 }, -- 10 of this house's quests done
     gateHint = "beneath the vault that was never full",
     map = {
         biome = "castle",

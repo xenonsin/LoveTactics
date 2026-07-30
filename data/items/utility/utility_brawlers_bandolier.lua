@@ -13,6 +13,6 @@ return {
     class = "fighter",
     discipline = "warbrewer", -- fighter x alchemist; the Combat-draught mechanic's first stock
     price = 360,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_brawlers_bandolier" },
 }

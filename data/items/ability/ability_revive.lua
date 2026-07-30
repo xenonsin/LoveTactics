@@ -13,7 +13,7 @@ return {
     tags = { "holy", "restorative" },
     class = "priest",
     price = 480,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "tile",
         support = true, -- friendly cast: preview green

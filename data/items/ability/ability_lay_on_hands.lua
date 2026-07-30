@@ -23,7 +23,7 @@ return {
     class = "priest",
     discipline = "paladin",
     price = 400,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "ally",
         range = 1,

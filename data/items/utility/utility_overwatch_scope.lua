@@ -13,6 +13,6 @@ return {
     tags = { "scope" },
     class = "hunter",
     price = 280,
-    repRank = 3,
+    unlockQuests = 6,
     waitBehavior = { kind = "overwatch", speed = 12, stamina = 6 },
 }

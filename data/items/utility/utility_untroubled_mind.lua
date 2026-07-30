@@ -25,6 +25,6 @@ return {
     tags = { "charm", "holy" },
     class = "priest",
     price = 440,
-    repRank = 3,
+    unlockQuests = 6,
     statusImmunity = { "status_charm", "status_sleep" },
 }

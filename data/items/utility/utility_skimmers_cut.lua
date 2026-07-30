@@ -29,6 +29,6 @@ return {
     tags = { "charm" },
     class = "rogue",
     price = 340,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_skimmers_cut" },
 }

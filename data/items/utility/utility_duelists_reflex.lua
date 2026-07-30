@@ -13,6 +13,6 @@ return {
     tags = { "charm" },
     class = "fighter",
     price = 240,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_dodge" },
 }

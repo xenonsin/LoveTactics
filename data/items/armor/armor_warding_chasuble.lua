@@ -24,7 +24,7 @@ return {
     tags = { "cloth", "holy" },
     class = "priest",
     price = 420,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_guardians_blessing" },
     bonus = { magicDefense = { 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11 }, defense = { 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5 }, movement = -1 },
     resist = { magical = { 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5 } },

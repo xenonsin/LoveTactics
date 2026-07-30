@@ -12,9 +12,5 @@ return {
     class = "alchemist",
     sprite = "assets/vendors/alchemist.png", -- shopkeeper portrait; falls back to a placeholder
     description = "Every jar is labelled with something else's name.",
-    ranks = { 0, 40, 100, 200 },
-    -- A `puffer` is what alchemists called a man who only ever worked the bellows; a `philosopher` is
-    -- one who finished the Great Work. The ladder is the distance between them.
-    rankNames = { "Puffer", "Distiller", "Transmuter", "Philosopher" },
     sin = "envy",
 }

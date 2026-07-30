@@ -20,7 +20,7 @@ return {
     hands = 2, -- a two-handed polearm, as every spear is
     class = "knight",
     price = 180,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

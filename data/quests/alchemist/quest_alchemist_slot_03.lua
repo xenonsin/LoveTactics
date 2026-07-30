@@ -37,7 +37,6 @@ return {
     sponsor = "alchemist",
     rewardItems = { "armor_ichor_coat" },
     rewardGold = 130,
-    rewardRep = 25,
     rewardPrestige = 1,
     requiredQuests = { "quest_alchemist_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 4,

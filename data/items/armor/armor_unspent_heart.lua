@@ -29,7 +29,7 @@ return {
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 460,
-    repRank = 4,
+    unlockQuests = 10,
     traits = { "trait_unspent_heart" },
     bonus = {
         health = { 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30 },

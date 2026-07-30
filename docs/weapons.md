@@ -67,17 +67,17 @@ Within that, each family's plain, undecorated weapon is named **`weapon_iron_<fa
 implementation: the mechanic and nothing else, the thing every other weapon in the family is
 measured against.
 
-**Every base weapon is `repRank = 1`.** A family's plain expression is stocked from the first visit and
-what gates it is the purse, not the standing — `weapon_iron_greatsword` is rank 1 at 300 gold, which is
-five times an iron sword and still on the shelf on day one.
+**Every base weapon is `unlockQuests = 0`.** A family's plain expression is stocked from the first visit
+and what gates it is the purse, not the standing — `weapon_iron_greatsword` needs no quests at 300 gold,
+which is five times an iron sword and still on the shelf on day one.
 
 ## The shape of a family: ten weapons, five and five
 
 Each of the thirteen shoppable families carries **ten** weapons, split down the middle:
 
-- **Five on the vendor's shelf** — `class` + `price` + `repRank`, climbing the shelf's ladder. Rank 4 is
-  the ceiling (every `data/vendors/` table is four rungs, and the general quests gate on rank 4 as "the
-  highest standing"), so a family reads 1-2-3-4-4 with its two capstones sharing the top rung.
+- **Five on the vendor's shelf** — `class` + `price` + `unlockQuests`, climbing the shelf's ladder. The
+  top tier (`Vendor.TIERS` = `{ 0, 3, 6, 10 }`, so 10 quests) is the ceiling, so a family reads
+  0-3-6-10-10 with its two capstones sharing the top wave.
 - **Five quest-only** — `class` and **no `price`**. The missing price is what makes it quest-only rather
   than merely expensive: `models/spoils.lua` builds the random drop pool out of every priced item, so an
   unpriced weapon can never fall out of a fight. The `class` stays, because it is also what the strike
@@ -88,8 +88,8 @@ Each of the thirteen shoppable families carries **ten** weapons, split down the 
 `weapon_gralloch_knife`) are tagged `signature` / `relic` and sit outside their family's roster entirely —
 so authoring the signatures still owed to Kaya, Ren and Gyeom cannot make a family overflow.
 
-The rank ladder is a property of a **shelf**, not of a family. The dagger family spans two vendors, so it
-climbs 1/3/4 on the rogue's and 1/4 on the alchemist's — and each of those starts at 1 because
+The unlock ladder is a property of a **shelf**, not of a family. The dagger family spans two vendors, so it
+climbs 0/6/10 on the rogue's and 0/10 on the alchemist's — and each of those starts at 0 because
 `tests/class_spec.lua` refuses a vendor that cannot arm a newcomer.
 
 The forged-metal families all follow it. `weapon_wand`, `weapon_staff`, `weapon_censer` and
@@ -113,8 +113,8 @@ The corollary of the contract: if a weapon's only claim over `iron_<family>` is 
 not a weapon, it is a `+n`. That is what the forge is for. Every named weapon therefore owes an
 **extra** — a mechanic its base counterpart does not have.
 
-The rosters below are the whole catalog. **S** is a shelf weapon (with its `repRank`); **Q** is
-quest-only. Each family's base weapon is rank 1 and listed first; signature and relic weapons sit
+The rosters below are the whole catalog. **S** is a shelf weapon (with its `unlockQuests`); **Q** is
+quest-only. Each family's base weapon needs 0 quests and is listed first; signature and relic weapons sit
 outside the count and are not listed here.
 
 ### `sword` — knight
@@ -634,7 +634,7 @@ a free always-on mitigation would be untouchable.
 4. Author `damage` as a per-level curve over levels 0–10 (see `models/item.lua`'s
    `Item.resolveLevel`).
 5. Decide which half of the ten it is:
-   - **Shelf** — set `class`, `price` and `repRank` (1–4; rank 4 is the vendor ceiling).
+   - **Shelf** — set `class`, `price` and `unlockQuests` (one of `Vendor.TIERS` = 0/3/6/10; 10 is the vendor ceiling).
    - **Quest-only** — set `class` and **no `price`**. The missing price is the whole mechanism: it keeps
      the weapon out of the spoils pool (`models/spoils.lua`), while `class` still tallies it toward
      growth. Grant it from a quest's `rewardItems`.

@@ -33,11 +33,10 @@ return {
     sponsor = "cathedral",
     rewardItems = { "weapon_censer_of_the_unravelling" },
     rewardGold = 320,
-    rewardRep = 30,
     rewardPrestige = 2,
     requiredQuests = { "quest_cathedral_slot_07" }, -- slot 8: the line runs in order
     requiredPrestige = 1,
-    requiredRep = { vendor = "cathedral", rank = 3 }, -- Confessor
+    requiredSponsorQuests = { vendor = "cathedral", count = 6 }, -- 6 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 9, max = 12, always = { "encounter_elite" } },

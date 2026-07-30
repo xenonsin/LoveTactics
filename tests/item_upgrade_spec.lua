@@ -214,10 +214,10 @@ return {
             assert(Player.recipeLevel(player, "consumable_acid_bomb") == 1, "the tier is stored on the player")
             assert(player.gold == 1000 - cost.gold, "gold was spent (60), no materials")
 
-            -- The shelf now lists acid_bomb at the raised tier and its scaled price (repRank 2 -> shown
-            -- at higher standing). A purchase would instantiate at this level.
+            -- The shelf now lists acid_bomb at the raised tier and its scaled price. A purchase would
+            -- instantiate at this level. Queried with a high quest count so its own gate is met.
             local found
-            for _, e in ipairs(Vendor.stock("alchemist", 4, player.recipes)) do
+            for _, e in ipairs(Vendor.stock("alchemist", 99, player.recipes)) do
                 if e.id == "consumable_acid_bomb" then found = e end
             end
             assert(found and found.level == 1, "the shelf lists the refined tier")
@@ -225,11 +225,11 @@ return {
         end,
     },
     {
-        name = "recipe refinement is rank-gated, wrong-bench-safe, and refuses when unpaid",
+        name = "recipe refinement is quest-gated, wrong-bench-safe, and refuses when unpaid",
         fn = function()
             local player = Player.new()
             player.gold = 1000
-            -- Rank 1 (no reputation) unlocks +1/+2; +3 is locked until the standing is earned.
+            -- The opening tier (no quests done) unlocks +1/+2; +3 is locked until more quests are finished.
             assert(Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb") == 1)
             assert(Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb") == 2)
             local up3, reason = Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb")

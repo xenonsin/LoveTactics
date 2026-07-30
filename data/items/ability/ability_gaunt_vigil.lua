@@ -31,7 +31,7 @@ return {
     tags = { "dark" },
     class = "knight",
     price = 420,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "tile",
         range = 3,

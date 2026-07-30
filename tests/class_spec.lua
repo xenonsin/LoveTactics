@@ -111,17 +111,17 @@ return {
         end,
     },
     {
-        name = "every class vendor can arm a newcomer: a rank-1 weapon on every shelf",
+        name = "every class vendor can arm a newcomer: a no-quests-needed weapon on every shelf",
         fn = function()
             -- The shelf-side reading of the ladder: progression_spec asserts each vendor has SOMETHING
-            -- at rank 1, which a torch would satisfy. This asks for a weapon -- a class you cannot buy
-            -- a weapon from at entry rank is a class you cannot start playing.
+            -- on its opening shelf, which a torch would satisfy. This asks for a weapon -- a class you
+            -- cannot buy a weapon from before running a single quest is a class you cannot start playing.
             for class in pairs(Item.CLASSES) do
                 local entry = false
                 for _, w in ipairs(weaponsOf(class)) do
-                    if (w.def.repRank or 1) <= 1 then entry = true end
+                    if (w.def.unlockQuests or 0) <= 0 then entry = true end
                 end
-                assert(entry, class .. " sells no rank-1 weapon: nothing to start with")
+                assert(entry, class .. " sells no opening-shelf weapon: nothing to start with")
             end
         end,
     },

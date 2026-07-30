@@ -17,6 +17,6 @@ return {
     tags = { "belt" },
     class = "fighter",
     price = 340,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_adrenal_surge" },
 }

@@ -10,6 +10,6 @@ return {
     tags = { "banner" },
     class = "knight",
     price = 200,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_formation_fighter" },
 }

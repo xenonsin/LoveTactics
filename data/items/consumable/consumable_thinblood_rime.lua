@@ -36,7 +36,7 @@ return {
     class = "alchemist",
     discipline = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
     price = 360,
-    repRank = 3,
+    unlockQuests = 6,
     maxStack = 4, -- the charges: each sharpened working that lands spends one
     aura = {
         appliesTo = { "weapon" },

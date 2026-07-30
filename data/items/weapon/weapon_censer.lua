@@ -23,7 +23,7 @@ return {
     tags = { "censer", "impact", "physical", "melee" }, -- swung on its chain; the strike is the afterthought
     class = "priest",
     price = 120,
-    repRank = 1,
+    unlockQuests = 0,
     -- The cloud: which ground it lays, how far it reaches, and how deep the Blessing runs. `amount` rides
     -- in as the granted status's magnitude and climbs with the forge; `radius` deliberately does NOT --
     -- an upgrade buys a stronger blessing, never a wider one (models/item.lua).

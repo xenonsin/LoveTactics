@@ -10,6 +10,6 @@ return {
     tags = { "arcane" },
     class = "mage",
     price = 260,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_overchannel" },
 }

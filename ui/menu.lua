@@ -78,6 +78,31 @@ function Menu.new(items, opts)
     return self
 end
 
+-- A header row (`header = true`) is a non-interactive section label: navigation steps over it, the
+-- mouse cannot land on it, and it draws as a titled divider rather than a button. It still occupies a
+-- normal row slot so the uniform layout/scroll maths stay untouched. Used by the shop's Buy list to
+-- band its stock per discipline; a menu with no header rows behaves exactly as before.
+function Menu:isSelectable(i)
+    local it = self.items[i]
+    return it ~= nil and not it.header
+end
+
+function Menu:hasSelectable()
+    for i = 1, #self.items do if self:isSelectable(i) then return true end end
+    return false
+end
+
+-- Nudge `selected` onto the nearest selectable row (searching forward, then wrapping), so it never
+-- rests on a header. A no-op when the current row is already selectable, so plain menus are unaffected.
+function Menu:clampSelectable()
+    local count = #self.items
+    if count == 0 or self:isSelectable(self.selected) then return end
+    for d = 1, count do
+        local fwd = (self.selected - 1 + d) % count + 1
+        if self:isSelectable(fwd) then self.selected = fwd; return end
+    end
+end
+
 -- How many rows are on screen at once.
 function Menu:visibleCount()
     if not self.maxVisible then return #self.items end
@@ -152,9 +177,18 @@ end
 -- models/sound.lua.
 function Menu:moveSelection(delta)
     local count = #self.items
-    if count == 0 then return end
+    if count == 0 or not self:hasSelectable() then return end
     local before = self.selected
-    self.selected = (self.selected - 1 + delta) % count + 1
+    local step = (delta >= 0) and 1 or -1
+    local target = (self.selected - 1 + delta) % count + 1
+    -- Land on a real row: if the offset put us on a header, keep stepping the SAME direction (so up
+    -- and down both feel like they moved) until a selectable row, wrapping past the ends.
+    local guard = 0
+    while not self:isSelectable(target) and guard < count do
+        target = (target - 1 + step) % count + 1
+        guard = guard + 1
+    end
+    self.selected = target
     self:scrollToSelection()
     if self.selected ~= before then Sound.play("ui.move") end
 end
@@ -180,7 +214,7 @@ end
 
 function Menu:activate()
     local item = self.items[self.selected]
-    if not (item and item.action) then return end
+    if not item or item.header or not item.action then return end
     -- A row with an `adjust` fires its own sound as it steps (the volume sliders play into the level
     -- they are setting), so it is not given the generic confirm on top of that.
     if not item.adjust then Sound.play("ui.confirm") end
@@ -240,10 +274,24 @@ function Menu:drawScrollHints()
     end
 end
 
+-- A section band: no plate, an amber uppercase caption, and a hairline along the foot so the rows
+-- beneath it read as belonging to it. Sits in an ordinary row slot, so it costs the layout nothing.
+function Menu:drawHeader(item)
+    love.graphics.setFont(self.font)
+    local th = self.font:getHeight()
+    local ty = item.y + item.h / 2 - th / 2
+    Theme.set(Theme.accentAmber)
+    love.graphics.printf((item.label or ""):upper(), item.x + VALUE_PAD, ty, item.w - VALUE_PAD * 2, "left")
+    Theme.set(Theme.frame, 0.7)
+    love.graphics.line(item.x, item.y + item.h - 2, item.x + item.w, item.y + item.h - 2)
+end
+
 function Menu:draw()
     love.graphics.setFont(self.font)
     for i, item in ipairs(self.items) do
-        if item.x then
+        if item.x and item.header then
+            self:drawHeader(item)
+        elseif item.x then
             local active = (i == self.selected) and self.focused
 
             -- Selected row: raised (lighter) plate + bone-gold border + gold label; unselected: an
@@ -292,7 +340,7 @@ end
 -- pointer sits still on a row (the selection only changes on a crossing) and off the list entirely.
 function Menu:mousemoved(x, y)
     for i, item in ipairs(self.items) do
-        if isInside(item, x, y) then
+        if isInside(item, x, y) and not item.header then
             if self.selected ~= i then
                 self.selected = i
                 Sound.play("ui.move")
@@ -305,7 +353,7 @@ end
 function Menu:mousepressed(x, y, button)
     if button ~= 1 then return end
     for i, item in ipairs(self.items) do
-        if isInside(item, x, y) then
+        if isInside(item, x, y) and not item.header then
             self.selected = i
             -- A slider row is SET by the click position (so the mouse can go down as well as up); a
             -- plain row or toggle is activated as before.
@@ -323,7 +371,7 @@ end
 -- True when the point is over any visible menu item, so a state can show the hand cursor there.
 function Menu:mouseOverItem(x, y)
     for _, item in ipairs(self.items) do
-        if isInside(item, x, y) then return true end
+        if isInside(item, x, y) and not item.header then return true end
     end
     return false
 end

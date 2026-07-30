@@ -16,10 +16,8 @@
 -- wagon master dying loses it outright however well the climb was going. Holding is not the job --
 -- someone else arriving is.
 --
--- NOTE the deliberate split from data/quests/quest_bastion_caravan_road.lua, which this used to duplicate outright
--- (same bandits, same forest, same killAll+protect). That one is a road contract against men who
--- want the cargo. This is a siege line of demons that wants the post, and the difference is the
--- whole reason slot 1 exists.
+-- This is a siege line of demons that wants the POST, not a road contract against men who want the
+-- cargo -- the distinction that gives slot 1 its own shape and its own map (the ascent below).
 --
 -- Rowan recites "hold until relieved" here, flat, the way you recite something you were issued. She
 -- is also unaccountably tense about a routine contract, and the line spends nine more quests
@@ -37,10 +35,11 @@ return {
     intro = "conversation_bastion_slot_01_intro",
     outro = "conversation_bastion_slot_01_outro",
     rewardGold = 80,
-    rewardRep = 20,
     rewardPrestige = 1,
     requiredPrestige = 2,
-    rewardItems = { "utility_relief_horn", "weapon_sworn_lance" },
+    -- weapon_second_rank is the column written as a weapon: its reach grows when an ally stands at
+    -- your back, which is the relief column's whole shape -- the man behind you is also holding a pike.
+    rewardItems = { "utility_relief_horn", "weapon_sworn_lance", "weapon_second_rank" },
     map = {
         biome = "castle",
         -- The road up a mountain, and the map is generated as one: `ascent` puts the objective on

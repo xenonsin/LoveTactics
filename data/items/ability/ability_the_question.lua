@@ -21,7 +21,7 @@ return {
     class = "rogue",
     discipline = "inquisitor",
     price = 380,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "enemy",
         range = 1,

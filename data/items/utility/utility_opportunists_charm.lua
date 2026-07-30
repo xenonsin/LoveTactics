@@ -9,6 +9,6 @@ return {
     tags = { "charm" },
     class = "rogue",
     price = 240,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_opportunist" },
 }

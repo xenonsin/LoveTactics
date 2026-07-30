@@ -13,7 +13,7 @@ return {
     class = "mage",
     discipline = "shaman", -- hunter x mage; the Spirit-totems mechanic's first stock
     price = 360,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",
         range = 2,

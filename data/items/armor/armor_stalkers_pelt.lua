@@ -21,7 +21,7 @@ return {
     class = "hunter",
     discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
     price = 290,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_keen_senses" },
     bonus = { defense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
     resist = { physical = { 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4 } },

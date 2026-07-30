@@ -26,7 +26,7 @@ return {
     tags = { "magical", "arcane" },
     class = "mage",
     price = 320,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "self", -- centred on the caster; there is nothing to aim
         range = 0,

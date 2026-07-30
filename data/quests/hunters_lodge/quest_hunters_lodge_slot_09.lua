@@ -34,11 +34,10 @@ return {
     sponsor = "hunters_lodge",
     rewardItems = { "weapon_sunfall", "weapon_last_word" },
     rewardGold = 400,
-    rewardRep = 35,
     rewardPrestige = 2,
     requiredQuests = { "quest_hunters_lodge_slot_08" }, -- slot 9: the line runs in order
     requiredPrestige = 2,
-    requiredRep = { vendor = "hunters_lodge", rank = 3 }, -- Beastslayer
+    requiredSponsorQuests = { vendor = "hunters_lodge", count = 6 }, -- 6 of this house's quests done
     map = {
         biome = "forest",
         encounters = { min = 10, max = 13, always = { "encounter_elite", "encounter_wolf" } },

@@ -24,6 +24,6 @@ return {
     class = "hunter",
     discipline = "shaman",
     price = 400,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_ancestor_mask" },
 }

@@ -12,7 +12,7 @@ return {
     tags = { "impact", "physical" },
     class = "fighter",
     price = 360,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",   -- an empty tile to land on (not allowOccupied: you cannot land on a unit)
         range = 4,

@@ -21,6 +21,6 @@ return {
     class = "fighter",
     discipline = "champion",
     price = 380,
-    repRank = 3,
+    unlockQuests = 6,
     charge = { key = "defiance", from = { "hitTaken", "allyStruck" }, max = 8 },
 }

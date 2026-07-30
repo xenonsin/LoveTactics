@@ -35,7 +35,6 @@ return {
     sponsor = "alchemist",
     rewardItems = { "armor_reagent_vest" },
     rewardGold = 80,
-    rewardRep = 20,
     rewardPrestige = 1,
     requiredPrestige = 4,
     map = {

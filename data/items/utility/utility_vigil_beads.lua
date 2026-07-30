@@ -24,6 +24,6 @@ return {
     class = "mage",
     discipline = "theurge",
     price = 460,
-    repRank = 4,
+    unlockQuests = 10,
     traits = { "trait_vigil_beads" },
 }

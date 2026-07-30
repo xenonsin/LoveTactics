@@ -24,7 +24,7 @@ return {
     tags = { "charm" },
     class = "rogue",
     price = 260,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_vanishing_act" },
     -- Movement, not defense: the lamp does not make you harder to hurt, it makes you harder to find,
     -- and a step further from where you were seen last is the same idea in a different currency.

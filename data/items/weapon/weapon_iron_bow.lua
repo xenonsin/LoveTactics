@@ -8,7 +8,7 @@ return {
     hands = 2, -- every bow is two-handed: one hand holds the stave, the other draws (Dual Wield can pair it only once forged to +5)
     class = "hunter",
     price = 80,
-    repRank = 1,
+    unlockQuests = 0,
     activeAbility = {
         target = "enemy",
         range = 3,

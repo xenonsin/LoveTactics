@@ -21,7 +21,7 @@ return {
     class = "fighter",
     discipline = "duelist",
     price = 360,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 1,

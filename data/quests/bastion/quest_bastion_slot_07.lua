@@ -39,11 +39,10 @@ return {
     outro = "conversation_bastion_slot_07_outro",
     rewardItems = { "utility_relief_order", "weapon_knell_point", "weapon_shepherds_crook" },
     rewardGold = 300,
-    rewardRep = 30,
     rewardPrestige = 2,
     requiredQuests = { "quest_bastion_slot_06" }, -- slot 7: the line runs in order
     requiredPrestige = 2,
-    requiredRep = { vendor = "bastion", rank = 3 }, -- Banneret
+    requiredSponsorQuests = { vendor = "bastion", count = 6 }, -- 6 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 9, max = 12, always = { "encounter_forsworn", "encounter_elite" } },

@@ -22,6 +22,6 @@ return {
     class = "hunter",
     discipline = "poacher",
     price = 380,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_quarrys_due" },
 }

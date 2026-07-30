@@ -33,7 +33,7 @@ return {
     class = "alchemist",
     discipline = "apothecary", -- priest + alchemist; the Lent-vitality mechanic's first stock
     price = 460,
-    repRank = 3,
+    unlockQuests = 6,
     -- The cloud: laid around the bearer on every move and re-laid from Combat.rebase for one that
     -- never moves, lifted by owner+id before each re-lay so it walks rather than piling into a wake.
     incense = { hazard = "hazard_exposure", radius = 1, amount = { 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13 } },

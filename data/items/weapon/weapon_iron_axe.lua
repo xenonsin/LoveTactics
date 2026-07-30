@@ -18,7 +18,7 @@ return {
     tags = { "axe", "slash", "physical", "melee" },
     class = "fighter",
     price = 110,
-    repRank = 1,
+    unlockQuests = 0,
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the arc sweeps
         allowOccupied = true,  -- the tile in front may hold a foe -- it's the centre of the arc

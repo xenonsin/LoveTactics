@@ -29,7 +29,7 @@ return {
     tags = { "dark" },
     class = "rogue",
     price = 280,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 6,

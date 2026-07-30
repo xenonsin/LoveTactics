@@ -22,7 +22,7 @@ return {
     -- (five times an iron sword) because the heaviest hit in the game should be an early thing you save
     -- toward rather than an early thing you are handed.
     price = 300,
-    repRank = 1,
+    unlockQuests = 0,
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the blow falls on
         allowOccupied = true,  -- the tile in front may hold a foe -- it's where the sword lands

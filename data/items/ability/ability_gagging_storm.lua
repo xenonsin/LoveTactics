@@ -29,7 +29,7 @@ return {
     tags = { "lightning", "magical" },
     class = "mage",
     price = 360,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

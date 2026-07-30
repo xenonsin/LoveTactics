@@ -9,7 +9,7 @@ return {
     type = "armor",
     class = "knight",
     price = 130,
-    repRank = 1,
+    unlockQuests = 0,
     -- Medium tier: better all-round steel than leather, still one square slower. Defense and resists
     -- are per-level tables (levels 0..10) the forge steps up; the movement penalty is flat.
     --                  level:  0  1  2   3   4   5   6   7   8   9  10

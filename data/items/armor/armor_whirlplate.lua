@@ -29,7 +29,7 @@ return {
     tags = { "heavy" },
     class = "fighter",
     price = 420,
-    repRank = 4,
+    unlockQuests = 10,
     traits = { "trait_whirl_answer" },
     bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
 }

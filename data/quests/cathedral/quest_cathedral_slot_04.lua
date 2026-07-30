@@ -33,11 +33,10 @@ return {
     sponsor = "cathedral",
     rewardItems = { "weapon_gag_crook" },
     rewardGold = 180,
-    rewardRep = 30,
     rewardPrestige = 1,
     requiredQuests = { "quest_cathedral_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 1,
-    requiredRep = { vendor = "cathedral", rank = 2 }, -- Acolyte
+    requiredSponsorQuests = { vendor = "cathedral", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "forest",
         encounters = { min = 6, max = 8, always = { "encounter_elite" } },

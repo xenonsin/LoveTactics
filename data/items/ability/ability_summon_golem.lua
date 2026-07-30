@@ -32,7 +32,7 @@ return {
     tags = { "summon" },
     class = "alchemist",
     price = 480,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",
         range = 2,

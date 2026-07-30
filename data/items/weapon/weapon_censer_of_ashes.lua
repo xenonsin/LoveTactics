@@ -24,7 +24,7 @@ return {
     tags = { "censer", "impact", "physical", "poison", "melee" },
     class = "priest",
     price = 240,
-    repRank = 3,
+    unlockQuests = 6,
     incense = {
         hazard = "hazard_choking",
         radius = 1,

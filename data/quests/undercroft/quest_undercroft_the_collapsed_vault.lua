@@ -28,7 +28,6 @@ return {
     difficulty = "Hard",
     sponsor = "undercroft",
     rewardGold = 250,
-    rewardRep = 10,
     rewardPrestige = 1,
     -- Both parents, earned: "quest_undercroft_slot_04" is the first rogue subclass gate on its line,
     -- "quest_alchemist_slot_04" the first alchemist. Holding either is impossible without them.

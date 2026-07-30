@@ -224,10 +224,10 @@ There is an eighth vendor that is not a class shelf: the **Market** (`data/vendo
    house brews it. A healing potion is an alchemist item *and* a Market item; it appears on both
    shelves. This is the one place the shelves overlap on purpose.
 
-It has no sin and a single reputation rung: nobody quests for the grocer's favour, so every ware is
-available from the first visit — `Vendor.stock` ignores `repRank` for a general store, so even a
-rank-2 alchemist Panacea is simply on the shelf. Two rules keep the resale from eroding the class shelf
-it borrows from:
+It has no sin and runs no quest line: nobody quests for the grocer's favour, so every ware is
+available from the first visit — `Vendor.stock` ignores `unlockQuests` for a general store, so even a
+Panacea that needs ten quests at the alchemist is simply on the shelf here. Two rules keep the resale
+from eroding the class shelf it borrows from:
 
 - **A resale is not a re-home.** The potion keeps its `class`, so it still *grows the alchemist's tally*
   and still *refines only at the alchemist* — `Vendor.canRefineHere` lets a consumable be honed at its
@@ -368,7 +368,7 @@ deep shelf, and that stock is spent — another sweep would empty the base shelv
 supposed to sit *behind*.
 
 **A discipline consumable never wears the `potion` tag.** The Market resells anything in its `stockTags`
-and a general store ignores `repRank` entirely (see *The general store* above), so a gated draught tagged
+and a general store ignores `unlockQuests` entirely (see *The general store* above), so a gated draught tagged
 `potion` sits on the grocer's shelf from the first visit — the gate is still there and the item is behind
 it at its own vendor, and you can buy it anyway. The existing discipline consumables had all quietly
 avoided this (Berserker's Brew and the Wildcraft Poultice are `restorative`); it is written down now
@@ -487,14 +487,13 @@ Recorded here so it stays a decision rather than drift:
 - **The growth tables are the weakest half of a class.** Five of seven differ only in which resource
   pool they grow. They carry far less identity than the tables above. *This is now the largest
   outstanding gap in this file.*
-- **`repRank` is misnamed, and standing is still points.** The intent — and what an earlier version of
-  this line claimed as done — is that standing be a **count of distinct completed quests per sponsor**
-  (`ranks = { 0, 3, 6, 9 }`). `Player.addReputation` and `Vendor.rankFor` have never done that; they
-  sum `rewardRep`. The consequence is live rather than cosmetic now that no quest is repeatable: every
-  vendor line clears rank 4 on its authored quests (275–325 against 200), but rank 4 arrives a slot or
-  two before the ninth, which loosens the rule that the standing putting the rank-4 relic on the shelf
-  is the standing that lets you face what it was warning about. See *The ten slots* in
-  [story.md](story.md). The rename is mechanical; the counting change is the real work.
+- ~~**`repRank` is misnamed, and standing is still points.**~~ **Done.** Standing is now literally a
+  **count of the completed quests a vendor sponsors** (`Quest.sponsorProgress`); there is no reputation
+  score and no rank titles. Each item names how many of the vendor's quests must be finished before it
+  is on sale (`unlockQuests`, on the item, default 0). The shop shows "Quests Completed: N" in place of
+  the old rank name, and each locked row says how many more of the house's quests (or which discipline
+  path) unlock it. The waves open at `Vendor.TIERS = { 0, 3, 6, 10 }`, which also caps the
+  ability/recipe upgrade bench. See *The ten slots* in [story.md](story.md).
 - ~~**`data/disciplines/` does not exist yet.**~~ **Built.** All 37 blueprints (16 subclasses + 21
   multiclasses) load through `models/discipline.lua`, growth tallies both parents, the vendor gate
   greys locked stock, and every gate quest — both the 16 subclass gates and all 21 multiclass
@@ -523,7 +522,8 @@ Kept here rather than deleted, because what a debt looked like when it was paid 
 
 1. Pick the shelf from **The contract**, and use a keyword that shelf owns. If you cannot name one,
    you have the wrong shelf — or a `+n`, which the forge already sells.
-2. Set `class`, `price` and `repRank`. A `price` with no `class` is unbuyable dead data and fails the
+2. Set `class`, `price` and `unlockQuests` (how many of the vendor's quests unlock it; 0 = opening
+   shelf). A `price` with no `class` is unbuyable dead data and fails the
    build (`tests/progression_spec.lua`). Stock is *derived, not authored*: the right `class` is all it
    takes to put it on that vendor's shelf.
 3. If it is a weapon, it also owes its **family**'s contract — see [weapons.md](weapons.md).

@@ -35,11 +35,10 @@ return {
     sponsor = "cathedral",
     rewardItems = { "weapon_censer_of_the_grasping_hollow" },
     rewardGold = 240,
-    rewardRep = 30,
     rewardPrestige = 1,
     requiredQuests = { "quest_cathedral_slot_05" }, -- slot 6: the line runs in order
     requiredPrestige = 1,
-    requiredRep = { vendor = "cathedral", rank = 3 }, -- Confessor
+    requiredSponsorQuests = { vendor = "cathedral", count = 6 }, -- 6 of this house's quests done
     map = {
         biome = "forest",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },

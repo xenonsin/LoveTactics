@@ -26,7 +26,7 @@ return {
     class = "fighter",
     discipline = "crusader",
     price = 380,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 1,

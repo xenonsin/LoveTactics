@@ -230,6 +230,11 @@ local function buildMenu()
     }
 
     items[#items + 1] = {
+        label = "Draft",
+        action = function() State.switch(require("states.draft")) end,
+    }
+
+    items[#items + 1] = {
         label = "Settings",
         action = function() State.switch(require("states.settings"), menu) end,
     }

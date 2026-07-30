@@ -67,7 +67,7 @@ return {
     tags = { "physical" },
     class = "alchemist",
     price = 400,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

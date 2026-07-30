@@ -14,8 +14,10 @@ owns a vocabulary, and an item's `class` should be the shelf whose vocabulary it
 ## The progression loop
 
 Seven class vendors (`data/vendors/`) each own a hub building, a shelf of items, and a line of
-quests. The loop: **pick a quest by its sponsor → complete it → earn gold, prestige, and
-reputation with that sponsor → spend it on the stock that reputation unlocked.**
+quests. The loop: **pick a quest by its sponsor → complete it → earn gold and prestige, and add one
+to the count of that sponsor's quests you have finished → spend at the shelf that finished quest just
+unlocked.** A vendor's "standing" is nothing more than that count of completed quests
+(`Quest.sponsorProgress`); there is no reputation score.
 
 An item's `class` (`fighter`, `priest`, `hunter`, `knight`, `mage`, `rogue`, `alchemist`) decides
 *where you buy* it, never *who may equip it* — anyone can carry anything, which is what lets a
@@ -57,13 +59,12 @@ return {
     name = "Bandit Ambush",
     description = "Raiders have blocked the north road.",
     difficulty = "Easy",
-    sponsor = "bastion",   -- a data/vendors/<id>.lua; reputation is earned with them
+    sponsor = "bastion",   -- a data/vendors/<id>.lua; completing this counts toward their standing
     rewardGold = 50,
-    rewardRep = 20,        -- reputation with the sponsor
     rewardPrestige = 1,
     requiredPrestige = 1,  -- appears once the player's prestige reaches this
     -- optional gates:
-    requiredRep = { vendor = "cathedral", rank = 2 }, -- hidden until you have their trust
+    requiredSponsorQuests = { vendor = "cathedral", count = 3 }, -- hidden until 3 of that vendor's quests are done
     requiredQuests = { "quest_colosseum_slot_10", ... },        -- ALL must be done; see below.
     -- ONE entry is how a vendor line chains: every sin quest names the slot before it, so the line
     -- runs in authored order and prestige only gates the line's entry. A one-key gate hides the
@@ -80,11 +81,11 @@ It shows up automatically on the Quest Board once the player meets every gate an
 already finished it (`Quest.available` in `models/quest.lua`). `Quest.complete` pays it out from
 the objective-win branch in `states/game.lua` and saves.
 
-Prestige and reputation are **hard** gates — fail one and the quest is not on the board at all.
-`requiredQuests` is a **soft** lock: hold at least one prerequisite and the quest appears `locked`,
+Prestige and the sponsor-quest count are **hard** gates — fail one and the quest is not on the board at
+all. `requiredQuests` is a **soft** lock: hold at least one prerequisite and the quest appears `locked`,
 showing "3 of 7 keys" and the `gateHint` of every prerequisite already finished. The board must refuse
 to start a locked quest (`ui/panels/quest_board.lua`). Seeing what you have not yet earned is the point
-of a ladder — the same reason `Vendor.stock` flags rank-locked items rather than hiding them.
+of a ladder — the same reason `Vendor.stock` flags quest-locked items rather than hiding them.
 
 ## Add a conversation
 
@@ -203,10 +204,13 @@ return {
     name = "The Colosseum",
     class = "fighter",     -- must be a key of Item.CLASSES
     description = "...",
-    ranks     = { 0, 40, 100, 200 },  -- ascending reputation thresholds; ranks[1] must be 0
-    rankNames = { "Recruit", "Contender", "Champion", "Legend" },
+    sin = "wrath",         -- the deadly sin its line ends facing
 }
 ```
+
+A vendor declares no thresholds of its own: standing is the count of its quests you have finished, and
+the shelf opens in waves at `Vendor.TIERS = { 0, 3, 6, 10 }` (in `models/vendor.lua`), which every
+class vendor shares.
 
 Then point a building at it with `panel = "party", vendor = "<id>"` (the Party screen opens in store
 mode when a `vendor` is named).
@@ -218,7 +222,7 @@ which has a `price`. To put an item on a shelf, give it both:
 tags  = { "sword", "slash", "physical" },  -- combat: damage scaling + armor mitigation
 class = "fighter",                         -- shop: which vendor stocks it
 price = 60,
-repRank = 1,  -- reputation rank needed to buy it (default 1); higher ranks show as locked
+unlockQuests = 0,  -- how many of the vendor's quests unlock it (default 0 = opening shelf); higher waves show as locked
 ```
 
 `class` is deliberately its own field rather than an entry in `tags`: `tags` drives combat

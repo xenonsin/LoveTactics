@@ -13,7 +13,7 @@ return {
     class = "priest",
     discipline = "theurge", -- mage x priest; the Channelled-miracle mechanic's first stock
     price = 240,
-    repRank = 3,
+    unlockQuests = 6,
     waitBehavior = { kind = "focus", mana = { 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }, speed = 10 },
     activeAbility = {
         target = "enemy",

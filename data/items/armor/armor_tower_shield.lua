@@ -21,7 +21,7 @@ return {
     tags = { "shield" }, -- a Shield Bash item beside it in the grid can bash with it
     class = "knight",
     price = 300,
-    repRank = 2,
+    unlockQuests = 3,
     bonus = { defense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
     resist = { physical = { 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4 } },
     -- Well above a buckler's 6-11, which is what the root buys. `status` is applied to the holder on

@@ -22,6 +22,6 @@ return {
     class = "mage",
     discipline = "spellbreaker",
     price = 420,
-    repRank = 4,
+    unlockQuests = 10,
     traits = { "trait_empty_vessel" },
 }

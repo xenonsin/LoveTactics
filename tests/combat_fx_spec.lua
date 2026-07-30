@@ -239,6 +239,38 @@ return {
             assert(#fx.floaters >= 1, "no damage number when the bolt landed")
         end,
     },
+    -- ---------------------------------------------------------------------------
+    -- The actor-fallback lean: the acting unit leans toward what IT struck without a cast cue. It must
+    -- read the beat's blows, not just any damage sharing it -- a Burn/Poison tick or a trap that fires
+    -- as the turn rebases carries no attacker, and the unit that happened to act last never touched it.
+    -- ---------------------------------------------------------------------------
+    {
+        name = "incidental damage in the actor's beat does not make the actor lunge at the victim",
+        fn = function()
+            local fx = newFx()
+            local mover = { x = 1, y = 1, char = { name = "mover" } }
+            local burning = { x = 5, y = 1, alive = true, char = { name = "burning" } }
+            -- A Burn tick landing as the turn rebases: attacker = nil (models/combat.lua dealFlatDamage
+            -- credits none), ingested with the unit that just acted as the batch actor.
+            fx:ingest({ { type = "damage", unit = burning, amount = 4, beat = 0, tags = { "fire" } } }, mover)
+            assert((fx.units[mover] or {}).lungeT == nil,
+                "the acting unit lunged at a body a Burn tick hurt, not its own blow")
+            assert((fx.units[burning] or {}).shakeT, "the burning unit did not react to the tick")
+        end,
+    },
+    {
+        name = "a cast-less blow the actor itself struck still leans toward its victim",
+        fn = function()
+            local fx = newFx()
+            local striker = { x = 1, y = 1, char = { name = "striker" } }
+            local victim = { x = 2, y = 1, alive = true, char = { name = "mark" } }
+            -- A reaction blow the actor lands through no ability of its own (no "cast" cue): credited to
+            -- the actor as attacker, it must still make it lean toward the unit it hurt.
+            fx:ingest({ { type = "damage", unit = victim, attacker = striker, amount = 3, beat = 0,
+                tags = { "slash" } } }, striker)
+            assert((fx.units[striker] or {}).lungeT, "the actor did not lean toward its own cast-less blow")
+        end,
+    },
     {
         name = "without a burst controller a ranged blow still resolves at once (headless model tests)",
         fn = function()

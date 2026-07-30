@@ -56,7 +56,6 @@ return {
     sponsor = "colosseum",
     rewardItems = { "weapon_ledgemans_axe", "armor_reckless_cuirass" },
     rewardGold = 60,
-    rewardRep = 25,
     rewardPrestige = 1,
     requiredPrestige = 1,
     -- Bested, then kept (docs/story.md, "The other seven"). Player.recruit refuses a duplicate, so

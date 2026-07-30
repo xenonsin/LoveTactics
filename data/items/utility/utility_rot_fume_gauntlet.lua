@@ -23,6 +23,6 @@ return {
     class = "knight",
     discipline = "plague_knight",
     price = 440,
-    repRank = 4,
+    unlockQuests = 10,
     traits = { "trait_rot_fume" },
 }

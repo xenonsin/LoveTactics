@@ -23,6 +23,6 @@ return {
     class = "rogue",
     discipline = "ninja",
     price = 460,
-    repRank = 4,
+    unlockQuests = 10,
     traits = { "trait_substitution" },
 }

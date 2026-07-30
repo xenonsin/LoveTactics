@@ -34,11 +34,10 @@ return {
     sponsor = "alchemist",
     rewardItems = { "armor_everdraught_bandolier" },
     rewardGold = 180,
-    rewardRep = 30,
     rewardPrestige = 1,
     requiredQuests = { "quest_alchemist_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 4,
-    requiredRep = { vendor = "alchemist", rank = 2 }, -- Distiller
+    requiredSponsorQuests = { vendor = "alchemist", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 6, max = 8, always = { "encounter_elite" } },

@@ -23,6 +23,6 @@ return {
     tags = { "holy", "reaction" },
     class = "priest",
     price = 320,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_keen_senses" },
 }

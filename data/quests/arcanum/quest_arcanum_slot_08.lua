@@ -34,11 +34,10 @@ return {
     sponsor = "arcanum",
     rewardItems = { "weapon_sealed_ward_wand" },
     rewardGold = 320,
-    rewardRep = 30,
     rewardPrestige = 2,
     requiredQuests = { "quest_arcanum_slot_07" }, -- slot 8: the line runs in order
     requiredPrestige = 3,
-    requiredRep = { vendor = "arcanum", rank = 3 }, -- Magus
+    requiredSponsorQuests = { vendor = "arcanum", count = 6 }, -- 6 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 9, max = 12, always = { "encounter_elite" } },

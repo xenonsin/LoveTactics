@@ -18,6 +18,6 @@ return {
     tags = { "charm" },
     class = "rogue",
     price = 280,
-    repRank = 2,
+    unlockQuests = 3,
     statusImmunity = { "status_root", "status_mired" },
 }

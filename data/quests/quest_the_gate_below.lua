@@ -25,7 +25,6 @@ return {
     difficulty = "Hard",
     sponsor = nil, -- no vendor sends you here; the seven of them together did
     rewardGold = 2000,
-    rewardRep = 0,
     rewardPrestige = 10,
     requiredPrestige = 10,
     endsCampaign = true,

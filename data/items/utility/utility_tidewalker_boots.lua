@@ -28,6 +28,6 @@ return {
     tags = { "boots", "water" },
     class = "mage",
     price = 440,
-    repRank = 2,
+    unlockQuests = 3,
     trail = { hazard = "hazard_rain", duration = 8 },
 }

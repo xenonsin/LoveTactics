@@ -38,13 +38,14 @@ return {
     outro = "conversation_bastion_slot_06_outro",
     -- A ration of billet steel, handed out at the tent with the oath. Granted once, like every other
     -- quest reward in the game now that nothing is repeatable -- see the item's own header.
-    rewardItems = { "consumable_bannerets_steel", "weapon_debt_bell" },
+    -- weapon_suspension_mace lifts one body off the board for a while -- tempo control for the marked
+    -- target at the muster, taking the heaviest hitter out of the fight while you finish the line.
+    rewardItems = { "consumable_bannerets_steel", "weapon_debt_bell", "weapon_suspension_mace" },
     rewardGold = 240,
-    rewardRep = 30,
     rewardPrestige = 1,
     requiredQuests = { "quest_bastion_slot_05" }, -- slot 6: the line runs in order
     requiredPrestige = 2,
-    requiredRep = { vendor = "bastion", rank = 3 }, -- Banneret
+    requiredSponsorQuests = { vendor = "bastion", count = 6 }, -- 6 of this house's quests done
     rewardMaterials = { material_steel_ingot = 2 },
     map = {
         biome = "forest",

@@ -34,7 +34,7 @@ return {
     class = "knight",
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 480,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

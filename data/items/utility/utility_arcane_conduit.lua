@@ -23,7 +23,7 @@ return {
     class = "mage",
     discipline = "battlemage",
     price = 460,
-    repRank = 4,
+    unlockQuests = 10,
     charge = { key = "arcane", from = { "cast" }, max = 5 },
     traits = { "trait_arcane_conduit" },
 }

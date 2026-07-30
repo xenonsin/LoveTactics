@@ -9,7 +9,6 @@ local State = require("states")
 local Menu = require("ui.menu")
 local Quest = require("models.quest")
 local Player = require("models.player")
-local Vendor = require("models.vendor")
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
 local InputMode = require("input_mode")
@@ -59,7 +58,7 @@ end
 -- Quest.available, so both are rebuilt together.
 --
 -- The board is filtered by the whole player, not just prestige: finished quests drop off it, and a
--- sponsor's later quests only appear once you have the reputation for them.
+-- sponsor's later quests only appear once you have finished enough of that sponsor's earlier ones.
 function QuestBoard:rebuild()
     self.quests = Quest.available(self.player)
 
@@ -203,9 +202,10 @@ function QuestBoard:drawDetail()
     love.graphics.printf(quest.sponsorName, x, y + 30, w, "left")
 
     if quest.sponsor then
-        local rank = Player.repRank(self.player, quest.sponsor)
+        local done = Quest.sponsorProgress(self.player, quest.sponsor)
+        local quests = done == 1 and "quest" or "quests"
         Theme.set(Theme.muted)
-        love.graphics.printf(Vendor.rankName(quest.sponsor, rank), x, y + 50, w, "left")
+        love.graphics.printf(done .. " " .. quests .. " completed here", x, y + 50, w, "left")
     end
 
     Theme.set(Theme.ink)
@@ -222,7 +222,6 @@ function QuestBoard:drawDetail()
     end
 
     local rewards = tostring(quest.rewardGold) .. " gold"
-    if quest.rewardRep > 0 then rewards = rewards .. ", " .. quest.rewardRep .. " rep" end
     if quest.rewardPrestige > 0 then rewards = rewards .. ", " .. quest.rewardPrestige .. " prestige" end
     love.graphics.setColor(0.7, 0.78, 0.7)
     love.graphics.printf("Reward: " .. rewards, x, y + 190, w, "left")

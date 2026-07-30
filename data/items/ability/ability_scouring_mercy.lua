@@ -32,7 +32,7 @@ return {
     class = "priest",
     discipline = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
     price = 280,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

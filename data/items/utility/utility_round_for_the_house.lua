@@ -25,6 +25,6 @@ return {
     class = "fighter",
     discipline = "warbrewer",
     price = 380,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_round_for_the_house" },
 }

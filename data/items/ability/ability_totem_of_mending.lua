@@ -23,7 +23,7 @@ return {
     class = "priest",
     discipline = "totemist",
     price = 380,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",
         range = 3,

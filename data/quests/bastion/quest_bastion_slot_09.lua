@@ -42,11 +42,10 @@ return {
         "weapon_sunderers_answer", "weapon_tidesbreak",
     },
     rewardGold = 400,
-    rewardRep = 35,
     rewardPrestige = 2,
     requiredQuests = { "quest_bastion_slot_08" }, -- slot 9: the line runs in order
     requiredPrestige = 2,
-    requiredRep = { vendor = "bastion", rank = 3 }, -- Banneret
+    requiredSponsorQuests = { vendor = "bastion", count = 6 }, -- 6 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 10, max = 13, always = { "encounter_forsworn", "encounter_forsworn" } },

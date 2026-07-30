@@ -21,7 +21,6 @@ return {
     sponsor = "undercroft",
     rewardItems = { "weapon_nightjar" },
     rewardGold = 90,
-    rewardRep = 30,
     rewardPrestige = 1,
     requiredQuests = { "quest_undercroft_slot_01" }, -- slot 2: the line runs in order
     requiredPrestige = 3,

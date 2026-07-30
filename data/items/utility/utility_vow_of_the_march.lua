@@ -23,6 +23,6 @@ return {
     class = "priest",
     discipline = "crusader",
     price = 400,
-    repRank = 3,
+    unlockQuests = 6,
     charge = { key = "zeal", from = { "foeDown", "allyMended" }, max = 10 },
 }

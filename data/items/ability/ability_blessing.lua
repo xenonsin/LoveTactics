@@ -11,7 +11,7 @@ return {
     tags = { "holy", "restorative" },
     class = "priest",
     price = 280,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

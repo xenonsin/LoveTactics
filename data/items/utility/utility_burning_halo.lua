@@ -27,7 +27,7 @@ return {
     tags = { "fire" },
     class = "priest",
     price = 480,
-    repRank = 4,
+    unlockQuests = 10,
     incense = { hazard = "hazard_burning_halo", radius = 1,
                 amount = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
 }

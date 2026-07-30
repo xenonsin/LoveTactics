@@ -21,7 +21,7 @@ return {
     class = "fighter",
     discipline = "crusader",
     price = 420,
-    repRank = 3,
+    unlockQuests = 6,
     charge = { key = "zeal", from = { "kill", "healDone" }, max = 8 },
     bonus = { defense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, movement = -1 },
     traits = { "trait_zealots_mercy" },

@@ -24,7 +24,7 @@ return {
     class = "alchemist",
     discipline = "apothecary",
     price = 150,
-    repRank = 4,
+    unlockQuests = 10,
     maxStack = 3,
     activeAbility = {
         target = "self",

@@ -323,7 +323,13 @@ function CombatFx:playBeat(events, actor)
             if not e.lethal then
                 playHit(e.amount, e.tags)
             end
-            if not firstTarget then firstTarget, firstTargetCell = e.unit, cell end
+            -- Only a blow the ACTOR itself struck feeds the actor-fallback lean below. Incidental
+            -- damage sharing this beat -- a Burn/Poison tick, a trap, a hazard, all of which carry no
+            -- attacker (models/combat.lua dealFlatDamage) -- is nobody's swing, so it must never make
+            -- the acting unit lunge at a body it never touched.
+            if actor and e.attacker == actor and not firstTarget then
+                firstTarget, firstTargetCell = e.unit, cell
+            end
             if self.bursts then
                 self.bursts:strike(cell.x, cell.y, e.tags,
                     { angle = strikeAngle(e.attacker, cell), lethal = e.lethal })

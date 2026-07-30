@@ -23,7 +23,7 @@ return {
     tags = { "plate" },
     class = "knight",
     price = 340,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_muster_roll" },
     bonus = { defense = { 6, 6, 7, 8, 8, 9, 9, 10, 11, 11, 12 }, movement = -1 },
     resist = { physical = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },

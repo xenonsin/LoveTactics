@@ -23,7 +23,7 @@ return {
     tags = { "censer", "impact", "physical", "melee" },
     class = "priest",
     price = 620,
-    repRank = 4,
+    unlockQuests = 10,
     incense = {
         hazard = "hazard_bloodsong",
         radius = 1,

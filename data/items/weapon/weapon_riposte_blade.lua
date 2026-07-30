@@ -33,7 +33,7 @@ return {
     hands = 1,
     class = "knight",
     price = 220,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_riposte" },
     activeAbility = {
         target = "enemy",

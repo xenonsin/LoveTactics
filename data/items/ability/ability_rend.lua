@@ -17,7 +17,7 @@ return {
     tags = { "slash", "physical", "melee" },
     class = "fighter",
     price = 240,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 1,

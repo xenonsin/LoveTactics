@@ -101,9 +101,9 @@ The bulk of the remaining authoring. 72 of 94 quests have no `intro`, `outro`, o
 
 18. **Localization** — 510 of 523 strings are `ja = ""`. The system works; the translation has not
     happened. Mechanical, and safely last.
-19. **Reputation ladder shape** — rank 4 now lands a slot or two early after the grind removal; only
-    count-based standing (`ranks = { 0, 3, 6, 9 }`) puts it back on the ninth. Engine work in
-    `Player.addReputation` / `Vendor.rankFor`. No quest has to move when it happens.
+19. ~~**Reputation ladder shape**~~ **Done.** Reputation is gone entirely: a vendor's standing is now
+    the count of its quests you have finished (`Quest.sponsorProgress`), items gate on `unlockQuests`,
+    and the waves open at `Vendor.TIERS = { 0, 3, 6, 10 }`. The shop shows quest counts, not rank names.
 20. **Unresolved character TODOs** carried in the blueprints — Clem's flaw (forgives every debt but
     her own), Ren's flaw (the giver who never receives), Kaya's temperance-immunity fold-in.
 21. **The Ira contradiction — RESOLVED (2026-07-28).** Every general is a human who pacted with the
@@ -122,8 +122,9 @@ The bulk of the remaining authoring. 72 of 94 quests have no `intro`, `outro`, o
   than a quest id the engine knows, so a second ending is a data edit. The roll carries the
   game-icons.net attribution required by CC BY 3.0, read from a generated `data/credits_icons.lua`
   so it cannot drift out of licence. `Player.newGamePlus` then carries the company, its gear and its
-  prestige forward while clearing completed quests and vendor reputation, which puts all seventy line
-  slots back on the board and re-locks the Gate. Covered by `tests/ending_spec.lua`.
+  prestige forward while clearing the completed-quest ledger, which puts all seventy line slots back on
+  the board, re-locks the Gate, and (since standing is that ledger's count) drops every shelf back to
+  its opening stock. Covered by `tests/ending_spec.lua`.
 - **Amana's plea (item 2).** `amana_joins` is the `outro` of her recruit quest — the scene the
   Cathedral's ten-slot table specifies as *"bested, Amana stays your hand and her plea reveals the
   truth; she joins."* It delivers the blooding: demon's blood in the rite, the failures hunted as
@@ -170,5 +171,5 @@ The bulk of the remaining authoring. 72 of 94 quests have no `intro`, `outro`, o
   taking the suite to 1259 passing, 0 failing.
 - **All sixty line slots exist on disk.** The 37-quest pass filled every empty slot across the six
   lines. They are bare (see Phase 3), but no slot is missing.
-- **The grind is gone.** Every `repeatable` quest was removed and reputation retuned; each line
-  clears its own ladder without replaying anything.
+- **The grind is gone.** Every `repeatable` quest was removed; each line clears its own unlock ladder
+  (standing is a count of completed quests, `Vendor.TIERS`) without replaying anything.

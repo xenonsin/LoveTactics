@@ -24,7 +24,6 @@ return {
     difficulty = "Hard",
     sponsor = "bastion",
     rewardGold = 250,
-    rewardRep = 10,
     rewardPrestige = 1,
     -- Both parents, earned: "quest_bastion_slot_03" is the first knight subclass gate on its line,
     -- "quest_undercroft_slot_04" the first rogue. Holding either is impossible without them.

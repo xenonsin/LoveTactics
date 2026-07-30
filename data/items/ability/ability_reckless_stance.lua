@@ -28,7 +28,7 @@ return {
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 220,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "self",
         range = 0,

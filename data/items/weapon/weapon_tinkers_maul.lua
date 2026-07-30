@@ -19,7 +19,7 @@ return {
     hands = 2, -- a two-handed maul, as every hammer is
     class = "fighter",
     price = 200,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 1,

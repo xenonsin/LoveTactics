@@ -33,11 +33,10 @@ return {
     outro = "conversation_colosseum_slot_05_outro",
     rewardItems = { "weapon_tempo_debt", "armor_adrenal_harness" },
     rewardGold = 220,
-    rewardRep = 45,
     rewardPrestige = 1,
     requiredQuests = { "quest_colosseum_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 1,
-    requiredRep = { vendor = "colosseum", rank = 2 }, -- Contender
+    requiredSponsorQuests = { vendor = "colosseum", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },

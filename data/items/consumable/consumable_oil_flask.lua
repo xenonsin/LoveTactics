@@ -15,7 +15,7 @@ return {
     tags = { "oil" },
     class = "alchemist",
     price = 150,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile", -- thrown and bursts around the point, like the Acid Bomb
         allowOccupied = true,

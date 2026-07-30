@@ -25,7 +25,6 @@ return {
     difficulty = "Hard",
     sponsor = "hunters_lodge",
     rewardGold = 250,
-    rewardRep = 10,
     rewardPrestige = 1,
     -- Both parents, earned: "quest_hunters_lodge_slot_03" is the first hunter subclass gate on its line,
     -- "quest_cathedral_slot_03" the first priest. Holding either is impossible without them.

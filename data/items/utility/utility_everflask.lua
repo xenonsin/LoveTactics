@@ -15,7 +15,7 @@ return {
     tags = { "arcane" },
     class = "alchemist",
     price = 520,
-    repRank = 3,
+    unlockQuests = 6,
     aura = {
         appliesTo = { "consumable" }, -- only the throwables and potions it sits beside
         preserve = true,              -- the neighbor consumable's stack is not decremented on use

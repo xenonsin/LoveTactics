@@ -35,7 +35,6 @@ return {
     sponsor = "undercroft",
     rewardItems = { "armor_smokecloth_wrap" },
     rewardGold = 130,
-    rewardRep = 25,
     rewardPrestige = 1,
     requiredQuests = { "quest_undercroft_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 3,

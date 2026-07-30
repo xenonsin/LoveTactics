@@ -45,7 +45,7 @@ return {
     -- Rank 4 is the ceiling: every vendor's `ranks` table is four rungs long (data/vendors/), and the
     -- general quests gate on rank 4 as "the highest standing". A shelf therefore climbs 1..4 with its two
     -- capstones sharing the top rung -- here this and the Mailpiercer.
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -76,7 +76,8 @@ return {
                 scaling = { health = 3 }, amount = fx.level, -- a forged pole is harder to knock over
             })
             if banner and banner.alive then
-                fx.user.standard = banner
+                fx.bank("standard", banner) -- banked, not assigned: the preview's summon is a throwaway stand-in
+
                 -- The rally IS the square, owned by the pole: cut the pole down and the ground lifts
                 -- with it. Tiles that cannot hold a zone (a wall, off the map) are skipped by
                 -- Hazard.place returning nil.

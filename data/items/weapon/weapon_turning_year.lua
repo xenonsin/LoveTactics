@@ -39,7 +39,7 @@ return {
     tags = { "wand", "magical", "ranged" },
     class = "mage",
     price = 620,
-    repRank = 4,
+    unlockQuests = 10,
     -- Immune to what it deals, from any source. Scoped to debuffs by Status.namedImmunity, so it
     -- refuses nothing the bearer wants.
     statusImmunity = { "status_burn", "status_freeze" },
@@ -55,7 +55,12 @@ return {
             -- already committed to the other one. A battle always opens on fire (nil is falsy), which
             -- means the frost -- the setup half -- is what the mage's second shot buys.
             local frost = fx.user.turningYear or false
-            fx.user.turningYear = not frost
+            -- Banked through fx.bank, never assigned straight onto fx.user: the damage preview replays
+            -- this effect on every hover frame, and a raw write would flip the half each frame -- so a
+            -- hovered enemy's tooltip and timeline flickered between the fire bolt and the frost's delay.
+            -- fx.bank is real on the live cast and inert in the preview, so the read above still reports
+            -- the true current half while the flip only lands when the wand actually fires.
+            fx.bank("turningYear", not frost)
             if frost then
                 -- Winter: a shard, and the brittleness that is the whole point of it. The delay rides
                 -- the blow (`inflicts`) so it lands after mitigation is settled -- the ice cannot make

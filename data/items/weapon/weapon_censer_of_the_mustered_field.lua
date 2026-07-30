@@ -19,7 +19,7 @@ return {
     tags = { "censer", "impact", "physical", "melee" },
     class = "priest",
     price = 260,
-    repRank = 2,
+    unlockQuests = 3,
     incense = {
         hazard = "hazard_muster",
         radius = 1, -- the 3x3 the priest stands in the middle of; radius never scales with the forge

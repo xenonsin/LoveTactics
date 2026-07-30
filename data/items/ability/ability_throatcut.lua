@@ -25,7 +25,7 @@ return {
     class = "rogue",
     discipline = "poacher",
     price = 400,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "enemy",
         range = 1,

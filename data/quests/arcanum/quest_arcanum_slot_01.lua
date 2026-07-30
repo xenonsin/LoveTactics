@@ -10,7 +10,6 @@ return {
     sponsor = "arcanum",
     rewardItems = { "weapon_iron_crook", "armor_gleaners_mantle" },
     rewardGold = 140,
-    rewardRep = 30,
     rewardPrestige = 1,
     requiredPrestige = 3,
     map = {

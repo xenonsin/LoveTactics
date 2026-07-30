@@ -13,7 +13,7 @@ return {
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 300,
-    repRank = 3,
+    unlockQuests = 6,
     aura = {
         appliesTo = { "weapon" }, -- only the blades it sits beside gain the thirst
         lifesteal = 0.5,          -- the wielder heals 50% of each infused hit's damage

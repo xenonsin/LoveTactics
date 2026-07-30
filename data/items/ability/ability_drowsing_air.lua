@@ -28,7 +28,7 @@ return {
     tags = { "arcane", "magical" },
     class = "hunter",
     price = 420,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

@@ -22,7 +22,7 @@ return {
     class = "hunter",
     discipline = "skirmisher",
     price = 340,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 4,

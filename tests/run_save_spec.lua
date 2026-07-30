@@ -75,7 +75,7 @@ return {
             local g = genGrid()
             g:objectiveCell().cleared = true
             local run = {
-                questId = "quest_bastion_bandit_ambush",
+                questId = "quest_bastion_slot_01",
                 prestige = 3,
                 grid = g,
                 -- snapshotRun only reads px/py/keysHeld off the map widget; a stand-in table is enough.
@@ -85,7 +85,7 @@ return {
 
             local restored = Save.restoreRun(reserialize(Save.snapshotRun(run)))
             assert(restored, "the run restores")
-            assert(restored.quest and restored.quest.id == "quest_bastion_bandit_ambush",
+            assert(restored.quest and restored.quest.id == "quest_bastion_slot_01",
                 "the quest is rehydrated from its id")
             assert(restored.quest.map and restored.quest.map.objective, "the rehydrated quest carries its map")
             assert(restored.prestige == 3, "the launch prestige survives")
@@ -106,7 +106,7 @@ return {
 
             local g = genGrid()
             player.activeRun = {
-                questId = "quest_bastion_bandit_ambush", prestige = 1, grid = g,
+                questId = "quest_bastion_slot_01", prestige = 1, grid = g,
                 map = { px = g.start.x, py = g.start.y, keysHeld = {} }, abilityState = {},
             }
 
@@ -144,7 +144,7 @@ return {
             local player = Player.new()
             local g = genGrid()
             player.activeRun = {
-                questId = "quest_bastion_bandit_ambush",
+                questId = "quest_bastion_slot_01",
                 prestige = 2,
                 grid = g,
                 map = { px = g.start.x, py = g.start.y, keysHeld = {} },
@@ -154,7 +154,7 @@ return {
             local restored = Save.restore(reserialize(Save.snapshot(player)))
             assert(restored, "the player restores")
             assert(restored.resumeRun, "an active run becomes a resume descriptor on load")
-            assert(restored.resumeRun.quest.id == "quest_bastion_bandit_ambush", "the resumed quest is named")
+            assert(restored.resumeRun.quest.id == "quest_bastion_slot_01", "the resumed quest is named")
             assert(restored.resumeRun.px == g.start.x, "the resume position survives the player round trip")
         end,
     },

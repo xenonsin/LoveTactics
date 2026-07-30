@@ -42,7 +42,6 @@ return {
     outro = "conversation_colosseum_slot_02_outro",
     rewardItems = { "weapon_carrion_axe", "weapon_mired_maul" },
     rewardGold = 90,
-    rewardRep = 30,
     rewardPrestige = 1,
     requiredQuests = { "quest_colosseum_slot_01" }, -- slot 2: the line runs in order
     requiredPrestige = 1,

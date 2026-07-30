@@ -21,7 +21,7 @@ return {
     tags = { "staff", "magical", "melee" },
     class = "mage",
     price = 560,
-    repRank = 4,
+    unlockQuests = 10,
     -- Shallower than a plain staff's 8-18: the ward is paid for out of the meditation's own depth.
     -- `status` is applied to the focuser on every Focus (Combat.focus).
     waitBehavior = {

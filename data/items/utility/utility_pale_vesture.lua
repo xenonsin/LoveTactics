@@ -29,7 +29,7 @@ return {
     tags = { "arcane" },
     class = "mage",
     price = 340,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "self",
         range = 0,

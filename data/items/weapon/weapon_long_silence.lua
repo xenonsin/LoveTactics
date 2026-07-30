@@ -24,7 +24,7 @@ return {
     hands = 2,
     class = "hunter",
     price = 720,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "enemy",
         range = 5,

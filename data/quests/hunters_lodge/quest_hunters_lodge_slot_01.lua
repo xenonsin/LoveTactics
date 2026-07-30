@@ -9,7 +9,6 @@ return {
     sponsor = "hunters_lodge",
     rewardItems = { "weapon_deadfall_bow", "armor_quarryhide" },
     rewardGold = 130,
-    rewardRep = 30,
     rewardPrestige = 1,
     requiredPrestige = 2,
     map = {

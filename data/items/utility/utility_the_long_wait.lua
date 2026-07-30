@@ -24,6 +24,6 @@ return {
     class = "rogue",
     discipline = "poacher",
     price = 420,
-    repRank = 4,
+    unlockQuests = 10,
     traits = { "trait_the_long_wait" },
 }

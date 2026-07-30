@@ -19,7 +19,7 @@ return {
     class = "knight",
     discipline = "vanguard",
     price = 440,
-    repRank = 3,
+    unlockQuests = 6,
     bonus = { defense = { 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11 }, movement = -2 },
     traits = { "trait_breakers_harness" },
 }

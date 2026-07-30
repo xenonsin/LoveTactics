@@ -28,7 +28,7 @@ return {
     class = "rogue",
     discipline = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
     price = 360,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "ally", -- includes the bearer, though throwing it over somebody else is the item
         range = 4,

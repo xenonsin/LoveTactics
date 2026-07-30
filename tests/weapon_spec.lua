@@ -211,30 +211,28 @@ return {
                 assert(#halves.quest == 5, family .. " has " .. #halves.quest
                     .. " quest-only weapons, not 5: " .. table.concat(halves.quest, ", "))
                 -- A quest weapon keeps its `class` (it is what the strike tallies toward for growth) but
-                -- must have no `repRank` either -- a rank with no price is dead data on no shelf.
+                -- must have no `unlockQuests` either -- a shelf gate with no price is dead data on no shelf.
                 for _, id in ipairs(halves.quest) do
                     assert(Item.defs[id].class, id .. " is quest-only with no class to tally growth against")
-                    assert(not Item.defs[id].repRank, id .. " has a repRank but no price: it is on no shelf")
+                    assert(not Item.defs[id].unlockQuests, id .. " has an unlockQuests but no price: it is on no shelf")
                 end
             end
             assert(families == 13, "expected 13 shoppable families, found " .. families)
         end,
     },
     {
-        -- Rank 4 is the ceiling: every data/vendors/ table is four rungs long and the general quests
-        -- gate on rank 4 as "the highest standing". A repRank of 5 is unreachable stock.
-        name = "no item is ranked past the vendor ceiling",
+        -- The top tier threshold (Vendor.TIERS, currently 10 quests) is the ceiling: a vendor sponsors
+        -- more quests than that, so gating stock any higher would put it out of reach. An unlockQuests
+        -- past the top wave is unreachable stock.
+        name = "no item is gated past the top unlock tier",
         fn = function()
-            local Registry = require("models.registry")
-            local vendors = Registry.load("data/vendors", "data.vendors")
+            local Vendor = require("models.vendor")
             local ceiling = 0
-            for _, def in pairs(vendors) do
-                ceiling = math.max(ceiling, #(def.ranks or {}))
-            end
-            assert(ceiling > 0, "the vendors declare some ranks at all")
+            for _, threshold in ipairs(Vendor.TIERS) do ceiling = math.max(ceiling, threshold) end
+            assert(ceiling > 0, "the vendors declare some unlock tiers at all")
             for id, def in pairs(Item.defs) do
-                assert((def.repRank or 1) <= ceiling,
-                    id .. " is repRank " .. tostring(def.repRank) .. ", past the vendor ceiling of " .. ceiling)
+                assert((def.unlockQuests or 0) <= ceiling,
+                    id .. " needs " .. tostring(def.unlockQuests) .. " quests, past the top tier of " .. ceiling)
             end
         end,
     },
@@ -1005,6 +1003,17 @@ return {
             openTurn(c, m)
             assert(Combat.useItem(c, m, wand, 2, 5), "the second bolt lands")
             assert(Status.has(target, "status_freeze"), "the year turns: the next one is frost")
+
+            -- The rhythm must not turn just from LOOKING. The damage preview replays this effect, so a
+            -- half banked straight onto the unit would flip every hover frame -- the flicker that sent
+            -- the tooltip and timeline volleying between the fire bolt and the frost's delay. fx.bank is
+            -- inert in the preview, so a hover reports the branch THIS cast would run and turns nothing.
+            local half = m.turningYear
+            assert(Combat.previewAbility(c, m, wand, 2, 5), "the wand previews its next bolt")
+            assert(m.turningYear == half, "hovering does not turn the year")
+            Combat.previewAbility(c, m, wand, 2, 5)
+            Combat.previewAbility(c, m, wand, 2, 5)
+            assert(m.turningYear == half, "and no number of hovers does either")
 
             -- The other half of what it sells: the bearer cannot be given either of them, by anybody.
             Status.apply(c, m, "status_burn")

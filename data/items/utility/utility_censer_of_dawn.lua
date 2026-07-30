@@ -14,7 +14,7 @@ return {
     tags = { "holy" },
     class = "priest",
     price = 800,
-    repRank = 4,
+    unlockQuests = 10,
     aura = {
         appliesTo = { "weapon", "ability" },
         exceptTags = { "shadow" },

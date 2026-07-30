@@ -27,7 +27,7 @@ return {
     class = "rogue",
     discipline = "duelist",
     price = 340,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_parry" },
     charge = { key = "tempo", from = { "answered" }, max = 5 },
     activeAbility = {

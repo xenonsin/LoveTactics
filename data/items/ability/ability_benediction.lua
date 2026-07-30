@@ -23,7 +23,7 @@ return {
     class = "priest",
     discipline = "theurge",
     price = 460,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "self",
         range = 0,

@@ -13,7 +13,7 @@ return {
     tags = { "physical" },
     class = "alchemist",
     price = 15,
-    repRank = 1,
+    unlockQuests = 0,
     maxStack = 12, -- ammunition: a fuller stack than the default 9
     activeAbility = {
         target = "enemy",

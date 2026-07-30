@@ -42,7 +42,7 @@ return {
     tags = { "impact" },
     class = "fighter",
     price = 420,
-    repRank = 3,
+    unlockQuests = 6,
     activeAbility = {
         target = "self",
         range = 0,

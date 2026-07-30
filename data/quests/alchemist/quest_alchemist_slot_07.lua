@@ -33,11 +33,10 @@ return {
     difficulty = "Hard",
     sponsor = "alchemist",
     rewardGold = 300,
-    rewardRep = 30,
     rewardPrestige = 2,
     requiredQuests = { "quest_alchemist_slot_06" }, -- slot 7: the line runs in order
     requiredPrestige = 4,
-    requiredRep = { vendor = "alchemist", rank = 3 }, -- Transmuter
+    requiredSponsorQuests = { vendor = "alchemist", count = 6 }, -- 6 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 8, max = 11, always = { "encounter_elite" } },

@@ -12,6 +12,6 @@ return {
     tags = { "technique" },
     class = "knight",
     price = 240,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_shield_bash" },
 }

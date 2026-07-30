@@ -11,6 +11,6 @@ return {
     tags = { "charm" },
     class = "fighter",
     price = 220,
-    repRank = 2,
+    unlockQuests = 3,
     maxBonus = { health = { 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40 } },
 }

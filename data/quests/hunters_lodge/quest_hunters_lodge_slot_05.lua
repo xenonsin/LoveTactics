@@ -1,5 +1,5 @@
--- The Hunter's Lodge's mid-line contract, gated on reputation rather than prestige: it stays off the
--- board until the player is a Stalker (rank 2) with the Lodge. See `requiredRep` in models/quest.lua.
+-- The Hunter's Lodge's mid-line contract, gated on quests-completed rather than prestige: it stays off the
+-- board until the player has finished 3 of the Lodge's quests. See `requiredSponsorQuests` in models/quest.lua.
 -- Slot 5 of the ten (docs/story.md, "The Hunter's Lodge") -- the discovery, where the player sets the
 -- Lodge's bounty ledger against a wood gone quiet (a record of extinction) and finds that one "beast" on
 -- the wall wore a Grand Hunter's name: the game is the guild's own.
@@ -19,11 +19,10 @@ return {
     sponsor = "hunters_lodge",
     rewardItems = { "weapon_knell_shaft", "armor_blindfold_cloak" },
     rewardGold = 220,
-    rewardRep = 45,
     rewardPrestige = 1,
     requiredQuests = { "quest_hunters_lodge_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 2,
-    requiredRep = { vendor = "hunters_lodge", rank = 2 }, -- Stalker or better
+    requiredSponsorQuests = { vendor = "hunters_lodge", count = 3 }, -- 3 of this house's quests done
     map = {
         biome = "forest",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },

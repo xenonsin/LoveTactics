@@ -13,6 +13,6 @@ return {
     tags = { "satchel" },
     class = "alchemist",
     price = 260,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_survivors_reflex" },
 }

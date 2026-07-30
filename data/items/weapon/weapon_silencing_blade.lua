@@ -22,7 +22,7 @@ return {
     class = "knight",
     discipline = "spellbreaker",
     price = 440,
-    repRank = 4,
+    unlockQuests = 10,
     traits = { "trait_parry" },
     activeAbility = {
         target = "enemy",

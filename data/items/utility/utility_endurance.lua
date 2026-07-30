@@ -11,6 +11,6 @@ return {
     tags = { "charm" },
     class = "hunter",
     price = 160,
-    repRank = 2,
+    unlockQuests = 3,
     maxBonus = { stamina = { 15, 17, 18, 20, 21, 23, 24, 26, 27, 29, 30 } },
 }

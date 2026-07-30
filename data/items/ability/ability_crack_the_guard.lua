@@ -16,7 +16,7 @@ return {
     tags = { "impact", "physical", "melee" },
     class = "knight",
     price = 240,
-    repRank = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 1,

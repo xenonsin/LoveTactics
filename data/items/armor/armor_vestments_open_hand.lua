@@ -25,7 +25,7 @@ return {
     tags = { "cloth", "holy" },
     class = "priest",
     price = 300,
-    repRank = 2,
+    unlockQuests = 3,
     traits = { "trait_sanctified_presence" },
     bonus = { magicDefense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 }, movement = -1 },
     resist = { magical = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },

@@ -25,6 +25,7 @@ local GrowthLadder = require("ui.growth_ladder") -- the level-by-level honing pa
 local Glossary = require("models.glossary")
 local Vendor = require("models.vendor")
 local Player = require("models.player")
+local Quest = require("models.quest") -- sponsorProgress: how many of this vendor's quests are done (its standing)
 local Item = require("models.item")
 local Character = require("models.character")
 local Discipline = require("models.discipline") -- unlockedSet: gates a shelf's locked discipline cut
@@ -137,23 +138,65 @@ function Shop:collectUpgrades()
     return out
 end
 
+-- The Buy list, banded per discipline and ordered by how many quests each row asks for. The vendor's
+-- own base shelf (items with no discipline) leads under a class-named header; the discipline cuts
+-- follow, each its own section, sections in the order the player unlocks them -- by the fewest quests
+-- the section gates on, then name. Within a section rows climb by quests required, then price, then
+-- name, so the ladder reads top-to-bottom. A section HEADER is a non-selectable Menu row
+-- (Menu:isSelectable); self.rows carries a matching `{ header = true }` entry at the same index so the
+-- two stay aligned for the detail pane and the locked overlay. A vendor with no unlocked discipline
+-- stock shows no headers at all -- a single base section needs no banner -- so the plain shelf looks
+-- exactly as it did.
+function Shop:buildBuyRows()
+    local groups, order = {}, {}
+    for _, entry in ipairs(Vendor.stock(self.vendorId, self.questsDone, self.player.recipes, Discipline.unlockedSet(self.player))) do
+        -- Instantiate at the item's recipe tier, so its name (+n) and stats reflect what's bought.
+        local item = Item.instantiate(entry.id, nil, entry.level)
+        local key = entry.discipline or false -- false == the base shelf, not a discipline
+        local g = groups[key]
+        if not g then
+            g = { rows = {}, minUnlock = entry.unlockQuests,
+                name = entry.discipline and (Discipline.displayName(entry.discipline) or entry.discipline)
+                    or (Item.classDisplayName(self.def.class) or "General") }
+            groups[key], order[#order + 1] = g, key
+        end
+        g.minUnlock = math.min(g.minUnlock, entry.unlockQuests)
+        g.rows[#g.rows + 1] = {
+            item = item, entry = entry,
+            label = item.name .. "  -  " .. (entry.locked and "locked" or (entry.price .. "g")),
+            locked = entry.locked,
+        }
+    end
+
+    table.sort(order, function(a, b)
+        if (a == false) ~= (b == false) then return a == false end -- base shelf always leads
+        local ga, gb = groups[a], groups[b]
+        if ga.minUnlock ~= gb.minUnlock then return ga.minUnlock < gb.minUnlock end
+        return ga.name < gb.name
+    end)
+
+    local banded = #order > 1 -- a lone base section needs no header
+    for _, key in ipairs(order) do
+        local g = groups[key]
+        table.sort(g.rows, function(r1, r2)
+            if r1.entry.unlockQuests ~= r2.entry.unlockQuests then return r1.entry.unlockQuests < r2.entry.unlockQuests end
+            if r1.entry.price ~= r2.entry.price then return r1.entry.price < r2.entry.price end
+            return r1.item.name < r2.item.name
+        end)
+        if banded then self.rows[#self.rows + 1] = { header = true, label = g.name } end
+        for _, r in ipairs(g.rows) do self.rows[#self.rows + 1] = r end
+    end
+end
+
 -- Rebuild self.rows + the Menu for the current mode. Called on open, on mode switch, and after every
--- transaction so a rank-up / spent gold / changed stash is reflected without reopening.
+-- transaction so newly unlocked stock / spent gold / changed stash is reflected without reopening.
 function Shop:refresh()
     local selected = self.menu and self.menu.selected or 1
-    self.rank = Player.repRank(self.player, self.vendorId)
+    self.questsDone = Quest.sponsorProgress(self.player, self.vendorId)
     self.rows = {}
 
     if self.mode == "buy" then
-        for _, entry in ipairs(Vendor.stock(self.vendorId, self.rank, self.player.recipes, Discipline.unlockedSet(self.player))) do
-            -- Instantiate at the item's recipe tier, so its name (+n) and stats reflect what's bought.
-            local item = Item.instantiate(entry.id, nil, entry.level)
-            self.rows[#self.rows + 1] = {
-                item = item, entry = entry,
-                label = item.name .. "  -  " .. (entry.locked and "locked" or (entry.price .. "g")),
-                locked = entry.locked,
-            }
-        end
+        self:buildBuyRows()
     elseif self.mode == "sell" then
         for i, item in ipairs(self.player.stash or {}) do
             local value = Vendor.sellValue(item)
@@ -167,12 +210,12 @@ function Shop:refresh()
     else -- upgrade
         -- Consumable recipe tiers: this vendor's own consumable shelf, refined per-type. Upgrading one
         -- raises the tier every future purchase comes at (Vendor.upgradeRecipe / Player.recipeLevel).
-        for _, entry in ipairs(Vendor.stock(self.vendorId, self.rank, self.player.recipes, Discipline.unlockedSet(self.player))) do
+        for _, entry in ipairs(Vendor.stock(self.vendorId, self.questsDone, self.player.recipes, Discipline.unlockedSet(self.player))) do
             local sample = entry.type == "consumable" and Item.instantiate(entry.id, nil, entry.level)
             -- Only the bench that refines a consumable lists it: the Market resells potions but hones
             -- none, so a resold potion never shows here (Vendor.canRefineHere).
             if sample and Vendor.canRefineHere(self.vendorId, sample) then
-                local cost = Vendor.recipeUpgradeCost(entry.level, self.rank)
+                local cost = Vendor.recipeUpgradeCost(entry.level, self.questsDone)
                 local tail = cost and (cost.locked and "locked" or (cost.gold .. "g")) or "max"
                 self.rows[#self.rows + 1] = {
                     kind = "recipe", id = entry.id, item = sample, cost = cost,
@@ -183,7 +226,7 @@ function Shop:refresh()
         end
         -- Ability instances, honed per-item (Vendor.canUpgradeHere excludes consumables).
         for _, up in ipairs(self:collectUpgrades()) do
-            local cost = Vendor.abilityUpgradeCost(up.item, self.rank)
+            local cost = Vendor.abilityUpgradeCost(up.item, self.questsDone)
             local tail = cost and (cost.locked and "locked" or (cost.gold .. "g")) or "max"
             self.rows[#self.rows + 1] = {
                 kind = "instance", item = up.item, up = up, cost = cost,
@@ -195,7 +238,11 @@ function Shop:refresh()
 
     local items = {}
     for i, row in ipairs(self.rows) do
-        items[#items + 1] = { label = row.label, action = function() self:activateRow(self.rows[i]) end }
+        if row.header then
+            items[#items + 1] = { label = row.label, header = true }
+        else
+            items[#items + 1] = { label = row.label, action = function() self:activateRow(self.rows[i]) end }
+        end
     end
     self.menu = Menu.new(items, {
         buttonWidth = self.listW,
@@ -207,6 +254,7 @@ function Shop:refresh()
         maxVisible = MAX_VISIBLE,
     })
     self.menu.selected = math.min(selected, math.max(#items, 1))
+    self.menu:clampSelectable() -- the Buy list opens with a discipline header at row 1; step past it
     self.menu:scrollToSelection()
     -- Compute row rects now so the first draw/click works before the first update() tick.
     self.menu:layout()
@@ -243,10 +291,25 @@ function Shop:activateRow(row)
     else self:upgrade(row) end
 end
 
+-- Why a greyed shelf row is not yet buyable. A discipline row is held by its own gate quest, which no
+-- amount of this house's ordinary quests will open -- so that reason LEADS when the discipline is still
+-- locked, and only a plain quest-count row falls back to "complete N more of this house's quests".
+function Shop:lockReason(entry)
+    if entry.discipline and not Discipline.isUnlocked(self.player, entry.discipline) then
+        return "Locked: unlock the " .. (Discipline.displayName(entry.discipline) or entry.discipline) .. " path first."
+    end
+    local remaining = (entry.unlockQuests or 0) - (self.questsDone or 0)
+    if remaining > 0 then
+        local quests = remaining == 1 and "quest" or "quests"
+        return "Locked: complete " .. remaining .. " more of this house's " .. quests .. "."
+    end
+    return "Locked."
+end
+
 function Shop:buy(row)
     local entry = row.entry
     if entry.locked then
-        self:setMsg("Requires " .. Vendor.rankName(self.vendorId, entry.repRank) .. " standing.", false)
+        self:setMsg(self:lockReason(entry), false)
         return
     end
     if not Player.spendGold(self.player, entry.price) then
@@ -295,10 +358,10 @@ end
 
 function Shop:upgrade(row)
     if row.kind == "recipe" then
-        local level, reason = Vendor.upgradeRecipe(self.player, self.vendorId, row.id)
+        local level, reason = Vendor.upgradeRecipe(self.player, self.vendorId, row.id, self.questsDone)
         if not level then
             self:setMsg((reason == "gold" and "Not enough gold.")
-                or (reason == "locked" and "Needs higher standing to refine further.")
+                or (reason == "locked" and "Complete more of this house's quests to refine further.")
                 or (reason == "max level" and (row.item.name .. " is at its highest tier."))
                 or "It cannot be refined here.", false)
             return
@@ -310,10 +373,10 @@ function Shop:upgrade(row)
     end
 
     local up = row.up
-    local newItem, reason = Vendor.upgradeAbility(self.player, self.vendorId, up.item)
+    local newItem, reason = Vendor.upgradeAbility(self.player, self.vendorId, up.item, self.questsDone)
     if not newItem then
         self:setMsg((reason == "gold" and "Not enough gold.")
-            or (reason == "locked" and "Needs higher standing to upgrade further.")
+            or (reason == "locked" and "Complete more of this house's quests to upgrade further.")
             or (reason == "max level" and (up.item.name .. " is at maximum level."))
             or "It cannot be upgraded here.", false)
         return
@@ -399,13 +462,12 @@ function Shop:drawVendor()
     Theme.set(Theme.accentAmber)
     love.graphics.print(self.player.gold .. " gold", x + 12, ty)
     Theme.set(Theme.ink)
-    local rep = Player.reputation(self.player, self.vendorId)
-    local standing = Vendor.rankName(self.vendorId, self.rank)
-    local toNext, nextRank = Vendor.nextRank(self.vendorId, rep)
-    if toNext then
-        standing = standing .. "  (" .. toNext .. " to " .. Vendor.rankName(self.vendorId, nextRank) .. ")"
+    -- Standing here is purely a count of this house's quests you have finished; the "N more to unlock"
+    -- detail lives on each locked row instead, so this line stays short and never wraps into the
+    -- description below. The general store runs no quest line, so it shows nothing.
+    if not self.def.general then
+        love.graphics.printf("Quests Completed: " .. (self.questsDone or 0), x + 12, ty + 22, w - 24, "left")
     end
-    love.graphics.printf(standing, x + 12, ty + 22, w - 24, "left")
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
     love.graphics.printf(self.def.description or "", x + 12, ty + 44, w - 24, "left")
@@ -440,39 +502,61 @@ end
 
 function Shop:drawDetail()
     local row = self.rows[self.menu.selected]
-    if not row then return end
+    if not row or row.header then return end
     local item = row.item
     local x, y, w = self.detailX, self.detailY, self.detailW
     local accent = TYPE_COLOR[item.type] or DEFAULT_COLOR
 
+    -- The item's own art sits top-right of the pane; the header and description wrap in the column to
+    -- its left (textW). Stock without art (or under headless) keeps the full width, exactly as before.
+    local SPR = 64
+    local spr = Sprite.load(item.sprite)
+    local hasSprite = type(spr) == "userdata"
+    local textW = hasSprite and (w - SPR - 12) or w
+    if hasSprite then
+        love.graphics.setColor(1, 1, 1)
+        local sw, sh = spr:getDimensions()
+        local scale = math.min(SPR / sw, SPR / sh)
+        love.graphics.draw(spr, x + w - SPR / 2, y + SPR / 2, 0, scale, scale, sw / 2, sh / 2)
+    end
+
     love.graphics.setFont(self.headFont)
     love.graphics.setColor(accent[1], accent[2], accent[3])
-    love.graphics.printf(item.name or "?", x, y, w, "left")
+    love.graphics.printf(item.name or "?", x, y, textW, "left")
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
-    love.graphics.printf((item.type or "item"):upper(), x, y + 26, w, "left")
+    love.graphics.printf((item.type or "item"):upper(), x, y + 26, textW, "left")
     -- The discipline this item falls under, opposite its type on the same line. It is the shelf's own
     -- answer to "why is this here and not on the open rack": a priced row in the locked deeper cut
     -- names the discipline that unlocked it, and a multiclass row names the one that put it on THIS
     -- vendor's shelf rather than the other parent's. Most stock carries none and the line stays bare.
-    ItemTooltip.printDiscipline(item, x, y + 26, w, self.smallFont)
+    ItemTooltip.printDiscipline(item, x, y + 26, textW, self.smallFont)
 
     love.graphics.setFont(self.bodyFont)
     Theme.set(Theme.ink)
     local desc = item.description or ""
-    love.graphics.printf(desc, x, y + 48, w, "left")
+    love.graphics.printf(desc, x, y + 48, textW, "left")
+    -- Where the mechanical block picks up: right under the description (or the sprite, whichever runs
+    -- lower), not at a fixed row -- a one-line description no longer leaves a gap before the stats.
+    local _, descLines = self.bodyFont:getWrap(desc, textW)
+    local descBottom = y + 48 + #descLines * self.bodyFont:getHeight()
+    local contentTop = math.max(descBottom, hasSprite and (y + SPR) or descBottom) + 12
 
-    -- The story line rides under the description, in the gap ahead of the stat block below.
-    if item.flavor and item.flavor ~= "" then
-        local _, descLines = self.bodyFont:getWrap(desc, w)
-        local descH = #descLines * self.bodyFont:getHeight()
-        ItemTooltip.printFlavor(item.flavor, x, y + 48 + descH + 6, w, self.bodyFont)
+    -- The story line reads last, just above the glossary (docs/item-text.md): in buy/sell it sits under
+    -- the stat block, drawn there below. The Upgrade tab has no glossary -- it shows the honing path
+    -- instead -- so there the flavor keeps its spot under the description, ahead of that ladder.
+    local function drawFlavor(fy)
+        if item.flavor and item.flavor ~= "" then
+            return ItemTooltip.printFlavor(item.flavor, x, fy, w, self.bodyFont)
+        end
+        return 0
     end
 
     -- The Upgrade tab shows PROGRESSION rather than a snapshot: the item's whole honing path as a level
     -- ladder (ui/growth_ladder.lua), current row gold, the level this vendor's button buys green, and
     -- levels past this standing's reach dimmed. Buy/Sell keep the quick-stats + glossary snapshot below.
     if self.mode == "upgrade" then
+        drawFlavor(contentTop)
         love.graphics.setFont(self.smallFont)
         love.graphics.setColor(0.55, 0.60, 0.70)
         love.graphics.print("HONING PATH", x, y + 130)
@@ -481,13 +565,13 @@ function Shop:drawDetail()
         GrowthLadder.draw(Item.growth(item.id), x, ladderTop, w, ladderBottom - ladderTop, {
             current = item.level or 0,
             nextLevel = row.cost and row.cost.level, -- current+1, or nil at max
-            lockedFrom = Vendor.abilityLevelCap(self.rank) + 1, -- first level this standing can't reach
+            lockedFrom = Vendor.abilityLevelCap(self.questsDone) + 1, -- first level this quest count can't reach
             rowFont = self.glossFont, headFont = self.smallFont,
         })
     else
     -- Quick stats. The item's primary stat -- the one magnitude that defines it (armor's defense, a
     -- blade's Power), quoted at its current level -- leads the block for ANY item, armor included.
-    local sy = y + 130
+    local sy = contentTop
     love.graphics.setFont(self.smallFont)
     local function statLine(label, value, valueColor)
         Theme.set(Theme.muted)
@@ -517,6 +601,10 @@ function Shop:drawDetail()
         end
     end
 
+    -- The story line closes the mechanical block, sat just above the glossary that follows it.
+    local flavorH = drawFlavor(sy + 6)
+    if flavorH > 0 then sy = sy + 6 + flavorH end
+
     -- What the shelf otherwise never says: every status this thing can inflict and every keyword its
     -- ability declares, defined in the room between the stat block and the price. This column has no
     -- "Applies" row of its own -- unlike the in-battle tooltip -- so for a shopper the glossary is the
@@ -539,8 +627,7 @@ function Shop:drawDetail()
     if self.mode == "buy" then
         if row.entry.locked then
             love.graphics.setColor(0.9, 0.6, 0.55)
-            love.graphics.printf("Locked: needs " .. Vendor.rankName(self.vendorId, row.entry.repRank),
-                x, ty, w, "left")
+            love.graphics.printf(self:lockReason(row.entry), x, ty, w, "left")
         else
             love.graphics.setColor(0.95, 0.85, 0.55)
             love.graphics.printf("Price: " .. row.entry.price .. " gold", x, ty, w, "left")
@@ -560,7 +647,7 @@ function Shop:drawDetail()
             love.graphics.printf("At maximum level.", x, ty, w, "left")
         elseif cost.locked then
             love.graphics.setColor(0.9, 0.6, 0.55)
-            love.graphics.printf("Locked: needs higher standing for +" .. cost.level, x, ty, w, "left")
+            love.graphics.printf("Locked: complete more of this house's quests for +" .. cost.level, x, ty, w, "left")
         else
             love.graphics.setColor(0.95, 0.85, 0.55)
             love.graphics.printf("Upgrade to +" .. cost.level .. ": " .. cost.gold .. " gold", x, ty, w, "left")

@@ -117,10 +117,11 @@ of truth and a content edit flows into existing saves rather than corrupting the
 health/mana/stamina are *not* saved: `hub.enter` calls `Player.restore`, which refills the
 roster, so attrition lasts a quest rather than a campaign and a loaded party is always whole.
 
-The economy is one direction of dependency: `Quest` → `Player` → `Vendor` → `Item`. `Vendor`
-resolves reputation ranks from a **points number, not a player**, which is what keeps `Player`
-free to depend on it without a require cycle. Progress is written at the two points it changes —
-`Quest.complete` (the objective-win branch of `states/game.lua`) and a vendor purchase.
+The economy is one direction of dependency: `Quest` → `Player` → `Vendor` → `Item`. `Vendor` gates a
+shelf from a **plain count of completed quests, not a player** (`Quest.sponsorProgress` supplies the
+number), which is what keeps `Player` free to depend on it without a require cycle. Progress is written
+at the two points it changes — `Quest.complete` (the objective-win branch of `states/game.lua`) and a
+vendor purchase.
 
 ## Combat: battle arenas
 

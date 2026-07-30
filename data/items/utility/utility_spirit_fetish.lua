@@ -13,6 +13,6 @@ return {
     class = "hunter",
     discipline = "shaman", -- hunter x mage; the Spirit-totems mechanic's first stock
     price = 400,
-    repRank = 3,
+    unlockQuests = 6,
     incense = { hazard = "hazard_rally", radius = 1, amount = { 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6 } },
 }

@@ -14,12 +14,11 @@ return {
     difficulty = "Hard",
     sponsor = "colosseum",
     rewardGold = 500,
-    rewardRep = 80,
     rewardPrestige = 3,
     rewardItems = { "armor_mail_of_the_unappeased" },
     requiredQuests = { "quest_colosseum_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 1,
-    requiredRep = { vendor = "colosseum", rank = 4 }, -- Legend
+    requiredSponsorQuests = { vendor = "colosseum", count = 10 }, -- 10 of this house's quests done
     gateHint = "beneath the sand, where the roaring was loudest",
     map = {
         biome = "castle",

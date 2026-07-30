@@ -39,13 +39,13 @@ return {
             if not t then return end
             local held = (fx.user.unspentBlows or 0) + 1
             if held < 3 then
-                fx.user.unspentBlows = held
+                fx.bank("unspentBlows", held) -- banked, not assigned: a raw write would tick on every hover
                 fx.damage(t) -- an ordinary, unremarkable, un-stunning hit
                 fx.log("action", string.format("%s holds the blow (%d/3).",
                     (fx.user.char and fx.user.char.name) or "Unit", held))
                 return
             end
-            fx.user.unspentBlows = 0
+            fx.bank("unspentBlows", 0)
             -- Everything at once. `raw` skips defense and every tag resist (docs/weapons.md), which is
             -- what three turns of patience is actually buying -- and the stun is a full one on top.
             fx.damage(t, {

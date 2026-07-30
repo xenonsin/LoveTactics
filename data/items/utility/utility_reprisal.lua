@@ -17,6 +17,6 @@ return {
     class = "fighter",
     discipline = "champion", -- fighter x knight; the Riposte-wall mechanic's first stock
     price = 400,
-    repRank = 3,
+    unlockQuests = 6,
     traits = { "trait_whirl_answer" },
 }

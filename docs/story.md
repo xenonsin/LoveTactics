@@ -27,9 +27,16 @@ premise could not survive the question *"why is this a fight?"*.
 
 ## The seven
 
-Every vendor in `data/vendors/` declares a `sin`. Every vendor's rank-4 item (800 gold, unlocked at 200
-reputation) closes its file comment by naming that sin's general *and the mechanic the general fights
-with*. Those comments were written before the generals existed; they are the spec.
+Every vendor in `data/vendors/` declares a `sin`. Every vendor's top-tier item (800 gold, unlocked once
+you have finished 10 of that vendor's quests — `Vendor.TIERS`) closes its file comment by naming that
+sin's general *and the mechanic the general fights with*. Those comments were written before the
+generals existed; they are the spec.
+
+> **Standing is now a count of completed quests, not reputation points.** Where this file speaks of
+> "rank 4", "200 reputation", or `ranks = { 0, 40, 100, 200 }`, read it as history: a vendor's standing
+> is `Quest.sponsorProgress` (how many of its quests you have finished), items gate on `unlockQuests`,
+> and the waves open at `Vendor.TIERS = { 0, 3, 6, 10 }`. The recurring note below that the ladder
+> "still wants standing as a count of distinct completed quests" is **done** — this is that change.
 
 | Sin | Vendor | Class | Rank-4 foreshadow item | The general's rule |
 |---|---|---|---|---|
@@ -84,8 +91,9 @@ Relics carry no `class` and no `price`, so no vendor stocks them and none can be
 `questGate` in `models/quest.lua`. Relics are meant to be *worn*, and a key you can misplace in a
 loadout screen is not a key. Moving, stashing, or losing a relic can never soft-lock the endgame.
 
-`data/quests/quest_the_gate_below.lua` names all seven in `requiredQuests`. Prestige and reputation are hard
-gates (fail one and a quest is not on the board at all); `requiredQuests` is a **soft** lock. Kill your
+`data/quests/quest_the_gate_below.lua` names all seven in `requiredQuests`. Prestige and the
+sponsor-quest count are hard gates (fail one and a quest is not on the board at all); `requiredQuests`
+is a **soft** lock. Kill your
 first general and the Gate appears on the board `locked`, counting *1 of 7 keys* and reciting the one
 fragment you have earned. Watching that count climb is the last stretch of the game.
 
@@ -358,9 +366,9 @@ was safe from it. The chain costs nothing and removes the whole failure mode.
 
 The Cathedral's head is the one deliberate step outside its own line: `haunted_mill` waits on
 `arena_debut`, so the church opens after the debut on the sand rather than on a prestige number
-(`data/buildings/cathedral.lua` gates the door the same way). The Bastion's `quest_bastion_bandit_ambush` and
-`quest_bastion_caravan_road` sit outside the ten entirely — ordinary bounty work, available whenever the Bastion is,
-belonging to no chain.
+(`data/buildings/cathedral.lua` gates the door the same way). Every other line is exactly its ten
+chained slots and nothing beside them: no standalone bounty sits on the board next to a line's head,
+so a vendor's board is only ever its next card.
 
 Reputation rank is now **redundant but retained**: with the order fixed, standing is a function of
 position, and every rank gate is satisfied by the quests in front of it. It stays because it is what
@@ -1950,8 +1958,8 @@ should be:
 4. `general_wrath` — rank-**4** gated (Legend), prestige 5. The same standing that finally puts the
    Crimson Greataxe on the shelf is the standing that lets you face what the Greataxe was warning about.
 
-A general's quest always carries `requiredRep = { vendor, rank = 4 }`, `rewardItems = { <relic> }`, a
-`gateHint`, and `win = { type = "assassinate", target = <general id> }`. Assassinate, not `killAll`: the
+A general's quest always carries `requiredSponsorQuests = { vendor, count = 10 }` (the top tier),
+`rewardItems = { <relic> }`, a `gateHint`, and `win = { type = "assassinate", target = <general id> }`. Assassinate, not `killAll`: the
 guard is a wall to get through, not a thing to grind down.
 
 ### The engine cost, per general

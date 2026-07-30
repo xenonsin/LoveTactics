@@ -30,7 +30,7 @@ return {
     hands = 2, -- every bow is two-handed (docs/weapons.md)
     class = "hunter",
     price = 480,
-    repRank = 4,
+    unlockQuests = 10,
     activeAbility = {
         target = "tile",       -- ground, not a body: the volley falls on a place
         allowOccupied = true,  -- and that place may well have somebody standing in it

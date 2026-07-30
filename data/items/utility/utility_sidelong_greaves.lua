@@ -28,7 +28,7 @@ return {
     tags = { "boots" },
     class = "rogue",
     price = 400,
-    repRank = 4,
+    unlockQuests = 10,
     -- The `moveBehavior` contract (see data/items/ability/ability_blink.lua, which carries the other
     -- mode): an item that changes how a VERB behaves rather than adding an action. It feeds no
     -- initiative and never sits in the ability cycle.

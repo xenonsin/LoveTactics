@@ -31,7 +31,6 @@ return {
     sponsor = "hunters_lodge",
     rewardItems = { "weapon_windward" },
     rewardGold = 130,
-    rewardRep = 25,
     rewardPrestige = 1,
     requiredQuests = { "quest_hunters_lodge_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 2,

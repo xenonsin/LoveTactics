@@ -37,7 +37,7 @@ return {
     class = "mage",
     discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
     price = 280,
-    repRank = 2,
+    unlockQuests = 3,
     aura = {
         appliesTo = { "ability", "weapon" }, -- a spell and an enchanted wand are the same school
         requiresTags = { "magical" },        -- ...and only the ones that actually ARE magic
