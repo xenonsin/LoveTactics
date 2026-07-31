@@ -61,7 +61,8 @@ loader survives a missing file, so it is not art anyone owes.
 
 ## Direction
 
-Bright fantasy, **not** grim dark. Portraits in anime style. **This is not a pixel-art game** —
+Bright fantasy, **not** grim dark. Portraits in anime style — in the vein of _Fire Emblem_
+(Awakening / Three Houses) and _Granblue Fantasy_. **This is not a pixel-art game** —
 author above final display size and downscale; never upscale a small source.
 
 Board units are **Fire Emblem Heroes-style animated sprites** — hand-rigged in **Spine** (skeletal

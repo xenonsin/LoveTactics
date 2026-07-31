@@ -13,8 +13,11 @@ a dialogue box and lean in over it as the speaker (à la Fire Emblem support sce
 
 ## Art direction
 
-- **Style: anime.** Bright fantasy palette, clean line, expressive faces. **Not pixel art** —
-  paint above final size and downscale.
+- **Style: anime — in the vein of _Fire Emblem_ (Awakening / Three Houses) and _Granblue
+  Fantasy_.** Clean confident line, bright fantasy palette, expressive faces, and the polished,
+  softly-rendered painting those two are known for (Granblue's rich cloth/armour rendering over
+  Fire Emblem's readable heroic silhouettes). **Not pixel art** — paint above final size and
+  downscale.
 - **Full standing figure**, visual-novel framing — head to (at least) mid-thigh, readable as a
   person leaning into frame, not a floating bust.
 - **One consistent cast.** Same rendering style, proportions, and **head height** across all 24 —
