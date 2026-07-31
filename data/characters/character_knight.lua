@@ -7,9 +7,11 @@ return {
     -- enemy / ally / test body and owns no painted VN portrait -- it falls back to the letter token.
     -- Innate growth class: the fallback/tie-break for the level-up growth system (models/growth.lua).
     class = "knight",
-    -- The wall. It does not kill you, it decides where you stand. Left to itself it holds until the
-    -- fight comes to it, then commits (models/ai.lua's `defensive` posture) -- a knight is the shape a
-    -- map is authored around, a quiet corner the player chooses when to open.
+    -- The wall. It does not kill you, it decides where you stand. It takes the post the objective
+    -- names -- the boss on an assassination, the node on a control map -- and then holds it, fighting
+    -- what comes and refusing to be baited off (models/ai.lua's `defensive` posture). On a killAll,
+    -- which names nothing to defend, it falls back to holding until the fight comes to it: a knight is
+    -- the shape a map is authored around, a quiet corner the player chooses when to open.
     archetype = "defensive",
     stats = {
         health = 68, mana = 15, stamina = 18, -- resource stats
@@ -21,18 +23,29 @@ return {
     },
     -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. A plain
     -- frontline kit with NO bound relic -- that is exactly what separates a generic template from a
-    -- companion. The sword keeps its free Parry (the answer to an adjacent blow the mace trades away),
-    -- a spear reaches the second rank, a buckler and chainmail hold the line, and a potion self-mends.
+    -- companion. The spear and buckler are the pair the class is actually about (see the signatures
+    -- below); the sword keeps its free Parry as the close-in answer, chainmail holds the line, and a
+    -- potion self-mends.
     startingItems = {
-        "weapon_iron_sword", "weapon_iron_spear", "armor_chainmail",
+        "weapon_iron_spear", "weapon_iron_sword", "armor_chainmail",
         "armor_buckler",     "consumable_healing_potion", false,
         false,               false,               false,
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
-    defaultAction = "weapon_iron_sword",
-    -- Basic tactics (models/ai.lua): the wall still knows a kill when it sees one -- it turns its
-    -- blade on the foe already closest to falling, from the `defensive` posture's held ground.
+    defaultAction = "weapon_iron_spear",
+    -- The two items that ARE this unit. Draft mode strips a bought body down to exactly these
+    -- (models/draft_chassis.lua), so what a drafted knight arrives as is spear-and-shield: reach that
+    -- skewers the two tiles in front at once, and the brace behind it, since the buckler swaps this
+    -- unit's Wait into Defend. That pair is the whole class thesis -- it does not kill you, it decides
+    -- where you stand -- stated in two items a round-one player can read at a glance. The spear being
+    -- `hands = 2` is no obstacle: `hands` is read only by Dual Wield (models/item.lua), never as a
+    -- shield gate. The shield takes the "verb" slot because Defend genuinely is one -- a signature
+    -- need only be an item the blueprint carries, not one of `type = "ability"`.
+    signatureWeapon  = "weapon_iron_spear",
+    signatureAbility = "armor_buckler",
+    -- Basic tactics (models/ai.lua): the wall still knows a kill when it sees one -- it swings on the
+    -- foe already closest to falling, from the `defensive` posture's held ground.
     ai = {
         { priority = "high", act = "attack", targetPref = "lowest_hp",
           when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },

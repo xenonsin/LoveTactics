@@ -38,6 +38,11 @@ return {
         false, false,             false,
     },
     defaultAction = "ability_bolas",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_iron_bow",
+    signatureAbility = "ability_bolas",
     ai = {
         -- 1. Net an UNPINNED foe at range: the setup half. Skips anyone already rooted -- one net holds
         -- as well as two, and a wasted throw is a turn Saber's target got to walk. `lacks_status` fires

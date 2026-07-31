@@ -29,6 +29,11 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so its
     -- range shows, and driving the basic click-to-use. The player can re-pin any ability.
     defaultAction = "weapon_iron_dagger",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_iron_dagger",
+    signatureAbility = "ability_shadow_step",
     -- Basic tactics (models/ai.lua): from the kept distance, spend the strike on the foe already
     -- closest to falling -- guile finishes, it does not trade.
     ai = {

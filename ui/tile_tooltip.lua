@@ -9,12 +9,14 @@
 --   TileTooltip.draw(info, mx, my, maxRight)
 --     info = { cell = <arena tile>, bonus = <fieldBonus bag>, unit = <combat unit|nil>,
 --              trap = <revealed trap|nil>, wall = <wall|nil>, prop = <prop|nil>,
---              reinforce = <{ edge, ticksUntil, char }|nil> }  -- a telegraphed muster landing tile
+--              reinforce = <{ edge, ticksUntil, char }|nil>,   -- a telegraphed muster landing tile
+--              objective = <Combat.objectiveTileInfo bag|nil> } -- marked objective ground
 --
 -- Content is assembled once into an ordered list of blocks that is both measured and drawn, so the
 -- computed box height can never drift from what's rendered. No love.graphics at require-time.
 
 local Scale = require("scale")
+local Character = require("models.character")
 local Combat = require("models.combat")
 local Trap = require("models.trap")
 local Prop = require("models.prop")
@@ -278,6 +280,93 @@ local function appendHazard(blocks, info)
     return true
 end
 
+-- The two colours the board paints marked ground in (ui/battle_map.lua drawObjective): amber for
+-- ground still up for grabs, green while the count is actually running for the local player. Borrowed
+-- verbatim so the pulsing tile and the box describing it read as the same thing.
+local OBJECTIVE_COLOR = { 0.95, 0.75, 0.30 }
+local HELD_COLOR = { 0.40, 0.85, 0.50 }
+
+local function charName(id)
+    local def = id and Character.defs[id]
+    return (def and def.name) or id or "your charge"
+end
+
+-- Heading + flavour per objective type, given the bag Combat.objectiveTileInfo builds. The line has
+-- to state the CONTEST, not just the goal: the HUD banner above the board already names the goal
+-- ("hold the moving node"), and what a player hovering the tile is asking is why the ground matters
+-- and what standing here would do.
+local function objectiveHeading(o)
+    if o.type == "control" then
+        return "Control Node",
+            "Hold this node alone to bank time toward the round. An enemy boot on it stops the count for both sides."
+    elseif o.type == "hold" then
+        return "Objective Ground",
+            "Hold this ground to bank the time the win is owed. An enemy standing on it stalls the count."
+    elseif o.type == "reach" then
+        if o.who then
+            return "Crossing Ground", "Get " .. charName(o.who) .. " onto this ground to win the fight."
+        end
+        return "Crossing Ground", "Get any one of your units onto this ground to win the fight."
+    elseif o.type == "defend" then
+        if o.protect then
+            return "Your Charge", charName(o.protect)
+                .. " stands here. Every wave is coming for them, and their death loses the fight."
+        end
+        return "Defended Ground", "The ground the waves are marching on."
+    end
+    return "Objective Ground", nil
+end
+
+-- Append the objective section for marked ground (info.objective, from Combat.objectiveTileInfo):
+-- what the tile is worth, who is holding it right now, and the clocks running on it. Leads the box
+-- above the hazards and the terrain, and -- unlike the occupant box, which yields when the column
+-- runs short -- rides on the terrain info so it is drawn for EVERY hover on the ground the fight is
+-- decided on, including a tile with a unit already standing on it (which is the state the read
+-- matters most in: standing on the node is not the same as holding it).
+-- Returns true if it appended anything.
+local function appendObjective(blocks, info)
+    local o = info.objective
+    if not o then return false end
+    local mySide = o.playerSide or "party"
+    local foeSide = (mySide == "party") and "enemy" or "party"
+    local counting = (o.holder == mySide)
+    local accent = counting and HELD_COLOR or OBJECTIVE_COLOR
+
+    local heading, desc = objectiveHeading(o)
+    blocks[#blocks + 1] = { kind = "title", text = heading, color = accent }
+    if desc then blocks[#blocks + 1] = { kind = "desc", text = desc } end
+
+    -- Who owns the ground right now -- the one thing the board's two colours cannot spell out (it
+    -- shows green only while the LOCAL player is counting, so "contested" and "the enemy is banking
+    -- points off you" look identical on the tile).
+    if o.type == "control" or o.type == "hold" then
+        local value, color = "Unclaimed", MUTED
+        if o.holder == mySide then value, color = "You (counting)", HELD_COLOR
+        elseif o.holder == foeSide then value, color = "Enemy (counting)", ENEMY_COLOR
+        elseif o.party and o.enemy then value, color = "Contested", OBJECTIVE_COLOR end
+        blocks[#blocks + 1] = { kind = "stat", label = "Holding", value = value, valueColor = color }
+    end
+
+    -- The clocks, each under the hourglass: banked score is a count of ticks exactly as a countdown
+    -- is, so it wears the same mark (ui/glyphs.lua) as every other time value in the game.
+    if o.scores then
+        blocks[#blocks + 1] = { kind = "status", name = "Your score", color = HELD_COLOR,
+            remaining = o.scores[mySide] or 0 }
+        blocks[#blocks + 1] = { kind = "status", name = "Enemy score", color = ENEMY_COLOR,
+            remaining = o.scores[foeSide] or 0 }
+    end
+    if o.movesIn then
+        blocks[#blocks + 1] = { kind = "status", name = "Node moves in", color = OBJECTIVE_COLOR,
+            remaining = math.ceil(o.movesIn) }
+    end
+    if o.remaining then
+        local label = (o.type == "control" and "Round ends in")
+            or (o.type == "hold" and "Time still owed") or "Time left"
+        blocks[#blocks + 1] = { kind = "status", name = label, color = MUTED, remaining = o.remaining }
+    end
+    return true
+end
+
 -- Build the ordered content blocks for the hovered tile. The occupant is the priority: when a
 -- unit or trap stands on the tile it leads (its name is the title, its stats first), and the
 -- terrain is demoted to a section below. An empty tile shows the terrain alone. Block kinds:
@@ -440,7 +529,12 @@ local function buildBlocks(info)
             appendTerrain(blocks, info, true)
         end
     else
-        if appendHazard(blocks, info) then blocks[#blocks + 1] = { kind = "sep" } end
+        -- Marked objective ground leads: it outranks both a hazard and the terrain, being the reason
+        -- the tile is worth walking onto at all. appendHazard adds its own divider above itself when
+        -- the objective already filled the box.
+        local objLed = appendObjective(blocks, info)
+        local hazLed = appendHazard(blocks, info)
+        if objLed or hazLed then blocks[#blocks + 1] = { kind = "sep" } end
         appendTerrain(blocks, info, false)
     end
     return blocks
@@ -471,7 +565,7 @@ end
 -- draw, so it can't disagree with what gets drawn. Lets a caller stacking several boxes into a fixed
 -- column work out what fits BEFORE it commits any of them to the screen (states/battle.lua).
 function TileTooltip.measure(info, width)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce) then return 0 end
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce or info.objective) then return 0 end
     local _, body = fonts()
     return measureBlocks(buildBlocks(info), ((width or 210) - 9 * 2), body)
 end
@@ -482,7 +576,7 @@ end
 -- so it never covers the board highlights (the blast footprint) the player is reading. No-op when
 -- there is no tile to describe.
 function TileTooltip.draw(info, mx, my, maxRight, opts)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce) then return end
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce or info.objective) then return end
     local title, body, small = fonts()
     local pad, w = 9, (opts and opts.width) or 210
     local innerW = w - pad * 2

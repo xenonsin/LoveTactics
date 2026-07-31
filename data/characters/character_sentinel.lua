@@ -22,6 +22,11 @@ return {
         "armor_bulwark_shield", "consumable_healing_potion", false,
     },
     defaultAction = "weapon_iron_sword",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_iron_sword",
+    signatureAbility = "ability_shared_burden",
     -- Take the wounded ally's burden onto itself before anything else.
     ai = {
         { priority = "urgent", act = "support", item = "ability_shared_burden", targetPref = "most_wounded",

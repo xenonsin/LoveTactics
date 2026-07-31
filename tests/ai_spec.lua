@@ -249,6 +249,106 @@ return {
         end,
     },
     {
+        name = "a defensive unit engages on hostile reach, not on its own potion",
+        fn = function()
+            -- `defensive` asks whether anything it carries has a target from where it stands. An
+            -- ally-targeted ability counts its own caster as a target (Combat.abilityTargets), so
+            -- reading the whole kit meant a guard activated on turn 1 because it could drink its own
+            -- potion -- and the posture never actually held anything on any map with a healer's kit.
+            local function guard(withPotion)
+                local char = Character.instantiate("character_bandit")
+                char.archetype = "defensive"
+                if withPotion then char.inventory[2] = Item.instantiate("consumable_healing_potion") end
+                return char
+            end
+            local dry = Combat.new(arena(12, 12), { unit(swordsman(), 11, 11) }, { unit(guard(false), 2, 2) })
+            assert(AI.plan(dry, dry.units[2]).wait, "nothing in reach: it holds")
+
+            local wet = Combat.new(arena(12, 12), { unit(swordsman(), 11, 11) }, { unit(guard(true), 2, 2) })
+            assert(AI.plan(wet, wet.units[2]).wait,
+                "carrying a potion is not a reason to start walking at someone")
+        end,
+    },
+    {
+        name = "a defensive unit takes the post the objective names, and then holds it",
+        fn = function()
+            -- `defensive` means "assigned to something", and only the objective knows what. On a
+            -- control map that is the node: the posture has to WALK to ground it was never spawned
+            -- on -- taking up a station is not joining a fight -- and then stop there.
+            local node = { { x = 5, y = 5 }, { x = 6, y = 5 }, { x = 5, y = 6 }, { x = 6, y = 6 } }
+            local objective = { type = "control", maxTicks = 240, nodes = { node } }
+            local function board(gx, gy)
+                local g = Character.instantiate("character_bandit")
+                g.archetype = "defensive"
+                return Combat.new(arena(10, 10, objective), { unit(swordsman(), 10, 10) }, { unit(g, gx, gy) })
+            end
+
+            local far = board(1, 1)
+            local march = AI.plan(far, far.units[2])
+            assert(march.move, "an unmanned post moves a defender that has not engaged")
+            assert(Combat.cellGap(march.move.x, march.move.y, node[1]) < Combat.cellGap(1, 1, node[1]),
+                "and it moves TOWARD the node")
+
+            local held = board(5, 5)
+            assert(AI.plan(held, held.units[2]).wait, "standing on the node, holding is the move")
+        end,
+    },
+    {
+        name = "a posted defender will not be baited off its post",
+        fn = function()
+            -- The leash is what makes the posture mean anything: a unit free to enumerate every
+            -- reachable tile walks four squares off the node to land a hit, banks nothing that tick,
+            -- and hands the point to whoever stayed.
+            local node = { { x = 5, y = 5 }, { x = 6, y = 5 }, { x = 5, y = 6 }, { x = 6, y = 6 } }
+            local objective = { type = "control", maxTicks = 240, nodes = { node } }
+            local g = Character.instantiate("character_bandit")
+            g.archetype = "defensive"
+            local c = Combat.new(arena(10, 10, objective),
+                { unit(swordsman(), 10, 10) }, { unit(g, 5, 5) })
+            setHp(c.units[2], hpOf(c.units[2]) - 1) -- provoked, and the bait is across the board
+
+            local plan = AI.plan(c, c.units[2])
+            assert(plan.wait, "a provoked defender still does not abandon the ground it is holding")
+
+            -- ...but it fights whatever comes to the post.
+            c.units[1].x, c.units[1].y = 6, 6
+            local act = AI.plan(c, c.units[2])
+            assert(act.item, "a foe standing on the node is struck, not watched")
+        end,
+    },
+    {
+        name = "a defensive unit posted to a BODY rings the body, not the map",
+        fn = function()
+            -- An assassination's guards are there for the boss. The post is the same lookup as
+            -- AI.objectiveUnit with the side test flipped: the named body on MY side.
+            local boss = Character.instantiate("character_mage")
+            local g = Character.instantiate("character_bandit")
+            g.archetype = "defensive"
+            local c = Combat.new(arena(12, 12, { type = "assassinate", target = boss.id }),
+                { unit(swordsman(), 12, 12) }, { unit(g, 1, 1), unit(boss, 9, 3) })
+            local guard, mark = c.units[2], c.units[3]
+
+            local post = AI.post(c, guard)
+            assert(post and post.what == mark.char.name, "the guard is posted to the boss it shares a side with")
+            local plan = AI.plan(c, guard)
+            assert(plan.move, "and walks to it before the party ever arrives")
+            assert(Combat.cellGap(plan.move.x, plan.move.y, mark) < Combat.cellGap(1, 1, mark),
+                "closing on the charge, not on the enemy across the board")
+        end,
+    },
+    {
+        name = "with nothing to defend, defensive is the old hold-until-provoked rule",
+        fn = function()
+            -- killAll names no ground and no body, so there is no post -- and every authored killAll
+            -- map has to keep playing exactly as it did before postures learned about objectives.
+            local g = Character.instantiate("character_bandit")
+            g.archetype = "defensive"
+            local c = Combat.new(arena(12, 12), { unit(swordsman(), 11, 11) }, { unit(g, 2, 2) })
+            assert(AI.post(c, c.units[2]) == nil, "killAll names nothing to defend")
+            assert(AI.plan(c, c.units[2]).wait, "so it holds, exactly as it always has")
+        end,
+    },
+    {
         name = "a support unit heals its wounded ally instead of throwing a punch",
         fn = function()
             -- Nothing in the pre-AI planner ever pointed a heal at anything: it only ever scanned for

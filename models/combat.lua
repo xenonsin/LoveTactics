@@ -5254,6 +5254,25 @@ function Combat.computeTrapDamage(unit, weapon)
     return math.max(1, math.floor(dmg + flatStat(unit, atkStat) + 0.5))
 end
 
+-- Is a mend aimed at `target` turned back on it -- does it WOUND instead of heal? Returns the thing
+-- doing the turning (a status instance or a trait), or nil, so a caller can name it in the log.
+--
+-- Two sources, one question, because there are two shapes of "this body does not take mending" and the
+-- funnel must not learn them separately:
+--
+--   * a STATUS the body was cursed with (Interred, data/status/status_interred.lua) -- a window somebody
+--     spent a turn opening, cleansable like any debuff;
+--   * a TRAIT the body simply IS (Grave-Cold, worn by every undead thing on data/items/utility/
+--     utility_grave_cold.lua) -- a standing fact about a corpse, not a condition it caught. A permanent
+--     status would be the wrong instrument for it (see models/trait.lua's header on why), and a corpse
+--     that could be CLEANSED back into taking mending would be nonsense besides.
+--
+-- Asked by Combat.applyHeal below and by the dry run in Combat.abilityOutput, so the number the hover
+-- promises is the number the cast delivers: a heal aimed at an interred body previews in red.
+function Combat.healingInverted(target)
+    return Status.invertsHealing(target) or Trait.flag(target, "invertsHealing")
+end
+
 -- Restore health to `target`, capped at its ceiling (its max less any reserved health -- reserved
 -- life can't be healed back into). Returns the amount actually healed. Reached through `fx.heal`
 -- inside an ability effect.
@@ -5265,6 +5284,31 @@ function Combat.applyHeal(combat, target, amount)
     if blocked and (amount or 0) > 0 then
         Combat.logEvent(combat, "status",
             string.format("%s cannot be mended: %s.", unitName(target), blocked.name or blocked.id), target)
+        return 0
+    end
+    -- INTERRED, or simply dead: the mend curdles and lands as a wound of the same size. Checked after
+    -- the block above, so a body under both is refused rather than burned -- a heal that was never going
+    -- to land cannot be turned around.
+    --
+    -- The wound is a TOLL (tollHealth): unmitigated, attacker-less, and answered by nothing. That is not
+    -- a shortcut. Grace poured into a corpse is a consequence, not an exchange -- there is nobody in the
+    -- room to parry, riposte or reflect, and charging the priest's own mending to the target's armor
+    -- would make plate a defense against being healed. It can fell, and is meant to.
+    local inverted = Combat.healingInverted(target)
+    if inverted and (amount or 0) > 0 then
+        local held = Status.deferralOn(target)
+        if held then
+            -- A Sealed Hour holds this too, and holds it as what it BECAME: positive on the ledger,
+            -- since what is owed is now damage. Curdling it into mending owed would let the hour launder
+            -- an interred body's heals back into a rescue.
+            Status.defer(held, amount)
+            Combat.logEvent(combat, "status",
+                string.format("%s's mending curdles, and is held for later (%d).", unitName(target), amount), target)
+            return 0
+        end
+        tollHealth(combat, target, amount,
+            string.format("%s cannot be mended -- the grace burns it for %d (%s).",
+                unitName(target), amount, inverted.name or inverted.id), target)
         return 0
     end
     -- A DEFERRAL banks the mend instead of landing it (the Sealed Hour). Negative on the ledger, since
@@ -5495,6 +5539,14 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
     local previewHeld = windup and math.max(0, math.floor(windup) - windLo) or nil
     local target = Combat.unitAt(combat, tx, ty)
     local entries, order = {}, {}
+    -- Would a LIVE cast touch the BOARD, beyond the units this dry run reports? Every inert helper
+    -- below flips it: a trap laid, a hazard painted, a wall raised, a body summoned or raised, a
+    -- teleport, a theft, a reveal. Nothing about the numbers changes -- it exists so a caller can ask
+    -- "would this cast, aimed HERE, do anything at all?" (Combat.castDoesSomething), which is how
+    -- states/battle.lua tells a spear's swing at a foe from the same spear aimed at empty ground it
+    -- only means to walk onto. Flavour is not an effect: fx.log and fx.burst leave it alone.
+    local mutates = false
+    local function touchesBoard() mutates = true end
     local function entryFor(tgt)
         local e = entries[tgt]
         if not e then
@@ -5644,6 +5696,16 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         end,
         heal = function(tgt, amount)
             if not tgt then return 0 end
+            -- A mend aimed at an INTERRED body (or at anything grave-cold) lands as a wound instead, so
+            -- the preview has to show it as one -- a green number over a zombie the party is about to
+            -- burn down is the preview lying about the one thing the player needed to know. The toll is
+            -- unmitigated, so the previewed figure is the whole amount, exactly as it lands.
+            if Combat.healingInverted(tgt) and (amount or 0) > 0 then
+                -- Left to the sweep at the foot of abilityOutput to flag as lethal, like any other
+                -- damage total: it is the entry's WHOLE damage that decides, not this one contribution.
+                entryFor(tgt).damage = entryFor(tgt).damage + amount
+                return 0
+            end
             local hp = tgt.char.stats.health
             -- Clamp at the same ceiling Combat.applyHeal uses (max less any reserved health), so a
             -- previewed heal on a summoner never promises life the reservation has locked away.
@@ -5665,12 +5727,12 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         -- on every hover frame neither advances the count nor flips the branch it takes (Turning Year's
         -- fire/frost, the Unspent Blow's tally). Reads stay a plain `fx.user.<field>` and are truthful,
         -- since `fx.user` is the real unit -- the preview simply shows the branch THIS cast would run.
-        bank = function() end,
+        bank = function() touchesBoard() end,
         -- Read-only, so the dry run may answer truthfully; the mutating ones are inert.
         hasStatus = function(tgt, id) return tgt ~= nil and Status.has(tgt, id) end,
-        clearStatus = function() end,
-        swap = function() return false end,
-        drain = function() return 0 end,
+        clearStatus = function() touchesBoard() end,
+        swap = function() touchesBoard() return false end,
+        drain = function() touchesBoard() return 0 end,
         -- A dry run must not mutate resources; report the clamped gain without applying it, against
         -- the same ceiling Combat.restoreResource honours.
         restore = function(tgt, stat, amount)
@@ -5686,27 +5748,28 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         -- shoving one, stealing an item, cutting an initiative -- is inert in a dry run. `summon`
         -- and `copy` hand back a throwaway stand-in so an effect that goes on to use the returned
         -- unit doesn't fault out of the pcall and blank the tooltip.
-        placeTrap = function() return nil end,
-        placeHazard = function() return nil end,
-        placeWall = function() return nil end,
+        placeTrap = function() touchesBoard() return nil end,
+        placeHazard = function() touchesBoard() return nil end,
+        placeWall = function() touchesBoard() return nil end,
         -- Burying a charge and setting one off are board mutations, so both are inert here -- a dry run
         -- that planted a real fuse (and logged it) on every hover was the Saboteur's whole preview bug.
         -- plantCharge hands back a throwaway so a chained effect using the returned charge doesn't fault;
         -- detonate reports nobody hit, since a preview must never deal the blast it is only describing.
-        plantCharge = function() return {} end,
-        detonate = function() return 0 end,
+        plantCharge = function() touchesBoard() return {} end,
+        detonate = function() touchesBoard() return 0 end,
         -- A dry run must not take the caster off the board -- and it must not PRICE it either. The
         -- panel shows what a self-destruct does to everyone standing around it; the bomber's own
         -- departure is the ability, not a casualty of it, and neither the hover nor the AI's outcome
         -- score has a row for it. See the live helper in resolveCast for why it is a dismissal.
-        expendSelf = function() return false end,
+        expendSelf = function() touchesBoard() return false end,
         -- A dry run must not queue a cue the board would draw: the explosion is a picture of the cast,
-        -- not part of what it DOES, so the hover panel has no row for it and it stays silent here.
+        -- not part of what it DOES, so the hover panel has no row for it and it stays silent here --
+        -- and, being a picture, it does not count as touching the board either.
         burst = function() end,
-        dispel = function() return { revealed = 0, wallsDestroyed = 0 } end,
-        summon = function() return previewStandIn() end,
-        copy = function() return previewStandIn() end,
-        copyOf = function() return previewStandIn() end,
+        dispel = function() touchesBoard() return { revealed = 0, wallsDestroyed = 0 } end,
+        summon = function() touchesBoard() return previewStandIn() end,
+        copy = function() touchesBoard() return previewStandIn() end,
+        copyOf = function() touchesBoard() return previewStandIn() end,
         -- Inert like the rest, but it records WHERE the shove would leave its target, because that is
         -- the tile the target's own answer would be thrown from -- and a counter is gated on reach.
         -- Without this the hover promises a parry the mace then shoves out of range of (see
@@ -5731,19 +5794,21 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             end
             return 0
         end,
-        pull = function() return false end,
+        pull = function() touchesBoard() return false end,
         -- The object layer answers where a throw/drag GRABS from (read-only, truthful) but moves
         -- nothing: a shoved prop deals no damage to a unit, so there is no row for it to record. Present
         -- so a Push/Heave/Pull effect that reads the tile's furniture completes rather than faulting
         -- mid-build (the reason the whole table exists -- see Combat.abilityOutput's tail).
         objectAt = function(px, py) return Combat.throwableAt(combat, px, py, unit.side) end,
-        hurl = function() return 0, false end,
-        pullObject = function() return false end,
-        teleportUser = function() return false end,
-        teleport = function() return false end,
-        charge = function() return 0 end,
-        steal = function() return nil end,
-        reveal = function() end, -- knowledge only; nothing to preview on the timeline
+        hurl = function() touchesBoard() return 0, false end,
+        pullObject = function() touchesBoard() return false end,
+        teleportUser = function() touchesBoard() return false end,
+        teleport = function() touchesBoard() return false end,
+        charge = function() touchesBoard() return 0 end,
+        steal = function() touchesBoard() return nil end,
+        -- Knowledge only, so there is nothing to preview on the timeline -- but pulling a hidden trap
+        -- into the light IS something the cast does, so it counts as touching the board.
+        reveal = function() touchesBoard() end,
         -- Inert to the unit, but records where the pull would land its turn: a hasten cuts the target's
         -- current initiative, so its next turn slides EARLIER on the strip (Haste on an ally). No cause
         -- name -- the ghost reads "rushed forward" rather than a status.
@@ -5755,14 +5820,14 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         end,
         -- Board-mutating helpers are inert in a dry run; the read-only ones may answer truthfully.
         random = function() return 1 end,
-        cleanse = function() return 0 end,
+        cleanse = function() touchesBoard() return 0 end,
         corpseAt = function(x, y) return Combat.corpseAt(combat, x, y) end,
         downedAt = function(x, y) return Combat.downedAt(combat, x, y) end,
         corpsesIn = function(cells)
             return Combat.corpsesIn(combat, cells or Combat.aoeCells(combat, ab, tx, ty, unit))
         end,
-        reanimate = function() return false end,
-        raise = function() return previewStandIn() end,
+        reanimate = function() touchesBoard() return false end,
+        raise = function() touchesBoard() return previewStandIn() end,
         -- Dual Wield's preview: a sub-strike shows the weapon's post-mitigation damage on the target,
         -- so the tooltip totals the swings. setSpeed is inert here (the timeline isn't previewed).
         strikeWith = function(weapon)
@@ -5772,17 +5837,17 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             entryFor(target).damage = entryFor(target).damage + d
             return { damageDealt = d }
         end,
-        setSpeed = function() end,
-        grantExtraAction = function() return 0 end,
-        log = function() end,
+        setSpeed = function() touchesBoard() end,
+        grantExtraAction = function() touchesBoard() return 0 end,
+        log = function() end, -- flavour, not an effect: never counts as touching the board
         -- Board-mutating, so inert here -- but each still answers with the SHAPE its live twin does, or
         -- an effect that goes on to branch on the result would take a different path in the preview
         -- than it takes in the cast (see the note on fx.level above: a dry run missing a helper
         -- swallows the effect from that point on, silently).
-        clearCooldowns = function() return 0 end,
-        recall = function() return false end,
-        bounty = function() return 0 end,
-        consumeCorpse = function() return false end,
+        clearCooldowns = function() touchesBoard() return 0 end,
+        recall = function() touchesBoard() return false end,
+        bounty = function() touchesBoard() return 0 end,
+        consumeCorpse = function() touchesBoard() return false end,
     }
     if ab.effect then pcall(ab.effect, fx) end
     -- A damage total >= the target's current HP would drop it: flag the lethal blow.
@@ -5790,7 +5855,29 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         local hp = e.unit.char and e.unit.char.stats and e.unit.char.stats.health
         e.lethal = e.damage > 0 and hp ~= nil and e.damage >= (hp.current or 0)
     end
-    return { entries = entries, order = order }
+    return { entries = entries, order = order, mutates = mutates }
+end
+
+-- Pure: would this cast, aimed at (tx, ty), DO anything -- land on a unit, or touch the board at all?
+-- False is the swing into empty air: a cleaving axe or a spear's line aimed at open ground that its
+-- footprint catches nobody in, a bomb thrown where it will hurt no one. True the moment the dry run
+-- records an affected unit, or reaches for a helper that would place / summon / teleport / steal /
+-- reveal (see `mutates` in previewAbility).
+--
+-- This is what lets states/battle.lua resolve a click on a tile-aimed weapon. Those weapons -- every
+-- spear, axe and greatsword, whose aimed tile is a FACING rather than a victim -- make EVERY tile in
+-- reach a legal aim, so the move band is a subset of the cast band and no tile is left to mean "walk
+-- here". Reading what the cast would actually do gives the tile back: a swing that connects with
+-- nothing is a step. Ground-laying abilities (a bear trap, a summon, Writ of Fire) classify
+-- themselves, since placing IS doing something -- no per-item declaration needed.
+--
+-- An ability with no `effect` at all counts as doing nothing.
+function Combat.castDoesSomething(combat, unit, item, tx, ty)
+    local ab = item and item.activeAbility
+    if not (ab and ab.effect) then return false end
+    local preview = Combat.previewAbility(combat, unit, item, tx, ty)
+    if not preview then return false end
+    return #preview.order > 0 or preview.mutates == true
 end
 
 -- Pure: what `target` would throw BACK if `unit` struck it with `item` right now -- the standing
@@ -8504,6 +8591,103 @@ function Combat.controlWinner(combat)
     if pa > ea then return "party" end
     if ea > pa then return "enemy" end
     return combat.lastHolder -- nil when neither has ever held it: a genuine draw
+end
+
+-- Ticks until the node hops to its next waypoint, or nil for a node that never moves (a single
+-- waypoint, or no schedule). Derived from the clock alone, exactly as controlNodeIndex is, so the
+-- countdown a player reads is the same one both lockstep clients would compute.
+function Combat.controlMovesIn(combat)
+    local obj = combat and combat.objective
+    if not obj or obj.type ~= "control" then return nil end
+    local nodes = obj.nodes or {}
+    local every = obj.moveEvery
+    if #nodes <= 1 or not every or every <= 0 then return nil end
+    return every - ((combat.clock or 0) % every)
+end
+
+-- ---------------------------------------------------------------------------
+-- The objective, read for the UI
+-- ---------------------------------------------------------------------------
+
+-- The marked ground the objective is currently decided on: the tiles the board washes amber/green
+-- (ui/battle_map.lua drawObjective) and the tooltip describes. `control` follows its moving node, a
+-- `defend` with a charge follows the body it is fought over (which walks), and the authored tile
+-- objectives (`reach`/`hold`, and a `defend`'s anchor region) name fixed ground. Empty for an
+-- objective decided on bodies rather than ground (killAll, assassinate, survive) -- and for a defend
+-- whose charge has already fallen, where the loss is sealed and there is nothing left to mark.
+function Combat.objectiveGround(combat)
+    local obj = combat and combat.objective
+    if not obj then return {} end
+    if obj.type == "control" then return Combat.controlTiles(combat) end
+    if obj.type == "defend" and obj.protect then return Combat.protectedTiles(combat, obj.protect) end
+    return obj.tiles or {}
+end
+
+-- The time still owed on a timed objective, in TICKS, or nil for one that has no clock. `survive`
+-- counts down the elapsed clock; `hold` counts only the ticks the party actually held the ground
+-- (Combat.accrueHold), so its number stalls whenever the post is contested; `control` counts down to
+-- its tick limit. `defend` is NOT here: it is wave-based, not timed (see Combat.allWavesArrived).
+function Combat.objectiveRemaining(combat)
+    local obj = combat and combat.objective
+    if not obj then return nil end
+    if obj.type == "survive" then
+        return math.max(0, math.ceil((obj.duration or 0) - (combat.clock or 0)))
+    elseif obj.type == "hold" then
+        return math.max(0, math.ceil((obj.duration or 0) - (combat.heldTicks or 0)))
+    elseif obj.type == "control" then
+        return math.max(0, math.ceil((obj.maxTicks or 0) - (combat.clock or 0)))
+    end
+    return nil
+end
+
+local function tileIn(tiles, x, y)
+    for _, t in ipairs(tiles or {}) do
+        if t.x == x and t.y == y then return true end
+    end
+    return false
+end
+
+-- What the objective makes of the tile at (x, y), or nil when that tile is not marked ground. The
+-- read behind the wash: which fight is being had over this square, and how it currently stands. The
+-- board can only say "marked" and "counting" in two colours, so everything else about the contest --
+-- who holds it, the scores, when the node hops -- has to be readable by hovering it.
+--
+-- Model-side and free of any UI, so the tooltip (ui/tile_tooltip.lua) has only to phrase what it is
+-- handed, and so this can be tested headless:
+--
+--   { type,               -- the objective's type ("control" / "hold" / "reach" / "defend")
+--     tiles,              -- all the marked ground (this tile is one of it)
+--     party, enemy,       -- is either side standing on that ground right now
+--     holder,             -- the side holding it ALONE ("party"/"enemy"), else nil (contested/empty)
+--     playerSide,         -- the side the local player commands (a draft/PvP fight can be either)
+--     remaining,          -- ticks still owed on the objective's clock, when it has one
+--     movesIn, scores,    -- control only: the node's hop countdown, and both banked scores
+--     who, protect }      -- the char id a reach / defend objective is pointed at
+function Combat.objectiveTileInfo(combat, x, y)
+    local obj = combat and combat.objective
+    if not obj then return nil end
+    local tiles = Combat.objectiveGround(combat)
+    if not tileIn(tiles, x, y) then return nil end
+
+    local info = {
+        type = obj.type,
+        tiles = tiles,
+        party = Combat.occupies(combat, tiles, "party"),
+        enemy = Combat.occupies(combat, tiles, "enemy"),
+        playerSide = combat.playerSide or "party",
+        remaining = Combat.objectiveRemaining(combat),
+        who = obj.who,
+        protect = obj.protect,
+    }
+    -- Sole occupancy is the whole rule both tile objectives turn on (holdsGround / controlledBy):
+    -- one boot from the other side and nobody is holding anything.
+    if info.party ~= info.enemy then info.holder = info.party and "party" or "enemy" end
+    if obj.type == "control" then
+        info.movesIn = Combat.controlMovesIn(combat)
+        info.scores = { party = Combat.scoreFor(combat, "party"),
+                        enemy = Combat.scoreFor(combat, "enemy") }
+    end
+    return info
 end
 
 -- Have all of a wave-based `defend` fight's reinforcement waves walked on? A wave arrives once the

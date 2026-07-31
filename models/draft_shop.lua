@@ -1,6 +1,14 @@
--- The Draft-mode store: what a round offers to buy. Each roll shows a handful of CHARACTERS drawn
--- from the run's draftable pool (which grows by round, see models/draft_run.lua) and a handful of
--- GEAR entries scaled to the round, at prices the run's own wallet pays.
+-- The Draft-mode store: what a round offers to buy. Each roll shows a few CHARACTERS drawn from the
+-- run's draftable pool (which grows by round, see models/draft_run.lua) and a rather larger row of GEAR
+-- scaled to the round, at prices the run's own wallet pays.
+--
+-- GEAR IS THE DRAFT. A bought character arrives as a chassis -- its signature weapon and verb, and
+-- eight empty cells (models/draft_chassis.lua) -- so almost everything a party fights with is a piece
+-- the player chose off the gear row and read before buying. The unit row decides which four bodies
+-- carry the build, not what the build is.
+--
+-- Gear is drawn from THE RUN'S SHELF (DraftShop.shelf): a fixed subset of the item list, seeded once per
+-- run, so the same pieces recur and become learnable instead of a fresh 472-item lottery every roll.
 --
 -- The roll is DETERMINISTIC from the run's seed, its round, and how many times it has been rerolled
 -- (Combat.newRandom, the same pure-Lua RNG the arena seeds use) -- so a run reproduces exactly and the
@@ -14,12 +22,17 @@ local Item = require("models.item")
 local Character = require("models.character")
 local Combat = require("models.combat")
 local DraftRun = require("models.draft_run")
+local DraftChassis = require("models.draft_chassis")
 
 local DraftShop = {}
 
--- How many of each kind a roll shows.
-DraftShop.UNIT_SLOTS = 4
-DraftShop.GEAR_SLOTS = 3
+-- How many of each kind a roll shows. GEAR outnumbers UNITS, because gear is the draft: a bought unit is
+-- stripped to its chassis (models/draft_chassis.lua), so almost everything a party ends up carrying is a
+-- piece the player picked off this row. Three unit offers still fills the four-unit party across rounds
+-- one and two on a 10g budget at 3g each. The floor is that round 1 must field >= UNIT_SLOTS units --
+-- data/draft/pool.lua's opening wave has seven, so three is safe.
+DraftShop.UNIT_SLOTS = 3
+DraftShop.GEAR_SLOTS = 4
 
 -- What a drafted character costs. Flat, like the units in the game that inspired this: the decision is
 -- WHICH unit and whether to chase a duplicate, not affording one.
@@ -76,17 +89,94 @@ local function sampleDistinct(rng, list, k)
     return picks
 end
 
--- The gear ids buyable in `round`: priced, unbound, and no dearer at base than the round's cap. Sorted
--- for a reproducible sample. A fresh list each call.
-function DraftShop.gearCandidates(round)
-    local cap = DraftShop.gearPriceCap(round)
-    local ids = {}
-    for id, def in pairs(Item.defs) do
-        if def.price and def.price <= cap and not def.bound then
-            ids[#ids + 1] = id
+-- Every priced, unbound item in the game, sorted -- the universe a run's shelf is drawn from. Computed
+-- once: Item.defs does not change at runtime.
+local allGearIds
+local function everyGearId()
+    if not allGearIds then
+        allGearIds = {}
+        for id, def in pairs(Item.defs) do
+            if def.price and not def.bound then allGearIds[#allGearIds + 1] = id end
+        end
+        table.sort(allGearIds)
+    end
+    return allGearIds
+end
+
+-- ---------------------------------------------------------------------------
+-- The run shelf
+-- ---------------------------------------------------------------------------
+
+-- How many items each price band contributes to a run's shelf. See DraftShop.shelf for why the draw is
+-- banded rather than uniform.
+DraftShop.SHELF_PER_BAND = 6
+
+-- The highest round a shelf is banded out to -- a run reaches roughly twelve rounds (the round advances
+-- after EVERY battle, win or loss), so this covers the whole ladder with room over.
+DraftShop.SHELF_BANDS = 12
+
+-- THE RUN'S SHELF: the fixed subset of gear this run will ever be offered, drawn once from the run's
+-- seed. Every roll for the rest of the run draws from it.
+--
+-- Why a run has a shelf at all: the old shop drew from every priced item under the round's cap, which is
+-- ~12 ids at round 1 but hundreds of the 472 by mid-run. Across a twelve-round run you never saw the
+-- same piece twice -- so you never learned one, could never plan around one coming back, and item
+-- merging (which needs a second copy of the same id, see DraftRun.canMergeItems) was pure luck. A
+-- shelf makes repeats the norm, which is what makes the items learnable and merging reachable.
+--
+-- The draw is BANDED, not uniform. Gear is gated by DraftShop.gearPriceCap(round), and only about a
+-- dozen of the 472 items sit under round 1's cap of 70 -- a uniform draw of SHELF_PER_BAND *
+-- SHELF_BANDS ids would land maybe two of them and leave the opening shop unable to fill a row. So the
+-- candidates are partitioned by the bands the successive caps carve out, and each band contributes its
+-- own draw. That guarantees every round a workable eligible set, keeps the shelf growing monotonically
+-- with the round, and -- because the low band is so small -- puts half the cheap tier on your shelf
+-- every run, exactly where repeats matter most.
+--
+-- Derived from run.rngSeed, which snapshot/restore already persists (models/draft_run.lua), so the shelf
+-- survives a quit with NO save-schema change. Memoized on `run._shelf`, a leading-underscore cache the
+-- snapshot deliberately does not write.
+function DraftShop.shelf(run)
+    if run._shelf then return run._shelf end
+
+    local rng = Combat.newRandom((run.rngSeed or 1) * 7 + 3)
+    local candidates = everyGearId()
+
+    -- Partition by band: band r holds the ids the round-r cap admits but the round-(r-1) cap did not.
+    local bands, lower = {}, 0
+    for r = 1, DraftShop.SHELF_BANDS do
+        local cap = DraftShop.gearPriceCap(r)
+        local band = {}
+        for _, id in ipairs(candidates) do
+            local price = Item.defs[id].price
+            if price > lower and price <= cap then band[#band + 1] = id end
+        end
+        bands[r] = band
+        lower = cap
+    end
+
+    local shelf, seen = {}, {}
+    for r = 1, DraftShop.SHELF_BANDS do
+        for _, id in ipairs(sampleDistinct(rng, bands[r], DraftShop.SHELF_PER_BAND)) do
+            if not seen[id] then
+                seen[id] = true
+                shelf[#shelf + 1] = id
+            end
         end
     end
-    table.sort(ids)
+    table.sort(shelf)
+
+    run._shelf = shelf
+    return shelf
+end
+
+-- The gear ids buyable this round: the RUN'S SHELF filtered to what the round's power gate admits.
+-- Sorted for a reproducible sample. A fresh list each call.
+function DraftShop.gearCandidates(run)
+    local cap = DraftShop.gearPriceCap(run and run.round)
+    local ids = {}
+    for _, id in ipairs(DraftShop.shelf(run or {})) do
+        if Item.defs[id].price <= cap then ids[#ids + 1] = id end
+    end
     return ids
 end
 
@@ -143,7 +233,7 @@ function DraftShop.roll(run)
 
     local pool = DraftRun.pool(run.round)
     local level = DraftShop.gearLevel(run.round)
-    local gearIds = DraftShop.gearCandidates(run.round)
+    local gearIds = DraftShop.gearCandidates(run)
 
     run.shop.units = rollSection(rng, run.shop.units, pool, DraftShop.UNIT_SLOTS, unitEntry)
     run.shop.gear = rollSection(rng, run.shop.gear, gearIds, DraftShop.GEAR_SLOTS,
@@ -168,18 +258,45 @@ end
 -- Buying
 -- ---------------------------------------------------------------------------
 
--- Buy the character in `entry`: spend its price, instantiate it, and bench it. Removes the entry from
--- the shop on success. Returns the new character, or nil + reason ("gold" | "bench full" | "gone").
+-- Buy the character in `entry`: spend its price, instantiate it as a CHASSIS (stripped to its signature
+-- weapon and verb -- see models/draft_chassis.lua for why a drafted body does not arrive wearing its
+-- whole blueprint kit), and bench it. Removes the entry from the shop on success. Returns the new
+-- character, or nil + reason ("gold" | "bench full" | "gone").
 function DraftShop.buyUnit(run, entry)
     if not entry or entry.kind ~= "unit" then return nil, "gone" end
     if DraftRun.rosterFull(run) then return nil, "roster full" end
     if not DraftRun.canAfford(run, entry.price) then return nil, "gold" end
-    local char = Character.instantiate(entry.id)
+    local char = DraftChassis.instantiate(entry.id)
     if not char then return nil, "gone" end
     DraftRun.spend(run, entry.price)
     DraftRun.addUnit(run, char)
     DraftShop.take(run.shop and run.shop.units, entry)
     return char
+end
+
+-- Buy the character in `entry` and combine it straight INTO `target`, an already-drafted unit of the
+-- same blueprint -- what dragging a store card onto its own kind does. Exactly a buy followed by a merge
+-- and nothing else, so the one-motion shortcut can never pay out differently from the long way round:
+-- the kept unit climbs one growth level, and the bought chassis's signatures cascade into the target's
+-- copies of the very same pieces (DraftRun.mergeUnit), so a duplicate purchase upgrades the gear rather
+-- than littering the stash with a second weapon the unit is already holding.
+--
+-- Deliberately does NOT check rosterFull. The bought body is consumed by the merge in the same breath and
+-- never occupies a seat, so a full formation and a full bench are no reason to refuse an upgrade -- which
+-- is the whole point of the shortcut late in a run, when there is nowhere to park a duplicate.
+--
+-- Returns the merge result ({ unit, fromLevel, toLevel }), or nil + reason ("gone" | "gold" | "cannot merge").
+function DraftShop.buyUnitInto(run, entry, target)
+    if not entry or entry.kind ~= "unit" then return nil, "gone" end
+    if not DraftRun.canMergeIdInto(entry.id, target) then return nil, "cannot merge" end
+    if not DraftRun.canAfford(run, entry.price) then return nil, "gold" end
+    local char = DraftChassis.instantiate(entry.id)
+    if not char then return nil, "gone" end
+    local result, why = DraftRun.mergeUnit(run, char, target)
+    if not result then return nil, why or "cannot merge" end
+    DraftRun.spend(run, entry.price)
+    DraftShop.take(run.shop and run.shop.units, entry)
+    return result
 end
 
 -- Buy the gear in `entry`: spend its price, instantiate it at the offered level, and drop it in the run

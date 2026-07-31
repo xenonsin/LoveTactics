@@ -22,6 +22,11 @@ return {
         "armor_chainmail",       "consumable_healing_potion", false,
     },
     defaultAction = "weapon_silencing_blade",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_silencing_blade",
+    signatureAbility = "ability_mana_sunder",
     -- Sunder the mana of any caster it can close on.
     ai = {
         { priority = "high", act = "attack", item = "ability_mana_sunder",

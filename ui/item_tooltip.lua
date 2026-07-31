@@ -7,6 +7,14 @@
 --   ItemTooltip.draw(item, mx, my, maxRight, actor)   -- actor (optional) gates the ability cost:
 --                                                     -- it renders red + a note when unaffordable
 --
+-- `draw` is measure-then-paint, and both halves are public for a caller that has to place the box
+-- itself rather than hang it off a cursor:
+--
+--   ItemTooltip.measure(item, actor) -> layout      -- the expensive half; memoizable per item
+--   ItemTooltip.paint(layout, x, y, opts) -> box    -- pinned exactly at (x, y); opts.accent = border
+--
+-- The draft unit sheet uses them to open one tooltip per carried piece at once (states/draft.lua).
+--
 -- Whatever the tooltip NAMES it also defines: a sibling column (ui/glossary_panel.lua, gathered by
 -- models/glossary.lua) opens beside the box carrying one line on each status the item can inflict and
 -- each keyword its ability declares. It is drawn from here so every caller in the game gets it.
@@ -30,6 +38,10 @@ local Colors = require("ui.colors")
 local Theme = require("ui.theme")
 
 local ItemTooltip = {}
+
+-- The box's fixed width. Public so a caller that has to choose a side for itself (the debug menu
+-- floats the tooltip beside its dropdown) can ask whether the box fits before anchoring it.
+ItemTooltip.WIDTH = 244
 
 local titleFont, bodyFont, smallFont, powerFont
 local function fonts()
@@ -566,17 +578,21 @@ local function buildBlocks(item, actor, innerW, out)
     return blocks
 end
 
--- Draw the tooltip for `item` anchored near (mx, my). `maxRight` caps the box's right edge so it
--- never slides under a side panel (defaults to the screen width). No-op when item is nil.
-function ItemTooltip.draw(item, mx, my, maxRight, actor)
-    if not item then return end
+-- Measure `item` into a layout the paint pass can render without recomputing any of it: the ordered
+-- blocks with their wrapped line counts, the box's size, and the one ability dry run everything quotes.
+--
+-- Split out from `draw` because a caller showing SEVERAL tooltips at once (the draft unit sheet opens
+-- one per carried piece) has to know how tall each box is BEFORE it can decide where any of them goes.
+-- It is also the expensive half -- the dry run and the wrapping live here -- so such a caller can
+-- memoize the layout per item and repaint it every frame for free.
+function ItemTooltip.measure(item, actor)
+    if not item then return nil end
     local title, body, small, power = fonts()
-    local pad, w = 9, 244
+    local pad, w = 9, ItemTooltip.WIDTH
     local innerW = w - pad * 2
-    maxRight = maxRight or Scale.WIDTH
 
-    -- One dry run per hover, shared: the blocks below quote its numbers and the glossary column at the
-    -- foot of this function names the statuses it turned up.
+    -- One dry run per hover, shared: the blocks below quote its numbers and the glossary column beside
+    -- the box names the statuses it turned up.
     local out = Combat.abilityOutput(actor, item) or false
     local blocks = buildBlocks(item, actor, innerW, out)
     local titleH, bodyH, smallH, powerH = title:getHeight(), body:getHeight(), small:getHeight(), power:getHeight()
@@ -613,18 +629,31 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
     end
     h = h + pad
 
-    -- Position near the cursor; flip left and clamp so the box stays within [4, maxRight].
-    local bx = mx + 14
-    local maxX = maxRight - w - 4
-    if bx > maxX then bx = mx - w - 14 end
-    bx = math.max(4, math.min(bx, maxX))
-    local by = math.max(4, math.min(my + 16, Scale.HEIGHT - h - 4))
+    return { item = item, actor = actor, out = out, blocks = blocks, w = w, h = h }
+end
+
+-- Paint a measured `layout` with its top-left pinned exactly at (bx, by) -- no cursor offset, no
+-- clamping: the caller placing it has already chosen the spot. `opts.accent` overrides the border tint
+-- (the draft cluster rings the piece the pointer is on, so a hovered icon and its box are visibly the
+-- same thing). Returns the box's { x, y, w, h }, which is what GlossaryPanel.draw anchors off.
+function ItemTooltip.paint(layout, bx, by, opts)
+    if not layout then return nil end
+    local title, body, small, power = fonts()
+    local pad, w = 9, layout.w
+    local innerW = w - pad * 2
+    local blocks = layout.blocks
+    local titleH, bodyH, smallH, powerH = title:getHeight(), body:getHeight(), small:getHeight(), power:getHeight()
+    local h = layout.h
 
     Theme.set(Theme.panel)
     love.graphics.rectangle("fill", bx, by, w, h, 4, 4)
-    Theme.set(Theme.frame) -- bone-gold border: the mock frames the tooltip in trim, not the type accent
-    love.graphics.setLineWidth(1)
+    -- bone-gold border: the mock frames the tooltip in trim, not the type accent
+    local accent = opts and opts.accent
+    if accent then love.graphics.setColor(accent[1], accent[2], accent[3], accent[4] or 1)
+    else Theme.set(Theme.frame) end
+    love.graphics.setLineWidth(accent and 2 or 1)
     love.graphics.rectangle("line", bx, by, w, h, 4, 4)
+    love.graphics.setLineWidth(1)
 
     local ty = by + pad
     for _, b in ipairs(blocks) do
@@ -716,12 +745,32 @@ function ItemTooltip.draw(item, mx, my, maxRight, actor)
         end
     end
 
+    love.graphics.setColor(1, 1, 1)
+    return { x = bx, y = by, w = w, h = h }
+end
+
+-- Draw the tooltip for `item` anchored near (mx, my). `maxRight` caps the box's right edge so it
+-- never slides under a side panel (defaults to the screen width). No-op when item is nil.
+function ItemTooltip.draw(item, mx, my, maxRight, actor)
+    local layout = ItemTooltip.measure(item, actor)
+    if not layout then return end
+    local w, h = layout.w, layout.h
+    maxRight = maxRight or Scale.WIDTH
+
+    -- Position near the cursor; flip left and clamp so the box stays within [4, maxRight].
+    local bx = mx + 14
+    local maxX = maxRight - w - 4
+    if bx > maxX then bx = mx - w - 14 end
+    bx = math.max(4, math.min(bx, maxX))
+    local by = math.max(4, math.min(my + 16, Scale.HEIGHT - h - 4))
+
+    local box = ItemTooltip.paint(layout, bx, by)
+
     -- The definitions for every proper noun this tooltip just dropped -- the statuses it applies, the
     -- keywords its ability declares -- in a sibling column beside the box. Drawn last, and positioned
     -- off the box we just measured, so it lands next to the tooltip rather than under the cursor.
-    GlossaryPanel.draw(Glossary.forItem(item, actor, out), { x = bx, y = by, w = w, h = h }, maxRight)
-
-    love.graphics.setColor(1, 1, 1)
+    GlossaryPanel.draw(Glossary.forItem(item, actor, layout.out), box, maxRight)
+    return box
 end
 
 return ItemTooltip

@@ -2,7 +2,8 @@
 -- Like ui/building_map.lua it supports mouse + keyboard + gamepad; the input moves
 -- a player token along the trail network (hold a direction to keep walking; single
 -- taps move one tile) and the camera follows. Stepping onto an encounter tile fires
--- opts.onEncounter(cell); keys are picked up automatically and unlock their gate.
+-- opts.onEncounter(cell) -- and opts.onApproach(cell) one beat earlier, while the token still stands on
+-- the tile before it; keys are picked up automatically and unlock their gate.
 --
 -- Tiles are drawn from a tileset spritesheet (quads + SpriteBatch). If the art is
 -- missing (Sprite.load returned a path string), it falls back to colored rects per
@@ -41,6 +42,9 @@ function OverworldMap.new(grid, opts)
     self.grid = grid
     self.onEncounter = opts.onEncounter
     self.onArrive = opts.onArrive -- fired on EVERY landed tile (per-step abilities: forage, scouting)
+    -- Fired the instant BEFORE the token steps onto an un-engaged encounter, while it still stands on
+    -- the tile it is leaving and nothing about the step has happened yet. The autosave seam: see :step.
+    self.onApproach = opts.onApproach
     self.font = opts.font or Theme.body(16)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.heldDir = nil   -- { dx, dy } of the direction currently held (any input)
@@ -141,6 +145,13 @@ end
 function OverworldMap:step(dx, dy)
     local nx, ny = self.px + dx, self.py + dy
     if not self.grid:isWalkable(nx, ny, self.keysHeld) then return false end
+    -- About to walk into an un-engaged stop: hand the caller this moment FIRST, before the token moves,
+    -- the fog lifts, or :arrive fires anything. states/game.lua autosaves here, so a run saved on the
+    -- brink of a fight resumes standing one tile shy of it -- in the overworld, free to open the Loadout
+    -- -- rather than being dropped straight back into the battle. Everything the step then grants (a
+    -- step ability's forage, the revealed fog) is outside the snapshot, so re-walking it grants it once.
+    local dest = self.grid:get(nx, ny)
+    if self.onApproach and dest and dest.encounter and not dest.cleared then self.onApproach(dest) end
     self.slidePrevX, self.slidePrevY = self.px, self.py -- slide the token from here
     self.slideT = self.slideDur
     self.px, self.py = nx, ny

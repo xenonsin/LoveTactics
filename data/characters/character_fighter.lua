@@ -31,6 +31,10 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so its
     -- range shows, and driving the basic click-to-use. The player can re-pin any ability.
     defaultAction = "weapon_iron_axe",
+    -- The one item that IS this unit. Draft mode strips a bought body down to it
+    -- (models/draft_chassis.lua); a plain class template owns no signature verb, which is
+    -- exactly what makes it the legible round-one pick.
+    signatureWeapon  = "weapon_iron_axe",
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.
     ai = {
         { priority = "high", act = "attack", targetPref = "lowest_hp",

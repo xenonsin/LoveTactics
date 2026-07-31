@@ -316,4 +316,79 @@ return {
             assert(Combat.outcomeFor(open, "enemy") == nil, "still stopping them")
         end,
     },
+
+    -- -----------------------------------------------------------------------
+    -- The marked ground, read for the UI
+    --
+    -- Combat.objectiveGround is the ONE answer to "which tiles is this fight decided on": the board
+    -- washes exactly those (ui/battle_map.lua drawObjective) and the hover tooltip describes exactly
+    -- those (Combat.objectiveTileInfo -> ui/tile_tooltip.lua), so the wash and the box can never
+    -- disagree about what a tile is.
+    -- -----------------------------------------------------------------------
+    {
+        name = "objectiveGround names the tiles per type, and nothing for a body-based objective",
+        fn = function()
+            local ground = { { x = 4, y = 4 } }
+            local hold = fakeCombat({ unit("party", 1, 1) }, { type = "hold", tiles = ground })
+            assert(Combat.objectiveGround(hold)[1].x == 4, "hold marks its authored ground")
+
+            local reach = fakeCombat({ unit("party", 1, 1) }, { type = "reach", tiles = ground })
+            assert(#Combat.objectiveGround(reach) == 1, "so does reach")
+
+            -- A defend follows the body it is fought over, since the charge WALKS.
+            local driver = named("party", 6, 7, "character_caravan_driver")
+            local defend = fakeCombat({ driver },
+                { type = "defend", tiles = ground, protect = "character_caravan_driver" })
+            local marked = Combat.objectiveGround(defend)
+            assert(#marked == 1 and marked[1].x == 6 and marked[1].y == 7,
+                "a defend marks where the charge stands, not the anchor region")
+            driver.alive = false
+            assert(#Combat.objectiveGround(defend) == 0, "a fallen charge leaves nothing to mark")
+
+            assert(#Combat.objectiveGround(fakeCombat({}, { type = "killAll" })) == 0,
+                "a fight decided on bodies marks no ground")
+        end,
+    },
+    {
+        name = "objectiveTileInfo reads only marked tiles, and reports the contest over them",
+        fn = function()
+            local ground = { { x = 4, y = 4 } }
+            local enemy = unit("enemy", 9, 9)
+            local combat = fakeCombat({ unit("party", 4, 4), enemy },
+                { type = "hold", tiles = ground, duration = 10 })
+
+            assert(Combat.objectiveTileInfo(combat, 5, 4) == nil, "an ordinary tile has no objective read")
+
+            local info = Combat.objectiveTileInfo(combat, 4, 4)
+            assert(info and info.type == "hold", "the marked tile reads as the hold")
+            assert(info.holder == "party" and info.party and not info.enemy,
+                "the party stands on it alone, so it holds it")
+            assert(info.remaining == 10, "the whole duration is still owed, got " .. tostring(info.remaining))
+
+            -- An enemy boot on the same ground: occupied by both, held by neither -- the distinction
+            -- the board's single amber wash cannot make, and the reason the tooltip exists.
+            enemy.x, enemy.y = 4, 4
+            info = Combat.objectiveTileInfo(combat, 4, 4)
+            assert(info.holder == nil and info.party and info.enemy, "a contested tile is held by nobody")
+
+            combat.heldTicks = 4
+            assert(Combat.objectiveTileInfo(combat, 4, 4).remaining == 6,
+                "the countdown quotes the ticks still owed, not the ticks banked")
+        end,
+    },
+    {
+        name = "a reach/defend tile read carries the body the objective is pointed at",
+        fn = function()
+            local reach = fakeCombat({ named("party", 1, 8, "character_caravan_driver") },
+                { type = "reach", tiles = { { x = 3, y = 1 } }, who = "character_caravan_driver" })
+            local info = Combat.objectiveTileInfo(reach, 3, 1)
+            assert(info.who == "character_caravan_driver", "the crossing names the charge that must cross")
+            assert(info.remaining == nil, "a reach has no clock to quote")
+
+            local defend = fakeCombat({ named("party", 6, 7, "character_caravan_driver") },
+                { type = "defend", tiles = { { x = 4, y = 4 } }, protect = "character_caravan_driver" })
+            assert(Combat.objectiveTileInfo(defend, 6, 7).protect == "character_caravan_driver",
+                "the defended tile names the body being kept alive")
+        end,
+    },
 }

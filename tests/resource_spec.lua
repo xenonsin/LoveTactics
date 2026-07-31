@@ -115,13 +115,15 @@ return {
     {
         name = "Parasitic Staff deals damage and refunds mana to the wielder on hit",
         fn = function()
-            local priest = Character.instantiate("character_priest")
+            -- The MAGE is the staff's wielder here: the generic priest carries the censer, its own
+            -- family's arm (data/characters/character_priest.lua). This case is about the staff.
+            local caster = Character.instantiate("character_mage")
             local mana0 = 10 -- wounded well clear of the ceiling, so the whole siphon lands
-            priest.stats.mana.current = mana0
-            local c = Combat.new(arena(6, 6), { unit(priest, 1, 1) }, { unit("character_bandit", 2, 1) })
+            caster.stats.mana.current = mana0
+            local c = Combat.new(arena(6, 6), { unit(caster, 1, 1) }, { unit("character_bandit", 2, 1) })
             local pu, bandit = c.units[1], c.units[2]
             local staff = itemNamed(pu.char, "weapon_parasitic_staff")
-            assert(staff, "priest carries the parasitic staff")
+            assert(staff, "the mage carries the parasitic staff")
             -- The refund is a literal inside the staff's own effect function, so it cannot be read
             -- off a field the way the stamina cost can. Named here so the sum stays legible.
             local SIPHON = 5

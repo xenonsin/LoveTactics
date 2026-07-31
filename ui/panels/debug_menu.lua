@@ -9,7 +9,10 @@
 -- / Esc / Backspace / B pops one, and popping the root closes. Long lists (every status, the whole
 -- character and item catalogs) scroll a fixed viewport window and can be TYPE-TO-SEARCH filtered:
 -- typing letters on any list page narrows it by a case-insensitive substring on the row label (shown
--- as `/query` in the header); Backspace edits the query and Esc clears it before it backs out. Every action calls the underlying
+-- as `/query` in the header); Backspace edits the query and Esc clears it before it backs out.
+-- The Items pages (Inspect / Give item / Remove item) name items rather than commands, so the
+-- cursored row floats the game's normal item tooltip beside the box -- see DebugMenu:drawItemTooltip.
+-- Every action calls the underlying
 -- Combat / Status / Hazard / ... model function directly -- the `fx.*` layer is per-cast state that
 -- only exists inside resolveCast, so a debug tool that pokes the board out-of-turn must not use it.
 --
@@ -29,6 +32,7 @@ local Hazard = require("models.hazard")
 local Trap = require("models.trap")
 local Prop = require("models.prop")
 local Arena = require("models.arena")
+local ItemTooltip = require("ui.item_tooltip")
 
 local DebugMenu = {}
 DebugMenu.__index = DebugMenu
@@ -165,7 +169,7 @@ function DebugMenu.new(opts)
     local function inspectItemsPage()
         local rows = {}
         for _, item in ipairs(Character.eachItem(u.char)) do
-            rows[#rows + 1] = { label = item.name or item.id, kind = "info" }
+            rows[#rows + 1] = { label = item.name or item.id, kind = "info", item = item }
         end
         if #rows == 0 then rows[1] = { label = "(no items)", kind = "info" } end
         return listPage("Inspect items", rows)
@@ -175,11 +179,15 @@ function DebugMenu.new(opts)
         local rows = {}
         for _, id in ipairs(sortedIds(Item.defs)) do
             local def = Item.defs[id]
-            rows[#rows + 1] = { label = def.name or id, kind = "action", act = function()
-                -- Re-run Trait.attach so an item handed over mid-battle actually contributes its traits
-                -- (they are otherwise snapshotted only when a unit joins the fight).
-                if Combat.grantItem(combat, u, id) then Trait.attach(u) end
-            end }
+            rows[#rows + 1] = { label = def.name or id, kind = "action",
+                -- The hover tooltip's subject, built on demand: this page lists the whole catalog and
+                -- only the row you stop on is ever inspected (DebugMenu:hoveredItem caches it).
+                itemGet = function() return Item.instantiate(id) end,
+                act = function()
+                    -- Re-run Trait.attach so an item handed over mid-battle actually contributes its
+                    -- traits (they are otherwise snapshotted only when a unit joins the fight).
+                    if Combat.grantItem(combat, u, id) then Trait.attach(u) end
+                end }
         end
         return listPage("Give item", rows)
     end
@@ -187,7 +195,7 @@ function DebugMenu.new(opts)
     local function removeItemPage()
         local rows = {}
         for _, item in ipairs(Character.eachItem(u.char)) do
-            rows[#rows + 1] = { label = item.name or item.id, kind = "action",
+            rows[#rows + 1] = { label = item.name or item.id, kind = "action", item = item,
                 act = function() Character.removeItem(u.char, item) end }
         end
         if #rows == 0 then rows[1] = { label = "(no items)", kind = "info" } end
@@ -430,6 +438,19 @@ function DebugMenu:ensureVisible(page)
     page.scroll = math.max(0, math.min(page.scroll, #viewRows(page) - vis))
 end
 
+-- The item the cursored row stands for, or nil on a row that names none. The Items pages tag their
+-- rows with either a live `item` (Inspect / Remove, which point at the unit's own instances) or an
+-- `itemGet` builder (Give item, which would otherwise instantiate the entire catalog to list it);
+-- the builder's result is cached back onto the row, so hovering costs one instantiate per entry.
+function DebugMenu:hoveredItem()
+    local page = self:top()
+    if page.kind ~= "list" then return nil end
+    local row = viewRows(page)[page.cursor]
+    if not row then return nil end
+    if not row.item and row.itemGet then row.item = row.itemGet() end
+    return row.item
+end
+
 -- Fire the row `idx` on the current list page: descend a submenu, run an action (then close), or
 -- ignore an info row. Any mutation is followed by refresh() so the board/turn strip re-derive.
 function DebugMenu:activate(idx)
@@ -496,8 +517,27 @@ function DebugMenu:draw()
         self:drawStepper(page, fh)
     else
         self:drawList(page, fh)
+        self:drawItemTooltip(page)
     end
     love.graphics.setColor(1, 1, 1)
+end
+
+-- Float the shared item tooltip (ui/item_tooltip.lua) beside the box while an item row is cursored,
+-- so Give item / Inspect / Remove read as more than a list of names. It follows the CURSOR, not the
+-- pointer -- mousemoved parks the cursor under the mouse, so keyboard and pad get the same card.
+-- The box is pinned to the menu's right edge (left when there is no room, forced by capping the
+-- tooltip's own maxRight at our left edge), never over the rows it describes. battle.lua draws the
+-- debug menu last, so this lands above the board and the combat panel.
+function DebugMenu:drawItemTooltip(page)
+    local item = self:hoveredItem()
+    if not item then return end
+    local rowY = self.y + PAD + HEADER_H + (page.cursor - page.scroll - 1) * ROW_H
+    local right = self.x + self.w
+    if right + ItemTooltip.WIDTH + 18 <= Scale.WIDTH then
+        ItemTooltip.draw(item, right, rowY - 16, Scale.WIDTH, self.unit)
+    else
+        ItemTooltip.draw(item, self.x, rowY - 16, self.x, self.unit)
+    end
 end
 
 function DebugMenu:drawList(page, fh)
@@ -514,7 +554,9 @@ function DebugMenu:drawList(page, fh)
         local row = rows[idx]
         if row then
             local ry = bodyY + (i - 1) * ROW_H
-            if idx == page.cursor and row.kind ~= "info" then
+            -- An info row is inert and normally draws no cursor -- unless it carries an item, where
+            -- the ring is what tells you which name the floating tooltip belongs to (Inspect items).
+            if idx == page.cursor and (row.kind ~= "info" or row.item or row.itemGet) then
                 Theme.set(Theme.slot)
                 love.graphics.rectangle("fill", self.x + 2, ry, self.w - 4, ROW_H)
                 Theme.set(Theme.cursor)
@@ -583,7 +625,8 @@ function DebugMenu:cursorKind(x, y)
     local page = self:top()
     if page.kind == "list" then
         local idx = self:rowAt(x, y)
-        if idx and page.rows[idx].kind ~= "info" then return "hand" end
+        local row = idx and viewRows(page)[idx] -- the filtered view, which is what rowAt indexes
+        if row and row.kind ~= "info" then return "hand" end
     else
         if pointIn(self.stepLeft, x, y) or pointIn(self.stepRight, x, y) or pointIn(self.applyRect, x, y) then
             return "hand"

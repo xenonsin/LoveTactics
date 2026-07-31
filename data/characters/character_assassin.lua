@@ -21,6 +21,11 @@ return {
         "armor_leather_armor", "consumable_healing_potion", false,
     },
     defaultAction = "weapon_quietus",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_quietus",
+    signatureAbility = "ability_coup_de_grace",
     -- Execute anything under half; otherwise strike from the shadows.
     ai = {
         { priority = "urgent", act = "attack", item = "ability_coup_de_grace", targetPref = "lowest_hp",

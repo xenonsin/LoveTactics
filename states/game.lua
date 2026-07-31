@@ -201,7 +201,7 @@ local function clearRun()
 end
 
 -- Persist the run if one is active (a resumable board quest). No-op otherwise, so it is safe to sprinkle at
--- every point the board changes -- entering the map, stepping onto an encounter, and resolving one. The
+-- every point the board changes -- entering the map, approaching an encounter, and resolving one. The
 -- resolution saves matter: a treasure collected or an event resolved marks its cell cleared, and without
 -- persisting that a resume would replay the stop and grant its spoils twice (a combat win already saves).
 local function saveRun()
@@ -289,6 +289,11 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
     game.toasts = {} -- transient ability feedback lines (see game:pushToast)
     game.map = OverworldMap.new(game.grid, {
         onEncounter = function(cell) game:openEncounter(cell) end,
+        -- The autosave seam, fired one beat BEFORE the step onto an un-engaged stop: the snapshot is
+        -- taken with the token still on the tile it is leaving, so Continue lands the player in the
+        -- overworld a step short of the fight -- time to open the Loadout, spend a dose, re-form the
+        -- party -- instead of resuming inside the battle they were about to walk into.
+        onApproach = function() saveRun() end,
         -- Every landed tile drives the per-step abilities (Kaya's forage, Saber's steps, ...) and the
         -- per-step relics (Poacher's Map, a Vice's road-toll).
         onArrive = function(cell) fireAbility("step", { cell = cell }); fireRelics("step", { cell = cell }) end,
@@ -356,14 +361,11 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
         clearRun()
     end
 
-    -- A resume drops straight back into the board -- no opening scene (that plays once, on first entry),
-    -- and if the player quit standing on an un-engaged encounter, re-open it so Continue lands them right
-    -- at the fight/stop they were about to take (the "autosave before every encounter" this pairs with).
-    if resume then
-        local cell = game.grid:get(game.map.px, game.map.py)
-        if cell and cell.encounter and not cell.cleared then game:openEncounter(cell) end
-        return
-    end
+    -- A resume drops back onto the BOARD -- no opening scene (that plays once, on first entry), and never
+    -- into an encounter: the autosave is taken on approach (the map widget's onApproach), one tile shy of
+    -- the stop, precisely so Continue hands the player an overworld to act in first. Nothing is auto-opened
+    -- here; walking onto the (still-uncleared) tile engages it, exactly as it did the first time.
+    if resume then return end
 
     -- Last, once the map exists: a quest may open with a scene played OVER it. A conversation is a
     -- global overlay on a frozen state (main.lua), so the road, the markers and the fog sit there
@@ -389,11 +391,10 @@ function game:openEncounter(cell)
     local kind = cell.encounter.kind
     local mp = game.quest and game.quest.map or {}
 
-    -- Autosave before engaging any encounter, so quitting here resumes onto this very tile (states/menu
-    -- .lua's Continue re-opens it). The token is already standing on the encounter cell and the run's
-    -- cleared/fog state is current, so the snapshot captures exactly this moment. No-op on scripted/tutorial
-    -- legs (no activeRun). Each resolution below saves AGAIN, so the cleared stop persists past this point.
-    saveRun()
+    -- No autosave here: the pre-encounter save already happened one beat ago, on APPROACH (the map's
+    -- onApproach -> saveRun), with the token still on the previous tile. Saving again now would overwrite
+    -- that with a snapshot standing on the stop itself -- which is what used to drop a resumed run straight
+    -- into the battle. Each resolution below saves AGAIN, so a cleared stop persists past this point.
 
     -- A non-combat "meeting" objective: reaching the tile plays a scene and ends the leg instead of
     -- dropping into a fight. This is how the debut's aftermath walk finishes -- Saber catches the party

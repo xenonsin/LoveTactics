@@ -22,6 +22,11 @@ return {
         "armor_halting_rank", "armor_unyielding_harness", "consumable_healing_potion",
     },
     defaultAction = "weapon_iron_mace",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_iron_mace",
+    signatureAbility = "ability_push",
     -- Shove the nearest attacker off the line; the knockback Halts it.
     ai = {
         { priority = "high", act = "cast", item = "ability_push",

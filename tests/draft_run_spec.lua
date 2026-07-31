@@ -2,8 +2,10 @@
 -- draftable pool that grows by round, and snapshot round-tripping. Pure logic, runs headless.
 
 local DraftRun = require("models.draft_run")
+local DraftChassis = require("models.draft_chassis")
 local Save = require("models.save")
 local Character = require("models.character")
+local Item = require("models.item")
 
 return {
     {
@@ -187,6 +189,104 @@ return {
             local back = DraftRun.restore(legacy)
             assert(DraftRun.formationCount(back) == DraftRun.PARTY_MAX, "the first four field")
             assert(#back.bench == 1, "and the fifth becomes a reserve")
+        end,
+    },
+    {
+        name = "the party mends between rounds: wounds, spent mana and a felled unit all come back",
+        fn = function()
+            local run = DraftRun.new(1)
+            local fielder = DraftChassis.instantiate("character_knight")
+            local reserve = DraftChassis.instantiate("character_mage")
+            DraftRun.addUnit(run, fielder)
+            DraftRun.addUnit(run, reserve)
+            DraftRun.benchUnit(run, reserve)
+
+            fielder.stats.health.current = 0 -- fell in the fight
+            if type(reserve.stats.mana) == "table" then reserve.stats.mana.current = 0 end
+            reserve.stats.health.current = 1
+
+            DraftRun.recordResult(run, "loss")
+            assert(fielder.stats.health.current == fielder.stats.health.max,
+                "a felled fielder stands at full health for the next round")
+            assert(reserve.stats.health.current == reserve.stats.health.max,
+                "the bench mends too -- it is next round's team")
+            if type(reserve.stats.mana) == "table" then
+                assert(reserve.stats.mana.current == reserve.stats.mana.max, "and its mana is full again")
+            end
+        end,
+    },
+    {
+        name = "a decided run does not mend -- the rollover it skips is the one that would have",
+        fn = function()
+            local run = DraftRun.new(1)
+            local knight = DraftChassis.instantiate("character_knight")
+            DraftRun.addUnit(run, knight)
+            run.wins = DraftRun.WIN_TARGET
+            knight.stats.health.current = 1
+
+            DraftRun.recordResult(run, "win")
+            assert(knight.stats.health.current == 1, "no round follows a finished run, so nothing rolls over")
+        end,
+    },
+    {
+        name = "consumables refill between rounds: a stack drunk dry marches out full again",
+        fn = function()
+            local run = DraftRun.new(1)
+            local knight = DraftChassis.instantiate("character_knight") -- stripped, as a drafted unit is
+            DraftRun.addUnit(run, knight)
+
+            local potion = Item.instantiate("consumable_healing_potion", 2)
+            Character.addItem(knight, potion)
+            local weapon = Item.instantiate("weapon_iron_sword")
+            Character.addItem(knight, weapon)
+            local stashed = Item.instantiate("consumable_mana_potion", 1)
+            run.stash = { stashed }
+
+            DraftRun.stockConsumables(run) -- the party marches out
+            potion.quantity = 0            -- and drinks both charges in the fight
+            stashed.quantity = 0           -- (a stowed stack can be re-equipped, so it restocks too)
+
+            DraftRun.recordResult(run, "win")
+            assert(potion.quantity == 2, "the equipped stack comes back at its marching count")
+            assert(stashed.quantity == 1, "and so does the one in the stash")
+            assert(weapon.quantity == 1, "a non-stackable is untouched")
+        end,
+    },
+    {
+        name = "restocking never inflates a stack past what it marched out with",
+        fn = function()
+            local run = DraftRun.new(1)
+            local knight = DraftChassis.instantiate("character_knight")
+            DraftRun.addUnit(run, knight)
+            local potion = Item.instantiate("consumable_healing_potion", 1)
+            Character.addItem(knight, potion)
+
+            DraftRun.stockConsumables(run)
+            DraftRun.recordResult(run, "win")
+            assert(potion.quantity == 1, "an unspent stack stays where it is")
+
+            -- A stack bought AFTER the last fight has no stamp yet; the rollover must leave it alone
+            -- rather than zeroing it.
+            local bought = Item.instantiate("consumable_mana_potion", 3)
+            Character.addItem(knight, bought)
+            DraftRun.recordResult(run, "win")
+            assert(bought.quantity == 3, "an un-stamped stack is left exactly as bought")
+        end,
+    },
+    {
+        name = "a benched unit's consumables restock too -- the bench is where next round's team waits",
+        fn = function()
+            local run = DraftRun.new(1)
+            local reserve = DraftChassis.instantiate("character_knight")
+            DraftRun.addUnit(run, reserve)
+            DraftRun.benchUnit(run, reserve)
+            local potion = Item.instantiate("consumable_healing_potion", 2)
+            Character.addItem(reserve, potion)
+
+            DraftRun.stockConsumables(run)
+            potion.quantity = 1 -- fielded mid-run, drank one
+            DraftRun.recordResult(run, "win")
+            assert(potion.quantity == 2, "the reserve's stack refills as a fielder's does")
         end,
     },
 }

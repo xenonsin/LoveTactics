@@ -495,6 +495,23 @@ function Status.blocksHealing(unit)
     return nil
 end
 
+-- Is `unit`'s mending turned back on it -- does a heal aimed at this body WOUND it instead? True while
+-- any active status sets `invertsHealing` (Interred). Read through Combat.healingInverted, which asks
+-- this and the trait side of the same question together, at the one funnel every mend runs through.
+--
+-- The step past blocksHealing above, and the two are deliberately separate flags rather than one with a
+-- mode. A block is a window closed: the healer wastes a turn and the board is unchanged. This makes the
+-- healer a liability -- their turn does the enemy's work, and the party's own reflexive answer (mend the
+-- one who is falling) becomes the thing that fells them. A body under both is simply not mended: the
+-- block is checked first and refuses outright, so the two never compound into a wound the player was
+-- never warned about.
+function Status.invertsHealing(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.invertsHealing then return s end
+    end
+    return nil
+end
+
 -- Are `unit`'s TRAITS shut off -- every standing reflex, guard, aura and passive it owns? True while
 -- any active status sets `disablesTraits` (Sundered). Read by models/trait.lua's dispatch, the single
 -- chokepoint every trait hook fires through, so one flag silences a parry, a thorn, a last stand and a

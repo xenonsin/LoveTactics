@@ -21,6 +21,11 @@ return {
         false,                false,                   false,
     },
     defaultAction = "weapon_iron_sword",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_iron_sword",
+    signatureAbility = "ability_rally_banner",
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.
     ai = {
         { priority = "high", act = "attack", targetPref = "lowest_hp",

@@ -343,6 +343,32 @@ general's relic hands its rule to the player. A signature relic carries a real i
 > but character *blueprints* no longer carry a `traits` field — author the innate as a bound signature
 > item instead.
 
+### Name the character's signature
+
+Two optional fields say, in two items, what this character *is*:
+
+```lua
+signatureWeapon  = "weapon_iron_dagger",
+signatureAbility = "ability_vanishing_strike",
+```
+
+Both must name items the blueprint already carries in `startingItems` — a signature is a **subset** of
+the authored kit, never a second loadout. Either may be omitted; a plain class template (the Fighter,
+the Archer) often owns a weapon and no signature verb, and that is what makes it the simple pick.
+`signatureAbility` is the *verb* slot, not a type check: any carried item that states what the unit
+**does** belongs there. The Knight names its buckler, because a shield swaps Wait into Defend and
+spear-and-shield is the class thesis in two items.
+
+They are **authored, not derived**, because nothing about the kit reliably identifies them. The Ninja's
+priciest discipline item is Scatterlight (480g), but the item its build is actually about is Vanishing
+Strike (300g) — price, grid position and item type all get that wrong. Only the author knows.
+
+Draft mode is the first consumer: it strips a bought body down to exactly these two
+(`models/draft_chassis.lua`), so a drafted unit is one or two items to read instead of nine, and
+everything else it fights with is gear the player chose off the shop shelf. Any id listed in
+`data/draft/pool.lua` **must** declare at least `signatureWeapon` — `tests/draft_chassis_spec.lua`
+fails the build otherwise.
+
 A trait that **retaliates** — answers a blow with one of its own — declares what provokes it as data
 rather than re-checking the same five conditions in its hook:
 
@@ -390,7 +416,7 @@ archetype = "skirmish",   -- one of AI.POSTURES; omit for `aggressive`
 | Posture | Behavior |
 | --- | --- |
 | `aggressive` | Closes and hits the best thing it can reach. The default, and what every enemy did before postures existed. |
-| `defensive` | Holds until a foe is in its reach or it takes a hit, then commits. Lets a map have quiet corners the player opens when they choose. |
+| `defensive` | **Defends what the objective names.** Walks to its post — the boss it shares a side with on an `assassinate`, the charge on a `defend`/escort, the ground on a `hold`/`reach`/`control` — and then holds it: it fights whatever comes to the post, and will not be baited off it. On a `killAll`, which names nothing to defend, it has no post and falls back to holding until a foe is in its reach or it takes a hit. Lets a map have quiet corners the player opens when they choose. |
 | `holdGround` | Never leaves its start tile. A sentry, a throne-room boss. |
 | `guard` | Pursues within `leash` tiles of where it started, then walks home. A patrol the player can bait. |
 | `skirmish` | Prices being reachable dearly — the archer/mage posture. Will not close to take a shot it could take from range. |
@@ -552,9 +578,11 @@ turns and keep the charge alive" — with no exit-tile or pathing machinery. The
 them.
 
 Give an escortee an `archetype` (see **Tactical AI** above) — a non-combatant charge wants
-`defensive` or `holdGround`, or it will trot off toward the nearest raider and get itself killed. On
-the other side, an enemy with `archetype = "objective"` hunts the charge specifically rather than the
-nearest body, which is what makes an escort map play like one.
+`defensive` or `holdGround`, or it will trot off toward the nearest raider and get itself killed. A
+`defensive` charge is posted to *itself* (it is the body `obj.protect` names, on its own side), so it
+simply stays put; any other `defensive` ally on the map is posted to the charge and rings it instead
+of wandering. On the other side, an enemy with `archetype = "objective"` hunts the charge specifically
+rather than the nearest body, which is what makes an escort map play like one.
 
 True "escort to an exit tile" is not implemented; it would need exit tiles in `models/arena.lua`.
 
@@ -726,6 +754,7 @@ debuff — they look similar and refuse very different things:
 | `disablesReactions` | counters, thorns, dodges — but not `onStatusApplied` | `models/trait.lua` |
 | `disablesTraits` | **every** trait hook, `onStatusApplied` included | `models/trait.lua` |
 | `blocksHealing` | every mend, from every source | `Combat.applyHeal` |
+| `invertsHealing` | nothing — it turns every mend into a wound of the same size | `Combat.applyHeal` |
 | `preventsDeath` | the drop: a lethal blow floors the bearer at 1 | `Combat.dealFlatDamage` |
 | `revealsBearer` | concealment: an invisible bearer is targetable anyway | `Status.untargetable` |
 | `defers` | *everything*, onto a ledger that settles on expiry | both damage and heal |
@@ -733,6 +762,14 @@ debuff — they look similar and refuse very different things:
 `disablesTraits` is the only thing in the game that reaches `onStatusApplied`, which is deliberate:
 that hook is deliberately left open under `disablesReactions` so a cleansing ward can shrug off the
 very stun that landed, and a break has to be able to stop that too.
+
+`blocksHealing` and `invertsHealing` are separate flags rather than one with a mode, and the order
+between them is fixed: the block is read first and refuses outright, so a body carrying both is simply
+not mended — stacking them can never be worth more than either alone. Inversion has a second source
+that is not a status at all: the trait flag of the same name, worn by every undead thing in the game
+(`data/traits/trait_grave_cold.lua`). `Combat.healingInverted` asks both questions at once, and both the
+live funnel and the tooltip's dry run go through it, so a heal aimed at a body past mending previews in
+red for the amount it is about to take.
 
 ### Wards: three different kinds of "no"
 

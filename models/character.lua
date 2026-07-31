@@ -291,6 +291,16 @@ function Character.instantiate(id, progress)
         -- isn't named here reads back nil at runtime and fails silently (docs/adding-content.md).
         archetype = def.archetype,
         ai = def.ai,
+        -- The two items that ARE this character, named by the blueprint: its weapon and its signature
+        -- verb. General identity ("what is this unit, in two items"), not a mode-specific field --
+        -- Draft mode is simply the first consumer, stripping a bought body down to exactly these
+        -- (models/draft_chassis.lua). AUTHORED, never derived: no rule over the kit picks them
+        -- reliably. The Ninja's priciest discipline item is Scatterlight (480g), but the item its
+        -- build is actually about is Vanishing Strike (300g) -- price, position and type all get that
+        -- wrong, and only the author knows. Either may be absent (a plain class template owns a weapon
+        -- and no signature verb); the strip degrades gracefully when they are.
+        signatureWeapon = def.signatureWeapon,
+        signatureAbility = def.signatureAbility,
         level = (progress and progress.level) or 1,
         classUse = (progress and progress.classUse) or {},
         growth = (progress and progress.growth) or {},

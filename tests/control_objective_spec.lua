@@ -121,6 +121,54 @@ return {
         end,
     },
     {
+        -- What the hover tooltip on the node reads (ui/tile_tooltip.lua): the board can only paint
+        -- "marked" and "counting for you", so who holds it, both scores and the hop countdown have to
+        -- come from here. Reported from the LOCAL player's chair, since either side can be the player.
+        name = "the node's tile read reports the holder, both scores and the hop countdown",
+        fn = function()
+            local combat = combatWith(movingObjective(100),
+                { unit("party", 1, 1), unit("enemy", 8, 8) })
+            combat.score = { party = 12, enemy = 30 }
+            combat.clock = 4
+
+            assert(Combat.objectiveTileInfo(combat, 5, 5) == nil,
+                "the waypoint that is not live yet is not marked ground")
+
+            local info = Combat.objectiveTileInfo(combat, 1, 1)
+            assert(info and info.type == "control", "the live node reads as the control objective")
+            assert(info.holder == "party", "the party stands on it alone")
+            assert(info.scores.party == 12 and info.scores.enemy == 30, "both banked scores are quoted")
+            assert(info.movesIn == 6, "the node hops every 10 ticks, so at t=4 that is 6 away, got "
+                .. tostring(info.movesIn))
+            assert(info.remaining == 96, "and the round's own limit is 96 ticks off")
+            assert(info.playerSide == "party", "no side named reads from the party's chair")
+
+            -- The node hops; the tile that was the fight is now ordinary ground, and the new one reads.
+            combat.clock = 10
+            assert(Combat.objectiveTileInfo(combat, 1, 1) == nil, "the vacated waypoint stops being marked")
+            local moved = Combat.objectiveTileInfo(combat, 5, 5)
+            assert(moved and moved.holder == nil and not moved.party and not moved.enemy,
+                "the node it moved to is marked, and standing empty is held by nobody")
+
+            combat.units[2].x, combat.units[2].y = 5, 5 -- the enemy walks onto the new node
+            assert(Combat.objectiveTileInfo(combat, 5, 5).holder == "enemy",
+                "the side alone on the node holds it, whichever side that is")
+
+            combat.playerSide = "enemy"
+            assert(Combat.objectiveTileInfo(combat, 5, 5).playerSide == "enemy",
+                "holding the enemy side, the read is phrased from that chair")
+        end,
+    },
+    {
+        name = "a fixed node quotes no hop countdown",
+        fn = function()
+            local combat = combatWith({ type = "control", maxTicks = 50,
+                nodes = { { { x = 2, y = 2 } } }, moveEvery = 10 }, { unit("party", 2, 2) })
+            local info = Combat.objectiveTileInfo(combat, 2, 2)
+            assert(info.movesIn == nil, "a single-waypoint node never moves, so it promises no hop")
+        end,
+    },
+    {
         name = "the tie-break settles a level score by units standing, then last holder, then a draw",
         fn = function()
             -- Equal score, party has more units standing -> party.

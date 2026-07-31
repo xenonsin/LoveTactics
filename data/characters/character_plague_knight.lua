@@ -24,6 +24,11 @@ return {
         "consumable_healing_potion", false,             false,
     },
     defaultAction = "weapon_pestilent_flail",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_pestilent_flail",
+    signatureAbility = "utility_contagion",
     -- Wade into the nearest foe; Contagion spreads the rot from there.
     ai = {
         { priority = "high", act = "attack", targetPref = "nearest",

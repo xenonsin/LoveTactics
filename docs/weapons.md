@@ -45,6 +45,28 @@ which vendor stocks the item and never gates who may carry it. A hunter may abso
 | `unarmed` | The player's bare fist. Reads `unarmedBonus` from "fist" charms in the grid. | `weapon_unarmed` |
 | `natural` | A creature's own body — fangs, claws, an elemental's burning hands. Granted by a blueprint's `startingItems`, never sold or stolen (`noSteal`), and owes no shared mechanic beyond that. | `weapon_fangs`, `weapon_flame_fists` |
 
+### Aiming a tile is aiming a *direction*
+
+Every weapon whose area emanates from the wielder — an axe's `front` arc, a spear's `line`, any
+`cone` — declares `target = "tile"`, because what the player picks is the **facing** the swing runs
+along, not the body it lands on. That makes an empty tile a legal aim, and since the range band is
+built from every tile the wielder could walk to and strike from, *every reachable tile* is a legal
+aim. The move band ends up a subset of the cast band, with no tile left over to mean "walk here".
+
+The battle screen gives the tile back by asking what the cast would actually **do**
+(`Combat.castDoesSomething`, a dry run through `Combat.previewAbility`):
+
+1. It connects — a body in the footprint, ground it would lay, an object it would break → **swing**.
+2. It connects with nothing and the unit still has its move → **step onto that tile**, staying armed.
+3. It connects with nothing and the move is spent → **swing anyway**, into empty air. A wasted swing
+   is the player's to make; a click that silently does nothing is not.
+
+Ground-laying abilities classify themselves — a bear trap, a summon, `ability_writ_of_fire` and
+`weapon_the_stillness` all *place* something, which is doing something, so they always cast on bare
+earth. Nothing needs to be declared per item. The one escape hatch is **`groundAim = true`** on the
+ability, which pins it to (1) regardless: for a cast whose real work a dry run cannot see. No item
+needs it today.
+
 ## Naming: the base weapon is `weapon_iron_x`
 
 Every file under `data/items/` carries its **type as a prefix** — `weapon_`, `armor_`, `utility_`,

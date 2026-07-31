@@ -1,4 +1,9 @@
 -- Enemy boss blueprint (quest objective). See data/characters/bandit.lua.
+--
+-- Dead, and so GRAVE-COLD (data/items/utility/utility_grave_cold.lua) like the raised: mending does not
+-- reach it, and a heal aimed at it wounds it instead. Nothing on its own side heals, so this changes no
+-- fight it currently appears in -- it is here because the rule is about what a thing IS, and a rule that
+-- only holds for the undead somebody remembered is not a rule.
 return {
     name = "The Miller's Ghost",
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
@@ -13,7 +18,7 @@ return {
         movement = 4,
         speed = 4,
     },
-    startingItems = { "ability_fireball" },
+    startingItems = { "ability_fireball", "utility_grave_cold" },
     -- Basic tactics (models/ai.lua): press the wounded -- throw fire at the foe already closest to
     -- falling. (Fireball's own rule still handles aiming the blast off a cluster.)
     ai = {

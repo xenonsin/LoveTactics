@@ -21,6 +21,11 @@ return {
         "armor_silk_robes",     "consumable_healing_potion", false,
     },
     defaultAction = "ability_arcane_cleave",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_emberwand",
+    signatureAbility = "ability_arcane_cleave",
     -- Close the distance and cleave whatever it reaches.
     ai = {
         { priority = "high", act = "attack", item = "ability_arcane_cleave",

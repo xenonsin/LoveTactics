@@ -21,6 +21,11 @@ return {
         "consumable_healing_potion", false,             false,
     },
     defaultAction = "weapon_poachers_kris",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_poachers_kris",
+    signatureAbility = "ability_bolas",
     -- 1. Net an unrooted foe. 2. Once rooted, execute it -- the bonus lands on the Rooted.
     ai = {
         { priority = "high", act = "cast", item = "ability_bolas",

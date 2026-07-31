@@ -22,6 +22,11 @@ return {
         "armor_leather_armor", "consumable_healing_potion", false,
     },
     defaultAction = "ability_flurry",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "utility_iron_fist",
+    signatureAbility = "ability_flurry",
     -- Dump chi on Asura Strike against the wounded; otherwise Flurry whatever is adjacent.
     ai = {
         { priority = "urgent", act = "attack", item = "ability_asura_strike", targetPref = "lowest_hp",

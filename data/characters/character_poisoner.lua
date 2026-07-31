@@ -21,6 +21,11 @@ return {
         "armor_leather_armor",   "consumable_healing_potion", false,
     },
     defaultAction = "weapon_envenomed_kris",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_envenomed_kris",
+    signatureAbility = "consumable_envenom",
     -- Knife whatever is in reach; the coatings do the rest as the poison stacks.
     ai = {
         { priority = "high", act = "attack", targetPref = "nearest",

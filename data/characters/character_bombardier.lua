@@ -21,6 +21,11 @@ return {
         "consumable_lightning_bomb", "consumable_healing_potion", false,
     },
     defaultAction = "ability_blast_charge",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_vitriol_wand",
+    signatureAbility = "ability_blast_charge",
     -- Lob the keg into a cluster of two or more; otherwise a single blast charge.
     ai = {
         { priority = "high", act = "cast", item = "ability_powder_keg",

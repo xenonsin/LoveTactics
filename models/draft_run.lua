@@ -102,7 +102,7 @@ function DraftRun.new(seed)
         rngSeed = seed or os.time(),
         formation = {}, -- cell (1..FORMATION_CELLS) -> fielded char instance (sparse; <= PARTY_MAX filled)
         bench = {},   -- reserve / merge-fodder character instances behind the formation
-        stash = {},   -- unequipped item instances (merge fodder's gear lands here, never lost)
+        stash = {},   -- unequipped item instances (bought gear, and whatever a merge could not absorb)
         shop = nil,   -- the current offering; models/draft_shop.lua fills it
     }
 end
@@ -115,12 +115,16 @@ function DraftRun.outcome(run)
     return nil
 end
 
--- Roll the round over: bump the counter and refresh the budget. Called by recordResult after a
--- non-terminal battle; the shop roll is the state layer's to trigger (DraftShop.roll), because only it
--- knows whether the player froze anything.
+-- Roll the round over: bump the counter, refresh the budget, mend the company back to full, and
+-- restock the consumables the fight just drank (see the mending and restocking sections -- a draft
+-- round is a whole match, so neither wounds nor a drained flask carry into the next one).
+-- Called by recordResult after a non-terminal battle; the shop roll is the state layer's to trigger
+-- (DraftShop.roll), because only it knows whether the player froze anything.
 function DraftRun.advanceRound(run)
     run.round = (run.round or 1) + 1
     run.gold = DraftRun.roundBudget(run.round)
+    DraftRun.restoreParty(run)
+    DraftRun.refillConsumables(run)
 end
 
 -- Bank a battle result ("win" | "loss") and advance the run. Returns the resulting outcome (see
@@ -252,6 +256,13 @@ function DraftRun.party(run)
     return party
 end
 
+-- Every unit the run holds -- fielded first, then the bench -- through `fn`. The one walker for
+-- anything that is true of the whole company (mending it between rounds, restocking its flasks).
+function DraftRun.eachChar(run, fn)
+    for _, char in ipairs(DraftRun.party(run)) do fn(char) end
+    for _, char in ipairs(run.bench or {}) do fn(char) end
+end
+
 -- One {col,row} per fielded unit, parallel to DraftRun.party -- the marching slots the battle seats the
 -- party into (states/battle.lua -> models/arena.lua). Instance-ordered, so a duplicate id can't confuse
 -- which unit sits where.
@@ -332,55 +343,208 @@ end
 -- Merging duplicates
 -- ---------------------------------------------------------------------------
 
+-- Could a unit of blueprint `id` combine INTO `target`? The merge rule stated over an ID rather than a
+-- live instance, so a caller can ask BEFORE it has a body to offer -- what the store needs to decide
+-- whether dragging a card onto a unit buys-and-combines (DraftShop.buyUnitInto).
+function DraftRun.canMergeIdInto(id, target)
+    if not id or not target or id ~= target.id then return false end
+    return (target.level or 1) < DraftRun.MAX_UNIT_LEVEL
+end
+
 -- Two bench units combine when they are the same blueprint and the one being KEPT is below the level
 -- ceiling. (Different characters never merge; two maxed copies have nowhere to grow.)
 function DraftRun.canMergeUnits(source, target)
-    if not source or not target or source == target then return false end
-    if source.id ~= target.id then return false end
-    return (target.level or 1) < DraftRun.MAX_UNIT_LEVEL
+    if not source or source == target then return false end
+    return DraftRun.canMergeIdInto(source.id, target)
 end
 
 -- Combine `source` INTO `target`: bump the kept unit one growth level (the confirmed reuse of
 -- models/growth.lua -- a merge grows a unit exactly as a prestige level-up would, reading the class
--- tally it was built with), drop the source from the bench, and keep the source's gear by moving it to
--- the run stash rather than letting it evaporate. Returns { unit, fromLevel, toLevel } or nil + reason.
+-- tally it was built with), cascade the fodder's gear into the kept unit's grid, and drop the source.
+--
+-- THE MERGE RUNS AT BOTH LEVELS AT ONCE. Fodder is the same blueprint as its target by definition, so
+-- its grid is mostly gear the target already holds -- above all the chassis signatures, which every
+-- bought duplicate carries a fresh copy of. Stashing those made the mode's most common action
+-- (buy a duplicate, drag it on) mint one or two junk copies of the target's own weapon every time.
+-- So each piece is offered to the kept unit's grid first: a copy of something already on the grid merges
+-- IN PLACE, one level above the better of the two, in the cell it already occupied. Combining duplicates
+-- upgrades the gear they share -- which is the point of the mode, where gear is the draft. It keeps
+-- paying on the third and fourth duplicate too; the levels of the two copies do not have to line up
+-- (DraftRun.canMergeItems).
+--
+-- Anything that does NOT match is the player's own distinct choice, and still goes to the stash for
+-- them to re-slot deliberately (grid slots, not gold, are the binding constraint -- see
+-- models/draft_match.lua -- so nothing is auto-equipped into a free cell). A bound relic that finds no
+-- match goes with the body: Item.isBound refuses to let it be stowed, and there is nowhere else.
+--
+-- Returns { unit, fromLevel, toLevel, upgraded = { merged items }, stashed = n } or nil + reason.
 function DraftRun.mergeUnit(run, source, target)
     if not DraftRun.canMergeUnits(source, target) then return nil, "cannot merge" end
 
     local fromLevel = target.level or 1
     Growth.resolve(target, math.min(fromLevel + 1, DraftRun.MAX_UNIT_LEVEL))
 
-    -- The fodder's gear is not thrown away with it -- the player paid for it. It goes to the stash,
-    -- where the loadout screen can re-slot it onto any unit (bound relics never move, so a generic's
-    -- has nothing to strip and a companion's stays where it was authored).
+    local upgraded, stashed = {}, 0
     for cell = 1, Character.MAX_INVENTORY do
         local item = source.inventory and source.inventory[cell]
-        if item and not Item.isBound(item) then
-            run.stash = run.stash or {}
-            run.stash[#run.stash + 1] = item
+        if item then
+            local merged = DraftRun.mergeItemInto(target, item)
+            if merged then
+                upgraded[#upgraded + 1] = merged
+            elseif not Item.isBound(item) then
+                run.stash = run.stash or {}
+                run.stash[#run.stash + 1] = item
+                stashed = stashed + 1
+            end
         end
     end
 
     DraftRun.removeUnit(run, source)
-    return { unit = target, fromLevel = fromLevel, toLevel = target.level }
+    return { unit = target, fromLevel = fromLevel, toLevel = target.level, upgraded = upgraded, stashed = stashed }
 end
 
--- Two items combine when they are the same blueprint at the same upgrade level, and that level is
--- below the item ceiling. (An item already at Item.MAX_LEVEL has nowhere to go.)
+-- Two copies of the same blueprint combine, as long as the better of the two is below the item ceiling.
+-- THEIR LEVELS NEED NOT MATCH: a +1 absorbs a fresh +0 and becomes +2. Counting copies is what puts gear
+-- on the same footing as bodies, where every duplicate is flatly one growth level (DraftRun.mergeUnit).
+--
+-- The rule used to demand EQUAL levels, which made item upgrades a binary tree: a +2 took four copies,
+-- a +3 eight, and Item.MAX_LEVEL = 10 a thousand. Merging the same character a second time then upgraded
+-- its signature not at all -- the fodder's fresh +0 could no longer see the +1 the first merge had made,
+-- so it fell through to the stash as a junk copy of the weapon the unit was already holding, which is
+-- the exact litter the cascade in mergeUnit exists to prevent. Duplicates past the second have to keep
+-- paying, or the mode's most common purchase stops being worth making.
 function DraftRun.canMergeItems(a, b)
     if not a or not b or a == b then return false end
     if a.id ~= b.id then return false end
-    if (a.level or 0) ~= (b.level or 0) then return false end
-    return (a.level or 0) < Item.MAX_LEVEL
+    return math.max(a.level or 0, b.level or 0) < Item.MAX_LEVEL
 end
 
--- Combine two identical items into one a level higher: returns a FRESH instance at level+1, carrying
--- the combined stack count (so merging two stacks of a consumable keeps the count). Returns nil if the
--- two cannot merge. The caller swaps the result into the target cell and discards the source.
+-- Combine two copies into one a level above the BETTER of them: returns a FRESH instance at
+-- max(level) + 1, carrying the combined stack count (so merging two stacks of a consumable keeps the
+-- count). Taking the max rather than the target's own level means a forged piece spent as fodder is
+-- never quietly downgraded -- a +3 poured into a +0 yields a +4, one better than either half alone.
+-- Returns nil if the two cannot merge. The caller swaps the result into the target cell and discards
+-- the source.
 function DraftRun.mergeItems(a, b)
     if not DraftRun.canMergeItems(a, b) then return nil end
     local quantity = (a.quantity or 1) + (b.quantity or 1)
-    return Item.instantiate(a.id, quantity, (a.level or 0) + 1)
+    local level = math.min(math.max(a.level or 0, b.level or 0) + 1, Item.MAX_LEVEL)
+    return Item.instantiate(a.id, quantity, level)
+end
+
+-- The cell on `char`'s grid holding an item that `item` would combine with, or nil. The question every
+-- caller that has an item in hand and a body to aim it at wants answered: a merge fodder's gear, a
+-- stash card mid-drag, a store card dropped straight onto a unit.
+--
+-- `item` is read for nothing but `id` and `level`, so a store ENTRY answers it as well as an instance --
+-- the screen can ring a unit green while the card is still moving, before there is anything bought to
+-- offer it. (The same trick DraftRun.canMergeIdInto plays for units, for the same reason.)
+--
+-- Now that levels no longer have to match (see canMergeItems), a grid can hold two eligible copies, so
+-- the choice needs a rule: the HIGHEST one wins, ties going to the earlier cell. Highest is simply worth
+-- the most -- feeding a +0 to a +3 leaves the player a +4 and their +0, where the other order leaves a
+-- +1 and their +3 -- and it keeps a build's one forged centrepiece climbing instead of spreading the
+-- gain thin across copies.
+function DraftRun.mergeSlotFor(char, item)
+    if not (char and char.inventory and item) then return nil end
+    local best, bestLevel
+    for cell = 1, Character.MAX_INVENTORY do
+        local held = char.inventory[cell]
+        if DraftRun.canMergeItems(held, item) and (not best or (held.level or 0) > bestLevel) then
+            best, bestLevel = cell, held.level or 0
+        end
+    end
+    return best
+end
+
+-- Combine `item` into `char`'s matching cell IN PLACE, and return the merged item + its cell (or nil
+-- when nothing on the grid matches). In place is the whole point: the grid is an adjacency surface
+-- (auras reach the eight neighbours, Character.adjacentIndices), so an upgrade that relocated the piece
+-- would silently rearrange a build the player laid out. It is also what lets a BOUND relic upgrade --
+-- Item.isBound forbids moving a piece, never levelling one where it sits.
+--
+-- Only the target's GRID is ever scanned, so two loose items never merge with each other behind the
+-- caller's back -- a property worth keeping now that levels no longer have to match, because far more
+-- pairs are eligible than used to be. A cell CAN take a second piece in the same pass (a fodder holding
+-- three swords delivers three levels), which is the same total the player would get slotting them from
+-- the stash one at a time; the merge just does not make them do it by hand.
+function DraftRun.mergeItemInto(char, item)
+    local cell = DraftRun.mergeSlotFor(char, item)
+    if not cell then return nil end
+    local merged = DraftRun.mergeItems(char.inventory[cell], item)
+    if not merged then return nil end
+    char.inventory[cell] = merged
+    return merged, cell
+end
+
+-- ---------------------------------------------------------------------------
+-- Mending: the company comes back whole every round
+-- ---------------------------------------------------------------------------
+--
+-- Same reasoning as the consumable restock below. A campaign quest is a chain of fights and attrition
+-- across them is the point (Player.restore mends only at the hub); a draft ROUND is a whole match, and
+-- the next one is a fresh match against a bot synthesized whole (models/draft_match.lua). Carrying
+-- wounds forward would hand that bot a compounding edge nobody drafted, and a unit that fell would be
+-- dead weight forever -- health persists on the reused instance (models/combat.lua's between-battle
+-- policy), so a felled unit's pool sits at zero and it would walk into the next round already down.
+--
+-- So every pool -- health, mana, stamina -- comes back full at the rollover, on fielders and reserves
+-- alike (a benched unit is next round's team). Combat.new already refills stamina and drops stale
+-- reservations at the bell for every side, so this is health and mana in practice; running the whole
+-- RESOURCE_STATS list keeps it correct if a fourth pool is ever added.
+function DraftRun.restoreParty(run)
+    DraftRun.eachChar(run, function(char)
+        for _, stat in ipairs(Character.RESOURCE_STATS) do
+            local resource = char.stats and char.stats[stat]
+            if type(resource) == "table" then resource.current = resource.max end
+        end
+    end)
+end
+
+-- ---------------------------------------------------------------------------
+-- Consumables: spent in the fight, restocked for the next round
+-- ---------------------------------------------------------------------------
+--
+-- A draft round is a whole match, not a leg of a campaign quest, so the campaign's attrition rule --
+-- a flask drunk is a flask gone until you buy another -- does not belong here. Under it a consumable
+-- would be a full-price purchase that works once, and the house bot, which is synthesized WHOLE every
+-- round (models/draft_match.lua), would carry a free edge from round two on. So every stack the party
+-- marches out with comes back full when the round rolls over, and a potion is a standing part of a
+-- build rather than a one-round rental.
+--
+-- Two halves, because "full" has to be remembered BEFORE a fight spends it: stockConsumables stamps
+-- each stack's marching count as the battle launches, refillConsumables pours it back at the rollover.
+-- The stamp is taken at the gate rather than at purchase deliberately -- every way an item reaches a
+-- unit (bought, merged into a fresh instance, pulled out of the stash, authored on a chassis) marches
+-- through that one moment, so none of those paths has to remember to stock anything.
+
+-- Run every item instance the run holds -- the fielded grids, the bench's grids, and the loose stash --
+-- through `fn`. The stash is included because a depleted stack can be stowed and re-equipped between
+-- rounds, and it would be a strange rule that restocked it only while it sat on a unit.
+local function eachRunItem(run, fn)
+    DraftRun.eachChar(run, function(char)
+        for _, item in ipairs(Character.eachItem(char)) do fn(item) end
+    end)
+    for _, item in ipairs(run.stash or {}) do fn(item) end
+end
+
+-- Record what every consumable stack holds as the party marches out; `item.stock` is the count
+-- refillConsumables restores it to. Called by the state layer at the moment it switches to the battle
+-- (states/draft.lua), which is the last instant the counts are untouched by the fight.
+function DraftRun.stockConsumables(run)
+    eachRunItem(run, function(item)
+        if Item.isStackable(item) then item.stock = item.quantity or 1 end
+    end)
+end
+
+-- Pour every consumable stack back up to its marching count. A stack with no stamp (bought after the
+-- last fight, or reloaded from disk) is left exactly as it is -- it was never spent.
+function DraftRun.refillConsumables(run)
+    eachRunItem(run, function(item)
+        if Item.isStackable(item) and item.stock then
+            item.quantity = math.max(item.quantity or 0, item.stock)
+        end
+    end)
 end
 
 -- ---------------------------------------------------------------------------

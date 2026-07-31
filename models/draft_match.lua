@@ -12,6 +12,11 @@
 -- online; a stored other-player build (async) or a live opponent (lockstep) slot in AHEAD of the house
 -- bot behind this one function later, exactly as the plan's Phase B describes. Pure model except for the
 -- battle-opts factory, which names states by require path only when called.
+--
+-- The bot drafts the way the PLAYER drafts, and that symmetry is load-bearing: its units are stripped to
+-- their chassis (models/draft_chassis.lua) and then armed round-by-round off the same run shelf. Break
+-- either half -- leave the bot its blueprint kit, or let it shop a pool the player cannot reach -- and
+-- the ladder stops measuring the player's draft.
 
 local Character = require("models.character")
 local Item = require("models.item")
@@ -20,6 +25,7 @@ local Combat = require("models.combat")
 local Arena = require("models.arena")
 local DraftRun = require("models.draft_run")
 local DraftShop = require("models.draft_shop")
+local DraftChassis = require("models.draft_chassis")
 
 local DraftMatch = {}
 
@@ -66,6 +72,33 @@ end
 -- A synthesized opponent party, drafted from the same pool the player draws from and grown to the
 -- round's power. Deterministic from the run's seed + wins, so a given run faces a reproducible ladder.
 -- Returns a list of live, AI-run character instances (their control is set enemy-side by Combat.new).
+-- How many pieces of gear the bot hangs on each of its units in `round`. The player's binding constraint
+-- is GRID SLOTS, not gold: the cumulative budget through round 5 is ~70g against 3g gear, so a player
+-- who bought four units still has change for far more gear than eight free cells can hold. So the bot's
+-- count tracks the ROUND, not a wallet. It trails by one because the player also pays for rerolls, for
+-- duplicates chased for a merge, and for the units themselves.
+--
+-- A first guess, and the knob most likely to move after play-testing -- the strip took three to eight
+-- items off every unit on both sides, and where that leaves the matchup is a question for the board.
+function DraftMatch.gearPerUnit(round)
+    return math.max(0, math.min(Character.MAX_INVENTORY, (round or 1) - 1))
+end
+
+-- What LEVEL that gear is at. The shelf's offered level is the floor -- the bot shops where the player
+-- shops -- but the player has a second lane the bot does not: combining duplicate units now cascades
+-- into the grid and upgrades the gear the two copies share (DraftRun.mergeUnit), and stash merges push
+-- pieces further still, so a player's kit can climb past the round's shelf level while the bot's never
+-- would. So wins fold in here the way they already do in botLevel, and now at the SAME rate: a gear
+-- merge asks for a second copy of the same id, no harder to land than the unit merge botLevel tracks,
+-- and every copy is flatly one level (DraftRun.canMergeItems). The rate was half that while gear also
+-- had to match LEVELS -- a binary tree, in which a third duplicate bought nothing at all.
+--
+-- A first guess and a play-test knob, exactly like gearPerUnit above it.
+function DraftMatch.botGearLevel(run)
+    local base = DraftShop.gearLevel(run.round)
+    return math.min(Item.MAX_LEVEL, base + math.floor((run.wins or 0) / 2))
+end
+
 function DraftMatch.houseBot(run)
     local pool = DraftRun.pool(run.round)
     if #pool == 0 then return {} end
@@ -73,16 +106,21 @@ function DraftMatch.houseBot(run)
 
     local level = DraftMatch.botLevel(run)
     local size = math.min(DraftRun.PARTY_MAX, math.max(1, #DraftRun.party(run)))
-    local gearIds = DraftShop.gearCandidates(run.round)
-    local gearLevel = DraftShop.gearLevel(run.round)
+    local gearIds = DraftShop.gearCandidates(run)
+    local gearLevel = DraftMatch.botGearLevel(run)
+    local gearCount = DraftMatch.gearPerUnit(run.round)
 
     local chars = {}
     for i = 1, size do
-        local char = Character.instantiate(pool[rng(#pool)])
+        -- Stripped to a chassis exactly as a shop-bought unit is (models/draft_chassis.lua). This is not
+        -- optional politeness: the player's units lose three to eight blueprint items to the strip, so a
+        -- bot still wearing its whole authored kit would win the match on that alone.
+        local char = DraftChassis.instantiate(pool[rng(#pool)])
         Growth.resolve(char, level) -- grown exactly as a drafted, merged unit would be
-        -- Arm it like a shop-bought unit would be: one round-scaled weapon in an empty grid cell, if
-        -- the round has any gear to hand out. Bound relics on a generic are none, so nothing is displaced.
-        if #gearIds > 0 and Character.firstEmptySlot(char) then
+        -- Then arm it the way the round's shopping would have: round-scaled pieces off the same run
+        -- shelf the player is buying from, into the cells the strip just emptied.
+        for _ = 1, gearCount do
+            if #gearIds == 0 or not Character.firstEmptySlot(char) then break end
             Character.addItem(char, Item.instantiate(gearIds[rng(#gearIds)], nil, gearLevel))
         end
         chars[i] = char

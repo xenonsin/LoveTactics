@@ -21,6 +21,11 @@ return {
         "consumable_healing_potion", false,            false,
     },
     defaultAction = "weapon_litany_staff",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_litany_staff",
+    signatureAbility = "ability_invocation",
     -- Burst a channelled heal over the party when someone drops; otherwise open a divine channel.
     ai = {
         { priority = "urgent", act = "support", item = "ability_benediction", targetPref = "most_wounded",

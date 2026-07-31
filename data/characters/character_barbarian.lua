@@ -22,6 +22,11 @@ return {
         "utility_vampiric_strike", "armor_unspent_heart",    "consumable_healing_potion",
     },
     defaultAction = "weapon_crimson_greataxe",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_crimson_greataxe",
+    signatureAbility = "ability_fury",
     -- The deeper the wound, the harder the swing: press the foe already closest to falling.
     ai = {
         { priority = "high", act = "attack", targetPref = "lowest_hp",

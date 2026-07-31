@@ -3,7 +3,9 @@
 
 local DraftMatch = require("models.draft_match")
 local DraftRun = require("models.draft_run")
+local DraftShop = require("models.draft_shop")
 local Character = require("models.character")
+local Item = require("models.item")
 
 return {
     {
@@ -40,6 +42,21 @@ return {
             assert(DraftMatch.botLevel(late) >= DraftMatch.botLevel(early), "more wins, tougher bot")
             local capped = DraftRun.new(1); capped.wins = 99
             assert(DraftMatch.botLevel(capped) <= DraftRun.MAX_UNIT_LEVEL, "never past the ceiling")
+        end,
+    },
+    {
+        name = "the bot's GEAR level scales with wins too, or the merge cascade outruns it",
+        fn = function()
+            -- Combining duplicates upgrades the gear the two copies share (DraftRun.mergeUnit), so a
+            -- player's kit climbs past the round's shelf level. A bot pinned to that shelf falls behind.
+            local early = DraftRun.new(1); early.round, early.wins = 6, 0
+            local late = DraftRun.new(1); late.round, late.wins = 6, 9
+            assert(DraftMatch.botGearLevel(early) == DraftShop.gearLevel(early.round),
+                "with no wins it shops exactly where the player shops")
+            assert(DraftMatch.botGearLevel(late) > DraftMatch.botGearLevel(early), "more wins, better gear")
+
+            local capped = DraftRun.new(1); capped.round, capped.wins = 12, 99
+            assert(DraftMatch.botGearLevel(capped) <= Item.MAX_LEVEL, "never past the item ceiling")
         end,
     },
     {

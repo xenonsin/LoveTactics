@@ -21,6 +21,11 @@ return {
         "consumable_healing_potion", false,           false,
     },
     defaultAction = "ability_totem_of_mending",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_iron_bow",
+    signatureAbility = "ability_raise_totem",
     -- Raise a mending totem the moment an ally is hurt.
     ai = {
         { priority = "urgent", act = "support", item = "ability_totem_of_mending", targetPref = "most_wounded",

@@ -33,6 +33,11 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
     defaultAction = "weapon_iron_bow",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_iron_bow",
+    signatureAbility = "ability_rain_of_arrows",
     -- Basic tactics (models/ai.lua): a hunter picks off the wounded. From the `skirmish` posture's
     -- kept distance, spend the shot on the foe already closest to falling.
     ai = {

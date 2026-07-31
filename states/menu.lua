@@ -3,6 +3,7 @@ local Menu = require("ui.menu")
 local Player = require("models.player")
 local Scale = require("scale")
 local Theme = require("ui.theme")
+local ScreenFx = require("ui.screen_fx")
 
 local menu = {}
 
@@ -291,6 +292,12 @@ local function setFocus(which)
 end
 
 function menu.enter()
+    -- Drop whatever screen effect the last state left standing -- the defeat grey above all. A lost
+    -- battle desaturates the frame and hands the panel's exit straight here (a mock battle, a draft
+    -- run), so without this the title screen comes back drained to a colourless near-black and stays
+    -- that way: nothing else ever clears it. The hub, the draft and a battle all reset on entry for
+    -- the same reason (ui/screen_fx.lua).
+    ScreenFx.reset()
     require("models.sound").music("music.menu")
     widget = buildMenu()
     debugWidget = buildDebugMenu()

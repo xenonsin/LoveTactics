@@ -146,6 +146,69 @@ return {
         end,
     },
     {
+        name = "stepping into an un-engaged stop fires onApproach first, from the tile BEFORE it",
+        fn = function()
+            local grid = genOpen(3)
+            revealAll(grid)
+            local w = walker(grid)
+            w.visionRadius = 1
+            local sx, sy = grid.start.x, grid.start.y
+            local dx, dy
+            for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+                if grid:isWalkable(sx + d[1], sy + d[2], {}) then dx, dy = d[1], d[2]; break end
+            end
+            assert(dx, "no walkable neighbour of the start to stage a stop on")
+            local dest = grid:get(sx + dx, sy + dy)
+            dest.encounter, dest.cleared = { kind = "combat", name = "Ambush" }, nil
+
+            -- The whole point of the hook: states/game.lua autosaves here, and the run it writes must
+            -- describe the player standing SHORT of the fight, with the step's own effects still ahead.
+            local log = {}
+            w.onApproach = function(cell)
+                log[#log + 1] = "approach"
+                assert(cell == dest, "onApproach names the stop being walked into")
+                assert(w.px == sx and w.py == sy, "onApproach fired after the token had already moved")
+            end
+            w.onArrive = function() log[#log + 1] = "arrive" end
+            w.onEncounter = function() log[#log + 1] = "encounter" end
+
+            w:step(dx, dy)
+            assert(table.concat(log, ",") == "approach,arrive,encounter",
+                "expected approach before the landing hooks, got: " .. table.concat(log, ","))
+            assert(w.px == dest.x and w.py == dest.y, "the step still lands on the stop")
+        end,
+    },
+    {
+        name = "onApproach stays quiet for a plain tile and for a stop already cleared",
+        fn = function()
+            local grid = genOpen(3)
+            revealAll(grid)
+            local sx, sy = grid.start.x, grid.start.y
+            local dx, dy
+            for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+                if grid:isWalkable(sx + d[1], sy + d[2], {}) then dx, dy = d[1], d[2]; break end
+            end
+            local dest = grid:get(sx + dx, sy + dy)
+
+            local approaches = 0
+            local function run(setup)
+                local w = walker(grid)
+                w.visionRadius = 1
+                w.onApproach = function() approaches = approaches + 1 end
+                setup()
+                w:step(dx, dy)
+            end
+
+            dest.encounter = nil
+            run(function() end)
+            assert(approaches == 0, "an empty tile is not an approach -- nothing to save for")
+
+            dest.encounter, dest.cleared = { kind = "treasure" }, true
+            run(function() end)
+            assert(approaches == 0, "a stop already resolved is not an approach")
+        end,
+    },
+    {
         name = "pathTo returns nil for the player's own tile and for walls",
         fn = function()
             local grid = genOpen(5)

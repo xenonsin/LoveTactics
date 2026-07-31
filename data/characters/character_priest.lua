@@ -19,19 +19,30 @@ return {
     },
     -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. This is the
     -- RELIC-FREE generic priest: NO Hallowed Censer in the center (that bound Sanctified-Presence relic is
-    -- Amana's signature -- see character_amana.lua -- not a template's). Around the empty center, a support
-    -- caster's kit: the Heal spell to mend at range, Jolt to delay a pressing threat, silk robes for spell
-    -- resistance, a potion as a fallback mend, and the two ways to refuel the non-regenerating mana pool --
-    -- the focus stone (Wait -> Focus) and the parasitic staff (siphons mana on hit).
+    -- Amana's signature -- see character_amana.lua -- not a template's). It carries the PLAIN censer
+    -- instead, the way the other templates carry their `weapon_iron_<family>`: the censer is the priest's
+    -- own arm and belongs to this shelf and no other (data/items/weapon/weapon_censer.lua), so a body that
+    -- fought with a staff was borrowing the mage's. Around it, a support caster's kit: Heal to mend at
+    -- range, Jolt to delay a pressing threat, silk robes for spell resistance, a potion as a fallback
+    -- mend, and the focus stone (Wait -> Focus) to refuel the non-regenerating mana pool.
+    --
+    -- Trading the parasitic staff for the censer costs the second mana-refuel route (the staff siphoned
+    -- on hit) and buys the family's real verb: walking smoke that Blesses whoever stays beside him. That
+    -- is the more priestly bargain, and it makes mana upkeep a gear decision rather than a given.
     startingItems = {
-        "ability_heal",              "ability_jolt",           "armor_silk_robes",
-        "consumable_healing_potion", "weapon_parasitic_staff", "utility_focus_stone",
-        "ability_sanctuary",         false,                    false,
+        "ability_heal",              "ability_jolt",     "armor_silk_robes",
+        "consumable_healing_potion", "weapon_censer",    "utility_focus_stone",
+        "ability_sanctuary",         false,              false,
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. Jolt (an offensive zap) keeps click-to-
     -- attack intuitive; the player can re-pin the heal or any other ability.
     defaultAction = "ability_jolt",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_censer",
+    signatureAbility = "ability_heal",
     -- Basic tactics (models/ai.lua): mend the moment mending matters. The `support` posture already
     -- reads allies before enemies; this reaches for Heal specifically once someone slips below
     -- two-thirds, ahead of any swing.

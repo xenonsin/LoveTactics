@@ -21,6 +21,11 @@ return {
         "consumable_healing_potion", false,          false,
     },
     defaultAction = "weapon_iron_bow",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_iron_bow",
+    signatureAbility = "ability_field_brew",
     -- Mend the most wounded ally with a poultice before anything else.
     ai = {
         { priority = "urgent", act = "support", item = "consumable_wildcraft_poultice", targetPref = "most_wounded",

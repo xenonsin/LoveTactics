@@ -11,6 +11,7 @@
 --
 --   GlossaryPanel.draw(entries, box, maxRight)        -- a floating box beside an item TOOLTIP
 --                                                     -- (box = the tooltip's { x, y, w, h })
+--   GlossaryPanel.drawAt(entries, x, y, maxH)         -- ... the same box, pinned where the caller says
 --   GlossaryPanel.drawColumn(entries, x, y, w, maxH, opts) -> height used
 --                                                     -- bare rows inside a panel's own detail column
 --
@@ -34,6 +35,10 @@ local COMPACT_GAP = 4 -- ... and in the compact one, where the paragraphs are al
 local TAG_GAP = 6   -- least space kept between an entry's name and its STATUS/KEYWORD tag
 
 local GlossaryPanel = {}
+
+-- The floating box's width. Public so a caller laying the aside out itself (the draft kit cluster) can
+-- reserve the column before it decides how many tooltips fit beside it.
+GlossaryPanel.WIDTH = W
 
 local BG = { 0.07, 0.08, 0.11, 0.96 }
 local BORDER = { 0.34, 0.37, 0.45, 0.85 } -- muted, unlike the tooltip's type-tinted edge: this is secondary
@@ -172,6 +177,16 @@ local function paint(rows, dropped, x, y, w, name, desc, cap, compact, caption)
     end
 end
 
+-- The floating box's rows and full height (padding included) for `entries` in at most `maxH` of inner
+-- room. Shared by both floating entry points so the one that picks a spot and the one that is handed a
+-- spot size the box identically. Returns nil when not one entry fits.
+local function measure(entries, maxH)
+    local name, desc, cap = defaultFonts()
+    local rows, h, dropped = layout(entries, W - PAD * 2, maxH, name, desc, cap, false, false)
+    if #rows == 0 then return nil end
+    return rows, h + PAD * 2, dropped
+end
+
 -- Where the floating box sits: beside the tooltip on whichever side has room, top-aligned with it.
 -- Prefers the right, falls back to the left, and when neither side can hold it whole takes the roomier
 -- one and clamps -- an overlap at the screen's edge beats a panel drawn off it.
@@ -197,24 +212,35 @@ end
 -- an item that names no status and declares no keyword, which is most of them.
 function GlossaryPanel.draw(entries, box, maxRight)
     if not entries or #entries == 0 or not box then return end
-    local name, desc, cap = defaultFonts()
-    maxRight = maxRight or Scale.WIDTH
+    local rows, h = measure(entries, Scale.HEIGHT - 8 - PAD * 2)
+    if not rows then return end
+    local bx, by = position(box, h, maxRight or Scale.WIDTH)
+    return GlossaryPanel.drawAt(entries, bx, by)
+end
 
+-- Draw the framed box with its top-left pinned exactly at (x, y), clamped only against the bottom edge.
+-- For a caller that has already chosen the spot: the draft unit sheet fans a whole kit's tooltips into
+-- columns and puts the definitions PAST the outermost one, where `position`'s beside-the-box rule --
+-- which knows about one tooltip, not a cluster of them -- would have dropped it onto a neighbour.
+-- `maxH` caps the box's height (defaults to the screen). Returns its { x, y, w, h }, or nil for nothing
+-- to say / no room to say it.
+function GlossaryPanel.drawAt(entries, x, y, maxH)
+    if not entries or #entries == 0 then return nil end
+    local name, desc, cap = defaultFonts()
     local innerW = W - PAD * 2
-    local rows, h, dropped = layout(entries, innerW, Scale.HEIGHT - 8 - PAD * 2, name, desc, cap,
-        false, false)
-    if #rows == 0 then return end
-    h = h + PAD * 2
-    local bx, by = position(box, h, maxRight)
+    local rows, h, dropped = measure(entries, math.min(maxH or math.huge, Scale.HEIGHT - 8) - PAD * 2)
+    if not rows then return nil end
+    y = math.max(4, math.min(y, Scale.HEIGHT - h - 4))
 
     love.graphics.setColor(BG)
-    love.graphics.rectangle("fill", bx, by, W, h, 6, 6)
+    love.graphics.rectangle("fill", x, y, W, h, 6, 6)
     love.graphics.setColor(BORDER)
     love.graphics.setLineWidth(1)
-    love.graphics.rectangle("line", bx, by, W, h, 6, 6)
+    love.graphics.rectangle("line", x, y, W, h, 6, 6)
 
-    paint(rows, dropped, bx + PAD, by + PAD, innerW, name, desc, cap, false, false)
+    paint(rows, dropped, x + PAD, y + PAD, innerW, name, desc, cap, false, false)
     love.graphics.setColor(1, 1, 1)
+    return { x = x, y = y, w = W, h = h }
 end
 
 -- Draw the definitions as bare rows in a `w`-wide column at (x, y), inside a panel that already has its

@@ -1,6 +1,11 @@
 -- A raised corpse, reached only through Raise Dead (data/items/ability/ability_raise_dead.lua). Slow
 -- and witless -- it fights on your side but takes its own turns (AI-run) -- yet tough and strong, a
 -- shambling wall of dead flesh. It carries Rotting Claws and no mana. See fire_elemental.lua for shape.
+--
+-- It is also GRAVE-COLD (data/items/utility/utility_grave_cold.lua): mending does not reach the dead,
+-- so a heal aimed at it burns it for the whole amount instead. Worth knowing before you raise one --
+-- it is a body that rots down on a timer and cannot be topped up, and a healing zone your line is
+-- standing in will quietly eat it.
 return {
     name = "Zombie",
     sprite = "assets/chars/zombie.png",
@@ -12,7 +17,7 @@ return {
         movement = 4, -- shambling
         speed = 2,
     },
-    startingItems = { "weapon_rotting_claws" },
+    startingItems = { "weapon_rotting_claws", "utility_grave_cold" },
     -- Basic tactics (models/ai.lua): witless but not aimless -- the raised corpse shambles onto the foe
     -- closest to falling.
     ai = {

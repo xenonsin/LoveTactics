@@ -124,12 +124,12 @@ local settingsButton = { x = 16, y = 236, w = 130, h = 36 }
 -- adjusting speed does NOT reclaim the auto turn: changing how fast the AI plays is not taking over.
 local speedButton = { x = 150, y = 192, w = 56, h = 36 }
 local SPEED_STEPS = { 1, 2, 3 }
--- Debug-only shortcuts that decide the fight instantly, so a developer can jump straight to the win
--- or loss follow-up (spoils screen, overworld onWin/onLoss) without playing the encounter out. Gated
--- on Debug.enabled -- they never render or take a click in a release build. Sat side by side under
--- the rest of the menu.
-local winButton = { x = 16, y = 280, w = 62, h = 36 }
-local loseButton = { x = 84, y = 280, w = 62, h = 36 }
+-- Debug-only shortcut that decides the fight instantly, so a developer can jump straight to the win
+-- follow-up (spoils screen, overworld onWin) without playing the encounter out. Gated on
+-- Debug.enabled -- it never renders or takes a click in a release build. There is deliberately no
+-- matching "Lose": Forfeit above is that button, in every build, and two ways to concede one fight is
+-- one too many.
+local winButton = { x = 16, y = 280, w = 130, h = 36 }
 
 -- The y the docked tooltip stack may rise to: just under the hamburger while the menu is closed, or
 -- under its last visible entry while it is open, so the menu and the tooltips never draw over each
@@ -169,7 +169,7 @@ local function overMenuEntry(x, y)
     return pointIn(forfeitButton, x, y) or pointIn(logButton, x, y) or pointIn(rangesButton, x, y)
         or (autoAllowed() and pointIn(autoButton, x, y)) or pointIn(settingsButton, x, y)
         or (autoAllowed() and battle.autoAll and pointIn(speedButton, x, y))
-        or (Debug.enabled and (pointIn(winButton, x, y) or pointIn(loseButton, x, y)))
+        or (Debug.enabled and pointIn(winButton, x, y))
 end
 
 -- An id for whichever HUD button the point is over, or nil -- so battle.mousemoved can sound a hover
@@ -187,7 +187,6 @@ local function hoveredMenuButton(x, y)
     if pointIn(settingsButton, x, y) then return "settings" end
     if autoAllowed() and battle.autoAll and pointIn(speedButton, x, y) then return "speed" end
     if Debug.enabled and pointIn(winButton, x, y) then return "win" end
-    if Debug.enabled and pointIn(loseButton, x, y) then return "lose" end
     return nil
 end
 
@@ -279,24 +278,6 @@ local function objectiveText(obj)
     return text
 end
 
--- The remaining time on a timed objective, in TICKS, or nil for one that has no clock. `survive`
--- counts down the elapsed clock; `hold` counts only the ticks the party actually held the ground
--- (Combat.accrueHold), so its number stalls whenever the post is contested. `defend` is NOT here: it
--- is wave-based, not timed, and reports its progress as a wave tally instead (objectiveWaves).
-local function objectiveRemaining(obj, combat)
-    if not obj then return nil end
-    if obj.type == "survive" then
-        return math.max(0, math.ceil((obj.duration or 0) - (combat.clock or 0)))
-    elseif obj.type == "hold" then
-        return math.max(0, math.ceil((obj.duration or 0) - (combat.heldTicks or 0)))
-    elseif obj.type == "control" then
-        -- The moving-node fight counts DOWN to its tick limit -- the hourglass tail is how much of the
-        -- match is left, the same unit every other timed objective is quoted in.
-        return math.max(0, math.ceil((obj.maxTicks or 0) - (combat.clock or 0)))
-    end
-    return nil
-end
-
 -- Wave progress for a wave-based `defend`: how many waves have walked on out of the total the fight
 -- fields. The opening composition is wave 1; each `objective.waves` entry is another, counted arrived
 -- once the clock passes its `at` tick (the same reckoning Combat.allWavesArrived uses to judge the
@@ -326,7 +307,9 @@ function battle.drawObjective(x, y, w)
     -- The trailing read-out is one of two things: a tick countdown (survive/hold), worn with the
     -- hourglass because it is measured in ticks, OR a wave tally (the wave-based defend), drawn as
     -- plain text and NOT the hourglass -- the hourglass is the game's mark for ticks alone.
-    local remaining = objectiveRemaining(obj, battle.combat)
+    -- The countdown in TICKS (Combat.objectiveRemaining), the same number the hover tooltip quotes on
+    -- the marked ground itself -- one formula, so the banner and the tile can never disagree.
+    local remaining = Combat.objectiveRemaining(battle.combat)
     local wArrived, wTotal = objectiveWaves(obj, battle.combat)
     local gw, gap, numGap = 11, 12, 5
     local col = Theme.accentAmber
@@ -2129,6 +2112,31 @@ local function strikeableObjectAt(unit, x, y)
     return nil
 end
 
+-- Would confirming `item` on (cx, cy) actually DO something -- land on a body, place something,
+-- break an object standing there -- or is it a swing at empty air? Combat.castDoesSomething replays
+-- the effect as an inert dry run (so a ground-laying ability answers yes on bare earth); the object
+-- check adds the barrel/wall/revealed trap the swing would break, which no dry run sees because the
+-- object layer isn't a unit.
+--
+-- Memoised on the aim, the item, where the actor stands and the turn, because the same cell is asked
+-- about up to three times a frame -- refreshView's overlay pass, the action-preview tooltip and the
+-- confirm itself all route through armedActionAt. Every way the board can change under a held aim
+-- moves one of those: a walk moves the actor, a cast ends the turn, and the next turn bumps
+-- turnCount (so even a unit granted a second turn on the same tile re-asks).
+local castCache = { key = nil, value = false }
+local function castConnectsAt(item, cx, cy)
+    local unit = battle.current
+    if not (unit and item and item.activeAbility) then return false end
+    local key = tostring(item) .. "@" .. cx .. "," .. cy .. "|" .. unit.x .. "," .. unit.y
+        .. "#" .. (battle.combat.turnCount or 0)
+    if castCache.key ~= key then
+        castCache.key = key
+        castCache.value = Combat.castDoesSomething(battle.combat, unit, item, cx, cy)
+            or strikeableObjectAt(unit, cx, cy) ~= nil
+    end
+    return castCache.value
+end
+
 -- Break a board object with the ARMED item, walking to the firing tile (entry.fromX/fromY, out of the
 -- item's own reach) first when the blow can't land from where the unit stands. The armed-mode sibling
 -- of tryDamageProp/Wall/Trap, which strike with the default action in move mode; `kind` selects the
@@ -2170,8 +2178,22 @@ end
 --   nil                        -- nothing to do here.
 -- The move case is what lets an armed unit still walk freely (like move mode) by clicking an empty
 -- tile: without it, aiming empty air would walk to the adjacent stand tile to "strike" nothing --
--- the movement stopping a tile short. Tile/self-target abilities never take the move branch (an empty
--- tile IS their target -- an AoE placement, a self-cast), so aiming them still places/casts.
+-- the movement stopping a tile short. A SELF-target ability never takes it (its only aim is the tile
+-- it already stands on).
+--
+-- A TILE-target ability needs the same escape, and can't get it from "is there a body here": an empty
+-- tile is a legal aim for it, so every reachable tile is one and the move band vanishes inside the
+-- cast band. Whole weapon families aim a tile because their aimed cell is a FACING for an arc or a
+-- line -- every spear, axe and greatsword -- and the turn auto-arms the default weapon, so without
+-- this a knight had to disarm and re-arm to take a single step. The tie is broken by what the cast
+-- would actually DO (castConnectsAt):
+--   1. it connects -- a body in the footprint, ground it would lay, an object it would break -> act.
+--   2. it connects with nothing, and a move is still available -> walk there (staying armed).
+--   3. it connects with nothing and the move is spent -> swing anyway, into empty air. A wasted swing
+--      is the player's to make; a click that silently does nothing is not.
+-- `ab.groundAim` pins an ability to (1) whatever the dry run says, for anything whose real work a dry
+-- run can't see.
+--
 -- The stand tile a strike fires from is the steered route's endpoint whenever that tile can legally
 -- reach the target (so the player picks WHERE to attack from); otherwise the cheapest tile
 -- attackReach recorded in rangeReach.
@@ -2204,6 +2226,19 @@ local function armedActionAt(cx, cy)
         return nil
     end
     local entry = battle.rangeReach and battle.rangeReach[cx .. "," .. cy]
+    -- A tile aim that would connect with nothing is a step, as long as there is still a step to take
+    -- (see the note above). A reachable tile the cast can't even be aimed at (inside a thrown ability's
+    -- minimum range) walks too, rather than staying the dead click it used to be.
+    -- Not while a blink is armed: `battle.reachable` is then a teleport diamond, and the armed move
+    -- branch walks. Toggling blink disarms anyway (toggleBlink), so this only skips the case where the
+    -- player re-armed on top of it -- which keeps aiming, exactly as before.
+    if ab.target == "tile" and not ab.groundAim and not battle.blinking
+        and battle.reachable and battle.reachable[cx .. "," .. cy]
+        and not Combat.hasMoved(battle.combat)
+        and not (entry and castConnectsAt(item, cx, cy)) then
+        local mp = movePathTo(cx, cy)
+        return { kind = "move", x = cx, y = cy, cells = mp and mp.cells or nil }
+    end
     if not entry then return nil end
     -- The steered route only decides the stand tile when the actor CAN'T already hit from where it
     -- stands. Otherwise the route is ignored and the strike fires in place: the trail extends itself
@@ -2292,8 +2327,9 @@ local function actionPreviewFor(cx, cy)
         end
         local plan = armedActionAt(cx, cy)
         if not plan then return nil end
-        -- Aiming empty air with a single-target ability is a reposition (walk onto the tile). A
-        -- steered detour ending here is priced by its own (longer) route, not the shortest one's.
+        -- Aiming empty air is a reposition (walk onto the tile) -- with a single-target ability, or
+        -- with a tile-aimed one whose swing would connect with nothing (see armedActionAt). A steered
+        -- detour ending here is priced by its own (longer) route, not the shortest one's.
         if plan.kind == "move" then
             local mp = movePathTo(cx, cy)
             local node = battle.reachable[cx .. "," .. cy]
@@ -3183,16 +3219,25 @@ local function refreshView()
         overlays.range = band
         overlays.rangeSupport = support
 
-        -- An AoE ability paints its blast footprint around the aimed cell, brighter than the wash.
-        overlays.aoe = aoeFootprint(previewItem, battle.map.cursor.x, battle.map.cursor.y)
-        overlays.aoeSupport = support -- the blast previews as a buff (green) or a threat (orange) by this
+        -- What the armed item would DO on the aimed cell -- read once here and used twice below: the
+        -- blast footprint must not be painted over a cell that is going to walk (a tile-aimed weapon
+        -- whose swing connects with nothing resolves as a step), and the approach arrow is drawn from
+        -- the same plan. Only for the armed item: a hovered-slot preview commits to nothing.
+        local plan = armed and armedActionAt(battle.map.cursor.x, battle.map.cursor.y) or nil
+        local walking = plan ~= nil and plan.kind == "move"
+
+        -- An AoE ability paints its blast footprint around the aimed cell, brighter than the wash --
+        -- unless the click would step onto that cell instead of swinging at it.
+        if not walking then
+            overlays.aoe = aoeFootprint(previewItem, battle.map.cursor.x, battle.map.cursor.y)
+            overlays.aoeSupport = support -- the blast previews as a buff (green) or a threat (orange) by this
+        end
 
         -- Preview the move to reach the aimed cell, drawn as the same arrow move mode uses: onto the
         -- cell when it's a reposition (empty reachable tile), or to the stand tile the action fires
         -- from when hitting a target there. Nil when the unit is already in place or there's nothing
-        -- to do. Only for the armed item (a hovered-slot preview isn't committing to a move).
+        -- to do.
         if armed then
-            local plan = armedActionAt(battle.map.cursor.x, battle.map.cursor.y)
             local tx, ty, cells
             if plan and plan.kind == "move" then
                 tx, ty, cells = plan.x, plan.y, plan.cells
@@ -3602,28 +3647,25 @@ local function refreshView()
     -- The ground a `reach` or `hold` objective is fought over (Arena.resolveRegion). Painted for the
     -- whole battle, not just while something is armed: an objective tile nobody can see is an
     -- objective nobody can play, and the HUD line above promises "the marked ground".
+    --
+    -- Which tiles that is per objective type is Combat.objectiveGround's answer, shared with the hover
+    -- tooltip (Combat.objectiveTileInfo) so the box that opens describes exactly the ground the wash
+    -- painted: the control node's live waypoint (it hops on the clock, so this follows it), the tiles a
+    -- defend's protectees currently stand on (read live, since they walk -- the anchor region stays in
+    -- obj.tiles for enemy pathing but isn't what the HUD washes), or a reach/hold objective's fixed
+    -- ground. Nothing at all once a defend's charge has fallen: that loss is already sealed.
     local obj = battle.combat.objective
-    if obj and obj.type == "control" then
-        -- The moving score node: wash the tiles it currently sits on (they hop on the clock, so this
-        -- follows it), and mark it "held" when the LOCAL player solely controls it -- the same green
-        -- the hold objective uses to say the count is running, here reading from this player's side.
-        local tiles = Combat.controlTiles(battle.combat)
-        if #tiles > 0 then
-            overlays.objective = tiles
+    local ground = Combat.objectiveGround(battle.combat)
+    if #ground > 0 then
+        overlays.objective = ground
+        -- Both contested objectives need their progress legible, so the wash reports whether the count
+        -- is running: `hold` for the party, `control` for whichever side the LOCAL player commands.
+        if obj.type == "control" then
             overlays.objectiveHeld =
-                (Combat.controlledBy(battle.combat, tiles) == (battle.combat.playerSide or "party")) or nil
+                (Combat.controlledBy(battle.combat, ground) == (battle.combat.playerSide or "party")) or nil
+        elseif obj.type == "hold" then
+            overlays.objectiveHeld = Combat.holdsGround(battle.combat, ground) or nil
         end
-    elseif obj and obj.type == "defend" and obj.protect then
-        -- A defend fight is fought over the survivors, not the ground: mark exactly the tiles the
-        -- protectees stand on (read live, since they move) rather than the whole anchor row. The
-        -- anchor region still lives in obj.tiles for enemy pathing -- it just isn't what the HUD
-        -- washes. Falls through to nothing if they've all fallen (the loss is already sealed).
-        local protectedTiles = Combat.protectedTiles(battle.combat, obj.protect)
-        if #protectedTiles > 0 then overlays.objective = protectedTiles end
-    elseif obj and obj.tiles and #obj.tiles > 0 then
-        overlays.objective = obj.tiles
-        -- `hold` also needs its progress legible, so the wash reports whether the count is running.
-        overlays.objectiveHeld = (obj.type == "hold") and Combat.holdsGround(battle.combat, obj.tiles) or nil
     end
 
     battle.map:setOverlays(overlays)
@@ -4517,8 +4559,12 @@ function battle.drawTileTooltip(mx, my)
     -- pushed down to clear the entries while it is open.
     local dockTop, gap, exGap = menuBottom(), 8, 4
 
+    -- Marked objective ground (the amber/green wash) rides on the TERRAIN info rather than in the
+    -- occupant box, for two reasons: the terrain box never yields to a crowded column, and the read
+    -- matters most on a tile that already has a body on it -- standing on the node is not holding it.
     local terrainInfo = { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
-                          hazards = Hazard.allAt(battle.combat, cx, cy) }
+                          hazards = Hazard.allAt(battle.combat, cx, cy),
+                          objective = Combat.objectiveTileInfo(battle.combat, cx, cy) }
     local objInfo
     -- Same precedence actionPreviewFor picks a strike target with (trap, then wall, then prop), so the
     -- box that opens describes the very thing a click would hit.
@@ -4669,10 +4715,9 @@ function battle.drawHud()
     -- Settings: a plain entry (never a toggle state), opening the overlay over the paused fight.
     toggleBtn(settingsButton, "Settings", false, { 0.70, 0.70, 0.78 })
 
-    -- Debug-only instant-decision buttons (green Win / red Lose), sat where Main Menu used to be.
+    -- Debug-only instant-win shortcut, sat where Main Menu used to be. (No "Lose" twin: Forfeit is it.)
     if Debug.enabled then
         toggleBtn(winButton, "Win", true, { 0.45, 0.75, 0.50 })
-        toggleBtn(loseButton, "Lose", true, { 0.78, 0.45, 0.45 })
     end
 
     battle.drawHudText(boardX, boardW)
@@ -5097,10 +5142,6 @@ function battle.mousepressed(x, y, button)
         end
         if Debug.enabled and pointIn(winButton, x, y) then
             if not battle.over then win() end
-            return
-        end
-        if Debug.enabled and pointIn(loseButton, x, y) then
-            if not battle.over then lose() end
             return
         end
     end

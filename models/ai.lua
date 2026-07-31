@@ -358,16 +358,32 @@ AI.POSTURES = {
     -- the player can choose when to open, rather than a timer.
     defensive = {
         rules = { SUPPORT_RULE, ATTACK_RULE },
-        -- `approach`, not `hold` -- the holding is `engage`'s job, and doing it twice would mean a
-        -- unit that has been shot at still refuses to walk toward whoever shot it. Once provoked, a
-        -- defender commits like anyone else; the posture is about WHEN the fight starts, not about
-        -- fighting it at arm's length. (AI.plan only consults `move` when engage has passed.)
-        move = "approach",
+        -- `defend`, not `approach`: a defender walks to its POST and stops there. The old `approach`
+        -- was written for a posture that had nothing to defend -- once provoked it committed like an
+        -- aggressor and chased, which on a map with an objective means abandoning the only tile that
+        -- mattered to go trade blows somewhere else. See AI.post and fallbackMove's `defend` mode.
+        -- With no post to take (a plain killAll) it degrades to exactly that old approach.
+        move = "defend",
+        defends = true, -- AI.plan reads a post for this posture, and leashes its stand tiles to it
         engage = function(ctx)
             if hpFraction(ctx.unit) < 1 then return true end -- someone already shot at me
+            -- Somebody is on the ground I am here to hold. A post being contested IS the fight
+            -- starting, whether or not the contester has come within my own reach yet.
+            if ctx.post then
+                for _, other in ipairs(ctx.combat.units) do
+                    if other.alive and other.side ~= ctx.unit.side
+                        and AI.atPost(other.x, other.y, ctx.post) then return true end
+                end
+            end
             local Combat = require("models.combat")
             for _, item in ipairs(ctx.items) do
-                if #Combat.abilityTargets(ctx.combat, ctx.unit, item) > 0 then return true end
+                -- HOSTILE reach only. Counting a support item here meant a unit engaged because it
+                -- could drink its own potion (an `ally` ability's target list includes the caster),
+                -- so every defender carrying one activated on turn 1 and the posture never actually
+                -- held anything -- masking, for as long as the campaign kit carried a potion, the
+                -- fact that a stripped draft body freezes instead.
+                if not Combat.isSupportAbility(item.activeAbility)
+                    and #Combat.abilityTargets(ctx.combat, ctx.unit, item) > 0 then return true end
             end
             return false
         end,
@@ -466,21 +482,103 @@ function AI.objectiveUnit(combat, unit)
     return nil
 end
 
--- The nearest tile of the ground the objective names -- a `reach` or `hold` region's resolved
--- `tiles` (Arena.resolveRegion). This is the positional handle an escort needs and `objectiveUnit`
--- cannot give: a wagon column is not walking toward a body, it is walking toward the exit.
+-- The nearest tile of the ground the objective names. Read through Combat.objectiveGround rather
+-- than off `obj.tiles` directly, because the ground an objective is decided on is not always the
+-- authored region: a `control` node follows its own moving waypoint and a `defend` follows the body
+-- it is fought over. Reading the raw field saw only the authored kind, so an AI on a draft control
+-- map was blind to the very tile the match is scored on.
 --
--- Nil when the objective names no ground (killAll, assassinate), which is what makes the `advance`
--- mode fall back to ordinary approach instead of freezing.
+-- This is the positional handle an escort needs and `objectiveUnit` cannot give: a wagon column is
+-- not walking toward a body, it is walking toward the exit.
+--
+-- Nil when the objective names no ground (killAll, assassinate, survive), which is what makes the
+-- `advance` mode fall back to ordinary approach instead of freezing.
 function AI.objectiveTile(combat, unit)
-    local obj = combat.objective
-    if not obj or not obj.tiles or #obj.tiles == 0 then return nil end
+    return AI.nearestTile(unit, require("models.combat").objectiveGround(combat))
+end
+
+-- The nearest of `tiles` to `unit`, or nil for an empty list. Board order decides a tie, so two
+-- clients walking the same list pick the same tile.
+function AI.nearestTile(unit, tiles)
     local best, bestD
-    for _, t in ipairs(obj.tiles) do
+    for _, t in ipairs(tiles or {}) do
         local d = manhattan(unit.x, unit.y, t.x, t.y)
         if not bestD or d < bestD then best, bestD = t, d end
     end
     return best
+end
+
+-- ---------------------------------------------------------------------------
+-- The post: what a defender is standing there FOR
+-- ---------------------------------------------------------------------------
+--
+-- `defensive` is not "hits back when hit" -- it is the posture of a unit assigned to something. What
+-- that something is has to come from the OBJECTIVE, because the objective is the only thing on the
+-- board that knows what the fight is about: on an assassination the boss's guards are there for the
+-- boss, on a control map the bodies around the node are there for the node. Without that reading a
+-- defender is just an aggressor with a broken activation rule -- it stands wherever it was spawned
+-- and calls it a defence, which is what left a drafted knight rooted in a corner of a control match.
+--
+-- A post is `{ tiles, radius, what }`: the ground being held and how far off it the holder may stand.
+
+-- How far from a BODY it guards a defender will station itself. Two tiles is a picket around the
+-- charge rather than a huddle on top of it -- close enough that anything reaching the charge has to
+-- come through the guard, loose enough that a throne room's guards do not all crowd one doorway.
+AI.POST_RADIUS = 2
+
+-- The body this unit is posted to: the one the objective names that stands on ITS OWN side. The
+-- mirror of `objectiveUnit`, which deliberately returns the far-side one -- an escorted charge is a
+-- thing to cut down if you are the enemy and a thing to ring if you are its escort, and the two
+-- readings are the same lookup with the side test flipped.
+--
+-- Matched through a transform for the same reason Combat's assassinate check is: a general who sheds
+-- its human body for its demon one is the same unit in a new shape, and its guards must not lose
+-- their post the moment it phases.
+function AI.postedUnit(combat, unit)
+    local obj = combat.objective
+    if not obj then return nil end
+    local id = obj.target or obj.protect or obj.who
+    if not id then return nil end
+    local Transform = require("models.transform")
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.side == unit.side and not u.summoned then
+            local original = Transform.originalChar(u)
+            if u.char.id == id or (original and original.id == id) then return u end
+        end
+    end
+    return nil
+end
+
+-- Where `unit` is posted, or nil on an objective that names nothing to defend (killAll, survive) --
+-- and nil is the important half: with no post a defender keeps the plain hold-until-provoked rule it
+-- has always had, so every authored killAll map plays exactly as before.
+--
+-- A BODY outranks GROUND: a guard follows what it guards, and a `defend` objective resolves to its
+-- protectee's tile anyway, so reading the body first is also what keeps a walking charge's picket
+-- walking with it instead of standing on the square it left.
+function AI.post(combat, unit)
+    local body = AI.postedUnit(combat, unit)
+    if body then
+        return { tiles = { { x = body.x, y = body.y } }, radius = AI.POST_RADIUS,
+                 what = body.char.name or "the charge" }
+    end
+    local ground = require("models.combat").objectiveGround(combat)
+    if #ground > 0 then
+        -- Radius 0, not a ring: this ground is held by STANDING on it. A control node only banks its
+        -- tick for the side actually occupying it and a `hold` counts the same way, so a defender
+        -- who parks one tile short of the post has not taken the post, however defensive it looks.
+        return { tiles = ground, radius = 0, what = "the objective" }
+    end
+    return nil
+end
+
+-- Is (x, y) close enough to `post` to count as manning it?
+function AI.atPost(x, y, post)
+    if not post then return true end
+    for _, t in ipairs(post.tiles) do
+        if manhattan(x, y, t.x, t.y) <= post.radius then return true end
+    end
+    return false
 end
 
 -- ---------------------------------------------------------------------------
@@ -716,7 +814,18 @@ local function fallbackMove(ctx, mode)
     if mode == "hold" then return nil end
 
     local goal
-    if mode == "objective" then
+    if mode == "defend" then
+        -- Man the post, then stop. Already at it -- nil: holding IS the move, and a defender that
+        -- kept closing would walk off the ground it just took. With no post to man (killAll names
+        -- nothing to defend) this is an ordinary approach, which is what the posture used to be.
+        if not ctx.post then
+            goal = nearest(ctx, foes(ctx))
+        elseif AI.atPost(unit.x, unit.y, ctx.post) then
+            return nil
+        else
+            goal = AI.nearestTile(unit, ctx.post.tiles)
+        end
+    elseif mode == "objective" then
         goal = AI.objectiveUnit(combat, unit) or nearest(ctx, foes(ctx))
     elseif mode == "advance" then
         -- Toward the exit, not toward the fight. An escorted column is trying to LEAVE, and every
@@ -770,7 +879,13 @@ local function fallbackMove(ctx, mode)
     end
 
     if best and best.d < here then
-        return { move = { x = best.x, y = best.y }, reason = mode .. ": closing on " .. ((goal.char and goal.char.name) or "target") }
+        -- Name the goal. A body names itself; a tile has no name of its own, so a post lends it the
+        -- one it was described by -- "defend: closing on the objective" says what the walk is FOR,
+        -- which is the only thing the log reader wants from a move with no blow attached to it.
+        local name = (goal.char and goal.char.name)
+            or (mode == "defend" and ctx.post and ctx.post.what)
+            or "target"
+        return { move = { x = best.x, y = best.y }, reason = mode .. ": closing on " .. name }
     end
     return nil
 end
@@ -1063,13 +1178,25 @@ function AI.plan(combat, unit)
 
     local posture, postureName = AI.posture(unit)
     local items = itemsFor(combat, unit)
-    local ctx = { combat = combat, unit = unit, items = items, posture = posture }
+    -- What this unit is standing there FOR, for a posture that stands there for something. Read once
+    -- and carried on the ctx, because the engage test, the stand-tile leash and the movement fallback
+    -- all have to agree about where the post is or the unit oscillates between taking it and leaving.
+    local post = posture.defends and AI.post(combat, unit) or nil
+    local ctx = { combat = combat, unit = unit, items = items, posture = posture, post = post }
 
     -- Stand tiles: always where I am, plus everywhere I could walk to unless the posture is rooted.
+    --
+    -- A defender's are LEASHED to its post, and the leash is what makes the posture mean anything: a
+    -- unit holding a control node that is free to enumerate every reachable tile will happily walk
+    -- four squares off it to land a hit, bank nothing that tick, and hand the node to whoever stayed.
+    -- The current tile is always in the list, so a defender still marching to a post it cannot reach
+    -- this turn can strike whatever has already come to it.
     local tiles = { { x = unit.x, y = unit.y, steps = 0 } }
     if not posture.rooted then
         for _, node in ipairs(Combat.reachableList(combat, unit)) do
-            tiles[#tiles + 1] = { x = node.x, y = node.y, steps = node.steps }
+            if AI.atPost(node.x, node.y, post) then
+                tiles[#tiles + 1] = { x = node.x, y = node.y, steps = node.steps }
+            end
         end
     end
 
@@ -1205,7 +1332,13 @@ function AI.plan(combat, unit)
     end
 
     -- No rule produced an action. Walk per the posture, or stand.
-    if engaged and not posture.rooted then
+    --
+    -- An unmanned post moves a unit that has NOT engaged, and that exception is the whole of "a
+    -- defender defends something": taking up a station is not joining a fight, so gating it behind
+    -- the activation rule left a unit waiting to be attacked on ground it had been posted to hold and
+    -- never reached. Once it is at the post, engage governs again and it holds until provoked.
+    local marching = post ~= nil and not AI.atPost(unit.x, unit.y, post)
+    if (engaged or marching) and not posture.rooted then
         local move = fallbackMove(ctx, posture.move)
         if move then return move end
     end

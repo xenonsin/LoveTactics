@@ -9,6 +9,13 @@
 -- exemplar) is simply skipped by DraftRun.pool via Save.known -- listing one here is harmless, so the
 -- waves can name the whole intended roster ahead of the art/data landing.
 --
+-- A unit bought here does NOT arrive wearing the kit its blueprint authors. It is stripped to its
+-- CHASSIS -- the one or two items it names as `signatureWeapon` / `signatureAbility`
+-- (models/draft_chassis.lua) -- and the rest of its grid is filled from the shop. So the practical
+-- entry requirement for this list is that the blueprint names a signature; tests/draft_chassis_spec.lua
+-- fails the build over an id that does not. What a wave really opens is a set of BODIES and verbs, not
+-- a set of loadouts.
+--
 -- The waves are spaced every OTHER round (1, 3, 5, 7, 9), not every round, because the run advances
 -- its round after EVERY battle (win or loss -- see DraftRun.recordResult), so `round` climbs to ~12
 -- across a race-to-ten-wins run. Unlocking a tier per round packed the deepest multiclass kits onto the

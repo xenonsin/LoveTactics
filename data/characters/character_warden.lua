@@ -20,6 +20,11 @@ return {
         "armor_chainmail",     "consumable_healing_potion", false,
     },
     defaultAction = "weapon_iron_spear",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_iron_spear",
+    signatureAbility = "ability_warding_line",
     -- Lay a warding line across the ground a foe is crossing.
     ai = {
         { priority = "high", act = "cast", item = "ability_warding_line",

@@ -21,6 +21,11 @@ return {
         "ability_doppelganger",          "utility_mana_wellspring",        "consumable_healing_potion",
     },
     defaultAction = "weapon_staff",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_staff",
+    signatureAbility = "ability_summon_lightning_elemental",
     -- Keep a court fielded; call a fresh elemental whenever a foe is on the board.
     ai = {
         { priority = "high", act = "cast", item = "ability_summon_lightning_elemental",

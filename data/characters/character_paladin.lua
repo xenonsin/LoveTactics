@@ -21,6 +21,11 @@ return {
         "consumable_healing_potion", false,           false,
     },
     defaultAction = "ability_lay_on_hands",
+    -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
+    -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
+    -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
+    signatureWeapon  = "weapon_demon_bane",
+    signatureAbility = "ability_lay_on_hands",
     -- Lay on hands for the most wounded ally, pulling their debuffs across.
     ai = {
         { priority = "urgent", act = "support", item = "ability_lay_on_hands", targetPref = "most_wounded",
