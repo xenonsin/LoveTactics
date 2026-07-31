@@ -23,10 +23,10 @@ file lands the count moves on its own. Paste a fresh summary into the snapshot b
 As of 2026-07-30 — **735 of 806 present**, 71 outstanding. Regenerate with the command above.
 
 `chars/` is now full, but with **composed placeholder tokens**, not painted art — every character
-blueprint resolves to a file so nothing renders as the bare letter fallback, yet the painted-character
+blueprint resolves to a file so nothing renders as the bare letter fallback, yet the animated-character
 work below is still owed. See [Composed tokens](#composed-tokens--the-budget-stand-in-same-philosophy-as-items):
-`char-compose assets` fills the gaps and skips any id that already has real art, so a painted head crop
-dropped in later transparently replaces its token. Each of the 37 **discipline exemplars** now carries its
+`char-compose assets` fills the gaps and skips any id that already has real art, so a delivered board
+sprite (a **Spine rig**) dropped in later transparently replaces its token. Each of the 37 **discipline exemplars** now carries its
 own sprite path and its own silhouette (a `DISCIPLINE_SILHOUETTE` tier in `tools/char_compose.lua`, keyed
 off the discipline's `exemplar`), so a Necromancer no longer wears the plain mage token — see
 [Composed tokens](#composed-tokens--the-budget-stand-in-same-philosophy-as-items).
@@ -34,7 +34,7 @@ off the discipline's `exemplar`), so a Necromancer no longer wears the plain mag
 | Bucket | Have | Needed | Rendered at | Source |
 |---|---|---|---|---|
 | `items/` | 583 | 619 | 64px cell | **composed from tags** — [icon system](#the-permanent-icon-system--compose-dont-commission) ✅ |
-| `chars/` | 94 | 94 | ~52px on a 60px tile | **composed placeholders** — see [Characters](#characters) |
+| `chars/` | 94 | 94 | ~52px on a 60px tile | **Spine rigs (commission)** — composed tokens stand in until each rig lands; see [Characters](#characters) |
 | ~~`hazards/`~~ | — | — | 64px tile, under units | **no art, ever** — [drawn by a shader](#hazards-are-not-icons) ✅ |
 | `portraits/` | 0 | 17 | 470px tall standing figure | **commission** |
 | `vendors/` | 0 | 8 | shop panel | **commission** |
@@ -48,7 +48,13 @@ off the discipline's `exemplar`), so a Necromancer no longer wears the plain mag
 
 The icon pipeline and the composed character tokens are **complete**; the 71 outstanding are the buckets
 that still need a human hand: painted portraits, vendors, backgrounds, terrain, and the last audio. The
-composed `chars/` tokens stand in until painted character art replaces them.
+composed `chars/` tokens stand in until an animated **Spine rig** replaces each one (see
+[Characters](#characters)).
+
+> **`chars/` is mid-migration to a new asset type.** A composed token is a single flat PNG, but a board
+> rig is a skeleton (`.json`/`.skel`) + `.atlas` + page PNG(s). The 94/94 count above is still the
+> composed-token PNGs; the `art-report` sweep will need a rule for the rig triple before it can count
+> real board art (see [Code follow-ups](#code-follow-ups-wiring-a-rig)).
 
 `tests/` is excluded from the sweep — a spec's stand-in sprite path exists to prove the tolerant
 loader survives a missing file, so it is not art anyone owes.
@@ -58,13 +64,20 @@ loader survives a missing file, so it is not art anyone owes.
 Bright fantasy, **not** grim dark. Portraits in anime style. **This is not a pixel-art game** —
 author above final display size and downscale; never upscale a small source.
 
+Board units are **Fire Emblem Heroes-style animated sprites** — hand-rigged in **Spine** (skeletal
+mesh, not pixel art, not a flipbook), style-matched to the painted dialogue portraits so a unit and
+its portrait read as the same character. See [Characters](#characters) and the hand-off brief in
+[commission-board-sprites.md](commission-board-sprites.md).
+
 ### The two-register rule
 
 The board carries two visual registers, and they must not bleed into each other:
 
-- **The character layer** (unit sprites) is *painted*. Everything standing on the board is drawn
-  in one style, because units are compared against each other side by side in the same role. An
-  iconic token beside a painted face does not read as a style choice — it reads as unfinished art.
+- **The character layer** (unit sprites) is *painted and animated* — a Spine rig per unit.
+  Everything standing on the board is drawn in one style, because units are compared against each
+  other side by side in the same role. A static composed token beside an animated rig does not read
+  as a style choice — it reads as unfinished art, which is exactly why composed tokens are only ever
+  interim (see [Composed tokens](#composed-tokens--the-budget-stand-in-same-philosophy-as-items)).
 - **The overlay layer** (hazards, traps, ground marks) is *graphic*. These sit **under** the units,
   semi-transparent, and read as marks on the ground rather than things standing on it. A flat,
   symbolic treatment here is a deliberate choice tactics games make constantly.
@@ -79,51 +92,61 @@ portrait in the same role.
 
 ## Characters
 
-`chars/` is one folder but four different sourcing problems. 18 of the 55 double as portraits.
+Every combatant on the board (~55) is slated for its own **animated Spine rig** — that is the whole
+`chars/` bucket, and its hand-off brief is [commission-board-sprites.md](commission-board-sprites.md).
+The named cast *also* has a static dialogue portrait in `portraits/`, but the two are now **separate
+assets**, not a crop relationship (see below). Until a unit's rig is delivered it shows a
+[composed token](#composed-tokens--the-budget-stand-in-same-philosophy-as-items).
 
-### Head crops — 18, free with the portraits
+### The named cast — rig and portrait are separate now
 
-The named cast appears in both `portraits/` and `chars/`. The battle sprite is **a square head
-crop of the commissioned portrait** — no separate art. Both draw sites already aspect-fit and
-centre a square (`ui/battle_map.lua` `math.min((bw-8)/sw, (bh-8)/sh)`, `ui/combat_panel.lua`
-`math.min(ps/sw, ps/sh)`), so a square source fills the cell exactly with no letterboxing and
-**no code change**.
+The named cast appears in both `portraits/` (dialogue) and `chars/` (board). These used to be **one
+asset**: the board sprite was a square head crop of the commissioned portrait. **That coupling is
+retired.** The board sprite is now its own **Spine rig**, authored independently — so the portrait no
+longer has to reserve headroom or keep weapons clear of the face for a crop, and there is no
+crop-and-export step. The rig owns the board; the portrait owns the dialogue box.
 
-> amana · archer · avatar_1 · clem · gyeom · kaya · knight · mage · priest · ren · saber ·
+> amana · avatar_1 · clem · gyeom · kaya · knight · ren · saber ·
 > general_envy · general_gluttony · general_greed · general_lust · general_pride · general_sloth ·
-> general_wrath
+> general_wrath · demon_lord
 
-Crop offline and export to `assets/chars/`. Do **not** crop at runtime: that would mean a head
-rect in every blueprint and keeping a ~1500px portrait resident to draw a 52px token.
+(`archer` / `mage` / `priest` are the retired generic classes — kept as enemy/test stand-ins, owed no
+portrait; see [commission-portraits.md](commission-portraits.md). They still get a board rig like any
+other combatant.)
 
-### Creatures — 24, one pack
+### Creatures — 24, rigged (Phase 3)
 
-Beasts, elementals, demons, undead and constructs. Painted creature art, so it sits beside the
-painted head crops rather than fighting them.
+Beasts, elementals, demons, undead and constructs — the largest rig group, and the last phase in
+[commission-board-sprites.md](commission-board-sprites.md). Rigged in the same register as the cast so
+they sit beside it rather than fighting it. Purchased still-art packs (e.g. NATHUHARUCA, see
+[Sourcing](#sourcing)) remain useful as **reference / an interim still** for a creature awaiting its
+rig, above the composed token — but the board's end-state for every creature is a Spine rig.
 
 > boar · dire_bear · hawk · pig · stag · wolf · wolf_alpha · earth/fire/ice/lightning/water/wind
 > elementals · demon_grunt · demon_imp · demon_lord · zombie · ogre · crucible_golem · homunculus ·
 > miller_ghost · blightstake · gaunt_vigil · wolfsong_spirit
 
-### Human enemies — 9, commission
+### Human enemies — 9, rigged (Phase 2)
 
-No portrait, but they must match the painted cast. **Only the head square is needed** — never a
-full standing figure — so these are a fraction of a companion portrait's cost.
+No portrait, but they must match the cast. These are now **full rigged figures**, not the square busts
+they once were — they moved wholesale into [commission-board-sprites.md](commission-board-sprites.md)
+when the board went animated.
 
 > bandit · bandit_chief · bastion_sworn · caravan_master · champion · forsworn_captain ·
 > forsworn_knight · ordnance_sentry · warlord
 
-### Objects — 4, from the tileset packs
+### Objects — 4, static, from the tileset packs
 
-Inanimate, so they are exempt from the character-layer rule and should match the *terrain*.
+Inanimate, so they are exempt from the character-layer rule and stay **static** (not rigged) —
+they should match the *terrain*, not the cast.
 
 > banner · march_standard · straw_sentry · totem
 
 ### Composed tokens — the budget stand-in, same philosophy as items
 
-Most of the 55 are portrait-less — a creature, a nameless enemy, an NPC that will never earn a painted
-face. Those don't wait on a commission and don't sit forever as the bare initial-in-a-disc fallback
-(`ui/battle_map.lua` drawUnits): they get a **composed token**, drawn as a pure function of fields the
+Every one of the ~55 is awaiting a rig, and a nameless enemy or a background creature may wait a long
+time. None of them sit meanwhile as the bare initial-in-a-disc fallback (`ui/battle_map.lua`
+drawUnits): they get a **composed token**, drawn as a pure function of fields the
 blueprint already carries — exactly the way an item's icon is a function of its family/element/class
 ([The permanent icon system](#the-permanent-icon-system--compose-dont-commission)) and a hazard's picture
 is a function of its `fire`/`ice` tag.
@@ -162,7 +185,7 @@ a loose substring, so a `demon_champion` is never mistaken for the Champion — 
 discipline body while still earning the gold badge (`warlord` → banner, not the overlord lift). The picks
 were reviewed shape-by-shape; `tests/char_compose_spec.lua` guards them.
 
-Like `icon-build`, `assets` mode **skips any file already on disk**, so a painted head crop dropped in later
+Like `icon-build`, `assets` mode **skips any file already on disk**, so real board art dropped in later
 is never overwritten — and it writes to the exact `def.sprite` path (not `<id>.png`), so a shared file
 (`demon_bomblet` → `demon_imp.png`) is composed once and every borrower rides along on it. A composed token
 is a placeholder in the painted register, so it is deliberately **not** committed by default: the plain run
@@ -199,8 +222,21 @@ Two hard constraints: **commercial use must be permitted**, and **no AI-generate
 |---|---|---|
 | [game-icons.net](https://game-icons.net/) | items, hazards, traps, materials | CC BY 3.0 — **attribution required** |
 | [GameDev Market](https://www.gamedevmarket.net/) | terrain, props | Pro Licence; platform bans generative AI outright |
-| [NATHUHARUCA MEGA MONSTER PACK](https://plaza-us.komodo.jp/products/nathuharuca-mega-monster-pack) | the 24 creatures | "Engine of your choice", commercial OK, editable |
-| Commission | portraits, vendors, hub, 9 enemy heads | — |
+| [NATHUHARUCA MEGA MONSTER PACK](https://plaza-us.komodo.jp/products/nathuharuca-mega-monster-pack) | interim creature stills / reference | "Engine of your choice", commercial OK, editable |
+| Commission — **Spine rigs** | all ~55 board sprites — [commission-board-sprites.md](commission-board-sprites.md) | full commercial buyout, no AI; **[Spine tooling](#spine-tooling--a-real-cost)** below |
+| Commission — portraits | dialogue portraits, vendors, hub | — |
+
+### Spine tooling — a real cost
+
+The board rigs are a paid pipeline, not a free asset source, and that belongs alongside the
+"commercial use / no AI" constraints:
+
+- **Spine Editor licence per rigging artist.** [Spine](https://esotericsoftware.com/) (Esoteric
+  Software) is commercial software; every artist who *creates or exports* a rig needs a licence
+  (Essential or Professional — mesh/weights, which the FEH look wants, is Professional).
+- **`spine-love` runtime licence.** The official LÖVE runtime is free to use, but the **Spine Runtimes
+  Licence** requires that anyone shipping the runtime hold a valid Spine Editor licence. Budget the
+  editor seat(s) as part of the commission, not an afterthought.
 
 ### Attribution obligation
 
@@ -222,24 +258,44 @@ not a courtesy — build the credits panel early rather than at ship.
 
 ## Artist brief
 
-Give this to whoever takes the commission — the head crop is load-bearing, so it belongs in the
-brief rather than being discovered at delivery.
+Two separate commissions now — the board rigs and the dialogue portraits are independent assets. The
+full hand-off for each lives in its own doc; the summary:
 
-**Portraits (19)** — standing figures for the dialogue box, anchored bottom-centre, displayed at
-470px tall (`ui/dialogue.lua`).
+**Board sprites (~55)** — animated **Spine rigs**, one per combatant, displayed at ~52px on a 60px
+tile (`ui/battle_map.lua`). Full spec in [commission-board-sprites.md](commission-board-sprites.md):
+skeleton + atlas + page PNG delivery, the required animation set (idle/walk/attack/hit/cast/death),
+multi-cell scaling, and the Spine tooling/licence note above.
 
-- Deliver **≥1400px tall** so a head crop is still ~300px+ and stays sharp at any future card size.
-- **Consistent head height across the whole cast.** Tokens are scaled to fit a square cell, so an
-  outsized head shrinks its body and the roster reads at inconsistent scale on the board.
-- **Leave headroom above the crown**, and keep weapons, props and hair-wings clear of the face — a
-  square crop around the head will catch anything that crosses it.
-- Deliver a **layered file or a marked square crop guide**, so crops can be re-cut without going
-  back to the artist.
-
-**Enemy heads (9)** — square bust only, ~512px, same style and head scale as the cast above.
+**Portraits (17)** — static standing figures for the dialogue box, anchored bottom-centre, displayed
+at 470px tall (`ui/dialogue.lua`). Full spec in
+[commission-portraits.md](commission-portraits.md). Deliver **≥1400px tall** and keep the cast
+consistent in style and proportion. (The old head-crop constraints — headroom, weapons clear of the
+face, uniform head height, a layered crop guide — are **retired**: the portrait no longer feeds the
+board token, so it only has to serve the dialogue box.)
 
 **Vendors (8) and hub city (1)** — panel and background art; the hub is 1280×720 logical
 (`scale.lua`), so author at 2× and downscale.
+
+## Code follow-ups (wiring a rig)
+
+Producing the rigs is decoupled from wiring them — art can be authored against the brief before any
+of this exists. When the first rig lands, wiring it takes:
+
+- **Vendor the `spine-love` runtime** (official Esoteric LÖVE runtime); mind the Spine Runtimes
+  Licence ([Spine tooling](#spine-tooling--a-real-cost)).
+- **A skeleton-vs-texture branch at the three board draw sites** — `ui/battle_map.lua` `drawUnits`
+  and `drawFallenSprite`, and `ui/combat_panel.lua`'s portrait square. Each today does
+  `love.graphics.draw(u.char.sprite, …)` on a static texture; when a unit's art is a Spine skeleton,
+  render it through the runtime instead.
+- **Map animation states onto the existing fx signals** so a rig needs no new model plumbing:
+  idle/walk from `fx:spriteState` (walk-slide offset), attack/hit from the lunge + hit-flash,
+  arrivals from `materialize`, death from `fade`/dissolve.
+- **Decide the shader interaction** — the dissolve/materialize/grayscale sprite shader
+  (`shaders/sprite.lua`) currently wraps one textured quad. Either apply it to the skeleton's meshes
+  or let a rig's own `death` clip replace it.
+- **Tolerant loader + report** — a rig loader analogous to `models/sprite.lua` (a missing rig falls
+  back to the composed token, never a crash), and an `art-report` rule that counts the rig triple
+  (`.json`/`.skel` + `.atlas` + page PNG) rather than a lone PNG (`tools/art_report.lua` `ORDER`).
 
 ## The icon pipeline
 

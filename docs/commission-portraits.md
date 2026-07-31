@@ -23,26 +23,16 @@ a dialogue box and lean in over it as the speaker (à la Fire Emblem support sce
 
 ## Technical spec
 
-- **Deliver ≥ 1400 px tall** per portrait (displayed at 470px, but the head crop must stay sharp at
-  future card sizes — see below).
+- **Deliver ≥ 1400 px tall** per portrait — displayed at 470px, but authored large so it stays sharp
+  at any future card or panel size.
 - **Displayed at 470px tall**, anchored **bottom-centre** — the figure's feet rest just inside the
   top edge of the text box (`ui/dialogue.lua`, `PORTRAIT_H = 470`). It is also drawn as a **side
   bust** rising over the box's right end, VN-speaker style. Compose so the figure reads both full
   and cropped to the upper body.
 - **Active vs inactive tint:** the speaking portrait is full colour; others are **greyed (a dark
   multiply)**. Art must still read when darkened — avoid relying on subtle low-contrast detail.
-- **Delivery:** transparent PNG, named to match the file list below, **plus a layered source (PSD)
-  or a marked square crop guide** so head crops can be re-cut without coming back to you.
-
-### ⭐ The head crop is load-bearing
-
-Each portrait's **head** is cropped square and reused as the character's **board token** (the
-`assets/chars/` sprite on the tactics grid). This is the single most important constraint:
-
-- **Leave headroom above the crown**, and keep **weapons, props, and hair-wings clear of the face**
-  — a square crop around the head will catch anything that crosses it.
-- Keep **head height consistent** cast-wide, so tokens scale to a uniform size on the board.
-- The layered file / crop guide above exists so this crop can be pulled cleanly.
+- **Delivery:** transparent PNG, named to match the file list below. A layered source (PSD) is
+  welcome but not required.
 
 ## The cast (24)
 
@@ -103,17 +93,17 @@ facing that general); the Market is the neutral road-store. Files match the vend
 |---|---|---|
 | `demon_lord.png` | **The Hollow Crown** | The Demon Lord — the end of everything the seven ladders counted toward. The seven sins were its appetites, taken off it one at a time; it wears the dead generals as it fails (`data/characters/character_demon_lord.lua`). An imposing, hollowed sovereign. |
 
-## Related: enemy heads (9) — a separate, later deliverable
+## The on-board unit art is a separate commission
 
-Not part of the 24 above. Nine named enemies need **square busts only (~512px)**, in the **same
-style and head scale** as the cast — so they sit consistently on the board. These aren't pinned yet;
-scope them from the boss roster when this phase starts (see [art-assets.md](art-assets.md)).
+The animated sprites that stand on the tactics grid — for the whole cast **and** the named enemies —
+are **not** part of this portrait brief. They are hand-rigged in Spine and specified separately in
+[commission-board-sprites.md](commission-board-sprites.md). These portraits serve the dialogue box
+only.
 
 ## Scope & phasing (suggested)
 
 - **Phase 1 — the party**: `avatar_1` (+ gender variant) and the seven companions (Rowan, Saber,
-  Kaya, Gyeom, Amana, Ren, Clem) — the faces the player sees most, and the fastest proof of the
-  load-bearing head crop working as a board token.
+  Kaya, Gyeom, Amana, Ren, Clem) — the faces the player sees most.
 - **Phase 2 — the vendors (8)** — the shopkeepers the player meets every town visit.
 - **Phase 3 — the antagonists**: the seven generals + the Demon Lord — the story's payoff.
 

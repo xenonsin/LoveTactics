@@ -1,0 +1,128 @@
+# Board Sprites — Commission Brief
+
+A hand-off brief for commissioning the game's on-board unit sprites: the animated characters that
+stand and fight on the tactics grid. Everything a delivered rig needs to drop straight into the game
+is here. Deeper character context — personalities, story roles, faction looks — lives in
+[story.md](story.md), and the matching dialogue portraits (a separate commission) in
+[commission-portraits.md](commission-portraits.md).
+
+## The project
+
+**LoveTactics** — a 2D tactics RPG. Tone: **bright heroic fantasy**, not grim-dark. Battles play out
+on a grid of ~60px tiles, where each combatant is a small **animated sprite** that idles, moves,
+attacks, takes hits and falls — the readable, lively unit art of a game like *Fire Emblem Heroes*.
+
+## What we're commissioning
+
+**Animated character rigs, one per combatant (~55).** Each is a **Spine** skeletal rig with a small
+set of looping and one-shot animations (below). This is the character that stands on the battlefield —
+distinct from the static dialogue portrait, which is briefed separately. A unit and its portrait
+should read as the **same character**.
+
+## Art direction
+
+- **Style: anime, bright fantasy.** Clean line, saturated but not garish, expressive. **Not pixel
+  art** — author above final size and downscale.
+- **Fire Emblem Heroes-style animation.** Skeletal/mesh motion — a living idle, weight in the walk,
+  follow-through on a swing — not a stiff paper doll and not a frame-by-frame flipbook.
+- **One consistent cast.** Shared rendering style, line weight and proportion across all ~55, and
+  matched to the dialogue portraits of the named characters. Units are compared side by side on the
+  board, so a mismatch reads immediately.
+- **Readable small, and readable darkened.** The sprite is displayed around 52px tall. Silhouette and
+  key colours must carry at that size, and must still read when the sprite is **greyed / desaturated**
+  (fallen and inactive states tint it down). Avoid identity resting on fine low-contrast detail.
+- **Human-made only:** **no AI-generated content.** A contractual requirement, not a preference.
+
+## Format & delivery
+
+- **Authored and delivered as a Spine project** (Esoteric Software Spine). Mesh deformation and
+  weighted bones are expected for the FEH-style motion, so author in **Spine Professional**.
+- Deliver, per unit:
+  - the **Spine project / source** (`.spine`), and
+  - the **exported runtime files**: skeleton (`.json` or `.skel`), atlas (`.atlas`), and the atlas
+    **page PNG(s)** — transparent background.
+- **Name each rig to match the unit id** in the roster below (e.g. `general_wrath`, `dire_bear`).
+- **One texture atlas per rig** where practical; keep atlas pages to a sensible power-of-two size.
+- Keep the **origin/root at the feet, centred** — the sprite is placed by its footprint on a tile.
+- **Author facing one direction** (screen-right by convention). The game mirrors a rig for units
+  facing the other way, so the art need not be drawn both ways.
+
+## Animation set
+
+Every rig ships the same named clips, so a delivered unit works the moment it drops in. Match these
+names and loop settings:
+
+| Clip | Loop? | Reads as |
+|---|---|---|
+| `idle` | loop | At-rest breathing/sway. The state a unit spends most of its time in. |
+| `move` | loop | Walking/advancing between tiles. |
+| `attack` | one-shot | A committed strike — wind-up, hit, follow-through. Returns to `idle`. |
+| `hit` | one-shot | Taking a blow — a flinch/recoil. Returns to `idle`. |
+| `cast` | one-shot | Channelling an ability (magic, a shout, a heal). Returns to `idle`. |
+| `death` | one-shot | Being felled — a collapse/fade the unit ends on. Holds on the last pose. |
+
+- Keep clips **short and loopable at small scale** — motion should read at 52px, not rely on detail.
+- A creature with no spellcasting can play a second physical `attack` variation in place of `cast`;
+  flag any unit where a clip doesn't fit and we'll agree a substitute.
+
+## Technical spec
+
+- **Display size:** ~52px tall on a 60px tile (the game runs in a fixed 1280×720 logical space). Author
+  well above that and let the engine downscale; never author small.
+- **Large units:** a few enemies occupy a **2×2 footprint** (e.g. the ogre) and are drawn at roughly
+  twice the size — we'll mark which in the roster. Compose those to read as genuinely larger bodies.
+- **Transparent** throughout; no baked background, ground shadow, or tile.
+- No baked team colour or selection frame — the game draws allegiance rings and highlights itself.
+
+## The roster (~55)
+
+Unit ids match the game's data files; see [story.md](story.md) for who each character is. Suggested
+phasing runs most-seen first.
+
+### Phase 1 — the named cast (~18)
+
+The player's own party and the story's antagonists — the faces on screen every battle.
+
+| id | Who |
+|---|---|
+| `avatar_1` (+ a gender variant) | The player's created hero |
+| `knight` | Rowan — the knight, front-line guard |
+| `saber` | The gladiator |
+| `kaya` | The hunter — ranged |
+| `gyeom` | The mage |
+| `amana` | The priest/acolyte — support |
+| `ren` | The alchemist |
+| `clem` | The rogue — glass-cannon skirmisher |
+| `general_wrath` | Ira, the Unappeased |
+| `general_sloth` | Acedia, the Unrelieved |
+| `general_pride` | Sublimitas, the Unequalled |
+| `general_lust` | Luxuria, the Unbidden |
+| `general_greed` | Aurea, the Ever-Owed |
+| `general_gluttony` | Gula, the Unsated |
+| `general_envy` | Livia, the Unborn |
+| `demon_lord` | The Hollow Crown — the final boss |
+
+### Phase 2 — the named human enemies (9)
+
+Recurring foes that must match the cast's style.
+
+> `bandit` · `bandit_chief` · `bastion_sworn` · `caravan_master` · `champion` ·
+> `forsworn_captain` · `forsworn_knight` · `ordnance_sentry` · `warlord`
+
+The generic soldier types — `knight`, `mage`, `archer`, `priest` — also need a rig as the game's
+rank-and-file stand-ins; they can be plainer than the named cast.
+
+### Phase 3 — the creatures (~24)
+
+Beasts, elementals, undead, demons and constructs. Some read best with non-humanoid rigs and idles.
+
+> `boar` · `dire_bear` · `hawk` · `pig` · `stag` · `wolf` · `wolf_alpha` ·
+> `earth` / `fire` / `ice` / `lightning` / `water` / `wind` elementals ·
+> `demon_grunt` · `demon_imp` · `zombie` · `ogre` *(2×2)* · `crucible_golem` · `homunculus` ·
+> `miller_ghost` · `blightstake` · `gaunt_vigil` · `wolfsong_spirit`
+
+## Licensing
+
+**Full commercial rights / work-for-hire buyout** — use in a commercial game and its marketing, no
+project-count limit. **100% human-authored, no AI-generated content.** Delivery includes the editable
+Spine source so the rigs can be maintained. Credit welcome, not required.
