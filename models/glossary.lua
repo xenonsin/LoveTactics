@@ -95,6 +95,7 @@ local function statusIds(item, out)
     local wb = item.waitBehavior
     if wb then
         if wb.kind == "defend" then add("status_defending") end
+        if wb.kind == "gather" then add("status_empowered") end
         add(wb.status)
         add(wb.coversStatus)
         for _, song in ipairs(wb.songs or {}) do add(song.status) end

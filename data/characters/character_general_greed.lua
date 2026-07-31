@@ -20,6 +20,12 @@
 -- deferred new work. Statted here as an ordinary single-phase general with a real health pool rather than
 -- the gold-warded soft mortal the full design calls for.
 --
+-- ONE PIECE OF that economy is wired now: her `coffer` and The Gilded Wound. She pays gold to carve a
+-- wound (data/items/ability/ability_gilded_wound.lua) -- the enemy-side use of the purse the player buys
+-- off the rogue's shelf (models/combat.lua Combat.spendPurse is side-aware; an enemy spends unit.coffer).
+-- It is a first, self-contained taste of "gold IS her weapon", ahead of the gold-ward/loot/transform work.
+-- The coffer here is an interim pool sized for a fight, not the campaign-scale hoard the finale designs.
+--
 -- `assassinate` is the honest objective -- her retinue is a wall to pass, not a thing to grind.
 return {
     name = "Aurea, the Ever-Owed",
@@ -34,16 +40,27 @@ return {
         movement = 4,
         speed = 3, -- slow: a hoard does not chase
     },
+    -- Her interim war-chest, spent by The Gilded Wound (Combat.spendPurse reads an enemy's coffer). Sized
+    -- for a couple of maximum-price blows (25 dmg = 250g each) and then some dagger work -- a hoard that
+    -- runs down over the fight, which is the shape her whole design wants. The finale's campaign-scale gold
+    -- economy (docs/roadmap.md #15) will supersede this flat number.
+    coffer = 600,
     -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Bottomless
     -- Purse in the center (unstealable). Around it: her own blade (its bleed her one free action) and a
     -- second lift -- she takes with both hands.
     startingItems = {
-        "ability_pickpocket",      false,                     false,
+        "ability_pickpocket",      false,                      "ability_gilded_wound",
         "weapon_kingsblood_dagger", "utility_bottomless_purse", false,
-        false,                     false,                     false,
+        false,                     false,                      false,
     },
     defaultAction = "weapon_kingsblood_dagger",
+    -- The Gilded Wound rule sits FIRST: while there is gold in the coffer she prices you rather than
+    -- closing, and the scorer pours what she can afford (models/ai.lua). It reaches three tiles, so a foe
+    -- she cannot yet touch with the dagger she can still bleed for coin. When the coffer runs dry the
+    -- purchase buys nothing, the candidate scores zero, and she falls through to the blade.
     ai = {
+        { priority = "high", act = "attack", item = "ability_gilded_wound",
+          when = { subject = "any_foe", test = "in_reach" } },
         { priority = "high", act = "attack", item = "weapon_kingsblood_dagger",
           when = { subject = "any_foe", test = "in_reach" } },
     },

@@ -487,7 +487,7 @@ function CombatPanel:drawWaitButton()
         local behavior = Combat.waitBehavior(self.view.current)
         local kind = behavior.kind
         label = (kind == "focus" and "Focus") or (kind == "defend" and "Defend")
-            or (kind == "overwatch" and "Overwatch") or "Wait"
+            or (kind == "overwatch" and "Overwatch") or (kind == "gather" and "Gather") or "Wait"
         -- A cycling stance names the air it would sound NEXT rather than the verb, because "Perform"
         -- alone would be a button that does a different thing every press with no way to see which.
         if kind == "perform" then

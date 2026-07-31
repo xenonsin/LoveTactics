@@ -516,8 +516,14 @@ The tree enforces most of it: no multiclass ships before both its parents have a
 
 ## Open calls
 
-- **Starred companion reuses** (Kaya→Beastmaster, Gyeom→Elementalist, Amana→Exorcist, Ren→Apothecary):
-  keep companions as roots only, or let a few double as discipline exemplars via companion quests?
+- ~~**Starred companion reuses** (Kaya→Beastmaster, Gyeom→Elementalist, Amana→Exorcist, Ren→Apothecary):
+  keep companions as roots only, or let a few double as discipline exemplars via companion quests?~~
+  **Settled: companions stay roots only.** Dedicated bodies were authored — `character_apothecary`,
+  `character_beastmaster`, `character_elementalist`, `character_exorcist` — and the four `exemplar` pointers
+  repointed off the companions. Ninja also got its own body (`character_ninja`, "The Shadowless"); Kaen
+  stays the marquee named boss of the unlock quest. Every discipline now has a body distinct from the seven
+  roots, and each carries its own sprite + composed silhouette (see
+  [art-assets.md](art-assets.md), the discipline-silhouette tier).
 - ~~**Capstone quest count.**~~ **Settled: all 21 were written.** The lighter variant on offer was to
   let some multiclasses unlock the moment both parents are held (the prerequisite *is* the gate),
   reserving authored quests for the marquee pairs. It was not taken, for a reason worth recording:

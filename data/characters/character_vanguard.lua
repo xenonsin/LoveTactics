@@ -3,7 +3,7 @@
 -- data/disciplines/vanguard.lua.
 return {
     name = "Shieldbreaker",
-    sprite = "assets/chars/forsworn_knight.png",
+    sprite = "assets/chars/vanguard.png",
     boss = true,
     class = "knight",
     -- Shatters guard first, then pours through the gap (models/ai.lua `aggressive`).

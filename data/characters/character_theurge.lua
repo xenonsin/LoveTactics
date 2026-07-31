@@ -3,7 +3,7 @@
 -- data/disciplines/theurge.lua.
 return {
     name = "Theurge",
-    sprite = "assets/chars/priest.png",
+    sprite = "assets/chars/theurge.png",
     class = "mage",
     -- Channels behind the line; the longer the wind-up, the greater the miracle (models/ai.lua `support`).
     archetype = "support",

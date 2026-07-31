@@ -4,7 +4,7 @@
 -- is authored here with the full Bulwark kit. Kit from data/disciplines/bulwark.lua.
 return {
     name = "Bulwark",
-    sprite = "assets/chars/bastion_sworn.png",
+    sprite = "assets/chars/bulwark.png",
     class = "knight",
     -- Taunts, then shoves attackers off the line and Halts them (models/ai.lua `defensive`).
     archetype = "defensive",

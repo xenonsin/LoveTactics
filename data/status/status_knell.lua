@@ -33,6 +33,10 @@ return {
     duration = 20, -- ~4 turns at Status.TICKS_PER_TURN: long enough to cure, short enough to fear
     debuff = true, -- the whole counterplay: Cure and Panacea lift it
     lingers = true, -- the appointment is with the person, not the tile
+    -- A second Knell can only move the toll SOONER, never later. Re-applying a status normally keeps the
+    -- longer remaining, but for an hour that kills when it runs out that would make re-marking a reprieve:
+    -- the doomed body would just buy back time. The soonest appointment stands (models/status.lua).
+    refreshKeepsShortest = true,
     -- Suppressed because this file writes its own, better line below. Without it the tick loop would
     -- announce "X's Knell wears off" a beat AFTER the toll killed X, which reads as a reprieve.
     hideLog = true,

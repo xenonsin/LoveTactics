@@ -32,6 +32,7 @@
 -- the explicit `assets` arg writes assets/chars/.
 
 local Registry = require("models.registry")
+local Discipline = require("models.discipline")
 
 local M = {}
 
@@ -114,6 +115,53 @@ local AVATAR_BODIES = { "assets/chars/avatar_1.png", "assets/chars/avatar_2.png"
 -- reads fighter) and a boss that is a demon/beast keeps its creature -- only the generic humanoid is lifted.
 local BOSS_SILHOUETTE = "delapouite/overlord-helm"
 
+-- 1b-bis. DISCIPLINE silhouette -- the one place a *discipline* earns a body distinct from its class.
+-- CLASS_SILHOUETTE gives a whole shelf one body (all seven mage-disciplines would otherwise share the
+-- wizard); this table gives each of the 37 disciplines (docs/disciplines-plan.md) its own game-icons
+-- shape, so a Necromancer never wears the plain mage token. Reviewed shape-by-shape with the author.
+-- It is applied ONLY to a discipline's `exemplar` character (the reverse index below), keyed off the
+-- pointer and never a loose substring -- so a "demon_champion" is not mistaken for the Champion, and each
+-- discipline owns exactly one board body.
+local DISCIPLINE_SILHOUETTE = {
+    -- fighter subclasses
+    barbarian = "delapouite/enrage",      warlord = "lorc/tattered-banner",
+    -- knight subclasses
+    sentinel = "lorc/shield-echoes",      bulwark = "delapouite/vibrating-shield",
+    -- rogue subclasses
+    assassin = "lorc/backstab",           thief = "lorc/shiny-purse",
+    -- hunter subclasses
+    druid = "lorc/werewolf",              beastmaster = "lorc/hound",       trapper = "lorc/mantrap",
+    -- mage subclasses
+    elementalist = "delapouite/prism",    summoner = "lorc/magic-portal",   necromancer = "delapouite/skull-staff",
+    -- priest subclasses
+    monk = "lorc/meditation",             exorcist = "lorc/holy-symbol",
+    -- alchemist subclasses
+    poisoner = "lorc/poison-bottle",      bombardier = "lorc/grenade",
+    -- multiclasses
+    champion = "lorc/laurel-crown",       duelist = "sbed/duel",            skirmisher = "lorc/barbed-spear",
+    battlemage = "lorc/lightning-saber",  crusader = "delapouite/cross-shield", warbrewer = "lorc/beer-stein",
+    vanguard = "lorc/broken-shield",      warden = "delapouite/watchtower", spellbreaker = "lorc/shatter",
+    paladin = "delapouite/templar-shield", plague_knight = "delapouite/plague-doctor-profile",
+    poacher = "lorc/wolf-trap",           ninja = "darkzaitzev/ninja-head", inquisitor = "lorc/templar-eye",
+    saboteur = "delapouite/dynamite",     shaman = "lorc/totem-mask",       totemist = "delapouite/totem",
+    herbalist = "delapouite/herbs-bundle", theurge = "delapouite/heaven-gate", artificer = "delapouite/walking-turret",
+    apothecary = "delapouite/remedy",
+}
+
+-- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from
+-- the discipline blueprints so the mapping lives in one place (data/disciplines/*.lua) and a repointed
+-- exemplar follows automatically. A character that is no discipline's exemplar is simply absent here, and
+-- reads by creature/class/kind as before.
+local EXEMPLAR_DISCIPLINE = {}
+for did, ddef in pairs(Discipline.defs) do
+    if ddef.exemplar then EXEMPLAR_DISCIPLINE[ddef.exemplar] = did end
+end
+
+-- The discipline whose exemplar is character `id` (tokenId form, no `character_` prefix), or nil.
+local function disciplineFor(id)
+    return EXEMPLAR_DISCIPLINE["character_" .. id]
+end
+
 -- 1c. Elemental silhouette by element word in the id.
 local ELEMENT_SILHOUETTE = {
     fire = "carl-olsen/flame",
@@ -193,6 +241,11 @@ end
 -- kind bucket. Mirrors icon-map's "name first, family fallback".
 local function slugFor(def, id)
     if id:find("avatar", 1, true) then return AVATAR_SILHOUETTE end
+    -- A discipline's exemplar reads as its DISCIPLINE first of all -- ahead of the creature and class
+    -- passes -- so each of the 37 disciplines owns a distinct board body. Keyed off the exemplar pointer,
+    -- so it never fires on a lookalike id (a "demon_champion" is not the Champion).
+    local disc = disciplineFor(id)
+    if disc and DISCIPLINE_SILHOUETTE[disc] then return DISCIPLINE_SILHOUETTE[disc] end
     for _, row in ipairs(CREATURE_MATCH) do
         if id:find(row[1], 1, true) then return row[2] end
     end
@@ -396,7 +449,9 @@ M.slugFor = slugFor
 M.tintFor = tintFor
 M.elementOf = elementOf
 M.tokenId = tokenId
+M.disciplineFor = disciplineFor
 M.HUMANOID_DEFAULT = HUMANOID_DEFAULT
 M.BOSS_SILHOUETTE = BOSS_SILHOUETTE
+M.DISCIPLINE_SILHOUETTE = DISCIPLINE_SILHOUETTE
 
 return M

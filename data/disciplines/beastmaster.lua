@@ -1,7 +1,8 @@
 -- Beastmaster -- hunter subclass.
 -- Signature mechanic: Bond -- a persistent summoned beast that acts each turn under your command.
--- Exemplar: Kaya (character_kaya), met as a RECRUIT -- the hunter companion learning to call the
--- pack; her unlock is a companion quest. (Reuse flagged in docs/disciplines-plan.md.)
+-- Exemplar: a dedicated Beastmaster (character_beastmaster), met as a RECRUIT -- a houndmaster who calls
+-- the pack. (Kaya embodies the same craft but stays a root companion; the "starred reuse" open call in
+-- docs/disciplines-plan.md is resolved toward a fresh body.)
 -- Gate: one quest in the hunter (Lodge) line -- the_starving_dark (slot 3).
 -- A subclass opens no earlier than slot 3: a discipline handed over on a line's first or
 -- second quest is not earned advancement, it is a welcome gift.
@@ -9,6 +10,6 @@
 return {
     name    = "Beastmaster",
     classes = { "hunter" },
-    exemplar = "character_kaya",
+    exemplar = "character_beastmaster", -- was character_kaya (a root companion); dedicated exemplar authored
     requiredQuests = { "quest_hunters_lodge_slot_03" },
 }

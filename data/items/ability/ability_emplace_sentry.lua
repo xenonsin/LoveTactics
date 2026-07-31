@@ -41,6 +41,12 @@ return {
         reserve = { stat = "mana", percent = 0.2 },
         effect = function(fx)
             fx.summon("character_ordnance_sentry", fx.tx, fx.ty, {
+                -- Autonomous, never commanded: a construct is a thing you WIND and set down, not a body
+                -- you steer. It takes its own turns on the party's side under the AI (its one-line rule in
+                -- character_ordnance_sentry.lua), which is what the discipline header promises and what
+                -- ui/colors.lua already styles as an "uncommanded" ally. Emplacing it is the whole decision;
+                -- after that it answers to its own tactics, not your cursor.
+                control = "ai",
                 -- Scales into DAMAGE, barely into health: forging this buys a sentry that hits harder,
                 -- never one that survives being closed on. Making it durable would erase the dead zone's
                 -- counterplay by another route (see weapon_sentry_bolt.lua).

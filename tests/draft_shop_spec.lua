@@ -82,7 +82,7 @@ return {
         end,
     },
     {
-        name = "buying a unit spends its price and benches it; an empty wallet is refused",
+        name = "buying a unit spends its price and fields it; an empty wallet is refused",
         fn = function()
             local run = DraftRun.new(3); run.round = 3; DraftShop.roll(run)
             run.gold = DraftShop.UNIT_PRICE
@@ -90,7 +90,8 @@ return {
             local char = DraftShop.buyUnit(run, entry)
             assert(char and char.id == entry.id, "the drafted unit is the one bought")
             assert(run.gold == 0, "its price was spent")
-            assert(#run.bench == 1, "and it is on the bench")
+            assert(DraftRun.formationCount(run) == 1 and DraftRun.cellOf(run, char),
+                "and it auto-fields into the formation")
 
             local broke = DraftShop.buyUnit(run, run.shop.units[1])
             assert(broke == nil, "with no gold left, the next buy is refused")

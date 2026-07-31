@@ -909,7 +909,7 @@ function game.update(dt)
         end
     end
     if game.activePanel then
-        game.activePanel:update(dt)
+        if game.activePanel.update then game.activePanel:update(dt) end
     else
         game.map:update(dt)
     end

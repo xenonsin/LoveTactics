@@ -518,6 +518,14 @@ local function buildBlocks(item, actor, innerW, out)
         elseif wb.kind == "overwatch" then
             blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Overwatch" }
             blocks[#blocks + 1] = { kind = "note", text = "Overwatch ends your turn to fire on the first foe that moves into range." }
+        elseif wb.kind == "gather" then
+            blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Gather" }
+            if wb.power then
+                blocks[#blocks + 1] = { kind = "stat", label = "Stored force",
+                    value = "+" .. tostring(wb.power) .. " Attack", valueColor = BRACE }
+            end
+            blocks[#blocks + 1] = { kind = "note",
+                text = "Gather ends your turn to coil: your next landed blow carries the stored force." }
         elseif wb.kind == "perform" then
             blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Perform" }
             -- The whole cycle, in order, because the ORDER is the cost: reaching the air you want means

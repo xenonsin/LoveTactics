@@ -3,7 +3,7 @@
 -- data/disciplines/totemist.lua.
 return {
     name = "Ward-Carver",
-    sprite = "assets/chars/priest.png",
+    sprite = "assets/chars/totemist.png",
     class = "hunter",
     -- Raises totems and holds the ground they bless (models/ai.lua `support`).
     archetype = "support",

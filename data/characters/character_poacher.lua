@@ -3,7 +3,7 @@
 -- (Poacher's Kris). Kit from data/disciplines/poacher.lua.
 return {
     name = "Poacher",
-    sprite = "assets/chars/kaya.png",
+    sprite = "assets/chars/poacher.png",
     class = "rogue",
     -- Roots them in a trap first, then cuts the throat; holds ground to let them step wrong (defensive).
     archetype = "defensive",

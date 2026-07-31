@@ -7,7 +7,7 @@
 -- full trap kit; data/disciplines/trapper.lua's `exemplar` points here.
 return {
     name = "Ambusher",
-    sprite = "assets/chars/bandit.png",
+    sprite = "assets/chars/trapper_ambusher.png",
     boss = true,
     class = "hunter",
     -- Seeds the ground, then holds until they step wrong (models/ai.lua `defensive`).

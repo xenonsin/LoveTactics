@@ -155,6 +155,28 @@ return {
         end,
     },
     {
+        name = "a countdown status (refreshKeepsShortest) re-applies to the SHORTER remaining",
+        fn = function()
+            -- Knell kills when its count runs out, so re-marking must only ever move the hour sooner,
+            -- never buy the doomed body time by refreshing to a longer value.
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
+            local knight = c.units[1]
+            Status.apply(c, knight, "status_knell") -- duration 20
+            Status.tick(c, 15)
+            assert(Status.get(knight, "status_knell").remaining == 5, "counted down to 5")
+
+            -- A full-length re-mark must NOT push the toll back out to 20 -- the soonest appointment stands.
+            Status.apply(c, knight, "status_knell")
+            assert(Status.get(knight, "status_knell").remaining == 5,
+                "re-apply keeps the shorter 5, not the fresh 20")
+
+            -- A shorter re-mark, however, does move the toll earlier.
+            Status.apply(c, knight, "status_knell", { duration = 3 })
+            assert(Status.get(knight, "status_knell").remaining == 3,
+                "a shorter re-mark pulls the hour in to 3")
+        end,
+    },
+    {
         name = "status durations tick down through the combat clock (rebase) as turns pass",
         fn = function()
             -- The bandit is rooted; the knight acts, advancing the clock by its turn cost, which

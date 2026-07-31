@@ -117,9 +117,24 @@ function DraftMatch.battleOpts(run, match, callbacks)
         -- this fight is deliberately NOT normalized. `prestige` only scales the arena's own flavor.
         prestige = run.round or 1,
         party = DraftRun.party(run),
+        -- Seat the party by the marching formation the player arranged (front row faces the enemy).
+        -- Pre-resolved {col,row} slots parallel to `party`, not an id-map -- draft can field two
+        -- un-merged duplicates whose shared id would collide in an id-keyed map (see models/draft_run).
+        formationSlots = DraftRun.formationSlots(run),
+        formationCols = DraftRun.FORMATION_COLS,
+        formationRows = DraftRun.FORMATION_ROWS,
         enemyChars = (match and match.enemyChars) or {},
         chessClock = callbacks.chessClock, -- seconds per side; nil = untimed (states/battle.lua default)
         draft = true,                      -- marks this as a draft battle (PvP HUD: scores + clocks)
+        -- The battle purse over the run's own wallet, so a drafted money ability (The Gilded Wound) can
+        -- spend real run gold in-fight and the debug Add gold tool funds it. This gold is discarded at
+        -- round end anyway (DraftRun.advanceRound), so spending it mid-fight banks nothing. See the purse
+        -- block in states/battle.lua.
+        purse = {
+            get = function() return run.gold or 0 end,
+            spend = function(n) DraftRun.spend(run, math.min(n or 0, run.gold or 0)) end,
+            add = function(n) DraftRun.addGold(run, n) end,
+        },
         quest = { map = { biome = "castle", objective = {
             name = author.name or "A rival draft",
             win = DraftMatch.controlObjective(),

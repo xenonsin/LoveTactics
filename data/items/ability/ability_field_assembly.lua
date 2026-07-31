@@ -50,6 +50,9 @@ return {
             local grade = 1 + math.floor((pick.price or 60) / 60)
             pick.quantity = math.max(0, (pick.quantity or 1) - 1)
             fx.summon("character_ordnance_sentry", fx.tx, fx.ty, {
+                -- Autonomous like every construct: assembled and set loose, not driven (see
+                -- ability_emplace_sentry.lua). It fights for the party under its own AI.
+                control = "ai",
                 scaling = { health = grade, damage = grade * 0.5 },
                 amount = 6 + fx.level + grade,
                 duration = 18,

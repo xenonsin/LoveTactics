@@ -20,7 +20,8 @@ return {
             local result = DraftRun.mergeUnit(run, fodder, keep)
             assert(result, "the merge succeeds")
             assert(keep.level == startLevel + 1, "the kept unit gained exactly one level")
-            assert(#run.bench == 1 and run.bench[1] == keep, "the fodder left the bench")
+            assert(DraftRun.cellOf(run, keep), "the kept unit is still fielded")
+            assert(DraftRun.removeUnit(run, fodder) == false, "the fodder is gone from formation and bench")
         end,
     },
     {

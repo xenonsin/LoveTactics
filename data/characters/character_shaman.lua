@@ -2,7 +2,7 @@
 -- a spirit-caller, a mentor. Home shelf is hunter. Kit from data/disciplines/shaman.lua.
 return {
     name = "Spirit-Caller",
-    sprite = "assets/chars/kaya.png",
+    sprite = "assets/chars/shaman.png",
     class = "hunter",
     -- Calls spirits, binds them to hazards, and drives them in from a kept distance (skirmish).
     archetype = "skirmish",

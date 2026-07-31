@@ -45,10 +45,13 @@ return {
                 return
             end
             local charId = found.char and found.char.id
+            -- Preserve how the recalled thing was run: a construct is autonomous (control = "ai"), and a
+            -- revision of it must not quietly become yours to steer by inheriting the caster's control.
+            local control = found.control
             fx.restore(fx.user, "mana", 6 + fx.level)
             fx.dismiss(found)
             if charId then
-                fx.summon(charId, fx.tx, fx.ty, { scaling = { health = 1 }, noClaim = true })
+                fx.summon(charId, fx.tx, fx.ty, { scaling = { health = 1 }, noClaim = true, control = control })
             end
         end,
     },

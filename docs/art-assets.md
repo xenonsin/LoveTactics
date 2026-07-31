@@ -20,32 +20,35 @@ file lands the count moves on its own. Paste a fresh summary into the snapshot b
 
 ## Snapshot
 
-As of 2026-07-26 — **646 of 703 present**, 57 outstanding. Regenerate with the command above.
+As of 2026-07-30 — **735 of 806 present**, 71 outstanding. Regenerate with the command above.
 
 `chars/` is now full, but with **composed placeholder tokens**, not painted art — every character
 blueprint resolves to a file so nothing renders as the bare letter fallback, yet the painted-character
 work below is still owed. See [Composed tokens](#composed-tokens--the-budget-stand-in-same-philosophy-as-items):
 `char-compose assets` fills the gaps and skips any id that already has real art, so a painted head crop
-dropped in later transparently replaces its token.
+dropped in later transparently replaces its token. Each of the 37 **discipline exemplars** now carries its
+own sprite path and its own silhouette (a `DISCIPLINE_SILHOUETTE` tier in `tools/char_compose.lua`, keyed
+off the discipline's `exemplar`), so a Necromancer no longer wears the plain mage token — see
+[Composed tokens](#composed-tokens--the-budget-stand-in-same-philosophy-as-items).
 
 | Bucket | Have | Needed | Rendered at | Source |
 |---|---|---|---|---|
-| `items/` | 579 | 580 | 64px cell | **composed from tags** — [icon system](#the-permanent-icon-system--compose-dont-commission) ✅ |
-| `chars/` | 56 | 56 | ~52px on a 60px tile | **composed placeholders** — see [Characters](#characters) |
+| `items/` | 583 | 619 | 64px cell | **composed from tags** — [icon system](#the-permanent-icon-system--compose-dont-commission) ✅ |
+| `chars/` | 94 | 94 | ~52px on a 60px tile | **composed placeholders** — see [Characters](#characters) |
 | ~~`hazards/`~~ | — | — | 64px tile, under units | **no art, ever** — [drawn by a shader](#hazards-are-not-icons) ✅ |
-| `portraits/` | 0 | 19 | 470px tall standing figure | **commission** |
+| `portraits/` | 0 | 17 | 470px tall standing figure | **commission** |
 | `vendors/` | 0 | 8 | shop panel | **commission** |
 | `traps/` | 6 | 6 | 64px tile | game-icons.net ✅ |
 | `overworld/` | 0 | 4 | tilesheet, see [Terrain](#terrain) | GameDev Market |
 | `materials/` | 3 | 3 | 64px cell | game-icons.net ✅ |
 | `props/` | 2 | 2 | 64px tile | game-icons.net ✅ |
 | `hub/` | 0 | 1 | 1280×720 | **commission** |
-| `fonts/` | 0 | 1 | — | `ui.ttf`, not art |
-| `audio/` | 0 | 23 | — | see [audio-assets.md](audio-assets.md) |
+| `fonts/` | 4 | 4 | — | `ui.ttf`, not art |
+| `audio/` | 43 | 48 | — | see [audio-assets.md](audio-assets.md) |
 
-The icon pipeline and the composed character tokens are **complete**; the 57 outstanding are the buckets
-that still need a human hand: painted portraits, vendors, backgrounds, terrain, and audio. The composed
-`chars/` tokens stand in until painted character art replaces them.
+The icon pipeline and the composed character tokens are **complete**; the 71 outstanding are the buckets
+that still need a human hand: painted portraits, vendors, backgrounds, terrain, and the last audio. The
+composed `chars/` tokens stand in until painted character art replaces them.
 
 `tests/` is excluded from the sweep — a spec's stand-in sprite path exists to prove the tolerant
 loader survives a missing file, so it is not art anyone owes.
@@ -135,7 +138,7 @@ is a function of its `fire`/`ice` tag.
 
 | Layer | Channel | Source |
 |---|---|---|
-| **Base** silhouette | a creature/name match first, then a **`kind`** bucket | game-icons.net (reuse, not commission) |
+| **Base** silhouette | a **discipline** match (the exemplar), then a creature/name match, then a **`kind`** bucket | game-icons.net (reuse, not commission) |
 | **Tint** | element (elementals), else kind | — |
 | **Frame** | `class` colour (the vendor shelf), gold + thicker for a boss | shared with the item composer |
 | **Badge** | a gold disc for a `boss`/general | — |
@@ -150,6 +153,14 @@ by `tests/char_compose_spec.lua` — pure logic, no render — the way the item 
 item's **family** — the one field that decides the silhouette. It is *guessed* from the blueprint (a
 `class` says humanoid; the id's own words say the rest) and **corrected with one line**, `kind = "beast"`,
 the same "guess, then override" split the icon pipeline uses. No mass edit of blueprints.
+
+**One tier sits above the creature/`kind` guessing: the discipline.** `class` picks a whole shelf's body
+(all seven mage-disciplines would otherwise share the wizard), so a `DISCIPLINE_SILHOUETTE` table gives
+each of the 37 disciplines its own game-icons shape (a Necromancer's skull-staff, a Warlord's banner). It
+fires only for a discipline's `exemplar` character — keyed off the pointer in `data/disciplines/*.lua`, not
+a loose substring, so a `demon_champion` is never mistaken for the Champion — and a boss exemplar keeps its
+discipline body while still earning the gold badge (`warlord` → banner, not the overlord lift). The picks
+were reviewed shape-by-shape; `tests/char_compose_spec.lua` guards them.
 
 Like `icon-build`, `assets` mode **skips any file already on disk**, so a painted head crop dropped in later
 is never overwritten — and it writes to the exact `def.sprite` path (not `<id>.png`), so a shared file

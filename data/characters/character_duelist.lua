@@ -3,7 +3,7 @@
 -- and it grows both parents. Kit from data/disciplines/duelist.lua.
 return {
     name = "Duelist",
-    sprite = "assets/chars/archer.png",
+    sprite = "assets/chars/duelist.png",
     class = "rogue",
     -- Picks one foe and stays on it; the duel bonus rewards never letting go (models/ai.lua).
     archetype = "aggressive",

@@ -2,7 +2,7 @@
 -- Met as a vat-master, a boss. Kit from data/disciplines/poisoner.lua.
 return {
     name = "Vat-Master",
-    sprite = "assets/chars/mage.png",
+    sprite = "assets/chars/poisoner.png",
     boss = true,
     class = "alchemist",
     -- Coats the blade, then knifes from a kept distance (models/ai.lua `skirmish`).

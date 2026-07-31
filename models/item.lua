@@ -159,6 +159,24 @@ function Item.isChargeable(ab)
     return hi > lo
 end
 
+-- Does `ab` let the caster BUY its effect at cast -- pay gold, in a confirm-time chooser, to size the
+-- blow (The Gilded Wound: gold in, damage out)? The parallel of Item.isChargeable for the spend chooser
+-- (ui/panels/spend_chooser.lua): a purchasable ability declares `purchase = { perDamage = 10, max = N }`,
+-- and the battle UI raises the money slider on confirm instead of committing the swing at once.
+function Item.isPurchasable(ab)
+    return ab ~= nil and ab.purchase ~= nil
+end
+
+-- A purchasable ability's exchange rate and ceiling, normalized: `perDamage` gold buys one point of
+-- damage (default 10), `max` caps how many points a single cast may buy (default 25) -- so a fat purse
+-- cannot dial an unbounded blow, and the chooser stays a slider rather than a mile-long ladder. Returns
+-- (perDamage, max), or nil for an ability that is not purchasable.
+function Item.purchaseRate(ab)
+    local p = ab and ab.purchase
+    if not p then return nil end
+    return math.max(1, p.perDamage or 10), math.max(1, p.max or 25)
+end
+
 -- Is this a two-stage THROW (Heave): grab an adjacent target, THEN choose where it lands? Such an
 -- ability aims twice -- the battle UI runs a grab phase and a destination phase instead of the one
 -- aim every other ability takes. A tile-target ability without this flag stays single-aim.
@@ -267,7 +285,11 @@ local ABILITY_SECONDARY_MAGNITUDES = {
 -- Deliberately NOT here: `speed`, which is what the swap COSTS rather than what it pays (see below),
 -- and a perform's `earshot`, on the censer's principle -- an upgrade buys a longer, stronger song,
 -- never one that carries further.
-local WAIT_BEHAVIOR_MAGNITUDES = { "defense", "mana", "stamina", "covers", "duration", "amount" }
+--
+-- `power` is Gather's payoff (Combat.gather feeds it to the Empowered status as its magnitude), the
+-- offensive twin of Defend's `defense` -- so a forged charm coils a heavier blow, exactly as a forged
+-- shield braces harder. `covers` already rides this list and does double duty as Gather's lent share.
+local WAIT_BEHAVIOR_MAGNITUDES = { "defense", "power", "mana", "stamina", "covers", "duration", "amount" }
 
 -- Every place an item carries a scaling magnitude, as get/set pairs, so one walk resolves them all at
 -- instantiate. This is the definition of "a derived magnitude": an ability's damage/healing/etc.,

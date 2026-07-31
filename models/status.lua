@@ -738,6 +738,12 @@ end
 -- Apply status `id` to `unit`. One instance per id: re-applying refreshes the remaining
 -- duration to the longer of old/new and re-runs onApply (so re-stunning bumps again). Runs
 -- the def's onApply hook. Returns the (possibly refreshed) status instance.
+--
+-- A COUNTDOWN status inverts that: a def declaring `refreshKeepsShortest` refreshes to the SHORTER
+-- of old/new instead. For Knell -- an hour that kills when it runs out -- "longest wins" is exactly
+-- backwards: re-marking an already-doomed body would push its death BACK, so a second Knell would be
+-- a reprieve rather than a threat. Keeping the shorter remaining means the soonest appointment stands,
+-- and re-applying can only ever move the toll earlier.
 function Status.apply(combat, unit, id, opts)
     opts = opts or {}
     local def = Status.defs[id]
@@ -807,7 +813,10 @@ function Status.apply(combat, unit, id, opts)
     local status = Status.get(unit, id)
     local isNew = status == nil
     if status then
-        status.remaining = math.max(status.remaining, opts.duration or def.duration or 0)
+        local fresh = opts.duration or def.duration or 0
+        status.remaining = def.refreshKeepsShortest
+            and math.min(status.remaining, fresh)
+            or math.max(status.remaining, fresh)
         if opts.magnitude then status.magnitude = opts.magnitude end
     else
         status = Status.instantiate(id, opts)

@@ -7,13 +7,14 @@ local Character = require("models.character")
 
 return {
     {
-        name = "a fresh run opens at round 1 with the opening budget and an empty bench",
+        name = "a fresh run opens at round 1 with the opening budget and nothing drafted",
         fn = function()
             local run = DraftRun.new(123)
             assert(run.round == 1, "starts at round 1")
             assert(run.wins == 0 and run.losses == 0, "no results yet")
             assert(run.gold == DraftRun.roundBudget(1), "granted the round-1 budget")
-            assert(#run.bench == 0, "nothing drafted yet")
+            assert(#run.bench == 0, "the bench is empty")
+            assert(DraftRun.formationCount(run) == 0, "and the formation is empty")
             assert(DraftRun.outcome(run) == nil, "and the run is not decided")
         end,
     },
@@ -77,24 +78,86 @@ return {
         end,
     },
     {
-        name = "the bench fills to a cap and then refuses more",
+        name = "drafting auto-fills the formation, then spills to the bench, then refuses when both are full",
         fn = function()
             local run = DraftRun.new(1)
+            -- The first PARTY_MAX units field into the formation.
+            for _ = 1, DraftRun.PARTY_MAX do
+                assert(DraftRun.addUnit(run, Character.instantiate("character_knight")), "a formation cell is free")
+            end
+            assert(DraftRun.formationFull(run), "the formation is full")
+            assert(#run.bench == 0, "and nothing has spilled to the bench yet")
+
+            -- The next BENCH_MAX units spill to the bench.
             for _ = 1, DraftRun.BENCH_MAX do
-                assert(DraftRun.addUnit(run, Character.instantiate("character_knight")), "a seat is free")
+                assert(DraftRun.addUnit(run, Character.instantiate("character_knight")), "a bench seat is free")
             end
             assert(DraftRun.benchFull(run), "the bench is full")
-            assert(DraftRun.addUnit(run, Character.instantiate("character_knight")) == false, "and refuses more")
+            assert(DraftRun.addUnit(run, Character.instantiate("character_knight")) == false,
+                "with both full, drafting is refused")
         end,
     },
     {
-        name = "a run snapshots to plain data and restores to the same bench, gold and score",
+        name = "the fielded party reads the formation front-row-first, with parallel seating slots",
+        fn = function()
+            local run = DraftRun.new(1)
+            local a = Character.instantiate("character_knight")
+            local b = Character.instantiate("character_knight")
+            -- Place b on the FRONT row (cell 1) and a on the BACK row (cell 5).
+            run.formation[5] = a
+            run.formation[1] = b
+            local party = DraftRun.party(run)
+            assert(#party == 2 and party[1] == b and party[2] == a, "party is ordered by cell (front first)")
+            local slots = DraftRun.formationSlots(run)
+            assert(slots[1].row == 1 and slots[2].row == 2, "seating slots run parallel to the party")
+        end,
+    },
+    {
+        name = "arranging: bench<->formation and cell swaps keep the fielded count honest",
+        fn = function()
+            local run = DraftRun.new(1)
+            local a = Character.instantiate("character_knight")
+            local b = Character.instantiate("character_knight")
+            DraftRun.addUnit(run, a) -- fields into cell 1
+            DraftRun.addUnit(run, b) -- fields into cell 2
+
+            -- Demote a to the bench, then field it back.
+            assert(DraftRun.benchUnit(run, a), "a fielded unit benches")
+            assert(DraftRun.cellOf(run, a) == nil and run.bench[1] == a, "a is now a reserve")
+            assert(DraftRun.formationCount(run) == 1, "one fielder left")
+            assert(DraftRun.fieldUnit(run, a), "and it fields back into a free cell")
+            assert(DraftRun.formationCount(run) == 2, "two fielders again")
+
+            -- Swap two occupied cells: placing b onto a's cell trades their positions.
+            local cellA, cellB = DraftRun.cellOf(run, a), DraftRun.cellOf(run, b)
+            DraftRun.placeInCell(run, b, cellA)
+            assert(DraftRun.cellOf(run, b) == cellA and DraftRun.cellOf(run, a) == cellB, "the two cells swapped")
+            assert(DraftRun.formationCount(run) == 2, "still two fielders")
+        end,
+    },
+    {
+        name = "a bench unit dropped onto an empty cell is refused when the formation is already full",
+        fn = function()
+            local run = DraftRun.new(1)
+            for _ = 1, DraftRun.PARTY_MAX do DraftRun.addUnit(run, Character.instantiate("character_knight")) end
+            local spare = Character.instantiate("character_knight")
+            DraftRun.addUnit(run, spare) -- spills to the bench (formation full)
+            assert(run.bench[1] == spare, "the spare is benched")
+            local emptyCell = DraftRun.PARTY_MAX + 1 -- a back-row cell no fielder occupies
+            assert(run.formation[emptyCell] == nil, "that cell is genuinely empty")
+            assert(DraftRun.placeInCell(run, spare, emptyCell) == false, "fielding a fifth is refused")
+            assert(run.bench[1] == spare, "and the spare stays on the bench")
+        end,
+    },
+    {
+        name = "a run snapshots to plain data and restores to the same formation, bench, gold and score",
         fn = function()
             local run = DraftRun.new(777)
             run.wins, run.losses, run.round, run.gold = 4, 1, 6, 17
             local knight = Character.instantiate("character_knight")
             knight.level = 3
-            DraftRun.addUnit(run, knight)
+            run.formation[3] = knight -- fielded on a specific cell
+            DraftRun.addUnit(run, Character.instantiate("character_mage")) -- fields into a free cell
 
             -- Round-trips through the save encoder (scalar-only) exactly as the real disk path would.
             local snap = DraftRun.snapshot(run)
@@ -103,8 +166,27 @@ return {
 
             assert(back.wins == 4 and back.losses == 1, "score survives")
             assert(back.round == 6 and back.gold == 17, "round and wallet survive")
-            assert(#back.bench == 1 and back.bench[1].id == "character_knight", "the bench survives")
-            assert(back.bench[1].level == 3, "at its leveled state")
+            assert(back.formation[3] and back.formation[3].id == "character_knight",
+                "the fielded knight reloads on its exact cell")
+            assert(back.formation[3].level == 3, "at its leveled state")
+            assert(DraftRun.formationCount(back) == 2, "both fielders survive")
+        end,
+    },
+    {
+        name = "a pre-formation save (flat bench) upgrades cleanly, seating the first four",
+        fn = function()
+            -- The old snapshot shape: a flat `bench` of every drafted unit, no `formation` field.
+            local legacy = {
+                round = 3, wins = 2, losses = 1, gold = 9,
+                bench = {
+                    { id = "character_knight" }, { id = "character_mage" },
+                    { id = "character_knight" }, { id = "character_mage" },
+                    { id = "character_knight" }, -- a fifth, which must land on the (new) bench
+                },
+            }
+            local back = DraftRun.restore(legacy)
+            assert(DraftRun.formationCount(back) == DraftRun.PARTY_MAX, "the first four field")
+            assert(#back.bench == 1, "and the fifth becomes a reserve")
         end,
     },
 }

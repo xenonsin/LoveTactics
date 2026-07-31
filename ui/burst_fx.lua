@@ -261,6 +261,20 @@ function BurstFx:strike(x, y, tags, opts)
         radius = opts.radius or (opts.lethal and STYLE[pattern].radius * 1.25 or nil),
     }
     pushBurst(self, x, y, pattern, o)
+    -- The blow struck a WEAKNESS (models/combat.lua stamps `vulnerable` when the net of the target's
+    -- vulnerabilities/resistances for these tags comes out positive): flare a hot ring over the impact
+    -- so the extra bite the tag bought reads at a glance, on TOP of the ordinary strike above. Cosmetic
+    -- -- the damage is already in the number; this is only the tell that the tag you chose is the one
+    -- that bites. A hair longer-lived and a touch wider than the impact, so it blooms after it rather
+    -- than being swallowed by it, and warm-gold so it never reads as one of the elements' own colours.
+    if opts.vulnerable then
+        pushBurst(self, x, y, "flare", {
+            color = { 1.00, 0.82, 0.34 },
+            intensity = 1.25,
+            radius = (STYLE.flare.radius) * 1.15,
+            life = STYLE.flare.life * 1.1,
+        })
+    end
 end
 
 -- A supportive flourish (a heal, a friendly cast) on cell (x, y): motes by default, or a named pattern.

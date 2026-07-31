@@ -2,7 +2,7 @@
 -- chain-detonate. Met as a counterfeit-bomb runner, a boss. Kit from data/disciplines/bombardier.lua.
 return {
     name = "Bombardier",
-    sprite = "assets/chars/mage.png",
+    sprite = "assets/chars/bombardier.png",
     boss = true,
     class = "alchemist",
     -- Lobs into clusters and keeps clear of the blast (models/ai.lua `skirmish`).

@@ -6,13 +6,13 @@
 -- (Combat.newRandom, the same pure-Lua RNG the arena seeds use) -- so a run reproduces exactly and the
 -- roll is testable without any RNG surprise. Freezing carries chosen slots across the next roll.
 --
--- Gear reuses the vendor's price math (Vendor.priceFor scales +50%/level) rather than inventing its
--- own, so a "+2" sword costs here what it would anywhere. Pure model, no love.graphics -- loads headless.
+-- Gear is priced on the draft's own flat Super-Auto-Pets scale (DraftShop.gearPrice), NOT the campaign
+-- Vendor price -- the whole round budget is ~10g, so a 60g sword would be unbuyable. Pure model, no
+-- love.graphics -- loads headless.
 
 local Item = require("models.item")
 local Character = require("models.character")
 local Combat = require("models.combat")
-local Vendor = require("models.vendor")
 local DraftRun = require("models.draft_run")
 
 local DraftShop = {}
@@ -25,6 +25,21 @@ DraftShop.GEAR_SLOTS = 3
 -- WHICH unit and whether to chase a duplicate, not affording one.
 DraftShop.UNIT_PRICE = 3
 
+-- What gear costs in the DRAFT economy: a flat, Super-Auto-Pets-scale price, NOT the campaign's Vendor
+-- price. The whole draft budget is ~10g/round (DraftRun.roundBudget) and a unit is 3g, so an iron
+-- sword's 60g campaign tag would be unbuyable here -- the mode reprices gear onto its own small scale. A
+-- forged (+N) piece costs a touch more than a plain one so a late shelf is not effectively free.
+DraftShop.GEAR_PRICE = 3
+function DraftShop.gearPrice(level)
+    return DraftShop.GEAR_PRICE + (level or 0)
+end
+
+-- What selling a piece of draft gear returns: half its DRAFT price (floored, at least a coin) -- never
+-- Vendor.sellValue, which is half the CAMPAIGN price and would pay ~30g for a 3g-bought sword.
+function DraftShop.gearSellValue(item)
+    return math.max(1, math.floor(DraftShop.gearPrice(item and item.level or 0) / 2))
+end
+
 -- Rerolling the shop costs a coin. Cheap enough to be a real lever, dear enough to trade against a buy.
 DraftShop.REROLL_COST = 1
 
@@ -34,8 +49,9 @@ function DraftShop.gearLevel(round)
     return math.min(Item.MAX_LEVEL, math.floor((math.max(1, round or 1) - 1) / 2))
 end
 
--- The most expensive BASE price gear the shelf shows in `round`, so an early store is not papered with
--- plate the round's budget could never touch. Climbs with the round.
+-- The most expensive CAMPAIGN-price gear the shelf shows in `round`, used purely as a POWER gate so an
+-- early store is not papered with endgame plate (the draft charges its own flat price -- see gearPrice
+-- -- so this is about which items are tier-appropriate, not what they cost). Climbs with the round.
 function DraftShop.gearPriceCap(round)
     return 40 + 30 * (math.max(1, round or 1))
 end
@@ -93,7 +109,7 @@ local function gearEntry(id, level)
         name = def and def.name or id,
         type = def and def.type,
         level = level,
-        price = Vendor.priceFor(def and def.price, level),
+        price = DraftShop.gearPrice(level),
         description = def and def.description,
         flavor = def and def.flavor,
         frozen = false,
@@ -156,7 +172,7 @@ end
 -- the shop on success. Returns the new character, or nil + reason ("gold" | "bench full" | "gone").
 function DraftShop.buyUnit(run, entry)
     if not entry or entry.kind ~= "unit" then return nil, "gone" end
-    if DraftRun.benchFull(run) then return nil, "bench full" end
+    if DraftRun.rosterFull(run) then return nil, "roster full" end
     if not DraftRun.canAfford(run, entry.price) then return nil, "gold" end
     local char = Character.instantiate(entry.id)
     if not char then return nil, "gone" end

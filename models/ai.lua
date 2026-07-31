@@ -584,11 +584,22 @@ end
 -- catches -- which is what stops a fireball from being aimed into a huddle of its caster's friends.
 local function outcomeScore(combat, unit, cand, w, previews)
     local Combat = require("models.combat")
+    local Item = require("models.item")
+    -- A PURCHASABLE ability (Aurea's Gilded Wound) does nothing until it is paid for, so the scorer must
+    -- price the blow the caster INTENDS to buy: pour up to the ability's own ceiling, bounded by the coffer
+    -- on hand. Carried onto the candidate so the chosen action pours the same gold into the live cast, and
+    -- folded into the memo key so a differently-funded preview is not read off a stale one.
+    local spend
+    if Item.isPurchasable(cand.item.activeAbility) then
+        local rate, cap = Item.purchaseRate(cand.item.activeAbility)
+        spend = math.min(cap, math.floor(Combat.purseAvailable(combat, unit) / rate)) * rate
+    end
+    cand.spend = spend
     local memo = cand.item.id or tostring(cand.item)
-    local k = memo .. "@" .. cand.tx .. "," .. cand.ty
+    local k = memo .. "@" .. cand.tx .. "," .. cand.ty .. "$" .. tostring(spend or 0)
     local preview = previews[k]
     if preview == nil then
-        preview = Combat.previewAbility(combat, unit, cand.item, cand.tx, cand.ty) or false
+        preview = Combat.previewAbility(combat, unit, cand.item, cand.tx, cand.ty, nil, nil, spend) or false
         previews[k] = preview
     end
     if not preview then return 0, false end
@@ -1174,6 +1185,10 @@ function AI.plan(combat, unit)
                             -- something the tile scorer has any way to weigh. nil leaves it to
                             -- Combat.useItem, which opens at the ability's floor.
                             windup = rule.windup,
+                            -- How much gold to pour into a PURCHASABLE blow (Aurea's Gilded Wound):
+                            -- computed by the scorer from her coffer, not authored, so a richer Aurea
+                            -- simply hits harder. nil for every ordinary action.
+                            spend = pick.spend,
                             reason = string.format("%s rule %d (%s) -> %s, score %.1f",
                                 postureName, index, AI.describeRule(rule),
                                 pick.target.char.name or "target", pick.score),

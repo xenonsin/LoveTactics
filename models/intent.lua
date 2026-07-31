@@ -56,7 +56,9 @@ function Intent.classify(combat, unit, plan)
     -- (the same reason the AI scored it there). Split by side: harm to the caster's foes is the attack
     -- number, mending on its own side is the heal number.
     local dmg, heal, statuses = 0, 0, 0
-    local preview = ab and Combat.previewAbility(combat, unit, item, plan.tx, plan.ty)
+    -- plan.spend rides in so a PURCHASABLE blow (Aurea's Gilded Wound) telegraphs the damage she has
+    -- actually decided to buy, not the 0 it costs unpaid -- the planner priced it there, so the arrow must.
+    local preview = ab and Combat.previewAbility(combat, unit, item, plan.tx, plan.ty, nil, nil, plan.spend)
     for _, e in ipairs(preview and preview.order or {}) do
         if e.unit.side == unit.side then
             heal = heal + (e.heal or 0)

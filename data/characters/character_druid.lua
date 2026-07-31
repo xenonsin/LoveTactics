@@ -2,7 +2,7 @@
 -- as a wild shapeshifter, a mentor. Kit from data/disciplines/druid.lua.
 return {
     name = "Shapeshifter",
-    sprite = "assets/chars/kaya.png",
+    sprite = "assets/chars/druid.png",
     class = "hunter",
     -- Shifts to bear and wades in, raven to reposition (models/ai.lua `aggressive` once in a form).
     archetype = "aggressive",

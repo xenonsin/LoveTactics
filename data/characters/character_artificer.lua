@@ -3,7 +3,7 @@
 -- data/disciplines/artificer.lua.
 return {
     name = "Artificer",
-    sprite = "assets/chars/mage.png",
+    sprite = "assets/chars/artificer.png",
     boss = true,
     class = "mage",
     -- Deploys turrets, hangs back, and overcharges the line (models/ai.lua `skirmish`).

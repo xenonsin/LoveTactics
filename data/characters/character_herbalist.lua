@@ -3,7 +3,7 @@
 -- is hunter. Kit from data/disciplines/herbalist.lua.
 return {
     name = "Field-Apothecary",
-    sprite = "assets/chars/kaya.png",
+    sprite = "assets/chars/herbalist.png",
     class = "hunter",
     -- Harvests the field, brews, and mends or poisons from it (models/ai.lua `support`).
     archetype = "support",

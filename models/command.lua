@@ -6,10 +6,12 @@
 -- differ between two machines may.
 --
 --   { kind = "move",    x, y, path = { {x,y}, ... } }   -- path optional: a steered route
---   { kind = "use",     cell, tx, ty, windup, dx, dy }  -- cell is an INVENTORY SLOT, not an item id;
+--   { kind = "use",  cell, tx, ty, windup, spend, dx, dy } -- cell is an INVENTORY SLOT, not an item id;
 --                                                        --   windup optional: the TOTAL ticks a
 --                                                        --   chargeable wind-up is held for (Saber's
 --                                                        --   signature). See the wire note below.
+--                                                        --   spend optional: gold poured into a
+--                                                        --   PURCHASABLE blow (The Gilded Wound).
 --                                                        --   dx,dy optional: a two-stage THROW's landing
 --                                                        --   (Heave), with tx,ty the grabbed tile.
 --   { kind = "wait" }
@@ -81,6 +83,14 @@ function Command.wellFormed(cmd)
         -- this is the field that needs a version byte in front of it.
         if cmd.windup ~= nil and not (isCoord(cmd.windup) and cmd.windup >= 0) then
             return false, "use windup must be a whole count >= 0"
+        end
+        -- spend is optional (only a PURCHASABLE ability carries one -- The Gilded Wound): the gold poured
+        -- into the blow, a whole non-negative count. Combat.spendPurse clamps it to what the caster can
+        -- actually afford, so a peer can never buy past its purse -- this only rejects garbage. Inert in a
+        -- duel anyway (no campaign purse on either side), but threaded so a money ability stays correct if
+        -- one ever enters ranked play.
+        if cmd.spend ~= nil and not (isCoord(cmd.spend) and cmd.spend >= 0) then
+            return false, "use spend must be a whole count >= 0"
         end
         -- dx,dy are optional and come as a pair: a two-stage THROW (Heave) names WHERE it lands, while
         -- tx,ty stay the grabbed tile. Either both are whole coords or neither is present; a lone one is
@@ -173,6 +183,7 @@ function Command.apply(combat, unit, cmd)
             or (kind == "defend" and Combat.defend)
             or (kind == "overwatch" and Combat.overwatch)
             or (kind == "perform" and Combat.perform)
+            or (kind == "gather" and Combat.gather)
             or Combat.wait
         result.acted = action(combat, unit) and true or false
         return result
@@ -207,7 +218,7 @@ function Command.apply(combat, unit, cmd)
         -- peer resolves the same lane. Absent (every other cast), dest is nil and the throw -- if any --
         -- flings away from the thrower, matching the local fallback path.
         local dest = cmd.dx and { x = cmd.dx, y = cmd.dy } or nil
-        result.acted = Combat.useItem(combat, unit, item, cmd.tx, cmd.ty, cmd.windup, dest) and true or false
+        result.acted = Combat.useItem(combat, unit, item, cmd.tx, cmd.ty, cmd.windup, dest, cmd.spend) and true or false
         if not result.acted then
             -- The turn still has to end, or a peer would sit forever on a unit that did nothing.
             Combat.pass(combat, unit)

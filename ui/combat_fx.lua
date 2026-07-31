@@ -332,7 +332,7 @@ function CombatFx:playBeat(events, actor)
             end
             if self.bursts then
                 self.bursts:strike(cell.x, cell.y, e.tags,
-                    { angle = strikeAngle(e.attacker, cell), lethal = e.lethal })
+                    { angle = strikeAngle(e.attacker, cell), lethal = e.lethal, vulnerable = e.vulnerable })
             end
             -- A blow struck by someone other than the acting unit -- a counter, a riposte, a thorns
             -- answer -- leans off its own cue, since the actor fallback below can't speak for it. On a

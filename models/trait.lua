@@ -818,6 +818,18 @@ local function ctxFor(combat, unit, trait, event)
         -- high-ground field bonus). 0 for a unit with no weapon at all. Reported for display; the live
         -- gate a reflex runs is Combat.answeringWeapon, which also honours each weapon's dead zone.
         weaponRange = function() return weaponReach(combat, unit) end,
+        -- The gap between the bearer and another unit, footprint-aware (Combat.unitGap): 1 is adjacent,
+        -- whatever the size of either body. What a follow-up reads to ask "is this foe beside me?" --
+        -- huge for a nil target so a caller can gate on it without a nil check of its own.
+        gap = function(other) return other and require("models.combat").unitGap(unit, other) or math.huge end,
+        -- Can the bearer's grid actually reach `other` to swing at it right now? The live gate
+        -- ctx.basicAttack runs, asked ahead of the strike so a reflex can decline (and not pay) rather
+        -- than whiff -- measured by the same anchor distance basicAttack throws by, so a yes here is a
+        -- hit there.
+        canReach = function(other)
+            if not other then return false end
+            return Combat.answeringWeapon(combat, unit, distance(unit, other)) ~= nil
+        end,
         -- Summon a creature, sustained by the bearer -- and, when the trait came off an ITEM, hold that
         -- item's `activeSummon` claim with it, exactly as `fx.summon` does for an ability's own cast
         -- (see Combat.useItem). One rule, however the item summons: while the creature a relic put on
@@ -877,7 +889,14 @@ local function ctxFor(combat, unit, trait, event)
         -- Tallying the answer is part of paying for it, so the next one this round costs more.
         pay = function()
             local e = event or {}
-            local isAnswer = trait.def.counter ~= nil and e.attacker ~= nil
+            -- A FOLLOW-UP (an ally struck a foe beside me, so I strike it too) is priced exactly like a
+            -- retaliation: what the swing that answers costs, doubled per answer already thrown this
+            -- round (Trait.answerCost). It shares the one escalating pool with counters -- a unit that
+            -- both counters and follows up pays a steeper price for whichever it throws second, which is
+            -- what keeps a wall of them from swinging for free every exchange. The follow-up broadcast
+            -- passes the FOE as `attacker`, so the distance the cost is read from is the reach to what is
+            -- about to be hit, and ctx.basicAttack points at the same body.
+            local isAnswer = (trait.def.counter ~= nil or trait.def.followUp) and e.attacker ~= nil
             local cost = isAnswer
                 and Trait.answerCost(combat, unit, trait, distance(e.attacker, unit))
                 or trait.def.cost
@@ -1138,6 +1157,31 @@ function Trait.onAnyDeath(combat, fallen)
     for _, unit in ipairs(combat.units) do
         if unit.alive and unit ~= fallen then
             dispatch(combat, unit, "onAnyDeath", { fallen = fallen })
+        end
+    end
+end
+
+-- `striker` landed a blow on `foe` (a real, non-reaction hit that FOE survived), and every ally of the
+-- striker on the field felt it -- the opening a follow-up hangs on (data/traits/trait_follow_up.lua):
+-- "my line-mate just hit that one, and it is standing next to me too, so I hit it as well." Fired from
+-- Combat.dispatchAnswer, at the same held moment onDamaged is (once the whole action has resolved and
+-- the board stands still), so a follow-up is judged by where everyone really ended up.
+--
+-- Only the striker's ALLIES hear it, and only about a foe of theirs -- the striker has already had its
+-- own turn, and a body on your own side taking friendly fire is nothing to pile onto. Whether the ally
+-- is actually beside the foe, and can reach it, and can pay for the swing, is the reflex's own business
+-- to ask (ctx.gap / ctx.canReach / ctx.pay), exactly as onAnyCast leaves "whose spell?" to its hooks.
+--
+-- The `foe` rides along as BOTH `target` (what to hit) and `attacker` (whom the escalating cost is
+-- priced against, see ctx.pay), so the reflex's ctx.basicAttack and its price read the same body. A
+-- hard-controlled ally (Stun, Frozen) is too rattled to seize the opening -- the same gate every on-hit
+-- reflex passes -- so it is skipped here, as Trait.onDamaged skips a rattled counter.
+function Trait.onAllyStrike(combat, striker, foe)
+    if not (striker and foe and foe.alive) then return end
+    for _, unit in ipairs(combat.units) do
+        if unit.alive and unit ~= striker and unit.side == striker.side
+            and unit.side ~= foe.side and not reactionsSuppressed(unit) then
+            dispatch(combat, unit, "onAllyStrike", { attacker = foe, ally = striker, target = foe })
         end
     end
 end

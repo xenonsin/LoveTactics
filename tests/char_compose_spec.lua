@@ -110,8 +110,11 @@ return {
         -- only the gold badge would tell them apart. The overlord figure lifts them.
         name = "a classless boss (a general) is lifted to the overlord silhouette",
         fn = function()
+            -- The sin generals are classless bosses and no discipline's exemplar, so the overlord lift is
+            -- what tells them apart (warlord used to be the second example here, but it is now the Warlord
+            -- discipline's exemplar and reads as its banner -- see the discipline-silhouette case below).
             assert(slug("character_general_wrath") == Char.BOSS_SILHOUETTE, "wrath general -> overlord")
-            assert(slug("character_warlord") == Char.BOSS_SILHOUETTE, "warlord -> overlord")
+            assert(slug("character_general_pride") == Char.BOSS_SILHOUETTE, "pride general -> overlord")
             assert(Char.BOSS_SILHOUETTE ~= Char.HUMANOID_DEFAULT, "the boss figure must differ from the rank one")
         end,
     },
@@ -123,6 +126,44 @@ return {
             local def, id = resolve("character_amana")
             assert(def.class == "priest" and def.boss, "fixture: amana is a priest boss")
             assert(Char.slugFor(def, id) == "lorc/prayer", "priest boss -> prayer, not overlord")
+        end,
+    },
+    {
+        -- The whole point of the discipline tier: a discipline's exemplar wears its OWN body, distinct
+        -- from its class shelf. necromancer/summoner/etc. are all class = mage but must not share the
+        -- wizard token. Keyed off the exemplar pointer in data/disciplines/*.lua.
+        name = "a discipline's exemplar reads as its discipline silhouette, not its class",
+        fn = function()
+            assert(slug("character_necromancer") == "delapouite/skull-staff", "necromancer -> skull staff, not wizard")
+            assert(slug("character_champion") == "lorc/laurel-crown", "champion -> laurel crown")
+            assert(slug("character_totemist") == "delapouite/totem", "totemist -> totem, over its priest class")
+            assert(slug("character_ninja") == "darkzaitzev/ninja-head", "ninja -> ninja head")
+            -- the five freshly-authored exemplar bodies resolve to their discipline too
+            assert(slug("character_apothecary") == "delapouite/remedy", "apothecary -> remedy")
+            assert(slug("character_elementalist") == "delapouite/prism", "elementalist -> prism")
+            assert(slug("character_exorcist") == "lorc/holy-symbol", "exorcist -> holy symbol")
+            assert(slug("character_beastmaster") == "lorc/hound", "beastmaster -> hound")
+        end,
+    },
+    {
+        -- A discipline exemplar that is also a boss reads as the DISCIPLINE, not the overlord lift -- the
+        -- gold badge (compose(), not slugFor) still marks it a boss. warlord regressed here once.
+        name = "a discipline exemplar that is a boss keeps its discipline silhouette, not the overlord",
+        fn = function()
+            local def, id = resolve("character_warlord")
+            assert(def.boss, "fixture: the warlord is a boss")
+            assert(Char.slugFor(def, id) == "lorc/tattered-banner", "warlord -> banner, not overlord")
+        end,
+    },
+    {
+        -- The exemplar pointer, not a substring, is what fires the discipline tier -- so a lookalike id is
+        -- untouched and a former exemplar (the generic mage, no longer Elementalist's) falls back to class.
+        name = "the discipline tier fires only for the exemplar, never a lookalike id",
+        fn = function()
+            assert(slug("character_demon_champion") == "lorc/daemon-skull", "demon_champion stays a demon, not the Champion")
+            assert(slug("character_mage") == "delapouite/wizard-face", "the generic mage is no discipline's exemplar")
+            assert(Char.disciplineFor("champion") == "champion", "the exemplar maps to its discipline")
+            assert(Char.disciplineFor("demon_champion") == nil, "a lookalike maps to nothing")
         end,
     },
     {

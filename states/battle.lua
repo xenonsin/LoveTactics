@@ -44,6 +44,9 @@ local Glyphs = require("ui.glyphs")
 local Theme = require("ui.theme")
 local Spoils = require("models.spoils")
 local BattleSummary = require("ui.panels.battle_summary")
+local WindupChooser = require("ui.panels.windup_chooser")
+local SpendChooser = require("ui.panels.spend_chooser")
+local DebugMenu = require("ui.panels.debug_menu")
 local CloseButton = require("ui.close_button")
 local Debug = require("models.debug")
 local ScreenFx = require("ui.screen_fx")
@@ -393,13 +396,19 @@ local function specFor(opts, partyIds, seed)
     -- when a real formation is present); absent for a build/duel (no opts.formation), which fall back to
     -- the even auto-placement as before. A scripted prologue fight passes none, so it keeps its authored
     -- spawns.
-    if opts.formation then
+    if opts.formation or opts.formationSlots then
         local Player = require("models.player")
-        local slots = {}
-        for i, id in ipairs(partyIds) do slots[i] = opts.formation[id] end
+        -- Two ways in: a charId->cell map (the campaign's persistent formation, resolved against
+        -- partyIds), or a pre-resolved list of {col,row} already parallel to the party (Draft mode,
+        -- whose un-merged duplicate ids would collide in an id-keyed map -- see models/draft_run).
+        local slots = opts.formationSlots
+        if not slots then
+            slots = {}
+            for i, id in ipairs(partyIds) do slots[i] = opts.formation[id] end
+        end
         spec.formation = slots
-        spec.formationCols = Player.FORMATION_COLS
-        spec.formationRows = Player.FORMATION_ROWS
+        spec.formationCols = opts.formationCols or Player.FORMATION_COLS
+        spec.formationRows = opts.formationRows or Player.FORMATION_ROWS
     end
     -- A quest may name the exact board to fight on instead of rolling one (the prologue's tutorial,
     -- whose lesson is authored against specific tiles). Nil everywhere else, so ordinary fights keep
@@ -1192,6 +1201,8 @@ local function beginTurn(resume)
     battle.mode = "move"
     battle.armedItem = nil
     battle.windup = 0 -- a chargeable wind-up never carries its depth across turns
+    battle.windupChooser = nil -- nor does an un-committed depth chooser (cancelled by the turn ending)
+    battle.spendChooser = nil  -- nor an un-committed money slider (a purchasable blow, sized but not paid)
     battle.throwStage, battle.throwFrom = nil, nil -- a two-stage throw never carries across turns either
     battle.throwCells, battle.throwSet = nil, nil
     battle.hoverItem = nil
@@ -1870,25 +1881,10 @@ local function throwStepBack()
     return false
 end
 
--- Adjust the wind-up the player is holding an armed CHARGEABLE channel at (Saber's signature),
--- clamped to the ability's own `[min, max]` TOTAL ticks -- it can be deepened toward the cap and
--- shallowed back to the FLOOR, never below (a signature swing is always a commitment). A no-op
--- (returns false) unless the armed item is actually chargeable, so the same key/wheel/bumper falls
--- through to its ordinary job on a fixed-tell weapon. Announced each step so the player reads the
--- resolve time without a fixed HUD -- ONE number now, because the depth and the time it buys are the
--- same quantity since the wind-up fields folded (Item.windupRange).
-local function adjustWindup(delta)
-    local item = battle.mode == "armed" and battle.armedItem
-    local ab = item and item.activeAbility
-    if not Item.isChargeable(ab) then return false end
-    local lo, hi = Item.windupRange(ab)
-    local before = battle.windup or 0
-    battle.windup = math.max(lo, math.min(hi, before + delta))
-    if battle.windup ~= before then
-        notify(string.format("Wind-up: lands in %d", battle.windup), true)
-    end
-    return true
-end
+-- The wind-up a chargeable channel (Saber's signature) is held at is NOT tuned in the background any
+-- more -- a scroll knob on the armed board was undiscoverable and easy to skip past. The depth is now
+-- chosen in a modal that opens the moment the swing is confirmed on a target (openWindupChooser below),
+-- so battle.windup simply holds the floor the arm opened at until that panel commits a deeper hold.
 
 -- Toggle a Blink (moveBehavior) item on or off for `unit`. A free, turn-neutral flip: it spends
 -- nothing and ends no turn -- mana is paid per jump, at move time (Combat.blink). Flipping it
@@ -2008,6 +2004,17 @@ local function tryDefaultAction(unit, tx, ty)
     -- requirement. Bail before moving (unarmed is free and requires nothing, so this only guards
     -- real weapons), and say why -- this click aimed at a foe, so a silent no-op reads as a bug.
     if refuseIfBlocked(unit, weapon) then return end
+    -- A CHARGEABLE signature (The First Motion) is never loosed by a one-click move-mode strike: that
+    -- would commit it at its floor and skip the whole depth choice the weapon exists for, with no
+    -- wind-up read-out ever shown. Arm it instead -- the actions header turns into the "Wind-up N/max"
+    -- read-out, the wheel / +- / bumpers tune it, and a second click on this same foe commits the
+    -- chosen depth through the armed path (which passes it to useItem). Non-chargeable defaults strike
+    -- at once, as before. (The turn normally opens with the default already armed via armDefaultAction;
+    -- this only bites the move-mode click that follows an explicit disarm.)
+    if Item.isChargeable(weapon.activeAbility) then
+        armItem(weapon)
+        return
+    end
     -- Who is being struck, read before the blow lands: a lethal hit clears the cell, and the tutorial
     -- needs the id to know whether this was the demon it asked for.
     local victim = Combat.unitAt(battle.combat, tx, ty)
@@ -2436,6 +2443,158 @@ local function confirmThrow(current, item, cx, cy)
     enterThrowDest(cx, cy)
 end
 
+-- Commit an armed strike (an offensive cast on a target/tile) at wind-up depth `wu` (nil for every
+-- non-chargeable ability). Walks into the firing tile first when the blow can't land from where the
+-- unit stands (plan.entry.fromX/fromY, the steered route's endpoint or attackReach's cheapest stand
+-- tile), then resolves. Lifted out of confirm() so a CHARGEABLE swing can defer here until the wind-up
+-- chooser has picked its depth -- everything below is identical whether the depth came from the modal
+-- or was nil for a fixed-tell weapon.
+local function commitArmedStrike(current, item, cx, cy, plan, wu, sp)
+    local entry = plan.entry
+    local victim = Combat.unitAt(battle.combat, cx, cy) -- read before the cast clears the cell
+    -- Why the model refused a cast the board had just offered. Every branch below routes its refusal
+    -- through here: a click that lights a target, draws a route and prices the turn in the preview, and
+    -- then does NOTHING when pressed, is unreadable -- the player has no way to tell a bug from a rule.
+    local function refuse(why)
+        notify(string.format("%s: %s", item.name or "That item", tostring(why or "cannot be used here")))
+    end
+    local function cast()
+        local cell = slotOf(current, item)
+        local ok, why = Combat.useItem(battle.combat, current, item, cx, cy, wu, nil, sp)
+        if not ok then refuse(why) return end
+        netFinishTurn({ kind = "use", cell = cell, tx = cx, ty = cy, windup = wu, spend = sp })
+        -- The item rides along so a lesson can ask for a strike with a NAMED ability rather than any
+        -- blow at all -- the village lesson's Clear Out, which is aimed at the caster's own tile and so
+        -- cannot be pinned by its victim (see data/tutorials/village.lua).
+        observeAction("attack", current, cx, cy, victim and victim.char.id, item.id)
+        advanceTurn()
+    end
+    if entry.fromX ~= current.x or entry.fromY ~= current.y then
+        -- Can't move twice in a turn. The approach is part of the action here, so a spent move kills the
+        -- whole click -- say so, rather than letting the press vanish.
+        if Combat.hasMoved(battle.combat) then
+            notify("Out of reach from here -- already moved this turn")
+            return
+        end
+        if not startWalk(current, entry.fromX, entry.fromY, nil, plan.cells) then
+            notify("No route to attack from")
+            return
+        end
+        -- The approach is already spent: startWalk walked it in the model, so the unit is standing on
+        -- the entry tile and the blow lands NOW, before a frame of the walk is drawn. Its cues stay in
+        -- the queue while the route replays -- advanceTurn drains them when the feet stop, so the impact
+        -- still reads after the approach rather than during it. Nothing about the exchange is decided by
+        -- how long the animation took. Snapshotted after the approach is spent but before the cast
+        -- resolves, so only the ground the CAST lays is held back -- anything the walk itself sprang (a
+        -- trap's zone) is already in `pre` and stays visible as the route replays.
+        local pre = boardObjects()
+        local landed, why
+        if current.alive then
+            landed, why = Combat.useItem(battle.combat, current, item, cx, cy, wu, nil, sp)
+        end
+        -- The approach is already walked and paid for; only the blow was refused. Name the reason so the
+        -- turn doesn't just look like it evaporated.
+        if not landed and why then refuse(why) end
+        local blow = holdLanding(pre)
+        -- Announced now, not when the animation finishes: the model already resolved the whole turn, and
+        -- the peer should be told at once rather than after our playback -- their window has its own walk.
+        netFinishTurn({ kind = "use", cell = slotOf(current, item),
+                        tx = cx, ty = cy, path = plan.cells,
+                        x = entry.fromX, y = entry.fromY, windup = wu, spend = sp })
+        battle.walk.onDone = function()
+            if landed then
+                observeAction("attack", current, cx, cy, victim and victim.char.id, item.id)
+            end
+            advanceTurn(blow)
+        end
+    else
+        cast()
+    end
+end
+
+-- Raise the wind-up chooser (ui/panels/windup_chooser.lua): a modal that opens the moment a CHARGEABLE
+-- signature (The First Motion) is confirmed on a target, so the depth is a decision made AT the swing
+-- rather than a background scroll knob the player had to know about in advance. The blow does not
+-- commit until the panel does -- Confirm hands the chosen depth to commitArmedStrike; Cancel closes and
+-- leaves the aim armed. The plan (firing tile, route) is captured now so the swing lands exactly where
+-- it was aimed, however long the panel stays up.
+local function openWindupChooser(current, item, cx, cy, plan)
+    local lo, hi = Item.windupRange(item.activeAbility)
+    -- Anchor the little slider over the AIMED tile (not the actor's own square): the swing is being
+    -- sized against the target, so the control sits where the eye already is. cellToPixel gives the
+    -- tile's top-left; the widget centres itself on the tile and clears it (above, or below if it would
+    -- clip the screen top).
+    local px, py = battle.map:cellToPixel(cx, cy)
+    local sz = battle.map.size
+    battle.windup = lo -- the slider opens at the floor; onChange slides it (and the strip) from there
+    battle.windupChooser = WindupChooser.new({
+        lo = lo, hi = hi, depth = lo,
+        anchorX = px + sz / 2, anchorY = py + sz / 2, tileSize = sz,
+        -- Price each depth off the live board (Combat.previewAbility takes the wind-up now), so the
+        -- damage read-out climbs as the ladder fills. The aimed occupant is the headline; the total and
+        -- count cover a swing that sweeps more than one body (First Motion's line/cone).
+        damageAt = function(depth)
+            local preview = Combat.previewAbility(battle.combat, current, item, cx, cy, nil, depth)
+            if not preview then return nil end
+            local occ = Combat.unitAt(battle.combat, cx, cy)
+            local primary = occ and preview.entries[occ] and preview.entries[occ].damage or nil
+            local total, count = 0, 0
+            for _, e in ipairs(preview.order or {}) do
+                total = total + (e.damage or 0)
+                if (e.damage or 0) > 0 then count = count + 1 end
+            end
+            return { primary = primary, total = total, count = count }
+        end,
+        -- Every slide writes the armed depth, so refreshView slides the channel's resolve slot along the
+        -- turn-order strip and repaints the board footprint at that depth -- the preview the player reads.
+        onChange = function(depth)
+            battle.windup = depth
+        end,
+        onConfirm = function(depth)
+            battle.windupChooser = nil
+            battle.windup = depth
+            commitArmedStrike(current, item, cx, cy, plan, depth)
+        end,
+        onCancel = function()
+            battle.windupChooser = nil
+            battle.windup = lo -- drop the preview back to the floor; the aim stays armed
+        end,
+    })
+end
+
+-- Raise the SPEND chooser (ui/panels/spend_chooser.lua): the money twin of openWindupChooser. A
+-- PURCHASABLE ability (The Gilded Wound) does not swing on confirm -- it opens a small slider over the
+-- aimed tile so the caster can dial how much GOLD to pour into the blow (ten per point of damage), then
+-- commits at that amount. The plan (firing tile, route) is captured now so the swing lands where it was
+-- aimed however long the panel stays up. The high end of the slider is the smaller of the ability's own
+-- ceiling and what the caster's purse can actually afford, so it never offers a spend that cannot be paid.
+local function openSpendChooser(current, item, cx, cy, plan)
+    local ab = item.activeAbility
+    local rate, cap = Item.purchaseRate(ab)
+    local available = Combat.purseAvailable(battle.combat, current)
+    local hi = math.min(cap, math.floor(available / rate))
+    if hi < 1 then
+        -- The one place a money ability's affordability is enforced (Combat.itemBlockReason does not read
+        -- the purse -- it has no combat handle): too poor to buy even a single point, so say so plainly
+        -- and leave the aim armed rather than opening a slider with nothing on it.
+        notify(string.format("%s: not enough gold (need %dg)", item.name or "That item", rate))
+        return
+    end
+    local px, py = battle.map:cellToPixel(cx, cy)
+    local sz = battle.map.size
+    battle.spendChooser = SpendChooser.new({
+        lo = 1, hi = hi, value = 1, rate = rate,
+        anchorX = px + sz / 2, anchorY = py + sz / 2, tileSize = sz,
+        onConfirm = function(value)
+            battle.spendChooser = nil
+            commitArmedStrike(current, item, cx, cy, plan, nil, value * rate)
+        end,
+        onCancel = function()
+            battle.spendChooser = nil
+        end,
+    })
+end
+
 -- Confirm on the cursor cell: move there (does NOT end the turn -- the unit can still act or
 -- wait), use the default action on it (a strike on a foe, a heal on an ally -- moving into reach
 -- first), strike a trap/wall with an offensive default, or use the armed item on it (ends the turn).
@@ -2523,79 +2682,19 @@ local function confirm()
             strikeArmedObject(current, item, plan.strikeKind, cx, cy, plan.entry)
             return
         end
-        -- Walk-and-strike: if the stand tile for this target -- the steered route's endpoint, or the
-        -- cheapest tile attackReach found -- isn't where the unit is, walk there first (only if it
-        -- hasn't moved yet), following the steered route when one is drawn, then cast from where the
-        -- approach left off. rangeReach spans the whole armed reach.
-        local entry = plan.entry
-        local victim = Combat.unitAt(battle.combat, cx, cy) -- read before the cast clears the cell
-        -- The wind-up depth a chargeable signature is being held at, in TOTAL ticks (nil for every
-        -- other ability), sent with the command so the peer resolves the same blow. Combat.useItem
-        -- clamps it either way. See the wire note in models/command.lua: this field changed meaning
-        -- when the wind-up fields folded, so two peers on either side of that change would each clamp
-        -- a different number.
-        local wu = Item.isChargeable(item.activeAbility) and (battle.windup or 0) or nil
-        -- Why the model refused a cast the board had just offered. Every branch below routes its
-        -- refusal through here: a click that lights a target, draws a route and prices the turn in the
-        -- preview, and then does NOTHING when pressed, is unreadable -- the player has no way to tell a
-        -- bug from a rule. The banner names the rule. (The bands are meant to agree with Combat.useItem
-        -- exactly, so any of these firing is a disagreement worth seeing rather than swallowing.)
-        local function refuse(why)
-            notify(string.format("%s: %s", item.name or "That item", tostring(why or "cannot be used here")))
-        end
-        local function cast()
-            local cell = slotOf(current, item)
-            local ok, why = Combat.useItem(battle.combat, current, item, cx, cy, wu)
-            if not ok then refuse(why) return end
-            netFinishTurn({ kind = "use", cell = cell, tx = cx, ty = cy, windup = wu })
-            -- The item rides along so a lesson can ask for a strike with a NAMED ability rather
-            -- than any blow at all -- the village lesson's Clear Out, which is aimed at the caster's
-            -- own tile and so cannot be pinned by its victim (see data/tutorials/village.lua).
-            observeAction("attack", current, cx, cy, victim and victim.char.id, item.id)
-            advanceTurn()
-        end
-        if entry.fromX ~= current.x or entry.fromY ~= current.y then
-            -- Can't move twice in a turn. The approach is part of the action here, so a spent move
-            -- kills the whole click -- say so, rather than letting the press vanish.
-            if Combat.hasMoved(battle.combat) then
-                notify("Out of reach from here -- already moved this turn")
-                return
-            end
-            if not startWalk(current, entry.fromX, entry.fromY, nil, plan.cells) then
-                notify("No route to attack from")
-                return
-            end
-            -- The approach is already spent: startWalk walked it in the model, so the unit is
-            -- standing on the entry tile and the blow lands NOW, before a frame of the walk is
-            -- drawn. Its cues stay in the queue while the route replays -- advanceTurn drains them
-            -- when the feet stop, so the impact still reads after the approach rather than during
-            -- it. Nothing about the exchange is decided by how long the animation took.
-            -- Snapshotted after the approach is spent but before the cast resolves, so only the ground
-            -- the CAST lays is held back -- anything the walk itself sprang (a trap's zone) is already
-            -- in `pre` and stays visible as the route replays.
-            local pre = boardObjects()
-            local landed, why
-            if current.alive then
-                landed, why = Combat.useItem(battle.combat, current, item, cx, cy, wu)
-            end
-            -- The approach is already walked and paid for; only the blow was refused. Name the reason
-            -- so the turn doesn't just look like it evaporated.
-            if not landed and why then refuse(why) end
-            local blow = holdLanding(pre)
-            -- Announced now, not when the animation finishes: the model already resolved the whole
-            -- turn, and the peer should be told at once rather than after our playback -- their
-            -- window has its own walk to watch.
-            netFinishTurn({ kind = "use", cell = slotOf(current, item),
-                            tx = cx, ty = cy, path = plan.cells,
-                            x = entry.fromX, y = entry.fromY, windup = wu })
-            battle.walk.onDone = function()
-                if landed then
-                    observeAction("attack", current, cx, cy, victim and victim.char.id, item.id)
-                end
-                advanceTurn(blow)
-            end
+        -- The strike itself. A CHARGEABLE signature (The First Motion) does not swing on this confirm:
+        -- it raises the wind-up chooser, which picks the depth and then hands back here to commit. Every
+        -- other ability commits at once (wu = nil). The walk-and-strike, the network command and the
+        -- refusal banner all live in commitArmedStrike, shared by both paths.
+        if Item.isChargeable(item.activeAbility) then
+            openWindupChooser(current, item, cx, cy, plan)
+        elseif Item.isPurchasable(item.activeAbility) then
+            -- A money ability (The Gilded Wound) raises the SPEND chooser on confirm, the same way a
+            -- chargeable one raises the wind-up chooser: the amount of gold is a decision made AT the
+            -- swing. It hands the chosen gold back to commitArmedStrike; Cancel closes and stays armed.
+            openSpendChooser(current, item, cx, cy, plan)
         else
-            cast()
+            commitArmedStrike(current, item, cx, cy, plan, nil)
         end
     end
 end
@@ -2611,9 +2710,10 @@ local function waitTurn()
     local action = (kind == "focus" and Combat.focus)
         or (kind == "defend" and Combat.defend)
         or (kind == "overwatch" and Combat.overwatch)
+        or (kind == "gather" and Combat.gather)
         or Combat.wait
     if action(battle.combat, current) then
-        Sound.play("battle.wait") -- a soft hold/pass, whichever wait behaviour it was (wait/focus/defend/overwatch)
+        Sound.play("battle.wait") -- a soft hold/pass, whichever wait behaviour it was (wait/focus/defend/overwatch/gather)
         observeAction("wait", current, current.x, current.y)
         netFinishTurn({ kind = "wait" })
         advanceTurn()
@@ -2827,8 +2927,9 @@ local function executeEnemyAction()
         if not current.alive then advanceTurn() return end -- cut down on the approach
         local acted = false
         -- act.windup: the depth an AI rule asked a chargeable wind-up to be held at (models/ai.lua).
-        -- nil for every ordinary action, and Combat.useItem opens at the ability's floor when it is.
-        if act.item then acted = Combat.useItem(battle.combat, current, act.item, act.tx, act.ty, act.windup) end
+        -- act.spend: the gold an AI rule pours into a purchasable blow (Aurea's Gilded Wound). Both nil
+        -- for an ordinary action; Combat.useItem/spendPurse clamp them to what the caster can actually pay.
+        if act.item then acted = Combat.useItem(battle.combat, current, act.item, act.tx, act.ty, act.windup, nil, act.spend) end
         -- Reposition-only, nothing to do, or an item use that unexpectedly failed: pass so the
         -- turn always ends (paying the real move cost) and never soft-locks on this unit.
         if not acted then Combat.pass(battle.combat, current) end
@@ -2843,7 +2944,7 @@ local function executeEnemyAction()
         local pre = boardObjects()
         if current.alive then
             local acted = act.item
-                and Combat.useItem(battle.combat, current, act.item, act.tx, act.ty, act.windup)
+                and Combat.useItem(battle.combat, current, act.item, act.tx, act.ty, act.windup, nil, act.spend)
             -- Reposition-only, nothing to do, or an item use that unexpectedly failed: pass so the
             -- turn always ends (paying the real move cost) and never soft-locks on this unit.
             if not acted then Combat.pass(battle.combat, current) end
@@ -3569,6 +3670,10 @@ function battle.enter(self, opts)
     battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided
     battle.logReview = nil               -- the summary's "Review Combat Log" modal, when opened
     battle.settingsMenu = nil            -- the in-battle settings overlay, when opened
+    battle.windupChooser = nil           -- the chargeable-swing depth chooser, while a swing is sized
+    battle.spendChooser = nil            -- the purchasable-blow money slider, while a swing is priced
+    battle.debugMenu = nil               -- the right-click debug context menu (debug builds only)
+    battle.debugPickTile = nil           -- while the debug "Move to tile" is awaiting a destination click
     battle.over = false
     battle.showInitiative = true -- initiative numbers on the turn order (F6 toggles)
 
@@ -3682,6 +3787,43 @@ function battle.enter(self, opts)
     end
 
     battle.combat = Combat.new(battle.arena, battle.partyUnits, battle.enemyUnits)
+
+    -- The battle purse: the pot the greed (rogue) money kit spends in-fight (fx.spendPurse ->
+    -- Combat.spendPurse), and the pot the debug "Add gold" tool funds. EVERY battle gets one now, so a
+    -- money ability works -- and can be topped up for testing -- in a campaign fight, a draft, a duel or
+    -- a mock battle alike. combat.lua never learns what backs it; it only calls get()/spend()/add()
+    -- (models/combat.lua, Combat.purseAvailable). The backing store is chosen by context, in priority:
+    --   1. opts.purse -- a caller-supplied wallet. A draft passes one over its DraftRun.gold (see
+    --      models/draft_match.lua) so a draft money ability spends real run gold and the debug tool
+    --      funds it; that gold is discarded at round end anyway (DraftRun.advanceRound), so spending it
+    --      mid-fight costs nothing banked.
+    --   2. the campaign bank -- a real campaign fight (no draft, no session) with an active Player.
+    --      Closes over Player.active rather than caching a number, so a spend lands on the real bank and
+    --      the ability reads the balance live as it draws it down.
+    --   3. a transient in-battle pot -- everything else (a duel, a player-less mock battle). Starts
+    --      empty (fund it with the debug Add gold tool, or seed it via opts.startingGold) and is
+    --      discarded with the fight, so it never touches real or run gold.
+    if opts.purse then
+        battle.combat.purse = opts.purse
+    elseif not opts.draft and not battle.session and require("models.player").active then
+        local Player = require("models.player")
+        local player = Player.active
+        battle.combat.purse = {
+            get = function() return player.gold or 0 end,
+            spend = function(n) Player.spendGold(player, n) end,
+            -- Credit the campaign bank. Only the debug "Add gold" tool reaches this (a fight never gives
+            -- the party gold mid-battle); it lets that tool fund a party caster's real pot rather than a
+            -- coffer the party never reads. See ui/panels/debug_menu.lua goldPage.
+            add = function(n) Player.addGold(player, n) end,
+        }
+    else
+        local bank = opts.startingGold or 0
+        battle.combat.purse = {
+            get = function() return bank end,
+            spend = function(n) bank = math.max(0, bank - (n or 0)) end,
+            add = function(n) bank = bank + (n or 0) end,
+        }
+    end
 
     -- Which side THIS machine is holding. "party" in every campaign battle -- and in a duel, the
     -- side this player drives, which is the enemy side for whoever joined. Everything else follows
@@ -3879,6 +4021,11 @@ function battle.update(dt)
         battle.settingsMenu:update(dt)
         return
     end
+    -- NOTE the wind-up chooser is deliberately NOT a freeze: it is a small slider over the aimed tile,
+    -- and the board + turn-order strip behind it are its preview. The view has to keep refreshing so
+    -- that sliding the depth (which writes battle.windup) slides the channel's resolve slot along the
+    -- strip live. Player input is still walled off -- every input handler routes to the chooser first --
+    -- so nothing on the board can be touched while it is up; only the passive preview keeps ticking.
 
     -- The chess clock runs on REAL time (this dt, before the gameplay scaling below), and only for the
     -- LOCAL player while it is their live decision -- the side to move, actually in hand (not an
@@ -4172,7 +4319,9 @@ function battle.draw()
     -- When the cursor is over the open combat log, that panel owns the hover: it draws its own
     -- item/status/breakdown tooltip during its draw pass, so the board's tile tooltip must not also
     -- fire here and stack on top of it.
-    if not InputMode.isMouse() and battle.keySlot then
+    if battle.windupChooser or battle.spendChooser then
+        -- The wind-up / spend modal owns the frame: no board / panel tooltip bleeds behind it.
+    elseif not InputMode.isMouse() and battle.keySlot then
         -- Keyboard / pad play: the mouse isn't driving, so nothing is hovered -- float the selected slot's
         -- tooltip anchored to the slot itself, so a numpad/pad press reads the item the way a hover would.
         local cur = battle.current
@@ -4221,6 +4370,24 @@ function battle.draw()
     if battle.logReview then battle.drawLogReview() end
     -- The settings overlay sits above everything, over the frozen fight.
     if battle.settingsMenu then battle.drawSettingsOverlay() end
+    -- The wind-up chooser, when a chargeable swing is being sized, sits above the frozen board too.
+    if battle.windupChooser then battle.windupChooser:draw() end
+    -- The spend chooser is the same kind of modal for a purchasable blow (The Gilded Wound).
+    if battle.spendChooser then battle.spendChooser:draw() end
+    -- The right-click debug menu (debug builds only) sits on top of every board overlay.
+    if battle.debugMenu then battle.debugMenu:draw() end
+    -- While the debug "Move to tile" picker is armed, a banner tells the player the next click lands it.
+    if Debug.enabled and battle.debugPickTile then
+        local f = Theme.body(16)
+        love.graphics.setFont(f)
+        local msg = "Debug: click a tile to move  (right-click / Esc cancels)"
+        local w = f:getWidth(msg) + 20
+        local bx = math.floor((Scale.WIDTH - w) / 2)
+        Theme.plate(bx, 12, w, 30, Theme.R)
+        Theme.set(Theme.accentAmber)
+        love.graphics.print(msg, bx + 10, 12 + (30 - f:getHeight()) / 2)
+        love.graphics.setColor(1, 1, 1)
+    end
 end
 
 -- The in-battle settings modal: a dim scrim over the frozen fight, a titled panel, the shared
@@ -4549,22 +4716,27 @@ function battle.drawHudText(boardX, boardW)
             -- More than one valid target in reach: the selection auto-aimed at the nearest, and cycling
             -- the ring now buys something. With one (or none) the cycle hint is left off.
             local canAim = #targetCells() > 1
+            -- A chargeable signature (The First Motion) does not strike on this confirm: it raises the
+            -- wind-up chooser, where the depth is picked and the blow committed. Word the verb so the
+            -- player expects that panel rather than an immediate swing.
+            local chargeable = battle.armedItem and Item.isChargeable(battle.armedItem.activeAbility)
+            local set = chargeable and "set the wind-up" or nil
             if pad then
-                local verb = battle.armedTile and ("Aim a tile, A to place " .. name)
+                local verb = battle.armedTile and ("Aim a tile, A to " .. (set or ("place " .. name)))
                     or battle.armedSupport and "A on an ally to support"
-                    or "A on a target to strike"
+                    or ("A on a target to " .. (set or "strike"))
                 hint = verb .. (canAim and "  ·  LB/RB to aim" or "")
                     .. "  ·  Y to switch  ·  B to cancel"
             elseif kbd then
-                local verb = battle.armedTile and ("Move to a tile, Enter to place " .. name)
+                local verb = battle.armedTile and ("Move to a tile, Enter to " .. (set or ("place " .. name)))
                     or battle.armedSupport and "Enter on an ally to support"
-                    or "Enter on a target to strike"
+                    or ("Enter on a target to " .. (set or "strike"))
                 hint = verb .. (canAim and "  ·  Tab to aim next" or "")
                     .. "  ·  number keys to switch  ·  Esc to cancel"
             else -- mouse
-                local verb = battle.armedTile and ("Click a tile to place " .. name)
+                local verb = battle.armedTile and ("Click a tile to " .. (set or ("place " .. name)))
                     or battle.armedSupport and "Click an ally to support"
-                    or "Click a target to strike"
+                    or ("Click a target to " .. (set or "strike"))
                 hint = verb .. "  ·  click the item / Esc to cancel"
             end
         elseif Combat.hasMoved(battle.combat) then
@@ -4638,6 +4810,12 @@ function battle.keypressed(key)
         if key == "escape" then closeSettings() else battle.settingsMenu:keypressed(key) end
         return
     end
+    -- The wind-up chooser eats every key while a chargeable swing is being sized (arrows/+- adjust,
+    -- Enter commits the blow, Esc backs out and leaves it armed).
+    if battle.spendChooser then battle.spendChooser:keypressed(key); return end
+    if battle.windupChooser then battle.windupChooser:keypressed(key); return end
+    if battle.debugMenu then battle.debugMenu:keypressed(key); return end
+    if battle.debugPickTile and key == "escape" then battle.debugPickTile = nil; return end
     if battle.logReview then
         if key == "escape" or key == "l" then closeLogReview()
         elseif key == "up" or key == "pageup" then battle.logReview.log:wheelmoved(0, 1)
@@ -4711,13 +4889,15 @@ function battle.keypressed(key)
         armSlot(KEYPAD_SLOT[key]) -- numpad, mapped by physical position to the 3x3 item grid
     elseif key:match("^[1-9]$") then
         armSlot(tonumber(key))
-    elseif (key == "-" or key == "kp-") and adjustWindup(-1) then
-        -- shallower wind-up on a chargeable signature (else falls through to the map)
-    elseif (key == "=" or key == "kp+") and adjustWindup(1) then
-        -- deeper wind-up (more damage, a longer breakable tell)
     else
         battle.map:keypressed(key)
     end
+end
+
+-- Typed characters feed the debug menu's list filter (its "type-to-search" box); nothing else in
+-- battle reads text input.
+function battle.textinput(t)
+    if battle.debugMenu then battle.debugMenu:textinput(t); return end
 end
 
 function battle.gamepadpressed(joystick, button)
@@ -4725,6 +4905,11 @@ function battle.gamepadpressed(joystick, button)
         if button == "b" then closeSettings() else battle.settingsMenu:gamepadpressed(joystick, button) end
         return
     end
+    -- The wind-up chooser owns the pad while a chargeable swing is being sized (D-pad / bumpers adjust,
+    -- A commits, B backs out).
+    if battle.spendChooser then battle.spendChooser:gamepadpressed(joystick, button); return end
+    if battle.windupChooser then battle.windupChooser:gamepadpressed(joystick, button); return end
+    if battle.debugMenu then battle.debugMenu:gamepadpressed(joystick, button); return end
     if battle.logReview then
         if button == "b" or button == "y" then closeLogReview()
         elseif button == "dpup" then battle.logReview.log:wheelmoved(0, 1)
@@ -4738,21 +4923,16 @@ function battle.gamepadpressed(joystick, button)
     if button == "rightstick" and battle.autoAll then cycleAutoSpeed(); return end
     reclaimAutoTurn()
     if button == "leftshoulder" then
-        -- While aiming: the bumpers tune a chargeable signature's wind-up depth, else step the aim
-        -- through the valid targets (LB back, RB forward). Disarmed, the left bumper toggles the combat
-        -- log as usual (allowed even when the battle is over).
-        if battle.mode == "armed" then
-            if adjustWindup(-1) then return end
-            if cycleTarget(-1) then return end
-        end
+        -- While aiming: the bumpers step the aim through the valid targets (LB back, RB forward).
+        -- Disarmed, the left bumper toggles the combat log as usual (allowed even when the battle is
+        -- over). A chargeable signature's DEPTH is no longer tuned here -- that choice moved to the
+        -- modal that opens on confirm (openWindupChooser), which owns the bumpers while it is up.
+        if battle.mode == "armed" and cycleTarget(-1) then return end
         battle.log:toggle()
         return
     end
     if button == "rightshoulder" then
-        if battle.mode == "armed" then
-            if adjustWindup(1) then return end
-            if cycleTarget(1) then return end
-        end
+        if battle.mode == "armed" and cycleTarget(1) then return end
         battle.panel:cyclePage() -- page the turn-order strip, wrapping back to the actor
         return
     end
@@ -4785,6 +4965,9 @@ function battle.mousemoved(x, y, dx, dy)
         battle.settingsClose:mousemoved(x, y)
         return
     end
+    if battle.spendChooser then battle.spendChooser:mousemoved(x, y); return end
+    if battle.windupChooser then battle.windupChooser:mousemoved(x, y); return end
+    if battle.debugMenu then battle.debugMenu:mousemoved(x, y); return end
     -- Hover cue on the HUD buttons: a soft tick as the pointer crosses onto a new one (the hamburger,
     -- or a drawer entry while it is open). Fires on the crossing only, so resting on a button is silent.
     local hb = hoveredMenuButton(x, y)
@@ -4811,16 +4994,34 @@ end
 -- the log is closed, so a wheel over the board falls through to the strip.
 function battle.wheelmoved(dx, dy)
     if battle.settingsMenu then return end -- the short list needs no scroll; swallow it
+    -- The wind-up chooser owns the wheel while it is up: scrolling tunes the depth on the rung ladder.
+    if battle.spendChooser then battle.spendChooser:wheelmoved(dx, dy); return end
+    if battle.windupChooser then battle.windupChooser:wheelmoved(dx, dy); return end
+    if battle.debugMenu then battle.debugMenu:wheelmoved(dx, dy); return end
     if battle.logReview then battle.logReview.log:wheelmoved(dx, dy); return end
     if battle.summary then return end -- the overlay has no scroll of its own; swallow it
     if battle.mouseX and battle.log:contains(battle.mouseX, battle.mouseY) then
         battle.log:wheelmoved(dx, dy)
         return
     end
-    -- While aiming a chargeable signature the wheel tunes its wind-up depth (more ticks, more
-    -- damage); with nothing chargeable armed it falls through to scrolling the turn-order strip.
-    if dy ~= 0 and adjustWindup(dy > 0 and 1 or -1) then return end
     battle.panel:wheelmoved(dx, dy)
+end
+
+-- Open the right-click debug menu over the cell under (x, y). Debug builds only (the sole caller
+-- gates on Debug.enabled). Reads the tile and any living unit on it, so the menu can offer the unit
+-- page or the terrain page; the callbacks let it clear itself, arm a tile pick, and refresh the view.
+local function openDebugMenu(x, y)
+    local cx, cy = battle.map:cellAt(x, y)
+    if not cx then return end
+    battle.debugMenu = DebugMenu.new({
+        x = x, y = y,
+        combat = battle.combat,
+        tile = { x = cx, y = cy },
+        unit = Combat.unitAt(battle.combat, cx, cy),
+        onClose = function() battle.debugMenu = nil end,
+        onPickTile = function(fn) battle.debugMenu = nil; battle.debugPickTile = fn end,
+        refresh = function() refreshView() end,
+    })
 end
 
 function battle.mousepressed(x, y, button)
@@ -4836,6 +5037,12 @@ function battle.mousepressed(x, y, button)
         end
         return
     end
+    -- The wind-up chooser is the top-most modal while a chargeable swing is sized: a rung, the steppers,
+    -- Confirm, the X, or a click on the dim backdrop all work it; nothing reaches the board beneath.
+    if battle.spendChooser then battle.spendChooser:mousepressed(x, y, button); return end
+    if battle.windupChooser then battle.windupChooser:mousepressed(x, y, button); return end
+    -- The debug context menu (debug builds only) is modal over the board while it is up.
+    if battle.debugMenu then battle.debugMenu:mousepressed(x, y, button); return end
     -- The log-review modal (over the summary) claims the click first: the X or a click outside its
     -- frame closes it back to the panel; a click inside is inert (the log scrolls by wheel).
     if battle.logReview then
@@ -4906,7 +5113,27 @@ function battle.mousepressed(x, y, button)
     -- move/attack on the battlefield beneath).
     if battle.log:contains(x, y) then return end
     if battle.panel:mousepressed(x, y, button) then return end
+    -- Debug builds only. The "Move to tile" action arms a one-shot tile picker: the next left-click on
+    -- the board is the destination, not a move/attack. Right-click (or Esc, in keypressed) cancels it.
+    if Debug.enabled and battle.debugPickTile then
+        if button == 1 then
+            local cx, cy = battle.map:cellAt(x, y)
+            if cx then battle.debugPickTile(cx, cy); refreshView() end
+        end
+        battle.debugPickTile = nil
+        return
+    end
+    -- Right-click on the board opens the context-sensitive debug menu (unit vs terrain under the cell).
+    if Debug.enabled and button == 2 then openDebugMenu(x, y); return end
     if battle.map:mousepressed(x, y, button) then confirm() end
+end
+
+-- Only the wind-up slider cares about a mouse release (to end a rung drag); everything else on the
+-- board is press-driven.
+function battle.mousereleased(x, y, button)
+    if battle.spendChooser then battle.spendChooser:mousereleased(x, y, button); return end
+    if battle.windupChooser then battle.windupChooser:mousereleased(x, y, button) end
+    if battle.debugMenu then battle.debugMenu:mousereleased(x, y, button) end
 end
 
 -- Which context cursor to show under the mouse (see ui/cursor.lua). Mirrors mousepressed's region
@@ -4924,6 +5151,9 @@ function battle.cursorKind()
     if battle.logReview then
         return battle.logReview.close:contains(mx, my) and "hand" or "arrow"
     end
+    if battle.spendChooser then return battle.spendChooser:cursorKind(mx, my) end
+    if battle.windupChooser then return battle.windupChooser:cursorKind(mx, my) end
+    if battle.debugMenu then return battle.debugMenu:cursorKind(mx, my) end
     if battle.summary then return battle.summary:cursorKind(mx, my) end
     -- Off the board: the clickable UI wants a pointing hand.
     if pointIn(MENU_BUTTON, mx, my) or overMenuEntry(mx, my)

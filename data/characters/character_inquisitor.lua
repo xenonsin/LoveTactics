@@ -3,7 +3,7 @@
 -- Kit from data/disciplines/inquisitor.lua.
 return {
     name = "Witch-Finder",
-    sprite = "assets/chars/priest.png",
+    sprite = "assets/chars/inquisitor.png",
     boss = true,
     class = "rogue",
     -- Marks, strips the buff, then sentences the marked (models/ai.lua `aggressive`).

@@ -841,7 +841,7 @@ function BattleMap:drawMovePath()
 end
 
 -- Is unit `u`'s body actually on the board this frame? Covers BOTH fallen states -- a still-revivable
--- incapacitated body and a corpse gone cold -- since either lies on its tile and draws the same way. A
+-- incapacitated body and a corpse gone cold -- since either lies on its tile and draws a body. A
 -- body draws only when it is truly fallen, not withheld as a summon (heldUnit), not hidden under a
 -- living unit that now stands on the tile, and not still owed a killing blow the fx controller has not
 -- played (awaiting) -- the same gate the body draw and its readouts both key off, so the two never
@@ -853,12 +853,12 @@ function BattleMap:corpseVisible(u)
 end
 
 -- A fallen body drawn as its OWN battle sprite, drained of life rather than reduced to an anonymous
--- token: a still-revivable body (incapacitated) greys out under a running rescue clock, one past
--- reviving (a corpse gone cold) has gone to cold crystal. Either way it stays recognisably the unit you
--- know, so the party can see WHO is down and weigh a turn spent reaching the body. Runs through the sprite shader
--- (grayscale / petrify); a token-only unit or a driver that refused the shader returns false, and the
--- caller falls back to the subtle drained token an ordinary corpse draws.
-function BattleMap:drawFallenSprite(u, cx, cy, bw, bh, mode)
+-- token: a still-revivable body (incapacitated) greys out under a running rescue clock, so the party
+-- can see WHO is down and weigh a turn spent reaching the body. Only the incapacitated window draws
+-- this way -- once the body goes cold it becomes a plain corpse token like any other (see drawUnits).
+-- Runs through the sprite shader (grayscale); a token-only unit or a driver that refused the shader
+-- returns false, and the caller falls back to the subtle drained token an ordinary corpse draws.
+function BattleMap:drawFallenSprite(u, cx, cy, bw, bh)
     local sprite = u.char.sprite
     if type(sprite) ~= "userdata" then return false end
     local shader = self:spriteFx()
@@ -866,12 +866,12 @@ function BattleMap:drawFallenSprite(u, cx, cy, bw, bh, mode)
     local sw, sh = sprite:getDimensions()
     local scale = math.min((bw - 8) / sw, (bh - 8) / sh)
     love.graphics.setShader(shader)
-    shader:send("uMode", SpriteShader.MODES[mode])
+    shader:send("uMode", SpriteShader.MODES.grayscale)
     shader:send("uAmount", 1.0)
-    shader:send("uEdge", DISSOLVE_EDGE) -- unread by these modes, but the uniform must be set
+    shader:send("uEdge", DISSOLVE_EDGE) -- unread by this mode, but the uniform must be set
     shader:send("uTime", self.time or 0)
-    -- An incapacitated body sits a touch more spectral than a cold corpse, which reads as solid stone.
-    love.graphics.setColor(1, 1, 1, mode == "petrify" and 0.85 or 0.7)
+    -- An incapacitated body sits spectral -- drained but still legibly the unit you know.
+    love.graphics.setColor(1, 1, 1, 0.7)
     love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
     love.graphics.setShader()
     return true
@@ -889,41 +889,31 @@ function BattleMap:drawUnits()
     -- killing blow the fx controller is still holding back -- the body must not drop before the counter
     -- lands. See corpseVisible for the full gate.
     --
-    -- A body that still MEANS something -- one you can still revive (incapacitated) or one that just
-    -- slipped past reviving and went cold (a former-revivable corpse) -- is drawn as its own battle
-    -- sprite, drained of life, so the party reads WHO is down at a glance (drawFallenSprite). An
-    -- ordinary, never-revivable corpse (a demon) stays a faint desaturated token: present enough to mark
-    -- the tile for a Raise Dead, subtle enough not to clutter the board with bodies no one is going to
-    -- act on. A cold corpse is a body that once had a window (char.revivable) and is now a `corpse`.
+    -- Only a body that STILL MEANS something -- one you can still revive (incapacitated) -- is drawn as
+    -- its own battle sprite, drained of life, so the party reads WHO is down while there is a window to
+    -- reach them (drawFallenSprite). Every COLD body draws the same plain corpse token: a former-revivable
+    -- body whose window closed and an ordinary never-revivable corpse (a demon) are indistinguishable
+    -- once past reviving, so they leave the same marker -- present enough to mark the tile for a Raise
+    -- Dead, subtle enough not to clutter the board with bodies no one is going to act on.
     for _, u in ipairs(self.combat.units) do
         if self:corpseVisible(u) then
             local wx, wy = self:cellToPixel(u.x, u.y)
             local bw, bh = (u.w or 1) * s, (u.h or 1) * s
             local cx, cy = wx + bw / 2, wy + bh / 2
-            local coldCorpse = u.corpse and u.char and u.char.revivable ~= false
             local drew = false
-            if u.incapacitated or coldCorpse then
-                drew = self:drawFallenSprite(u, cx, cy, bw, bh, coldCorpse and "petrify" or "grayscale")
+            if u.incapacitated then
+                drew = self:drawFallenSprite(u, cx, cy, bw, bh)
             end
             if not drew then
-                -- Token fallback: a never-revivable corpse, or a body whose sprite/shader path was unavailable.
+                -- Corpse token: a cold body (revivable window closed, or a never-revivable death), or one
+                -- whose sprite/shader path was unavailable.
                 local cr = math.min(bw, bh) * 0.24
-                if coldCorpse then
-                    -- Past reviving: a colder, harder token (an icy shard tint).
-                    love.graphics.setColor(0.42, 0.52, 0.66, 0.50)
-                    love.graphics.circle("fill", cx, cy, cr)
-                    love.graphics.setColor(0.72, 0.84, 0.96, 0.55)
-                    love.graphics.setLineWidth(2)
-                    love.graphics.circle("line", cx, cy, cr)
-                    love.graphics.setLineWidth(1)
-                else
-                    love.graphics.setColor(0.30, 0.30, 0.34, 0.45)
-                    love.graphics.circle("fill", cx, cy, cr)
-                    love.graphics.setColor(0.12, 0.12, 0.14, 0.45)
-                    love.graphics.setLineWidth(2)
-                    love.graphics.circle("line", cx, cy, cr)
-                    love.graphics.setLineWidth(1)
-                end
+                love.graphics.setColor(0.30, 0.30, 0.34, 0.45)
+                love.graphics.circle("fill", cx, cy, cr)
+                love.graphics.setColor(0.12, 0.12, 0.14, 0.45)
+                love.graphics.setLineWidth(2)
+                love.graphics.circle("line", cx, cy, cr)
+                love.graphics.setLineWidth(1)
             end
         end
     end

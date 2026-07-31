@@ -3,7 +3,7 @@
 -- data/disciplines/warbrewer.lua.
 return {
     name = "Warbrewer",
-    sprite = "assets/chars/warlord.png",
+    sprite = "assets/chars/warbrewer.png",
     boss = true,
     class = "fighter",
     -- Drinks, then brawls; the still refreshes the brew each turn (models/ai.lua `aggressive`).

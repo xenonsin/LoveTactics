@@ -2,7 +2,7 @@
 -- fence, a recruit/mentor. Kit from data/disciplines/thief.lua.
 return {
     name = "Fence",
-    sprite = "assets/chars/archer.png",
+    sprite = "assets/chars/thief.png",
     class = "rogue",
     -- Hit-and-run: rob before the kill, then slip out of reach (models/ai.lua `skirmish`).
     archetype = "skirmish",

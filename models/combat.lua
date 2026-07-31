@@ -970,6 +970,10 @@ function Combat.addUnit(combat, char, side, x, y, opts)
         -- a `guard` holds a radius around its anchor, a `holdGround` never leaves it), so it has to
         -- be the tile it STARTED on and not wherever it happens to stand now.
         anchorX = x, anchorY = y,
+        -- An enemy's own gold pool, spent by money abilities on the enemy side (Combat.spendPurse) --
+        -- Aurea's interim coffer, until her full gold-ward finale subsystem lands (docs/roadmap.md #15).
+        -- nil for anyone who is not a walking treasury; the party never uses this (it shares combat.purse).
+        coffer = opts.coffer or char.coffer,
     }
     unit.index = #combat.units + 1
     combat.units[unit.index] = unit
@@ -1014,6 +1018,10 @@ function Combat.new(arena, partyUnits, enemyUnits)
                 -- ally fights on the party's side but runs itself (control = "ai"/"none").
                 control = u.control or ((side == "party") and "player" or "ai"),
                 anchorX = u.x, anchorY = u.y, -- start tile; the leashed AI postures measure from it
+                -- An enemy's own gold pool for money abilities (Combat.spendPurse reads it) -- Aurea's
+                -- coffer. Seated here as well as in Combat.addUnit, because a battle-start unit is built
+                -- inline by this loop and never passes through addUnit; nil for anyone but a treasury.
+                coffer = u.coffer or u.char.coffer,
                 -- Trait ids granted by the run's relics (models/relic.lua), resolved per-char by battle
                 -- setup. Trait.attach folds them in alongside the char's own; nil for enemies.
                 relicTraits = u.relicTraits,
@@ -1430,6 +1438,45 @@ end
 -- know it moved.
 function Combat.chi(unit) return Combat.chargePool(unit, "chi") end
 function Combat.spendChi(unit, n) return Combat.spendCharge(unit, "chi", n) end
+
+-- The battle PURSE: the player's campaign gold, made spendable inside a fight so the greed (rogue)
+-- money kit can turn coin into damage (fx.spendPurse). It is INJECTED, never required: states/battle.lua
+-- hands combat a `combat.purse = { get = fn, spend = fn }` over models/player for a campaign fight, and
+-- for nothing else -- a duel spends the ladder's stakes, a draft run spends DraftRun's own pool. So
+-- combat.lua stays ignorant of progression, and a money ability outside the campaign simply finds no
+-- purse: purseAvailable returns 0 and spendPurse takes nothing, so the ability spends nothing and does
+-- nothing, exactly the way a chi-dump on a unit that never banked any is inert rather than an error.
+--
+-- SIDE-AWARE. The party shares one bank (the injected `combat.purse`). An ENEMY draws on its own
+-- `unit.coffer` instead -- a body like Aurea, general of Greed, is a walking treasury, not a shareholder
+-- in your gold -- so the caster's side decides which pot a money ability reaches, and the two never
+-- touch. `unit` is optional; with none, or a party caster, it is the shared purse.
+function Combat.purseAvailable(combat, unit)
+    if unit and unit.side ~= "party" then return unit.coffer or 0 end
+    local p = combat and combat.purse
+    return (p and p.get()) or 0
+end
+
+-- Spend up to `n` gold from the caster's purse (all of it when n is nil), and hand back what was ACTUALLY
+-- taken -- the same shape as Combat.spendChi, so a money ability scales its payoff off the return. Clamped
+-- to what is on hand, so a broke party spends its last coppers and the blow simply lands soft. An enemy
+-- spends its own coffer (see purseAvailable). Reached from an effect ONLY through fx.spendPurse and never
+-- here directly: the damage preview runs effects against an inert context, and a purse that emptied itself
+-- under the cursor would be a bug that read as one -- the rule chi, the charge pools and the coatings keep.
+function Combat.spendPurse(combat, unit, n)
+    local avail = Combat.purseAvailable(combat, unit)
+    local take = n and math.max(0, math.min(n, avail)) or avail
+    if take > 0 then
+        if unit and unit.side ~= "party" then
+            unit.coffer = (unit.coffer or 0) - take
+        else
+            combat.purse.spend(take)
+        end
+        Combat.logEvent(combat, "system",
+            string.format("%s spends %dg.", unitName(unit), take), unit)
+    end
+    return take
+end
 
 -- Verb fragments for the auto-generated lock label, when an unlock declares no `text` of its own.
 local UNLOCK_LABELS = {
@@ -2524,6 +2571,34 @@ function Combat.overwatch(combat, unit)
     unit.overwatch = { staminaPerShot = behavior.stamina or 0 }
     Combat.logEvent(combat, "action", string.format("%s takes overwatch.", unitName(unit)), unit)
     endTurn(combat, unit, behavior.speed or Combat.FOCUS_SPEED)
+    return true
+end
+
+-- Gather: end the turn without acting, coiling for a stronger blow instead -- the bearer gains the
+-- Empowered status (a stored +attack their NEXT landed hit spends). The offensive mirror of Defend, and
+-- built from the same parts: the charm tunes the stored force through waitBehavior.power (it rides in as
+-- the status's magnitude), and nil falls back to the status def's own. Costs behavior.speed of the
+-- timeline (or Combat.DEFEND_SPEED -- a cheap stance, clearly less than the mana-recovery Focus, like
+-- Defend). The wait swap granted by a monk charm (data/items/utility/utility_centering_charm.lua).
+--
+-- The `covers` field spreads the coil down the line, exactly as Defend's does its wall: an adjacent ally
+-- gains a (smaller) Empowered, so where a monk plants to centre decides whose next blow it feeds. One
+-- word, one meaning across every wait swap -- "and everyone beside you".
+function Combat.gather(combat, unit)
+    if not unit.alive then return false, "dead" end
+    local behavior = Combat.waitBehavior(unit)
+    Status.apply(combat, unit, "status_empowered", { magnitude = behavior.power, applier = unit })
+    Combat.logEvent(combat, "action", string.format("%s centers for a stronger blow.", unitName(unit)), unit)
+    if behavior.covers then
+        for _, ally in ipairs(Combat.unitsNear(combat, unit.x, unit.y, 1)) do
+            if ally ~= unit and ally.alive and ally.side == unit.side then
+                Status.apply(combat, ally, "status_empowered", { magnitude = behavior.covers, applier = unit })
+                Combat.logEvent(combat, "action",
+                    string.format("%s draws on the calm and coils to strike.", unitName(ally)), ally)
+            end
+        end
+    end
+    endTurn(combat, unit, behavior.speed or Combat.DEFEND_SPEED)
     return true
 end
 
@@ -4474,6 +4549,19 @@ local function dispatchAnswer(combat, held)
     -- (Sleep). After the traits, so a reflex that answers the blow is not robbed of its trigger by the
     -- very hit that wakes its bearer -- the order the inline dispatch ran in, carried across the hold.
     if held.wakes then Status.onDamaged(combat, held.unit, held.amount, held.tags) end
+    -- ...and the striker's ALLIES beside the struck body get their opening (Trait.onAllyStrike -- what a
+    -- follow-up hangs on). Fired here, at the same settled moment onDamaged is, so a follow-up is judged
+    -- by the board as it finally stands rather than mid-effect.
+    --
+    -- Gated on the triggering blow NOT itself being an answer (`held.at.answering`, snapshotted at the
+    -- moment of the hit): only a genuine attack provokes follow-ups, never the swirl of counters and
+    -- ripostes an exchange throws off. That single check is the whole recursion guard -- a follow-up
+    -- swing is thrown while its bearer is mid-reaction (Trait.isReacting), so ITS raised answer carries
+    -- answering = true and provokes no further follow-ups. So a real strike opens exactly one round of
+    -- them and the chain stops, without a latch of its own.
+    if held.attacker and not (held.at and held.at.answering) then
+        Trait.onAllyStrike(combat, held.attacker, held.unit)
+    end
 end
 
 -- Open a hold: every answer provoked from here until the matching endAnswers waits for the action to
@@ -4647,6 +4735,11 @@ function Combat.echoWound(combat, target, dmg)
 end
 
 function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opts)
+    -- Debug: an invulnerable target (toggled from the right-click debug menu, debug builds only)
+    -- shrugs off every blow. Guarded here at the one funnel ALL damage runs through -- a strike, a
+    -- trap, a Burn tick, an area blast -- so it needs no reach into each caller. Inert for every
+    -- ordinary unit: the field is nil unless the debug menu set it.
+    if target.debugInvuln then return 0 end
     -- A body already going down mid-shove takes no further processing. When a killing blow folds a
     -- knockback in (the Iron Mace, the Sworn Aegis -- opts.knockback below), the target is marked
     -- mortally wounded and carried to where it will fall BEFORE killUnit finishes it -- and anything it
@@ -4813,8 +4906,15 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- `tags` rides along untouched so the view can pick the blow's picture -- a slash arc, a fire
     -- bloom, a bolt fork -- off the same tag list ui/motif.lua reads everywhere else. The model states
     -- what the blow WAS and stays out of how it looks; ui/burst_fx.lua turns the tags into a shape.
+    -- `vulnerable` flags a blow that struck a WEAKNESS: the net of every vulnerability/resistance the
+    -- target carries for this blow's tags is positive, so the wound landed harder than a bare hit
+    -- (the Vulnerable openers, Wet under lightning, Frozen under crush/fire, Exposed, a Reckless
+    -- Cuirass's gear-bound weakness -- all fold through Status.vulnerability). The extra damage is
+    -- already IN `dmg`; this is only the cue for it, so ui/burst_fx.lua can flare a "weak point struck"
+    -- over the impact and the player can read at a glance that the tag they chose is the one that bites.
+    local vulnerable = Status.vulnerability(target, tags) > 0
     Combat.pushFx(combat, { type = "damage", unit = target, amount = dmg,
-        lethal = hp.current <= 0, attacker = attacker, tags = tags })
+        lethal = hp.current <= 0, attacker = attacker, tags = tags, vulnerable = vulnerable })
     local entry
     if source then
         entry = Combat.logEvent(combat, "damage",
@@ -5383,9 +5483,16 @@ end
 -- Returns { entries = { [unit] = { unit, damage, heal, lethal, statuses = { { id, def, opts } } } },
 -- order = {entries...} } (order is affected-unit order), or nil for an ability with no effect.
 -- The effect is pcall-guarded so a data-file quirk in a dry run can never crash the tooltip.
-function Combat.previewAbility(combat, unit, item, tx, ty, dest)
+function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
     local ab = item and item.activeAbility
     if not ab then return nil end
+    -- A chargeable wind-up (The First Motion) scores its blow off how deep the hold is (`fx.held`, the
+    -- ticks past the floor) -- so a preview that leaves it unset under-reports the swing at every depth
+    -- but the floor. When the caller names a depth (the wind-up chooser walks it lo..hi to price each
+    -- one), fill `held`/`windup` exactly as Combat.useItem's channel branch does; nil keeps the old
+    -- behaviour for every non-chargeable cast (held stays 0).
+    local windLo = Item.windupRange(ab)
+    local previewHeld = windup and math.max(0, math.floor(windup) - windLo) or nil
     local target = Combat.unitAt(combat, tx, ty)
     local entries, order = {}, {}
     local function entryFor(tgt)
@@ -5418,6 +5525,27 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest)
     local fx = {
         user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
         dest = dest, -- a two-stage throw's chosen landing (Heave); nil for every single-aim ability
+        -- The wind-up depth this preview is priced at (nil unless the caller named one): `windup` the
+        -- total tell, `held` the ticks chosen above the floor -- the same pair the live cast hands the
+        -- effect, so a chargeable blow previews the damage it will actually land at that depth.
+        windup = windup, held = previewHeld,
+        -- The coin this preview is priced at, or 0. A player hovering an aim names none -- the spend is
+        -- dialed in the confirm-time chooser, so the board shows 0 bought until that modal drives the real
+        -- cast. The AI, though, passes the gold it INTENDS to pour (models/ai.lua) so its scorer prices the
+        -- blow it is about to buy -- otherwise a purchasable ability always looks like it does nothing and
+        -- an enemy who could afford a killing blow would never reach for it.
+        spend = spend or 0,
+        -- Flat, RAW damage (The Gilded Wound: the gold IS the blow). Priced through the same pure mitigation
+        -- the live hit uses, RAW so neither the caster's Power adds nor the target's armour subtracts -- ten
+        -- gold, one point delivered. Barriers/immunity still void it; nothing else does. Records like
+        -- fx.damage and never mutates, so the dry run prices it truthfully.
+        flatDamage = function(tgt, amount, tags)
+            if not tgt then return 0 end
+            local d = Combat.mitigatedDamage(tgt, math.max(0, math.floor(amount or 0)), tags or { "physical" }, { raw = true })
+            local e = entryFor(tgt)
+            e.damage = e.damage + d
+            return d
+        end,
         amount = effectiveAmount, -- the ability's scaled magnitude; effects derive heal/status/etc. from it
         -- The item's upgrade level, as the other two fx tables already carry it (Combat.abilityOutput
         -- and the live cast). It belongs on all three for the reason docs/architecture.md gives about
@@ -5439,6 +5567,15 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest)
         chi = Combat.chi(unit),
         spendChi = function(n)
             local have = Combat.chi(unit)
+            return n and math.max(0, math.min(n, have)) or have
+        end,
+        -- The purse this cast could draw on, read truthfully off the live board so the previewed damage
+        -- of a coin-scaled blow matches what it will land -- and an INERT spend that only reports what it
+        -- would take, because a preview that emptied the purse under the cursor would be a bug that read
+        -- as one (mirrors spendChi just above).
+        purse = Combat.purseAvailable(combat, unit),
+        spendPurse = function(n)
+            local have = Combat.purseAvailable(combat, unit)
             return n and math.max(0, math.min(n, have)) or have
         end,
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
@@ -5705,6 +5842,12 @@ local function dummyTarget()
             health = { max = 1e9, current = 1e9 },
             defense = 0, magicDefense = 0,
         } },
+        -- Sit at the origin (0, 0) -- the same cell the caster stand-in and the aim (fx.tx/ty) default to.
+        -- An effect that applies its status only to a SPECIFIC computed tile (a spear that Disarms/Halts
+        -- the FAR tile: farX = fx.tx + (fx.tx - fx.user.x) resolves to 0 here) then finds the dummy there
+        -- and records the status, so the inventory tooltip's glossary names it. Without a position the
+        -- check is `nil == 0`, and the signature status silently drops out of the tooltip.
+        x = 0, y = 0,
         bonus = {}, resist = {}, alive = true, side = "enemy",
     }
 end
@@ -5733,6 +5876,14 @@ function Combat.abilityOutput(unit, item)
     -- unitsNear below return only dummies, so no `u == fx.user` identity check can be fooled by the copy.
     local userProxy = {}
     for k, v in pairs(unit) do userProxy[k] = v end
+    -- Pin the caster stand-in to the origin (0, 0), the cell the aim (fx.tx/ty) and the dummy also sit
+    -- on. This dry run has no board, so the caster's REAL battle coordinates are meaningless here -- but
+    -- an effect that afflicts a computed tile relative to the caster (a spear Disarming/Halting the FAR
+    -- rank: fx.tx + (fx.tx - fx.user.x)) needs the caster at a known origin for that tile to resolve
+    -- onto the dummy. Left at the actor's real x/y, the far tile lands off in space and the signature
+    -- status silently drops out of the tooltip -- and worse, only in battle (a null-actor shop hover
+    -- already stands the caster at 0, 0), so it looks fixed until a real unit hovers it.
+    userProxy.x, userProxy.y = 0, 0
     -- A support cast aims at allies and gates its effect on `u.side == fx.user.side` (Blessing, Aegis,
     -- Benediction), so a stand-in fixed to the enemy side would fall through every one of those branches
     -- and the tooltip would name none of the statuses/heals the ability grants. Put the stand-in on the
@@ -5751,7 +5902,25 @@ function Combat.abilityOutput(unit, item)
             local have = Combat.chi(unit)
             return n and math.max(0, math.min(n, have)) or have
         end,
-        unitAt = function() return nil end,
+        -- No board here (this is the shop/inventory tooltip, combat = nil), so there is no purse to read:
+        -- a coin-scaled ability quotes its floor. The field must still EXIST and the spend must still
+        -- return a number, or an effect building `{ amount = base + fx.spendPurse(n) }` throws while
+        -- assembling its arguments -- the same trap fx.level and fx.chi are on all three tables to avoid.
+        purse = 0,
+        spendPurse = function(_) return 0 end,
+        spend = 0, -- no coin chosen in a shop/inventory tooltip; a purchasable ability quotes its floor (nothing bought)
+        -- Flat, un-statted damage, priced against the stand-in so a purchasable blow's tooltip can size it
+        -- (0 here, since no coin is chosen in a shop hover). Mirrors the live fx.flatDamage.
+        flatDamage = function(tgt, amount, tags)
+            local d = Combat.mitigatedDamage(tgt or dummy, math.max(0, math.floor(amount or 0)), tags or { "physical" }, { raw = true })
+            out.damage = out.damage + d
+            return d
+        end,
+        -- The dummy sits at the origin (0, 0). An effect that looks up a SPECIFIC computed tile to
+        -- afflict it -- a spear pinning the FAR rank via fx.unitAt(fx.tx + dx, fx.ty + dy), which
+        -- resolves to (0, 0) against a zero-origin caster and aim -- then finds the stand-in there and
+        -- records the status, so the tooltip's glossary names it. Any other cell is empty, as before.
+        unitAt = function(x, y) if x == 0 and y == 0 then return dummy end return nil end,
         unitsNear = function() return { dummy } end,
         -- There is no board here, so hand back the cell itself: an effect that goes on to place
         -- something there must not bail before it has told us what it would have placed.
@@ -6930,7 +7099,7 @@ end
 -- item if it's a consumable. Returns (true, result) or (false, reason). `result` is
 -- { damageDealt, healed } aggregated across the effect's helper calls. A channeled ability
 -- instead winds up here and resolves later via Combat.resolveChannel (see the channel branch).
-function Combat.useItem(combat, unit, item, tx, ty, windup, dest)
+function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     if not unit.alive then return false, "dead" end
     local ab = item.activeAbility
     if not ab then return false, "no ability" end
@@ -7031,7 +7200,7 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest)
             Combat.logEvent(combat, "action",
                 string.format("%s speaks %s again, and it needs no winding.",
                     unitName(unit), item.name or "the working"), unit)
-            return resolveCast(combat, unit, item, ab, tx, ty, nil, nil, nil, dest)
+            return resolveCast(combat, unit, item, ab, tx, ty, nil, nil, nil, dest, spend)
         end
         -- A chargeable wind-up (Saber's signature): the caster picks how long to hold the swing,
         -- anywhere in the ability's own [min, max] TOTAL ticks, and the effect reads both how long it
@@ -7130,7 +7299,7 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest)
         return true, { channeling = true }
     end
 
-    return resolveCast(combat, unit, item, ab, tx, ty, nil, nil, nil, dest)
+    return resolveCast(combat, unit, item, ab, tx, ty, nil, nil, nil, dest, spend)
 end
 
 -- ---------------------------------------------------------------------------
@@ -7215,7 +7384,7 @@ end
 -- calls it turns later). `target` and `reserve` are derived HERE, not at cast-start, so a channel reads
 -- the LIVE board -- a foe that stepped out of the blast is simply gone from fx.aoeUnits(). `alreadyConsumed`
 -- is set by the channel path (which spent the stack at cast-start) so the stack isn't decremented twice.
-function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, held, dest)
+function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, held, dest, spend)
     local target = Combat.unitAt(combat, tx, ty)
     local reserve = Combat.abilityReserve(unit, ab)
 
@@ -7325,6 +7494,14 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- NOT named `fx.charge`: that is already the Charge ability's shove, further down this table.
         chargePool = function(key) return Combat.chargePool(unit, key) end,
         spendCharge = function(key, n) return Combat.spendCharge(unit, key, n) end,
+        -- The battle purse (the player's campaign gold) as it stands, and the live spend that draws it
+        -- down. `spendPurse(n)` takes up to n and hands back what it actually took, so a money ability
+        -- scales its blow off the coin it could afford; with no purse injected (a duel, a draft run) it
+        -- takes 0 and the ability is inert. Routed through fx for the same reason chi and the charge
+        -- pools are: the damage preview runs this effect against an inert context, and a purse that
+        -- drained under the cursor would be a bug that read as one. See Combat.spendPurse.
+        purse = Combat.purseAvailable(combat, unit),
+        spendPurse = function(n) return Combat.spendPurse(combat, unit, n) end,
         -- The wind-up this cast actually ran for, in TOTAL ticks (0 for an ability that resolves at
         -- once), and `held`: how many of those the caster CHOSE above the ability's floor. They are
         -- the same number for an ability whose floor is 0, and they differ for one that always
@@ -7337,6 +7514,22 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- lands (see the ability's effect and Combat.useItem's channel branch).
         windup = windup or 0,
         held = held or 0,
+        -- The gold this cast was told to spend, chosen at the swing by the spend chooser (ui/panels/
+        -- spend_chooser.lua) and threaded in through Combat.useItem, mirroring `windup`. A purchasable
+        -- ability reads it and pays it (fx.spendPurse(fx.spend)) to size its blow -- The Gilded Wound
+        -- carves one point of damage per ten. 0 when nothing was chosen (a non-purchasable cast, or the
+        -- AI without a coffer to spend), so the effect simply lands nothing bought.
+        spend = spend or 0,
+        -- Flat, RAW damage: the gold IS the blow (The Gilded Wound). Raw so neither the caster's Power adds
+        -- nor the target's armour subtracts -- ten gold buys one point delivered, exactly, whoever it lands
+        -- on. Barriers and immunity still void it (the `raw` path honours those); nothing else touches it.
+        -- Routed through fx like every mutation, so the damage preview prices it without dealing it.
+        flatDamage = function(tgt, amount, tags)
+            if not tgt then return 0 end
+            local d = Combat.dealFlatDamage(combat, tgt, math.max(0, math.floor(amount or 0)), tags or { "physical" }, nil, user, { raw = true })
+            result.damageDealt = result.damageDealt + d
+            return d
+        end,
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         -- A free tile beside (x, y) to set something down on, or nil when the spot is hemmed in.

@@ -3,7 +3,7 @@
 -- dying. Kit drawn from the Barbarian shelf (data/disciplines/barbarian.lua).
 return {
     name = "Berserker",
-    sprite = "assets/chars/warlord.png",
+    sprite = "assets/chars/barbarian.png",
     boss = true,
     class = "fighter",
     -- Walks straight at the enemy and hits the best thing it can reach (models/ai.lua `aggressive`).
