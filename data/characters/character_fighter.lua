@@ -20,21 +20,33 @@ return {
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },
     -- Starting loadout (row-major; false = empty). The axe cleaves the rank in front (the fighter's
-    -- own `front` aoe), the hammer trades reach for a Stun, leather and a potion keep it upright. No
-    -- relic and no discipline gear -- the template is the base, not the build-around, so Fury (a
-    -- barbarian cut now, data/items/ability/ability_fury.lua) is bought into a build, never issued here.
+    -- own `front` aoe), Clear Out gives up the facing and takes the whole ring instead, Rend opens a
+    -- slashing wound for the axe to swing into, leather and a potion keep it upright. No relic and no
+    -- discipline gear -- the template is the base, not the build-around, so Fury (a barbarian cut now,
+    -- data/items/ability/ability_fury.lua) is bought into a build, never issued here; Clear Out and
+    -- Rend are neither, they are the plain fighter shelf (class = "fighter", no `discipline`) and the
+    -- first thing the prologue teaches.
     startingItems = {
-        "weapon_iron_axe",   "weapon_iron_hammer", false,
+        "weapon_iron_axe",   "ability_clear_out",  "ability_rend",
         "armor_leather_armor", "consumable_healing_potion", false,
         false,               false,                false,
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so its
     -- range shows, and driving the basic click-to-use. The player can re-pin any ability.
     defaultAction = "weapon_iron_axe",
-    -- The one item that IS this unit. Draft mode strips a bought body down to it
-    -- (models/draft_chassis.lua); a plain class template owns no signature verb, which is
-    -- exactly what makes it the legible round-one pick.
+    -- The two items that ARE this unit. Draft mode strips a bought body down to exactly these
+    -- (models/draft_chassis.lua), so a drafted fighter arrives as axe-and-Rend: cut one body open, then
+    -- sweep the arc it is standing in. The axe is `slash`-tagged and Rend leaves Vulnerable: Slash, so
+    -- the pair feeds itself -- the opener makes the cleave that follows land for +8, off one body with
+    -- no second unit required. That is the template thesis a round-one player can read at a glance.
+    --
+    -- The verb slot is a VERB, not a second swing: a chassis of two weapons is one unit holding two of
+    -- the same question. Every other template pairs the same way (spear + buckler, dagger + Shadow
+    -- Step, staff + Fireball). Clear Out rides in the campaign kit but is not the signature: the axe
+    -- already answers "more than one thing in front of me", and a chassis should not spend both its
+    -- items on the same answer.
     signatureWeapon  = "weapon_iron_axe",
+    signatureAbility = "ability_rend",
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.
     ai = {
         { priority = "high", act = "attack", targetPref = "lowest_hp",
