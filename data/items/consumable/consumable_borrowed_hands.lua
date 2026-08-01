@@ -21,7 +21,7 @@ return {
     flavor = "It is not that she cannot do it herself. It is that somebody nearby does it better.",
     sprite = "assets/items/consumable_borrowed_hands.png",
     type = "consumable",
-    -- No `potion` tag: the Market resells anything wearing it and ignores standing entirely, so a
+    -- No `potion` tag: the Cafe resells anything wearing it and ignores standing entirely, so a
     -- gated elixir tagged `potion` would be on the grocer's shelf turn one (docs/classes.md).
     tags = { "elixir" },
     class = "alchemist",

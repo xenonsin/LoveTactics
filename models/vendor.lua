@@ -13,11 +13,11 @@
 -- Stock is *derived, not authored*: a vendor sells every priced item whose `class` matches its
 -- own. Adding data/items/<slot>/<id>.lua with the right class puts it on that vendor's shelf.
 --
--- One vendor is different: a `general = true` store (the Market) is the shelf for CLASSLESS priced
+-- One vendor is different: a `general = true` store (the Cafe) is the shelf for CLASSLESS priced
 -- goods -- mundane traveler's supplies no sin claims (a torch, the boots of speed). A priced item
 -- with no class used to be unbuyable dead data; the general store is where it now belongs. It ALSO
--- resells any item bearing one of its `stockTags` (the Market carries every `potion`, whichever house
--- brews it) -- so a class item can appear on two shelves, its own and the Market's. That is a resale,
+-- resells any item bearing one of its `stockTags` (the Cafe carries every `potion`, whichever house
+-- brews it) -- so a class item can appear on two shelves, its own and the Cafe's. That is a resale,
 -- not a re-home: the potion keeps its class, still grows and refines at the alchemist. See the stock
 -- derivation below and docs/classes.md ("The general store").
 
@@ -74,7 +74,7 @@ function Vendor.priceFor(base, level)
 end
 
 -- Whether `def` (a vendor blueprint) stocks `item`. A class vendor sells its own class; a general
--- store sells the classless goods AND resells anything bearing one of its `stockTags` (the Market
+-- store sells the classless goods AND resells anything bearing one of its `stockTags` (the Cafe
 -- carries every `potion`, whatever its class). One rule, so the shop, the sell-back, and the refine
 -- gate all agree on what a shelf holds. Takes the def rather than an id so stock can call it in a loop.
 function Vendor.sells(def, item)
@@ -253,7 +253,7 @@ end
 
 -- Whether `vendorId` is the bench that REFINES consumable `item` (per-type, via Vendor.upgradeRecipe).
 -- Only its brewer's own house refines a consumable -- its `class` vendor -- never a shop that merely
--- resells it: the Market carries potions but you hone the recipe at the alchemist, where it grows. So
+-- resells it: the Cafe carries potions but you hone the recipe at the alchemist, where it grows. So
 -- the general store refines only genuinely classless consumables (of which there are none today). The
 -- one rule the shop's Upgrade list and upgradeRecipe both read, so a listed row can always be bought.
 function Vendor.canRefineHere(vendorId, item)

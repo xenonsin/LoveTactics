@@ -487,7 +487,7 @@ any NPC's grid and it gets the tactics too, with no edit to that character's blu
 activeAbility = {
     target = "ally", range = 3,
     healing = { 24, 26, 29 },
-    ai = { act = "support", targetPref = "lowest_hp",
+    ai = { priority = "urgent", act = "support", targetPref = "lowest_hp",
            when = { subject = "any_ally", test = "hp_pct_below", value = 0.5 } },
     effect = function(fx) fx.heal(fx.target, fx.amount) end,
 }
@@ -499,6 +499,7 @@ skipped entirely and the next one gets the turn.
 
 | Field | Meaning |
 | --- | --- |
+| `priority` | A **name**, not a number — see the scale below. Orders this rule against the *other sources*. **Authoring only**: the player's Tactics tab has no such field, and player rules ignore it. |
 | `when` | `{ subject, test, value }` — see the vocabulary below. Omit for an unconditional rule. |
 | `act` | `attack` / `support` / `cast` / `retreat` / `wait` (`AI.ACTIONS`). |
 | `item` | Which item to use. Omit for "anything in the kit". On an item's own block this is implicit and means *this item*; elsewhere it is an **id string** (`"ability_heal"`). |
@@ -526,26 +527,49 @@ Both are closed sets (`AI.SUBJECTS`, `AI.TESTS`). A typo **raises** rather than 
 true — a misspelled rule that always fires looks exactly like working behavior until a battle goes
 strange. `tests/ai_spec.lua` sweeps every shipped item and character to catch it before then.
 
+### Priority
+
+Authored as a name (`AI.PRIORITY`), because `priority = 20` tells a later reader nothing about what
+the rule is *for*, and two authors picking numbers independently have no way to agree:
+
+| Name | When to use it |
+| --- | --- |
+| `emergency` | I am about to die. Drink the potion, break off — do not trade blows. |
+| `urgent` | Someone *else* is about to die, or a chance appears that will not come round again. |
+| `high` | Worth doing before the ordinary business of the turn: the expensive spell, the opening gambit. |
+| `normal` | The ordinary business of the turn. **Posture defaults live here**, so a rule at `normal` competes with "attack whatever is in reach" and wins only on the source ranking. |
+| `low` | Do this if nothing better presented itself. |
+| `fallback` | The floor. Reposition, regroup, idle. |
+
+A raw number is still accepted for the rare rule that must slot *between* two levels; the gaps in the
+scale mean doing so never forces a renumbering.
+
+**This is an authoring concept, not a player-facing one.** It exists because the item, blueprint and
+posture lists are written by three authors who cannot see each other's rules, so there is no shared
+position for them to be ordered by. Write a blueprint's rules in priority order too — the sort doesn't
+need it, but a list whose declaration order contradicts its bands reads as a bug to the next person.
+
 ### Rule order
 
-**Position is priority.** There is no `priority` field — a rule's urgency is where it sits, and
-nothing else. Sources merge into one list by source rank, and within a source in the order they were
-written:
+Two regimes, one comparator — **your list, then everything the game brought.**
 
-1. **player** — `char.aiRules`, from the Loadout screen's Tactics tab
-2. **item** — `ability.ai`
-3. **character** — `ai` on the blueprint, for behavior specific to one body
-4. **posture** — the archetype's defaults
+1. **player** — `char.aiRules`, from the Loadout screen's Tactics tab. Ordered by **position**: no
+   band, because the list is on screen and can be dragged. Sits below every authored band, so the
+   visible list leads outright.
+2. **item** — `ability.ai` ┐
+3. **character** — `ai` on the blueprint │ ordered by `priority`, then this rank, then declaration
+4. **posture** — the archetype's defaults ┘ order
 
-So write a blueprint's rules in the order you want them asked, most urgent first. The payoff goes
-*above* the setup — a poacher must be asked "is anything already rooted?" before "should I throw the
-net?", or it nets a second foe while the first stands pinned (`data/characters/character_poacher.lua`).
+The Tactics tab therefore shows no priority field, and dragging a row there is a real edit rather than
+a cosmetic one. When a player first edits an inherited blueprint list, `ui/tactics_editor.lua` seeds
+the overlay by **sorting the rules into the order they were actually running in and dropping the
+band** — so taking a list over doesn't reorder it underfoot.
 
-What this costs, so you don't rediscover it in a battle: **a rule cannot reach across a source
-boundary.** A blueprint rule can never pre-empt an item rule however urgent it is, and two items' rules
-are ordered by their **position in the inventory grid**, not by how badly each wants the turn. Where
-you would once have written `priority = "emergency"`, order the *kit* instead: a potion that must be
-drunk before a spell is cast has to sit earlier in the grid than that spell.
+One consequence worth knowing: taking a list over also **promotes** it. An owned list sits below every
+authored band, where the blueprint's rules sat at their own — so a healing potion's `emergency`
+self-drink, which used to lead everything, will follow the player's rules once they own the list. That
+is the price of the visible list being authoritative, and it is the behaviour the tab's "first match
+wins" header promises.
 
 The list is scanned strictly top to bottom and the **first rule that matches and can be executed wins
 outright**. Scoring never overrules the list; it only chooses among the candidates that rule admitted.

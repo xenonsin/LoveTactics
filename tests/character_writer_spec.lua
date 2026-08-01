@@ -1,4 +1,4 @@
--- Tests for the debug editor's blueprint writer (tools/write_character.lua): the round trip out of a
+﻿-- Tests for the debug editor's blueprint writer (tools/write_character.lua): the round trip out of a
 -- live character and back into a data/characters/*.lua table.
 --
 -- Only the pure half is exercised -- M.serialize plus a loadstring -- because M.write touches the
@@ -131,13 +131,13 @@ return {
             char.ai = nil
             -- What the Tactics tab writes (ui/tactics_editor.lua edits char.aiRules).
             char.aiRules = {
-                { enabled = true, priority = "high", act = "attack",
+                { enabled = true, act = "attack",
                   when = { subject = "any_foe", test = "count_at_least", value = 2 } },
             }
 
             local def = roundTrip(char)
             assert(def.ai and #def.ai == 1, "the authored rule should reach the blueprint's ai list")
-            assert(def.ai[1].priority == "high", "priority should survive")
+            assert(def.ai[1].priority == nil, "no priority key is written -- position is the ordering")
             assert(def.ai[1].act == "attack", "action should survive")
             assert(def.ai[1].when.subject == "any_foe", "the condition subject should survive")
             assert(def.ai[1].when.value == 2, "the condition value should survive")

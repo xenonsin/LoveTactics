@@ -34,7 +34,11 @@ local STAT_ORDER = {
 
 -- Rule keys in the order ui/tactics_editor.lua presents them, so a rule reads down the file the way it
 -- reads down the editor.
-local RULE_ORDER = { "enabled", "act", "item", "targetPref" }
+-- `priority` is here even though no editor offers it: it is an authoring-only band (models/ai.lua)
+-- that orders a blueprint's rules against its items' and its posture's. The character editor cannot
+-- set one, but it must write back one it was given, or round-tripping a file through the editor would
+-- silently strip the ordering its author wrote.
+local RULE_ORDER = { "enabled", "priority", "act", "item", "targetPref" }
 local WHEN_ORDER = { "subject", "test", "value" }
 
 local RESOURCE = {}

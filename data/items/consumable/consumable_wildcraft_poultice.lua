@@ -3,7 +3,7 @@
 -- poison (data/status/status_poison.lua), the nature-remedy half of envy's craft. Consumed on use.
 --
 -- Home shelf is the Lodge (`class = "hunter"`), so it tallies toward the hunter and appears on the Lodge
--- and Crucible shelves both once Herbalist is unlocked. Deliberately NOT tagged `potion`: the Market
+-- and Crucible shelves both once Herbalist is unlocked. Deliberately NOT tagged `potion`: the Cafe
 -- resells potions, and this is a discipline-locked field remedy, not a counter good.
 return {
     name = "Wildcraft Poultice",

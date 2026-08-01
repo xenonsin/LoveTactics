@@ -1,4 +1,4 @@
--- Tests for models/builds.lua: publishing a build and finding one to fight.
+﻿-- Tests for models/builds.lua: publishing a build and finding one to fight.
 --
 -- Run against an in-memory backend rather than the disk one. That is not a convenience -- it is the
 -- claim the module is making. If the storage seam is narrow enough to swap for a table here, it is
@@ -43,7 +43,7 @@ local function teamFor(authorName)
     c.inventory = {}
     Character.addItem(c, Item.instantiate("weapon_iron_sword"))
     c.aiRules = {
-        { enabled = true, priority = "normal", act = "attack", targetPref = "nearest",
+        { enabled = true, act = "attack", targetPref = "nearest",
           when = { subject = "nearest_foe", test = "exists" } },
     }
     return { c }

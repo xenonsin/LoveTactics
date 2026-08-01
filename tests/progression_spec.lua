@@ -205,8 +205,8 @@ return {
     {
         name = "every priced item has a shelf: a class vendor, or the general store",
         fn = function()
-            -- The union of every general store's stock (the Market). A priced item with no class is
-            -- not dead data any more -- it belongs to the general shelf. Built market-id-agnostically
+            -- The union of every general store's stock (the Cafe). A priced item with no class is
+            -- not dead data any more -- it belongs to the general shelf. Built cafe-id-agnostically
             -- so this stays true if the general store is ever renamed or a second one is added.
             local generalStock = {}
             for vid, vdef in pairs(Vendor.defs) do
@@ -229,8 +229,8 @@ return {
     {
         name = "the general store stocks classless goods and resells potions, gating nothing on standing",
         fn = function()
-            local market = Vendor.stock("market", 1)
-            assert(#market > 0, "the Market should stock something")
+            local cafe = Vendor.stock("cafe", 1)
+            assert(#cafe > 0, "the Cafe should stock something")
 
             local function hasTag(id, want)
                 for _, tag in ipairs(Item.defs[id].tags or {}) do
@@ -240,21 +240,21 @@ return {
             end
 
             local ids = {}
-            for _, entry in ipairs(market) do
+            for _, entry in ipairs(cafe) do
                 ids[entry.id] = true
                 assert(entry.price, entry.id .. " is for sale with no price")
                 -- Every ware is either a classless good or a potion resold from some house.
                 assert(Item.defs[entry.id].class == nil or hasTag(entry.id, "potion"),
                     entry.id .. " is on the general shelf but is neither classless nor a potion")
-                -- The Market keeps no ladder, so nothing it sells is ever rank-locked -- not even a
+                -- The Cafe keeps no ladder, so nothing it sells is ever rank-locked -- not even a
                 -- Panacea, which needs rank 2 at the alchemist.
-                assert(not entry.locked, entry.id .. " should never be standing-locked at the Market")
+                assert(not entry.locked, entry.id .. " should never be standing-locked at the Cafe")
             end
 
-            assert(ids.utility_torch, "the torch is a classless good the Market should sell")
+            assert(ids.utility_torch, "the torch is a classless good the Cafe should sell")
             assert(ids.utility_boots_of_speed, "the boots of speed are classless and belong on the shelf")
-            assert(ids.consumable_healing_potion, "the Market resells the healing potion")
-            assert(ids.consumable_panacea, "a rank-2 alchemist potion is still un-gated at the Market")
+            assert(ids.consumable_healing_potion, "the Cafe resells the healing potion")
+            assert(ids.consumable_panacea, "a rank-2 alchemist potion is still un-gated at the Cafe")
 
             -- Reselling does not re-home: the potion keeps its class and still sells at the alchemist.
             assert(Item.defs.consumable_healing_potion.class == "alchemist",
@@ -265,11 +265,11 @@ return {
             end
             assert(atAlchemist, "the alchemist still stocks the potions it brews")
 
-            -- But the Market refines nothing: it resells potions, it does not hone their recipes.
-            for _, entry in ipairs(market) do
+            -- But the Cafe refines nothing: it resells potions, it does not hone their recipes.
+            for _, entry in ipairs(cafe) do
                 local sample = Item.instantiate(entry.id, nil, entry.level)
-                assert(not Vendor.canRefineHere("market", sample),
-                    entry.id .. " must not be refinable at the Market -- that stays at its house")
+                assert(not Vendor.canRefineHere("cafe", sample),
+                    entry.id .. " must not be refinable at the Cafe -- that stays at its house")
             end
         end,
     },

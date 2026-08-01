@@ -237,6 +237,9 @@ return {
     ["line.conversation_bastion_vendor_intro.4"] = { en = "Squire Rowan. Greywatch's own. It is an honor to arm you again.", ja = "" },  -- TODO
     ["line.conversation_bastion_vendor_intro.5"] = { en = "It is Rowan of no post now. I kept the oath and gave up the wall -- and I hold something better than a line these days. Outfit us both.", ja = "" },  -- TODO
     ["line.conversation_bastion_vendor_intro.6"] = { en = "Hold until relieved, then. The shelf is yours -- and the order remembers the ones who stay.", ja = "" },  -- TODO
+    ["line.conversation_cafe_vendor_intro.1"] = { en = "Torches, boots, bread, and a potion or two the temples pretend they don't stock. Everything the road needs, {name}, and nothing it'll shrive you for wanting.", ja = "" },  -- TODO
+    ["line.conversation_cafe_vendor_intro.2"] = { en = "And the price?", ja = "" },  -- TODO
+    ["line.conversation_cafe_vendor_intro.3"] = { en = "Fair. That's the whole of the pitch. The seven houses up the hill sell you a name to become; I sell you what gets you to tomorrow to spend it. Come back whenever the road's been unkind.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.1"] = { en = "The {discipline}'s calling is open to you, {name}. What the Cathedral kept back for that path is on the shelf -- take what serves.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.3"] = { en = "The Light gives what is earned, and you earned this. Carry it gently.", ja = "" },  -- TODO
@@ -537,9 +540,6 @@ return {
     ["line.conversation_hunters_lodge_vendor_intro.5"] = { en = "...You take only what you need, girl. That is why we could never crown you. You were the finest tracker the wood ever grew.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_vendor_intro.6"] = { en = "It is why the wood never turned on me. Sell {name} the bows. Keep the crown.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_vendor_intro.7"] = { en = "As you like. The board's open. There's always another beast worth killing.", ja = "" },  -- TODO
-    ["line.conversation_market_vendor_intro.1"] = { en = "Torches, boots, bread, and a potion or two the temples pretend they don't stock. Everything the road needs, {name}, and nothing it'll shrive you for wanting.", ja = "" },  -- TODO
-    ["line.conversation_market_vendor_intro.2"] = { en = "And the price?", ja = "" },  -- TODO
-    ["line.conversation_market_vendor_intro.3"] = { en = "Fair. That's the whole of the pitch. The seven houses up the hill sell you a name to become; I sell you what gets you to tomorrow to spend it. Come back whenever the road's been unkind.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.1"] = { en = "There it is. Walls still standing, gates still shut. The capital.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.10"] = { en = "It's been like this for weeks. The demons push, a village burns, and everyone still breathing runs for the capital. The city's fit to burst, work's gone dry, and food with it.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.11"] = { en = "But coin still moves for those who can hold a blade. Register with the Adventurers' Guild -- the quest board takes anyone who'll take a contract. Pays a good deal better than queuing for bread.", ja = "" },  -- TODO
@@ -620,6 +620,7 @@ return {
     ["name.alchemist"] = { en = "The Crucible", ja = "" },  -- TODO
     ["name.arcanum"] = { en = "The Arcanum", ja = "" },  -- TODO
     ["name.bastion"] = { en = "The Bastion", ja = "" },  -- TODO
+    ["name.cafe"] = { en = "The Cafe", ja = "" },  -- TODO
     ["name.cathedral"] = { en = "The Cathedral", ja = "" },  -- TODO
     ["name.character_amana"] = { en = "Amana", ja = "" },  -- TODO
     ["name.character_avatar"] = { en = "Stranger", ja = "" },  -- TODO
@@ -644,7 +645,6 @@ return {
     ["name.character_saber"] = { en = "Saber", ja = "" },  -- TODO
     ["name.colosseum"] = { en = "The Colosseum", ja = "闘技場" },
     ["name.hunters_lodge"] = { en = "Hunter's Lodge", ja = "" },  -- TODO
-    ["name.market"] = { en = "The Market", ja = "" },  -- TODO
     ["name.undercroft"] = { en = "The Undercroft", ja = "" },  -- TODO
     ["title.conversation_alchemist_discipline_unlocked"] = { en = "A New Formula", ja = "" },  -- TODO
     ["title.conversation_alchemist_slot_02_confront"] = { en = "The Counterfeiter", ja = "" },  -- TODO
@@ -682,6 +682,7 @@ return {
     ["title.conversation_bastion_slot_10_intro"] = { en = "Past the Gate", ja = "" },  -- TODO
     ["title.conversation_bastion_slot_10_outro"] = { en = "Until Relieved", ja = "" },  -- TODO
     ["title.conversation_bastion_vendor_intro"] = { en = "Those Who Hold", ja = "" },  -- TODO
+    ["title.conversation_cafe_vendor_intro"] = { en = "Everything the Road Needs", ja = "" },  -- TODO
     ["title.conversation_cathedral_discipline_unlocked"] = { en = "What the Faith Keeps", ja = "" },  -- TODO
     ["title.conversation_cathedral_slot_02_confront"] = { en = "The Fallen Confessor", ja = "" },  -- TODO
     ["title.conversation_cathedral_slot_02_join"] = { en = "A Trust Returned", ja = "" },  -- TODO
@@ -723,7 +724,6 @@ return {
     ["title.conversation_hunters_lodge_slot_02_join"] = { en = "Enough", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_slot_10_confront"] = { en = "The Unsated", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_vendor_intro"] = { en = "The Hunter's Lodge", ja = "" },  -- TODO
-    ["title.conversation_market_vendor_intro"] = { en = "Everything the Road Needs", ja = "" },  -- TODO
     ["title.conversation_prologue_arrival"] = { en = "The Capital", ja = "" },  -- TODO
     ["title.conversation_prologue_flee"] = { en = "Ashes", ja = "" },  -- TODO
     ["title.conversation_prologue_flier"] = { en = "The Board", ja = "" },  -- TODO

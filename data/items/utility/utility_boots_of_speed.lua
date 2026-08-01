@@ -9,7 +9,7 @@ return {
     type = "utility",
     tags = { "boots" },
     -- Classless on purpose: putting one foot in front of the other is nobody's craft, so these sit on
-    -- the general store's shelf (a priced item with no class -> the Market; see models/vendor.lua).
+    -- the general store's shelf (a priced item with no class -> the Cafe; see models/vendor.lua).
     price = 200,
     -- Movement is a per-level table (levels 0..10): the boots carry more speed the higher they go.
     --                   level:  0  1  2  3  4  5  6  7  8  9  10

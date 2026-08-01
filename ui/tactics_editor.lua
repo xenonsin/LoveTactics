@@ -24,10 +24,23 @@
 --   rules   -- the ordered rows: enable box, priority band, the rule as a sentence
 --   fields  -- the selected rule's fields, one per line, cycled with left/right
 --
--- Reordering reuses the Loadout screen's pick-then-place idiom rather than inventing a second one:
--- confirm GRABS a row, up/down carries it, confirm drops it. Priority governs the merge against the
--- other sources; position within this list is what breaks ties inside it, so both are editable and
--- they mean different things.
+-- Reordering has two idioms, because the two devices want different things and pretending otherwise
+-- served neither:
+--
+--   keyboard / pad   pick-then-place, as the Loadout screen does it: confirm GRABS a row, up/down
+--                    carries it, confirm drops it. The row moves LIVE, one step per press, because
+--                    discrete input has nowhere else to show the move.
+--   mouse            a real drag: the row LIFTS out of the list onto the cursor, the rows it left
+--                    close up, and a gap opens between two rows showing where it will land. Nothing
+--                    is mutated until the button comes up, so the drag can be abandoned with Esc.
+--
+-- The mouse path was first built as the keyboard one driven by a pointer -- the row swapping into
+-- place as you moved over each slot. It worked and read as broken: a dragged thing has to come with
+-- you and land BETWEEN things, not teleport between slots underneath a cursor it isn't attached to.
+--
+-- Position in this list is the rule's urgency (models/ai.lua): the player's own rules carry no
+-- priority band and are scanned in the order shown, which is exactly why dragging one has to mean
+-- something and has to look like it does.
 --
 --   local ed = TacticsEditor.new({ x, y, w, h, char = char, fonts = { ... } })
 
@@ -62,6 +75,15 @@ local DELETE_W = 26 -- reserved on the right, so a long rule wraps short of the 
 local BOX = 16          -- the enable checkbox
 local FIELD_H = 28
 local ARROW_W = 18
+-- The open option list. Capped at eight rows because the longest list in the editor is the status
+-- vocabulary (seventy-odd), and a list that covers the whole column is a modal wearing a dropdown's
+-- clothes; past eight it scrolls.
+local DD_ROW_H = 22
+local DD_MAX_ROWS = 8
+-- How far the pointer must travel before a press on a row becomes a drag rather than a click. Same
+-- threshold the Loadout grid and the formation grid use, so a twitchy click means the same thing on
+-- every screen that carries something.
+local DRAG_THRESHOLD = 4
 
 -- Row tints. A disabled rule is drawn dim rather than hidden, so the list keeps its shape while the
 -- player toggles rows to work out which one is misbehaving.
@@ -73,17 +95,6 @@ local C_TEXT_OFF = { 0.46, 0.48, 0.54 }
 local C_ACCENT   = { 0.98, 0.82, 0.30 }
 local C_DIM      = { 0.62, 0.65, 0.74 }
 
--- Priority band tints, warm (act now) to cool (act eventually), so the list's shape is readable
--- before a single word of it is.
-local C_BAND = {
-    emergency = { 0.95, 0.45, 0.42 },
-    urgent    = { 0.95, 0.65, 0.38 },
-    high      = { 0.92, 0.85, 0.45 },
-    normal    = { 0.62, 0.78, 0.62 },
-    low       = { 0.52, 0.68, 0.85 },
-    fallback  = { 0.58, 0.58, 0.68 },
-}
-
 -- ---------------------------------------------------------------------------
 -- Field descriptors
 -- ---------------------------------------------------------------------------
@@ -91,6 +102,20 @@ local C_BAND = {
 -- Every field is "read a value off the rule, cycle it through an ordered list, write it back". Held
 -- as data so the draw loop, the input loop and the tests all walk the same definition instead of
 -- three hand-kept copies of it.
+--
+-- THE ORDER OF THIS LIST IS THE ORDER ON SCREEN, and it deliberately matches the order of the
+-- sentence AI.describeRule prints underneath it:
+--
+--   if <subject> <test> <value> then <act> <item> <targetPref>
+--      \______ the trigger ______/      \____ the action ____/
+--
+-- Action used to sit second, straight after a Priority field, which put the whole trigger INSIDE the
+-- action half: "support" and the weapon it was meant to be read against ended up four rows apart with
+-- the condition wedged between them, and the panel stopped reading as the sentence it renders. Adding
+-- a field means deciding which of the two clauses it belongs to and slotting it there, not appending.
+--
+-- There is no Priority field: a rule's urgency IS its position in the list, which is why the rows can
+-- be dragged. See the source-ranking note in models/ai.lua.
 --
 -- `when` is nil on a field that is always shown; otherwise it decides visibility from the rule (the
 -- value field is absent for a test that takes no value, and target preference is meaningless for a
@@ -108,18 +133,6 @@ local function statusIds()
 end
 
 local FIELDS = {
-    {
-        key = "priority", label = "Priority",
-        options = function() return AI.PRIORITY_ORDER end,
-        get = function(rule) return rule.priority or "normal" end,
-        set = function(rule, v) rule.priority = v end,
-    },
-    {
-        key = "act", label = "Action",
-        options = function() return AI.ACTION_ORDER end,
-        get = function(rule) return rule.act or "attack" end,
-        set = function(rule, v) rule.act = v end,
-    },
     {
         key = "subject", label = "Subject",
         options = function() return AI.SUBJECT_ORDER end,
@@ -161,6 +174,13 @@ local FIELDS = {
         end,
         set = function(rule, v) rule.when.value = v end,
         display = function(rule, v) return AI.describeValue(rule.when.test, v) end,
+    },
+    {
+        -- The THEN clause starts here. Everything above is the trigger.
+        key = "act", label = "Action",
+        options = function() return AI.ACTION_ORDER end,
+        get = function(rule) return rule.act or "attack" end,
+        set = function(rule, v) rule.act = v end,
     },
     {
         -- Which item to use, or "any" to let the scorer choose from the whole kit. Stored as an id
@@ -233,6 +253,57 @@ function TacticsEditor.cycle(options, value, dir)
     return options[(index - 1 + dir) % #options + 1]
 end
 
+-- Where field `i` sits. Pure, and the single layout source the draw loop, the mouse and the open
+-- dropdown all measure from -- the same arrangement `rowRect` keeps for the rule rows, and for the
+-- same reason: a dropdown anchored to a rect the draw pass happened to leave behind is a dropdown
+-- that lands in the wrong place the first time anything is asked before a frame has run.
+function TacticsEditor:fieldRect(i)
+    return { x = self.editX, y = self.y + 26 + (i - 1) * (FIELD_H + 12), w = self.editW, h = FIELD_H }
+end
+
+-- The value bar within a field row: the part that is actually the control.
+function TacticsEditor:fieldBar(i)
+    local r = self:fieldRect(i)
+    return { x = r.x, y = r.y + 13, w = r.w, h = 24 }
+end
+
+-- Where a carried row would be INSERTED if it were let go at `y` -- a position BETWEEN rows, not the
+-- row underneath. That distinction is the whole difference between a drag that swaps and a drag that
+-- lands somewhere: the boundary is the row's midpoint (hence the half-step), so pulling a row down
+-- past half of its neighbour is what moves it past that neighbour.
+--
+-- Clamped to the real rules, so a row carried past the bottom lands last rather than on the "+ Add
+-- rule" line, and one carried above the top lands first. Pure arithmetic over the same pitch the
+-- layout uses, so it agrees with what is on screen without needing a draw pass to have run.
+function TacticsEditor:insertIndexAt(y)
+    local count = #self:rules()
+    if count == 0 then return 1 end
+    local k = math.floor((y - (self.y + 24)) / (ROW_H + ROW_GAP) + 0.5) + 1 + self.scroll
+    return math.max(1, math.min(count, k))
+end
+
+-- The visual slot a rule index occupies right now, or nil for the row that is currently riding the
+-- cursor (it is drawn at the pointer, not in the list).
+--
+-- While a row is carried it is OUT of the list: the rows it left close up behind it, and a one-row
+-- gap opens at the insertion point. So index and slot stop being the same number, and everything that
+-- positions a row has to go through here or the list tears.
+function TacticsEditor:slotOf(i)
+    local d = self.drag
+    if not (d and d.active) then return i end
+    if i == d.index then return nil end
+    local pos = (i < d.index) and i or (i - 1) -- where it sits among the rows that remain
+    if pos >= d.to then pos = pos + 1 end      -- ...then step over the gap
+    return pos
+end
+
+-- The rectangle of visual slot `slot`, or nil when it is scrolled out of view.
+function TacticsEditor:slotRect(slot)
+    local s = slot - self.scroll
+    if s < 1 or s > self:visibleRows() then return nil end
+    return { x = self.x, y = self.y + 24 + (s - 1) * (ROW_H + ROW_GAP), w = self.listW, h = ROW_H }
+end
+
 -- Move the rule at `from` to `to`, clamped, returning the index it ended up at. Pure, so reordering
 -- is testable at its boundaries without a panel or a mouse.
 function TacticsEditor.moveRule(rules, from, to)
@@ -265,7 +336,8 @@ function TacticsEditor.new(opts)
     self.region = "rules"
     self.cursor = 1        -- row index; #rules + 1 is the "+ Add rule" row
     self.fieldCursor = 1
-    self.grabbed = nil     -- index of the row being carried, or nil
+    self.grabbed = nil     -- index of the row being carried by keyboard/pad, or nil
+    self.drag = nil        -- { index, startX, startY, active } -- the same carry, by mouse
     self.scroll = 0
     self.hoverRow, self.hoverField, self.hoverArrow = nil, nil, nil
     self.rowRects, self.fieldRects = {}, {}
@@ -288,6 +360,7 @@ function TacticsEditor:setChar(char)
     self.cursor = 1
     self.fieldCursor = 1
     self.grabbed = nil
+    self.drag = nil
     self.scroll = 0
 end
 
@@ -316,12 +389,38 @@ function TacticsEditor:ownedRules()
         return char.ai
     end
     if char.aiRules == nil then
-        char.aiRules = {}
-        for _, rule in ipairs(char.ai or {}) do
-            char.aiRules[#char.aiRules + 1] = copyRule(rule)
-        end
+        char.aiRules = TacticsEditor.seedFrom(char.ai)
     end
     return char.aiRules
+end
+
+-- Turn a blueprint's `ai` list into the player's overlay: the same rules, in the order they were
+-- actually RUNNING in, with the authored priority band dropped.
+--
+-- Both halves matter. The blueprint's rules are ordered by an authored `priority` the player never
+-- sees (models/ai.lua), while their own list is ordered by POSITION -- so copying the rules across in
+-- declaration order would silently reorder a character the moment its owner touched the tab, and a
+-- rule that had been firing first could quietly stop. Sorting on the way in is what makes taking the
+-- list over a no-op until the player actually changes something.
+--
+-- And the band has to go, or it would sit invisibly in the save file outranking the very positions the
+-- player is dragging -- a list that ignores its own order is worse than one that never offered it.
+function TacticsEditor.seedFrom(rules)
+    local out = {}
+    for _, rule in ipairs(rules or {}) do out[#out + 1] = copyRule(rule) end
+
+    -- Decorated sort: table.sort is not stable in Lua 5.1, and two rules sharing a band must keep the
+    -- order their author wrote them in.
+    local declared = {}
+    for i, rule in ipairs(out) do declared[rule] = i end
+    table.sort(out, function(a, b)
+        local pa, pb = AI.priorityOf(a), AI.priorityOf(b)
+        if pa ~= pb then return pa < pb end
+        return declared[a] < declared[b]
+    end)
+
+    for _, rule in ipairs(out) do rule.priority = nil end
+    return out
 end
 
 -- True when the rows on show are the blueprint's own and the player has not yet taken the list over --
@@ -394,6 +493,14 @@ function TacticsEditor:rowCount()
 end
 
 function TacticsEditor:navigate(dc, dr)
+    -- An open list owns the d-pad: up/down walks the options rather than the fields behind them.
+    if self.open then
+        if dr ~= 0 then
+            self.open.cursor = math.max(1, math.min(#self.open.options, self.open.cursor + dr))
+            self:scrollDropdownToCursor()
+        end
+        return
+    end
     if self.region == "rules" then
         if dr ~= 0 then
             if self.grabbed then
@@ -428,6 +535,133 @@ function TacticsEditor:scrollToCursor()
     self.scroll = math.max(0, self.scroll)
 end
 
+-- ---------------------------------------------------------------------------
+-- The option dropdown
+-- ---------------------------------------------------------------------------
+--
+-- Stepping a field with < and > is fine for a two-option toggle and miserable for the ones that
+-- matter: seven priorities, nine tests, seventy-odd statuses. So the value bar OPENS, showing the
+-- whole vocabulary at once with the current pick marked -- one click to see the choices, one to take
+-- one, instead of a click per step and a lap round the end if you overshoot.
+--
+-- Left/right still cycles in place and is deliberately kept: it is the fast path on a pad, it is what
+-- the reorder prompts already teach, and a player nudging a percentage two steps should not have to
+-- open a list to do it. The dropdown is the addition, not the replacement.
+
+-- Open the list for visible field `index`, with the cursor on whatever the rule currently holds --
+-- so the list opens showing where you are, and closing it without choosing changes nothing.
+function TacticsEditor:openDropdown(index)
+    local rule = self:selectedRule()
+    if not rule then return false end
+    local field = TacticsEditor.visibleFields(rule, self.char)[index]
+    if not field then return false end
+
+    local options = field.options(rule, self.char)
+    if #options == 0 then return false end
+    local current = field.get(rule, self.char)
+    local at = 1
+    for i, opt in ipairs(options) do
+        if opt == current
+            or (type(opt) == "number" and type(current) == "number" and math.abs(opt - current) < 1e-6) then
+            at = i
+            break
+        end
+    end
+
+    self.region = "fields"
+    self.fieldCursor = index
+    self.open = { field = index, options = options, cursor = at,
+                  scroll = math.max(0, math.min(at - 1, at - DD_MAX_ROWS + 1)) }
+    return true
+end
+
+function TacticsEditor:closeDropdown()
+    if not self.open then return false end
+    self.open = nil
+    return true
+end
+
+-- Take the option under the dropdown's cursor (or `pick`, when the mouse names one). Writes through
+-- `ownedRules`, so choosing from the list takes the list over exactly as cycling it does.
+function TacticsEditor:chooseOption(pick)
+    local open = self.open
+    if not open then return false end
+    local rule = self:ownedRules()[self.cursor]
+    if rule then
+        local field = TacticsEditor.visibleFields(rule, self.char)[open.field]
+        local value = open.options[pick or open.cursor]
+        if field and value ~= nil then field.set(rule, value, self.char) end
+    end
+    self.open = nil
+    -- Setting `act` or `test` changes which fields exist at all, so the cursor can be left pointing
+    -- past the end of a list that just got shorter.
+    local count = #TacticsEditor.visibleFields(self:selectedRule(), self.char)
+    self.fieldCursor = math.max(1, math.min(math.max(1, count), self.fieldCursor))
+    return true
+end
+
+-- Where the open list is drawn. Below its field by preference, flipped above when there is no room
+-- below -- the lower fields sit near the panel edge, and a list that ran off it could not be clicked.
+--
+-- When the list fits NEITHER side whole, it takes the roomier side and shows as many rows as actually
+-- fit there, scrolling for the rest. It must never simply be clamped into place: that slides it back
+-- over the bar it belongs to, hiding the current value at the exact moment the player is choosing
+-- against it.
+function TacticsEditor:dropdownRect()
+    local open = self.open
+    if not open then return nil end
+    local bar = self:fieldBar(open.field)
+    local wanted = math.min(#open.options, DD_MAX_ROWS)
+    local below = (self.y + self.h) - (bar.y + bar.h + 2)
+    local above = (bar.y - 2) - self.y
+    local function fits(space) return math.floor((space - 6) / DD_ROW_H) end
+
+    local rows, y = wanted, nil
+    if fits(below) >= wanted then
+        y = bar.y + bar.h + 2
+    elseif fits(above) >= wanted then
+        y = bar.y - (wanted * DD_ROW_H + 6) - 2
+    elseif below >= above then
+        rows = math.max(1, math.min(wanted, fits(below)))
+        y = bar.y + bar.h + 2
+    else
+        rows = math.max(1, math.min(wanted, fits(above)))
+        y = bar.y - (rows * DD_ROW_H + 6) - 2
+    end
+    return { x = bar.x, y = y, w = bar.w, h = rows * DD_ROW_H + 6, rows = rows }
+end
+
+-- How many option rows are actually on show. The window can be smaller than DD_MAX_ROWS on a short
+-- panel, and the scroll clamps have to agree with what is drawn or the cursor walks off the list.
+function TacticsEditor:dropdownRows()
+    local r = self:dropdownRect()
+    return r and r.rows or DD_MAX_ROWS
+end
+
+-- Which option row a pointer is over, or nil when it is off the list.
+function TacticsEditor:dropdownIndexAt(x, y)
+    local open, r = self.open, self:dropdownRect()
+    if not (open and r) then return nil end
+    if x < r.x or x > r.x + r.w or y < r.y + 3 or y > r.y + r.h - 3 then return nil end
+    local slot = math.floor((y - (r.y + 3)) / DD_ROW_H) + 1
+    local index = slot + open.scroll
+    if index < 1 or index > #open.options then return nil end
+    return index
+end
+
+-- Keep the dropdown cursor inside its own window.
+function TacticsEditor:scrollDropdownToCursor()
+    local open = self.open
+    if not open then return end
+    local rows = self:dropdownRows()
+    if open.cursor - 1 < open.scroll then
+        open.scroll = open.cursor - 1
+    elseif open.cursor > open.scroll + rows then
+        open.scroll = open.cursor - rows
+    end
+    open.scroll = math.max(0, math.min(math.max(0, #open.options - rows), open.scroll))
+end
+
 function TacticsEditor:cycleField(dir)
     -- Editing a field's value is a mutation, so it reads from the OWNED list -- which seeds the
     -- player's overlay from the blueprint on the first edit and returns the same rule the display is
@@ -443,8 +677,11 @@ end
 
 -- Confirm on the focused region. On a rule row this grabs/drops it (reorder); on the add row it adds.
 function TacticsEditor:confirm()
+    if self.open then self:chooseOption() return end
     if self.region == "fields" then
-        self:cycleField(1)
+        -- Confirm OPENS the list rather than nudging the value one step. Stepping is still on
+        -- left/right, where a player already reaching for a small change will look for it.
+        self:openDropdown(self.fieldCursor)
         return
     end
     local rules = self:rules()
@@ -463,6 +700,12 @@ end
 function TacticsEditor:cancel()
     -- Report whether there was something to cancel, so the panel knows whether Esc should also close
     -- it (the same contract InventoryGrid:cancelPickup keeps).
+    -- The open list is the innermost thing on screen, so it is the first thing Esc takes back --
+    -- and it closes WITHOUT choosing, which is what makes browsing the options free.
+    if self:closeDropdown() then return true end
+    -- A mouse carry can be abandoned mid-air, because nothing has moved yet -- the row simply drops
+    -- back where it came from. The keyboard grab below cannot offer that: it reorders as it walks.
+    if self.drag and self.drag.active then self.drag = nil return true end
     if self.grabbed then self.grabbed = nil return true end
     if self.region == "fields" then self.region = "rules" return true end
     return false
@@ -491,9 +734,20 @@ end
 local function setColor(c, a) love.graphics.setColor(c[1], c[2], c[3], a or 1) end
 
 function TacticsEditor:rowRect(i)
-    local slot = i - self.scroll
-    if slot < 1 or slot > self:visibleRows() then return nil end
-    return { x = self.x, y = self.y + 24 + (slot - 1) * (ROW_H + ROW_GAP), w = self.listW, h = ROW_H }
+    local slot = self:slotOf(i)
+    return slot and self:slotRect(slot) or nil
+end
+
+-- Where the carried row is drawn: under the cursor, holding the exact point of itself that was
+-- grabbed, so it does not jump to centre on the pointer the instant the drag starts. Clamped to the
+-- list column, because a row dragged off the side and released is a row nobody can see land.
+function TacticsEditor:draggedRect()
+    local d = self.drag
+    if not (d and d.active) then return nil end
+    local top = self.y + 24
+    local bottom = top + self:visibleRows() * (ROW_H + ROW_GAP) - ROW_GAP
+    local y = math.max(top - ROW_H / 2, math.min(bottom - ROW_H / 2, (self.my or top) - d.offsetY))
+    return { x = self.x, y = y, w = self.listW, h = ROW_H }
 end
 
 function TacticsEditor:draw()
@@ -509,29 +763,73 @@ function TacticsEditor:draw()
         or ("Rules (" .. #rules .. ") -- first match wins")
     love.graphics.print(header, self.x, self.y)
 
+    -- The gap the carried row would drop into, drawn UNDER the rows so a row sliding over it as the
+    -- list reflows covers it rather than being cut by it.
+    self:drawDropGap()
+
     self.rowRects = {}
     for i = 1, self:rowCount() do
         local r = self:rowRect(i)
         if r then
             self.rowRects[i] = r
-            if i > #rules then self:drawAddRow(r, i) else self:drawRuleRow(r, i, rules[i]) end
+            -- Labelled by SLOT, not index: mid-drag the slot is where this row is about to end up.
+            if i > #rules then self:drawAddRow(r, i) else self:drawRuleRow(r, i, rules[i], self:slotOf(i)) end
         end
     end
+
+    -- ...and the carried row itself last of all, so it rides over the list it came out of.
+    self:drawDraggedRow()
 
     self:drawFooter()
     self:drawFields()
     love.graphics.setColor(1, 1, 1)
 end
 
-function TacticsEditor:drawRuleRow(r, i, rule)
+-- The landing place: an outlined slot where the row will go if it is released now. Empty rather than
+-- filled, because it is a hole in the list and should read as one.
+function TacticsEditor:drawDropGap()
+    local d = self.drag
+    if not (d and d.active) then return end
+    local r = self:slotRect(d.to)
+    if not r then return end
+    setColor(C_ACCENT, 0.16)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
+    setColor(C_ACCENT, 0.55)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
+    love.graphics.setLineWidth(1)
+end
+
+-- The row riding the cursor. Drawn with a drop shadow and nudged right, so it reads as lifted OFF the
+-- list rather than as a row that has wandered out of alignment.
+function TacticsEditor:drawDraggedRow()
+    local d = self.drag
+    if not (d and d.active) then return end
+    local r = self:draggedRect()
+    local rule = self:rules()[d.index]
+    if not (r and rule) then return end
+
+    love.graphics.setColor(0, 0, 0, 0.45)
+    love.graphics.rectangle("fill", r.x + 5, r.y + 5, r.w, r.h, 5, 5)
+    -- Numbered by where it is GOING, so the carried row and the gap it is over agree.
+    self:drawRuleRow({ x = r.x + 3, y = r.y, w = r.w, h = r.h }, d.index, rule, d.to)
+end
+
+-- `i` is the rule's index in the list; `num` is the position to LABEL it with, which during a drag is
+-- where it would end up rather than where it currently is. They differ only mid-carry, and keeping
+-- them apart is what lets the numbers count correctly while the list is still parting.
+function TacticsEditor:drawRuleRow(r, i, rule, num)
     local f = self.fonts
     local selected = (self.region == "rules" and self.cursor == i)
     local on = rule.enabled ~= false
+    -- Carried by either hand: the d-pad grab and the mouse drag are one state to the eye, because
+    -- they are one state to the list.
+    local held = self.grabbed == i or (self.drag and self.drag.active and self.drag.index == i)
 
-    setColor(self.grabbed == i and C_ROW_GRAB or (selected and C_ROW_SEL or C_ROW))
+    setColor(held and C_ROW_GRAB or (selected and C_ROW_SEL or C_ROW))
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
     if selected then
-        setColor(C_ACCENT, self.grabbed == i and 1 or 0.7)
+        setColor(C_ACCENT, held and 1 or 0.7)
         love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
     end
 
@@ -541,18 +839,19 @@ function TacticsEditor:drawRuleRow(r, i, rule)
     love.graphics.rectangle("line", bx, by, BOX, BOX, 3, 3)
     if on then love.graphics.rectangle("fill", bx + 4, by + 4, BOX - 8, BOX - 8, 2, 2) end
 
-    -- Priority band pip + name: the list's shape should read before any of its words do.
-    local band = AI.priorityName(rule)
+    -- The row's ordinal, which for a player's list IS its urgency: rules are scanned top to bottom and
+    -- the first match takes the turn, so "3" is the whole answer to "when does this one get looked
+    -- at". Drawn where the old priority band used to sit, because it now says what that said.
     local px = bx + BOX + 10
-    setColor(C_BAND[band] or C_DIM, on and 1 or 0.4)
+    setColor(C_ACCENT, on and 0.9 or 0.35)
     love.graphics.rectangle("fill", px, r.y + 6, 4, r.h - 12, 2, 2)
 
     love.graphics.setFont(f.tiny)
-    love.graphics.print(band, px + 10, r.y + 5)
+    setColor(C_DIM, on and 1 or 0.4)
+    love.graphics.print(tostring(num or i), px + 10, r.y + 5)
 
-    -- The rule as a sentence, minus the band (already shown as the pip). Width-clamped short of the
-    -- delete button and clipped to one line: a rule long enough to wrap would otherwise grow the row
-    -- out of its own rectangle.
+    -- The rule as a sentence. Width-clamped short of the delete button and clipped to one line: a
+    -- rule long enough to wrap would otherwise grow the row out of its own rectangle.
     local textX = px + 10
     local textW = (r.x + r.w - DELETE_W) - textX
     love.graphics.setFont(f.small)
@@ -562,7 +861,7 @@ function TacticsEditor:drawRuleRow(r, i, rule)
     -- selecting each one in turn.
     local dormant = rule.item and not AI.resolveItem(self.char or {}, rule.item)
     setColor(dormant and { 0.95, 0.55, 0.5 } or (on and C_TEXT or C_TEXT_OFF))
-    local text = AI.describeRule(rule):gsub("^[%a]+: ", "")
+    local text = AI.describeRule(rule)
     if dormant then text = text .. "  -- not carried" end
     while text ~= "" and f.small:getWidth(text) > textW do
         text = text:sub(1, -2)
@@ -648,26 +947,28 @@ function TacticsEditor:drawFields()
     local y = self.y + 26
     for i, field in ipairs(fields) do
         local selected = (self.region == "fields" and self.fieldCursor == i)
-        local r = { x = self.editX, y = y, w = self.editW, h = FIELD_H }
+        local opened = self.open and self.open.field == i
+        local r = self:fieldRect(i)
         self.fieldRects[i] = r
+        y = r.y
 
         love.graphics.setFont(f.tiny)
         setColor(C_DIM)
         love.graphics.print(field.label, r.x, r.y)
 
         local vy = r.y + 13
-        setColor(selected and C_ROW_SEL or C_ROW)
+        setColor((selected or opened) and C_ROW_SEL or C_ROW)
         love.graphics.rectangle("fill", r.x, vy, r.w, 24, 4, 4)
-        if selected then
-            setColor(C_ACCENT, 0.7)
+        if selected or opened then
+            setColor(C_ACCENT, opened and 1 or 0.7)
             love.graphics.rectangle("line", r.x, vy, r.w, 24, 4, 4)
         end
 
+        -- One caret on the right, the way every dropdown anywhere says "there is a list under me".
+        -- It flips while the list is up, so the control shows its own state.
         love.graphics.setFont(f.small)
-        setColor(self.hoverArrow == i .. "-" and C_ACCENT or C_DIM)
-        love.graphics.printf("<", r.x + 4, vy + 4, ARROW_W, "center")
-        setColor(self.hoverArrow == i .. "+" and C_ACCENT or C_DIM)
-        love.graphics.printf(">", r.x + r.w - ARROW_W - 4, vy + 4, ARROW_W, "center")
+        setColor((opened or self.hoverField == i) and C_ACCENT or C_DIM)
+        love.graphics.printf(opened and "^" or "v", r.x + r.w - ARROW_W - 4, vy + 4, ARROW_W, "center")
 
         -- A rule pinned to an item the character is no longer carrying is dormant, and the field says
         -- so in place rather than showing a name that implies it will fire.
@@ -677,15 +978,68 @@ function TacticsEditor:drawFields()
         setColor(dormant and { 0.95, 0.55, 0.5 } or C_TEXT)
         local label = optionLabel(field, rule, value, self.char)
         if dormant then label = label .. " (not carried)" end
-        love.graphics.printf(label, r.x + ARROW_W + 6, vy + 4, r.w - (ARROW_W + 6) * 2, "center")
+        love.graphics.printf(label, r.x + 8, vy + 4, r.w - ARROW_W - 16, "center")
 
-        y = y + FIELD_H + 12
+        y = r.y + FIELD_H + 12
     end
 
     -- The finished sentence, so the player can read what they built without decoding six fields.
     love.graphics.setFont(f.tiny)
     setColor(C_DIM)
     love.graphics.printf(AI.describeRule(rule), self.editX, y + 6, self.editW, "left")
+
+    -- Last, so it covers the fields it overlaps rather than being covered by them.
+    self:drawDropdown(rule, fields)
+end
+
+function TacticsEditor:drawDropdown(rule, fields)
+    local open, r = self.open, self:dropdownRect()
+    if not (open and r) then return end
+    local field = fields[open.field]
+    if not field then return end
+    local f = self.fonts
+
+    -- An opaque plate with a border: the list sits ON the panel, and a translucent one over a row of
+    -- other fields is unreadable at exactly the moment it has to be read.
+    setColor({ 0.10, 0.11, 0.15 })
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
+    setColor(C_ACCENT, 0.8)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
+
+    love.graphics.setFont(f.small)
+    local current = field.get(rule, self.char)
+    for slot = 1, r.rows do
+        local index = slot + open.scroll
+        local value = open.options[index]
+        if value ~= nil then
+            local ry = r.y + 3 + (slot - 1) * DD_ROW_H
+            local onCursor = index == open.cursor
+            if onCursor then
+                setColor(C_ROW_SEL)
+                love.graphics.rectangle("fill", r.x + 2, ry, r.w - 4, DD_ROW_H, 3, 3)
+            end
+            -- The value the rule actually holds keeps a marker of its own, so an open list always
+            -- says where you are as well as where you are pointing.
+            local isCurrent = value == current
+                or (type(value) == "number" and type(current) == "number"
+                    and math.abs(value - current) < 1e-6)
+            if isCurrent then
+                setColor(C_ACCENT)
+                love.graphics.print("*", r.x + 6, ry + 3)
+            end
+            setColor(onCursor and C_ACCENT or C_TEXT)
+            love.graphics.print(optionLabel(field, rule, value, self.char), r.x + 18, ry + 3)
+        end
+    end
+
+    -- A plain "there is more below/above" mark. The window is capped and the status vocabulary is
+    -- seventy long, so without this the cap reads as the whole vocabulary.
+    if #open.options > r.rows then
+        love.graphics.setFont(f.tiny)
+        setColor(C_DIM)
+        love.graphics.printf(open.scroll + r.rows .. "/" .. #open.options,
+            r.x, r.y + r.h - 12, r.w - 6, "right")
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -701,6 +1055,34 @@ local function hit(r, x, y)
 end
 
 function TacticsEditor:mousemoved(x, y)
+    self.mx, self.my = x, y
+
+    -- A press that has travelled far enough becomes a carry. From then on the row is LIFTED -- drawn
+    -- at the cursor, out of the list, with a gap where it would land -- and the list itself is not
+    -- touched until the drop. Nothing is mutated on the way, which is what lets Esc abandon a drag and
+    -- lets an inherited blueprint list stay inherited unless the row is actually moved.
+    if self.drag then
+        if not self.drag.active
+            and (math.abs(x - self.drag.startX) > DRAG_THRESHOLD
+                or math.abs(y - self.drag.startY) > DRAG_THRESHOLD) then
+            self.drag.active = true
+            self.grabbed = nil -- a mouse carry supersedes a keyboard one; only one row travels at a time
+            -- Where in the row it was picked up, so the row hangs off the cursor at the point the
+            -- player actually grabbed rather than snapping its top-left to the pointer.
+            local r = self:slotRect(self.drag.index)
+            self.drag.offsetY = r and (self.drag.startY - r.y) or ROW_H / 2
+        end
+        if self.drag.active then
+            -- Measured from the CARRIED ROW's top edge, not from the pointer. Off the raw pointer the
+            -- gap opens a row away from the thing being dragged -- you hold a row over one place and
+            -- the list parts somewhere else, which reads as lag. Off the row's own edge the gap is
+            -- simply the slot the row is nearest to filling, whatever point of it was grabbed --
+            -- `insertIndexAt` already rounds to the nearest gap, so no half-row is added here.
+            self.drag.to = self:insertIndexAt(y - self.drag.offsetY)
+            return
+        end
+    end
+
     self.hoverRow, self.hoverDelete, self.hoverField, self.hoverArrow = nil, nil, nil, nil
     for i, r in pairs(self.rowRects) do
         if hit(r, x, y) then
@@ -708,17 +1090,30 @@ function TacticsEditor:mousemoved(x, y)
             if x >= r.x + r.w - DELETE_W then self.hoverDelete = i end
         end
     end
-    for i, r in pairs(self.fieldRects) do
-        if hit({ x = r.x, y = r.y + 13, w = r.w, h = 24 }, x, y) then
-            self.hoverField = i
-            if x <= r.x + ARROW_W + 4 then self.hoverArrow = i .. "-"
-            elseif x >= r.x + r.w - ARROW_W - 4 then self.hoverArrow = i .. "+" end
-        end
+    -- Hovering an open list moves its cursor, so the row under the pointer is the row that a click
+    -- takes -- and so the keyboard and the mouse are never pointing at two different options.
+    if self.open then
+        local over = self:dropdownIndexAt(x, y)
+        if over then self.open.cursor = over end
+        return
+    end
+
+    for i in pairs(self.fieldRects) do
+        if hit(self:fieldBar(i), x, y) then self.hoverField = i end
     end
 end
 
 -- Returns true when the click was consumed, so the panel knows not to treat it as a click-outside.
 function TacticsEditor:mousepressed(x, y)
+    -- An open list is modal over the editor: it takes the click, whether that click chooses an
+    -- option or dismisses it. Swallowed either way, so the click that closes a list can't also land
+    -- on whatever happened to be underneath it.
+    if self.open then
+        local pick = self:dropdownIndexAt(x, y)
+        if pick then self:chooseOption(pick) else self:closeDropdown() end
+        return true
+    end
+
     if hit(self.archRect, x, y) then
         -- Left half steps back, right half forward -- the "< name >" affordance means what it looks
         -- like rather than only cycling one way.
@@ -741,29 +1136,57 @@ function TacticsEditor:mousepressed(x, y)
             else
                 self.cursor = i
                 self.fieldCursor = 1
+                -- Arm a carry. It is not one yet -- a press that never travels is just this
+                -- selection, which has already happened on the line above.
+                self.drag = { index = i, startX = x, startY = y, active = false }
             end
             return true
         end
     end
 
-    for i, r in pairs(self.fieldRects) do
-        if hit({ x = r.x, y = r.y + 13, w = r.w, h = 24 }, x, y) then
+    for i in pairs(self.fieldRects) do
+        if hit(self:fieldBar(i), x, y) then
+            -- The whole bar is the control now. There is no step-by-one click target left, which is
+            -- the point: one click shows every option instead of advancing by one.
             self.region = "fields"
             self.fieldCursor = i
-            if x <= r.x + ARROW_W + 4 then self:cycleField(-1)
-            elseif x >= r.x + r.w - ARROW_W - 4 then self:cycleField(1) end
+            self:openDropdown(i)
             return true
         end
     end
     return false
 end
 
+-- Let go. THIS is where the reorder happens -- the drag itself only moved a picture around, so this
+-- is the single point at which the list changes and the single point at which the player takes
+-- ownership of an inherited one. Returns true when a carry ended, so the host can tell a drop from a
+-- click.
+function TacticsEditor:mousereleased()
+    local d = self.drag
+    self.drag = nil
+    if not (d and d.active) then return false end
+    -- Dropping a row back where it came from is not an edit, and must not mint an overlay.
+    if d.to ~= d.index then
+        self.cursor = TacticsEditor.moveRule(self:ownedRules(), d.index, d.to)
+    else
+        self.cursor = d.index
+    end
+    return true
+end
+
 function TacticsEditor:wheelmoved(dy)
+    -- The wheel belongs to whatever is on top: an open list scrolls itself, not the rules behind it.
+    if self.open then
+        local maxScroll = math.max(0, #self.open.options - self:dropdownRows())
+        self.open.scroll = math.max(0, math.min(maxScroll, self.open.scroll - dy))
+        return
+    end
     local maxScroll = math.max(0, self:rowCount() - self:visibleRows())
     self.scroll = math.max(0, math.min(maxScroll, self.scroll - dy))
 end
 
 function TacticsEditor:cursorKind(x, y)
+    if self.open then return self:dropdownIndexAt(x, y) and "hand" or "arrow" end
     if hit(self.archRect, x, y) or hit(self.autoRect, x, y) then return "hand" end
     if self.hoverRow or self.hoverField then return "hand" end
     return "arrow"
@@ -775,9 +1198,19 @@ function TacticsEditor:prompts()
     local pad = InputMode.isGamepad()
     local out = {}
     local function add(glyph, label, color) out[#out + 1] = { glyph = glyph, label = label, color = color } end
-    if self.region == "fields" then
-        add(pad and "D-pad" or "Arrows", "Change")
+    if self.open then
+        add(pad and "D-pad" or "Up/Down", "Pick")
+        add(pad and "A" or "Enter", "Choose")
+        add(pad and "B" or "Esc", "Cancel")
+    elseif self.region == "fields" then
+        add(pad and "A" or "Enter", "Open list")
+        add(pad and "D-pad" or "Left/Right", "Step")
         add(pad and "Y" or "Tab", "Back to rules")
+    elseif self.drag and self.drag.active then
+        -- A mouse carry has its own two verbs, and "release to drop" is worth saying because the row
+        -- has left the list and the player is holding something.
+        add("Release", "Drop here")
+        add("Esc", "Cancel")
     elseif self.grabbed then
         add(pad and "D-pad" or "Arrows", "Move rule")
         add(pad and "A" or "Enter", "Drop")

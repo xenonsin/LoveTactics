@@ -1793,6 +1793,14 @@ end
 function Party:mousereleased(x, y, button)
     if self.quantityPopup then self.quantityPopup:mousereleased(x, y, button) return end
     if button ~= 1 then return end
+    -- An editor column owns the whole box while it is up (see mousepressed), including the release
+    -- that ends a row drag. The panel's own item drag is never armed in that mode, so there is
+    -- nothing here for dropDrag to finish.
+    local editor = self:columnEditor()
+    if editor then
+        if editor.mousereleased then editor:mousereleased(x, y, button) end
+        return
+    end
     local drag = self.drag
     if drag and drag.from == "pool" and not drag.active then
         -- A click on a stash cell (pressed and released in place): equip it to the focused member.

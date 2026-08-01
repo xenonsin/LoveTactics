@@ -14,7 +14,7 @@
 -- One free action per turn (Combat.FREE_ACTIONS_PER_TURN), so this is not a bottomless stamina bar --
 -- and the grid greys the second one with a reason rather than leaving a dead button.
 --
--- Not tagged `potion`: the Market resells that tag and ignores standing, which would put a gated
+-- Not tagged `potion`: the Cafe resells that tag and ignores standing, which would put a gated
 -- discipline draught on the grocer's shelf turn one (docs/classes.md).
 return {
     name = "Battle Tonic",

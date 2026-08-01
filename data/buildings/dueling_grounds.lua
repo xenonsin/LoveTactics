@@ -7,7 +7,7 @@
 -- having stood on the sand once.
 --
 -- Narrower than its neighbours because it is squeezed into the last gap on the bottom row, beside
--- the market.
+-- the Cafe.
 return {
     name = "Dueling Grounds",
     order = 13,

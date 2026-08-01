@@ -132,7 +132,7 @@ return {
             -- derives its stock (Vendor.stock reads `class`, it is never authored) cannot drift apart
             -- from the table above.
             for id, def in pairs(Vendor.defs) do
-                -- The general store (the Market) is not a class shelf: it sells classless goods and
+                -- The general store (the Cafe) is not a class shelf: it sells classless goods and
                 -- no weapons at all, so the family-cluster contract does not apply to it.
                 if not def.general then
                     local families = CONTRACT[def.class] and CONTRACT[def.class].families

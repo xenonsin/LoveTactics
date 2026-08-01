@@ -10,7 +10,7 @@
 -- not the tile that becomes safe -- so it buys a crossing rather than an occupation. A herbalist who
 -- wants to LIVE in the fire distils it instead.
 --
--- Not tagged `potion`: the Market resells that tag and ignores standing, which would put a gated
+-- Not tagged `potion`: the Cafe resells that tag and ignores standing, which would put a gated
 -- discipline draught on the grocer's shelf turn one (docs/classes.md).
 return {
     name = "Bitterroot Draught",

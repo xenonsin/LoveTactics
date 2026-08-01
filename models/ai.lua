@@ -1104,17 +1104,7 @@ end
 -- The rule list
 -- ---------------------------------------------------------------------------
 
--- Where a unit's rules come from. This ranking IS the ordering: rules run source by source, and
--- within a source in the order they were written, top to bottom. There is no priority field --
--- position is the priority, which is what makes the list in the Tactics tab mean exactly what it
--- looks like, and what makes dragging a row a real edit rather than a cosmetic one.
---
--- What that costs, stated plainly so the next author does not rediscover it in a battle: a rule can
--- no longer reach ACROSS a source boundary. A blueprint rule cannot pre-empt an item rule however
--- urgent it is, and two items' rules are ordered by where they sit in the inventory grid rather than
--- by how badly each wants the turn. Where the old `priority` band expressed urgency, the fix is now
--- to order the KIT: a potion meant to be drunk before anything else is cast has to sit earlier in the
--- grid than the spell it should outrank.
+-- Where a unit's rules come from, in the order a tie is broken:
 --
 --   1. PLAYER   char.aiRules      -- the character's own list, once the player has taken it over in
 --                                    the Loadout screen's Tactics tab
@@ -1136,9 +1126,22 @@ end
 -- touched. The two ranks differ only so a body that IS still on its blueprint list sorts below its
 -- item rules, where a player who has taken ownership sorts above them.
 --
--- Rank and declaration ordinal together make the sort TOTAL, which is not a nicety: table.sort is
--- not stable in Lua 5.1, so any pair of entries that compared equal could come back in either order,
--- and two runs of the same battle must not decide differently. See `collect` for the ordinal.
+-- TWO REGIMES, one comparator. The three sources the player never sees are ordered by an authored
+-- `priority` band, because they are written by authors who cannot see each other's lists and so have
+-- no shared position to be ordered by. The player's own list IS a shared position -- it is the list on
+-- screen, which they can drag -- so it uses no band at all: every player rule takes AI.PLAYER_PRIORITY,
+-- which is below every authored band, so the visible list leads outright and orders itself by position.
+-- The seam reads as one sentence: YOUR LIST, THEN EVERYTHING THE GAME BROUGHT.
+--
+-- That is also why the Tactics tab has no priority field and why dragging a row there means something.
+-- ui/tactics_editor.lua drops the band when it seeds the player's overlay from a blueprint, sorting the
+-- inherited rules into the order they were actually running in first, so nothing changes underfoot.
+--
+-- Priority, rank and declaration ordinal together make the sort TOTAL, which is not a nicety:
+-- table.sort is not stable in Lua 5.1, so any pair of entries that compared equal could come back in
+-- either order, and two runs of the same battle must not decide differently. The ordinal counts across
+-- the WHOLE merge rather than within one list precisely so that two items contributing one rule each
+-- cannot tie. See `collect`.
 AI.SOURCE_RANK = { player = 1, item = 2, character = 3, posture = 4 }
 
 -- A rule may name the item it wants used, and there are two ways it can arrive:
@@ -1180,6 +1183,56 @@ function AI.itemName(ref)
     return (def and def.name) or ref
 end
 
+-- Priority is authored as a NAME, not a number. A bare `priority = 20` is unreadable at the point it
+-- matters most -- in a data file, months later, deciding whether the rule you are adding should come
+-- before or after one you can't see -- and two authors picking numbers independently have no way to
+-- agree. A name says what the rule is FOR, and the ordering follows from that rather than from
+-- whoever guessed a smaller integer.
+--
+-- The gaps are deliberate: a raw number is still accepted for the rare case that wants to slot
+-- between two levels, and leaving room means doing so never requires renumbering anything else.
+--
+-- THIS IS AN AUTHORING CONCEPT AND NOT A PLAYER-FACING ONE. It exists because the item, blueprint and
+-- posture lists are written by three authors who cannot see each other's rules, so there is no shared
+-- position for them to be ordered by. The player's own list HAS a shared position -- it is the list on
+-- screen -- so it does not use this at all, and the Tactics tab shows no priority field. See the sort
+-- in AI.rulesFor, and `PLAYER_PRIORITY` for how the two regimes meet.
+AI.PRIORITY = {
+    -- I am about to die. Drink the potion, break off, do not trade blows.
+    emergency = 10,
+    -- Someone else is about to die, or a chance appears that will not come round again.
+    urgent    = 20,
+    -- Worth doing before the ordinary business of the turn: the expensive spell, the opening gambit.
+    high      = 40,
+    -- The ordinary business of the turn. Posture defaults live here, so a rule that names nothing
+    -- competes with "attack whatever is in reach" and wins only on the source ranking.
+    normal    = 100,
+    -- Do this if nothing better presented itself.
+    low       = 200,
+    -- The floor. Reposition, regroup, idle.
+    fallback  = 400,
+}
+
+AI.DEFAULT_PRIORITY = "normal"
+
+-- The player's own rules sit ABOVE every authored band -- their list is authoritative, and what is on
+-- screen leads. Giving them all one constant is what lets a single comparator serve both regimes: they
+-- tie with each other on priority and on rank, so their ordinal -- their POSITION in the list the
+-- player dragged -- is the only thing left to separate them, which is exactly the intent.
+AI.PLAYER_PRIORITY = 0
+
+-- Resolve a rule's authored priority to the number the sort runs on. Accepts a name (preferred), a
+-- raw number (an escape hatch for slotting between levels), or nothing.
+function AI.priorityOf(rule)
+    local p = rule and rule.priority
+    if p == nil then return AI.PRIORITY[AI.DEFAULT_PRIORITY] end
+    if type(p) == "number" then return p end
+    local level = AI.PRIORITY[p]
+    assert(level, "AI rule names an unknown priority: " .. tostring(p)
+        .. " (expected one of emergency/urgent/high/normal/low/fallback, or a number)")
+    return level
+end
+
 -- An item's rules are written from the item's own point of view, so a rule that names no `item` is
 -- understood to mean "this one". Resolved here rather than at the use site so an authored block can
 -- stay as short as `ai = { { when = ..., act = "cast" } }`.
@@ -1205,6 +1258,9 @@ local function collect(out, rules, source, item)
             local n = #out + 1
             out[n] = {
                 rule = rule, ref = rule.item or item,
+                -- The player's list is ordered by position, so its rules take one constant band and
+                -- let the ordinal do the work. Everything else is ordered by what its author declared.
+                priority = (source == "player") and AI.PLAYER_PRIORITY or AI.priorityOf(rule),
                 rank = AI.SOURCE_RANK[source] or 9,
                 order = n,
             }
@@ -1241,6 +1297,7 @@ function AI.rulesFor(unit)
     collect(out, posture.rules, "posture")
 
     table.sort(out, function(a, b)
+        if a.priority ~= b.priority then return a.priority < b.priority end
         if a.rank ~= b.rank then return a.rank < b.rank end
         return a.order < b.order
     end)

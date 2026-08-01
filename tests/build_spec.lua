@@ -1,4 +1,4 @@
--- Tests for models/build.lua: freezing a player's team and the tactics they wrote for it, so it can
+﻿-- Tests for models/build.lua: freezing a player's team and the tactics they wrote for it, so it can
 -- be fought while its author is offline.
 --
 -- The load-bearing claim is that the GAMBITS survive. A build that brings back the right bodies with
@@ -23,10 +23,10 @@ local function authoredKnight()
     Character.addItem(char, Item.instantiate("weapon_iron_sword"))
     Character.addItem(char, Item.instantiate("consumable_healing_potion"))
     char.aiRules = {
-        { enabled = true, priority = "emergency", act = "support",
+        { enabled = true, act = "support",
           item = "consumable_healing_potion", targetPref = "self",
           when = { subject = "self", test = "hp_pct_below", value = 0.4 } },
-        { enabled = true, priority = "normal", act = "attack", targetPref = "lowest_hp",
+        { enabled = true, act = "attack", targetPref = "lowest_hp",
           when = { subject = "nearest_foe", test = "exists" } },
     }
     return char
@@ -54,7 +54,7 @@ return {
             assert(char.archetype == "defensive", "and the posture they picked")
 
             assert(char.aiRules and #char.aiRules == 2, "both authored rules survive")
-            assert(char.aiRules[1].priority == "emergency", "in their authored order")
+            assert(char.aiRules[1].act == "support", "in their authored order")
             assert(char.aiRules[1].item == "consumable_healing_potion", "naming the item by id")
             assert(char.aiRules[1].when.test == "hp_pct_below", "with the condition intact")
             assert(char.aiRules[1].when.value == 0.4, "and its threshold")
@@ -74,11 +74,12 @@ return {
             local merged = AI.rulesFor({ char = char })
             assert(#merged > 0, "the rebuilt character should offer the AI something to read")
 
-            -- The authored emergency rule is the highest-priority thing this character knows, so it
-            -- has to come out first however the posture and blueprint layers sort themselves.
+            -- The author put the potion rule at the TOP of their list, and the player's own list is
+            -- rank 1, so it has to come out first however the posture and blueprint layers sort
+            -- themselves. Position is the ordering now; this is what that has to mean end to end.
             local first = merged[1]
-            assert(first.rule.priority == "emergency",
-                "the authored emergency rule should lead, got " .. tostring(first.rule.priority))
+            assert(first.rule.act == "support" and first.rule.item == "consumable_healing_potion",
+                "the rule the author put first should lead, got " .. tostring(first.rule.act))
             assert(first.rule.when.test == "hp_pct_below", "and be the one that was written")
 
             -- It named an item by id; resolveItem should have found the real one in the kit.

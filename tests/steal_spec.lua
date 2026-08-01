@@ -83,6 +83,44 @@ return {
         end,
     },
     {
+        name = "a Jealous Resin refuses the whole grid, and says so without naming itself",
+        fn = function()
+            local thief = Character.instantiate("character_archer")
+            equip(thief, { "ability_pickpocket" })
+            local victim = Character.instantiate("character_bandit")
+            equip(victim, { "weapon_iron_sword", "utility_jealous_resin" })
+            local c = Combat.new(arena(8, 8), { unit(thief, 2, 2) }, { unit(victim, 3, 2) })
+
+            withRandom(1, function()
+                assert(Combat.steal(c, c.units[1], c.units[2]) == nil, "there is no way in")
+            end)
+            assert(itemNamed(victim, "weapon_iron_sword") ~= nil, "the sword stays where it is")
+            assert(itemNamed(victim, "utility_jealous_resin") ~= nil, "and so does the pot itself")
+
+            -- The grid of a foe is hidden until it is assayed, so the log may report the failure but
+            -- never the charm behind it.
+            local last = c.log[#c.log]
+            assert(last.text:find("cannot get into"), "the attempt is logged, got: " .. last.text)
+            assert(not last.text:find("Resin"), "and it never names the ward: " .. last.text)
+        end,
+    },
+    {
+        name = "Sundered opens a varnished grid back up",
+        fn = function()
+            local thief = Character.instantiate("character_archer")
+            equip(thief, { "ability_pickpocket" })
+            local victim = Character.instantiate("character_bandit")
+            equip(victim, { "weapon_iron_sword", "utility_jealous_resin" })
+            local c = Combat.new(arena(8, 8), { unit(thief, 2, 2) }, { unit(victim, 3, 2) })
+
+            Status.apply(c, c.units[2], "status_sundered")
+            withRandom(1, function()
+                assert(Combat.steal(c, c.units[1], c.units[2]) ~= nil,
+                    "with its relics gagged, the varnish lets go")
+            end)
+        end,
+    },
+    {
         name = "a Decoy is always the first thing a thief grabs",
         fn = function()
             local thief = Character.instantiate("character_archer")

@@ -19,7 +19,7 @@ return {
     flavor = "A tenth of everything, owed. She has read the passage very carefully and it does not say a tenth of hers.",
     sprite = "assets/items/consumable_the_tithe.png",
     type = "consumable",
-    -- No `potion` tag -- see Borrowed Hands: the Market resells that tag and ignores standing.
+    -- No `potion` tag -- see Borrowed Hands: the Cafe resells that tag and ignores standing.
     tags = { "elixir" },
     class = "alchemist",
     discipline = "apothecary",

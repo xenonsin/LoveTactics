@@ -26,11 +26,15 @@ return {
     -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
     signatureWeapon  = "weapon_poachers_kris",
     signatureAbility = "ability_bolas",
-    -- 1. Net an unrooted foe. 2. Once rooted, execute it -- the bonus lands on the Rooted.
+    -- 1. Something is already rooted: execute it -- the bonus lands on the Rooted, and the opening
+    -- does not come round again. 2. Nothing rooted yet: net one. The payoff has to be asked about
+    -- BEFORE the setup, or the poacher nets a second foe while the first stands pinned and
+    -- unexecuted -- which is what `urgent` says. Written in that order too: priority decides, but a
+    -- list whose declaration order disagrees with its priorities reads as a bug to the next person.
     ai = {
-        { priority = "high", act = "cast", item = "ability_bolas",
-          when = { subject = "any_foe", test = "lacks_status", value = "status_root" } },
         { priority = "urgent", act = "attack", item = "ability_throatcut", targetPref = "lowest_hp",
           when = { subject = "any_foe", test = "has_status", value = "status_root" } },
+        { priority = "high", act = "cast", item = "ability_bolas",
+          when = { subject = "any_foe", test = "lacks_status", value = "status_root" } },
     },
 }

@@ -45,6 +45,207 @@ return {
             assert(Editor.moveRule(list, 99, 1) == 99, "moving a row that isn't there does nothing")
         end,
     },
+    {
+        name = "insertIndexAt names the gap between rows, not the row under the pointer",
+        fn = function()
+            local char = Character.instantiate("character_mage")
+            local ed = Editor.new({ x = 0, y = 100, w = 800, h = 600, char = char, fonts = {} })
+            char.aiRules = rules(4)
+
+            -- The boundary is a row's MIDPOINT: above it the carried row lands before that row, below
+            -- it after. That is what makes a drag land somewhere instead of swapping with whatever it
+            -- happens to be over.
+            for i = 1, 4 do
+                local r = ed:slotRect(i)
+                assert(ed:insertIndexAt(r.y + 2) == i,
+                    "just inside the top of row " .. i .. " inserts AT " .. i)
+                assert(ed:insertIndexAt(r.y + r.h - 2) == math.min(4, i + 1),
+                    "past its midpoint, the next gap down")
+            end
+
+            assert(ed:insertIndexAt(-9999) == 1, "carried above the list, the row lands first")
+            assert(ed:insertIndexAt(9999) == 4,
+                "carried past the end it lands LAST, never on the '+ Add rule' line")
+
+            ed.scroll = 2
+            assert(ed:insertIndexAt(ed:slotRect(3).y + 2) == 3, "a scrolled list still reads its own gaps")
+        end,
+    },
+    {
+        name = "a mouse drag lifts the row out of the list and reorders only on release",
+        fn = function()
+            local char = Character.instantiate("character_mage")
+            local ed = Editor.new({ x = 0, y = 100, w = 800, h = 600, char = char, fonts = {} })
+            char.aiRules = rules(3)
+            -- mousepressed walks the rects a draw pass would have left behind; headless, we lay them
+            -- out from the same pure geometry the draw loop uses.
+            for i = 1, ed:rowCount() do ed.rowRects[i] = ed:rowRect(i) end
+
+            -- A press and release in place is a SELECTION, not a reorder.
+            local row2 = ed:slotRect(2)
+            ed:mousepressed(row2.x + 200, row2.y + 4)
+            assert(ed.cursor == 2, "pressing a row selects it")
+            assert(ed.drag and not ed.drag.active, "and arms a carry that has not started")
+            assert(not ed:mousereleased(), "releasing in place reports no drag happened")
+            assert(char.aiRules[2].marker == 2, "and nothing moved")
+
+            -- Press row 1 and carry it to the bottom.
+            local row1 = ed:slotRect(1)
+            ed:mousepressed(row1.x + 200, row1.y + 4)
+            local row3 = ed:slotRect(3)
+            ed:mousemoved(row1.x + 200, row3.y + row3.h - 2)
+            assert(ed.drag.active, "travelling past the threshold starts the carry")
+            assert(ed.drag.to == 3, "and the gap tracks the pointer")
+
+            -- Mid-drag the list is UNTOUCHED: the row is a picture riding the cursor.
+            assert(char.aiRules[1].marker == 1, "nothing has moved while the button is still down")
+            assert(ed:rowRect(1) == nil, "the carried row has no slot -- it is out of the list")
+            assert(ed:slotOf(2) == 1 and ed:slotOf(3) == 2,
+                "the rows it left have closed up above the gap")
+            assert(ed:draggedRect(), "and it has a rectangle at the cursor instead")
+
+            assert(ed:mousereleased(), "the release reports that a drag ended")
+            assert(char.aiRules[3].marker == 1, "and THAT is when the row lands")
+            assert(char.aiRules[1].marker == 2 and char.aiRules[2].marker == 3, "the rest closed up")
+            assert(ed.cursor == 3, "with the selection following the row")
+            assert(ed.drag == nil, "and the carry is let go")
+        end,
+    },
+    {
+        name = "a drag can be abandoned, and dropping a row where it started is not an edit",
+        fn = function()
+            -- Both properties come from the same decision -- the list is not touched until the button
+            -- comes up -- and both are things the live-reorder version could not offer.
+            local char = Character.instantiate("character_mage")
+            -- Its own blueprint carries a single rule, and one row cannot be reordered at all -- give
+            -- it a list with somewhere to go, still inherited (no overlay).
+            char.ai = rules(3)
+            local ed = Editor.new({ x = 0, y = 100, w = 800, h = 600, char = char, fonts = {} })
+            assert(char.aiRules == nil and #char.ai == 3, "three inherited rules, not yet owned")
+            for i = 1, ed:rowCount() do ed.rowRects[i] = ed:rowRect(i) end
+            local row1 = ed:slotRect(1)
+
+            -- A click that never travels leaves the blueprint list alone.
+            ed:mousepressed(row1.x + 200, row1.y + 4)
+            ed:mousereleased()
+            assert(char.aiRules == nil, "selecting a row is not an edit")
+
+            -- Carrying a row and pressing Esc puts it back, still without taking ownership.
+            ed:mousepressed(row1.x + 200, row1.y + 4)
+            ed:mousemoved(row1.x + 200, ed:slotRect(3).y + 2)
+            assert(ed.drag.active, "the carry started")
+            assert(ed:cancel(), "cancel consumes the escape")
+            assert(ed.drag == nil, "the row is dropped in mid-air")
+            assert(char.aiRules == nil, "and an abandoned drag never took the list over")
+
+            -- Picking a row up and putting it straight back down is likewise not an edit.
+            ed:mousepressed(row1.x + 200, row1.y + 4)
+            ed:mousemoved(row1.x + 210, row1.y + 6)
+            assert(ed.drag.active and ed.drag.to == 1, "carried, but still over its own place")
+            ed:mousereleased()
+            assert(char.aiRules == nil, "dropping a row where it began changes nothing")
+
+            -- A drag that actually moves something is what mints the overlay.
+            ed:mousepressed(row1.x + 200, row1.y + 4)
+            ed:mousemoved(row1.x + 200, ed:slotRect(3).y + 2)
+            ed:mousereleased()
+            assert(char.aiRules ~= nil, "a completed move takes ownership")
+            assert(#char.aiRules == #char.ai, "seeded whole, so nothing inherited is lost")
+        end,
+    },
+
+    -- ---------------------------------------------------------------------
+    -- The option dropdown
+    -- ---------------------------------------------------------------------
+    {
+        name = "a dropdown opens on the value the rule already holds, and cancelling changes nothing",
+        fn = function()
+            local char = Character.instantiate("character_mage")
+            local ed = Editor.new({ x = 0, y = 100, w = 800, h = 600, char = char, fonts = {} })
+            char.aiRules = { AI.newRule() }
+            ed.cursor, ed.region = 1, "fields"
+
+            -- Field 1 is Subject, the head of the IF clause. A blank rule watches the nearest foe.
+            assert(ed:openDropdown(1), "the subject field opens")
+            assert(ed.open.options[ed.open.cursor] == "nearest_foe",
+                "opened pointing at the rule's own value, not at the top of the list")
+
+            local was = ed.open.cursor
+            ed:navigate(0, 1)
+            assert(ed.open.cursor == was + 1, "down walks the options")
+            assert(ed:cancel(), "cancel reports it consumed the escape")
+            assert(ed.open == nil, "the list is closed")
+            assert(char.aiRules[1].when.subject == "nearest_foe",
+                "and browsing away from a value did not set it")
+        end,
+    },
+    {
+        name = "choosing from the dropdown writes the value and takes the list over",
+        fn = function()
+            local char = Character.instantiate("character_mage")
+            assert(char.aiRules == nil, "the mage starts on its blueprint list")
+            local ed = Editor.new({ x = 0, y = 100, w = 800, h = 600, char = char, fonts = {} })
+            ed.cursor, ed.region = 1, "fields"
+
+            ed:openDropdown(1)
+            assert(ed:chooseOption(1), "picking the first option reports the write")
+            assert(char.aiRules ~= nil, "choosing is an edit, so it mints the overlay")
+            assert(char.aiRules[1].when.subject == AI.SUBJECT_ORDER[1],
+                "and the rule holds what was picked")
+            assert(ed.open == nil, "the list closes behind the choice")
+        end,
+    },
+    {
+        name = "a click lands on the option row under it, and a long list scrolls",
+        fn = function()
+            local char = Character.instantiate("character_mage")
+            local ed = Editor.new({ x = 0, y = 100, w = 800, h = 600, char = char, fonts = {} })
+            local rule = AI.newRule()
+            rule.when.test = "has_status" -- the longest vocabulary in the editor
+            rule.when.value = "status_burn"
+            char.aiRules = { rule }
+            ed.cursor, ed.region = 1, "fields"
+
+            -- subject, test, value, act, item, prefer -- the value field is 3rd once the test takes one.
+            local fields = Editor.visibleFields(rule, char)
+            local valueAt
+            for i, f in ipairs(fields) do if f.key == "value" then valueAt = i end end
+            assert(valueAt, "the value field is on show for has_status")
+
+            ed:openDropdown(valueAt)
+            assert(#ed.open.options > 8, "the status list is longer than the dropdown's window")
+            assert(ed.open.cursor <= ed.open.scroll + 8 and ed.open.cursor > ed.open.scroll,
+                "it opened scrolled so the current value is actually visible")
+
+            local r = ed:dropdownRect()
+            local first = ed:dropdownIndexAt(r.x + 10, r.y + 4)
+            assert(first == ed.open.scroll + 1, "the top row reads as the first option in the window")
+            assert(ed:dropdownIndexAt(r.x + 10, r.y - 20) == nil, "and a point off the list reads as nothing")
+
+            -- Relative, because the list did not open at the top: it opened wherever the current
+            -- status sits in seventy of them.
+            local before, rowsBefore = ed.open.scroll, ed.scroll
+            ed:wheelmoved(-1)
+            assert(ed.open.scroll == before + 1, "the wheel scrolls the open list")
+            assert(ed.scroll == rowsBefore, "and leaves the rule rows behind it where they were")
+        end,
+    },
+    {
+        name = "a dropdown with no room below itself flips above its field",
+        fn = function()
+            -- The lower fields sit near the panel's bottom edge; a list drawn downward from one of
+            -- them would run off the panel and could not be clicked.
+            local char = Character.instantiate("character_mage")
+            local ed = Editor.new({ x = 0, y = 0, w = 800, h = 200, char = char, fonts = {} })
+            char.aiRules = { AI.newRule() }
+            ed.cursor, ed.region = 1, "fields"
+
+            ed:openDropdown(4)
+            local bar, r = ed:fieldBar(4), ed:dropdownRect()
+            assert(r.y + r.h <= bar.y, "the list sits entirely above the bar that opened it")
+            assert(r.y >= ed.y, "and still inside the panel")
+        end,
+    },
 
     -- ---------------------------------------------------------------------
     -- Field visibility
@@ -173,7 +374,6 @@ return {
             agree(AI.SUBJECT_ORDER, AI.SUBJECTS, "subject")
             agree(AI.TEST_ORDER, AI.TESTS, "test")
             agree(AI.ACTION_ORDER, AI.ACTIONS, "action")
-            agree(AI.PRIORITY_ORDER, AI.PRIORITY, "priority")
         end,
     },
 
@@ -231,7 +431,8 @@ return {
             assert(AI.SUBJECTS[rule.when.subject], "its subject is real")
             assert(AI.TESTS[rule.when.test], "its test is real")
             assert(AI.ACTIONS[rule.act], "its action is real")
-            assert(pcall(AI.priorityOf, rule), "its priority is real")
+            assert(rule.priority == nil,
+                "and it carries no band -- a player rule is ordered by its position in the list")
             assert(#AI.describeRule(rule) > 0, "and it renders as a sentence")
         end,
     },
@@ -293,6 +494,67 @@ return {
         end,
     },
     {
+        name = "seeding the overlay sorts the blueprint into its running order and drops the band",
+        fn = function()
+            -- The blueprint is ordered by an authored priority the player never sees; their overlay is
+            -- ordered by position. Copying across in declaration order would silently reorder the
+            -- character the moment its owner opened the tab -- a rule that had been firing first could
+            -- quietly stop. So the seed sorts first, then strips.
+            local blueprint = {
+                { priority = "normal",    act = "attack", marker = "ordinary" },
+                { priority = "emergency", act = "wait",   marker = "dying" },
+                { priority = "normal",    act = "cast",   marker = "ordinary2" },
+                { priority = "urgent",    act = "support", marker = "hurt" },
+            }
+            local seeded = Editor.seedFrom(blueprint)
+
+            assert(#seeded == 4, "every rule comes across")
+            assert(seeded[1].marker == "dying", "emergency first -- the order it was actually running in")
+            assert(seeded[2].marker == "hurt", "then urgent")
+            assert(seeded[3].marker == "ordinary" and seeded[4].marker == "ordinary2",
+                "and two rules sharing a band keep the order their author wrote them in")
+
+            for _, rule in ipairs(seeded) do
+                assert(rule.priority == nil,
+                    "the band is dropped -- left in, it would outrank the positions the player drags")
+            end
+            assert(seeded[1] ~= blueprint[2], "and the copies are independent of the blueprint")
+            assert(blueprint[2].priority == "emergency", "which is left untouched")
+        end,
+    },
+    {
+        name = "taking over a list keeps its own order, and promotes it above the kit",
+        fn = function()
+            -- Two things happen at takeover, and only one of them is a no-op.
+            --
+            -- The character's OWN rules keep their relative order -- that is what the seed sort is
+            -- for, and the poacher is the case that proves it: its rules are authored `urgent` then
+            -- `high`, so the execute has to still come before the net once the bands are gone.
+            --
+            -- But the list as a whole is PROMOTED. An owned list sits below every authored band
+            -- (AI.PLAYER_PRIORITY), where the blueprint's rules sat at their own. So the poacher's
+            -- healing potion -- an `emergency` item rule that used to lead everything -- now follows
+            -- the player's list. That is the deliberate price of the visible list being authoritative:
+            -- what is on screen leads, or the tab is lying about "first match wins".
+            local char = Character.instantiate("character_poacher")
+            local before = AI.rulesFor({ char = char })
+            assert(before[1].item and before[1].item.id == "consumable_healing_potion",
+                "before takeover, the potion's emergency rule leads")
+
+            local ed = Editor.new({ x = 0, y = 0, w = 800, h = 600, char = char, fonts = {} })
+            ed:ownedRules() -- the first edit mints the overlay
+            local after = AI.rulesFor({ char = char })
+
+            assert(#before == #after, "the same rules, merged either way")
+            assert(after[1].rule.item == "ability_throatcut",
+                "after takeover the player's own list leads, in its own order")
+            assert(after[2].rule.item == "ability_bolas",
+                "and the execute still precedes the net, as the bands had it")
+            assert(after[3].item and after[3].item.id == "consumable_healing_potion",
+                "with the kit's own rules following the list rather than pre-empting it")
+        end,
+    },
+    {
         name = "deleting every rule leaves the list owned-and-empty, not resurrected",
         fn = function()
             -- The trap the ownership-by-presence rule closes: if an emptied overlay read back as
@@ -321,7 +583,8 @@ return {
             local p = Player.new()
             local char = p.roster[1]
             char.aiRules = { AI.newRule() }
-            char.aiRules[1].priority = "urgent"
+            char.aiRules[1].act = "support"
+            char.aiRules[1].targetPref = "lowest_hp"
             char.aiRules[1].when = { subject = "ally_lowest_hp", test = "hp_pct_below", value = 0.35 }
             char.autoBattle = true
             char.archetype = "skirmish"
@@ -330,7 +593,8 @@ return {
             assert(restored, "the save round-trips at all")
             local back = restored.roster[1]
             assert(back.aiRules and #back.aiRules == 1, "the rule list came back")
-            assert(back.aiRules[1].priority == "urgent", "with its priority band")
+            assert(back.aiRules[1].act == "support", "with its action")
+            assert(back.aiRules[1].targetPref == "lowest_hp", "and its target preference")
             assert(back.aiRules[1].when.value == 0.35, "and its authored value")
             assert(back.autoBattle == true, "auto-battle came back")
             assert(back.archetype == "skirmish", "so did the archetype override")

@@ -19,7 +19,7 @@ return {
     flavor = "The first plague doctors were not immune. They were simply willing, which is cheaper.",
     sprite = "assets/items/consumable_plaguebearers_draught.png",
     type = "consumable",
-    -- NOT tagged `potion`, and that is a rule rather than a preference: the Market's `stockTags` resells
+    -- NOT tagged `potion`, and that is a rule rather than a preference: the Cafe's `stockTags` resells
     -- anything wearing it, and a general store ignores repRank entirely (docs/classes.md). A
     -- discipline-locked draught tagged `potion` would sit on the grocer's shelf from the first visit,
     -- which unlocks the gated item without the gate.

@@ -12,7 +12,7 @@
 -- are sold on the same shelf and neither is worth much alone.
 --
 -- The line runs away from the sapper along whichever axis the aim leans, so it is laid across an
--- approach rather than dropped in a heap. Not tagged `potion`: the Market resells that tag and ignores
+-- approach rather than dropped in a heap. Not tagged `potion`: the Cafe resells that tag and ignores
 -- standing (docs/classes.md).
 return {
     name = "Sapper's Line",

@@ -77,7 +77,7 @@ eight **vendors** are the shopkeepers of the town's shops; the **Demon Lord** is
 
 ### The eight vendors — shopkeepers
 One VN portrait each, for the shop's proprietor. Seven are themed to a sin (their quest line ends
-facing that general); the Market is the neutral road-store. Files match the vendor id
+facing that general); the Cafe is the neutral road-store. Files match the vendor id
 (`data/vendors/*.lua`).
 
 | File | Shop | Sin | The shop's read |
@@ -89,7 +89,7 @@ facing that general); the Market is the neutral road-store. Files match the vend
 | `arcanum.png` | **The Arcanum** | Pride | A library that has outlived every scholar who swore he could read it safely. |
 | `undercroft.png` | **The Undercroft** | Greed | No sign, no door you'd notice; everything inside belonged to someone else. |
 | `hunters_lodge.png` | **Hunter's Lodge** | Gluttony | Antlers on every beam; they ask what you killed before your name. |
-| `market.png` | **The Market** | — (neutral) | Everything the road needs and nothing the temple sells. |
+| `cafe.png` | **The Cafe** | — (neutral) | Everything the road needs and nothing the temple sells. |
 
 ### The final boss
 | File | Name | Notes |

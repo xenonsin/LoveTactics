@@ -153,7 +153,7 @@ Two notes on how this shook out:
   had *no* armour at all before this pass, so the five quest-only pieces are most of what exists there
   — which reads correctly for the two sins whose gear is taken rather than ordered. If either shelf
   grows, it grows on the priced side; the five stay five.
-- **The elemental coats are the Crucible's, not the Market's.** `armor_salamander_hide`,
+- **The elemental coats are the Crucible's, not the Cafe's.** `armor_salamander_hide`,
   `armor_stormcloth` and `armor_rimecloth` are the counterplay to fire, lightning and cold — and in
   this game those overwhelmingly arrive from a bomb, a stone or a spilled reagent. The house that sells
   the burning sells the coat, which is envy's voice and not a general good.
@@ -206,22 +206,22 @@ Two consequences worth holding on to:
 
 - **A `price` with no `class` is a *general good*, not a build failure** — it goes on the general
   store's shelf (see below). What `tests/progression_spec.lua` still forbids is a price that *nothing*
-  stocks: a classless priced item must actually appear in the Market's stock. The reverse — `class`
+  stocks: a classless priced item must actually appear in the Cafe's stock. The reverse — `class`
   with no `price` — is fine and meaningful: it says "this tallies here, but nobody sells it."
   `armor_sworn_aegis`, the knight's bound relic, is one of those.
 - **The weapon floor counts *sellable* weapons**, since a shelf you cannot buy from is not a shelf.
 
 ### The general store
 
-There is an eighth vendor that is not a class shelf: the **Market** (`data/vendors/market.lua`,
+There is an eighth vendor that is not a class shelf: the **Cafe** (`data/vendors/cafe.lua`,
 `general = true`). It sells two things:
 
 1. **The classless priced goods** — the mundane supplies no sin claims: a torch, the `Boots of Speed`.
    An item lands here by having a `price` and **no `class`**; `models/vendor.lua` (`Vendor.sells`)
    derives that stock exactly the way a class vendor derives its own, so a classless priced blueprint
    is all it takes.
-2. **Resold potions** — anything bearing a tag in the Market's `stockTags` (today, `potion`), whatever
-   house brews it. A healing potion is an alchemist item *and* a Market item; it appears on both
+2. **Resold potions** — anything bearing a tag in the Cafe's `stockTags` (today, `potion`), whatever
+   house brews it. A healing potion is an alchemist item *and* a Cafe item; it appears on both
    shelves. This is the one place the shelves overlap on purpose.
 
 It has no sin and runs no quest line: nobody quests for the grocer's favour, so every ware is
@@ -231,8 +231,8 @@ from eroding the class shelf it borrows from:
 
 - **A resale is not a re-home.** The potion keeps its `class`, so it still *grows the alchemist's tally*
   and still *refines only at the alchemist* — `Vendor.canRefineHere` lets a consumable be honed at its
-  own house alone, never at a shop that merely resells it. The Market's Upgrade tab is empty of potions.
-- **The Market sells no weapons and no abilities.** Those carry identity; the general store carries
+  own house alone, never at a shop that merely resells it. The Cafe's Upgrade tab is empty of potions.
+- **The Cafe sells no weapons and no abilities.** Those carry identity; the general store carries
   supplies and the potions everyone drinks. Its stock is classless gear plus resold consumables, and
   `Vendor.canUpgradeHere` refuses to hone anything here.
 
@@ -367,7 +367,7 @@ belong here rather than there, because they bind any future roster.
 deep shelf, and that stock is spent — another sweep would empty the base shelves the disciplines are
 supposed to sit *behind*.
 
-**A discipline consumable never wears the `potion` tag.** The Market resells anything in its `stockTags`
+**A discipline consumable never wears the `potion` tag.** The Cafe resells anything in its `stockTags`
 and a general store ignores `unlockQuests` entirely (see *The general store* above), so a gated draught tagged
 `potion` sits on the grocer's shelf from the first visit — the gate is still there and the item is behind
 it at its own vendor, and you can buy it anyway. The existing discipline consumables had all quietly

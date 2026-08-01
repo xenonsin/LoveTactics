@@ -7078,7 +7078,20 @@ end
 -- player's stash (combat.stash, wired to player.stash by the battle state -- unbounded), while an
 -- enemy thief with nowhere to put it simply destroys it. Returns the stolen item, or nil if the
 -- victim carried nothing worth taking.
+--
+-- A bearer of the Jealous Resin (Trait.flag `wardsTheft`) refuses the whole grid rather than one item,
+-- so every theft vector -- Pickpocket, Shakedown -- comes away empty against it. The refusal is logged
+-- as a failure of the ATTEMPT and never names the charm: an enemy's grid is hidden until it is assayed
+-- (Combat.revealInventory), and a log line that read "the Jealous Resin holds" would hand over an item
+-- the player has not earned the right to see.
 function Combat.steal(combat, thief, victim)
+    if Trait.flag(victim, "wardsTheft") then
+        Combat.logEvent(combat, "action",
+            string.format("%s cannot get into %s's kit.", unitName(thief), unitName(victim)),
+            { thief, victim })
+        return nil
+    end
+
     local best, pool = nil, {}
     for i = 1, Character.MAX_INVENTORY do
         local item = victim.char.inventory[i]

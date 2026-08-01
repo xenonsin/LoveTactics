@@ -28,7 +28,7 @@ return {
     sprite = "assets/items/consumable_witchlight_flare.png",
     type = "consumable",
     tags = { "light" },
-    price = 90, -- no class: the Market stocks it, and every party should carry one
+    price = 90, -- no class: the Cafe stocks it, and every party should carry one
     unlockQuests = 0,
     maxStack = 3,
     activeAbility = {

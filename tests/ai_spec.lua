@@ -541,29 +541,61 @@ return {
     -- Rules as data: items, blueprints, and the merge
     -- ---------------------------------------------------------------------
     {
-        name = "position is priority: declaration order decides, within a source",
+        name = "priority is authored as a name, and orders the sources the player never sees",
         fn = function()
-            -- There is no priority field. A rule's urgency is where it sits, so the merge must hand
-            -- back a character's own rules in exactly the order they were written -- if it did not,
-            -- the Tactics tab's drag-to-reorder would be editing something that does not decide
-            -- anything.
-            local char = caster("ability_jolt")
-            local first  = { act = "wait" }
-            local second = { act = "attack" }
-            char.ai = { first, second }
+            -- A bare integer says nothing about what a rule is FOR, and two authors picking numbers
+            -- independently cannot agree. The names are the interface; the numbers are an
+            -- implementation detail of the sort.
+            assert(AI.priorityOf({ priority = "emergency" }) < AI.priorityOf({ priority = "urgent" }),
+                "an emergency outranks something merely urgent")
+            assert(AI.priorityOf({ priority = "urgent" }) < AI.priorityOf({ priority = "normal" }),
+                "urgent outranks the ordinary business of the turn")
+            assert(AI.priorityOf({ priority = "normal" }) < AI.priorityOf({ priority = "fallback" }),
+                "and anything outranks the floor")
+            assert(AI.priorityOf({}) == AI.PRIORITY.normal, "an unnamed rule is normal")
+            assert(AI.priorityOf({ priority = 25 }) == 25, "a number is taken at face value")
+            assert(not pcall(AI.priorityOf, { priority = "verygreat" }), "a typo'd band raises")
+
+            -- A blueprint rule CAN reach across a source boundary: this is the whole reason the band
+            -- exists, and the case that has no other expression. `urgent` on the character's own list
+            -- must beat an item's `high`, even though the item source ranks above the character one.
+            local char = caster("ability_fireball") -- fireball's own block is `high`
+            char.ai = { { priority = "urgent", act = "wait" } }
             local c = Combat.new(arena(8, 8),
                 { unit(swordsman(), 4, 4) }, { unit(char, 4, 6) })
 
             local merged = AI.rulesFor(c.units[2])
-            local at1, at2
-            for i, e in ipairs(merged) do
-                if e.rule == first then at1 = i end
-                if e.rule == second then at2 = i end
-            end
-            assert(at1 and at2, "both authored rules are in the merge")
-            assert(at1 < at2, "and in the order they were declared, not reordered by anything")
+            assert(merged[1].rule == char.ai[1],
+                "the blueprint's urgent rule leads the item's high one, across the rank boundary")
+        end,
+    },
+    {
+        name = "the player's own list leads every authored band, and orders itself by position",
+        fn = function()
+            -- The two regimes meeting. The player's list is the one on screen and the one they can
+            -- drag, so it is authoritative: it sits below every authored band, and within itself it
+            -- is ordered by POSITION alone -- no band, because there is none to author.
+            local char = caster("ability_heal") -- heal's own block is `urgent`
+            local firstRow  = { act = "wait" }
+            local secondRow = { act = "attack" }
+            char.aiRules = { firstRow, secondRow }
+            local c = Combat.new(arena(8, 8),
+                { unit(swordsman(), 4, 4) }, { unit(char, 4, 6) })
 
-            -- The rendered sentence no longer carries a band prefix, because there is no band.
+            local merged = AI.rulesFor(c.units[2])
+            assert(merged[1].rule == firstRow, "the row the player put first leads")
+            assert(merged[2].rule == secondRow, "then the row they put second")
+            assert(merged[3].item and merged[3].item.id == "ability_heal",
+                "and only then the item's own urgent rule -- your list, then what the game brought")
+
+            -- Position is the ONLY thing separating the player's rows, so swapping them swaps the
+            -- merge. This is what makes dragging a row in the Tactics tab a real edit.
+            char.aiRules = { secondRow, firstRow }
+            local again = AI.rulesFor(c.units[2])
+            assert(again[1].rule == secondRow and again[2].rule == firstRow,
+                "reordering the list reorders the merge")
+
+            -- And the rendered sentence carries no band, because the player's rules have none.
             local sentence = AI.describeRule({ act = "support" })
             assert(sentence:sub(1, 3) == "if ", "a rule reads as a plain if/then, got: " .. sentence)
         end,
@@ -571,11 +603,11 @@ return {
     {
         name = "the merge is totally ordered, so two runs cannot disagree",
         fn = function()
-            -- table.sort is not stable in Lua 5.1. Before position became the ordering, two items
-            -- each contributing one rule scored the same rank AND the same index-within-list, and
-            -- were told apart only by their authored priorities -- so with priority gone they would
-            -- have compared equal and sorted arbitrarily. The ordinal in `collect` is what closes
-            -- that, and this is the property it exists for.
+            -- table.sort is not stable in Lua 5.1, so the comparator has to be total. It very nearly
+            -- wasn't: `order` used to be the index WITHIN the list being collected, so two items each
+            -- contributing one rule scored the same rank and the same order, and were separated only
+            -- if their authored priorities happened to differ. Two rules at the same band would have
+            -- sorted arbitrarily. The running ordinal in `collect` is what closes that.
             local char = caster("ability_heal")
             -- Two item-borne rule sources on one body, plus its own list and the posture floor.
             char.inventory = char.inventory or {}
@@ -746,8 +778,8 @@ return {
                 { unit(swordsman(), 4, 4) }, { unit(char, 4, 6) })
             local merged = AI.rulesFor(c.units[2])
 
-            -- Source rank is now the whole cross-source ordering, and the player's own list is rank 1
-            -- -- so their rule leads, and the heal that rides on the spell follows it.
+            -- The player's list sits below every authored band, so their rule leads outright -- even
+            -- ahead of Heal's own `urgent` block, which is the point of the overlay being theirs.
             assert(merged[1].rule.act == "wait", "the player's own list leads every other source")
             assert(merged[2].item and merged[2].item.id == "ability_heal",
                 "and the item's own block comes next, ahead of the posture floor")
@@ -802,11 +834,8 @@ return {
                         end
                         assert(AI.ACTIONS[rule.act or "attack"],
                             id .. " names an unknown act: " .. tostring(rule.act))
-                        -- The field is gone: a rule that still carries one is authored against a
-                        -- sort that no longer exists, and would sit wherever it was declared while
-                        -- reading as though it had asked for a band.
-                        assert(rule.priority == nil,
-                            id .. " still carries a `priority` key -- position is the ordering now")
+                        assert(pcall(AI.priorityOf, rule),
+                            id .. " names an unknown priority: " .. tostring(rule.priority))
                     end
                 end
             end
@@ -834,11 +863,8 @@ return {
                         end
                         assert(AI.ACTIONS[rule.act or "attack"],
                             id .. " names an unknown act: " .. tostring(rule.act))
-                        -- The field is gone: a rule that still carries one is authored against a
-                        -- sort that no longer exists, and would sit wherever it was declared while
-                        -- reading as though it had asked for a band.
-                        assert(rule.priority == nil,
-                            id .. " still carries a `priority` key -- position is the ordering now")
+                        assert(pcall(AI.priorityOf, rule),
+                            id .. " names an unknown priority: " .. tostring(rule.priority))
                     end
                 end
             end
