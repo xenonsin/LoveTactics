@@ -110,22 +110,6 @@ only.
 - **Phase 2 — the vendors (8)** — the shopkeepers the player meets every town visit.
 - **Phase 3 — the antagonists**: the seven generals + the Demon Lord — the story's payoff.
 
-## Code follow-ups (so the game and the report agree)
-
-- **Retire the generic classes — done.** The player already starts lean (a New Game resets to just
-  the avatar, then Rowan is sworn in the prologue; the rest are recruited at slot 2 of each vendor
-  line), so `data/player.lua`'s default roster/party is now `character_rowan` only, and the
-  `portrait` field was stripped from `character_mage` / `character_archer` / `character_priest`.
-  Those blueprints are **kept** — they're load-bearing enemy/ally/test stand-ins across ~15 quests
-  and ~60 tests (e.g. `win = { assassinate, target = character_priest }`, `allies = { character_priest }`),
-  where a companion would make no sense — but they no longer appear in the party or owe a portrait.
-- **Wire the new portraits (still to do)** — add `portrait = "assets/portraits/<id>.png"` to the
-  seven other `data/vendors/*.lua` and to `character_demon_lord.lua`, so `art-report` counts them
-  and the VN box can show them.
-
-After the vendor/boss wiring, `& "E:\LOVE\lovec.exe" . art-report` will list exactly these 24
-portrait files (the three generic `mage`/`archer`/`priest` portraits are already gone from it).
-
 ## Licensing
 
 **Full commercial rights / work-for-hire buyout** — use in a commercial game and its marketing, no

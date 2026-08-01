@@ -298,6 +298,19 @@ of this exists. When the first rig lands, wiring it takes:
   back to the composed token, never a crash), and an `art-report` rule that counts the rig triple
   (`.json`/`.skel` + `.atlas` + page PNG) rather than a lone PNG (`tools/art_report.lua` `ORDER`).
 
+## Code follow-ups (wiring a portrait)
+
+- **Point the remaining blueprints at their portrait (still to do)** — add
+  `portrait = "assets/portraits/<id>.png"` to the seven `data/vendors/*.lua` that still lack the
+  field, and to `character_demon_lord.lua`, so `art-report` counts them and the VN box can show
+  them. After that, `& "E:\LOVE\lovec.exe" . art-report` lists exactly the 24 portrait files in
+  [commission-portraits.md](commission-portraits.md).
+- **The generic classes owe no portrait — done.** `data/player.lua`'s default roster/party is
+  `character_rowan` only (a New Game starts lean; the rest are recruited at slot 2 of each vendor
+  line), and the `portrait` field is stripped from `character_mage` / `character_archer` /
+  `character_priest`. Those blueprints stay — they are load-bearing enemy/ally/test stand-ins across
+  ~15 quests and ~60 tests — but they never reach the dialogue box.
+
 ## The icon pipeline
 
 Icons are not hand-placed — they are rendered from game-icons.net by a three-step pipeline. Nothing
