@@ -1,7 +1,7 @@
 -- Thief exemplar (rogue subclass). Larceny: strikes steal an item, buff, or stat. Met as a guild
 -- fence, a recruit/mentor. Kit from data/disciplines/thief.lua.
 return {
-    name = "Fence",
+    name = "Thief",
     sprite = "assets/chars/thief.png",
     class = "rogue",
     -- Hit-and-run: rob before the kill, then slip out of reach (models/ai.lua `skirmish`).

@@ -6,7 +6,7 @@
 -- Shadowclone -- blink between decoys, vanish from sight, strike from stealth. No VN portrait (a template,
 -- not a companion) -- it falls back to its composed token.
 return {
-    name = "The Shadowless",
+    name = "Ninja",
     sprite = "assets/chars/ninja.png",
     boss = true, -- a boss objective: immune to execute (Coup de Grace) and to Charm
     class = "rogue",

@@ -15,6 +15,10 @@ return {
             assert(obj.type == "control", "it is the contested control objective")
             assert(obj.maxTicks and obj.maxTicks > 0, "with a tick limit")
             assert(#obj.nodes >= 2 and obj.moveEvery > 0, "and a node that relocates across waypoints")
+            -- The limit has to be short enough that outlasting it beats wiping the other side (which
+            -- wins outright, Combat.outcomeFor), and long enough for the node to visit every waypoint.
+            assert(obj.maxTicks == obj.moveEvery * #obj.nodes,
+                "the round is exactly one circuit of the waypoints -- no more, no less")
             for _, node in ipairs(obj.nodes) do
                 assert(#node > 0 and node[1].x and node[1].y, "each waypoint is a list of board tiles")
             end

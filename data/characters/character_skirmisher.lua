@@ -2,7 +2,7 @@
 -- shot that does not close your move. Met as a raider outrider, a boss. Home shelf is hunter
 -- (Harrier's Bow). Kit from data/disciplines/skirmisher.lua.
 return {
-    name = "Outrider",
+    name = "Skirmisher",
     sprite = "assets/chars/skirmisher.png",
     boss = true,
     class = "hunter",

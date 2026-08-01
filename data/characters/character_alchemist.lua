@@ -1,6 +1,6 @@
 return {
     name = "Alchemist",
-    sprite = "assets/chars/mage.png",
+    sprite = "assets/chars/alchemist.png",
     -- No portrait: the GENERIC alchemist template, not a companion. Ren (the alchemist companion) is the
     -- named specialization built on this base. Only ever an enemy / ally / test body -- it falls back to
     -- the letter token if it speaks.

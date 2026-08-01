@@ -2,7 +2,7 @@
 -- are paid for in blood. Met as a boss -- an arena berserker who fights harder the closer it is to
 -- dying. Kit drawn from the Barbarian shelf (data/disciplines/barbarian.lua).
 return {
-    name = "Berserker",
+    name = "Barbarian",
     sprite = "assets/chars/barbarian.png",
     boss = true,
     class = "fighter",

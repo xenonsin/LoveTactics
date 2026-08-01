@@ -1,8 +1,9 @@
 -- Tests for the `control` objective in models/combat.lua: the multiplayer/draft ruleset where both
 -- sides bank points for holding a MOVING score node, and the higher score at a tick limit wins.
 --
--- These drive the objective's pure helpers over hand-built combat tables rather than simulating a
--- whole battle: the helpers only read combat.objective / combat.clock / combat.units / combat.score,
+-- These mostly drive the objective's pure helpers over hand-built combat tables rather than simulating
+-- a whole battle (the exception is the opening-scoreboard case, which is about what Combat.new's own
+-- construction rebase banks): the helpers only read combat.objective / combat.clock / combat.units / combat.score,
 -- and the point of the ruleset is that everything the node's position and the outcome depend on is a
 -- pure function of those -- no love.*, no wall-clock, no RNG -- so a lockstep duel can't desync on it.
 -- The real-time chess clock is deliberately NOT here: it lives in states/battle.lua, not the model.
@@ -10,6 +11,7 @@
 -- Pure logic, runs headless.
 
 local Combat = require("models.combat")
+local Fixture = require("tests.support.fixture")
 
 local function unit(side, x, y)
     return { alive = true, side = side, x = x, y = y }
@@ -66,6 +68,27 @@ return {
             combat.units[2].x, combat.units[2].y = 1, 1
             Combat.accrueControl(combat, 5)
             assert(Combat.scoreFor(combat, "party") == 5, "a contested node banks nothing")
+        end,
+    },
+    {
+        name = "a fight opens on a clean scoreboard, however fast the opening unit is",
+        fn = function()
+            -- The one case here that needs a REAL Combat.new: the construction rebase. It normalizes the
+            -- starting initiative spread, and that offset goes negative whenever the fastest unit's speed
+            -- stat outruns its weapon (Combat.initiative subtracts one from the other). Banking it would
+            -- hand the side standing on the node a negative score before anyone had moved -- and read the
+            -- node off a momentarily negative clock, so off the wrong waypoint at that.
+            local obj = { type = "control", maxTicks = 30, moveEvery = 10,
+                nodes = { { { x = 4, y = 4 } }, { { x = 4, y = 2 } }, { { x = 4, y = 6 } } } }
+            local map = Fixture.new(8, 8, { objective = obj })
+            local combat = Fixture.combat(map,
+                Fixture.unit("character_knight", 4, 4, { stats = { speed = 99 } }), -- opens well below 0
+                Fixture.unit("character_knight", 1, 1))
+
+            assert(combat.clock == 0, "the fight starts at tick 0")
+            assert(Combat.scoreFor(combat, "party") == 0 and Combat.scoreFor(combat, "enemy") == 0,
+                "and on 0-0, not on the rebase offset")
+            assert(combat.lastHolder == nil, "nobody has held the node yet, so the tie-break is unset")
         end,
     },
     {

@@ -3,7 +3,7 @@
 -- fist charms scale the punches and chi feeds Flurry and Asura Strike. Kit from
 -- data/disciplines/monk.lua.
 return {
-    name = "Ascetic",
+    name = "Monk",
     sprite = "assets/chars/monk.png",
     class = "priest",
     -- Punches to build chi, then dumps it on a burst; walks straight in (models/ai.lua `aggressive`).

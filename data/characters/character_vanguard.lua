@@ -2,7 +2,7 @@
 -- the line. Met as a shieldbreaker turncoat, a boss. Home shelf is knight. Kit from
 -- data/disciplines/vanguard.lua.
 return {
-    name = "Shieldbreaker",
+    name = "Vanguard",
     sprite = "assets/chars/vanguard.png",
     boss = true,
     class = "knight",

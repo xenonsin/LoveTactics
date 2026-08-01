@@ -2,7 +2,7 @@
 -- damage that also dispels. Met as a witch-finder, a boss. Home shelf is rogue (Confessor's Needle).
 -- Kit from data/disciplines/inquisitor.lua.
 return {
-    name = "Witch-Finder",
+    name = "Inquisitor",
     sprite = "assets/chars/inquisitor.png",
     boss = true,
     class = "rogue",

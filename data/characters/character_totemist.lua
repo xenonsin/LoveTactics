@@ -2,7 +2,7 @@
 -- negate zones. Met as a ward-carver, a mentor. Home shelf is hunter. Kit from
 -- data/disciplines/totemist.lua.
 return {
-    name = "Ward-Carver",
+    name = "Totemist",
     sprite = "assets/chars/totemist.png",
     class = "hunter",
     -- Raises totems and holds the ground they bless (models/ai.lua `support`).

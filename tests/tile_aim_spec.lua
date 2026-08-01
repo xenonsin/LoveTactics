@@ -69,6 +69,30 @@ return {
         end,
     },
     {
+        name = "a directional swing is oriented by the tile it is thrown FROM, not the aim alone",
+        fn = function()
+            -- The knight at (2,2), a bandit at (6,3), the aim (5,3) -- an empty tile inside the move
+            -- band. Thrown from where the knight stands now the facing is EAST, so the line runs
+            -- (5,3),(6,3) and skewers the bandit. Thrown from (5,2) -- a stand tile a walk-and-strike
+            -- could pick to reach that same aim -- the facing is SOUTH, the line runs (5,3),(5,4), and
+            -- it catches nobody.
+            --
+            -- One aim, two answers. This is why states/battle.lua asks the question from the stand tile
+            -- the click would fire from (armedActionAt/asIfStandingAt): asked from the tile the knight
+            -- is about to LEAVE, a click meant as a step resolved as a swing -- and the swing, thrown
+            -- from the tile it actually walked to, then landed on empty ground.
+            local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 2) }, { unit("character_bandit", 6, 3) })
+            local knight = c.units[1]
+            local spear = arm(knight, "weapon_iron_spear")
+
+            assert(Combat.castDoesSomething(c, knight, spear, 5, 3) == true,
+                "facing east from (2,2), the line runs on into the bandit at (6,3)")
+            knight.x, knight.y = 5, 2
+            assert(Combat.castDoesSomething(c, knight, spear, 5, 3) == false,
+                "facing south from (5,2), the very same aim sweeps two empty tiles")
+        end,
+    },
+    {
         name = "an axe's 3-wide arc counts a foe standing off the aimed tile",
         fn = function()
             -- The cleave is perpendicular to the facing, so a bandit beside the aimed cell is caught

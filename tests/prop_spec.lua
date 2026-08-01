@@ -373,6 +373,48 @@ return {
         end,
     },
     {
+        name = "a volley that covers a keg sets it off -- an area hit is a hit, whatever element it is",
+        fn = function()
+            -- Rain of Arrows carries no fire at all (pierce/physical), and its effect only iterates
+            -- fx.aoeUnits -- which never turns up furniture. The barrel at (5,5) sits on the bottom
+            -- edge of the volley aimed at (5,4); the bandit at (5,6) is OUTSIDE that 3x3 and adjacent
+            -- to the keg, so the only thing that can reach it is the blast.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 4, 2) }, { unit("character_bandit", 5, 6) })
+            local archer, bandit = c.units[1], c.units[2]
+            archer.char.inventory[4] = Item.instantiate("weapon_iron_bow") -- the volley needs one beside it
+            local rain = Item.instantiate("ability_rain_of_arrows")
+            archer.char.inventory[5] = rain
+            archer.char.stats.stamina.current = 99
+            local barrel = Prop.place(c, 5, 5, "prop_explosive_barrel")
+            local before = hp(bandit)
+
+            Combat.startTurn(c, archer)
+            assert(Combat.useItem(c, archer, rain, 5, 4), "the volley looses over the keg's tile")
+            assert(not barrel.alive, "arrows falling on a keg set it off, same as a spilled fire bomb")
+            assert(hp(bandit) < before, "and the foe standing beside it -- clear of the volley -- wears the blast")
+        end,
+    },
+    {
+        name = "a cast that lands no damage of its own leaves the furniture standing",
+        fn = function()
+            -- The other half of the rule: a barrel is broken by a BLOW, not by a working passing over
+            -- it. Blessing covers the same 3x3 a volley would and declares no damage at all, so the
+            -- crate under it is untouched.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 3, 3) }, { unit("character_bandit", 8, 8) })
+            local knight = c.units[1]
+            local blessing = grant(knight, "ability_blessing")
+            knight.char.stats.mana.current = 99
+            local crate = Prop.place(c, 4, 3, "prop_crate")
+            local before = crate.health
+
+            Combat.startTurn(c, knight)
+            assert(Combat.useItem(c, knight, blessing, 3, 3), "the benediction goes out over the crate")
+            assert(crate.health == before, "a buff cast across a crate does not splinter it")
+        end,
+    },
+    {
         name = "Prop.preview quotes the blast without a board to fire it on",
         fn = function()
             local out = Prop.preview("prop_explosive_barrel", 24)

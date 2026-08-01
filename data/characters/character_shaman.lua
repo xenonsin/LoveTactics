@@ -1,7 +1,7 @@
 -- Shaman exemplar (hunter x mage multiclass). Spirit totems: summoned spirits bound to hazards. Met as
 -- a spirit-caller, a mentor. Home shelf is hunter. Kit from data/disciplines/shaman.lua.
 return {
-    name = "Spirit-Caller",
+    name = "Shaman",
     sprite = "assets/chars/shaman.png",
     class = "hunter",
     -- Calls spirits, binds them to hazards, and drives them in from a kept distance (skirmish).

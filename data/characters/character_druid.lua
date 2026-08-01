@@ -1,7 +1,7 @@
 -- Druid exemplar (hunter subclass). Wildshape: swap the whole kit for a beast form for N turns. Met
 -- as a wild shapeshifter, a mentor. Kit from data/disciplines/druid.lua.
 return {
-    name = "Shapeshifter",
+    name = "Druid",
     sprite = "assets/chars/druid.png",
     class = "hunter",
     -- Shifts to bear and wades in, raven to reposition (models/ai.lua `aggressive` once in a form).

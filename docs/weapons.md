@@ -61,6 +61,14 @@ The battle screen gives the tile back by asking what the cast would actually **d
 3. It connects with nothing and the move is spent → **swing anyway**, into empty air. A wasted swing
    is the player's to make; a click that silently does nothing is not.
 
+The question is always put **from the tile the swing would be thrown from** — the stand tile a
+click-to-use walks to first, not the tile the unit is standing on when the click lands. A facing is
+read from wherever the wielder *ends up*, so the same aim answers differently from two different
+stand tiles: asked from the tile the unit is about to leave, a click meant as a step resolved as a
+swing, and the swing — thrown from the tile it actually walked to — then landed on empty ground.
+The board's blast footprint and the action-preview panel are weighed from that same tile, so the
+highlight, the numbers and what the click commits can never disagree.
+
 Ground-laying abilities classify themselves — a bear trap, a summon, `ability_writ_of_fire` and
 `weapon_the_stillness` all *place* something, which is doing something, so they always cast on bare
 earth. Nothing needs to be declared per item. The one escape hatch is **`groundAim = true`** on the

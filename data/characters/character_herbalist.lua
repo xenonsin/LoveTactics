@@ -2,7 +2,7 @@
 -- into consumables mid-fight, to mend or to poison. Met as a field-apothecary, a recruit. Home shelf
 -- is hunter. Kit from data/disciplines/herbalist.lua.
 return {
-    name = "Field-Apothecary",
+    name = "Herbalist",
     sprite = "assets/chars/herbalist.png",
     class = "hunter",
     -- Harvests the field, brews, and mends or poisons from it (models/ai.lua `support`).

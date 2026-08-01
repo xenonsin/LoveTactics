@@ -27,7 +27,9 @@
 --                      placing ability can scale it by its upgrade level -- exactly like trap.amount
 --   * color         -- { r, g, b } block colour the renderer falls back to while the art is missing
 --   * tags          -- descriptive tags (routed through damage mitigation like item tags). `explosive`
---                      is what a chain reaction looks for; `flammable` marks what fire should catch.
+--                      is what a chain reaction looks for; `flammable` marks what fire should catch
+--                      (descriptive today -- a damaging cast breaks whatever prop stands in its
+--                      footprint whatever element it was made of; see resolveCast).
 --   * biomes        -- { forest = 2, castle = 3 }: which arena biomes scatter this prop, and how
 --                      heavily. A prop with NO biomes table scatters everywhere at weight 1; a prop WITH
 --                      one appears only where it is listed. That table IS "which props a biome has" --

@@ -33,10 +33,15 @@ local DraftMatch = {}
 -- The control-node board
 -- ---------------------------------------------------------------------------
 
--- The battle's tick limit and how often the node hops. Six hops over the fight (240 / 40), so a match
--- is a handful of contests over ground that keeps moving, not one long standoff on a fixed tile.
-DraftMatch.MAX_TICKS = 240
-DraftMatch.MOVE_EVERY = 40
+-- The battle's tick limit and how often the node hops: the node walks its three waypoints once (30 / 10)
+-- and the fight is over. Short on purpose. At the 240 this started on, the limit was so far out that
+-- WIPING the other side -- which wins outright, Combat.outcomeFor -- was simply the faster way to end a
+-- round, and the node was scenery. At 30 the objective is the clock, so a kill has to be worth the
+-- tempo it costs. A tick is elapsed INITIATIVE (Combat.rebase), not a turn: at ordinary weapon speeds a
+-- round of 30 is a handful of turns each, so a unit that walks to the node instead of hunting is
+-- spending a real fraction of the match on it.
+DraftMatch.MAX_TICKS = 30
+DraftMatch.MOVE_EVERY = 10
 
 -- The score node's waypoints on the 8x8 board (Arena.COLS/ROWS): a 2x2 cluster that hops center ->
 -- toward the far (enemy) side -> toward the near (party) side, so neither team can camp it and both

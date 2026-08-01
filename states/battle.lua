@@ -765,6 +765,28 @@ local function computeRange(unit, item)
     battle.rangeCells, battle.rangeReach = narrow("attack", cells, battle.rangeReach)
 end
 
+-- Run `fn` with `unit` standing on (sx, sy) rather than on its own tile, then put it back where it
+-- was. A click can fold an APPROACH into the action -- walk to the stand tile rangeReach recorded,
+-- then swing -- and every directional footprint (a spear's line, an axe's arc, any cone) is oriented
+-- from wherever the caster stands at the moment it swings. Asking "what would this cast do?" from the
+-- tile the unit currently occupies therefore answers for a swing that will never be thrown: the line
+-- runs off in the wrong direction, and a walk-and-strike lands on tiles the preview never lit.
+--
+-- The unit itself is relocated rather than a stand-in copy passed, so its identity survives: an effect
+-- that compares fx.user against the bodies on the board still recognises the caster, and Combat.unitAt
+-- reads the board exactly as it will be once the approach is walked (the caster on the stand tile, its
+-- old tile empty). Only ever wrapped around INERT dry runs -- Combat.aoeCells, Combat.previewAbility --
+-- which never touch the board; the tile is restored even if one of them throws.
+local function asIfStandingAt(unit, sx, sy, fn)
+    if not (unit and sx and sy) or (unit.x == sx and unit.y == sy) then return fn() end
+    local ox, oy = unit.x, unit.y
+    unit.x, unit.y = sx, sy
+    local ok, result = pcall(fn)
+    unit.x, unit.y = ox, oy
+    if not ok then error(result, 0) end
+    return result
+end
+
 -- The blast footprint an AoE ability would cover if fired at cell (cx, cy): the cells
 -- Combat.aoeCells returns for the armed/hovered ability, or nil for a single-target ability or a
 -- cell that isn't a legal aim point. Drives the brighter red/green area highlight (ui/battle_map)
@@ -779,7 +801,15 @@ local function aoeFootprint(item, cx, cy)
         if c.x == cx and c.y == cy then onTarget = true break end
     end
     if not onTarget then return nil end
-    return Combat.aoeCells(battle.combat, ab, cx, cy, battle.current)
+    -- Oriented from the tile the cast would FIRE from, which a click-to-use approach may have moved
+    -- off the caster's own square (see asIfStandingAt). The stand tile is the one rangeReach recorded
+    -- for this aim -- and only when those sets describe THIS item, which refreshView guarantees before
+    -- it calls here.
+    local entry = (battle.rangeFor == item) and battle.rangeReach and battle.rangeReach[cx .. "," .. cy] or nil
+    local unit = battle.current
+    return asIfStandingAt(unit, entry and entry.fromX, entry and entry.fromY, function()
+        return Combat.aoeCells(battle.combat, ab, cx, cy, unit)
+    end)
 end
 
 -- The default-ACTION reach: every cell the unit could use its default action on this turn (the
@@ -2118,21 +2148,30 @@ end
 -- check adds the barrel/wall/revealed trap the swing would break, which no dry run sees because the
 -- object layer isn't a unit.
 --
--- Memoised on the aim, the item, where the actor stands and the turn, because the same cell is asked
--- about up to three times a frame -- refreshView's overlay pass, the action-preview tooltip and the
--- confirm itself all route through armedActionAt. Every way the board can change under a held aim
+-- Asked from the tile the swing would actually be thrown FROM -- (sx, sy), the stand tile rangeReach
+-- recorded for this aim, which a folded-in approach may have moved off the caster's own square. A
+-- directional footprint is oriented by where the caster stands (see asIfStandingAt), so asking from
+-- the current tile answered for a line that runs off in a different direction than the one the walk-
+-- and-strike will sweep: the dry run "found" a body the swing then missed, and the click resolved as
+-- an attack on empty air instead of the step the player meant. Defaults to the caster's own tile.
+--
+-- Memoised on the aim, the item, where the swing fires from and the turn, because the same cell is
+-- asked about up to three times a frame -- refreshView's overlay pass, the action-preview tooltip and
+-- the confirm itself all route through armedActionAt. Every way the board can change under a held aim
 -- moves one of those: a walk moves the actor, a cast ends the turn, and the next turn bumps
 -- turnCount (so even a unit granted a second turn on the same tile re-asks).
 local castCache = { key = nil, value = false }
-local function castConnectsAt(item, cx, cy)
+local function castConnectsAt(item, cx, cy, sx, sy)
     local unit = battle.current
     if not (unit and item and item.activeAbility) then return false end
-    local key = tostring(item) .. "@" .. cx .. "," .. cy .. "|" .. unit.x .. "," .. unit.y
+    sx, sy = sx or unit.x, sy or unit.y
+    local key = tostring(item) .. "@" .. cx .. "," .. cy .. "|" .. sx .. "," .. sy
         .. "#" .. (battle.combat.turnCount or 0)
     if castCache.key ~= key then
         castCache.key = key
-        castCache.value = Combat.castDoesSomething(battle.combat, unit, item, cx, cy)
-            or strikeableObjectAt(unit, cx, cy) ~= nil
+        castCache.value = asIfStandingAt(unit, sx, sy, function()
+            return Combat.castDoesSomething(battle.combat, unit, item, cx, cy)
+        end) or strikeableObjectAt(unit, cx, cy) ~= nil
     end
     return castCache.value
 end
@@ -2226,20 +2265,9 @@ local function armedActionAt(cx, cy)
         return nil
     end
     local entry = battle.rangeReach and battle.rangeReach[cx .. "," .. cy]
-    -- A tile aim that would connect with nothing is a step, as long as there is still a step to take
-    -- (see the note above). A reachable tile the cast can't even be aimed at (inside a thrown ability's
-    -- minimum range) walks too, rather than staying the dead click it used to be.
-    -- Not while a blink is armed: `battle.reachable` is then a teleport diamond, and the armed move
-    -- branch walks. Toggling blink disarms anyway (toggleBlink), so this only skips the case where the
-    -- player re-armed on top of it -- which keeps aiming, exactly as before.
-    if ab.target == "tile" and not ab.groundAim and not battle.blinking
-        and battle.reachable and battle.reachable[cx .. "," .. cy]
-        and not Combat.hasMoved(battle.combat)
-        and not (entry and castConnectsAt(item, cx, cy)) then
-        local mp = movePathTo(cx, cy)
-        return { kind = "move", x = cx, y = cy, cells = mp and mp.cells or nil }
-    end
-    if not entry then return nil end
+    -- WHERE the swing would be thrown from, resolved before anything asks what it would hit -- because
+    -- what a directional cast hits depends entirely on the tile it is thrown from.
+    --
     -- The steered route only decides the stand tile when the actor CAN'T already hit from where it
     -- stands. Otherwise the route is ignored and the strike fires in place: the trail extends itself
     -- across every reachable tile the cursor crosses, so merely sweeping the mouse onto a foe drew a
@@ -2249,11 +2277,30 @@ local function armedActionAt(cx, cy)
     -- route right onto the target -- the cursor tile is the target -- so honouring that as the stand
     -- tile would walk the caster onto the very cell it means to place on, and the cast then rejects it
     -- as occupied (the caster is now standing there). Excluding it falls back to the cheapest in-range
-    -- stand tile, so the placement fires in place instead of turning into a bare move.
+    -- stand tile (entry), so the placement fires in place instead of turning into a bare move.
     local stand, mp = steeredStand()
     local inPlace = standCanHit(battle.current, ab, item, battle.current.x, battle.current.y, cx, cy)
-    if stand and not inPlace and not (stand.x == cx and stand.y == cy)
-        and standCanHit(battle.current, ab, item, stand.x, stand.y, cx, cy) then
+    local steered = stand ~= nil and not inPlace and not (stand.x == cx and stand.y == cy)
+        and standCanHit(battle.current, ab, item, stand.x, stand.y, cx, cy)
+    local fromX = steered and stand.x or (entry and entry.fromX)
+    local fromY = steered and stand.y or (entry and entry.fromY)
+    -- A tile aim that would connect with nothing is a step, as long as there is still a step to take
+    -- (see the note above). A reachable tile the cast can't even be aimed at (inside a thrown ability's
+    -- minimum range) walks too, rather than staying the dead click it used to be. The question is put
+    -- from the firing tile resolved above, so a line/arc that only "connects" when drawn from the tile
+    -- the unit is about to LEAVE reads as the empty swing it really is -- and steps.
+    -- Not while a blink is armed: `battle.reachable` is then a teleport diamond, and the armed move
+    -- branch walks. Toggling blink disarms anyway (toggleBlink), so this only skips the case where the
+    -- player re-armed on top of it -- which keeps aiming, exactly as before.
+    if ab.target == "tile" and not ab.groundAim and not battle.blinking
+        and battle.reachable and battle.reachable[cx .. "," .. cy]
+        and not Combat.hasMoved(battle.combat)
+        and not (entry and castConnectsAt(item, cx, cy, fromX, fromY)) then
+        local path = movePathTo(cx, cy)
+        return { kind = "move", x = cx, y = cy, cells = path and path.cells or nil }
+    end
+    if not entry then return nil end
+    if steered then
         return { kind = "act", cells = mp.cells,
                  entry = { x = cx, y = cy, fromX = stand.x, fromY = stand.y, moveCost = mp.cost } }
     end
@@ -2347,7 +2394,14 @@ local function actionPreviewFor(cx, cy)
                      trapDamage = dmg, trapLethal = dmg >= (obj.health or 0),
                      spend = Combat.abilitySpend(current, item.activeAbility) }
         end
-        local preview = Combat.previewAbility(battle.combat, current, item, cx, cy)
+        -- Priced from the tile the cast FIRES from, not the one the actor stands on now: a click-to-use
+        -- folds the approach into the strike, and a directional footprint (a spear's line, an axe's arc)
+        -- sweeps whatever the stand tile faces (see asIfStandingAt). Weighed from here, the panel names
+        -- the bodies the swing will really catch -- and agrees with both the red footprint the board
+        -- paints and the plan confirm() commits.
+        local preview = asIfStandingAt(current, plan.entry.fromX, plan.entry.fromY, function()
+            return Combat.previewAbility(battle.combat, current, item, cx, cy)
+        end)
         local entry = preview and unit and preview.entries[unit] or nil
         return {
             kind = (item.activeAbility.target == "tile") and "place" or "ability",
@@ -2373,7 +2427,12 @@ local function actionPreviewFor(cx, cy)
             local validTarget = support and unit.side == current.side
                 or not support and unit.side ~= current.side
             if validTarget and inReach then
-                local preview = Combat.previewAbility(battle.combat, current, action, cx, cy)
+                -- Weighed from the stand tile the strike fires from, exactly as the armed branch above
+                -- does: the walk is folded into the click, and a directional footprint sweeps whatever
+                -- that tile faces (see asIfStandingAt).
+                local preview = asIfStandingAt(current, inReach.fromX, inReach.fromY, function()
+                    return Combat.previewAbility(battle.combat, current, action, cx, cy)
+                end)
                 local entry = preview and preview.entries[unit] or nil
                 return { kind = support and "ability" or "attack", item = action, actor = current,
                          target = unit, support = support,

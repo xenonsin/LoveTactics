@@ -1,6 +1,6 @@
 return {
     name = "Rogue",
-    sprite = "assets/chars/archer.png",
+    sprite = "assets/chars/rogue.png",
     -- No portrait: the GENERIC rogue template, not a companion. Clem (the rogue companion) is the named
     -- specialization built on this base. Only ever an enemy / ally / test body -- it falls back to the
     -- letter token if it speaks.

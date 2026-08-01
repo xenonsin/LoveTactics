@@ -1,6 +1,6 @@
 return {
     name = "Fighter",
-    sprite = "assets/chars/warlord.png",
+    sprite = "assets/chars/fighter.png",
     -- No portrait: the GENERIC fighter template, not a companion. Saber (the fighter companion) is the
     -- named specialization built on this base; like the other generic stand-ins (Knight, Rogue, Mage,
     -- Archer, Priest, Alchemist) this one is only ever an enemy / ally / test body and owns no VN

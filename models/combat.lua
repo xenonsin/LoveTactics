@@ -1048,8 +1048,9 @@ function Combat.new(arena, partyUnits, enemyUnits)
     addSide(enemyUnits, "enemy")
 
     -- Rebase so the fastest unit starts at initiative 0 (the current-actor convention). The
-    -- initial offset isn't elapsed battle time, so reset the clock to 0 afterwards.
-    Combat.rebase(combat)
+    -- initial offset isn't elapsed battle time, so reset the clock to 0 afterwards -- and flag the
+    -- call, so the objective counters don't bank that offset either (see Combat.rebase).
+    Combat.rebase(combat, true)
     combat.clock = 0
     Combat.applyPassives(combat)
     Combat.applyReservations(combat)
@@ -1122,7 +1123,16 @@ end
 
 -- Subtract the lowest living initiative from every living unit so the next actor sits at 0,
 -- and add that amount to the elapsed clock. Called at construction and after each turn ends.
-function Combat.rebase(combat)
+--
+-- `initial` marks that construction call. Its offset is a NORMALIZATION of the starting initiative
+-- spread, not elapsed battle time -- Combat.new resets the clock to 0 the line after -- so no objective
+-- counter may bank it. Without the guard, a field whose fastest unit opens on a negative initiative
+-- (Combat.initiative subtracts the speed stat, and a battle-start unit is not clamped the way
+-- Combat.addUnit's later arrivals are) banks that negative tick to whoever stands on the objective
+-- ground, off a momentarily NEGATIVE clock -- which points controlNodeIndex at the wrong waypoint too,
+-- and records a lastHolder that never held anything. That is how a draft battle opened with the player
+-- already on minus points.
+function Combat.rebase(combat, initial)
     local minInit
     for _, u in ipairs(combat.units) do
         if Combat.inTimeline(u) and (not minInit or u.initiative < minInit) then minInit = u.initiative end
@@ -1132,14 +1142,16 @@ function Combat.rebase(combat)
         if Combat.inTimeline(u) then u.initiative = u.initiative - minInit end
     end
     combat.clock = combat.clock + minInit
-    -- Bank the same elapsed time toward a `hold` objective, if the party held the ground across it.
-    -- Here rather than in Combat.evaluate because this is the only place that knows how much time
-    -- passed; evaluate runs per action and cannot tell a long one from a short one.
-    Combat.accrueHold(combat, minInit)
-    -- The multiplayer `control` objective banks the same elapsed time toward whichever side held the
-    -- moving score node across it. Same reasoning as accrueHold: rebase is the only place that knows
-    -- how much time just passed. Both are no-ops unless the arena authored that objective.
-    Combat.accrueControl(combat, minInit)
+    if not initial then
+        -- Bank the same elapsed time toward a `hold` objective, if the party held the ground across it.
+        -- Here rather than in Combat.evaluate because this is the only place that knows how much time
+        -- passed; evaluate runs per action and cannot tell a long one from a short one.
+        Combat.accrueHold(combat, minInit)
+        -- The multiplayer `control` objective banks the same elapsed time toward whichever side held the
+        -- moving score node across it. Same reasoning as accrueHold: rebase is the only place that knows
+        -- how much time just passed. Both are no-ops unless the arena authored that objective.
+        Combat.accrueControl(combat, minInit)
+    end
     -- Re-lay every censer's smoke around its bearer BEFORE the zone cycle below. This is the half that
     -- movement cannot cover: Combat.enterTile keeps the cloud under a bearer that walks, but a bearer
     -- that never moves needs its ground to still be there when Hazard.tick asks who is standing in
@@ -8096,23 +8108,23 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         Hazard.douse(combat, footprint, castTags)
     end
 
-    -- Fire catches: a cast carrying the "fire" tag sets alight any FLAMMABLE prop across its
-    -- footprint (`flammable` -- a powder keg, a supply crate; models/prop.lua). The element's answer
-    -- to the board's furniture, sitting between the water and lightning interactions because it is the
-    -- same kind of thing: fire does to a keg what it does to a body. A barrel (health 1) bursts and
-    -- takes the ring with it; a tougher crate scorches down over several such hits. This is what the
-    -- `flammable` tag was for, and it is what the barrel means by "a spilled AoE sets it off".
+    -- A DAMAGING cast breaks what STANDS in its footprint. Props are furniture, not bodies, so
+    -- fx.aoeUnits never turns one up and a data-file effect that iterates its victims will never hit
+    -- one -- which left a volley of arrows falling politely around a powder keg. Swept here instead,
+    -- once, for every cast alike: the barrel's rule is "hit it and it goes off" (models/prop.lua), and
+    -- a blast that covers its tile has hit it whatever element it was made of. A barrel (health 1)
+    -- bursts and takes the ring with it; a tougher crate splinters down over several such hits.
     --
-    -- Gated on the cast actually DEALING damage, so a fire working that only laid a hazard down does
-    -- not detonate a barrel it merely floated a flame over -- catching it is then the standing fire's
-    -- slow work, not the placement's. Prop.at returns only the living, so a keg the chain already
-    -- splintered is simply gone from a later cell, and nothing is hit twice.
-    if effectiveAmount and effectiveAmount > 0 and hasTag(castTags, "fire") then
+    -- Gated on the ability DECLARING damage rather than merely carrying a magnitude, so a placement or
+    -- a heal that happens to overlap the furniture leaves it standing -- a fire working that only laid
+    -- a hazard down does not detonate a keg it floated a flame over; catching it is then the standing
+    -- fire's slow work, not the placement's. Props take the cast's raw magnitude (they have no defense
+    -- and no tag mitigation -- Prop.damage), and Prop.at returns only the living, so a keg the chain
+    -- already splintered is simply gone from a later cell and nothing is hit twice.
+    if ab.damage and effectiveAmount and effectiveAmount > 0 then
         for _, c in ipairs(footprint) do
             local prop = Prop.at(combat, c.x, c.y)
-            if prop and Prop.hasTag(prop, "flammable") then
-                Prop.damage(combat, prop, effectiveAmount, unit)
-            end
+            if prop then Prop.damage(combat, prop, effectiveAmount, unit) end
         end
     end
 
