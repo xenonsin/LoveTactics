@@ -1040,6 +1040,56 @@ function TacticsEditor:drawDropdown(rule, fields)
         love.graphics.printf(open.scroll + r.rows .. "/" .. #open.options,
             r.x, r.y + r.h - 12, r.w - 6, "right")
     end
+
+    self:drawOptionTooltip(field, rule, r)
+end
+
+-- Two of the vocabularies are lists of IDS whose names are not self-explaining: the kit ("Using") and
+-- the status list. "Wildcraft Poultice" and "Cowering" are names, not answers -- picking against them
+-- means knowing what they do, and a player who has to leave the screen to find out will pick wrong.
+--
+-- So the option under the cursor explains itself, through the SAME tooltips the rest of the game
+-- draws for an item and for a status. Reusing them is the point: a Healing Potion must not acquire a
+-- second, thinner description that lives only here and drifts from the real one.
+--
+-- Required lazily, inside a draw path, because both tooltip modules reach for love.graphics and this
+-- widget's logic is loaded by the headless tests.
+function TacticsEditor:drawOptionTooltip(field, rule, r)
+    local open = self.open
+    local value = open.options[open.cursor]
+    if value == nil or value == false then return end -- "any" describes itself
+
+    -- Anchored to the pointer when it is genuinely over the list; otherwise beside the highlighted
+    -- row, so a keyboard or pad gets the same explanation without a mouse to hang it on.
+    local ax, ay = self.mx, self.my
+    if not (ax and ay and self:dropdownIndexAt(ax, ay) == open.cursor) then
+        ax = r.x + r.w - 12
+        ay = r.y + 3 + (open.cursor - open.scroll - 1) * DD_ROW_H
+    end
+
+    -- Held clear of the list's left edge. Both tooltips flip to the left of their anchor when they
+    -- would cross `maxRight`, so capping it here is what stops the explanation from covering the four
+    -- options underneath the one being explained -- which is the whole set the player is choosing
+    -- BETWEEN, and the last thing that should be hidden while they choose.
+    local maxRight = r.x - 4
+
+    if field.key == "item" then
+        local item = AI.resolveItem(self.char or {}, value)
+        -- Nil for a rule naming something no longer carried: the row already says "not carried", and
+        -- there is no live item to describe.
+        --
+        -- No `actor`: that argument is a battle UNIT, not a character, and there is no unit on this
+        -- screen. Passing one prices the ability against that body's live resources; passing none
+        -- runs it against a neutral caster, which is what every other Armory hover does.
+        if item then require("ui.item_tooltip").draw(item, ax, ay, maxRight, nil) end
+        return
+    end
+
+    local spec = AI.TEST_VALUE[rule.when and rule.when.test or ""]
+    if field.key == "value" and spec and spec.kind == "status" then
+        local def = Status.defs[value]
+        if def then require("ui.status_tooltip").draw({ def = def }, ax, ay, maxRight) end
+    end
 end
 
 -- ---------------------------------------------------------------------------
