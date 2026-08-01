@@ -230,11 +230,8 @@ local function buildMenu()
         end,
     }
 
-    items[#items + 1] = {
-        label = "Draft",
-        action = function() State.switch(require("states.draft")) end,
-    }
-
+    -- Draft is NOT offered here. It lives in the city, as the Draft Yard (data/buildings/draft_yard.lua):
+    -- one door per mode, and the title screen is for starting or resuming a save, not a menu of modes.
     items[#items + 1] = {
         label = "Settings",
         action = function() State.switch(require("states.settings"), menu) end,
@@ -293,8 +290,8 @@ end
 
 function menu.enter()
     -- Drop whatever screen effect the last state left standing -- the defeat grey above all. A lost
-    -- battle desaturates the frame and hands the panel's exit straight here (a mock battle, a draft
-    -- run), so without this the title screen comes back drained to a colourless near-black and stays
+    -- battle desaturates the frame and hands the panel's exit straight here (a mock battle), so
+    -- without this the title screen comes back drained to a colourless near-black and stays
     -- that way: nothing else ever clears it. The hub, the draft and a battle all reset on entry for
     -- the same reason (ui/screen_fx.lua).
     ScreenFx.reset()

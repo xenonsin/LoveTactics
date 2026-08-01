@@ -240,17 +240,25 @@ return {
     order = 5,             -- sort + keyboard/gamepad nav order
     x = 980, y = 340, w = 270, h = 140,  -- clickable hotspot in the 1280x720 logical space
     panel = nil,           -- module name under ui/panels/, or nil for the placeholder
+    state = nil,           -- module name under states/, for a door that opens a whole screen
     vendor = nil,          -- vendor id, for shop buildings (panel = "party", store mode)
     unlockPrestige = 3,    -- locked (dimmed, non-clickable) until prestige >= 3
 }
 ```
+
+Almost every building opens a **pop-up panel** over the city. A `state` instead of a `panel` is
+for the rare door that is a whole mode rather than an overlay — the Draft Yard
+(`data/buildings/draft_yard.lua`) opens `states/draft.lua`. The hub hands such a state
+`{ returnTo = hub }`, and the state is expected to honour it so leaving comes back to the city
+rather than to the title screen. Set one or the other, never both.
 
 This is how **the city grows over time**: give new buildings a higher `unlockPrestige` and they
 appear locked, then unlock as the player earns prestige. Positions are in the 1280×720 logical
 coordinate space (see `scale.lua`), which is letterbox-scaled to the real window; place them
 over the corresponding spot on `assets/hub/city.png`. The city is laid out on a **4/4/3 grid of
 270×140 cards with 40px gutters** — columns at `x = 40, 350, 660, 970`, rows at `y = 150, 340,
-530` (the last row centered at `x = 195, 505, 815`). Stay on that grid so hotspots never overlap.
+530` (the last row centered at `x = 195, 505, 815`, with two narrow extras squeezed into its end
+gutters: the Draft Yard and the Dueling Grounds). Stay on that grid so hotspots never overlap.
 
 > `Building.list`, `Quest.available`, `Item.instantiate` and `Character.instantiate` copy blueprint
 > fields **one at a time**. A new field must be added to that copy or it silently reads as `nil` at

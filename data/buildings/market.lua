@@ -1,6 +1,6 @@
 return {
     name = "Market",
-    order = 11,
+    order = 12,
     x = 815,
     y = 530,
     w = 270,

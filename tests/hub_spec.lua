@@ -75,6 +75,21 @@ return {
         end,
     },
     {
+        -- Building.list copies blueprint fields one at a time, so a field it forgets reads as nil at
+        -- runtime and the door silently opens the placeholder panel instead of the mode.
+        name = "a building that opens a whole screen carries its state through the list",
+        fn = function()
+            local yard
+            for _, b in ipairs(Building.list(1)) do
+                if b.id == "draft_yard" then yard = b end
+            end
+            assert(yard, "draft_yard missing from the city")
+            assert(not yard.locked, "the Draft Yard is ungated")
+            assert(yard.state == "draft", "the Draft Yard should name states/draft.lua")
+            assert(yard.panel == nil, "a state door has no pop-up panel")
+        end,
+    },
+    {
         name = "quest registry discovers def files by filename",
         fn = function()
             assert(Quest.defs.quest_bastion_slot_01, "quest_bastion_slot_01 missing")

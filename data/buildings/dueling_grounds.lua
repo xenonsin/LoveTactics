@@ -10,7 +10,7 @@
 -- the market.
 return {
     name = "Dueling Grounds",
-    order = 12,
+    order = 13,
     x = 1090,
     y = 530,
     w = 180,

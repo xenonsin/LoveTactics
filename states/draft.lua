@@ -74,6 +74,10 @@ function draft.enter(self, opts)
     -- returning to the shop must open on full colour again rather than that defeat grey (ui/screen_fx.lua).
     ScreenFx.reset()
     draft.card = nil
+    -- Where leaving goes: whatever opened the mode, which in the shipped game is the city's Draft Yard
+    -- (data/buildings/draft_yard.lua). Only a fresh entry sets this -- a `resume` is the return from a
+    -- battle, which carries no opts of its own and must not forget the city it was entered from.
+    if not opts.resume then draft.returnTo = opts.returnTo end
     local askResume = false
     if not opts.resume then
         -- Opened fresh from the menu: load a saved run that is still in progress (the player is asked
@@ -323,7 +327,11 @@ local function fight()
     }))
 end
 
-local function backToMenu() State.switch(require("states.menu")) end
+-- Leaving the mode: back to whatever opened it. The label says which, so "Back" never lies about where
+-- it drops you. The title-screen fallback is for a caller that names no destination (a debug entry);
+-- the city always names one.
+local function leave() State.switch(draft.returnTo or require("states.menu")) end
+local function leaveLabel() return draft.returnTo and "Back to City" or "Back to Menu" end
 
 -- ---------------------------------------------------------------------------
 -- Modal cards (resume the saved run / abandon it / the terminal)
@@ -386,9 +394,9 @@ function promptResume()
         buttons = {
             { label = "Continue", activate = closeCard },
             { label = "New Run", activate = confirmAbandon },
-            { label = "Back to Menu", activate = backToMenu },
+            { label = leaveLabel(), activate = leave },
         },
-        cancel = backToMenu,
+        cancel = leave,
     })
 end
 
@@ -402,9 +410,9 @@ function showTerminal()
             or ("Three losses at round " .. round .. ". The run is over."),
         buttons = {
             { label = "New Run", activate = startFreshRun },
-            { label = "Back to Menu", activate = backToMenu },
+            { label = leaveLabel(), activate = leave },
         },
-        cancel = backToMenu,
+        cancel = leave,
         blackout = true, -- nothing behind this card is playable any more; hide it rather than tease it
     })
 end
@@ -518,7 +526,7 @@ function draft:layout()
     -- Quitting a run you have soured on without walking out to the menu first. Confirms before it bites.
     target(targets, MARGIN + 350, by, 170, 44, { kind = "button", label = "Abandon Run", activate = confirmAbandon })
     target(targets, W - MARGIN - 200, by, 200, 44, { kind = "fight", label = "Fight", activate = fight })
-    target(targets, W - MARGIN - 200 - 170, by, 150, 44, { kind = "button", label = "Back", activate = backToMenu })
+    target(targets, W - MARGIN - 200 - 170, by, 150, 44, { kind = "button", label = "Back", activate = leave })
 
     self.targets = targets
     -- The shop is still laid out under a modal card (it stays visible behind one, so it must keep its
@@ -1371,7 +1379,7 @@ function draft.mousepressed(x, y, button)
         end
         return
     end
-    if draft.closeButton and draft.closeButton:mousepressed(x, y, button) then backToMenu() return end
+    if draft.closeButton and draft.closeButton:mousepressed(x, y, button) then leave() return end
 
     for _, t in ipairs(draft.targets) do
         if hit(t, x, y) then
@@ -1457,7 +1465,7 @@ local function cardConfirm()
 end
 
 local function cardCancel()
-    local cancel = draft.card.cancel or backToMenu
+    local cancel = draft.card.cancel or leave
     cancel()
 end
 
@@ -1520,7 +1528,7 @@ function draft.keypressed(key)
         return
     end
     if key == "escape" then
-        if draft.held or draft.selectedGear then draft.held, draft.selectedGear = nil, nil else backToMenu() end
+        if draft.held or draft.selectedGear then draft.held, draft.selectedGear = nil, nil else leave() end
     elseif key == "left" or key == "a" then moveCursor(-1)
     elseif key == "right" or key == "d" then moveCursor(1)
     elseif key == "up" or key == "w" then moveCursor(-4)
@@ -1548,7 +1556,7 @@ function draft.gamepadpressed(joystick, b)
         return
     end
     if b == "b" then
-        if draft.held or draft.selectedGear then draft.held, draft.selectedGear = nil, nil else backToMenu() end
+        if draft.held or draft.selectedGear then draft.held, draft.selectedGear = nil, nil else leave() end
     elseif b == "dpleft" then moveCursor(-1)
     elseif b == "dpright" then moveCursor(1)
     elseif b == "dpup" then moveCursor(-4)

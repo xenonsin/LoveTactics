@@ -113,7 +113,16 @@ end
 
 -- Open the pop-up panel for a building. Buildings name a module under
 -- ui/panels/; anything without one falls back to the generic placeholder.
+--
+-- A building may instead name a whole SCREEN (`state`): Draft is a mode with its own board, not
+-- something that fits in an overlay over the city. It is handed `hub` to come back to, so leaving
+-- Draft returns to the town it was entered from rather than to the title screen.
 local function launchPanel(building)
+    if building.state then
+        State.switch(require("states." .. building.state), { returnTo = hub })
+        return
+    end
+
     local moduleName = building.panel or "placeholder"
     local ok, PanelModule = pcall(require, "ui.panels." .. moduleName)
     if not ok then

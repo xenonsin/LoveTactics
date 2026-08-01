@@ -40,6 +40,7 @@ function Building.list(playerOrPrestige)
             w = def.w,
             h = def.h,
             panel = def.panel,
+            state = def.state, -- a whole screen this door opens instead of a pop-up (Draft), or nil
             vendor = def.vendor, -- vendor id for shop buildings; nil otherwise
             unlockPrestige = def.unlockPrestige or 1,
             unlockQuest = def.unlockQuest, -- quest id that opens this door, or nil

@@ -1,6 +1,6 @@
 return {
     name = "Blacksmith",
-    order = 9,
+    order = 10,
     x = 195,
     y = 530,
     w = 270,

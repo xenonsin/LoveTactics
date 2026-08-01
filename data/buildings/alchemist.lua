@@ -1,6 +1,6 @@
 return {
     name = "The Crucible",
-    order = 10,
+    order = 11,
     x = 505,
     y = 530,
     w = 270,
