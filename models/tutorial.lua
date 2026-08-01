@@ -242,6 +242,27 @@ function Tutorial.claimSpawn(t)
     return Tutorial.step(t).spawn
 end
 
+-- The reinforcements the NEXT step will walk on, for the board to TELEGRAPH -- the same muster marker
+-- a timed wave gets (states/battle.lua refreshView, ui/battle_map.lua drawReinforcements). Nil unless
+-- a body is genuinely one step out.
+--
+-- One step of lead, and it can only be one. A spawn lands the instant its own step becomes current, so
+-- read from the current step the marker and the body would appear in the same frame and warn nobody;
+-- read further ahead than one and the village lesson would have the grunt's landing zone lit while
+-- the player is still learning to walk. One step is the whole window: the marker comes up as the
+-- player arms the Clear Out, sits there while they aim it, and the body it promised walks onto that
+-- very tile as the blow resolves. The muster is not a surprise, and the board said so.
+--
+-- Deliberately NOT a claim -- it is asked every frame, changes nothing, and goes quiet on its own the
+-- moment claimSpawn takes the step it was pointing at.
+function Tutorial.spawnTelegraph(t)
+    if not t or t.abandoned or Tutorial.done(t) then return nil end
+    local ahead = t.index + 1
+    local step = t.def.steps[ahead]
+    if not step or not step.spawn or t.spawned[ahead] then return nil end
+    return step.spawn
+end
+
 -- What to say when the player tries something the current step didn't ask for. Falls back to the
 -- step's own line, so a step that authored no nudge still explains itself rather than going quiet.
 function Tutorial.nudge(t)

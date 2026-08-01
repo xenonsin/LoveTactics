@@ -3543,6 +3543,35 @@ local function refreshView()
             end
         end
     end
+    -- The same marker for a SCRIPTED arrival. A guided fight walks its reinforcements on at authored
+    -- cells rather than off a clock (data/tutorials/*.lua `spawn`, fielded by spawnReinforcements), and
+    -- the lesson offers the next step's muster one step early (Tutorial.spawnTelegraph) -- so the
+    -- village grunt's landing tile is lit while the player is winding up the very blow that lands it,
+    -- and the body appears where the board said it would rather than out of nowhere.
+    --
+    -- No countdown and no deny, and both omissions are the honest ones: it arrives on a STEP, not at a
+    -- tick, so there is no number to quote; and spawnReinforcements walks it on regardless of what
+    -- stands there, so the marker must not invite a player to hold the ground. `ticksUntil = nil` is
+    -- what carries that to the two readouts -- the tile draws no clock (ui/battle_map.lua) and the
+    -- tooltip drops the countdown and the deny line (ui/tile_tooltip.lua).
+    --
+    -- One entry per landing cell rather than one for the lot: a telegraph carries a single arrival
+    -- edge for its tiles, and authored cells need not share one.
+    for _, s in ipairs((battle.tutorial and Tutorial.spawnTelegraph(battle.tutorial)) or {}) do
+        local def = Character.defs[s.char]
+        local fp = Character.normalizeFootprint(def and def.footprint)
+        local tile = { x = s.x, y = s.y, w = fp.w, h = fp.h }
+        local edge = Combat.nearestEdge(battle.combat, s.x, s.y)
+        reinforcements = reinforcements or {}
+        reinforcements[#reinforcements + 1] = { tiles = { tile }, count = 1, edge = edge }
+        -- A timed muster already on this cell keeps it: it has a countdown to show, which is the
+        -- richer readout, and the one-readout-per-tile rule matches the board's.
+        local key = s.x .. "," .. s.y
+        if not reinforceCells[key] then
+            reinforceCells[key] = { edge = edge, char = def }
+        end
+    end
+
     overlays.reinforcements = reinforcements
     battle.reinforceCells = reinforceCells
 

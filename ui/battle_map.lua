@@ -314,10 +314,13 @@ function BattleMap:drawReinforcements()
     local order = {}
     for _, wave in ipairs(waves) do
         for _, tile in ipairs(wave.tiles) do
-            order[#order + 1] = { tile = tile, edge = wave.edge, ticks = wave.ticksUntil or 0 }
+            order[#order + 1] = { tile = tile, edge = wave.edge, ticks = wave.ticksUntil }
         end
     end
-    table.sort(order, function(a, b) return a.ticks < b.ticks end)
+    -- An arrival with NO countdown (a scripted lesson's reinforcement, which lands on a step rather
+    -- than at a tick) sorts last, so a timed muster owns a tile they both claim -- it has a clock to
+    -- show, which is the richer readout.
+    table.sort(order, function(a, b) return (a.ticks or math.huge) < (b.ticks or math.huge) end)
 
     local s = self.size
     local pulse = 0.5 + 0.5 * math.sin(love.timer.getTime() * 4)
@@ -341,7 +344,13 @@ function BattleMap:drawReinforcements()
             -- whole telegraph only surfaces once the muster is one turn out -- states/battle.lua gates the
             -- overlay to <= TICKS_PER_TURN ticks -- so WHERE and WHEN land together, and the board never
             -- carries a long, distant clock.
-            self:drawMusterCount(wx, wy, tw, th, m.edge, tostring(math.ceil(m.ticks)), font)
+            --
+            -- No ticks, no number: a scripted arrival is due on the next beat of a lesson, not at a mark
+            -- on the clock, and inventing a countdown for it would quote a number nothing can honour.
+            -- The tile keeps its outline and its arrow, which are the WHERE and the WHENCE it does know.
+            if m.ticks then
+                self:drawMusterCount(wx, wy, tw, th, m.edge, tostring(math.ceil(m.ticks)), font)
+            end
         end
     end
     love.graphics.setColor(1, 1, 1, 1)

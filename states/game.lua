@@ -33,6 +33,7 @@ local Relic = require("models.relic")
 local CoachBubble = require("ui.coach_bubble")
 local Locale = require("models.locale")
 local Theme = require("ui.theme")
+local ScreenFx = require("ui.screen_fx")
 
 local game = {}
 
@@ -220,6 +221,8 @@ end
 -- rather than ending at the hub. A normal board quest passes no onComplete and behaves as before.
 function game.enter(self, quest, prestige, player, onComplete, resume)
     require("models.sound").music("music.overworld")
+    ScreenFx.reset() -- the map opens on full colour, whatever the last screen left ringing
+
     game.quest = quest
     game.prestige = prestige or 1
     game.player = player -- kept so combat encounters can deploy the active party
@@ -569,6 +572,10 @@ function game:openEncounter(cell)
                     for k, v in pairs(fresh) do game.player[k] = v end
                 end
                 Player.restore(game.player) -- a retry is a fresh attempt: the party opens whole
+                -- Drop the defeat grey (and any low-HP vignette the loss froze on screen) before the map
+                -- comes back. Resuming through State.current skips game.enter, so nothing else clears it
+                -- and the overworld would sit desaturated until the next state switch (ui/screen_fx.lua).
+                ScreenFx.reset()
                 game.activePanel = nil
                 game.map:retreatFromEncounter()
                 -- Same seam as the won-combat resume above: restore the overworld bed the defeat

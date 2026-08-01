@@ -19,7 +19,7 @@ return {
         name = "building registry discovers def files by filename",
         fn = function()
             assert(Building.defs.quest_board, "quest_board missing")
-            assert(Building.defs.blacksmith, "blacksmith missing")
+            assert(Building.defs.armory, "armory missing")
             assert(Building.defs.alchemist, "alchemist missing")
             assert(Building.defs.market, "market missing")
         end,

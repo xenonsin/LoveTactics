@@ -650,6 +650,53 @@ return {
         end,
     },
     {
+        name = "the reinforcement is telegraphed one step before it lands, and never after",
+        fn = function()
+            -- A scripted spawn lands the instant its own step becomes current, so the board has to be
+            -- told about it a step EARLY or the marker and the body appear in the same frame and warn
+            -- nobody. states/battle.lua feeds this straight into the muster overlay the timed waves
+            -- use, so the village grunt's landing tile is lit while the player winds up the Clear Out
+            -- that lands it.
+            local def = Tutorial.defs[TUTORIAL]
+            local spawning
+            for i, step in ipairs(def.steps) do
+                if step.spawn then spawning = i end
+            end
+            assert(spawning, "nothing ever reinforces the village fight")
+            assert(spawning > 1, "a spawn on the first step could never be telegraphed")
+
+            local warned = Tutorial.spawnTelegraph(atStep(spawning - 1))
+            assert(warned and #warned == #def.steps[spawning].spawn,
+                "the step before the muster does not telegraph it")
+            for i, s in ipairs(warned) do
+                local real = def.steps[spawning].spawn[i]
+                assert(s.x == real.x and s.y == real.y and s.char == real.char,
+                    "the telegraph marks a different tile than the body walks onto")
+            end
+
+            -- Exactly one step of lead: every other step is quiet, including the spawning step itself
+            -- (by then the arrival is a body, not a promise).
+            for i = 1, #def.steps do
+                if i ~= spawning - 1 then
+                    assert(Tutorial.spawnTelegraph(atStep(i)) == nil,
+                        "step " .. i .. " telegraphs a muster it is not one step from")
+                end
+            end
+
+            -- ...and it goes quiet on its own once the body is claimed, so a marker can never outlive
+            -- the arrival it promised. (Claiming happens on the NEXT step, which is the state this
+            -- rewinds to by hand: same lesson, spawn already spent.)
+            local t = atStep(spawning)
+            Tutorial.claimSpawn(t)
+            t.index = spawning - 1
+            assert(Tutorial.spawnTelegraph(t) == nil, "a spent spawn is still telegraphed")
+
+            local dead = Tutorial.new(TUTORIAL)
+            dead.abandoned = true
+            assert(Tutorial.spawnTelegraph(dead) == nil, "an abandoned lesson still telegraphs")
+        end,
+    },
+    {
         name = "observe advances only on the action the step asked for",
         fn = function()
             local def = Tutorial.defs[TUTORIAL]

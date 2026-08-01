@@ -707,10 +707,12 @@ function CombatPanel:drawScrollBar()
     love.graphics.rectangle("fill", bx, by + (1 - t) * (bh - thumbH), bw, thumbH, 2, 2)
 end
 
--- A gold dashed rectangle border, used to mark preview (ghost) entries as hypothetical and to
--- dissolve out as a just-committed ghost solidifies into its real card (`alpha` fades it).
-function CombatPanel:dashedRect(x, y, w, h, alpha)
-    Theme.set(Theme.accentAmber, alpha or 0.9)
+-- A dashed rectangle border, used to mark preview (ghost) entries as hypothetical and to dissolve
+-- out as a just-committed ghost solidifies into its real card (`alpha` fades it). The DASH says
+-- "hypothetical"; the `color` (defaulting to the trim gold) says whose slot it is -- ghost cards
+-- pass their unit's faction colour, since they carry no HP bar to say it for them.
+function CombatPanel:dashedRect(x, y, w, h, alpha, color)
+    Theme.set(color or Theme.accentAmber, alpha or 0.9)
     love.graphics.setLineWidth(1)
     local dash, gap = 6, 4
     local xx = x
@@ -879,17 +881,35 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     local ew = self.w - 16
 
     -- Preview ghost: a faded, dashed hypothetical slot showing where the actor would land, not stats.
+    -- Ghosts are NOT always ours -- a foe mid-channel projects its follow-up slot, and a stun/freeze
+    -- projects the shoved TARGET's delayed slot -- so the card has to say whose future this is. A real
+    -- card carries that in its HP bar; a ghost shows no stats, so faction rides on the dash, the
+    -- portrait ring and the name instead (blue ours / green uncommanded / red theirs).
     if entry.preview then
-        Theme.set(Theme.panel2, 0.5)
+        local fc = Colors.unit(unit)
+        -- The plate keeps its slate, washed a touch toward the side's hue so the whole card, not just
+        -- its edge, leans the right way at a glance.
+        local pl = Theme.panel2
+        love.graphics.setColor(lerp(pl[1], fc[1], 0.18), lerp(pl[2], fc[2], 0.18),
+            lerp(pl[3], fc[3], 0.18), 0.5)
         love.graphics.rectangle("fill", ex, ey, ew, h, 6, 6)
         love.graphics.setLineWidth(1)
-        self:dashedRect(ex, ey, ew, h)
+        self:dashedRect(ex, ey, ew, h, nil, fc)
         self:drawInitiative(entry, ex, ew, ey)
         local ps = h - 6
-        self:drawPortrait(unit, ex + NUM_GUTTER, ey + 3, ps, 0.55)
+        local px, py = ex + NUM_GUTTER, ey + 3
+        self:drawPortrait(unit, px, py, ps, 0.55)
+        -- The same faction ring the acting card wears on its portrait, so ghost and real card mark
+        -- side identically.
+        love.graphics.setColor(fc[1], fc[2], fc[3], 0.75)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", px, py, ps, ps, 4, 4)
+        love.graphics.setLineWidth(1)
         local rx = ex + NUM_GUTTER + ps + 8
         love.graphics.setFont(self.nameFont)
-        Theme.set(Theme.accentAmber, 0.95)
+        -- The side hue lifted toward white, the same trick the pool tags use, so a deep enamel red or
+        -- blue still reads as a name at this size.
+        love.graphics.setColor(fc[1] * 0.6 + 0.28, fc[2] * 0.6 + 0.28, fc[3] * 0.6 + 0.28, 0.95)
         love.graphics.print(unit.char.name or "?", rx, ey + 3)
         love.graphics.setFont(self.smallFont)
         Theme.set(Theme.muted, 0.95)
@@ -940,8 +960,17 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     -- the aim preview showed. It stays slim, so no prominence blend applies.
     if unit.channel and not isCurrent then
         local ps = dh - 6
+        local px, py = ex + NUM_GUTTER, dy + 3
         self:drawTurnNumber(num, ex, dy, dh, 0)
-        self:drawPortrait(unit, ex + NUM_GUTTER, dy + 3, ps, 1)
+        self:drawPortrait(unit, px, py, ps, 1)
+        -- This card spends its name row on the SPELL and its bar row on the wind-up cue, so it carries
+        -- no HP bar to say whose cast is landing. The faction ring stands in, the same mark the ghost
+        -- and the acting card wear.
+        local fc = Colors.unit(unit)
+        love.graphics.setColor(fc[1], fc[2], fc[3], 0.85)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", px, py, ps, ps, 4, 4)
+        love.graphics.setLineWidth(1)
         local rx = ex + NUM_GUTTER + ps + 8
         love.graphics.setFont(self.nameFont)
         love.graphics.setColor(0.640, 0.511, 0.822) -- arcane violet, matching the Channeling badge tint
@@ -1019,7 +1048,7 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     -- visibly turns from ghost into real. Only for the real queue card (not the fading frame card,
     -- `alpha`) and only for a card that actually had a ghost (dashed = true).
     if sd and sd.dashed and sd.t > 0.02 and not alpha then
-        self:dashedRect(ex, dy, ew, dh, 0.9 * sd.t)
+        self:dashedRect(ex, dy, ew, dh, 0.9 * sd.t, Colors.unit(unit))
     end
 end
 

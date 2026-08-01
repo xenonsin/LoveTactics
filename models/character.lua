@@ -62,7 +62,9 @@ end
 -- A blueprint's `footprint` into a normalized { w, h }. Accepts { w = 2, h = 2 } (the authored form),
 -- a bare integer N (shorthand for an N×N square), or nil/absent -> 1×1. Dimensions are floored to at
 -- least 1, so a malformed blueprint degrades to a single tile rather than a zero-size body.
-local function normalizeFootprint(fp)
+-- Public so a caller holding only the BLUEPRINT can ask how much board a body would cover without
+-- instantiating one -- states/battle.lua sizes a telegraphed arrival's marker that way.
+function Character.normalizeFootprint(fp)
     if type(fp) == "number" then
         local n = math.max(1, math.floor(fp))
         return { w = n, h = n }
@@ -280,7 +282,7 @@ function Character.instantiate(id, progress)
         -- Board footprint: how many cells this body covers, as { w, h } anchored at its top-left.
         -- A blueprint's `footprint = { w = 2, h = 2 }` makes a 2×2 ogre; absent (the case for every
         -- ordinary character) normalizes to 1×1, the single tile the whole engine assumed before.
-        footprint = normalizeFootprint(def.footprint),
+        footprint = Character.normalizeFootprint(def.footprint),
         -- How this body fights when nobody is driving it (models/ai.lua): the posture that decides
         -- whether it engages and how it moves, plus any blueprint-authored rules layered over the
         -- posture's defaults. Both optional -- a character that names neither plays as `aggressive`,

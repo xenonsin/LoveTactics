@@ -518,11 +518,19 @@ local function buildBlocks(info)
         end
         blocks[#blocks + 1] = { kind = "stat", label = "Marches in from",
             value = EDGE_LABEL[r.edge] or "the field edge" }
-        -- ceil to match the whole-tick number drawn inside the tile (ui/battle_map.lua drawMusterCount),
-        -- so the tooltip and the marker never quote two different counts for the one arrival.
-        blocks[#blocks + 1] = { kind = "status", name = "Lands in", color = MUSTER_COLOR,
-            remaining = math.ceil(r.ticksUntil or 0) }
-        blocks[#blocks + 1] = { kind = "desc", text = "Stand a unit on this tile to turn the arrival back." }
+        -- A SCRIPTED arrival (a guided fight's authored reinforcement) carries no countdown, and the
+        -- box is shorter by exactly the two lines it cannot honour: it is due on the next beat of the
+        -- lesson rather than at a tick, and it takes its cell whatever stands there -- so there is no
+        -- number to quote and no ground worth holding against it. Everything above still reads true.
+        if r.ticksUntil then
+            -- ceil to match the whole-tick number drawn inside the tile (ui/battle_map.lua drawMusterCount),
+            -- so the tooltip and the marker never quote two different counts for the one arrival.
+            blocks[#blocks + 1] = { kind = "status", name = "Lands in", color = MUSTER_COLOR,
+                remaining = math.ceil(r.ticksUntil) }
+            blocks[#blocks + 1] = { kind = "desc", text = "Stand a unit on this tile to turn the arrival back." }
+        else
+            blocks[#blocks + 1] = { kind = "desc", text = "It walks on as the next action resolves." }
+        end
         if info.cell then
             appendHazard(blocks, info)
             blocks[#blocks + 1] = { kind = "sep" }

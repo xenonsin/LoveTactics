@@ -1814,8 +1814,11 @@ local function partyCentroid(combat)
     return sx / n, sy / n
 end
 
--- The edge a point has drifted closest to. Used by `flank` to bring reserves in beside the party.
-local function nearestEdge(combat, px, py)
+-- The edge a point has drifted closest to. Used by `flank` to bring reserves in beside the party, and
+-- by states/battle.lua to point the arrival arrow of a telegraph whose landing cell was AUTHORED
+-- rather than resolved from an edge (a scripted lesson's reinforcement): the marker still has to say
+-- which side the body marches in from, and the nearest edge to the cell is that side.
+function Combat.nearestEdge(combat, px, py)
     local cols = (combat.arena and combat.arena.cols) or 8
     local rows = (combat.arena and combat.arena.rows) or 8
     local dist = { top = py - 1, bottom = rows - py, left = px - 1, right = cols - px }
@@ -1837,7 +1840,7 @@ function Combat.resolveWaveEdge(combat, from, ctx)
     if from == "flank" then
         local px, py = partyCentroid(combat)
         if not px then return Combat.enemyHomeEdge(combat) end
-        return nearestEdge(combat, px, py)
+        return Combat.nearestEdge(combat, px, py)
     end
     if from == "open" then
         local best, bestFree = Combat.enemyHomeEdge(combat), -1
