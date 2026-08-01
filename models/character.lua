@@ -293,6 +293,13 @@ function Character.instantiate(id, progress)
         -- isn't named here reads back nil at runtime and fails silently (docs/adding-content.md).
         archetype = def.archetype,
         ai = def.ai,
+        -- What this body stands in front of (models/ai.lua's AI.postedUnit): a character id, or
+        -- "priority" for "whoever my side cannot afford to lose", ranked off the board each turn.
+        -- A `defensive` unit takes a post and holds it; this decides that post instead of letting the
+        -- arena's objective decide it, which is how a BODYGUARD differs from a guard -- Rowan defends
+        -- the player on every map, including the many that name no objective at all. Nil for everyone
+        -- else, which leaves the objective reading untouched.
+        guards = def.guards,
         -- The two items that ARE this character, named by the blueprint: its weapon and its signature
         -- verb. General identity ("what is this unit, in two items"), not a mode-specific field --
         -- Draft mode is simply the first consumer, stripping a bought body down to exactly these

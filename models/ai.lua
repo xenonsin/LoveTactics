@@ -244,7 +244,6 @@ AI.TEST_ORDER = {
     "count_at_least", "has_status", "lacks_status", "always",
 }
 AI.ACTION_ORDER = { "attack", "support", "cast", "retreat", "wait" }
-AI.PRIORITY_ORDER = { "emergency", "urgent", "high", "normal", "low", "fallback" }
 AI.TARGET_PREF_ORDER = { "nearest", "lowest_hp", "most_wounded", "lethal", "self", "objective" }
 
 -- Which tests take a `value`, and what shape it is. A test that takes none must not show a value
@@ -263,7 +262,6 @@ AI.TEST_VALUE = {
 function AI.newRule()
     return {
         enabled = true,
-        priority = "normal",
         act = "attack",
         targetPref = "nearest",
         when = { subject = "nearest_foe", test = "exists" },
@@ -323,9 +321,9 @@ function AI.describeRule(rule)
     -- alone would hide the most specific thing about the rule.
     if rule.item then act = act .. " " .. (AI.itemName(rule.item) or "?") end
     if rule.targetPref then act = act .. " " .. (rule.targetPref:gsub("_", " ")) end
-    -- The band leads, because when two rules could both fire the reader's first question is which
-    -- one gets the turn, and that is the answer.
-    return AI.priorityName(rule) .. ": if " .. when .. " then " .. act
+    -- No band prefix any more: which rule gets the turn is answered by WHERE it sits in the list, so
+    -- the sentence says what the rule does and the list says when it is reached.
+    return "if " .. when .. " then " .. act
 end
 
 -- ---------------------------------------------------------------------------
@@ -513,11 +511,16 @@ end
 -- ---------------------------------------------------------------------------
 --
 -- `defensive` is not "hits back when hit" -- it is the posture of a unit assigned to something. What
--- that something is has to come from the OBJECTIVE, because the objective is the only thing on the
--- board that knows what the fight is about: on an assassination the boss's guards are there for the
--- boss, on a control map the bodies around the node are there for the node. Without that reading a
--- defender is just an aggressor with a broken activation rule -- it stands wherever it was spawned
--- and calls it a defence, which is what left a drafted knight rooted in a corner of a control match.
+-- that something is comes first from the OBJECTIVE, because the objective knows what the fight is
+-- about: on an assassination the boss's guards are there for the boss, on a control map the bodies
+-- around the node are there for the node. Without that reading a defender is just an aggressor with a
+-- broken activation rule -- it stands wherever it was spawned and calls it a defence, which is what
+-- left a drafted knight rooted in a corner of a control match.
+--
+-- ...and when the objective names nothing at all -- a killAll, which is most maps -- the side itself
+-- is asked instead (AI.charge): there is still obviously somebody a squad cannot afford to lose, and
+-- a wall that plants itself in front of its own healer is playing the same game either way. Only when
+-- nobody qualifies is there no post, and then this is the hold-until-provoked posture it always was.
 --
 -- A post is `{ tiles, radius, what }`: the ground being held and how far off it the holder may stand.
 
@@ -526,18 +529,12 @@ end
 -- come through the guard, loose enough that a throne room's guards do not all crowd one doorway.
 AI.POST_RADIUS = 2
 
--- The body this unit is posted to: the one the objective names that stands on ITS OWN side. The
--- mirror of `objectiveUnit`, which deliberately returns the far-side one -- an escorted charge is a
--- thing to cut down if you are the enemy and a thing to ring if you are its escort, and the two
--- readings are the same lookup with the side test flipped.
+-- The living body on `unit`'s own side with this blueprint id, or nil.
 --
 -- Matched through a transform for the same reason Combat's assassinate check is: a general who sheds
 -- its human body for its demon one is the same unit in a new shape, and its guards must not lose
 -- their post the moment it phases.
-function AI.postedUnit(combat, unit)
-    local obj = combat.objective
-    if not obj then return nil end
-    local id = obj.target or obj.protect or obj.who
+local function allyNamed(combat, unit, id)
     if not id then return nil end
     local Transform = require("models.transform")
     for _, u in ipairs(combat.units) do
@@ -549,19 +546,170 @@ function AI.postedUnit(combat, unit)
     return nil
 end
 
--- Where `unit` is posted, or nil on an objective that names nothing to defend (killAll, survive) --
--- and nil is the important half: with no post a defender keeps the plain hold-until-provoked rule it
--- has always had, so every authored killAll map plays exactly as before.
+-- ---------------------------------------------------------------------------
+-- Who is worth guarding: the charge ranking
+-- ---------------------------------------------------------------------------
+--
+-- A bodyguard whose charge is a hard-coded id is only ever right for one battle. On a map the
+-- objective names nobody -- a plain killAll, which is most of them -- there is still obviously
+-- somebody the side cannot afford to lose, and every reader of the board can point at them: the
+-- healer, the boss, the unarmed charge, the player's own body. `guards = "priority"` is a unit
+-- saying "I stand in front of whoever that is", and this ranking answers it.
+--
+-- What qualifies is what a body CANNOT DO FOR ITSELF, never how dangerous it is. A hitter that can
+-- swing back is not a charge however valuable it is -- guarding it would just be two units standing
+-- where one was. So a plain fighter scores zero, and a side of nothing but fighters produces no
+-- charge at all: the guard keeps the ordinary hold-until-provoked behavior rather than inventing an
+-- assignment. That refusal is the point. Without it every defensive unit on the map picks the
+-- nearest warm body and the posture stops meaning anything.
+--
+-- Every term is a STABLE fact -- id, boss flag, what the kit contains, max health. Deliberately not
+-- current hp, not distance, not who is winning: a guard that re-picks its charge as the fight moves
+-- oscillates between two posts and defends neither, which reads on screen as a unit pacing in a
+-- circle while its side dies around it.
+AI.CHARGE_WEIGHTS = {
+    -- The player's own body ends the run when it falls, so nothing may outrank it -- deliberately
+    -- larger than every other term ADDED TOGETHER, because a boss-healer ally would otherwise
+    -- out-total it and walk Rowan away from the one body the game is about.
+    AVATAR       = 200,
+    BOSS         = 60,   -- the fight is authored around it
+    OBJECTIVE    = 50,   -- the body the map names on our side: an explicit assignment, so it ranks
+    SUPPORT      = 40,   -- the healer. Kill it and the whole side dies slower but just as surely
+    NONCOMBATANT = 30,   -- carries nothing hostile: an escortee, a driver, a witness
+    FRAGILE      = 10,   -- a tie-break SLOPE among bodies that already qualify, never a qualification
+}
+
+-- The avatar is the created player character (data/characters/character_avatar.lua) -- named here
+-- rather than sniffed for, because "is this the player's body" has exactly one answer and a guessed
+-- one (lowest hp? first in the party?) would be wrong on the day it mattered.
+AI.AVATAR_ID = "character_avatar"
+
+-- Max health at or above which a body reads as able to look after itself, for the FRAGILE slope.
+-- Around a knight's (68): the wall is the thing that does the guarding, not the thing guarded.
+AI.FRAGILE_BENCH = 70
+
+-- How much `ally` needs someone standing in front of it, from `unit`'s side of the board. Zero for a
+-- body that qualifies for nothing, which is the answer that keeps this from inventing charges.
+function AI.chargeScore(combat, unit, ally)
+    local Combat = require("models.combat")
+    local w, char = AI.CHARGE_WEIGHTS, ally.char
+    local score = 0
+
+    if char.id == AI.AVATAR_ID then score = score + w.AVATAR end
+    if char.boss then score = score + w.BOSS end
+
+    -- Through allyNamed rather than an id compare, so a charge that has transformed is still the
+    -- charge -- the same reason the post lookup below matches that way.
+    local obj = combat.objective
+    if obj and allyNamed(combat, unit, obj.target or obj.protect or obj.who) == ally then
+        score = score + w.OBJECTIVE
+    end
+
+    -- Read the KIT, not the class name: a body is a healer because it is carrying heals, and a
+    -- non-combatant because it is carrying nothing to hit with. `unarmed` is excluded on purpose --
+    -- every body has fists and none of them are a reason to call it a combatant.
+    --
+    -- A one-shot does not make a healer. Every frontliner in the game carries a healing potion, and
+    -- counting it here made a swordsman with a belt pouch rank as the body the side cannot replace --
+    -- the same false positive the `defensive` engage test names, arriving by a different door. What
+    -- qualifies is a REPEATABLE support ability: a kit, not a pocket.
+    local supports, strikes = false, false
+    for _, item in ipairs(Combat.abilityItems(char)) do
+        local ab = item.activeAbility
+        if ab then
+            if not Combat.isSupportAbility(ab) then
+                strikes = true
+            elseif not ab.consumesItem then
+                supports = true
+            end
+        end
+    end
+    if supports or char.archetype == "support" then score = score + w.SUPPORT end
+    if not strikes then score = score + w.NONCOMBATANT end
+
+    if score <= 0 then return 0 end
+
+    -- ...and only now, between two bodies that both qualify, does being easy to kill separate them.
+    local _, max = hp(ally)
+    local bench = AI.FRAGILE_BENCH
+    score = score + w.FRAGILE * math.max(0, math.min(1, (bench - max) / bench))
+    return score
+end
+
+-- The body on `unit`'s side most in need of a shield, or nil when nobody qualifies. Board order
+-- breaks a tie, so two guards reading the same board pick the same charge and ring it together
+-- instead of splitting up.
+function AI.charge(combat, unit)
+    local best, bestScore
+    for _, u in ipairs(combat.units) do
+        if u.alive and u ~= unit and u.side == unit.side and not u.summoned then
+            local score = AI.chargeScore(combat, unit, u)
+            if score > 0 and (not bestScore or score > bestScore) then best, bestScore = u, score end
+        end
+    end
+    return best
+end
+
+-- The body this unit is posted to. Three ways one is named, in this order:
+--
+--   1. the unit's OWN blueprint names an id -- `guards = "character_avatar"`, a standing assignment
+--      that travels with the body from map to map and answers to nothing else.
+--   2. the unit's blueprint asks for the ranking OUTRIGHT -- `guards = "priority"`. Every defensive
+--      unit reaches the ranking eventually (see AI.post); what this buys is reaching it FIRST, ahead
+--      of the ground the map is scored on. That is exactly the difference between a bodyguard and a
+--      guard: told to hold a node, an ordinary defender holds the node, and Rowan stands in front of
+--      you and lets the node be someone else's job. It resolves to the player wherever the player
+--      stands (see AI.CHARGE_WEIGHTS).
+--   3. the OBJECTIVE, for everyone else: the one it names that stands on ITS OWN side. The mirror of
+--      `objectiveUnit`, which deliberately returns the far-side one -- an escorted charge is a thing
+--      to cut down if you are the enemy and a thing to ring if you are its escort, and the two
+--      readings are the same lookup with the side test flipped.
+--
+-- The blueprint outranks the map because the two assignments are different KINDS of fact: what the
+-- objective names is what this battle is about, and what a bodyguard guards is what that unit is. A
+-- sworn shield standing on a control node has not stopped being a bodyguard -- the node is what the
+-- rest of the party is for. (The ranking still READS the objective, at OBJECTIVE weight, so a map
+-- that does name a charge is heard -- it just doesn't get to shout down the avatar.) Nil here is not
+-- "no post": AI.post falls on to the ground the objective names, and then to the ranking.
+AI.GUARD_PRIORITY = "priority"
+
+function AI.postedUnit(combat, unit)
+    local sworn = unit.char and unit.char.guards
+    if sworn == AI.GUARD_PRIORITY then return AI.charge(combat, unit) end
+    local named = allyNamed(combat, unit, sworn)
+    if named then return named end
+
+    local obj = combat.objective
+    if not obj then return nil end
+    return allyNamed(combat, unit, obj.target or obj.protect or obj.who)
+end
+
+local function bodyPost(body)
+    return { tiles = { { x = body.x, y = body.y } }, radius = AI.POST_RADIUS,
+             what = body.char.name or "the charge" }
+end
+
+-- Where `unit` is posted, or nil when there is genuinely nobody and nothing to stand in front of.
+--
+-- Read in the order of how explicit the assignment is, because a more explicit one being overruled
+-- by a vaguer one is always a bug:
+--
+--   1. a NAMED body -- the unit's own `guards`, or the one the objective names on our side.
+--   2. the objective's GROUND -- the node, the hold tiles. This outranks the ranking below: what the
+--      map is scored on is not a guess, and a defender that rings its healer while the other side
+--      banks the node has lost the battle it was winning.
+--   3. the charge RANKING -- whoever the side cannot afford to lose (AI.charge). The fallback for
+--      every map that names neither, which is most of them: a killAll used to leave a `defensive`
+--      unit with no post at all, standing wherever it spawned until something walked into reach. It
+--      still ends up with no post when nobody on its side qualifies -- a squad of pure hitters is
+--      exactly the "quiet corner" case, and it plays as it always did.
 --
 -- A BODY outranks GROUND: a guard follows what it guards, and a `defend` objective resolves to its
 -- protectee's tile anyway, so reading the body first is also what keeps a walking charge's picket
 -- walking with it instead of standing on the square it left.
 function AI.post(combat, unit)
     local body = AI.postedUnit(combat, unit)
-    if body then
-        return { tiles = { { x = body.x, y = body.y } }, radius = AI.POST_RADIUS,
-                 what = body.char.name or "the charge" }
-    end
+    if body then return bodyPost(body) end
     local ground = require("models.combat").objectiveGround(combat)
     if #ground > 0 then
         -- Radius 0, not a ring: this ground is held by STANDING on it. A control node only banks its
@@ -569,6 +717,8 @@ function AI.post(combat, unit)
         -- who parks one tile short of the post has not taken the post, however defensive it looks.
         return { tiles = ground, radius = 0, what = "the objective" }
     end
+    local charge = AI.charge(combat, unit)
+    if charge then return bodyPost(charge) end
     return nil
 end
 
@@ -954,7 +1104,17 @@ end
 -- The rule list
 -- ---------------------------------------------------------------------------
 
--- Where a unit's rules come from, in the order a tie is broken:
+-- Where a unit's rules come from. This ranking IS the ordering: rules run source by source, and
+-- within a source in the order they were written, top to bottom. There is no priority field --
+-- position is the priority, which is what makes the list in the Tactics tab mean exactly what it
+-- looks like, and what makes dragging a row a real edit rather than a cosmetic one.
+--
+-- What that costs, stated plainly so the next author does not rediscover it in a battle: a rule can
+-- no longer reach ACROSS a source boundary. A blueprint rule cannot pre-empt an item rule however
+-- urgent it is, and two items' rules are ordered by where they sit in the inventory grid rather than
+-- by how badly each wants the turn. Where the old `priority` band expressed urgency, the fix is now
+-- to order the KIT: a potion meant to be drunk before anything else is cast has to sit earlier in the
+-- grid than the spell it should outrank.
 --
 --   1. PLAYER   char.aiRules      -- the character's own list, once the player has taken it over in
 --                                    the Loadout screen's Tactics tab
@@ -976,11 +1136,9 @@ end
 -- touched. The two ranks differ only so a body that IS still on its blueprint list sorts below its
 -- item rules, where a player who has taken ownership sorts above them.
 --
--- `priority` is the primary sort and is explicit for a reason: three independent authors are
--- contributing to one list and none of them can see the others, so position-in-file cannot be the
--- ordering. Lower runs first. The source ranking above only breaks TIES, and declaration order
--- breaks ties within a source, which together make the sort total -- two runs of the same battle
--- must not produce different rule orders.
+-- Rank and declaration ordinal together make the sort TOTAL, which is not a nicety: table.sort is
+-- not stable in Lua 5.1, so any pair of entries that compared equal could come back in either order,
+-- and two runs of the same battle must not decide differently. See `collect` for the ordinal.
 AI.SOURCE_RANK = { player = 1, item = 2, character = 3, posture = 4 }
 
 -- A rule may name the item it wants used, and there are two ways it can arrive:
@@ -1022,56 +1180,6 @@ function AI.itemName(ref)
     return (def and def.name) or ref
 end
 
--- Priority is authored as a NAME, not a number. A bare `priority = 20` is unreadable at the point it
--- matters most -- in a data file, months later, deciding whether the rule you are adding should come
--- before or after one you can't see -- and two authors picking numbers independently have no way to
--- agree. A name says what the rule is FOR, and the ordering follows from that rather than from
--- whoever guessed a smaller integer.
---
--- The gaps are deliberate: a raw number is still accepted for the rare case that wants to slot
--- between two levels, and leaving room means doing so never requires renumbering anything else.
-AI.PRIORITY = {
-    -- I am about to die. Drink the potion, break off, do not trade blows.
-    emergency = 10,
-    -- Someone else is about to die, or a chance appears that will not come round again.
-    urgent    = 20,
-    -- Worth doing before the ordinary business of the turn: the expensive spell, the opening gambit.
-    high      = 40,
-    -- The ordinary business of the turn. Posture defaults live here, so a rule that names nothing
-    -- competes with "attack whatever is in reach" and wins only on the source ranking.
-    normal    = 100,
-    -- Do this if nothing better presented itself.
-    low       = 200,
-    -- The floor. Reposition, regroup, idle.
-    fallback  = 400,
-}
-
-AI.DEFAULT_PRIORITY = "normal"
-
--- Resolve a rule's authored priority to the number the sort runs on. Accepts a name (preferred), a
--- raw number (an escape hatch for slotting between levels), or nothing.
-function AI.priorityOf(rule)
-    local p = rule and rule.priority
-    if p == nil then return AI.PRIORITY[AI.DEFAULT_PRIORITY] end
-    if type(p) == "number" then return p end
-    local level = AI.PRIORITY[p]
-    assert(level, "AI rule names an unknown priority: " .. tostring(p)
-        .. " (expected one of emergency/urgent/high/normal/low/fallback, or a number)")
-    return level
-end
-
--- The name of the band a priority falls in, for the reason line and the Tactics tab. An exact match
--- reads back as itself; a raw number reads as the band it sits in, so a hand-tuned 25 still explains
--- itself as "urgent" rather than as a bare integer nobody can place.
-function AI.priorityName(rule)
-    local value = AI.priorityOf(rule)
-    local best, bestValue
-    for name, level in pairs(AI.PRIORITY) do
-        if level <= value and (not bestValue or level > bestValue) then best, bestValue = name, level end
-    end
-    return best or "normal"
-end
-
 -- An item's rules are written from the item's own point of view, so a rule that names no `item` is
 -- understood to mean "this one". Resolved here rather than at the use site so an authored block can
 -- stay as short as `ai = { { when = ..., act = "cast" } }`.
@@ -1080,17 +1188,25 @@ local function collect(out, rules, source, item)
     -- Accept a lone rule table as well as a list of them, so the common one-rule case doesn't have
     -- to be wrapped in braces it gains nothing from.
     if rules.act or rules.when or rules.whenFn then rules = { rules } end
-    for i, rule in ipairs(rules) do
+    for _, rule in ipairs(rules) do
         -- `enabled == false` switches a rule off without deleting it -- the player toggles rows in the
         -- Tactics tab to see what a list does without them, which is most of how anyone debugs one.
         -- Only an explicit false counts: a rule that never mentions `enabled` is on, so no authored
         -- data file has to say so.
         if rule.enabled ~= false then
-            out[#out + 1] = {
+            -- `order` counts across the WHOLE collection, not within this one list. It used to be the
+            -- index within the list being collected, which was fine only because priority separated
+            -- everything else: two items contributing one rule each both scored order 1 and rank 2,
+            -- and were told apart purely by their authored priorities. With priority gone that pair
+            -- would compare EQUAL, and table.sort is not stable in Lua 5.1 -- the same battle could
+            -- order those two rules differently between runs. A running ordinal keeps the comparator
+            -- total, and gives the tie the only meaningful answer available: the order the items come
+            -- back in, which is inventory (row-major grid) order, which is the player's own layout.
+            local n = #out + 1
+            out[n] = {
                 rule = rule, ref = rule.item or item,
-                priority = AI.priorityOf(rule),
                 rank = AI.SOURCE_RANK[source] or 9,
-                order = i,
+                order = n,
             }
         end
     end
@@ -1125,7 +1241,6 @@ function AI.rulesFor(unit)
     collect(out, posture.rules, "posture")
 
     table.sort(out, function(a, b)
-        if a.priority ~= b.priority then return a.priority < b.priority end
         if a.rank ~= b.rank then return a.rank < b.rank end
         return a.order < b.order
     end)

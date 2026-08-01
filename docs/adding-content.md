@@ -424,12 +424,59 @@ archetype = "skirmish",   -- one of AI.POSTURES; omit for `aggressive`
 | Posture | Behavior |
 | --- | --- |
 | `aggressive` | Closes and hits the best thing it can reach. The default, and what every enemy did before postures existed. |
-| `defensive` | **Defends what the objective names.** Walks to its post — the boss it shares a side with on an `assassinate`, the charge on a `defend`/escort, the ground on a `hold`/`reach`/`control` — and then holds it: it fights whatever comes to the post, and will not be baited off it. On a `killAll`, which names nothing to defend, it has no post and falls back to holding until a foe is in its reach or it takes a hit. Lets a map have quiet corners the player opens when they choose. |
+| `defensive` | **Defends something, and takes up a post to do it.** Walks to that post — the boss it shares a side with on an `assassinate`, the charge on a `defend`/escort, the ground on a `hold`/`reach`/`control` — and then holds it: it fights whatever comes to the post, and will not be baited off it. When the objective names nothing (a `killAll`) it asks its own side instead and posts to whoever it cannot afford to lose — the healer, the boss, the charge (see below). Only when nobody qualifies is there no post, and then it holds until a foe is in its reach or it takes a hit, which is what lets a map of pure hitters keep its quiet corners. |
 | `holdGround` | Never leaves its start tile. A sentry, a throne-room boss. |
 | `guard` | Pursues within `leash` tiles of where it started, then walks home. A patrol the player can bait. |
 | `skirmish` | Prices being reachable dearly — the archer/mage posture. Will not close to take a shot it could take from range. |
 | `support` | Reads allies before enemies. |
 | `objective` | Goes for whoever the objective names (`protect` charge, `assassinate` mark); falls back to `aggressive` when it names nobody. |
+
+### Who a defender guards
+
+Every `defensive` unit takes a post, read in order of how *explicit* the assignment is
+(`AI.post`) — a vaguer source must never overrule a more explicit one:
+
+1. a **named body** — the unit's own `guards`, or the one the objective names on its side;
+2. the objective's **ground** — the node, the hold tiles. What the map is scored on is not a guess,
+   and a defender that rings its healer while the other side banks the node has lost the battle it
+   was winning;
+3. the **charge ranking** — whoever the side cannot afford to lose. This is the fallback for every
+   map that names neither, which is most of them.
+
+A unit stations within `AI.POST_RADIUS` of its charge wherever that body walks, engages the instant
+anything contests that ring, and will not be baited off it — so it never has to be positioned by hand.
+
+A blueprint only needs to say anything when it wants to **outrank the map**:
+
+```lua
+archetype = "defensive",
+guards = "priority",           -- go to the ranking FIRST, ahead of the objective's ground
+guards = "character_avatar",   -- ...or name one body outright, if the assignment never changes
+```
+
+That is precisely the difference between a bodyguard and a guard: told to hold a node, an ordinary
+defender holds the node, and a sworn shield stands in front of its charge and lets the node be
+somebody else's job.
+
+The ranking (`AI.CHARGE_WEIGHTS`) scores each ally on what it **cannot do for itself**:
+
+| Term | What it means |
+| --- | --- |
+| `AVATAR` | The player's own body. Larger than every other term *added together* — losing it ends the run. |
+| `BOSS` | `boss = true`: the fight is authored around it. |
+| `OBJECTIVE` | The body the map names on our side. Heard, but it does not shout down the avatar. |
+| `SUPPORT` | Carries a **repeatable** support ability, or `archetype = "support"`. A healing potion is a pocket, not a kit, and does not count — every frontliner has one. |
+| `NONCOMBATANT` | Carries nothing hostile: an escortee, a driver, a witness. |
+| `FRAGILE` | A slope on max health, used only to separate two bodies that already qualify. |
+
+A body that qualifies for nothing scores zero, so a side of nothing but hitters produces **no** charge
+and the guard keeps plain hold-until-provoked. That refusal is deliberate: guarding someone who can
+swing back is just two units standing where one was. Every term is a stable fact about the body —
+never current hp or distance — because a guard that re-picks its charge mid-fight paces between two
+posts and defends neither.
+
+Rowan is the one that ships: sworn to the player in the prologue, and `"priority"` is how that oath
+survives the fights the avatar is not standing in.
 
 ### Put behavior on an item
 
@@ -440,7 +487,7 @@ any NPC's grid and it gets the tactics too, with no edit to that character's blu
 activeAbility = {
     target = "ally", range = 3,
     healing = { 24, 26, 29 },
-    ai = { priority = "urgent", act = "support", targetPref = "lowest_hp",
+    ai = { act = "support", targetPref = "lowest_hp",
            when = { subject = "any_ally", test = "hp_pct_below", value = 0.5 } },
     effect = function(fx) fx.heal(fx.target, fx.amount) end,
 }
@@ -452,7 +499,6 @@ skipped entirely and the next one gets the turn.
 
 | Field | Meaning |
 | --- | --- |
-| `priority` | A **name**, not a number — see the scale below. The primary sort, because three sources contribute to one list and none can see the others. |
 | `when` | `{ subject, test, value }` — see the vocabulary below. Omit for an unconditional rule. |
 | `act` | `attack` / `support` / `cast` / `retreat` / `wait` (`AI.ACTIONS`). |
 | `item` | Which item to use. Omit for "anything in the kit". On an item's own block this is implicit and means *this item*; elsewhere it is an **id string** (`"ability_heal"`). |
@@ -480,31 +526,26 @@ Both are closed sets (`AI.SUBJECTS`, `AI.TESTS`). A typo **raises** rather than 
 true — a misspelled rule that always fires looks exactly like working behavior until a battle goes
 strange. `tests/ai_spec.lua` sweeps every shipped item and character to catch it before then.
 
-### Priority
-
-Authored as a name (`AI.PRIORITY`), because `priority = 20` tells a later reader nothing about what
-the rule is *for*, and two authors picking numbers independently have no way to agree:
-
-| Name | When to use it |
-| --- | --- |
-| `emergency` | I am about to die. Drink the potion, break off — do not trade blows. |
-| `urgent` | Someone *else* is about to die, or a chance appears that will not come round again. |
-| `high` | Worth doing before the ordinary business of the turn: the expensive spell, the opening gambit. |
-| `normal` | The ordinary business of the turn. **Posture defaults live here**, so a rule at `normal` competes with "attack whatever is in reach" and wins only on the source ranking. |
-| `low` | Do this if nothing better presented itself. |
-| `fallback` | The floor. Reposition, regroup, idle. |
-
-A raw number is still accepted for the rare rule that must slot *between* two levels; the gaps in the
-scale mean doing so never forces a renumbering. It will still describe itself by the band it lands in.
-
 ### Rule order
 
-Sources merge into one list, sorted by `priority`, then by source, then by declaration order:
+**Position is priority.** There is no `priority` field — a rule's urgency is where it sits, and
+nothing else. Sources merge into one list by source rank, and within a source in the order they were
+written:
 
 1. **player** — `char.aiRules`, from the Loadout screen's Tactics tab
 2. **item** — `ability.ai`
 3. **character** — `ai` on the blueprint, for behavior specific to one body
 4. **posture** — the archetype's defaults
+
+So write a blueprint's rules in the order you want them asked, most urgent first. The payoff goes
+*above* the setup — a poacher must be asked "is anything already rooted?" before "should I throw the
+net?", or it nets a second foe while the first stands pinned (`data/characters/character_poacher.lua`).
+
+What this costs, so you don't rediscover it in a battle: **a rule cannot reach across a source
+boundary.** A blueprint rule can never pre-empt an item rule however urgent it is, and two items' rules
+are ordered by their **position in the inventory grid**, not by how badly each wants the turn. Where
+you would once have written `priority = "emergency"`, order the *kit* instead: a potion that must be
+drunk before a spell is cast has to sit earlier in the grid than that spell.
 
 The list is scanned strictly top to bottom and the **first rule that matches and can be executed wins
 outright**. Scoring never overrules the list; it only chooses among the candidates that rule admitted.

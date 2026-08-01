@@ -34,7 +34,7 @@ local STAT_ORDER = {
 
 -- Rule keys in the order ui/tactics_editor.lua presents them, so a rule reads down the file the way it
 -- reads down the editor.
-local RULE_ORDER = { "enabled", "priority", "act", "item", "targetPref" }
+local RULE_ORDER = { "enabled", "act", "item", "targetPref" }
 local WHEN_ORDER = { "subject", "test", "value" }
 
 local RESOURCE = {}
@@ -161,6 +161,7 @@ function M.serialize(char)
     if char.portraitPath then out[#out + 1] = "    portrait = " .. q(char.portraitPath) .. ",\n" end
     if char.class then out[#out + 1] = "    class = " .. q(char.class) .. ",\n" end
     if char.archetype then out[#out + 1] = "    archetype = " .. q(char.archetype) .. ",\n" end
+    if char.guards then out[#out + 1] = "    guards = " .. q(char.guards) .. ",\n" end
     if char.boss then out[#out + 1] = "    boss = true,\n" end
 
     -- `unarmed` is three-valued and only two of them are worth writing: nil means "this body has no

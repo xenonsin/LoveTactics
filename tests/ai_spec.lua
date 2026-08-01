@@ -1,4 +1,4 @@
--- Tests for the tactical AI (models/ai.lua): the condition vocabulary, the posture layer, and the
+﻿-- Tests for the tactical AI (models/ai.lua): the condition vocabulary, the posture layer, and the
 -- scored search over (stand tile, item, target). Pure logic only, so it runs headless.
 --
 -- The four cases that used to live in tests/combat_spec.lua under `planEnemyAction` are deliberately
@@ -337,15 +337,140 @@ return {
         end,
     },
     {
-        name = "with nothing to defend, defensive is the old hold-until-provoked rule",
+        name = "a bodyguard picks its charge off the board, and the player's body outranks everything",
         fn = function()
-            -- killAll names no ground and no body, so there is no post -- and every authored killAll
-            -- map has to keep playing exactly as it did before postures learned about objectives.
+            -- Rowan's blueprint asks for the ranking, not an id. On a killAll -- which names nothing
+            -- to defend, and is exactly the case that used to leave her an ordinary aggressor -- the
+            -- avatar is what the side cannot afford to lose, so that is the post.
+            local rowan = Character.instantiate("character_rowan")
+            assert(rowan.archetype == "defensive" and rowan.guards == AI.GUARD_PRIORITY,
+                "the blueprint's posture and standing assignment survive instantiation")
+
+            local c = Combat.new(arena(14, 14),
+                { unit(rowan, 1, 1), unit("character_avatar", 9, 9), unit("character_priest", 2, 9) },
+                { unit("character_bandit", 14, 14) })
+            local guard, avatar = c.units[1], c.units[2]
+
+            local post = AI.post(c, guard)
+            assert(post and post.what == avatar.char.name, "posted to the player, over the healer")
+            local plan = AI.plan(c, guard)
+            assert(plan.move, "and she walks to the body rather than holding where she spawned")
+            assert(Combat.cellGap(plan.move.x, plan.move.y, avatar) < Combat.cellGap(1, 1, avatar),
+                "closing on the player, not on the bandit across the board")
+
+            -- The map naming a charge is heard, but does not shout down the avatar: an escort's
+            -- witness is what the REST of the party is for.
+            c.objective = { type = "killAll", protect = "character_priest" }
+            assert(AI.post(c, guard).what == avatar.char.name, "the player still outranks the map")
+        end,
+    },
+    {
+        name = "with no player on the board the ranking falls to the healer, then to the fragile",
+        fn = function()
+            -- The point of ranking rather than naming: the oath has to mean something in the fights
+            -- the avatar is not standing in.
+            local function rowan(x, y) return unit("character_rowan", x, y) end
+            local healer = Combat.new(arena(14, 14),
+                { rowan(1, 1), unit("character_priest", 9, 9), unit(swordsman(), 3, 3) },
+                { unit("character_bandit", 14, 14) })
+            assert(AI.post(healer, healer.units[1]).what == healer.units[2].char.name,
+                "the body carrying the heals is what the side cannot replace")
+
+            -- A hitter is never a charge, however valuable: guarding one would just be two units
+            -- standing where one was. A side of nothing but hitters names nobody.
+            local hitters = Combat.new(arena(14, 14),
+                { rowan(1, 1), unit(swordsman(), 3, 3) },
+                { unit("character_bandit", 14, 14) })
+            assert(AI.charge(hitters, hitters.units[1]) == nil, "a swordsman guards itself")
+            assert(AI.plan(hitters, hitters.units[1]).wait, "so she is a plain defender, holding")
+        end,
+    },
+    {
+        name = "the charge ranking is stable as the fight moves",
+        fn = function()
+            -- A guard that re-picks its charge on current hp or distance oscillates between two posts
+            -- and defends neither. Every term is a fact about the BODY, not about the moment.
+            local c = Combat.new(arena(14, 14),
+                { unit("character_rowan", 5, 5), unit("character_avatar", 6, 5),
+                  unit("character_priest", 7, 5) },
+                { unit("character_bandit", 14, 14) })
+            local guard, avatar, priest = c.units[1], c.units[2], c.units[3]
+
+            assert(AI.charge(c, guard) == avatar, "the player, to begin with")
+            setHp(avatar, 1)                       -- bleeding badly
+            setHp(priest, 1)                       -- so is the healer
+            priest.x, priest.y = 5, 6              -- and the healer is now the nearer body
+            assert(AI.charge(c, guard) == avatar, "and the player still, after all of that")
+        end,
+    },
+    {
+        name = "a bodyguard engages on the ring being contested, and holds it once manned",
+        fn = function()
+            local c = Combat.new(arena(14, 14),
+                { unit("character_rowan", 9, 8), unit("character_avatar", 9, 9) },
+                { unit("character_bandit", 14, 1) })
+            local guard = c.units[1]
+            assert(AI.plan(c, guard).wait, "at her post with the fight elsewhere, holding IS the move")
+
+            -- Something walks up to the player. A contested post is the fight starting, whether or
+            -- not it has come within her own reach yet.
+            c.units[3].x, c.units[3].y = 10, 10
+            local act = AI.plan(c, guard)
+            assert(act.item, "she steps in rather than waiting to be hit first")
+        end,
+    },
+    {
+        name = "with nobody worth guarding, defensive is the old hold-until-provoked rule",
+        fn = function()
+            -- killAll names no ground and no body, and a lone bandit's side has nobody the ranking
+            -- would point at either -- so there is no post, and the quiet-corner maps every authored
+            -- killAll is built on keep playing exactly as they did.
             local g = Character.instantiate("character_bandit")
             g.archetype = "defensive"
             local c = Combat.new(arena(12, 12), { unit(swordsman(), 11, 11) }, { unit(g, 2, 2) })
-            assert(AI.post(c, c.units[2]) == nil, "killAll names nothing to defend")
+            assert(AI.post(c, c.units[2]) == nil, "nothing named, and nobody to rank")
             assert(AI.plan(c, c.units[2]).wait, "so it holds, exactly as it always has")
+        end,
+    },
+    {
+        name = "on a map that names nothing, a defender falls back to guarding its own side's charge",
+        fn = function()
+            -- Every `defensive` unit gets here, not just the ones whose blueprint asks: a killAll is
+            -- most maps, and a wall that stands where it spawned while its healer is cut down two
+            -- tiles away is not defending anything. No `guards` field anywhere in this fixture.
+            local g = Character.instantiate("character_bandit")
+            g.archetype = "defensive"
+            local c = Combat.new(arena(14, 14),
+                { unit(swordsman(), 14, 14) },
+                { unit(g, 2, 2), unit(caster("ability_heal"), 9, 9) })
+            local wall, medic = c.units[2], c.units[3]
+
+            local post = AI.post(c, wall)
+            assert(post and post.what == medic.char.name, "the healer is what this squad cannot replace")
+            local plan = AI.plan(c, wall)
+            assert(plan.move and Combat.cellGap(plan.move.x, plan.move.y, medic) < Combat.cellGap(2, 2, medic),
+                "and the wall walks to it, rather than waiting to be found")
+        end,
+    },
+    {
+        name = "the ground the map is scored on still outranks the ranking",
+        fn = function()
+            -- A defender that rings its healer while the other side banks the node has lost the
+            -- battle it was winning. Only a blueprint that asks for the ranking outright (`guards`)
+            -- gets to put a body above the objective's ground.
+            local node = { { x = 5, y = 5 }, { x = 6, y = 5 } }
+            local objective = { type = "control", maxTicks = 240, nodes = { node } }
+            local g = Character.instantiate("character_bandit")
+            g.archetype = "defensive"
+            local c = Combat.new(arena(12, 12, objective),
+                { unit(swordsman(), 12, 12) },
+                { unit(g, 1, 1), unit(caster("ability_heal"), 9, 9) })
+            assert(AI.post(c, c.units[2]).what == "the objective", "the node, not the medic")
+
+            -- ...and the bodyguard form is exactly the opposite reading.
+            c.units[2].char.guards = AI.GUARD_PRIORITY
+            assert(AI.post(c, c.units[2]).what == c.units[3].char.name,
+                "a sworn shield lets the node be somebody else's job")
         end,
     },
     {
@@ -416,30 +541,56 @@ return {
     -- Rules as data: items, blueprints, and the merge
     -- ---------------------------------------------------------------------
     {
-        name = "priority is authored as a name, and reads back as one",
+        name = "position is priority: declaration order decides, within a source",
         fn = function()
-            -- A bare integer says nothing about what a rule is FOR, and two authors picking numbers
-            -- independently cannot agree. The names are the interface; the numbers are an
-            -- implementation detail of the sort.
-            assert(AI.priorityOf({ priority = "emergency" }) < AI.priorityOf({ priority = "urgent" }),
-                "an emergency outranks something merely urgent")
-            assert(AI.priorityOf({ priority = "urgent" }) < AI.priorityOf({ priority = "normal" }),
-                "urgent outranks the ordinary business of the turn")
-            assert(AI.priorityOf({ priority = "normal" }) < AI.priorityOf({ priority = "fallback" }),
-                "and anything outranks the floor")
+            -- There is no priority field. A rule's urgency is where it sits, so the merge must hand
+            -- back a character's own rules in exactly the order they were written -- if it did not,
+            -- the Tactics tab's drag-to-reorder would be editing something that does not decide
+            -- anything.
+            local char = caster("ability_jolt")
+            local first  = { act = "wait" }
+            local second = { act = "attack" }
+            char.ai = { first, second }
+            local c = Combat.new(arena(8, 8),
+                { unit(swordsman(), 4, 4) }, { unit(char, 4, 6) })
 
-            -- Posture defaults sit at `normal`, which is what makes that band mean what it says.
-            assert(AI.priorityOf({}) == AI.PRIORITY.normal, "an unnamed rule is normal")
+            local merged = AI.rulesFor(c.units[2])
+            local at1, at2
+            for i, e in ipairs(merged) do
+                if e.rule == first then at1 = i end
+                if e.rule == second then at2 = i end
+            end
+            assert(at1 and at2, "both authored rules are in the merge")
+            assert(at1 < at2, "and in the order they were declared, not reordered by anything")
 
-            -- A raw number still works, for the rule that must slot between two bands...
-            assert(AI.priorityOf({ priority = 25 }) == 25, "a number is taken at face value")
-            -- ...and still explains itself by the band it landed in rather than as a bare integer.
-            assert(AI.priorityName({ priority = 25 }) == "urgent", "25 reads back as urgent")
-            assert(AI.priorityName({ priority = "high" }) == "high", "a name reads back as itself")
+            -- The rendered sentence no longer carries a band prefix, because there is no band.
+            local sentence = AI.describeRule({ act = "support" })
+            assert(sentence:sub(1, 3) == "if ", "a rule reads as a plain if/then, got: " .. sentence)
+        end,
+    },
+    {
+        name = "the merge is totally ordered, so two runs cannot disagree",
+        fn = function()
+            -- table.sort is not stable in Lua 5.1. Before position became the ordering, two items
+            -- each contributing one rule scored the same rank AND the same index-within-list, and
+            -- were told apart only by their authored priorities -- so with priority gone they would
+            -- have compared equal and sorted arbitrarily. The ordinal in `collect` is what closes
+            -- that, and this is the property it exists for.
+            local char = caster("ability_heal")
+            -- Two item-borne rule sources on one body, plus its own list and the posture floor.
+            char.inventory = char.inventory or {}
+            local c = Combat.new(arena(8, 8),
+                { unit(swordsman(), 4, 4) }, { unit(char, 4, 6) })
 
-            assert(not pcall(AI.priorityOf, { priority = "verygreat" }), "a typo'd band raises")
-            assert(AI.describeRule({ priority = "urgent", act = "support" }):find("urgent"),
-                "the band leads the rendered sentence")
+            local first = AI.rulesFor(c.units[2])
+            for _ = 1, 8 do
+                local again = AI.rulesFor(c.units[2])
+                assert(#again == #first, "the same body merges to the same number of rules")
+                for i = 1, #first do
+                    assert(again[i].rule == first[i].rule,
+                        "and to the same order every time (slot " .. i .. ")")
+                end
+            end
         end,
     },
     {
@@ -500,7 +651,7 @@ return {
             local medic = caster("ability_heal")
             medic.inventory[2] = Item.instantiate("weapon_iron_sword")
             medic.aiRules = { {
-                priority = "urgent", act = "support", item = "ability_heal", targetPref = "lowest_hp",
+                act = "support", item = "ability_heal", targetPref = "lowest_hp",
                 when = { subject = "any_ally", test = "hp_pct_below", value = 0.5 },
             } }
             local c = Combat.new(arena(10, 10),
@@ -522,7 +673,7 @@ return {
             local char = Character.instantiate("character_bandit")
             char.inventory[2] = Item.instantiate("weapon_iron_sword")
             char.aiRules = { {
-                priority = "urgent", act = "attack", item = "ability_fireball",
+                act = "attack", item = "ability_fireball",
                 when = { subject = "any_foe", test = "exists" },
             } }
             local c = Combat.new(arena(8, 8),
@@ -569,7 +720,7 @@ return {
             -- No player overlay: the character is still on the list the blueprint authored, at the
             -- character rank -- below the item's own rule, above the posture floor.
             local char = caster("ability_heal")       -- Heal's block is `urgent`
-            char.ai = { { priority = "normal", act = "attack" } }
+            char.ai = { { act = "attack" } }
             assert(char.aiRules == nil, "the unit was never edited")
             local c = Combat.new(arena(8, 8),
                 { unit(swordsman(), 4, 4) }, { unit(char, 4, 6) })
@@ -589,17 +740,17 @@ return {
             -- whatever the blueprint authored plus the player's edits. Collecting `char.ai` as well
             -- would double every untouched rule, so once the overlay exists the blueprint list drops.
             local char = caster("ability_heal")
-            char.ai = { { priority = "high", act = "attack" } }          -- the blueprint's own rule
-            char.aiRules = { { priority = "high", act = "wait" } }       -- the player took the list over
+            char.ai = { { act = "attack" } }          -- the blueprint's own rule
+            char.aiRules = { { act = "wait" } }       -- the player took the list over
             local c = Combat.new(arena(8, 8),
                 { unit(swordsman(), 4, 4) }, { unit(char, 4, 6) })
             local merged = AI.rulesFor(c.units[2])
 
-            -- Heal's own block is `urgent`, which outranks `high`, so it leads whatever the source.
-            assert(merged[1].item and merged[1].item.id == "ability_heal",
-                "priority is the primary sort, whatever the source")
-            -- The player's `high` rule is present at the player rank...
-            assert(merged[2].rule.act == "wait", "the player's rule leads the `high` band")
+            -- Source rank is now the whole cross-source ordering, and the player's own list is rank 1
+            -- -- so their rule leads, and the heal that rides on the spell follows it.
+            assert(merged[1].rule.act == "wait", "the player's own list leads every other source")
+            assert(merged[2].item and merged[2].item.id == "ability_heal",
+                "and the item's own block comes next, ahead of the posture floor")
             -- ...and the blueprint's own `attack` rule is GONE, replaced rather than stacked.
             for _, e in ipairs(merged) do
                 assert(e.rule ~= char.ai[1], "the blueprint's own rule does not also appear")
@@ -628,7 +779,7 @@ return {
             assert(ra[1].item ~= rb[1].item, "each unit's rule points at its OWN copy of the spell")
             assert(ra[1].item == a.inventory[1], "specifically, the one in its own grid")
             assert(rb[1].item == b.inventory[1], "and likewise for the other")
-            assert(ra[1].rule.priority == rb[1].rule.priority, "reading the same authored rule")
+            assert(ra[1].rule.act == rb[1].rule.act, "reading the same authored rule")
         end,
     },
     {
@@ -651,8 +802,11 @@ return {
                         end
                         assert(AI.ACTIONS[rule.act or "attack"],
                             id .. " names an unknown act: " .. tostring(rule.act))
-                        assert(pcall(AI.priorityOf, rule),
-                            id .. " names an unknown priority: " .. tostring(rule.priority))
+                        -- The field is gone: a rule that still carries one is authored against a
+                        -- sort that no longer exists, and would sit wherever it was declared while
+                        -- reading as though it had asked for a band.
+                        assert(rule.priority == nil,
+                            id .. " still carries a `priority` key -- position is the ordering now")
                     end
                 end
             end
@@ -680,8 +834,11 @@ return {
                         end
                         assert(AI.ACTIONS[rule.act or "attack"],
                             id .. " names an unknown act: " .. tostring(rule.act))
-                        assert(pcall(AI.priorityOf, rule),
-                            id .. " names an unknown priority: " .. tostring(rule.priority))
+                        -- The field is gone: a rule that still carries one is authored against a
+                        -- sort that no longer exists, and would sit wherever it was declared while
+                        -- reading as though it had asked for a band.
+                        assert(rule.priority == nil,
+                            id .. " still carries a `priority` key -- position is the ordering now")
                     end
                 end
             end
