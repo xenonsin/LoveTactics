@@ -13,7 +13,7 @@
 return {
     name = "The Breachward",
     archetype = "holdGround",
-    sprite = "assets/chars/demon_grunt.png",
+    sprite = "assets/chars/siege_breaker.png",
     stats = {
         health = 84, mana = 0, stamina = 13,
         staminaRegen = 2,

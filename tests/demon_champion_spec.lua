@@ -108,7 +108,7 @@ return {
             local boss = c.units[2]
             local phase = traitOn(boss, "trait_boss_phases")
             assert(boss.char.id == "character_demon_champion", "starts in its own body")
-            assert(boss.char.spritePath == "assets/chars/demon_grunt.png", "wearing its own board sprite")
+            assert(boss.char.spritePath == "assets/chars/demon_champion.png", "wearing its own board sprite")
             local pool = boss.char.stats.health -- the continuous thing a transform must carry, by reference
 
             -- Rewrite the stage script to a single transform at half health (runtime instance only).

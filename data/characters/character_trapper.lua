@@ -20,7 +20,7 @@
 -- minRange 2), so an aggressive footwork that walked into melee would strand its fallback weapon.
 return {
     name = "Trapper",
-    sprite = "assets/chars/bandit.png", -- reuses bandit art until its own exists
+    sprite = "assets/chars/trapper.png",
     archetype = "skirmish",             -- keeps its range; see the note above
     stats = {
         health = 34, mana = 0, stamina = 16, -- softer than a bandit: it is support, and meant to fall first

@@ -21,7 +21,7 @@
 -- comment in data/quests/relief_column.lua.
 return {
     name = "Knight in Grey",
-    sprite = "assets/chars/forsworn_knight.png",
+    sprite = "assets/chars/grey_knight.png",
     class = "knight",
     archetype = "guard",
     stats = {

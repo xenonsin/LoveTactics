@@ -12,7 +12,7 @@
 -- were in the same gateway on the same night, and nothing in slot 2 may say so.
 return {
     name = "Road-Captain",
-    sprite = "assets/chars/bastion_sworn.png",
+    sprite = "assets/chars/greywatch_captain.png",
     class = "knight",
     archetype = "guard",
     stats = {

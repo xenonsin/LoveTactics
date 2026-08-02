@@ -12,7 +12,7 @@
 -- data/characters/character_knight.lua for the generic she is built on.
 return {
     name = "Rowan",
-    sprite = "assets/chars/knight.png",
+    sprite = "assets/chars/rowan.png",
     portrait = "assets/portraits/knight.png", -- large VN portrait for conversations (falls back if missing)
     -- Innate growth class: the fallback (and tie-break) for the level-up growth system when this
     -- character has no cast history yet. See models/growth.lua and data/growth/<class>.lua.

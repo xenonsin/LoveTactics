@@ -30,7 +30,7 @@
 -- shot or one Clear Out, so the "kill it at range" answer is always available.
 return {
     name = "Bomblet",
-    sprite = "assets/chars/demon_imp.png", -- reuses the imp art until its own exists
+    sprite = "assets/chars/demon_bomblet.png",
     revivable = false, -- a demon does not come back (and it bursts on death regardless)
     unarmed = false, -- no natural weapon at all: it cannot strike, only detonate
     stats = {

@@ -28,13 +28,15 @@ work below is still owed. See [Composed tokens](#composed-tokens--the-budget-sta
 `char-compose assets` fills the gaps and skips any id that already has real art, so a delivered board
 sprite (a **Spine rig**) dropped in later transparently replaces its token. Each of the 37 **discipline exemplars** now carries its
 own sprite path and its own silhouette (a `DISCIPLINE_SILHOUETTE` tier in `tools/char_compose.lua`, keyed
-off the discipline's `exemplar`), so a Necromancer no longer wears the plain mage token — see
+off the discipline's `exemplar`), so a Necromancer no longer wears the plain mage token; and every
+remaining body is named out of its bucket by a `CHARACTER_SILHOUETTE` tier above it, so that **no two
+characters share a token** (the sin generals were one picture between the seven of them) — see
 [Composed tokens](#composed-tokens--the-budget-stand-in-same-philosophy-as-items).
 
 | Bucket | Have | Needed | Rendered at | Source |
 |---|---|---|---|---|
 | `items/` | 583 | 619 | 64px cell | **composed from tags** — [icon system](#the-permanent-icon-system--compose-dont-commission) ✅ |
-| `chars/` | 94 | 94 | ~52px on a 60px tile | **Spine rigs (commission)** — composed tokens stand in until each rig lands; see [Characters](#characters) |
+| `chars/` | 107 | 107 | ~52px on a 60px tile | **Spine rigs (commission)** — composed tokens stand in until each rig lands; see [Characters](#characters) |
 | ~~`hazards/`~~ | — | — | 64px tile, under units | **no art, ever** — [drawn by a shader](#hazards-are-not-icons) ✅ |
 | `portraits/` | 0 | 17 | 470px tall standing figure | **commission** |
 | `vendors/` | 0 | 8 | shop panel | **commission** |
@@ -162,16 +164,30 @@ is a function of its `fire`/`ice` tag.
 
 | Layer | Channel | Source |
 |---|---|---|
-| **Base** silhouette | a **discipline** match (the exemplar), then a creature/name match, then a **`kind`** bucket | game-icons.net (reuse, not commission) |
+| **Base** silhouette | a **character** match (by name), then a **discipline** match (the exemplar), then a creature/name match, then a **`kind`** bucket | game-icons.net (reuse, not commission) |
 | **Tint** | element (elementals), else kind | — |
 | **Frame** | `class` colour (the vendor shelf), gold + thicker for a boss | shared with the item composer |
 | **Badge** | a gold disc for a `boss`/general | — |
 
-A classless boss — the seven sin generals are `boss = true` with no `class` — would otherwise be a rank
-swordman told apart only by its frame, so it is lifted to an **overlord silhouette** (a horned helm). A boss
-that *has* a class keeps its role look (priest-boss Amana still reads priest) and a boss that is a demon or
-beast keeps its creature; only the generic humanoid is lifted. The guessing is regression-guarded headlessly
-by `tests/char_compose_spec.lua` — pure logic, no render — the way the item pipeline guards its family picks.
+A classless boss — `boss = true` with no `class` — would otherwise be a rank swordman told apart only by
+its badge, so it is lifted to an **overlord silhouette** (a horned helm). A boss that *has* a class keeps
+its role look and a boss that is a demon or beast keeps its creature; only the generic humanoid is lifted.
+
+**Every tier below the character one hands a whole bucket a single picture**, and that is the point of the
+`CHARACTER_SILHOUETTE` tier on top of them. A class gives its whole shelf one body, `boss` gives every
+classless boss one body, `kind` gives every demon one body — correct for the *generic template* at the head
+of each bucket, wrong for everyone else in it. Left to the guesses alone, **51 of the 107 blueprints
+resolved to just 15 pictures**: the seven sin generals were one token, and Rowan, the Forsworn Captain and
+the Road-Knight were another. So a bucket's silhouette stays the property of the generic body at its head
+(`character_knight` keeps the knight banner, `character_bandit` the rank swordman, `character_demon_grunt`
+the daemon skull) and every other occupant is named out of it — one line, never art.
+
+Two invariants in `tests/char_compose_spec.lua` hold it: **no two blueprints resolve to the same
+silhouette**, and **no two name the same `sprite` path** (the composer writes one file per distinct path and
+lets later blueprints ride along, so a shared path is invisible on the board however the slugs differ — the
+Trapper wore the Bandit's art that way). The only exceptions are the deliberate aliases: `saber_bout` *is*
+Saber. A new blueprint silently joins whichever bucket it derives into and re-collides, which is exactly
+what these catch. The rest of the guessing is regression-guarded the same way — pure logic, no render.
 
 `kind` (humanoid · beast · elemental · construct · demon · undead · object) is the character analog to an
 item's **family** — the one field that decides the silhouette. It is *guessed* from the blueprint (a

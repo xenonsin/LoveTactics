@@ -17,7 +17,7 @@
 -- premise this quest used to have. They are armed, they are desperate, and they will not be taken.
 return {
     name = "Road-Knight",
-    sprite = "assets/chars/bastion_sworn.png",
+    sprite = "assets/chars/greywatch_refuser.png",
     class = "knight",
     stats = {
         health = 52, mana = 0, stamina = 11,

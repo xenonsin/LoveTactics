@@ -42,10 +42,13 @@ return {
         fn = function()
             -- Each of the seven shelves has a body of its own, so no two disciplines share a look --
             -- the archer (hunter) and Rowan (knight) used to both come out the generic swordman.
-            assert(slug("character_saber") == "delapouite/sword-brandish", "fighter -> sword-brandish")
-            assert(slug("character_rowan") == "delapouite/knight-banner", "knight -> knight-banner")
+            -- Asserted on the GENERIC body at the head of each shelf. A class silhouette is that body's
+            -- property now: the named occupants of the same shelf (Saber, Rowan, Kaya, Ren) are lifted
+            -- out by CHARACTER_SILHOUETTE, or every knight in the game reads as every other one.
+            assert(slug("character_fighter") == "delapouite/sword-brandish", "fighter -> sword-brandish")
+            assert(slug("character_knight") == "delapouite/knight-banner", "knight -> knight-banner")
             assert(slug("character_archer") == "delapouite/archer", "hunter -> archer")
-            assert(slug("character_ren") == "lorc/bubbling-flask", "alchemist -> bubbling-flask")
+            assert(slug("character_alchemist") == "lorc/bubbling-flask", "alchemist -> bubbling-flask")
             assert(slug("character_mage") == "delapouite/wizard-face", "mage -> wizard face")
             -- The generic body stays the plain swordman -- distinct from the fighter's raised blade --
             -- so a classless mook never wears a discipline's silhouette.
@@ -60,7 +63,7 @@ return {
             -- boar/wolf carry no class, so without the CREATURE_MATCH pass they would fall to the
             -- generic swordman; the direct match is what makes a boar token look like a boar.
             assert(slug("character_boar") == "caro-asercion/boar", "boar -> boar")
-            assert(slug("character_wolf_alpha") == "lorc/wolf-head", "wolf_alpha -> wolf head")
+            assert(slug("character_wolf_grunt") == "lorc/wolf-head", "wolf_grunt -> wolf head")
         end,
     },
     {
@@ -76,8 +79,8 @@ return {
     {
         name = "a demon/undead resolves by kind",
         fn = function()
-            local dl, dlid = resolve("character_demon_lord")
-            assert(Char.kindOf(dl, dlid) == "demon", "demon_lord is a demon")
+            local dl, dlid = resolve("character_demon_grunt")
+            assert(Char.kindOf(dl, dlid) == "demon", "demon_grunt is a demon")
             assert(Char.slugFor(dl, dlid) == "lorc/daemon-skull", "demon -> daemon skull")
             local mg, mgid = resolve("character_miller_ghost")
             assert(Char.kindOf(mg, mgid) == "undead", "miller_ghost is undead")
@@ -102,7 +105,10 @@ return {
             assert(slug("character_caravan_driver") == "delapouite/caravan", "caravan_driver -> wagon")
             local cd, cdid = resolve("character_caravan_driver")
             assert(Char.tintFor(cd, cdid) == "#c9b58a", "the caravan is wood-tinted, not steel")
-            assert(slug("character_caravan_master") == Char.HUMANOID_DEFAULT, "the master keeps the rank body")
+            -- The master used to keep the rank swordman body deliberately -- he holds at the gate rather
+            -- than driving the column. That read cost him a body of his own (he was pixel-identical to a
+            -- bandit), so he now wears the trade he leads instead: still not the wagon, still not a mook.
+            assert(slug("character_caravan_master") == "lorc/trade", "the master reads as the trade, not a mook")
         end,
     },
     {
@@ -110,12 +116,14 @@ return {
         -- only the gold badge would tell them apart. The overlord figure lifts them.
         name = "a classless boss (a general) is lifted to the overlord silhouette",
         fn = function()
-            -- The sin generals are classless bosses and no discipline's exemplar, so the overlord lift is
-            -- what tells them apart (warlord used to be the second example here, but it is now the Warlord
-            -- discipline's exemplar and reads as its banner -- see the discipline-silhouette case below).
-            assert(slug("character_general_wrath") == Char.BOSS_SILHOUETTE, "wrath general -> overlord")
-            assert(slug("character_general_pride") == Char.BOSS_SILHOUETTE, "pride general -> overlord")
+            -- Asserted on the rank classless boss. The seven sin generals used to be the example here, and
+            -- that was exactly the bug: the lift is a BUCKET body, so all seven marquee kills came out one
+            -- picture. They are named out of it now (CHARACTER_SILHOUETTE) and each reads as its sin; the
+            -- lift still catches every classless boss that has earned no body of its own.
+            assert(slug("character_bandit_chief") == Char.BOSS_SILHOUETTE, "a rank classless boss -> overlord")
             assert(Char.BOSS_SILHOUETTE ~= Char.HUMANOID_DEFAULT, "the boss figure must differ from the rank one")
+            assert(slug("character_general_gluttony") == "lorc/gluttony", "a general reads as its sin, not the lift")
+            assert(slug("character_general_greed") == "delapouite/coins-pile", "... and no two of them agree")
         end,
     },
     {
@@ -123,9 +131,12 @@ return {
         -- priest, not overlord. Class wins; the gold badge still marks the boss.
         name = "a classed boss keeps its class silhouette, not the overlord",
         fn = function()
-            local def, id = resolve("character_amana")
-            assert(def.class == "priest" and def.boss, "fixture: amana is a priest boss")
-            assert(Char.slugFor(def, id) == "lorc/prayer", "priest boss -> prayer, not overlord")
+            local def, id = resolve("character_priest")
+            assert(def.class == "priest", "fixture: the generic priest")
+            assert(Char.slugFor(def, id) == "lorc/prayer", "priest -> prayer")
+            local am, amid = resolve("character_amana")
+            assert(am.class == "priest" and am.boss, "fixture: amana is a priest boss")
+            assert(Char.slugFor(am, amid) ~= Char.BOSS_SILHOUETTE, "a classed boss is never lifted to the overlord")
         end,
     },
     {
@@ -160,7 +171,8 @@ return {
         -- untouched and a former exemplar (the generic mage, no longer Elementalist's) falls back to class.
         name = "the discipline tier fires only for the exemplar, never a lookalike id",
         fn = function()
-            assert(slug("character_demon_champion") == "lorc/daemon-skull", "demon_champion stays a demon, not the Champion")
+            assert(slug("character_demon_champion") ~= "lorc/laurel-crown", "demon_champion is not the Champion")
+            assert(slug("character_demon_champion") == "delapouite/devil-mask", "it is its own demon body")
             assert(slug("character_mage") == "delapouite/wizard-face", "the generic mage is no discipline's exemplar")
             assert(Char.disciplineFor("champion") == "champion", "the exemplar maps to its discipline")
             assert(Char.disciplineFor("demon_champion") == nil, "a lookalike maps to nothing")
@@ -199,6 +211,53 @@ return {
                 count = count + 1
             end
             assert(count > 40, "expected the full character roster, saw only " .. count)
+        end,
+    },
+    {
+        -- THE invariant this whole tier exists for: no two blueprints wear the same body. It used to be
+        -- badly false -- 51 of the blueprints resolved to 15 pictures, so the seven sin generals were one
+        -- token and eight knights were another, and a player could not tell the Road-Captain from Rowan.
+        -- Because the tiers below are bucket-wide (a class, a kind, `boss`), a NEW blueprint silently
+        -- joins whichever bucket it derives into and re-collides -- which is exactly what this catches.
+        -- The fix is one line in CHARACTER_SILHOUETTE, never art.
+        name = "no two characters resolve to the same silhouette",
+        fn = function()
+            -- The deliberate exceptions: the same character in two blueprints, which must READ the same.
+            local ALIAS = { character_saber_bout = "character_saber" }
+            local owner, clashes = {}, {}
+            for key, def in pairs(defs) do
+                local s = Char.slugFor(def, Char.tokenId(key))
+                local held = owner[s]
+                if not held then
+                    owner[s] = key
+                elseif ALIAS[key] ~= held and ALIAS[held] ~= key then
+                    clashes[#clashes + 1] = string.format("%s and %s both wear %s", held, key, s)
+                end
+            end
+            assert(#clashes == 0, "silhouettes collide:\n    " .. table.concat(clashes, "\n    "))
+        end,
+    },
+    {
+        -- The other half of uniqueness, and the half that bites even when the silhouettes differ: the
+        -- composer writes ONE file per distinct def.sprite and lets later blueprints ride along on it
+        -- (see M.run). So two blueprints naming one path can never be told apart on the board no matter
+        -- what they resolve to -- the Trapper wore the Bandit's art that way, which is where this started.
+        name = "no two characters share a sprite file",
+        fn = function()
+            local ALIAS = { character_saber_bout = "character_saber" }
+            local owner, clashes = {}, {}
+            for key, def in pairs(defs) do
+                local path = def.sprite
+                if path then
+                    local held = owner[path]
+                    if not held then
+                        owner[path] = key
+                    elseif ALIAS[key] ~= held and ALIAS[held] ~= key then
+                        clashes[#clashes + 1] = string.format("%s and %s both load %s", held, key, path)
+                    end
+                end
+            end
+            assert(#clashes == 0, "sprite paths collide:\n    " .. table.concat(clashes, "\n    "))
         end,
     },
 }

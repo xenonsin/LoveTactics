@@ -148,6 +148,98 @@ local DISCIPLINE_SILHOUETTE = {
     apothecary = "delapouite/remedy",
 }
 
+-- 1b-ter. CHARACTER silhouette -- the narrowest tier, and the last one added. The three tiers below it
+-- each hand a WHOLE BUCKET one body: every knight-class blueprint came out the same knight-banner, every
+-- classless boss the same overlord-helm, every demon the same daemon-skull. That is correct for the
+-- generic template at the head of each bucket and wrong for everyone else in it -- 51 of the 107
+-- blueprints resolved to just 15 pictures, so the seven sin generals were one image, and Rowan, the
+-- Forsworn Captain and the Road-Knight were another. Several blueprints already say in prose that they
+-- must not converge (character_greywatch_captain: "the silhouettes must not converge").
+--
+-- So: a bucket's silhouette stays the property of the GENERIC body at its head (character_knight keeps
+-- knight-banner, character_bandit the rank swordman, character_demon_grunt the daemon skull), and every
+-- other occupant is lifted out by name here. Keyed by tokenId, exact match -- never a substring -- so it
+-- behaves like the discipline tier and cannot fire on a lookalike id.
+--
+-- tests/char_compose_spec.lua asserts the resulting invariant directly: no two blueprints resolve to the
+-- same silhouette, except the deliberate aliases below.
+local CHARACTER_SILHOUETTE = {
+    -- Off the rank swordman. The escortee is the trade he leads, not a mook; the homunculus is a made
+    -- thing; the Breachward is the big grunt its own comment calls it; and the Trapper is the Bolas it
+    -- throws (the ability that IS its job -- data/items/ability/ability_bolas.lua).
+    caravan_master = "lorc/trade",
+    homunculus = "lorc/frankenstein-creature",
+    siege_breaker = "delapouite/brute",
+    trapper = "delapouite/hunting-bolas",
+
+    -- Off the rogue's hood. Kaen's whole read is the decoys (Shadowclone), so he wears two shadows.
+    clem = "lorc/cloak-dagger",
+    kaen = "lorc/two-shadows",
+
+    -- Off the hunter's drawn bow.
+    kaya = "delapouite/bow-string",
+
+    -- Off the objective flag: the Banner keeps it, the March Standard is the other standing marker.
+    field_standard = "delapouite/vertical-banner",
+
+    -- Off the knight banner, which character_knight (the generic template) keeps. This bucket was the
+    -- worst offender -- eight bodies, one picture -- and the line's whole thesis is that they differ:
+    -- the oath kept (Rowan), the order in good standing, the ones who took Acedia's terms, and the
+    -- nineteen who refused them.
+    rowan = "cathelineau/swordwoman",
+    bastion_sworn = "delapouite/attached-shield",   -- sword, shield, brace: what the order sells
+    forsworn_knight = "lorc/spears",                -- the spear IS its tactical job
+    forsworn_captain = "delapouite/centurion-helmet",
+    grey_knight = "delapouite/black-knight-helm",   -- knightly forms, no colours anyone can place
+    greywatch_captain = "delapouite/guards",        -- he holds the camp, and has for fifteen years
+    greywatch_refuser = "delapouite/rusty-sword",   -- still in the forms, struck off the rolls
+
+    -- Off the overlord helm, which stays with the rank classless boss (the Bandit Chief). The seven
+    -- generals are the game's marquee kills and each is a SIN -- so each reads as its own.
+    general_wrath = "delapouite/angry-eyes",
+    general_wrath_demon = "lorc/flame-claws",       -- Ira's phase two: the bargain come due, made flesh
+    general_pride = "delapouite/imperial-crown",
+    general_greed = "delapouite/coins-pile",
+    general_envy = "lorc/voodoo-doll",              -- the Unborn: a made effigy of a person
+    general_gluttony = "lorc/gluttony",
+    general_lust = "lorc/pentagram-rose",           -- the pacted Saint
+    general_sloth = "delapouite/broken-wall",       -- the Bastion's own wall, given way
+
+    -- Off the rock golem, which the Crucible Golem keeps.
+    ordnance_sentry = "sbed/turret",
+
+    -- Off the fighter's raised blade, which character_fighter (the generic) keeps.
+    saber = "lorc/saber-slash",
+    -- ALIAS, and the one deliberate duplicate in this file: character_saber_bout is Saber herself as the
+    -- debut bout fields her (a shallow copy of the companion blueprint), so she must READ as Saber. She
+    -- also inherits def.sprite, so both ride one file -- nothing extra is rendered for her.
+    saber_bout = "lorc/saber-slash",
+
+    -- Off the Totemist's totem: the discipline exemplar keeps it, the planted object gets the carved head.
+    totem = "lorc/totem-head",
+
+    -- Off the generic mage / alchemist bodies.
+    gyeom = "lorc/wizard-staff",
+    ren = "lorc/standing-potion",
+
+    -- Off the daemon skull, which the rank Demon Grunt keeps. The horde is a ladder -- bomblet, champion,
+    -- lord -- and the ladder should be visible on the board.
+    demon_bomblet = "delapouite/inferno-bomb",      -- a demon bred hollow and filled with fire
+    demon_champion = "delapouite/devil-mask",
+    demon_lord = "caro-asercion/tarot-15-the-devil",
+
+    -- Off the priest's supplicant.
+    amana = "cathelineau/nun-face",
+
+    -- Off the spectre, which the Gaunt Vigil (a hooded iron figure) keeps. The Blightstake is a planted
+    -- stake that spits something foul, not a ghost.
+    blightstake = "lorc/mucous-pillar",
+
+    -- Off the wolf head, which the rank Wolf keeps.
+    wolf_alpha = "lorc/wolf-howl",
+    wolfsong_spirit = "lorc/direwolf",
+}
+
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from
 -- the discipline blueprints so the mapping lives in one place (data/disciplines/*.lua) and a repointed
 -- exemplar follows automatically. A character that is no discipline's exemplar is simply absent here, and
@@ -241,6 +333,9 @@ end
 -- kind bucket. Mirrors icon-map's "name first, family fallback".
 local function slugFor(def, id)
     if id:find("avatar", 1, true) then return AVATAR_SILHOUETTE end
+    -- A named body wins over EVERY guess below it: the guesses hand a whole bucket one picture, and this
+    -- is where an occupant that is not the bucket's generic head is lifted out. Exact key, no substring.
+    if CHARACTER_SILHOUETTE[id] then return CHARACTER_SILHOUETTE[id] end
     -- A discipline's exemplar reads as its DISCIPLINE first of all -- ahead of the creature and class
     -- passes -- so each of the 37 disciplines owns a distinct board body. Keyed off the exemplar pointer,
     -- so it never fires on a lookalike id (a "demon_champion" is not the Champion).
@@ -453,5 +548,6 @@ M.disciplineFor = disciplineFor
 M.HUMANOID_DEFAULT = HUMANOID_DEFAULT
 M.BOSS_SILHOUETTE = BOSS_SILHOUETTE
 M.DISCIPLINE_SILHOUETTE = DISCIPLINE_SILHOUETTE
+M.CHARACTER_SILHOUETTE = CHARACTER_SILHOUETTE
 
 return M

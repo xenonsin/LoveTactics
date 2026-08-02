@@ -25,7 +25,7 @@ return {
     name = "Demon Champion",
     boss = true,
     archetype = "aggressive", -- a slow menace that hunts; explicit for readability
-    sprite = "assets/chars/demon_grunt.png",
+    sprite = "assets/chars/demon_champion.png",
     revivable = false, -- a demon does not come back: no downed window, and no revive takes it
     stats = {
         health = 115, mana = 0, stamina = 24, -- stamina affords claws + Cleave + repeated Roars
