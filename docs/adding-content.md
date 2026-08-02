@@ -595,6 +595,12 @@ All three settings persist through `models/save.lua`, written only when set so a
 still diffs clean. `archetype` stores an explicit `false` when the player *clears* a blueprint's
 archetype, because "never set" and "deliberately cleared" must not both be `nil`.
 
+**Reset to defaults** (the footer strip, beside those two switches) undoes all three at once. It
+*drops* `char.aiRules` rather than refilling it from the blueprint — so the rows go back to being
+inherited, the save stops carrying them, and a character whose blueprint later gains a rule picks it
+up. It takes two presses (the first arms it, any other input disarms it), and it is inert in the debug
+character editor, which edits the blueprint itself and so has no defaults behind it.
+
 > Adding a field to a **character** blueprint means adding it to `Character.instantiate` too — it
 > copies field by field, so an unnamed field reads back `nil` at runtime and fails silently. Item
 > blueprints are deep-copied wholesale, so an `ai` block on an ability needs no such edit.

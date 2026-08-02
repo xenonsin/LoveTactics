@@ -575,6 +575,101 @@ return {
     },
 
     -- ---------------------------------------------------------------------
+    -- Reset to defaults
+    -- ---------------------------------------------------------------------
+    {
+        name = "reset puts the rules, the archetype and auto-battle back the way the blueprint had them",
+        fn = function()
+            local char = Character.instantiate("character_archer")
+            local ed = Editor.new({ x = 0, y = 100, w = 800, h = 600, char = char, fonts = {} })
+            assert(not ed:canReset(), "a character nobody has edited has nothing to put back")
+
+            ed:addRule()          -- mints the overlay
+            char.archetype = nil  -- and the other two things the tab decides
+            char.autoBattle = true
+            assert(ed:canReset(), "an edited character does")
+
+            assert(ed:pressReset() == false, "the first press only arms it")
+            assert(char.aiRules ~= nil, "and changes nothing")
+            assert(ed:pressReset() == true, "the second carries it out")
+
+            assert(char.aiRules == nil, "the overlay is gone")
+            assert(char.archetype == "skirmish", "the blueprint's archetype is back")
+            assert(not char.autoBattle, "and auto-battle is off again")
+            assert(not ed:canReset(), "with nothing left to reset")
+        end,
+    },
+    {
+        name = "reset DROPS the overlay rather than refilling it, so the list is inherited again",
+        fn = function()
+            -- The distinction that matters: an overlay holding a copy of the blueprint's rules would
+            -- keep being saved, and would stop tracking a blueprint that later changed.
+            local char = Character.instantiate("character_archer")
+            local ed = Editor.new({ x = 0, y = 100, w = 800, h = 600, char = char, fonts = {} })
+            assert(ed:inherited(), "it starts on the blueprint's rules")
+            ed:removeRule(1)
+            assert(not ed:inherited(), "editing takes the list over")
+
+            ed:pressReset()
+            ed:pressReset()
+            assert(ed:inherited(), "and the reset hands it back")
+            assert(ed:rules() == char.ai, "the rows on show are the blueprint's own again")
+        end,
+    },
+    {
+        name = "any other input disarms a half-pressed reset",
+        fn = function()
+            -- Otherwise an arming press could sit around and turn a later, unrelated click on the same
+            -- control into a wipe the player never asked twice for.
+            local char = Character.instantiate("character_archer")
+            local ed = Editor.new({ x = 0, y = 100, w = 800, h = 600, char = char, fonts = {} })
+            ed:addRule()
+
+            ed:pressReset()
+            assert(ed.resetArmed, "armed")
+            ed:navigate(0, 1)
+            assert(not ed.resetArmed, "moving the cursor drops it")
+
+            ed:pressReset()
+            assert(ed:cancel(), "Esc takes the arming back and swallows the press")
+            assert(not ed.resetArmed and char.aiRules ~= nil, "leaving the rules alone")
+
+            assert(ed:pressReset() == false, "so the next press arms again rather than firing")
+            assert(char.aiRules ~= nil, "and the list is still there")
+        end,
+    },
+    {
+        name = "the character editor has no defaults behind it to go back to",
+        fn = function()
+            -- ownKey = "ai" edits the blueprint itself; there is nothing further down to restore.
+            local char = Character.instantiate("character_archer")
+            local ed = Editor.new({ x = 0, y = 100, w = 800, h = 600, char = char, fonts = {},
+                ownKey = "ai" })
+            assert(not ed:canReset(), "the control is inert there")
+            assert(ed:resetToDefaults() == false, "and cannot be driven past it")
+            assert(#ed:footControls() == 2, "so the footer walk skips it entirely")
+        end,
+    },
+    {
+        name = "Tab walks rules -> fields -> footer and then off the end of the editor",
+        fn = function()
+            local char = Character.instantiate("character_archer")
+            local ed = Editor.new({ x = 0, y = 100, w = 800, h = 600, char = char, fonts = {} })
+            assert(ed.region == "rules" and ed:isFirstRegion(), "it starts on the rows")
+            assert(ed:cycleRegion() and ed.region == "fields", "then the selected rule's fields")
+            assert(ed:cycleRegion() and ed.region == "footer", "then the settings strip")
+            assert(ed:cycleRegion() == false, "and then the walk is over")
+            assert(ed.region == "rules", "having wrapped back for the next time round")
+
+            -- With no rule selected the field column is empty, and a Tab stop with nothing in it is a
+            -- dead press.
+            char.aiRules = {}
+            ed.cursor = 1
+            assert(ed:cycleRegion() and ed.region == "footer", "so the walk steps over it")
+        end,
+    },
+
+    -- ---------------------------------------------------------------------
     -- Persistence
     -- ---------------------------------------------------------------------
     {

@@ -359,20 +359,17 @@ end
 
 -- Region-cycle fallback (Tab / Y): advance through REGIONS and drop any in-progress pickup.
 --
--- On the Tactics tab there are only two stops that matter -- the rail and the editor -- and the
--- editor has its own internal rules/fields split, so Tab hands off INTO it rather than past it.
--- Cycling out of the editor only happens from its first region, which is what keeps Tab feeling like
--- one continuous walk rather than two nested loops fighting for the key.
+-- On a column-editor tab there are only two stops that matter -- the rail and the editor -- and the
+-- editor has regions of its own, so Tab hands off INTO it rather than past it and walks those first.
+-- The editor says when that walk has run off its end (cycleRegion returns false, having already
+-- wrapped back to its first region); focus leaves only then, which keeps Tab feeling like one
+-- continuous walk rather than two nested loops fighting for the key -- and lets an editor grow a third
+-- region without this knowing its name.
 function Party:cycleFocus(delta)
     local editor = self:columnEditor()
     if editor then
         if self.focus == "editor" then
-            if editor:isFirstRegion() then
-                editor:cycleRegion()
-            else
-                editor:resetRegion()
-                self:setFocus("rail")
-            end
+            if not editor:cycleRegion(delta) then self:setFocus("rail") end
         else
             self:setFocus("editor")
         end

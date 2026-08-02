@@ -257,10 +257,12 @@ end
 -- ---------------------------------------------------------------------------
 
 function StatEditor:isFirstRegion() return self.region == "stats" end
-function StatEditor:resetRegion() self.region = "stats" end
 
+-- Advance to the next region, wrapping back to the first. False on the wrap tells the host the walk
+-- has run off the end of this widget and focus should leave it (see Party:cycleFocus).
 function StatEditor:cycleRegion()
     self.region = (self.region == "stats") and "identity" or "stats"
+    return self.region ~= "stats"
 end
 
 function StatEditor:navigate(dc, dr)

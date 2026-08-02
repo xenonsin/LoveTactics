@@ -19,10 +19,15 @@
 -- (whether the list ever runs at all), because a rule list with neither of those visible is a form
 -- with no submit button.
 --
--- Two regions, crossed with Tab / Y:
+-- Three regions, crossed with Tab / Y:
 --
 --   rules   -- the ordered rows: enable box, priority band, the rule as a sentence
 --   fields  -- the selected rule's fields, one per line, cycled with left/right
+--   footer  -- the strip under the list: archetype, auto-battle, and the reset
+--
+-- The footer used to be mouse-only, which made two of the three things this tab decides unreachable
+-- on a pad. It walks like the field column does -- up/down picks a control, left/right changes it --
+-- because that is the idiom the region next door already teaches.
 --
 -- Reordering has two idioms, because the two devices want different things and pretending otherwise
 -- served neither:
@@ -80,6 +85,10 @@ local ARROW_W = 18
 -- clothes; past eight it scrolls.
 local DD_ROW_H = 22
 local DD_MAX_ROWS = 8
+-- The reset control, parked at the far right of the footer strip -- as far from the archetype and
+-- auto-battle switches as the strip allows, because it is the one control down there that throws work
+-- away rather than changing a setting.
+local RESET_W = 150
 -- How far the pointer must travel before a press on a row becomes a drag rather than a click. Same
 -- threshold the Loadout grid and the formation grid use, so a twitchy click means the same thing on
 -- every screen that carries something.
@@ -336,6 +345,8 @@ function TacticsEditor.new(opts)
     self.region = "rules"
     self.cursor = 1        -- row index; #rules + 1 is the "+ Add rule" row
     self.fieldCursor = 1
+    self.footCursor = 1    -- which footer control has focus (see footControls)
+    self.resetArmed = false -- the reset's first press; the second one carries it out
     self.grabbed = nil     -- index of the row being carried by keyboard/pad, or nil
     self.drag = nil        -- { index, startX, startY, active } -- the same carry, by mouse
     self.scroll = 0
@@ -359,6 +370,8 @@ function TacticsEditor:setChar(char)
     -- should not gain an empty `aiRules` table that then has to be persisted and reasoned about.
     self.cursor = 1
     self.fieldCursor = 1
+    self.footCursor = 1
+    self.resetArmed = false -- an armed reset must never survive onto the next character
     self.grabbed = nil
     self.drag = nil
     self.scroll = 0
@@ -485,6 +498,93 @@ function TacticsEditor:toggleAuto()
 end
 
 -- ---------------------------------------------------------------------------
+-- Reset to defaults
+-- ---------------------------------------------------------------------------
+--
+-- Everything this tab changes is an overlay on top of what the character was BUILT as, and this puts
+-- all of it back: the rule list, the archetype behind it, and the auto-battle switch. Without it the
+-- only way out of a rule list you have made a mess of is to delete the rules one at a time -- and even
+-- then you land on an EMPTY list, not on the one the character shipped with, which is gone the moment
+-- the overlay is minted.
+
+-- The blueprint this character was instantiated from, or nil for a body with no registry entry.
+-- "Defaults" means what data/characters/<id>.lua says, so with no blueprint there is nothing to go
+-- back to and the control stays out of the way. Required lazily: models/character loads the whole
+-- character registry, and this widget is required by the headless tests.
+function TacticsEditor:blueprint()
+    local char = self.char
+    if not (char and char.id) then return nil end
+    return require("models.character").defs[char.id]
+end
+
+-- Whether there is anything to put back. Drawn dim and inert when there is not, rather than hidden:
+-- a control that comes and goes is one the player has to find twice.
+function TacticsEditor:canReset()
+    -- The character editor IS where defaults are written (it edits `char.ai` straight back out to
+    -- data/characters/), so it has nothing behind it to restore.
+    if self.ownKey == "ai" then return false end
+    local char, def = self.char, self:blueprint()
+    if not (char and def) then return false end
+    if char.aiRules ~= nil then return true end
+    if char.autoBattle then return true end
+    return char.archetype ~= def.archetype
+end
+
+-- Put the character back on its blueprint. Note what this does NOT do: it does not copy the
+-- blueprint's rules into the overlay, it DROPS the overlay -- so the list comes back inherited, in
+-- exactly the state it was in before anybody opened this tab, and the save stops carrying it
+-- (models/save.lua writes `aiRules` only when it exists).
+function TacticsEditor:resetToDefaults()
+    if not self:canReset() then return false end
+    local char, def = self.char, self:blueprint()
+    char.aiRules = nil
+    char.archetype = def.archetype
+    char.autoBattle = nil
+    -- The list underneath just changed length; anything pointing into the old one is stale.
+    self.cursor, self.fieldCursor, self.scroll = 1, 1, 0
+    self.grabbed, self.drag, self.open = nil, nil, nil
+    self.resetArmed = false
+    return true
+end
+
+-- The reset takes two presses: the first ARMS it, the second carries it out. A rule list is minutes of
+-- work and this throws all of it away, so it does not hang off one click -- and the armed state is
+-- dropped by any other input at all (disarmReset), so it can never fire late on a player who armed it,
+-- went elsewhere and came back.
+function TacticsEditor:pressReset()
+    if not self:canReset() then return false end
+    if not self.resetArmed then
+        self.resetArmed = true
+        return false
+    end
+    return self:resetToDefaults()
+end
+
+function TacticsEditor:disarmReset()
+    if not self.resetArmed then return false end
+    self.resetArmed = false
+    return true
+end
+
+-- The footer controls, in the order the region walks them.
+function TacticsEditor:footControls()
+    if self.ownKey == "ai" then return { "archetype", "auto" } end
+    return { "archetype", "auto", "reset" }
+end
+
+function TacticsEditor:footControl()
+    return self:footControls()[self.footCursor]
+end
+
+-- Left/right on the focused footer control: the same "step the value in place" the field column
+-- gives, for the two controls that have a value to step.
+function TacticsEditor:adjustFooter(dir)
+    local control = self:footControl()
+    if control == "archetype" then self:cycleArchetype(dir) end
+    if control == "auto" then self:toggleAuto() end
+end
+
+-- ---------------------------------------------------------------------------
 -- Navigation
 -- ---------------------------------------------------------------------------
 
@@ -499,6 +599,15 @@ function TacticsEditor:navigate(dc, dr)
             self.open.cursor = math.max(1, math.min(#self.open.options, self.open.cursor + dr))
             self:scrollDropdownToCursor()
         end
+        return
+    end
+    self:disarmReset()
+    if self.region == "footer" then
+        local controls = self:footControls()
+        if dr ~= 0 then
+            self.footCursor = math.max(1, math.min(#controls, self.footCursor + dr))
+        end
+        if dc ~= 0 then self:adjustFooter(dc) end
         return
     end
     if self.region == "rules" then
@@ -678,6 +787,16 @@ end
 -- Confirm on the focused region. On a rule row this grabs/drops it (reorder); on the add row it adds.
 function TacticsEditor:confirm()
     if self.open then self:chooseOption() return end
+    if self.region == "footer" then
+        local control = self:footControl()
+        -- Only the reset keeps its armed state across a confirm; the other two disarm it like any
+        -- other input would.
+        if control == "reset" then self:pressReset() return end
+        self:disarmReset()
+        if control == "auto" then self:toggleAuto() else self:cycleArchetype(1) end
+        return
+    end
+    self:disarmReset()
     if self.region == "fields" then
         -- Confirm OPENS the list rather than nudging the value one step. Stepping is still on
         -- left/right, where a player already reaching for a small change will look for it.
@@ -700,31 +819,49 @@ end
 function TacticsEditor:cancel()
     -- Report whether there was something to cancel, so the panel knows whether Esc should also close
     -- it (the same contract InventoryGrid:cancelPickup keeps).
-    -- The open list is the innermost thing on screen, so it is the first thing Esc takes back --
+    -- An armed reset is the most recent thing the player did and the only one that is waiting on them,
+    -- so Esc takes that back first -- and swallows the press, because backing out of a reset must not
+    -- also close the panel.
+    if self:disarmReset() then return true end
+    -- The open list is the innermost thing on screen, so it is the next thing Esc takes back --
     -- and it closes WITHOUT choosing, which is what makes browsing the options free.
     if self:closeDropdown() then return true end
     -- A mouse carry can be abandoned mid-air, because nothing has moved yet -- the row simply drops
     -- back where it came from. The keyboard grab below cannot offer that: it reorders as it walks.
     if self.drag and self.drag.active then self.drag = nil return true end
     if self.grabbed then self.grabbed = nil return true end
-    if self.region == "fields" then self.region = "rules" return true end
+    if self.region ~= "rules" then self.region = "rules" return true end
     return false
 end
 
+local REGION_ORDER = { "rules", "fields", "footer" }
+
+-- Column-editor contract (see Party:columnEditor). The host walks Tab through the editor's own regions
+-- before handing focus back out; it learns the walk is over from the RETURN VALUE rather than by
+-- knowing how many regions this particular editor has, which is what let a third one be added here
+-- without the host learning its name.
 function TacticsEditor:cycleRegion()
-    self.region = (self.region == "rules") and "fields" or "rules"
-    if self.region == "fields" and not self:selectedRule() then self.region = "rules" end
+    self:disarmReset()
+    local at = 1
+    for i, r in ipairs(REGION_ORDER) do if r == self.region then at = i end end
+    repeat
+        at = at + 1
+        -- The field column is empty when no rule is selected, and a Tab stop with nothing in it is a
+        -- dead press.
+    until at > #REGION_ORDER or REGION_ORDER[at] ~= "fields" or self:selectedRule()
+    if at > #REGION_ORDER then
+        self.region = "rules" -- wrapped: back to the top, and the host takes the focus away
+        return false
+    end
+    self.region = REGION_ORDER[at]
+    if self.region == "footer" then
+        self.footCursor = math.max(1, math.min(#self:footControls(), self.footCursor))
+    end
+    return true
 end
 
--- Column-editor contract (see Party:columnEditor). The host walks Tab through the editor's own
--- regions before handing focus back out, and needs to ask where the walk starts and ends without
--- knowing what this particular editor calls its regions.
 function TacticsEditor:isFirstRegion()
     return self.region == "rules"
-end
-
-function TacticsEditor:resetRegion()
-    self.region = "rules"
 end
 
 -- ---------------------------------------------------------------------------
@@ -886,17 +1023,29 @@ function TacticsEditor:drawAddRow(r, i)
     love.graphics.printf("+ Add rule", r.x, r.y + (r.h - self.fonts.small:getHeight()) / 2, r.w, "center")
 end
 
--- Archetype + auto-battle. These frame the whole list: the archetype is what backs it when no rule
--- matches, and auto-battle is whether any of it runs at all.
+-- Archetype + auto-battle + reset. These frame the whole list: the archetype is what backs it when no
+-- rule matches, auto-battle is whether any of it runs at all, and the reset takes all three back to
+-- what the character was built with.
 function TacticsEditor:drawFooter()
     local f = self.fonts
     local char = self.char
     if not char then return end
+    local focused = self.region == "footer" and self:footControl() or nil
+
+    -- One ring, drawn the same way round every footer control, so the region reads as one strip with
+    -- a cursor in it rather than three unrelated widgets.
+    local function ring(r, on)
+        if not on then return end
+        setColor(C_ACCENT, 0.8)
+        love.graphics.rectangle("line", r.x - 2, r.y - 2, r.w + 4, r.h + 4, 5, 5)
+    end
 
     love.graphics.setFont(f.tiny)
     setColor(C_DIM)
-    love.graphics.print("Archetype", self.x, self.footY)
-    love.graphics.print("Auto-battle", self.x + 200, self.footY)
+    -- Held clear of the boxes by more than the focus ring is thick, so a ringed control does not
+    -- underline its own label.
+    love.graphics.print("Archetype", self.x, self.footY - 3)
+    love.graphics.print("Auto-battle", self.x + 200, self.footY - 3)
 
     love.graphics.setFont(f.small)
     setColor(C_TEXT)
@@ -906,6 +1055,7 @@ function TacticsEditor:drawFooter()
     love.graphics.rectangle("fill", self.archRect.x, self.archRect.y, self.archRect.w, self.archRect.h, 4, 4)
     setColor(C_TEXT)
     love.graphics.printf("< " .. name .. " >", self.archRect.x, self.archRect.y + 4, self.archRect.w, "center")
+    ring(self.archRect, focused == "archetype")
 
     self.autoRect = { x = self.x + 200, y = self.footY + 14, w = 90, h = 24 }
     setColor(char.autoBattle and { 0.35, 0.55, 0.38 } or C_ROW)
@@ -913,14 +1063,64 @@ function TacticsEditor:drawFooter()
     setColor(char.autoBattle and { 0.75, 0.95, 0.75 } or C_TEXT_OFF)
     love.graphics.printf(char.autoBattle and "ON" or "OFF",
         self.autoRect.x, self.autoRect.y + 4, self.autoRect.w, "center")
+    ring(self.autoRect, focused == "auto")
 
-    -- Say what the switch actually does, once, where it is -- rather than nowhere.
+    self:drawReset(focused == "reset", ring)
+
+    -- Say what the switch actually does, once, where it is -- rather than nowhere. Stops short of the
+    -- reset, which sits at the far end of the same line.
     love.graphics.setFont(f.tiny)
     setColor(C_DIM)
     love.graphics.printf(char.autoBattle
         and "Acts on its own turn. Press any key to take over."
         or "You control this unit in battle.",
-        self.x + 300, self.footY + 18, self.w - 300, "left")
+        self.x + 300, self.footY + 18, math.max(0, self.w - 300 - RESET_W - 20), "left")
+end
+
+-- The reset control. Three states, because it is the only thing on this tab that destroys something:
+-- inert (nothing to put back), ready, and ARMED -- where it says what it is about to do and waits for
+-- a second press.
+function TacticsEditor:drawReset(focused, ring)
+    self.resetRect = nil
+    if self.ownKey == "ai" then return end -- see canReset: no defaults behind the character editor
+
+    local f = self.fonts
+    local r = { x = self.x + self.w - RESET_W, y = self.footY + 14, w = RESET_W, h = 24 }
+    self.resetRect = r
+    local live = self:canReset()
+    local armed = live and self.resetArmed
+
+    love.graphics.setFont(f.tiny)
+    setColor(C_DIM, live and 1 or 0.5)
+    love.graphics.printf("Defaults", r.x, self.footY - 3, r.w, "right")
+
+    setColor(armed and { 0.34, 0.19, 0.19 } or C_ROW, live and 1 or 0.6)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 4, 4)
+    if armed then
+        setColor({ 0.95, 0.55, 0.5 }, 0.9)
+        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 4, 4)
+    end
+
+    love.graphics.setFont(f.small)
+    if not live then
+        setColor(C_TEXT_OFF, 0.6)
+    elseif armed then
+        setColor({ 0.95, 0.6, 0.55 })
+    else
+        setColor((focused or self.hoverReset) and C_ACCENT or C_TEXT)
+    end
+    love.graphics.printf(armed and "Confirm reset" or "Reset to defaults", r.x, r.y + 4, r.w, "center")
+    ring(r, focused)
+
+    -- What "defaults" covers, spelt out where the press happens rather than left to be discovered by
+    -- pressing. Only while the control is live and being looked at, so the strip stays quiet the rest
+    -- of the time.
+    if not (live and (armed or focused or self.hoverReset)) then return end
+    love.graphics.setFont(f.tiny)
+    setColor(armed and { 0.95, 0.6, 0.55 } or C_DIM)
+    love.graphics.printf(armed and "Discards your rules, archetype and auto-battle."
+        or "Restores this character's own rules, archetype and auto-battle.",
+        r.x - 320, r.y + r.h + 3, r.w + 320, "right")
 end
 
 function TacticsEditor:drawFields()
@@ -1134,6 +1334,7 @@ function TacticsEditor:mousemoved(x, y)
     end
 
     self.hoverRow, self.hoverDelete, self.hoverField, self.hoverArrow = nil, nil, nil, nil
+    self.hoverReset = hit(self.resetRect, x, y) and self:canReset() or nil
     for i, r in pairs(self.rowRects) do
         if hit(r, x, y) then
             self.hoverRow = i
@@ -1164,13 +1365,30 @@ function TacticsEditor:mousepressed(x, y)
         return true
     end
 
+    -- The reset is checked first and keeps its armed state, because it is the one control whose second
+    -- click means something different from its first. Every other branch below drops the arming.
+    if hit(self.resetRect, x, y) then
+        self.region = "footer"
+        self.footCursor = #self:footControls()
+        self:pressReset()
+        return true
+    end
+    self:disarmReset()
+
     if hit(self.archRect, x, y) then
         -- Left half steps back, right half forward -- the "< name >" affordance means what it looks
         -- like rather than only cycling one way.
+        self.region = "footer"
+        self.footCursor = 1
         self:cycleArchetype(x < self.archRect.x + self.archRect.w / 2 and -1 or 1)
         return true
     end
-    if hit(self.autoRect, x, y) then self:toggleAuto() return true end
+    if hit(self.autoRect, x, y) then
+        self.region = "footer"
+        self.footCursor = 2
+        self:toggleAuto()
+        return true
+    end
 
     for i, r in pairs(self.rowRects) do
         if hit(r, x, y) then
@@ -1238,6 +1456,8 @@ end
 function TacticsEditor:cursorKind(x, y)
     if self.open then return self:dropdownIndexAt(x, y) and "hand" or "arrow" end
     if hit(self.archRect, x, y) or hit(self.autoRect, x, y) then return "hand" end
+    -- Only when it is live: a dead control that grows a hand cursor promises a click that does nothing.
+    if hit(self.resetRect, x, y) and self:canReset() then return "hand" end
     if self.hoverRow or self.hoverField then return "hand" end
     return "arrow"
 end
@@ -1255,6 +1475,20 @@ function TacticsEditor:prompts()
     elseif self.region == "fields" then
         add(pad and "A" or "Enter", "Open list")
         add(pad and "D-pad" or "Left/Right", "Step")
+        add(pad and "Y" or "Tab", "Settings")
+    elseif self.region == "footer" then
+        add(pad and "D-pad" or "Up/Down", "Pick")
+        if self:footControl() == "reset" then
+            -- Nothing to put back means no verb: a prompt for a press that does nothing is worse than
+            -- no prompt, because it reads as the reset having failed.
+            if self:canReset() then
+                add(pad and "A" or "Enter", self.resetArmed and "Confirm reset" or "Reset")
+                if self.resetArmed then add(pad and "B" or "Esc", "Keep them") end
+            end
+        else
+            add(pad and "D-pad" or "Left/Right", "Change")
+            add(pad and "A" or "Enter", "Change")
+        end
         add(pad and "Y" or "Tab", "Back to rules")
     elseif self.drag and self.drag.active then
         -- A mouse carry has its own two verbs, and "release to drop" is worth saying because the row
