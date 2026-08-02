@@ -330,13 +330,41 @@ function DraftRun.fieldUnit(run, char)
 end
 
 -- Remove `char` from wherever it lives -- a formation cell OR the bench (a sale, or the consumed half of
--- a merge). Returns true if it was found.
+-- a merge). Returns true if it was found. Takes the body only -- see DraftRun.sellUnit for the sale,
+-- which empties the grid into the stash first.
 function DraftRun.removeUnit(run, char)
     local cell = DraftRun.cellOf(run, char)
     if cell then run.formation[cell] = nil return true end
     local bi = benchIndexOf(run, char)
     if bi then table.remove(run.bench, bi) return true end
     return false
+end
+
+-- Sell a drafted unit: its whole grid goes to the stash, then the body leaves the run. The gold the sale
+-- pays is the caller's business (states/draft.lua); this is the gear half, and it is a rule rather than a
+-- convenience. Gear is the draft (models/draft_chassis.lua strips every bought unit down to a chassis so
+-- the shelf is where a build comes from), so melting a unit's four bought pieces along with its body made
+-- the obvious play -- cash out a unit to move its gear onto someone who suits it better -- a trap that
+-- quietly cost more than the sale ever paid. The pieces come back loose at their current levels, to be
+-- re-slotted or combined like anything else in the stash.
+--
+-- Bound relics are the one exception, exactly as in DraftRun.mergeUnit: Item.isBound refuses to let a
+-- signature be stowed, so it leaves with the owner it was authored for.
+--
+-- Returns the list of items sent to the stash (empty if `char` was not part of the run -- nothing is
+-- stripped off a body the run does not hold).
+function DraftRun.sellUnit(run, char)
+    if not char or not DraftRun.removeUnit(run, char) then return {} end
+    run.stash = run.stash or {}
+    local stashed = {}
+    for _, item in ipairs(Character.eachItem(char)) do
+        if not Item.isBound(item) then
+            Character.removeItem(char, item)
+            run.stash[#run.stash + 1] = item
+            stashed[#stashed + 1] = item
+        end
+    end
+    return stashed
 end
 
 -- ---------------------------------------------------------------------------

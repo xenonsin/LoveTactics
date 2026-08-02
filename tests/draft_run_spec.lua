@@ -229,6 +229,37 @@ return {
         end,
     },
     {
+        name = "selling a unit sends its gear to the stash, keeping only a bound relic with the body",
+        fn = function()
+            local run = DraftRun.new(1)
+            local knight = DraftChassis.instantiate("character_knight")
+            DraftRun.addUnit(run, knight)
+
+            local sword = Item.instantiate("weapon_iron_sword", nil, 2)
+            local potion = Item.instantiate("consumable_healing_potion", 3)
+            local relic = Item.instantiate("weapon_iron_sword")
+            relic.bound = true
+            Character.addItem(knight, sword)
+            Character.addItem(knight, potion)
+            Character.addItem(knight, relic)
+
+            local carried = #Character.eachItem(knight) -- the chassis's own signatures, plus the three above
+
+            local stashed = DraftRun.sellUnit(run, knight)
+            assert(DraftRun.formationCount(run) == 0 and #run.bench == 0, "the body left the run")
+
+            local inStash = {}
+            for _, item in ipairs(run.stash) do inStash[item] = true end
+            assert(inStash[sword] and inStash[potion], "the loose gear came back, the same instances")
+            assert(sword.level == 2 and potion.quantity == 3, "at its level and count -- nothing is re-rolled")
+            assert(not inStash[relic], "a bound relic cannot be stowed, so it goes with its owner")
+            assert(#stashed == carried - 1, "everything but the relic was stashed, and reported for the toast")
+            assert(#Character.eachItem(knight) == 1, "the sold unit's grid keeps only what it left with")
+
+            assert(#DraftRun.sellUnit(run, knight) == 0, "selling a body the run does not hold strips nothing")
+        end,
+    },
+    {
         name = "consumables refill between rounds: a stack drunk dry marches out full again",
         fn = function()
             local run = DraftRun.new(1)

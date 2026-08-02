@@ -236,10 +236,14 @@ local function benchMover(mover)
     end
 end
 
+-- Cash a unit out: a coin for the body, and its gear goes to the stash rather than melting with it
+-- (DraftRun.sellUnit). Said out loud in the toast -- a player who does not know the gear survives the
+-- sale will hoard units they have no seat for.
 local function sellUnit(u)
-    DraftRun.removeUnit(draft.run, u)
+    local stashed = DraftRun.sellUnit(draft.run, u)
     DraftRun.addGold(draft.run, 1)
-    say("Sold for 1 gold.")
+    local n = #stashed
+    say("Sold for 1 gold." .. (n > 0 and ("  --  " .. n .. (n == 1 and " item" or " items") .. " to stash") or ""))
 end
 
 local function sellGear(item)
