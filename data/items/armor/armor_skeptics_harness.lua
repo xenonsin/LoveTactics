@@ -39,10 +39,10 @@ return {
     -- Ordinary defense is mediocre on purpose: this is not a better Runed Plate, it is a different
     -- trade. `statusResist` is the headline the wearer actually bought -- see Status.resistRating.
     bonus = {
-        defense = Curve.paired(6, 11),
+        defense = Curve.ramp(6, 16),
         magicDefense = Curve.ramp(12, 22),
         statusResist = Curve.ramp(8, 18),
         movement = -2,
     },
-    resist = { magical = Curve.paired(4, 9) },
+    resist = { magical = 4 },
 }

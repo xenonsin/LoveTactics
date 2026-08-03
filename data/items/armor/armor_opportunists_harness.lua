@@ -23,5 +23,5 @@ return {
     tags = { "leather" },
     class = "rogue",
     traits = { "trait_opportunist" },
-    bonus = { defense = Curve.ramp(3, 7) },
+    bonus = { defense = Curve.ramp(3, 13) },
 }

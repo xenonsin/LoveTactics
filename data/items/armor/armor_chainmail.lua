@@ -19,8 +19,8 @@ return {
         movement = -1,
     },
     resist = {
-        slash    = Curve.paired(3, 8),
-        pierce   = Curve.paired(3, 8),
-        physical = Curve.paired(2, 7),
+        slash = 3,
+        pierce = 3,
+        physical = 2,
     },
 }

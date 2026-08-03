@@ -14,6 +14,8 @@
 --
 -- The cost is that it needs a crowd at the far end and there is frequently nobody there. Against a
 -- scattered line it is an iron mace with a worse damage curve.
+local Curve = require("models.curve")
+
 return {
     name = "The Debt-Bell",
     description = "Knockback 2 -- and everything standing around where they land shares the impact.",
@@ -28,7 +30,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Under an iron mace's: the splash is the rest of it.
-        damage = { 6, 6, 7, 8, 8, 9, 10, 10, 11, 12, 13 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             local t = fx.target
             fx.damage(t, { knockback = { distance = 2, amount = fx.amount } })

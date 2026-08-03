@@ -27,7 +27,7 @@ return {
         range = 1,
         speed = 2,
         consumesItem = true,
-        healing = Curve.paired(18, 28),
+        healing = Curve.ramp(18, 28),
         description = "Heals an ally and cleanses their afflictions.",
         effect = function(fx)
             fx.heal(fx.target, fx.amount)

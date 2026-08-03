@@ -19,6 +19,8 @@
 -- Deliberately does NOT touch a healing spell: `magical` is a damage-school tag and the priest's
 -- restoratives don't carry it, so the prism is a damage relic. The heal-boosting charm is a different
 -- item that does not exist yet, and should not quietly be this one.
+local Curve = require("models.curve")
+
 return {
     name = "Resonance Prism",
     description = "Adjacent magic -- spells and enchanted arms alike -- strikes harder.",
@@ -32,6 +34,6 @@ return {
     aura = {
         appliesTo = { "ability", "weapon" }, -- a spell and an enchanted blade are the same school
         requiresTags = { "magical" },        -- ...and only the ones that actually ARE magic
-        amountBonus = { 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10 }, -- added to the neighbor's ability magnitude
+        amountBonus = Curve.ramp(4, 14), -- added to the neighbor's ability magnitude
     },
 }

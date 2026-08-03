@@ -63,28 +63,50 @@ say where the line starts and ends and let `models/curve.lua` type the rest:
 local Curve = require("models.curve")   -- at file scope; curve.lua requires nothing, so this is safe
 
 damage  = Curve.ramp(6, 16),            -- 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-defense = Curve.ramp(8),                -- no top given: doubles by level 10, so 8..16
-slash   = Curve.paired(3, 8),           -- 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8
+defense = Curve.ramp(12),               -- no top given: doubles by level 10, so 12..24
+slash   = 3,                            -- flat: not everything an item grants is a growth axis
 ```
 
-`ramp` moves every level; `paired` holds for a level and then steps by two — same base, same top,
-same total gain, and it reads chunkier on the forge ladder. Both return an ordinary eleven-entry
-list, so nothing downstream can tell a generated curve from a typed one.
+### The span rule: ten levels, ten gains
 
-**A curve neither style reproduces exactly keeps its literal list**, with a ruler comment over it:
+**A curve must climb at least a point per forge level**, so its top sits at least 10 above its base.
+`Curve.ramp` asserts it. A curve that climbs less far than it has levels *must* hold somewhere:
+`ramp(6, 14)` has eight points to spread over ten levels and prints `8, 8` and `12, 12` on the forge
+ladder — and `Vendor.upgradeCost` bills by target level, not by gain, so the player pays 60 gold for
+the rung that changed nothing.
+
+So a magnitude is one of two things:
+
+- **a growth axis** — a `Curve.ramp` spanning 10 or more: an ability's `damage`/`healing`, armor's
+  `defense`/`magicDefense`, a resource bonus, a wait-swap's payoff (`defense`, `power`, `mana`,
+  `stamina`, `amount`, `duration`), a censer's `incense.amount`, an aura's payload.
+- **identity** — a plain number, the same at every level: every `resist` (a second mitigation curve
+  beside a defense that already scales), and the stats counted in whole steps — `movement`, `speed`,
+  `range`, `radius`, `earshot`, `covers`, `hits`, percentages.
+
+`Item.growth` splits exactly those two into its `stats` (charted as ladder columns) and `flat` lists,
+and an item with no moving magnitude at all is not forgeable (`Item.isUpgradable`) — a bench never
+offers a level that buys nothing. An item that earns its level *inside* its effect off `fx.level`
+(the warding wands add ticks that way) says `scalesWithLevel = true`, since there is no row to find.
+
+**A shape the generator can't reproduce keeps its literal list**, with a ruler comment over it:
 
 ```lua
---        level:  0  1  2  3  4  5  6  7  8  9  10
-restore = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20 },
+--      level:  0  1  2  3  4  5  6  7  8  9  10
+hits = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4 },
 ```
 
-That is the supported fallback, not a leftover — about a quarter of the game's rows are hand-shaped
-and stay that way. There is deliberately **no override argument**: a generator call carrying a map of
+That is the supported fallback, not a leftover, and it is how the handful of whole-step exceptions are
+spelled — a ward's blows swallowed, a boot's tiles of movement. Each is the only growth its item has,
+so it keeps its steps (and its flat rungs) rather than being flattened away; they are named in
+`tests/curve_spec.lua`'s `STEP_CURVES`, which otherwise sweeps every magnitude in the game and fails
+on any that holds. There is deliberately **no override argument**: a generator call carrying a map of
 exceptions is harder to read than the eleven integers it replaces.
 
-`& "E:\LOVE\lovec.exe" . curve-migrate` re-checks the whole tree and reports which rows could collapse
-and which are staying literal; `. curve-migrate snapshot PATH` dumps every item's every magnitude at
-every level, so a before/after diff proves a change moved no numbers.
+`& "E:\LOVE\lovec.exe" . curve-widen` reports what each row would become under the rule, and
+`. curve-widen dead` lists any item that still charges for a level that moves no number.
+`. curve-migrate snapshot PATH` dumps every item's every magnitude at every level, so a before/after
+diff shows exactly what a retune moved.
 
 ## Add a quest
 

@@ -30,7 +30,7 @@ return {
         range = 1, -- adjacent only: a staff is not a wand
         speed = 4,
         cost = { stat = "stamina", amount = 6 }, -- stamina, so a cornered mage can always swing it
-        damage = Curve.paired(4, 9), -- feeble on purpose: the Focus swap is the weapon
+        damage = Curve.ramp(4, 14), -- feeble on purpose: the Focus swap is the weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

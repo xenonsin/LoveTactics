@@ -30,7 +30,7 @@ return {
     class = "mage",
     bound = true,
     traits = { "trait_ledger_diligence" },
-    bonus = { magicDamage = Curve.paired(2, 7) }, -- the suppressed floor; the little she shows
+    bonus = { magicDamage = Curve.ramp(2, 12) }, -- the suppressed floor; the little she shows
     activeAbility = {
         description = "Strikes for heavy magical damage.",
         target = "enemy",

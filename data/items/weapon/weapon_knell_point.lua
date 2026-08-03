@@ -36,7 +36,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Well under an iron spear's. A weapon that also kills outright must not also hit hard.
-        damage = Curve.paired(3, 8),
+        damage = Curve.ramp(3, 13),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The far tile is the aimed cell continued one step along the thrust's own vector -- the

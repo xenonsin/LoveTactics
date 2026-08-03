@@ -13,6 +13,8 @@
 --
 -- The line runs from the archer through the target and beyond, so it wants the enemy stacked along the
 -- shooting lane rather than spread across it -- which is exactly the formation heavy infantry adopt.
+local Curve = require("models.curve")
+
 return {
     name = "Piercing Draw",
     description = "Channeled: Damage ignores armor.",
@@ -34,7 +36,7 @@ return {
         cost = { stat = "stamina", amount = 11 },
         -- Well under the iron longbow's per body -- `raw` means all of it arrives, and three bodies may
         -- pay it. A raw shot at the family's usual weight would simply delete a rank.
-        damage = { 6, 7, 7, 8, 9, 9, 10, 11, 12, 12, 13 },
+        damage = Curve.ramp(6, 16),
         -- The line runs from the archer THROUGH the aimed cell: the arrow's own flight path continued.
         aoe = { shape = "line", length = 3 },
         effect = function(fx)

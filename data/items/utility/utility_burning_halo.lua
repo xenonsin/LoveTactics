@@ -31,5 +31,5 @@ return {
     price = 480,
     unlockQuests = 10,
     incense = { hazard = "hazard_burning_halo", radius = 1,
-                amount = Curve.paired(4, 9) },
+                amount = Curve.ramp(4, 14) },
 }

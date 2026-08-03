@@ -23,7 +23,7 @@ return {
         minRange = 1,          -- must pick a neighbor (a facing); never the wielder's own tile
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(6), -- per-target damage = power + the wielder's Damage, minus Defense
+        damage = Curve.ramp(6, 16), -- per-target damage = power + the wielder's Damage, minus Defense
         aoe = { shape = "line", length = 2 }, -- two tiles in a straight line away from the wielder
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

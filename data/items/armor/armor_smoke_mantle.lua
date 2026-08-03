@@ -24,6 +24,6 @@ return {
     discipline = "ninja",
     price = 420,
     unlockQuests = 10,
-    bonus = { defense = Curve.paired(3, 8) },
+    bonus = { defense = Curve.ramp(3, 13) },
     traits = { "trait_smoke_mantle" },
 }

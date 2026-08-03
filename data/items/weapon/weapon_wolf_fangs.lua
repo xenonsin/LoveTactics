@@ -31,7 +31,7 @@ return {
         range = 1,
         speed = 2,
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(5),
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             fx.damage(fx.target)
             -- Give ground a tile away from the foe just bitten. Out of adjacency, the melee counter that

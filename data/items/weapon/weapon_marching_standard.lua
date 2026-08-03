@@ -32,6 +32,8 @@
 -- and what this one does is decide where the line is and hold that spot -- planted, immobile, and
 -- worth defending. Sloth's shelf is the one that answers "where do we stand", and this is that
 -- question asked with a flag in it.
+local Curve = require("models.curve")
+
 return {
     name = "Marching Standard",
     description = "Skewers the two tiles ahead. While no standard of yours stands, the thrust plants one beside you.",
@@ -53,7 +55,7 @@ return {
         minRange = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 11 },
-        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11 }, -- under an iron spear's: the standard is the rest
+        damage = Curve.ramp(5, 15), -- under an iron spear's: the standard is the rest
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The thrust always happens, whatever state the colours are in: this is a spear first, and

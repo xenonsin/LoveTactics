@@ -8,6 +8,8 @@
 -- so it reads as the same discipline the Iron/Shadow/Swift/Drunken charms build -- but where those pour
 -- flat power into every punch, this one banks a turn to make ONE punch land like three. `power` scales
 -- with the forge (Item WAIT_BEHAVIOR_MAGNITUDES), so a deeper charm coils a heavier blow.
+local Curve = require("models.curve")
+
 return {
     name = "Centering Charm",
     description = "Replaces Wait with Gather: end your turn to coil, so your next landed blow hits far harder.",
@@ -19,5 +21,5 @@ return {
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 220,
     unlockQuests = 4,
-    waitBehavior = { kind = "gather", speed = 3, power = { 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10 } },
+    waitBehavior = { kind = "gather", speed = 3, power = Curve.ramp(4, 14) },
 }

@@ -17,7 +17,6 @@
 --
 -- Single-target only, like every reflection here: a blast passes straight through, which is what keeps it
 -- a read on the enemy caster's kit rather than a blanket answer to magic.
-local Curve = require("models.curve")
 
 return {
     name = "The Reflecting Wand",
@@ -27,13 +26,16 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "arcane", "ranged" },
     class = "mage",
+    -- This wand's forge path is the ward's DURATION, computed in the effect off fx.level rather than
+    -- authored as a per-level magnitude, so Item.isUpgradable has no row to find. It says so here.
+    scalesWithLevel = true,
     activeAbility = {
         target = "ally",
         range = 3,
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 9 },
-        damage = Curve.ramp(0),
+        damage = 0,
         effect = function(fx)
             local t = fx.target
             if not t or not t.alive then return end

@@ -27,5 +27,5 @@ return {
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_perfect_recall" },
-    bonus = { magicDefense = Curve.paired(3, 8) },
+    bonus = { magicDefense = Curve.ramp(3, 13) },
 }

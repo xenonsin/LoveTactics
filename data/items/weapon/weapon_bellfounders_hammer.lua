@@ -16,6 +16,8 @@
 --
 -- The ring is unsided. Swing it into a melee your own line is standing in and you have stunned your own
 -- line, which is a genuinely bad turn -- the same rule the axe's arc runs on.
+local Curve = require("models.curve")
+
 return {
     name = "Bellfounder's Hammer",
     description = "Inflicts Stun on the target, and a shorter Stun on everything standing around it.",
@@ -31,7 +33,7 @@ return {
         speed = 8, -- slower even than an iron hammer: the ring is paid for in tempo, as everything here is
         cost = { stat = "stamina", amount = 14 },
         -- Under an iron hammer's, per body. The breadth is the extra and it must not also be depth.
-        damage = { 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20 },
+        damage = Curve.ramp(9, 20),
         effect = function(fx)
             local t = fx.target
             if not t then return end

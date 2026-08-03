@@ -22,13 +22,14 @@ return {
     class = "priest",
     price = 180,
     unlockQuests = 6,
-    -- Both payoffs climb with the forge; `speed` deliberately does not (an upgrade never buys back
-    -- tempo -- see models/item.lua's WAIT_BEHAVIOR_MAGNITUDES). `covers` is the smaller number: what
-    -- the neighbour draws is always less than what the bearer keeps.
+    -- The `mana` climbs with the forge; `speed` deliberately does not (an upgrade never buys back tempo
+    -- -- see models/item.lua's WAIT_BEHAVIOR_MAGNITUDES), and neither does `covers`, which counts a
+    -- SHARE rather than a size: what the neighbour draws is always less than what the bearer keeps, and
+    -- four points of it flat says that better than a curve with only five in it (models/curve.lua).
     waitBehavior = {
         kind = "focus",
         mana = Curve.ramp(8, 18),
-        covers = Curve.paired(4, 9),
+        covers = 4,
         speed = 10,
     },
     activeAbility = {
@@ -36,7 +37,7 @@ return {
         range = 1, -- adjacent only: a crozier is not a wand
         speed = 4,
         cost = { stat = "stamina", amount = 6 }, -- stamina, so a cornered priest can always swing it
-        damage = Curve.paired(4, 9), -- feeble on purpose: the swap is the weapon
+        damage = Curve.ramp(4, 14), -- feeble on purpose: the swap is the weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

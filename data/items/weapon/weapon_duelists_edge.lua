@@ -10,6 +10,8 @@
 -- steps back out of reach has beaten both of them.
 --
 -- Its own damage is under an iron sword's. It should be: the sword is not what this weapon does.
+local Curve = require("models.curve")
+
 return {
     name = "Duelist's Edge",
     description = "Strikes an adjacent foe. On melee hit taken: inflict Duelbound on the attacker.",
@@ -29,7 +31,7 @@ return {
         cost = { stat = "stamina", amount = 8 },
         -- Under the iron sword's curve on purpose: an answer that removes a foe's whole retreat plan is
         -- worth more than the two points of Power it gives up for it.
-        damage = { 5, 6, 7, 8, 8, 9, 10, 11, 12, 13, 14 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             fx.damage(fx.target)
         end,

@@ -19,6 +19,8 @@
 -- ADJACENCY: it wants an `arcane` item beside it. Nothing about hauling bodies is elemental, so it
 -- cannot borrow a fire stone's tags or a frost charm's bite -- the only thing that makes the breath
 -- work is raw craft sitting next to it in the grid.
+local Curve = require("models.curve")
+
 return {
     name = "Indrawn Breath",
     description = "Drags every body in a wide circle to the caster's side, then strikes them all.",
@@ -37,7 +39,7 @@ return {
         speed = 5,
         windup = 3, -- the breath is drawn in before it is taken: a turn's warning, for both sides
         cost = { stat = "mana", amount = 20 },
-        damage = { 6, 6, 7, 8, 8, 9, 10, 10, 11, 12, 12 },
+        damage = Curve.ramp(6, 16),
         aoe = { radius = 2, shape = "square" },
         -- Only worth the mana against a spread the party can then punish. `count_at_least 2` is the
         -- floor rather than the ideal -- the scorer already sums the blast over everyone it catches and

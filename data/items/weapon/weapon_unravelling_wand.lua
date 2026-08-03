@@ -18,6 +18,8 @@
 -- Its cost is still mana, so a Silence still gags it: what deviates is the school of the WOUND, not of
 -- the working. That line is drawn deliberately and is the same one the Whitening draws from the other
 -- side.
+local Curve = require("models.curve")
+
 return {
     name = "The Unravelling Wand",
     description = "Fires a physical bolt that no ward can turn and inflicts Unravelled.",
@@ -37,7 +39,7 @@ return {
         cost = { stat = "mana", amount = 6 },
         -- Poor, and it must be: it is measured against Defense, which is the stat a mage's target usually
         -- has plenty of, and a caster with a good physical attack would not need the rest of its shelf.
-        damage = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8 },
+        damage = Curve.ramp(3, 13),
         effect = function(fx)
             -- tags default to the item's, so the bolt is physical; the unravelling rides it, landing on
             -- whoever the bolt hits and only if they survive (the .alive guard, enforced by the carried path).

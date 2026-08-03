@@ -28,5 +28,5 @@ return {
     tags = { "cloth", "holy" },
     class = "priest",
     traits = { "trait_martyrs_vow" },
-    bonus = { magicDefense = Curve.ramp(3, 7), defense = Curve.ramp(2), movement = -1 },
+    bonus = { magicDefense = Curve.ramp(3, 13), defense = Curve.ramp(2, 12), movement = -1 },
 }

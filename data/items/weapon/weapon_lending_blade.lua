@@ -14,6 +14,8 @@
 -- Reads against data/items/weapon/weapon_wardens_tongue.lua, which is the same "the line gets it too"
 -- sentence spoken through the reflex rather than the swing: that one pays out when the ENEMY commits,
 -- this one when you do.
+local Curve = require("models.curve")
+
 return {
     name = "The Lending Blade",
     description = "Strikes an adjacent foe, stripping their guard and lending it to an ally beside you.",
@@ -29,7 +31,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 5, 6, 7, 8, 8, 9, 10, 11, 12, 13, 14 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             -- The strip rides the blow, so it lands on whoever the swing hits -- a guardian who steps in
             -- front of it has their own guard taken instead.

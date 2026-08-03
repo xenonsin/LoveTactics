@@ -15,6 +15,8 @@
 -- CANCELLATION. A hammer swung at a Kingsfall is not a wasted turn, it is an insufficient one -- and
 -- keeping that line is what stops this being an answer to hard control generally rather than to the one
 -- interaction it was forged for.
+local Curve = require("models.curve")
+
 return {
     name = "Kingsfall",
     description = "Channeled: the wind-up cannot be broken.",
@@ -37,7 +39,7 @@ return {
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's. Certainty is what it sells, and certainty is worth more than the
         -- four points of Power it gives up for it.
-        damage = { 20, 22, 24, 27, 29, 31, 33, 36, 38, 40, 43 },
+        damage = Curve.ramp(20, 43),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
         end,

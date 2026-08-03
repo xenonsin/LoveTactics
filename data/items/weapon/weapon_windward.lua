@@ -16,6 +16,8 @@
 --
 -- Not a deviation from the family CONTRACT: it keeps range 3 and minRange 2 like any bow, so the dead
 -- zone is intact and it still cannot answer a foe in its face. Only the damage curve is inverted.
+local Curve = require("models.curve")
+
 return {
     name = "Windward",
     description = "Increase damage the farther the target, peaking at the range edge.",
@@ -34,7 +36,7 @@ return {
         cost = { stat = "stamina", amount = 7 },
         -- Read as the CLOSE number: this is what it lands at two tiles, and it is well above an iron
         -- bow's. Every tile further gives a quarter of it back.
-        damage = { 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20 },
+        damage = Curve.ramp(9, 20),
         effect = function(fx)
             local t = fx.target
             if not t then return end

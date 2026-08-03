@@ -20,6 +20,8 @@
 -- ADJACENCY: a `staff` beside it. The din is struck out of the ground, and it wants something to strike
 -- the ground WITH -- which is the mage's own weapon family, so the spell asks its caster to be armed
 -- rather than to carry another charm.
+local Curve = require("models.curve")
+
 return {
     name = "The Answering Din",
     description = "Sends a shock through the ground. Increase damage by 3 per extra body caught.",
@@ -35,7 +37,7 @@ return {
         range = 0,
         speed = 4,
         cost = { stat = "mana", amount = 16 },
-        damage = { 5, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11 }, -- the base, before the crowd is counted
+        damage = Curve.ramp(5, 15), -- the base, before the crowd is counted
         aoe = { radius = 2, shape = "square" },
         requiresAdjacent = { tag = "staff" },
         ai = { priority = "high", act = "attack",

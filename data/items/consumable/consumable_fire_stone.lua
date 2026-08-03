@@ -50,6 +50,6 @@ return {
         appliesTo = { "weapon", "ability" }, -- which neighbor types the heat infuses
         exceptTags = { "water" },            -- water-aligned kit resists the infusion
         grantTags = { "fire" },              -- folded into the neighbor's attack tags
-        status = { id = "status_burn", opts = { duration = 15, magnitude = Curve.ramp(4) } }, -- applied on a damaging hit; matches Burn's own ~3 turns
+        status = { id = "status_burn", opts = { duration = 15, magnitude = Curve.ramp(4, 14) } }, -- applied on a damaging hit; matches Burn's own ~3 turns
     },
 }

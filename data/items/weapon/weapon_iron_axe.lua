@@ -9,6 +9,8 @@
 --
 -- Note the arc does not care whose side it sweeps: fx.aoeUnits returns everyone in it, and this
 -- effect filters nobody. Line your own people up behind the axe, not beside it.
+local Curve = require("models.curve")
+
 return {
     name = "Iron Axe",
     description = "Cleaves a wide arc, cutting everything standing in front of you.",
@@ -26,7 +28,7 @@ return {
         minRange = 1,          -- must pick a neighbor (a facing); never the wielder's own tile
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = { 5, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11 }, -- per target: softer than a sword, but it may hit three
+        damage = Curve.ramp(5, 15), -- per target: softer than a sword, but it may hit three
         aoe = { shape = "front", width = 3 }, -- axes cleave innately: a 3-wide arc in front
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

@@ -36,8 +36,8 @@ return {
     type = "armor",
     tags = { "plate" },
     class = "fighter",
-    bonus = { damage = Curve.paired(5), defense = Curve.ramp(2) },
+    bonus = { damage = Curve.ramp(5, 15), defense = Curve.ramp(2, 12) },
     -- NEGATIVE on purpose: see the header. This is the one blueprint in the game that adds to incoming
     -- damage rather than subtracting from it, and the sign is the whole item.
-    resist = { physical = { -3, -3, -3, -4, -4, -4, -4, -5, -5, -5, -6 } },
+    resist = { physical = -3 },
 }

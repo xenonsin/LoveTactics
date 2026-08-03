@@ -28,6 +28,6 @@ return {
     price = 420,
     unlockQuests = 6,
     traits = { "trait_guardians_blessing" },
-    bonus = { magicDefense = Curve.ramp(5, 11), defense = { 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5 }, movement = -1 },
-    resist = { magical = Curve.ramp(2, 5) },
+    bonus = { magicDefense = Curve.ramp(5, 15), defense = Curve.ramp(2, 12), movement = -1 },
+    resist = { magical = 2 },
 }

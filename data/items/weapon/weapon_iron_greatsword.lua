@@ -6,6 +6,8 @@
 -- live board, so a foe that walks clear simply isn't there when the sword falls).
 --
 -- Two-handed, so Dual Wield can pair it only once forged to +5. A fighter's capstone weapon.
+local Curve = require("models.curve")
+
 return {
     name = "Iron Greatsword",
     description = "Channeled.",
@@ -31,7 +33,7 @@ return {
         speed = 7,             -- ponderous: you pay for the damage in turn order
         windup = 2,           -- winds up two ticks before it lands; hard control breaks the wind-up
         cost = { stat = "stamina", amount = 16 },
-        damage = { 24, 27, 29, 32, 34, 37, 39, 42, 44, 47, 50 },
+        damage = Curve.ramp(24, 50),
         effect = function(fx)
             -- Single target: whatever stands on the aimed tile when the blow finally falls.
             if fx.target then fx.damage(fx.target) end

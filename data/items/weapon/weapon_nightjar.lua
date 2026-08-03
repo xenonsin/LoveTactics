@@ -16,6 +16,8 @@
 -- Deliberately gated on the kill rather than on the hit. On a hit it would be a stealth button with a
 -- knife attached; on a kill it is a reward for correct target selection, which is the skill the whole
 -- rogue shelf is priced around -- and it does nothing at all on the turn the rogue picks wrong.
+local Curve = require("models.curve")
+
 return {
     name = "Nightjar",
     description = "Deals damage and inflicts Bleed. A kill leaves you Invisible until your next turn.",
@@ -31,7 +33,7 @@ return {
         cost = { stat = "stamina", amount = 5 },
         -- A shade under an iron dagger's: what it sells happens after the target is already down, so it
         -- must not also be the best knife at putting them there.
-        damage = { 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 11 },
+        damage = Curve.ramp(4, 14),
         effect = function(fx)
             local t = fx.target
             if not t then return end

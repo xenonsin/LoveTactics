@@ -26,5 +26,5 @@ return {
     tags = { "cloth", "dark" },
     class = "hunter",
     incense = { hazard = "hazard_darkness", radius = 1 },
-    bonus = { defense = Curve.ramp(2, 6), movement = -1 },
+    bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

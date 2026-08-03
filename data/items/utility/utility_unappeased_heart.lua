@@ -27,7 +27,7 @@ return {
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_wrath_rising", "trait_boss_phases" },
-    bonus = { damage = Curve.paired(2, 7) }, -- levels 0..10 (only base is ever used)
+    bonus = { damage = Curve.ramp(2, 12) }, -- levels 0..10 (only base is ever used)
     -- The two-phase script (read by trait_boss_phases off ctx.item.phases). One threshold: at 40%
     -- health she sheds the human shape for her demon one. Deliberately low -- she wakes as she dies, so
     -- the pact answers on the same threshold her rule already lives on -- which also leaves the demon a

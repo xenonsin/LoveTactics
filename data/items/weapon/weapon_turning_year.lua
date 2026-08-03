@@ -27,6 +27,8 @@
 -- happened to end on; on the unit it is rebuilt with the battle, so every fight opens with fire. That
 -- also means two casters sharing one wand each keep their own half of the year, which is the only
 -- reading that makes sense of a rhythm belonging to the hand rather than the stick.
+local Curve = require("models.curve")
+
 return {
     name = "Wand of the Turning Year",
     description = "Alternates a fire bolt and a frost bolt. Its bearer can neither Burn nor Freeze.",
@@ -49,7 +51,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 6 }, -- dearer than a plain wand's 4: the rhythm is not free
-        damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9 }, -- the feeblest wand per cast; the pairing is the weapon
+        damage = Curve.ramp(3, 13), -- the feeblest wand per cast; the pairing is the weapon
         effect = function(fx)
             -- Which half of the year this bolt is, flipped before it is thrown so the NEXT cast is
             -- already committed to the other one. A battle always opens on fire (nil is falsy), which

@@ -15,6 +15,8 @@
 -- everything a turn is made of.
 --
 -- Its own damage is the worst on the shelf, and that is correct. Nothing about this knife is the knife.
+local Curve = require("models.curve")
+
 return {
     name = "The Mired Kris",
     description = "Deals damage and inflicts Bleed and Mired.",
@@ -29,7 +31,7 @@ return {
         speed = 2,
         cost = { stat = "stamina", amount = 5 },
         -- Under an iron dagger's, which is already the modest end of the game. Two debuffs is the sale.
-        damage = { 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9 },
+        damage = Curve.ramp(3, 13),
         effect = function(fx)
             -- Both debuffs ride the blow, so a guardian who takes the hit is the one cut and mired.
             fx.damage(fx.target, { inflicts = { "status_bleed", "status_mired" } })

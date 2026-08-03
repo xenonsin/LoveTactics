@@ -28,7 +28,7 @@ return {
     -- `status` is applied to the focuser on every Focus (Combat.focus).
     waitBehavior = {
         kind = "focus",
-        mana = { 6, 7, 7, 8, 9, 9, 10, 11, 12, 12, 13 },
+        mana = Curve.ramp(6, 16),
         speed = 10,
         status = "status_magical_barrier",
     },
@@ -37,7 +37,7 @@ return {
         range = 1, -- adjacent only: a staff is not a wand
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.paired(4, 9), -- feeble, as every staff's strike is
+        damage = Curve.ramp(4, 14), -- feeble, as every staff's strike is
         effect = function(fx)
             fx.damage(fx.target)
         end,

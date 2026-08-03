@@ -12,6 +12,8 @@
 --
 -- The cost is honest and steep: two extra ticks of telegraph against an enemy line that can read the
 -- turn order as well as you can. Held at full depth this is the longest commitment in the game.
+local Curve = require("models.curve")
+
 return {
     name = "Avalanche",
     description = "Channeled: hold longer to widen the arc.",
@@ -37,7 +39,7 @@ return {
         cost = { stat = "stamina", amount = 17 },
         -- A shade under the iron greatsword's: what the extra ticks buy is width, and it must not also
         -- quietly buy weight, or holding would never be wrong.
-        damage = { 22, 25, 27, 30, 32, 35, 37, 40, 42, 45, 48 },
+        damage = Curve.ramp(22, 48),
         -- The declared footprint is the WIDE one, so the aim preview and fx.aoeUnits agree on the shape
         -- the swing can reach. The effect below narrows it back to the single aimed body when the bearer
         -- chose not to hold -- narrowing in the effect is safe (the preview over-promises reach, never

@@ -25,6 +25,6 @@ return {
     discipline = "skirmisher",
     price = 400,
     unlockQuests = 6,
-    bonus = { defense = Curve.paired(3, 8) },
+    bonus = { defense = Curve.ramp(3, 13) },
     traits = { "trait_outriders_harness" },
 }

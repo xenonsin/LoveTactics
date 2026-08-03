@@ -27,7 +27,7 @@ return {
     type = "utility",
     tags = { "relic" },
     noSteal = true, -- you took it off her; nothing takes it back
-    bonus = { defense = Curve.paired(2, 7) },
+    bonus = { defense = Curve.ramp(2, 12) },
     activeAbility = {
         description = "Lifts an item off an adjacent foe and takes it for your own.",
         target = "enemy",

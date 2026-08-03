@@ -9,14 +9,15 @@ return {
     flavor = "Boiled hide, cut by someone who has seen what happens without it.",
     sprite = "assets/items/leather.png",
     type = "armor",
-    -- Medium tier: modest bulk, one square slower. Defense and resists are per-level tables (levels
-    -- 0..10) the forge steps up; the movement penalty is flat (a single number never scales).
+    -- Medium tier: modest bulk, one square slower. Defense is the per-level table (levels 0..10) the forge
+    -- steps up; the resists and the movement penalty are flat single numbers, which never scale -- what
+    -- boiled hide turns aside is what it is, and the forge sells the bulk (models/curve.lua).
     bonus = {
         defense = Curve.ramp(4, 14),
         movement = -1,
     },
     resist = {
-        slash    = Curve.paired(3, 8),
-        physical = Curve.paired(2, 7),
+        slash = 3,
+        physical = 2,
     },
 }

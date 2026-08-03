@@ -17,6 +17,8 @@
 -- cuts deeper, and this is the one that cuts from somewhere else. Note that the reflex swings the
 -- weapon rather than casting its ability, so an answering slip deals damage but leaves no wound: the
 -- bleeding is what the rogue does on its OWN turn, and the slip is what it does on yours.
+local Curve = require("models.curve")
+
 return {
     name = "Slipknife",
     description = "Deals damage and inflicts Bleed. On hit taken: appear beside the attacker and cut.",
@@ -38,7 +40,7 @@ return {
         -- the strike's -- and it doubles for each answer already thrown this round. Deliberately a
         -- notch over the iron dagger's 5, because this blade answers things no other blade can.
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 10 }, -- under the iron dagger: the reflex is what you bought
+        damage = Curve.ramp(4, 14), -- under the iron dagger: the reflex is what you bought
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_bleed" })
         end,

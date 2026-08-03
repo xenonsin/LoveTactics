@@ -26,12 +26,12 @@ return {
     type = "armor",
     tags = { "shield", "holy" },
     class = "knight",
-    bonus = { defense = Curve.ramp(3, 7) },
-    resist = { physical = { 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5 } },
+    bonus = { defense = Curve.ramp(3, 13) },
+    resist = { physical = 2 },
     waitBehavior = {
         kind = "defend",
         speed = 3,
-        defense = Curve.paired(7, 12),
+        defense = Curve.ramp(7, 17),
         -- `coversStatus`: handed to every adjacent ally rather than to the holder (Combat.defend).
         coversStatus = "status_shared_burden",
     },

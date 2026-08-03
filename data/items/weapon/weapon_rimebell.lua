@@ -15,6 +15,8 @@
 -- Note the ground is unsided as ground generally is: rimeguard slows enemies specifically
 -- (data/hazards/hazard_rimeguard.lua), so this is one of the few zones that is safe to leave in front of
 -- your own line -- which is why the mace can afford to keep a full two tiles of shove.
+local Curve = require("models.curve")
+
 return {
     name = "Rimebell",
     description = "Knockback 2, freezing over every tile they are dragged across.",
@@ -28,7 +30,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = { 6, 7, 7, 8, 9, 9, 10, 11, 12, 12, 13 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             local t = fx.target
             if not t then return end

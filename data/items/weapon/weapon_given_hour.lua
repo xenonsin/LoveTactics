@@ -19,6 +19,8 @@
 -- It grants no second walk (the turn re-opens with the move already spent), and with nobody adjacent it
 -- is simply a slightly weak greatsword -- the same "you pay for it by standing somewhere" clause
 -- data/items/weapon/weapon_lending_blade.lua runs on.
+local Curve = require("models.curve")
+
 return {
     name = "The Given Hour",
     description = "Channeled: hands the turn it cost to an adjacent ally.",
@@ -38,7 +40,7 @@ return {
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's: an ally's whole action is worth more than the six points of Power
         -- it gives up, and it should be, or nobody would ever swing the plain one.
-        damage = { 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 39 },
+        damage = Curve.ramp(18, 39),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             local Combat = require("models.combat")

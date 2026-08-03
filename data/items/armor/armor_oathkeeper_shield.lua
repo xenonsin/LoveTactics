@@ -17,17 +17,19 @@ return {
     class = "knight",
     price = 800,
     unlockQuests = 10,
-    bonus = { defense = Curve.ramp(9), movement = -1 },
-    resist = { physical = Curve.ramp(4), slash = Curve.ramp(3), pierce = Curve.ramp(3), impact = Curve.ramp(3) },
+    bonus = { defense = Curve.ramp(9, 19), movement = -1 },
+    resist = { physical = 4, slash = 3, pierce = 3, impact = 3 },
     -- A tower shield braces hardest of all -- a large, forge-scaling +defense while it holds the line.
-    -- `covers` is its EXTRA over the plain buckler (data/items/armor/armor_buckler.lua), which swaps Wait for
-    -- the same Defend: this one does not brace alone. Every ADJACENT ALLY braces with it, for about
-    -- half as much, which turns the Bastion's dullest verb into the most positional one on the board --
+    -- `covers` is its EXTRA over the plain buckler (data/items/armor/armor_buckler.lua), fixed rather than
+    -- forge-scaling because it is a share of the brace and not a size of its own (models/curve.lua: five
+    -- points of climb cannot move ten levels). The buckler swaps Wait for the same Defend: this one does
+    -- not brace alone. Every ADJACENT ALLY braces with it too -- for half of a raw Oathkeeper's brace, and
+    -- less of a forged one -- which turns the Bastion's dullest verb into the most positional one on the board --
     -- where you plant decides who else gets the wall, and a line of three behind one Oathkeeper is
     -- worth more than three bucklers scattered. The oath is not that you survive; it is that they do.
     waitBehavior = {
         kind = "defend", speed = 2,
         defense = Curve.ramp(10),
-        covers = Curve.paired(5),
+        covers = 5,
     },
 }

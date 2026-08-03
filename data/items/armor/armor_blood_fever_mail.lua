@@ -28,6 +28,6 @@ return {
     tags = { "plate" },
     class = "fighter",
     traits = { "trait_blood_fever" },
-    bonus = { defense = { 5, 5, 6, 7, 7, 8, 8, 9, 10, 10, 11 }, movement = -1 },
-    resist = { slash = Curve.ramp(2) },
+    bonus = { defense = Curve.ramp(5, 15), movement = -1 },
+    resist = { slash = 2 },
 }

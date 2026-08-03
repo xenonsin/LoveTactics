@@ -23,7 +23,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 2 },
-        damage = Curve.ramp(5), -- flat: a thrown rock hits the same however strong the arm
+        damage = Curve.ramp(5, 15), -- flat: a thrown rock hits the same however strong the arm
         consumesItem = true,
         effect = function(fx)
             fx.damage(fx.target)

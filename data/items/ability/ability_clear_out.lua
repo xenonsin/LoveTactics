@@ -35,7 +35,7 @@ return {
         support = false,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(6, 14),
+        damage = Curve.ramp(6, 16),
         aoe = { shape = "diamond", radius = 1 }, -- the four tiles around you (and the one you stand on)
         effect = function(fx)
             -- Foes only. The ring is centred on the caster and every ally at their shoulder stands

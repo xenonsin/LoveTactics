@@ -8,6 +8,8 @@
 -- fighter's (docs/classes.md) -- and because what this does with the wound is make the kill in front of
 -- you land harder, which is what wrath is. The setup for the party, said in an axe's voice. First of the
 -- Vulnerable openers; see docs/vulnerability.md for the family.
+local Curve = require("models.curve")
+
 return {
     name = "Rend",
     description = "Deals slashing damage and inflicts Vulnerable: Slash.",
@@ -23,7 +25,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = { 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             -- The vulnerability rides the blow, so it is on the target the instant the wound is opened.
             fx.damage(fx.target, { inflicts = "status_vulnerable_slash" })

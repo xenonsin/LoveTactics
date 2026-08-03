@@ -13,6 +13,8 @@
 -- Note the ward covers hits "of any kind", which is wider than the reflex that raised it: the parry only
 -- fires on a melee blow it can reach, but the glass it leaves also eats an arrow. That is deliberate and
 -- it is the whole trade -- you have to let something walk up and hit you to become hard to shoot.
+local Curve = require("models.curve")
+
 return {
     name = "Splitglass Saber",
     description = "Strikes an adjacent foe, and answers a melee blow by cutting back and raising Splitglass on yourself.",
@@ -30,7 +32,7 @@ return {
         cost = { stat = "stamina", amount = 8 },
         -- Under an iron sword's: this one answers with a cut AND a ward, so it gives up Power for the
         -- half of the reflex the others do not get.
-        damage = { 5, 6, 6, 7, 8, 9, 10, 10, 11, 12, 13 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             fx.damage(fx.target)
         end,

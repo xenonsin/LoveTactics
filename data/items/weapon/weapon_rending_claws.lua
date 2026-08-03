@@ -19,6 +19,8 @@
 -- sword's answer with it, so every blow the closing stretch of the lesson lands came back at the
 -- party uninvited. A creature's body owes no family contract (see Item.ARCHETYPES) -- what a demon's
 -- claws do is the demon's business, and these only rend.
+local Curve = require("models.curve")
+
 return {
     name = "Rending Claws",
     description = "Rends an adjacent foe with a demon's whole weight behind it.",
@@ -33,7 +35,7 @@ return {
         speed = 6, -- heavy: it swings once where a swordsman swings twice
         cost = { stat = "stamina", amount = 12 },
         --        level:  0  1  2  3  4  5  6  7  8  9  10
-        damage = { 20, 21, 22, 24, 25, 26, 28, 29, 30, 31, 32 },
+        damage = Curve.ramp(20, 32),
         effect = function(fx)
             fx.damage(fx.target)
         end,

@@ -28,5 +28,5 @@ return {
     tags = { "cloth", "banner" },
     class = "fighter",
     incense = { hazard = "hazard_rally", radius = 1 },
-    bonus = { defense = Curve.paired(3, 8), movement = -1 },
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
 }

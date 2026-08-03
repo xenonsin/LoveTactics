@@ -7,6 +7,8 @@
 -- has health. So an imp that walked up and clawed would be cut down by the very sword it swung at,
 -- and the lesson needs both back-line imps ALIVE for the player to kill together
 -- (data/tutorials/village.lua). Keeping their distance is how they survive to be the lesson.
+local Curve = require("models.curve")
+
 return {
     name = "Cinder Spit",
     description = "Spits hellfire at a foe.",
@@ -24,7 +26,7 @@ return {
         speed = 4,    -- slower than a swordsman: the party opens every exchange
         cost = { stat = "stamina", amount = 5 },
         --        level:  0  1  2  3  4  5  6  7  8  9  10
-        damage = { 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 12 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             fx.damage(fx.target)
         end,

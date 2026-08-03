@@ -17,6 +17,8 @@
 -- Priced by the trait's own declared cost rather than by the swing rule, because a shove is not a swing
 -- -- there is no weapon in the motion to read a price off (docs/weapons.md, "Pricing a triggered
 -- reflex"). It still escalates per answer in a round like everything else that answers.
+local Curve = require("models.curve")
+
 return {
     name = "The Answering Bell",
     description = "Knockback 2 -- and any melee attacker takes Knockback 2 too.",
@@ -33,7 +35,7 @@ return {
         cost = { stat = "stamina", amount = 9 },
         -- Under an iron mace's: the reflex is the rest, and a weapon that both answers and hits full
         -- would make standing next to it strictly worse than any other tile on the board.
-        damage = { 6, 6, 7, 8, 8, 9, 10, 10, 11, 12, 13 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             fx.damage(fx.target, { knockback = { distance = 2, amount = fx.amount } })
         end,

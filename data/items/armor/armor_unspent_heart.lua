@@ -35,6 +35,6 @@ return {
     traits = { "trait_unspent_heart" },
     bonus = {
         health = Curve.ramp(10, 30),
-        defense = Curve.paired(2, 7),
+        defense = Curve.ramp(2, 12),
     },
 }

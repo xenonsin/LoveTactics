@@ -101,18 +101,23 @@ local function sameRow(a, b)
     return true
 end
 
--- The generator call that reproduces `values` exactly, as source text -- or nil if neither style
--- does, which is the signal to leave the row alone. The top is dropped when it is simply twice the
--- base, since that is what the one-argument form means.
+-- The generator call that reproduces `values` exactly, as source text -- or nil if it does not, which is
+-- the signal to leave the row alone. The top is dropped when it is simply twice the base, since that is
+-- what the one-argument form means.
+--
+-- Two things narrowed since this tool did its pass: `Curve.paired` is gone, and `Curve.ramp` refuses a
+-- span too short to move every forge level (see models/curve.lua, and tools/curve_widen.lua for the
+-- retune that brought the data under that rule). So a short row is left literal even when a ramp would
+-- reproduce it -- collapsing `{ 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3 }` into `Curve.ramp(1, 3)` would write a
+-- blueprint that no longer loads.
 local function fit(values)
     local base, top = values[1], values[Curve.LEVELS]
-    for _, style in ipairs({ "ramp", "paired" }) do
-        if sameRow(Curve[style](base, top), values) then
-            if top == base * 2 and sameRow(Curve[style](base), values) then
-                return "Curve." .. style .. "(" .. base .. ")"
-            end
-            return "Curve." .. style .. "(" .. base .. ", " .. top .. ")"
+    if math.abs(top - base) < Curve.LEVELS - 1 then return nil end
+    if sameRow(Curve.ramp(base, top), values) then
+        if top == base * 2 and sameRow(Curve.ramp(base), values) then
+            return "Curve.ramp(" .. base .. ")"
         end
+        return "Curve.ramp(" .. base .. ", " .. top .. ")"
     end
     return nil
 end

@@ -22,6 +22,6 @@ return {
     discipline = "vanguard",
     price = 440,
     unlockQuests = 6,
-    bonus = { defense = Curve.paired(6, 11), movement = -2 },
+    bonus = { defense = Curve.ramp(6, 16), movement = -2 },
     traits = { "trait_breakers_harness" },
 }

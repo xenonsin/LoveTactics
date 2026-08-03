@@ -23,6 +23,8 @@
 --      broadcast an aoe. That is correct rather than a shortcut: a reflex is a blade going up in
 --      time, not a working released on purpose. It is priced as a swing all the same, which is to
 --      say in mana AND stamina (Trait.answerCost) -- a crescent blade guards a doorway expensively.
+local Curve = require("models.curve")
+
 return {
     name = "Crescent Blade",
     description = "Damage ignores armor.",
@@ -58,7 +60,7 @@ return {
         -- three bodies where a sword catches one, and it declines armor on top of that. Tuned nearer
         -- weapon_iron_spear's 2-tile line, a step lower again for the extra tile and the routing.
         --        level:  0  1  2  3  4  5  6  7   8   9  10
-        damage = { 5, 5, 6, 7, 7, 8, 9, 9, 10, 11, 12 },
+        damage = Curve.ramp(5, 15),
         aoe = { shape = "line", length = 3 }, -- three tiles in a straight line away from the wielder
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

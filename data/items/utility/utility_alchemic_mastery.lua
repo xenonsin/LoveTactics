@@ -19,6 +19,6 @@ return {
     unlockQuests = 3,
     aura = {
         appliesTo = { "consumable" }, -- only the throwables and potions it sits beside
-        amountBonus = Curve.ramp(5),              -- added to the neighbor consumable's ability magnitude
+        amountBonus = Curve.ramp(5, 15),              -- added to the neighbor consumable's ability magnitude
     },
 }

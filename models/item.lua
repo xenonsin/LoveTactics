@@ -399,12 +399,30 @@ function Item.primaryStat(item)
     return nil
 end
 
--- Whether an item can be leveled up at all: it can, as long as it has a magnitude to scale. WHERE it
--- is leveled is a routing question the forge/vendor answer (weapons/armor/utility at the smithy,
--- abilities at their class vendor, consumables at the alchemist); this only asks whether there is any
--- stat for a level to move. An item with no magnitude (a plain torch) can't be upgraded.
+-- Whether an item can be leveled up at all: it can, as long as some magnitude actually MOVES with the
+-- level. WHERE it is leveled is a routing question the forge/vendor answer (weapons/armor/utility at
+-- the smithy, abilities at their class vendor, consumables at the alchemist); this only asks whether
+-- there is anything for a level to buy. An item with no magnitude (a plain torch) can't be upgraded --
+-- and neither can one whose every magnitude is FLAT, which is the whole-ladder version of the dead
+-- forge level: the Shepherd's Crook deals nothing by design, so a bench offering to sharpen it was
+-- selling the player ten upgrades of nothing.
+--
+-- Read off the BLUEPRINT, not the instance: an instance has had its curves resolved to this level's
+-- numbers already (applyLevel), so by then a curve and a flat magnitude look identical. Deliberately
+-- counts the aoe footprint too -- a line that opens into a cone is something a level buys.
 function Item.isUpgradable(item)
-    return item ~= nil and Item.primaryStat(item) ~= nil
+    if item == nil then return false end
+    local def = Item.defs[item.id]
+    if not def then return false end
+    -- The escape hatch for an item whose gain is computed INSIDE its effect off fx.level rather than
+    -- authored as a magnitude -- the warding wands, whose forge buys their ward more ticks (`duration =
+    -- 12 + 2 * fx.level`). Nothing here can see that, so the blueprint says so out loud.
+    if def.scalesWithLevel then return true end
+    local moves = false
+    eachMagnitude(def, function(v)
+        if type(v) == "table" and #v > 1 and v[#v] ~= v[1] then moves = true end
+    end)
+    return moves
 end
 
 -- primaryStat's companion: where that names the ONE headline magnitude, this names ALL of an item's
@@ -443,6 +461,11 @@ local function statBreakdown(item)
     local wb = item.waitBehavior
     if wb then
         add("Brace", "wb:defense", wb.defense)
+        -- Gather's payoff, the offensive twin of Brace (Combat.gather hands it to Empowered as its
+        -- magnitude). It was the one WAIT_BEHAVIOR_MAGNITUDES entry with no row here, which left the
+        -- Centering Charm -- whose `power` is the only thing its forge raises -- charting an empty
+        -- ladder while the bench still offered the upgrade.
+        add("Gather Power", "wb:power", wb.power)
         add("Focus Mana", "wb:mana", wb.mana)
         add("Overwatch Stamina", "wb:stamina", wb.stamina)
         add("Covers", "wb:covers", wb.covers)

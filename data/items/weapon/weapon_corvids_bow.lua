@@ -16,6 +16,8 @@
 -- Worth nothing whatever against a melee line, since Blind never cuts range below adjacent -- a man with
 -- a sword is already standing where he needs to be. It is a read on the enemy roster, like most of the
 -- best quest weapons here.
+local Curve = require("models.curve")
+
 return {
     name = "Corvid's Bow",
     description = "Inflicts Blind.",
@@ -33,7 +35,7 @@ return {
         speed = 2,
         cost = { stat = "stamina", amount = 7 },
         -- Under an iron bow's: taking an enemy archer's reach away is worth more than the arrow.
-        damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9 },
+        damage = Curve.ramp(3, 13),
         effect = function(fx)
             -- Blind rides the shaft: it lands on whoever the arrow hits (a guardian who steps in), and
             -- only if it connects with a survivor -- the .alive guard the carried path enforces for free.

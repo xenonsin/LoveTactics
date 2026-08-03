@@ -28,14 +28,14 @@ return {
     type = "armor",
     tags = { "shield" },
     class = "knight",
-    bonus = { defense = Curve.ramp(3, 7) },
-    resist = { physical = Curve.paired(1, 4) },
+    bonus = { defense = Curve.ramp(3, 13) },
+    resist = { physical = 1 },
     waitBehavior = {
         kind = "defend",
         speed = 3,
         -- Under a buckler's: the stance is not really about the flat bonus, and a knight who is relying
         -- on the number rather than the swallow has picked the wrong shield.
-        defense = Curve.paired(5),
+        defense = Curve.ramp(5, 15),
         status = "status_kept_wound",
     },
 }

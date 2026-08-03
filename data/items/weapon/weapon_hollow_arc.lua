@@ -17,6 +17,8 @@
 -- The party consequence is worth stating plainly: Hollowed makes your OWN fighters worse against these
 -- bodies. Swing this into a crowd the knight is holding and you have just made the knight's sword
 -- useless. It is an axe for a party built around the Arcanum, and a liability in a line of steel.
+local Curve = require("models.curve")
+
 return {
     name = "The Hollow Arc",
     description = "Inflicts Hollowed.",
@@ -35,7 +37,7 @@ return {
         cost = { stat = "stamina", amount = 11 },
         -- Measured against Magic Defense, which the heavy infantry an axe is aimed at have bought almost
         -- none of -- so the number is modest and what arrives is not.
-        damage = { 4, 5, 5, 6, 7, 7, 8, 8, 9, 10, 11 },
+        damage = Curve.ramp(4, 14),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

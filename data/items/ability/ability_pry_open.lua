@@ -1,6 +1,8 @@
 -- Pry Open: the rogue half of the Vanguard's Breach. A precise strike that levers a foe's guard aside --
 -- Sundered (data/status/status_sundered.lua): guards, reflexes and traits go quiet -- so the next blow,
 -- from anyone, lands clean. Greed's guile pointed at a shield instead of a purse.
+local Curve = require("models.curve")
+
 return {
     name = "Pry Open",
     description = "Strikes a foe and inflicts Sundered.",
@@ -17,7 +19,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 12 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_sundered" })
         end,

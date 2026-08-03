@@ -18,6 +18,8 @@
 --
 -- The fire resistance it hands the enemy is real and is the cost. Soaking a rank in front of your own
 -- fire mage is a way to turn their turn off.
+local Curve = require("models.curve")
+
 return {
     name = "Tidesbreak",
     description = "Knockback 1 and inflicts Wet on the far tile.",
@@ -34,7 +36,7 @@ return {
         minRange = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = { 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 10 },
+        damage = Curve.ramp(4, 14),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The spear convention (docs/weapons.md): Wet lands on the FAR tile only. Capture the far

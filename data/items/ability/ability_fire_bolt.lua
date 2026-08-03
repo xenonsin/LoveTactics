@@ -19,7 +19,7 @@ return {
         requiresSight = true, -- a bolt needs a clear line: terrain cover blocks it
         speed = 3,
         cost = { stat = "mana", amount = 10 },
-        damage = Curve.ramp(6), -- per-hit damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = Curve.ramp(6, 16), -- per-hit damage = power + the caster's MagicDamage, minus MagicDefense
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_burn" })
         end,

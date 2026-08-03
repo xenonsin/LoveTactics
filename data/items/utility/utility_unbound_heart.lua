@@ -24,5 +24,5 @@ return {
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_wrath_rising" },
-    bonus = { damage = Curve.paired(2, 7) }, -- levels 0..10 (only base is ever used)
+    bonus = { damage = Curve.ramp(2, 12) }, -- levels 0..10 (only base is ever used)
 }

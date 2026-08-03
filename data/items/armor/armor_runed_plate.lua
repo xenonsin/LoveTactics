@@ -13,6 +13,6 @@ return {
     price = 400,
     unlockQuests = 6,
     -- Heavy tier: trades a little raw steel for a genuine guard against magic.
-    bonus = { defense = Curve.ramp(10), magicDefense = Curve.ramp(6), movement = -2 },
-    resist = { physical = Curve.ramp(3), magical = Curve.ramp(3) },
+    bonus = { defense = Curve.ramp(10), magicDefense = Curve.ramp(6, 16), movement = -2 },
+    resist = { physical = 3, magical = 3 },
 }

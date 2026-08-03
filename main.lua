@@ -43,6 +43,17 @@ function love.load(args)
         return
     end
 
+    -- Curve widening: `& "E:\LOVE\lovec.exe" . curve-widen [apply | dead]`
+    -- Retunes data/items magnitudes so every forge level a player pays for actually moves a number: a
+    -- growth axis climbs a point per level, and a magnitude too small to do that goes flat instead of
+    -- stuttering. `dead` reports items that still buy nothing at some level. Dry run by default.
+    -- See tools/curve_widen and models/curve.lua's span rule.
+    if args and args[1] == "curve-widen" then
+        require("tools.curve_widen").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Audio-debt report: `& "E:\LOVE\lovec.exe" . audio-report [missing]`
     -- Counts declared cues (data/sounds.lua) against what is on disk. See tools/audio_report.
     if args and args[1] == "audio-report" then

@@ -34,5 +34,5 @@ return {
     statusImmunity = { "status_stun" },
     -- A token of the drill itself, so the slot is not literally empty in a fight with no stuns in it.
     -- Defense rather than health: the stance is a way of standing, and that is what it improves.
-    bonus = { defense = Curve.paired(1, 6) },
+    bonus = { defense = Curve.ramp(1, 11) },
 }

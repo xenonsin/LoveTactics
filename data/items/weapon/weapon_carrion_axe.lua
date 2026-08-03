@@ -12,6 +12,8 @@
 -- Which makes it the only weapon in the family that wants you to hold ground rather than press forward:
 -- the corpses are behind and beside you, and walking off them is walking away from the healing. Read
 -- against data/items/weapon/weapon_reapers_due.lua, which reads the same graveyard as a damage stat.
+local Curve = require("models.curve")
+
 return {
     name = "Carrion Axe",
     description = "For each corpse in area consume it and heal.",
@@ -27,7 +29,7 @@ return {
         minRange = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = { 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10 },
+        damage = Curve.ramp(4, 14),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

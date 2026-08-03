@@ -26,6 +26,6 @@ return {
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_wrath_rising" },
     -- Light for a chestpiece. She never needed the steel, and neither will you if you win fast.
-    bonus = { defense = Curve.ramp(4), movement = Curve.ramp(0) },
-    resist = { slash = Curve.ramp(2) },
+    bonus = { defense = Curve.ramp(4, 14), movement = 0 },
+    resist = { slash = 2 },
 }

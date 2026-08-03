@@ -15,6 +15,8 @@
 -- game has ever had to think about -- and the wind-up means the enemy gets a turn to apply one after
 -- seeing the raise. Its cost is still stamina, so it is not gagged by Silence; only what it DEALS is
 -- sorcery, which is the narrow reading and the fair one.
+local Curve = require("models.curve")
+
 return {
     name = "The Whitening",
     description = "Channeled: Damage ignores armor.",
@@ -37,7 +39,7 @@ return {
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's, because it is measured against Magic Defense, which almost nobody
         -- in plate has bought any of. The number is smaller and the number that ARRIVES is larger.
-        damage = { 20, 22, 24, 26, 28, 30, 33, 35, 37, 39, 42 },
+        damage = Curve.ramp(20, 42),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end -- tags default to the item's, so the hit is magical
         end,

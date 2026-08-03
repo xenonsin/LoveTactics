@@ -26,7 +26,7 @@ return {
         range = 1,
         speed = 3, -- fast, matching a light quick strike
         cost = { stat = "stamina", amount = 4 },
-        damage = Curve.paired(4, 9), -- softer than Fangs: the bird is not the threat
+        damage = Curve.ramp(4, 14), -- softer than Fangs: the bird is not the threat
         effect = function(fx)
             fx.damage(fx.target)
             -- Back to the perch: the turn's origin tile, if the bird left it. That tile is empty --

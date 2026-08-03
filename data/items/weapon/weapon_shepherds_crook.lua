@@ -18,7 +18,6 @@
 -- Read against data/items/weapon/weapon_given_hour.lua, which gives an ally a whole ACTION. That one is
 -- rarer and stronger; this one is repeatable and precise, and unlike the Given Hour it does not need the
 -- recipient to still have anything left to spend.
-local Curve = require("models.curve")
 
 return {
     name = "Shepherd's Crook",
@@ -35,7 +34,7 @@ return {
         -- a full swing's tempo would never be worth the turn it displaces.
         speed = 2,
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(0), -- it is not a strike; see the header
+        damage = 0, -- it is not a strike; see the header
         effect = function(fx)
             local t = fx.target
             if not t or not t.alive then return end

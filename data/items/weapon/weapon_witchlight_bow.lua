@@ -35,7 +35,7 @@ return {
         speed = 3,
         cost = { stat = "stamina", amount = 7 },
         -- Under an iron bow's: the light is the weapon and the arrow is how it gets delivered.
-        damage = Curve.ramp(3, 8),
+        damage = Curve.ramp(3, 13),
         effect = function(fx)
             fx.damage(fx.target)
             -- Laid on the aimed CELL rather than on the body, which is the whole point: the light stays

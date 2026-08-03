@@ -20,5 +20,5 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
-    bonus = { damage = Curve.paired(2, 7) },
+    bonus = { damage = Curve.ramp(2, 12) },
 }

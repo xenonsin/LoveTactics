@@ -9,6 +9,8 @@
 --
 -- The Undercroft's entry-rank blade; data/items/weapon/weapon_kingsblood_dagger.lua is the rank-4 version of
 -- this same idea, faster still and far dearer.
+local Curve = require("models.curve")
+
 return {
     name = "Iron Dagger",
     description = "Deals damage and inflicts Bleed.",
@@ -24,7 +26,7 @@ return {
         range = 1,
         speed = 2, -- quick: you act again long before a swordsman does
         cost = { stat = "stamina", amount = 5 },
-        damage = { 5, 5, 6, 7, 7, 8, 9, 9, 10, 11, 12 }, -- modest: the wound does the rest of the work
+        damage = Curve.ramp(5, 15), -- modest: the wound does the rest of the work
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_bleed" }) -- the wound rides the blow: a guardian who takes it bleeds
         end,

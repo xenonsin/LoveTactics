@@ -33,6 +33,6 @@ return {
     price = 480,
     unlockQuests = 6,
     traits = { "trait_unyielding" },
-    bonus = { defense = { 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 15 }, magicDefense = Curve.ramp(3, 7), movement = -2 },
-    resist = { physical = Curve.ramp(3) },
+    bonus = { defense = Curve.ramp(8, 18), magicDefense = Curve.ramp(3, 13), movement = -2 },
+    resist = { physical = 3 },
 }

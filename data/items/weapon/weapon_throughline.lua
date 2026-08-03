@@ -19,6 +19,8 @@
 -- the grid. That is the Undercroft's actual doctrine (nobody carries one blade) rendered as a number,
 -- and it makes a two-dagger loadout meaningfully different from a dagger-and-charm one, which the
 -- shelf could not previously express.
+local Curve = require("models.curve")
+
 return {
     name = "The Throughline",
     description = "The tile behind takes 40% damage and Bleed, +20% per adjacent dagger.",
@@ -45,7 +47,7 @@ return {
         cost = { stat = "stamina", amount = 5 },
         -- Under a plain Iron Dagger's, deliberately: what this blade sells is the second body, and a
         -- knife that spilled AND hit hardest would simply retire the rest of the rack.
-        damage = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 15 },
+        damage = Curve.ramp(7, 17),
         -- What the spill scales off, declared so the loadout draws its connector lines to exactly the
         -- knives it will actually count (Combat.adjacencyLinks reads this).
         adjacencyScaling = { tag = "dagger" },

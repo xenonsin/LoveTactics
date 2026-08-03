@@ -25,5 +25,5 @@ return {
     tags = { "hide", "earth" },
     class = "hunter",
     incense = { hazard = "hazard_quicksand", radius = 1 },
-    bonus = { defense = Curve.paired(3, 8) },
+    bonus = { defense = Curve.ramp(3, 13) },
 }

@@ -15,6 +15,8 @@
 --
 -- Deliberately worthless against a beast: a wolf's fangs are `natural`, not something you can knock out
 -- of its hands. It is a weapon for fighting armed men, which is the honest reading of a disarm.
+local Curve = require("models.curve")
+
 return {
     name = "The Disarming Pike",
     description = "Inflicts Disarm on the far tile.",
@@ -32,7 +34,7 @@ return {
         speed = 4, -- slower than an iron spear: the motion is a hook and a twist, not a thrust
         cost = { stat = "stamina", amount = 10 },
         -- Under an iron spear's, and it should be -- the point of this swing is not the wound.
-        damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9 },
+        damage = Curve.ramp(3, 13),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The spear convention (docs/weapons.md): Disarm lands on the FAR tile only.

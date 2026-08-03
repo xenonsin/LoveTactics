@@ -20,7 +20,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 9 },
-        damage = { 5, 6, 7, 8, 8, 9, 10, 11, 12, 13, 14 },
+        damage = Curve.ramp(5, 15),
         restore = Curve.ramp(10, 30), -- fx.amount: the mana burned off
         effect = function(fx)
             -- The Silence rides the blow, so a guardian who takes the strike is the one gagged.

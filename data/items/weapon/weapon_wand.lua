@@ -8,6 +8,8 @@
 --
 -- A mage's basic attack: it spends mana rather than stamina, so it competes with the mage's spells
 -- for the scarce pool. The Arcanum's entry-rank weapon.
+local Curve = require("models.curve")
+
 return {
     name = "Wand",
     description = "Looses a bolt of force.",
@@ -24,7 +26,7 @@ return {
         requiresSight = true, -- a bolt needs a clear line: terrain cover blocks the shot
         speed = 3,
         cost = { stat = "mana", amount = 4 }, -- mana, not stamina: it competes with the mage's spells
-        damage = { 5, 5, 6, 6, 7, 8, 8, 9, 9, 10, 11 }, -- damage = power + the wielder's Magic Damage, minus Magic Defense
+        damage = Curve.ramp(5, 15), -- damage = power + the wielder's Magic Damage, minus Magic Defense
         effect = function(fx)
             fx.damage(fx.target)
         end,

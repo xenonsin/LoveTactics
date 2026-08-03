@@ -17,6 +17,8 @@
 -- data/items/weapon/weapon_marching_standard.lua gives about its standard: an item field would survive
 -- into the next battle and the hammer would open a fresh fight already loaded. A battle-scoped fact
 -- belongs on the battle-scoped object.
+local Curve = require("models.curve")
+
 return {
     name = "The Unspent Blow",
     description = "Holds its stun back. Every third swing spends all three at once -- unblockable, and armour cannot turn it.",
@@ -33,7 +35,7 @@ return {
         cost = { stat = "stamina", amount = 12 },
         -- Read this as the BANKING number: it is what the first two swings land. The third is worth three
         -- of them and ignores armour, which is where the weapon's actual output lives.
-        damage = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 15 },
+        damage = Curve.ramp(7, 17),
         effect = function(fx)
             local t = fx.target
             if not t then return end

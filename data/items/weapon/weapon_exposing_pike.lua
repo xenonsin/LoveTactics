@@ -11,6 +11,8 @@
 --
 -- Note it exposes both tiles, unlike the Boar Spear's near-tile-only crossbar: a debuff that makes other
 -- people's hits land is worth spreading, where a root is worth rationing.
+local Curve = require("models.curve")
+
 return {
     name = "Exposing Pike",
     description = "Inflicts Exposed on the far tile.",
@@ -30,7 +32,7 @@ return {
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
         -- Under an iron spear's: this weapon's output is measured across the party, not on its own line.
-        damage = { 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10 },
+        damage = Curve.ramp(4, 14),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The spear convention (docs/weapons.md): the point opens only the FAR rank.

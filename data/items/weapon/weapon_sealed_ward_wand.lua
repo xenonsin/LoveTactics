@@ -17,7 +17,6 @@
 --
 -- It answers single-target only. A blast, a hazard, an aura or a melee blow all go straight through it,
 -- which is what keeps it a read on the enemy's kit rather than a general-purpose shield.
-local Curve = require("models.curve")
 
 return {
     name = "Wand of the Sealed Ward",
@@ -27,13 +26,16 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "arcane", "ranged" },
     class = "mage",
+    -- This wand's forge path is the ward's DURATION, computed in the effect off fx.level rather than
+    -- authored as a per-level magnitude, so Item.isUpgradable has no row to find. It says so here.
+    scalesWithLevel = true,
     activeAbility = {
         target = "ally",
         range = 3,
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 8 },
-        damage = Curve.ramp(0), -- it is not a bolt; see the header
+        damage = 0, -- it is not a bolt; see the header
         effect = function(fx)
             local t = fx.target
             if not t or not t.alive then return end

@@ -22,7 +22,7 @@ return {
         speed = 5,
         windup = 6, -- mirrors Blizzard's wind-up
         cost = { stat = "mana", amount = 16 },
-        damage = Curve.ramp(6),
+        damage = Curve.ramp(6, 16),
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

@@ -35,5 +35,5 @@ return {
     -- the bearer on every move and every rebase, and lifted from wherever they were. Radius 1, so it
     -- is genuinely adjacent-only -- a wider cloud would make this a zoning item, and it is meant to be
     -- an engine for closing rather than a reason to stay away.
-    incense = { hazard = "hazard_choking", radius = 1, amount = Curve.paired(4, 9) },
+    incense = { hazard = "hazard_choking", radius = 1, amount = Curve.ramp(4, 14) },
 }

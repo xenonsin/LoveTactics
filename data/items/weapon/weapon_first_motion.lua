@@ -34,6 +34,8 @@
 -- board lets her. The depth is chosen at cast (wheel / + - / bumpers, states/battle.lua) and travels
 -- with the networked command (models/command.lua) so both duellists resolve the same blow;
 -- Combat.useItem clamps it to the range.
+local Curve = require("models.curve")
+
 return {
     name = "The First Motion",
     description = "Channeled: Increase damage by up to +60% against a full-health foe.",
@@ -97,7 +99,7 @@ return {
         -- if an ally is somehow standing in the strike zone, it cowers too.
         channelAfflict = { status = "status_cowering" },
         cost = { stat = "stamina", amount = 15 },
-        damage = { 22, 24, 27, 29, 32, 34, 37, 39, 42, 44, 47 },
+        damage = Curve.ramp(22, 47),
         -- The overhead blow doesn't stop at the first body: it drives THROUGH the tiles in front (the
         -- aimed cell tx,ty and the ones beyond it), and the follow-through WIDENS as the blade is forged.
         -- Both fields are per-level lists (models/item.lua bakes in this level's entry at instantiate, so

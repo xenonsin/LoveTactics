@@ -9,6 +9,8 @@
 --
 -- What it costs is that a taunted crowd is a crowd hitting you. This is a weapon for a fighter with a
 -- healer, and a fast way to die for one without.
+local Curve = require("models.curve")
+
 return {
     name = "Bellowing Edge",
     description = "Channeled: inflicts Taunt on foes within two tiles.",
@@ -29,7 +31,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 15 },
         -- Under the iron greatsword's: the roar is the rest of the price.
-        damage = { 20, 22, 24, 26, 28, 30, 32, 35, 37, 39, 42 },
+        damage = Curve.ramp(20, 42),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             -- The roar goes out whether or not the blow found a body -- a greatsword falling on empty

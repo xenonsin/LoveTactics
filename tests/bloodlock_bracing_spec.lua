@@ -106,8 +106,15 @@ return {
             local c, unit = battleWith(char)
 
             local baseDef, baseMDef = baselineArmor()
-            assert(unit.bonus.defense == baseDef + 8, "a forged charm braces harder (level-10 Defense)")
-            assert(unit.bonus.magicDefense == baseMDef + 8, "and warier (level-10 Magic Defense)")
+            -- Read off the blueprint rather than written out here: the forge top is a tuning number
+            -- (it moved when the curves were widened so every level buys a point), and what this case
+            -- is actually about is that the ARMOR follows the level while the toll does not.
+            local def = Item.defs.utility_bloodlock_bracing.bonus
+            local top = Item.resolveLevel(def.defense, 10)
+            assert(top == Item.resolveLevel(def.magicDefense, 10), "the brace is whole-body: both schools alike")
+            assert(top > Item.resolveLevel(def.defense, 0), "and a forged charm braces harder than a raw one")
+            assert(unit.bonus.defense == baseDef + top, "a forged charm braces harder (level-10 Defense)")
+            assert(unit.bonus.magicDefense == baseMDef + top, "and warier (level-10 Magic Defense)")
             assert(Combat.reservedAmount(unit.char, "health") == reserve, "yet the health it costs is unchanged")
             assert(Combat.unreservedMax(unit.char, "health") == baseMax - reserve, "the ceiling drops by the same 20% toll")
         end,

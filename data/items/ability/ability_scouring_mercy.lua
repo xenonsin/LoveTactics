@@ -22,6 +22,8 @@
 --
 -- ADJACENCY: a `staff` beside it, like Not Yet -- the field-triage half of the shelf rather than the
 -- ceremonial half, and reachable by a Monk.
+local Curve = require("models.curve")
+
 return {
     name = "Scouring Mercy",
     description = "Sears one body, then grants it Regeneration.",
@@ -40,7 +42,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 11 },
-        damage = { 6, 6, 7, 8, 8, 9, 10, 10, 11, 12, 12 },
+        damage = Curve.ramp(6, 16),
         requiresAdjacent = { tag = "staff" },
         effect = function(fx)
             local body = fx.unitAt(fx.tx, fx.ty)

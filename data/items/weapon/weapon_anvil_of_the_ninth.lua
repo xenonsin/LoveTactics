@@ -15,6 +15,8 @@
 -- a sword's reflex or a shield's brace and the dead beat is where the rest of the loadout lives.
 --
 -- The obvious way to lose with it: swinging it while the party needs a second attack immediately.
+local Curve = require("models.curve")
+
 return {
     name = "Anvil of the Ninth",
     description = "Inflicts Stun, and the swing leaves you Halted.",
@@ -30,7 +32,7 @@ return {
         speed = 7,
         cost = { stat = "stamina", amount = 13 },
         -- Above an iron hammer's, which is the compensation for the self-inflicted half below.
-        damage = { 16, 17, 19, 20, 22, 23, 25, 26, 28, 29, 31 },
+        damage = Curve.ramp(16, 31),
         effect = function(fx)
             -- Longer than an ordinary stun, and it rides the blow for the family's usual reason.
             fx.damage(fx.target, { inflicts = { id = "status_stun", magnitude = 9 } })

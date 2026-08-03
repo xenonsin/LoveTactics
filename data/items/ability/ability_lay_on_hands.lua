@@ -13,6 +13,8 @@
 --
 -- Aegis on top of the mend, so the ally is not merely patched but braced -- the ward is the half that
 -- makes this worth a turn when nobody is actually poisoned.
+local Curve = require("models.curve")
+
 return {
     name = "Lay On Hands",
     description = "Heals and wards an ally, and takes every debuff they carry onto yourself.",
@@ -30,7 +32,7 @@ return {
         speed = 4,
         support = true,
         cost = { stat = "mana", amount = 12 },
-        healing = { 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 29 }, -- Combat.abilityMagnitude reads this
+        healing = Curve.ramp(14, 29), -- Combat.abilityMagnitude reads this
         description = "Heals and wards an ally, then takes their afflictions onto yourself.",
         effect = function(fx)
             local t = fx.target

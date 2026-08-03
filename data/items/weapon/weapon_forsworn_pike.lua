@@ -17,6 +17,8 @@
 -- story, not a rule, and the tooltip prints it italic at the foot). The Gate is keyed off the QUEST
 -- you finished, never off this item (see questGate in models/quest.lua) -- so stashing it, wearing
 -- it, or losing it can never cost you the endgame.
+local Curve = require("models.curve")
+
 return {
     name = "The Forsworn Pike",
     description = "Inflicts Sworn on the foes it hits, pairing them.",
@@ -35,7 +37,7 @@ return {
         minRange = 1,          -- must pick a neighbor (a facing); never the wielder's own tile
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
-        damage = { 9, 10, 10, 11, 12, 12, 13, 14, 14, 15, 16 },
+        damage = Curve.ramp(9, 19),
         aoe = { shape = "line", length = 2 }, -- the spear's two tiles: the family contract, kept
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

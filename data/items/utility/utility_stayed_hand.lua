@@ -31,5 +31,5 @@ return {
     price = 500,
     unlockQuests = 10,
     traits = { "trait_stayed_hand" },
-    bonus = { magicDefense = Curve.paired(1, 6) },
+    bonus = { magicDefense = Curve.ramp(1, 11) },
 }

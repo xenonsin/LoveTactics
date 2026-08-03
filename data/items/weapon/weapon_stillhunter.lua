@@ -32,9 +32,12 @@ return {
     class = "hunter",
     price = 300,
     unlockQuests = 6,
-    -- The extra, whole. `speed` is the steep tempo the stance costs and deliberately does not scale
-    -- with the forge (models/item.lua): an upgrade buys steadier shooting, never the turn back.
-    waitBehavior = { kind = "overwatch", speed = 12, stamina = { 6, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3 } },
+    -- The extra, whole. Neither number moves with the forge: `speed` is the steep tempo the stance costs
+    -- (models/item.lua -- an upgrade never buys back the turn), and `stamina` is what each held shot
+    -- spends, which used to fall from 6 to 3 across the levels. Three points of discount cannot pay out
+    -- once per level (models/curve.lua), so the stance costs what it costs and the forge buys the bow's
+    -- damage instead: an upgrade makes the shots harder, not cheaper.
+    waitBehavior = { kind = "overwatch", speed = 12, stamina = 6 },
     activeAbility = {
         target = "enemy",
         range = 3,
@@ -42,7 +45,7 @@ return {
         requiresSight = true,
         speed = 2,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.paired(4, 9), -- under an iron bow at every level: see above
+        damage = Curve.ramp(4, 14), -- under an iron bow at every level: see above
         effect = function(fx)
             fx.damage(fx.target)
         end,

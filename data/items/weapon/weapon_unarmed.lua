@@ -23,7 +23,7 @@ return {
         target = "enemy",
         range = 1,
         speed = 5, -- == Combat.DEFAULT_SPEED; keeps the no-ability-items initiative unchanged
-        damage = Curve.ramp(2), -- weak: a low Power so a bare fist never rivals a real weapon
+        damage = Curve.ramp(2, 12), -- weak: a low Power so a bare fist never rivals a real weapon
         effect = function(fx)
             -- One strike, plus any extra hits granted by a "fist" item in the grid (Swift Fist adds
             -- one). Iron/Shadow/Drunken Fist raise this same fist's Power/range elsewhere; the extra

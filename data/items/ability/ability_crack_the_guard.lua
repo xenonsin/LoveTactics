@@ -7,6 +7,8 @@
 -- was amplified only through a Frozen target -- so the blunt line could never set up its own follow-up
 -- without an ice mage. This unbundles it: a mace-and-hammer wall rewards stacking impact on its own now.
 -- See docs/vulnerability.md for the family.
+local Curve = require("models.curve")
+
 return {
     name = "Crack the Guard",
     description = "Deals impact damage and inflicts Vulnerable: Impact.",
@@ -22,7 +24,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = { 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_vulnerable_impact" })
         end,

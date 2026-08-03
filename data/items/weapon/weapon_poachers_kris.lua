@@ -5,6 +5,8 @@
 --
 -- Home shelf is the Undercroft (`class = "rogue"`, its bleed tally), and the discipline puts it on the
 -- Lodge's shelf too once Poacher is unlocked -- a rogue blade on a hunter's rack, which is the point.
+local Curve = require("models.curve")
+
 return {
     name = "Poacher's Kris",
     description = "Inflicts Bleed. Deal 50% more damage to a Rooted foe.",
@@ -21,7 +23,7 @@ return {
         range = 1,
         speed = 2, -- quick, like every dagger
         cost = { stat = "stamina", amount = 5 },
-        damage = { 6, 6, 7, 8, 8, 9, 10, 10, 11, 12, 13 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             -- A Rooted foe cannot flinch away from the point: half the swing again goes straight in.
             -- Read on the target as it stands, so it rewards a snare already set (by the Bolas, a trap,

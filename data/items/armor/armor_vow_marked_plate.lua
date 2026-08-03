@@ -25,6 +25,6 @@ return {
     discipline = "paladin",
     price = 460,
     unlockQuests = 10,
-    bonus = { defense = Curve.paired(6, 11), movement = -2 },
+    bonus = { defense = Curve.ramp(6, 16), movement = -2 },
     traits = { "trait_vow_marked" },
 }

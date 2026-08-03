@@ -23,7 +23,7 @@ return {
         speed = 4,
         windup = 4, -- the overdraw takes four ticks to brace; hard control breaks the draw
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(5), -- per-target damage = power + the caster's Damage, minus Defense
+        damage = Curve.ramp(5, 15), -- per-target damage = power + the caster's Damage, minus Defense
         aoe = { shape = "line", length = 4 }, -- four tiles in a straight line away from the caster
         requiresAdjacent = { type = "weapon", tag = "ranged" }, -- a ranged weapon must sit adjacent in the grid
         effect = function(fx)

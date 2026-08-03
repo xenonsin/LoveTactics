@@ -16,6 +16,8 @@
 --
 -- The obvious misuse, worth naming: suspending something the party had nearly killed. It comes back
 -- whole in the sense that matters -- alive, and now with your whole party's cooldowns spent.
+local Curve = require("models.curve")
+
 return {
     name = "Suspension Mace",
     description = "Inflicts Suspended.",
@@ -31,7 +33,7 @@ return {
         cost = { stat = "stamina", amount = 12 },
         -- The lowest damage of any mace but the Long Fall. It has to be: this is hard control, and hard
         -- control that also hit properly would be the only knight weapon anyone carried.
-        damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9 },
+        damage = Curve.ramp(3, 13),
         effect = function(fx)
             -- Strike FIRST, suspend second, and the order is load-bearing: a suspended body cannot be
             -- acted on, so a mace that lifted before it hit would never land its own blow. Riding the

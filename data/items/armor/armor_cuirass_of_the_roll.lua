@@ -27,6 +27,6 @@ return {
     price = 340,
     unlockQuests = 3,
     traits = { "trait_muster_roll" },
-    bonus = { defense = { 6, 6, 7, 8, 8, 9, 9, 10, 11, 11, 12 }, movement = -1 },
-    resist = { physical = Curve.ramp(2) },
+    bonus = { defense = Curve.ramp(6, 16), movement = -1 },
+    resist = { physical = 2 },
 }

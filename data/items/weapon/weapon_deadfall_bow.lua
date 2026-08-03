@@ -36,7 +36,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 10 },
         -- Token, and openly so: the shaft is being planted rather than loosed.
-        damage = Curve.paired(2, 7),
+        damage = Curve.ramp(2, 12),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             -- Armed on the aimed CELL. A bear trap rather than a spike trap: what the Lodge sells is a

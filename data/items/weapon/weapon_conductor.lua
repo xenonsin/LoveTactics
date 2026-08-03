@@ -36,7 +36,7 @@ return {
         speed = 3,
         cost = { stat = "mana", amount = 7 },
         -- Under a plain wand's: the aimed bolt is the smaller half of this weapon on any turn it matters.
-        damage = Curve.paired(3, 8),
+        damage = Curve.ramp(3, 13),
         effect = function(fx)
             local t = fx.target
             if t then fx.damage(t) end

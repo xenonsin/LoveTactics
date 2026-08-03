@@ -24,14 +24,18 @@ return {
         end,
     },
     {
-        name = "a +n armor's defense and resists resolve to their level's tuned values",
+        -- The armor's growth axis is its Defense; its resists are IDENTITY, authored flat (see
+        -- models/curve.lua's span rule -- a resist with four points of climb in it cannot move every
+        -- level, and widening it to ten would stack a second mitigation curve on the defense beside it).
+        name = "a +n armor's defense resolves to that level's tuned value, and its resists hold flat",
         fn = function()
             local dcurve = Item.defs.armor_chainmail.bonus.defense
-            local rcurve = Item.defs.armor_chainmail.resist.slash
             local up2 = Item.instantiate("armor_chainmail", 1, 2)
+            local up10 = Item.instantiate("armor_chainmail", 1, 10)
             assert(up2.bonus.defense == dcurve[3], "+2 defense is the level-2 entry (index 3)")
-            assert(up2.resist.slash == rcurve[3], "+2 slash resist is the level-2 entry")
-            assert(up2.bonus.movement == -1, "a flat magnitude (the movement penalty) does not scale")
+            assert(type(Item.defs.armor_chainmail.resist.slash) == "number", "slash resist is a flat magnitude")
+            assert(up10.resist.slash == up2.resist.slash, "so forging does not deepen it")
+            assert(up2.bonus.movement == -1, "and neither does the movement penalty")
         end,
     },
     {
@@ -95,11 +99,12 @@ return {
             local labels = {}
             for _, s in ipairs(g.stats) do labels[s.label] = true end
             assert(labels["Defense"], "defense scales and is charted")
-            assert(labels["Resist slash"], "a per-tag resist scales and is charted")
             assert(not labels["Movement"], "the flat movement penalty is NOT a scaling bar")
-            local flatMove
-            for _, f in ipairs(g.flat) do if f.label == "Movement" then flatMove = f end end
-            assert(flatMove and flatMove.value == -1, "it lands in the flat list at its constant value")
+            assert(not labels["Resist slash"], "and neither is a resist, which no longer scales")
+            local flat = {}
+            for _, f in ipairs(g.flat) do flat[f.label] = f.value end
+            assert(flat["Movement"] == -1, "the penalty lands in the flat list at its constant value")
+            assert(flat["Resist slash"] == 3, "so does each resist, at the number the mail simply IS")
         end,
     },
     {

@@ -43,7 +43,7 @@ return {
         cost = { stat = "stamina", amount = 10 },
         -- Under the iron spear's curve at every level, and it lands WHOLE: no defense, no resist. What
         -- the number gives up is what the armour would have taken anyway.
-        damage = Curve.paired(5),
+        damage = Curve.ramp(5, 15),
         aoe = { shape = "line", length = 2 }, -- the family's two tiles (docs/weapons.md)
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

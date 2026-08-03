@@ -15,6 +15,8 @@
 -- passed -- walking, swinging, waiting, all of them count the same, so nothing here rewards standing
 -- still. What it rewards is being alive on turn twelve, which is a thing the player earns with the whole
 -- rest of the party rather than with this weapon.
+local Curve = require("models.curve")
+
 return {
     name = "The Long Count",
     description = "Channeled: Increase damage by 12% per turn taken this battle.",
@@ -34,7 +36,7 @@ return {
         cost = { stat = "stamina", amount = 16 },
         -- Well under an iron greatsword's, and that is the floor rather than the number: this is what it
         -- lands on turn one, before the count has anything in it.
-        damage = { 12, 14, 15, 17, 18, 20, 21, 23, 24, 26, 28 },
+        damage = Curve.ramp(12, 28),
         -- The count made visible: the running tally of turns this bearer has taken, drawn as a badge on
         -- the slot and quoted in the tooltip so the player can watch the blow grow rather than doing the
         -- 12%-a-turn arithmetic in their head. It is the same `turnTaken` tally the effect below reads,

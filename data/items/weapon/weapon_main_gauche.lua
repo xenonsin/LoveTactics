@@ -17,6 +17,8 @@
 -- Note it does NOT carry `resetOn`: the merge in Combat.chargeDef takes the union of `from` and the
 -- deeper `max`, and a reset condition declared by the other item still governs the pool. Switching
 -- targets forfeits Tempo whether it was banked by pressing or by parrying -- one pool, one rule.
+local Curve = require("models.curve")
+
 return {
     name = "Main-Gauche",
     description = "Parries as a left-hand dagger, inflicting Bleed on a hit and banking Tempo for every blow it turns aside.",
@@ -35,7 +37,7 @@ return {
         range = 1,
         speed = 2, -- the family's own tempo: quick back around, which is what makes the parry affordable
         cost = { stat = "stamina", amount = 5 },
-        damage = { 5, 5, 6, 7, 7, 8, 9, 9, 10, 11, 12 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_bleed" })
         end,

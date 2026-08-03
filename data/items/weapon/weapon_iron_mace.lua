@@ -23,7 +23,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(8),
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             -- The shove is folded INTO the blow (opts.knockback), not a separate step, so a lethal hit
             -- throws the body before it falls rather than dropping it on the spot -- see the mace's

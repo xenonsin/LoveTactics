@@ -27,6 +27,6 @@ return {
     tags = { "leather" },
     class = "fighter",
     traits = { "trait_adrenal_surge" },
-    bonus = { defense = Curve.paired(4, 9) },
-    resist = { physical = Curve.paired(1, 4) },
+    bonus = { defense = Curve.ramp(4, 14) },
+    resist = { physical = 1 },
 }

@@ -12,6 +12,8 @@
 --
 -- The shelf's top rung alongside the Sleeper's Maul, and the pair is the two ways to remove a turn:
 -- durable and expensive here, longer and fragile there.
+local Curve = require("models.curve")
+
 return {
     name = "The Slow Verdict",
     description = "Inflicts Stun that lasts twice as long, at the slowest swing speed there is.",
@@ -31,7 +33,7 @@ return {
         cost = { stat = "stamina", amount = 14 },
         -- Above an iron hammer's, because it has to be: a swing that costs this much of the timeline and
         -- did not also land heavily would never be worth taking off the rack.
-        damage = { 15, 16, 18, 19, 21, 22, 24, 25, 27, 28, 30 },
+        damage = Curve.ramp(15),
         effect = function(fx)
             -- Double the stun's declared magnitude, which is what a Stun's initiative shove reads
             -- (data/status/status_stun.lua). The status rides IN the blow for the family's usual reason

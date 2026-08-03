@@ -14,6 +14,8 @@
 --
 -- The cost is the cost of every long draw: hard control breaks it, and three extra ticks is a long time
 -- to stand still in front of something that can reach you.
+local Curve = require("models.curve")
+
 return {
     name = "Warden's Longbow",
     description = "Channeled: hold longer for +25% damage per extra tick, up to three.",
@@ -39,7 +41,7 @@ return {
         cost = { stat = "stamina", amount = 9 },
         -- Under the iron longbow's, read as the UNDEEPENED number: drawing to the same depth as an iron
         -- longbow should land a little short of it, and the extra ticks are what buys past it.
-        damage = { 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19 },
+        damage = Curve.ramp(8, 19),
         effect = function(fx)
             -- +25% per tick held BEYOND the base draw (fx.held, not the total tell in fx.windup).
             -- Linear and uncomplicated on purpose -- see the header.

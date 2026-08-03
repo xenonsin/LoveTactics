@@ -25,6 +25,6 @@ return {
     price = 290,
     unlockQuests = 3,
     traits = { "trait_keen_senses" },
-    bonus = { defense = Curve.paired(4, 9) },
-    resist = { physical = Curve.paired(1, 4) },
+    bonus = { defense = Curve.ramp(4, 14) },
+    resist = { physical = 1 },
 }

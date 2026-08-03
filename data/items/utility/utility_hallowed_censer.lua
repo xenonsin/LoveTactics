@@ -19,5 +19,5 @@ return {
     tags = { "signature" },
     bound = true,
     traits = { "trait_sanctified_presence" },
-    bonus = { magicDefense = Curve.paired(2, 7) }, -- levels 0..10
+    bonus = { magicDefense = Curve.ramp(2, 12) }, -- levels 0..10
 }

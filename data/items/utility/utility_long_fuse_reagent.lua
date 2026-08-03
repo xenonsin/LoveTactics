@@ -5,7 +5,6 @@
 --
 -- See Combat.adjacencyRangeBonus -- the same bonus is folded into the range gate, the targeting
 -- highlight, the target scan, and the AI, so the reach the charm promises is the reach the cast gets.
-local Curve = require("models.curve")
 
 return {
     name = "Long-Fuse Reagent",
@@ -19,6 +18,6 @@ return {
     unlockQuests = 3,
     aura = {
         appliesTo = { "consumable" }, -- only the throwables it sits beside
-        rangeBonus = Curve.ramp(1),               -- added to the neighbor consumable's ability range
+        rangeBonus = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 },               -- added to the neighbor consumable's ability range
     },
 }

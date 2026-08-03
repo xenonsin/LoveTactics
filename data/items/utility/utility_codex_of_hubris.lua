@@ -15,6 +15,6 @@ return {
     class = "mage",
     price = 800,
     unlockQuests = 10,
-    bonus = { magicDamage = Curve.ramp(10), magicDefense = Curve.ramp(5) },
-    resist = { magical = Curve.ramp(4) },
+    bonus = { magicDamage = Curve.ramp(10), magicDefense = Curve.ramp(5, 15) },
+    resist = { magical = 4 },
 }

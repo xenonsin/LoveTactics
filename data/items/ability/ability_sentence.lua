@@ -12,6 +12,8 @@
 --
 -- Marked only. Mark of Heresy is the shelf's own setup, but any Mark serves -- a hunter's quarry-sign,
 -- a Poacher's trap. The Inquisition is not fussy about who did the pointing.
+local Curve = require("models.curve")
+
 return {
     name = "Sentence",
     description = "Strips every blessing from a Marked foe, then strikes it with holy fire -- lethal to the weakened.",
@@ -28,7 +30,7 @@ return {
         range = 2,
         speed = 5,
         cost = { stat = "mana", amount = 14 },
-        damage = { 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 21 },
+        damage = Curve.ramp(9, 21),
         description = "Dispels a Marked foe's blessings, then burns it; executes it under a third.",
         effect = function(fx)
             local t = fx.target

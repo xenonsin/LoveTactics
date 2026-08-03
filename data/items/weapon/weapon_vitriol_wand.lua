@@ -28,7 +28,7 @@ return {
         requiresSight = true, -- a bolt needs a clear line, as every wand's does
         speed = 3,
         cost = { stat = "mana", amount = 5 },
-        damage = Curve.paired(3, 8), -- under a plain wand's: what it opens is the point
+        damage = Curve.ramp(3, 13), -- under a plain wand's: what it opens is the point
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_acid" })
         end,

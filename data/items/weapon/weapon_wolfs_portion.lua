@@ -19,6 +19,8 @@
 -- makes the drop-off a decision the player makes with their feet. Line the swing up so it catches only
 -- the champion and it is the heaviest one-handed blow on the shelf. Get sloppy and catch two of his
 -- guards with him and you have thrown the turn away.
+local Curve = require("models.curve")
+
 return {
     name = "Wolf's Portion",
     description = "Decrease damage by 35% per extra foe in the arc, down to 25%.",
@@ -35,7 +37,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 11 },
         -- Well ABOVE the iron axe's -- this is the lone-target number, and it is what the weapon is for.
-        damage = { 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 24 },
+        damage = Curve.ramp(11, 24),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             local caught = fx.aoeUnits()

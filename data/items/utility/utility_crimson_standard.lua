@@ -38,5 +38,5 @@ return {
     -- own rule (see the `incense` contract in models/item.lua) and the only thing keeping a
     -- company-wide aura from eventually covering a company-wide area.
     incense = { hazard = "hazard_bloodsong", radius = 1 },
-    bonus = { damage = Curve.paired(0, 5) }, -- what the forge buys instead of reach
+    bonus = { damage = Curve.ramp(0, 10) }, -- what the forge buys instead of reach
 }

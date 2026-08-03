@@ -28,7 +28,7 @@ return {
         windup = 3, -- the three-tick tell: the window a Stun or a shove has to deny the call
         cost = { stat = "stamina", amount = 6 },
         aoe = { radius = 1, shape = "square" },
-        damage = Curve.paired(6, 11), -- a real bruise, so the AI values winding it up
+        damage = Curve.ramp(6, 16), -- a real bruise, so the AI values winding it up
         effect = function(fx)
             -- The bellow: bruise + shove the adjacent ring one tile back (friend and self spared).
             for _, u in ipairs(fx.aoeUnits()) do

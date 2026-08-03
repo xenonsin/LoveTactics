@@ -29,7 +29,7 @@ return {
         minRange = 1,          -- an adjacent neighbour, never the shover's own tile
         speed = 3,
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(6), -- the collision's bite (only a blocked shove lands it)
+        damage = Curve.ramp(6, 16), -- the collision's bite (only a blocked shove lands it)
         effect = function(fx)
             -- Whatever stands on the aimed tile: a body first (a unit and an object never share a tile,
             -- so the order is a preference in name only), otherwise the furniture on it -- a prop, or a

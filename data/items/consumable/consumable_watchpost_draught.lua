@@ -8,6 +8,8 @@
 -- The hold made portable. `hold` is the knight's whole thesis as a win type (models/arena.lua), and
 -- what it actually costs is stamina and a braced stance in the same instant -- so the flask pays
 -- both. Deliberately weaker than a Stamina Potion on the restore alone; you are buying the brace.
+local Curve = require("models.curve")
+
 return {
     name = "Watchpost Draught",
     description = "Restores stamina to an ally and braces them where they stand.",
@@ -23,7 +25,7 @@ return {
         range = 1,
         speed = 2,
         consumesItem = true,
-        restore = { 18, 19, 21, 22, 24, 25, 27, 28, 30, 31, 33 }, -- under the Stamina Potion's line
+        restore = Curve.ramp(18, 33), -- under the Stamina Potion's line
         restoreStat = "stamina",
         effect = function(fx)
             fx.restore(fx.target, "stamina", fx.amount)

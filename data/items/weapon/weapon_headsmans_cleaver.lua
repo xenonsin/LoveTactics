@@ -11,6 +11,8 @@
 -- Reads directly against Saber's signature (data/items/weapon/weapon_first_motion.lua), which scales the
 -- opposite way -- hardest into a FULL-health foe. The two are the same arithmetic with the sign flipped,
 -- and a fighter carrying both has an opener and a closer rather than two greatswords.
+local Curve = require("models.curve")
+
 return {
     name = "Headsman's Cleaver",
     description = "Channeled: Increase damage by 80% against a foe under half health.",
@@ -32,7 +34,7 @@ return {
         cost = { stat = "stamina", amount = 13 },
         -- Well under the iron greatsword's curve: this is what it lands into a HEALTHY target, and the
         -- bonus below is what it lands into the wounded one it is actually for.
-        damage = { 14, 16, 17, 19, 20, 22, 23, 25, 26, 28, 30 },
+        damage = Curve.ramp(14, 30),
         effect = function(fx)
             local t = fx.target
             if not t then return end

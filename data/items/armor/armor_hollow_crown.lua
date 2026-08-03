@@ -20,5 +20,5 @@ return {
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_hollow_crown" },
-    bonus = { defense = Curve.paired(6, 11) }, -- levels 0..10 (only base is ever used)
+    bonus = { defense = Curve.ramp(6, 16) }, -- levels 0..10 (only base is ever used)
 }

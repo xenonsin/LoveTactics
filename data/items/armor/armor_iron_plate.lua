@@ -14,5 +14,5 @@ return {
     unlockQuests = 6,
     -- Heavy tier: the most steel a body can carry, and it shows in the pace.
     bonus = { defense = Curve.ramp(13), movement = -2 },
-    resist = { physical = Curve.ramp(4), slash = Curve.ramp(4), pierce = Curve.ramp(4) },
+    resist = { physical = 4, slash = 4, pierce = 4 },
 }

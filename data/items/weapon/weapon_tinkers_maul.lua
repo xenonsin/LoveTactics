@@ -9,6 +9,8 @@
 --
 -- Deliberately the weakest hammer on the shelf. It is a can-opener, and it should be swung at the shield
 -- wall so that everything else in the party can swing at what is behind it.
+local Curve = require("models.curve")
+
 return {
     name = "Tinker's Maul",
     description = "Strips a foe's guards and wards, then inflicts Stun.",
@@ -26,7 +28,7 @@ return {
         speed = 7, -- the family's ponderous tempo: the stun is still bought with your own turn
         cost = { stat = "stamina", amount = 10 },
         -- Half an iron hammer's. What it removes is worth more than what it deals.
-        damage = { 6, 6, 7, 8, 8, 9, 10, 10, 11, 12, 13 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             local t = fx.target
             if not t then return end

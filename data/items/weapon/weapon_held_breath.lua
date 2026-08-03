@@ -17,6 +17,8 @@
 -- The interaction worth knowing: hard control still breaks the draw, and being unseen does not stop an
 -- AoE or a hazard from landing on the tile you are standing in. Invisible answers targeting, not
 -- geometry.
+local Curve = require("models.curve")
+
 return {
     name = "The Held Breath",
     description = "Channeled: you are Invisible while drawing.",
@@ -34,7 +36,7 @@ return {
         speed = 4,
         windup = 2,
         cost = { stat = "stamina", amount = 10 },
-        damage = { 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21 },
+        damage = Curve.ramp(9, 21),
         -- The whole weapon, in one field. `channelStatus` lands on the caster the moment the draw is
         -- COMMITTED rather than when it resolves (Combat.useItem's channel branch), which is the half an
         -- `effect` cannot reach -- an effect runs when the arrow arrives, and by then the turn this was

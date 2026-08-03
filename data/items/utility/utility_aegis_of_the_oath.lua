@@ -3,6 +3,8 @@
 -- hazard_shared_bulwark.lua -- every ally standing in it carries a physical barrier that swallows a
 -- blow whole). The Given Guard's trade made mobile and holy: the knight's protection is a place now,
 -- and the place moves with the oath that made it. Borrows the incense machine like the Coveted Blood.
+local Curve = require("models.curve")
+
 return {
     name = "Aegis of the Oath",
     description = "Raises a moving ward around you: allies beside you carry a barrier that swallows a blow.",
@@ -14,5 +16,5 @@ return {
     discipline = "paladin", -- knight x priest; the Ward-aura mechanic's first stock
     price = 440,
     unlockQuests = 6,
-    incense = { hazard = "hazard_shared_bulwark", radius = 1, amount = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3 } },
+    incense = { hazard = "hazard_shared_bulwark", radius = 1, amount = Curve.ramp(1, 11) },
 }

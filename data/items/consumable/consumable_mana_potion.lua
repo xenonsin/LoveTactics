@@ -8,6 +8,8 @@
 -- worth more. `restoreStat` names the pool it fills, which is also what the two drinking reflexes read
 -- to recognise it as a mana draught (Combat.restorativeStat) -- so an Alchemist's Reservoir will reach
 -- for this flask, and only this one, when a spell outruns its mana.
+local Curve = require("models.curve")
+
 return {
     name = "Mana Potion",
     description = "Restores mana to an ally.",
@@ -24,7 +26,7 @@ return {
         range = 1,
         speed = 2,
         consumesItem = true,
-        restore = { 12, 13, 14, 15, 17, 18, 19, 20, 22, 23, 24 }, -- the mana returned
+        restore = Curve.ramp(12), -- the mana returned
         restoreStat = "mana",
         effect = function(fx)
             fx.restore(fx.target, "mana", fx.amount)

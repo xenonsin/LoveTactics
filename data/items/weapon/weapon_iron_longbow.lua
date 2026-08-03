@@ -13,6 +13,8 @@
 -- winding up for a blow nothing else matches -- read across the field instead of into one adjacent
 -- tile. Like the greatsword it must not inherit its neighbour family's extras; the longbow is simply
 -- a bow that costs a turn and reaches further.
+local Curve = require("models.curve")
+
 return {
     name = "Iron Longbow",
     description = "Channeled.",
@@ -36,7 +38,7 @@ return {
         -- longbow lands one shot where the bow lands two, so the trade is reach and one heavy arrow
         -- against tempo. Deliberately short of the greatsword's curve -- that one is paid for in
         -- standing adjacent to what it hits.
-        damage = { 10, 11, 12, 13, 15, 16, 17, 18, 20, 21, 22 },
+        damage = Curve.ramp(10, 22),
         effect = function(fx)
             -- Single target: whoever is still standing there when the arrow arrives. Like the
             -- greatsword's wind-up, the strike reads the live board -- a foe that walks clear during

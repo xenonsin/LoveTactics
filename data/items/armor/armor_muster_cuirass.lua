@@ -28,5 +28,5 @@ return {
     price = 440,
     unlockQuests = 10,
     incense = { hazard = "hazard_muster", radius = 1 },
-    bonus = { defense = Curve.paired(3, 8) },
+    bonus = { defense = Curve.ramp(3, 13) },
 }

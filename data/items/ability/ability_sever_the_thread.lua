@@ -14,6 +14,8 @@
 -- was never revivable anyway (a demon) it is simply a heavy dark bolt.
 --
 -- Quest-only cut of the mage shelf: `discipline = "necromancer"`.
+local Curve = require("models.curve")
+
 return {
     name = "Sever the Thread",
     description = "Fires a dark bolt; a foe it kills leaves a corpse at once and can never be revived this battle.",
@@ -31,7 +33,7 @@ return {
         requiresSight = true,
         speed = 6,
         cost = { stat = "mana", amount = 15 },
-        damage = { 12, 13, 15, 16, 18, 19, 21, 22, 24, 25, 27 }, -- heavier than the wand's bolt: the deliberate cut
+        damage = Curve.ramp(12, 27), -- heavier than the wand's bolt: the deliberate cut
         effect = function(fx)
             -- Honoured only on the fatal path (Combat.dealFlatDamage): the kill severs the revive
             -- window; a wound leaves it open.

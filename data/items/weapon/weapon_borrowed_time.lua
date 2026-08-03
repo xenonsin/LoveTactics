@@ -21,6 +21,8 @@
 --
 -- `bound = true` (models/item.lua): never moved, stowed, given, sold, or stolen -- only forged. No `price`;
 -- `class = "rogue"` still tallies rogue growth.
+local Curve = require("models.curve")
+
 return {
     name = "Borrowed Time",
     description = "Collect three kills, then a mercy-stroke on a wounded foe that quickens the whole party.",
@@ -37,7 +39,7 @@ return {
         speed = 2,
         cost = { stat = "stamina", amount = 8 },
         unlock = { event = "kill", count = 3, text = "Collected" },
-        damage = { 12, 13, 15, 16, 18, 19, 21, 22, 24, 25, 27 },
+        damage = Curve.ramp(12, 27),
         effect = function(fx)
             -- The coup: it lands harder the closer the foe is to the ground (the mercy-stroke finds the
             -- opening the party's poison already opened -- the inverse of Saber's front-load).

@@ -35,7 +35,7 @@ return {
         speed = 2,
         cost = { stat = "stamina", amount = 6 },
         -- Half an iron bow's, and that is the design rather than a tax. See the header.
-        damage = Curve.ramp(2, 7),
+        damage = Curve.ramp(2, 12),
         effect = function(fx)
             -- The bounty rides the blow: it lands on whoever the shot hits, and only a surviving hit --
             -- the .alive guard the carried path enforces for free.

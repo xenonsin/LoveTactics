@@ -15,7 +15,7 @@ return {
         range = 1,
         speed = 5, -- slow and lurching
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(7),
+        damage = Curve.ramp(7, 17),
         effect = function(fx)
             fx.damage(fx.target)
         end,

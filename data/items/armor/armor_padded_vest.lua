@@ -17,6 +17,6 @@ return {
     -- so the light tier's old selling point, "it never slows you down", was really the statement that
     -- a character could wear four of these for free. The tier is distinguished by how much it protects
     -- now, not by whether it is felt, and base movement was raised to 4 to pay for it.
-    bonus = { defense = Curve.ramp(2), movement = -1 },
-    resist = { physical = Curve.ramp(1) },
+    bonus = { defense = Curve.ramp(2, 12), movement = -1 },
+    resist = { physical = 1 },
 }

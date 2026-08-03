@@ -1,6 +1,8 @@
 -- Shadow Step: slip through the dark to a foe's side and cut it. The caster blinks to an open tile
 -- beside the target (Combat.openTileNear, springing whatever waits there) and strikes. If the target
 -- is hemmed in with no open neighbour, the strike still lands from where the caster stood.
+local Curve = require("models.curve")
+
 return {
     name = "Shadow Step",
     description = "Blinks to a foe's side and strikes it.",
@@ -17,7 +19,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             local t = fx.target
             if not t then return end

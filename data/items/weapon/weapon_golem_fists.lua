@@ -27,7 +27,7 @@ return {
         target = "enemy",
         range = 1,
         speed = 6, -- ponderous, like the rest of it
-        damage = Curve.paired(5),
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             fx.damage(fx.target)
         end,

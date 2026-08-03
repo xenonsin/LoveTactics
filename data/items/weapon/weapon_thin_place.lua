@@ -16,6 +16,8 @@
 --
 -- Bleed staying raw is not an oversight, it is the family contract (docs/weapons.md: "armor turns a
 -- blade, but does nothing about a wound already open"). The deviation here is only the strike.
+local Curve = require("models.curve")
+
 return {
     name = "The Thin Place",
     description = "Inflicts Bleed. The stab is turned by wards, the wound by nothing.",
@@ -34,7 +36,7 @@ return {
         cost = { stat = "stamina", amount = 5 },
         -- Measured against Magic Defense, which the armoured bodies a rogue struggles with have bought
         -- almost none of. Modest on paper; most of it arrives.
-        damage = { 5, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_bleed" }) -- tags default to the item's, so the cut is magical
         end,

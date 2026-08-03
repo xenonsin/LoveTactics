@@ -12,6 +12,8 @@
 -- sword that happens to Silence. It is worth most against a full caster and least against a spent one,
 -- which is precisely the opposite of Empty Vessel beside it -- so the two are a sequence rather than a
 -- stack: open with the blade while the pool is deep, finish with the vessel once it is dry.
+local Curve = require("models.curve")
+
 return {
     name = "Silencing Blade",
     description = "Inflicts Silence. Increase damage by 1 per 10 mana the target holds.",
@@ -29,7 +31,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 12 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             -- A tenth of what is left in the pool, so the blade is at its best against a caster who has
             -- been saving up -- and unremarkable against one already spent, which is Empty Vessel's job.

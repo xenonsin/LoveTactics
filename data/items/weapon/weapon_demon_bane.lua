@@ -26,7 +26,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(8),
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             fx.damage(fx.target) -- inherits the item tags, so the hit carries `holy`
         end,

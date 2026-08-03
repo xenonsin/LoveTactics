@@ -6,6 +6,8 @@
 -- a thing anyone fights, so like Fangs it is `natural`, `noSteal`, and sold by nobody. The family tag
 -- carries no shared contract of its own (see Item.ARCHETYPES) -- what a creature's body does is the
 -- creature's business.
+local Curve = require("models.curve")
+
 return {
     name = "Great Claws",
     description = "Rends an adjacent foe.",
@@ -19,7 +21,7 @@ return {
         range = 1,
         speed = 7, -- ponderous: a bear swings once where a wolf bites twice
         cost = { stat = "stamina", amount = 12 },
-        damage = { 16, 17, 18, 19, 21, 22, 23, 24, 26, 27, 28 },
+        damage = Curve.ramp(16, 28),
         effect = function(fx)
             fx.damage(fx.target)
         end,

@@ -25,7 +25,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(6), -- flat, modest: the debuff is the payload, not the splash
+        damage = Curve.ramp(6, 16), -- flat, modest: the debuff is the payload, not the splash
         consumesItem = true,
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)

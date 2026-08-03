@@ -30,7 +30,7 @@ return {
     tags = { "signature", "arcane" },
     class = "alchemist",
     bound = true,
-    bonus = { magicDamage = Curve.paired(2, 7) },
+    bonus = { magicDamage = Curve.ramp(2, 12) },
     activeAbility = {
         description = "Summons a copy of your strongest ally, fighting at your side. It is not fragile.",
         target = "self",

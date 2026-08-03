@@ -33,7 +33,7 @@ return {
     traits = { "trait_intercession" }, -- an item's `traits` reach whoever carries it (models/trait.lua)
     -- The family's obligation, and shallower than the Crozier's on purpose: this staff wants to be swung,
     -- so the turn it offers you for NOT swinging has to be the worse of the two.
-    waitBehavior = { kind = "focus", mana = Curve.ramp(6), speed = 10 },
+    waitBehavior = { kind = "focus", mana = Curve.ramp(6, 16), speed = 10 },
     activeAbility = {
         target = "enemy",
         range = 1, -- adjacent only: a staff is not a wand
@@ -41,7 +41,7 @@ return {
         cost = { stat = "stamina", amount = 6 }, -- stamina, so a cornered priest can always swing it
         -- The shelf's heaviest focus damage, because here the damage IS the healing: a curve tuned as
         -- feebly as the Crozier's would make the intercession itself worthless.
-        damage = { 7, 8, 8, 9, 10, 10, 11, 12, 12, 13, 14 },
+        damage = Curve.ramp(7, 17),
         effect = function(fx)
             local dealt = fx.damage(fx.target)
             -- The redirect. `intercession` is set once, at combat start, by the trait above; it is nil

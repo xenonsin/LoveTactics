@@ -12,6 +12,8 @@
 -- forest, and against a foe standing in the open on bare stone it is simply a worse wand. The fire is
 -- unsided, as fire always is -- it burns your line exactly as happily, so it is a wall you have to be
 -- willing to stand behind.
+local Curve = require("models.curve")
+
 return {
     name = "Emberwand",
     description = "Looses a bolt that leaves Fire where it lands.",
@@ -28,7 +30,7 @@ return {
         requiresSight = true, -- a bolt needs a clear line, as every wand's does
         speed = 3,
         cost = { stat = "mana", amount = 5 },
-        damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9 }, -- under a plain wand's: the ground it leaves is the rest
+        damage = Curve.ramp(3, 13), -- under a plain wand's: the ground it leaves is the rest
         effect = function(fx)
             fx.damage(fx.target)
             -- The ember: ground that burns where the bolt struck. Scales off the item's level the way

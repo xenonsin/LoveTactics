@@ -17,7 +17,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(4),
+        damage = Curve.ramp(4, 14),
         effect = function(fx)
             -- Poison rides the blow: it lands on whoever the strike hits, and only a connecting hit --
             -- the > 0 guard the carried path enforces for free.

@@ -32,10 +32,10 @@ return {
     price = 620,
     unlockQuests = 6,
     traits = { "trait_shield_shove" },
-    bonus = { defense = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 15 } },
-    resist = { physical = Curve.ramp(3, 7), impact = Curve.ramp(3) },
+    bonus = { defense = Curve.ramp(7, 17) },
+    resist = { physical = 3, impact = 3 },
     waitBehavior = {
         kind = "defend", speed = 2,
-        defense = { 8, 9, 10, 10, 11, 12, 13, 13, 14, 15, 16 },
+        defense = Curve.ramp(8, 18),
     },
 }

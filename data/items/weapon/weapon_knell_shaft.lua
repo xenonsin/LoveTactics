@@ -39,7 +39,7 @@ return {
         windup = 2,
         -- The lowest curve in the family by a wide margin. A weapon that kills outright must not also
         -- hit hard, and this one's damage exists mostly so the shot is not literally nothing.
-        damage = Curve.paired(3, 8),
+        damage = Curve.ramp(3, 13),
         effect = function(fx)
             local t = fx.target
             if not t then return end

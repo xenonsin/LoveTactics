@@ -31,14 +31,14 @@ return {
     type = "armor",
     tags = { "shield", "holy" },
     class = "knight",
-    bonus = { defense = Curve.paired(4, 9) },
-    resist = { physical = { 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5 } },
+    bonus = { defense = Curve.ramp(4, 14) },
+    resist = { physical = 2 },
     waitBehavior = {
         kind = "defend",
         speed = 3,
         -- A buckler's brace, kept: the knight still braces, and then hands the guard over on top. Without
         -- that the stance would be a pure downgrade for the holder and nobody would ever plant it.
-        defense = Curve.paired(6, 11),
+        defense = Curve.ramp(6, 16),
         status = "status_given_guard",       -- the debt, on the holder
         coversStatus = "status_lent_guard",  -- ...and the loan, on everyone beside them
     },

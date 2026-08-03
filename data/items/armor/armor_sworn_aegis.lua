@@ -30,8 +30,8 @@ return {
     class = "knight",
     bound = true,
     traits = { "trait_oathward" },
-    bonus = { defense = Curve.ramp(3) },
-    resist = { physical = Curve.ramp(1) },
+    bonus = { defense = Curve.ramp(3, 13) },
+    resist = { physical = 1 },
     -- Defend brace: the knight's core stance, its +defense climbing as the shield is forged.
     waitBehavior = { kind = "defend", speed = 3, defense = Curve.ramp(6, 16) },
     -- The oath's answer (see the header): locked until she has weathered four blows, then a sweep that
@@ -45,7 +45,7 @@ return {
         cost = { stat = "stamina", amount = 14 },
         unlock = { event = "hitTaken", count = 4, text = "Weather 4 blows" },
         aoe = { radius = 1, shape = "square" }, -- the eight tiles around her, corners included
-        damage = { 10, 11, 12, 13, 15, 16, 17, 18, 20, 21, 22 },
+        damage = Curve.ramp(10, 22),
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 if u.side ~= fx.user.side then

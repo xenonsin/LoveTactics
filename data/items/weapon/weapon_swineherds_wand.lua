@@ -34,7 +34,7 @@ return {
         speed = 4, -- slower than a plain wand: this is a working, not a bolt
         cost = { stat = "mana", amount = 10 },
         -- The lowest curve of any wand. See the header: the transformation is the whole item.
-        damage = Curve.paired(1, 6),
+        damage = Curve.ramp(1, 11),
         effect = function(fx)
             local t = fx.target
             if not t then return end

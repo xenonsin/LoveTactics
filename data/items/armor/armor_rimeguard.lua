@@ -31,6 +31,6 @@ return {
     price = 400,
     unlockQuests = 10,
     incense = { hazard = "hazard_rimeguard", radius = 1 },
-    bonus = { defense = Curve.paired(3, 8) },
+    bonus = { defense = Curve.ramp(3, 13) },
     resist = { ice = 4 }, -- the wearer, at least, is used to it
 }

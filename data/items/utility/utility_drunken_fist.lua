@@ -15,5 +15,5 @@ return {
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 200,
     unlockQuests = 3,
-    unarmedBonus = { drunkDamage = Curve.ramp(6) },
+    unarmedBonus = { drunkDamage = Curve.ramp(6, 16) },
 }

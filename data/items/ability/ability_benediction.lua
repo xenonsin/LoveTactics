@@ -13,6 +13,8 @@
 --
 -- Scales off fx.windup, so an interrupted prayer still mends -- less, but the mana is not wasted. Pair
 -- it with the Vigil Beads and the wind-up becomes a promise rather than a hope.
+local Curve = require("models.curve")
+
 return {
     name = "Benediction",
     description = "Channeled: heals every ally. Increase healing for each tick held.",
@@ -31,7 +33,7 @@ return {
         windup = 3,
         support = true,
         cost = { stat = "mana", amount = 18 },
-        healing = { 10, 11, 12, 14, 15, 16, 18, 19, 20, 22, 23 }, -- Combat.abilityMagnitude reads this
+        healing = Curve.ramp(10, 23), -- Combat.abilityMagnitude reads this
         description = "Channeled: heals every ally, more for the wind-up held.",
         effect = function(fx)
             local mend = fx.amount + (fx.windup or 0) * 4

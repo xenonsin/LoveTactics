@@ -26,6 +26,6 @@ return {
     tags = { "leather", "poison" },
     class = "alchemist",
     traits = { "trait_spiteful_ichor" },
-    bonus = { defense = { 5, 5, 6, 7, 7, 8, 8, 9, 10, 10, 11 } },
-    resist = { poison = Curve.ramp(3, 7) },
+    bonus = { defense = Curve.ramp(5, 15) },
+    resist = { poison = 3 },
 }

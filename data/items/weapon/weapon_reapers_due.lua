@@ -11,6 +11,8 @@
 -- It compounds with the family rather than against it, deliberately: an axe kills several things per
 -- swing, so an axe is the weapon that fills this counter fastest. That is the point -- it is the one
 -- scaling in the game whose own mechanic is what feeds it.
+local Curve = require("models.curve")
+
 return {
     name = "The Reaper's Due",
     description = "Increase damage by 25% per kill this battle.",
@@ -28,7 +30,7 @@ return {
         cost = { stat = "stamina", amount = 10 },
         -- Below the iron axe's, and that is the FLOOR rather than the number: this is what it swings for
         -- on the opening turn, before the count has anything in it.
-        damage = { 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9 },
+        damage = Curve.ramp(3, 13),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             local Combat = require("models.combat")

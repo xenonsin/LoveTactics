@@ -29,6 +29,8 @@
 -- anything that empties a knight's mana turns this off completely. Magic Break, Drain Mana, the
 -- Cutpurse Knife's cousin -- a pool is a target, and this item makes the knight's the softest one on
 -- the field. Wearing it does not make you harder to kill so much as it tells the enemy how.
+local Curve = require("models.curve")
+
 return {
     name = "Mana Shield",
     description = "Wounds are paid out of mana until the pool is empty, a point for a point.",
@@ -44,5 +46,5 @@ return {
     manaShield = { ratio = 1 },
     -- Forging deepens the pool the ward drains, so an upgrade buys a longer shield rather than a
     -- cheaper one. Folded into Combat.unreservedMax exactly as Attunement's is.
-    maxBonus = { mana = { 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18 } },
+    maxBonus = { mana = Curve.ramp(6, 18) },
 }

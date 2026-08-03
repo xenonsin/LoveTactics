@@ -34,7 +34,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 13 },
         -- Under the iron axe's per target: what this swing is for happens on everybody else's turn.
-        damage = Curve.ramp(4, 10),
+        damage = Curve.ramp(4, 14),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             local caught = fx.aoeUnits()

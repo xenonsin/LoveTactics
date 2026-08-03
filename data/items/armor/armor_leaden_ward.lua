@@ -14,6 +14,6 @@ return {
     class = "alchemist",
     price = 240,
     unlockQuests = 3,
-    bonus = { magicDefense = Curve.ramp(7), defense = Curve.ramp(2), movement = -1 },
-    resist = { fire = Curve.ramp(5), lightning = Curve.ramp(5), magical = Curve.ramp(2) },
+    bonus = { magicDefense = Curve.ramp(7, 17), defense = Curve.ramp(2, 12), movement = -1 },
+    resist = { fire = 5, lightning = 5, magical = 2 },
 }

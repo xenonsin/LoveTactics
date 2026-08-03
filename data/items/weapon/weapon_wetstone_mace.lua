@@ -12,6 +12,8 @@
 -- data/items/weapon/weapon_tidesbreak.lua (soaks a whole line and does nothing with it) and
 -- data/items/weapon/weapon_conductor.lua (soaks nobody and harvests everything already soaked) -- three
 -- shelves, one combo, and this is the one that can run it alone.
+local Curve = require("models.curve")
+
 return {
     name = "Wetstone Mace",
     description = "Inflicts Wet and Knockback 2; the charged head bites deeper on anything already Wet.",
@@ -28,7 +30,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 9 },
         -- Under an iron mace's: the second swing is where this weapon's number actually lives.
-        damage = { 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             -- Soak FIRST, then strike. A mace that hit and then wet would never benefit from its own
             -- vulnerability on the opening blow, and the ordering is free -- the shove rides in the

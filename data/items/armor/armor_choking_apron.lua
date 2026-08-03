@@ -26,6 +26,6 @@ return {
     tags = { "leather", "poison" },
     class = "alchemist",
     incense = { hazard = "hazard_choking", radius = 1 },
-    bonus = { defense = Curve.paired(3, 8) },
-    resist = { poison = Curve.ramp(3, 7) },
+    bonus = { defense = Curve.ramp(3, 13) },
+    resist = { poison = 3 },
 }

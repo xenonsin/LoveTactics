@@ -48,8 +48,8 @@ return {
     -- The armor the locked blood buys, forged deeper level by level. Defense and Magic Defense move
     -- together: the brace is whole-body, not a shield turned to one school.
     bonus = {
-        defense      = Curve.paired(3, 8), -- levels 0..10
-        magicDefense = Curve.paired(3, 8),
+        defense = Curve.ramp(3, 13), -- levels 0..10
+        magicDefense = Curve.ramp(3, 13),
     },
     -- The cost: a fixed share of MAX health locked away for the fight (Combat.applyReservations, resolved
     -- by Combat.healthReserveAmount). A flat fraction, not level-scaled -- the forge buys more brace,

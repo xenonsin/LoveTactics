@@ -17,6 +17,8 @@
 --
 -- Deliberately not a revenge mechanic aimed at a killer -- nothing here tracks who did it. The archer is
 -- not avenging anybody in particular; the shot is simply worth more once the company has started paying.
+local Curve = require("models.curve")
+
 return {
     name = "The Last Word",
     description = "Channeled: Increase damage by 60% per fallen ally this battle.",
@@ -36,7 +38,7 @@ return {
         cost = { stat = "stamina", amount = 10 },
         -- Well under the iron longbow's, and that is the FLOOR: this is what it lands while the party is
         -- intact, which should feel like carrying the wrong bow.
-        damage = { 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 13 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             local t = fx.target
             if not t then return end

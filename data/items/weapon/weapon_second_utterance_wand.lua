@@ -18,7 +18,6 @@
 -- Its own bolt is feeble, and the gift lands on a friend rather than the target -- so a mage swinging
 -- this at nothing is a mage who wasted a turn. It needs a channelled weapon in the party to mean
 -- anything at all.
-local Curve = require("models.curve")
 
 return {
     name = "Wand of the Second Utterance",
@@ -28,13 +27,16 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "arcane", "ranged" },
     class = "mage",
+    -- This wand's forge path is the ward's DURATION, computed in the effect off fx.level rather than
+    -- authored as a per-level magnitude, so Item.isUpgradable has no row to find. It says so here.
+    scalesWithLevel = true,
     activeAbility = {
         target = "ally",
         range = 3,
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 9 },
-        damage = Curve.ramp(0), -- the gift is the cast
+        damage = 0, -- the gift is the cast
         effect = function(fx)
             local t = fx.target
             if not t or not t.alive then return end

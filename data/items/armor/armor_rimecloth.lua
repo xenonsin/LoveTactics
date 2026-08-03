@@ -26,9 +26,9 @@ return {
     price = 230,
     unlockQuests = 3,
     bonus = {
-        magicDefense = Curve.ramp(3, 7),
-        statusResist = Curve.paired(3, 8),
+        magicDefense = Curve.ramp(3, 13),
+        statusResist = 3,
         movement = -1,
     },
-    resist = { ice = { 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13 } },
+    resist = { ice = 6 },
 }

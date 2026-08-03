@@ -27,5 +27,5 @@ return {
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_ravenous" },
-    bonus = { health = Curve.paired(6, 16) },
+    bonus = { health = Curve.ramp(6, 16) },
 }

@@ -24,7 +24,7 @@ return {
         -- data/tutorials/village.lua.)
         speed = 4,
         cost = { stat = "mana", amount = 5 },
-        damage = Curve.ramp(4),
+        damage = Curve.ramp(4, 14),
         -- The delay, tuned on its own axis and upgraded on its own curve. It used to be read off the
         -- damage roll, which quietly welded the spell's two halves together: a Jolt is DESIGNED to
         -- barely hurt, so pinning the tempo it sells to how little it hurts capped the one thing it
@@ -34,7 +34,7 @@ return {
         -- Scales faster than the damage does, which is the point of the split: forging a Jolt should
         -- buy TIME, not a better hit. Ten at base is what clears two party turns in the village
         -- lesson (data/tutorials/village.lua's `pace`), where it is counted exactly.
-        stun = { 10, 10, 11, 12, 12, 13, 14, 14, 15, 16, 16 },
+        stun = Curve.ramp(10),
         effect = function(fx)
             -- power + the caster's MagicDamage, minus MagicDefense. The stun rides the blow so it
             -- lands before the target can react to it, and carries its own authored magnitude.

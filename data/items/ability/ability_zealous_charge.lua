@@ -21,7 +21,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 9 },
         damage = Curve.ramp(8, 18),
-        healing = Curve.paired(4, 9), -- fx.amount: healed PER adjacent enemy
+        healing = Curve.ramp(4, 14), -- fx.amount: healed PER adjacent enemy
         effect = function(fx)
             fx.damage(fx.target)
             local enemies = 0

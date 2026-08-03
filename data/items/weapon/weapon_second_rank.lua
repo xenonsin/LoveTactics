@@ -16,6 +16,8 @@
 -- the effect. That direction is safe -- the aim preview under-promises reach and never over-promises
 -- damage. Declaring length 3 and narrowing it would show the player a third tile the swing usually
 -- cannot reach, which is the lie worth avoiding.
+local Curve = require("models.curve")
+
 return {
     name = "Reach of the Second Rank",
     description = "Skewers the two tiles ahead -- three, while an ally stands directly at your back.",
@@ -32,7 +34,7 @@ return {
         minRange = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
-        damage = { 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 12 },
+        damage = Curve.ramp(5, 15),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

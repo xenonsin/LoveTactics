@@ -17,7 +17,7 @@ return {
         range = 1,
         speed = 6, -- a heavy commitment
         cost = { stat = "stamina", amount = 12 },
-        damage = Curve.ramp(6),
+        damage = Curve.ramp(6, 16),
         adjacencyScaling = { type = "weapon" }, -- +1x damage per adjacent weapon (UI + effect)
         effect = function(fx)
             local weapons = fx.adjacentMatching({ type = "weapon" })

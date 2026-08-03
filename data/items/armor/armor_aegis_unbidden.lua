@@ -26,15 +26,15 @@ return {
     type = "armor",
     tags = { "shield", "holy" },
     class = "knight",
-    bonus = { defense = { 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6 } },
+    bonus = { defense = Curve.ramp(3, 13) },
     -- The only shield carrying a magical resist, which is half of what makes it worth the slot before it
     -- is ever planted.
-    resist = { magical = { 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5 } },
+    resist = { magical = 2 },
     waitBehavior = {
         kind = "defend",
         speed = 3,
         -- Under a buckler's 6-11: the Aegis below is what the difference bought.
-        defense = Curve.paired(5),
+        defense = Curve.ramp(5, 15),
         status = "status_aegis",
     },
 }

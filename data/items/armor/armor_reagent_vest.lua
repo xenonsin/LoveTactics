@@ -35,5 +35,5 @@ return {
         amountBonus = 3,
         grantTags = { "poison" },
     },
-    bonus = { defense = Curve.ramp(2) },
+    bonus = { defense = Curve.ramp(2, 12) },
 }

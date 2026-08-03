@@ -33,7 +33,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- A third of an iron mace's, and it should look wrong on the tooltip. The number is not the sale.
-        damage = Curve.paired(2, 7),
+        damage = Curve.ramp(2, 12),
         effect = function(fx)
             -- The collision is priced off the swing's own magnitude as every mace's is, so a foe pinned
             -- against a wall still eats the whole of what the travel was worth -- which, at four tiles

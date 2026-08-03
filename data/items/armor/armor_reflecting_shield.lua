@@ -26,14 +26,14 @@ return {
     type = "armor",
     tags = { "shield" },
     class = "knight",
-    bonus = { defense = Curve.ramp(3, 7) },
-    resist = { physical = Curve.paired(1, 4) },
+    bonus = { defense = Curve.ramp(3, 13) },
+    resist = { physical = 1 },
     waitBehavior = {
         kind = "defend",
         speed = 3,
         -- Under a buckler's, and deliberately: the mirror is the sale, and a shield that braced deeply
         -- AND reflected would simply retire the rest of the rack.
-        defense = Curve.paired(5),
+        defense = Curve.ramp(5, 15),
         status = "status_reflect_physical",
     },
 }

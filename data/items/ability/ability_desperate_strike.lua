@@ -21,7 +21,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(6), -- the base, at full health; scaled up by the missing fraction below
+        damage = Curve.ramp(6, 16), -- the base, at full health; scaled up by the missing fraction below
         effect = function(fx)
             local hp = fx.user.char.stats.health
             local ratio = (hp.max and hp.max > 0) and (hp.current / hp.max) or 1

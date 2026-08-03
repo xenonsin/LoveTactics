@@ -12,6 +12,8 @@
 --
 -- Uncapped on purpose. The ceiling is the mover's own movement stat and the board, both of which the
 -- player can see, and a skirmisher who spends everything on the approach has nothing left to leave with.
+local Curve = require("models.curve")
+
 return {
     name = "Running Shot",
     description = "Fires a shot. Increase damage by 3 per tile you covered this turn.",
@@ -29,7 +31,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
-        damage = { 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 12 },
+        damage = Curve.ramp(5, 15),
         description = "Increase damage by 3 per tile covered before the shot.",
         effect = function(fx)
             local moved = require("models.combat").tilesMovedThisTurn(fx.user)

@@ -31,6 +31,6 @@ return {
     tags = { "leather", "explosive" },
     class = "alchemist",
     traits = { "trait_volatile" },
-    bonus = { defense = Curve.paired(4, 9) },
-    resist = { fire = { 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5 } },
+    bonus = { defense = Curve.ramp(4, 14) },
+    resist = { fire = 2 },
 }

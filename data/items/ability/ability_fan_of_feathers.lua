@@ -17,6 +17,8 @@
 -- (data/items/ability/ability_wild_shape_raven.lua). No vendor stocks it and no quest hands it over,
 -- which is exactly why it carries no `class` -- see tests/obtainable_spec.lua, which only holds an
 -- unpriced item to account when it claims a shelf.
+local Curve = require("models.curve")
+
 return {
     name = "Fan of Feathers",
     description = "Rakes a widening cone in front of you with thrown feathers.",
@@ -33,7 +35,7 @@ return {
         cost = { stat = "stamina", amount = 7 },
         aoe = { shape = "cone", length = 3 }, -- 1 cell, then 3, then 5
         --        level:  0  1  2  3  4  5  6  7  8   9  10
-        damage = { 5, 5, 6, 7, 7, 8, 9, 9, 10, 11, 11 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 fx.damage(u)

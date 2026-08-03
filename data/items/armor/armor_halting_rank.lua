@@ -37,8 +37,8 @@ return {
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 700,
     unlockQuests = 10,
-    bonus = { defense = Curve.ramp(9), movement = -2 },
-    resist = { physical = Curve.ramp(3), impact = Curve.ramp(2, 5) },
+    bonus = { defense = Curve.ramp(9, 19), movement = -2 },
+    resist = { physical = 3, impact = 2 },
     activeAbility = {
         target = "tile",
         allowOccupied = true,

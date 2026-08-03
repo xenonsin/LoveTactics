@@ -44,7 +44,7 @@ return {
         cost = { stat = "stamina", amount = 6 },
         -- Under Hobbling Shot's curve: this one already pays out in position, and a step back out of
         -- reach is worth more than the two damage it gives up.
-        damage = Curve.ramp(3, 8),
+        damage = Curve.ramp(3, 13),
         requiresAdjacent = { type = "weapon", tag = "bow" },
         effect = function(fx)
             fx.damage(fx.target)

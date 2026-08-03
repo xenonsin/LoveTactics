@@ -28,5 +28,5 @@ return {
     tags = { "cloth", "arcane" },
     class = "mage",
     incense = { hazard = "hazard_unravelling", radius = 1 },
-    bonus = { magicDefense = Curve.paired(4, 9), movement = -1 },
+    bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
 }

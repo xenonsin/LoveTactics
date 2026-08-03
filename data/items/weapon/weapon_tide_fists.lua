@@ -16,7 +16,7 @@ return {
         range = 1,
         speed = 2,
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(6),
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             -- Wet rides the blow: it lands on whoever the strike hits, and only a connecting hit --
             -- the > 0 guard the carried path enforces for free.

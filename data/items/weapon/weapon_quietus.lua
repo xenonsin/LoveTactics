@@ -18,6 +18,8 @@
 --
 -- Quest-only cut of the rogue shelf: `discipline = "assassin"`, buyable only once the assassin gate is
 -- cleared.
+local Curve = require("models.curve")
+
 return {
     name = "Quietus",
     description = "Inflicts Bleed. A foe it kills cannot be revived this battle -- it leaves a corpse at once, not a downed body.",
@@ -34,7 +36,7 @@ return {
         range = 1,
         speed = 2, -- quick, as every dagger is (docs/weapons.md)
         cost = { stat = "stamina", amount = 7 },
-        damage = { 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 12 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             -- Bleed lands on a survivor (opts.inflicts, the family's wound); denyRevival lands only on
             -- the KILL (opts.denyRevival -> Combat.dealFlatDamage's fatal branch). One stab, both.

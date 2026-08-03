@@ -15,6 +15,8 @@
 --
 -- That last one is the honest cost, and it is why this sits at rank 4 rather than 5: it is a stronger
 -- weapon than the iron greatsword in a long fight and a strictly worse one in a short one.
+local Curve = require("models.curve")
+
 return {
     name = "The Sealed Hour",
     description = "Channeled: inflicts Sealed Hour.",
@@ -34,7 +36,7 @@ return {
         speed = 7,
         windup = 2,
         cost = { stat = "stamina", amount = 16 },
-        damage = { 24, 27, 29, 32, 34, 37, 39, 42, 44, 47, 50 }, -- an iron greatsword's: the seal is the extra
+        damage = Curve.ramp(24, 50), -- an iron greatsword's: the seal is the extra
         effect = function(fx)
             local t = fx.target
             if not t then return end

@@ -11,6 +11,8 @@
 -- refusing to move; answer this one that way and the venom just runs its course. There is no longer a
 -- posture that costs nothing -- which is envy's reading of a rogue's weapon: it does not want to beat you,
 -- it wants to take away the thing that was working.
+local Curve = require("models.curve")
+
 return {
     name = "Envenomed Kris",
     description = "Deals damage and inflicts both Bleed and Poison. Moving costs blood; standing still costs time.",
@@ -26,7 +28,7 @@ return {
         range = 1,
         speed = 2, -- quick, as every dagger is
         cost = { stat = "stamina", amount = 5 },
-        damage = { 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 10 }, -- under an iron dagger's: two afflictions is the trade
+        damage = Curve.ramp(4, 14), -- under an iron dagger's: two afflictions is the trade
         effect = function(fx)
             -- Both afflictions ride the blow, so a guardian who takes the hit takes the wound and the venom.
             fx.damage(fx.target, { inflicts = { "status_bleed", "status_poison" } })

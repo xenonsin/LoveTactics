@@ -28,6 +28,6 @@ return {
     price = 380,
     unlockQuests = 6,
     traits = { "trait_overchannel" },
-    bonus = { magicDefense = Curve.ramp(4, 9), movement = -1 },
-    resist = { magical = Curve.ramp(2, 5) },
+    bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
+    resist = { magical = 2 },
 }

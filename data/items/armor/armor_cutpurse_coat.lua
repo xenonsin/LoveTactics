@@ -19,5 +19,5 @@ return {
     tags = { "leather" },
     class = "rogue",
     traits = { "trait_skimmers_cut" },
-    bonus = { defense = Curve.ramp(3, 7) },
+    bonus = { defense = Curve.ramp(3, 13) },
 }

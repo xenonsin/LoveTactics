@@ -5,6 +5,8 @@
 --
 -- NOTE: the approved design also "dispels the target's buffs"; that half waits on a confirmed
 -- single-target dispel primitive (fx.dispel currently clears an AoE footprint), rather than a guess.
+local Curve = require("models.curve")
+
 return {
     name = "Confessor's Needle",
     description = "Inflicts Bleed and holy damage; executes a failing foe, and executes a Marked one from far higher.",
@@ -21,7 +23,7 @@ return {
         range = 1,
         speed = 2, -- quick, like every dagger
         cost = { stat = "stamina", amount = 5 },
-        damage = { 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14 }, -- carries `holy` via the item tags
+        damage = Curve.ramp(6, 16), -- carries `holy` via the item tags
         effect = function(fx)
             local hp = fx.target.char and fx.target.char.stats and fx.target.char.stats.health
             -- Judgment: an ordinary failing foe is executed near death; a MARKED one from far higher,

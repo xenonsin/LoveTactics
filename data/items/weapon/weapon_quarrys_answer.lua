@@ -18,6 +18,8 @@
 -- two are not the same reflex in practice: the quiver owns no weapon, so it answers with whatever in
 -- the grid reaches, while this one answers with ITSELF and nothing else. Carry both and the archer
 -- answers twice for the doubled price, which is what the escalating answer cost is there to bound.
+local Curve = require("models.curve")
+
 return {
     name = "Quarry's Answer",
     description = "Shoots back at anyone who shoots you from within its own range. No reply at point-blank.",
@@ -39,7 +41,7 @@ return {
         requiresSight = true,
         speed = 2,
         cost = { stat = "stamina", amount = 7 }, -- an answer is a swing, so this is also what a reply costs
-        damage = { 5, 6, 6, 7, 8, 8, 9, 9, 10, 11, 11 }, -- barely over an iron bow's: the reflex is the price
+        damage = Curve.ramp(5, 15), -- barely over an iron bow's: the reflex is the price
         effect = function(fx)
             fx.damage(fx.target)
         end,

@@ -6,6 +6,8 @@
 -- backward out of trouble (movement 0), so closing to point-blank is the entire counterplay to it, and
 -- the dead zone is what makes that counterplay exist. Take that away and an emplacement would be a
 -- turret with no wrong angle, which is a different and much worse item.
+local Curve = require("models.curve")
+
 return {
     name = "Sentry Bolt",
     description = "Fires. No shot closer than two tiles.",
@@ -22,7 +24,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 4 },
         --        level:  0  1  2  3  4  5  6  7  8  9  10
-        damage = { 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             fx.damage(fx.target)
         end,

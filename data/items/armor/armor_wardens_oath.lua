@@ -14,6 +14,6 @@ return {
     price = 280,
     unlockQuests = 6,
     traits = { "trait_oathward" },
-    bonus = { defense = Curve.ramp(6), movement = -1 },
-    resist = { physical = Curve.ramp(2) },
+    bonus = { defense = Curve.ramp(6, 16), movement = -1 },
+    resist = { physical = 2 },
 }

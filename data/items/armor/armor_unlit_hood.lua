@@ -23,5 +23,5 @@ return {
     tags = { "cloth" },
     class = "rogue",
     traits = { "trait_vanishing_act" },
-    bonus = { defense = Curve.ramp(2, 6), movement = -1 },
+    bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

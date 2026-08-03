@@ -14,6 +14,8 @@
 --
 -- `natural`, `noSteal`, sold by nobody: a creature's body is not loot (models/item.lua), which is also
 -- what keeps it out of the bow family's roster of five (tests/weapon_spec.lua).
+local Curve = require("models.curve")
+
 return {
     name = "Flung Quills",
     description = "Looses a pinion feather at a foe.",
@@ -30,7 +32,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 4 },
         --        level:  0  1  2  3  4  5  6  7   8   9  10
-        damage = { 6, 6, 7, 8, 8, 9, 10, 10, 11, 12, 12 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             fx.damage(fx.target)
         end,

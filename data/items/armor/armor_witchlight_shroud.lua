@@ -28,5 +28,5 @@ return {
     tags = { "cloth", "light" },
     class = "mage",
     incense = { hazard = "hazard_witchlight", radius = 1 },
-    bonus = { magicDefense = Curve.paired(4, 9), movement = -1 },
+    bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
 }

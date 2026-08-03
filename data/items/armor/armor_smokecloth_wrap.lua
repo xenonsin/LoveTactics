@@ -21,5 +21,5 @@ return {
     tags = { "cloth" },
     class = "rogue",
     traits = { "trait_smoke_screen" },
-    bonus = { defense = Curve.ramp(2, 6), movement = -1 },
+    bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

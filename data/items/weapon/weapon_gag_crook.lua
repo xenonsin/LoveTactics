@@ -31,7 +31,7 @@ return {
     waitBehavior = {
         kind = "focus",
         -- Shallower than a plain staff's: the silence is paid for out of the meditation's own depth.
-        mana = { 6, 7, 7, 8, 9, 9, 10, 11, 12, 12, 13 },
+        mana = Curve.ramp(6, 16),
         speed = 10,
         -- The mirror of `covers`: applied to every adjacent ENEMY on each Focus (Combat.focus).
         afflicts = "status_magic_denied",
@@ -41,7 +41,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.paired(4, 9),
+        damage = Curve.ramp(4, 14),
         effect = function(fx)
             fx.damage(fx.target)
         end,

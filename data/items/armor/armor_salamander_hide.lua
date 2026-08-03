@@ -28,6 +28,6 @@ return {
     class = "alchemist",
     price = 190,
     unlockQuests = 0,
-    bonus = { defense = Curve.ramp(3, 7) },
-    resist = { fire = { 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13 } },
+    bonus = { defense = Curve.ramp(3, 13) },
+    resist = { fire = 6 },
 }

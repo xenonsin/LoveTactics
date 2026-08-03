@@ -22,7 +22,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.paired(4, 9), -- feeble: the Focus swap is the real weapon
+        damage = Curve.ramp(4, 14), -- feeble: the Focus swap is the real weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

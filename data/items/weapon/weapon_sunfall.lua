@@ -16,6 +16,8 @@
 -- Unsided, as fire always is (data/items/weapon/weapon_emberwand.lua argues the case): it burns your line
 -- exactly as happily and blinds your own archers standing in it. A wall you have to be willing to stand
 -- behind rather than inside.
+local Curve = require("models.curve")
+
 return {
     name = "Sunfall",
     description = "Channeled: Inflicts Burn and Blind.",
@@ -34,7 +36,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 11 },
         -- Under the iron longbow's: the halo is the weapon, and the arrow is the delivery.
-        damage = { 6, 7, 8, 8, 9, 10, 11, 12, 13, 14, 15 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             -- On the aimed cell and the ring around it: a halo is a ring, and one tile of white fire

@@ -34,7 +34,7 @@ return {
     incense = {
         hazard = "hazard_gagging_storm",
         radius = 1,
-        amount = Curve.paired(3, 8),
+        amount = Curve.ramp(3, 13),
     },
     activeAbility = {
         target = "enemy",
@@ -43,7 +43,7 @@ return {
         -- Stamina, as every censer's strike is -- which is the joke and also the design: the one weapon
         -- that turns off magic is itself perfectly usable inside its own storm.
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.paired(4, 9),
+        damage = Curve.ramp(4, 14),
         effect = function(fx)
             fx.damage(fx.target)
         end,

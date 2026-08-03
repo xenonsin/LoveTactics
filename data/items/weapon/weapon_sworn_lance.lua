@@ -17,6 +17,8 @@
 --
 -- The bite is raw (armor turns a spear; it does nothing about being alone), and the oath lasts the
 -- battle, so a single good thrust into a formation shapes the rest of the fight.
+local Curve = require("models.curve")
+
 return {
     name = "The Sworn Lance",
     description = "Inflicts Sworn on both.",
@@ -34,7 +36,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Under an iron spear's: the oath outlasts the wound by the whole battle.
-        damage = { 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9 },
+        damage = Curve.ramp(4, 14),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             local caught = fx.aoeUnits()

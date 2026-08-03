@@ -25,6 +25,6 @@ return {
     price = 420,
     unlockQuests = 6,
     charge = { key = "zeal", from = { "kill", "healDone" }, max = 8 },
-    bonus = { defense = Curve.paired(4, 9), movement = -1 },
+    bonus = { defense = Curve.ramp(4, 14), movement = -1 },
     traits = { "trait_zealots_mercy" },
 }

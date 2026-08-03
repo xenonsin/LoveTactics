@@ -32,13 +32,13 @@ return {
     price = 520,
     unlockQuests = 10,
     incense = { hazard = "hazard_shared_bulwark", radius = 1 },
-    bonus = { defense = Curve.paired(4, 9) },
+    bonus = { defense = Curve.ramp(4, 14) },
     -- The family contract: a shield swaps its holder's Wait into Defend (docs/weapons.md, enforced by
     -- tests/weapon_spec.lua). Braced a little worse than a plain Bulwark Shield -- what this one is
     -- really paying for is the ground it holds for everyone else, and it should not also be the best
     -- personal guard on the shelf.
     waitBehavior = {
         kind = "defend", speed = 2,
-        defense = { 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13 },
+        defense = Curve.ramp(6, 16),
     },
 }

@@ -18,7 +18,7 @@ return {
         requiresSight = true, -- an arrow needs a clear line: terrain cover blocks the shot
         speed = 2, -- lighter/faster than the sword
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(5),
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             fx.damage(fx.target)
         end,

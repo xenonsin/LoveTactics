@@ -29,7 +29,7 @@ return {
         minRange = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 11 },
-        damage = Curve.ramp(4, 10),
+        damage = Curve.ramp(4, 14),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

@@ -13,6 +13,8 @@
 -- The two dates live in `flavor`, not `description`, per docs/item-text.md: a player who reads only
 -- descriptions must lose no mechanical information, and a player who reads only flavor must learn
 -- the world. This is the second kind of line and it is the most load-bearing one in the game.
+local Curve = require("models.curve")
+
 return {
     name = "The Relief Order, Unsealed",
     description = "Grants bonus defense and magic defense.",
@@ -23,6 +25,6 @@ return {
     tags = { "charm" },
     class = "knight",
     --                       level:  0  1  2  3  4  5  6  7  8  9  10
-    bonus = { defense =      { 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6 },
-              magicDefense = { 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6 } },
+    bonus = { defense = Curve.ramp(2, 12),
+              magicDefense = Curve.ramp(2, 12) },
 }

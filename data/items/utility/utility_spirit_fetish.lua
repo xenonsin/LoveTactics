@@ -3,6 +3,8 @@
 -- .lua -- allies standing in it are Inspired). Its whole point is the Shaman's summoned spirits: a
 -- called elemental fights harder standing in its caller's shadow. Borrows the incense machine like the
 -- Coveted Blood (docs/classes.md) -- a zone that is wherever the bearer is.
+local Curve = require("models.curve")
+
 return {
     name = "Spirit Fetish",
     description = "Grants Inspiration to adjacent allies.",
@@ -14,5 +16,5 @@ return {
     discipline = "shaman", -- hunter x mage; the Spirit-totems mechanic's first stock
     price = 400,
     unlockQuests = 6,
-    incense = { hazard = "hazard_rally", radius = 1, amount = { 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6 } },
+    incense = { hazard = "hazard_rally", radius = 1, amount = Curve.ramp(2, 12) },
 }

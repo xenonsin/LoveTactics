@@ -37,7 +37,7 @@ return {
     class = "priest",
     bound = true,
     traits = { "trait_sanctified_presence", "trait_devotion_unbidden" },
-    bonus = { magicDefense = Curve.paired(2, 7) },
+    bonus = { magicDefense = Curve.ramp(2, 12) },
     activeAbility = {
         description = "Wards every nearby ally -- but not you -- with Aegis and Regeneration.",
         target = "self", -- centred on her; the aoe catches the company around her

@@ -41,7 +41,7 @@ return {
         -- Both DO scale with the forge: a better horn holds its air longer and pours more into the one
         -- air that carries a magnitude. See WAIT_BEHAVIOR_MAGNITUDES in models/item.lua.
         duration = Curve.ramp(10),
-        amount = Curve.paired(5),
+        amount = Curve.ramp(5, 15),
         -- The cycle, and the order is the item. Tempo, then teeth, then the mending -- the Lodge's own
         -- account of a hunt, which is why the payoff is last and you have to earn your way back to it.
         songs = {

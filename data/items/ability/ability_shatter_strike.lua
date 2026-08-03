@@ -2,6 +2,8 @@
 -- lands for double and CONSUMES the crowd-control (the ice shatters, the daze is spent) -- so it is a
 -- burst finisher, not a way to keep a foe locked. Against anyone else it is a plain heavy hit.
 -- Requires an adjacent melee weapon in the grid.
+local Curve = require("models.curve")
+
 return {
     name = "Shatter Strike",
     description = "Doubles damage against a Frozen or Stunned foe, consuming it. Needs a melee weapon adjacent.",
@@ -18,7 +20,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
         requiresAdjacent = { type = "weapon", tag = "melee" },
-        damage = { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18 },
+        damage = Curve.ramp(7, 18),
         effect = function(fx)
             local t = fx.target
             if not t then return end

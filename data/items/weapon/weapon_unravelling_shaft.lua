@@ -35,7 +35,7 @@ return {
         speed = 3,
         cost = { stat = "stamina", amount = 7 },
         -- Under an iron bow's: this weapon's output is measured on the mage's turn, not on the archer's.
-        damage = Curve.paired(3, 8),
+        damage = Curve.ramp(3, 13),
         effect = function(fx)
             fx.damage(fx.target)
             -- On the aimed cell rather than the body, for the reason weapon_witchlight_bow gives: the

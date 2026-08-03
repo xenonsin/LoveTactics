@@ -15,6 +15,8 @@
 --
 -- Unsided as ground generally is: your own line sinks in it exactly as readily, and the tile in question
 -- is by definition adjacent to the fighter, which is where the rest of the melee was heading.
+local Curve = require("models.curve")
+
 return {
     name = "The Mired Maul",
     description = "Inflicts Stun, and turns the ground the blow lands on to quicksand: everything there moves and acts for double.",
@@ -30,7 +32,7 @@ return {
         speed = 7,
         cost = { stat = "stamina", amount = 12 },
         -- Under an iron hammer's: the ground is the rest of the price.
-        damage = { 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20 },
+        damage = Curve.ramp(9, 20),
         effect = function(fx)
             local t = fx.target
             if not t then return end
