@@ -18,6 +18,8 @@
 -- Rain puts it out. The halo is fire, and fire in this game answers to water wherever it is standing
 -- (dousedByTags on the hazard) -- so an enemy mage with a rain cloud simply turns this item off for a
 -- few turns, which is the counterplay and costs them a cast to use.
+local Curve = require("models.curve")
+
 return {
     name = "The Burning Halo",
     description = "Enemies beside its bearer burn, and cannot see far enough to shoot.",
@@ -29,5 +31,5 @@ return {
     price = 480,
     unlockQuests = 10,
     incense = { hazard = "hazard_burning_halo", radius = 1,
-                amount = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
+                amount = Curve.paired(4, 9) },
 }

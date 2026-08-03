@@ -2,6 +2,8 @@
 -- mob it lands -- the faith that mends by wading in, not by standing back. The heal scales with the
 -- number of enemies adjacent to the Crusader after the blow, so it rewards being surrounded, which is
 -- exactly where wrath wants a holy warrior to be.
+local Curve = require("models.curve")
+
 return {
     name = "Zealous Charge",
     description = "On damage dealt: heal, more for each adjacent enemy.",
@@ -18,8 +20,8 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 9 },
-        damage = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 },
-        healing = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, -- fx.amount: healed PER adjacent enemy
+        damage = Curve.ramp(8, 18),
+        healing = Curve.paired(4, 9), -- fx.amount: healed PER adjacent enemy
         effect = function(fx)
             fx.damage(fx.target)
             local enemies = 0

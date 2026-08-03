@@ -15,6 +15,8 @@
 --
 -- Bosses are exempt from the instant kill exactly as they are from Coup de Grace: a fight authored
 -- around one body does not end because somebody brought rope.
+local Curve = require("models.curve")
+
 return {
     name = "Throatcut",
     description = "Executes a Rooted or Crippled foe below a third of its health. A kill returns your action.",
@@ -31,7 +33,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
-        damage = { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 },
+        damage = Curve.ramp(7, 17),
         description = "Kills a held foe under a third; a kill hands the turn back.",
         effect = function(fx)
             local t = fx.target

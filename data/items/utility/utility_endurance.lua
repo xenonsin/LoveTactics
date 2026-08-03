@@ -2,6 +2,8 @@
 -- (`maxBonus.stamina`, folded into Combat.unreservedMax). Stamina refills to its full effective ceiling
 -- at the start of each battle, so unlike Toughness this bigger pool is usable from the opening bell --
 -- more strikes and abilities before you have to Focus or wait to recover.
+local Curve = require("models.curve")
+
 return {
     name = "Endurance",
     description = "Raises your maximum stamina.",
@@ -12,5 +14,5 @@ return {
     class = "hunter",
     price = 160,
     unlockQuests = 3,
-    maxBonus = { stamina = { 15, 17, 18, 20, 21, 23, 24, 26, 27, 29, 30 } },
+    maxBonus = { stamina = Curve.ramp(15) },
 }

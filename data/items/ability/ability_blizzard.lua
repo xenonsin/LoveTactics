@@ -2,6 +2,8 @@
 -- so mind your own line -- takes ice damage and is left Frozen (data/status/freeze.lua): delayed, and
 -- brittle to crush and fire. The area counterpart to Ice Bolt; a ground-target cast (target = "tile",
 -- allowOccupied) so you may center it on a clustered enemy.
+local Curve = require("models.curve")
+
 return {
     name = "Blizzard",
     description = "Inflicts Frozen in area.",
@@ -20,7 +22,7 @@ return {
         speed = 5,
         windup = 6, -- a longer tell than Fireball, fitting the Freeze payoff
         cost = { stat = "mana", amount = 16 },
-        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = Curve.ramp(6), -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
         aoe = { radius = 1, shape = "square" }, -- 3x3 storm, corners included
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

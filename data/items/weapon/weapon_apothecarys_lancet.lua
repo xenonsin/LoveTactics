@@ -11,6 +11,8 @@
 -- Declining the family's defining mechanic is a deviation, and the contract asks that a deviation be a
 -- decision said out loud rather than a drift -- so: this is the shelf where the blade is the cheap part.
 -- data/items/weapon/weapon_envenomed_kris.lua is where the two ideas are finally bought together.
+local Curve = require("models.curve")
+
 return {
     name = "Apothecary's Lancet",
     description = "Deals light damage and inflicts Poison.",
@@ -32,7 +34,7 @@ return {
         range = 1,
         speed = 2, -- quick, as every dagger is
         cost = { stat = "stamina", amount = 5 },
-        damage = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 }, -- the lightest blade in the game: it is not the point
+        damage = Curve.paired(3, 8), -- the lightest blade in the game: it is not the point
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_poison" })
         end,

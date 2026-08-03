@@ -18,6 +18,8 @@
 -- warn you. A reflex that cannot afford itself is silent.
 --
 -- utility_survivors_reflex is the charm form.
+local Curve = require("models.curve")
+
 return {
     name = "Everdraught Bandolier",
     description = "On hit taken: drink a healing potion, no turn spent.",
@@ -27,5 +29,5 @@ return {
     tags = { "leather" },
     class = "alchemist",
     traits = { "trait_survivors_reflex" },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 } },
+    bonus = { defense = Curve.ramp(3, 7) },
 }

@@ -10,6 +10,8 @@
 --
 -- The Arcanum's entry-rank staff. data/items/weapon/weapon_parasitic_staff.lua is the same family taken
 -- further: it refills mana ON THE HIT rather than only on Focus.
+local Curve = require("models.curve")
+
 return {
     name = "Staff",
     description = "Replaces Wait with Focus: end your turn to recover mana.",
@@ -22,13 +24,13 @@ return {
     unlockQuests = 0,
     -- The Focus swap: mana recovered per Focus, and the time it costs. Both climb with the forge --
     -- an upgraded staff meditates deeper, not faster.
-    waitBehavior = { kind = "focus", mana = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 }, speed = 10 },
+    waitBehavior = { kind = "focus", mana = Curve.ramp(8, 18), speed = 10 },
     activeAbility = {
         target = "enemy",
         range = 1, -- adjacent only: a staff is not a wand
         speed = 4,
         cost = { stat = "stamina", amount = 6 }, -- stamina, so a cornered mage can always swing it
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, -- feeble on purpose: the Focus swap is the weapon
+        damage = Curve.paired(4, 9), -- feeble on purpose: the Focus swap is the weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

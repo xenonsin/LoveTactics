@@ -16,6 +16,8 @@
 -- body for it, and a careful one gets a plain jerkin with a stat line.
 --
 -- utility_adrenal_surge is the charm form.
+local Curve = require("models.curve")
+
 return {
     name = "Adrenal Harness",
     description = "On hit taken: your next turn comes sooner.",
@@ -25,6 +27,6 @@ return {
     tags = { "leather" },
     class = "fighter",
     traits = { "trait_adrenal_surge" },
-    bonus = { defense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
-    resist = { physical = { 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4 } },
+    bonus = { defense = Curve.paired(4, 9) },
+    resist = { physical = Curve.paired(1, 4) },
 }

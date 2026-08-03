@@ -10,6 +10,8 @@
 --
 -- Which also decides where it goes in a turn order: fire it FIRST. A vitriol bolt thrown after the axe
 -- has already landed has corroded armor that is no longer in anyone's way.
+local Curve = require("models.curve")
+
 return {
     name = "Vitriol Wand",
     description = "Inflicts Acid.",
@@ -26,7 +28,7 @@ return {
         requiresSight = true, -- a bolt needs a clear line, as every wand's does
         speed = 3,
         cost = { stat = "mana", amount = 5 },
-        damage = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 }, -- under a plain wand's: what it opens is the point
+        damage = Curve.paired(3, 8), -- under a plain wand's: what it opens is the point
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_acid" })
         end,

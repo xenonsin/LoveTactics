@@ -15,6 +15,8 @@
 -- utility_sealed_reliquary carries the same rule in a cell.
 --
 -- Cloth: a square of pace.
+local Curve = require("models.curve")
+
 return {
     name = "The Sealed Coat",
     description = "Holds a seal against one aimed spell, and renews after it is spent.",
@@ -24,6 +26,6 @@ return {
     tags = { "cloth", "arcane" },
     class = "mage",
     traits = { "trait_sealed_reliquary" },
-    bonus = { magicDefense = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 }, movement = -1 },
-    resist = { magical = { 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5 } },
+    bonus = { magicDefense = Curve.paired(5), movement = -1 },
+    resist = { magical = Curve.ramp(2, 5) },
 }

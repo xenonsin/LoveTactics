@@ -16,6 +16,8 @@
 --
 -- Hide, not cloth: no movement penalty. This is the item a player buys when their party is already
 -- slowing down under everything else, which is the point of tuning it here.
+local Curve = require("models.curve")
+
 return {
     name = "Salamander Hide",
     description = "Drinks fire. Does nothing whatever about anything else.",
@@ -26,6 +28,6 @@ return {
     class = "alchemist",
     price = 190,
     unlockQuests = 0,
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 } },
+    bonus = { defense = Curve.ramp(3, 7) },
     resist = { fire = { 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13 } },
 }

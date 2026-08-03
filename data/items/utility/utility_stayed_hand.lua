@@ -18,6 +18,8 @@
 -- (Trait.onDamaged is not called on a killing blow), so a single hit large enough to kill outright
 -- goes straight past it. The Stayed Hand answers attrition, not execution -- and the party that dies
 -- to one enormous swing will get no help from it at all.
+local Curve = require("models.curve")
+
 return {
     name = "The Stayed Hand",
     description = "On dropping to 25% health: cleanse you and lift you out of reach.",
@@ -29,5 +31,5 @@ return {
     price = 500,
     unlockQuests = 10,
     traits = { "trait_stayed_hand" },
-    bonus = { magicDefense = { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6 } },
+    bonus = { magicDefense = Curve.paired(1, 6) },
 }

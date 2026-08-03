@@ -9,6 +9,8 @@
 -- one body permanently, which is worth more than any number this blade could have cut for. That is the
 -- point of pricing it in zero damage -- a weapon that both cut AND forbade healing would simply be the
 -- best sword, and this one has to be the WRONG sword sometimes to be an interesting right one.
+local Curve = require("models.curve")
+
 return {
     name = "The Unclosing Edge",
     description = "Strikes an adjacent foe. On melee hit taken: inflict Unclosing Wound on the attacker.",
@@ -24,7 +26,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             fx.damage(fx.target)
         end,

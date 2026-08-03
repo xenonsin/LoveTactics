@@ -3,6 +3,8 @@
 -- the ground it struck. A Rain hazard (Wet) is left across a 3x3 where the blow landed, so anyone who
 -- steps through is left vulnerable to lightning -- set up a Thunder Storm. Being water-tagged, it also
 -- douses fire on the tile it hits. Positional utility, not raw damage.
+local Curve = require("models.curve")
+
 return {
     name = "Water Ball",
     description = "Knockback 3 and inflicts Wet in area.",
@@ -19,7 +21,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "mana", amount = 12 },
-        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- the impact damage a stopped shove deals; the soak is the real payoff
+        damage = Curve.ramp(5), -- the impact damage a stopped shove deals; the soak is the real payoff
         effect = function(fx)
             local ox, oy = fx.target.x, fx.target.y -- the tile the blow lands on, before the shove
             fx.knockback(fx.target, 3, { amount = fx.amount })

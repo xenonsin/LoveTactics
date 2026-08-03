@@ -3,6 +3,8 @@
 -- attack IS the weapon -- a weapon carrying a tile-target line footprint rather than a single adjacent
 -- jab. Range 1 aims the tile in front, which sets the direction the thrust travels. Every spear built
 -- from here should keep this 2-tile line: it is the defining trait of the spear.
+local Curve = require("models.curve")
+
 return {
     name = "Iron Spear",
     description = "Skewers the two tiles directly in front of you.",
@@ -21,7 +23,7 @@ return {
         minRange = 1,          -- must pick a neighbor (a facing); never the wielder's own tile
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- per-target damage = power + the wielder's Damage, minus Defense
+        damage = Curve.ramp(6), -- per-target damage = power + the wielder's Damage, minus Defense
         aoe = { shape = "line", length = 2 }, -- two tiles in a straight line away from the wielder
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

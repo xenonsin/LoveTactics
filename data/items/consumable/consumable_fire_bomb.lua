@@ -6,6 +6,8 @@
 --
 -- The natural first neighbor for the Crucible's charms -- an Alchemic Mastery, Long-Fuse Reagent, or
 -- Everflask sitting beside it in the grid turns a cheap pot into a real threat.
+local Curve = require("models.curve")
+
 return {
     name = "Fire Bomb",
     description = "Inflicts Burn in area.",
@@ -23,7 +25,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 4 },
-        damage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, -- flat: nothing about the thrower makes the fire hotter
+        damage = Curve.ramp(10), -- flat: nothing about the thrower makes the fire hotter
         consumesItem = true,
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)

@@ -18,6 +18,8 @@
 -- way to lose.
 --
 -- No active ability at all, and no cost. It is not used; it is worn, and it runs.
+local Curve = require("models.curve")
+
 return {
     name = "The Miasma Flask",
     description = "Gasses everything adjacent every turn, its wearer included.",
@@ -33,5 +35,5 @@ return {
     -- the bearer on every move and every rebase, and lifted from wherever they were. Radius 1, so it
     -- is genuinely adjacent-only -- a wider cloud would make this a zoning item, and it is meant to be
     -- an engine for closing rather than a reason to stay away.
-    incense = { hazard = "hazard_choking", radius = 1, amount = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
+    incense = { hazard = "hazard_choking", radius = 1, amount = Curve.paired(4, 9) },
 }

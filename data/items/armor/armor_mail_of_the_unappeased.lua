@@ -13,6 +13,8 @@
 -- line is story, not a rule, and the tooltip prints it italic at the foot). The Gate itself is
 -- keyed off the QUEST you finished, never off this item (see questGate in models/quest.lua) -- so
 -- stashing it, wearing it, or losing it can never cost you the endgame.
+local Curve = require("models.curve")
+
 return {
     name = "Mail of the Unappeased",
     description = "Increase damage by 1 per blow you take, plus up to +20 by the fraction of health missing.",
@@ -24,6 +26,6 @@ return {
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_wrath_rising" },
     -- Light for a chestpiece. She never needed the steel, and neither will you if you win fast.
-    bonus = { defense = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 }, movement = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
-    resist = { slash = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
+    bonus = { defense = Curve.ramp(4), movement = Curve.ramp(0) },
+    resist = { slash = Curve.ramp(2) },
 }

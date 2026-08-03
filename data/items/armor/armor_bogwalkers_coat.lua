@@ -14,6 +14,8 @@
 -- better Rimeguard on a shelf that did not earn it; an unsided one makes the wearer a hazard their own
 -- line has to route around, which is a real cost paid in the party's positioning rather than in a
 -- number on this file.
+local Curve = require("models.curve")
+
 return {
     name = "Bogwalker's Coat",
     description = "Inflicts Mired on adjacent foes.",
@@ -23,5 +25,5 @@ return {
     tags = { "hide", "earth" },
     class = "hunter",
     incense = { hazard = "hazard_quicksand", radius = 1 },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
+    bonus = { defense = Curve.paired(3, 8) },
 }

@@ -14,6 +14,8 @@
 -- The Cathedral's entry-rank arm, and the priest's plainest: no edge, no forged blade, no reach. See
 -- data/items/weapon/weapon_censer_of_ashes.lua for the same family read from the other side -- the
 -- censer belongs to this shelf and no other, so both of its directions are lust's.
+local Curve = require("models.curve")
+
 return {
     name = "Censer",
     description = "Grants Blessing to adjacent allies.",
@@ -30,14 +32,14 @@ return {
     incense = {
         hazard = "hazard_incense",
         radius = 1, -- the 3x3 the bearer stands in the middle of
-        amount = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        amount = Curve.paired(3, 8),
     },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, -- feeble on purpose: the smoke is the weapon
+        damage = Curve.paired(4, 9), -- feeble on purpose: the smoke is the weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

@@ -16,6 +16,8 @@
 -- Arcanum is to stop aiming. utility_counter_magic is the charm form, for a grid with a cell spare.
 --
 -- Cloth: a square of pace, as all silk now is.
+local Curve = require("models.curve")
+
 return {
     name = "Mirrorsilk",
     description = "Deflects one spell aimed at you, for mana.",
@@ -28,5 +30,5 @@ return {
     unlockQuests = 10,
     traits = { "trait_counter_magic" },
     bonus = { magicDefense = { 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13 }, movement = -1 },
-    resist = { magical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
+    resist = { magical = Curve.ramp(3) },
 }

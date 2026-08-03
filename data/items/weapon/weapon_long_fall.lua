@@ -14,6 +14,8 @@
 --
 -- The collision still pays -- more travel robbed means more impact -- so against a wall this is quietly
 -- the hardest-hitting mace on the shelf. In the open field it is a shove and an apology.
+local Curve = require("models.curve")
+
 return {
     name = "The Long Fall",
     description = "Knockback 4. Deals almost nothing -- what it sells is where they land.",
@@ -31,7 +33,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- A third of an iron mace's, and it should look wrong on the tooltip. The number is not the sale.
-        damage = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 },
+        damage = Curve.paired(2, 7),
         effect = function(fx)
             -- The collision is priced off the swing's own magnitude as every mace's is, so a foe pinned
             -- against a wall still eats the whole of what the travel was worth -- which, at four tiles

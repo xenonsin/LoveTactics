@@ -19,6 +19,8 @@
 -- The `dark` tag on the strike is the deliberate discomfort. It is the Cathedral's item and it is not a
 -- holy one, which is the same argument the Censer of Ashes makes about what lust's shelf is willing to
 -- pick up (docs/weapons.md: the object never changes, only the voice it is swung in).
+local Curve = require("models.curve")
+
 return {
     name = "Censer of the Hollow Dark",
     description = "Carries Darkness with you.",
@@ -30,14 +32,14 @@ return {
     incense = {
         hazard = "hazard_darkness",
         radius = 1,
-        amount = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        amount = Curve.paired(3, 8),
     },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        damage = Curve.paired(4, 9),
         effect = function(fx)
             fx.damage(fx.target) -- carries `dark`, which some flesh resists and some does not
         end,

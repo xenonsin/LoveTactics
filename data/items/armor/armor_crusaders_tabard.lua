@@ -11,6 +11,8 @@
 --
 -- Medium armour, so it pays the tier (-1 movement, docs/classes.md) and never pays it back: no armour in
 -- the game grants a square, and this one is where the rule was first written down.
+local Curve = require("models.curve")
+
 return {
     name = "Crusader's Tabard",
     description = "On kill: heal, more for the Zeal held. Banks Zeal on every kill and heal.",
@@ -23,6 +25,6 @@ return {
     price = 420,
     unlockQuests = 6,
     charge = { key = "zeal", from = { "kill", "healDone" }, max = 8 },
-    bonus = { defense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, movement = -1 },
+    bonus = { defense = Curve.paired(4, 9), movement = -1 },
     traits = { "trait_zealots_mercy" },
 }

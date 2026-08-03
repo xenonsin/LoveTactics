@@ -14,6 +14,8 @@
 -- keyed on `impact`, which is the blunt tag every mace, hammer and censer in the game actually carries.
 -- It used to read `crush` -- a word two items in the whole tree used -- so no hammer could shatter the
 -- ice it had just made. See the header of data/status/status_freeze.lua.
+local Curve = require("models.curve")
+
 return {
     name = "Frostfall Hammer",
     description = "Inflicts Frozen instead of Stun.",
@@ -31,7 +33,7 @@ return {
         speed = 7,
         cost = { stat = "stamina", amount = 12 },
         -- A shade under the iron hammer's: the second swing is where the number actually lives.
-        damage = { 10, 11, 12, 14, 15, 16, 17, 18, 20, 21, 22 },
+        damage = Curve.ramp(10, 22),
         effect = function(fx)
             -- The freeze rides the blow (`inflicts`) rather than following it, for the reason the iron
             -- hammer's header gives: hard control applied on the NEXT line arrives after the counter has

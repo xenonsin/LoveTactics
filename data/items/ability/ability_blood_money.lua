@@ -20,6 +20,8 @@
 -- fx.spendPurse takes 0 and this is exactly a modest stamina-priced jab. That is the intended inert
 -- form, not a bug: the money is the campaign's currency, and where it is absent the ability is honest
 -- about having nothing to spend.
+local Curve = require("models.curve")
+
 return {
     name = "Blood Money",
     description = "A modest strike -- but it spends gold from your purse, and every coin lands as extra damage.",
@@ -38,7 +40,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 5 }, -- the swing still tires you; the purse is the OTHER cost
-        damage = { 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, -- fx.amount: the floor, before a single coin is spent
+        damage = Curve.ramp(5, 15), -- fx.amount: the floor, before a single coin is spent
         description = "Spends up to your affordable pour of gold; each 5 gold adds 1 damage on top of the swing.",
         effect = function(fx)
             local t = fx.target

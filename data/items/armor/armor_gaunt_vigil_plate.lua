@@ -16,6 +16,8 @@
 -- retire the Mirrorsilk on the same shelf.
 --
 -- Heavy: two squares of pace, and the wearer has to be close enough to matter.
+local Curve = require("models.curve")
+
 return {
     name = "Gaunt Vigil Plate",
     description = "Bites anyone who works a spell within reach of you.",
@@ -26,5 +28,5 @@ return {
     class = "mage",
     traits = { "trait_gaunt_vigil" },
     bonus = { defense = { 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 15 }, magicDefense = { 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5 }, movement = -2 },
-    resist = { physical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
+    resist = { physical = Curve.ramp(3) },
 }

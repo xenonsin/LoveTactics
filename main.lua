@@ -34,6 +34,15 @@ function love.load(args)
         return
     end
 
+    -- Curve migration: `& "E:\LOVE\lovec.exe" . curve-migrate [apply | snapshot PATH]`
+    -- Rewrites hand-typed per-level rows in data/items as models/curve.lua generator calls, and dumps
+    -- every resolved magnitude for before/after diffing. Dry run by default. See tools/curve_migrate.
+    if args and args[1] == "curve-migrate" then
+        require("tools.curve_migrate").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Audio-debt report: `& "E:\LOVE\lovec.exe" . audio-report [missing]`
     -- Counts declared cues (data/sounds.lua) against what is on disk. See tools/audio_report.
     if args and args[1] == "audio-report" then

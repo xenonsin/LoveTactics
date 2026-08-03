@@ -50,6 +50,42 @@ keep casting Fireball with grows into a battlemage.
   `level`/`classUse`/`growth` and re-bakes on load (`Save.VERSION` 3). The post-quest **Company
   Advancement** overlay (`ui/panels/advancement.lua`) shows each member's level-up.
 
+## Per-level curves
+
+An item's tuned magnitudes — an ability's `damage`/`healing`/`restore`, armor's `bonus` and `resist`,
+a wait-swap's payoff — are authored as a list over the forge levels 0–10, and `Item.resolveLevel`
+reads this level's entry out of it. Eleven entries, one per level.
+
+Don't type the eleven. Almost every curve in the game is a straight line from its base to its top, so
+say where the line starts and ends and let `models/curve.lua` type the rest:
+
+```lua
+local Curve = require("models.curve")   -- at file scope; curve.lua requires nothing, so this is safe
+
+damage  = Curve.ramp(6, 16),            -- 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+defense = Curve.ramp(8),                -- no top given: doubles by level 10, so 8..16
+slash   = Curve.paired(3, 8),           -- 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8
+```
+
+`ramp` moves every level; `paired` holds for a level and then steps by two — same base, same top,
+same total gain, and it reads chunkier on the forge ladder. Both return an ordinary eleven-entry
+list, so nothing downstream can tell a generated curve from a typed one.
+
+**A curve neither style reproduces exactly keeps its literal list**, with a ruler comment over it:
+
+```lua
+--        level:  0  1  2  3  4  5  6  7  8  9  10
+restore = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20 },
+```
+
+That is the supported fallback, not a leftover — about a quarter of the game's rows are hand-shaped
+and stay that way. There is deliberately **no override argument**: a generator call carrying a map of
+exceptions is harder to read than the eleven integers it replaces.
+
+`& "E:\LOVE\lovec.exe" . curve-migrate` re-checks the whole tree and reports which rows could collapse
+and which are staying literal; `. curve-migrate snapshot PATH` dumps every item's every magnitude at
+every level, so a before/after diff proves a change moved no numbers.
+
 ## Add a quest
 
 Create `data/quests/<id>.lua`:

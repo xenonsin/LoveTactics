@@ -18,6 +18,8 @@
 -- says reach for a keyword first and hand-roll in the `effect` when none fits, and none fits. What that
 -- costs is real and worth naming: a Vampiric Strike charm beside this staff still drinks for the
 -- WIELDER, so the two stack rather than compete -- the staff feeds the ward, the charm feeds the priest.
+local Curve = require("models.curve")
+
 return {
     name = "Intercessor's Staff",
     description = "Names one ally at the start of battle. Every blow this staff lands heals them instead of you.",
@@ -31,7 +33,7 @@ return {
     traits = { "trait_intercession" }, -- an item's `traits` reach whoever carries it (models/trait.lua)
     -- The family's obligation, and shallower than the Crozier's on purpose: this staff wants to be swung,
     -- so the turn it offers you for NOT swinging has to be the worse of the two.
-    waitBehavior = { kind = "focus", mana = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, speed = 10 },
+    waitBehavior = { kind = "focus", mana = Curve.ramp(6), speed = 10 },
     activeAbility = {
         target = "enemy",
         range = 1, -- adjacent only: a staff is not a wand

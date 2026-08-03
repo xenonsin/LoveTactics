@@ -2,6 +2,8 @@
 -- a BOW sits adjacent to it in the 3x3 item grid (diagonals included) -- the arrows need a bow to
 -- fire them. Combat.adjacencyMet gates the cast (and the battle UI's arm), and Combat.adjacencyLinks
 -- draws a connector line to the bow that satisfies the requirement.
+local Curve = require("models.curve")
+
 return {
     name = "Rain of Arrows",
     description = "Looses a volley across an area. Requires an adjacent bow.",
@@ -22,7 +24,7 @@ return {
         requiresSight = true, -- arrows need a clear arc to the target cell
         speed = 5,
         cost = { stat = "stamina", amount = 10 },
-        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- per-target damage = power + the caster's Damage, minus Defense
+        damage = Curve.ramp(5), -- per-target damage = power + the caster's Damage, minus Defense
         aoe = { radius = 1, shape = "square" }, -- 3x3 burst around the aimed cell (corners included)
         requiresAdjacent = { type = "weapon", tag = "bow" }, -- a bow must sit adjacent in the grid
         effect = function(fx)

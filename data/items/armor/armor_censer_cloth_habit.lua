@@ -14,6 +14,8 @@
 -- crowd the priest, which is the same positional argument the Oathkeeper makes from the other shelf.
 --
 -- Cloth, so it costs a square of pace -- and the whole point of it is to be standing where the line is.
+local Curve = require("models.curve")
+
 return {
     name = "Censer-Cloth Habit",
     description = "Grants Blessing to adjacent allies.",
@@ -23,5 +25,5 @@ return {
     tags = { "cloth", "holy" },
     class = "priest",
     incense = { hazard = "hazard_sacred", radius = 1 },
-    bonus = { magicDefense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 }, defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 }, movement = -1 },
+    bonus = { magicDefense = Curve.ramp(3, 7), defense = Curve.ramp(2), movement = -1 },
 }

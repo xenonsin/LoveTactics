@@ -3,6 +3,8 @@
 -- then bursts, damaging everything in the 3x3 square around the landing -- friend or foe -- except the
 -- caster standing at its centre. A gap-closer and an opener in one: leap into the thick of them, then
 -- detonate. The reach is the leap distance; the blast is fixed at radius 1 around where you come down.
+local Curve = require("models.curve")
+
 return {
     name = "Leaping Crash",
     description = "Leaps to an empty tile and slams down, damaging everything around you.",
@@ -19,7 +21,7 @@ return {
         minRange = 1,      -- it is a leap, not a stomp in place
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
-        damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- per-target blast damage = power + the caster's Damage, minus Defense
+        damage = Curve.ramp(8), -- per-target blast damage = power + the caster's Damage, minus Defense
         aoe = { shape = "square", radius = 1 }, -- the 3x3 burst centred on the landing tile
         effect = function(fx)
             fx.teleportUser(fx.tx, fx.ty) -- land first...

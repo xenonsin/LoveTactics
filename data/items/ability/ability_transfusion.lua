@@ -2,6 +2,8 @@
 -- ally -- it draws health from the caster (fx.drain) and pours exactly that much into the target
 -- (fx.heal). A gift that costs the giver, which is the Apothecary's whole voice: the cure is real, and
 -- somebody paid for it in the same coin.
+local Curve = require("models.curve")
+
 return {
     name = "Transfusion",
     description = "Lends your own health to an ally: you lose what they gain.",
@@ -17,7 +19,7 @@ return {
         target = "ally", -- an ally other than yourself is the point; self-targeting is a wash
         range = 2,
         speed = 3,
-        healing = { 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38 }, -- fx.amount: the vitality moved
+        healing = Curve.ramp(18, 38), -- fx.amount: the vitality moved
         effect = function(fx)
             local given = fx.drain(fx.user, "health", fx.amount)
             if given > 0 then fx.heal(fx.target, given) end

@@ -17,6 +17,8 @@
 --
 -- It grants no second walk (the turn re-opens with the move already spent), so this is two swings from
 -- where you are standing, not a swing and a reposition.
+local Curve = require("models.curve")
+
 return {
     name = "Tempo Debt",
     description = "No stun -- the swing re-opens your own turn instead. You act twice now and arrive late afterwards.",
@@ -34,7 +36,7 @@ return {
         -- timeline has stopped being one. Two swings is 28 stamina out of a scarce bar.
         cost = { stat = "stamina", amount = 14 },
         -- Under an iron hammer's per swing, because the weapon lands two of them.
-        damage = { 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 },
+        damage = Curve.ramp(9, 19),
         effect = function(fx)
             fx.damage(fx.target)
             -- Granted unconditionally rather than on a kill or a hit: this weapon's whole identity is

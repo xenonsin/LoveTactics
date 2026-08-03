@@ -5,6 +5,8 @@
 -- Every Oathkeeper is inscribed with the name of a knight who set theirs down. The Bastion keeps
 -- the list long and reads it aloud -- the first hint of Sloth, which is not idleness but the oath
 -- abandoned.
+local Curve = require("models.curve")
+
 return {
     name = "Oathkeeper Shield",
     description = "Replaces Wait with Defend, bracing every adjacent ally along with you.",
@@ -15,8 +17,8 @@ return {
     class = "knight",
     price = 800,
     unlockQuests = 10,
-    bonus = { defense = { 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18 }, movement = -1 },
-    resist = { physical = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 }, slash = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 }, pierce = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 }, impact = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
+    bonus = { defense = Curve.ramp(9), movement = -1 },
+    resist = { physical = Curve.ramp(4), slash = Curve.ramp(3), pierce = Curve.ramp(3), impact = Curve.ramp(3) },
     -- A tower shield braces hardest of all -- a large, forge-scaling +defense while it holds the line.
     -- `covers` is its EXTRA over the plain buckler (data/items/armor/armor_buckler.lua), which swaps Wait for
     -- the same Defend: this one does not brace alone. Every ADJACENT ALLY braces with it, for about
@@ -25,7 +27,7 @@ return {
     -- worth more than three bucklers scattered. The oath is not that you survive; it is that they do.
     waitBehavior = {
         kind = "defend", speed = 2,
-        defense = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
-        covers = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 },
+        defense = Curve.ramp(10),
+        covers = Curve.paired(5),
     },
 }

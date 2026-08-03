@@ -13,6 +13,8 @@
 --
 -- It leaves the marks in place. Burning them off would make the Pyre and Sentence compete for the same
 -- setup, and the shelf is meant to read as one escalation rather than two exits.
+local Curve = require("models.curve")
+
 return {
     name = "The Pyre",
     description = "Every Marked enemy on the field takes holy fire at once.",
@@ -29,7 +31,7 @@ return {
         range = 0,
         speed = 6,
         cost = { stat = "mana", amount = 18 },
-        damage = { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 },
+        damage = Curve.ramp(7, 17),
         description = "Burns every Marked enemy, wherever it stands.",
         effect = function(fx)
             local burned = 0

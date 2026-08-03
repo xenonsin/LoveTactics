@@ -2,6 +2,8 @@
 -- for several ticks (exposed while it builds), then calls down holy fire on a diamond of ground. It
 -- routes as MAGICAL and carries `holy`, so demonic flesh dreads it most. The Theurge's mechanic in one
 -- word: pride's channel spent on the priest's judgment, a bigger blessing for the longer wait.
+local Curve = require("models.curve")
+
 return {
     name = "Invocation",
     description = "Channeled: sears enemies in area.",
@@ -22,7 +24,7 @@ return {
         windup = 4, -- winds up before it fires (Combat reads `windup`; see ability_meteor_storm)
         cost = { stat = "mana", amount = 14 },
         aoe = { radius = 1, shape = "diamond" },
-        damage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, -- carries `holy` + `magical` via tags
+        damage = Curve.ramp(10), -- carries `holy` + `magical` via tags
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 if u.side ~= fx.user.side then fx.damage(u) end

@@ -17,6 +17,8 @@
 --
 -- It answers single-target only. A blast, a hazard, an aura or a melee blow all go straight through it,
 -- which is what keeps it a read on the enemy's kit rather than a general-purpose shield.
+local Curve = require("models.curve")
+
 return {
     name = "Wand of the Sealed Ward",
     description = "Grants Sealed Ward.",
@@ -31,7 +33,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 8 },
-        damage = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, -- it is not a bolt; see the header
+        damage = Curve.ramp(0), -- it is not a bolt; see the header
         effect = function(fx)
             local t = fx.target
             if not t or not t.alive then return end

@@ -1,6 +1,8 @@
 -- Passive armor: no active ability (so no speed, ignored by initiative). Its bonus is
 -- folded into the wearer's stats at combat setup, and its tag-keyed resist reduces
 -- incoming damage whose source carries a matching tag.
+local Curve = require("models.curve")
+
 return {
     name = "Iron Plate",
     description = "Heavy armor. Physical blows glance away.",
@@ -11,6 +13,6 @@ return {
     price = 380,
     unlockQuests = 6,
     -- Heavy tier: the most steel a body can carry, and it shows in the pace.
-    bonus = { defense = { 13, 14, 16, 17, 18, 20, 21, 22, 23, 25, 26 }, movement = -2 },
-    resist = { physical = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 }, slash = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 }, pierce = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 } },
+    bonus = { defense = Curve.ramp(13), movement = -2 },
+    resist = { physical = Curve.ramp(4), slash = Curve.ramp(4), pierce = Curve.ramp(4) },
 }

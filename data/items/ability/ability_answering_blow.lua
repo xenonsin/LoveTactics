@@ -9,6 +9,8 @@
 --
 -- Scaled per point rather than per body, so it stays honest when it lands on one foe: the reward is for
 -- weathering, not for being surrounded. Reprisal already pays for the crowd.
+local Curve = require("models.curve")
+
 return {
     name = "Answering Blow",
     description = "Consume all Defiance to strike every adjacent foe. Increase damage by 4 per point spent.",
@@ -28,7 +30,7 @@ return {
         aoe = { radius = 1, shape = "square" },
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9 }, -- the floor; Defiance is what makes it a blow
+        damage = Curve.ramp(4, 9), -- the floor; Defiance is what makes it a blow
         unlock = {
             when = function(unit) return require("models.combat").chargePool(unit, "defiance") >= 1 end,
             text = "Bank Defiance by weathering blows",

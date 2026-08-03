@@ -15,6 +15,8 @@
 -- sub-strikes do -- its scaling is the chi, and stacking both would pay the monk twice for the same
 -- punches. See ability_flurry.lua for the other half of the cycle, and for why the gate is a pure
 -- `when` predicate over the shared pool rather than a counted per-item unlock.
+local Curve = require("models.curve")
+
 return {
     name = "Asura Strike",
     description = "Consume all your chi in one blow. Increase damage by 6 per chi.",
@@ -31,7 +33,7 @@ return {
         range = 1,
         speed = 7, -- the slowest thing on the shelf: a blow this size is telegraphed
         cost = { stat = "stamina", amount = 10 },
-        damage = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }, -- fx.amount: the floor, before the chi
+        damage = Curve.ramp(6, 16), -- fx.amount: the floor, before the chi
         unlock = {
             when = function(unit) return require("models.combat").chi(unit) >= 1 end,
             text = "Gather chi",

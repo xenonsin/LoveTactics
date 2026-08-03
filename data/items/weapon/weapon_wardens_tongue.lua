@@ -9,6 +9,8 @@
 -- That difference is the whole reason it exists: the shield and the crozier both cost you your action to
 -- share anything, and this one shares whatever the enemy chose to provoke. You do not decide when it
 -- fires; they do. Which makes it the only weapon in the game that gets better the more the enemy commits.
+local Curve = require("models.curve")
+
 return {
     name = "The Warden's Tongue",
     description = "Strikes an adjacent foe. Every parry it throws also braces the allies beside you.",
@@ -24,7 +26,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }, -- an iron sword's: the answer is the extra
+        damage = Curve.ramp(6, 16), -- an iron sword's: the answer is the extra
         effect = function(fx)
             fx.damage(fx.target)
         end,

@@ -20,6 +20,8 @@
 -- no unit is ever hit twice by one volley: this is coverage, not focus. The `aoe` field is declared
 -- only to PAINT the spread the volley may fall in; the arrows pick their own cells below, and picks
 -- that land off the map are harmlessly skipped by fx.unitAt.
+local Curve = require("models.curve")
+
 return {
     name = "Hailfall Longbow",
     description = "Channeled: hits five random tiles in area, allies included.",
@@ -42,7 +44,7 @@ return {
         cost = { stat = "stamina", amount = 10 },
         -- Per ARROW, and well under the iron longbow's single heavy shaft: five of these landing is a
         -- rout, one of them landing is a waste of a turn. That spread is the weapon.
-        damage = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 },
+        damage = Curve.paired(5),
         aoe = { shape = "diamond", radius = 2 }, -- paints where the volley MAY fall (see the note above)
         effect = function(fx)
             -- The thirteen tiles of the radius-2 diamond around the aim point: the spread the archer

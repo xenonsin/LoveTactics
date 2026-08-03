@@ -17,6 +17,8 @@
 -- The `damage` table is all zeroes on purpose: the blow has no base at all, so every point of it is bought.
 -- The effect overrides the amount from what the purse actually paid, and the zero table only keeps the
 -- magnitude/tooltip readers (Combat.abilityMagnitude) happy without promising a single free point.
+local Curve = require("models.curve")
+
 return {
     name = "The Gilded Wound",
     description = "Pay gold to carve a wound -- ten gold per point of damage, dialed at the swing.",
@@ -38,7 +40,7 @@ return {
         -- The confirm-time money slider. `perDamage` gold buys one point; `max` caps a single cast so a
         -- fat purse cannot dial an unbounded blow (Item.purchaseRate, ui/panels/spend_chooser.lua).
         purchase = { perDamage = 10, max = 25 },
-        damage = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, -- no base: every point is paid for (see header)
+        damage = Curve.ramp(0), -- no base: every point is paid for (see header)
         description = "Spend up to 250 gold; each 10 gold carves one point of damage into the target.",
         effect = function(fx)
             local t = fx.target

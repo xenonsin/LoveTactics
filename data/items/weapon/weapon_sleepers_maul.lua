@@ -10,6 +10,8 @@
 -- Which is a real discipline to play, and the reason it sits high on the shelf: it asks the whole party
 -- to agree not to hit something, and it punishes the archer who fires without looking. Every AoE the
 -- party owns is a liability while it holds.
+local Curve = require("models.curve")
+
 return {
     name = "Sleeper's Maul",
     description = "Inflicts Sleep instead of Stun.",
@@ -28,7 +30,7 @@ return {
         cost = { stat = "stamina", amount = 12 },
         -- Under an iron hammer's, and deliberately so: this weapon wants its own damage to be small,
         -- because its damage is the thing most likely to wake what it just put down.
-        damage = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 },
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_sleep" })
         end,

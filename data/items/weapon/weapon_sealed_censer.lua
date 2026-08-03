@@ -21,6 +21,8 @@
 -- Read against data/items/weapon/weapon_gag_crook.lua, which does the same job as a wait swap on
 -- adjacent enemies only: that one is precise, costs a turn, and spares your own line. This is
 -- indiscriminate, costs nothing, and never stops.
+local Curve = require("models.curve")
+
 return {
     name = "The Sealed Censer",
     description = "Inflicts Magic Denied on adjacent units.",
@@ -32,7 +34,7 @@ return {
     incense = {
         hazard = "hazard_gagging_storm",
         radius = 1,
-        amount = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        amount = Curve.paired(3, 8),
     },
     activeAbility = {
         target = "enemy",
@@ -41,7 +43,7 @@ return {
         -- Stamina, as every censer's strike is -- which is the joke and also the design: the one weapon
         -- that turns off magic is itself perfectly usable inside its own storm.
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        damage = Curve.paired(4, 9),
         effect = function(fx)
             fx.damage(fx.target)
         end,

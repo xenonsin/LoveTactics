@@ -17,6 +17,8 @@
 --
 -- Its damage is nearly nothing on purpose. A weapon that removed a body from the fight AND hurt it would
 -- have no decision in it at all.
+local Curve = require("models.curve")
+
 return {
     name = "The Swineherd's Wand",
     description = "Inflicts Polymorph.",
@@ -32,7 +34,7 @@ return {
         speed = 4, -- slower than a plain wand: this is a working, not a bolt
         cost = { stat = "mana", amount = 10 },
         -- The lowest curve of any wand. See the header: the transformation is the whole item.
-        damage = { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6 },
+        damage = Curve.paired(1, 6),
         effect = function(fx)
             local t = fx.target
             if not t then return end

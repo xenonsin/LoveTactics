@@ -15,6 +15,8 @@
 -- note that all three stacking changes nothing, because a pool only runs out once.
 --
 -- Cloth: a square of pace.
+local Curve = require("models.curve")
+
 return {
     name = "Overchannel Weave",
     description = "On empty mana: spells cost health instead.",
@@ -26,6 +28,6 @@ return {
     price = 380,
     unlockQuests = 6,
     traits = { "trait_overchannel" },
-    bonus = { magicDefense = { 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9 }, movement = -1 },
-    resist = { magical = { 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5 } },
+    bonus = { magicDefense = Curve.ramp(4, 9), movement = -1 },
+    resist = { magical = Curve.ramp(2, 5) },
 }

@@ -3,6 +3,8 @@
 -- and lightning -- the inverse of the Bastion's steel, and the reason a caster-heavy party buys here.
 --
 -- Lead is heavy. The movement penalty is the price of the resists.
+local Curve = require("models.curve")
+
 return {
     name = "Leaden Ward",
     description = "Drinks fire and lightning; does little against a blade.",
@@ -12,6 +14,6 @@ return {
     class = "alchemist",
     price = 240,
     unlockQuests = 3,
-    bonus = { magicDefense = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 13, 14 }, defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 }, movement = -1 },
-    resist = { fire = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, lightning = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, magical = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
+    bonus = { magicDefense = Curve.ramp(7), defense = Curve.ramp(2), movement = -1 },
+    resist = { fire = Curve.ramp(5), lightning = Curve.ramp(5), magical = Curve.ramp(2) },
 }

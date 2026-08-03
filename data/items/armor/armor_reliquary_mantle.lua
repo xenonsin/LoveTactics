@@ -16,6 +16,8 @@
 -- Compare trait_unyielding (armor_unyielding_harness, the knight's): that one refuses EVERY debuff and
 -- bills mana each time, so it is a pool rather than a cooldown. Same problem, two economies, two
 -- shelves.
+local Curve = require("models.curve")
+
 return {
     name = "Reliquary Mantle",
     description = "On a debuff taken: shrug it off, then recharge.",
@@ -25,6 +27,6 @@ return {
     tags = { "cloth", "holy" },
     class = "priest",
     traits = { "trait_cleansing_ward" },
-    bonus = { magicDefense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 }, movement = -1 },
-    resist = { magical = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
+    bonus = { magicDefense = Curve.paired(4, 9), defense = Curve.ramp(2), movement = -1 },
+    resist = { magical = Curve.ramp(2) },
 }

@@ -3,6 +3,7 @@
 
 local Registry = require("models.registry")
 local Sprite = require("models.sprite")
+local Curve = require("models.curve")
 
 local Item = {}
 
@@ -223,7 +224,9 @@ end
 
 -- The highest upgrade level a forgeable item can reach. Every item carries a `level` from 0 (base) to
 -- MAX_LEVEL, and that level -- not any derived rating -- is the single number every stat scales with.
-Item.MAX_LEVEL = 10
+-- Derived from models/curve.lua's LEVELS (which counts level 0) rather than written out again, so the
+-- generators and the ceiling they generate up to cannot drift apart.
+Item.MAX_LEVEL = Curve.LEVELS - 1
 
 local function titleCase(s)
     return (tostring(s):gsub("^%l", string.upper))

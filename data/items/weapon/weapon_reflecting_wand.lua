@@ -17,6 +17,8 @@
 --
 -- Single-target only, like every reflection here: a blast passes straight through, which is what keeps it
 -- a read on the enemy caster's kit rather than a blanket answer to magic.
+local Curve = require("models.curve")
+
 return {
     name = "The Reflecting Wand",
     description = "Grants Reflect Magic.",
@@ -31,7 +33,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 9 },
-        damage = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        damage = Curve.ramp(0),
         effect = function(fx)
             local t = fx.target
             if not t or not t.alive then return end

@@ -20,6 +20,8 @@
 -- Thirst (see Status.lifesteal, which sums rather than takes the largest). A fighter under all four is
 -- very nearly unkillable while they are landing blows, and completely ordinary the moment they are
 -- not, which is the correct shape for a thing built entirely out of thirst.
+local Curve = require("models.curve")
+
 return {
     name = "The Crimson Standard",
     description = "Grants Bloodsong to adjacent allies.",
@@ -36,5 +38,5 @@ return {
     -- own rule (see the `incense` contract in models/item.lua) and the only thing keeping a
     -- company-wide aura from eventually covering a company-wide area.
     incense = { hazard = "hazard_bloodsong", radius = 1 },
-    bonus = { damage = { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5 } }, -- what the forge buys instead of reach
+    bonus = { damage = Curve.paired(0, 5) }, -- what the forge buys instead of reach
 }

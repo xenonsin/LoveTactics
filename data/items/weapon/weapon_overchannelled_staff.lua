@@ -17,6 +17,8 @@
 -- The toll is a DRAIN rather than damage (see `waitBehavior.toll` in Combat.focus): nothing mitigates it,
 -- nothing reflects it, no barrier eats it, and it cannot kill -- it floors at zero. A mage can meditate
 -- itself to the edge and not over it, which is the one mercy the design allows.
+local Curve = require("models.curve")
+
 return {
     name = "The Overchannelled Staff",
     description = "Replaces Wait with Focus: recover about twice a staff's mana, paid for in your own health.",
@@ -28,7 +30,7 @@ return {
     waitBehavior = {
         kind = "focus",
         -- Roughly double a plain staff's 8-18, which is the sale.
-        mana = { 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36 },
+        mana = Curve.ramp(16, 36),
         speed = 10,
         -- ...and the price, flat rather than scaling. Deliberate: the mana climbs with the forge and the
         -- toll does not, so an upgraded staff is a BETTER bargain rather than a bigger gamble. The
@@ -40,7 +42,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        damage = Curve.paired(4, 9),
         effect = function(fx)
             fx.damage(fx.target)
         end,

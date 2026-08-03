@@ -2,6 +2,8 @@
 -- outright -- an overwhelming, armor-ignoring blow (opts.raw, amount = full health) that drops it to 0.
 -- Above the threshold it lands as an ordinary heavy hit. A boss is never executed: a quest objective
 -- must be worn all the way down, not cut short. Requires an adjacent melee weapon in the grid.
+local Curve = require("models.curve")
+
 return {
     name = "Coup de Grace",
     description = "Slays an adjacent foe below a quarter health outright. Bosses are immune. Needs a melee weapon adjacent.",
@@ -19,7 +21,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
         requiresAdjacent = { type = "weapon", tag = "melee" },
-        damage = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 },
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             local t = fx.target
             if not t then return end

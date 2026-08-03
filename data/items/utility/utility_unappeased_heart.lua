@@ -16,6 +16,8 @@
 --
 -- No `class`/`price`: not gear anyone shops for. The damage curve is flavor -- the player never forges
 -- an enemy's relic -- so only its base value is ever seen.
+local Curve = require("models.curve")
+
 return {
     name = "The Unappeased Heart",
     description = "Increase damage by 1 per blow you take, plus up to +20 by the fraction of health missing.",
@@ -25,7 +27,7 @@ return {
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_wrath_rising", "trait_boss_phases" },
-    bonus = { damage = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } }, -- levels 0..10 (only base is ever used)
+    bonus = { damage = Curve.paired(2, 7) }, -- levels 0..10 (only base is ever used)
     -- The two-phase script (read by trait_boss_phases off ctx.item.phases). One threshold: at 40%
     -- health she sheds the human shape for her demon one. Deliberately low -- she wakes as she dies, so
     -- the pact answers on the same threshold her rule already lives on -- which also leaves the demon a

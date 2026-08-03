@@ -13,6 +13,8 @@
 --
 -- Cut leather rather than cloth, so no movement penalty: a rogue who is slower has already lost the
 -- argument this vest is making.
+local Curve = require("models.curve")
+
 return {
     name = "Second-Chance Vest",
     description = "On a physical attack: deflect it, then recharge.",
@@ -24,6 +26,6 @@ return {
     price = 260,
     unlockQuests = 3,
     traits = { "trait_dodge" },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 } },
-    resist = { physical = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
+    bonus = { defense = Curve.ramp(3, 7) },
+    resist = { physical = Curve.ramp(1) },
 }

@@ -2,6 +2,8 @@
 -- the battle (`maxBonus.health`, folded into Combat.unreservedMax without touching the base stat, so
 -- it never compounds between fights). The extra ceiling is headroom to heal into -- wounds carry
 -- between battles, so equipping it lifts the cap rather than instantly topping you off.
+local Curve = require("models.curve")
+
 return {
     name = "Toughness",
     description = "Raises your maximum health.",
@@ -12,5 +14,5 @@ return {
     class = "fighter",
     price = 220,
     unlockQuests = 3,
-    maxBonus = { health = { 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40 } },
+    maxBonus = { health = Curve.ramp(20) },
 }

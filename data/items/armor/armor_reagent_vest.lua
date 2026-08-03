@@ -20,6 +20,8 @@
 -- is the most committed build in the game and its defense line is deliberately close to nothing --
 -- because a character who has made that commitment should be terrifying and should die to a stiff
 -- breeze.
+local Curve = require("models.curve")
+
 return {
     name = "The Reagent Vest",
     description = "Adjacent consumables hit harder and carry poison.",
@@ -33,5 +35,5 @@ return {
         amountBonus = 3,
         grantTags = { "poison" },
     },
-    bonus = { defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
+    bonus = { defense = Curve.ramp(2) },
 }

@@ -9,6 +9,8 @@
 -- This unplugs one side of that. Against a beast that carries no traits at all it is a sword that has
 -- stopped answering -- the same wager The Unclosing Edge makes, pointed at a different half of the
 -- enemy roster, which is why the two are worth carrying as a pair rather than as alternatives.
+local Curve = require("models.curve")
+
 return {
     name = "Sunderer's Answer",
     description = "Strikes an adjacent foe. On melee hit taken: inflict Sundered on the attacker.",
@@ -24,7 +26,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             fx.damage(fx.target)
         end,

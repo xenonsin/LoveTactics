@@ -18,6 +18,8 @@
 -- `bound = true` (models/item.lua): never moved, stowed, given, sold, or stolen -- only forged. No `price`;
 -- `class = "mage"` still tallies mage growth. Its magic floor climbs with the forge -- the little she lets
 -- anyone see.
+local Curve = require("models.curve")
+
 return {
     name = "The Ledger",
     description = "Do your best four times over, then release what you kept back -- one strike, scaled by your practice.",
@@ -28,7 +30,7 @@ return {
     class = "mage",
     bound = true,
     traits = { "trait_ledger_diligence" },
-    bonus = { magicDamage = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } }, -- the suppressed floor; the little she shows
+    bonus = { magicDamage = Curve.paired(2, 7) }, -- the suppressed floor; the little she shows
     activeAbility = {
         description = "Strikes for heavy magical damage.",
         target = "enemy",
@@ -38,7 +40,7 @@ return {
         cost = { stat = "mana", amount = 16 },
         unlock = { event = "cast", count = 4, text = "Do your best" },
         -- The reveal: power + every MagicDamage stack Diligence banked getting here, minus Magic Defense.
-        damage = { 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36 },
+        damage = Curve.ramp(16, 36),
         effect = function(fx)
             fx.damage(fx.target)
         end,

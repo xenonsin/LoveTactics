@@ -14,6 +14,8 @@
 -- landing blows, or the item is just a bigger health bar with a story attached.
 --
 -- Pairs with anything that swings twice. Beside a bow that fires two shafts it is a heal per shaft.
+local Curve = require("models.curve")
+
 return {
     name = "Ravener's Hide",
     description = "On damage dealt: heal, growing the longer the fight lasts.",
@@ -23,5 +25,5 @@ return {
     tags = { "hide" },
     class = "hunter",
     traits = { "trait_ravenous" },
-    bonus = { defense = { 2, 2, 3, 3, 4, 4, 4, 5, 5, 6, 6 } },
+    bonus = { defense = Curve.ramp(2, 6) },
 }

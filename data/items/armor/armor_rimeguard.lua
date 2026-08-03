@@ -18,6 +18,8 @@
 --
 -- No active, no cost. The knight walks somewhere and stands there, which is the class's whole thesis
 -- rendered as an item.
+local Curve = require("models.curve")
+
 return {
     name = "Rimeguard",
     description = "Enemies standing beside its wearer are slowed to a crawl.",
@@ -29,6 +31,6 @@ return {
     price = 400,
     unlockQuests = 10,
     incense = { hazard = "hazard_rimeguard", radius = 1 },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
+    bonus = { defense = Curve.paired(3, 8) },
     resist = { ice = 4 }, -- the wearer, at least, is used to it
 }

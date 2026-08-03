@@ -1,5 +1,7 @@
 -- A zombie's natural weapon: slow, clumsy, but strong. What a raised corpse swings (Raise Dead,
 -- data/items/ability/ability_raise_dead.lua). `noSteal` -- and pointless to steal besides.
+local Curve = require("models.curve")
+
 return {
     name = "Rotting Claws",
     description = "Mauls an adjacent foe.",
@@ -13,7 +15,7 @@ return {
         range = 1,
         speed = 5, -- slow and lurching
         cost = { stat = "stamina", amount = 5 },
-        damage = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 13, 14 },
+        damage = Curve.ramp(7),
         effect = function(fx)
             fx.damage(fx.target)
         end,

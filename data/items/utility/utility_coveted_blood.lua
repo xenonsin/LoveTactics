@@ -23,6 +23,8 @@
 --
 -- `radius` deliberately does not scale with the forge, on the same principle the Hallowed Censer
 -- follows: an upgrade buys a stronger blessing, never a wider one (see Combat.layIncense).
+local Curve = require("models.curve")
+
 return {
     name = "Coveted Blood",
     description = "Inflicts Exposed on adjacent foes.",
@@ -36,5 +38,5 @@ return {
     unlockQuests = 6,
     -- The cloud: laid around the bearer on every move and re-laid from Combat.rebase for one that
     -- never moves, lifted by owner+id before each re-lay so it walks rather than piling into a wake.
-    incense = { hazard = "hazard_exposure", radius = 1, amount = { 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13 } },
+    incense = { hazard = "hazard_exposure", radius = 1, amount = Curve.paired(8, 13) },
 }

@@ -2,6 +2,8 @@
 -- the bearer's bare-handed strike (`unarmedBonus.damage`, folded onto the hidden unarmed weapon in
 -- models/combat.lua). It does nothing for a crafted blade -- only the fist. Stack it with the other
 -- fist charms (Shadow, Swift, Drunken) to build a monk whose punch outclasses a sword.
+local Curve = require("models.curve")
+
 return {
     name = "Iron Fist",
     description = "Bare-handed strikes hit markedly harder. Does nothing for a weapon.",
@@ -13,5 +15,5 @@ return {
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 180,
     unlockQuests = 3,
-    unarmedBonus = { damage = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 } },
+    unarmedBonus = { damage = Curve.ramp(4) },
 }

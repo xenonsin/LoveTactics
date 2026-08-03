@@ -18,6 +18,8 @@
 -- WHY THE KNIGHT'S: sloth's shelf is the one that "does not kill you, it decides where you stand"
 -- (docs/classes.md). The mirror of that is a knight nobody else gets to decide anything about, and the
 -- Bastion selling immovability to its own is the shelf talking about itself.
+local Curve = require("models.curve")
+
 return {
     name = "Rooted Stance",
     description = "Immune to Stun.",
@@ -32,5 +34,5 @@ return {
     statusImmunity = { "status_stun" },
     -- A token of the drill itself, so the slot is not literally empty in a fight with no stuns in it.
     -- Defense rather than health: the stance is a way of standing, and that is what it improves.
-    bonus = { defense = { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6 } },
+    bonus = { defense = Curve.paired(1, 6) },
 }

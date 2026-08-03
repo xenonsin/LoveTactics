@@ -17,6 +17,8 @@
 -- is the wrong axis for a thing whose whole design is a fixed countdown) -- so what answers it is a
 -- cleanse, and cleansing is a turn the enemy healer spends not healing. That is the real payoff even
 -- when the mark never comes due.
+local Curve = require("models.curve")
+
 return {
     name = "Knell-Point",
     description = "Inflicts Knell on the far tile.",
@@ -34,7 +36,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Well under an iron spear's. A weapon that also kills outright must not also hit hard.
-        damage = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        damage = Curve.paired(3, 8),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The far tile is the aimed cell continued one step along the thrust's own vector -- the

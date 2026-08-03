@@ -2,6 +2,8 @@
 -- the blow lands and the striker immediately slips back a tile (fx.retreat). Never standing where you
 -- swung is the whole hit-and-run doctrine -- wrath's aggression carried on the hunter's feet, so a
 -- charge answered finds nothing where the charger was.
+local Curve = require("models.curve")
+
 return {
     name = "Harrying Strike",
     description = "Strikes a foe, then slips back a tile out of reach.",
@@ -18,7 +20,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             fx.damage(fx.target)
             fx.retreat(fx.user, 1)

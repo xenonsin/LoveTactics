@@ -2,6 +2,8 @@
 -- bare-handed strike an extra hit (`unarmedBonus.hits`, counted in the unarmed effect in
 -- data/items/weapon/weapon_unarmed.lua) -- the fist lands twice per strike. Only the fist is doubled, never a
 -- crafted weapon. Stack it with Iron/Drunken Fist and each of the two hits carries the added Power.
+local Curve = require("models.curve")
+
 return {
     name = "Swift Fist",
     description = "Bare-handed strikes land twice. Does nothing for a weapon.",
@@ -13,5 +15,5 @@ return {
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 300,
     unlockQuests = 6,
-    unarmedBonus = { hits = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
+    unarmedBonus = { hits = Curve.ramp(1) },
 }

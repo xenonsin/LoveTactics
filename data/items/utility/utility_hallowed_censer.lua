@@ -8,6 +8,8 @@
 --
 -- No `class`/`price`: no vendor stocks or buys it. Forged at the Blacksmith, its ward against magic
 -- climbing with the level.
+local Curve = require("models.curve")
+
 return {
     name = "Hallowed Censer",
     description = "You and adjacent allies heal a little each tick.",
@@ -17,5 +19,5 @@ return {
     tags = { "signature" },
     bound = true,
     traits = { "trait_sanctified_presence" },
-    bonus = { magicDefense = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } }, -- levels 0..10
+    bonus = { magicDefense = Curve.paired(2, 7) }, -- levels 0..10
 }

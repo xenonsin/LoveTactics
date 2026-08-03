@@ -18,6 +18,8 @@
 --
 -- Knell is deliberately not `resistible` (see its header: the resist system buys duration, and duration is
 -- the wrong axis for a fixed countdown), so a warded body is marked exactly as surely as an unwarded one.
+local Curve = require("models.curve")
+
 return {
     name = "The Knell-Shaft",
     description = "Channeled: inflicts Knell.",
@@ -37,7 +39,7 @@ return {
         windup = 2,
         -- The lowest curve in the family by a wide margin. A weapon that kills outright must not also
         -- hit hard, and this one's damage exists mostly so the shot is not literally nothing.
-        damage = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        damage = Curve.paired(3, 8),
         effect = function(fx)
             local t = fx.target
             if not t then return end

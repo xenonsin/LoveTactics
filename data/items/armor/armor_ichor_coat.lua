@@ -15,6 +15,8 @@
 -- is applying the setup for somebody else's payoff, without spending a turn.
 --
 -- utility_spiteful_ichor is the charm form.
+local Curve = require("models.curve")
+
 return {
     name = "Ichor Coat",
     description = "Melee attackers are Poisoned by the blood they draw.",
@@ -25,5 +27,5 @@ return {
     class = "alchemist",
     traits = { "trait_spiteful_ichor" },
     bonus = { defense = { 5, 5, 6, 7, 7, 8, 8, 9, 10, 10, 11 } },
-    resist = { poison = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 } },
+    resist = { poison = Curve.ramp(3, 7) },
 }

@@ -2,6 +2,8 @@
 -- your line -- takes lightning damage (reaping the bonus on any Wet target, so rain it first) and is
 -- Stunned (data/status/stun.lua), shoved down the turn order. The lightning counterpart to Blizzard;
 -- a ground-target area cast.
+local Curve = require("models.curve")
+
 return {
     name = "Thunder Storm",
     description = "Inflicts Stun in area.",
@@ -20,7 +22,7 @@ return {
         speed = 5,
         windup = 6, -- mirrors Blizzard's wind-up
         cost = { stat = "mana", amount = 16 },
-        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 },
+        damage = Curve.ramp(6),
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

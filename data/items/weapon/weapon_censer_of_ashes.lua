@@ -15,6 +15,8 @@
 -- And unlike the Blessing its counterpart hands out, Poison DECLARES `lingers` -- so what this cloud
 -- gives is not a leash but a wound: it travels with the victim and keeps burning long after they have
 -- fled it. You can walk out of a blessing. You cannot walk out of a lungful.
+local Curve = require("models.curve")
+
 return {
     name = "Censer of Ashes",
     description = "Inflicts Poison on adjacent foes.",
@@ -28,14 +30,14 @@ return {
     incense = {
         hazard = "hazard_choking",
         radius = 1,
-        amount = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        amount = Curve.paired(3, 8),
     },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, -- as feeble as its counterpart: the smoke is the weapon
+        damage = Curve.paired(4, 9), -- as feeble as its counterpart: the smoke is the weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

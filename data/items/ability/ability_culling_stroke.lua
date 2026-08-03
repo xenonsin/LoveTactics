@@ -19,6 +19,8 @@
 -- neighbouring cells culls at nearly twice the threshold of one holding a single blade -- which is the
 -- Colosseum's actual doctrine (bring everything, swing all of it) as a number, and a real competitor
 -- for the cells Dual Wield and Cleave already want.
+local Curve = require("models.curve")
+
 return {
     name = "The Culling Stroke",
     description = "Kills outright below a health threshold -- and a kill hands the turn straight back.",
@@ -35,7 +37,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
+        damage = Curve.ramp(10),
         adjacencyScaling = { type = "weapon" },
         effect = function(fx)
             local hp = fx.target.char and fx.target.char.stats and fx.target.char.stats.health

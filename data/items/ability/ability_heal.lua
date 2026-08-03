@@ -1,6 +1,8 @@
 -- A restorative ability: channels light to mend an ally at range for a Power-scaled heal.
 -- Reuses the shared fx.heal helper (see data/items/consumable/consumable_healing_potion.lua), but as a
 -- repeatable mana spell rather than a one-shot consumable -- the priest's signature.
+local Curve = require("models.curve")
+
 return {
     name = "Heal",
     description = "Heals a nearby ally.",
@@ -16,7 +18,7 @@ return {
         range = 3,
         speed = 3,
         cost = { stat = "mana", amount = 10 },
-        healing = { 24, 26, 29, 31, 34, 36, 38, 41, 43, 46, 48 }, -- HP restored; Power is the balance knob for the heal
+        healing = Curve.ramp(24), -- HP restored; Power is the balance knob for the heal
         -- How a unit that isn't being driven by a player uses this (models/ai.lua). The rule travels
         -- WITH the item: drop Heal into any NPC's grid and it starts mending its friends, with no
         -- edit to that character's blueprint. `urgent` outranks the ordinary business of the turn,

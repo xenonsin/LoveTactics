@@ -16,6 +16,8 @@
 -- so the cast hands back a point on the way out. Deliberate, and the same rebate Flurry takes -- a
 -- crusade that spends itself empty on one blow and is credited nothing for the mercy in it would be
 -- teaching the player not to stand near their own allies.
+local Curve = require("models.curve")
+
 return {
     name = "Reckoning",
     description = "Consume all Zeal for a holy blow, +3 damage per point, healing adjacent allies as much as it dealt.",
@@ -32,7 +34,7 @@ return {
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 },
+        damage = Curve.ramp(6, 16),
         unlock = {
             when = function(unit) return require("models.combat").chargePool(unit, "zeal") >= 1 end,
             text = "Bank Zeal by felling and healing",

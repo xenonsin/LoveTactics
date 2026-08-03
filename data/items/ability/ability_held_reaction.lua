@@ -20,6 +20,8 @@
 -- bomb or elixir in the neighbouring cells feeds the mixture, so a Held Reaction in the middle of a
 -- satchel loadout is enormous and one tucked next to two knives is not. That is the alchemist's grid
 -- doing exactly what the class says it does -- borrowing from what is beside it.
+local Curve = require("models.curve")
+
 return {
     name = "The Held Reaction",
     description = "Mixes a blast that grows every turn it is held -- and goes off in hand if held too long.",
@@ -45,7 +47,7 @@ return {
         -- `windup = { min = 0, max = 4 }` before the two fields folded into one -- same tell, said once.)
         windup = { min = 2, max = 6 },
         cost = { stat = "mana", amount = 12 },
-        damage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
+        damage = Curve.ramp(10),
         aoe = { radius = 1, shape = "square" },
         adjacencyScaling = { type = "consumable" },
         effect = function(fx)

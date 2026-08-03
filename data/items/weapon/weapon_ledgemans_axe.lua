@@ -12,6 +12,8 @@
 --
 -- Note it is the tiles that decide, not the sides: your own knight standing at the edge of the arc gets
 -- thrown two paces exactly as readily. Aim it along the enemy rank, not across a melee.
+local Curve = require("models.curve")
+
 return {
     name = "Ledgeman's Axe",
     description = "Cleaves a wide arc: Knockback 2 on the outer tiles, the centre left standing alone.",
@@ -27,7 +29,7 @@ return {
         minRange = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 11 },
-        damage = { 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10 },
+        damage = Curve.ramp(4, 10),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

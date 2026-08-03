@@ -12,6 +12,8 @@
 --
 -- Cloth, so it costs a square of pace -- and the hood is the one item on this shelf that does not mind,
 -- since the turn it buys back is spent standing somewhere nobody is looking.
+local Curve = require("models.curve")
+
 return {
     name = "The Unlit Hood",
     description = "On surviving a hit: turn Invisible until your next turn.",
@@ -21,5 +23,5 @@ return {
     tags = { "cloth" },
     class = "rogue",
     traits = { "trait_vanishing_act" },
-    bonus = { defense = { 2, 2, 3, 3, 4, 4, 4, 5, 5, 6, 6 }, movement = -1 },
+    bonus = { defense = Curve.ramp(2, 6), movement = -1 },
 }

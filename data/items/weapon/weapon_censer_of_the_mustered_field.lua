@@ -10,6 +10,8 @@
 --
 -- Which makes it the aggressive censer, and the one that wants the priest at the front. The blessing
 -- censer rewards allies who come to you; this rewards you going to them.
+local Curve = require("models.curve")
+
 return {
     name = "Censer of the Mustered Field",
     description = "Braces adjacent allies and inflicts Exposed on adjacent foes.",
@@ -23,14 +25,14 @@ return {
     incense = {
         hazard = "hazard_muster",
         radius = 1, -- the 3x3 the priest stands in the middle of; radius never scales with the forge
-        amount = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        amount = Curve.paired(3, 8),
     },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, -- feeble on purpose: the smoke is the weapon
+        damage = Curve.paired(4, 9), -- feeble on purpose: the smoke is the weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

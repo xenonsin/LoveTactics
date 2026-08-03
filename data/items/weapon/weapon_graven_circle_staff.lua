@@ -17,6 +17,8 @@
 -- On the machinery: `waitBehavior.hazard` plants rather than carries. It is deliberately NOT incense --
 -- a censer's cloud is lifted and laid again wherever the bearer walks (Combat.layIncense), and that
 -- lifting is precisely what separates the two families (docs/weapons.md). A staff plants and leaves it.
+local Curve = require("models.curve")
+
 return {
     name = "Staff of the Graven Circle",
     description = "Replaces Wait with Focus: recover mana and cut sigils into the ground, where you cast and move for less.",
@@ -27,7 +29,7 @@ return {
     class = "mage",
     waitBehavior = {
         kind = "focus",
-        mana = { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 },
+        mana = Curve.ramp(7, 17),
         speed = 10,
         -- The 3x3 the mage stands in the middle of. `radius` does not scale with the forge, on the same
         -- principle a censer's does not (models/item.lua): an upgrade buys a deeper working, never a
@@ -39,7 +41,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        damage = Curve.paired(4, 9),
         effect = function(fx)
             fx.damage(fx.target)
         end,

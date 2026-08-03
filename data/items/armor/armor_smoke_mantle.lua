@@ -11,6 +11,8 @@
 -- One interaction worth knowing before you buy it: a Marked ninja cannot vanish at all. status_mark
 -- `forbids` status_invisible, so a hunter who paints you shuts the mantle off until somebody cleanses
 -- it. That is the counterplay, and it is deliberately a thing the enemy has to spend an action on.
+local Curve = require("models.curve")
+
 return {
     name = "Smoke Mantle",
     description = "If you drew no blood last turn, you begin this one Invisible.",
@@ -22,6 +24,6 @@ return {
     discipline = "ninja",
     price = 420,
     unlockQuests = 10,
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
+    bonus = { defense = Curve.paired(3, 8) },
     traits = { "trait_smoke_mantle" },
 }

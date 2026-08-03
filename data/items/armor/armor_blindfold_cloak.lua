@@ -15,6 +15,8 @@
 -- exactly why it is the gluttony line that sells it. The appetite here is for the enemy's turn.
 --
 -- Cloth, so it costs a square of pace.
+local Curve = require("models.curve")
+
 return {
     name = "Blindfold Cloak",
     description = "Carries Darkness with you.",
@@ -24,5 +26,5 @@ return {
     tags = { "cloth", "dark" },
     class = "hunter",
     incense = { hazard = "hazard_darkness", radius = 1 },
-    bonus = { defense = { 2, 2, 3, 3, 4, 4, 4, 5, 5, 6, 6 }, movement = -1 },
+    bonus = { defense = Curve.ramp(2, 6), movement = -1 },
 }

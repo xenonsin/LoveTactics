@@ -24,6 +24,8 @@
 -- any mana in the price makes the cast sorcery (docs/weapons.md) -- so a silenced knight cannot give
 -- it and is left holding an ordinary, very good cuirass. That is the cap, and it is one the enemy can
 -- reach for.
+local Curve = require("models.curve")
+
 return {
     name = "The Halting Rank",
     description = "Inflicts Halt on adjacent foes.",
@@ -35,8 +37,8 @@ return {
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 700,
     unlockQuests = 10,
-    bonus = { defense = { 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18 }, movement = -2 },
-    resist = { physical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 }, impact = { 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5 } },
+    bonus = { defense = Curve.ramp(9), movement = -2 },
+    resist = { physical = Curve.ramp(3), impact = Curve.ramp(2, 5) },
     activeAbility = {
         target = "tile",
         allowOccupied = true,

@@ -5,6 +5,8 @@
 -- loadout around it: the charm is dead weight alone, and a bomb wants it as a neighbor.
 --
 -- See Combat.auraApplies / adjacencyAura and the `amountBonus` fold in Combat.useItem's fx.amount.
+local Curve = require("models.curve")
+
 return {
     name = "Alchemic Mastery",
     description = "Adjacent consumables hit harder.",
@@ -17,6 +19,6 @@ return {
     unlockQuests = 3,
     aura = {
         appliesTo = { "consumable" }, -- only the throwables and potions it sits beside
-        amountBonus = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 },              -- added to the neighbor consumable's ability magnitude
+        amountBonus = Curve.ramp(5),              -- added to the neighbor consumable's ability magnitude
     },
 }

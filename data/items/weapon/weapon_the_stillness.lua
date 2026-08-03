@@ -14,6 +14,8 @@
 -- exactly as happily, and the tile it lands on is by definition the tile directly in front of the
 -- greatswordsman -- which is where the rest of the party was probably heading. Swing it at a corridor,
 -- not into a melee your friends are already in.
+local Curve = require("models.curve")
+
 return {
     name = "The Stillness",
     description = "Channeled: leaves Stillness.",
@@ -32,7 +34,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's: the ground is the rest of the price, and it is worth a lot.
-        damage = { 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38 },
+        damage = Curve.ramp(18, 38),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             -- Laid on the aimed CELL rather than on whoever was standing in it, which is the whole

@@ -16,6 +16,8 @@
 --
 -- Unsided, as ground generally is: your own hidden rogue standing in it is exactly as visible. An archer
 -- and an assassin in the same party have to talk about where this goes.
+local Curve = require("models.curve")
+
 return {
     name = "The Witchlight Bow",
     description = "Leaves Witchlight where it lands.",
@@ -33,7 +35,7 @@ return {
         speed = 3,
         cost = { stat = "stamina", amount = 7 },
         -- Under an iron bow's: the light is the weapon and the arrow is how it gets delivered.
-        damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8 },
+        damage = Curve.ramp(3, 8),
         effect = function(fx)
             fx.damage(fx.target)
             -- Laid on the aimed CELL rather than on the body, which is the whole point: the light stays

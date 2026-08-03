@@ -9,6 +9,8 @@
 -- Heavy plate, and it pays the tier (-2 movement, docs/classes.md). A Vanguard is slow. It has to be:
 -- the whole kit is about deciding where somebody else stands, and a discipline that could also outrun
 -- them would not be a breach, it would be a chase.
+local Curve = require("models.curve")
+
 return {
     name = "Breaker's Harness",
     description = "Stuns any foe your shove slams into a wall or another body.",
@@ -20,6 +22,6 @@ return {
     discipline = "vanguard",
     price = 440,
     unlockQuests = 6,
-    bonus = { defense = { 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11 }, movement = -2 },
+    bonus = { defense = Curve.paired(6, 11), movement = -2 },
     traits = { "trait_breakers_harness" },
 }

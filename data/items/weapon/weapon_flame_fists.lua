@@ -2,6 +2,8 @@
 -- Fire Elemental both an attack and an initiative (the average ability speed) without "holding" a
 -- crafted item. `noSteal` because a pickpocket cannot lift the fire off a creature made of it.
 -- Given to the blueprint via startingItems.
+local Curve = require("models.curve")
+
 return {
     name = "Flame Fists",
     description = "Scorches an adjacent foe with fire.",
@@ -15,7 +17,7 @@ return {
         range = 1,
         speed = 2,
         cost = { stat = "stamina", amount = 5 },
-        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 },
+        damage = Curve.ramp(6),
         effect = function(fx)
             fx.damage(fx.target)
         end,

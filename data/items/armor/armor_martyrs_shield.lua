@@ -16,6 +16,8 @@
 --
 -- Deliberately spread by the STANCE rather than sworn on one ally. A knight has to decide where to stand
 -- and then spend the turn, which is two commitments, and both of them are visible to the enemy.
+local Curve = require("models.curve")
+
 return {
     name = "The Martyr's Shield",
     description = "Replaces Wait with Defend, taking half of every wound your neighbours suffer.",
@@ -24,12 +26,12 @@ return {
     type = "armor",
     tags = { "shield", "holy" },
     class = "knight",
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 } },
+    bonus = { defense = Curve.ramp(3, 7) },
     resist = { physical = { 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5 } },
     waitBehavior = {
         kind = "defend",
         speed = 3,
-        defense = { 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12 },
+        defense = Curve.paired(7, 12),
         -- `coversStatus`: handed to every adjacent ally rather than to the holder (Combat.defend).
         coversStatus = "status_shared_burden",
     },

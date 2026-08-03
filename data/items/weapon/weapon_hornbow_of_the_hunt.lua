@@ -14,6 +14,8 @@
 -- full in the flank. Mechanically it inverts the usual pull of a ranged weapon -- most archers creep
 -- to the edge of their band to stay in range, and this one wants the whole field between you and the
 -- kill. Its range 5 stops being a safety margin and becomes the damage stat.
+local Curve = require("models.curve")
+
 return {
     name = "Hornbow of the Hunt",
     description = "Increase damage for each tile past point-blank.",
@@ -32,7 +34,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "stamina", amount = 10 },
-        damage = { 14, 15, 17, 18, 20, 21, 22, 24, 25, 27, 28 },
+        damage = Curve.ramp(14),
         effect = function(fx)
             -- Tiles past the point-blank band (minRange 2), each worth a fifth of the shot's power.
             -- Taken off fx.amount rather than a flat number, so the reward climbs with the forge just

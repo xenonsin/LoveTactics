@@ -12,6 +12,8 @@
 -- Note it lights up whoever it HITS, so the bow's own problem is unchanged -- it cannot target something
 -- already unseen to shine a light on it. What it does is stop somebody vanishing afterwards, which in
 -- practice means firing at the assassin before it goes and keeping it visible for the rest of the party.
+local Curve = require("models.curve")
+
 return {
     name = "Limning Bow",
     description = "Inflicts Limned.",
@@ -30,7 +32,7 @@ return {
         requiresSight = true,
         speed = 2,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9 }, -- a shade under an iron bow's: the light is the rest
+        damage = Curve.ramp(4, 9), -- a shade under an iron bow's: the light is the rest
         effect = function(fx)
             -- The light rides the shaft: it marks whoever the arrow hits, and only a survivor -- the
             -- .alive guard the carried path enforces for free.

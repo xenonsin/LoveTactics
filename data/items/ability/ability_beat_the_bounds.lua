@@ -14,6 +14,8 @@
 -- Field-wide rather than aimed, which is why it costs what it does and why its damage is small: it is a
 -- collection, not a strike. Against a line that has kept out of the weather it does nothing at all, and
 -- that is the counterplay -- the answer to a warden is dry ground.
+local Curve = require("models.curve")
+
 return {
     name = "Beat the Bounds",
     description = "Inflicts Root on every enemy standing in a hazard, and deals damage.",
@@ -30,7 +32,7 @@ return {
         range = 0,
         speed = 5,
         cost = { stat = "stamina", amount = 9 },
-        damage = { 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10 },
+        damage = Curve.ramp(4, 10),
         description = "Inflicts Root on and damages every enemy standing in a hazard, wherever it is and whoever laid it.",
         effect = function(fx)
             local Hazard = require("models.hazard")

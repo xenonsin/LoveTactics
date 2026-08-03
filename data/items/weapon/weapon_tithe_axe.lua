@@ -8,6 +8,8 @@
 --
 -- Deliberately the WEAKEST axe on the shelf per target. The coin has to be the reason, or it is simply a
 -- better hatchet -- and a fighter who wants the crowd dead faster already has the Wedge for that.
+local Curve = require("models.curve")
+
 return {
     name = "Tithe-Axe",
     description = "On damage dealt: gain gold.",
@@ -26,7 +28,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Under the iron axe's, which is already under a sword's. The tithe is the rest of the weapon.
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        damage = Curve.paired(4, 9),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

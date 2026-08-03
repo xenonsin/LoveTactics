@@ -10,6 +10,8 @@
 -- the missing-health scaling that this reads live off her current/max at the moment it resolves.
 --
 -- No `class`/`price`: an enemy's kit, never a shelf item; only its base value is ever seen.
+local Curve = require("models.curve")
+
 return {
     name = "The Only Hour",
     description = "Increase damage by 1% per 1% of the wielder's missing health.",
@@ -23,7 +25,7 @@ return {
         speed = 6,             -- heavy, and slow to come around again
         windup = 2,            -- the two-tick tell: brace, burst, or break it
         cost = { stat = "stamina", amount = 8 },
-        damage = { 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36 }, -- the base, at full health; scaled up below
+        damage = Curve.ramp(16, 36), -- the base, at full health; scaled up below
         effect = function(fx)
             local hp = fx.user.char.stats.health
             local ratio = (hp.max and hp.max > 0) and (hp.current / hp.max) or 1

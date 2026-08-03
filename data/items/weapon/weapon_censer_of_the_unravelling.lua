@@ -15,6 +15,8 @@
 -- Read against data/items/weapon/weapon_unravelling_shaft.lua, which lays the same ground from five tiles
 -- away and never has to stand in it. That one is safe and static; this one is mobile and suicidal, and
 -- the difference is the whole reason both are worth having.
+local Curve = require("models.curve")
+
 return {
     name = "Censer of the Unravelling",
     description = "Inflicts Unravelled on adjacent units, you included.",
@@ -26,14 +28,14 @@ return {
     incense = {
         hazard = "hazard_unravelling",
         radius = 1,
-        amount = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        amount = Curve.paired(3, 8),
     },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        damage = Curve.paired(4, 9),
         effect = function(fx)
             fx.damage(fx.target)
         end,

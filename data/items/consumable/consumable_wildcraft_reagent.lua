@@ -11,6 +11,8 @@
 -- the same vial as quicksand does, because the interesting decision is WHEN to spend a turn brewing and
 -- what to throw away to carry it -- not which of nine colours the cauldron produced. If the shelf ever
 -- wants elemental reagents they are cheap to add; what would not be cheap is un-adding them.
+local Curve = require("models.curve")
+
 return {
     name = "Wildcraft Reagent",
     description = "Heals an ally and cleanses their afflictions.",
@@ -25,7 +27,7 @@ return {
         range = 1,
         speed = 2,
         consumesItem = true,
-        healing = { 18, 18, 20, 20, 22, 22, 24, 24, 26, 26, 28 },
+        healing = Curve.paired(18, 28),
         description = "Heals an ally and cleanses their afflictions.",
         effect = function(fx)
             fx.heal(fx.target, fx.amount)

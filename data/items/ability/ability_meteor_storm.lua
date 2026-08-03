@@ -11,6 +11,8 @@
 -- further out -- exactly the 7x7 that `aoe` (radius 3, square) paints as the threatened zone.
 -- `aoe` is set only for that preview; the strikes pick their own cells below, and off-map picks are
 -- harmlessly skipped by fx.unitAt / placeHazard.
+local Curve = require("models.curve")
+
 return {
     name = "Meteor Storm",
     description = "Calls six meteors onto random tiles in a wide zone, each bursting over a 3x3 block and leaving fire.",
@@ -29,7 +31,7 @@ return {
         speed = 7, -- the most punishing spell, and the slowest to come around again
         windup = 8, -- the longest wind-up: the widest blast telegraphs earliest
         cost = { stat = "mana", amount = 22 },
-        damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- per-burst damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = Curve.ramp(8), -- per-burst damage = power + the caster's MagicDamage, minus MagicDefense
         aoe = { radius = 3, shape = "square" }, -- paints the 7x7 threatened zone (see note above)
         effect = function(fx)
             -- The 5x5 block of candidate impact points around the aim point.

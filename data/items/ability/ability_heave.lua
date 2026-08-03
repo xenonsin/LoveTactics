@@ -41,6 +41,8 @@
 --
 -- The Demon Champion is one USER of this, not its owner: its AI throws an adjacent Bomblet at your line
 -- (data/characters/character_demon_champion.lua). It is a normal, grantable ability everywhere else.
+local Curve = require("models.curve")
+
 return {
     name = "Heave",
     description = "Grabs an adjacent body, banner, barrel or trap, then throws it to a tile up to three away. A collision hurts both sides.",
@@ -60,7 +62,7 @@ return {
         minRange = 1,          -- must pick a neighbor holding something, never the thrower's own tile
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- the collision's bite (only a blocked throw lands it)
+        damage = Curve.ramp(6), -- the collision's bite (only a blocked throw lands it)
         effect = function(fx)
             -- A body first: it is the thing standing ON the tile, and a unit and an object can never
             -- share one, so the order is a preference in name only.

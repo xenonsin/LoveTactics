@@ -16,6 +16,8 @@
 -- No `class`, no `price`, `noSteal`: you took it off her, and nothing takes it back. The FLAVOR carries
 -- this general's fragment of the Gate Below's location (docs/item-text.md: story, not a rule). The Gate is
 -- keyed off the QUEST finished, never off this item (questGate in models/quest.lua).
+local Curve = require("models.curve")
+
 return {
     name = "Bottomless Purse",
     description = "Strikes an adjacent foe and lifts an item off it into your hands.",
@@ -25,7 +27,7 @@ return {
     type = "utility",
     tags = { "relic" },
     noSteal = true, -- you took it off her; nothing takes it back
-    bonus = { defense = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } },
+    bonus = { defense = Curve.paired(2, 7) },
     activeAbility = {
         description = "Lifts an item off an adjacent foe and takes it for your own.",
         target = "enemy",

@@ -1,3 +1,5 @@
+local Curve = require("models.curve")
+
 return {
     name = "Iron Bow",
     description = "Fires an arrow. Cannot shoot an adjacent foe.",
@@ -16,7 +18,7 @@ return {
         requiresSight = true, -- an arrow needs a clear line: terrain cover blocks the shot
         speed = 2, -- lighter/faster than the sword
         cost = { stat = "stamina", amount = 6 },
-        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 },
+        damage = Curve.ramp(5),
         effect = function(fx)
             fx.damage(fx.target)
         end,

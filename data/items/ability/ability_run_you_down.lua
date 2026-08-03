@@ -8,6 +8,8 @@
 -- outcome, and one the damage preview shows coming.
 --
 -- No `class`/`price`: an enemy's kit, never a shelf item; only its base value is ever seen.
+local Curve = require("models.curve")
+
 return {
     name = "Run You Down",
     description = "Hooks a distant foe, wounds it, and drags it back into reach.",
@@ -22,7 +24,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
+        damage = Curve.ramp(10),
         effect = function(fx)
             fx.damage(fx.target)
             if not fx.target.alive then return end

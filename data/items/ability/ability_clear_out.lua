@@ -10,6 +10,8 @@
 -- This is also the ability Rowan hands the player mid-fight in the prologue's village defense, and
 -- the lesson it teaches is the ring: stand BETWEEN two foes and both fall at once
 -- (data/tutorials/village.lua). Its level-0 damage is tuned so that one clear out kills an imp outright.
+local Curve = require("models.curve")
+
 return {
     name = "Clear Out",
     description = "Spins on the spot, cutting every foe standing next to you.",
@@ -33,8 +35,7 @@ return {
         support = false,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        --        level:  0  1  2  3  4  5  6  7  8  9  10
-        damage = { 6, 7, 8, 8, 9, 10, 11, 12, 12, 13, 14 },
+        damage = Curve.ramp(6, 14),
         aoe = { shape = "diamond", radius = 1 }, -- the four tiles around you (and the one you stand on)
         effect = function(fx)
             -- Foes only. The ring is centred on the caster and every ally at their shoulder stands

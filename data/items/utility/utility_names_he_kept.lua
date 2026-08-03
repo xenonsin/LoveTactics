@@ -17,6 +17,8 @@
 -- The number lives in `flavor`, never in `description` (docs/item-text.md): a player who reads only
 -- descriptions must lose no mechanical information, and this is not mechanical information. It is
 -- the whole line, sitting in a tooltip, four quests early.
+local Curve = require("models.curve")
+
 return {
     name = "The Names He Kept",
     description = "Grants bonus defense and stamina.",
@@ -26,7 +28,6 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
-    --                       level:  0  1  2  3  4  5  6  7  8  9  10
-    bonus = { defense = { 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6 },
-              stamina = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
+    bonus = { defense = Curve.ramp(1, 6),
+              stamina = Curve.paired(3, 8) },
 }

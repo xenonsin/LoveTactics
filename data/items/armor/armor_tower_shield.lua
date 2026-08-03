@@ -12,6 +12,8 @@
 -- anything mobile. A knight who plants this and then needs to be somewhere else has lost two turns.
 --
 -- The root is on the HOLDER only. It is a self-inflicted price, not a zone.
+local Curve = require("models.curve")
+
 return {
     name = "Tower Shield",
     description = "Replaces Wait with Defend for a heavy brace, but inflicts Root on you until it lifts.",
@@ -22,14 +24,14 @@ return {
     class = "knight",
     price = 300,
     unlockQuests = 3,
-    bonus = { defense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
-    resist = { physical = { 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4 } },
+    bonus = { defense = Curve.paired(4, 9) },
+    resist = { physical = Curve.paired(2) },
     -- Well above a buckler's 6-11, which is what the root buys. `status` is applied to the holder on
     -- every Defend (Combat.defend).
     waitBehavior = {
         kind = "defend",
         speed = 3,
-        defense = { 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 },
+        defense = Curve.ramp(11, 21),
         status = "status_root",
     },
 }

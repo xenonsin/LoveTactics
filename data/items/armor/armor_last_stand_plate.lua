@@ -17,6 +17,8 @@
 -- steel on it, because a Last Stand that triggered on a stiff breeze would trigger in every fight.
 --
 -- utility_veterans_resolve grants the same rule from a cell.
+local Curve = require("models.curve")
+
 return {
     name = "Last Stand Plate",
     description = "On first dropping below 40% health: raise a barrier and gain +4 Damage this battle.",
@@ -26,6 +28,6 @@ return {
     tags = { "heavy", "plate" },
     class = "fighter",
     traits = { "trait_last_stand" },
-    bonus = { defense = { 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18 }, movement = -2 },
-    resist = { physical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
+    bonus = { defense = Curve.ramp(9), movement = -2 },
+    resist = { physical = Curve.ramp(3) },
 }

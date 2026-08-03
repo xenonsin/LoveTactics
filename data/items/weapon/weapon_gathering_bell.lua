@@ -15,6 +15,8 @@
 --
 -- The obvious way to lose with it: dragging a champion into the middle of your own squishy line, which
 -- is precisely the thing every other mace on the shelf exists to prevent.
+local Curve = require("models.curve")
+
 return {
     name = "The Gathering Bell",
     description = "Hooks the target and drags them a tile toward you rather than driving them away.",
@@ -30,7 +32,7 @@ return {
         range = 2, -- a hook has reach the family does not: it has to be able to fetch something
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = { 7, 8, 9, 9, 10, 11, 12, 13, 13, 14, 15 },
+        damage = Curve.ramp(7, 15),
         effect = function(fx)
             fx.damage(fx.target)
             -- Pulled AFTER the blow rather than folded into it, unlike every shove on the shelf. A shove

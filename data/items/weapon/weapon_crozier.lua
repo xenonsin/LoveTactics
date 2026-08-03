@@ -10,6 +10,8 @@
 -- Which is the priest's whole argument in one item. A mage's staff answers a mage's problem: MY mana ran
 -- out. This one answers the party's, and it is worth a turn only if you spent the turn before it
 -- standing somewhere useful.
+local Curve = require("models.curve")
+
 return {
     name = "Crozier",
     description = "Replaces Wait with Focus: end your turn to recover mana, and give some to adjacent allies.",
@@ -25,8 +27,8 @@ return {
     -- the neighbour draws is always less than what the bearer keeps.
     waitBehavior = {
         kind = "focus",
-        mana = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 },
-        covers = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        mana = Curve.ramp(8, 18),
+        covers = Curve.paired(4, 9),
         speed = 10,
     },
     activeAbility = {
@@ -34,7 +36,7 @@ return {
         range = 1, -- adjacent only: a crozier is not a wand
         speed = 4,
         cost = { stat = "stamina", amount = 6 }, -- stamina, so a cornered priest can always swing it
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, -- feeble on purpose: the swap is the weapon
+        damage = Curve.paired(4, 9), -- feeble on purpose: the swap is the weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

@@ -16,6 +16,8 @@
 --
 -- The rebound is not a counter and is priced nowhere: nothing is spent, nothing escalates, and the knight
 -- does not swing. It is the attack, arriving at the wrong address.
+local Curve = require("models.curve")
+
 return {
     name = "Reflecting Shield",
     description = "Replaces Wait with Defend and gains Reflect Steel.",
@@ -24,14 +26,14 @@ return {
     type = "armor",
     tags = { "shield" },
     class = "knight",
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 } },
-    resist = { physical = { 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4 } },
+    bonus = { defense = Curve.ramp(3, 7) },
+    resist = { physical = Curve.paired(1, 4) },
     waitBehavior = {
         kind = "defend",
         speed = 3,
         -- Under a buckler's, and deliberately: the mirror is the sale, and a shield that braced deeply
         -- AND reflected would simply retire the rest of the rack.
-        defense = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 },
+        defense = Curve.paired(5),
         status = "status_reflect_physical",
     },
 }

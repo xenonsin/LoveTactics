@@ -15,6 +15,8 @@
 --
 -- Ground that walks, so the square is wherever its wearer is standing and the wearer is by definition
 -- in the middle of it. There is no version of this item that is safe to use.
+local Curve = require("models.curve")
+
 return {
     name = "The Muster Cuirass",
     description = "Braces allies beside its wearer, and leaves enemies beside them open to piercing.",
@@ -26,5 +28,5 @@ return {
     price = 440,
     unlockQuests = 10,
     incense = { hazard = "hazard_muster", radius = 1 },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
+    bonus = { defense = Curve.paired(3, 8) },
 }

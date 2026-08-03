@@ -2,6 +2,8 @@
 -- -- the signal that sets the ground off. Called on a tile, it erupts in a 3x3 of fire, the demolition
 -- the Saboteur has been arranging. Greed's guile with envy's chemistry: she does not fight the room,
 -- she decides the moment the room stops being safe.
+local Curve = require("models.curve")
+
 return {
     name = "Ghost Kit",
     description = "Sets off a demolition on a tile: a 3x3 burst of fire on the ground you chose.",
@@ -21,7 +23,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
         aoe = { radius = 1, shape = "square" },
-        damage = { 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 },
+        damage = Curve.ramp(9, 19),
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 if u.side ~= fx.user.side then fx.damage(u, { tags = { "fire" } }) end

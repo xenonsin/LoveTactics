@@ -19,6 +19,8 @@
 --
 -- `bound = true` (models/item.lua): never moved, stowed, given, sold, or stolen -- only forged. No `price`;
 -- `class = "alchemist"` still tallies alchemist growth.
+local Curve = require("models.curve")
+
 return {
     name = "Aqua Vitae",
     description = "Give three times, then grant the party a copy of your strongest -- a gift, kept for no one.",
@@ -28,7 +30,7 @@ return {
     tags = { "signature", "arcane" },
     class = "alchemist",
     bound = true,
-    bonus = { magicDamage = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } },
+    bonus = { magicDamage = Curve.paired(2, 7) },
     activeAbility = {
         description = "Summons a copy of your strongest ally, fighting at your side. It is not fragile.",
         target = "self",

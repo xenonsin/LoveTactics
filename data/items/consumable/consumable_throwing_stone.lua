@@ -4,6 +4,8 @@
 -- it is the free target for the Crucible's charms. An Alchemic Mastery or Long-Fuse Reagent beside a
 -- stack of stones turns a trivial throw into a cheap, repeatable poke -- and an Everflask makes the
 -- stack eternal.
+local Curve = require("models.curve")
+
 return {
     name = "Stone",
     description = "Deals damage to a foe.",
@@ -21,7 +23,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 2 },
-        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- flat: a thrown rock hits the same however strong the arm
+        damage = Curve.ramp(5), -- flat: a thrown rock hits the same however strong the arm
         consumesItem = true,
         effect = function(fx)
             fx.damage(fx.target)

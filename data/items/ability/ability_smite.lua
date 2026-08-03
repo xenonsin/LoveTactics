@@ -2,6 +2,8 @@
 -- on consecrated (data/hazards/hazard_heal.lua) -- allies who hold the tile mend, and the hazard knows
 -- whose side it is on. Keeps the name the shelf always wanted; the priest's answer is a ZONE, not a
 -- heal-on-kill. Carries `holy`, so demonic flesh takes far more (utility_demonic_essence.lua).
+local Curve = require("models.curve")
+
 return {
     name = "Smite",
     description = "Strikes for holy damage and consecrates the ground, granting Regeneration to allies who stand on it.",
@@ -18,7 +20,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "mana", amount = 10 },
-        damage = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 }, -- carries `holy` via the item tags
+        damage = Curve.ramp(8, 18), -- carries `holy` via the item tags
         effect = function(fx)
             fx.damage(fx.target)
             fx.placeHazard(fx.target.x, fx.target.y, "hazard_heal", { amount = 6 + fx.level, duration = 12 + fx.level })

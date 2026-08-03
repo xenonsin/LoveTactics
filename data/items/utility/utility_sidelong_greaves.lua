@@ -19,6 +19,8 @@
 -- Which is why it is a permanent property rather than a toggle. There is no downside to phasing and
 -- no decision in switching it on, so making it a stance would have been a button the player presses
 -- once at the start of every battle -- and this codebase has enough of those.
+local Curve = require("models.curve")
+
 return {
     name = "Sidelong Greaves",
     description = "Its wearer walks straight through enemy bodies, though never stops on one.",
@@ -33,5 +35,5 @@ return {
     -- mode): an item that changes how a VERB behaves rather than adding an action. It feeds no
     -- initiative and never sits in the ability cycle.
     moveBehavior = { mode = "phase" },
-    bonus = { movement = { 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3 } },
+    bonus = { movement = Curve.paired(0, 3) },
 }

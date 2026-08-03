@@ -13,6 +13,8 @@
 --
 -- Lifesteal ADDS to a Vampiric Strike charm (data/items/utility/utility_vampiric_strike.lua) sitting beside it
 -- in the grid, rather than overriding it -- a hungry weapon charmed hungrier drinks at 83%.
+local Curve = require("models.curve")
+
 return {
     name = "Crimson Greataxe",
     description = "On damage dealt: heal.",
@@ -31,7 +33,7 @@ return {
         minRange = 1,          -- must pick a neighbor (a facing); never the wielder's own tile
         speed = 6, -- ponderous: you pay for the damage in turn order
         cost = { stat = "stamina", amount = 16 },
-        damage = { 18, 20, 22, 23, 25, 27, 29, 31, 32, 34, 36 },
+        damage = Curve.ramp(18),
         aoe = { shape = "front", width = 3 }, -- axes cleave innately: a 3-wide arc in front
         lifesteal = 0.33, -- the wielder drinks a third of everything the arc opens (a keyword)
         effect = function(fx)

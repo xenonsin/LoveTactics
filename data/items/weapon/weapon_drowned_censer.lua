@@ -16,6 +16,8 @@
 -- The third rung of the water chain that runs across three shelves -- the Wetstone Mace soaks one and
 -- shocks it, Tidesbreak soaks a rank, and this soaks whatever the priest walks past for as long as they
 -- keep walking.
+local Curve = require("models.curve")
+
 return {
     name = "The Drowned Censer",
     description = "Inflicts Wet on adjacent units.",
@@ -27,14 +29,14 @@ return {
     incense = {
         hazard = "hazard_rain",
         radius = 1,
-        amount = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        amount = Curve.paired(3, 8),
     },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        damage = Curve.paired(4, 9),
         effect = function(fx)
             fx.damage(fx.target)
         end,

@@ -12,6 +12,8 @@
 --
 -- utility_opportunists_charm is the charm form. Same rule, different slot; the harness is for a build
 -- that has already spent its nine cells.
+local Curve = require("models.curve")
+
 return {
     name = "Opportunist's Harness",
     description = "On inflicting a debuff: gain Haste, then recharge.",
@@ -21,5 +23,5 @@ return {
     tags = { "leather" },
     class = "rogue",
     traits = { "trait_opportunist" },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 } },
+    bonus = { defense = Curve.ramp(3, 7) },
 }

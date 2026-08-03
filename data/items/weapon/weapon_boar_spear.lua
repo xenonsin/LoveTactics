@@ -10,6 +10,8 @@
 -- Only the near tile, deliberately -- the far one is untouched. The crossbar stops what has run onto the
 -- point; it does nothing about the man behind him, and a spear that rooted its whole line would be a
 -- board-control weapon at rank 2.
+local Curve = require("models.curve")
+
 return {
     name = "Boar Spear",
     description = "Inflicts Root on the far tile.",
@@ -28,7 +30,7 @@ return {
         minRange = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11 }, -- a shade under an iron spear's: the bar is the rest
+        damage = Curve.ramp(5, 11), -- a shade under an iron spear's: the bar is the rest
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The spear convention (docs/weapons.md): a status lands on the FAR tile, the point

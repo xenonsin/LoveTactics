@@ -18,6 +18,8 @@
 -- never asked. The robes are the one place the Cathedral's own doctrine protects somebody from it.
 --
 -- Cloth: a square of pace.
+local Curve = require("models.curve")
+
 return {
     name = "Robes Unbidden",
     description = "Grants immunity to Charm.",
@@ -27,6 +29,6 @@ return {
     tags = { "cloth", "holy" },
     class = "priest",
     traits = { "trait_devotion_unbidden" },
-    bonus = { magicDefense = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 }, defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 }, movement = -1 },
-    resist = { magical = { 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5 } },
+    bonus = { magicDefense = Curve.paired(5), defense = Curve.ramp(2), movement = -1 },
+    resist = { magical = Curve.ramp(2, 5) },
 }

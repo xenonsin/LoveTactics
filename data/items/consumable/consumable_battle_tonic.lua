@@ -16,6 +16,8 @@
 --
 -- Not tagged `potion`: the Cafe resells that tag and ignores standing, which would put a gated
 -- discipline draught on the grocer's shelf turn one (docs/classes.md).
+local Curve = require("models.curve")
+
 return {
     name = "Battle Tonic",
     description = "Restores stamina without ending your turn.",
@@ -34,7 +36,7 @@ return {
         speed = 0,
         free = true, -- S2: bills no initiative and leaves the turn open (docs/classes.md)
         consumesItem = true,
-        restore = { 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40 },
+        restore = Curve.ramp(20),
         description = "Restores stamina as a free action.",
         effect = function(fx)
             fx.restore(fx.user, "stamina", fx.amount)

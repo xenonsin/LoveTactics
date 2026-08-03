@@ -2,6 +2,8 @@
 -- knocks a foe back two tiles and leaves it Sundered (data/status/status_sundered.lua) -- every guard,
 -- reflex and trait it carries goes quiet -- punching a hole the party pours through. The knight half of
 -- Breach: sloth's wall mechanics turned outward, against someone else's wall.
+local Curve = require("models.curve")
+
 return {
     name = "Shieldbreak",
     description = "Knockback 2 and inflicts Sundered.",
@@ -18,7 +20,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 9 },
-        damage = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 },
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             -- The Sunder rides the blow, so it lands on whoever the strike hits -- a guardian who steps
             -- in front of it is the one broken open.

@@ -1,6 +1,8 @@
 -- Called Shot: the hunter's follow-up to Mark Target. Against a Marked foe the arrow finds the painted
 -- spot and hits for double; against anyone else it is an ordinary shot. Pairs directly with
 -- data/items/ability/ability_mark_target.lua. Requires an adjacent bow in the grid.
+local Curve = require("models.curve")
+
 return {
     name = "Called Shot",
     description = "Doubles its damage against a Marked foe. Requires an adjacent bow.",
@@ -19,7 +21,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
         requiresAdjacent = { type = "weapon", tag = "bow" },
-        damage = { 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             local t = fx.target
             if not t then return end

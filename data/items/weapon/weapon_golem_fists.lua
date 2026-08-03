@@ -12,6 +12,8 @@
 -- `noSteal`, as every natural weapon is. Stealing a golem's arms is not a play the game supports, and
 -- more to the point it would strip the guard off the wall mid-fight through a mechanic aimed at
 -- inventories.
+local Curve = require("models.curve")
+
 return {
     name = "Golem Fists",
     description = "Strikes an adjacent foe, slow and heavy.",
@@ -25,7 +27,7 @@ return {
         target = "enemy",
         range = 1,
         speed = 6, -- ponderous, like the rest of it
-        damage = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 },
+        damage = Curve.paired(5),
         effect = function(fx)
             fx.damage(fx.target)
         end,

@@ -7,6 +7,8 @@
 -- Sold at the Bastion, and a sword, which is what settles it: the Cathedral consecrates the steel but it
 -- does not carry it -- the faithful bear no edge (docs/classes.md), and a knight holding a holy blade is
 -- a crusader. The rank-3 answer on a shelf whose other blades only answer back.
+local Curve = require("models.curve")
+
 return {
     name = "Demon Bane",
     description = "Deals holy damage, and demons take extra.",
@@ -24,7 +26,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
-        damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 },
+        damage = Curve.ramp(8),
         effect = function(fx)
             fx.damage(fx.target) -- inherits the item tags, so the hit carries `holy`
         end,

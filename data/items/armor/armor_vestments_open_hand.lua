@@ -16,6 +16,8 @@
 -- does stack the healing, which is a legitimate (expensive) build rather than an oversight.
 --
 -- Cloth, so it costs a square of pace: a priest whose aura is the item wants to be standing still.
+local Curve = require("models.curve")
+
 return {
     name = "Vestments of the Open Hand",
     description = "Allies adjacent to you, and you, heal a little each tick.",
@@ -27,6 +29,6 @@ return {
     price = 300,
     unlockQuests = 3,
     traits = { "trait_sanctified_presence" },
-    bonus = { magicDefense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 }, movement = -1 },
-    resist = { magical = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
+    bonus = { magicDefense = Curve.paired(4, 9), defense = Curve.ramp(2), movement = -1 },
+    resist = { magical = Curve.ramp(2) },
 }

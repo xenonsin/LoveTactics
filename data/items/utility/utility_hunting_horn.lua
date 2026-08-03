@@ -19,6 +19,8 @@
 --
 -- The airs are three statuses that already exist, deliberately: a horn is not a new vocabulary, it is a
 -- slower and more generous way to spend one the party already reads.
+local Curve = require("models.curve")
+
 return {
     name = "Hunting Horn",
     description = "Replaces Wait with Perform: sound the next of three airs for yourself and every ally in earshot.",
@@ -38,8 +40,8 @@ return {
         earshot = 2, -- does not scale: an upgrade buys a longer song, never a wider one
         -- Both DO scale with the forge: a better horn holds its air longer and pours more into the one
         -- air that carries a magnitude. See WAIT_BEHAVIOR_MAGNITUDES in models/item.lua.
-        duration = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
-        amount = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 },
+        duration = Curve.ramp(10),
+        amount = Curve.paired(5),
         -- The cycle, and the order is the item. Tempo, then teeth, then the mending -- the Lodge's own
         -- account of a hunt, which is why the payoff is last and you have to earn your way back to it.
         songs = {

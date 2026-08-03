@@ -13,6 +13,8 @@
 --
 -- Note the binding does not care whose side it caught. Cleave your own line into the conjunction and you
 -- have wired your knight to the enemy's champion, which is a real way to lose a fighter.
+local Curve = require("models.curve")
+
 return {
     name = "Splitting Maul",
     description = "Inflicts Conjoined.",
@@ -32,7 +34,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 13 },
         -- Under the iron axe's per target: what this swing is for happens on everybody else's turn.
-        damage = { 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10 },
+        damage = Curve.ramp(4, 10),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             local caught = fx.aoeUnits()

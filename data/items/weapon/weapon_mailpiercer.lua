@@ -21,6 +21,8 @@
 -- The price of both is the damage curve, which sits under an iron spear's at every level: this weapon
 -- is worse than the base one against anything unarmoured, and increasingly better the heavier the line
 -- in front of it gets. Against a naked skirmisher it is a bad spear. That is the intended shape.
+local Curve = require("models.curve")
+
 return {
     name = "Mailpiercer",
     description = "Ignores armour entirely and inflicts Halt on the far tile.",
@@ -41,7 +43,7 @@ return {
         cost = { stat = "stamina", amount = 10 },
         -- Under the iron spear's curve at every level, and it lands WHOLE: no defense, no resist. What
         -- the number gives up is what the armour would have taken anyway.
-        damage = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 },
+        damage = Curve.paired(5),
         aoe = { shape = "line", length = 2 }, -- the family's two tiles (docs/weapons.md)
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

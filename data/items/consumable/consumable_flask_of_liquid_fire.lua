@@ -4,6 +4,8 @@
 --
 -- Mechanically it is Fireball with the caster taken out of it (data/items/ability/ability_fireball.lua):
 -- fixed power, no `magical` tag, and the same fire hazard laid across its footprint.
+local Curve = require("models.curve")
+
 return {
     name = "Flask of Liquid Fire",
     description = "Leaves Fire in area.",
@@ -21,7 +23,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 5 },
-        damage = { 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24 }, -- flat: nothing about the thrower makes the fire hotter
+        damage = Curve.ramp(12), -- flat: nothing about the thrower makes the fire hotter
         consumesItem = true,
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)

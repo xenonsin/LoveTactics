@@ -4,6 +4,8 @@
 -- window runs out the body goes cold -- a corpse past reviving -- see Combat's corpse system). It
 -- succeeds only while no living unit stands on top of that tile, only inside the window, and only for an
 -- ALLY's body -- you cannot revive a foe. A support cast, so its cursor previews green.
+local Curve = require("models.curve")
+
 return {
     name = "Revive",
     description = "Raises a fallen ally where they lie, restoring half their health.",
@@ -18,7 +20,7 @@ return {
         target = "tile",
         support = true, -- friendly cast: preview green
         range = 3,
-        reviveHealth = { 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 }, -- the percent of health restored (see the effect)
+        reviveHealth = Curve.ramp(50), -- the percent of health restored (see the effect)
         speed = 6,
         cost = { stat = "mana", amount = 20 },
         effect = function(fx)

@@ -3,6 +3,8 @@
 -- is an ordinary blow (x1), at death's door it lands with double force (x2). Read live from the
 -- caster's current/max health at the moment of the swing, so the more the fight has cost you, the more
 -- each strike takes back.
+local Curve = require("models.curve")
+
 return {
     name = "Desperate Strike",
     description = "Increase damage by 1% per 1% of missing health.",
@@ -19,7 +21,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- the base, at full health; scaled up by the missing fraction below
+        damage = Curve.ramp(6), -- the base, at full health; scaled up by the missing fraction below
         effect = function(fx)
             local hp = fx.user.char.stats.health
             local ratio = (hp.max and hp.max > 0) and (hp.current / hp.max) or 1

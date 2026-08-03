@@ -20,6 +20,8 @@
 -- gated ability on that shelf spends the bow to do something to the QUARRY (mark it, cripple it, pin
 -- it). This spends the bow on the hunter's own footing. The Lodge's sin is never stopping, and a
 -- predator that will not let the distance close so that it can keep eating is precisely that.
+local Curve = require("models.curve")
+
 return {
     name = "Break Off",
     description = "Deals damage, then steps you one tile back from the target. Requires an adjacent bow.",
@@ -42,7 +44,7 @@ return {
         cost = { stat = "stamina", amount = 6 },
         -- Under Hobbling Shot's curve: this one already pays out in position, and a step back out of
         -- reach is worth more than the two damage it gives up.
-        damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8 },
+        damage = Curve.ramp(3, 8),
         requiresAdjacent = { type = "weapon", tag = "bow" },
         effect = function(fx)
             fx.damage(fx.target)

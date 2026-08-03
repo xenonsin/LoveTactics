@@ -23,6 +23,8 @@
 --
 -- Sold by the knight's vendor: it is heavy steel with a philosophy, and the sloth line is where a
 -- refusal to engage is a virtue (see docs/story.md).
+local Curve = require("models.curve")
+
 return {
     name = "Skeptic's Harness",
     description = "You cannot use magic at all. Magical afflictions land for a fraction of their duration, or not at all.",
@@ -37,10 +39,10 @@ return {
     -- Ordinary defense is mediocre on purpose: this is not a better Runed Plate, it is a different
     -- trade. `statusResist` is the headline the wearer actually bought -- see Status.resistRating.
     bonus = {
-        defense = { 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11 },
-        magicDefense = { 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22 },
-        statusResist = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 },
+        defense = Curve.paired(6, 11),
+        magicDefense = Curve.ramp(12, 22),
+        statusResist = Curve.ramp(8, 18),
         movement = -2,
     },
-    resist = { magical = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
+    resist = { magical = Curve.paired(4, 9) },
 }

@@ -18,6 +18,8 @@
 -- greatsword. Same machinery, opposite ends: that one schedules a kill, this one schedules a rescue.
 --
 -- It answers physical blows only, so a spell goes straight through the stance and lands on time.
+local Curve = require("models.curve")
+
 return {
     name = "Shield of the Kept Wound",
     description = "Replaces Wait with Defend and gains Kept Wound.",
@@ -26,14 +28,14 @@ return {
     type = "armor",
     tags = { "shield" },
     class = "knight",
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 } },
-    resist = { physical = { 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4 } },
+    bonus = { defense = Curve.ramp(3, 7) },
+    resist = { physical = Curve.paired(1, 4) },
     waitBehavior = {
         kind = "defend",
         speed = 3,
         -- Under a buckler's: the stance is not really about the flat bonus, and a knight who is relying
         -- on the number rather than the swallow has picked the wrong shield.
-        defense = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 },
+        defense = Curve.paired(5),
         status = "status_kept_wound",
     },
 }

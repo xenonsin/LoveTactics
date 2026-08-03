@@ -14,6 +14,8 @@
 --
 -- Frenzy counts bodies, not enemies -- the arc has never cared whose side it sweeps. An ally standing
 -- in it feeds the swing exactly as a foe would, and takes the boosted hit for the privilege.
+local Curve = require("models.curve")
+
 return {
     name = "Butcher's Wedge",
     description = "Increase damage for each foe in area.",
@@ -33,7 +35,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 13 },
         -- Deliberately poor for its rank against a lone target: the crowd is the damage stat.
-        damage = { 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 },
+        damage = Curve.ramp(9, 19),
         aoe = { shape = "front", width = 3 }, -- axes cleave innately: a 3-wide arc in front
         frenzy = 0.33, -- each EXTRA body in the arc adds a third of the swing to all of them (a keyword)
         effect = function(fx)

@@ -1,3 +1,5 @@
+local Curve = require("models.curve")
+
 return {
     name = "Fireball",
     description = "Leaves Fire in area.",
@@ -20,7 +22,7 @@ return {
         speed = 4, -- powerful but slow
         windup = 4, -- winds up before it lands: foes get several turns to leave the blast
         cost = { stat = "mana", amount = 12 },
-        damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 }, -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = Curve.ramp(8), -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
         -- Bursts on impact: a 1-tile radius around the aimed cell, corners included (a 3x3 square).
         -- The targeting UI reads this to paint the affected tiles red before you commit.
         aoe = { radius = 1, shape = "square" },

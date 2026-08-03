@@ -12,6 +12,8 @@
 -- a stat that lapsed the moment somebody cast Cure would punish the party for tending to them.
 --
 -- Heavy plate, paying the tier (-2 movement, docs/classes.md) and paying nothing back.
+local Curve = require("models.curve")
+
 return {
     name = "Vow-Marked Plate",
     description = "Every debuff you take hardens you for the battle. When an ally falls, a ward closes over you.",
@@ -23,6 +25,6 @@ return {
     discipline = "paladin",
     price = 460,
     unlockQuests = 10,
-    bonus = { defense = { 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11 }, movement = -2 },
+    bonus = { defense = Curve.paired(6, 11), movement = -2 },
     traits = { "trait_vow_marked" },
 }

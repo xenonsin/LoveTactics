@@ -1,6 +1,8 @@
 -- A beast's natural weapon: the enemy-side equivalent of a melee weapon, so wolves and
 -- boars have both an attack and an initiative (average ability speed) without "holding" a
 -- crafted item. Given to beast blueprints via startingItems.
+local Curve = require("models.curve")
+
 return {
     name = "Fangs",
     description = "Bites an adjacent foe.",
@@ -14,7 +16,7 @@ return {
         range = 1,
         speed = 2,
         cost = { stat = "stamina", amount = 5 },
-        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 },
+        damage = Curve.ramp(5),
         effect = function(fx)
             fx.damage(fx.target)
         end,

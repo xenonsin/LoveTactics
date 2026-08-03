@@ -34,6 +34,8 @@
 --   twin        = true                 -- a single-target neighbor forks into a second body (Twinned Sigil)
 --
 -- The block is identical on a charm and on a coating. `type` alone decides whether it runs out.
+local Curve = require("models.curve")
+
 return {
     name = "Fire Stone",
     description = "Adjacent weapons and abilities gain fire and inflict Burn. Spent as they are used.",
@@ -48,6 +50,6 @@ return {
         appliesTo = { "weapon", "ability" }, -- which neighbor types the heat infuses
         exceptTags = { "water" },            -- water-aligned kit resists the infusion
         grantTags = { "fire" },              -- folded into the neighbor's attack tags
-        status = { id = "status_burn", opts = { duration = 15, magnitude = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 } } }, -- applied on a damaging hit; matches Burn's own ~3 turns
+        status = { id = "status_burn", opts = { duration = 15, magnitude = Curve.ramp(4) } }, -- applied on a damaging hit; matches Burn's own ~3 turns
     },
 }

@@ -11,6 +11,8 @@
 -- 5 and empties the instant you look away (utility_reading_the_blade), so the ceiling is reachable only
 -- by a fighter who has spent the whole duel refusing every other target on the field. A flat bonus would
 -- have made spreading your attention merely worse; a multiplier makes it a different fight.
+local Curve = require("models.curve")
+
 return {
     name = "Coup Droit",
     description = "Thrusts at a Duelbound foe. Increase damage by 40% per Tempo spent.",
@@ -27,7 +29,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
-        damage = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 },
+        damage = Curve.ramp(6, 16),
         -- A pure `when` read of the shared pool, exactly as Flurry does it: a counted `unlock.event`
         -- keeps a per-ITEM baseline, which would give this and Reading the Blade two different numbers
         -- both called Tempo.

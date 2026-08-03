@@ -17,6 +17,8 @@
 --
 -- No trait, no reflex, and almost no steel. Warlord stock (docs/classes.md names the subclass and
 -- cannot yet sell it), and the first piece of it that is not a polearm.
+local Curve = require("models.curve")
+
 return {
     name = "Rally Coat",
     description = "Grants Inspiration to adjacent allies.",
@@ -26,5 +28,5 @@ return {
     tags = { "cloth", "banner" },
     class = "fighter",
     incense = { hazard = "hazard_rally", radius = 1 },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 }, movement = -1 },
+    bonus = { defense = Curve.paired(3, 8), movement = -1 },
 }

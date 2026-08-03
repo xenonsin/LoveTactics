@@ -18,6 +18,8 @@
 -- Its own bolt is feeble, and the gift lands on a friend rather than the target -- so a mage swinging
 -- this at nothing is a mage who wasted a turn. It needs a channelled weapon in the party to mean
 -- anything at all.
+local Curve = require("models.curve")
+
 return {
     name = "Wand of the Second Utterance",
     description = "Grants Second Utterance.",
@@ -32,7 +34,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 9 },
-        damage = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, -- the gift is the cast
+        damage = Curve.ramp(0), -- the gift is the cast
         effect = function(fx)
             local t = fx.target
             if not t or not t.alive then return end

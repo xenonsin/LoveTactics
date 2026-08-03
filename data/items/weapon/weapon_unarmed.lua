@@ -10,6 +10,8 @@
 -- that constant for its starting initiative, so routing the fallback through this weapon keeps
 -- the timeline unchanged. The strike is free (no cost) so a basic attack is always available,
 -- and weak (a low Power) so it never rivals a real weapon.
+local Curve = require("models.curve")
+
 return {
     name = "Unarmed",
     description = "Strikes an adjacent foe bare-handed.",
@@ -21,7 +23,7 @@ return {
         target = "enemy",
         range = 1,
         speed = 5, -- == Combat.DEFAULT_SPEED; keeps the no-ability-items initiative unchanged
-        damage = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 }, -- weak: a low Power so a bare fist never rivals a real weapon
+        damage = Curve.ramp(2), -- weak: a low Power so a bare fist never rivals a real weapon
         effect = function(fx)
             -- One strike, plus any extra hits granted by a "fist" item in the grid (Swift Fist adds
             -- one). Iron/Shadow/Drunken Fist raise this same fist's Power/range elsewhere; the extra

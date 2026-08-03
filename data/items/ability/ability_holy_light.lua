@@ -2,6 +2,8 @@
 -- (magical) damage. Unlike the mage's elemental blasts it spares allies standing in the light -- the
 -- priest's one offensive spell, meant to be dropped into a knot of foes without fear of the party.
 -- A ground-target area cast; hostile, so its footprint previews red.
+local Curve = require("models.curve")
+
 return {
     name = "Holy Light",
     description = "Sears enemies in area.",
@@ -19,7 +21,7 @@ return {
         speed = 4,
         windup = 6, -- the pillar gathers before it falls; enemies can scatter from the light
         cost = { stat = "mana", amount = 12 },
-        damage = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 13, 14 }, -- per-enemy damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = Curve.ramp(7), -- per-enemy damage = power + the caster's MagicDamage, minus MagicDefense
         aoe = { radius = 1, shape = "square" }, -- 3x3 pillar
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

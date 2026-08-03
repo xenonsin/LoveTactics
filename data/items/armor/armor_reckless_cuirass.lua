@@ -26,6 +26,8 @@
 -- into a general-purpose glass cannon.
 --
 -- No movement penalty. There is barely anything here to carry.
+local Curve = require("models.curve")
+
 return {
     name = "The Reckless Cuirass",
     description = "Adds real Damage, and physical blows land on you harder than with no armor at all.",
@@ -34,7 +36,7 @@ return {
     type = "armor",
     tags = { "plate" },
     class = "fighter",
-    bonus = { damage = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 }, defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
+    bonus = { damage = Curve.paired(5), defense = Curve.ramp(2) },
     -- NEGATIVE on purpose: see the header. This is the one blueprint in the game that adds to incoming
     -- damage rather than subtracting from it, and the sign is the whole item.
     resist = { physical = { -3, -3, -3, -4, -4, -4, -4, -5, -5, -5, -6 } },

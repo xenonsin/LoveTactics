@@ -2,6 +2,8 @@
 -- the target burns its turn going nowhere. The hunter half of the Poacher (rogue x hunter): it sets up
 -- the Poacher's Kris, which bites half again as deep into a foe that cannot flinch away. Thrown, not a
 -- bow shot, so it needs no weapon beside it -- the snare IS the tool.
+local Curve = require("models.curve")
+
 return {
     name = "Bolas",
     description = "Deals damage and inflicts Root.",
@@ -19,7 +21,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
-        damage = { 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8 },
+        damage = Curve.ramp(3, 8),
         effect = function(fx)
             -- Root rides the blow (opts.inflicts) rather than landing on the line after it, so a
             -- guardian who takes the hit in the target's place (Sworn Aegis, Oathward) is the one left

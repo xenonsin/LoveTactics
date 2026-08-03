@@ -20,6 +20,8 @@
 --
 -- IT CUTS ALLIES STANDING ADJACENT. A whirl is a whirl, and a fighter in this plate is a fighter the
 -- party's own line learns to leave a tile of room around.
+local Curve = require("models.curve")
+
 return {
     name = "Whirlplate",
     description = "On melee hit taken: cut every adjacent foe.",
@@ -31,5 +33,5 @@ return {
     price = 420,
     unlockQuests = 10,
     traits = { "trait_whirl_answer" },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
+    bonus = { defense = Curve.paired(3, 8) },
 }

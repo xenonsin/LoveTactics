@@ -19,6 +19,8 @@
 -- Two things it deliberately does NOT do, both of them the staff/censer line drawn again
 -- (docs/weapons.md): it lays no ground, and it grants no second swap. `waitBehavior` is first-in-grid
 -- wins, so an Overwatch Scope beside it is redundant rather than additive -- carry one or the other.
+local Curve = require("models.curve")
+
 return {
     name = "Stillhunter",
     description = "Replaces Wait with Overwatch: shoots anything that walks into range, for stamina.",
@@ -40,7 +42,7 @@ return {
         requiresSight = true,
         speed = 2,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, -- under an iron bow at every level: see above
+        damage = Curve.paired(4, 9), -- under an iron bow at every level: see above
         effect = function(fx)
             fx.damage(fx.target)
         end,

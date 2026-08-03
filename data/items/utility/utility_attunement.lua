@@ -2,6 +2,8 @@
 -- (`maxBonus.mana`, folded into Combat.unreservedMax). Mana persists between battles and does not
 -- refill, so like Toughness this lifts the ceiling as headroom -- room to bank more mana (via Focus or
 -- an Arcane Reservoir) and hold a bigger reserve for the spells that need it.
+local Curve = require("models.curve")
+
 return {
     name = "Attunement",
     description = "Raises your maximum mana.",
@@ -12,5 +14,5 @@ return {
     class = "mage",
     price = 180,
     unlockQuests = 3,
-    maxBonus = { mana = { 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24 } },
+    maxBonus = { mana = Curve.ramp(12) },
 }

@@ -18,6 +18,8 @@
 -- Deliberately gated on adjacency and on spending the turn. A silence that reached would be a spell, and
 -- a silence that was free would end caster fights outright; this costs a whole turn and requires the
 -- priest to be standing in arm's reach of the thing it is silencing.
+local Curve = require("models.curve")
+
 return {
     name = "The Gag-Crook",
     description = "Replaces Wait with Focus: recover mana, and cut every enemy beside you off from magic entirely.",
@@ -39,7 +41,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        damage = Curve.paired(4, 9),
         effect = function(fx)
             fx.damage(fx.target)
         end,

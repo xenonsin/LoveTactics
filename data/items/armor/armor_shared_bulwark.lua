@@ -19,6 +19,8 @@
 --
 -- Heavy armor besides, so the wearer is a knight and is going to be standing in the front rank anyway,
 -- which is where the whole item wants them.
+local Curve = require("models.curve")
+
 return {
     name = "The Shared Bulwark",
     description = "Allies standing beside its bearer turn aside the next physical blow entirely.",
@@ -30,7 +32,7 @@ return {
     price = 520,
     unlockQuests = 10,
     incense = { hazard = "hazard_shared_bulwark", radius = 1 },
-    bonus = { defense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
+    bonus = { defense = Curve.paired(4, 9) },
     -- The family contract: a shield swaps its holder's Wait into Defend (docs/weapons.md, enforced by
     -- tests/weapon_spec.lua). Braced a little worse than a plain Bulwark Shield -- what this one is
     -- really paying for is the ground it holds for everyone else, and it should not also be the best

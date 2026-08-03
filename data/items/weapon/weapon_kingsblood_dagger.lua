@@ -13,6 +13,8 @@
 -- open. That makes it the one dagger that wants a SECOND dagger in the party -- open the wound with a
 -- cheap iron blade, then let this one collect. It is also why it is worth stealing, and why the guild
 -- keeps selling it back to you.
+local Curve = require("models.curve")
+
 return {
     name = "Kingsblood Dagger",
     description = "Inflicts a deep Bleed. Deal 50% more damage to a bleeding foe.",
@@ -40,7 +42,7 @@ return {
         range = 1,
         speed = 1, -- the fastest strike in the game: you act again almost at once
         cost = { stat = "stamina", amount = 4 },
-        damage = { 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18 },
+        damage = Curve.ramp(9),
         effect = function(fx)
             -- A wound already open is a door: half the swing's power again goes straight through it.
             -- Read BEFORE the strike, so it answers "was this foe already bleeding when I found it?"

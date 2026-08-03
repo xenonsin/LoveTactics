@@ -11,6 +11,8 @@
 --
 -- ability_keen_senses carries the same rule as a grid ability. Same trade as the rogue's vest: the
 -- ability spends a cell and nothing else, the pelt spends the armour slot and brings a hide with it.
+local Curve = require("models.curve")
+
 return {
     name = "Stalker's Pelt",
     description = "On being attacked: strike first; a kill stops the blow before it lands.",
@@ -23,6 +25,6 @@ return {
     price = 290,
     unlockQuests = 3,
     traits = { "trait_keen_senses" },
-    bonus = { defense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
-    resist = { physical = { 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4 } },
+    bonus = { defense = Curve.paired(4, 9) },
+    resist = { physical = Curve.paired(1, 4) },
 }

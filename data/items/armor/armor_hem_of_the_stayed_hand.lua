@@ -14,6 +14,8 @@
 -- else. See docs/story.md.
 --
 -- utility_stayed_hand is the charm form; the hem is for a priest with no cell to spare.
+local Curve = require("models.curve")
+
 return {
     name = "Hem of the Stayed Hand",
     description = "On dropping to 25% health: cleanse you and lift you out of reach.",
@@ -23,6 +25,6 @@ return {
     tags = { "cloth", "holy" },
     class = "priest",
     traits = { "trait_stayed_hand" },
-    bonus = { magicDefense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 }, movement = -1 },
-    resist = { magical = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
+    bonus = { magicDefense = Curve.paired(4, 9), defense = Curve.ramp(2), movement = -1 },
+    resist = { magical = Curve.ramp(2) },
 }

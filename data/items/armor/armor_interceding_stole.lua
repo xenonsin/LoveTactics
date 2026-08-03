@@ -17,6 +17,8 @@
 --
 -- Cloth: a square of pace, and the wearer needs to be standing next to the person they intend to
 -- outlive by one turn.
+local Curve = require("models.curve")
+
 return {
     name = "The Interceding Stole",
     description = "On a lethal blow to an adjacent ally: take it yourself. Once per battle.",
@@ -26,5 +28,5 @@ return {
     tags = { "cloth", "holy" },
     class = "priest",
     traits = { "trait_martyrs_vow" },
-    bonus = { magicDefense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 }, defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 }, movement = -1 },
+    bonus = { magicDefense = Curve.ramp(3, 7), defense = Curve.ramp(2), movement = -1 },
 }

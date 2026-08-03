@@ -15,6 +15,8 @@
 --
 -- Note the wearer must be adjacent to the enemy line for any of it to matter, which is an
 -- uncomfortable place for the party's alchemist to be, and is the item's whole price.
+local Curve = require("models.curve")
+
 return {
     name = "Choking Apron",
     description = "Inflicts Poison on adjacent foes.",
@@ -24,6 +26,6 @@ return {
     tags = { "leather", "poison" },
     class = "alchemist",
     incense = { hazard = "hazard_choking", radius = 1 },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
-    resist = { poison = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 } },
+    bonus = { defense = Curve.paired(3, 8) },
+    resist = { poison = Curve.ramp(3, 7) },
 }

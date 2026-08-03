@@ -3,6 +3,8 @@
 -- nothing. No taunt, no lock: it does not make them stay, it rewards you for choosing to. The stacking
 -- lives on the striker (u.enGardeTarget / u.enGardeStacks), read and bumped on each cast, so the bonus
 -- is genuinely "this is the fourth time I have come for you" rather than a status anyone can Cure off.
+local Curve = require("models.curve")
+
 return {
     name = "En Garde",
     description = "Strikes a foe. Increase damage for each consecutive strike on the same foe; switching targets resets it.",
@@ -19,7 +21,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             local u = fx.user
             if u.enGardeTarget == fx.target then

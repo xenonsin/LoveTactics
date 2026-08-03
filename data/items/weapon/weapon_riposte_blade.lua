@@ -23,6 +23,8 @@
 -- The counter-play is written into the reflex rather than into a number: it only turns aside a
 -- MATERIAL blow from an ADJACENT foe. Shoot it, burn it, or stand two tiles off and swing a spear,
 -- and the guard is worth nothing at all.
+local Curve = require("models.curve")
+
 return {
     name = "Riposte Blade",
     description = "Turns aside an adjacent melee blow entirely, then answers it.",
@@ -40,7 +42,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 },
+        damage = Curve.ramp(6),
         effect = function(fx)
             fx.damage(fx.target)
         end,

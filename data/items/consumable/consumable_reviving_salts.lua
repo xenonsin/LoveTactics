@@ -14,6 +14,8 @@
 -- runs out, not a heal. What you revive is fragile, and a second blow will put it right back down --
 -- so a save still has to be followed by a rescue. The Alchemist's shelf, one rep rank above the
 -- healing potion it sits beside (docs/classes.md).
+local Curve = require("models.curve")
+
 return {
     name = "Reviving Salts",
     description = "Revives an adjacent fallen ally at low health, while its body can still be saved.",
@@ -28,7 +30,7 @@ return {
         target = "tile",
         support = true, -- friendly cast: preview green
         range = 1,      -- must stand beside the body
-        reviveHealth = { 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45 }, -- percent of health restored (a sliver, on purpose)
+        reviveHealth = Curve.ramp(25, 45), -- percent of health restored (a sliver, on purpose)
         speed = 3,
         consumesItem = true,
         effect = function(fx)

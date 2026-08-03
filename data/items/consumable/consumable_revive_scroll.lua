@@ -2,6 +2,8 @@
 -- into a consumable anyone can carry -- the party's answer to a fallen member without a priest on the
 -- field. Shorter reach than the spell (range 1: you must stand beside the body), and spent on use.
 -- Raises the SAME fallen ally where they lie at half health, only while no one stands on the tile.
+local Curve = require("models.curve")
+
 return {
     name = "Scroll of Revival",
     description = "Raises an adjacent fallen ally, restoring part of their health.",
@@ -16,7 +18,7 @@ return {
         target = "tile",
         support = true, -- friendly cast: preview green
         range = 1,      -- must be adjacent to the body
-        reviveHealth = { 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100 },     -- percent of health restored
+        reviveHealth = Curve.ramp(50),     -- percent of health restored
         speed = 4,
         consumesItem = true,
         effect = function(fx)

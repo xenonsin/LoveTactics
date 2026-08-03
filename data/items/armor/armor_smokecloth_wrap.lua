@@ -10,6 +10,8 @@
 --
 -- Cloth, so it costs a square of pace. That is the price of every woven thing on the shelf now, and
 -- this one is the item where it bites least -- the blink gives the square back the moment it triggers.
+local Curve = require("models.curve")
+
 return {
     name = "Smokecloth Wrap",
     description = "The first attack that would hit you is lost in smoke, and you blink two tiles clear.",
@@ -19,5 +21,5 @@ return {
     tags = { "cloth" },
     class = "rogue",
     traits = { "trait_smoke_screen" },
-    bonus = { defense = { 2, 2, 3, 3, 4, 4, 4, 5, 5, 6, 6 }, movement = -1 },
+    bonus = { defense = Curve.ramp(2, 6), movement = -1 },
 }

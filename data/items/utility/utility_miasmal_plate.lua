@@ -3,6 +3,8 @@
 -- body in the cloud EXCEPT the bearer's own side is Poisoned). Standing next to the Plague Knight is the
 -- injury; it does not have to swing at all. A DELIBERATE BORROW of the incense machine, like the Coveted
 -- Blood (docs/classes.md) -- a zone that is wherever the bearer is -- carrying no censer and no edge.
+local Curve = require("models.curve")
+
 return {
     name = "Miasmal Plate",
     description = "Inflicts Poison on adjacent foes.",
@@ -14,5 +16,5 @@ return {
     discipline = "plague_knight", -- knight x alchemist; the Contagion mechanic's first stock
     price = 380,
     unlockQuests = 6,
-    incense = { hazard = "hazard_choking", radius = 1, amount = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
+    incense = { hazard = "hazard_choking", radius = 1, amount = Curve.ramp(3) },
 }

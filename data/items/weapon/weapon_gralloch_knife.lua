@@ -9,6 +9,8 @@
 -- grind she hands you when you wear her key.
 --
 -- A boss weapon: no `class`, no `price`. It is fast and cheap so she swings often -- every swing a meal.
+local Curve = require("models.curve")
+
 return {
     name = "Gralloch Knife",
     description = "On damage dealt: heal.",
@@ -25,7 +27,7 @@ return {
         range = 1,
         speed = 2, -- quick: she acts again almost at once, and each strike feeds her
         cost = { stat = "stamina", amount = 4 },
-        damage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
+        damage = Curve.ramp(10),
         effect = function(fx)
             fx.damage(fx.target)
             fx.heal(fx.user, 8) -- she eats what she cuts, the same shape parasitic_staff refills mana on hit

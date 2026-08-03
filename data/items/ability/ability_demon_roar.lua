@@ -11,6 +11,8 @@
 -- (a menace, folded into the blow), then the wind-up pays off: two Bomblets on open ground beside it,
 -- SUMMONED and sustained by it, so they vanish when it falls and the assassinate win stays honest
 -- (a summoned Volatile that is dismissed does not burst -- data/traits/trait_volatile.lua).
+local Curve = require("models.curve")
+
 return {
     name = "Demon's Roar",
     description = "Channeled: summons Bomblets and quickens the champion.",
@@ -26,7 +28,7 @@ return {
         windup = 3, -- the three-tick tell: the window a Stun or a shove has to deny the call
         cost = { stat = "stamina", amount = 6 },
         aoe = { radius = 1, shape = "square" },
-        damage = { 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11 }, -- a real bruise, so the AI values winding it up
+        damage = Curve.paired(6, 11), -- a real bruise, so the AI values winding it up
         effect = function(fx)
             -- The bellow: bruise + shove the adjacent ring one tile back (friend and self spared).
             for _, u in ipairs(fx.aoeUnits()) do

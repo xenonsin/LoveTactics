@@ -16,6 +16,8 @@
 -- Note it is the one shield here whose extra is a plain BIGGER NUMBER rather than a new verb, and that is
 -- deliberate: a number in a stat the family could not previously touch is a different thing from a number
 -- in the stat it already had. The deviation is which bar it fills, not how full.
+local Curve = require("models.curve")
+
 return {
     name = "The Aegis Unbidden",
     description = "Replaces Wait with Defend, warding against spells as well as steel.",
@@ -32,7 +34,7 @@ return {
         kind = "defend",
         speed = 3,
         -- Under a buckler's 6-11: the Aegis below is what the difference bought.
-        defense = { 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10 },
+        defense = Curve.paired(5),
         status = "status_aegis",
     },
 }

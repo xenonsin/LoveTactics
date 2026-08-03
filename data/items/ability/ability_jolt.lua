@@ -1,5 +1,7 @@
 -- An ability that jolts a foe: light magical damage plus the "status_stun" status, which shoves the
 -- target down the turn order (see data/status/stun.lua). Demonstrates fx.applyStatus from an ability.
+local Curve = require("models.curve")
+
 return {
     name = "Jolt",
     description = "Deals light damage and inflicts Stun.",
@@ -22,7 +24,7 @@ return {
         -- data/tutorials/village.lua.)
         speed = 4,
         cost = { stat = "mana", amount = 5 },
-        damage = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 },
+        damage = Curve.ramp(4),
         -- The delay, tuned on its own axis and upgraded on its own curve. It used to be read off the
         -- damage roll, which quietly welded the spell's two halves together: a Jolt is DESIGNED to
         -- barely hurt, so pinning the tempo it sells to how little it hurts capped the one thing it

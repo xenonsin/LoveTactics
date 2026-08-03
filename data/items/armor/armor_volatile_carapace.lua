@@ -20,6 +20,8 @@
 --
 -- The enemy's own bomblets carry the same rule (utility_volatile_core, character_demon_bomblet). You
 -- fought this; now you are it -- which is the shape every relic in this game takes.
+local Curve = require("models.curve")
+
 return {
     name = "Volatile Carapace",
     description = "On death: bursts, hitting everything nearby, allies included.",
@@ -29,6 +31,6 @@ return {
     tags = { "leather", "explosive" },
     class = "alchemist",
     traits = { "trait_volatile" },
-    bonus = { defense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
+    bonus = { defense = Curve.paired(4, 9) },
     resist = { fire = { 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5 } },
 }

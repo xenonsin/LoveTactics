@@ -1,6 +1,8 @@
 -- Passive armor: no active ability (so no speed, ignored by initiative). Its bonus is
 -- folded into the wearer's stats at combat setup, and its tag-keyed resist reduces
 -- incoming damage whose source carries a matching tag.
+local Curve = require("models.curve")
+
 return {
     name = "Padded Vest",
     description = "Light armor. A little protection, for a little of your pace.",
@@ -15,6 +17,6 @@ return {
     -- so the light tier's old selling point, "it never slows you down", was really the statement that
     -- a character could wear four of these for free. The tier is distinguished by how much it protects
     -- now, not by whether it is felt, and base movement was raised to 4 to pay for it.
-    bonus = { defense = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 }, movement = -1 },
-    resist = { physical = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
+    bonus = { defense = Curve.ramp(2), movement = -1 },
+    resist = { physical = Curve.ramp(1) },
 }

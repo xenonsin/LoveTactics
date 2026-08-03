@@ -19,6 +19,8 @@
 --
 -- utility_unyielding_seal is the charm form. Solid steel, unremarkable numbers: what the wearer is
 -- buying is the rule.
+local Curve = require("models.curve")
+
 return {
     name = "Unyielding Harness",
     description = "Spend mana to shrug off any debuff the moment it lands. No cooldown -- only the pool.",
@@ -31,6 +33,6 @@ return {
     price = 480,
     unlockQuests = 6,
     traits = { "trait_unyielding" },
-    bonus = { defense = { 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 15 }, magicDefense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 }, movement = -2 },
-    resist = { physical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
+    bonus = { defense = { 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 15 }, magicDefense = Curve.ramp(3, 7), movement = -2 },
+    resist = { physical = Curve.ramp(3) },
 }

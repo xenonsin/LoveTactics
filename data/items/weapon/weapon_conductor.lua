@@ -17,6 +17,8 @@
 -- The arcs land unsided and Wet is not a debuff anybody flags as dangerous, so a party that has been
 -- walking through rain will electrocute itself. That is the honest cost of a weapon that reads the whole
 -- board rather than a target.
+local Curve = require("models.curve")
+
 return {
     name = "The Conductor",
     description = "Fires a bolt that arcs to every Wet body on the field, wherever it stands.",
@@ -34,7 +36,7 @@ return {
         speed = 3,
         cost = { stat = "mana", amount = 7 },
         -- Under a plain wand's: the aimed bolt is the smaller half of this weapon on any turn it matters.
-        damage = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        damage = Curve.paired(3, 8),
         effect = function(fx)
             local t = fx.target
             if t then fx.damage(t) end

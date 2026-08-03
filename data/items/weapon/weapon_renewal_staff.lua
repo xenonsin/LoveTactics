@@ -17,6 +17,8 @@
 --
 -- The mana it returns is a plain staff's, untouched -- this weapon adds rather than trades, which is why
 -- it is given rather than sold.
+local Curve = require("models.curve")
+
 return {
     name = "The Renewal Staff",
     description = "Replaces Wait with Focus: recover mana, and leave ground behind you where allies heal.",
@@ -27,7 +29,7 @@ return {
     class = "priest",
     waitBehavior = {
         kind = "focus",
-        mana = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 },
+        mana = Curve.ramp(8, 18),
         speed = 10,
         -- The 3x3 the priest sits in the middle of. `amount` scales with the forge and `radius` does not,
         -- on the same principle every zone in this game follows: an upgrade buys a deeper blessing, never
@@ -39,7 +41,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        damage = Curve.paired(4, 9),
         effect = function(fx)
             fx.damage(fx.target)
         end,

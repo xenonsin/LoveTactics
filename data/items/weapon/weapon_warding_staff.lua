@@ -12,6 +12,8 @@
 --
 -- The barrier answers ONE magical attack and does nothing about a sword, so it does not solve being
 -- charged. What it solves is the counter-battery duel.
+local Curve = require("models.curve")
+
 return {
     name = "Warding Staff",
     description = "Replaces Wait with Focus: recover mana, and raise a ward that deflects the next spell aimed at you.",
@@ -35,7 +37,7 @@ return {
         range = 1, -- adjacent only: a staff is not a wand
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, -- feeble, as every staff's strike is
+        damage = Curve.paired(4, 9), -- feeble, as every staff's strike is
         effect = function(fx)
             fx.damage(fx.target)
         end,

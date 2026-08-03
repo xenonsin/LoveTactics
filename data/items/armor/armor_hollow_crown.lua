@@ -9,6 +9,8 @@
 --
 -- No `class`/`price`: it is not gear anyone shops for. The defense curve is flavor -- the player never
 -- forges an enemy's relic -- so only its base value is ever seen.
+local Curve = require("models.curve")
+
 return {
     name = "The Hollow Crown",
     description = "At 75%, 50%, and 25% health: summon a fallen general.",
@@ -18,5 +20,5 @@ return {
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_hollow_crown" },
-    bonus = { defense = { 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11 } }, -- levels 0..10 (only base is ever used)
+    bonus = { defense = Curve.paired(6, 11) }, -- levels 0..10 (only base is ever used)
 }

@@ -661,8 +661,9 @@ a free always-on mitigation would be untouchable.
 3. Give it an **extra** the base weapon does not have (see above). If you cannot name one, what you
    are holding is a `+n` of the base weapon, and the forge already sells that. Reach for a keyword
    first; hand-roll in the `effect` only when no keyword fits.
-4. Author `damage` as a per-level curve over levels 0–10 (see `models/item.lua`'s
-   `Item.resolveLevel`).
+4. Author `damage` as a per-level curve over levels 0–10 — normally a generator from
+   `models/curve.lua`, e.g. `damage = Curve.ramp(6, 16)`. See
+   [Per-level curves](adding-content.md#per-level-curves).
 5. Decide which half of the ten it is:
    - **Shelf** — set `class`, `price` and `unlockQuests` (one of `Vendor.TIERS` = 0/3/6/10; 10 is the vendor ceiling).
    - **Quest-only** — set `class` and **no `price`**. The missing price is the whole mechanism: it keeps

@@ -8,6 +8,8 @@
 -- less blood each overchanneled spell costs.
 --
 -- No `class`/`price`: no vendor stocks or buys it. Forged at the Blacksmith, its mana ceiling rising.
+local Curve = require("models.curve")
+
 return {
     name = "Overflowing Focus",
     description = "When mana runs dry, spells are paid for in health instead.",
@@ -17,5 +19,5 @@ return {
     tags = { "signature" },
     bound = true,
     traits = { "trait_overchannel" },
-    maxBonus = { mana = { 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26 } }, -- levels 0..10
+    maxBonus = { mana = Curve.ramp(6, 26) }, -- levels 0..10
 }

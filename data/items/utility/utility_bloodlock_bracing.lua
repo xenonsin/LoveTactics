@@ -32,6 +32,8 @@
 -- NEVER LETHAL. Combat.applyReservations reserves only down to the bearer's last point of life, so a
 -- fighter who walks in already wounded locks away only what it can spare -- it can cost you your buffer,
 -- never your fight.
+local Curve = require("models.curve")
+
 return {
     name = "Bloodlock Bracing",
     description = "Reserves health to raise your Defense and Magic Defense.",
@@ -46,8 +48,8 @@ return {
     -- The armor the locked blood buys, forged deeper level by level. Defense and Magic Defense move
     -- together: the brace is whole-body, not a shield turned to one school.
     bonus = {
-        defense      = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 }, -- levels 0..10
-        magicDefense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        defense      = Curve.paired(3, 8), -- levels 0..10
+        magicDefense = Curve.paired(3, 8),
     },
     -- The cost: a fixed share of MAX health locked away for the fight (Combat.applyReservations, resolved
     -- by Combat.healthReserveAmount). A flat fraction, not level-scaled -- the forge buys more brace,

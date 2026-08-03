@@ -3,6 +3,8 @@
 -- weapon sitting adjacent to it in the 3x3 item grid (the arrow needs a bow to fire it); range 1
 -- picks the tile in front, which sets the direction the shot travels. Combat.adjacencyMet gates the
 -- cast and Combat.adjacencyLinks draws the connector line to the bow that satisfies it.
+local Curve = require("models.curve")
+
 return {
     name = "Power Shot",
     description = "Looses an arrow piercing a line four tiles long. Needs an adjacent ranged weapon.",
@@ -21,7 +23,7 @@ return {
         speed = 4,
         windup = 4, -- the overdraw takes four ticks to brace; hard control breaks the draw
         cost = { stat = "stamina", amount = 10 },
-        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- per-target damage = power + the caster's Damage, minus Defense
+        damage = Curve.ramp(5), -- per-target damage = power + the caster's Damage, minus Defense
         aoe = { shape = "line", length = 4 }, -- four tiles in a straight line away from the caster
         requiresAdjacent = { type = "weapon", tag = "ranged" }, -- a ranged weapon must sit adjacent in the grid
         effect = function(fx)

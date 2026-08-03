@@ -17,6 +17,8 @@
 -- should feel that as a loadout decision rather than read it in a tooltip.
 --
 -- Cloth: a square of pace.
+local Curve = require("models.curve")
+
 return {
     name = "Witchlight Shroud",
     description = "Inflicts Limned on adjacent foes.",
@@ -26,5 +28,5 @@ return {
     tags = { "cloth", "light" },
     class = "mage",
     incense = { hazard = "hazard_witchlight", radius = 1 },
-    bonus = { magicDefense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, movement = -1 },
+    bonus = { magicDefense = Curve.paired(4, 9), movement = -1 },
 }

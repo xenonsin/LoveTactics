@@ -8,6 +8,8 @@
 --
 -- Deliberately thin steel. A wearer who is being hit is not landing blows, and a coat that made them
 -- durable enough to trade would be paying them for the wrong behaviour.
+local Curve = require("models.curve")
+
 return {
     name = "Cutpurse's Coat",
     description = "On damage dealt: gain gold.",
@@ -17,5 +19,5 @@ return {
     tags = { "leather" },
     class = "rogue",
     traits = { "trait_skimmers_cut" },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 } },
+    bonus = { defense = Curve.ramp(3, 7) },
 }

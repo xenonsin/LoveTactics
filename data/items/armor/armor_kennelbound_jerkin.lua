@@ -12,6 +12,8 @@
 -- So the jerkin's own steel is nearly nothing, and should stay that way. What the wearer bought is a
 -- second set of teeth on the board, and if it also made them hard to kill the Warren would sell
 -- nothing else.
+local Curve = require("models.curve")
+
 return {
     name = "Kennelbound Jerkin",
     description = "Start each battle with a wolf at your side, free of any reservation.",
@@ -21,5 +23,5 @@ return {
     tags = { "hide" },
     class = "hunter",
     traits = { "trait_wolf_companion" },
-    bonus = { defense = { 2, 2, 3, 3, 4, 4, 4, 5, 5, 6, 6 } },
+    bonus = { defense = Curve.ramp(2, 6) },
 }

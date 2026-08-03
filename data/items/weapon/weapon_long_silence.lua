@@ -14,6 +14,8 @@
 --
 -- Note the archer's own cost is stamina, so this is not itself sorcery and cannot be silenced in return
 -- -- the asymmetry is the point of putting the effect on a bow.
+local Curve = require("models.curve")
+
 return {
     name = "The Long Silence",
     description = "Channeled: inflicts Silence.",
@@ -34,7 +36,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 10 },
         -- Under the iron longbow's: taking a caster's whole kit away is worth more than the arrow.
-        damage = { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 },
+        damage = Curve.ramp(7, 17),
         effect = function(fx)
             local t = fx.target
             if not t then return end

@@ -2,6 +2,8 @@
 -- affliction erupts into a small blast -- everything around it takes double, and the target's DoT is
 -- consumed in the blast. With no affliction to touch off it is only a weak bolt. Rewards a party that
 -- has stacked its damage-over-time first.
+local Curve = require("models.curve")
+
 return {
     name = "Detonate",
     description = "Detonates Burn or Poison on a foe into an area blast, consuming it. Weak without one.",
@@ -18,7 +20,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "mana", amount = 12 },
-        damage = { 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 },
+        damage = Curve.ramp(4, 14),
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)
             local t = fx.target

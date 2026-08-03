@@ -9,6 +9,8 @@
 --
 -- `class = "knight"` with NO `price`: unbuyable, and still tallying toward knight growth
 -- (docs/classes.md, "class without price"). No `traits` -- see utility_closed_entry.lua.
+local Curve = require("models.curve")
+
 return {
     name = "Forty-One Marks",
     description = "Grants bonus damage.",
@@ -18,6 +20,5 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
-    --                 level:  0  1  2  3  4  5  6  7  8  9  10
-    bonus = { damage = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } },
+    bonus = { damage = Curve.paired(2, 7) },
 }

@@ -5,6 +5,8 @@
 --
 -- The alchemist's take on "removing armor": not stealing the plate (that is Greed) but making it stop
 -- working (Envy). Carries no "magical" tag; the corrosion cares nothing for magic defense to apply.
+local Curve = require("models.curve")
+
 return {
     name = "Acid Bomb",
     description = "Inflicts Acid in area.",
@@ -23,7 +25,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 5 },
-        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- flat, modest: the debuff is the payload, not the splash
+        damage = Curve.ramp(6), -- flat, modest: the debuff is the payload, not the splash
         consumesItem = true,
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)

@@ -10,6 +10,8 @@
 -- (Combat.drainResource reports what it actually took, and fx.restore hands back exactly that), so the
 -- blow still lands but the theft comes up empty against a spent foe -- the correct shape for a tool that
 -- lives off other people having something to take.
+local Curve = require("models.curve")
+
 return {
     name = "Sap",
     description = "Deals damage and drains the target's stamina into your own.",
@@ -26,7 +28,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 5 },
-        damage = { 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, -- the strike itself, attack-stat scaled like any blow
+        damage = Curve.ramp(5, 15), -- the strike itself, attack-stat scaled like any blow
         effect = function(fx)
             fx.damage(fx.target)
             local want = 8 + fx.level -- the theft: a flat bite of stamina, sharpened by the forge

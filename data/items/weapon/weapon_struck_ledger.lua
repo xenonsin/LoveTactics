@@ -16,6 +16,8 @@
 -- Deliberately the worst damage on the hunter's shelf. A weapon that pays you for kills must not also be
 -- good at producing them, or there is no decision -- and a run of fights where you shot everything with
 -- this instead of killing it faster is a run where the party is rich and the quest went badly.
+local Curve = require("models.curve")
+
 return {
     name = "The Struck Ledger",
     description = "Inflicts Struck Ledger.",
@@ -33,7 +35,7 @@ return {
         speed = 2,
         cost = { stat = "stamina", amount = 6 },
         -- Half an iron bow's, and that is the design rather than a tax. See the header.
-        damage = { 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7 },
+        damage = Curve.ramp(2, 7),
         effect = function(fx)
             -- The bounty rides the blow: it lands on whoever the shot hits, and only a surviving hit --
             -- the .alive guard the carried path enforces for free.

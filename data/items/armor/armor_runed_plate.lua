@@ -1,6 +1,8 @@
 -- Passive armor: no active ability (so no speed, ignored by initiative). Its bonus is
 -- folded into the wearer's stats at combat setup, and its tag-keyed resist reduces
 -- incoming damage whose source carries a matching tag.
+local Curve = require("models.curve")
+
 return {
     name = "Runed Plate",
     description = "Heavy armor. Guards against blade and spell alike.",
@@ -11,6 +13,6 @@ return {
     price = 400,
     unlockQuests = 6,
     -- Heavy tier: trades a little raw steel for a genuine guard against magic.
-    bonus = { defense = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, magicDefense = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, movement = -2 },
-    resist = { physical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 }, magical = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
+    bonus = { defense = Curve.ramp(10), magicDefense = Curve.ramp(6), movement = -2 },
+    resist = { physical = Curve.ramp(3), magical = Curve.ramp(3) },
 }

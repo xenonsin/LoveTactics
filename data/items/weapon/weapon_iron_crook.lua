@@ -17,6 +17,8 @@
 -- It is also the only staff whose strike is worth swinging on purpose -- the curve is well above the
 -- family's usual afterthought -- which is what makes it the mage's weapon of last resort rather than a
 -- worse wand.
+local Curve = require("models.curve")
+
 return {
     name = "The Iron Crook",
     description = "Replaces Wait with Focus. Its strike is honest iron: no ward turns it, and no silence stops it.",
@@ -30,7 +32,7 @@ return {
     class = "mage",
     waitBehavior = {
         kind = "focus",
-        mana = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 }, -- a plain staff's: nothing traded here
+        mana = Curve.ramp(8, 18), -- a plain staff's: nothing traded here
         speed = 10,
     },
     activeAbility = {
@@ -40,7 +42,7 @@ return {
         cost = { stat = "stamina", amount = 7 },
         -- Roughly double the family's usual afterthought. It has to be a real club, or the deviation buys
         -- nothing: a physical strike for four damage is as useless against a warded foe as a magical one.
-        damage = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 },
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             fx.damage(fx.target) -- tags default to the item's, so the blow is physical
         end,

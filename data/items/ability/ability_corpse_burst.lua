@@ -12,6 +12,8 @@
 --
 -- The blast catches allies standing in it too, exactly as Meteor Storm's does: it is thrown at GROUND,
 -- and everything on that ground -- including a raised zombie of your own -- eats the same dark burst.
+local Curve = require("models.curve")
+
 return {
     name = "Corpse Burst",
     description = "For each corpse in area consume it. Increase damage by 6 per corpse.",
@@ -31,7 +33,7 @@ return {
         speed = 6,
         cost = { stat = "mana", amount = 16 },
         aoe = { radius = 1, shape = "square" }, -- the 3x3 it sweeps for bodies and blasts
-        damage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, -- fx.amount: the base blast, before the bodies add to it
+        damage = Curve.ramp(10), -- fx.amount: the base blast, before the bodies add to it
         effect = function(fx)
             -- Count first (a read-only sweep the preview can run truthfully), THEN consume: a dry run
             -- leaves the consume inert, so counting up front is what keeps the damage the tooltip shows

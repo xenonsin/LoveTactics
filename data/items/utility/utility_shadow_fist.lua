@@ -2,6 +2,8 @@
 -- the range of the bearer's bare-handed strike by one tile (`unarmedBonus.range`, added to the unarmed
 -- ability's reach in Combat.abilityRange) -- so the fist can jab a foe a tile away. Only the fist is
 -- lengthened, never a crafted weapon. Stacks with the other fist charms.
+local Curve = require("models.curve")
+
 return {
     name = "Shadow Fist",
     description = "Bare-handed strikes reach one tile farther. Does nothing for a weapon.",
@@ -13,5 +15,5 @@ return {
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 260,
     unlockQuests = 6,
-    unarmedBonus = { range = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
+    unarmedBonus = { range = Curve.ramp(1) },
 }

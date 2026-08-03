@@ -17,6 +17,8 @@
 -- who survives long enough to collect the whole curve should have done it by killing.
 --
 -- utility_butchers_tally grants the same rule from a cell.
+local Curve = require("models.curve")
+
 return {
     name = "Blood-Fever Mail",
     description = "Every body that falls, on either side, permanently raises your Damage this battle.",
@@ -27,5 +29,5 @@ return {
     class = "fighter",
     traits = { "trait_blood_fever" },
     bonus = { defense = { 5, 5, 6, 7, 7, 8, 8, 9, 10, 10, 11 }, movement = -1 },
-    resist = { slash = { 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4 } },
+    resist = { slash = Curve.ramp(2) },
 }

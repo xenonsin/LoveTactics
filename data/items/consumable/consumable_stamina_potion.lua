@@ -5,6 +5,8 @@
 -- Which is exactly when it is worth carrying: the fighter who has emptied their bar into an Omnislash
 -- and wants to swing again THIS turn, or the duelist whose parry has priced itself out of the exchange
 -- mid-flurry. Nothing here is unavailable to patience; all of it is unavailable to urgency.
+local Curve = require("models.curve")
+
 return {
     name = "Stamina Potion",
     description = "Restores stamina to an ally.",
@@ -21,7 +23,7 @@ return {
         range = 1,
         speed = 2,
         consumesItem = true,
-        restore = { 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45 }, -- the stamina returned
+        restore = Curve.ramp(25, 45), -- the stamina returned
         restoreStat = "stamina",
         effect = function(fx)
             fx.restore(fx.target, "stamina", fx.amount)

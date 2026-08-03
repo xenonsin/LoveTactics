@@ -3,6 +3,8 @@
 --
 -- The Arcanum's catalogue lists eleven owners. It does not list how many finished reading it -- the
 -- first hint of Pride, whose general answers every spell with your own.
+local Curve = require("models.curve")
+
 return {
     name = "Codex of Hubris",
     description = "Grants potent magic, and a ward against it.",
@@ -13,6 +15,6 @@ return {
     class = "mage",
     price = 800,
     unlockQuests = 10,
-    bonus = { magicDamage = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 }, magicDefense = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 } },
-    resist = { magical = { 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8 } },
+    bonus = { magicDamage = Curve.ramp(10), magicDefense = Curve.ramp(5) },
+    resist = { magical = Curve.ramp(4) },
 }

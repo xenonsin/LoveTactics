@@ -5,6 +5,8 @@
 --
 -- Home shelf is the Bastion (`class = "knight"`, where a mace belongs and its family reads true); the
 -- discipline stocks it on the Crucible's shelf too, and using it grows both knight and alchemist.
+local Curve = require("models.curve")
+
 return {
     name = "Pestilent Flail",
     description = "Knockback 2 and inflicts Poison on it and everything adjacent.",
@@ -21,7 +23,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 },
+        damage = Curve.ramp(8),
         effect = function(fx)
             fx.damage(fx.target, { knockback = { distance = 2, amount = fx.amount } })
             -- Contagion: the rot spreads to the struck body and everyone packed in around it.

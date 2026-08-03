@@ -13,6 +13,8 @@
 --
 -- Unlike the Crucible's other charms it reaches weapons and abilities, not consumables -- "adjacent
 -- items deal poison." See Combat.auraApplies / adjacencyAura and the aura-fold in Combat.useItem.
+local Curve = require("models.curve")
+
 return {
     name = "Envenom",
     description = "Adjacent weapons and abilities inflict Poison on a hit. Spent as they are used.",
@@ -28,6 +30,6 @@ return {
         appliesTo = { "weapon", "ability" }, -- which neighbor types the toxin coats
         exceptTags = { "restorative" },      -- a healing draught is not turned into a poison
         grantTags = { "poison" },            -- folded into the neighbor's attack tags
-        status = { id = "status_poison", opts = { duration = 25, magnitude = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } } }, -- applied on a damaging hit; matches Poison's own ~5 turns
+        status = { id = "status_poison", opts = { duration = 25, magnitude = Curve.ramp(3) } }, -- applied on a damaging hit; matches Poison's own ~5 turns
     },
 }

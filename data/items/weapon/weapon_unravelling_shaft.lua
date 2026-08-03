@@ -16,6 +16,8 @@
 --
 -- Unsided, and this one bites: your own line standing in it takes the extra magical damage too, which
 -- against an enemy caster is a real way to lose people. It is a zone for the enemy's half of the board.
+local Curve = require("models.curve")
+
 return {
     name = "The Unravelling Shaft",
     description = "Inflicts Unravelled in area.",
@@ -33,7 +35,7 @@ return {
         speed = 3,
         cost = { stat = "stamina", amount = 7 },
         -- Under an iron bow's: this weapon's output is measured on the mage's turn, not on the archer's.
-        damage = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        damage = Curve.paired(3, 8),
         effect = function(fx)
             fx.damage(fx.target)
             -- On the aimed cell rather than the body, for the reason weapon_witchlight_bow gives: the

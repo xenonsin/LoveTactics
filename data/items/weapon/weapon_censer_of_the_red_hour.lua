@@ -14,6 +14,8 @@
 -- It stacks with a Vampiric Strike charm and with a weapon's own declared `lifesteal` rather than
 -- overriding either (docs/weapons.md), so a Crimson Greataxe swung inside this is drinking from two
 -- sources at once -- which is the intended, and the reason it sits where it does on the shelf.
+local Curve = require("models.curve")
+
 return {
     name = "Censer of the Red Hour",
     description = "Grants Bloodsong to adjacent allies.",
@@ -27,14 +29,14 @@ return {
     incense = {
         hazard = "hazard_bloodsong",
         radius = 1,
-        amount = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        amount = Curve.paired(3, 8),
     },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        damage = Curve.paired(4, 9),
         effect = function(fx)
             fx.damage(fx.target)
         end,

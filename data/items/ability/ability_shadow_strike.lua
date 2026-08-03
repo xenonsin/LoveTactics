@@ -3,6 +3,8 @@
 -- recorded by Combat.startTurn) -- so a rogue can move up, hit, and retreat to safety in a single
 -- action. If it never moved this turn, there is nowhere to snap back to and the blow simply lands in
 -- place. Contrast Shadow Step (blink TO a foe): this blinks AWAY after striking. Scales with attack.
+local Curve = require("models.curve")
+
 return {
     name = "Shadow Strike",
     description = "Strikes an adjacent foe, then blinks back to where your turn began.",
@@ -19,7 +21,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 7 },
-        damage = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 },
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             fx.damage(fx.target)
             -- Snap back to the turn's origin tile, if we moved off it. That tile is empty -- no one

@@ -11,6 +11,8 @@
 -- answers. Contrast the wolf's Fangs, which give a single tile of ground (fx.retreat) -- a wolf backs
 -- off, a hawk leaves. If the hawk never moved this turn there is nowhere to snap back to and the rake
 -- simply lands in place.
+local Curve = require("models.curve")
+
 return {
     name = "Talons",
     description = "Rakes an adjacent foe, then returns to where the turn began.",
@@ -24,7 +26,7 @@ return {
         range = 1,
         speed = 3, -- fast, matching a light quick strike
         cost = { stat = "stamina", amount = 4 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, -- softer than Fangs: the bird is not the threat
+        damage = Curve.paired(4, 9), -- softer than Fangs: the bird is not the threat
         effect = function(fx)
             fx.damage(fx.target)
             -- Back to the perch: the turn's origin tile, if the bird left it. That tile is empty --

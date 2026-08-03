@@ -13,6 +13,8 @@
 -- is damage and cold is time.
 --
 -- Cloth: a square of pace.
+local Curve = require("models.curve")
+
 return {
     name = "Rimecloth",
     description = "Drinks cold, and shortens the frostbitten afflictions that come with it.",
@@ -24,8 +26,8 @@ return {
     price = 230,
     unlockQuests = 3,
     bonus = {
-        magicDefense = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 },
-        statusResist = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        magicDefense = Curve.ramp(3, 7),
+        statusResist = Curve.paired(3, 8),
         movement = -1,
     },
     resist = { ice = { 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13 } },

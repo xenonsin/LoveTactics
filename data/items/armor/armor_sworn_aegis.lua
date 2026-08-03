@@ -18,6 +18,8 @@
 --
 -- No `class` and no `price`: no vendor stocks or buys it. It is upgraded at the Blacksmith like a
 -- shield, its defense curve climbing with the forge.
+local Curve = require("models.curve")
+
 return {
     name = "Sworn Aegis",
     description = "The first hit each turn on an adjacent ally is taken by you instead.",
@@ -28,10 +30,10 @@ return {
     class = "knight",
     bound = true,
     traits = { "trait_oathward" },
-    bonus = { defense = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
-    resist = { physical = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
+    bonus = { defense = Curve.ramp(3) },
+    resist = { physical = Curve.ramp(1) },
     -- Defend brace: the knight's core stance, its +defense climbing as the shield is forged.
-    waitBehavior = { kind = "defend", speed = 3, defense = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 } },
+    waitBehavior = { kind = "defend", speed = 3, defense = Curve.ramp(6, 16) },
     -- The oath's answer (see the header): locked until she has weathered four blows, then a sweep that
     -- strikes and shoves the whole adjacent ring. A self-centred area cast -- friend and self spared.
     activeAbility = {

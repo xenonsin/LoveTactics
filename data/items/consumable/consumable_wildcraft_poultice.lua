@@ -5,6 +5,8 @@
 -- Home shelf is the Lodge (`class = "hunter"`), so it tallies toward the hunter and appears on the Lodge
 -- and Crucible shelves both once Herbalist is unlocked. Deliberately NOT tagged `potion`: the Cafe
 -- resells potions, and this is a discipline-locked field remedy, not a counter good.
+local Curve = require("models.curve")
+
 return {
     name = "Wildcraft Poultice",
     description = "Restores health to an ally and draws out Poison.",
@@ -21,7 +23,7 @@ return {
         range = 1,
         speed = 2,
         consumesItem = true,
-        healing = { 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40 },
+        healing = Curve.ramp(20),
         ai = { priority = "emergency", act = "support", targetPref = "lowest_hp",
                when = { subject = "self", test = "hp_pct_below", value = 0.35 } },
         effect = function(fx)

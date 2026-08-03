@@ -14,6 +14,8 @@
 --
 -- Unsided, as ground generally is: your own rogue is exactly as visible in it, which is a real conflict
 -- in a party running both.
+local Curve = require("models.curve")
+
 return {
     name = "Censer of Cold Light",
     description = "Inflicts Limned on adjacent foes.",
@@ -27,14 +29,14 @@ return {
     incense = {
         hazard = "hazard_witchlight",
         radius = 1,
-        amount = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+        amount = Curve.paired(3, 8),
     },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 },
+        damage = Curve.paired(4, 9),
         effect = function(fx)
             fx.damage(fx.target)
         end,

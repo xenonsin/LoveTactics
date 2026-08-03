@@ -15,6 +15,8 @@
 -- standing its ground. Given to the wolf blueprints (grunt, alpha, wolfsong spirit) via startingItems;
 -- the same fixed damage array and cheap stamina, so a wolf's initiative and reach are unchanged.
 local GIVE_GROUND = 1 -- tiles, stated once so the bite and the counter can never drift apart
+local Curve = require("models.curve")
+
 return {
     name = "Fangs",
     description = "Bites an adjacent foe, then gives ground a tile. Answers a blow the same way.",
@@ -29,7 +31,7 @@ return {
         range = 1,
         speed = 2,
         cost = { stat = "stamina", amount = 5 },
-        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 },
+        damage = Curve.ramp(5),
         effect = function(fx)
             fx.damage(fx.target)
             -- Give ground a tile away from the foe just bitten. Out of adjacency, the melee counter that

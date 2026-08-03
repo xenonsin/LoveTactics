@@ -16,6 +16,8 @@
 --
 -- It still shoots what it is aimed at -- an arrow is an arrow -- but only for a token amount. The damage
 -- is not the sale and it is not meant to be a compromise; the trap is the weapon.
+local Curve = require("models.curve")
+
 return {
     name = "Deadfall Bow",
     description = "Channeled: arms a trap where it lands.",
@@ -34,7 +36,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 10 },
         -- Token, and openly so: the shaft is being planted rather than loosed.
-        damage = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 },
+        damage = Curve.paired(2, 7),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             -- Armed on the aimed CELL. A bear trap rather than a spike trap: what the Lodge sells is a

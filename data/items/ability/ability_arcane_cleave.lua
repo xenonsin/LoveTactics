@@ -2,6 +2,8 @@
 -- spell's element: it routes as MAGICAL damage (through magicDefense, not armour) and sets the target
 -- alight (data/status/status_burn.lua). Steel and sorcery in one motion -- the whole point of a
 -- Battlemage, paid for in stamina so a sword-and-spell brawler is never out of fuel.
+local Curve = require("models.curve")
+
 return {
     name = "Arcane Cleave",
     description = "Inflicts Burn.",
@@ -18,7 +20,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 },
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_burn" })
         end,

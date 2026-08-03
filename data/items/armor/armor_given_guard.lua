@@ -21,6 +21,8 @@
 --
 -- It reads as the shield-shaped sibling of data/items/weapon/weapon_lending_blade.lua, which does the
 -- same trade off a swing and takes the guard from an enemy instead of from itself.
+local Curve = require("models.curve")
+
 return {
     name = "The Given Guard",
     description = "Replaces Wait with Defend: lend your guard to every ally beside you, and go without it yourself.",
@@ -29,14 +31,14 @@ return {
     type = "armor",
     tags = { "shield", "holy" },
     class = "knight",
-    bonus = { defense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 } },
+    bonus = { defense = Curve.paired(4, 9) },
     resist = { physical = { 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5 } },
     waitBehavior = {
         kind = "defend",
         speed = 3,
         -- A buckler's brace, kept: the knight still braces, and then hands the guard over on top. Without
         -- that the stance would be a pure downgrade for the holder and nobody would ever plant it.
-        defense = { 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11 },
+        defense = Curve.paired(6, 11),
         status = "status_given_guard",       -- the debt, on the holder
         coversStatus = "status_lent_guard",  -- ...and the loan, on everyone beside them
     },

@@ -19,6 +19,8 @@
 -- (see the trait), so the enemy's information is exactly what it should be -- "I hit them recently" --
 -- with no timer attached to it, and a Cure cannot restart the heart, which would be a strange thing
 -- for a cure to do.
+local Curve = require("models.curve")
+
 return {
     name = "The Unspent Heart",
     description = "Heals its wearer hard while untouched; any wound stops it for several turns.",
@@ -32,7 +34,7 @@ return {
     unlockQuests = 10,
     traits = { "trait_unspent_heart" },
     bonus = {
-        health = { 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30 },
-        defense = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 },
+        health = Curve.ramp(10, 30),
+        defense = Curve.paired(2, 7),
     },
 }

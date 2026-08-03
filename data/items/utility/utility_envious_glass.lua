@@ -17,6 +17,8 @@
 -- location (docs/item-text.md: story, not a rule). The Gate is keyed off the QUEST finished, never off
 -- this item (questGate in models/quest.lua), so stashing it, wearing it, or losing it can never cost the
 -- endgame.
+local Curve = require("models.curve")
+
 return {
     name = "The Envious Glass",
     description = "At the opening bell, a copy of your strongest foe stands and fights at your side.",
@@ -27,5 +29,5 @@ return {
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_covetous_reflection" },
-    bonus = { magicDefense = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } },
+    bonus = { magicDefense = Curve.paired(2, 7) },
 }

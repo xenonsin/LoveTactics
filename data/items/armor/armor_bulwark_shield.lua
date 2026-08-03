@@ -19,6 +19,8 @@
 -- It also has a shield's TAG, so a Shield Bash charm beside it in the grid arms off this shield exactly
 -- as it would off any other -- a bearer carrying both answers a braced blow with a stun AND a shove,
 -- and pays the escalating answer price twice for the privilege.
+local Curve = require("models.curve")
+
 return {
     name = "Bulwark",
     description = "Replaces Wait with Defend. Melee attackers take Knockback 2.",
@@ -31,7 +33,7 @@ return {
     unlockQuests = 6,
     traits = { "trait_shield_shove" },
     bonus = { defense = { 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 15 } },
-    resist = { physical = { 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7 }, impact = { 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6 } },
+    resist = { physical = Curve.ramp(3, 7), impact = Curve.ramp(3) },
     waitBehavior = {
         kind = "defend", speed = 2,
         defense = { 8, 9, 10, 10, 11, 12, 13, 13, 14, 15, 16 },

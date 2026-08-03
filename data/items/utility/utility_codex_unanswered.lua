@@ -15,6 +15,8 @@
 -- general's fragment of the Gate Below's location (docs/item-text.md: story, not a rule; the tooltip
 -- prints it italic at the foot). The Gate is keyed off the QUEST finished, never off this item (questGate
 -- in models/quest.lua), so stashing it, wearing it, or losing it can never cost the endgame.
+local Curve = require("models.curve")
+
 return {
     name = "The Codex Unanswered",
     description = "Deflects one spell aimed at you, for mana.",
@@ -25,5 +27,5 @@ return {
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_perfect_recall" },
-    bonus = { magicDefense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
+    bonus = { magicDefense = Curve.paired(3, 8) },
 }

@@ -12,6 +12,8 @@
 --
 -- Mark drops defense AND magic defense (status_mark), so what it invites is whichever finisher is
 -- already in the grid rather than a particular school. Nothing here cares what kills it.
+local Curve = require("models.curve")
+
 return {
     name = "Quarryhide",
     description = "On inflicting Stun or Freeze: inflict Mark, then recharge.",
@@ -21,6 +23,6 @@ return {
     tags = { "hide" },
     class = "hunter",
     traits = { "trait_executioners_eye" },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
+    bonus = { defense = Curve.paired(3, 8) },
     resist = { physical = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3 } },
 }

@@ -1,6 +1,8 @@
 -- A war hammer: a single ponderous swing that lands like a falling tree and leaves the target reeling.
 -- It hits hard and STUNS -- shoving the victim down the turn order (data/status/stun.lua) -- but it is
 -- brutally slow to wind up (a high `speed`), so you buy the stun with a big chunk of your own tempo.
+local Curve = require("models.curve")
+
 return {
     name = "Iron Hammer",
     description = "Deals heavy damage and inflicts Stun.",
@@ -17,7 +19,7 @@ return {
         range = 1,
         speed = 7, -- ponderous: you pay for the stun in turn order
         cost = { stat = "stamina", amount = 12 },
-        damage = { 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24 },
+        damage = Curve.ramp(12),
         effect = function(fx)
             -- The stun rides the blow (`inflicts`) rather than following it: a hammer that stunned on
             -- the NEXT line would be answered by the very fighter it just rattled, because the counter

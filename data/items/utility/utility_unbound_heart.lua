@@ -13,6 +13,8 @@
 -- whole rule off her, and it leaves no second copy behind (the player's version of the rule is the
 -- looted armor_mail_of_the_unappeased, granted by the quest, never this). No `class`/`price`: not gear
 -- anyone shops for; only its base value is ever seen.
+local Curve = require("models.curve")
+
 return {
     name = "The Unbound Heart",
     description = "Increase damage by 1 per blow you take, plus up to +20 by the fraction of health missing.",
@@ -22,5 +24,5 @@ return {
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_wrath_rising" },
-    bonus = { damage = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } }, -- levels 0..10 (only base is ever used)
+    bonus = { damage = Curve.paired(2, 7) }, -- levels 0..10 (only base is ever used)
 }

@@ -6,6 +6,8 @@
 -- everything involved in the collision takes impact damage -- the Power, and more of it the more
 -- travel the shove was robbed of (a foe pinned flat against a wall eats the worst). Slow (speed 4)
 -- and dear in stamina -- you buy the displacement, not the damage.
+local Curve = require("models.curve")
+
 return {
     name = "Iron Mace",
     description = "Knockback 2. A collision hurts everyone in it.",
@@ -21,7 +23,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 },
+        damage = Curve.ramp(8),
         effect = function(fx)
             -- The shove is folded INTO the blow (opts.knockback), not a separate step, so a lethal hit
             -- throws the body before it falls rather than dropping it on the spot -- see the mace's

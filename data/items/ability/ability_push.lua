@@ -9,6 +9,8 @@
 -- off into the enemy line and bursts on impact), or a trap you have found (walk the demons' own spikes
 -- back down their approach). Bodies route through Combat.knockback, furniture through Combat.hurlObject;
 -- either way it is the same journey, told in each layer's currency.
+local Curve = require("models.curve")
+
 return {
     name = "Push",
     description = "Knockback 3 on an adjacent body, barrel or trap; a collision hurts both sides.",
@@ -27,7 +29,7 @@ return {
         minRange = 1,          -- an adjacent neighbour, never the shover's own tile
         speed = 3,
         cost = { stat = "stamina", amount = 5 },
-        damage = { 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12 }, -- the collision's bite (only a blocked shove lands it)
+        damage = Curve.ramp(6), -- the collision's bite (only a blocked shove lands it)
         effect = function(fx)
             -- Whatever stands on the aimed tile: a body first (a unit and an object never share a tile,
             -- so the order is a preference in name only), otherwise the furniture on it -- a prop, or a

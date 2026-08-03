@@ -13,6 +13,8 @@
 --
 -- The failure case is loud and worth stating: the blink puts the wearer in the middle of whatever the
 -- attacker was standing in. Shot from inside a fire, you end up in the fire.
+local Curve = require("models.curve")
+
 return {
     name = "Slipstep Leathers",
     description = "On hit taken: appear beside the attacker and cut, for a swing's stamina.",
@@ -22,6 +24,6 @@ return {
     tags = { "leather" },
     class = "rogue",
     traits = { "trait_slipstep" },
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
+    bonus = { defense = Curve.paired(3, 8) },
     resist = { physical = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3 } },
 }

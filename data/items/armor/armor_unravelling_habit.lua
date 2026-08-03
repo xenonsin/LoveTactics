@@ -17,6 +17,8 @@
 -- the knight's.
 --
 -- Cloth: a square of pace, and the wearer wants to be much closer to the enemy than a caster likes.
+local Curve = require("models.curve")
+
 return {
     name = "Unravelling Habit",
     description = "Inflicts Unravelled on adjacent units.",
@@ -26,5 +28,5 @@ return {
     tags = { "cloth", "arcane" },
     class = "mage",
     incense = { hazard = "hazard_unravelling", radius = 1 },
-    bonus = { magicDefense = { 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9 }, movement = -1 },
+    bonus = { magicDefense = Curve.paired(4, 9), movement = -1 },
 }

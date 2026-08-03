@@ -7,6 +7,8 @@
 -- line drills it. It is the MOBILE answer the family was missing: Exposed already opens a foe to pierce,
 -- but only inside a Coveted Blood cloud you have to keep standing in, which a bow line cannot use. See
 -- docs/vulnerability.md for the family.
+local Curve = require("models.curve")
+
 return {
     name = "Barbed Dart",
     description = "Deals light piercing damage and inflicts Vulnerable: Pierce.",
@@ -23,7 +25,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 }, -- light: the mark is the payload, not the dart
+        damage = Curve.paired(3, 8), -- light: the mark is the payload, not the dart
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_vulnerable_pierce" })
         end,

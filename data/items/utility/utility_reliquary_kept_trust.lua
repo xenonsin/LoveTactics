@@ -25,6 +25,8 @@
 --
 -- `bound = true` (models/item.lua): never moved, stowed, given, sold, or stolen -- only forged. No
 -- `price`; `class = "priest"` still tallies priest growth. Its ward against magic climbs with the forge.
+local Curve = require("models.curve")
+
 return {
     name = "Reliquary of the Kept Trust",
     description = "Once you have healed thrice, ward the whole company -- and keep none of it for yourself.",
@@ -35,7 +37,7 @@ return {
     class = "priest",
     bound = true,
     traits = { "trait_sanctified_presence", "trait_devotion_unbidden" },
-    bonus = { magicDefense = { 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7 } },
+    bonus = { magicDefense = Curve.paired(2, 7) },
     activeAbility = {
         description = "Wards every nearby ally -- but not you -- with Aegis and Regeneration.",
         target = "self", -- centred on her; the aoe catches the company around her

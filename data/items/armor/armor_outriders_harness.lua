@@ -12,6 +12,8 @@
 -- and the Harrier's Bow are what make the coming-out possible.
 --
 -- Leather cut for movement, so it pays no square either (the 0 tier) -- and grants none.
+local Curve = require("models.curve")
+
 return {
     name = "Outrider's Harness",
     description = "If you have moved two tiles or more this turn, your attacks cannot be countered.",
@@ -23,6 +25,6 @@ return {
     discipline = "skirmisher",
     price = 400,
     unlockQuests = 6,
-    bonus = { defense = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 } },
+    bonus = { defense = Curve.paired(3, 8) },
     traits = { "trait_outriders_harness" },
 }

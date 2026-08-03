@@ -2,6 +2,8 @@
 -- shoving it down the turn order like a Stun, but the ice is brittle: a Frozen foe takes extra damage
 -- from crush and fire, so the classic follow-up is an Earth Elemental's Stone Fists or a Fire Bolt.
 -- The single-target ice counterpart to Fire Bolt. Scales with magic.
+local Curve = require("models.curve")
+
 return {
     name = "Ice Bolt",
     description = "Deals damage and inflicts Frozen.",
@@ -18,7 +20,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 10 },
-        damage = { 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10 }, -- balances both the hit AND the freeze delay below
+        damage = Curve.ramp(5), -- balances both the hit AND the freeze delay below
         effect = function(fx)
             -- The freeze rides the blow so it lands before the target can react to it. It is applied
             -- after mitigation is settled, so Frozen's own crush/fire `vulnerable` never feeds this

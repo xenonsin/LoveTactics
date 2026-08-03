@@ -20,6 +20,8 @@
 -- ADJACENCY: any `weapon` beside it -- the hook has to be swung off something. Loose on purpose: what
 -- the alchemist is holding is their business, and this spell has an opinion about the lane rather than
 -- about the blade.
+local Curve = require("models.curve")
+
 return {
     name = "The Gaff Line",
     description = "Hooks a distant foe, wounds it, and hauls it in across everything between.",
@@ -37,7 +39,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
-        damage = { 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 16 },
+        damage = Curve.ramp(8),
         requiresAdjacent = { type = "weapon" },
         effect = function(fx)
             -- Bite first, haul second. The order matters for a reason the pure Pull never has to think
