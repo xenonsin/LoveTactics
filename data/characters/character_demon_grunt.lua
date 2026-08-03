@@ -22,6 +22,12 @@ return {
     name = "Demon Grunt",
     sprite = "assets/chars/demon_grunt.png",
     revivable = false, -- a demon does not come back: no downed window, and no revive takes it
+    -- Blueprint-exact forever: every other enemy grows with the company (models/growth.lua,
+    -- Growth.combatantLevel), but this one's numbers are a LESSON, not a tuning. The prologue's parry
+    -- beat needs the claw to land for the avatar's sword to answer, and its stamina is cut to the exact
+    -- width of one swing (see below) -- both arguments break the moment the stat block moves. The same
+    -- reason its health stayed at 66 through the pass that cut every other pool to ~0.7.
+    scaling = false,
     stats = {
         -- Stamina is 15, not the ~0.25 cut the scarcity pass would give it (which was 10). Its Rending
         -- Claws cost 12 to swing (below), so a 10-stamina grunt could never attack at all -- it would be

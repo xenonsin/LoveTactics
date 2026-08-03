@@ -5,5 +5,7 @@
 -- Budget matches the base class tables (~10-12 points/level); movement is never grown (grid balance).
 -- See data/growth/knight.lua for the base shape and tests/growth_spec.lua for the stat rules.
 return {
-    speed = 2, damage = 4, stamina = 3, health = 1,
+    -- health 3, not 1: a duelist's defence is footwork, so it buys the survivability floor
+    -- (Growth.ENEMY_DAMAGE_GROWTH) entirely in pool rather than in armour it would never wear.
+    speed = 2, damage = 4, stamina = 3, health = 3,
 }

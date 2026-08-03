@@ -14,12 +14,26 @@ local CloseButton = require("ui.close_button")
 local Scale = require("scale")
 local InputMode = require("input_mode")
 local Theme = require("ui.theme")
+local ProgressBar = require("ui.progress_bar")
+local Growth = require("models.growth")
 
 local Advancement = {}
 Advancement.__index = Advancement
 
-local BOX_W, BOX_H = 560, 520
+local BOX_W = 560
 local ROW_H = 46
+
+-- Everything above the level-up list (title, rewards, the prestige bar, the section heading) and
+-- everything below it (the footer prompt). The box is sized to its CONTENT between them: a quest that
+-- levelled nobody is a short panel rather than a tall one with a hole in it, which matters now that
+-- most quests are exactly that.
+local HEAD_H, FOOT_H = 205, 56
+local MAX_ROWS = 6
+
+-- The prestige bar's fill: a beat to read the starting state, then the climb. Slow enough that a
+-- single prestige is a visible movement rather than a jump -- the whole point of the bar is that a
+-- quest which levels nobody still shows the company advancing.
+local BAR_HOLD, BAR_FILL = 0.35, 0.9
 
 -- Stat display names + a stable order, matching the Loadout panel's sheet (ui/panels/party.lua).
 local STAT_LABEL = {
@@ -60,15 +74,29 @@ function Advancement.new(opts)
     self.bodyFont = Theme.body(15)
     self.smallFont = Theme.body(13)
 
-    self.boxX = Scale.WIDTH / 2 - BOX_W / 2
-    self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
+    -- One row minimum, so the "no one levelled" line has somewhere to sit.
+    self.visible = math.max(1, math.min(#self.entries, MAX_ROWS))
+    self.boxH = HEAD_H + self.visible * ROW_H + FOOT_H
 
-    -- List viewport: below the reward header, above the footer prompt.
+    self.boxX = Scale.WIDTH / 2 - BOX_W / 2
+    self.boxY = Scale.HEIGHT / 2 - self.boxH / 2
+
+    -- The prestige step this quest moved the company along. Both ends come from Quest.complete; a
+    -- reward table built by anything else (a test, a debug grant) simply has no bar and the panel
+    -- falls back to reporting level-ups alone.
+    self.prestigeFrom = self.reward.prestigeBefore
+    self.prestigeTo = self.reward.prestigeAfter
+    self.hasBar = type(self.prestigeFrom) == "number" and type(self.prestigeTo) == "number"
+    self.shownPrestige = self.prestigeFrom or 0
+    self.barT = 0
+
+    -- List viewport: below the reward header and the bar, above the footer prompt. Sized from
+    -- `visible` above rather than the other way round, so the box wraps the rows instead of the rows
+    -- being fitted into a fixed box.
     self.listX = self.boxX + 24
-    self.listY = self.boxY + 150
+    self.listY = self.boxY + HEAD_H
     self.listW = BOX_W - 48
-    self.listH = self.boxY + BOX_H - 56 - self.listY
-    self.visible = math.max(1, math.floor(self.listH / ROW_H))
+    self.listH = self.visible * ROW_H
 
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
 
@@ -90,7 +118,16 @@ function Advancement:scrollBy(delta)
     self.scroll = math.max(0, math.min(self:maxScroll(), self.scroll + delta))
 end
 
-function Advancement:update(dt) end
+-- Ease the DISPLAYED prestige from where the company stood to where it now stands. The bar's level and
+-- its fill are both derived from that one running number, so crossing a threshold rolls the bar over on
+-- its own -- there is no separate "did we level" branch to keep in step with the arithmetic.
+function Advancement:update(dt)
+    if not self.hasBar then return end
+    self.barT = self.barT + (dt or 0)
+    local t = math.max(0, math.min(1, (self.barT - BAR_HOLD) / BAR_FILL))
+    local eased = 1 - (1 - t) ^ 3
+    self.shownPrestige = self.prestigeFrom + (self.prestigeTo - self.prestigeFrom) * eased
+end
 
 -- The one-line reward header: gold / prestige, plus a stock-unlocked shout when this quest opened a
 -- fresh wave of the sponsor's shelf.
@@ -107,9 +144,9 @@ function Advancement:draw()
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
     Theme.set(Theme.panel)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, self.boxH, Theme.R, Theme.R)
     Theme.set(Theme.frame)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, self.boxH, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
@@ -137,9 +174,11 @@ function Advancement:draw()
             self.boxX + 24, self.boxY + 92, BOX_W - 48, "center")
     end
 
+    self:drawPrestigeBar()
+
     love.graphics.setFont(self.headFont)
     Theme.set(Theme.muted)
-    love.graphics.print("The company grows", self.listX, self.boxY + 122)
+    love.graphics.print("The company grows", self.listX, self.boxY + 177)
 
     self:drawList()
     self:drawFooter()
@@ -148,11 +187,56 @@ function Advancement:draw()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- The company's climb toward its next level, filling live. This exists because a level costs several
+-- prestige while a quest pays one or two, so MOST quests advance the company without levelling anyone
+-- -- and before the bar, those quests said "No advancement this time" and read as wasted.
+function Advancement:drawPrestigeBar()
+    if not self.hasBar then return end
+
+    local x, w = self.listX, self.listW
+    local y = self.boxY + 122
+    local level = Growth.levelForPrestige(self.shownPrestige)
+    local into, span = Growth.prestigeIntoLevel(self.shownPrestige)
+    local capped = into == nil
+
+    -- Endpoints: what the company is now, and what it is climbing toward.
+    love.graphics.setFont(self.smallFont)
+    Theme.set(Theme.ink)
+    love.graphics.print("Level " .. level, x, y)
+    Theme.set(Theme.muted)
+    local right = capped and "Max" or ("Level " .. (level + 1))
+    love.graphics.printf(right, x, y, w, "right")
+
+    -- The slice that arrived just now is lit, so the eye lands on the change rather than the total.
+    local gained = self.shownPrestige - self.prestigeFrom
+    ProgressBar.draw(x, y + 20, w, 14, into or 1, span or 1, {
+        gain = capped and 0 or math.min(gained, into or 0),
+        full = capped,
+    })
+
+    love.graphics.setFont(self.smallFont)
+    Theme.set(Theme.muted)
+    local caption = capped and "The company can grow no further"
+        or string.format("%d / %d prestige to the next level", math.floor(into), span)
+    love.graphics.print(caption, x, y + 40)
+
+    local earned = (self.prestigeTo or 0) - (self.prestigeFrom or 0)
+    if earned > 0 then
+        Theme.set(Theme.accentAmber)
+        love.graphics.printf("+" .. earned .. " this quest", x, y + 40, w, "right")
+    end
+end
+
 function Advancement:drawList()
     if #self.entries == 0 then
         love.graphics.setFont(self.bodyFont)
         love.graphics.setColor(0.6, 0.62, 0.7)
-        love.graphics.printf("No advancement this time.", self.listX, self.listY + 8, self.listW, "left")
+        -- With the bar above, a quest that levelled nobody has still visibly moved the company, so say
+        -- what is actually true rather than "no advancement". The flat denial is kept only for a reward
+        -- table that carries no prestige step at all and therefore draws no bar.
+        local line = self.hasBar and "No one crossed a level this time -- the company still gains."
+            or "No advancement this time."
+        love.graphics.printf(line, self.listX, self.listY + 8, self.listW, "left")
         return
     end
 
@@ -224,7 +308,7 @@ function Advancement:drawFooter()
     love.graphics.setColor(0.6, 0.63, 0.7)
     -- Show the glyph for the device last used: pad button only in gamepad mode, keyboard/mouse otherwise.
     local hint = InputMode.isGamepad() and "A to continue" or "Enter / Click X to continue"
-    love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
+    love.graphics.printf(hint, self.boxX, self.boxY + self.boxH - 30, BOX_W, "center")
 end
 
 function Advancement:mousemoved(x, y)
@@ -244,7 +328,7 @@ function Advancement:mousepressed(x, y, button)
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then self:close() return end
     -- A click anywhere outside the box dismisses it too (it is a summary, nothing to lose).
-    if x < self.boxX or x > self.boxX + BOX_W or y < self.boxY or y > self.boxY + BOX_H then
+    if x < self.boxX or x > self.boxX + BOX_W or y < self.boxY or y > self.boxY + self.boxH then
         self:close()
     end
 end

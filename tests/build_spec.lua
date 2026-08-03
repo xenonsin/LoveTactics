@@ -270,7 +270,9 @@ return {
     },
     {
         -- Normalization and cross-machine agreement are the same mechanism: growth is RNG-free and
-        -- dominantClass settles ties by name, so (id, classUse, level) is a complete description.
+        -- ties settle by name, so (id, classUse, level) is a complete description. Still true now that
+        -- a live character also carries banked casts and a per-class ledger -- Build.normalized drops
+        -- the ledger and re-seeds the banked casts from classUse, precisely so the triple stays whole.
         name = "normalizing the same build twice produces the same character",
         fn = function()
             local snap = roundTrip({ authoredKnight() })

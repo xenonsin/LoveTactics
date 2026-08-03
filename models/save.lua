@@ -14,6 +14,7 @@
 -- Headless-safe: love.filesystem only, no love.graphics at require time.
 
 local Character = require("models.character")
+local Growth = require("models.growth")
 local Item = require("models.item")
 local Material = require("models.material")
 
@@ -147,6 +148,20 @@ local function snapshotCharacter(char)
         if amount and amount ~= 0 then growth[stat] = amount end
     end
     if next(growth) then snap.growth = growth end
+
+    -- Casts banked toward the NEXT level-up, and the per-class ledger of levels already credited.
+    -- Omitted while empty, like their neighbours above, so an early save stays small and readable.
+    local since = {}
+    for class, count in pairs(char.classUseSinceLevel or {}) do
+        if count and count > 0 then since[class] = count end
+    end
+    if next(since) then snap.classUseSinceLevel = since end
+
+    local growthBy = {}
+    for class, count in pairs(char.growthBy or {}) do
+        if count and count > 0 then growthBy[class] = count end
+    end
+    if next(growthBy) then snap.growthBy = growthBy end
 
     return snap
 end
@@ -339,7 +354,18 @@ local function restoreCharacter(snap)
         level = snap.level,
         classUse = snap.classUse,
         growth = snap.growth,
+        classUseSinceLevel = snap.classUseSinceLevel,
+        growthBy = snap.growthBy,
     })
+
+    -- A save written before per-class level crediting existed carries no `growthBy`, so the ledger
+    -- would read as a character that had never levelled at all. Seed it the way that save's stats were
+    -- actually earned: under the old rule every level went to the single dominant class, so crediting
+    -- the whole climb there reproduces exactly the history those baked stats came from. Guarded on the
+    -- field being absent, so a current save is never rewritten.
+    if snap.growthBy == nil and (char.level or 1) > 1 then
+        char.growthBy = { [Growth.dominantClass(char)] = char.level - 1 }
+    end
 
     -- instantiate() seeds the grid from the blueprint's startingItems; the save owns the
     -- grid, so clear it and lay the saved items back into their exact cells.

@@ -5,5 +5,8 @@
 -- Budget matches the base class tables (~10-12 points/level); movement is never grown (grid balance).
 -- See data/growth/knight.lua for the base shape and tests/growth_spec.lua for the stat rules.
 return {
-    mana = 5, magicDamage = 2, magicDefense = 3, health = 2,
+    -- One point of ward traded for plate: magicDefense 3 -> 2 pays for defense 1, so the physical
+    -- channel clears the survivability floor (Growth.ENEMY_DAMAGE_GROWTH) without raising the budget.
+    -- An exorcist warded against every spell and open to every sword was a hole, not a specialism.
+    mana = 5, magicDamage = 2, magicDefense = 2, health = 2, defense = 1,
 }

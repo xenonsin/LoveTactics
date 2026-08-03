@@ -206,9 +206,15 @@ function Quest.complete(player, quest)
     local prestige = quest.rewardPrestige or 0
 
     Player.addGold(player, gold)
+    -- Prestige where it stood before this quest paid out. A level costs several prestige, so MOST
+    -- quests move the company forward without levelling anyone -- and an overlay that can only report
+    -- level-ups would answer half of all quests with silence. The pair below is what lets the
+    -- advancement panel show the step itself filling (ui/panels/advancement.lua).
+    local prestigeBefore = player.prestige
     -- Prestige raises every roster member's level; the returned summary (who advanced, and their stat
-    -- gains from their most-used class) rides out in the reward table for the advancement overlay.
+    -- gains from what they have been casting) rides out in the reward table for the advancement overlay.
     local advancement = Player.addPrestige(player, prestige)
+    local prestigeAfter = player.prestige
 
     -- The sponsor's standing is its finished-quest count, so completing this quest is what advances it.
     -- Capture the count and its upgrade tier BEFORE marking done, so we can tell whether this completion
@@ -267,6 +273,11 @@ function Quest.complete(player, quest)
         -- the player is fielding.
         recruited = recruited,
         advancement = advancement, -- roster members that leveled up, for the advancement overlay
+        -- Where the company's prestige stood either side of this payout. The advancement overlay fills
+        -- its bar from one to the other, which is how a quest that levelled nobody still reads as
+        -- progress rather than as nothing happening.
+        prestigeBefore = prestigeBefore,
+        prestigeAfter = prestigeAfter,
         sponsor = quest.sponsor,
         sponsorQuests = sponsorQuests, -- the sponsor's new finished-quest count (its standing), for the reward panel
         -- True when this completion crossed a tier threshold -- the moment a fresh wave of stock

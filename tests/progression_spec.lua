@@ -696,7 +696,13 @@ return {
         name = "syncLevels catches every roster member up to prestige and reports who advanced",
         fn = function()
             local p = Player.new() -- roster at level 1, prestige 1
-            p.prestige = 4
+            p.prestige = 10
+
+            -- Read the level off the curve rather than hardcoding it: prestige is NOT the level (several
+            -- prestige buy one, and it caps), so a retune of Growth.PRESTIGE_PER_LEVEL should not turn
+            -- this red. What is being asserted is that everyone catches up, not what the number is.
+            local expected = Growth.levelForPrestige(p.prestige)
+            assert(expected > 2, "the fixture must span more than one level for the climb to mean anything")
 
             -- A recruit added mid-campaign starts at level 1 and must be caught up too.
             local recruit = Character.instantiate("character_mage")
@@ -706,12 +712,12 @@ return {
             local summary = Player.syncLevels(p)
             assert(#summary == #p.roster, "every roster member advanced from level 1")
             for _, char in ipairs(p.roster) do
-                assert(char.level == 4, char.name .. " should be caught up to prestige 4")
+                assert(char.level == expected, char.name .. " should be caught up to level " .. expected)
             end
 
             -- Summary entries carry the shape the advancement overlay renders.
             local entry = summary[1]
-            assert(entry.char and entry.fromLevel == 1 and entry.toLevel == 4, "summary spans the climb")
+            assert(entry.char and entry.fromLevel == 1 and entry.toLevel == expected, "summary spans the climb")
             assert(entry.class and next(entry.gains), "summary names the growth class and its gains")
 
             -- Already caught up: a second sync reports nothing.
@@ -721,12 +727,18 @@ return {
     {
         name = "Quest.complete folds the roster's advancement into its reward table",
         fn = function()
-            local p = playerAt(1)
+            -- Prestige 3, not 1, and that matters: a level costs several prestige now, so most quests
+            -- grant prestige WITHOUT crossing a threshold and level nobody. (That is the ordinary case,
+            -- and what the advancement bar exists to show.) This test is about the hand-off when a level
+            -- DOES land, so the fixture is parked one prestige below the next one.
+            local p = playerAt(3)
             local quest
             for _, q in ipairs(Quest.available(p)) do
                 if q.id == "quest_colosseum_slot_01" then quest = q end
             end
             assert(quest and quest.rewardPrestige > 0, "arena_debut should grant prestige")
+            assert(Growth.levelForPrestige(p.prestige + quest.rewardPrestige) > Growth.levelForPrestige(p.prestige),
+                "the fixture must sit where this quest's prestige actually buys a level")
 
             -- The company as it stood when the prestige landed. arena_debut also carries a
             -- `rewardCharacter` (Saber is bested and kept), and she joins AFTER the level-ups are
@@ -748,13 +760,21 @@ return {
             withScratchSave(function()
                 local p = Player.new()
                 local knight = p.roster[1]
+                -- `classUse` is the career tally behind the displayed title; `classUseSinceLevel` is
+                -- the banked casts a level-up actually spends (models/growth.lua). Both are set, and
+                -- both must survive the trip.
                 knight.classUse = { mage = 12 }
-                p.prestige = 5
-                Player.syncLevels(p) -- knight grows 1->5 as a mage; stats baked
+                knight.classUseSinceLevel = { mage = 12 }
+                -- Prestige 13, which is level 5 on the curve -- prestige is not the level (see
+                -- Growth.levelForPrestige). Read back through the curve so a retune moves the fixture
+                -- rather than breaking it.
+                p.prestige = 13
+                local expected = Growth.levelForPrestige(p.prestige)
+                Player.syncLevels(p) -- knight climbs 1 -> `expected` as a mage; stats baked
 
                 local grownMagic = knight.stats.magicDamage
                 local grownHealthMax = knight.stats.health.max
-                assert(knight.level == 5, "the knight reached level 5")
+                assert(knight.level == expected, "the knight reached level " .. expected)
                 assert(grownMagic > Character.instantiate("character_rowan").stats.magicDamage,
                     "the mage growth actually raised magic")
 
@@ -763,12 +783,88 @@ return {
                 assert(loaded, "the save should read back")
 
                 local loadedKnight = loaded.roster[1]
-                assert(loadedKnight.level == 5, "level should survive")
+                assert(loadedKnight.level == expected, "level should survive")
                 assert(loadedKnight.classUse.mage == 12, "the class tally should survive")
                 assert(loadedKnight.stats.magicDamage == grownMagic, "growth should re-bake onto magic")
                 assert(loadedKnight.stats.health.max == grownHealthMax, "growth should re-bake onto the HP pool")
                 assert(Growth.dominantClass(loadedKnight) == "mage", "the loaded knight still grows as a mage")
             end)
+        end,
+    },
+
+    {
+        -- The advancement overlay fills a bar from one prestige to the other, and that is the ONLY
+        -- feedback most quests produce: a level costs several prestige while a quest pays one or two,
+        -- so a quest that levels nobody is the ordinary case, not an edge case. If this pair ever stops
+        -- riding out on the reward, half of all quests silently go back to reporting nothing.
+        name = "Quest.complete reports the prestige step, even when nobody levels",
+        fn = function()
+            local p = playerAt(1)
+            local quest
+            for _, q in ipairs(Quest.available(p)) do
+                if q.id == "quest_colosseum_slot_01" then quest = q end
+            end
+            assert(quest, "the fixture quest should be available")
+
+            local before = p.prestige
+            local reward = Quest.complete(p, quest)
+
+            assert(reward.prestigeBefore == before, "the step starts where the company stood")
+            assert(reward.prestigeAfter == p.prestige, "and ends where it now stands")
+            assert(reward.prestigeAfter > reward.prestigeBefore, "and actually moved")
+
+            -- This particular quest pays too little to cross a threshold from prestige 1 -- which is
+            -- exactly the case the bar exists for, so assert it rather than assume it.
+            assert(Growth.levelForPrestige(reward.prestigeAfter)
+                == Growth.levelForPrestige(reward.prestigeBefore),
+                "fixture check: this quest is meant NOT to level anyone")
+            assert(#(reward.advancement or {}) == 0, "so no one levelled...")
+            assert(Growth.prestigeIntoLevel(reward.prestigeAfter)
+                > Growth.prestigeIntoLevel(reward.prestigeBefore),
+                "...but the bar has visibly moved, which is the whole point")
+        end,
+    },
+
+    {
+        -- Every save written before per-class level crediting existed has no `growthBy`. Such a save
+        -- must not read as a character that never levelled -- and it must not have its stats recomputed
+        -- either, since the deltas it stores were earned under the old winner-takes-all rule.
+        name = "a save from before the per-class ledger loads with its history seeded, not lost",
+        fn = function()
+            local live = Character.instantiate("character_rowan")
+            live.classUse = { mage = 30 }
+            live.classUseSinceLevel = { mage = 30 }
+            Growth.resolve(live, 6)
+
+            -- The same character as an OLD save would have stored it: level, tally and baked deltas,
+            -- but no ledger at all.
+            local legacy = {
+                id = live.id,
+                level = live.level,
+                classUse = { mage = 30 },
+                growth = live.growth,
+            }
+            assert(legacy.growthBy == nil, "the fixture must actually be a pre-ledger save")
+
+            local loaded = Save.restoreCharacter(legacy)
+
+            assert(loaded.level == live.level, "the level survives")
+            assert(loaded.stats.magicDamage == live.stats.magicDamage,
+                "and the stats are the ones that save had, re-baked rather than recomputed")
+            assert(loaded.stats.health.max == live.stats.health.max, "pools too")
+
+            -- The ledger is seeded the way those stats were actually earned: under the old rule the
+            -- whole climb went to the one dominant class.
+            assert(loaded.growthBy and loaded.growthBy.mage == live.level - 1, string.format(
+                "expected the climb credited to mage, got %s",
+                loaded.growthBy and loaded.growthBy.mage or "nothing"))
+
+            -- A current save is never rewritten by that seed.
+            local current = Save.restoreCharacter({
+                id = live.id, level = 4, classUse = { mage = 30 }, growthBy = { knight = 3 },
+            })
+            assert(current.growthBy.knight == 3 and current.growthBy.mage == nil,
+                "a save that carries a ledger keeps exactly the one it carries")
         end,
     },
 

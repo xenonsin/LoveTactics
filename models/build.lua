@@ -120,8 +120,14 @@ end
 -- someone played, and it survives; the number of levels they had time to accumulate does not.
 --
 -- This is also why normalization and determinism are the same mechanism. Growth is RNG-free (fixed
--- per-level gains per class), and dominantClass settles ties by name, so `(id, classUse, level)`
--- rebuilds the identical character on any machine -- which is what a duel needs from it anyway.
+-- per-level gains per class) and ties settle by name, so `(id, classUse, level)` rebuilds the identical
+-- character on any machine -- which is what a duel needs from it anyway.
+--
+-- The rebuild seeds the level-up tally FROM the career tally (see below). A live character banks casts
+-- toward its next level in `classUseSinceLevel` and spends them when it lands, so a snapshot taken
+-- mid-climb holds only a partial reading -- and a rebuild that read it would grow the character on
+-- whatever it happened to be doing the evening the build was saved. The career tally is the honest
+-- summary of how someone played, which is exactly what normalization is trying to preserve.
 --
 -- Item upgrade levels are clamped rather than stripped: gear below the ceiling keeps what its owner
 -- forged, because bringing a lesser weapon is a decision and normalization should not silently
@@ -130,9 +136,15 @@ local function normalized(charSnap, level, itemLevel)
     local snap = {}
     for k, v in pairs(charSnap) do snap[k] = v end
 
-    -- Drop the author's level and their accumulated stat deltas: both are re-derived below from the
-    -- tally. Keeping either would bake in the climb this is meant to erase.
-    snap.level, snap.growth = nil, nil
+    -- Drop the author's level, their accumulated stat deltas, and the per-class ledger of levels they
+    -- had been credited: all three are re-derived below from the tally. Keeping any would bake in the
+    -- climb this is meant to erase.
+    snap.level, snap.growth, snap.growthBy = nil, nil, nil
+
+    -- The whole rebuilt climb is spent as the career tally says it was spent. Growth.resolve reads the
+    -- banked casts, so handing it the career tally is what makes `(id, classUse, level)` reproduce the
+    -- same character everywhere -- a partial mid-climb reading would not.
+    snap.classUseSinceLevel = charSnap.classUse
 
     local inventory = {}
     for cell, itemSnap in pairs(charSnap.inventory or {}) do

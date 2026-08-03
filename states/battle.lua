@@ -27,6 +27,7 @@ local TileTooltip = require("ui.tile_tooltip")
 local InventoryPeek = require("ui.inventory_peek")
 local ActionPreview = require("ui.action_preview")
 local Character = require("models.character")
+local Growth = require("models.growth")
 local Item = require("models.item")
 local Combat = require("models.combat")
 local Command = require("models.command") -- the vocabulary a live duel speaks (models/netplay.lua)
@@ -1296,7 +1297,10 @@ local function spawnReinforcements()
     local spawns = battle.tutorial and Tutorial.claimSpawn(battle.tutorial)
     if not spawns then return end
     for _, s in ipairs(spawns) do
-        local unit = Combat.addUnit(battle.combat, Character.instantiate(s.char), "enemy", s.x, s.y)
+        -- Grown like any other arrival on the far side. The village grunt this exists for is
+        -- `scaling = false`, so it stays blueprint-exact and the parry lesson's arithmetic holds.
+        local unit = Combat.addUnit(battle.combat,
+            Growth.spawn(s.char, battle.enemyLevel, battle.floorLevel), "enemy", s.x, s.y)
         unit.scriptKey = s.x .. "," .. s.y
         -- A reinforcement may name where it lands in the ORDER as well as on the board. Combat.addUnit
         -- gives an arrival its natural initiative, which drops it wherever its own speed says -- fine
@@ -3797,6 +3801,13 @@ function battle.enter(self, opts)
     battle.onRetry = opts.onRetry
     battle.encounter = opts.encounter or { kind = "combat", name = "Battle" }
     battle.prestige = opts.prestige or 1 -- the company's prestige, used to roll the victory spoils
+    -- The level everyone the player did NOT bring is grown to. Enemies and escorted allies run through
+    -- the same growth tables the roster does (Growth.spawn), so the far side climbs with the company
+    -- instead of staying pinned at blueprint level 1. `floorLevel` is this fight's authored minimum --
+    -- the difficulty it may never drop below, however green the party is; a blueprint's own floor and
+    -- `scaling = false` are honoured per unit inside Growth.combatantLevel.
+    battle.enemyLevel = Growth.levelForPrestige(battle.prestige)
+    battle.floorLevel = opts.floorLevel
     battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided
     battle.logReview = nil               -- the summary's "Review Combat Log" modal, when opened
     battle.settingsMenu = nil            -- the in-battle settings overlay, when opened
@@ -3898,9 +3909,12 @@ function battle.enter(self, opts)
     -- Escorted allies fight on the party's side but are not the player's characters (they
     -- are not in partyById), so they get fresh instances and run themselves. A `protect`
     -- objective points at one of these; see Arena.build and Combat.evaluate.
+    -- Scaled like the far side, not left at level 1: an escort is what a `protect` objective is won or
+    -- lost on, and a blueprint-level survivor standing in a late-campaign fight would be a body that
+    -- falls to the first blow through no decision of the player's.
     for _, u in ipairs(battle.arena.allies or {}) do
         battle.partyUnits[#battle.partyUnits + 1] =
-            { char = Character.instantiate(u.id), x = u.x, y = u.y, control = "ai" }
+            { char = Growth.spawn(u.id, battle.enemyLevel, battle.floorLevel), x = u.x, y = u.y, control = "ai" }
     end
     -- The far side is normally minted fresh from blueprint ids. `opts.enemyChars` hands over live
     -- instances instead -- a stored build's team, carrying the levelling, the gear placement and
@@ -3911,7 +3925,9 @@ function battle.enter(self, opts)
     local enemyChars = opts.enemyChars
     for i, u in ipairs(battle.arena.enemies) do
         battle.enemyUnits[#battle.enemyUnits + 1] = {
-            char = (enemyChars and enemyChars[i]) or Character.instantiate(u.id),
+            -- `enemyChars` are handed over already levelled by their author (models/build.lua
+            -- normalizes a duel team itself), so they are taken as-is; a blueprint id is grown here.
+            char = (enemyChars and enemyChars[i]) or Growth.spawn(u.id, battle.enemyLevel, battle.floorLevel),
             x = u.x, y = u.y,
         }
     end

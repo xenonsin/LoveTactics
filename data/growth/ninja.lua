@@ -5,5 +5,8 @@
 -- Budget matches the base class tables (~10-12 points/level); movement is never grown (grid balance).
 -- See data/growth/knight.lua for the base shape and tests/growth_spec.lua for the stat rules.
 return {
-    speed = 2, damage = 3, magicDamage = 3, stamina = 2,
+    -- health 3, bought with a point of stamina: like the assassin it branches beside, the ninja had no
+    -- survivability growth at all and was one-shot by level 23. Taken in pool, not armour -- see
+    -- Growth.ENEMY_DAMAGE_GROWTH.
+    speed = 2, damage = 3, magicDamage = 3, stamina = 1, health = 3,
 }

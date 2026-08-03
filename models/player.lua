@@ -300,16 +300,21 @@ function Player.addPrestige(player, amount)
     return Player.syncLevels(player)
 end
 
--- Character level tracks the player's global prestige: raise every roster member to level == prestige,
--- resolving each pending level-up through models/growth (stat gains from the member's most-used class,
--- see docs). Idempotent -- a member already at the current prestige is left alone -- so it is safe to
--- call on every prestige change AND on load (a freshly recruited or migrated member catches up here).
--- Returns a summary list of the members that actually advanced, each { char, fromLevel, toLevel,
--- class, gains }, for the post-quest advancement overlay.
+-- Character level tracks the player's global prestige, through Growth.levelForPrestige -- SEVERAL
+-- prestige per level, and capped. Not `level == prestige`: prestige is also the campaign's unlock
+-- currency (buildings, encounter gating, vendor standing) and it never stops climbing, least of all
+-- across New Game+, so reading it as a level directly gave characters no ceiling at all.
+--
+-- Resolves each pending level-up through models/growth (stat gains from what the member has been
+-- casting since it last levelled). Idempotent -- a member already at the current level is left alone --
+-- so it is safe to call on every prestige change AND on load (a freshly recruited or migrated member
+-- catches up here). Returns a summary list of the members that actually advanced, each
+-- { char, fromLevel, toLevel, class, classes, gains }, for the post-quest advancement overlay.
 function Player.syncLevels(player)
+    local level = Growth.levelForPrestige(player.prestige)
     local summaries = {}
     for _, char in ipairs(player.roster or {}) do
-        local summary = Growth.resolve(char, player.prestige)
+        local summary = Growth.resolve(char, level)
         if summary then summaries[#summaries + 1] = summary end
     end
     return summaries

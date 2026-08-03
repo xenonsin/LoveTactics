@@ -18,6 +18,9 @@
 return {
     name = "Pig",
     sprite = "assets/chars/pig.png",
+    -- Never scaled: the stats below are placeholders that nothing reads (models/transform.lua carries
+    -- the original's pools across), so growing them would only inflate numbers no fight consults.
+    scaling = false,
     stats = {
         health = 1, mana = 0, stamina = 0, -- placeholders: the original's pools are carried across
         staminaRegen = 0,

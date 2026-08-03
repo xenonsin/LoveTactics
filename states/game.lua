@@ -456,6 +456,13 @@ function game:openEncounter(cell)
             -- time `outro` runs the target of an `assassinate` is dead.
             opening = kind == "objective" and mp.objective and mp.objective.opening or nil,
             prestige = game.prestige,
+            -- This fight's authored difficulty FLOOR: the level its enemies may never drop below,
+            -- however green the company walking in is. Scaling takes over above it (models/growth.lua,
+            -- Growth.combatantLevel), so a floor stops a beat being walked on a replay or in New Game+
+            -- without freezing it at a level the party has long outgrown. Read off the objective first,
+            -- then the quest, so a line can set one floor for all its fights and a single beat can raise it.
+            floorLevel = (kind == "objective" and mp.objective and mp.objective.floorLevel)
+                or (game.quest and game.quest.floorLevel) or nil,
             party = game.player and game.player.party or {},
             -- Run relics carried into this fight: `relicTraits` maps each party char to the trait ids its
             -- relics grant (battle stamps them onto the unit); `openingBoons` is the queue of opening

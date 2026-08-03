@@ -5,5 +5,5 @@
 -- Budget matches the base class tables (~10-12 points/level); movement is never grown (grid balance).
 -- See data/growth/knight.lua for the base shape and tests/growth_spec.lua for the stat rules.
 return {
-    magicDamage = 4, mana = 5, health = 2,
+    magicDamage = 4, mana = 5, health = 3, -- survivability floor (Growth.ENEMY_DAMAGE_GROWTH)
 }

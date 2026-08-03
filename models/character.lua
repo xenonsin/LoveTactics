@@ -215,13 +215,26 @@ function Character.ensureBoundItems(char)
     end
 end
 
--- Add a class-usage cast to a character's running tally. Fired from Combat.useItem whenever a party
+-- Add a class-usage cast to a character's running tallies. Fired from Combat.useItem whenever a party
 -- member resolves an action with a class-tagged item (a spell, a weapon strike, a thrown consumable).
--- The most-used class drives stat growth on level-up (see models/growth.lua).
+--
+-- TWO tallies, because they answer different questions and must not share an answer:
+--
+--   `classUse`            cumulative and never cleared -- what this character has BEEN, across its whole
+--                         career. Drives the displayed title (Growth.dominantClass).
+--   `classUseSinceLevel`  cleared on every level-up -- what it has been doing LATELY. Decides which
+--                         table the next level-up applies (models/growth.lua).
+--
+-- Splitting them is what keeps changing your mind affordable. Crediting levels against the cumulative
+-- tally instead would mean a veteran who takes up a new discipline has to out-cast its entire history
+-- before a single level follows -- so the longer a character lived, the more it cost to develop it,
+-- which is precisely backwards.
 function Character.recordUse(char, class)
     if not class then return end
     char.classUse = char.classUse or {}
     char.classUse[class] = (char.classUse[class] or 0) + 1
+    char.classUseSinceLevel = char.classUseSinceLevel or {}
+    char.classUseSinceLevel[class] = (char.classUseSinceLevel[class] or 0) + 1
 end
 
 -- Build a fresh, mutable character instance from a blueprint id. `progress` (optional) restores the
@@ -313,6 +326,12 @@ function Character.instantiate(id, progress)
         level = (progress and progress.level) or 1,
         classUse = (progress and progress.classUse) or {},
         growth = (progress and progress.growth) or {},
+        -- What this character has cast since it last levelled, and the per-class ledger of levels it
+        -- has been credited. Both belong to the level-up rule rather than to the title (models/growth.lua):
+        -- the first decides which table the NEXT level applies and is cleared when it lands, the second
+        -- only ever grows and is what a character sheet reads as "Knight 3 / Mage 2".
+        classUseSinceLevel = (progress and progress.classUseSinceLevel) or {},
+        growthBy = (progress and progress.growthBy) or {},
         inventory = {},
         -- Hidden fallback weapon (never in inventory, never shown in the item grid). Sourced
         -- from the blueprint's `unarmed` id or the generic default; explicitly `false` for a body
