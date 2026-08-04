@@ -84,6 +84,11 @@ function Shop.new(opts)
     self.def = Vendor.get(self.vendorId) or {}
     self.title = self.def.name or opts.title or "Shop"
     self.mode = "buy"
+    -- Which sections the player has folded open or shut BY HAND, keyed by section (see sectionKey).
+    -- Only explicit toggles live here: a key the player has never touched stays nil and takes the
+    -- default from Shop:isFolded, so a path unlocked mid-session opens on its own rather than staying
+    -- shut because it happened to be locked the first time the shelf was built.
+    self.folded = {}
 
     self.titleFont = Theme.display(28)
     self.headFont = Theme.display(18)
@@ -123,13 +128,51 @@ function Shop.new(opts)
     return self
 end
 
+-- Every section of the Buy list FOLDS, and the player works the fold: a header is a real row that
+-- takes the cursor, and Enter / A / a click on it opens or shuts the stock under it.
+--
+-- A path the player has not unlocked yet starts SHUT, which is the only reason the fold exists. Its
+-- stock is unbuyable to the last row, and a shelf lists every path its house touches -- so with
+-- everything open a vendor runs 9 to 13 screens deep with 67 to 104 dead rows in it (the Arcanum was
+-- the worst: 110 rows, 104 of them locked). The header already carries the useful reading: the path's
+-- name, its shape, what it needs and how much stock waits behind it.
+--
+-- But shut is a DEFAULT, not a verdict. The locked stock is the whole argument for earning the path,
+-- and a player who wants to see what the Ninja road actually buys them can open it and read every
+-- greyed row -- which is why this is a fold and not the flat hide it started as. An unlocked path
+-- starts open; either can be worked the other way and stays that way for as long as the shop is open.
+local BASE_KEY = "__base" -- the vendor's own shelf, which is not a discipline
+
+local function sectionKey(disciplineId) return disciplineId or BASE_KEY end
+
+-- Is this section shut right now? The player's own toggle wins; absent one, a locked path is shut and
+-- everything else is open.
+function Shop:isFolded(disciplineId)
+    local explicit = self.folded[sectionKey(disciplineId)]
+    if explicit ~= nil then return explicit end
+    return disciplineId ~= nil and not Discipline.isUnlocked(self.player, disciplineId)
+end
+
+-- Open a shut section or shut an open one, then rebuild. `selectKey` asks refresh to put the cursor
+-- back on THIS header afterwards: folding changes how many rows sit above it, so the plain
+-- restore-by-index would leave the selection somewhere else entirely. `selectReveal` asks it to pull
+-- the header to the top of the window as well, which only an OPENING needs -- a section opened on the
+-- last visible line would otherwise unfold entirely below the fold and read as having done nothing.
+function Shop:toggleSection(disciplineId)
+    local key = sectionKey(disciplineId)
+    self.folded[key] = not self:isFolded(disciplineId)
+    self.selectKey, self.selectReveal = key, not self.folded[key]
+    self:refresh()
+end
+
 -- The Buy list, banded per discipline and ordered by how many quests each row asks for. The vendor's
 -- own base shelf (items with no discipline) leads under a class-named header; the discipline cuts
--- follow, each its own section, sections in the order the player unlocks them -- by the fewest quests
--- the section gates on, then name. Within a section rows climb by quests required, then price, then
--- name, so the ladder reads top-to-bottom. A section HEADER is a non-selectable Menu row
--- (Menu:isSelectable); self.rows carries a matching `{ header = true }` entry at the same index so the
--- two stay aligned for the detail pane and the locked overlay. A vendor with no unlocked discipline
+-- follow, each its own section -- this house's own subclasses first, then the crossings it shares with
+-- other houses, and within each of those two blocks in the order the player unlocks them: by the fewest
+-- quests the section gates on, then name. Within a section rows climb by quests required, then price, then
+-- name, so the ladder reads top-to-bottom. A section HEADER is a Menu row that draws as a band and
+-- folds its section (Menu:drawHeader); self.rows carries a matching `{ header = true }` entry at the
+-- same index so the two stay aligned for the detail pane and the locked overlay. A vendor with no unlocked discipline
 -- stock shows no headers at all -- a single base section needs no banner -- so the plain shelf looks
 -- exactly as it did.
 function Shop:buildBuyRows()
@@ -149,6 +192,7 @@ function Shop:buildBuyRows()
         end
         g.minUnlock = math.min(g.minUnlock, entry.unlockQuests)
         g.discipline = entry.discipline
+        g.arity = entry.discipline and Discipline.arity(entry.discipline) or 0
         g.open = (g.open or 0) + (entry.locked and 0 or 1)
         g.rows[#g.rows + 1] = {
             item = item, entry = entry,
@@ -160,6 +204,11 @@ function Shop:buildBuyRows()
     table.sort(order, function(a, b)
         if (a == false) ~= (b == false) then return a == false end -- base shelf always leads
         local ga, gb = groups[a], groups[b]
+        -- This house's own subclasses before any crossing. Arity IS the distinction (models/discipline.lua):
+        -- one parent is a path OUT OF this class, two is a path shared with another house. The single-parent
+        -- cuts are what a player standing in this shop can earn from here, so they read as one block under
+        -- the base shelf instead of being scattered through the crossings by gate depth.
+        if ga.arity ~= gb.arity then return ga.arity < gb.arity end
         if ga.minUnlock ~= gb.minUnlock then return ga.minUnlock < gb.minUnlock end
         return ga.name < gb.name
     end)
@@ -172,27 +221,23 @@ function Shop:buildBuyRows()
             if r1.entry.price ~= r2.entry.price then return r1.entry.price < r2.entry.price end
             return r1.item.name < r2.item.name
         end)
-        -- A path the player has NOT yet unlocked collapses to its header. Its stock is unbuyable to
-        -- the last row, and a shelf lists every path its house touches -- so left expanded, a vendor
-        -- runs 9 to 13 screens deep with 67 to 104 dead rows in it (the Arcanum was the worst: 110
-        -- rows, 104 of them locked). All of the useful reading is in the header, which still names the
-        -- path, its shape, what it needs and how much stock waits behind it; the rows underneath only
-        -- cost scrolling. They arrive when the path opens, which makes unlocking one land as a shelf
-        -- visibly filling rather than as greyed text turning black.
+        -- Folded shut, a section shows its header and nothing else (see the note above buildBuyRows on
+        -- why a locked path starts that way). Guarded on `banded`: a shelf with no header to open again
+        -- must never be able to fold its only section into nothing.
         --
-        -- Only a fully-locked path collapses. A row held by nothing worse than this house's quest
-        -- count stays visible inside an OPEN path: "complete 2 more" is a near thing worth showing,
-        -- and it is the near things that pull. Guarded on `banded`, so a shelf with no header to
-        -- explain the absence can never collapse its only section into nothing.
-        local collapsed = banded and key and not Discipline.isUnlocked(self.player, key)
+        -- Note that a lock is not what hides a row -- the fold is. A row held by nothing worse than this
+        -- house's quest count stays visible inside an OPEN section: "complete 2 more" is a near thing
+        -- worth showing, and it is the near things that pull.
+        local folded = banded and self:isFolded(g.discipline)
         if banded then
             self.rows[#self.rows + 1] = {
-                header = true, label = g.name,
-                meta = self:pathMeta(g.discipline),
+                header = true, label = g.name, key = sectionKey(g.discipline), discipline = g.discipline,
+                meta = self:pathMeta(g.discipline), blurb = self:sectionBlurb(g.discipline),
                 count = (g.open or 0) .. " / " .. #g.rows,
+                open = g.open or 0, total = #g.rows, collapsed = folded,
             }
         end
-        if not collapsed then
+        if not folded then
             for _, r in ipairs(g.rows) do self.rows[#self.rows + 1] = r end
         end
     end
@@ -210,6 +255,19 @@ end
 -- list reads as "what this house can eventually teach me", with the locked stock under each heading
 -- showing exactly what earning it buys. A tree screen names the node; this names the node and shows
 -- the payload, which is the thing the player actually wants.
+-- What the section IS, under the shape line: the class's or the discipline's own blurb -- its identity
+-- and the mechanic it is built on (Item.classDescription / Discipline.description).
+--
+-- The shelf was banded and gated and counted and could still not answer the first question a player
+-- asks of a heading they have never seen: what is a Warden, and what would having one do for me? A
+-- LOCKED path collapses to its header, so this pane is the only room that question has -- "Knight x
+-- Hunter, locked, 5 pieces of stock" names the price of a thing it never describes. The blurb is what
+-- makes the ladder worth climbing rather than merely legible.
+function Shop:sectionBlurb(disciplineId)
+    if disciplineId then return Discipline.description(disciplineId) end
+    return Item.classDescription(self.def.class)
+end
+
 function Shop:pathMeta(disciplineId)
     if not (disciplineId and Discipline.defs[disciplineId]) then return nil end
 
@@ -260,7 +318,9 @@ function Shop:refresh()
     local items = {}
     for i, row in ipairs(self.rows) do
         if row.header then
-            items[#items + 1] = { label = row.label, header = true }
+            -- A header with an `action` is a fold Menu will let the cursor land on (ui/menu.lua).
+            items[#items + 1] = { label = row.label, header = true, collapsed = row.collapsed,
+                action = function() self:toggleSection(row.discipline) end }
         else
             items[#items + 1] = { label = row.label, action = function() self:activateRow(self.rows[i]) end }
         end
@@ -275,7 +335,21 @@ function Shop:refresh()
         maxVisible = MAX_VISIBLE,
     })
     self.menu.selected = math.min(selected, math.max(#items, 1))
-    self.menu:clampSelectable() -- the Buy list opens with a discipline header at row 1; step past it
+    -- Just folded a section: land on THAT header rather than on whatever row inherited its index.
+    if self.selectKey then
+        for i, row in ipairs(self.rows) do
+            if row.header and row.key == self.selectKey then
+                self.menu.selected = i
+                if self.selectReveal then self.menu:scrollTopTo(i) end
+                break
+            end
+        end
+        self.selectKey, self.selectReveal = nil, nil
+    end
+    -- A fold header takes the cursor now, so there is nothing here to step past. Kept because it is
+    -- what guarantees the invariant -- the selection sits on a row that can be activated -- and the
+    -- panel does not decide alone which rows Menu considers selectable.
+    self.menu:clampSelectable()
     self.menu:scrollToSelection()
     -- Compute row rects now so the first draw/click works before the first update() tick.
     self.menu:layout()
@@ -546,9 +620,54 @@ function Shop:drawLockedOverlay()
     end
 end
 
+-- What the detail column says while the cursor sits on a section header instead of an item. A shut
+-- section has no rows to select, so this is the only room left to say what is behind it: the shape of
+-- the path, how much of its stock is actually buyable, and what is holding the rest. Without it the
+-- right third of the screen would go blank the moment the fold did its job.
+function Shop:drawSectionDetail(row)
+    local x, y, w = self.detailX, self.detailY, self.detailW
+    love.graphics.setFont(self.headFont)
+    Theme.set(Theme.accentAmber)
+    love.graphics.printf(row.label or "", x, y, w, "left")
+
+    love.graphics.setFont(self.smallFont)
+    Theme.set(Theme.muted)
+    -- The base shelf is not a path and pathMeta gives it nothing; say what it is instead of nothing.
+    love.graphics.printf(row.meta or "this house's own rack", x, y + 26, w, "left")
+
+    -- What the thing IS, leading in ink: the reading the player came for (Shop:sectionBlurb). The stock
+    -- count drops to muted small underneath it -- it is bookkeeping about the section, not the section.
+    local sy = y + 52
+    if row.blurb then
+        love.graphics.setFont(self.bodyFont)
+        Theme.set(Theme.ink)
+        love.graphics.printf(row.blurb, x, sy, w, "left")
+        local _, lines = self.bodyFont:getWrap(row.blurb, w)
+        sy = sy + #lines * self.bodyFont:getHeight() + 12
+    end
+
+    love.graphics.setFont(self.smallFont)
+    Theme.set(Theme.muted)
+    local stock = (row.total == 1) and "1 piece" or (row.total .. " pieces")
+    love.graphics.printf(stock .. " of stock, " .. row.open .. " of it open to you.", x, sy, w, "left")
+
+    local ty = self.boxY + BOX_H - 96
+    if row.discipline and not Discipline.isUnlocked(self.player, row.discipline) then
+        love.graphics.setFont(self.bodyFont)
+        love.graphics.setColor(0.9, 0.6, 0.55)
+        love.graphics.printf(self:lockReason({ discipline = row.discipline }), x, ty - 44, w, "left")
+    end
+    love.graphics.setFont(self.smallFont)
+    Theme.set(Theme.muted)
+    local press = InputMode.isGamepad() and "A" or "Enter"
+    love.graphics.printf(press .. ": " .. (row.collapsed and "open this section" or "close this section"),
+        x, ty, w, "left")
+end
+
 function Shop:drawDetail()
     local row = self.rows[self.menu.selected]
-    if not row or row.header then return end
+    if not row then return end
+    if row.header then self:drawSectionDetail(row) return end
     local item = row.item
     local x, y, w = self.detailX, self.detailY, self.detailW
     local accent = TYPE_COLOR[item.type] or DEFAULT_COLOR

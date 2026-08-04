@@ -9,6 +9,7 @@
 -- See docs/disciplines-plan.md.
 return {
     name    = "Necromancer",
+    description = "The raiser. Enemies that die on the field get back up as yours.",
     classes = { "mage" },
     exemplar = "character_necromancer", -- NEW, pending
     requiredQuests = { "quest_arcanum_slot_04" },

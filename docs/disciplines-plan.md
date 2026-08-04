@@ -489,6 +489,131 @@ changes:
 families, prices). Their `effect` functions follow verified in-engine patterns but have **not** been
 runtime-verified in an actual fight — that wants a `/verify` playthrough pass.
 
+## The base-shelf audit: seventeen items that were already somebody's discipline
+
+The two passes above built the rosters *outward* — subclasses drew from each parent's deep shelf,
+multiclasses were authored new. Neither looked in the other direction: at items sitting on the OPEN
+shelf whose behaviour **is** a discipline's named signature mechanic. Warden's Oath is Sentinel's
+Intercept stated word for word, on sale from turn four; The Gagging Storm is Spellbreaker's Counterspell
+laid as ground.
+
+All 264 priced base-class items were swept against the 37 mechanics tables. The bar was deliberately
+high — *is*, not *is compatible with* — and seventeen cleared it. Priest 52 → 47, knight 36 → 31,
+alchemist 35 → 34, mage 56 → 54, fighter 32 → 30, rogue 28 → 27, hunter 25 → 24.
+
+| Item | Shelf | → | Why |
+|---|---|---|---|
+| Warden's Oath *(armor)* | knight | **Sentinel** | Intercept, verbatim: the first hit each turn on an adjacent ally is taken by you |
+| The Gaunt Vigil *(ability)* | knight | **Spellbreaker** | a standing tax on casting; its own header calls it "the knight's version" of answering a mage |
+| Skeptic's Harness *(armor)* | knight | **Spellbreaker** | the sword-oath's plate: forswear the craft, ward against it |
+| The Grasping Hollow *(ability)* | knight | **Warden** | the Lockdown zone itself — ground that Roots whatever crosses it |
+| Drill Standard *(utility)* | knight | **Paladin** | the banner rule |
+| Pincer Banner *(utility)* | fighter | **Warlord** | the banner rule |
+| Whirlplate *(armor)* | fighter | **Champion** | Riposte-wall: on melee hit taken, cut every adjacent foe |
+| Break Off *(ability)* | hunter | **Skirmisher** | Hit-and-run, third member of a set whose other two were already gated |
+| The Gagging Storm *(ability)* | mage | **Spellbreaker** | Counterspell as ground; it shatters the channels standing in it |
+| Second Utterance *(utility)* | mage | **Theurge** | the Channelled miracle's other half, beside Vigil Beads |
+| Spike Trap *(ability)* | rogue | **Poacher** | the rogue half of Snare-execute; Trapper can't take it (parent is hunter) |
+| Alchemist's Bandolier *(utility)* | alchemist | **Warbrewer** | Combat draught: a quaff that costs no turn, beside Brawler's Bandolier |
+| Sacred Banner *(ability)* | priest | **Paladin** | the banner rule |
+| Renewal Banner *(ability)* | priest | **Paladin** | the banner rule |
+| Martyr's Icon *(utility)* | priest | **Paladin** | the Ward aura's thesis: your body in place of the one beside you |
+| Censer of Dawn *(utility)* | priest | **Crusader** | Smite as an aura — the Cathedral consecrating somebody else's steel |
+| The Burning Halo *(utility)* | priest | **Crusader** | the armed faithful's ring; it asks a priest to stand in the line |
+
+**The banner rule is new and it decides by object, not by mechanic.** A banner belongs to Paladin or
+Warlord; the destination follows the item's `class`, Warlord being fighter-only. Pincer Banner moves on
+it despite its behaviour being a Follow-Up ally-strike reflex. The rule is written up in
+[classes.md](classes.md#L363). Two banners survive it because a test would fail:
+`weapon_marching_standard` is a spear (tagging it drops that family below its five-on-a-shelf roster,
+so a discipline banner-weapon must be authored) and `ability_march_wardens_standard` is tagged `summon`
+rather than `banner` and is one of only two knight-side Warden items.
+
+### Round two: the strict pass on the Arcanum and the Cathedral
+
+Round one's bar left mage at 54 and priest at 47 — still the two longest shelves by a distance. A second
+pass ran on those two only, with the bar dropped to *the discipline is a better home than the open
+shelf*. Eleven more moved. The ward-line split above did the heavy lifting on the count; this did the
+coherence.
+
+| Item | Shelf | → | Why |
+|---|---|---|---|
+| Graven Circle *(ability)* | mage | **Elementalist** | the sigils are Elementalist's own; this is the circle they are cut in |
+| The Answering Din *(ability)* | mage | **Elementalist** | the earth storm, beside Blizzard / Meteor / Thunder |
+| Unraveller's Sigil *(utility)* | mage | **Spellbreaker** | the aimed spell is unravelled outright — Counterspell, sold openly |
+| Mirrorsilk *(armor)* | mage | **Spellbreaker** | the same deflection worn rather than carried; the pair should not split |
+| Cinderstride Boots *(utility)* | mage | **Elementalist** | element as terrain: real, unsided Fire laid behind every step |
+| Tidewalker Boots *(utility)* | mage | **Elementalist** | the water twin of the Cinderstride |
+| Pilgrim's Sandals *(utility)* | priest | **Theurge** | a divine hazard laid by walking rather than by casting |
+| Anathema *(ability)* | priest | **Inquisitor** | Judgment — the naming that holds a body open for somebody else's execute |
+| Binding Grace *(ability)* | priest | **Monk** | its own header: the monk is the one body that pays nothing for the second clause |
+| Keen Senses *(ability)* | priest | **Monk** | the answer that lands *before* the blow — a martial reflex, not a liturgical one |
+| The Stayed Hand *(utility)* | priest | **Exorcist** | Banish turned inward: strip what is riding the body, then lift it out of reach |
+
+**Mage 45 → 39, priest 38 → 33.** Two of the eleven overturn round-one findings on purpose, and both are
+worth flagging as decisions rather than drift: **Anathema** was kept in round one to preserve the
+one-Vulnerable-opener-per-shelf parity, and gating it makes the holy opener the only locked member of
+that set; **Keen Senses** is argued in its own header as a priest's item and not a duelist's, precisely
+because it is priced in stamina.
+
+**Two disciplines are now well past the 5–8 band: Spellbreaker and Elementalist, at eleven each.** That
+is a consequence rather than a plan — anti-magic is genuinely knight × mage, and the sigils genuinely are
+Elementalist's — but it should be revisited before either grows again. Monk is at nine, Theurge seven.
+
+Five were denied, and three of them matter:
+
+- **Sanctuary** and **Holy Light** *(priest → Theurge)*. Holy Light carries `windup = 6` and is the only
+  wind-up holy spell in the game, which made it Theurge's on the mechanic. It is also the priest's *one*
+  offensive spell — gating it means base priest cannot hurt anybody until two lines are walked. The
+  identity cost outweighed the fit, and Sanctuary went with it so the Cathedral keeps consecrated ground.
+- **Blink** *(mage → Ninja)*. The keyword fits (`classes.md` gives `blink` to the rogue) but the mechanic
+  does not: it is a `moveBehavior`, a stance rather than a cast, and Ninja's roster is clones and stealth.
+Two **merges** were done rather than moves. Warding Censer and Warding Chasuble both granted
+`trait_guardians_blessing`; Reliquary of Grace and Vestments of the Open Hand both granted
+`trait_sanctified_presence` — each pair one rule sold twice, five ranks apart, one worn and one slotted.
+The two utilities were retired and the armour kept in both cases, on the rule that settled it:
+
+> **When one trait has a worn carrier and a slotted one on the same shelf, keep the worn one.** The
+> armour is the version that costs something — a chest slot and a square of pace — against a grid cell
+> that was free to anyone with a spare one. A shelf that sells one rule twice is selling a spelling
+> rather than a choice.
+
+Worth knowing what the merge gave up, since it is not nothing: `utility_hallowed_censer` and
+`utility_reliquary_kept_trust` still carry Sanctified Presence from a grid cell, but both are unpriced
+quest stock — so the *bought* slotted build is gone for both traits. That is the intended trade (a second
+spelling belongs in quest stock, not on the rack), not an oversight. Priest 33 → 31.
+
+### Three denied in round one, and the reasons are worth keeping
+
+- **Shield Bash** *(knight → Champion)*. Defend-and-punish next to Champion's Provoke, but gated at q3
+  it is the shallowest thing the sweep found, and Champion did not need it.
+- **Summon Golem** and **Summon Homunculus** *(alchemist → Artificer)*. A deliberate pair — one buys a
+  thing that does not die, the other a thing whose worth is what it leaves when it does — and the golem's
+  own header already argues why a guard is envy's and not the knight's. Moving both would also raise
+  whether they should turn autonomous like every other Artificer construct, which is a behaviour change
+  rather than a shelf move.
+
+### Checked and left alone across both rounds
+
+- **The 22 elemental ward items are a systematic family, and no discipline could take them.** Priest
+  carried 11 `Resistant: <type>` and mage 11 `Immunity: <type>`, one per damage type — a third of each
+  shelf's ability list. Gating any subset splits a set that only works complete, and gating all eleven
+  puts a class's own named keyword behind a quest. **Answered a different way instead:** the line was
+  split across all seven shelves by damage type, on the rule *a house wards against what it deals*
+  ([vulnerability.md](vulnerability.md#the-ward-line)). Mage 54 → 45, priest 47 → 38, and the six other
+  shelves each gained two or four. It is the only change in either pass that moved a `class` rather than
+  adding a `discipline`.
+- **The Vulnerable openers are one per shelf by design** — Rend, Crack the Guard, Barbed Dart, Forsake,
+  Anathema, Oil Flask. Anathema reads like Inquisitor stock; pulling it makes the holy opener the only
+  gated one in a set built on parity.
+- **Fire Bomb sitting apart from the Acid / Ice / Lightning bombs is correct.** Those three are
+  Bombardier's; Fire Bomb is base at q1 / 70g. That is the never-turn-one rule working, not a gap.
+- **Two items argue against their own gating in their own headers** — the Guttering Lamp ("rank 2 and
+  cheap … a survival floor rather than a build piece") and Binding Grace, whose design is that a knight,
+  a monk and nobody else wants it.
+- **The rogue's purse kit stays base.** Blood Money, The Gilded Wound, Grease Palms, Skimmer's Cut and
+  The Ledger's Due are the greed identity itself, not a deeper cut of it.
+
 ## Content bill
 
 | | Existing exemplar | New NPC | New quest |

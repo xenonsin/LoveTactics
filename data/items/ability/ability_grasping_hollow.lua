@@ -27,6 +27,7 @@ return {
     type = "ability",
     tags = { "earth" },
     class = "knight",
+    discipline = "warden", -- the Lockdown zone itself -- ground that Roots whatever crosses it
     price = 320,
     unlockQuests = 5,
     activeAbility = {

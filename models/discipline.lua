@@ -35,6 +35,19 @@ function Discipline.displayName(id)
     return def.name or id
 end
 
+-- The one-or-two sentence blurb a shop shows for discipline `id`: what the path IS, and the mechanic
+-- it is built on. Nil for an unknown id, and for a blueprint that has not written one yet.
+--
+-- Authored on the blueprint rather than derived, and read by ui/panels/shop.lua's section detail. A
+-- locked path collapses to its header on the shelf, so the only thing the player can read about it
+-- before earning it is that pane -- "Knight x Priest, locked, 5 pieces of stock" names the gate and
+-- says nothing about why anyone would want it. This is the why. Sits beside Discipline.displayName as
+-- the second thing the UI is allowed to ask a discipline about itself.
+function Discipline.description(id)
+    local def = id and Discipline.defs[id]
+    return def and def.description or nil
+end
+
 -- The growth paths a use of `item` should tally toward (models/growth.lua, which reads these as keys
 -- into data/growth/<id>.lua). A discipline is ITS OWN growth path: a discipline item tallies the
 -- discipline id, so a build leaning on Ninja stock grows on data/growth/ninja.lua -- a blend the two

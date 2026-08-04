@@ -14,6 +14,12 @@
 -- they stand on its ground. This one goes wherever the priest can reach and asks for a cast instead of
 -- a formation -- the same ward bought with the two different currencies the game has.
 --
+-- THE ONLY CARRIER OF GUARDIAN'S BLESSING, since the merge. The Cathedral used to sell this and
+-- utility_warding_censer -- the same trait, five ranks apart, one worn and one slotted -- and a shelf
+-- that sells one rule twice is selling a spelling rather than a choice. The censer was retired and this
+-- kept, because the armour is the version that costs something: a chest slot and a square of pace
+-- against a grid cell a priest with a spare one paid nothing for.
+--
 -- Cloth: a square of pace, which a caster at range can afford better than anyone.
 local Curve = require("models.curve")
 

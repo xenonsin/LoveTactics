@@ -71,6 +71,22 @@ return {
         end,
     },
     {
+        -- The shop bands its Buy list by shelf and shows this under the heading (ui/panels/shop.lua's
+        -- section detail), so a class with no blurb is a heading the player cannot read. Length is
+        -- pinned at both ends on purpose: a three-word stub does not answer "what is this shelf",
+        -- and anything past ~two sentences overruns the detail column it is drawn in.
+        name = "every class shelf says what it is, in a blurb the shop can print",
+        fn = function()
+            for class in pairs(Item.CLASSES) do
+                local blurb = Item.classDescription(class)
+                assert(type(blurb) == "string" and #blurb >= 40,
+                    class .. " has no shelf blurb -- see Item.CLASSES and docs/classes.md")
+                assert(#blurb <= 260, class .. "'s blurb is " .. #blurb
+                    .. " chars; the shop's detail column fits about 260")
+            end
+        end,
+    },
+    {
         name = "every class names weapon families that exist",
         fn = function()
             for class, c in pairs(CONTRACT) do

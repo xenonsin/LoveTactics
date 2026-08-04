@@ -4,6 +4,7 @@
 -- Gate: one quest in the alchemist (Crucible) line -- the_vats. See docs/disciplines-plan.md.
 return {
     name    = "Poisoner",
+    description = "The vat-master. Coatings: depleting weapon infusions applied between swings.",
     classes = { "alchemist" },
     exemplar = "character_poisoner", -- NEW, pending
     requiredQuests = { "quest_alchemist_slot_05" },

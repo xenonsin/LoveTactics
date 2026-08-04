@@ -1,19 +1,24 @@
--- Resistant: Ice -- a priest's protective blessing laid on the caster or a nearby ally, granting Resistant: Ice
--- (data/status/status_resistant_ice.lua): -8 to every ice-tagged hit for a time. Warding is the Cathedral's
--- own keyword (docs/classes.md), single-element rather than the Magical Barrier's single-school. The
--- ACTIVE mirror of the Vulnerable openers -- read the intent telegraph, ward the target of the incoming
--- blow the turn before it lands. It floors at 1 and never reaches immunity (that is the mage's Immunity: Ice).
--- One of the ward line; see docs/vulnerability.md.
+-- Resistant: Ice -- a protective working laid on the caster or a nearby ally, granting Resistant:
+-- Ice (data/status/status_resistant_ice.lua): -8 to every ice-tagged hit for a time. It floors at 1
+-- and never reaches immunity -- that is Immunity: Ice, the same house's deeper answer. The ACTIVE
+-- mirror of the Vulnerable openers: read the intent telegraph and ward the target of the incoming
+-- blow the turn before it lands.
+--
+-- A HOUSE WARDS AGAINST WHAT IT DEALS, which is the rule this line follows now. The Rimeguard is
+-- already knight armour -- the house that stands still in the cold learned it first. The 22 wards
+-- and seals used to sit on two racks -- eleven on the priest's shelf and eleven on the mage's, a
+-- third of each shelf's ability list saying one thing eleven times over. Split by damage type,
+-- every house teaches the answer to the damage it knows best. See docs/vulnerability.md.
 return {
     name = "Resistant: Ice",
     description = "Wards yourself or an ally with Resistant: Ice.",
-    flavor = "Cold finds every gap in a body. The blessing fills them first.",
+    flavor = "Cold finds every gap in a body. The Bastion fills them first.",
     sprite = "assets/items/ability_ward_ice.png",
     type = "ability",
-    tags = { "protective", "holy" },
-    class = "priest",
+    tags = { "protective" },
+    class = "knight",
     price = 180,
-    unlockQuests = 2,
+    unlockQuests = 3,
     activeAbility = {
         target = "ally", -- includes the caster
         range = 3,

@@ -5,6 +5,7 @@
 -- opens quest_undercroft_the_collapsed_vault (pending). See docs/disciplines-plan.md.
 return {
     name    = "Saboteur",
+    description = "The demolitions ghost. Place delayed charges unseen, then detonate them on your own signal.",
     classes = { "rogue", "alchemist" },
     exemplar = "character_saboteur", -- NEW, pending
     requiredQuests = { "quest_undercroft_the_collapsed_vault" }, -- pending

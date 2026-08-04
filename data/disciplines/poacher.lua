@@ -5,6 +5,7 @@
 -- quest_hunters_lodge_the_marked_quarry (pending). See docs/disciplines-plan.md.
 return {
     name    = "Poacher",
+    description = "Traps that set up a kill. The snare holds the quarry; your blink-strike hits a Rooted target far harder.",
     classes = { "rogue", "hunter" },
     exemplar = "character_poacher", -- NEW, pending
     requiredQuests = { "quest_hunters_lodge_the_marked_quarry" }, -- pending

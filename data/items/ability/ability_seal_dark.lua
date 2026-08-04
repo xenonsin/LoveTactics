@@ -1,19 +1,21 @@
--- Immunity: Dark -- a brief, absolute ward granting Immune: Dark (data/status/status_immune_dark.lua): every
--- dark-tagged hit is voided to 0 for a short window. Short and premium on purpose -- the answer to the one
--- big blow, not a stance to live in. A deliberate BORROW that says so: warding an ally is usually the
--- priest's work (docs/classes.md), but a CATEGORICAL immunity to a damage type is arcane mastery
--- overreaching, which is pride's own sin -- the mage seals the type off where the priest only softens it.
--- It is the true 0 that no amount of Resistant: Dark can reach. See docs/vulnerability.md.
+-- Immunity: Dark -- a brief, absolute ward granting Immune: Dark
+-- (data/status/status_immune_dark.lua): every dark-tagged hit is voided to 0 for a short window.
+-- Short and premium on purpose -- the answer to the one big blow, not a stance to live in. It is
+-- the true 0 that no amount of Resistant: Dark can reach.
+--
+-- The deeper half of the Undercroft's pair, gated behind the ward that softens the same damage: a
+-- house teaches you to take the blow before it teaches you to refuse it. Nobody answers the dark
+-- faster than the people who work in it. See docs/vulnerability.md.
 return {
     name = "Immunity: Dark",
     description = "Wards yourself or an ally with Immune: Dark.",
-    flavor = "The mage does not fear the dark. The mage has read further into it than it has.",
+    flavor = "The Undercroft does not fear the dark. It has been further into it.",
     sprite = "assets/items/ability_seal_dark.png",
     type = "ability",
-    tags = { "protective", "arcane" },
-    class = "mage",
+    tags = { "protective" },
+    class = "rogue",
     price = 260,
-    unlockQuests = 3,
+    unlockQuests = 5,
     activeAbility = {
         target = "ally", -- includes the caster
         range = 2,

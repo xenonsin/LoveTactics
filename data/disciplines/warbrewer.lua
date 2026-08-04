@@ -6,6 +6,7 @@
 -- opens quest_colosseum_the_fighting_cellar (pending). See docs/disciplines-plan.md.
 return {
     name    = "Warbrewer",
+    description = "The rampage. Chug a self-buff draught as a free action mid-swing, and keep swinging.",
     classes = { "fighter", "alchemist" },
     exemplar = "character_warbrewer", -- NEW, pending
     requiredQuests = { "quest_colosseum_the_fighting_cellar" }, -- pending

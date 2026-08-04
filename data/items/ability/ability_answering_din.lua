@@ -30,6 +30,7 @@ return {
     type = "ability",
     tags = { "earth", "impact", "magical" },
     class = "mage",
+    discipline = "elementalist", -- the earth storm, beside Blizzard / Meteor Storm / Thunder Storm
     price = 400,
     unlockQuests = 9,
     activeAbility = {

@@ -4,6 +4,7 @@
 --
 -- The system claims worth pinning, from docs/classes.md:
 --   * a pool exists only if something in the grid declares it (no charm, no pool)
+--   * an item that SPENDS a pool declares it too -- no item is another item's admission fee
 --   * declarations MERGE -- `from` unions, the deeper `max` wins -- so a second charm deepens a pool
 --     rather than opening a rival one called the same thing
 --   * spending ALL of it clears overflow banked past the cap, leaving no hidden remainder
@@ -13,6 +14,40 @@
 local Combat = require("models.combat")
 local Status = require("models.status")
 local Fixture = require("tests.support.fixture")
+
+-- Every `data/items/**/*.lua` source, read raw: the contract below is about what a FILE says, not about
+-- what the loaded blueprint holds, and a key named in an effect closure is invisible to the registry.
+local function itemSources()
+    local out = {}
+    local function walk(dir)
+        for _, entry in ipairs(love.filesystem.getDirectoryItems(dir)) do
+            local path = dir .. "/" .. entry
+            local info = love.filesystem.getInfo(path)
+            if info and info.type == "directory" then
+                walk(path)
+            elseif entry:sub(-4) == ".lua" then
+                out[path] = assert(love.filesystem.read(path), "should be able to read " .. path)
+            end
+        end
+    end
+    walk("data/items")
+    return out
+end
+
+-- The charge keys a source READS OR SPENDS: the first quoted argument of any chargePool / spendCharge /
+-- resetCharge call, whichever spelling reached it (`fx.spendCharge("zeal")`, `Combat.chargePool(unit,
+-- "zeal")`). Chi is named by its own two aliases and is a built-in, so it always resolves.
+local function keysUsed(src)
+    local keys = {}
+    for call, args in src:gmatch("(%w+)%s*%(([^)]*)%)") do
+        if call == "chargePool" or call == "spendCharge" or call == "resetCharge" then
+            local key = args:match('"([%w_]+)"')
+            if key then keys[key] = true end
+        end
+    end
+    if src:find("spendChi") or src:find("%.chi%s*%(") then keys.chi = true end
+    return keys
+end
 
 return {
     -- THE SYSTEM ------------------------------------------------------------------------------------
@@ -53,6 +88,24 @@ return {
             Combat.tally(h, "hitTaken", 20)
             assert(Combat.chargePool(h, "defiance") == 8,
                 "and the deeper cap wins the merge (8, the charm's, not 6, the ability's)")
+        end,
+    },
+    {
+        -- The rule that stops a shelf selling half a mechanic: buy the spender, equip it, and it works.
+        -- The charms that share its pool WIDEN and DEEPEN it (the merge above); none of them is the
+        -- thing that turns the spender on. Chi is exempt because the engine declares it
+        -- (Combat.CHARGE_DEFS) -- there is no fist charm to hang it off.
+        name = "an item that spends a pool declares that pool itself",
+        fn = function()
+            for path, src in pairs(itemSources()) do
+                local declared = {}
+                for key in src:gmatch('charge%s*=%s*{%s*key%s*=%s*"([%w_]+)"') do declared[key] = true end
+                for key in pairs(keysUsed(src)) do
+                    assert(declared[key] or Combat.CHARGE_DEFS[key], path .. " uses the "
+                        .. key .. " pool but declares no `charge = { key = \"" .. key .. "\", ... }` --"
+                        .. " it would be inert until the player also owned some other item")
+                end
+            end
         end,
     },
     {
@@ -130,6 +183,24 @@ return {
             local d2 = hp2 - f2.char.stats.health.current
             assert(d1 > 0 and d2 > 0, "both adjacent foes are caught by the ring")
             assert(d1 >= 20, "and each blow carries the 5 banked points (+4 apiece) on top of its floor")
+        end,
+    },
+
+    {
+        name = "Answering Blow banks its own Defiance -- Defiant Stand deepens the pool, it does not open it",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_rowan", 3, 3,
+                { isolate = "bare", items = { "ability_answering_blow" } })
+            local foe = Fixture.unit("character_bandit", 3, 4, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h = combat.units[1]
+
+            Combat.tally(h, "hitTaken", 6)
+            assert(Combat.chargePool(h, "defiance") == 4,
+                "the spender alone banks blows weathered, to its own shallower cap of 4")
+            Fixture.give(h.char, "ability_defiant_stand")
+            assert(Combat.chargePool(h, "defiance") == 6, "and the taunt deepens the same pool to 6")
         end,
     },
 
@@ -215,6 +286,39 @@ return {
         end,
     },
 
+    {
+        name = "Coup Droit banks its own Tempo, and forfeits it on a target switch without the charm",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 3, 3,
+                { isolate = "bare", items = { "ability_coup_droit" } })
+            local a = Fixture.unit("character_bandit", 3, 4, { isolate = "bare", stats = { defense = 0, health = 900 } })
+            local b = Fixture.unit("character_bandit", 2, 3, { isolate = "bare", stats = { defense = 0, health = 900 } })
+            local combat = Combat.new(map, { hero }, { a, b })
+            local h, f1, f2 = combat.units[1], combat.units[2], combat.units[3]
+            h.char.stats.stamina.max, h.char.stats.stamina.current = 99, 99
+            local fists = h.char.unarmed
+
+            -- The forfeit clause rides on the ability too, so the bargain holds for a Duelist who owns
+            -- only the thrust: press one body, then look away, and the rhythm is gone.
+            assert(Fixture.strike(combat, h, f1, fists), "the first blow lands")
+            h.char.stats.stamina.current = 99
+            assert(Fixture.strike(combat, h, f1, fists), "and the second, on the same body")
+            assert(Combat.chargePool(h, "tempo") == 1,
+                "which banks a point of Tempo with no charm in the grid at all")
+            h.char.stats.stamina.current = 99
+            assert(Fixture.strike(combat, h, f2, fists), "then the blade finds a different throat")
+            assert(Combat.chargePool(h, "tempo") == 0,
+                "and the Tempo is forfeit -- resetOn travels with the spender, not only with the charm")
+
+            Combat.tally(h, "repeatStrike", 9)
+            assert(Combat.chargePool(h, "tempo") == 3,
+                "the thrust alone holds Tempo to its own shallower cap of 3")
+            Fixture.give(h.char, "utility_reading_the_blade")
+            assert(Combat.chargePool(h, "tempo") == 5, "and Reading the Blade raises the ceiling to 5")
+        end,
+    },
+
     -- CRUSADER --------------------------------------------------------------------------------------
     {
         name = "the Crusader's Tabard banks Zeal from kills AND mends, with no weapon in the loop",
@@ -277,6 +381,35 @@ return {
             assert(Combat.chargePool(h, "zeal") <= 1, "the pool is emptied, bar what the mending rebanked")
             assert(dealt > 0, "the blow bites")
             assert(a.char.stats.health.current > 5, "and the wounded ally beside the crusader is mended by it")
+        end,
+    },
+
+    {
+        name = "Reckoning banks its own Zeal, and fires with nothing else in the grid",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 3, 3,
+                { isolate = "bare", items = { "ability_reckoning" } })
+            local foe = Fixture.unit("character_bandit", 3, 4, { isolate = "bare", stats = { defense = 0, health = 900 } })
+            local combat = Fixture.combat(map, hero, foe)
+            local h, f = combat.units[1], combat.units[2]
+            h.char.stats.stamina.max, h.char.stats.stamina.current = 99, 99
+
+            Combat.tally(h, "kill", 3)
+            assert(Combat.chargePool(h, "zeal") == 3,
+                "no Tabard, no Vow: the spender banks its own faith off what it fells")
+            Combat.tally(h, "healDone", 4)
+            assert(Combat.chargePool(h, "zeal") == 5, "and off mending, to its own shallower cap of 5")
+
+            local hp = f.char.stats.health.current
+            assert(Fixture.strike(combat, h, f, "ability_reckoning"),
+                "and the crusade can spend it without owning a second item")
+            assert(hp - f.char.stats.health.current > 0, "the blow bites")
+            assert(Combat.chargePool(h, "zeal") <= 1, "the pool is emptied, bar what the mending rebanked")
+
+            Fixture.give(h.char, "armor_crusaders_tabard")
+            Combat.tally(h, "kill", 20)
+            assert(Combat.chargePool(h, "zeal") == 8, "the Tabard deepens the same pool to its 8")
         end,
     },
 

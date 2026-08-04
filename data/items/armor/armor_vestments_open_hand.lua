@@ -11,9 +11,16 @@
 -- ally at once and cannot be switched off by hitting somebody. It is small on purpose because it is
 -- unconditional, which is the rarest property a recovery in this game can have.
 --
--- utility_grace_reliquary and utility_hallowed_censer both grant the same presence from a grid cell.
--- The vestments are for a priest whose nine cells are already spoken for -- and stacking two sources
--- does stack the healing, which is a legitimate (expensive) build rather than an oversight.
+-- THE ONLY BOUGHT CARRIER OF THE PRESENCE, since the merge. The Cathedral used to sell this and
+-- utility_grace_reliquary -- the same trait, the same tick, five ranks apart, one worn and one slotted --
+-- which is a choice between two spellings rather than between two things. The reliquary was retired and
+-- the vestments kept, because the armour is the version that costs something: a square of pace and a
+-- chest slot, against a grid cell that was free to a priest with a spare one.
+--
+-- utility_hallowed_censer and utility_reliquary_kept_trust still grant the same presence from a grid
+-- cell, so the slotted build survives -- it is quest stock now rather than shelf stock, which is the
+-- right place for a second spelling. Stacking two sources does stack the healing, which is a legitimate
+-- (expensive) build rather than an oversight.
 --
 -- Cloth, so it costs a square of pace: a priest whose aura is the item wants to be standing still.
 local Curve = require("models.curve")

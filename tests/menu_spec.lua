@@ -161,4 +161,47 @@ return {
             assert(m.selected == 1, "an empty menu keeps a sane selection")
         end,
     },
+    {
+        name = "a bare header is stepped over; one carrying an action takes the cursor",
+        fn = function()
+            local m = menu(4)
+            m.items[1].header = true                              -- an inert caption
+            m.items[3].header = true
+            m.items[3].action = function() end                    -- a fold: reachable
+
+            assert(not m:isSelectable(1), "a bare header cannot be selected")
+            assert(m:isSelectable(3), "a fold header can")
+
+            m:clampSelectable()
+            assert(m.selected == 2, "opening on a bare header steps to the first real row")
+
+            m:moveSelection(1)
+            assert(m.selected == 3, "moving down lands ON the fold rather than past it")
+            m:moveSelection(1)
+            assert(m.selected == 4, "and moves off it again")
+        end,
+    },
+    {
+        name = "a fold header activates and can be clicked; a bare one does neither",
+        fn = function()
+            local m = menu(2)
+            local folds = 0
+            m.items[1].header, m.items[1].action = true, function() folds = folds + 1 end
+            m.items[2].header, m.items[2].action = true, function() folds = folds + 1 end
+            m.items[2].action = nil                               -- bare: no action at all
+
+            m.selected = 1
+            m:activate()
+            assert(folds == 1, "Enter on a fold header works it")
+
+            m:layout()
+            m:mousepressed(m.items[1].x + 5, m.items[1].y + 5, 1)
+            assert(folds == 2, "and so does a click")
+
+            m:mousepressed(m.items[2].x + 5, m.items[2].y + 5, 1)
+            assert(m.selected == 1, "a bare header still refuses the pointer")
+            assert(not m:mouseOverItem(m.items[2].x + 5, m.items[2].y + 5),
+                "so nothing offers a hand cursor over it")
+        end,
+    },
 }

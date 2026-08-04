@@ -25,6 +25,7 @@ return {
     type = "ability",
     tags = { "magical", "arcane" },
     class = "mage",
+    discipline = "elementalist", -- the sigils are Elementalist's own (docs/classes.md); this is the circle they are cut in
     price = 320,
     unlockQuests = 2,
     activeAbility = {

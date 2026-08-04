@@ -7,10 +7,15 @@
 -- the heal is the damage rather than a separate number: they cannot be tuned apart, and a build that
 -- wanted only one of them would still be paying for the other.
 --
--- Zeal is banked by the Tabard and the Vow, from kills and mends anywhere on the field (R2), so nothing
--- about reaching this depends on holding a particular weapon. `unlock.when` reads the shared pool
--- directly, as every charge spender does -- a counted unlock would keep a per-item baseline and quietly
--- give this file its own private Zeal.
+-- It banks its OWN Zeal, from the two acts its unlock text has always named: felling and healing. A
+-- spender that declared no pool was an item you could buy, equip, and never fire -- the charge only
+-- existed if you also owned the Tabard or the Vow, which made a 380g ability the second half of a
+-- purchase nobody told you about. The Tabard and the Vow still matter: they deepen the cap (8, then 10)
+-- and widen the sources to what the whole COLUMN does, and the Tabard brings Zealot's Mercy with it.
+-- What they no longer do is grant admission.
+--
+-- `unlock.when` reads the shared pool directly, as every charge spender does -- a counted unlock would
+-- keep a per-item baseline and quietly give this file its own private Zeal.
 --
 -- Note it REBANKS as it resolves: the mending it does is `healDone`, which is one of Zeal's own sources,
 -- so the cast hands back a point on the way out. Deliberate, and the same rebate Flurry takes -- a
@@ -29,6 +34,9 @@ return {
     discipline = "crusader",
     price = 380,
     unlockQuests = 7,
+    -- Shallower than either crusader charm on purpose: the spender opens the pool, the charms deepen it
+    -- (Combat.chargeDef merges -- highest max wins, `from` unions).
+    charge = { key = "zeal", from = { "kill", "healDone" }, max = 5 },
     activeAbility = {
         target = "enemy",
         range = 1,

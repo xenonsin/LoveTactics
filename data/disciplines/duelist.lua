@@ -5,6 +5,7 @@
 -- quest_colosseum_the_tavern_duel (pending). See docs/disciplines-plan.md.
 return {
     name    = "Duelist",
+    description = "One blade, one opponent. A stance whose bonus escalates for as long as you stay locked 1v1.",
     classes = { "fighter", "rogue" },
     exemplar = "character_duelist", -- NEW, pending
     requiredQuests = { "quest_colosseum_the_tavern_duel" }, -- pending

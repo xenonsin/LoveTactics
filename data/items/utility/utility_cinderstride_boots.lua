@@ -31,6 +31,7 @@ return {
     type = "utility",
     tags = { "boots", "fire" },
     class = "mage",
+    discipline = "elementalist", -- element as terrain: the mage's own blaze laid behind every step
     price = 600,
     unlockQuests = 8,
     trail = { hazard = "hazard_fire", duration = 8 },

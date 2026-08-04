@@ -43,6 +43,21 @@ tests[#tests + 1] = { name = "every discipline is well-formed (name, 1-2 real pa
     end
 end }
 
+-- A locked path COLLAPSES to its header on the shelf (ui/panels/shop.lua), so the section detail is the
+-- only room a player has to read what the path is before earning it. Without a blurb that pane names a
+-- gate and a stock count and never says why anyone would want either. Bounded at both ends for the same
+-- reason the class blurbs are (tests/class_spec.lua): a stub answers nothing, and a paragraph overruns
+-- the detail column.
+tests[#tests + 1] = { name = "every discipline says what it is, in a blurb the shop can print", fn = function()
+    for id, def in pairs(Discipline.defs) do
+        local blurb = Discipline.description(id)
+        assert(type(blurb) == "string" and #blurb >= 40, id .. ": missing description")
+        assert(#blurb <= 260, id .. ": description is " .. #blurb
+            .. " chars; the shop's detail column fits about 260")
+        assert(blurb == def.description, id .. ": Discipline.description must read the blueprint field")
+    end
+end }
+
 tests[#tests + 1] = { name = "a subclass gate is one existing quest in its parent vendor's line", fn = function()
     for id, def in pairs(Discipline.defs) do
         if #def.classes == 1 then

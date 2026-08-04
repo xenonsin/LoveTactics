@@ -6,6 +6,7 @@
 -- quest_hunters_lodge_the_standing_stones (pending). See docs/disciplines-plan.md.
 return {
     name    = "Totemist",
+    description = "The priest's zone nailed to a stake. Plant totems that project holy heal and negate fields around them.",
     classes = { "hunter", "priest" },
     exemplar = "character_totemist", -- NEW, pending
     requiredQuests = { "quest_hunters_lodge_the_standing_stones" }, -- pending

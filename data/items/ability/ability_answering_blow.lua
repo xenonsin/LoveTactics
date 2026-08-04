@@ -9,6 +9,11 @@
 --
 -- Scaled per point rather than per body, so it stays honest when it lands on one foe: the reward is for
 -- weathering, not for being surrounded. Reprisal already pays for the crowd.
+--
+-- It declares Defiance itself, off the same tally its unlock text names -- blows weathered. A spender
+-- that banked nothing was inert until you also owned Defiant Stand, which made the payoff half of the
+-- discipline unusable on its own shelf. Defiant Stand is still what a Champion wants: it TAUNTS, which
+-- is the difference between waiting to be hit and asking for it, and it carries the deeper cap.
 local Curve = require("models.curve")
 
 return {
@@ -22,6 +27,9 @@ return {
     discipline = "champion",
     price = 340,
     unlockQuests = 6,
+    -- Shallower than Defiant Stand's 6 and Crowd's Favour's 8: the spender opens the pool, the rest of
+    -- the Champion shelf deepens and widens it (Combat.chargeDef merges).
+    charge = { key = "defiance", from = { "hitTaken" }, max = 4 },
     activeAbility = {
         target = "self",
         range = 0,

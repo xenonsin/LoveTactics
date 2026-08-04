@@ -44,6 +44,13 @@ One class per deadly sin: each vendor's quest line ends facing its own (see [sto
 | `priest` | lust | mana | Zones and wards. Holds ground open and closes it to others. | `holy`, `negates`/`reflects`, `cleanse`/`dispel`, friendly hazards, revive, `unarmed` |
 | `alchemist` | envy | mana | Covets others' power rather than casting its own: consumables and grid auras. | `consumesItem`, `poison`/`acid`, the `aura` block, **coatings** and **elixirs**, throwables |
 
+**The Identity and Owns columns are said to the player, too.** The two are compressed into one
+sentence per class in `Item.CLASSES` — the value side of that table *is* the blurb, rather than a
+`true`, so the set of classes and the sentences describing them cannot drift apart the way two parallel
+tables would — and read back through `Item.classDescription`. The shop prints it under the heading of
+the vendor's base rack: the one place a player is told what a shelf *is* rather than what is on it.
+`tests/class_spec.lua` pins that every class has one and that it fits the column it is drawn in.
+
 **Owning a keyword is not a monopoly.** What the column means is: this is the class whose identity the
 keyword expresses, and the shelf a new item built on it should default to. Overlap is expected —
 alchemist's `weapon_envenomed_kris` bleeds on the rogue's own verb, and it is on the right shelf
@@ -292,11 +299,20 @@ Blueprints live in `data/disciplines/<id>.lua`:
 ```lua
 return {
     name    = "Ninja",
+    description = "Fights by not being where you strike. Blink away, leave a clone to take the blow, "
+        .. "and stay unseen until the killing one.",
     classes = { "rogue", "mage" },     -- 2 = multiclass; 1 = subclass
     exemplar = "character_kaen",       -- the NPC built AS this discipline, met in its unlock quest
     requiredQuests = { "quest_the_shadowless" },
 }
 ```
+
+**`description` is the mechanic said out loud** — what the path is, then the one thing it does, in a
+sentence or two (`Discipline.description`, pinned by `tests/discipline_spec.lua`). It is the same claim
+as the "Signature mechanic" line in each blueprint's header comment, written for the player instead of
+for us. The shop's Buy list collapses a locked path to its header, so the section detail is the only
+room a player has to read what a discipline is *before* paying the gate for it: without this, that pane
+names a price for a thing it never describes.
 
 **Arity is the whole distinction, and it makes a dependency lattice, not a flat matrix:**
 
@@ -360,12 +376,27 @@ second is the failure nobody was looking for at all — six multiclasses had eve
 the other vendor announced a discipline and then sold nothing for it. Artificer and Plague Knight each
 had a completely empty parent.
 
-The rosters that answer both are in [disciplines-plan.md](disciplines-plan.md). Two rules from that pass
-belong here rather than there, because they bind any future roster.
+The rosters that answer both are in [disciplines-plan.md](disciplines-plan.md). Three rules from those
+passes belong here rather than there, because they bind any future roster.
 
-**A discipline's items are authored, never retagged.** The subclass pass drew its five from each parent's
-deep shelf, and that stock is spent — another sweep would empty the base shelves the disciplines are
-supposed to sit *behind*.
+**A discipline's items are authored, never retagged — unless the base shelf is holding the discipline's
+own mechanic.** The multiclass pass wrote all 63 of its items new, because pulling another 63 off the
+deep shelves would have emptied the racks the disciplines are supposed to sit *behind*. That rule stands
+as the default. What it never covered is the reverse direction: an item already on the open shelf whose
+behaviour **is** a discipline's named signature mechanic. Warden's Oath was Sentinel's Intercept, stated
+word for word, sold from turn four. The base-shelf audit that followed moved seventeen of those, and the
+bar it used is the bar for any future pull — *is*, not *is compatible with*. Everything else about the
+retag rules holds: deep shelf only, no weapons and no shields (both are counted in family rosters of
+exactly five, and a `discipline` tag drops an item out of that count), one discipline per item.
+
+**A banner belongs to Paladin or Warlord.** Those two disciplines own the *object*, and this rule decides
+by object rather than by mechanic — Pincer Banner's behaviour is a Follow-Up ally-strike reflex and it is
+Warlord's anyway, because the thing is a banner. The destination follows the item's `class`: a fighter
+banner is Warlord's, and a knight or priest banner is Paladin's, Warlord being fighter-only. Two carve-outs
+survive it, both because a test would fail: `weapon_marching_standard` is a spear and tagging it drops
+that family below its five-on-a-shelf roster, so a discipline banner-weapon has to be authored; and
+`ability_march_wardens_standard` is tagged `summon` rather than `banner` and is one of only two knight-side
+Warden items, so moving it would strip a parent shelf bare.
 
 **A discipline consumable never wears the `potion` tag.** The Cafe resells anything in its `stockTags`
 and a general store ignores `unlockQuests` entirely (see *The general store* above), so a gated draught tagged
@@ -405,6 +436,17 @@ Two rules the pool inherits from chi, and one it added:
 - **A pool banks from a tally, never from carrying one particular weapon.** Zeal takes any kill and any
   nearby mend, so a Crusader who spent the fight healing still arrives at the payoff — the pool is the
   discipline's, not one item's admission fee. This is why `from` is a list.
+- **A spender declares the pool it spends.** An ability that consumes Zeal banks Zeal, off the same
+  tally its `unlock.text` names — buy it, equip it, and the mechanic works. The first three spenders
+  (Reckoning, Answering Blow, Coup Droit) declared nothing and were inert until the player *also* owned
+  the discipline's charm, which is a 380g item quietly sold as the back half of a purchase nobody
+  announced. The charms keep their job through the merge: they **widen** the sources (the Vow banks what
+  the whole column does, not just what you did) and **deepen** the cap (the spender's own max is
+  deliberately the shallowest of the set). What no item may be is another item's on-switch.
+  `tests/charge_spec.lua` scans every item source for this: name a key in `chargePool` / `spendCharge`
+  and you must declare it in the same file, chi excepted (the engine declares that one). A `resetOn`
+  clause travels with the spender too — it is per-item, so a pool that forfeits only when the charm is
+  present is a different bargain than the one the numbers were priced for.
 
 ### A free action does not close the turn
 

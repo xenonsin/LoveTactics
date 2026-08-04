@@ -28,6 +28,7 @@ return {
     type = "utility",
     tags = { "fire" },
     class = "priest",
+    discipline = "crusader", -- fighter x priest; the armed faithful's ring -- it asks a priest to stand in the line
     price = 480,
     unlockQuests = 11,
     incense = { hazard = "hazard_burning_halo", radius = 1,

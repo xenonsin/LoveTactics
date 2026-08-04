@@ -237,15 +237,24 @@ lesser objection.)
 If the hub should say anything it is **state, not adjacency**: a `3 / 9 paths` badge per house, which
 varies per building and moves as you play. Not built.
 
-#### A locked path collapses to its header
+#### Every path folds, and a locked one starts folded
 
 Left expanded, a shelf listed every path its house touches with all of its stock — measured across the
 seven vendors at a fresh save, **9–13 screens and 67–104 unbuyable rows**, worst at the Arcanum with 110
 rows of which 104 were locked. Thirteen screens to reach about six affordable items.
 
-All the reading is in the header, so a path the player has not unlocked now shows its header and nothing
-else. Rows held by nothing worse than this house's quest count stay visible **inside an open path** —
-"complete 2 more" is a near thing, and near things pull.
+All the reading is in the header, so a path the player has not unlocked **starts** showing its header
+and nothing else. Rows held by nothing worse than this house's quest count stay visible **inside an
+open path** — "complete 2 more" is a near thing, and near things pull.
+
+Shut is a default and not a verdict. Each header is a real row that takes the cursor and folds its
+section — a caret pointing right when it is shut and down when it is open, worked by Enter, A, or a
+click, so all three input methods reach it. The locked stock is the whole *argument* for earning a
+path, and a player who wants to see what the Ninja road actually buys them can open it and read every
+greyed row. An opened section is pulled to the top of the scroll window, so it unfolds where it can be
+seen. Folds are the player's, hold for as long as the shop is open, and are re-defaulted per build —
+a path unlocked mid-session opens on its own rather than staying shut because it was locked when the
+shelf was first drawn.
 
 | At a fresh save | Rows before | Rows after | Screens |
 |---|---|---|---|
@@ -257,9 +266,11 @@ else. Rows held by nothing worse than this house's quest count stay visible **in
 | The Undercroft | 70 | 28 | 8.8 → 4.1 |
 | Hunter's Lodge | 71 | 25 | 9.0 → 3.9 |
 
-Because a header is not selectable, the collapse takes the requirement with it — so `Shop:pathMeta`
-carries it instead: *"Rogue x Mage — needs The Arcanum"*, naming the house when the player is **one**
-path away, which is the case they can act on. Two away, the shape has already named both halves.
+A fold takes its rows' requirement text with it, so the header carries it instead: `Shop:pathMeta`
+prints *"Rogue x Mage — needs The Arcanum"* on the band, naming the house when the player is **one**
+path away, which is the case they can act on. Two away, the shape has already named both halves. With
+the header selected, the detail column says the same thing at length — the shape, how much stock is
+behind it, how much of that is open, and the full lock reason — so a shut path is never a dead end.
 
 What remains is the base shelf itself: the Arcanum still opens 56 rows deep because a house's own class
 stock is shown to its last gate. That is the pre-existing "show locked stock, flagged" policy rather
@@ -520,9 +531,10 @@ Each item below was re-checked against the code on 2026-08-03; the biome entry c
 the paragraph at the end.
 
 - **A house's own class shelf still opens to its last gate** — the Arcanum is 56 rows deep at a fresh
-  save even with locked paths collapsed. `Vendor.stock` has no look-ahead limit at all: it emits every
-  item the vendor sells and marks the unaffordable ones `locked`. Capping how far ahead the base shelf
-  reads is an open call (step 4).
+  save even with every locked path folded shut. `Vendor.stock` has no look-ahead limit at all: it emits
+  every item the vendor sells and marks the unaffordable ones `locked`. The base rack folds like any
+  other section now, so a player *can* shut it by hand, but it still opens expanded; capping how far
+  ahead it reads is an open call (step 4).
 - **`char.growthBy` has no screen** that reads it as "Knight 3 / Mage 2". A discipline's standing now
   surfaces in three places — the shop's section headers, the Forge's detail pane ("Ninja — 62 held by
   Clem"), and the battle summary's technique rows — but the per-character ledger behind them does not.

@@ -30,6 +30,7 @@ return {
     type = "ability",
     tags = { "pierce", "physical" },
     class = "hunter",
+    discipline = "skirmisher", -- fighter x hunter; Hit-and-run -- the strike that buys the band back
     price = 240,
     unlockQuests = 5,
     activeAbility = {

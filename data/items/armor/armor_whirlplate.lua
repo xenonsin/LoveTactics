@@ -30,6 +30,7 @@ return {
     type = "armor",
     tags = { "heavy" },
     class = "fighter",
+    discipline = "champion", -- fighter x knight; the Riposte-wall's plate -- answer every striker at once
     price = 420,
     unlockQuests = 9,
     traits = { "trait_whirl_answer" },

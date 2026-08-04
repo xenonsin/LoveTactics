@@ -5,6 +5,7 @@
 -- quest_colosseum_champions_challenge (pending). See docs/disciplines-plan.md.
 return {
     name    = "Champion",
+    description = "The arena's answer to a crowd. Taunt the field, then counter every striker who takes the bait.",
     classes = { "fighter", "knight" },
     exemplar = "character_champion",
     requiredQuests = { "quest_colosseum_champions_challenge" }, -- pending

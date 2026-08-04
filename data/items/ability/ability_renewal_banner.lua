@@ -12,6 +12,7 @@ return {
     type = "ability",
     tags = { "banner", "holy", "restorative" },
     class = "priest",
+    discipline = "paladin", -- knight x priest; a banner is a Paladin or Warlord object (docs/classes.md)
     price = 360,
     unlockQuests = 9,
     activeAbility = {

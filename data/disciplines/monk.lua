@@ -8,6 +8,7 @@
 -- See docs/disciplines-plan.md.
 return {
     name    = "Monk",
+    description = "The ascetic. Unarmed strikes bank chi, and the bank is spent whole on a single burst.",
     classes = { "priest" },
     exemplar = "character_monk", -- NEW, pending
     requiredQuests = { "quest_cathedral_slot_04" },

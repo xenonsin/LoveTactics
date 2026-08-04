@@ -78,13 +78,19 @@ function Menu.new(items, opts)
     return self
 end
 
--- A header row (`header = true`) is a non-interactive section label: navigation steps over it, the
--- mouse cannot land on it, and it draws as a titled divider rather than a button. It still occupies a
--- normal row slot so the uniform layout/scroll maths stay untouched. Used by the shop's Buy list to
--- band its stock per discipline; a menu with no header rows behaves exactly as before.
+-- A header row (`header = true`) is a section label: it draws as a titled divider rather than a
+-- button, and still occupies a normal row slot so the uniform layout/scroll maths stay untouched.
+-- Used by the shop's Buy list to band its stock per discipline.
+--
+-- A BARE header is inert -- navigation steps over it and the mouse cannot land on it. A header that
+-- carries an `action` is a FOLD: it takes the selection like any other row, so a keyboard and a pad
+-- can reach the thing a mouse would click. `collapsed` (read at draw time) points its caret.
+local function interactive(item)
+    return item ~= nil and (not item.header or item.action ~= nil)
+end
+
 function Menu:isSelectable(i)
-    local it = self.items[i]
-    return it ~= nil and not it.header
+    return interactive(self.items[i])
 end
 
 function Menu:hasSelectable()
@@ -127,6 +133,18 @@ function Menu:scrollToSelection()
         self.scroll = self.selected - self.maxVisible
     end
     self.scroll = math.max(0, math.min(maxScroll, self.scroll))
+end
+
+-- Put `index` at the top of the scroll window (clamped at the end of the list), leaving the selection
+-- alone. What a row that has just GROWN rows beneath it needs: a fold opened on the last visible line
+-- would otherwise reveal its contents entirely off-screen, and read as having done nothing.
+function Menu:scrollTopTo(index)
+    if not self:canScroll() then
+        self.scroll = 0
+        return
+    end
+    local maxScroll = #self.items - self.maxVisible
+    self.scroll = math.max(0, math.min(maxScroll, index - 1))
 end
 
 -- Scroll by `delta` rows without moving the selection (the mouse wheel).
@@ -214,7 +232,7 @@ end
 
 function Menu:activate()
     local item = self.items[self.selected]
-    if not item or item.header or not item.action then return end
+    if not interactive(item) or not item.action then return end
     -- A row with an `adjust` fires its own sound as it steps (the volume sliders play into the level
     -- they are setting), so it is not given the generic confirm on top of that.
     if not item.adjust then Sound.play("ui.confirm") end
@@ -276,21 +294,44 @@ end
 
 -- A section band: no plate, an amber uppercase caption, and a hairline along the foot so the rows
 -- beneath it read as belonging to it. Sits in an ordinary row slot, so it costs the layout nothing.
-function Menu:drawHeader(item)
+--
+-- A FOLD header (one with an `action`) leads with a caret -- pointing right when its section is shut,
+-- down when it is open, the disclosure mark every tree uses. Selected, it rings itself in the cursor
+-- steel rather than the amber every other selected row wears: the caption is ALREADY amber, and a gold
+-- ring around gold text is not a highlight. Steel here also says the same thing it says everywhere
+-- else in the UI -- this is where the cursor is standing.
+local CARET = 9
+function Menu:drawHeader(item, active)
     love.graphics.setFont(self.font)
     local th = self.font:getHeight()
     local ty = item.y + item.h / 2 - th / 2
+    local lx = item.x + VALUE_PAD
+    if item.action then
+        local cy = item.y + item.h / 2
+        Theme.set(active and Theme.cursor or Theme.accentAmber)
+        if item.collapsed then
+            love.graphics.polygon("fill", lx, cy - CARET * 0.5, lx, cy + CARET * 0.5, lx + CARET * 0.8, cy)
+        else
+            love.graphics.polygon("fill", lx - 1, cy - CARET * 0.4, lx + CARET - 1, cy - CARET * 0.4,
+                lx + CARET * 0.5 - 1, cy + CARET * 0.45)
+        end
+        lx = lx + CARET + 8
+    end
     Theme.set(Theme.accentAmber)
-    love.graphics.printf((item.label or ""):upper(), item.x + VALUE_PAD, ty, item.w - VALUE_PAD * 2, "left")
+    love.graphics.printf((item.label or ""):upper(), lx, ty, item.x + item.w - VALUE_PAD - lx, "left")
     Theme.set(Theme.frame, 0.7)
     love.graphics.line(item.x, item.y + item.h - 2, item.x + item.w, item.y + item.h - 2)
+    if active then
+        Theme.set(Theme.cursor)
+        love.graphics.rectangle("line", item.x, item.y, item.w, item.h, Theme.R, Theme.R)
+    end
 end
 
 function Menu:draw()
     love.graphics.setFont(self.font)
     for i, item in ipairs(self.items) do
         if item.x and item.header then
-            self:drawHeader(item)
+            self:drawHeader(item, (i == self.selected) and self.focused)
         elseif item.x then
             local active = (i == self.selected) and self.focused
 
@@ -340,7 +381,7 @@ end
 -- pointer sits still on a row (the selection only changes on a crossing) and off the list entirely.
 function Menu:mousemoved(x, y)
     for i, item in ipairs(self.items) do
-        if isInside(item, x, y) and not item.header then
+        if isInside(item, x, y) and interactive(item) then
             if self.selected ~= i then
                 self.selected = i
                 Sound.play("ui.move")
@@ -353,7 +394,7 @@ end
 function Menu:mousepressed(x, y, button)
     if button ~= 1 then return end
     for i, item in ipairs(self.items) do
-        if isInside(item, x, y) and not item.header then
+        if isInside(item, x, y) and interactive(item) then
             self.selected = i
             -- A slider row is SET by the click position (so the mouse can go down as well as up); a
             -- plain row or toggle is activated as before.
@@ -371,7 +412,7 @@ end
 -- True when the point is over any visible menu item, so a state can show the hand cursor there.
 function Menu:mouseOverItem(x, y)
     for _, item in ipairs(self.items) do
-        if isInside(item, x, y) and not item.header then return true end
+        if isInside(item, x, y) and interactive(item) then return true end
     end
     return false
 end

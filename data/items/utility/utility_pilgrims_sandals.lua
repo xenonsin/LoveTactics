@@ -32,6 +32,7 @@ return {
     type = "utility",
     tags = { "boots", "holy" },
     class = "priest",
+    discipline = "theurge", -- mage x priest; a divine hazard laid by walking rather than by casting
     price = 520,
     unlockQuests = 10,
     -- Far shorter-lived than a priest's cast Sanctuary (15): a footprint is a moment of hallowed

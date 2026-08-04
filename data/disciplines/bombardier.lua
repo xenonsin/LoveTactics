@@ -9,6 +9,7 @@
 -- See docs/disciplines-plan.md.
 return {
     name    = "Bombardier",
+    description = "The thrower. Scatter bombs seed hazards at range and chain-detonate off each other.",
     classes = { "alchemist" },
     exemplar = "character_bombardier", -- NEW, pending
     requiredQuests = { "quest_alchemist_slot_04" },

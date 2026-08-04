@@ -18,6 +18,7 @@ return {
     type = "utility",
     tags = { "banner" },
     class = "fighter",
+    discipline = "warlord", -- a banner is a Paladin or Warlord object (docs/classes.md), whatever it delivers
     price = 360,
     unlockQuests = 4,
     traits = { "trait_follow_up" },

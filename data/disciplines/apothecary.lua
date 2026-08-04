@@ -8,6 +8,7 @@
 -- opens quest_alchemist_apothecary_ren (pending). See docs/disciplines-plan.md.
 return {
     name    = "Apothecary",
+    description = "The field medic who mends before she strikes. Elixirs that heal and lend party stats, so what your column is carrying is what the dose is worth.",
     classes = { "priest", "alchemist" },
     exemplar = "character_apothecary", -- was character_ren (a root companion); dedicated exemplar authored
     requiredQuests = { "quest_alchemist_apothecary_ren" }, -- pending

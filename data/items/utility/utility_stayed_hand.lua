@@ -28,6 +28,7 @@ return {
     type = "utility",
     tags = { "holy" },
     class = "priest",
+    discipline = "exorcist", -- Banish, turned inward -- it strips what is riding the body and lifts it out of reach
     price = 500,
     unlockQuests = 12,
     traits = { "trait_stayed_hand" },

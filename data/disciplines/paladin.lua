@@ -6,6 +6,7 @@
 -- quest_cathedral_the_oath_at_the_altar (pending). See docs/disciplines-plan.md.
 return {
     name    = "Paladin",
+    description = "The holy wall. A standing ward aura cuts the damage taken by every ally beside you.",
     classes = { "knight", "priest" },
     exemplar = "character_paladin", -- NEW, pending
     requiredQuests = { "quest_cathedral_the_oath_at_the_altar" }, -- pending

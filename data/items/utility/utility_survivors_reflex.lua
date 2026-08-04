@@ -12,6 +12,7 @@ return {
     type = "utility",
     tags = { "satchel" },
     class = "alchemist",
+    discipline = "warbrewer", -- fighter x alchemist; the Combat draught -- a quaff that costs no turn
     price = 260,
     unlockQuests = 7,
     traits = { "trait_survivors_reflex" },

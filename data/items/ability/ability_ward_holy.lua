@@ -1,16 +1,21 @@
--- Resistant: Holy -- a priest's protective blessing laid on the caster or a nearby ally, granting Resistant: Holy
--- (data/status/status_resistant_holy.lua): -8 to every holy-tagged hit for a time. Warding is the Cathedral's
--- own keyword (docs/classes.md), single-element rather than the Magical Barrier's single-school. The
--- ACTIVE mirror of the Vulnerable openers -- read the intent telegraph, ward the target of the incoming
--- blow the turn before it lands. It floors at 1 and never reaches immunity (that is the mage's Immunity: Holy).
--- One of the ward line; see docs/vulnerability.md.
+-- Resistant: Holy -- a protective working laid on the caster or a nearby ally, granting Resistant:
+-- Holy (data/status/status_resistant_holy.lua): -8 to every holy-tagged hit for a time. It floors
+-- at 1 and never reaches immunity -- that is Immunity: Holy, the same house's deeper answer. The
+-- ACTIVE mirror of the Vulnerable openers: read the intent telegraph and ward the target of the
+-- incoming blow the turn before it lands.
+--
+-- A HOUSE WARDS AGAINST WHAT IT DEALS, which is the rule this line follows now. Holy is the
+-- Cathedral's word (docs/classes.md), and it is the one house that must ward against its own. The
+-- 22 wards and seals used to sit on two racks -- eleven on the priest's shelf and eleven on the
+-- mage's, a third of each shelf's ability list saying one thing eleven times over. Split by damage
+-- type, every house teaches the answer to the damage it knows best. See docs/vulnerability.md.
 return {
     name = "Resistant: Holy",
     description = "Wards yourself or an ally with Resistant: Holy.",
     flavor = "Even a light meant to judge can be asked, politely, to look away.",
     sprite = "assets/items/ability_ward_holy.png",
     type = "ability",
-    tags = { "protective", "holy" },
+    tags = { "protective" },
     class = "priest",
     price = 180,
     unlockQuests = 2,

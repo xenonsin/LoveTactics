@@ -7,10 +7,16 @@
 -- every one of those exchanges to kill you first, and anyone watching can see the tempo building. It is
 -- not an execute you can open with. It is the end of a conversation.
 --
--- MULTIPLIES rather than adds, deliberately, and it is the one pool in the game that does: Tempo caps at
--- 5 and empties the instant you look away (utility_reading_the_blade), so the ceiling is reachable only
--- by a fighter who has spent the whole duel refusing every other target on the field. A flat bonus would
--- have made spreading your attention merely worse; a multiplier makes it a different fight.
+-- MULTIPLIES rather than adds, deliberately, and it is the one pool in the game that does: Tempo caps
+-- low and empties the instant you look away, so the ceiling is reachable only by a fighter who has spent
+-- the whole duel refusing every other target on the field. A flat bonus would have made spreading your
+-- attention merely worse; a multiplier makes it a different fight.
+--
+-- It declares Tempo itself -- pressing one body, exactly what its unlock text names -- so the thrust is
+-- a complete purchase rather than the back half of one. Carrying the forfeit clause with it is not
+-- optional: `resetOn` is per-item, and a Duelist holding only this would otherwise keep a Tempo that
+-- never evaporated, which is precisely the bargain the multiplier is priced against. Reading the Blade
+-- raises the ceiling from 3 to 5, and the Main-Gauche banks the same pool off parries instead.
 local Curve = require("models.curve")
 
 return {
@@ -24,6 +30,7 @@ return {
     discipline = "duelist",
     price = 360,
     unlockQuests = 6,
+    charge = { key = "tempo", from = { "repeatStrike" }, max = 3, resetOn = "targetSwitch" },
     activeAbility = {
         target = "enemy",
         range = 1,
