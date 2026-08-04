@@ -14,14 +14,12 @@ return {
     difficulty = "Hard",
     sponsor = "hunters_lodge",
     rewardGold = 500,
-    rewardPrestige = 3,
     rewardItems = { "utility_maw_of_the_unfed" },
     requiredQuests = { "quest_hunters_lodge_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 2,
-    requiredSponsorQuests = { vendor = "hunters_lodge", count = 10 }, -- 10 of this house's quests done
     gateHint = "at the heart of the wood the hunt hollowed out",
     map = {
-        biome = "forest",
+        biome = "swamp",
         encounters = { min = 10, max = 14, always = { "encounter_elite", "encounter_elite" } },
         objective = {
             name = "Gula, the Unsated",

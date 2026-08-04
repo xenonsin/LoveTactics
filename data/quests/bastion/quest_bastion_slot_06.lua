@@ -42,13 +42,11 @@ return {
     -- target at the muster, taking the heaviest hitter out of the fight while you finish the line.
     rewardItems = { "consumable_bannerets_steel", "weapon_debt_bell", "weapon_suspension_mace" },
     rewardGold = 240,
-    rewardPrestige = 1,
     requiredQuests = { "quest_bastion_slot_05" }, -- slot 6: the line runs in order
     requiredPrestige = 2,
-    requiredSponsorQuests = { vendor = "bastion", count = 6 }, -- 6 of this house's quests done
     rewardMaterials = { material_steel_ingot = 2 },
     map = {
-        biome = "forest",
+        biome = "tundra",
         encounters = { min = 6, max = 9, always = { "encounter_forsworn" } },
         objective = {
             name = "The Last Names on the Roll",

@@ -362,43 +362,54 @@ return {
     {
         name = "Quest.available hides a sponsor-quest-gated quest until enough of the house's quests are done",
         fn = function()
-            local p = playerAt(5) -- prestige is not the gate here; the sponsor-quest count is
-            -- slot 6 gates on requiredSponsorQuests = { cathedral, count = 6 } (and, in order, on slot 5).
-            -- Running the line in order puts FIVE Cathedral quests behind it, so the chain is clear and
-            -- the count is one short -- the gate holds on its own terms, which is what this case is about.
+            -- THE MECHANISM, ON A SYNTHETIC QUEST, AND DELIBERATELY NOT ON THE CAMPAIGN'S OWN DATA.
             --
-            -- This case used to be written on slot 3, and that was the shape of a real bug rather than a
-            -- choice of fixture. Slot 3 carried count = 3 when only slots 1 and 2 could precede it, so the
-            -- Cathedral was unfinishable from there down and the Gate Below lost one of its seven keys.
-            -- The case passed anyway because it satisfied the count with a capstone that itself requires
-            -- slot 3 -- a state the game can never reach. A gate must be tested from a board position a
-            -- player can actually stand in, or it proves nothing; tests/progression_report_spec.lua now
-            -- walks the whole campaign to check exactly that.
-            p.completedQuests.quest_colosseum_slot_01 = true -- a different house: must not count toward the Cathedral
-            -- The Arcanum's first three, so the capstone below is legitimately in reach (it names
-            -- quest_arcanum_slot_03 and quest_cathedral_slot_03 as its two parents).
-            p.completedQuests.quest_arcanum_slot_01 = true
-            p.completedQuests.quest_arcanum_slot_02 = true
-            p.completedQuests.quest_arcanum_slot_03 = true
-            p.completedQuests.quest_cathedral_slot_01 = true
-            p.completedQuests.quest_cathedral_slot_02 = true
-            p.completedQuests.quest_cathedral_slot_03 = true
-            p.completedQuests.quest_cathedral_slot_04 = true
-            p.completedQuests.quest_cathedral_slot_05 = true
+            -- This case has now been wrong twice for the same reason, so it is worth writing down. It
+            -- was first pinned to quest_cathedral_slot_03, which asked for 3 of the house's quests when
+            -- only 2 could precede it -- the Cathedral was unfinishable from there down and the Gate
+            -- Below lost one of its seven keys. The case passed regardless, because it met the count
+            -- with a capstone that itself requires slot 3: a board position no player can reach. It was
+            -- then re-pinned to slot 6, which the solo-run work has since deleted.
+            --
+            -- Both times the case was really asserting a piece of AUTHORING while claiming to assert a
+            -- piece of MACHINERY. Since every surviving `requiredSponsorQuests` in the campaign is now
+            -- satisfied by its own line's chain -- slot 7 asks for 6 and the six before it supply 6 --
+            -- there is no real quest left that can demonstrate the gate holding, and pinning to one
+            -- would only wait for the next authoring pass to move it. So the gate gets a quest of its
+            -- own, built here, and the campaign's shape is guarded where it belongs, by the whole-board
+            -- walk in tests/progression_report_spec.lua.
+            local id = "quest_spec_sponsor_gate"
+            Quest.defs[id] = {
+                name = "The Spec's Own Errand",
+                sponsor = "cathedral",
+                requiredPrestige = 1,
+                requiredSponsorQuests = { vendor = "cathedral", count = 2 },
+                map = {},
+            }
 
-            local function boardHas(id)
-                for _, q in ipairs(Quest.available(p)) do
-                    if q.id == id then return true end
+            local ok, err = pcall(function()
+                local p = playerAt(5) -- prestige is not the gate here; the sponsor-quest count is
+                local function boardHas(questId)
+                    for _, q in ipairs(Quest.available(p)) do
+                        if q.id == questId then return true end
+                    end
+                    return false
                 end
-                return false
-            end
 
-            assert(not boardHas("quest_cathedral_slot_06"),
-                "slot 6 needs 6 of the Cathedral's quests, and only 5 are done")
+                assert(not boardHas(id), "no Cathedral quests done: the gate should hold")
 
-            p.completedQuests.quest_cathedral_the_twin_liturgy = true -- a 6th Cathedral quest
-            assert(boardHas("quest_cathedral_slot_06"),
-                "slot 6 should appear once 6 of the Cathedral's quests are done")
+                p.completedQuests.quest_colosseum_slot_01 = true
+                assert(not boardHas(id), "another house's quest must not count toward the Cathedral")
+
+                p.completedQuests.quest_cathedral_slot_01 = true
+                assert(not boardHas(id), "one of two is still short")
+
+                p.completedQuests.quest_cathedral_slot_02 = true
+                assert(boardHas(id), "two of this house's quests done: the gate should open")
+            end)
+
+            Quest.defs[id] = nil -- the registry is shared; leave it as it was found
+            assert(ok, err)
         end,
     },
     {

@@ -16,6 +16,7 @@
 
 local Report = require("tools.progression_report")
 local Quest = require("models.quest")
+local Vendor = require("models.vendor")
 
 local function questCount()
     local n = 0
@@ -90,6 +91,45 @@ return {
                 end
                 assert(#silent == 0, string.format("%s: %d silent quest(s): %s",
                     policy, #silent, table.concat(silent, ", ")))
+            end
+        end,
+    },
+    {
+        name = "every house's ten slots can be run alone, on nothing but its entry cost",
+        fn = function()
+            -- The design rule: a player may take one sin's line to its end without touching the other
+            -- six, held back by how hard the fights get rather than by permission. Before this landed,
+            -- six of seven lines stopped dead at slot 6 -- that slot asked for 6 of the house's quests
+            -- while the numbered chain supplied 5, and the shortfall could only be met with a capstone,
+            -- every one of which names another house. Fourteen gates, two per house.
+            --
+            -- `entry` is the on-ramp a line legitimately costs: prestige is a count of quests finished,
+            -- so a house opening at prestige 3 needs two from anywhere before its first card appears.
+            -- Spending MORE than that is the line failing to carry itself.
+            local failures = {}
+            for _, v in ipairs(Vendor.list()) do
+                local r = Report.walkSolo(v.id)
+                if r.total > 0 and not r.solo then
+                    failures[#failures + 1] = string.format("%s (%d/%d slots, %d on-ramp vs entry %d)",
+                        r.sponsor, r.done, r.total, r.onRamp, r.entry)
+                end
+            end
+            assert(#failures == 0, "lines that cannot be run alone: " .. table.concat(failures, "; "))
+        end,
+    },
+    {
+        name = "a solo run's entry cost never exceeds the prestige its house opens at",
+        fn = function()
+            -- Pins the on-ramp itself, not just that one exists: Colosseum 0, Cathedral / Bastion /
+            -- Hunter's 1, Arcanum / Undercroft 2, Alchemist 3. If a line starts demanding more, the
+            -- on-ramp has quietly become a second gate.
+            for _, v in ipairs(Vendor.list()) do
+                local r = Report.walkSolo(v.id)
+                if r.total > 0 then
+                    assert(r.entry <= 3, string.format(
+                        "%s costs %d outside quests before its line opens -- the largest deliberate " ..
+                        "on-ramp is the Alchemist's 3", r.sponsor, r.entry))
+                end
             end
         end,
     },

@@ -14,11 +14,9 @@ return {
     difficulty = "Hard",
     sponsor = "cathedral",
     rewardGold = 500,
-    rewardPrestige = 3,
     rewardItems = { "utility_reliquary_unbidden" },
     requiredQuests = { "quest_cathedral_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 1,
-    requiredSponsorQuests = { vendor = "cathedral", count = 10 }, -- 10 of this house's quests done
     gateHint = "under the nave, where the faithful were unmade",
     map = {
         biome = "castle",

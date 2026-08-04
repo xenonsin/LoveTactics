@@ -35,10 +35,8 @@ return {
     sponsor = "undercroft",
     rewardItems = { "weapon_thin_place" },
     rewardGold = 240,
-    rewardPrestige = 1,
     requiredQuests = { "quest_undercroft_slot_05" }, -- slot 6: the line runs in order
     requiredPrestige = 3,
-    requiredSponsorQuests = { vendor = "undercroft", count = 6 }, -- 6 of this house's quests done
     map = {
         biome = "castle",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },

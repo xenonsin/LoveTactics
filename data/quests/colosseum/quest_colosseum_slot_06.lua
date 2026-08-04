@@ -40,12 +40,10 @@ return {
     outro = "conversation_colosseum_slot_06_outro",
     rewardItems = { "weapon_wolfs_portion", "weapon_unspent_blow" },
     rewardGold = 240,
-    rewardPrestige = 1,
     requiredQuests = { "quest_colosseum_slot_05" }, -- slot 6: the line runs in order
     requiredPrestige = 1,
-    requiredSponsorQuests = { vendor = "colosseum", count = 6 }, -- 6 of this house's quests done
     map = {
-        biome = "castle",
+        biome = "desert",
         encounters = { min = 8, max = 12, always = { "encounter_elite" } },
         objective = {
             name = "The Card With Your Name On It",

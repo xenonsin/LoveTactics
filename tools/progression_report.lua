@@ -56,6 +56,29 @@ M.POLICIES = {
     { id = "breadth", label = "round-robin the houses" },
 }
 
+-- The SOLO walk is a different question from the two above, and asks it per house: run only this
+-- sponsor's quests, take nothing else, and report how far down the line you get.
+--
+-- It exists because of a design rule that the gate data does not currently honour: a player should be
+-- able to take one sin's line to its end without touching the other six, held back by how hard the
+-- fights get rather than by permission. `M.walk` cannot answer that -- it always has the whole board
+-- to pick from -- so this is a separate, narrower walk.
+--
+-- Two things this walk is deliberately strict about, or it would report success it has not measured:
+--
+--   IT RUNS THE NUMBERED SLOTS ONLY. A house's 2-4 named capstones are CROSSINGS by construction --
+--   each names another house's line in its own requiredQuests -- so a capstone can never be solo and
+--   counting it would let a "solo" run drag half the campaign in behind it. The line is the ten slots;
+--   the capstones are the crossings, and the design rule is about the line.
+--
+--   THE ON-RAMP IS CAPPED. Prestige is a flat count of quests finished, so a house opening at prestige
+--   3 needs two quests from anywhere before its first card appears -- a real and deliberate cost. But
+--   an uncapped allowance turns "stuck" into "kept playing elsewhere until something shook loose",
+--   which is exactly the failure this is looking for, reported as a success. Six is well clear of the
+--   largest legitimate entry cost (the Alchemist's three) and nowhere near enough to run a second line.
+M.SOLO_LABEL = "one house only"
+M.SOLO_ONRAMP_CAP = 6
+
 -- The walk drives a stand-in rather than a real Player, and completes quests by hand rather than
 -- through Quest.complete. Deliberate: Quest.complete grants gold, mints relics into a stash and runs
 -- the whole advancement path, none of which this measures, and all of which would need a roster to
@@ -199,6 +222,82 @@ function M.walk(policy)
     return rows
 end
 
+-- Walk `vendorId`'s line alone: take that house's quests whenever any is startable, and take an
+-- outside quest ONLY when nothing of this house is available and the board still offers something --
+-- the on-ramp. Stops when the house has nothing left to give.
+--
+-- Returns { sponsor, done, total, onRamp, reached, blocked }: how many of the house's quests were
+-- finished, how many it has, how many outside quests the run had to spend, the deepest numbered slot
+-- reached, and -- when the line did not finish -- the ids left behind.
+function M.walkSolo(vendorId)
+    local player = newPlayer()
+    local done, onRamp, entry = 0, 0, nil
+
+    local slots = {}
+    for id, def in pairs(Quest.defs) do
+        if def.sponsor == vendorId and id:match("_slot_%d+$") then slots[id] = true end
+    end
+
+    local total = 0
+    for _ in pairs(slots) do total = total + 1 end
+
+    local function cheapest(list, wantMine)
+        local pick
+        for _, entry in ipairs(list) do
+            local mine = slots[entry.id] == true
+            if not entry.locked and mine == wantMine then
+                local p, q = entry.requiredPrestige or 1, pick and (pick.requiredPrestige or 1)
+                if not pick or p < q or (p == q and entry.id < pick.id) then pick = entry end
+            end
+        end
+        return pick
+    end
+
+    while done < total do
+        local avail = Quest.available(player)
+        local pick = cheapest(avail, true)
+        local isOnRamp = false
+
+        -- Nothing of this line on offer: spend one quest from anywhere and look again, up to the cap.
+        -- Past the cap the line is not being run alone, whatever eventually shakes loose.
+        if not pick then
+            if onRamp >= M.SOLO_ONRAMP_CAP then break end
+            pick = cheapest(avail, false)
+            isOnRamp = pick ~= nil
+        end
+
+        if not pick then break end
+
+        player.completedQuests[pick.id] = true
+        player.prestige = player.prestige + Quest.PRESTIGE_PER_QUEST
+        if isOnRamp then onRamp = onRamp + 1 else done = done + 1 end
+
+        -- The on-ramp spent getting the line's FIRST card onto the board. Everything past this is the
+        -- line failing to carry itself, which is the distinction the verdict turns on: a house that
+        -- opens at prestige 3 legitimately costs two quests, and a house that stalls at slot 6 and is
+        -- rescued by outside play has not been run alone at all.
+        if done == 1 and not entry then entry = onRamp end
+    end
+
+    local reached, blocked = 0, {}
+    for id in pairs(slots) do
+        if player.completedQuests[id] then
+            local slot = tonumber(id:match("_slot_(%d+)$") or "")
+            if slot and slot > reached then reached = slot end
+        else
+            blocked[#blocked + 1] = id
+        end
+    end
+    table.sort(blocked)
+
+    -- Solo means: every numbered slot finished, and no outside quest spent beyond the entry cost.
+    return {
+        sponsor = vendorId, done = done, total = total,
+        onRamp = onRamp, entry = entry or onRamp, reached = reached, blocked = blocked,
+        solo = (#blocked == 0) and (onRamp == (entry or onRamp)),
+    }
+end
+
 -- Runs of consecutive silent quests at least DEAD_RUN long, as { from, to, len }.
 local function deadStretches(rows)
     local out, start = {}, nil
@@ -309,6 +408,54 @@ local function printPolicy(policy, label, full)
     return rows
 end
 
+-- The solo table: one row per house, and the verdict the design rule asks for.
+local function printSolo()
+    print("")
+    print("solo runs -- can one sin's ten numbered slots be taken alone?")
+    print(string.format("      (capstones excluded: they are crossings by construction. on-ramp capped at %d)",
+        M.SOLO_ONRAMP_CAP))
+    print(string.format("      %-16s %7s %5s %7s %8s   %s",
+        "house", "slots", "of", "entry", "on-ramp", "verdict"))
+    print("      " .. string.rep("-", 70))
+
+    local finished = 0
+    local results = {}
+    for _, v in ipairs(Vendor.list()) do
+        local r = M.walkSolo(v.id)
+        if r.total > 0 then
+            results[#results + 1] = r
+            if r.solo then finished = finished + 1 end
+
+            local verdict
+            if r.solo then
+                verdict = "solo"
+            elseif #r.blocked > 0 then
+                verdict = string.format("STOPS at slot %d, %d left", r.reached, #r.blocked)
+            else
+                verdict = string.format("NOT SOLO -- %d outside quests past entry", r.onRamp - r.entry)
+            end
+
+            print(string.format("      %-16s %7d %5d %7d %8d   %s",
+                r.sponsor, r.done, r.total, r.entry, r.onRamp, verdict))
+        end
+    end
+
+    print("")
+    if finished == #results then
+        print(string.format("  all %d lines run alone.", #results))
+    else
+        print(string.format("  %d of %d lines run alone. What stops the rest:", finished, #results))
+        for _, r in ipairs(results) do
+            if not r.solo then
+                print("      " .. r.sponsor .. ": " ..
+                    (#r.blocked > 0 and table.concat(r.blocked, ", ")
+                     or string.format("finished, but on %d outside quests past its entry cost of %d",
+                        r.onRamp - r.entry, r.entry)))
+            end
+        end
+    end
+end
+
 function M.run(args)
     local full = false
     for _, a in ipairs(args or {}) do
@@ -328,6 +475,8 @@ function M.run(args)
     for _, p in ipairs(M.POLICIES) do
         walked[p.id] = printPolicy(p.id, p.label, full)
     end
+
+    printSolo()
 
     -- A quest the walk never reached is unreachable in that order -- a real authoring bug (a gate
     -- naming a quest its own line puts later), not a rounding difference. Worth saying loudly.

@@ -36,12 +36,10 @@ return {
     sponsor = "alchemist",
     rewardItems = { "armor_choking_apron" },
     rewardGold = 240,
-    rewardPrestige = 1,
     requiredQuests = { "quest_alchemist_slot_05" }, -- slot 6: the line runs in order
     requiredPrestige = 4,
-    requiredSponsorQuests = { vendor = "alchemist", count = 6 }, -- 6 of this house's quests done
     map = {
-        biome = "castle",
+        biome = "swamp",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },
         objective = {
             name = "The Waste Ground",

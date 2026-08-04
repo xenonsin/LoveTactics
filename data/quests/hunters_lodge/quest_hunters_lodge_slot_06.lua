@@ -35,12 +35,10 @@ return {
     sponsor = "hunters_lodge",
     rewardItems = { "weapon_witchlight_bow" },
     rewardGold = 240,
-    rewardPrestige = 1,
     requiredQuests = { "quest_hunters_lodge_slot_05" }, -- slot 6: the line runs in order
     requiredPrestige = 2,
-    requiredSponsorQuests = { vendor = "hunters_lodge", count = 6 }, -- 6 of this house's quests done
     map = {
-        biome = "forest",
+        biome = "tundra",
         encounters = { min = 7, max = 10, always = { "encounter_wolf", "encounter_elite" } },
         objective = {
             name = "The Last Entries on the Book",

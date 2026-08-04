@@ -14,11 +14,9 @@ return {
     difficulty = "Hard",
     sponsor = "arcanum",
     rewardGold = 500,
-    rewardPrestige = 3,
     rewardItems = { "utility_codex_unanswered" },
     requiredQuests = { "quest_arcanum_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 3,
-    requiredSponsorQuests = { vendor = "arcanum", count = 10 }, -- 10 of this house's quests done
     gateHint = "where the shelves answer only themselves",
     map = {
         biome = "castle",
