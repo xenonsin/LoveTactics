@@ -19,9 +19,11 @@ is a considered answer, not a wobble. Do not go looking for a knob here.
 The consequence is the whole of this document: growth's own header names the real carriers — *"growth
 within a run comes from gear, abilities, disciplines and roster"* — and all four of those were starved,
 hidden, or half-wired. The one axis that was never meant to carry the feeling was the only one the
-player could see. **Steps 1–6 below have since landed**, leaving step 7 — the campaign's length — as
-the only open one; the diagnosis table marks what is closed, and "Known debt" at the end is what the
-closed steps left behind.
+player could see. **All seven steps below have since landed.** The last of them asked how long the
+campaign should be and answered that the length was never the problem — what came out of it instead is
+the rule that a single sin's line can be run to its end alone, priced in difficulty rather than in
+permission. The diagnosis table marks what is closed, and "Known debt" at the end is what the closed
+steps left behind.
 
 ## The diagnosis
 
@@ -361,7 +363,9 @@ What changed is **regularity, not destination**. Holding at 3 would have quietly
 level 31. This does *not* by itself fix "half of all quests level nobody" — the rate is 0.5 levels/quest
 either way — but the cadence is now predictable and the advancement bar can be read as "one more quest".
 Making *every* quest land a level needs `PRESTIGE_PER_LEVEL = 1`, which gives 92 levels against a cap of
-50 and a 42-quest dead stretch; that is a campaign-length decision, so it belongs to step 7.
+50 and a 42-quest dead stretch; that is a campaign-length decision, so it belonged to step 7 — **which
+has since closed it. The rate stays at 2.** With the length settled at 92, one prestige a level would
+end the campaign 43 levels past the cap.
 
 **The roster — done, and answered better than this document asked.** The bullet here proposed widening
 `MAX_PARTY` in the back half. What landed instead splits the number in two: `Player.MAX_PARTY = 8` is
@@ -370,12 +374,64 @@ the **company** that travels, `Player.MAX_FIELD = 4` is how many of it stand on 
 sense and became one in the useful sense — every companion comes along, and which four are fighting is
 a live tactical decision rather than a menu choice made before the quest.
 
-### 7 — Only now, decide the campaign's length — **measured; the answer is "not the length"**
+### 7 — Only now, decide the campaign's length — **done. The answer was "not the length"**
 
-Re-measure quest count against the fixed curve; the right length is whatever keeps a step arriving
-every battle or two. Cutting first would be cutting to fit a broken shape. The shape held in reserve:
-**8 slots per line** (the last count where every sponsor still reaches shelf rung 4 with no retune of
-the unlock values) and **5 of 7 lines required** for the Gate.
+**The decisions, taken 2026-08-04.** The step asked how long the campaign should be. The measurement
+answered that it is long enough, and that the thing actually worth changing was a rule about *shape*:
+
+> **A player may take one sin's line to its end without touching the other six, and depth is priced in
+> difficulty rather than in permission.**
+
+That rule is the step's real output. What follows from it:
+
+1. **The length is 92, settled.** Both play policies walk all 92 quests and not one is silent — every
+   quest hands over a level, a shelf row, a discipline, a companion or an item, with no dead run of even
+   two. Nothing in the data argues for a cut.
+2. **The reserve shape is retired.** "8 slots per line, 5 of 7 lines for the Gate" was chosen as the last
+   count needing no retune of the unlock values, and that was derived against ten quests a house. A house
+   is 12–14 once its named capstones are counted, and the shelf spreads over `0 .. Q-2` of the *whole*
+   sponsor count, so cutting slots moves the gates regardless. The property that made 8 the number does
+   not exist.
+3. **`PRESTIGE_PER_LEVEL = 1` is closed, not deferred.** 92 quests at one prestige a level is 92 levels
+   against a ceiling of 50; the campaign ends at 47, leaving three levels of headroom. It does not fit,
+   and step 6 no longer defers the question here.
+4. **The on-ramp stays.** A line costs 0–3 quests from anywhere before it opens (Colosseum 0; Cathedral,
+   Bastion and Hunter's Lodge 1; Arcanum and Undercroft 2; Alchemist 3), because prestige is a flat count
+   of quests finished. "Without touching the other sins" means *from the point the line opens*, not from
+   quest one — three quests is an on-ramp, not a wall, and flattening it would stop the town changing at
+   all.
+5. **A solo run forgoes the 21 crossings, and that is the trade.** `Discipline.isUnlocked` requires a
+   subclass held in each parent class, so a player who never leaves one house reaches 16 of the 37
+   disciplines. Committing buys depth; spreading buys the lattice. The discipline drought that breadth
+   play shows in its middle tenths is the other half of that same bargain rather than purely a defect.
+
+**What shipped for it.** `tools/progression_report.lua` gained a solo walk — one house at a time,
+numbered slots only, on-ramp capped — and it measured **0 of 7 lines finishing alone**, six stopping dead
+at slot 6. Fourteen gates caused it, two per house: slot 6 asked for six of its house's quests when the
+chain supplied five, slot 10 asked for ten when the chain supplied nine, and each shortfall could only be
+met with a capstone, every one of which names another house. They are deleted, and all seven lines now
+run alone on nothing but their entry cost.
+
+The brake that replaces them is `Quest.SLOT_FLOOR`, filling a `floorLevel` field that was wired end to
+end and authored on zero of 92 quests. It is derived from a fight's depth rather than typed into seventy
+files, and tuned against the solo pace because that is the only player it binds. The quest board warns
+with it, in red when the company is under it — and while there, started drawing the relic and the
+companion a quest grants, neither of which any screen had ever read.
+
+*A consequence worth knowing:* every surviving `requiredSponsorQuests` in the campaign is now satisfied
+by its own line's chain — slot 7 asks for 6 and the six before it supply 6. The mechanism is live and no
+authored quest exercises it. It is kept as documentation of intent; the spec that covers it now builds
+its own quest rather than borrowing a real one.
+
+---
+
+#### How the answer was reached
+
+*The step as originally written, kept because the reasoning behind the answer is worth more than the
+answer.* Re-measure quest count against the fixed curve; the right length is whatever keeps a step
+arriving every battle or two. Cutting first would be cutting to fit a broken shape. The shape held in
+reserve — since retired, see decision 2 above — was **8 slots per line** and **5 of 7 lines required**
+for the Gate.
 
 The measurement now exists: `tools/progression_report.lua` (`. progression-report [full]`) walks the
 board quest by quest and reports what arrives at each — level, shelf rows, discipline, companion, item
@@ -428,27 +484,35 @@ What the curve reads today, measured against the code:
 | Ceiling | **50** | `Growth.LEVEL_CAP` |
 | The Gate | all **7** slot-10 quests, no partial | `quest_the_gate_below.requiredQuests` |
 
-Two things the reserve shape does not yet account for. The named capstones mean a line is 12–14 quests
-long, so "8 slots per line" is a cut of the numbered slots only and leaves a house at 10–12; the shelf
-spreads over `0 .. Q-2` of the sponsor's **whole** count, so the gates move either way. And the level
-ceiling is 50 against an end level of 47 — three levels of headroom, which is the room any
-`PRESTIGE_PER_LEVEL = 1` argument has to fit inside, and it does not: 92 quests at 1 gives 92 levels,
-43 of them past the cap.
+Those two rows are what retired the reserve shape and closed the level-rate question — decisions 2 and 3
+above. The named capstones mean a line is 12–14 quests long, so "8 slots per line" cuts only the
+numbered slots and leaves a house at 10–12, while the shelf spreads over `0 .. Q-2` of the sponsor's
+**whole** count, so the gates move either way. And three levels of headroom is all the room a
+`PRESTIGE_PER_LEVEL = 1` argument has to fit inside; it needs 43 more.
 
-#### What to do instead
+#### What came out of it, and what did not
 
-The measurement redirects the step rather than answering it. In order of what the report supports:
-
-1. **Steer the breadth player, or pay them.** The drought is three tenths long and lands mid-campaign,
-   which is the worst place for it. Two candidate fixes, neither built: make a house's early quests
-   visibly advertise the discipline they lead to, or move some discipline unlocks off `requiredQuests`
-   chains onto crossings the spread player is already earning. Re-run `. progression-report` after
-   either; the tenth table is the acceptance test.
-2. **Spread the companions.** Six join inside the first fifth under breadth play, which is both a spent
-   reward budget and the reason the middle feels flat. `docs/story.md` deliberately puts each companion
-   near the head of their vendor's line so no ordering can strand the endgame — that constraint is
-   about the *back* of the line, and does not require all six at the front.
-3. **Only then reconsider length**, if at all. Nothing in the data currently argues for cutting.
+- **Naming the path a line opens — done.** The quest board says *"Path: Barbarian, Warlord"*, which is
+  the answer to "why commit here rather than spread" and had only ever been said on the shop's shelves.
+  Re-gating disciplines onto crossings was considered for the same job and **cut**: it pushes players
+  *across* houses, which is the opposite of the solo-line rule.
+- **Spreading the companions — not done, and it needs an authoring call.** All six grants sit at slot 1
+  or 2 of their house, and only six of the seven houses grant one (the Bastion's Rowan starts with the
+  player). Moving one is not a data edit: each grant rides a quest whose whole premise *is* the
+  recruitment ("The Guide" is how Kaya is met), and the slots immediately after it are written assuming
+  that companion is present — Kaya appears in Hunter's Lodge 3 and 4, Amana in Cathedral 4 and 5, Clem
+  in Undercroft 3 and 4. Moving the beat means rewriting those scenes. Worth noting the rule change cuts
+  both ways here: under a solo run a companion at slot 2 is the *only* one that player will ever get,
+  which makes its placement more load-bearing, not less.
+- **Re-reading the difficulty labels — measured, and the alarm was overstated.** This document said
+  `quest_bastion_slot_01` was "marked Easy and fielding 73 bodies". That count is taken at end-campaign
+  prestige; a first run meets that quest at prestige 1–3, where its formula yields three or four bodies
+  and Easy is accurate. What the measurement did turn up is bigger and different: **87 of 92 quests grow
+  their head-count from `ctx.prestige`, and `Arena.clampComposition` caps every tier — 6 / 9 / 12 —
+  by prestige 6, 12 and 18 respectively.** Past that the formulas are dead weight and head-count is a
+  constant per difficulty tier. So `difficulty` is now the *only* head-count dial in the game, which
+  makes a considered pass over the 92 labels worth doing — but it is a design pass, not a correction,
+  and it wants the author rather than a sweep.
 
 ## Known debt
 
@@ -464,12 +528,19 @@ the paragraph at the end.
   Clem"), and the battle summary's technique rows — but the per-character ledger behind them does not.
   It is written by `Growth.creditClass`, persisted by `models/save.lua`, read by `Discipline` and by
   the specs, and by no UI module anywhere.
-- **The difficulty labels were never re-read.** Step 6 made `difficulty` load-bearing — it is now the
-  head-count ceiling — and flagged that the tiers should be re-checked against what those fights
-  actually are. They have not been: still 4 Easy, 25 Normal, 63 Hard, and `quest_bastion_slot_01` is
-  still Easy while its composition still grows with prestige. The clamp hides this rather than fixing
-  it, which is the argument for doing it: a fight whose authored shape is 70 bodies and whose played
-  shape is 6 is not being designed, it is being truncated.
+- **The difficulty labels were never re-read, and now they are the only head-count dial there is.**
+  Still 4 Easy, 25 Normal, 63 Hard. The original entry here claimed `quest_bastion_slot_01` was "Easy
+  and fielding 73 bodies"; measured properly, that count is taken at end-campaign prestige and a first
+  run meets that quest at prestige 1–3, where it fields three or four. The real finding is different:
+  **87 of 92 quests grow their head-count from `ctx.prestige`, and `Arena.clampComposition` pins every
+  tier — 6 / 9 / 12 — from prestige 6, 12 and 18 respectively.** Past that the formulas do nothing and
+  head-count is a constant per tier, so the label *is* the fight's size. A considered pass over the 92
+  is a design job for the author, not a sweep.
+- **The companion joins all sit at slot 1–2**, six of them, in six of the seven houses (the Bastion's
+  Rowan starts with the player). Under breadth play that spends the largest reward budget in the game
+  inside the first fifth; under a solo run it means the one companion a player gets arrives almost
+  immediately. Moving one is not a data edit — each grant rides the quest that *is* the recruitment, and
+  the slots after it are written assuming that companion is present. It needs an authoring pass.
 - **The seven house materials have no art.** The three craft grades (iron scrap, steel ingot, mythril)
   have their PNGs; all seven house stocks — chrism wax, ember slag, green sinew, gutter silver,
   leyglass, quicksalt, salt iron — do not. `models/sprite.lua` resolves a missing file to its path
