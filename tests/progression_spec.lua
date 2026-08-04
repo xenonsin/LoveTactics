@@ -187,6 +187,37 @@ return {
         end,
     },
     {
+        -- The point of the whole rescale (tools/unlock_rescale): a shelf that used to move four times a
+        -- campaign now moves every quest. Asserted as a floor rather than an exact shape, so retuning a
+        -- house's stock does not break the test -- what must not come back is the clumping.
+        name = "every house's shelf opens something on nearly every quest of its line",
+        fn = function()
+            local Quest = require("models.quest")
+            for vendorId, vdef in pairs(Vendor.defs) do
+                if not vdef.general then
+                    local sponsored = 0
+                    for _, qdef in pairs(Quest.defs) do
+                        if qdef.sponsor == vendorId then sponsored = sponsored + 1 end
+                    end
+                    -- How many rows each quest count newly unlocks, walked up the line.
+                    local seen, silent = 0, {}
+                    for done = 0, sponsored - 2 do
+                        local open = 0
+                        for _, e in ipairs(Vendor.stock(vendorId, done)) do
+                            if (e.unlockQuests or 0) <= done then open = open + 1 end
+                        end
+                        if open == seen then silent[#silent + 1] = done end
+                        seen = open
+                    end
+                    -- At most one quiet quest per line: an even spread over 12-14 quests leaves room
+                    -- for a rounding gap, never for a four-quest silence.
+                    assert(#silent <= 1, vendorId .. " opens nothing on quests: " .. table.concat(silent, ", "))
+                    assert(seen > 0, vendorId .. " never opens anything at all")
+                end
+            end
+        end,
+    },
+    {
         name = "every class has a vendor, and every vendor has an opening-shelf item to sell",
         fn = function()
             for class in pairs(Item.CLASSES) do
@@ -265,12 +296,10 @@ return {
             end
             assert(atAlchemist, "the alchemist still stocks the potions it brews")
 
-            -- But the Cafe refines nothing: it resells potions, it does not hone their recipes.
-            for _, entry in ipairs(cafe) do
-                local sample = Item.instantiate(entry.id, nil, entry.level)
-                assert(not Vendor.canRefineHere("cafe", sample),
-                    entry.id .. " must not be refinable at the Cafe -- that stays at its house")
-            end
+            -- And no shelf refines anything any more: the Cafe resells potions, its house brews them,
+            -- but every recipe is honed at the Forge (models/forge.lua).
+            assert(Vendor.canRefineHere == nil and Vendor.upgradeRecipe == nil,
+                "a vendor sells; upgrading moved to the Forge")
         end,
     },
     {
@@ -334,12 +363,28 @@ return {
         name = "Quest.available hides a sponsor-quest-gated quest until enough of the house's quests are done",
         fn = function()
             local p = playerAt(5) -- prestige is not the gate here; the sponsor-quest count is
-            -- slot 3 gates on requiredSponsorQuests = { cathedral, count = 3 } (and, in order, on slot 2).
-            -- Put slots 1-2 behind it -- that clears the requiredQuests chain but leaves the Cathedral count
-            -- at 2, one short of 3, which is what holds slot 3 back and is what this case is about.
+            -- slot 6 gates on requiredSponsorQuests = { cathedral, count = 6 } (and, in order, on slot 5).
+            -- Running the line in order puts FIVE Cathedral quests behind it, so the chain is clear and
+            -- the count is one short -- the gate holds on its own terms, which is what this case is about.
+            --
+            -- This case used to be written on slot 3, and that was the shape of a real bug rather than a
+            -- choice of fixture. Slot 3 carried count = 3 when only slots 1 and 2 could precede it, so the
+            -- Cathedral was unfinishable from there down and the Gate Below lost one of its seven keys.
+            -- The case passed anyway because it satisfied the count with a capstone that itself requires
+            -- slot 3 -- a state the game can never reach. A gate must be tested from a board position a
+            -- player can actually stand in, or it proves nothing; tests/progression_report_spec.lua now
+            -- walks the whole campaign to check exactly that.
             p.completedQuests.quest_colosseum_slot_01 = true -- a different house: must not count toward the Cathedral
+            -- The Arcanum's first three, so the capstone below is legitimately in reach (it names
+            -- quest_arcanum_slot_03 and quest_cathedral_slot_03 as its two parents).
+            p.completedQuests.quest_arcanum_slot_01 = true
+            p.completedQuests.quest_arcanum_slot_02 = true
+            p.completedQuests.quest_arcanum_slot_03 = true
             p.completedQuests.quest_cathedral_slot_01 = true
             p.completedQuests.quest_cathedral_slot_02 = true
+            p.completedQuests.quest_cathedral_slot_03 = true
+            p.completedQuests.quest_cathedral_slot_04 = true
+            p.completedQuests.quest_cathedral_slot_05 = true
 
             local function boardHas(id)
                 for _, q in ipairs(Quest.available(p)) do
@@ -348,12 +393,12 @@ return {
                 return false
             end
 
-            assert(not boardHas("quest_cathedral_slot_03"),
-                "slot 3 needs 3 of the Cathedral's quests, and only 2 are done")
+            assert(not boardHas("quest_cathedral_slot_06"),
+                "slot 6 needs 6 of the Cathedral's quests, and only 5 are done")
 
-            p.completedQuests.quest_cathedral_the_twin_liturgy = true -- a 3rd Cathedral quest
-            assert(boardHas("quest_cathedral_slot_03"),
-                "slot 3 should appear once 3 of the Cathedral's quests are done")
+            p.completedQuests.quest_cathedral_the_twin_liturgy = true -- a 6th Cathedral quest
+            assert(boardHas("quest_cathedral_slot_06"),
+                "slot 6 should appear once 6 of the Cathedral's quests are done")
         end,
     },
     {
@@ -395,7 +440,7 @@ return {
             local reward = Quest.complete(p, quest)
             assert(reward, "completing a fresh quest should pay out")
             assert(p.gold == quest.rewardGold, "gold should be granted")
-            assert(p.prestige == 1 + quest.rewardPrestige, "prestige should be granted")
+            assert(p.prestige == 1 + Quest.PRESTIGE_PER_QUEST, "prestige should be granted")
             assert(Player.hasCompleted(p, "quest_colosseum_slot_01"), "the quest should be marked completed")
             assert(Quest.sponsorProgress(p, "colosseum") == before + 1,
                 "finishing the quest is what advances the Colosseum's standing")
@@ -581,13 +626,13 @@ return {
 
             -- Completing a 3rd crosses into the next tier, so a fresh wave of stock lands on the shelf.
             local crossing = { id = "quest_colosseum_slot_03", sponsor = "colosseum",
-                               rewardGold = 0, rewardPrestige = 0 }
+                               rewardGold = 0 }
             local reward = Quest.complete(p, crossing)
             assert(reward.unlockedStock == true, "the 3rd Colosseum quest crosses into the next stock tier")
 
             -- A 4th stays inside that tier (3 -> 4, both tier 2), so nothing new unlocks.
             local within = { id = "quest_colosseum_slot_04", sponsor = "colosseum",
-                             rewardGold = 0, rewardPrestige = 0 }
+                             rewardGold = 0 }
             reward = Quest.complete(p, within)
             assert(reward.unlockedStock == false, "a completion inside the same tier unlocks nothing new")
         end,
@@ -727,17 +772,26 @@ return {
     {
         name = "Quest.complete folds the roster's advancement into its reward table",
         fn = function()
-            -- Prestige 3, not 1, and that matters: a level costs several prestige now, so most quests
-            -- grant prestige WITHOUT crossing a threshold and level nobody. (That is the ordinary case,
-            -- and what the advancement bar exists to show.) This test is about the hand-off when a level
-            -- DOES land, so the fixture is parked one prestige below the next one.
-            local p = playerAt(3)
+            -- A level costs several prestige, so most quests grant prestige WITHOUT crossing a
+            -- threshold and level nobody. (That is the ordinary case, and what the advancement bar
+            -- exists to show.) This test is about the hand-off when a level DOES land, so the fixture is
+            -- parked exactly one quest short of a threshold -- DERIVED from the curve rather than
+            -- written out, because a hardcoded prestige silently stops testing the level-up branch the
+            -- moment PRESTIGE_PER_LEVEL is retuned. It already moved once, from 3 to 2.
+            local parked = 1
+            while parked < 100
+                and Growth.levelForPrestige(parked + Quest.PRESTIGE_PER_QUEST)
+                    <= Growth.levelForPrestige(parked) do
+                parked = parked + 1
+            end
+            local p = playerAt(parked)
             local quest
             for _, q in ipairs(Quest.available(p)) do
                 if q.id == "quest_colosseum_slot_01" then quest = q end
             end
-            assert(quest and quest.rewardPrestige > 0, "arena_debut should grant prestige")
-            assert(Growth.levelForPrestige(p.prestige + quest.rewardPrestige) > Growth.levelForPrestige(p.prestige),
+            assert(quest, "arena_debut should be available at prestige " .. parked)
+            assert(Growth.levelForPrestige(p.prestige + Quest.PRESTIGE_PER_QUEST)
+                > Growth.levelForPrestige(p.prestige),
                 "the fixture must sit where this quest's prestige actually buys a level")
 
             -- The company as it stood when the prestige landed. arena_debut also carries a
@@ -788,6 +842,38 @@ return {
                 assert(loadedKnight.stats.magicDamage == grownMagic, "growth should re-bake onto magic")
                 assert(loadedKnight.stats.health.max == grownHealthMax, "growth should re-bake onto the HP pool")
                 assert(Growth.dominantClass(loadedKnight) == "mage", "the loaded knight still grows as a mage")
+            end)
+        end,
+    },
+    {
+        -- The technique wallet has to ride in the CHARACTER snapshot specifically, not merely somewhere
+        -- in the save: "Try Again" restores the party from a pre-fight snapshot (states/game.lua), and
+        -- that rollback is the only thing stopping a player from losing on purpose to farm a fight's
+        -- technique over and over. Move this field out of the character and that defence disappears
+        -- silently, so the round trip is pinned here.
+        name = "a save round trip preserves banked discipline technique",
+        fn = function()
+            withScratchSave(function()
+                local Discipline = require("models.discipline")
+                local disciplineId = next(Discipline.defs)
+                assert(disciplineId, "there is at least one discipline")
+
+                local p = Player.new()
+                p.roster[1].technique = { [disciplineId] = 34 }
+
+                Save.write(p)
+                local loaded = Save.read()
+                assert(loaded, "the save should read back")
+                assert(loaded.roster[1].technique[disciplineId] == 34, "the wallet should survive the trip")
+
+                -- A wallet spent back to nothing drops out entirely, and reads as zero rather than nil
+                -- on the far side -- the same shape an untouched discipline has.
+                p.roster[1].technique = { [disciplineId] = 0 }
+                Save.write(p)
+                local emptied = Save.read()
+                assert((emptied.roster[1].technique or {})[disciplineId] == nil,
+                    "a spent-out discipline is omitted, like an unearned one")
+                assert(Discipline.technique(emptied, disciplineId) == 0, "and reads back as zero")
             end)
         end,
     },

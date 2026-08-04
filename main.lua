@@ -34,6 +34,16 @@ function love.load(args)
         return
     end
 
+    -- Progression ledger: `& "E:\LOVE\lovec.exe" . progression-report [full]`
+    -- Walks the campaign quest by quest under two play policies and reports what arrives at each --
+    -- levels, shelf rows, disciplines, companions, items -- so a dead stretch is measured rather than
+    -- guessed. The step-7 measurement in docs/progression.md. See tools/progression_report.
+    if args and args[1] == "progression-report" then
+        require("tools.progression_report").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Curve migration: `& "E:\LOVE\lovec.exe" . curve-migrate [apply | snapshot PATH]`
     -- Rewrites hand-typed per-level rows in data/items as models/curve.lua generator calls, and dumps
     -- every resolved magnitude for before/after diffing. Dry run by default. See tools/curve_migrate.
