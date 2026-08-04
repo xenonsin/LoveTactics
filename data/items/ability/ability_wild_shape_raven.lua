@@ -32,7 +32,7 @@ return {
     class = "hunter",
     discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
     price = 340,
-    unlockQuests = 6,
+    unlockQuests = 7,
     activeAbility = {
         target = "self",
         range = 0,

@@ -305,7 +305,7 @@ function Party:close()
     -- Put the real stash back before anything can persist it: with the debug catalog still installed,
     -- the save below would write hundreds of catalog items over the player's real inventory.
     if self.debugAll then self:setDebugAll(false) end
-    -- Persist on the way out, as ui/panels/shop.lua and ui/panels/blacksmith.lua already do. This
+    -- Persist on the way out, as ui/panels/shop.lua and ui/panels/forge.lua already do. This
     -- screen never used to save at all -- loadout edits (and the default-action star) survived only
     -- until the next unrelated save point. That was survivable when the whole screen was item
     -- placement; it is not once a player has spent minutes writing a rule list, so the save lands

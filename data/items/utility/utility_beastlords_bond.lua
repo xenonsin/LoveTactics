@@ -28,6 +28,6 @@ return {
     class = "hunter",
     discipline = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
     price = 360,
-    unlockQuests = 6,
+    unlockQuests = 8,
     traits = { "trait_beastlords_bond" },
 }

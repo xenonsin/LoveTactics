@@ -13,7 +13,7 @@ return {
     tags = { "protective", "arcane" },
     class = "mage",
     price = 260,
-    unlockQuests = 6,
+    unlockQuests = 5,
     activeAbility = {
         target = "ally", -- includes the caster
         range = 2,

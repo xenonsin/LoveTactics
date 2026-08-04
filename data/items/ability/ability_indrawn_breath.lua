@@ -30,7 +30,7 @@ return {
     tags = { "arcane", "magical" },
     class = "mage",
     price = 420,
-    unlockQuests = 10,
+    unlockQuests = 9,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

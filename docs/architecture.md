@@ -148,6 +148,16 @@ the same three-layer split as the overworld:
   a total party wipe or forfeit fails the quest back to the hub. These are supplied as
   `onWin`/`onLoss` closures from `game:openEncounter`, so `states/game.lua` owns the flow.
 
+**Every ordinary battle opens on a deployment phase** (`ui/deploy_phase.lua`): the board is built and
+the enemy is standing on it, the *deploy zone* (`arena.deployZone`) is lit, and the player drags up to
+`Combat.MAX_FIELD` of their eight-strong company onto it. The rest are the **bench**, and can be
+rotated onto the field mid-fight at the cost of a turn (`Combat.rotate`) or sent in free to fill a slot
+a casualty opened (`Combat.reinforce`). So the battle opens in two beats — `Combat.new(…, { deferOpen
+= true })` builds the board, `Combat.openBattle` rings the bell once the company is standing — and "a
+total party wipe" now means *nothing standing and nobody left to send in* (`Combat.eliminated`).
+Scripted, duel and draft fights pass `deploy = false` and keep their authored placement. See
+[deployment.md](deployment.md).
+
 **Enemy composition** is authored per encounter as `composition = function(ctx)` (mirroring the
 existing dynamic `weight`), returning a list of `data/characters/` ids that **scales with
 `ctx.prestige`** — more foes, tougher rosters at higher renown. Enemies reuse the party-character

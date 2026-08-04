@@ -34,7 +34,7 @@ return {
     -- Gated to the END of the greed line: on sale only once all ten Undercroft quests are cleared -- i.e.
     -- Aurea is beaten (slot 10). The money kit is the general of Greed's own art; you earn it by taking it
     -- off her. `Vendor.stock` unlocks at questsDone >= 10.
-    unlockQuests = 10,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 1,

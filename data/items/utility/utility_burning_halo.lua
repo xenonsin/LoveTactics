@@ -29,7 +29,7 @@ return {
     tags = { "fire" },
     class = "priest",
     price = 480,
-    unlockQuests = 10,
+    unlockQuests = 11,
     incense = { hazard = "hazard_burning_halo", radius = 1,
                 amount = Curve.ramp(4, 14) },
 }

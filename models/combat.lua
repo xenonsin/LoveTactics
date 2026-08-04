@@ -984,9 +984,98 @@ function Combat.addUnit(combat, char, side, x, y, opts)
     return unit
 end
 
+-- The unit table a body takes when it is on the board FROM THE OPENING BELL -- built by Combat.new for
+-- every side, and by Combat.deployUnit for a party member the player stands during the deployment phase.
+-- Distinct from Combat.addUnit's arrival above in one way that matters: initiative is the char's natural
+-- one, UNCLAMPED. A battle-start unit has no "current actor" to cut ahead of -- the opening spread is
+-- normalized by the rebase in Combat.openBattle -- while an arrival must not jump the queue.
+local function buildOpeningUnit(combat, u, side)
+    local fp = u.char.footprint or { w = 1, h = 1 }
+    local unit = {
+        char = u.char, side = side,
+        x = u.x, y = u.y,
+        w = fp.w, h = fp.h, -- board footprint; see Combat.addUnit
+        initiative = Combat.initiative(u.char),
+        speed = Combat.speed(u.char), -- primary tie-break
+        alive = true,
+        statuses = {},
+        -- Side implies control, except where the caller overrides it: an escorted
+        -- ally fights on the party's side but runs itself (control = "ai"/"none").
+        control = u.control or ((side == "party") and "player" or "ai"),
+        anchorX = u.x, anchorY = u.y, -- start tile; the leashed AI postures measure from it
+        -- An enemy's own gold pool for money abilities (Combat.spendPurse reads it) -- Aurea's
+        -- coffer. Seated here as well as in Combat.addUnit, because a battle-start unit is built
+        -- by this path and never passes through addUnit; nil for anyone but a treasury.
+        coffer = u.coffer or u.char.coffer,
+        -- Trait ids granted by the run's relics (models/relic.lua), resolved per-char by battle
+        -- setup. Trait.attach folds them in alongside the char's own; nil for enemies.
+        relicTraits = u.relicTraits,
+    }
+    unit.index = #combat.units + 1
+    combat.units[unit.index] = unit
+    -- Between-battle policy: stamina refills to max each battle (it's the renewable
+    -- resource), while mana persists on the reused party instance (spent mana stays
+    -- spent). Enemies are freshly instantiated, so this is a harmless no-op for them.
+    -- Reservations never outlive the battle that made them (their summons are gone), so
+    -- clear them BEFORE the refill or a stale one would cap stamina below its max. A summon
+    -- claim (Combat.activeSummon) is the same kind of leftover: the wolf that was still
+    -- standing at the last blow is not on this field, so its horn is free to blow again.
+    -- Every side, for the same reason the refill below is: a leftover reservation or summon
+    -- claim belongs to whatever battle made it, and the only reason this was ever written as
+    -- the party's business is that the party was the only side reusing instances that had
+    -- been anywhere. Clearing nothing on a freshly instantiated enemy costs nothing.
+    Combat.releaseClaims(unit.char)
+    local st = unit.char.stats.stamina
+    if type(st) == "table" then st.current = st.max end
+    return unit
+end
+
+-- Stand a party member on the board during the DEPLOYMENT PHASE, before the battle opens
+-- (states/battle.lua; docs/deployment.md). The same body Combat.new would have built inline, added to a
+-- combat that was constructed with `deferOpen` and is therefore not yet open: no passives applied, no
+-- opener fired, no rebase. Combat.openBattle does all of that once, for everyone, when the player commits.
+--
+-- Deliberately NOT Combat.addUnit: that one is for a body arriving into a fight already under way (a
+-- summon, a reinforcement, a rotation), and it clamps initiative and skips the battle opener for exactly
+-- that reason. A unit placed at the opening bell is not arriving; it is starting.
+function Combat.deployUnit(combat, char, x, y, opts)
+    opts = opts or {}
+    return buildOpeningUnit(combat, {
+        char = char, x = x, y = y,
+        control = opts.control,
+        relicTraits = opts.relicTraits,
+        coffer = opts.coffer,
+    }, opts.side or "party")
+end
+
+-- Take a unit back OFF an unopened board -- the deployment phase's undo, when the player picks a placed
+-- member back up. Only legal before Combat.openBattle: `combat.units` is append-only once the fight is
+-- running (unit.index is a stable identity that AoE dedupe and the turn strip both key off), which is why
+-- a mid-battle withdrawal flags the body instead of removing it (Combat.withdraw). Nothing has been
+-- applied to this unit yet, so there is nothing to unwind. Returns true if it was there.
+function Combat.undeployUnit(combat, unit)
+    if combat.opened then return false end
+    for i, u in ipairs(combat.units) do
+        if u == unit then
+            table.remove(combat.units, i)
+            -- Re-stamp the indices the removal shifted, so index stays "position in combat.units".
+            for j = i, #combat.units do combat.units[j].index = j end
+            return true
+        end
+    end
+    return false
+end
+
 -- Build combat state. partyUnits/enemyUnits are lists of { char = <instance>, x, y }
 -- (exactly what states/battle.lua keeps as partyUnits/enemyUnits).
-function Combat.new(arena, partyUnits, enemyUnits)
+--
+-- `opts.deferOpen` builds the board and STOPS before opening it: the world (traps, hazards, walls, props)
+-- is laid down, but no passives are applied, no opener trait fires, and the timeline is not rebased. That
+-- is what lets the deployment phase run on a real, drawable combat with no party on it yet -- the player
+-- stands their company through Combat.deployUnit and Combat.openBattle finishes the job. Every other
+-- caller passes nothing and gets a fully opened battle, exactly as before.
+function Combat.new(arena, partyUnits, enemyUnits, opts)
+    opts = opts or {}
     local combat = {
         arena = arena,
         objective = (arena and arena.objective) or { type = "killAll" },
@@ -1002,75 +1091,22 @@ function Combat.new(arena, partyUnits, enemyUnits)
         turnCount = 0,  -- number of actions taken
         turn = nil,     -- the in-progress turn: { unit, moved, moveCost } (see startTurn)
         log = {},       -- rolling event log for the combat-log panel (Combat.logEvent)
+        -- The company members standing off the board, ready to rotate in. Seeded by battle setup from
+        -- whoever the player did NOT deploy; see the bench section below and docs/deployment.md.
+        bench = {},
+        -- Tiles the player may stand a body on: the deployment phase places here, and a rotation and a
+        -- reinforcement both happen here too. One geometry, three uses. Set by battle setup from
+        -- arena.deployZone; nil for a combat built without one (a duel, a test), which simply refuses
+        -- to rotate rather than offering the whole board.
+        deployZone = arena and arena.deployZone or nil,
+        opened = false, -- Combat.openBattle has run; see Combat.new's `deferOpen`
     }
 
     local function addSide(list, side)
-        for _, u in ipairs(list or {}) do
-            local fp = u.char.footprint or { w = 1, h = 1 }
-            local unit = {
-                char = u.char, side = side,
-                x = u.x, y = u.y,
-                w = fp.w, h = fp.h, -- board footprint; see Combat.addUnit
-                initiative = Combat.initiative(u.char),
-                speed = Combat.speed(u.char), -- primary tie-break
-                alive = true,
-                -- Side implies control, except where the caller overrides it: an escorted
-                -- ally fights on the party's side but runs itself (control = "ai"/"none").
-                control = u.control or ((side == "party") and "player" or "ai"),
-                anchorX = u.x, anchorY = u.y, -- start tile; the leashed AI postures measure from it
-                -- An enemy's own gold pool for money abilities (Combat.spendPurse reads it) -- Aurea's
-                -- coffer. Seated here as well as in Combat.addUnit, because a battle-start unit is built
-                -- inline by this loop and never passes through addUnit; nil for anyone but a treasury.
-                coffer = u.coffer or u.char.coffer,
-                -- Trait ids granted by the run's relics (models/relic.lua), resolved per-char by battle
-                -- setup. Trait.attach folds them in alongside the char's own; nil for enemies.
-                relicTraits = u.relicTraits,
-            }
-            unit.index = #combat.units + 1
-            combat.units[unit.index] = unit
-            -- Between-battle policy: stamina refills to max each battle (it's the renewable
-            -- resource), while mana persists on the reused party instance (spent mana stays
-            -- spent). Enemies are freshly instantiated, so this is a harmless no-op for them.
-            -- Reservations never outlive the battle that made them (their summons are gone), so
-            -- clear them BEFORE the refill or a stale one would cap stamina below its max. A summon
-            -- claim (Combat.activeSummon) is the same kind of leftover: the wolf that was still
-            -- standing at the last blow is not on this field, so its horn is free to blow again.
-            -- Every side, for the same reason the refill below is: a leftover reservation or summon
-            -- claim belongs to whatever battle made it, and the only reason this was ever written as
-            -- the party's business is that the party was the only side reusing instances that had
-            -- been anywhere. Clearing nothing on a freshly instantiated enemy costs nothing.
-            Combat.releaseClaims(unit.char)
-            local st = unit.char.stats.stamina
-            if type(st) == "table" then st.current = st.max end
-        end
+        for _, u in ipairs(list or {}) do buildOpeningUnit(combat, u, side) end
     end
     addSide(partyUnits, "party")
     addSide(enemyUnits, "enemy")
-
-    -- Rebase so the fastest unit starts at initiative 0 (the current-actor convention). The
-    -- initial offset isn't elapsed battle time, so reset the clock to 0 afterwards -- and flag the
-    -- call, so the objective counters don't bank that offset either (see Combat.rebase).
-    Combat.rebase(combat, true)
-    combat.clock = 0
-    Combat.applyPassives(combat)
-    Combat.applyReservations(combat)
-
-    -- Passives (above) established each unit's resource ceilings, including any Endurance/Attunement
-    -- raise. Stamina refills to its full effective ceiling for the party here -- addSide topped it to
-    -- the BASE max before maxBonus existed, so a fresh battle's stamina pool includes the bonus.
-    -- Mana is deliberately left where it stood (it persists between battles); the extra mana ceiling
-    -- is headroom to recover into, exactly like the extra health ceiling.
-    -- Every unit, not just the party's. This reads to its full EFFECTIVE ceiling, so it is only a
-    -- no-op for the other side while no enemy carries a stamina maxBonus -- none does today, and
-    -- Endurance's own promise is "refills to its full effective ceiling at the start of each
-    -- battle", which was never meant to be a promise made to the party alone. The narrow rule was
-    -- an accident that cost nothing while every enemy was instantiated fresh at full stamina; it
-    -- stops costing nothing the moment the far side of the board is somebody's real roster, which
-    -- is a duel -- those units would take the field already short of wind.
-    for _, unit in ipairs(combat.units) do
-        local st = unit.char.stats.stamina
-        if type(st) == "table" then st.current = Combat.unreservedMax(unit.char, "stamina") end
-    end
 
     -- Authored traps: arena.traps is a list of { id, x, y, side } (side defaults to "enemy",
     -- i.e. hidden from the player until detected). In-combat placement adds more via fx.placeTrap.
@@ -1084,13 +1120,6 @@ function Combat.new(arena, partyUnits, enemyUnits)
     combat.hazards = {}
     for _, h in ipairs((arena and arena.hazards) or {}) do
         Hazard.place(combat, h.x, h.y, h.id, { side = h.side, duration = h.duration })
-    end
-    -- Censers lay the ground they carry (Combat.layIncense), and it has to happen HERE rather than
-    -- ride in on the Combat.rebase above: that call runs before this table exists, so the line above
-    -- would throw its cloud away a moment after it was laid. From here on the bearer keeps it -- from
-    -- Combat.enterTile as they move, and from Combat.rebase for one who never does.
-    for _, unit in ipairs(combat.units) do
-        Combat.layIncense(combat, unit)
     end
 
     -- Walls: conjured blockers (models/wall.lua), placed in-combat via fx.placeWall. Authored via
@@ -1110,7 +1139,56 @@ function Combat.new(arena, partyUnits, enemyUnits)
         Prop.place(combat, p.x, p.y, p.id, { amount = p.amount, health = p.health })
     end
 
-    -- Authored traps are placed above WITHOUT logging (they're hidden until detected); the log
+    if not opts.deferOpen then Combat.openBattle(combat) end
+    return combat
+end
+
+-- Ring the opening bell on a built board: normalize the timeline, apply everyone's passives, and fire
+-- the battle openers. Everything here is about WHO IS STANDING, which is why it is separable from
+-- Combat.new at all -- a battle built with `deferOpen` has its ground but not its party, and the
+-- deployment phase (states/battle.lua) calls this once the player commits.
+--
+-- Idempotent by the `opened` flag: an opener that fired once must never fire twice (Envy would copy the
+-- party's strongest unit a second time), and a second rebase would bank the normalization offset as
+-- elapsed time.
+function Combat.openBattle(combat)
+    if combat.opened then return combat end
+    combat.opened = true
+
+    -- Rebase so the fastest unit starts at initiative 0 (the current-actor convention). The
+    -- initial offset isn't elapsed battle time, so reset the clock to 0 afterwards -- and flag the
+    -- call, so the objective counters don't bank that offset either (see Combat.rebase).
+    Combat.rebase(combat, true)
+    combat.clock = 0
+    Combat.applyPassives(combat)
+    Combat.applyReservations(combat)
+
+    -- Passives (above) established each unit's resource ceilings, including any Endurance/Attunement
+    -- raise. Stamina refills to its full effective ceiling for the party here -- the unit build topped it
+    -- to the BASE max before maxBonus existed, so a fresh battle's stamina pool includes the bonus.
+    -- Mana is deliberately left where it stood (it persists between battles); the extra mana ceiling
+    -- is headroom to recover into, exactly like the extra health ceiling.
+    -- Every unit, not just the party's. This reads to its full EFFECTIVE ceiling, so it is only a
+    -- no-op for the other side while no enemy carries a stamina maxBonus -- none does today, and
+    -- Endurance's own promise is "refills to its full effective ceiling at the start of each
+    -- battle", which was never meant to be a promise made to the party alone. The narrow rule was
+    -- an accident that cost nothing while every enemy was instantiated fresh at full stamina; it
+    -- stops costing nothing the moment the far side of the board is somebody's real roster, which
+    -- is a duel -- those units would take the field already short of wind.
+    for _, unit in ipairs(combat.units) do
+        local st = unit.char.stats.stamina
+        if type(st) == "table" then st.current = Combat.unreservedMax(unit.char, "stamina") end
+    end
+
+    -- Censers lay the ground they carry (Combat.layIncense), and it has to happen AFTER the hazard table
+    -- exists (Combat.new builds it) and after the rebase above, which would otherwise throw the cloud
+    -- away a moment after it was laid. From here on the bearer keeps it -- from Combat.enterTile as they
+    -- move, and from Combat.rebase for one who never does.
+    for _, unit in ipairs(combat.units) do
+        Combat.layIncense(combat, unit)
+    end
+
+    -- Authored traps were placed WITHOUT logging (they're hidden until detected); the log
     -- opens on a clean "battle begins" line so the panel isn't empty on the first frame.
     Combat.logEvent(combat, "system", "The battle begins.")
 
@@ -2861,6 +2939,90 @@ function Combat.reachableList(combat, unit, reachable)
     return out
 end
 
+-- How long the ROAD to a goal is from every tile on the board: a Dijkstra run outward FROM the goal,
+-- with no movement budget, so it answers "how far is the walk from here" for ground far beyond this
+-- turn's reach. Combat.reachable answers the other question -- "where can I stop this turn" -- and an
+-- approaching unit needs both. Ranking stand tiles by the crow's-flight gap alone is what makes a
+-- unit walk up to a wall and stare at it forever: every tile that rounds the corner is FARTHER as the
+-- crow flies, so standing still always wins and the detour is never taken.
+--
+-- Bodies are ignored, deliberately. A unit standing somewhere is a thing that will have moved by the
+-- time the walker gets there, and treating an ally as a permanent obstruction is its own stall in a
+-- corridor. Terrain, standing objects (walls, props) and the mover's own footprint are all honoured,
+-- since none of those wander off.
+--
+-- `goal` is a unit (a wide one seeds every cell it covers) or a plain { x, y }. Entering a tile costs
+-- that tile's `moveCost` (a flier pays a flat 1), the same currency Combat.reachable spends, so a
+-- field cost and a move cost are comparable numbers. Returns `{ [key] = cost }` keyed "x,y" like
+-- Combat.reachable; a MISSING key means no road at all from that tile, which the caller answers for
+-- itself (models/ai.lua ranks the roadless behind everything, by straight line).
+--
+-- `ignore` is one standing object to run the field as though it were already gone. That is the whole
+-- of "would breaking this open my way": field it twice, once honestly and once without the blocker,
+-- and the difference IS what tearing the thing down is worth in tiles walked (models/ai.lua's
+-- clearing pass). One object at a time on purpose -- a hole one tile wide is a road, so asking about
+-- each blocker singly is the question that matches how a body actually gets through.
+function Combat.travelField(combat, unit, goal, ignore)
+    local arena = combat and combat.arena
+    if not (arena and goal and goal.x and goal.y) then return {} end
+    local flying = Combat.isFlying(unit)
+    local w, h = unit.w or 1, unit.h or 1
+
+    -- May the body stand with its anchor here? Terrain and standing objects only -- see above.
+    local function fits(x, y)
+        for _, c in ipairs(Combat.cellsAt(w, h, x, y)) do
+            if c.x < 1 or c.x > arena.cols or c.y < 1 or c.y > arena.rows then return false end
+            if not (flying or arena.tiles[c.y][c.x].walkable) then return false end
+            local obj = Combat.objectAt(combat, c.x, c.y)
+            if obj and obj ~= ignore and obj.blocksMove then return false end
+        end
+        return true
+    end
+
+    -- What it costs to walk INTO this anchor: the roughest ground under the body, matching moveGraph.
+    local function stepCost(x, y)
+        local worst = 0
+        for _, c in ipairs(Combat.cellsAt(w, h, x, y)) do
+            local cell = arena.tiles[c.y] and arena.tiles[c.y][c.x]
+            local mc = flying and 1 or ((cell and cell.moveCost) or 1)
+            if mc > worst then worst = mc end
+        end
+        return worst
+    end
+
+    -- Seeded at cost 0 on the goal's own cells whether or not the body would FIT there -- the goal is
+    -- usually a foe, and a tile you cannot stand on is still a tile you can walk up to.
+    local field, frontier = {}, {}
+    for _, c in ipairs(Combat.cellsAt(goal.w or 1, goal.h or 1, goal.x, goal.y)) do
+        if c.x >= 1 and c.x <= arena.cols and c.y >= 1 and c.y <= arena.rows and field[key(c.x, c.y)] == nil then
+            field[key(c.x, c.y)] = 0
+            frontier[#frontier + 1] = { x = c.x, y = c.y, cost = 0 }
+        end
+    end
+
+    while #frontier > 0 do
+        local bi = 1
+        for i = 2, #frontier do
+            if frontier[i].cost < frontier[bi].cost then bi = i end
+        end
+        local cur = table.remove(frontier, bi)
+        if field[key(cur.x, cur.y)] == cur.cost then -- skip a node a cheaper path has since superseded
+            -- Walking outward from the goal, the forward step is neighbour -> cur, so the toll is
+            -- CUR's ground. That is what makes the field read as a true forward walk cost.
+            local toll = stepCost(cur.x, cur.y)
+            for _, d in ipairs(DIRS) do
+                local nx, ny = cur.x + d[1], cur.y + d[2]
+                local nk, ncost = key(nx, ny), cur.cost + toll
+                if (field[nk] == nil or ncost < field[nk]) and fits(nx, ny) then
+                    field[nk] = ncost
+                    frontier[#frontier + 1] = { x = nx, y = ny, cost = ncost }
+                end
+            end
+        end
+    end
+    return field
+end
+
 -- Every cell a unit could strike THIS turn with a `range`-reach weapon: for the origin tile
 -- and each tile it can move to, the Manhattan diamond of radius `range`, clamped to the arena.
 -- Returns `{ [key] = { x, y, fromX, fromY, moveCost } }`, where from/moveCost is the CHEAPEST
@@ -4386,6 +4548,232 @@ function Combat.dismiss(combat, unit, text)
     -- As in killUnit: a dismissed banner's ground goes with it, however it left the field.
     Hazard.dropOwnedBy(combat, unit)
     Combat.releaseHeldBy(combat, unit)
+end
+
+-- ---------------------------------------------------------------------------
+-- The bench: rotating the company through the field
+-- ---------------------------------------------------------------------------
+--
+-- The player marches a company of eight and stands four of them (Combat.MAX_FIELD) on the board in the
+-- deployment phase. The other four wait on `combat.bench` and can be brought on mid-fight. See
+-- docs/deployment.md for the rules; what follows is why the model is shaped the way it is.
+--
+-- A BENCHED MEMBER IS NOT IN `combat.units`. It is an entry -- { char, relicTraits, statuses } -- and
+-- nothing more. Every query in this file walks combat.units and asks `u.alive`; a benched body wearing a
+-- flag would have to be excluded from roughly two hundred of them (targeting, AoE dedupe, the AI, hazard
+-- ticks) and any one missed reads as a ghost you can hit from across the board. Worse, Combat.inTimeline
+-- warns what happens to a unit that rides the timeline and never acts: it pegs the rebase minimum at 0
+-- and freezes every duration in the battle. Off the list, both problems are structural non-problems.
+--
+-- Two ways onto the field, priced differently because they are different decisions:
+--
+--   ROTATE   -- a living unit standing in the deploy zone spends its TURN to trade places with someone
+--               on the bench. It costs tempo because you chose it.
+--   REINFORCE -- a slot has opened (somebody fell), so you may fill it for FREE. You already paid, with
+--               a body. This is also what makes the bench a genuine second life: the fight is not lost
+--               while there is anyone left to send in.
+--
+-- Statuses ride out and back with the body, so falling back is not a cleanse -- it parks a poison rather
+-- than curing it. They do not tick while off the board, for the plain reason that nothing off the board
+-- ticks at all.
+
+-- How many of the company may stand on the board at once. Mirrors Player.MAX_FIELD, declared here rather
+-- than required so this module stays player-free (the same rule DraftRun.PARTY_MAX follows).
+Combat.MAX_FIELD = 4
+
+-- What a rotation costs on top of the ground the rotating unit covered this turn. Priced at a plain
+-- attack's tempo (DEFAULT_SPEED): stepping out of the line is a real action, not a free reshuffle, and
+-- the unit coming on inherits the bill -- it stands where the one leaving would next have acted.
+Combat.ROTATE_COST = Combat.DEFAULT_SPEED
+
+-- Is (x, y) inside the ground the player may stand bodies on? False for a battle built with no zone at
+-- all (a duel, a bare test), which is what makes those fights refuse to rotate rather than treating the
+-- whole board as your own lines.
+function Combat.inDeployZone(combat, x, y)
+    for _, t in ipairs((combat and combat.deployZone) or {}) do
+        if t.x == x and t.y == y then return true end
+    end
+    return false
+end
+
+-- How many bodies `side` has ON THE FIELD, against the MAX_FIELD cap. Summons don't count -- the cap is
+-- about the company you deploy, and a conjured wolf is not a member of it. Neither does a fallen body:
+-- its slot is open the moment it drops, which is what a reinforcement fills.
+function Combat.fieldCount(combat, side)
+    local n = 0
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.side == (side or "party") and not u.summoned then n = n + 1 end
+    end
+    return n
+end
+
+-- How many are waiting off the board for `side`. Only the party has a bench; the enemy's version of
+-- "more are coming" is a reinforcement wave, which is authored, telegraphed and not a reserve at all.
+-- Returning 0 for them is what keeps every enemy-side reading of the loss rule exactly as it was.
+function Combat.benchCount(combat, side)
+    if (side or "party") ~= "party" then return 0 end
+    return #((combat and combat.bench) or {})
+end
+
+-- Put a company member on the bench before the fight opens (battle setup, from whoever the player did
+-- not deploy). `entry` may be a bare character or { char, relicTraits }.
+function Combat.benchUnit(combat, entry)
+    if not entry then return nil end
+    combat.bench = combat.bench or {}
+    local e = entry.char and entry or { char = entry }
+    combat.bench[#combat.bench + 1] = { char = e.char, relicTraits = e.relicTraits, statuses = nil }
+    return combat.bench[#combat.bench]
+end
+
+-- May `unit` rotate out right now? Returns true, or false plus the reason to show -- a Rotate button that
+-- greys out silently reads as a bug, and every refusal here has a fix the player can act on.
+function Combat.canRotate(combat, unit)
+    if not (unit and unit.alive) then return false, "no one is acting" end
+    if unit.side ~= "party" or not Combat.isPlayerControlled(unit) then
+        return false, "only your own company rotates"
+    end
+    if unit.summoned then return false, "a summon has no one to trade with" end
+    if Combat.benchCount(combat, unit.side) == 0 then return false, "no one is on the bench" end
+    if not (combat.deployZone and #combat.deployZone > 0) then
+        return false, "there is no ground to fall back to"
+    end
+    if not Combat.inDeployZone(combat, unit.x, unit.y) then
+        return false, "fall back to your own lines to rotate"
+    end
+    if unit.channel then return false, "not in the middle of a cast" end
+    return true
+end
+
+-- Take `unit` off the field WITHOUT killing it, keeping everything it is on the bench. The mirror of
+-- Combat.dismiss for a body that walked off rather than winked out: same unwinding (its channel breaks,
+-- its summons go with it, its ground and its held bodies are released), but it is not a death -- no
+-- Trait.onDeath, no allyDown tally, no corpse. Nothing on this board should treat a rotation as a
+-- casualty, least of all the objectives.
+--
+-- The unit table stays in `combat.units` flagged `withdrawn`, because that list only ever grows
+-- (unit.index is a stable identity the AoE dedupe and the turn strip both key off). Coming back builds a
+-- NEW unit around the same char: HP, mana and cooldowns live on the character and persist, while the
+-- turn-scoped bookkeeping (tallies, anchor, tempo debt) resets -- correct, since what returns is an
+-- arrival. The statuses are the exception, and are carried across deliberately (see the section header).
+function Combat.withdraw(combat, unit, text)
+    if not (unit and unit.alive) then return nil end
+    unit.alive = false
+    unit.withdrawn = true
+    if unit.channel then Combat.interruptChannel(combat, unit, "withdrawn") end
+    -- Animation cue: fade the body (and its timeline card) out where it stood. The same fade a death
+    -- plays -- a card that simply blinks out of the strip reads as a glitch either way -- but its own
+    -- cue, because this is not a death: no death sound, and nothing left lying on the tile.
+    Combat.pushFx(combat, { type = "exit", unit = unit })
+    Combat.logEvent(combat, "wait", text or string.format("%s falls back to the line.", unitName(unit)), unit)
+    correctDecoyRecord(unit)
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.summoner == unit then Combat.dismiss(combat, u) end
+    end
+    Hazard.dropOwnedBy(combat, unit)
+    Combat.releaseHeldBy(combat, unit)
+
+    combat.bench = combat.bench or {}
+    local entry = { char = unit.char, relicTraits = unit.relicTraits, statuses = unit.statuses }
+    combat.bench[#combat.bench + 1] = entry
+    return entry
+end
+
+-- Bring bench entry `index` onto the board at (x, y). Shared by both routes on. `initiative` is where the
+-- newcomer lands on the timeline: a rotation passes the bill its predecessor ran up, a reinforcement
+-- passes nothing and takes Combat.addUnit's natural-clamped-at-0 slot (it cannot cut ahead of whoever is
+-- mid-turn). Returns the new unit, or nil if the entry or the ground is no good.
+local function sendIn(combat, index, x, y, initiative)
+    local entry = combat.bench and combat.bench[index]
+    if not entry then return nil end
+    local fp = entry.char.footprint or { w = 1, h = 1 }
+    if not Combat.footprintFree(combat, fp.w, fp.h, x, y) then return nil end
+    table.remove(combat.bench, index)
+    local unit = Combat.addUnit(combat, entry.char, "party", x, y, { relicTraits = entry.relicTraits })
+    -- Whatever they were carrying when they stepped out is still on them when they step back in.
+    if entry.statuses then unit.statuses = entry.statuses end
+    if initiative then unit.initiative = initiative end
+    Combat.logEvent(combat, "action", string.format("%s takes the field.", unitName(unit)), unit)
+    return unit
+end
+
+-- ROTATE: the acting unit trades places with bench entry `index`, and the turn ends. The one coming on
+-- stands on the tile the one leaving was holding, at the initiative that unit's turn would have cost --
+-- so a rotation buys you a different body, not a free beat. Returns the new unit, or false plus a reason.
+function Combat.rotate(combat, unit, index)
+    local ok, why = Combat.canRotate(combat, unit)
+    if not ok then return false, why end
+    local entry = combat.bench and combat.bench[index]
+    if not entry then return false, "nobody there" end
+    local fp = entry.char.footprint or { w = 1, h = 1 }
+    if fp.w > (unit.w or 1) or fp.h > (unit.h or 1) then
+        -- A bigger body cannot squeeze into the space the smaller one was holding. Checked before
+        -- anything is spent, so a refused rotation costs nothing.
+        if not Combat.footprintFree(combat, fp.w, fp.h, unit.x, unit.y, unit) then
+            return false, "no room there for " .. (entry.char.name or "them")
+        end
+    end
+
+    -- Priced exactly as a wait is: the ground covered this turn, plus any debt an interrupted channel
+    -- banked (a rotation can no more dodge it than a wait can), plus the rotation's own cost.
+    local cost = turnMoveCost(combat, unit) + (unit.tempoDebt or 0) + Combat.ROTATE_COST
+    unit.tempoDebt = nil
+    Status.onTurnEnd(combat, unit)
+
+    local x, y = unit.x, unit.y
+    Combat.withdraw(combat, unit)
+    local arrival = sendIn(combat, index, x, y, cost)
+    if not arrival then
+        -- The tile turned out to be unusable after the withdrawal (a footprint clash). The body is on the
+        -- bench and the field is one short; a reinforcement fills the slot, which is exactly the state a
+        -- casualty leaves behind. Deliberately not rolled back -- half-undoing a turn is worse than a
+        -- legible one-slot hole.
+        Combat.logEvent(combat, "system", "There was no room to trade places.")
+    end
+
+    combat.turnCount = combat.turnCount + 1
+    combat.turn = nil
+    Combat.rebase(combat)
+    return arrival or false
+end
+
+-- Is there a slot to fill and somebody to fill it? The cap is on LIVING bodies, so a casualty opens a
+-- slot the moment it drops.
+--
+-- The one override: with nothing of yours left standing, you may always send one in. Without it, a field
+-- of four fallen bodies would be a defeat with a full bench in hand -- and that body walking on to stand
+-- over its own dead is the whole reason a company is eight.
+function Combat.canReinforce(combat, side)
+    side = side or "party"
+    if Combat.benchCount(combat, side) == 0 then return false, "no one is on the bench" end
+    if Combat.aliveCount(combat, side) == 0 then return true end
+    if Combat.fieldCount(combat, side) >= Combat.MAX_FIELD then
+        return false, "your line is already full"
+    end
+    if #Combat.reinforceTiles(combat) == 0 then return false, "there is no room to come in" end
+    return true
+end
+
+-- Free, standable tiles in the deploy zone -- where a reinforcement may land. Ordered as the zone is, so
+-- the pick is stable.
+function Combat.reinforceTiles(combat, w, h)
+    w, h = w or 1, h or 1
+    local out = {}
+    for _, t in ipairs((combat and combat.deployZone) or {}) do
+        if Combat.footprintFree(combat, w, h, t.x, t.y) then out[#out + 1] = { x = t.x, y = t.y } end
+    end
+    return out
+end
+
+-- REINFORCE: send bench entry `index` in on (x, y) at no cost in tempo. Not a turn -- nobody acted -- so
+-- the turn count does not move and nothing is rebased, exactly as a summon arriving mid-turn does not.
+-- Returns the new unit, or false plus a reason.
+function Combat.reinforce(combat, index, x, y)
+    local ok, why = Combat.canReinforce(combat)
+    if not ok then return false, why end
+    if not Combat.inDeployZone(combat, x, y) then return false, "come in through your own lines" end
+    local unit = sendIn(combat, index, x, y, nil)
+    if not unit then return false, "there is no room there" end
+    return unit
 end
 
 -- Everything that follows from a unit dropping: mark it dead, log the kill, and unwind whatever
@@ -7209,6 +7597,43 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
     return result
 end
 
+-- Bank discipline technique for a roster member's action with `item`, and record it on the battle so
+-- the summary can name what the fight earned. No-op for anything that is not discipline stock.
+--
+-- CAPPED PER BATTLE, per discipline (Discipline.TECHNIQUE_PER_BATTLE). The cap is the whole reason
+-- this does not reopen the grind door models/growth.lua deliberately shut: a `free` ability bills no
+-- initiative and leaves the turn open, and nothing obliges a player to finish a fight, so the action
+-- count in one encounter is not bounded by anything the rules enforce. Past the cap the player keeps
+-- playing and stops banking, which is the correct shape -- the reward for committing to a discipline
+-- is real and finite, and the thirty-first cast of the same knife is farming.
+--
+-- The OTHER farm vector -- lose on purpose, keep the bank, try again -- closes itself: "Try Again"
+-- restores the party from the pre-fight snapshot (states/game.lua), and technique rides in the
+-- character snapshot (models/save.lua), so a retried fight starts from the technique the player had
+-- when they first walked into it. Nothing here needs to defend against that; it just must not be
+-- moved out of the saved character to somewhere the snapshot does not reach.
+--
+-- `combat.techniqueEarned` is the fight's running ledger, { [disciplineId] = amount }, read by
+-- ui/panels/battle_summary.lua. `combat.techniqueAward` is the LAST award only -- a one-shot the
+-- battle state drains to float "+2 Ninja" over the caster (states/battle.lua) and then clears, so a
+-- capped-out action floats nothing rather than a misleading zero.
+function Combat.awardTechnique(combat, unit, item)
+    combat.techniqueAward = nil
+    local id = item and item.discipline
+    if not (id and Discipline.defs[id]) then return 0 end
+
+    combat.techniqueEarned = combat.techniqueEarned or {}
+    local earned = combat.techniqueEarned[id] or 0
+    local amount = math.min(Discipline.TECHNIQUE_PER_ACTION,
+        Discipline.TECHNIQUE_PER_BATTLE - earned)
+    if amount <= 0 then return 0 end
+
+    Character.recordTechnique(unit.char, id, amount)
+    combat.techniqueEarned[id] = earned + amount
+    combat.techniqueAward = { unit = unit, discipline = id, amount = amount }
+    return amount
+end
+
 -- Perform an item action: validate range + target kind + resource cost, spend the cost,
 -- run the ability's effect(fx), push the actor back by the ability speed, and consume the
 -- item if it's a consumable. Returns (true, result) or (false, reason). `result` is
@@ -8192,13 +8617,15 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- spell, or a thrown consumable all land here with the item's `class`. Only a real player roster
     -- member counts: `control == "player"` excludes AI escortees, and `not summoned` excludes summons
     -- (both use transient char instances that would never persist the tally anyway).
-    -- A discipline item tallies ALL its discipline's parent classes (a Ninja weapon grows both rogue
-    -- AND mage); a plain item tallies its single `class`. growthClasses returns {} for a class-less,
-    -- discipline-less item, so the loop is a no-op there -- same effect as the old `item.class` guard.
+    -- A discipline item tallies its DISCIPLINE (a Ninja weapon grows data/growth/ninja.lua, not its
+    -- two parents -- see Discipline.growthClasses); a plain item tallies its single `class`.
+    -- growthClasses returns {} for a class-less, discipline-less item, so the loop is a no-op there --
+    -- same effect as the old `item.class` guard.
     if Combat.isPlayerControlled(unit) and not unit.summoned then
         for _, cls in ipairs(Discipline.growthClasses(item)) do
             Character.recordUse(unit.char, cls)
         end
+        Combat.awardTechnique(combat, unit, item)
     end
 
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed (or the
@@ -8417,6 +8844,20 @@ function Combat.strikeProp(combat, unit, weapon, x, y)
 
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
     return true, { prop = prop }
+end
+
+-- Strike whatever standing OBJECT is on (x, y) -- a conjured wall or a scattered prop -- without the
+-- caller having to know which layer it is. Combat.objectAt already answers "something with HP is
+-- standing there and it is not a body"; this is the verb that goes with it, and it exists because the
+-- enemy planner (models/ai.lua) decides to break a thing in its way WITHOUT caring what kind of thing
+-- it is. The player's own click path knows the kind from the tooltip it is already drawing and calls the
+-- specific verb; a plan descriptor carries only a tile. Returns whatever the chosen verb returns:
+-- (true, { wall | prop }) or (false, reason).
+function Combat.strikeObject(combat, unit, weapon, x, y)
+    local obj, kind = Combat.objectAt(combat, x, y)
+    if not obj then return false, "no object" end
+    if kind == "prop" then return Combat.strikeProp(combat, unit, weapon, x, y) end
+    return Combat.strikeWall(combat, unit, weapon, x, y)
 end
 
 -- Dispel: reveal every invisible unit standing on `cells` (stripping the Invisible that hides a
@@ -8735,6 +9176,14 @@ end
 -- from a point of view instead of from the party's, and is not a step toward N-sided combat.
 Combat.OPPOSING = { party = "enemy", enemy = "party" }
 
+-- Is `side` finished -- nothing standing AND nobody left to send in? The one question the outcome rules
+-- ask about a side's existence, so the bench is honoured everywhere at once: a party with a body still
+-- benched has not lost, and neither has the enemy won by clearing the four in front of them. Identical
+-- to "aliveCount == 0" for any side without a bench, which is every side but the party.
+function Combat.eliminated(combat, side)
+    return Combat.aliveCount(combat, side) == 0 and Combat.benchCount(combat, side) == 0
+end
+
 -- Has `side` won, lost, or neither? Returns "win", "loss", or nil for a fight still in progress.
 --
 -- Being wiped out is a loss for anyone, and killAll reads across the board, so those two rules --
@@ -8749,7 +9198,11 @@ function Combat.outcomeFor(combat, side)
     side = side or "party"
     local foe = Combat.OPPOSING[side] or "enemy"
 
-    if Combat.aliveCount(combat, side) == 0 then return "loss" end
+    -- Wiped out -- unless somebody is still on the bench. A company of eight is a company of eight all
+    -- the way down: the fight is over when there is no one left to send in, not when the four who
+    -- happened to be standing have fallen. Only the party has a bench (Combat.benchCount), so this reads
+    -- exactly as it always did for every other side. See docs/deployment.md.
+    if Combat.eliminated(combat, side) then return "loss" end
 
     local obj = combat.objective or { type = "killAll" }
 
@@ -8759,7 +9212,7 @@ function Combat.outcomeFor(combat, side)
     -- is still a loss for the wiped side (handled at the top) and a win for the last side standing;
     -- otherwise the tick limit decides it on score.
     if obj.type == "control" then
-        if Combat.aliveCount(combat, foe) == 0 then return "win" end -- last side standing takes it
+        if Combat.eliminated(combat, foe) then return "win" end -- last side standing takes it
         if (combat.clock or 0) >= (obj.maxTicks or math.huge) then
             local winner = Combat.controlWinner(combat)
             if winner == side then return "win" end
@@ -8840,12 +9293,12 @@ function Combat.outcomeFor(combat, side)
         -- opening kill and the next wave landing is not a premature victory). The protectee is enforced
         -- by the `obj.protect` loss clause above; its death fails the fight whatever the board looks
         -- like. Unlike `survive` there is no clock to outlast -- the fight ends when the demons do.
-        if Combat.allWavesArrived(combat, obj) and Combat.aliveCount(combat, foe) == 0 then
+        if Combat.allWavesArrived(combat, obj) and Combat.eliminated(combat, foe) then
             return "win"
         end
         return nil
     else -- killAll (default)
-        if Combat.aliveCount(combat, foe) == 0 then return "win" end
+        if Combat.eliminated(combat, foe) then return "win" end
         return nil
     end
 end

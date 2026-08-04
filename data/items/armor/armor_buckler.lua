@@ -12,7 +12,7 @@ return {
     tags = { "shield" }, -- a Shield Bash item beside it in the grid can bash with it
     class = "knight",
     price = 220,
-    unlockQuests = 0, -- a family's base weapon is always rank 1 (docs/weapons.md); the buckler is the shield's
+    unlockQuests = 1, -- a family's base weapon is always rank 1 (docs/weapons.md); the buckler is the shield's
     bonus = { defense = Curve.ramp(3, 13) },
     resist = { physical = 1 },
     -- Defend brace: the temporary +defense while braced, tuned here and climbing with the forge.

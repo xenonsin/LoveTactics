@@ -15,6 +15,6 @@ return {
     class = "hunter",
     discipline = "shaman", -- hunter x mage; the Spirit-totems mechanic's first stock
     price = 400,
-    unlockQuests = 6,
+    unlockQuests = 10,
     incense = { hazard = "hazard_rally", radius = 1, amount = Curve.ramp(2, 12) },
 }

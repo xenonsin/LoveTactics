@@ -32,7 +32,7 @@ return {
     class = "mage",
     discipline = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
     price = 480,
-    unlockQuests = 10,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 4,

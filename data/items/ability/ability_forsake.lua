@@ -14,7 +14,7 @@ return {
     tags = { "utility", "dark" },
     class = "mage",
     price = 220,
-    unlockQuests = 3,
+    unlockQuests = 1,
     activeAbility = {
         target = "enemy",
         range = 5,

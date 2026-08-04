@@ -31,7 +31,7 @@ return {
     class = "hunter",
     discipline = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
     price = 420,
-    unlockQuests = 6,
+    unlockQuests = 11,
     waitBehavior = {
         kind = "perform",
         -- Steeper than a Focus and matching the Overwatch Scope's: a whole turn spent playing, never a

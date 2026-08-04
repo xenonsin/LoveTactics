@@ -21,6 +21,6 @@ return {
     class = "alchemist",
     discipline = "artificer",
     price = 400,
-    unlockQuests = 6,
+    unlockQuests = 9,
     traits = { "trait_salvage_rig" },
 }

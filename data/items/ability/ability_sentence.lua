@@ -24,7 +24,7 @@ return {
     class = "priest",
     discipline = "inquisitor",
     price = 440,
-    unlockQuests = 10,
+    unlockQuests = 11,
     activeAbility = {
         target = "enemy",
         range = 2,

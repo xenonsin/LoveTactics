@@ -13,7 +13,7 @@ return {
     class = "rogue",
     discipline = "ninja", -- rogue x mage; the Shadowclone mechanic's first stock
     price = 300,
-    unlockQuests = 6,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 1,

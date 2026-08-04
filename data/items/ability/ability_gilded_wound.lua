@@ -30,7 +30,7 @@ return {
     -- Gated to the END of the greed line: on sale only once all ten Undercroft quests are cleared --
     -- which means Aurea herself is beaten (slot 10). You do not buy the art of paying in another's blood
     -- until you have taken it off the one who owned it. `Vendor.stock` unlocks at questsDone >= 10.
-    unlockQuests = 10,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 3, -- greed reaches: it prices you from across the room, it does not close

@@ -19,7 +19,7 @@ return {
     tags = { "axe", "slash", "physical", "melee" },
     class = "fighter",
     price = 210,
-    unlockQuests = 3,
+    unlockQuests = 1,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

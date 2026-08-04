@@ -24,13 +24,12 @@ return {
     difficulty = "Hard",
     sponsor = "arcanum",
     rewardGold = 250,
-    rewardPrestige = 1,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_arcanum_slot_03" the first mage. Holding either is impossible without them.
     requiredQuests = { "quest_colosseum_slot_03", "quest_arcanum_slot_03" },
     requiredPrestige = 3,
     map = {
-        biome = "castle",
+        biome = "volcanic",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },
         objective = {
             name = "The Breach",

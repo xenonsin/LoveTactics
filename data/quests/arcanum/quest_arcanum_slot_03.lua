@@ -35,7 +35,6 @@ return {
     sponsor = "arcanum",
     rewardItems = { "weapon_reflecting_wand", "armor_witchlight_shroud" },
     rewardGold = 130,
-    rewardPrestige = 1,
     requiredQuests = { "quest_arcanum_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 3,
     map = {

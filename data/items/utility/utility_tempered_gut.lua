@@ -21,6 +21,6 @@ return {
     tags = { "charm" },
     class = "alchemist",
     price = 420,
-    unlockQuests = 6,
+    unlockQuests = 10,
     statusImmunity = { "status_poison", "status_acid" },
 }

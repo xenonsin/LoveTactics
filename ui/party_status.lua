@@ -3,10 +3,10 @@
 --     drawn on the map so the run's ATTRITION (health + mana carry between fights within a quest; see
 --     models/player.lua Player.restore) is legible while routing. This is what turns "which fights can
 --     I afford before the boss?" into a decision you can actually see.
---   * PartyStatus.new{ player, onClose } -- a modal panel that expands the same readout AND hosts the
---     marching-grid editor (ui/formation_grid.lua), so the formation can be re-set between fights. It
---     persists on close (the arrangement is a real change to the player; setFormationSlot mutates live,
---     Player.save writes it). Three inputs, closes via X / Esc / gamepad B.
+--   * PartyStatus.new{ player, onClose } -- a modal panel that expands the same readout at a size worth
+--     reading. It used to host the marching-grid editor; placement is now a per-battle decision made in
+--     the deployment phase (docs/deployment.md), so the panel is a pure readout and mutates nothing.
+--     Three inputs, closes via X / Esc / gamepad B.
 --
 -- Both layers read char.stats[stat].current/.max over Character.RESOURCE_STATS; the strip is hidden on
 -- the flight tutorial by its caller (states/game.lua), where the HUD is deliberately spare.
@@ -14,7 +14,6 @@
 local Scale = require("scale")
 local Colors = require("ui.colors")
 local CloseButton = require("ui.close_button")
-local FormationGrid = require("ui.formation_grid")
 local OverworldAbility = require("models.overworld_ability")
 local Sprite = require("models.sprite")
 local Theme = require("ui.theme")
@@ -179,10 +178,15 @@ function PartyStatus.drawStrip(player, x, y, mx, my, abilityState)
 end
 
 -- ---------------------------------------------------------------------------
--- The expandable modal (formation editor + resources)
+-- The expandable modal (the company's resources)
 -- ---------------------------------------------------------------------------
 
-local BOX_W, BOX_H = 540, 410
+-- This used to host the marching-grid editor. That grid is gone: who fights and where they stand is
+-- chosen per battle in the deployment phase (states/battle.lua, docs/deployment.md), so between fights
+-- there is no arrangement left to make. What the panel is FOR is the thing it was always also doing --
+-- reading the company's attrition at a size you can actually see -- so it is now that, in full.
+local BOX_W, BOX_H = 540, 470
+local MODAL_ROW_H = 40 -- roomier than the strip's ROW_H; this is the read-it-properly view
 
 function PartyStatus.new(opts)
     opts = opts or {}
@@ -192,27 +196,16 @@ function PartyStatus.new(opts)
     self.onClose = opts.onClose
     self.titleFont = Theme.display(26)
     self.hintFont = Theme.body(14)
+    self.rowFont = Theme.body(15)
+    self.rowHeadFont = Theme.display(18)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
-
-    -- Centre the marching grid inside the box. Cell size chosen so 4x2 fits with resource bars.
-    local cell, gap = 96, 14
-    local gridW = 4 * cell + 3 * gap
-    self.grid = FormationGrid.new({
-        player = self.player,
-        x = self.boxX + (BOX_W - gridW) / 2,
-        y = self.boxY + 130,
-        cell = cell, gap = gap, showResources = true,
-    })
     return self
 end
 
 function PartyStatus:close()
-    -- The arrangement was mutated live; persist it on the way out (the marching grid is a real change
-    -- to the player -- models/arena.lua seats the next battle from it).
-    if self.player then require("models.player").save() end
     if self.onClose then self.onClose() end
 end
 
@@ -229,14 +222,24 @@ function PartyStatus:draw()
 
     love.graphics.setFont(self.titleFont)
     love.graphics.setColor(0.95, 0.85, 0.55)
-    love.graphics.printf("Marching Order", self.boxX, self.boxY + 24, BOX_W, "center")
+    love.graphics.printf("The Company", self.boxX, self.boxY + 24, BOX_W, "center")
 
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.7, 0.74, 0.82)
-    love.graphics.printf("Drag or pick up a member to rearrange the line. Health and mana carry between "
-        .. "fights.", self.boxX + 30, self.boxY + 60, BOX_W - 60, "center")
+    love.graphics.printf("Health and mana carry between fights. You choose who takes the field, and "
+        .. "where, at the start of each battle.", self.boxX + 30, self.boxY + 60, BOX_W - 60, "center")
 
-    self.grid:draw()
+    -- One roomy row per company member: the same portrait + bars the map strip draws, at a size the
+    -- panel has the space for.
+    local party = shownParty(self.player)
+    local rowX = self.boxX + (BOX_W - STRIP_W) / 2
+    local rowY = self.boxY + 118
+    for i, char in ipairs(party) do
+        local bucket = self.abilityState and self.abilityState[char.id]
+        local bcx, bcy, info = drawRow(char, rowX, rowY + (i - 1) * MODAL_ROW_H,
+            self.rowFont, self.rowHeadFont, bucket)
+        if info then drawBadge(bcx, bcy, BADGE_R, false) end
+    end
 
     -- What each companion has banked toward a payoff this run (Ren's doses, Kaya's forage, ...), so the
     -- silent passives are legible. Only members with something pending appear.
@@ -256,9 +259,7 @@ function PartyStatus:draw()
 
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.5, 0.55, 0.65)
-    local hint = require("input_mode").isGamepad()
-        and "D-pad: move   A: pick up / drop   B: close"
-        or "Arrows / drag: rearrange   Esc: close"
+    local hint = require("input_mode").isGamepad() and "B: close" or "Esc: close"
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 34, BOX_W, "center")
 
     self.closeButton:draw()
@@ -267,33 +268,24 @@ end
 
 function PartyStatus:mousemoved(x, y)
     self.closeButton:mousemoved(x, y)
-    self.grid:mousemoved(x, y)
 end
 
 function PartyStatus:cursorKind(x, y)
     if self.closeButton:contains(x, y) then return "hand" end
-    return self.grid:cursorKind(x, y)
+    return "arrow"
 end
 
 function PartyStatus:mousepressed(x, y, button)
     if button == 1 and self.closeButton:mousepressed(x, y, button) then
         self:close()
-        return
     end
-    self.grid:mousepressed(x, y, button)
-end
-
-function PartyStatus:mousereleased(x, y, button)
-    self.grid:mousereleased(x, y, button)
 end
 
 function PartyStatus:keypressed(key)
-    if self.grid:keypressed(key) then return end
     if key == "escape" then self:close() end
 end
 
-function PartyStatus:gamepadpressed(joystick, button)
-    if self.grid:gamepadpressed(joystick, button) then return end
+function PartyStatus:gamepadpressed(_, button)
     if button == "b" then self:close() end
 end
 

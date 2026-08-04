@@ -10,7 +10,8 @@ return {
     -- generic Mage/Archer/Priest are retired from the party -- they live on only as enemy/ally/test
     -- stand-ins (data/quests, tests) with no portrait of their own.
     startingRoster = { "character_rowan" }, -- character ids
-    -- The active party: a subset of the roster, capped at Player.MAX_PARTY.
+    -- The marching company: a subset of the roster, capped at Player.MAX_PARTY. Which of them take the
+    -- field, and where, is chosen per battle in the deployment phase -- see docs/deployment.md.
     startingParty = { "character_rowan" }, -- character ids
     -- Items the player owns that nobody is carrying. The stash is unbounded; move gear between it
     -- and a character's 3x3 grid in the Loadout panel. A pickpocket whose grid is full pockets its

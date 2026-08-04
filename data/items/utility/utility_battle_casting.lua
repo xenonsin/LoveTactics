@@ -23,6 +23,6 @@ return {
     class = "mage",
     discipline = "battlemage",
     price = 420,
-    unlockQuests = 6,
+    unlockQuests = 5,
     traits = { "trait_battle_casting" },
 }

@@ -8,7 +8,6 @@ return {
     sponsor = "cathedral",
     rewardItems = { "weapon_drowned_censer", "armor_censer_cloth_habit" },
     rewardGold = 120,
-    rewardPrestige = 1,
     -- Prestige 2, not 1: the Cathedral opens with the city (unlockPrestige 1), but the first-visit
     -- board must show ONLY the Colosseum debut (data/quests/colosseum/quest_colosseum_slot_01.lua), the quest the arrival
     -- coaching points at. The debut pays +1 prestige, so this Mill surfaces the moment it is done --
@@ -17,7 +16,7 @@ return {
     requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {
-        biome = "forest",
+        biome = "swamp",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },
         objective = {
             name = "The Miller's Ghost",

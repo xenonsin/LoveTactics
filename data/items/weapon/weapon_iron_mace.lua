@@ -17,7 +17,7 @@ return {
     tags = { "mace", "impact", "physical", "melee" },
     class = "knight", -- the Bastion's: displacement is the wall's trade, not wrath's (docs/classes.md)
     price = 190,
-    unlockQuests = 0, -- a family's base weapon is always rank 1 (docs/weapons.md)
+    unlockQuests = 1, -- a family's base weapon is always rank 1 (docs/weapons.md)
     activeAbility = {
         target = "enemy",
         range = 1,

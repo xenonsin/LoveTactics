@@ -16,7 +16,7 @@ return {
     -- ordinary field staff should be findable.
     class = "mage",
     price = 150,
-    unlockQuests = 3,
+    unlockQuests = 0,
     -- Every staff swaps Wait into Focus (docs/weapons.md). This one is the family taken further: it
     -- also siphons mana on the HIT below, so it can refill while still attacking -- Focus is its floor,
     -- not its only recourse. It focuses deeper than a plain staff, befitting the rarer weapon.

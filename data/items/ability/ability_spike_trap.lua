@@ -10,7 +10,7 @@ return {
     tags = { "trap", "utility" },
     class = "rogue",
     price = 330,
-    unlockQuests = 6,
+    unlockQuests = 7,
     activeAbility = {
         target = "tile",
         range = 3,

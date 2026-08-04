@@ -201,6 +201,9 @@ function duel.update(dt)
             seed = SEED,
             party = team({ "character_rowan", "character_archer" }),
             enemyChars = team({ "character_bandit", "character_mage" }),
+            -- No deployment phase in a duel: both peers have to build the identical opening board from
+            -- the seed alone, and a placement screen is a decision the other machine cannot see.
+            deploy = false,
             playerSide = duel.side,
             session = duel.session,
             autoPilot = true, -- nobody is at either keyboard; see battle.autoPilot

@@ -28,7 +28,7 @@ return {
     tags = { "earth" },
     class = "knight",
     price = 320,
-    unlockQuests = 6,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

@@ -23,7 +23,7 @@ return {
     class = "fighter",
     discipline = "crusader",
     price = 420,
-    unlockQuests = 6,
+    unlockQuests = 9,
     charge = { key = "zeal", from = { "kill", "healDone" }, max = 8 },
     bonus = { defense = Curve.ramp(4, 14), movement = -1 },
     traits = { "trait_zealots_mercy" },

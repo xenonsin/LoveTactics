@@ -27,7 +27,7 @@ return {
     tags = { "cloth", "holy" },
     class = "priest",
     price = 300,
-    unlockQuests = 3,
+    unlockQuests = 5,
     traits = { "trait_sanctified_presence" },
     bonus = { magicDefense = Curve.ramp(4, 14), defense = Curve.ramp(2, 12), movement = -1 },
     resist = { magical = 2 },

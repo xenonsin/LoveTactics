@@ -49,19 +49,30 @@ BattleMap.__index = BattleMap
 
 -- Arena tile type -> overworld tileset type, so each biome's art/colours flavour the
 -- arena ground.
-local ART = {
+-- Each arena type borrows the overworld ROLE its biome dresses to suit: a desert's "forest" is a dune
+-- crest, a volcanic map's "water" is the flow itself, so sand->forest and lava->water land on art that
+-- already means the right thing. Every arena type must appear here -- the `or "path"` fallback at the
+-- draw site keeps a missing entry from crashing, but it would paint that floor as the trail, which on a
+-- desert board makes sand and open ground indistinguishable.
+BattleMap.ART = {
     ground = "path", forest = "forest", mountain = "rock",
     rough = "grass", obstacle = "rock", water = "water",
+    sand = "forest", ice = "forest", mire = "water", lava = "water",
 }
 
 -- Translucent wash over costly terrain (drawn on walkable tiles) so a tile's move penalty
 -- reads at a glance: leafy green for forest, cold grey for mountain, brown for legacy rough,
 -- river blue for the shallows a bolt would carry through (see Combat.tileHasTag).
-local TERRAIN_TINT = {
+-- Keyed by COST, not by biome: a tile earns a wash by charging more than open field, so `ice` is
+-- deliberately absent (it costs exactly what plain ground costs, and washing it would promise a penalty
+-- that is not there) and so is `lava` (unwalkable, so it takes the dark overlay below instead).
+BattleMap.TERRAIN_TINT = {
     forest   = { 0.10, 0.35, 0.12, 0.28 },
     mountain = { 0.30, 0.30, 0.34, 0.35 },
     rough    = { 0.20, 0.15, 0.05, 0.25 },
     water    = { 0.12, 0.34, 0.58, 0.34 },
+    sand     = { 0.52, 0.40, 0.14, 0.26 }, -- dry ochre: heavy going, no cover
+    mire     = { 0.14, 0.20, 0.10, 0.38 }, -- the heaviest wash, for the heaviest walkable floor
 }
 
 local DEFAULTS = { axisThreshold = 0.5 }
@@ -162,7 +173,7 @@ function BattleMap:buildTiles()
     local ts = tsDef.tileSize
     local columns = math.max(1, math.floor(img:getWidth() / ts))
     local quads = {}
-    for _, artType in pairs(ART) do
+    for _, artType in pairs(BattleMap.ART) do
         if not quads[artType] then
             local i = tsDef.tiles[artType].index - 1
             quads[artType] = love.graphics.newQuad((i % columns) * ts,
@@ -282,6 +293,7 @@ function BattleMap:draw()
     self:drawProps() -- scattered furniture (barrels, crates) stands beside the walls
     self:drawTraps() -- revealed traps sit above the ground/overlays, under the units
     self:drawCharges() -- buried fuses the viewer can see, with their countdown, beside the traps
+    self:drawDeployZone() -- your own ground: where you may stand a body (the opening bell, and rotations)
     self:drawReinforcements() -- where the next enemy muster lands + its countdown, above overlays, under units
     self:drawUnits()
     self:drawHighlights()
@@ -304,6 +316,40 @@ local MUSTER = { 0.88, 0.24, 0.18 } -- a saturated muster red, apart from the or
 -- The downed clock's hourglass: a warm amber that reads as a call to ACT (get to the body), distinct
 -- from the muster red (a threat arriving) and from the status_downed badge's cold grey (the body itself).
 local DOWNED_CLOCK = { 0.96, 0.78, 0.34 }
+
+-- Your own ground: the tiles you may put a body on -- during the deployment phase, and while a
+-- reinforcement is being placed. Deliberately the SAME grammar as the enemy muster below (an inset
+-- outline with a breathing fill) in the PARTY's blue rather than the muster red, so the two read as the
+-- same statement -- "somebody arrives on these tiles" -- told apart by whose they are, which is the rule
+-- the field categories already follow. Free tiles are lit; a tile somebody already stands on is dimmed to
+-- a quarter, so the zone still reads as one shape rather than developing holes as it fills.
+local DEPLOY = { 0.36, 0.60, 0.92 }
+
+function BattleMap:drawDeployZone()
+    local zone = self.overlays and self.overlays.deployZone
+    if not zone then return end
+    local s = self.size
+    local pulse = 0.5 + 0.5 * math.sin(love.timer.getTime() * 2.2)
+    for _, t in ipairs(zone) do
+        local wx, wy = self:cellToPixel(t.x, t.y)
+        local free = not self:unitAtCell(t.x, t.y)
+        local a = free and 1 or 0.25
+        love.graphics.setColor(DEPLOY[1], DEPLOY[2], DEPLOY[3], (0.10 + 0.08 * pulse) * a)
+        love.graphics.rectangle("fill", wx + 3, wy + 3, s - 6, s - 6, 4, 4)
+        love.graphics.setColor(DEPLOY[1], DEPLOY[2], DEPLOY[3], (0.50 + 0.30 * pulse) * a)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", wx + 3, wy + 3, s - 6, s - 6, 4, 4)
+        love.graphics.setLineWidth(1)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Is a living body standing on this cell? A thin wrapper so drawDeployZone can dim an occupied tile
+-- without reaching into the combat model's footprint rules itself.
+function BattleMap:unitAtCell(x, y)
+    local Combat = require("models.combat")
+    return self.combat and Combat.unitAt(self.combat, x, y) or nil
+end
 
 function BattleMap:drawReinforcements()
     local waves = self.overlays.reinforcements
@@ -650,7 +696,7 @@ function BattleMap:drawTiles()
     for y = 1, self.arena.rows do
         for x = 1, self.arena.cols do
             local cell = self.arena.tiles[y][x]
-            local artType = ART[cell.type] or "path"
+            local artType = BattleMap.ART[cell.type] or "path"
             local wx, wy = self:cellToPixel(x, y)
             if self.tileset then
                 love.graphics.setColor(1, 1, 1)
@@ -667,7 +713,7 @@ function BattleMap:drawTiles()
                 love.graphics.setColor(0, 0, 0, 0.45)
                 love.graphics.rectangle("fill", wx, wy, s, s)
             else
-                local tint = TERRAIN_TINT[cell.type]
+                local tint = BattleMap.TERRAIN_TINT[cell.type]
                 if tint then
                     love.graphics.setColor(tint[1], tint[2], tint[3], tint[4])
                     love.graphics.rectangle("fill", wx, wy, s, s)
@@ -1060,7 +1106,10 @@ function BattleMap:drawUnitInfo()
     if not self.combat then return end
     local s = self.size
     local orderIndex = {}
-    local order = Combat.turnOrder(self.combat)
+    -- Before the opening bell (the deployment phase, models/combat.lua's Combat.openBattle) there is no
+    -- turn order to show: initiative has not been normalized, so any number drawn here is one the fight
+    -- is about to contradict. The bodies still get their HP bars; they just wear no turn number yet.
+    local order = self.combat.opened and Combat.turnOrder(self.combat) or {}
     -- Anchor the acting unit at #1 until the UI hands off: its initiative is charged the instant it acts
     -- (a beat before battle.current switches), which would otherwise flip its board token to a later
     -- number while its attack still plays. Mirrors the turn strip (states/battle.lua refreshView).

@@ -24,7 +24,7 @@ return {
     type = "consumable", -- a stack: three uses, then an empty slot until it is restocked
     tags = { "arcane" },
     price = 220, -- no class: the Cafe's shelf, and every party wants one
-    unlockQuests = 3,
+    unlockQuests = 0,
     maxStack = 3,
     activeAbility = {
         target = "self",

@@ -37,7 +37,6 @@ return {
     intro = "conversation_bastion_slot_05_intro",
     outro = "conversation_bastion_slot_05_outro",
     rewardGold = 220,
-    rewardPrestige = 2,
     requiredQuests = { "quest_bastion_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 2,
     requiredSponsorQuests = { vendor = "bastion", count = 3 }, -- 3 of this house's quests done

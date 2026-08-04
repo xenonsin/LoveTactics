@@ -15,7 +15,7 @@ return {
     class = "fighter",
     discipline = "duelist", -- fighter x rogue; the Duel-stance mechanic's first stock
     price = 260,
-    unlockQuests = 6,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 1,

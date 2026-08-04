@@ -24,7 +24,7 @@ return {
     hands = 2,
     class = "fighter",
     price = 900,
-    unlockQuests = 10,
+    unlockQuests = 11,
     activeAbility = {
         description = "Holding the wind-up longer widens the blow: two extra ticks turn one tile into a three-tile arc.",
         target = "tile",

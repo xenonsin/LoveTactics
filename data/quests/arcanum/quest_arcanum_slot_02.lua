@@ -25,7 +25,6 @@ return {
     sponsor = "arcanum",
     rewardItems = { "weapon_swineherds_wand" },
     rewardGold = 90,
-    rewardPrestige = 1,
     requiredQuests = { "quest_arcanum_slot_01" }, -- slot 2: the line runs in order
     requiredPrestige = 3,
     rewardCharacter = "character_gyeom",

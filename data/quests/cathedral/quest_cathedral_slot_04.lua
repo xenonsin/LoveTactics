@@ -33,7 +33,6 @@ return {
     sponsor = "cathedral",
     rewardItems = { "weapon_gag_crook" },
     rewardGold = 180,
-    rewardPrestige = 1,
     requiredQuests = { "quest_cathedral_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "cathedral", count = 3 }, -- 3 of this house's quests done

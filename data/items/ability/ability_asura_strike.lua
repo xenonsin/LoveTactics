@@ -27,7 +27,7 @@ return {
     class = "priest",
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 460,
-    unlockQuests = 10,
+    unlockQuests = 11,
     activeAbility = {
         target = "enemy",
         range = 1,

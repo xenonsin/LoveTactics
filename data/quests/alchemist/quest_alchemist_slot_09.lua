@@ -34,7 +34,6 @@ return {
     sponsor = "alchemist",
     rewardItems = { "armor_volatile_carapace" },
     rewardGold = 400,
-    rewardPrestige = 2,
     requiredQuests = { "quest_alchemist_slot_08" }, -- slot 9: the line runs in order
     requiredPrestige = 4,
     requiredSponsorQuests = { vendor = "alchemist", count = 6 }, -- 6 of this house's quests done

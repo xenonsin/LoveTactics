@@ -1,5 +1,5 @@
--- Tier-1 forging material: the commonest salvage, dropped by early quests. Feeds the first upgrades
--- (levels +1 and +2) at the Blacksmith. See models/blacksmith.lua for the cost curve.
+-- Craft stock, grade 1: the commonest salvage. What plain gear is forged from at every rung -- the
+-- grade tracks the ITEM's quality, not how deep its ladder goes (models/material.lua's GRADE_BY_PRICE).
 return {
     name = "Iron Scrap",
     description = "Battered offcuts and broken blades. The forge's daily bread.",

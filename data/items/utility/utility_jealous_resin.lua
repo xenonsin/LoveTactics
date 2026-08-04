@@ -27,6 +27,6 @@ return {
     tags = { "charm", "ward" },
     class = "alchemist",
     price = 240,
-    unlockQuests = 3,
+    unlockQuests = 7,
     traits = { "trait_jealous_resin" },
 }

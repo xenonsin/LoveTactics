@@ -33,7 +33,6 @@ return {
     difficulty = "Hard",
     sponsor = "alchemist",
     rewardGold = 300,
-    rewardPrestige = 2,
     requiredQuests = { "quest_alchemist_slot_06" }, -- slot 7: the line runs in order
     requiredPrestige = 4,
     requiredSponsorQuests = { vendor = "alchemist", count = 6 }, -- 6 of this house's quests done

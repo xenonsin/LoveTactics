@@ -25,6 +25,6 @@ return {
     class = "hunter",
     discipline = "herbalist",
     price = 400,
-    unlockQuests = 10,
+    unlockQuests = 12,
     traits = { "trait_cullers_kit" },
 }

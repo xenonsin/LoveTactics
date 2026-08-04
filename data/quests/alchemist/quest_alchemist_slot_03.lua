@@ -37,11 +37,10 @@ return {
     sponsor = "alchemist",
     rewardItems = { "armor_ichor_coat" },
     rewardGold = 130,
-    rewardPrestige = 1,
     requiredQuests = { "quest_alchemist_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 4,
     map = {
-        biome = "castle",
+        biome = "volcanic",
         encounters = { min = 5, max = 7 },
         objective = {
             name = "The Patron's House",

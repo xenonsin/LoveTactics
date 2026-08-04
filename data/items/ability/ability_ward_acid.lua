@@ -13,7 +13,7 @@ return {
     tags = { "protective", "holy" },
     class = "priest",
     price = 180,
-    unlockQuests = 3,
+    unlockQuests = 1,
     activeAbility = {
         target = "ally", -- includes the caster
         range = 3,

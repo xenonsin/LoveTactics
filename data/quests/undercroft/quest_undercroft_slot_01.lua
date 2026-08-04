@@ -10,7 +10,6 @@ return {
     sponsor = "undercroft",
     rewardItems = { "armor_cutpurse_coat" },
     rewardGold = 150,
-    rewardPrestige = 1,
     requiredPrestige = 3,
     map = {
         biome = "castle",

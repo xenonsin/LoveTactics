@@ -26,7 +26,7 @@ return {
     hands = 2, -- a two-handed sweep: four tiles of travel is a whole-body swing
     class = "knight",
     price = 700,
-    unlockQuests = 10,
+    unlockQuests = 11,
     activeAbility = {
         target = "enemy",
         range = 1,

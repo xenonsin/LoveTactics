@@ -16,6 +16,6 @@ return {
     tags = { "arcane" },
     class = "mage",
     price = 400,
-    unlockQuests = 6,
+    unlockQuests = 8,
     traits = { "trait_counter_magic" },
 }

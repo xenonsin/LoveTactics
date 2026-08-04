@@ -29,7 +29,7 @@ return {
     tags = { "holy" },
     class = "priest",
     price = 500,
-    unlockQuests = 10,
+    unlockQuests = 12,
     traits = { "trait_stayed_hand" },
     bonus = { magicDefense = Curve.ramp(1, 11) },
 }

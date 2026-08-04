@@ -16,10 +16,15 @@
 --         composition = function(ctx) return { "character_wolf_grunt" } end,
 --         objective = { type = "killAll" }, seed = 123 })
 --   -- arena = { cols, rows, tileSize, biome, tiles[y][x]={type,moveCost,walkable},
---   --           party={{id,x,y}}, enemies={{id,x,y}}, objective, seed }
+--   --           party={{id,x,y}}, enemies={{id,x,y}}, deployZone={{x,y}}, objective, seed }
+--
+-- `party` is where the board WOULD seat the company, and on most fights it is only the opening
+-- suggestion: the player picks who stands where in the deployment phase, over `deployZone`. See
+-- deployZoneFor below and docs/deployment.md.
 
 local Registry = require("models.registry")
 local Prop = require("models.prop")
+local Biome = require("models.biome") -- signature ground a generated board seeds (Biome.hazardFor)
 
 local Arena = {}
 
@@ -53,7 +58,47 @@ Arena.TILE_PROPS = {
     mountain = { moveCost = 3, walkable = true,  sightCost = 2, bonus = { range = 1 } },
     rough    = { moveCost = 2, walkable = true,  sightCost = 0 },  -- legacy penalty tile (curated arenas)
     obstacle = { moveCost = math.huge, walkable = false, sightCost = math.huge }, -- solid: blocks tile + sight
+
+    -- The biome floors below are each the deliberate INVERSE of one above, so a board built on them
+    -- plays differently rather than merely looking different. None of them grants cover: every one is
+    -- sightCost 0, because the thing that makes a strange floor interesting is what it does to feet
+    -- and to reach, not what it hides behind.
+
+    -- Loose sand: heavy going with nothing to stand behind -- forest's cost without forest's cover, so
+    -- a desert board is a long ranged exchange nobody can cross quickly or safely.
+    sand     = { moveCost = 2, walkable = true,  sightCost = 0 },
+    -- Frozen ground: the ONLY terrain feature that does not tax a step. Every other floor here costs
+    -- more than open field; ice costs exactly the same, so a board scattered with it is a board with no
+    -- movement obstacles at all. What it charges instead is conduction -- a lightning line that would
+    -- clip one body on grass sweeps a whole frozen front. Free to cross, expensive to stand on.
+    ice      = { moveCost = 1, walkable = true,  sightCost = 0, tags = { "conductable" } },
+    -- A lava flow: impassable, but UNLIKE an obstacle it does not block a line of sight. A wall you can
+    -- shoot straight over and never cross -- the one barrier that separates two lines without also
+    -- hiding them from each other.
+    lava     = { moveCost = math.huge, walkable = false, sightCost = 0 },
+    -- Sucking bog: it ties the mountain for the heaviest walkable floor and gives back nothing at all --
+    -- no reach, no cover, no sight. The strictly-worse-than-high-ground tile, which is a real thing for
+    -- a floor to be: it makes crossing expensive without ever being worth holding. Wet through, so it
+    -- conducts.
+    mire     = { moveCost = 3, walkable = true,  sightCost = 0, tags = { "conductable" } },
 }
+
+-- What a generated board scatters for a given biome. `Arena.generateLayout` makes exactly three
+-- scatter calls (a fill, a rise, a blocker) and this only chooses WHICH tile each one lays down -- the
+-- counts still come from the same rng draws in the same order, so every previously generated board
+-- reproduces from its seed unchanged. A biome absent here falls back to the original three.
+Arena.BIOME_TERRAIN = {
+    default  = { fill = "forest", rise = "mountain", block = "obstacle" },
+    desert   = { fill = "sand",   rise = "mountain", block = "obstacle" },
+    tundra   = { fill = "ice",    rise = "mountain", block = "obstacle" },
+    volcanic = { fill = "rough",  rise = "mountain", block = "lava" },
+    swamp    = { fill = "mire",   rise = "forest",   block = "obstacle" },
+}
+
+-- The terrain palette for `biome`, always a complete table (see Arena.BIOME_TERRAIN).
+function Arena.terrainFor(biome)
+    return Arena.BIOME_TERRAIN[biome or "default"] or Arena.BIOME_TERRAIN.default
+end
 
 -- Default objective when an encounter/quest doesn't specify one.
 local DEFAULT_OBJECTIVE = { type = "killAll" }
@@ -74,6 +119,66 @@ function Arena.resolveComposition(composition, ctx)
         return composition
     end
     return { "character_bandit" }
+end
+
+-- ---------------------------------------------------------------------------
+-- The enemy ceiling
+-- ---------------------------------------------------------------------------
+
+-- The most bodies a fight may OPEN with, by the quest's authored difficulty.
+--
+-- Every objective in the game sizes its own enemy list with a formula off the player's prestige --
+-- `2 + math.floor((ctx.prestige or 1) / 2)` and its neighbours, across 91 quest files -- and nothing
+-- bounded the result. Prestige is a lifetime total that never resets and that New Game+ carries
+-- forward (Player.newGamePlus), so the input grows without limit: the `/2` quests reach 71 bodies by
+-- the campaign's ~138 prestige and 140 in a second run. That is not a difficulty curve, it is an
+-- unbounded one that happens to start in the right place.
+--
+-- The head-count was the wrong axis to have reached for anyway, twice over. Enemies ALREADY scale --
+-- Growth.ENEMY_LEVEL_LAG holds ordinary stock at 0.9x the player's level, so the fight keeps its edge
+-- without another body being added -- and adding bodies is SUPER-linear difficulty besides, because
+-- action economy compounds: four units against seventy eat seventy attacks a round and land four.
+--
+-- So the ceiling is small and flat. What a quest is allowed to grow is which enemies it fields and how
+-- deep they are, not how many stand there.
+Arena.ENEMY_CAP = { Easy = 6, Normal = 9, Hard = 12 }
+Arena.DEFAULT_ENEMY_CAP = 9 -- an encounter with no quest behind it (a roadside fight) reads as Normal
+
+function Arena.enemyCap(ctx)
+    local quest = ctx and ctx.quest
+    return (quest and Arena.ENEMY_CAP[quest.difficulty]) or Arena.DEFAULT_ENEMY_CAP
+end
+
+-- Cut `ids` down to `cap`, keeping the NAMED CAST first: one of every distinct id, in authored order,
+-- before any repeated filler.
+--
+-- Preserving the named cast is a WINNABILITY rule, not a nicety. 43 quests win by
+-- `type = "assassinate", target = "character_bandit_chief"`, and others name a `protect` ally; drop the
+-- target and the objective cannot be completed at all -- a softlock, not a harder fight. Every
+-- composition in the game happens to list its named unit first today, so a naive tail-truncation would
+-- survive by luck; this makes it survive by construction, which is what the 93rd quest will need.
+--
+-- When the DISTINCT ids alone exceed the cap, the cap yields. An author who lists fourteen individually
+-- named characters has made a deliberate choice about one fight; the ceiling exists to stop a prestige
+-- FORMULA running away, and it should not silently overrule a hand-written cast list.
+function Arena.clampComposition(ids, cap)
+    ids = ids or {}
+    if not cap or #ids <= cap then return ids end
+
+    local kept, seenId, usedIndex = {}, {}, {}
+    for i, id in ipairs(ids) do
+        if not seenId[id] then
+            seenId[id] = true
+            usedIndex[i] = true
+            kept[#kept + 1] = id
+        end
+    end
+    -- The named cast is in; top up to the cap from the filler, in the order it was authored.
+    for i, id in ipairs(ids) do
+        if #kept >= cap then break end
+        if not usedIndex[i] then kept[#kept + 1] = id end
+    end
+    return kept
 end
 
 -- Is (x, y) ground a unit can stand on? Reads the layout's type strings through TILE_PROPS,
@@ -242,12 +347,12 @@ local function formationCell(slot, fcols, frows, cols, rows)
     return x, y
 end
 
--- Seat the party by the player's persistent marching grid. `slots` is a list ordered to MATCH the party
--- (entry i is member i's { col, row } grid cell, or nil for a member left unplaced), so the spawns come
--- back in the same order and Arena.build's bindUnits seats each member on their chosen tile. A placed
--- member takes its mapped board cell, nudged to the nearest free tile on a clash (a stale slot from a
--- differently-sized grid can otherwise collide); the unplaced remainder auto-spreads across the near
--- rows into whatever the placed members left free, so a half-arranged formation still seats everyone.
+-- Seat a party by a marching grid (draft mode's -- see reseatByFormation). `slots` is a list ordered to
+-- MATCH the party (entry i is member i's { col, row } grid cell, or nil for a member left unplaced), so
+-- the spawns come back in the same order and Arena.build's bindUnits seats each member on their chosen
+-- tile. A placed member takes its mapped board cell, nudged to the nearest free tile on a clash (a stale
+-- slot from a differently-sized grid can otherwise collide); the unplaced remainder auto-spreads across
+-- the near rows into whatever the placed members left free, so a half-arranged grid still seats everyone.
 local function placePartyFormation(slots, fcols, frows, count, cols, rows, occupied, walkable)
     walkable = walkable or function() return true end
     local spawns = {}
@@ -280,25 +385,91 @@ local function placePartyFormation(slots, fcols, frows, count, cols, rows, occup
     return spawns
 end
 
--- A curated board's authored partySpawns are the FALLBACK for a party that arranged nothing. When the
--- player actually brought a marching formation, seat the party by it here too -- the same grid a
--- generated board honors in generateLayout, applied over the curated tiles (so its own near-row walls
--- get nudged around). Reseats in place; returns nothing.
+-- Seat a party by a pre-resolved marching grid over a CURATED board's authored spawns -- the same grid
+-- generateLayout honors on a procedural map, applied to hand-authored tiles (so the board's own near-row
+-- walls get nudged around). Reseats in place; returns nothing.
 --
--- Only fires when at least one member is actually placed: an empty/never-touched formation keeps the
--- authored spawns untouched, which is what leaves the prologue's scripted fights (fought before a hub
--- exists to arrange a formation in) standing exactly where they were authored to. Skipped when the
--- fight carries AI allies, whose seating is the authored board's job (bindAllies), not the grid's.
+-- The campaign no longer brings a marching grid at all: it decides placement per battle in the
+-- deployment phase (docs/deployment.md). The one caller left is DRAFT mode, which keeps its own 4x2
+-- formation in the shop UI (models/draft_run.lua) and passes it through as pre-resolved slots. Skipped
+-- when the fight carries AI allies, whose seating is the authored board's job (bindAllies), not the grid's.
 local function reseatByFormation(layout, formation, fcols, frows, partyCount)
     if not formation then return end
     local placed = false
     for i = 1, partyCount do if formation[i] then placed = true break end end
     if not placed then return end
-    local Player = require("models.player")
-    fcols, frows = fcols or Player.FORMATION_COLS, frows or Player.FORMATION_ROWS
     local function walkable(x, y) return walkableAt(layout, x, y) end
-    layout.partySpawns = placePartyFormation(formation, fcols, frows, partyCount,
+    layout.partySpawns = placePartyFormation(formation, fcols or 4, frows or 2, partyCount,
         layout.cols, layout.rows, {}, walkable)
+end
+
+-- The DEPLOY ZONE: the tiles the player may put a body on at the opening bell (states/battle.lua's
+-- deployment phase), and the same ground a rotation and a reinforcement use later in the fight
+-- (models/combat.lua). See docs/deployment.md.
+--
+-- It is deliberately WIDER than the party -- placement is only a decision if there are more tiles than
+-- units -- and it is derived from the board rather than authored, so every map gets one for free:
+--
+--   1. an authored `deployZone` on a curated layout wins outright (a map that wants to say "you come in
+--      through this gate" says so);
+--   2. otherwise, every walkable tile on the ROWS THE PARTY SPAWNS OCCUPY, widened by one row TOWARD the
+--      enemy. The spawn rows keep the zone where the board's author (or the generator) already decided
+--      the party enters from; the extra row is what makes it a band rather than a line, so front-and-back
+--      is a decision and not just left-and-right. See Arena.DEPLOY_DEPTH;
+--   3. tiles another unit is authored onto (an escort, an enemy that spawned deep) are excluded, so the
+--      phase can never offer a cell somebody is already standing in.
+--
+-- Falls back to the party spawns themselves if that yields fewer than `minTiles` cells: a cramped
+-- authored board must never produce a phase with nowhere to stand.
+
+-- How many rows deep the derived zone is, counting the party's own spawn row. Two: one to stand the line
+-- on and one to stand behind it, which is exactly the front/back choice the old marching grid offered.
+Arena.DEPLOY_DEPTH = 2
+
+local function deployZoneFor(layout, taken, minTiles)
+    local authored = layout.deployZone
+    local zone = {}
+    if authored and #authored > 0 then
+        for _, t in ipairs(authored) do
+            if walkableAt(layout, t.x, t.y) and not taken[key(t.x, t.y)] then
+                zone[#zone + 1] = { x = t.x, y = t.y }
+            end
+        end
+    else
+        local rows, lo, hi = {}, nil, nil
+        for _, sp in ipairs(layout.partySpawns or {}) do
+            rows[sp.y] = true
+            lo = math.min(lo or sp.y, sp.y)
+            hi = math.max(hi or sp.y, sp.y)
+        end
+        -- Widen toward the enemy: the party lands on the near rows, so "toward the enemy" is whichever
+        -- direction the far edge lies in. Measured off the spawns themselves rather than assumed to be
+        -- upward, since a curated board is free to seat the party at the top.
+        if lo then
+            local towardTop = ((lo + hi) / 2) > (layout.rows / 2)
+            for d = 1, (Arena.DEPLOY_DEPTH - 1) do
+                local y = towardTop and (lo - d) or (hi + d)
+                if y >= 1 and y <= layout.rows then rows[y] = true end
+            end
+        end
+        local ordered = {}
+        for y in pairs(rows) do ordered[#ordered + 1] = y end
+        table.sort(ordered)
+        for _, y in ipairs(ordered) do
+            for x = 1, layout.cols do
+                if walkableAt(layout, x, y) and not taken[key(x, y)] then
+                    zone[#zone + 1] = { x = x, y = y }
+                end
+            end
+        end
+    end
+    if #zone >= (minTiles or 1) then return zone end
+    -- Too tight to choose on: hand back the authored spawns, which are guaranteed to be standable.
+    local fallback = {}
+    for _, sp in ipairs(layout.partySpawns or {}) do
+        if not taken[key(sp.x, sp.y)] then fallback[#fallback + 1] = { x = sp.x, y = sp.y } end
+    end
+    return #fallback > 0 and fallback or zone
 end
 
 -- A deliberately fresh seed, for a caller that wants a board it has never seen. The one place the
@@ -335,15 +506,14 @@ function Arena.generateLayout(params)
     end
 
     local occupied = {}
-    -- The party seats by the player's marching grid when one was threaded through, else by the plain
-    -- even auto-spread. Curated boards apply the same grid too, but later (Arena.build's reseatByFormation),
-    -- since their tiles aren't built here.
+    -- The party seats by a marching grid when one was threaded through -- draft mode's, the only caller
+    -- that still brings one (the campaign places per battle instead; see deployZoneFor). Curated boards
+    -- apply the same grid later, in Arena.build, since their tiles aren't built here. Everything else
+    -- takes the plain even auto-spread, which is also what seeds the deploy zone's rows.
     local partySpawns
     if params.formation then
-        local Player = require("models.player")
-        local fcols = params.formationCols or Player.FORMATION_COLS
-        local frows = params.formationRows or Player.FORMATION_ROWS
-        partySpawns = placePartyFormation(params.formation, fcols, frows, params.party or 0, cols, rows, occupied)
+        partySpawns = placePartyFormation(params.formation, params.formationCols or 4,
+            params.formationRows or 2, params.party or 0, cols, rows, occupied)
     else
         partySpawns = placeUnits({ rows, rows - 1 }, params.party or 0, cols, occupied)
     end
@@ -362,9 +532,14 @@ function Arena.generateLayout(params)
             end
         end
     end
-    scatter("forest", rng:random(2, 5))
-    scatter("mountain", rng:random(1, 3))
-    scatter("obstacle", rng:random(1, 3))
+    -- WHICH tile each scatter lays down is the biome's business; how MANY is not. The three rng draws
+    -- below are unchanged in count and order from when every board scattered forest/mountain/obstacle,
+    -- so a seed that produced a given board still produces it -- the tiles on it are simply made of
+    -- whatever that biome is made of now. See Arena.BIOME_TERRAIN.
+    local terrain = Arena.terrainFor(params.biome)
+    scatter(terrain.fill, rng:random(2, 5))
+    scatter(terrain.rise, rng:random(1, 3))
+    scatter(terrain.block, rng:random(1, 3))
 
     -- Props (models/prop.lua): standing furniture -- a powder keg, a supply crate -- drawn from the
     -- biome's own pool, so a castle yard is littered with barrels and a forest trail with crates. Rolled
@@ -390,10 +565,37 @@ function Arena.generateLayout(params)
         end
     end
 
+    -- The biome's signature ground: a patch or two of quicksand in a desert, of fire on a volcanic
+    -- floor. Rolled LAST for exactly the reason props are -- every draw above was already made when
+    -- this pass did not exist, so a stored seed still reproduces the board it always did, now with the
+    -- biome's own hazard on it. A biome declaring no `hazard` seeds nothing, which is every biome that
+    -- shipped before this.
+    --
+    -- Placed on plain `ground` only. The scattered floor is where a board's character already is, and a
+    -- hazard needs somewhere a unit can actually be caught: seeding onto lava (unwalkable) would put an
+    -- effect where nothing can ever stand to trigger it.
+    local hazards = {}
+    local sig = Biome.hazardFor(params.biome)
+    if sig then
+        for _ = 1, rng:random(sig.min, sig.max) do
+            local tries = 0
+            while tries < 40 do
+                tries = tries + 1
+                local x, y = rng:random(1, cols), rng:random(3, rows - 2)
+                if tiles[y][x] == "ground" and not occupied[key(x, y)] then
+                    occupied[key(x, y)] = true
+                    hazards[#hazards + 1] = { id = sig.id, x = x, y = y, duration = sig.duration }
+                    break
+                end
+            end
+        end
+    end
+
     return {
         cols = cols, rows = rows, tiles = tiles,
         partySpawns = partySpawns, enemySpawns = enemySpawns,
         props = props,
+        hazards = hazards,
         biome = params.biome, seed = params.seed,
     }
 end
@@ -410,8 +612,12 @@ local function hydrateLayout(def)
         traps = def.traps or {}, -- authored traps: { { id, x, y, side }, ... }
         hazards = def.hazards or {}, -- authored hazards: { { id, x, y, side, duration }, ... } (Combat.new places them)
         props = def.props or {}, -- authored props: { { id, x, y }, ... } (barrels/crates a curated map stands)
+        -- Optional: the tiles the deployment phase offers ({ { x, y }, ... }). A map that wants to say
+        -- "you come in through this gate" says so here; otherwise the zone is derived from the rows the
+        -- authored partySpawns sit on. See deployZoneFor and docs/deployment.md.
+        deployZone = def.deployZone,
         biome = def.biome,
-        curated = true, -- an authored board: its partySpawns are the fallback a real formation reseats (Arena.build)
+        curated = true, -- an authored board: its partySpawns seed the deploy zone (Arena.build)
     }
 end
 
@@ -563,7 +769,11 @@ function Arena.build(ctx, spec)
     local partyIds = spec.party or {}
     local allyIds = Arena.resolveComposition(spec.allies, ctx)
     if not spec.allies then allyIds = {} end -- resolveComposition defaults to a bandit; allies default to none
-    local enemyIds = Arena.resolveComposition(spec.composition, ctx)
+    -- The ceiling is applied HERE rather than inside resolveComposition, because that resolver also
+    -- serves `allies` one line up -- and an escort is a hand-authored cast (usually one body a
+    -- `protect` objective is pointed at), never a prestige formula, so it has nothing to be saved from.
+    local enemyIds = Arena.clampComposition(
+        Arena.resolveComposition(spec.composition, ctx), Arena.enemyCap(ctx))
 
     local layout = Arena.pickLayout(spec, #partyIds + #allyIds, #enemyIds)
 
@@ -579,22 +789,38 @@ function Arena.build(ctx, spec)
         })
     end
 
-    -- A curated board keeps its authored spawns until the player brings an arranged formation; then the
-    -- party seats by the grid on the sand too, not just on generated maps. Only curated layouts need this
-    -- (a generated one already seated by the grid in generateLayout), and only when there are no allies to
-    -- share the near rows.
+    -- Draft mode still brings a marching grid (models/draft_run.lua) and expects a curated board to
+    -- honour it; a generated one already seated by it in generateLayout. The campaign passes no
+    -- formation at all -- it places per battle in the deployment phase -- so this is a no-op there.
     if layout.curated and #allyIds == 0 then
         reseatByFormation(layout, spec.formation, spec.formationCols, spec.formationRows, #partyIds)
     end
+
+    local party = bindUnits(partyIds, layout.partySpawns, 0, layout)
+    local allies = bindAllies(allyIds, spec, layout)
+    local enemies = bindUnits(enemyIds, layout.enemySpawns, 0, layout)
+
+    -- The ground the deployment phase offers. Every body the BOARD itself seats is excluded -- an
+    -- escorted survivor, an enemy authored deep in the party's half -- so the phase never offers a tile
+    -- that is already somebody's. The party's own bound spawns are NOT excluded: those are exactly the
+    -- tiles the player is choosing among (and they double as the phase's auto-fill).
+    local taken = {}
+    for _, u in ipairs(allies) do taken[key(u.x, u.y)] = true end
+    for _, u in ipairs(enemies) do taken[key(u.x, u.y)] = true end
+    for _, p in ipairs(layout.props or {}) do taken[key(p.x, p.y)] = true end
 
     return {
         cols = layout.cols, rows = layout.rows,
         tileSize = Arena.TILE_SIZE,
         biome = spec.biome or layout.biome,
         tiles = hydrateTiles(layout),
-        party = bindUnits(partyIds, layout.partySpawns, 0, layout),
-        allies = bindAllies(allyIds, spec, layout),
-        enemies = bindUnits(enemyIds, layout.enemySpawns, 0, layout),
+        party = party,
+        allies = allies,
+        enemies = enemies,
+        -- Where the player may stand their company at the opening bell (and rotate/reinforce onto
+        -- later). Sized against the FIELD cap rather than the company, since that is how many bodies
+        -- ever need somewhere to be at once. See docs/deployment.md.
+        deployZone = deployZoneFor(layout, taken, math.max(#partyIds, 1)),
         traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
         hazards = layout.hazards or {}, -- authored hazards (fire/rain/sanctuary) carried into combat (Combat.new places them)
         props = layout.props or {}, -- scattered/authored props (barrels, crates) carried into combat (Combat.new places them)

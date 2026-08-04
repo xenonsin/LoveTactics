@@ -18,12 +18,11 @@ return {
     sponsor = "undercroft",
     rewardItems = { "armor_opportunists_harness" },
     rewardGold = 220,
-    rewardPrestige = 1,
     requiredQuests = { "quest_undercroft_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 3,
     requiredSponsorQuests = { vendor = "undercroft", count = 3 }, -- 3 of this house's quests done
     map = {
-        biome = "castle",
+        biome = "desert",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },
         objective = {
             name = "The Ledger Room",

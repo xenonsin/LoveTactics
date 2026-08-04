@@ -27,7 +27,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     price = 380, -- no class: the general store stocks it, and anybody may carry one
-    unlockQuests = 6,
+    unlockQuests = 0,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

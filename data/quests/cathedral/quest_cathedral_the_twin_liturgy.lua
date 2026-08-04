@@ -24,7 +24,6 @@ return {
     difficulty = "Hard",
     sponsor = "cathedral",
     rewardGold = 250,
-    rewardPrestige = 1,
     -- Both parents, earned: "quest_arcanum_slot_03" is the first mage subclass gate on its line,
     -- "quest_cathedral_slot_03" the first priest. Holding either is impossible without them.
     requiredQuests = { "quest_arcanum_slot_03", "quest_cathedral_slot_03" },

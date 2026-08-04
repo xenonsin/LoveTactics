@@ -22,7 +22,7 @@ return {
     tags = { "dagger", "pierce", "physical", "poison", "melee" },
     class = "alchemist",
     price = 210,
-    unlockQuests = 10,
+    unlockQuests = 11,
     activeAbility = {
         target = "enemy",
         range = 1,

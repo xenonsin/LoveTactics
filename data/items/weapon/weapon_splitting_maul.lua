@@ -25,7 +25,7 @@ return {
     hands = 2, -- a maul takes both hands: the binding is worth the free slot
     class = "fighter",
     price = 820,
-    unlockQuests = 10,
+    unlockQuests = 11,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

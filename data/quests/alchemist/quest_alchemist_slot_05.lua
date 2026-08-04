@@ -13,12 +13,11 @@ return {
     difficulty = "Hard",
     sponsor = "alchemist",
     rewardGold = 220,
-    rewardPrestige = 1,
     requiredQuests = { "quest_alchemist_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 4,
     requiredSponsorQuests = { vendor = "alchemist", count = 3 }, -- 3 of this house's quests done
     map = {
-        biome = "castle",
+        biome = "swamp",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },
         objective = {
             name = "The Decanting Wing",

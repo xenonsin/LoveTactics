@@ -14,6 +14,6 @@ return {
     tags = { "satchel", "arcane" },
     class = "alchemist",
     price = 300,
-    unlockQuests = 3,
+    unlockQuests = 8,
     traits = { "trait_alchemists_reservoir" },
 }

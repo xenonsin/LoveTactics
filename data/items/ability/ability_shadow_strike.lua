@@ -15,7 +15,7 @@ return {
     class = "rogue",
     discipline = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
     price = 300,
-    unlockQuests = 6,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 1,

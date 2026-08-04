@@ -10,7 +10,6 @@ return {
     outro = "conversation_colosseum_slot_03_outro",
     rewardItems = { "weapon_bellfounders_hammer", "armor_rally_coat" },
     rewardGold = 300,
-    rewardPrestige = 2,
     requiredQuests = { "quest_colosseum_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).

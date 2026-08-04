@@ -12,7 +12,7 @@ return {
     tags = { "arcane" },
     class = "alchemist",
     price = 220,
-    unlockQuests = 3,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 2,

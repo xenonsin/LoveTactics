@@ -27,7 +27,7 @@ return {
     class = "hunter",
     discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
     price = 380,
-    unlockQuests = 3,
+    unlockQuests = 5,
     -- No `duration`: a trap is an object left lying there, not ground that ages out. It waits.
     trail = { trap = "caltrops" },
 }

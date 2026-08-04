@@ -24,7 +24,7 @@ return {
     tags = { "leather" },
     class = "rogue",
     price = 260,
-    unlockQuests = 3,
+    unlockQuests = 5,
     traits = { "trait_dodge" },
     bonus = { defense = Curve.ramp(3, 13) },
     resist = { physical = 1 },

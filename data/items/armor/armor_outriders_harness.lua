@@ -24,7 +24,7 @@ return {
     class = "fighter",
     discipline = "skirmisher",
     price = 400,
-    unlockQuests = 6,
+    unlockQuests = 8,
     bonus = { defense = Curve.ramp(3, 13) },
     traits = { "trait_outriders_harness" },
 }

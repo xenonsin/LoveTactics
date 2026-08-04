@@ -25,6 +25,6 @@ return {
     class = "hunter",
     discipline = "totemist",
     price = 400,
-    unlockQuests = 6,
+    unlockQuests = 10,
     traits = { "trait_totem_carvers_kit" },
 }

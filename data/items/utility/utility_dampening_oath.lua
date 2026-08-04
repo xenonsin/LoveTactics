@@ -23,6 +23,6 @@ return {
     class = "knight",
     discipline = "spellbreaker",
     price = 440,
-    unlockQuests = 10,
+    unlockQuests = 9,
     traits = { "trait_dampening_oath" },
 }

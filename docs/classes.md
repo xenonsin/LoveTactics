@@ -229,12 +229,12 @@ available from the first visit — `Vendor.stock` ignores `unlockQuests` for a g
 Panacea that needs ten quests at the alchemist is simply on the shelf here. Two rules keep the resale
 from eroding the class shelf it borrows from:
 
-- **A resale is not a re-home.** The potion keeps its `class`, so it still *grows the alchemist's tally*
-  and still *refines only at the alchemist* — `Vendor.canRefineHere` lets a consumable be honed at its
-  own house alone, never at a shop that merely resells it. The Cafe's Upgrade tab is empty of potions.
+- **A resale is not a re-home.** The potion keeps its `class`, so it still *grows the alchemist's
+  tally* — and that class is what its bill and its ceiling read at The Forge. No shop upgrades
+  anything, here or anywhere: a vendor sells, and every ladder is climbed at the one bench
+  (`models/forge.lua`).
 - **The Cafe sells no weapons and no abilities.** Those carry identity; the general store carries
-  supplies and the potions everyone drinks. Its stock is classless gear plus resold consumables, and
-  `Vendor.canUpgradeHere` refuses to hone anything here.
+  supplies and the potions everyone drinks. Its stock is classless gear plus resold consumables.
 
 `tests/class_spec.lua` skips the general store in its family-cluster sweep (it is not a class shelf),
 and `tests/progression_spec.lua` pins the whole arrangement.
@@ -341,7 +341,7 @@ class-parent invariant, so a mistagged item fails the build instead of silently 
 **Every surface that shows an item names its discipline.** The hover tooltip carries a `Discipline` row
 (`ui/item_tooltip.lua`) — which covers the grid, the Armory, loot reveals, the combat log and dialogue
 rewards, since they all hover the same tooltip. The two panels that build their own detail column instead
-of hovering — the shop shelf (`ui/panels/shop.lua`) and the forge (`ui/panels/blacksmith.lua`) — print the
+of hovering — the shop shelf (`ui/panels/shop.lua`) and the forge (`ui/panels/forge.lua`) — print the
 name opposite the item's type line, via `ItemTooltip.printDiscipline`. That helper and
 `Discipline.displayName` are the single owners of the wording and the tint, so no surface can drift or
 print a raw id; `tests/discipline_spec.lua` pins that every tagged item resolves to a name.

@@ -163,6 +163,15 @@ local function snapshotCharacter(char)
     end
     if next(growthBy) then snap.growthBy = growthBy end
 
+    -- Banked discipline technique (models/discipline.lua) -- a wallet, not a tally, so unlike its
+    -- neighbours above it can be spent back down to nothing. A discipline that has been fully spent
+    -- drops out of the save exactly as an unearned one does, which is correct: both hold zero.
+    local technique = {}
+    for id, amount in pairs(char.technique or {}) do
+        if amount and amount > 0 then technique[id] = amount end
+    end
+    if next(technique) then snap.technique = technique end
+
     return snap
 end
 
@@ -192,6 +201,10 @@ function Save.snapshotRun(run, player)
     if not (run and run.grid and run.map) then return nil end
     local keysHeld = {}
     for keyId in pairs(run.map.keysHeld or {}) do keysHeld[keyId] = true end
+    -- The run's own material haul, still unbanked (Quest.complete pays it out at the objective). Without
+    -- this a resumed run would walk back over already-picked caches with nothing to show for them.
+    local cacheHaul = {}
+    for matId, count in pairs(run.map.cacheHaul or {}) do cacheHaul[matId] = count end
     -- Current resource pools per character id (the same key formation uses -- roster ids are unique).
     -- Only pools that exist are stored; a member at full simply reloads to the same value.
     local resources = {}
@@ -212,6 +225,7 @@ function Save.snapshotRun(run, player)
         px = run.map.px,
         py = run.map.py,
         keysHeld = keysHeld,
+        cacheHaul = cacheHaul,           -- forging materials picked this run, banked at the objective
         abilityState = run.abilityState, -- companion overworld scratch (banked vigils/steps/...); plain data
         relicState = run.relicState,     -- run relics carried this quest ({ held, scratch }); plain data
         resources = resources,
@@ -232,6 +246,7 @@ function Save.restoreRun(snap)
         prestige = snap.prestige or 1,
         px = snap.px, py = snap.py,
         keysHeld = snap.keysHeld or {},
+        cacheHaul = snap.cacheHaul or {},
         abilityState = snap.abilityState or {},
         relicState = snap.relicState or { held = {}, scratch = {} }, -- run relics; see snapshotRun
         resources = snap.resources or {}, -- charId -> { health/mana/stamina = current }; see snapshotRun
@@ -292,15 +307,16 @@ function Save.snapshot(player)
     -- Omitted while zero so a save that has never finished the game diffs clean.
     local ngPlus = (player.ngPlus or 0) > 0 and player.ngPlus or nil
 
-    -- The persistent marching grid: charId -> { col, row } (models/player.lua). Purely additive, so
-    -- Save.VERSION does not move -- an older save loads with no formation, which reads as "everyone
-    -- auto-placed", exactly the pre-formation behaviour. Kept by charId (never by roster index) so it
-    -- survives untouched; omitted while empty so a save that never arranged one diffs clean.
-    local formation
-    for id, slot in pairs(player.formation or {}) do
-        if slot and slot.col and slot.row then
-            formation = formation or {}
-            formation[id] = { col = slot.col, row = slot.row }
+    -- Who took the field last battle, by charId -- the deployment phase's opening pick, a convenience
+    -- and never a rule (models/player.lua's Player.noteDeployed). Placement itself is decided per battle
+    -- and is deliberately not saved. Purely additive, so Save.VERSION does not move: an older save loads
+    -- with none remembered and its next deployment phase simply opens with nobody pre-selected.
+    -- Kept by charId (never by roster index) so it survives a roster reshuffle; omitted while empty.
+    local lastDeployed
+    for _, id in ipairs(player.lastDeployed or {}) do
+        if id then
+            lastDeployed = lastDeployed or {}
+            lastDeployed[#lastDeployed + 1] = id
         end
     end
 
@@ -330,7 +346,7 @@ function Save.snapshot(player)
         recipes = recipes,
         visitedVendors = visitedVendors,
         announcedDisciplines = announcedDisciplines,
-        formation = formation,
+        lastDeployed = lastDeployed,
         roster = roster,
         party = party,
         stash = stash,
@@ -356,6 +372,7 @@ local function restoreCharacter(snap)
         growth = snap.growth,
         classUseSinceLevel = snap.classUseSinceLevel,
         growthBy = snap.growthBy,
+        technique = snap.technique,
     })
 
     -- A save written before per-class level crediting existed carries no `growthBy`, so the ledger
@@ -459,14 +476,12 @@ function Save.restore(snap)
         if seen then announcedDisciplines[disciplineId] = true end
     end
 
-    -- The marching grid, charId -> { col, row }. An entry for a character no longer in the roster is
-    -- harmless -- Player.formationSlot only ever reads it by a live char's id -- so it is kept as-is
-    -- rather than filtered, the same forgiving default the flags above take.
-    local formation = {}
-    for id, slot in pairs(snap.formation or {}) do
-        if type(slot) == "table" and slot.col and slot.row then
-            formation[id] = { col = slot.col, row = slot.row }
-        end
+    -- Who was fielded last battle, by charId. An id no longer on the roster is harmless -- the
+    -- deployment phase only ever asks about a live company member -- so it is kept as-is rather than
+    -- filtered, the same forgiving default the flags above take.
+    local lastDeployed = {}
+    for _, id in ipairs(snap.lastDeployed or {}) do
+        if type(id) == "string" then lastDeployed[#lastDeployed + 1] = id end
     end
 
     -- The active overworld run, rehydrated into a resume descriptor (or nil when there is none, or it is
@@ -488,7 +503,7 @@ function Save.restore(snap)
         recipes = recipes,
         visitedVendors = visitedVendors,
         announcedDisciplines = announcedDisciplines,
-        formation = formation,
+        lastDeployed = lastDeployed,
         roster = roster,
         party = party,
         stash = stash,

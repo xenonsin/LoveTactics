@@ -570,7 +570,10 @@ return {
                     for x = 1, grid.cols do
                         local c = grid:get(x, y)
                         local isLeaf = #grid:pathNeighbors(x, y) <= 1
+                        -- A cache counts as content: a spur ending in forging stock is a paid detour,
+                        -- which is exactly what this pass exists to leave standing.
                         local barren = c.tile == "path" and not c.encounter and not c.gate and not c.key
+                            and not c.cache
                             and not (grid.start.x == x and grid.start.y == y)
                             and not (grid.objective.x == x and grid.objective.y == y)
                         assert(not (isLeaf and barren),
@@ -648,6 +651,87 @@ return {
             -- blueprint still intact
             assert(Quest.defs.quest_colosseum_slot_03.id == nil, "quest blueprint mutated")
             assert(Quest.defs.quest_colosseum_slot_03.map.keyCount == 2, "quest map blueprint mutated")
+        end,
+    },
+    {
+        name = "caches land on spare dead ends, never on top of other content",
+        fn = function()
+            local Material = require("models.material")
+            local house = Material.houseFor("knight")
+            local anyDeadEnd, anyHouse = false, false
+            for seed = 1, 20 do
+                local grid = Overworld.generate({
+                    seed = seed, biome = "forest", encounterCount = { min = 5, max = 8 },
+                    keyCount = 1, objective = { name = "Boss" }, houseMaterial = house,
+                    encounters = { { kind = "combat", weight = 1 } },
+                })
+                local caches = 0
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local c = grid:get(x, y)
+                        if c.cache then
+                            caches = caches + 1
+                            assert(not c.encounter and not c.gate and not c.key,
+                                "seed " .. seed .. ": a cache doubled up on other content at " .. x .. "," .. y)
+                            assert(typeWalkable(c.tile), "seed " .. seed .. ": a cache landed off the trail")
+                            assert(not (grid.start.x == x and grid.start.y == y), "a cache sat on the start tile")
+                            assert(next(c.cache.materials), "seed " .. seed .. ": an empty cache")
+                            if #grid:pathNeighbors(x, y) == 1 then anyDeadEnd = true end
+                            if c.cache.materials[house] then anyHouse = true end
+                        end
+                    end
+                end
+                assert(caches > 0, "seed " .. seed .. ": a rolled board paid out nothing")
+                assert(caches <= grid.cacheTarget, "seed " .. seed .. ": more caches than the target")
+                assert((grid:solve()), "seed " .. seed .. ": caches broke solvability")
+            end
+            assert(anyDeadEnd, "caches should prefer dead ends -- none landed on one across 20 seeds")
+            assert(anyHouse, "the sponsoring house's stock should ride in the payload")
+        end,
+    },
+    {
+        name = "a cache's payload grows with the detour it cost, and is seed-stable",
+        fn = function()
+            local Material = require("models.material")
+            local params = {
+                seed = 77, biome = "forest", encounterCount = 8, keyCount = 1,
+                objective = { name = "Boss" }, houseMaterial = Material.houseFor("mage"),
+                encounters = { { kind = "combat", weight = 1 } },
+            }
+            local a = Overworld.generate(params)
+            local b = Overworld.generate(params)
+
+            local function haul(grid)
+                local out, byDetour = {}, {}
+                local dist = grid:spineDistances()
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local c = grid:get(x, y)
+                        if c.cache then
+                            local total = 0
+                            for _, n in pairs(c.cache.materials) do total = total + n end
+                            out[#out + 1] = x .. "," .. y .. "=" .. total
+                            byDetour[#byDetour + 1] = { d = dist[c.y * 100000 + c.x] or 0, total = total }
+                        end
+                    end
+                end
+                table.sort(out)
+                return table.concat(out, "|"), byDetour
+            end
+
+            local sigA, detours = haul(a)
+            local sigB = haul(b)
+            assert(sigA == sigB, "the same seed must lay the same caches")
+            -- A tile ON the route pays the floor; nothing further out ever pays less than it.
+            local floor
+            for _, e in ipairs(detours) do
+                if e.d == 0 then floor = math.min(floor or e.total, e.total) end
+            end
+            for _, e in ipairs(detours) do
+                if floor and e.d > 0 then
+                    assert(e.total >= floor, "a detour paid less than a tile on the road")
+                end
+            end
         end,
     },
 }

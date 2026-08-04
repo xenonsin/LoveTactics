@@ -24,13 +24,12 @@ return {
     difficulty = "Hard",
     sponsor = "bastion",
     rewardGold = 250,
-    rewardPrestige = 1,
     -- Both parents, earned: "quest_bastion_slot_03" is the first knight subclass gate on its line,
     -- "quest_undercroft_slot_04" the first rogue. Holding either is impossible without them.
     requiredQuests = { "quest_bastion_slot_03", "quest_undercroft_slot_04" },
     requiredPrestige = 2,
     map = {
-        biome = "castle",
+        biome = "swamp",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },
         objective = {
             name = "The Shieldbreaker",

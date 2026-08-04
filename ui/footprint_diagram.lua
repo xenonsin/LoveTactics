@@ -1,5 +1,5 @@
 -- A small drawn picture of an ability's AREA footprint -- the actual tiles a line / cone / blast
--- sweeps -- for the blacksmith growth sheet, where a weapon whose footprint OPENS as it is forged
+-- sweeps -- for the Forge growth sheet, where a weapon whose footprint OPENS as it is forged
 -- (The First Motion's line into a cone) needs its shape SHOWN, not described in a number column.
 --
 -- Board-agnostic: the caster faces north and the shape is drawn around them, mirroring the geometry

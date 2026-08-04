@@ -25,13 +25,12 @@ return {
     difficulty = "Hard",
     sponsor = "alchemist",
     rewardGold = 250,
-    rewardPrestige = 1,
     -- Both parents, earned: "quest_arcanum_slot_03" is the first mage subclass gate on its line,
     -- "quest_alchemist_slot_04" the first alchemist. Holding either is impossible without them.
     requiredQuests = { "quest_arcanum_slot_03", "quest_alchemist_slot_04" },
     requiredPrestige = 4,
     map = {
-        biome = "castle",
+        biome = "volcanic",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },
         objective = {
             name = "The Line",

@@ -31,7 +31,7 @@ return {
     tags = { "pierce", "physical" },
     class = "hunter",
     price = 240,
-    unlockQuests = 3,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         -- NO `minRange` of its own, deliberately, and it is the only bow-gated ability on the shelf

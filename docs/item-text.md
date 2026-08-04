@@ -234,7 +234,7 @@ speak for it and omits this.
 |---|---|---|
 | Item tooltip (`ui/item_tooltip.lua`) | under the headline stat | italic, last, after a separator |
 | Shop panel (`ui/panels/shop.lua`) | yes | italic, beneath it |
-| Blacksmith panel (`ui/panels/blacksmith.lua`) | yes | italic, beneath it |
+| Forge panel (`ui/panels/forge.lua`) | yes | italic, beneath it |
 
 A **status** or **keyword** description is item text too, and it reaches the player through the same
 two surfaces: the glossary (`ui/glossary_panel.lua`) prints the `description` off `data/status/*.lua`

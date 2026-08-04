@@ -221,18 +221,29 @@ return {
         end,
     },
     {
-        -- The top tier threshold (Vendor.TIERS, currently 10 quests) is the ceiling: a vendor sponsors
-        -- more quests than that, so gating stock any higher would put it out of reach. An unlockQuests
-        -- past the top wave is unreachable stock.
-        name = "no item is gated past the top unlock tier",
+        -- Gates are per-QUEST now (tools/unlock_rescale), so the ceiling is per-HOUSE: an item may not
+        -- ask for more quests than its own sponsor actually runs. Anything past that is stock nobody
+        -- can ever reach, and the last two quests of a line are the payoff rather than a gate -- so the
+        -- real ceiling is Q-2, the number the rescale spreads up to.
+        name = "no item is gated past the quests its house actually sponsors",
         fn = function()
             local Vendor = require("models.vendor")
-            local ceiling = 0
-            for _, threshold in ipairs(Vendor.TIERS) do ceiling = math.max(ceiling, threshold) end
-            assert(ceiling > 0, "the vendors declare some unlock tiers at all")
+            local Quest = require("models.quest")
+            local vendorOf, counts = {}, {}
+            for vid, vdef in pairs(Vendor.defs) do
+                if vdef.class then vendorOf[vdef.class] = vid end
+            end
+            for _, qdef in pairs(Quest.defs) do
+                if qdef.sponsor then counts[qdef.sponsor] = (counts[qdef.sponsor] or 0) + 1 end
+            end
             for id, def in pairs(Item.defs) do
-                assert((def.unlockQuests or 0) <= ceiling,
-                    id .. " needs " .. tostring(def.unlockQuests) .. " quests, past the top tier of " .. ceiling)
+                local gate = def.unlockQuests or 0
+                if gate > 0 then
+                    local vendorId = def.class and vendorOf[def.class]
+                    local sponsored = vendorId and counts[vendorId] or 0
+                    assert(gate <= sponsored - 2,
+                        id .. " needs " .. gate .. " quests of a house that runs " .. sponsored)
+                end
             end
         end,
     },

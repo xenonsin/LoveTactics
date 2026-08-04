@@ -30,7 +30,7 @@ return {
     class = "mage",
     discipline = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
     price = 380,
-    unlockQuests = 6,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         allowOccupied = true, -- the dark falls on people as readily as on empty ground

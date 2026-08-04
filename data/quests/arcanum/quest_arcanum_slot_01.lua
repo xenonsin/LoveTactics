@@ -10,10 +10,9 @@ return {
     sponsor = "arcanum",
     rewardItems = { "weapon_iron_crook", "armor_gleaners_mantle" },
     rewardGold = 140,
-    rewardPrestige = 1,
     requiredPrestige = 3,
     map = {
-        biome = "castle",
+        biome = "swamp",
         encounters = { min = 5, max = 8, always = { "encounter_elite" } },
         objective = {
             name = "The Reading Room",

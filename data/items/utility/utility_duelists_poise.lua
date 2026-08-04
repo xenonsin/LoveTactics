@@ -16,6 +16,6 @@ return {
     class = "rogue",
     discipline = "duelist", -- fighter x rogue; the Duel-stance mechanic's first stock
     price = 400,
-    unlockQuests = 6,
+    unlockQuests = 8,
     traits = { "trait_duelists_poise" },
 }

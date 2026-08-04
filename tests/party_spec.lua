@@ -6,6 +6,7 @@
 
 local Player = require("models.player")
 local Vendor = require("models.vendor")
+local Forge = require("models.forge")
 local Item = require("models.item")
 local Character = require("models.character")
 local Save = require("models.save")
@@ -80,6 +81,33 @@ return {
             assert(not Player.addToParty(p, Character.instantiate("character_rowan")),
                 "adding past MAX_PARTY must fail")
             assert(#p.party == Player.MAX_PARTY, "party overfilled")
+        end,
+    },
+    {
+        -- The company is what marches; the field is how many of them stand on the board at once, chosen
+        -- per battle in the deployment phase (docs/deployment.md). The whole point of the change is that
+        -- the leftovers are a BENCH, so the company has to be big enough to have one.
+        name = "the company is bigger than the field, so there is always a bench to rotate from",
+        fn = function()
+            assert(Player.MAX_FIELD < Player.MAX_PARTY,
+                "a company no bigger than the field leaves nobody to rotate in")
+            assert(Player.MAX_PARTY == Player.MAX_FIELD * 2,
+                "half the company opens the fight and half waits -- see models/player.lua")
+        end,
+    },
+    {
+        name = "who was fielded last battle is remembered by id, and survives a save",
+        fn = function()
+            local p = Player.new()
+            local member = p.roster[1]
+            Player.noteDeployed(p, { member })
+            assert(Player.wasDeployed(p, member), "the deployment phase's opening pick remembers them")
+            local restored = Save.restore(Save.snapshot(p))
+            local match
+            for _, c in ipairs(restored.roster) do
+                if c.id == member.id then match = c end
+            end
+            assert(match and Player.wasDeployed(restored, match), "and it came back off the save")
         end,
     },
     {
@@ -176,26 +204,27 @@ return {
         end,
     },
     {
-        name = "Vendor.upgradeAbility hones an owned ability one level for gold",
+        name = "the Forge hones an owned ability one level for gold and materials",
         fn = function()
-            -- An upgradable ability item (one with a magnitude to level) whose class matches a vendor.
-            local abilityId, vendorId
+            -- An upgradable ability item (one with a magnitude to level) belonging to some house.
+            local abilityId
             for id, def in pairs(Item.defs) do
-                if def.type == "ability" and def.class and Item.isUpgradable(Item.instantiate(id)) then
-                    for vid, vdef in pairs(Vendor.defs) do
-                        if vdef.class == def.class then abilityId, vendorId = id, vid break end
-                    end
+                if def.type == "ability" and def.class and not def.discipline
+                    and Item.isUpgradable(Item.instantiate(id)) then
+                    abilityId = id
+                    break
                 end
-                if abilityId then break end
             end
-            if not abilityId then return end -- no class-matched ability in data
+            if not abilityId then return end -- no classed ability in data
             local p = Player.new()
-            p.gold = 500
+            p.gold = 5000
             local item = Item.instantiate(abilityId)
-            local newItem = Vendor.upgradeAbility(p, vendorId, item)
-            assert(newItem, "upgrade should succeed at rank 1")
+            local cost = Forge.upgradeCost(p, item)
+            for id, n in pairs(cost.materials) do p.materials[id] = n end
+            local newItem = Forge.upgrade(p, item)
+            assert(newItem, "the first rung is open with no quests done")
             assert((newItem.level or 0) == (item.level or 0) + 1, "level should rise by one")
-            assert(p.gold < 500, "gold should be spent on the upgrade")
+            assert(p.gold == 5000 - cost.gold, "gold should be spent on the upgrade")
         end,
     },
     {

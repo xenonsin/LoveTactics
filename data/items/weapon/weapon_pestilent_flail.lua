@@ -17,7 +17,7 @@ return {
     class = "knight",
     discipline = "plague_knight", -- knight x alchemist; the Contagion mechanic's first stock
     price = 280,
-    unlockQuests = 6,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 1,

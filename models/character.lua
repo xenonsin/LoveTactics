@@ -237,6 +237,27 @@ function Character.recordUse(char, class)
     char.classUseSinceLevel[class] = (char.classUseSinceLevel[class] or 0) + 1
 end
 
+-- Bank `amount` technique in discipline `id` on this character. A THIRD ledger alongside the two
+-- above, and deliberately not folded into them: the tallies above are VOTES (they decide which growth
+-- table the next level applies, and the loser's count is discarded on the level-up), while technique is
+-- a BANK -- earmarked, monotonic until spent, and the currency the Forge bills for discipline gear
+-- (models/forge.lua). A vote and a bank cannot share a counter.
+--
+-- PER CHARACTER, because that is what makes specializing pay. A pooled roster-wide total would make
+-- putting one cheap discipline item on all four bodies accrue four times as fast, so spreading would
+-- strictly dominate committing -- the exact inversion the old max-across-roster read of
+-- Discipline.level existed to prevent. The bill spends from whichever body holds the most
+-- (Discipline.techniqueHolder), so gear stays free to circulate while the pressure stays on the body.
+--
+-- No `Discipline` require here: this module stays dependency-light, and only the caller
+-- (Combat.useItem) needs to know an id is a real discipline. The key is stored as handed over.
+function Character.recordTechnique(char, id, amount)
+    if not (char and id) or (amount or 0) <= 0 then return 0 end
+    char.technique = char.technique or {}
+    char.technique[id] = (char.technique[id] or 0) + amount
+    return amount
+end
+
 -- Build a fresh, mutable character instance from a blueprint id. `progress` (optional) restores the
 -- saved level-up state: { level, classUse, growth }. When present, the accumulated growth deltas are
 -- re-baked into the stats here (max for resource stats), so a loaded character comes back at its full
@@ -332,6 +353,10 @@ function Character.instantiate(id, progress)
         -- only ever grows and is what a character sheet reads as "Knight 3 / Mage 2".
         classUseSinceLevel = (progress and progress.classUseSinceLevel) or {},
         growthBy = (progress and progress.growthBy) or {},
+        -- Banked discipline technique, { [disciplineId] = amount } -- earned per action and SPENT at
+        -- the Forge (Character.recordTechnique). Unlike the tallies above this is a wallet, not a
+        -- reading, which is why it survives a level-up untouched and why it can go down.
+        technique = (progress and progress.technique) or {},
         inventory = {},
         -- Hidden fallback weapon (never in inventory, never shown in the item grid). Sourced
         -- from the blueprint's `unarmed` id or the generic default; explicitly `false` for a body

@@ -1,7 +1,11 @@
 -- Player logic. Defaults live in data/player.lua; `Player.new` builds the
--- mutable runtime state: the full roster of owned characters, the active
--- party (a capped subset of the roster), the stash of unequipped items, and the
+-- mutable runtime state: the full roster of owned characters, the marching company
+-- (a capped subset of the roster), the stash of unequipped items, and the
 -- progression state (gold, prestige, completed quests -- which double as vendor standing).
+--
+-- The company is who comes to the quest; WHO OF THEM FIGHTS, and where they stand, is decided per
+-- battle in the deployment phase (states/battle.lua) and rotated during it (models/combat.lua). This
+-- file therefore knows two numbers about the board -- MAX_PARTY and MAX_FIELD -- and nothing else.
 --
 -- `Player.active` is the one live player for the session. States must read it via
 -- `Player.start()` rather than calling `Player.new()`, which discards all progress.
@@ -20,20 +24,16 @@ Player.defaults = require("data.player")
 -- the player to. nil until a game is started or loaded.
 Player.active = nil
 
--- Hard cap on the active party. The roster (owned characters) is unbounded;
--- only this many can be deployed at once.
-Player.MAX_PARTY = 4
+-- Hard cap on the COMPANY -- the members who march to a quest. The roster (owned characters) is
+-- unbounded; only this many come along. It is deliberately twice MAX_FIELD: half the company opens the
+-- fight and the other half is the bench you rotate from (models/combat.lua's Combat.rotate).
+Player.MAX_PARTY = 8
 
--- The marching grid: the persistent formation the player arranges once in the hub (the Formation tab
--- of the Loadout panel) and every procedural battle then seats the party into. A grid of columns x
--- rows where ROW 1 IS THE FRONT LINE -- the row nearest the enemy -- so stacking two members in one
--- column puts one in front and one screened behind. Sized to hold the whole party (MAX_PARTY) with
--- room to spread OR bunch; a 4-wide grid maps onto the board's 8-wide near band with the same even
--- spacing the auto-placement already used (models/arena.lua), so an untouched formation reproduces
--- today's placement exactly. See [[trait_formation_fighter]]: this is what makes opening-bell
--- adjacency the player's choice rather than a coin flip.
-Player.FORMATION_COLS = 4
-Player.FORMATION_ROWS = 2
+-- Hard cap on the FIELD -- how many of the company may stand on the board at once. Which of them do,
+-- and on which tiles, is chosen per battle in the deployment phase (states/battle.lua); nothing about
+-- placement is persisted, so this is the only number the hub needs to know about the board.
+-- models/combat.lua declares its own mirror of this (Combat.MAX_FIELD) to stay player-free.
+Player.MAX_FIELD = 4
 
 -- Base overworld fog-of-war vision radius (tiles seen around the player). A party
 -- member carrying an item with a larger visionRadius (e.g. a torch) raises it.
@@ -55,8 +55,8 @@ function Player.visionRadius(player)
     return r
 end
 
--- Add a roster member to the active party, enforcing the party cap and rejecting a member who is
--- already deployed. Returns true on success, false if the party is full or already holds `char`.
+-- Add a roster member to the marching company, enforcing the company cap and rejecting a member who is
+-- already marching. Returns true on success, false if the company is full or already holds `char`.
 function Player.addToParty(player, char)
     if #player.party >= Player.MAX_PARTY then
         return false
@@ -69,45 +69,32 @@ function Player.addToParty(player, char)
 end
 
 -- ---------------------------------------------------------------------------
--- Marching formation (persistent placement; see Player.FORMATION_COLS/ROWS)
+-- Who fought last time (a convenience, never a rule)
 -- ---------------------------------------------------------------------------
 --
--- Stored on `player.formation` as charId -> { col, row } (1-based; row 1 is the front line). Keyed by
--- CHARACTER ID, not by party index, so it survives recruiting, benching and a save/load round trip
--- untouched -- a member keeps their assigned cell whether or not they are currently deployed. A member
--- with no entry falls back to the arena's auto-spread (models/arena.lua), so an empty formation, and
--- thus a fresh or pre-formation save, behaves exactly as before the feature existed.
+-- `player.lastDeployed` is a list of character IDS the deployment phase pre-selects when it opens, so a
+-- player who fields the same four fight after fight is not re-placing them from scratch every time. Ids
+-- only -- no tiles. Placement itself is a per-battle decision and is deliberately not persisted anywhere:
+-- the board decides where the good ground is, and the board is different every fight.
 
--- The { col, row } cell assigned to `char`, or nil if it has none (fall back to auto-placement).
-function Player.formationSlot(player, char)
-    if not (player and player.formation and char) then return nil end
-    return player.formation[char.id]
-end
-
--- Assign `char` to grid cell (col, row), evicting whoever already sits there -- a cell holds at most
--- one member, so placing onto an occupied cell SWAPS the two when the mover already had a cell, and
--- otherwise simply displaces the occupant back to unplaced. Clamped to the grid. Returns nothing;
--- persistence is the caller's call (the Formation editor saves on panel close, like the rest of it).
-function Player.setFormationSlot(player, char, col, row)
-    if not (player and char) then return end
-    player.formation = player.formation or {}
-    col = math.max(1, math.min(Player.FORMATION_COLS, col))
-    row = math.max(1, math.min(Player.FORMATION_ROWS, row))
-    local mine = player.formation[char.id]
-    -- Whoever is on the target cell yields it: they take the mover's old cell (a true swap) if the
-    -- mover had one, else they are unplaced.
-    for id, slot in pairs(player.formation) do
-        if id ~= char.id and slot.col == col and slot.row == row then
-            if mine then slot.col, slot.row = mine.col, mine.row else player.formation[id] = nil end
-            break
-        end
+-- Remember the company members who took the field, by id. Called by the deployment phase on commit.
+function Player.noteDeployed(player, chars)
+    if not player then return end
+    local ids = {}
+    for _, char in ipairs(chars or {}) do
+        if char and char.id then ids[#ids + 1] = char.id end
     end
-    player.formation[char.id] = { col = col, row = row }
+    player.lastDeployed = ids
 end
 
--- Drop `char` out of the formation (back to auto-placement). No-op if it had no cell.
-function Player.clearFormationSlot(player, char)
-    if player and player.formation and char then player.formation[char.id] = nil end
+-- Was `char` on the field last fight? Drives the deployment phase's opening selection; false for a
+-- fresh player, whose phase simply opens with nobody placed.
+function Player.wasDeployed(player, char)
+    if not (player and char) then return false end
+    for _, id in ipairs(player.lastDeployed or {}) do
+        if id == char.id then return true end
+    end
+    return false
 end
 
 -- The stash: every item the player owns that isn't sitting in some character's 3x3 grid. It has no
@@ -163,8 +150,8 @@ function Player.takeFromStash(player, index)
     return table.remove(stash, index)
 end
 
--- Remove a character from the active party (leaves them in the roster).
--- Returns true if the character was in the party.
+-- Remove a character from the marching company (leaves them in the roster).
+-- Returns true if the character was marching.
 function Player.removeFromParty(player, char)
     for i, member in ipairs(player.party) do
         if member == char then
@@ -180,8 +167,8 @@ end
 -- sand), and how a class line's main companion joins. Instantiates a fresh copy from the blueprint,
 -- refuses a duplicate of one already owned, and levels the newcomer up to the company's current
 -- prestige so a late recruit is not a level-1 liability (Player.syncLevels is idempotent for the
--- rest). Unless `opts.rosterOnly`, the recruit is also deployed to the active party when there is
--- room -- a full party leaves them on the bench, not un-recruited. Returns the instance, or nil if
+-- rest). Unless `opts.rosterOnly`, the recruit also joins the marching company when there is
+-- room -- a full company leaves them in the roster, not un-recruited. Returns the instance, or nil if
 -- the id was already on the roster. Persistence is the caller's call (like addToParty, unlike
 -- Quest.complete), so a recruit granted mid-prologue is saved at the next real save point.
 function Player.recruit(player, charId, opts)
@@ -250,7 +237,7 @@ function Player.new()
         authorId = nil,
         roster = roster,
         party = {},
-        formation = {}, -- charId -> { col, row }; the persistent marching grid (see Player.setFormationSlot)
+        lastDeployed = {}, -- char ids fielded last battle; the deployment phase's opening pick (Player.noteDeployed)
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board AND is a vendor's standing (Quest.sponsorProgress)
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
@@ -268,6 +255,7 @@ function Player.new()
         local char = byId[charId]
         assert(char, "startingParty id not in roster: " .. tostring(charId))
         assert(Player.addToParty(player, char), "startingParty exceeds MAX_PARTY of " .. Player.MAX_PARTY)
+        player.lastDeployed[#player.lastDeployed + 1] = charId
     end
 
     for _, itemId in ipairs(Player.defaults.startingStash or {}) do
@@ -374,7 +362,7 @@ function Player.authorId(player)
 end
 
 -- ---------------------------------------------------------------------------
--- Materials (forging stock; see models/material.lua and the Blacksmith)
+-- Materials (forging stock; see models/material.lua and models/forge.lua)
 -- ---------------------------------------------------------------------------
 
 -- How many of material `id` the player holds (0, not nil, for one never seen).

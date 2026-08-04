@@ -31,11 +31,10 @@ return {
     sponsor = "hunters_lodge",
     rewardItems = { "weapon_windward" },
     rewardGold = 130,
-    rewardPrestige = 1,
     requiredQuests = { "quest_hunters_lodge_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 2,
     map = {
-        biome = "forest",
+        biome = "swamp",
         encounters = { min = 5, max = 7 },
         objective = {
             name = "The Camp",

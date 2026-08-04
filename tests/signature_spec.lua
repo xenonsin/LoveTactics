@@ -7,7 +7,7 @@ local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
 local Trait = require("models.trait")
-local Blacksmith = require("models.blacksmith")
+local Forge = require("models.forge")
 local Vendor = require("models.vendor")
 local Player = require("models.player")
 local Save = require("models.save")
@@ -85,12 +85,13 @@ return {
         fn = function()
             local player = Player.new()
             player.gold = 1000
-            player.materials = { material_iron_scrap = 10, material_steel_ingot = 10, material_mythril = 10 }
             local relic = Item.instantiate("armor_sworn_aegis")
             assert(Item.isUpgradable(relic), "the relic has a stat to scale")
-            assert(Blacksmith.canForge(relic), "and is forged at the blacksmith")
+            assert(Forge.canWork(relic), "and is worked at the Forge")
+            -- Stock exactly what this relic's bill asks for, whatever house it descends from.
+            for id, n in pairs(Forge.upgradeCost(player, relic).materials) do player.materials[id] = n end
 
-            local up = Blacksmith.upgrade(player, relic)
+            local up = Forge.upgrade(player, relic)
             assert(up and up.level == 1, "the forge returns a +1 instance")
             assert(Item.isBound(up), "the forged relic is still bound")
             assert(up.traits[1] == "trait_oathward", "and still carries its trait")

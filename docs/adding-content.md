@@ -743,6 +743,9 @@ return {
     },
     partySpawns = { { x = 2, y = 8 }, { x = 4, y = 8 }, { x = 6, y = 8 } },
     enemySpawns = { { x = 2, y = 1 }, { x = 4, y = 1 }, { x = 6, y = 1 } },
+    deployZone = {                 -- OPTIONAL: the tiles the deployment phase offers (see below)
+        { x = 1, y = 8 }, { x = 2, y = 8 }, { x = 3, y = 8 },
+    },
     traps = {                      -- optional authored traps (hidden from the player until detected)
         { id = "spike_trap", x = 3, y = 4, side = "enemy" },
     },
@@ -755,6 +758,13 @@ return {
 A curated arena that authors no `props` simply has none: the biome scatter runs in
 `Arena.generateLayout`, so it fills a **generated** board only. Author them here when the placement is
 the point (a keg beside the chokepoint the fight is about).
+
+`deployZone` is likewise optional, and usually omitted. Every ordinary battle opens on a **deployment
+phase** where the player stands four of their company on lit ground, and without this field the zone is
+derived from the board: the rows your `partySpawns` sit on, widened one row toward the enemy. Author it
+only when the map wants to say something the spawns cannot — *you come in through this gate*, *this
+ledge is the only footing on your side*. `partySpawns` still matter either way: they are what the
+phase's **Auto** button places the company on. See [deployment.md](deployment.md).
 
 The fastest way to author one: in a battle press **F5** (dev-only debug save) to serialize the
 current arena to `data/arenas/<biome>_<timestamp>.lua`, then rename and hand-edit it (F5 also

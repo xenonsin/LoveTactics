@@ -26,7 +26,7 @@ return {
     tags = { "arcane" },
     class = "rogue",
     price = 340,
-    unlockQuests = 6,
+    unlockQuests = 8,
     activeAbility = {
         target = "self",
         range = 0,

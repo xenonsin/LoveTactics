@@ -17,7 +17,6 @@ return {
     sponsor = "arcanum",
     rewardItems = { "weapon_second_utterance_wand" },
     rewardGold = 220,
-    rewardPrestige = 1,
     requiredQuests = { "quest_arcanum_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 3,
     requiredSponsorQuests = { vendor = "arcanum", count = 3 }, -- 3 of this house's quests done

@@ -25,17 +25,24 @@ local DraftRun = {}
 DraftRun.WIN_TARGET = 10
 DraftRun.LIVES = 3
 
--- The deployable party cap -- the same four the tactical game fields (Player.MAX_PARTY). Named here
+-- The deployable party cap -- the same four the tactical game puts ON THE BOARD (Player.MAX_FIELD, not
+-- MAX_PARTY: the campaign now brings a company of eight and fields half of it, rotating the bench in
+-- mid-fight). A draft run has no bench, so its company and its field are the same number. Named here
 -- rather than required so this module stays player-free, like models/vendor.lua.
 DraftRun.PARTY_MAX = 4
 
 -- The marching FORMATION the fielded party stands in: a COLS x ROWS grid (row 1 is the front line,
--- nearest the enemy), the same shape the campaign uses (Player.FORMATION_COLS/ROWS) and the same one
--- models/arena.lua seats a party into. Duplicated here (not required) to keep this module player-free,
--- exactly as PARTY_MAX is. The grid holds up to PARTY_MAX units among its cells -- front/back is a
--- tactical choice, so there are more cells than fielders. Unlike the campaign's id-keyed formation,
--- draft seats units by INSTANCE (run.formation[cell] = char), because two un-merged duplicates share an
--- id and an id-keyed slot would collide.
+-- nearest the enemy), which models/arena.lua seats onto the board.
+--
+-- Draft is the LAST mode that keeps one. The campaign chooses placement per battle now, in a deployment
+-- phase over the real board (docs/deployment.md) -- but a draft match is timed, against another team,
+-- with the units already bought and arranged in the shop, so re-opening a placement screen at the bell
+-- would be asking a decision that was already made, on a clock. Hence `deploy = false` in
+-- models/draft_match.lua and this grid.
+--
+-- The grid holds up to PARTY_MAX units among its cells -- front/back is a tactical choice, so there are
+-- more cells than fielders. Units are seated by INSTANCE (run.formation[cell] = char) rather than by id,
+-- because two un-merged duplicates share an id and an id-keyed slot would collide.
 DraftRun.FORMATION_COLS = 4
 DraftRun.FORMATION_ROWS = 2
 DraftRun.FORMATION_CELLS = DraftRun.FORMATION_COLS * DraftRun.FORMATION_ROWS

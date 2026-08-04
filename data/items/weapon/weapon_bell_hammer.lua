@@ -20,7 +20,7 @@ return {
     tags = { "mace", "impact", "physical", "melee" },
     class = "knight",
     price = 210,
-    unlockQuests = 3,
+    unlockQuests = 2,
     activeAbility = {
         target = "enemy",
         range = 1,

@@ -30,7 +30,7 @@ return {
     class = "mage",
     discipline = "necromancer",
     price = 460,
-    unlockQuests = 10,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 5,

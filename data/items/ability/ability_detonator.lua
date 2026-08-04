@@ -23,7 +23,7 @@ return {
     class = "rogue",
     discipline = "saboteur",
     price = 340,
-    unlockQuests = 10,
+    unlockQuests = 8,
     activeAbility = {
         target = "self",
         range = 0,

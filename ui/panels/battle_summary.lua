@@ -9,6 +9,7 @@
 --   local panel = BattleSummary.new({
 --       result = "win" | "loss",
 --       spoils = { gold = 71, loot = { "consumable_healing_potion", ... } }, -- nil for a loss/objective
+--       technique = { ninja = 14, rogue = 3 },                               -- banked this fight; wins only
 --       encounter = battle.encounter,                                        -- { name, ... } (optional)
 --       actions = {                                                          -- 1 button (win) or 1-2 (loss)
 --           { label = "Try Again",     onSelect = function() ... end },      -- fired when chosen; each
@@ -23,6 +24,7 @@
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip")
 local InputMode = require("input_mode")
+local Discipline = require("models.discipline")
 local Item = require("models.item")
 local Scale = require("scale")
 local Colors = require("ui.colors")
@@ -39,6 +41,7 @@ local MAX_PER_ROW = 4
 local BUTTON_H = 44
 local BOTTOM_PAD = 22
 local REVIEW_H = 30   -- the slim "Review Combat Log" button under the action row
+local TECH_ROW_H = 22 -- one "Ninja  +14" discipline-technique line
 
 -- Pacing (seconds), timed off `elapsed`. The banner lands, then gold counts up, then loot cards rise.
 local BANNER_IN  = 0.50   -- title fades + scales in over this
@@ -90,15 +93,39 @@ function BattleSummary.new(opts)
     end
     self.n = #self.items
 
+    -- Discipline technique banked this fight, as sorted { name, amount } rows (models/discipline.lua).
+    -- The gold line says what the fight was WORTH; this says what it BUILT -- and unlike the gold, it
+    -- was earned by choosing to fight a particular way rather than by winning at all. Sorted by amount
+    -- so the discipline the player actually committed to heads the list.
+    -- An id that no longer names a discipline is DROPPED rather than printed raw, the same rule
+    -- Discipline.displayName is written to (a stale id prints nothing instead of leaking a slug into
+    -- the panel). A fight can only bank real ids, so this is about a save outliving a data change.
+    self.technique = nil
+    for id, amount in pairs(opts.technique or {}) do
+        local name = Discipline.displayName(id)
+        if name and (amount or 0) > 0 then
+            self.technique = self.technique or {}
+            self.technique[#self.technique + 1] = { name = name, amount = amount }
+        end
+    end
+    if self.technique then
+        table.sort(self.technique, function(a, b)
+            if a.amount ~= b.amount then return a.amount > b.amount end
+            return a.name < b.name
+        end)
+    end
+
     self.bannerFont = Theme.display(44)
     self.subFont = Theme.body(16)
     self.goldFont = Theme.display(26)
     self.nameFont = Theme.body(13)
     self.hintFont = Theme.body(15)
     self.titleFont = Theme.display(30) -- the card icon-letter fallback font
+    self.techFont = Theme.body(15)
 
     local hasGold = self.gold > 0
     local hasLoot = self.n > 0
+    local techRows = self.technique and #self.technique or 0
 
     -- Box width tracks the loot row; a spoils-less panel (loss / objective) stays compact.
     local cols = math.min(math.max(1, self.n), MAX_PER_ROW)
@@ -111,11 +138,17 @@ function BattleSummary.new(opts)
     self.bannerRelY = y; y = y + 62
     if self.subtitle then self.subRelY = y; y = y + 26 end
     if hasGold then self.goldRelY = y; y = y + 46 end
+    -- Between the takings and the loot: what the fight was worth, then what it built, then what it
+    -- dropped. Reads top-down as the three different things a won fight hands over.
+    if techRows > 0 then
+        self.techRelY = y
+        y = y + techRows * TECH_ROW_H + 10
+    end
     if hasLoot then
         self.gridRelY = y
         y = y + rows * CARD_H + (rows - 1) * CARD_GAP + 8
     end
-    if not hasGold and not hasLoot then y = y + 10 end
+    if not hasGold and not hasLoot and techRows == 0 then y = y + 10 end
     self.buttonRelY = y + 8
     local afterButtons = self.buttonRelY + BUTTON_H
     if self.onReviewLog then
@@ -412,6 +445,22 @@ function BattleSummary:draw()
         love.graphics.ellipse("line", startX + coinR, gy + self.goldFont:getHeight() / 2, coinR, coinR)
         love.graphics.setColor(0.97, 0.90, 0.62)
         love.graphics.print(label, startX + coinR * 2 + 10, gy)
+    end
+
+    -- Discipline technique: "Ninja  +14", the name right-aligned into the panel's midline and the
+    -- amount left-aligned out of it, so a stack of rows reads as one column pair however long the
+    -- names are. Amber, matching the floater that showed each of these landing during the fight.
+    if self.technique then
+        love.graphics.setFont(self.techFont)
+        local ty = by + self.techRelY
+        local half = self.boxW / 2
+        for _, row in ipairs(self.technique) do
+            love.graphics.setColor(0.66, 0.70, 0.80, alpha)
+            love.graphics.printf(row.name, bx, ty, half - 10, "right")
+            love.graphics.setColor(0.93, 0.76, 0.35, alpha)
+            love.graphics.printf("+" .. row.amount, bx + half + 10, ty, half - 10, "left")
+            ty = ty + TECH_ROW_H
+        end
     end
 
     -- Loot cards.

@@ -19,7 +19,7 @@ return {
     tags = { "potion", "restorative" },
     class = "alchemist",
     price = 60,
-    unlockQuests = 0,
+    unlockQuests = 1,
     activeAbility = {
         target = "ally", -- includes the user (a unit is its own ally)
         support = true,  -- previews green: a draught handed over is never an attack

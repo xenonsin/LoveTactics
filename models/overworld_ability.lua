@@ -61,14 +61,16 @@ local function mostWounded(party)
     return target
 end
 
--- The front line (formation row 1), or the whole party if no formation is set.
-local function frontRow(player, party)
-    local out = {}
-    for _, c in ipairs(party) do
-        local slot = Player.formationSlot(player, c)
-        if slot and slot.row == 1 then out[#out + 1] = c end
-    end
-    return #out > 0 and out or party
+-- The front line: whoever the player actually stood nearest the enemy in this fight's deployment phase.
+-- Supplied by the caller as `ctx.frontRow`, because only the battle knows it -- placement is chosen per
+-- battle over the real board (docs/deployment.md), so there is no arrangement here in the overworld to
+-- read. Falls back to the whole party, which is what a dispatch fired outside a battle (a test, a hook
+-- with no board yet) should see: no line has formed, so everyone is on it.
+local function frontRow(ctx, party)
+    local supplied = ctx and ctx.frontRow
+    if type(supplied) == "function" then supplied = supplied() end
+    if type(supplied) == "table" and #supplied > 0 then return supplied end
+    return party
 end
 
 local function anyoneDown(party)
@@ -139,7 +141,7 @@ A.vigil = {
     battleStart = function(_, bucket, ctx)
         local v = bucket.vigils or 0
         if v <= 0 then return end
-        for _, c in ipairs(frontRow(ctx.player, ctx.party)) do restore(c, "health", 3 * v) end
+        for _, c in ipairs(frontRow(ctx, ctx.party)) do restore(c, "health", 3 * v) end
     end,
 }
 

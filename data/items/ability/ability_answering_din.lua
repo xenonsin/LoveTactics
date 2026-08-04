@@ -31,7 +31,7 @@ return {
     tags = { "earth", "impact", "magical" },
     class = "mage",
     price = 400,
-    unlockQuests = 10,
+    unlockQuests = 9,
     activeAbility = {
         target = "self", -- it runs out from the caster's own feet: no aiming, only placement
         range = 0,

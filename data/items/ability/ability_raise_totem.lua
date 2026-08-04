@@ -13,7 +13,7 @@ return {
     class = "priest",
     discipline = "totemist", -- hunter x priest; the Ward-totems mechanic's first stock
     price = 360,
-    unlockQuests = 6,
+    unlockQuests = 8,
     activeAbility = {
         target = "tile",
         range = 3,

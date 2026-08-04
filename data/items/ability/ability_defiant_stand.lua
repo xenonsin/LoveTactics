@@ -21,7 +21,7 @@ return {
     class = "knight",
     discipline = "champion",
     price = 300,
-    unlockQuests = 6,
+    unlockQuests = 4,
     -- Declaring the pool here rather than on a charm is the discipline contract working as intended:
     -- unlock the discipline, buy the item, equip it, and the mechanic is yours (docs/classes.md).
     charge = { key = "defiance", from = { "hitTaken" }, max = 6 },

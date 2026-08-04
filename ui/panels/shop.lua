@@ -1,12 +1,15 @@
 -- Shop pop-up panel: a decluttered vendor screen with no member data on it. A prominent vendor
--- portrait sits on the left; the middle is a single Buy / Sell / Upgrade list; the right is a detail
--- pane for the highlighted row. It replaces the store half of the old unified Party screen (arranging
--- gear onto characters is the Armory's job, ui/panels/party.lua) and carries the ability-honing
--- feature that lived in the retired ui/panels/vendor.lua.
+-- portrait sits on the left; the middle is a single Buy / Sell list; the right is a detail pane for
+-- the highlighted row. It replaces the store half of the old unified Party screen (arranging gear
+-- onto characters is the Armory's job, ui/panels/party.lua).
+--
+-- A vendor SELLS. Upgrading anything -- gear, abilities, consumable recipes -- happens at The Forge
+-- (ui/panels/forge.lua), the city's one bench. This screen used to carry an Upgrade tab for abilities
+-- and recipes, which meant the same `item.level` had two doors with two bills and two ceilings.
 --
 -- One list at a time means ONE focus zone, which is what makes this gamepad-friendly: D-pad moves the
--- row (the detail follows with no extra press), A buys/sells/upgrades it, the shoulder buttons cycle
--- Buy<->Sell<->Upgrade, B closes. No drag, no member targeting.
+-- row (the detail follows with no extra press), A buys/sells it, the shoulder buttons cycle
+-- Buy<->Sell, B closes. No drag, no member targeting.
 --
 -- The detail pane closes with a GLOSSARY block (ui/glossary_panel.lua, gathered by
 -- models/glossary.lua) defining every status the highlighted item can inflict and every keyword its
@@ -21,13 +24,11 @@ local QuantityPopup = require("ui.quantity_popup")
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip") -- printFlavor (sheared italic story line) + printDiscipline
 local GlossaryPanel = require("ui.glossary_panel")
-local GrowthLadder = require("ui.growth_ladder") -- the level-by-level honing path shown on the Upgrade tab
 local Glossary = require("models.glossary")
 local Vendor = require("models.vendor")
 local Player = require("models.player")
 local Quest = require("models.quest") -- sponsorProgress: how many of this vendor's quests are done (its standing)
 local Item = require("models.item")
-local Character = require("models.character")
 local Discipline = require("models.discipline") -- unlockedSet: gates a shelf's locked discipline cut
 local Combat = require("models.combat")
 local Sprite = require("models.sprite")
@@ -40,9 +41,15 @@ Shop.__index = Shop
 
 local BOX_W, BOX_H = 1000, 580
 local ROW_H, ROW_SPACING, MAX_VISIBLE = 38, 6, 9
+-- Matches ui/menu.lua's VALUE_PAD, so the path state on a section header lines up with the name Menu
+-- prints on the other side of the same row.
+local HEADER_PAD = 18
 
-local MODES = { "buy", "sell", "upgrade" }
-local MODE_LABEL = { buy = "Buy", sell = "Sell", upgrade = "Upgrade" }
+-- Two modes, not three: a vendor sells and buys back, and nothing here upgrades. Every ladder in the
+-- game is climbed at The Forge (ui/panels/forge.lua), which is also the only screen that spends
+-- materials -- see the header of models/vendor.lua for why the second door was closed.
+local MODES = { "buy", "sell" }
+local MODE_LABEL = { buy = "Buy", sell = "Sell" }
 
 -- Detail accent per item type (matches ui/item_tooltip.lua).
 local TYPE_COLOR = {
@@ -116,28 +123,6 @@ function Shop.new(opts)
     return self
 end
 
--- Owned items this vendor hones PER INSTANCE (Vendor.canUpgradeHere: abilities of its class --
--- consumables refine per-type instead, see the recipe rows in refresh), with where each lives so an
--- upgrade can swap it back in place: a roster member's grid cell, or a stash slot.
-function Shop:collectUpgrades()
-    local out = {}
-    for _, char in ipairs(self.player.roster or {}) do
-        for cell = 1, Character.MAX_INVENTORY do
-            local item = char.inventory[cell]
-            if item and Vendor.canUpgradeHere(self.vendorId, item) then
-                out[#out + 1] = { item = item, where = char.name or "?",
-                    loc = { kind = "grid", char = char, cell = cell } }
-            end
-        end
-    end
-    for i, item in ipairs(self.player.stash or {}) do
-        if Vendor.canUpgradeHere(self.vendorId, item) then
-            out[#out + 1] = { item = item, where = "Stash", loc = { kind = "stash", index = i } }
-        end
-    end
-    return out
-end
-
 -- The Buy list, banded per discipline and ordered by how many quests each row asks for. The vendor's
 -- own base shelf (items with no discipline) leads under a class-named header; the discipline cuts
 -- follow, each its own section, sections in the order the player unlocks them -- by the fewest quests
@@ -149,7 +134,9 @@ end
 -- exactly as it did.
 function Shop:buildBuyRows()
     local groups, order = {}, {}
-    for _, entry in ipairs(Vendor.stock(self.vendorId, self.questsDone, self.player.recipes, Discipline.unlockedSet(self.player))) do
+    local stock = Vendor.stock(self.vendorId, self.questsDone, self.player.recipes,
+        Discipline.unlockedSet(self.player), Discipline.levelSet(self.player))
+    for _, entry in ipairs(stock) do
         -- Instantiate at the item's recipe tier, so its name (+n) and stats reflect what's bought.
         local item = Item.instantiate(entry.id, nil, entry.level)
         local key = entry.discipline or false -- false == the base shelf, not a discipline
@@ -161,6 +148,8 @@ function Shop:buildBuyRows()
             groups[key], order[#order + 1] = g, key
         end
         g.minUnlock = math.min(g.minUnlock, entry.unlockQuests)
+        g.discipline = entry.discipline
+        g.open = (g.open or 0) + (entry.locked and 0 or 1)
         g.rows[#g.rows + 1] = {
             item = item, entry = entry,
             label = item.name .. "  -  " .. (entry.locked and "locked" or (entry.price .. "g")),
@@ -183,9 +172,68 @@ function Shop:buildBuyRows()
             if r1.entry.price ~= r2.entry.price then return r1.entry.price < r2.entry.price end
             return r1.item.name < r2.item.name
         end)
-        if banded then self.rows[#self.rows + 1] = { header = true, label = g.name } end
-        for _, r in ipairs(g.rows) do self.rows[#self.rows + 1] = r end
+        -- A path the player has NOT yet unlocked collapses to its header. Its stock is unbuyable to
+        -- the last row, and a shelf lists every path its house touches -- so left expanded, a vendor
+        -- runs 9 to 13 screens deep with 67 to 104 dead rows in it (the Arcanum was the worst: 110
+        -- rows, 104 of them locked). All of the useful reading is in the header, which still names the
+        -- path, its shape, what it needs and how much stock waits behind it; the rows underneath only
+        -- cost scrolling. They arrive when the path opens, which makes unlocking one land as a shelf
+        -- visibly filling rather than as greyed text turning black.
+        --
+        -- Only a fully-locked path collapses. A row held by nothing worse than this house's quest
+        -- count stays visible inside an OPEN path: "complete 2 more" is a near thing worth showing,
+        -- and it is the near things that pull. Guarded on `banded`, so a shelf with no header to
+        -- explain the absence can never collapse its only section into nothing.
+        local collapsed = banded and key and not Discipline.isUnlocked(self.player, key)
+        if banded then
+            self.rows[#self.rows + 1] = {
+                header = true, label = g.name,
+                meta = self:pathMeta(g.discipline),
+                count = (g.open or 0) .. " / " .. #g.rows,
+            }
+        end
+        if not collapsed then
+            for _, r in ipairs(g.rows) do self.rows[#self.rows + 1] = r end
+        end
     end
+end
+
+-- What a section header says about the PATH it bands, beside its name: the shape of the discipline and
+-- where the player stands in it. Nil for the base shelf, which is not a path and has nothing to stand in.
+--
+--   "rogue path  -  technique 14"      an unlocked subclass, and how far it has been grown
+--   "rogue x mage  -  locked"          a crossing not yet earned
+--
+-- This is what turns the Buy list into a progression tracker without a second screen. The shelf was
+-- ALREADY banded by discipline and ALREADY ordered by gate depth -- the ladder was there and only the
+-- rungs were labelled. Every path a house touches is a section here whether or not it is open, so the
+-- list reads as "what this house can eventually teach me", with the locked stock under each heading
+-- showing exactly what earning it buys. A tree screen names the node; this names the node and shows
+-- the payload, which is the thing the player actually wants.
+function Shop:pathMeta(disciplineId)
+    if not (disciplineId and Discipline.defs[disciplineId]) then return nil end
+
+    local parents = Discipline.parents(disciplineId)
+    local names = {}
+    for _, c in ipairs(parents) do names[#names + 1] = Item.classDisplayName(c) or c end
+    -- Arity IS the distinction (models/discipline.lua): one parent is a subclass, two is a crossing.
+    local shape = (#names >= 2) and (names[1] .. " x " .. names[2]) or ((names[1] or "?") .. " path")
+
+    if Discipline.isUnlocked(self.player, disciplineId) then
+        return shape .. "  -  technique " .. Discipline.technique(self.player, disciplineId)
+    end
+
+    -- A locked path collapses to this header, so the header is the ONLY place its requirement can be
+    -- read -- Menu steps over a header, which means the detail pane's lockReason never renders for one.
+    -- Name the house when the player is ONE path away, because that is the case they can act on today.
+    -- Two away, `shape` has already named both halves and a second clause would only make the line
+    -- long enough to collide with the count.
+    local missing = Discipline.missingParents(self.player, disciplineId)
+    if #missing == 1 then
+        local house = Vendor.get(Vendor.forClass(missing[1]))
+        if house and house.name then return shape .. "  -  needs " .. house.name end
+    end
+    return shape .. "  -  locked"
 end
 
 -- Rebuild self.rows + the Menu for the current mode. Called on open, on mode switch, and after every
@@ -197,7 +245,7 @@ function Shop:refresh()
 
     if self.mode == "buy" then
         self:buildBuyRows()
-    elseif self.mode == "sell" then
+    else -- sell
         for i, item in ipairs(self.player.stash or {}) do
             local value = Vendor.sellValue(item)
             local qty = (item.quantity or 1) > 1 and ("  x" .. item.quantity) or ""
@@ -205,33 +253,6 @@ function Shop:refresh()
                 item = item, index = i, value = value,
                 label = (item.name or "?") .. "  -  " .. (value > 0 and (value .. "g") or "--") .. qty,
                 locked = value <= 0,
-            }
-        end
-    else -- upgrade
-        -- Consumable recipe tiers: this vendor's own consumable shelf, refined per-type. Upgrading one
-        -- raises the tier every future purchase comes at (Vendor.upgradeRecipe / Player.recipeLevel).
-        for _, entry in ipairs(Vendor.stock(self.vendorId, self.questsDone, self.player.recipes, Discipline.unlockedSet(self.player))) do
-            local sample = entry.type == "consumable" and Item.instantiate(entry.id, nil, entry.level)
-            -- Only the bench that refines a consumable lists it: the Cafe resells potions but hones
-            -- none, so a resold potion never shows here (Vendor.canRefineHere).
-            if sample and Vendor.canRefineHere(self.vendorId, sample) then
-                local cost = Vendor.recipeUpgradeCost(entry.level, self.questsDone)
-                local tail = cost and (cost.locked and "locked" or (cost.gold .. "g")) or "max"
-                self.rows[#self.rows + 1] = {
-                    kind = "recipe", id = entry.id, item = sample, cost = cost,
-                    label = sample.name .. "  -  " .. tail,
-                    locked = (cost == nil) or cost.locked,
-                }
-            end
-        end
-        -- Ability instances, honed per-item (Vendor.canUpgradeHere excludes consumables).
-        for _, up in ipairs(self:collectUpgrades()) do
-            local cost = Vendor.abilityUpgradeCost(up.item, self.questsDone)
-            local tail = cost and (cost.locked and "locked" or (cost.gold .. "g")) or "max"
-            self.rows[#self.rows + 1] = {
-                kind = "instance", item = up.item, up = up, cost = cost,
-                label = up.item.name .. " (" .. up.where .. ")  -  " .. tail,
-                locked = (cost == nil) or cost.locked,
             }
         end
     end
@@ -286,17 +307,47 @@ end
 
 function Shop:activateRow(row)
     if not row then return end
-    if self.mode == "buy" then self:buy(row)
-    elseif self.mode == "sell" then self:sell(row)
-    else self:upgrade(row) end
+    if self.mode == "buy" then self:buy(row) else self:sell(row) end
 end
 
 -- Why a greyed shelf row is not yet buyable. A discipline row is held by its own gate quest, which no
 -- amount of this house's ordinary quests will open -- so that reason LEADS when the discipline is still
 -- locked, and only a plain quest-count row falls back to "complete N more of this house's quests".
+--
+-- The Buy list collapses a fully-locked path to its header (buildBuyRows), so the first branch below is
+-- not normally reachable FROM the shelf any more -- Shop:pathMeta says the same thing, compressed, on
+-- the header instead. It is kept whole because it is the complete answer to the question and the panel
+-- is not the only thing that decides which rows exist: Vendor.stock still returns that stock, and a
+-- future caller (or a change to the collapse rule) must not silently fall through to "Locked."
 function Shop:lockReason(entry)
     if entry.discipline and not Discipline.isUnlocked(self.player, entry.discipline) then
-        return "Locked: unlock the " .. (Discipline.displayName(entry.discipline) or entry.discipline) .. " path first."
+        -- A CROSSING names the parent path still missing, and the house that teaches it. "Unlock the
+        -- Ninja path first" is true and useless -- it restates the lock. Naming the Arcanum turns it
+        -- into somewhere to go, which is the only reason a locked row is worth showing at all.
+        local missing = Discipline.missingParents(self.player, entry.discipline)
+        local parts = {}
+        for _, class in ipairs(missing) do
+            local house = Vendor.get(Vendor.forClass(class))
+            local label = (Item.classDisplayName(class) or class):lower() .. " path"
+            parts[#parts + 1] = house and (label .. " (" .. house.name .. ")") or label
+        end
+        if #parts > 0 then
+            return "Locked: needs a " .. table.concat(parts, " and a ") .. "."
+        end
+        -- Parents held (or a subclass, which has none): what stands in the way is its own gate quest.
+        local def = Discipline.defs[entry.discipline]
+        local gate = def and (def.requiredQuests or {})[1]
+        local quest = gate and Quest.defs[gate]
+        local name = Discipline.displayName(entry.discipline) or entry.discipline
+        if quest and quest.name then
+            return "Locked: complete \"" .. quest.name .. "\" to open the " .. name .. " path."
+        end
+        return "Locked: the " .. name .. " path is not open yet."
+    end
+    -- The deepest cut: the path is open, but this piece asks that you have actually GROWN into it.
+    if entry.unlockLevel and Discipline.level(self.player, entry.discipline) < entry.unlockLevel then
+        local name = Discipline.displayName(entry.discipline) or entry.discipline
+        return "Locked: grow " .. name .. " to level " .. entry.unlockLevel .. "."
     end
     local remaining = (entry.unlockQuests or 0) - (self.questsDone or 0)
     if remaining > 0 then
@@ -356,41 +407,6 @@ function Shop:commitSell(item, value, n)
     self:refresh()
 end
 
-function Shop:upgrade(row)
-    if row.kind == "recipe" then
-        local level, reason = Vendor.upgradeRecipe(self.player, self.vendorId, row.id, self.questsDone)
-        if not level then
-            self:setMsg((reason == "gold" and "Not enough gold.")
-                or (reason == "locked" and "Complete more of this house's quests to refine further.")
-                or (reason == "max level" and (row.item.name .. " is at its highest tier."))
-                or "It cannot be refined here.", false)
-            return
-        end
-        Player.save()
-        self:setMsg(row.item.name .. " recipe refined to +" .. level .. ".", true)
-        self:refresh()
-        return
-    end
-
-    local up = row.up
-    local newItem, reason = Vendor.upgradeAbility(self.player, self.vendorId, up.item, self.questsDone)
-    if not newItem then
-        self:setMsg((reason == "gold" and "Not enough gold.")
-            or (reason == "locked" and "Complete more of this house's quests to upgrade further.")
-            or (reason == "max level" and (up.item.name .. " is at maximum level."))
-            or "It cannot be upgraded here.", false)
-        return
-    end
-    if up.loc.kind == "grid" then
-        up.loc.char.inventory[up.loc.cell] = newItem
-    else
-        self.player.stash[up.loc.index] = newItem
-    end
-    Player.save()
-    self:setMsg(newItem.name .. " honed.", true)
-    self:refresh()
-end
-
 -- ---------------------------------------------------------------------------
 -- Draw
 -- ---------------------------------------------------------------------------
@@ -416,13 +432,13 @@ function Shop:draw()
     self:drawModeSelector()
     if self:hasRows() then
         self.menu:draw()
+        self:drawHeaderMeta()
         self:drawLockedOverlay()
         self:drawDetail()
     else
         love.graphics.setFont(self.bodyFont)
         Theme.set(Theme.muted)
-        local empty = (self.mode == "buy" and "Nothing for sale.")
-            or (self.mode == "sell" and "Your stash is empty.") or "Nothing to upgrade here."
+        local empty = (self.mode == "buy") and "Nothing for sale." or "Your stash is empty."
         love.graphics.printf(empty, self.listLeft, self.boxY + 200, self.listW, "center")
     end
 
@@ -489,6 +505,36 @@ function Shop:drawModeSelector()
     end
 end
 
+-- The path state on each section header, drawn beside the name Menu:drawHeader already printed: the
+-- shape and standing on the right, the open/total count hard right. An overlay rather than a longer
+-- label because a header carries one string through Menu, and packing three columns into it with
+-- spaces does not hold under a proportional face -- the same reason drawLockedOverlay paints over the
+-- menu's own rects instead of asking Menu to know about locked rows.
+function Shop:drawHeaderMeta()
+    love.graphics.setFont(self.smallFont)
+    for i, row in ipairs(self.rows) do
+        local slot = self.menu.items[i]
+        if row.header and slot and slot.x then
+            local ty = slot.y + slot.h / 2 - self.smallFont:getHeight() / 2
+            local right = slot.x + slot.w - HEADER_PAD
+            if row.count then
+                Theme.set(Theme.muted)
+                local cw = self.smallFont:getWidth(row.count)
+                love.graphics.print(row.count, right - cw, ty)
+                right = right - cw - 16
+            end
+            if row.meta then
+                -- Steel, not amber: the header's NAME is the earned thing and already wears the accent
+                -- (Menu:drawHeader). This is the reading beside it, and two golds on one line would
+                -- flatten the distinction the theme keeps between "live" and "structure".
+                Theme.set(Theme.cursor)
+                local mw = self.smallFont:getWidth(row.meta)
+                love.graphics.print(row.meta, math.max(slot.x + HEADER_PAD, right - mw), ty)
+            end
+        end
+    end
+end
+
 -- Menu has no disabled row, so grey the locked/unsellable/maxed ones by painting over them.
 function Shop:drawLockedOverlay()
     for i, row in ipairs(self.rows) do
@@ -543,8 +589,7 @@ function Shop:drawDetail()
     local contentTop = math.max(descBottom, hasSprite and (y + SPR) or descBottom) + 12
 
     -- The story line reads last, just above the glossary (docs/item-text.md): in buy/sell it sits under
-    -- the stat block, drawn there below. The Upgrade tab has no glossary -- it shows the honing path
-    -- instead -- so there the flavor keeps its spot under the description, ahead of that ladder.
+    -- the stat block, drawn there below.
     local function drawFlavor(fy)
         if item.flavor and item.flavor ~= "" then
             return ItemTooltip.printFlavor(item.flavor, x, fy, w, self.bodyFont)
@@ -552,23 +597,6 @@ function Shop:drawDetail()
         return 0
     end
 
-    -- The Upgrade tab shows PROGRESSION rather than a snapshot: the item's whole honing path as a level
-    -- ladder (ui/growth_ladder.lua), current row gold, the level this vendor's button buys green, and
-    -- levels past this standing's reach dimmed. Buy/Sell keep the quick-stats + glossary snapshot below.
-    if self.mode == "upgrade" then
-        drawFlavor(contentTop)
-        love.graphics.setFont(self.smallFont)
-        love.graphics.setColor(0.55, 0.60, 0.70)
-        love.graphics.print("HONING PATH", x, y + 130)
-        local ladderTop = y + 148
-        local ladderBottom = (self.boxY + BOX_H - 96) - 12
-        GrowthLadder.draw(Item.growth(item.id), x, ladderTop, w, ladderBottom - ladderTop, {
-            current = item.level or 0,
-            nextLevel = row.cost and row.cost.level, -- current+1, or nil at max
-            lockedFrom = Vendor.abilityLevelCap(self.questsDone) + 1, -- first level this quest count can't reach
-            rowFont = self.glossFont, headFont = self.smallFont,
-        })
-    else
     -- Quick stats. The item's primary stat -- the one magnitude that defines it (armor's defense, a
     -- blade's Power), quoted at its current level -- leads the block for ANY item, armor included.
     local sy = contentTop
@@ -619,7 +647,6 @@ function Shop:drawDetail()
         GlossaryPanel.drawColumn(entries, x, glossY, w, glossMaxH,
             { nameFont = self.smallFont, descFont = self.glossFont, capFont = self.glossFont })
     end
-    end
 
     -- The transaction line for this mode.
     love.graphics.setFont(self.bodyFont)
@@ -632,25 +659,13 @@ function Shop:drawDetail()
             love.graphics.setColor(0.95, 0.85, 0.55)
             love.graphics.printf("Price: " .. row.entry.price .. " gold", x, ty, w, "left")
         end
-    elseif self.mode == "sell" then
+    else
         if row.value > 0 then
             love.graphics.setColor(0.7, 0.85, 0.7)
             love.graphics.printf("Sell value: " .. row.value .. " gold each", x, ty, w, "left")
         else
             love.graphics.setColor(0.9, 0.6, 0.55)
             love.graphics.printf("Cannot be sold here.", x, ty, w, "left")
-        end
-    else
-        local cost = row.cost
-        if not cost then
-            love.graphics.setColor(0.7, 0.85, 0.7)
-            love.graphics.printf("At maximum level.", x, ty, w, "left")
-        elseif cost.locked then
-            love.graphics.setColor(0.9, 0.6, 0.55)
-            love.graphics.printf("Locked: complete more of this house's quests for +" .. cost.level, x, ty, w, "left")
-        else
-            love.graphics.setColor(0.95, 0.85, 0.55)
-            love.graphics.printf("Upgrade to +" .. cost.level .. ": " .. cost.gold .. " gold", x, ty, w, "left")
         end
     end
 end
@@ -665,8 +680,8 @@ function Shop:drawFooter()
     Theme.set(Theme.muted)
     -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
     local hint = InputMode.isGamepad()
-        and "A: confirm    LB/RB: Buy/Sell/Upgrade    D-pad: scroll    B: close"
-        or "Enter: confirm    Tab: Buy/Sell/Upgrade    Wheel: scroll    Esc: close"
+        and "A: confirm    LB/RB: Buy/Sell    D-pad: scroll    B: close"
+        or "Enter: confirm    Tab: Buy/Sell    Wheel: scroll    Esc: close"
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
 end
 
@@ -680,7 +695,7 @@ function Shop:mousemoved(x, y)
     if self:hasRows() then self.menu:mousemoved(x, y) end
 end
 
--- Hand over the close X, the Buy/Sell/Upgrade mode tabs, or any item row; arrow elsewhere. When the
+-- Hand over the close X, the Buy/Sell mode tabs, or any item row; arrow elsewhere. When the
 -- sell-quantity popup is open it owns the pointer. See ui/cursor.lua.
 function Shop:cursorKind(x, y)
     if self.quantityPopup then return self.quantityPopup:cursorKind(x, y) end

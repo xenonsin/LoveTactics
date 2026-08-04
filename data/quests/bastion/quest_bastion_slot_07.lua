@@ -39,7 +39,6 @@ return {
     outro = "conversation_bastion_slot_07_outro",
     rewardItems = { "utility_relief_order", "weapon_knell_point", "weapon_shepherds_crook" },
     rewardGold = 300,
-    rewardPrestige = 2,
     requiredQuests = { "quest_bastion_slot_06" }, -- slot 7: the line runs in order
     requiredPrestige = 2,
     requiredSponsorQuests = { vendor = "bastion", count = 6 }, -- 6 of this house's quests done

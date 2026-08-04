@@ -166,6 +166,11 @@ function prologue.runBattle(map, onWinExtra)
         biome = map.biome,
         prestige = p.prestige,
         party = p.party,
+        -- No deployment phase in Act 0. Every prologue fight is placed by hand -- a lesson addresses
+        -- units by the cell they spawned on, and the flight's beats are authored against specific
+        -- tiles -- so the board's own spawns are the placement, exactly as they always were. See
+        -- docs/deployment.md.
+        deploy = false,
         stash = p.stash,
         quest = { map = map },
         tutorial = map.tutorial, -- nil for every fight but the village one

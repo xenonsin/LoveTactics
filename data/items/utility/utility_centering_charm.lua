@@ -20,6 +20,6 @@ return {
     class = "priest",
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 220,
-    unlockQuests = 4,
+    unlockQuests = 5,
     waitBehavior = { kind = "gather", speed = 3, power = Curve.ramp(4, 14) },
 }

@@ -13,6 +13,6 @@ return {
     class = "hunter",
     discipline = "skirmisher", -- fighter x hunter; the Hit-and-run mechanic's first stock
     price = 380,
-    unlockQuests = 6,
+    unlockQuests = 9,
     traits = { "trait_skirmishers_momentum" },
 }

@@ -10,6 +10,6 @@ return {
     tags = { "holy" },
     class = "priest",
     price = 240,
-    unlockQuests = 3,
+    unlockQuests = 4,
     traits = { "trait_guardians_blessing" },
 }

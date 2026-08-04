@@ -24,7 +24,7 @@ return {
     class = "priest",
     discipline = "paladin",
     price = 380,
-    unlockQuests = 6,
+    unlockQuests = 9,
     activeAbility = {
         target = "self",
         range = 0,

@@ -22,7 +22,6 @@ return {
     sponsor = "cathedral",
     rewardItems = { "weapon_renewal_staff" },
     rewardGold = 90,
-    rewardPrestige = 1,
     requiredQuests = { "quest_cathedral_slot_01" }, -- slot 2: the line runs in order
     requiredPrestige = 1,
     rewardCharacter = "character_amana",

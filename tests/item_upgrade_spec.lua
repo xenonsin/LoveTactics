@@ -1,11 +1,13 @@
--- Tests for item upgrade levels (models/item.lua) and the blacksmith/vendor upgrade paths: a +n
--- weapon's ability Power and a +n armor's defense scale with the level, the " +n" rides on the name,
--- and the forge/vendor spend the right resources. Headless.
+-- Tests for item upgrade levels (models/item.lua) and the Forge's three benches: a +n weapon's ability
+-- Power and a +n armor's defense scale with the level, the " +n" rides on the name, and the Forge
+-- spends the right resources. The bill itself (which materials, how many) is tests/forge_spec.lua.
+-- Headless.
 
 local Item = require("models.item")
 local Character = require("models.character")
 local Player = require("models.player")
-local Blacksmith = require("models.blacksmith")
+local Forge = require("models.forge")
+local Discipline = require("models.discipline")
 local Vendor = require("models.vendor")
 
 return {
@@ -129,66 +131,72 @@ return {
         end,
     },
     {
-        name = "an ability item is forgeable at the vendor, not the blacksmith",
+        -- One bench now: gear and abilities are both worked per INSTANCE. Only consumables are turned
+        -- away, because they refine per-type through Forge.refineRecipe instead.
+        name = "the Forge works gear and abilities per instance, and turns consumables away",
         fn = function()
             local spell = Item.instantiate("ability_fireball")
-            assert(Item.isUpgradable(spell), "an ability can be upgraded (at its vendor)")
-            assert(not Blacksmith.canForge(spell), "but not at the blacksmith")
-            local sword = Item.instantiate("weapon_iron_sword")
-            assert(Blacksmith.canForge(sword), "a weapon is forged at the blacksmith")
+            assert(Item.isUpgradable(spell) and Forge.canWork(spell), "an ability is honed at the bench")
+            assert(Forge.canWork(Item.instantiate("weapon_iron_sword")), "so is a weapon")
+            local bomb = Item.instantiate("consumable_acid_bomb")
+            assert(not Forge.canWork(bomb), "a consumable is not hammered per instance")
+            assert(Forge.canRefine(bomb), "it refines per recipe instead")
         end,
     },
     {
-        name = "the blacksmith spends gold + materials and returns a leveled instance",
+        name = "the Forge spends gold + materials and returns a leveled instance",
         fn = function()
             local player = Player.new()
             player.gold = 1000
-            player.materials = { material_iron_scrap = 10 }
             local sword = Item.instantiate("weapon_iron_sword")
 
-            local cost = Blacksmith.upgradeCost(sword)
+            local cost = Forge.upgradeCost(player, sword)
+            for id, n in pairs(cost.materials) do player.materials[id] = n end
             local gold0 = player.gold
-            local mat0 = player.materials.material_iron_scrap
-            local matId = next(cost.materials)
 
-            local up = Blacksmith.upgrade(player, sword)
+            local up = Forge.upgrade(player, sword)
             assert(up and up.level == 1, "the forge returns a +1 instance")
             assert(player.gold == gold0 - cost.gold, "gold was spent")
-            assert(player.materials[matId] == mat0 - cost.materials[matId], "materials were spent")
+            for id, n in pairs(cost.materials) do
+                assert((player.materials[id] or 0) == 0, "every material in the bill was spent (" .. id .. " x" .. n .. ")")
+            end
         end,
     },
     {
-        name = "the blacksmith refuses an upgrade the player can't pay for, charging nothing",
+        name = "the Forge refuses an upgrade the player can't pay for, charging nothing",
         fn = function()
             local player = Player.new()
             player.gold = 0
             player.materials = {}
             local sword = Item.instantiate("weapon_iron_sword")
-            local up, reason = Blacksmith.upgrade(player, sword)
+            local up, reason = Forge.upgrade(player, sword)
             assert(up == nil and (reason == "gold" or reason == "materials"), "the forge refuses, got " .. tostring(reason))
             assert(player.gold == 0, "and charges nothing")
         end,
     },
     {
-        name = "a vendor hones an ability for gold, gated by standing",
+        -- The ceiling replaced the old per-vendor standing cap: an ability with a plain class is held
+        -- by the standing of the house that sells it (Forge.ceilingFor), which at zero quests is +2.
+        name = "the Forge hones an ability, and the house's standing caps how far",
         fn = function()
             local player = Player.new()
             player.gold = 1000
-            -- Rank 1 (no reputation) unlocks up to +2; +3 needs higher standing.
             local spell = Item.instantiate("ability_fireball") -- mage class -> arcanum
-            local cost1 = Vendor.abilityUpgradeCost(spell, 1)
-            assert(cost1 and not cost1.locked, "the first upgrade is available at rank 1")
+            local cost1 = Forge.upgradeCost(player, spell)
+            assert(cost1 and not cost1.locked, "the first rung is open with no quests done")
+            for id, n in pairs(cost1.materials) do player.materials[id] = n end
 
-            local up = Vendor.upgradeAbility(player, "arcanum", spell)
-            assert(up and up.level == 1, "the vendor returns a +1 spell")
-            assert(player.gold == 1000 - cost1.gold, "gold was spent, no materials")
+            local up = Forge.upgrade(player, spell)
+            assert(up and up.level == 1, "the forge returns a +1 spell")
+            assert(player.gold == 1000 - cost1.gold, "gold was spent")
 
-            -- A high-level upgrade is locked behind rank until the standing is earned.
+            -- Past the ceiling the bill is still quoted, but the bench will not take it.
             local hi = Item.instantiate("ability_fireball", 1, 3) -- already +3, next is +4
-            local cost4 = Vendor.abilityUpgradeCost(hi, 1)
-            assert(cost4.locked, "+4 is locked at rank 1")
-            local up4, reason = Vendor.upgradeAbility(player, "arcanum", hi)
-            assert(up4 == nil and reason == "locked", "and the vendor refuses it, got " .. tostring(reason))
+            local cost4 = Forge.upgradeCost(player, hi)
+            assert(cost4 and cost4.locked, "+4 is past the ceiling with no quests done")
+            assert(cost4.ceiling == 2, "which stands at +2, got " .. tostring(cost4.ceiling))
+            local up4, reason = Forge.upgrade(player, hi)
+            assert(up4 == nil and reason == "locked", "and the forge refuses it, got " .. tostring(reason))
         end,
     },
     {
@@ -207,17 +215,25 @@ return {
         end,
     },
     {
-        name = "a vendor refines a consumable recipe per-type: gold spent, tier raised, future buys upgraded",
+        -- The acid bomb is Bombardier stock, so it is billed in that discipline's TECHNIQUE rather than
+        -- in gold (models/forge.lua) -- the recipe ladder is climbed by playing the discipline, not by
+        -- shopping. The rest of the refinement contract is unchanged.
+        name = "the Forge refines a consumable recipe per-type: paid once, every future buy upgraded",
         fn = function()
             local player = Player.new()
             player.gold = 1000
             assert(Player.recipeLevel(player, "consumable_acid_bomb") == 0, "the recipe starts at tier 0")
 
-            local cost = Vendor.recipeUpgradeCost(0, 1)
-            local level = Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb")
+            local cost = Forge.recipeCost(player, "consumable_acid_bomb")
+            assert(cost.technique > 0 and cost.gold == 0, "Bombardier stock is billed in technique")
+            for id, n in pairs(cost.materials) do player.materials[id] = n end
+            player.roster[1].technique = { [cost.techniqueId] = cost.technique }
+
+            local level = Forge.refineRecipe(player, "consumable_acid_bomb")
             assert(level == 1, "the recipe rises to +1, got " .. tostring(level))
             assert(Player.recipeLevel(player, "consumable_acid_bomb") == 1, "the tier is stored on the player")
-            assert(player.gold == 1000 - cost.gold, "gold was spent (60), no materials")
+            assert(player.gold == 1000, "no gold was spent on discipline stock")
+            assert(player.roster[1].technique[cost.techniqueId] == 0, "the technique was spent instead")
 
             -- The shelf now lists acid_bomb at the raised tier and its scaled price. A purchase would
             -- instantiate at this level. Queried with a high quest count so its own gate is met.
@@ -230,26 +246,48 @@ return {
         end,
     },
     {
-        name = "recipe refinement is quest-gated, wrong-bench-safe, and refuses when unpaid",
+        -- The acid bomb is Bombardier stock, and a discipline recipe now has NO ceiling: the technique
+        -- price is the whole brake. What used to be a `locked` refusal at +3 is an affordability
+        -- refusal, which is the point of the change -- a wall you can see the height of, and a bank you
+        -- watch fill toward it, rather than a lock that opens silently somewhere off-screen.
+        name = "recipe refinement is gated by banked technique, and refuses when unpaid",
         fn = function()
             local player = Player.new()
-            player.gold = 1000
-            -- The opening tier (no quests done) unlocks +1/+2; +3 is locked until more quests are finished.
-            assert(Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb") == 1)
-            assert(Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb") == 2)
-            local up3, reason = Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb")
-            assert(up3 == nil and reason == "locked", "+3 is locked at rank 1, got " .. tostring(reason))
+            player.gold = 5000
+            player.materials = setmetatable({}, { __index = function() return 99 end })
+            local disciplineId = Forge.recipeCost(player, "consumable_acid_bomb").techniqueId
+            assert(disciplineId, "the acid bomb is discipline stock")
 
-            -- Wrong bench: a vendor that doesn't sell acid can't refine its recipe.
-            local wrong, why = Vendor.upgradeRecipe(player, "arcanum", "consumable_acid_bomb")
-            assert(wrong == nil and why == "class", "the mage vendor won't refine acid, got " .. tostring(why))
+            -- Bank exactly enough for the first two rungs and not the third.
+            local need = 0
+            for tier = 1, 2 do need = need + Discipline.techniqueCost(tier) end
+            player.roster[1].technique = { [disciplineId] = need }
 
-            -- Broke: no gold, nothing charged, tier unchanged.
-            player.gold = 0
-            player.recipes = {}
-            local poor, r = Vendor.upgradeRecipe(player, "alchemist", "consumable_acid_bomb")
-            assert(poor == nil and r == "gold", "no gold -> refused, got " .. tostring(r))
-            assert(player.gold == 0 and Player.recipeLevel(player, "consumable_acid_bomb") == 0, "and nothing changed")
+            assert(Forge.refineRecipe(player, "consumable_acid_bomb") == 1)
+            assert(Forge.refineRecipe(player, "consumable_acid_bomb") == 2)
+            assert(player.roster[1].technique[disciplineId] == 0, "both rungs came out of the bank")
+
+            local up3, reason = Forge.refineRecipe(player, "consumable_acid_bomb")
+            assert(up3 == nil and reason == "technique",
+                "+3 is past what was banked, got " .. tostring(reason))
+            assert(Player.recipeLevel(player, "consumable_acid_bomb") == 2, "and the tier held at +2")
+
+            -- Broke on the other track: a PLAIN recipe still refuses on gold, unchanged.
+            local plain = Player.new()
+            plain.gold = 0
+            plain.materials = setmetatable({}, { __index = function() return 99 end })
+            local plainId
+            for id, def in pairs(Item.defs) do
+                if def.type == "consumable" and def.price and not def.discipline
+                    and Item.isUpgradable(Item.instantiate(id)) then
+                    plainId = plainId or id
+                end
+            end
+            if plainId then
+                local poor, r = Forge.refineRecipe(plain, plainId)
+                assert(poor == nil and r == "gold", "no gold -> refused, got " .. tostring(r))
+                assert(Player.recipeLevel(plain, plainId) == 0, "and nothing changed")
+            end
         end,
     },
 }

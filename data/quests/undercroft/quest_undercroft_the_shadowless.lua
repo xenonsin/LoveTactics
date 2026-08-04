@@ -24,13 +24,12 @@ return {
     difficulty = "Hard",
     sponsor = "undercroft",
     rewardGold = 250,
-    rewardPrestige = 1,
     -- Both parents, earned: "quest_undercroft_slot_04" is the first rogue subclass gate on its line,
     -- "quest_arcanum_slot_03" the first mage. Holding either is impossible without them.
     requiredQuests = { "quest_undercroft_slot_04", "quest_arcanum_slot_03" },
     requiredPrestige = 3,
     map = {
-        biome = "castle",
+        biome = "desert",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },
         objective = {
             name = "Kaen",

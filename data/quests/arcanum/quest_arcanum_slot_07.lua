@@ -38,12 +38,11 @@ return {
     sponsor = "arcanum",
     rewardItems = { "weapon_overchannelled_staff" },
     rewardGold = 300,
-    rewardPrestige = 2,
     requiredQuests = { "quest_arcanum_slot_06" }, -- slot 7: the line runs in order
     requiredPrestige = 3,
     requiredSponsorQuests = { vendor = "arcanum", count = 6 }, -- 6 of this house's quests done
     map = {
-        biome = "castle",
+        biome = "volcanic",
         encounters = { min = 8, max = 11, always = { "encounter_elite" } },
         objective = {
             name = "The Demonstration",

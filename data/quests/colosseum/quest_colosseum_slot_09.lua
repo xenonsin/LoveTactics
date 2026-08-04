@@ -31,7 +31,6 @@ return {
     outro = "conversation_colosseum_slot_09_outro",
     rewardItems = { "weapon_kingsfall", "weapon_anvil_of_the_ninth", "weapon_whitening", "armor_last_stand_plate" },
     rewardGold = 400,
-    rewardPrestige = 2,
     requiredQuests = { "quest_colosseum_slot_08" }, -- slot 9: the line runs in order
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "colosseum", count = 6 }, -- 6 of this house's quests done

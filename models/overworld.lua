@@ -12,6 +12,8 @@
 --   6. gates/keys   - lock the objective's approach behind keys placed so they
 --                     are always collectible first (solvable by construction)
 --   7. encounters   - weighted markers on spaced path tiles
+--   8. caches       - forging materials on the dead ends nothing else claimed,
+--                     scaled by how far off the critical path they sit
 --
 -- Everything is seeded off `params.seed`, so the same seed reproduces the same
 -- map (asserted in tests/overworld_spec.lua).
@@ -22,6 +24,7 @@
 
 local Tileset = require("models.tileset")
 local Biome = require("models.biome")
+local Material = require("models.material") -- cache payloads: craft grades + the sponsoring house's stock
 
 local Overworld = {}
 Overworld.__index = Overworld
@@ -70,9 +73,12 @@ local DIM_MAX_COLS, DIM_MAX_ROWS = 27, 19
 -- only a handful of stops. So scale the span by sqrt(spacing / baseline): density ~ 1/spacing, so
 -- to hold encounter density constant the area scales with spacing and the linear span with its root.
 -- Normalized to the forest's spacing, so forest maps are unchanged.
+--
+-- `caches` counts toward the content the same way keys do: a cache is a stop the player walks to, so
+-- leaving it out of this sum would make maps DENSER rather than larger and quietly undo the sizing.
 local BASELINE_SPACING = 4
-local function deriveDims(encounters, keyCount, spacing)
-    local content = (encounters or 0) + (keyCount or 0)
+local function deriveDims(encounters, keyCount, cacheCount, spacing)
+    local content = (encounters or 0) + (keyCount or 0) + (cacheCount or 0)
     local tightness = math.sqrt((spacing or BASELINE_SPACING) / BASELINE_SPACING)
     local span = math.floor(4.0 * math.sqrt(content) * tightness) -- ~8 at content=4 (forest)
     local cols = math.max(13, math.min(DIM_MAX_COLS, 13 + span))
@@ -110,6 +116,14 @@ function Overworld.generate(params)
     -- Corridor spacing is resolved before sizing so a tight biome gets a smaller footprint (deriveDims).
     self.spacing = params.spacing or biomeDef.spacing or 4
 
+    -- Material caches: how many spare dead ends this map pays out on. Derived from the encounter count
+    -- (about one cache per two stops) unless the quest says otherwise, so a short errand scatters two
+    -- and a long one four without any quest having to author a number. Resolved here, before sizing,
+    -- for the same reason the encounter count is.
+    self.cacheTarget = params.cacheCount ~= nil
+        and resolveCount(params.cacheCount, self.rng)
+        or math.max(1, math.floor((self.encounterTarget or 0) / 2))
+
     -- Vision is per-map, not a global constant: a rolled board reveals a NEIGHBOURHOOD (radius 3) so the
     -- player can read the encounters ahead and plan a route (reveal-then-choose). The tutorial's authored
     -- flight leg keeps the tighter radius 2 (set in fromLayout) so its next leg stays a mystery. A party
@@ -118,7 +132,7 @@ function Overworld.generate(params)
 
     -- Play area: honour explicit cols/rows, otherwise scale with the encounters
     -- (and keys) so the map never sprawls into empty wandering. See deriveDims.
-    local dCols, dRows = deriveDims(self.encounterTarget, params.keyCount, self.spacing)
+    local dCols, dRows = deriveDims(self.encounterTarget, params.keyCount, self.cacheTarget, self.spacing)
     local playCols = params.cols or dCols
     local playRows = params.rows or dRows
     self.cols = playCols + 2 * self.margin
@@ -147,6 +161,7 @@ function Overworld.generate(params)
     self:decorate()
     self:placeObjectiveAndGates(params)
     self:placeEncounters(params)
+    self:placeCaches(params)    -- pay out the dead ends nothing else claimed
     self:pruneDeadStubs()       -- trim barren spur-and-return corridors (no RNG)
     self:assignEncounterTiers() -- difficulty tell for the fog (drawn from rng LAST)
 
@@ -459,15 +474,36 @@ function Overworld:thinBridges()
 end
 
 -- Cosmetic variety for the forest fill (all non-path types are blocked anyway).
+-- How broken-up a biome's fill reads. `rock`/`grass` are the noise thresholds the solid fill breaks at:
+-- widening the gap between them leaves more unbroken fill, narrowing it produces a mottled floor. A
+-- biome absent here uses `default`, which is the forest's original 0.72/0.28 at scale 0.15 -- so every
+-- map that existed before this table produces exactly what it always did.
+--
+-- Deliberately noise-only: `love.math.noise` is deterministic on its coordinates and draws nothing from
+-- the grid's rng, so retuning any row here cannot shift a single seeded draw in the passes that follow.
+local DECOR = {
+    default  = { scale = 0.15, rock = 0.72, grass = 0.28 },
+    -- Dunes run in long unbroken sweeps: a coarse scale and thresholds pushed apart, so the fill
+    -- stays whole and the eye reads distance rather than texture.
+    desert   = { scale = 0.09, rock = 0.82, grass = 0.20 },
+    -- Snow lies flat and even. Almost no rock breaks it; what does is scoured tussock.
+    tundra   = { scale = 0.13, rock = 0.86, grass = 0.34 },
+    -- Fissured, shattered ground -- the most broken fill in the game, at the finest scale.
+    volcanic = { scale = 0.22, rock = 0.58, grass = 0.42 },
+    -- Thicket and standing sedge, patchier than forest but not rocky: rock is rare, grass common.
+    swamp    = { scale = 0.18, rock = 0.88, grass = 0.44 },
+}
+
 function Overworld:decorate()
+    local d = DECOR[self.biome] or DECOR.default
     for y = 1, self.rows do
         for x = 1, self.cols do
             local c = self.cells[y][x]
             if c.tile == "forest" then
-                local n = love.math.noise(x * 0.15, y * 0.15)
-                if n > 0.72 then
+                local n = love.math.noise(x * d.scale, y * d.scale)
+                if n > d.rock then
                     c.tile = "rock"
-                elseif n < 0.28 then
+                elseif n < d.grass then
                     c.tile = "grass"
                 end
             end
@@ -652,6 +688,131 @@ function Overworld:placeKeys(dist, firstGateDist)
         if placed[keyId] then kept[#kept + 1] = keyId end
     end
     self.keyIds = kept
+end
+
+-- ---------------------------------------------------------------------------
+-- Material caches
+-- ---------------------------------------------------------------------------
+
+-- How far off the critical path every walkable tile lies: a multi-source BFS seeded from the whole
+-- spine at once, so a tile ON the route reads 0 and a spur reads the number of tiles the detour costs.
+-- The one measure a cache's payload scales on -- the generator already knows the route, so "how far
+-- did you stray" is free where "was this worth it" would otherwise have to be guessed.
+function Overworld:spineDistances()
+    local dist = {}
+    local q, qi = {}, 1
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local c = self.cells[y][x]
+            if self.spineKeys and self.spineKeys[cellKey(c)] and self:typeWalkable(c.tile) then
+                dist[cellKey(c)] = 0
+                q[#q + 1] = c
+            end
+        end
+    end
+    while qi <= #q do
+        local c = q[qi]; qi = qi + 1
+        for _, n in ipairs(self:pathNeighbors(c.x, c.y)) do
+            if dist[cellKey(n)] == nil then
+                dist[cellKey(n)] = dist[cellKey(c)] + 1
+                q[#q + 1] = n
+            end
+        end
+    end
+    return dist
+end
+
+-- A cache's payload scales with the detour it cost, measured RELATIVE to the deepest detour this
+-- particular board offers -- so "the far spur pays best" is true on a cramped map and a sprawling one
+-- alike. Absolute tile counts do not survive a braided maze, where a spur can wander twenty tiles off
+-- a short spine and turn one tile into a whole campaign's ore.
+--
+-- Both counts are capped hard. The point of the far cache is that it is BETTER, not that it is a
+-- windfall: a full +10 forge bills eleven craft stock, so a single tile must never come close.
+local CACHE_CRAFT_MIN, CACHE_CRAFT_MAX = 1, 4
+local CACHE_HOUSE_MIN, CACHE_HOUSE_MAX = 1, 3
+
+-- Scatter material caches onto the dead ends nothing else claimed. Runs AFTER placeEncounters so it
+-- takes the leftovers -- an encounter is the better payoff for a spur, and this pays out the ones that
+-- would otherwise end in nothing. Runs BEFORE pruneDeadStubs, which treats a cache as reason enough to
+-- keep a corridor alive.
+--
+-- TWO AXES, both already measured by the time this runs:
+--   WHICH   the sponsoring house's stock (params.houseMaterial, resolved by the caller from the
+--           quest's sponsor). Running one house's line therefore yields what ANOTHER house's gear
+--           wants at the Forge -- seven sealed ladders become one economy.
+--   HOW FAR the craft grade and both counts, off the tile's distance from the critical path.
+--
+-- Placing fewer than the target is fine and silent: a cramped board simply pays out less, the same
+-- graceful fallback placeKeys takes.
+function Overworld:placeCaches(params)
+    local count = self.cacheTarget or 0
+    if count <= 0 then return end
+
+    local deadEnds, spare = {}, {}
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local c = self.cells[y][x]
+            if self:typeWalkable(c.tile) and not c.encounter and not c.gate and not c.key
+                and not (self.start.x == x and self.start.y == y) then
+                if #self:pathNeighbors(x, y) == 1 then
+                    deadEnds[#deadEnds + 1] = c
+                else
+                    spare[#spare + 1] = c
+                end
+            end
+        end
+    end
+
+    local function shuffle(t)
+        for i = #t, 2, -1 do
+            local j = self.rng:random(i)
+            t[i], t[j] = t[j], t[i]
+        end
+    end
+    shuffle(deadEnds)
+    shuffle(spare)
+
+    -- Dead ends first, then off-spine tiles: a board that braided all its spurs away still pays, it
+    -- just pays somewhere the player was more likely to pass anyway.
+    local cands = {}
+    for _, c in ipairs(deadEnds) do cands[#cands + 1] = c end
+    local dist = self:spineDistances()
+    for _, c in ipairs(spare) do
+        if (dist[cellKey(c)] or 0) > 0 then cands[#cands + 1] = c end
+    end
+
+    -- The deepest detour ON THIS BOARD is the top of the scale everything else is read against.
+    local deepest = 0
+    for _, c in ipairs(cands) do
+        local d = dist[cellKey(c)] or 0
+        if d > deepest then deepest = d end
+    end
+
+    -- Where `detour` sits on this board's 0..1 scale of strayed-from-the-road.
+    local function ratioOf(detour)
+        if deepest <= 0 then return 0 end
+        return math.min(1, detour / deepest)
+    end
+
+    -- Scale `ratio` onto lo..hi, rounded, so the shallowest cache pays lo and the deepest pays hi.
+    local function scaled(ratio, lo, hi)
+        return lo + math.floor(ratio * (hi - lo) + 0.5)
+    end
+
+    local grades = Material.craftGrades()
+    for i = 1, math.min(count, #cands) do
+        local c = cands[i]
+        local ratio = ratioOf(dist[cellKey(c)] or 0)
+
+        local materials = {}
+        materials[grades[scaled(ratio, 1, #grades)]] = scaled(ratio, CACHE_CRAFT_MIN, CACHE_CRAFT_MAX)
+        if params.houseMaterial then
+            materials[params.houseMaterial] = (materials[params.houseMaterial] or 0)
+                + scaled(ratio, CACHE_HOUSE_MIN, CACHE_HOUSE_MAX)
+        end
+        c.cache = { materials = materials }
+    end
 end
 
 -- Place encounters on spaced trail tiles (never on start/objective/gate/key).
@@ -862,7 +1023,9 @@ end
 -- RNG, so it cannot perturb the seeded map (same seed still reproduces).
 function Overworld:pruneDeadStubs()
     local function protected(c)
-        return c.encounter or c.gate or c.key
+        -- A cache counts: a spur with something at the end of it is not a barren spur, which is the
+        -- only kind this pass exists to remove.
+        return c.encounter or c.gate or c.key or c.cache
             or (self.start and self.start.x == c.x and self.start.y == c.y)
             or (self.objective and self.objective.x == c.x and self.objective.y == c.y)
     end
@@ -914,7 +1077,7 @@ end
 -- (`cleared`), and a lifted key (`picked`). The `encounter`/`gate`/`key` sub-tables are plain data (ids,
 -- names, tiers, loot/conversation ids) and ride along whole. `x`/`y` equal the cell's own indices, so they
 -- are rebuilt from position rather than stored (this is most of the file's cells, so it matters).
-local CELL_FIELDS = { "tile", "river", "bridge", "seen", "cleared", "picked", "encounter", "gate", "key" }
+local CELL_FIELDS = { "tile", "river", "bridge", "seen", "cleared", "picked", "encounter", "gate", "key", "cache" }
 
 -- Snapshot the grid to plain data (no metatable, no love objects, no functions). The map cannot be
 -- regenerated from a seed on load -- the encounter pool is drawn in an unspecified (`pairs`) order, so the

@@ -22,6 +22,6 @@ return {
     class = "rogue",
     discipline = "vanguard",
     price = 380,
-    unlockQuests = 6,
+    unlockQuests = 8,
     traits = { "trait_stripped_plate" },
 }

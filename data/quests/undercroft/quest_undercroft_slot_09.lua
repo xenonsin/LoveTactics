@@ -36,12 +36,11 @@ return {
     sponsor = "undercroft",
     rewardItems = { "armor_slipstep_leathers", "weapon_throughline" },
     rewardGold = 400,
-    rewardPrestige = 2,
     requiredQuests = { "quest_undercroft_slot_08" }, -- slot 9: the line runs in order
     requiredPrestige = 3,
     requiredSponsorQuests = { vendor = "undercroft", count = 6 }, -- 6 of this house's quests done
     map = {
-        biome = "castle",
+        biome = "desert",
         encounters = { min = 10, max = 13, always = { "encounter_elite", "encounter_elite" } },
         objective = {
             name = "The Transfer",

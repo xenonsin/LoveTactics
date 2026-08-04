@@ -24,7 +24,6 @@ return {
     difficulty = "Hard",
     sponsor = "hunters_lodge",
     rewardGold = 250,
-    rewardPrestige = 1,
     -- Both parents, earned: "quest_undercroft_slot_04" is the first rogue subclass gate on its line,
     -- "quest_hunters_lodge_slot_03" the first hunter. Holding either is impossible without them.
     requiredQuests = { "quest_undercroft_slot_04", "quest_hunters_lodge_slot_03" },

@@ -26,7 +26,7 @@ return {
     hands = 2, -- two-handed, like every bow
     class = "hunter",
     price = 800,
-    unlockQuests = 10, -- the bow shelf's capstone
+    unlockQuests = 12, -- the bow shelf's capstone
     activeAbility = {
         target = "enemy",
         range = 5, -- two tiles further than a plain bow

@@ -24,6 +24,6 @@ return {
     class = "fighter",
     discipline = "battlemage",
     price = 400,
-    unlockQuests = 6,
+    unlockQuests = 9,
     traits = { "trait_resonant_grip" },
 }

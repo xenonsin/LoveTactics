@@ -57,6 +57,13 @@ Build.NORMAL_LEVEL = 1
 -- WHICH items you chose and where you placed them, not how many materials you fed them.
 Build.NORMAL_ITEM_LEVEL = 1
 
+-- How many bodies a duelling team fields. A duel is a fixed, symmetrical board with no deployment
+-- phase and no bench (docs/deployment.md), so a build is the FOUR who take the field -- Player.MAX_FIELD
+-- -- and not the company of eight the campaign marches. Named here rather than required, like every
+-- other number this player-free module needs; the campaign's own cap is free to move without silently
+-- changing what a duel is.
+Build.TEAM_SIZE = 4
+
 -- Bumped when the SHAPE changes in a way an older reader would misread. Unlike the save file, a
 -- build travels between machines, so a version it does not recognise is refused rather than
 -- salvaged: half-understanding somebody else's team means fighting a different one than they built.
@@ -86,6 +93,7 @@ function Build.from(party, meta)
         party = {},
     }
     for i, char in ipairs(party or {}) do
+        if i > Build.TEAM_SIZE then break end
         snap.party[i] = Save.snapshotCharacter(char)
     end
     return snap
@@ -207,6 +215,7 @@ function Build.normalizeParty(party, opts)
     local itemLevel = (opts and opts.itemLevel) or Build.NORMAL_ITEM_LEVEL
     local out = {}
     for i, char in ipairs(party or {}) do
+        if i > Build.TEAM_SIZE then break end
         out[i] = normalized(Save.snapshotCharacter(char), level, itemLevel)
     end
     return out

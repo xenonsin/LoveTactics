@@ -41,7 +41,6 @@ return {
     sponsor = "undercroft",
     rewardItems = { "armor_unlit_hood" },
     rewardGold = 300,
-    rewardPrestige = 2,
     requiredQuests = { "quest_undercroft_slot_06" }, -- slot 7: the line runs in order
     requiredPrestige = 3,
     requiredSponsorQuests = { vendor = "undercroft", count = 6 }, -- 6 of this house's quests done

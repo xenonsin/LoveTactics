@@ -14,7 +14,7 @@ return {
     class = "hunter",
     discipline = "poacher", -- rogue x hunter; the Snare-execute mechanic's first stock
     price = 240,
-    unlockQuests = 3,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 3,

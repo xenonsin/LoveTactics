@@ -24,6 +24,6 @@ return {
     class = "priest",
     discipline = "apothecary",
     price = 420,
-    unlockQuests = 10,
+    unlockQuests = 11,
     traits = { "trait_shared_ledger" },
 }

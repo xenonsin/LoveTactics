@@ -33,12 +33,11 @@ return {
     outro = "conversation_colosseum_slot_04_outro",
     rewardItems = { "weapon_hollow_arc", "weapon_long_count" },
     rewardGold = 180,
-    rewardPrestige = 1,
     requiredQuests = { "quest_colosseum_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "colosseum", count = 3 }, -- 3 of this house's quests done
     map = {
-        biome = "castle",
+        biome = "desert",
         encounters = { min = 6, max = 8, always = { "encounter_elite" } },
         objective = {
             name = "Four of the House's Own",

@@ -21,5 +21,5 @@ return {
     tags = { "prop", "flammable" },
     -- Which biomes stack their supplies in the open: a forest camp and a castle's yard, never the
     -- underworld -- nothing down there ships anything.
-    biomes = { forest = 4, castle = 3 },
+    biomes = { forest = 4, castle = 3, desert = 3, tundra = 3, swamp = 1 },
 }

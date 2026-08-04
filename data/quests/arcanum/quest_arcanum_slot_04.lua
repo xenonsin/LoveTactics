@@ -35,7 +35,6 @@ return {
     sponsor = "arcanum",
     rewardItems = { "weapon_graven_circle_staff", "armor_gaunt_vigil_plate" },
     rewardGold = 180,
-    rewardPrestige = 1,
     requiredQuests = { "quest_arcanum_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 3,
     requiredSponsorQuests = { vendor = "arcanum", count = 3 }, -- 3 of this house's quests done

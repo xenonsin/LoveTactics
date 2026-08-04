@@ -26,7 +26,7 @@ return {
     tags = { "cloth", "arcane" },
     class = "mage",
     price = 380,
-    unlockQuests = 6,
+    unlockQuests = 7,
     traits = { "trait_overchannel" },
     bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
     resist = { magical = 2 },

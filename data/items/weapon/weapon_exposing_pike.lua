@@ -23,7 +23,7 @@ return {
     hands = 2,
     class = "knight",
     price = 300,
-    unlockQuests = 6,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

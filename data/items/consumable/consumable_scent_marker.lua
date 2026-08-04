@@ -20,7 +20,7 @@ return {
     tags = { "mark" },
     class = "hunter",
     price = 120,
-    unlockQuests = 3,
+    unlockQuests = 1,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

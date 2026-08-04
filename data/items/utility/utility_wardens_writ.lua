@@ -24,6 +24,6 @@ return {
     class = "knight",
     discipline = "warden",
     price = 420,
-    unlockQuests = 6,
+    unlockQuests = 8,
     traits = { "trait_wardens_writ" },
 }

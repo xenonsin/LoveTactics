@@ -484,7 +484,7 @@ local function statBreakdown(item)
     return out
 end
 
--- Chart every stat's whole forge path, level 0..MAX_LEVEL, for the blacksmith's growth sheet. It bakes
+-- Chart every stat's whole forge path, level 0..MAX_LEVEL, for the Forge's growth sheet. It bakes
 -- a fresh instance at each level -- so every number is exactly what a forge would produce, never an
 -- estimate -- and reads its scaling stats off statBreakdown. Accepts an item instance or a bare blueprint
 -- id; returns nil for an unknown id. Pure logic (Item.instantiate is headless-safe), so the sheet is
@@ -565,7 +565,7 @@ end
 
 -- Bake `item.level` into every magnitude (resolving each per-level list to this level's tuned value)
 -- and append " +n" to the display name. Called once at instantiate; an upgrade re-instantiates from
--- the blueprint at the new level (see the blacksmith), so this never compounds onto a leveled instance.
+-- the blueprint at the new level (see models/forge.lua), so this never compounds onto a leveled instance.
 local function applyLevel(item)
     local lvl = math.max(0, math.min(item.level or 0, Item.MAX_LEVEL))
     item.level = lvl

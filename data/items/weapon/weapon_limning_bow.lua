@@ -24,7 +24,7 @@ return {
     hands = 2, -- every bow is two-handed
     class = "hunter",
     price = 200,
-    unlockQuests = 3,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 3,

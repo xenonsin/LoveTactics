@@ -165,4 +165,85 @@ return {
             assert(ok, "naming a layout outright should not require a seed")
         end,
     },
+
+    -- ----------------------------------------------------------------- the enemy ceiling
+    {
+        name = "the clamp keeps the named cast and cuts only the filler",
+        fn = function()
+            local ids = { "character_bandit_chief" }
+            for _ = 1, 40 do ids[#ids + 1] = "character_bandit" end
+            local cut = Arena.clampComposition(ids, 6)
+            assert(#cut == 6, "cut to the cap, got " .. #cut)
+            assert(cut[1] == "character_bandit_chief", "the named unit survives")
+
+            -- ...and it survives from ANY position, not just the head. Every composition in the game
+            -- lists its named unit first today, so a tail-truncation would pass by luck; this is the
+            -- case that proves the rule is structural. Dropping an assassinate target is a softlock.
+            local buried = {}
+            for _ = 1, 40 do buried[#buried + 1] = "character_bandit" end
+            buried[#buried + 1] = "character_bandit_chief"
+            local cutB = Arena.clampComposition(buried, 6)
+            assert(#cutB == 6, "still cut to the cap")
+            local found = false
+            for _, id in ipairs(cutB) do if id == "character_bandit_chief" then found = true end end
+            assert(found, "a named unit at the TAIL survives the cut too")
+
+            -- A short list is returned untouched, and a hand-authored cast of distinct names outranks
+            -- the cap rather than being silently decimated.
+            local short = { "a", "b" }
+            assert(Arena.clampComposition(short, 6) == short, "under the cap, nothing is copied")
+            local allNamed = { "a", "b", "c", "d", "e", "f", "g", "h" }
+            assert(#Arena.clampComposition(allNamed, 3) == 8, "distinct names outrank the ceiling")
+        end,
+    },
+    {
+        -- THE REGRESSION THIS EXISTS FOR: every objective sizes its enemies off prestige, prestige is a
+        -- lifetime total that New Game+ carries forward, and nothing used to bound the result -- the
+        -- `/2` quests reached 71 bodies by the campaign's ~138 prestige and 140 in a second run. The
+        -- ceiling has to hold at every prestige the game can actually reach, not just at the ones a
+        -- fixture happens to pick.
+        name = "no quest's objective can field more than its difficulty allows, at any prestige",
+        fn = function()
+            local Quest = require("models.quest")
+            local checked = 0
+            for id, def in pairs(Quest.defs) do
+                local objective = def.map and def.map.objective
+                if objective and objective.composition then
+                    local ctx = { quest = def, biome = def.map.biome }
+                    local cap = Arena.enemyCap(ctx)
+                    -- 1 (a fresh company) through 276 (a full New Game+ carry), stepped to keep the
+                    -- sweep cheap while still crossing every threshold a floor division can trip.
+                    for prestige = 1, 276, 5 do
+                        ctx.prestige = prestige
+                        local raw = Arena.resolveComposition(objective.composition, ctx)
+                        local cut = Arena.clampComposition(raw, cap)
+                        -- Distinct ids outrank the cap by design, so the bound is whichever is larger.
+                        local distinct, seen = 0, {}
+                        for _, cid in ipairs(raw) do
+                            if not seen[cid] then seen[cid] = true; distinct = distinct + 1 end
+                        end
+                        assert(#cut <= math.max(cap, distinct), string.format(
+                            "%s fields %d at prestige %d (cap %d)", id, #cut, prestige, cap))
+
+                        -- An assassinate target must still be standing on the board to be killed.
+                        local win = objective.win
+                        if win and win.type == "assassinate" and win.target then
+                            local present = false
+                            for _, cid in ipairs(cut) do
+                                if cid == win.target then present = true end
+                            end
+                            local authored = false
+                            for _, cid in ipairs(raw) do
+                                if cid == win.target then authored = true end
+                            end
+                            assert(present or not authored, string.format(
+                                "%s clamped away its assassinate target at prestige %d", id, prestige))
+                        end
+                    end
+                    checked = checked + 1
+                end
+            end
+            assert(checked > 50, "the sweep should cover the whole quest line, saw " .. checked)
+        end,
+    },
 }

@@ -35,13 +35,12 @@ return {
     intro = "conversation_bastion_slot_01_intro",
     outro = "conversation_bastion_slot_01_outro",
     rewardGold = 80,
-    rewardPrestige = 1,
     requiredPrestige = 2,
     -- weapon_second_rank is the column written as a weapon: its reach grows when an ally stands at
     -- your back, which is the relief column's whole shape -- the man behind you is also holding a pike.
     rewardItems = { "utility_relief_horn", "weapon_sworn_lance", "weapon_second_rank" },
     map = {
-        biome = "castle",
+        biome = "tundra",
         -- The road up a mountain, and the map is generated as one: `ascent` puts the objective on
         -- the farthest dead-end there is -- the peak, the end of the road, the last thing -- and
         -- lays the guaranteed encounters out in authored order by distance from the start, so the

@@ -30,7 +30,7 @@ return {
     class = "alchemist",
     discipline = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
     price = 300,
-    unlockQuests = 6,
+    unlockQuests = 7,
     -- The `incense` contract (see Combat.layIncense): a hazard, a radius, and a magnitude, laid around
     -- the bearer on every move and every rebase, and lifted from wherever they were. Radius 1, so it
     -- is genuinely adjacent-only -- a wider cloud would make this a zoning item, and it is meant to be

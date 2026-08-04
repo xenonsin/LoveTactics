@@ -23,6 +23,6 @@ return {
     class = "priest",
     discipline = "crusader",
     price = 400,
-    unlockQuests = 6,
+    unlockQuests = 10,
     charge = { key = "zeal", from = { "foeDown", "allyMended" }, max = 10 },
 }

@@ -36,7 +36,6 @@ return {
     sponsor = "hunters_lodge",
     rewardItems = { "weapon_struck_ledger", "armor_kennelbound_jerkin" },
     rewardGold = 180,
-    rewardPrestige = 1,
     requiredQuests = { "quest_hunters_lodge_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 2,
     requiredSponsorQuests = { vendor = "hunters_lodge", count = 3 }, -- 3 of this house's quests done

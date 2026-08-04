@@ -23,6 +23,8 @@
 
 local Scale = require("scale")
 local Combat = require("models.combat")
+local Growth = require("models.growth")         -- Growth.creditClass: the "Growing as" read-out
+local Discipline = require("models.discipline") -- ...whose key may be a discipline id, not a class
 local Item = require("models.item") -- for Item.costs: a cast may draw on more than one pool
 local AdjacencyLinks = require("ui.adjacency_links")
 local StatusBadge = require("ui.status_badge")
@@ -189,6 +191,13 @@ local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal, reser
     love.graphics.rectangle("line", x, y, w, h, 2, 2)
 end
 
+-- Does this fight have a bench to rotate with? Only a campaign battle does; a duel, a draft and a
+-- scripted lesson field exactly who they were given. Read as a fact about the model rather than a flag
+-- the caller passes, so the button appears exactly when the action is possible.
+function CombatPanel:hasBench()
+    return #((self.combat and self.combat.bench) or {}) > 0
+end
+
 function CombatPanel.new(combat, opts)
     opts = opts or {}
     local self = setmetatable({}, CombatPanel)
@@ -197,6 +206,7 @@ function CombatPanel.new(combat, opts)
     self.onHoverItem = opts.onHoverItem
     self.onHoverUnit = opts.onHoverUnit
     self.onWait = opts.onWait -- the long Wait/Focus/Defend button under the item grid
+    self.onRotate = opts.onRotate -- the Rotate button above it (trade places with the bench)
 
     -- Chrome wears the display face (Theme.display -> the engraved serif, falling back to the default
     -- until the ttf lands); dense numeric read-outs stay on the plain body face for legibility.
@@ -218,7 +228,21 @@ function CombatPanel.new(combat, opts)
     self.waitBtn = { x = self.gridX, w = self.gridW, h = 34 }
     self.waitBtn.y = Scale.HEIGHT - 16 - self.waitBtn.h
     self.waitHover = false
-    self.gridY = self.waitBtn.y - 14 - self.gridH
+    -- Rotate: trade places with the bench (models/combat.lua's Combat.rotate). A slimmer bar directly
+    -- above Wait, because it is the same KIND of thing -- an action that ends the turn without striking
+    -- -- and belongs in the same place the player already looks for one. Drawn only when there is a
+    -- bench at all, so an ordinary duel or draft panel is exactly as it was.
+    -- Fixed at construction, not read live: a bench that empties as the last reserve is rotated in must
+    -- not make the button -- and every line laid out above it -- jump. It goes disabled instead.
+    self.hasRotate = self:hasBench()
+    self.rotateBtn = { x = self.gridX, w = self.gridW, h = 26 }
+    self.rotateBtn.y = self.waitBtn.y - 6 - self.rotateBtn.h
+    self.rotateHover = false
+    -- The gap under the grid carries the "Growing as" line (drawGrowthLine) -- deliberately BELOW the
+    -- actions rather than beside the turn order, because the grid is what feeds it: every cast from
+    -- these nine slots is the vote that decides it.
+    self.growthY = (self.hasRotate and self.rotateBtn.y or self.waitBtn.y) - 22
+    self.gridY = self.growthY - 8 - self.gridH
     -- Turn strip lives above the item grid; stripTop leaves the "Turn Order" caption clear breathing
     -- room above it (top + bottom margin around the header).
     self.stripTop = 52
@@ -467,8 +491,86 @@ function CombatPanel:draw()
 
     self:drawTurnStrip()
     self:drawItemGrid()
+    self:drawGrowthLine()
+    self:drawRotateButton()
     self:drawWaitButton()
     love.graphics.setColor(1, 1, 1)
+end
+
+-- The Rotate button: trade places with someone on the bench, at the cost of this turn. Drawn only when
+-- there IS a bench, and greyed with its reason when the acting unit cannot use it -- almost always
+-- "you have to be standing in your own lines", which is a thing the player can go and fix, so saying it
+-- is the difference between a rule and a dead button. The reason comes from Combat.canRotate, so the
+-- label and the refusal can never disagree.
+function CombatPanel:drawRotateButton()
+    if not self.hasRotate then return end
+    local b = self.rotateBtn
+    local unit = self.view.isPartyTurn and self.view.current or nil
+    local ok, why = false, nil
+    if unit then ok, why = Combat.canRotate(self.combat, unit) end
+    local hot = ok and self.rotateHover
+
+    if ok then Theme.set(hot and Theme.panel or Theme.panel2) else Theme.set(Theme.slot) end
+    love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
+    if hot then Theme.set(Theme.accentAmber) else Theme.set(Theme.frame, ok and 1 or 0.5) end
+    love.graphics.setLineWidth(hot and 2 or 1)
+    love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
+    love.graphics.setLineWidth(1)
+
+    love.graphics.setFont(self.nameFont)
+    if not ok then Theme.set(Theme.muted) elseif hot then Theme.set(Theme.accentAmber) else Theme.set(Theme.ink) end
+    Theme.printTracked("ROTATE", b.x, b.y + b.h / 2 - 8, b.w)
+
+    -- The reason rides under the label while the cursor is on a button that will not fire, rather than
+    -- waiting for a click that does nothing to explain itself.
+    if not ok and why and self.rotateHover then
+        love.graphics.setFont(self.smallFont)
+        Theme.set(Theme.muted)
+        love.graphics.printf(Theme.ellipsize(why, self.smallFont, b.w - 8), b.x + 4, b.y + b.h + 2, b.w - 8, "center")
+    end
+end
+
+-- Is (px, py) over the Rotate button? Always false when there is no bench, so the rect can never eat a
+-- click on a panel that isn't drawing it.
+function CombatPanel:overRotate(px, py)
+    if not self.hasRotate then return false end
+    local b = self.rotateBtn
+    return px >= b.x and px <= b.x + b.w and py >= b.y and py <= b.y + b.h
+end
+
+-- "Growing as: Sentinel" -- the class the NEXT level-up will apply, live, under the grid that decides
+-- it. Growth.creditClass reads `classUseSinceLevel`, so this moves as the player casts and resets when
+-- a level lands; that is the whole point of showing it. Before this it was computed on every level-up
+-- and read by nothing outside models/growth.lua -- the emergent-class idea was invisible for the entire
+-- fight and first surfaced at the hub, after the fact, when it was too late to steer.
+--
+-- Distinct from the "+2 Ninja" technique floater, and both are wanted: that is a DELTA on a wallet
+-- (what this action just banked, discipline stock only), this is a STANDING on a vote (what the
+-- character is currently becoming, and it covers plain class casts -- 375 of the 580 class-tagged item
+-- files carry no discipline at all, so the floater alone leaves most casting silent).
+--
+-- Only for a real roster member: Combat.isPlayerControlled excludes AI escortees and `summoned`
+-- excludes summons, exactly matching who Combat.useItem actually tallies.
+function CombatPanel:drawGrowthLine()
+    local unit = self.view.current
+    if not (unit and unit.char) then return end
+    if not Combat.isPlayerControlled(unit) or unit.summoned then return end
+
+    -- The tally key is a class id OR a discipline id (Discipline.growthClasses returns the discipline
+    -- for discipline stock), so a discipline resolves through its blueprint name -- "plague_knight" is
+    -- "Plague Knight", which title-casing alone would render "Plague_knight".
+    local key = Growth.creditClass(unit.char)
+    if not key then return end
+    local name = Discipline.displayName(key) or (key:gsub("^%l", string.upper))
+
+    love.graphics.setFont(self.smallFont)
+    local lead = "Growing as  "
+    local total = self.smallFont:getWidth(lead) + self.smallFont:getWidth(name)
+    local lx = self.x + (self.w - total) / 2
+    Theme.set(Theme.muted)
+    love.graphics.print(lead, lx, self.growthY)
+    Theme.set(Theme.accentAmber)
+    love.graphics.print(name, lx + self.smallFont:getWidth(lead), self.growthY)
 end
 
 -- The long Wait button under the item grid. Its label mirrors the acting unit's wait behavior
@@ -1516,11 +1618,14 @@ function CombatPanel:mousemoved(x, y)
     if not self:contains(x, y) then
         self:setHover(nil, nil, nil)
         self.waitHover = false
+        self.rotateHover = false
         return false
     end
     local item, i = self:usableItemAt(x, y)
     self:setHover(item, i, self:unitAt(x, y))
     self.waitHover = self.view.isPartyTurn and self:overWait(x, y) or false
+    -- Hovered even when it is refused: that is what surfaces the reason (drawRotateButton).
+    self.rotateHover = self:overRotate(x, y)
     return true
 end
 
@@ -1529,6 +1634,12 @@ function CombatPanel:mousepressed(x, y, button)
     if button ~= 1 or not self:contains(x, y) then return false end
     if self.view.isPartyTurn and self:overWait(x, y) then
         if self.onWait then self.onWait() end
+        return true
+    end
+    -- Routed whether or not the rotation is currently legal, like an ability slot: the state answers
+    -- with the reason rather than swallowing a click on a button that looks pressable.
+    if self:overRotate(x, y) then
+        if self.onRotate then self.onRotate() end
         return true
     end
     -- Route the click on ANY ability slot, usable or not: the state arms it, or refuses it with a

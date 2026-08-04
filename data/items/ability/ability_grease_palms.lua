@@ -24,7 +24,7 @@ return {
     price = 300,
     -- Gated to the END of the greed line: on sale only once all ten Undercroft quests are cleared -- i.e.
     -- Aurea is beaten (slot 10). The whole money kit is her art, earned by taking it off her.
-    unlockQuests = 10,
+    unlockQuests = 9,
     activeAbility = {
         target = "ally",
         range = 2,

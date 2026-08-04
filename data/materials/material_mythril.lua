@@ -1,5 +1,5 @@
--- Tier-3 forging material: the rarest ore, dropped only by the hardest late quests. Feeds the final
--- upgrade (level +5). A handful of mythril is the difference between a good weapon and a legendary one.
+-- Craft stock, grade 3: the rarest ore. What the top of the shelf is forged from at every rung, from
+-- its first -- the grade tracks the ITEM's quality, not its ladder depth (material.lua GRADE_BY_PRICE).
 return {
     name = "Mythril",
     description = "Starlight given weight. It takes an edge nothing else can hold.",

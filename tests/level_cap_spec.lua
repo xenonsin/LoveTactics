@@ -14,11 +14,18 @@ local Quest = require("models.quest")
 local Player = require("models.player")
 local Character = require("models.character")
 
--- Total prestige a full campaign pays out, read off the quest blueprints.
+-- Total prestige a full campaign pays out. Prestige is a flat count of quests completed
+-- (Quest.PRESTIGE_PER_QUEST), so this is simply how many quests there are -- which is the point of the
+-- flattening: the campaign's whole prestige budget is now a fact about the content, readable in one
+-- line, rather than the sum of 92 separately authored numbers.
+local function campaignQuests()
+    local n = 0
+    for _ in pairs(Quest.defs) do n = n + 1 end
+    return n
+end
+
 local function campaignPrestige()
-    local total = 0
-    for _, def in pairs(Quest.defs) do total = total + (def.rewardPrestige or 0) end
-    return total
+    return campaignQuests() * Quest.PRESTIGE_PER_QUEST
 end
 
 return {
@@ -66,11 +73,7 @@ return {
         name = "levels land often enough to be felt",
         fn = function()
             local total = campaignPrestige()
-            local quests = 0
-            for _, def in pairs(Quest.defs) do
-                if (def.rewardPrestige or 0) > 0 then quests = quests + 1 end
-            end
-
+            local quests = campaignQuests() -- every quest pays now; there is no unpaid kind
             local levels = Growth.levelForPrestige(total) - 1
             local questsPerLevel = quests / levels
             assert(questsPerLevel <= 3, string.format(

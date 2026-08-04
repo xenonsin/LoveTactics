@@ -33,7 +33,6 @@ return {
     sponsor = "cathedral",
     rewardItems = { "weapon_censer_of_the_unravelling" },
     rewardGold = 320,
-    rewardPrestige = 2,
     requiredQuests = { "quest_cathedral_slot_07" }, -- slot 8: the line runs in order
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "cathedral", count = 6 }, -- 6 of this house's quests done

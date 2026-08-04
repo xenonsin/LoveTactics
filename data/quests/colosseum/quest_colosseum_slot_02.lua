@@ -42,11 +42,10 @@ return {
     outro = "conversation_colosseum_slot_02_outro",
     rewardItems = { "weapon_carrion_axe", "weapon_mired_maul" },
     rewardGold = 90,
-    rewardPrestige = 1,
     requiredQuests = { "quest_colosseum_slot_01" }, -- slot 2: the line runs in order
     requiredPrestige = 1,
     map = {
-        biome = "castle",
+        biome = "desert",
         encounters = { min = 4, max = 6 },
         objective = {
             name = "The Warm-Up Bout",

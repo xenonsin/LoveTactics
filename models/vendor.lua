@@ -4,6 +4,13 @@
 -- plain count of quests-completed, not a player) so models/player.lua and this module do
 -- not form a require cycle.
 --
+-- A vendor SELLS. It does not upgrade: every ladder in the game is climbed at the one Forge
+-- (models/forge.lua), which is also the only bench that spends materials. This module used to carry a
+-- second door onto the same `item.level` -- abilities honed at their class vendor, consumables refined
+-- per-type -- and having two doors onto one ladder meant two bills, two ceilings, and no single place
+-- to look. What the Forge still borrows from here is Vendor.tier: standing with a house is the ceiling
+-- on how far its gear forges.
+--
 -- A shelf opens as you run the vendor's OWN quest line: each priced item names how many of
 -- that sponsor's quests you must have finished before it is on sale (`unlockQuests`, default
 -- 0 -- open from the start). There is no reputation score and no rank titles; the only number
@@ -18,8 +25,8 @@
 -- with no class used to be unbuyable dead data; the general store is where it now belongs. It ALSO
 -- resells any item bearing one of its `stockTags` (the Cafe carries every `potion`, whichever house
 -- brews it) -- so a class item can appear on two shelves, its own and the Cafe's. That is a resale,
--- not a re-home: the potion keeps its class, still grows and refines at the alchemist. See the stock
--- derivation below and docs/classes.md ("The general store").
+-- not a re-home: the potion keeps its class, which is what its forge bill and ceiling read. See the
+-- stock derivation below and docs/classes.md ("The general store").
 
 local Registry = require("models.registry")
 local Item = require("models.item")
@@ -31,6 +38,24 @@ Vendor.defs = Registry.load("data/vendors", "data.vendors")
 
 function Vendor.get(id)
     return Vendor.defs[id]
+end
+
+-- The vendor id of the house that sells `class`, or nil for a classless one (the Cafe). Reverse-indexed
+-- from the blueprints once, so the class -> house mapping lives in data rather than in a second table.
+--
+-- The single owner of that question. models/forge.lua asked it first (for a class item's ceiling) and
+-- ui/panels/shop.lua now asks it too (to name the house a missing discipline parent is sold at), and
+-- two private reverse indexes over the same field is exactly how they drift.
+local byClass
+function Vendor.forClass(class)
+    if not class then return nil end
+    if not byClass then
+        byClass = {}
+        for id, def in pairs(Vendor.defs) do
+            if def.class then byClass[def.class] = id end
+        end
+    end
+    return byClass[class]
 end
 
 -- Ordered list of vendors, for UI that enumerates them.
@@ -48,15 +73,15 @@ function Vendor.list()
     return list
 end
 
--- The quest-count thresholds a shelf's four waves of stock open at. Items author their gate as
--- one of these numbers (`unlockQuests`), and the ability/recipe upgrade bench keys its level cap
--- off which wave a player's quest count has reached (Vendor.abilityLevelCap). One list so the
--- gear gates and the upgrade caps ramp together.
+-- The quest-count thresholds a house's standing climbs through. Items no longer author their gate as
+-- one of these -- `unlockQuests` is a per-quest number now, so a shelf moves every quest rather than
+-- in four clumps. What survives is the STANDING ladder: Forge.ceilingFor reads it to decide how far up
+-- a class item may be forged, so the house you keep running is the house whose gear goes deepest.
 Vendor.TIERS = { 0, 3, 6, 10 }
 
 -- Which wave (1..#TIERS) `questsDone` completed quests has reached: the number of thresholds it
--- has crossed. Used only for the upgrade-level cap; item stock gates on its own `unlockQuests`
--- directly, not on this.
+-- has crossed. Used only for the Forge's class-item ceiling; item stock gates on its own
+-- `unlockQuests` directly, not on this.
 function Vendor.tier(questsDone)
     questsDone = questsDone or 0
     local tier = 1
@@ -118,7 +143,13 @@ end
 -- (Discipline.unlockedSet). A discipline item is stocked either way but stays `locked` -- greyed like a
 -- quest-locked ware -- until its discipline is unlocked, because seeing the deeper cut you can earn is
 -- the point, same as the quest ladder.
-function Vendor.stock(vendorId, questsDone, recipes, unlocked)
+--
+-- `levels` is the matching bare map { disciplineId = level } (Discipline.levelSet). The broad shelf
+-- gates on QUEST COUNT; the deepest cut of a discipline gates on how far that discipline has actually
+-- GROWN, via an optional `unlockLevel` on the item (default 0, so nothing gates on it until authored).
+-- Two different questions -- "have you worked with this house" and "have you specialized" -- and the
+-- shelf should not answer both with the same number.
+function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
     local def = Vendor.defs[vendorId]
     if not def then return {} end
     questsDone = questsDone or 0
@@ -131,8 +162,13 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked)
             -- the item's own unlockQuests.
             local unlockQuests = def.general and 0 or (item.unlockQuests or 0)
             local level = (recipes and recipes[id]) or 0
-            -- A discipline item is locked until its discipline is unlocked, on top of any quest gate.
+            -- A discipline item is locked until its discipline is unlocked, on top of any quest gate --
+            -- and, if it names an unlockLevel, until that discipline has grown that far.
             local disciplineLocked = item.discipline ~= nil and not (unlocked and unlocked[item.discipline])
+            local unlockLevel = item.discipline and item.unlockLevel or nil
+            if unlockLevel and ((levels and levels[item.discipline] or 0) < unlockLevel) then
+                disciplineLocked = true
+            end
             stock[#stock + 1] = {
                 id = id,
                 name = item.name,
@@ -143,6 +179,7 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked)
                 price = Vendor.priceFor(item.price, level),
                 unlockQuests = unlockQuests,
                 discipline = item.discipline,
+                unlockLevel = unlockLevel,
                 locked = (questsDone < unlockQuests) or disciplineLocked,
             }
         end
@@ -164,123 +201,6 @@ function Vendor.sellValue(item)
     if not item.price then return 0 end
     if Item.isBound(item) then return 0 end -- a bound relic is never for sale, whatever price it carries
     return math.floor(Vendor.priceFor(item.price, item.level or 0) * 0.5)
-end
-
--- ---------------------------------------------------------------------------
--- Vendor upgrades
---
--- Weapons, armor and utility gear are forged at the Blacksmith; ABILITIES are honed here at their
--- class vendor (per instance -- you own one and improve it). CONSUMABLES are refined per-TYPE: a
--- vendor upgrades the recipe for a consumable it sells (Vendor.upgradeRecipe), and thereafter every
--- copy bought comes at that tier (see Vendor.stock's `recipes` and Player.recipeLevel). A vendor
--- upgrade is trained/brewed, not hammered, so it costs gold (no materials) and is gated by standing
--- rather than ore. Every path raises the same `level`, baked by Item.instantiate.
--- ---------------------------------------------------------------------------
-
--- Whether `vendorId` is the bench that upgrades `item` PER INSTANCE: an ability at its class vendor.
--- Consumables no longer take this path (they are refined per-type via Vendor.upgradeRecipe), so they
--- return false here. The single rule the shop's Upgrade list and the instance-upgrade action read.
-function Vendor.canUpgradeHere(vendorId, item)
-    local def = Vendor.defs[vendorId]
-    if not def or not item or not Item.isUpgradable(item) then return false end
-    -- The general store hones nothing per instance (it sells no abilities); guarding here keeps a
-    -- classless ability from matching its nil class by accident. Consumables it sells still refine
-    -- per-type via Vendor.upgradeRecipe, whose classless == classless match is intended.
-    if def.general then return false end
-    if item.type == "ability" then return Item.classOf(item) == def.class end
-    return false
-end
-
--- The highest ability level a player's quest count has earned the right to buy: the first wave
--- unlocks +1/+2, and each further wave one more, so the top wave (Vendor.tier 4) reaches the +5 cap.
--- A gate on the power curve that ramps with the same quest ladder the shelf itself opens on.
-function Vendor.abilityLevelCap(questsDone)
-    return math.min(Item.MAX_LEVEL, Vendor.tier(questsDone) + 1)
-end
-
--- The cost to refine `item` one level for a player `questsDone` quests into this house: gold that
--- climbs with the level, plus whether that level is yet unlocked by their quest count. Returns nil
--- once the item is at Item.MAX_LEVEL.
---   { level = <target>, gold = <n>, locked = <bool> }
-function Vendor.upgradeCost(item, questsDone)
-    local target = (item.level or 0) + 1
-    if target > Item.MAX_LEVEL then return nil end
-    return {
-        level = target,
-        gold = 60 * target, -- +1 costs 60g, +5 costs 300g
-        locked = target > Vendor.abilityLevelCap(questsDone),
-    }
-end
-
--- Perform a vendor upgrade for `player` at vendor `vendorId`: verify this is the right bench for the
--- item (Vendor.canUpgradeHere), that the next level is rank-unlocked, and that the gold is there;
--- spend it and return a FRESH instance at the new level, keeping its stack count (the caller swaps it
--- into the slot it came from). Returns the new item, or nil + a reason ("class" | "max level" |
--- "locked" | "gold"). ("class" here means "wrong bench" -- not this vendor's to upgrade.)
-function Vendor.upgradeItem(player, vendorId, item, questsDone)
-    local Player = require("models.player")
-    if not Vendor.canUpgradeHere(vendorId, item) then return nil, "class" end
-    local cost = Vendor.upgradeCost(item, questsDone)
-    if not cost then return nil, "max level" end
-    if cost.locked then return nil, "locked" end
-    if player.gold < cost.gold then return nil, "gold" end
-    Player.spendGold(player, cost.gold)
-    return Item.instantiate(item.id, item.quantity, cost.level)
-end
-
--- Back-compat aliases: the old ability-only names for the instance-upgrade path.
-Vendor.abilityUpgradeCost = Vendor.upgradeCost
-Vendor.upgradeAbility = Vendor.upgradeItem
-
--- ---------------------------------------------------------------------------
--- Consumable recipe upgrades (per-type)
--- ---------------------------------------------------------------------------
-
--- The cost to raise a consumable's recipe one tier from `level` for a player `questsDone` quests into
--- this house: gold that climbs with the tier (the same 60g-per-level curve the instance bench charges),
--- plus whether that tier is yet unlocked by their quest count. Returns nil once the recipe is at
--- Item.MAX_LEVEL.
---   { level = <target>, gold = <n>, locked = <bool> }
-function Vendor.recipeUpgradeCost(level, questsDone)
-    local target = (level or 0) + 1
-    if target > Item.MAX_LEVEL then return nil end
-    return {
-        level = target,
-        gold = 60 * target,
-        locked = target > Vendor.abilityLevelCap(questsDone),
-    }
-end
-
--- Whether `vendorId` is the bench that REFINES consumable `item` (per-type, via Vendor.upgradeRecipe).
--- Only its brewer's own house refines a consumable -- its `class` vendor -- never a shop that merely
--- resells it: the Cafe carries potions but you hone the recipe at the alchemist, where it grows. So
--- the general store refines only genuinely classless consumables (of which there are none today). The
--- one rule the shop's Upgrade list and upgradeRecipe both read, so a listed row can always be bought.
-function Vendor.canRefineHere(vendorId, item)
-    local def = Vendor.defs[vendorId]
-    if not def or not item or item.type ~= "consumable" or not Item.isUpgradable(item) then
-        return false
-    end
-    return Item.classOf(item) == def.class
-end
-
--- Refine the recipe for consumable `itemId` one tier at `vendorId`: verify this vendor is the bench
--- that refines it (Vendor.canRefineHere), that the next tier is rank-unlocked, and that the gold is
--- there; spend the gold and bump Player.recipeLevel. Returns the new tier, or nil + a reason ("class"
--- | "max level" | "locked" | "gold"). ("class" here means "not the bench that refines this".)
-function Vendor.upgradeRecipe(player, vendorId, itemId, questsDone)
-    local Player = require("models.player")
-    local item = Item.defs[itemId] and Item.instantiate(itemId)
-    if not Vendor.canRefineHere(vendorId, item) then
-        return nil, "class"
-    end
-    local cost = Vendor.recipeUpgradeCost(Player.recipeLevel(player, itemId), questsDone)
-    if not cost then return nil, "max level" end
-    if cost.locked then return nil, "locked" end
-    if player.gold < cost.gold then return nil, "gold" end
-    Player.spendGold(player, cost.gold)
-    Player.setRecipeLevel(player, itemId, cost.level)
-    return cost.level
 end
 
 return Vendor

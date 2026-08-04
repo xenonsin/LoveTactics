@@ -27,7 +27,7 @@ return {
     tags = { "hide", "fire" },
     class = "alchemist",
     price = 190,
-    unlockQuests = 0,
+    unlockQuests = 3,
     bonus = { defense = Curve.ramp(3, 13) },
     resist = { fire = 6 },
 }

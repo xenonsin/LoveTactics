@@ -68,7 +68,9 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Pick the team that will stand in for you when you are not here. Reuses the embark screen, which
--- already knows how to choose four from a roster with all three input devices (states/party_select).
+-- already knows how to choose a company from a roster with all three input devices
+-- (states/party_select). Only the first Build.TEAM_SIZE of them are published: a duel has no
+-- deployment phase and no bench, so a build is exactly the four who take the field.
 function Pvp:assemble()
     local State = require("states")
     local player = self.player
@@ -126,6 +128,9 @@ function Pvp:findMatch()
         -- player's real health or lose them an item, so nothing about the campaign rides on it.
         party = Build.normalizeParty(player.party),
         enemyChars = foes,
+        -- No deployment phase: both teams are normalized copies on a fixed board, and a build is the
+        -- four who take the field (Build.TEAM_SIZE) with no bench behind them.
+        deploy = false,
         quest = { map = { biome = "castle", objective = {
             name = (author.name and (author.name .. "'s build")) or "A rival build",
             win = { type = "killAll" },

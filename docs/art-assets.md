@@ -41,7 +41,7 @@ characters share a token** (the sin generals were one picture between the seven 
 | `portraits/` | 0 | 17 | 470px tall standing figure | **commission** |
 | `vendors/` | 0 | 8 | shop panel | **commission** |
 | `traps/` | 6 | 6 | 64px tile | game-icons.net ✅ |
-| `overworld/` | 0 | 4 | tilesheet, see [Terrain](#terrain) | GameDev Market |
+| `overworld/` | 0 | 8 | one tilesheet per biome, see [Terrain](#terrain) | **commission** — [brief](commission-terrain-tileset.md) |
 | `materials/` | 3 | 3 | 64px cell | game-icons.net ✅ |
 | `props/` | 2 | 2 | 64px tile | game-icons.net ✅ |
 | `hub/` | 0 | 1 | 1280×720 | **commission** |
@@ -215,13 +215,28 @@ lands in `vendor/compose-preview/chars/` for review, and only the explicit `asse
 **3.75× upscale**. That is pixel art whether or not it was meant to be. Author at **128px** and set
 `tileSize = 128`; the scale is computed, so this is a data-only change.
 
-The battle board and the overworld **share one tilesheet**. `ui/battle_map.lua` maps arena tile
-types onto overworld tileset types (`ground→path`, `forest→forest`, `mountain/obstacle→rock`,
-`rough→grass`), so one set of tiles dresses both surfaces.
+The battle board and the overworld **share one tilesheet**. `BattleMap.ART` maps every arena tile
+type onto an overworld tileset type, so one set of tiles dresses both surfaces:
 
-3 biomes (`castle`, `forest`, `underworld`) × 6 types (`forest`, `grass`, `rock`, `path`,
-`bridge`, `water`) = **18 tiles**. The board only ever shows 4 of the 6 — `bridge` and `water` are
-overworld-only — but the map needs all six.
+| arena type | draws as | arena type | draws as |
+|--|--|--|--|
+| `ground` | `path` | `sand` | `forest` |
+| `forest` | `forest` | `ice` | `forest` |
+| `mountain` / `obstacle` | `rock` | `mire` | `water` |
+| `rough` | `grass` | `lava` | `water` |
+| `water` | `water` | | |
+
+The four on the right are the biome floors added with the desert/tundra/volcanic/swamp pass — each
+borrows the *role* its biome dresses to suit, so a desert's "forest" is a dune crest and a volcanic
+map's "water" is the flow. **Every arena type must have an entry**: the draw site falls back to
+`path`, so a missing one never crashes, it just paints that floor as the trail. Pinned by
+`tests/biome_spec.lua`.
+
+7 biomes (`forest`, `castle`, `underworld`, `desert`, `tundra`, `volcanic`, `swamp`) × 6 types
+(`forest`, `grass`, `rock`, `path`, `bridge`, `water`) = **42 tiles**. The board only ever shows 4
+of the 6 — `bridge` and `water` are overworld-only — but the map needs all six. Full per-biome
+breakdown and the art direction for each is in
+[commission-terrain-tileset.md](commission-terrain-tileset.md).
 
 ## Traps
 

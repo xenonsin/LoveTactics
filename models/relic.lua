@@ -174,13 +174,14 @@ local function mostWounded(party)
     return target
 end
 
-local function frontRow(player, party)
-    local out = {}
-    for _, c in ipairs(party or {}) do
-        local slot = Player.formationSlot(player, c)
-        if slot and slot.row == 1 then out[#out + 1] = c end
-    end
-    return #out > 0 and out or (party or {})
+-- The front line: whoever the player actually stood nearest the enemy in this fight's deployment phase.
+-- The battle supplies it (states/battle.lua resolves the opening once placement is committed), because
+-- placement is a per-battle decision made over the real board -- there is no standing arrangement here
+-- to read. Falls back to the whole party, which is the right answer wherever no line has formed yet.
+local function frontRow(supplied, party)
+    if type(supplied) == "function" then supplied = supplied() end
+    if type(supplied) == "table" and #supplied > 0 then return supplied end
+    return party or {}
 end
 
 -- ---------------------------------------------------------------------------
@@ -198,7 +199,10 @@ local function ctxFor(ctx)
 
     ctx.restore = ctx.restore or function(char, stat, amount) return restore(char, stat, amount) end
     ctx.mostWounded = ctx.mostWounded or function() return mostWounded(party) end
-    ctx.frontRow = ctx.frontRow or function() return frontRow(ctx.player, party) end
+    -- `ctx.frontRow` is normally supplied by the battle (the units actually standing on the forward line
+    -- of the deploy zone). Bound here as a no-op fallback for a dispatch with no board -- everyone.
+    local supplied = ctx.frontRow
+    ctx.frontRow = function() return frontRow(supplied, party) end
     ctx.rnd = ctx.rnd or rnd
     ctx.notify = ctx.notify or function() end
     ctx.say = function(msg) ctx.notify(msg) end
@@ -265,14 +269,17 @@ end
 
 -- Resolve every held combat-relic's traits to the ACTUAL party members that wear them this fight, as a
 -- map { [char] = { traitId, ... } } keyed by char instance -- "party" scope to everyone, "frontRow" to
--- the marching front line (Player.formationSlot, falling back to the whole party when no formation is
--- set, exactly as the opening boons resolve their front row). states/game.lua builds this at battle
--- start and hands it to states/battle.lua, which stamps each unit's `relicTraits` off it by identity.
-function Relic.combatTraitsByChar(state, player, party)
+-- the line the player actually deployed forward, which the caller supplies (falling back to the whole
+-- party, exactly as the opening boons resolve their front row). Built once the deployment phase commits
+-- -- states/game.lua's resolveOpening -- and handed to states/battle.lua, which stamps each unit's
+-- `relicTraits` off it by identity. `party` is the whole COMPANY, bench included: a party-scope relic is
+-- worn by everyone who marched, and a benched member has to arrive already wearing it (Combat.rotate
+-- carries the entry's relicTraits onto the unit it builds). Only `frontRow` scope narrows, to `front`.
+function Relic.combatTraitsByChar(state, player, party, front)
     party = party or (player and player.party) or {}
     local out = {}
     for _, g in ipairs(Relic.grantedTraits(state)) do
-        local targets = (g.scope == "frontRow") and frontRow(player, party) or party
+        local targets = (g.scope == "frontRow") and frontRow(front, party) or party
         for _, c in ipairs(targets) do
             out[c] = out[c] or {}
             out[c][#out[c] + 1] = g.trait

@@ -31,7 +31,7 @@ return {
     hands = 2, -- every bow is two-handed (docs/weapons.md)
     class = "hunter",
     price = 300,
-    unlockQuests = 6,
+    unlockQuests = 8,
     -- The extra, whole. Neither number moves with the forge: `speed` is the steep tempo the stance costs
     -- (models/item.lua -- an upgrade never buys back the turn), and `stamina` is what each held shot
     -- spends, which used to fall from 6 to 3 across the levels. Three points of discount cannot pay out

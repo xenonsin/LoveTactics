@@ -34,7 +34,6 @@ return {
     sponsor = "arcanum",
     rewardItems = { "weapon_unravelling_wand", "armor_unravelling_habit" },
     rewardGold = 400,
-    rewardPrestige = 2,
     requiredQuests = { "quest_arcanum_slot_08" }, -- slot 9: the line runs in order
     requiredPrestige = 3,
     requiredSponsorQuests = { vendor = "arcanum", count = 6 }, -- 6 of this house's quests done

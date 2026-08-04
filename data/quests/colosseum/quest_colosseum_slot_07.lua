@@ -37,12 +37,11 @@ return {
     outro = "conversation_colosseum_slot_07_outro",
     rewardItems = { "weapon_the_stillness", "armor_blood_fever_mail" },
     rewardGold = 300,
-    rewardPrestige = 2,
     requiredQuests = { "quest_colosseum_slot_06" }, -- slot 7: the line runs in order
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "colosseum", count = 6 }, -- 6 of this house's quests done
     map = {
-        biome = "castle",
+        biome = "volcanic",
         encounters = { min = 8, max = 11, always = { "encounter_elite" } },
         objective = {
             name = "The Patron on the Card",

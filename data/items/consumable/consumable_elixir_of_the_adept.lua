@@ -17,7 +17,7 @@ return {
     tags = { "potion", "elixir", "restorative" },
     class = "alchemist",
     price = 140,
-    unlockQuests = 3,
+    unlockQuests = 4,
     activeAbility = {
         target = "ally",
         range = 1,

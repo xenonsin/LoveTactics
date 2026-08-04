@@ -166,6 +166,9 @@ function DraftMatch.battleOpts(run, match, callbacks)
         formationSlots = DraftRun.formationSlots(run),
         formationCols = DraftRun.FORMATION_COLS,
         formationRows = DraftRun.FORMATION_ROWS,
+        -- No deployment phase: draft already made that decision, in the shop, on its own grid -- and it
+        -- is a timed match against another team, which is no place to re-open a placement screen.
+        deploy = false,
         enemyChars = (match and match.enemyChars) or {},
         chessClock = callbacks.chessClock, -- seconds per side; nil = untimed (states/battle.lua default)
         draft = true,                      -- marks this as a draft battle (PvP HUD: scores + clocks)

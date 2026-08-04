@@ -1,0 +1,282 @@
+-- Tests for the Forge: the three-track bill (a currency track -- gold for plain stock, DISCIPLINE
+-- TECHNIQUE for discipline stock -- plus craft stock by the item's own quality and house stock by its
+-- class, doubled across both parents for a discipline item) and the ceiling rules (house standing,
+-- uncapped). Also covers the material model's two families and the technique wallet: how it is banked
+-- per action, capped per battle, and spent off the single strongest holder. Headless.
+
+local Forge = require("models.forge")
+local Material = require("models.material")
+local Discipline = require("models.discipline")
+local Item = require("models.item")
+local Player = require("models.player")
+local Vendor = require("models.vendor")
+local Quest = require("models.quest")
+
+-- A player with unlimited stock, so a test about the BILL is never really a test about the purse.
+local function richPlayer()
+    local p = Player.new()
+    p.gold = 100000
+    p.materials = setmetatable({}, { __index = function() return 9999 end })
+    return p
+end
+
+-- The first upgradable item on the shelf carrying a real discipline, as `id, def`.
+local function anyDisciplineItem()
+    local ids = {}
+    for itemId, d in pairs(Item.defs) do
+        if d.discipline and Discipline.defs[d.discipline] and Item.isUpgradable(Item.instantiate(itemId)) then
+            ids[#ids + 1] = itemId
+        end
+    end
+    table.sort(ids) -- pairs() order is not promised across builds; the spec must pick the same item twice
+    return ids[1], ids[1] and Item.defs[ids[1]]
+end
+
+return {
+    -- -----------------------------------------------------------------------
+    -- Materials: two families
+    -- -----------------------------------------------------------------------
+    {
+        name = "craft stock grades on the item's own price, not on how deep the forge rung is",
+        fn = function()
+            assert(Material.gradeFor({ price = 60 }) == "material_iron_scrap", "cheap stock is scrap")
+            assert(Material.gradeFor({ price = 320 }) == "material_steel_ingot", "mid-shelf is steel")
+            assert(Material.gradeFor({ price = 900 }) == "material_mythril", "the top of the shelf is mythril")
+            -- The grade is a property of the ITEM, so it does not drift as the ladder climbs. This is
+            -- what the retired Material.TIER_BY_LEVEL got wrong.
+            local sword = Item.instantiate("weapon_iron_sword")
+            local deep = Item.instantiate("weapon_iron_sword", 1, 9)
+            assert(Material.gradeFor(sword) == Material.gradeFor(deep), "the same blade draws the same stock at +9")
+            assert(Material.TIER_BY_LEVEL == nil and Material.forLevel == nil, "the depth ladder is retired")
+        end,
+    },
+    {
+        name = "every class has a house stock, and only house stock carries a class",
+        fn = function()
+            for class in pairs(Item.CLASSES) do
+                local id = Material.houseFor(class)
+                assert(id, class .. " has no house material")
+                assert(Material.get(id), "and its blueprint exists: " .. tostring(id))
+                assert(Material.isHouse(id), "which reads as house stock")
+            end
+            assert(Material.houseFor(nil) == nil, "a classless item wants no house stock")
+            for _, m in ipairs(Material.list()) do
+                assert(Material.isHouse(m.id) == (m.class ~= nil), m.id .. " must be one family or the other")
+            end
+        end,
+    },
+
+    -- -----------------------------------------------------------------------
+    -- The bill
+    -- -----------------------------------------------------------------------
+    {
+        name = "a plain class item bills craft stock by quality plus its own house's stock",
+        fn = function()
+            local p = richPlayer()
+            local sword = Item.instantiate("weapon_iron_sword") -- knight, price 60
+            local cost = Forge.upgradeCost(p, sword)
+            assert(cost.level == 1 and cost.gold == 40, "+1 costs 40 gold")
+            assert(cost.materials.material_iron_scrap == 2, "and 2 of the grade its price draws on")
+            assert(cost.materials[Material.houseFor("knight")] == 1, "plus 1 of the Bastion's stock")
+            -- The counts climb with the rung: craft is target+1, house is ceil(target/2).
+            local deep = Item.instantiate("weapon_iron_sword", 1, 5)
+            local cost6 = Forge.upgradeCost(p, deep)
+            assert(cost6.materials.material_iron_scrap == 7, "craft stock is target+1")
+            assert(cost6.materials[Material.houseFor("knight")] == 3, "house stock is ceil(target/2)")
+        end,
+    },
+    {
+        name = "a discipline item bills EVERY parent house, at double the plain rate",
+        fn = function()
+            local p = richPlayer()
+            -- A multiclass item pays both lines it descends from -- the discipline gate, expressed as a
+            -- bill rather than a lock: you cannot forge it deep without having run both houses.
+            local id, def
+            for itemId, d in pairs(Item.defs) do
+                if d.discipline and Discipline.arity(d.discipline) == 2 and d.price
+                    and Item.isUpgradable(Item.instantiate(itemId)) then
+                    id, def = itemId, d
+                    break
+                end
+            end
+            assert(id, "the shelf has at least one upgradable multiclass item")
+
+            local cost = Forge.upgradeCost(p, Item.instantiate(id))
+            local parents = Discipline.parents(def.discipline)
+            assert(#parents == 2, "a multiclass has two parents")
+            for _, parent in ipairs(parents) do
+                assert(cost.materials[Material.houseFor(parent)] == 1,
+                    id .. " must bill " .. parent .. "'s stock at the plain-class rate x2 (target=1)")
+            end
+            assert(cost.materials[Material.houseFor(def.class)] == nil
+                or Material.houseFor(def.class) == Material.houseFor(parents[1])
+                or Material.houseFor(def.class) == Material.houseFor(parents[2]),
+                "and bills its own class only through the parent list, never twice over")
+        end,
+    },
+    {
+        name = "a classless item bills craft stock only -- no house wants a torch",
+        fn = function()
+            local p = richPlayer()
+            local id
+            for itemId, d in pairs(Item.defs) do
+                if not d.class and not d.discipline and d.price and Item.isUpgradable(Item.instantiate(itemId)) then
+                    id = itemId
+                    break
+                end
+            end
+            if not id then return end -- no upgradable classless stock in data
+            local cost = Forge.upgradeCost(p, Item.instantiate(id))
+            for matId in pairs(cost.materials) do
+                assert(not Material.isHouse(matId), id .. " should want no house stock, wanted " .. matId)
+            end
+        end,
+    },
+
+    -- -----------------------------------------------------------------------
+    -- The ceiling
+    -- -----------------------------------------------------------------------
+    {
+        name = "a class item's ceiling is the standing of the house that sells it",
+        fn = function()
+            local p = richPlayer()
+            local sword = Item.instantiate("weapon_iron_sword") -- knight -> the Bastion
+            assert(Forge.houseVendorFor("knight") == "bastion", "the knight's house is the Bastion")
+            assert(Forge.ceilingFor(p, sword) == Vendor.tier(0) + 1, "no quests done -> the opening ceiling")
+
+            -- Run that house's line and the ceiling climbs with it. Only the SPONSORING house counts.
+            local done = 0
+            for questId, qdef in pairs(Quest.defs) do
+                if qdef.sponsor == "bastion" and done < Vendor.TIERS[#Vendor.TIERS] then
+                    p.completedQuests[questId] = true
+                    done = done + 1
+                end
+            end
+            assert(Quest.sponsorProgress(p, "bastion") == done, "the standing counts this house's quests")
+            assert(Forge.ceilingFor(p, sword) > Vendor.tier(0) + 1, "and the ceiling rose with it")
+        end,
+    },
+    {
+        name = "discipline stock is billed in TECHNIQUE, not gold, and carries no ceiling",
+        fn = function()
+            local p = richPlayer()
+            local id, def = anyDisciplineItem()
+            assert(id, "the shelf has at least one upgradable discipline item")
+            local item = Item.instantiate(id)
+
+            -- No ceiling: the price is the brake, and charging a lock on top would be charging twice.
+            assert(Forge.ceilingFor(p, item) == Item.MAX_LEVEL, "a discipline item forges to the top")
+            assert(Forge.DISCIPLINE_HEAD_START == nil, "the old head-start ceiling is retired")
+
+            local cost = Forge.upgradeCost(p, item)
+            assert(cost.gold == 0, "and it costs no gold at all")
+            assert(cost.technique == Discipline.techniqueCost(cost.level), "the currency track is technique")
+            assert(cost.techniqueId == def.discipline, "billed in its OWN discipline")
+            assert(not cost.locked, "never locked -- only unaffordable")
+
+            -- A plain class item is the other side of the same track: gold, no technique.
+            local plain = Item.instantiate("weapon_iron_sword")
+            local plainCost = Forge.upgradeCost(p, plain)
+            assert(plainCost.technique == 0, "plain stock banks no technique cost")
+            assert(plainCost.gold > 0, "it pays gold, exactly as before")
+        end,
+    },
+    {
+        name = "technique is billed to the strongest holder alone -- four part-timers cannot pool it",
+        fn = function()
+            local p = richPlayer()
+            local id, def = anyDisciplineItem()
+            local item = Item.instantiate(id)
+            local cost = Forge.upgradeCost(p, item)
+            local need = cost.technique
+            -- A second body, because the rule under test is about how a bill reads ACROSS the roster
+            -- and a one-character roster cannot express it. Player.new() starts with the avatar alone.
+            p.roster[2] = p.roster[2] or require("models.character").instantiate("character_knight")
+            assert(p.roster[2], "this test needs two roster bodies")
+
+            -- Split the bill's worth across two characters: each falls short, so the forge refuses --
+            -- even though the roster TOTAL is more than enough. This is the whole point of the rule.
+            p.roster[1].technique = { [def.discipline] = need - 1 }
+            p.roster[2].technique = { [def.discipline] = need - 1 }
+            assert(Discipline.technique(p, def.discipline) == need - 1, "the read is the max, not the sum")
+            local ok, why = Forge.upgrade(p, item)
+            assert(ok == nil and why == "technique", "a pooled bill is refused: " .. tostring(why))
+
+            -- Commit one body instead and it pays, off that body only.
+            p.roster[1].technique = { [def.discipline] = need + 5 }
+            local newItem = Forge.upgrade(p, item)
+            assert(newItem and newItem.level == cost.level, "the specialist's bank forges the rung")
+            assert(p.roster[1].technique[def.discipline] == 5, "and it came off the holder")
+            assert(p.roster[2].technique[def.discipline] == need - 1, "the other body is untouched")
+            assert(p.gold == 100000, "no gold was spent on discipline stock")
+        end,
+    },
+    {
+        name = "a classless item has no ceiling at all -- only the materials gate it",
+        fn = function()
+            local p = richPlayer()
+            local id
+            for itemId, d in pairs(Item.defs) do
+                if not d.class and not d.discipline and Item.isUpgradable(Item.instantiate(itemId)) then
+                    id = itemId
+                    break
+                end
+            end
+            if not id then return end
+            assert(Forge.ceilingFor(p, Item.instantiate(id)) == Item.MAX_LEVEL, id .. " should reach the top")
+        end,
+    },
+    {
+        name = "the ceiling never exceeds Item.MAX_LEVEL, whatever the standing or the level",
+        fn = function()
+            local p = richPlayer()
+            for questId in pairs(Quest.defs) do p.completedQuests[questId] = true end
+            for _, char in ipairs(p.roster) do
+                char.growthBy = {}
+                for disciplineId in pairs(Discipline.defs) do char.growthBy[disciplineId] = 99 end
+            end
+            for id, d in pairs(Item.defs) do
+                if Item.isUpgradable(Item.instantiate(id)) then
+                    local ceiling = Forge.ceilingFor(p, Item.instantiate(id))
+                    assert(ceiling <= Item.MAX_LEVEL, id .. " ceiling " .. ceiling .. " is past the top")
+                    assert(ceiling >= 0, id .. " ceiling went negative")
+                end
+            end
+            -- And at the very top there is no bill left to quote.
+            local maxed = Item.instantiate("weapon_iron_sword", 1, Item.MAX_LEVEL)
+            assert(Forge.upgradeCost(p, maxed) == nil, "a fully forged item has no next rung")
+        end,
+    },
+
+    -- -----------------------------------------------------------------------
+    -- Every forgeable thing must actually be payable
+    -- -----------------------------------------------------------------------
+    {
+        name = "every upgradable item quotes a complete bill at every rung it can reach",
+        fn = function()
+            local p = richPlayer()
+            for id in pairs(Item.defs) do
+                local probe = Item.instantiate(id)
+                if Forge.canWork(probe) then
+                    for level = 0, Item.MAX_LEVEL - 1 do
+                        local cost = Forge.upgradeCost(p, Item.instantiate(id, 1, level))
+                        assert(cost, id .. " quotes no cost at +" .. level)
+                        -- EXACTLY ONE currency track, always: gold for plain stock, technique for
+                        -- discipline stock. Both would be charging twice for one rung; neither would
+                        -- be a free ladder. Pinned over the whole catalogue because the branch that
+                        -- picks between them reads `item.discipline`, and a typo'd discipline id on a
+                        -- data file would silently fall through to the gold side.
+                        assert(cost.gold > 0 or cost.technique > 0, id .. " is free at +" .. level)
+                        assert((cost.gold > 0) ~= (cost.technique > 0),
+                            id .. " bills two currencies at +" .. level)
+                        assert(next(cost.materials), id .. " bills no materials at +" .. level)
+                        for matId, n in pairs(cost.materials) do
+                            assert(Material.get(matId), id .. " bills an unknown material: " .. tostring(matId))
+                            assert(n > 0, id .. " bills a zero count of " .. matId)
+                        end
+                    end
+                end
+            end
+        end,
+    },
+}

@@ -12,7 +12,7 @@ return {
     tags = { "fire", "magical" },
     class = "mage",
     price = 150,
-    unlockQuests = 3,
+    unlockQuests = 0,
     activeAbility = {
         target = "enemy",
         range = 3,

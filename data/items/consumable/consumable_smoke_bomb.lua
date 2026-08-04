@@ -21,6 +21,6 @@ return {
     class = "rogue",
     maxStack = 1,
     price = 200,
-    unlockQuests = 3,
+    unlockQuests = 2,
     traits = { "trait_smoke_screen" },
 }

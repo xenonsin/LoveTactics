@@ -40,11 +40,10 @@ return {
     outro = "conversation_bastion_slot_02_outro",
     rewardItems = { "utility_names_he_kept", "weapon_wardens_tongue", "armor_kept_wound_shield" },
     rewardGold = 100,
-    rewardPrestige = 1,
     requiredQuests = { "quest_bastion_slot_01" }, -- slot 2: the line runs in order
     requiredPrestige = 2,
     map = {
-        biome = "forest",
+        biome = "tundra",
         encounters = { min = 5, max = 7 },
         objective = {
             name = "The Road-Captain's Camp",

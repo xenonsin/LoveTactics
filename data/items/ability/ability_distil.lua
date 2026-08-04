@@ -24,7 +24,7 @@ return {
     class = "alchemist",
     discipline = "herbalist",
     price = 360,
-    unlockQuests = 6,
+    unlockQuests = 8,
     activeAbility = {
         target = "tile",
         range = 2,

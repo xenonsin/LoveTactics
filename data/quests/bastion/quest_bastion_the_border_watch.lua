@@ -24,13 +24,12 @@ return {
     difficulty = "Hard",
     sponsor = "bastion",
     rewardGold = 250,
-    rewardPrestige = 1,
     -- Both parents, earned: "quest_bastion_slot_03" is the first knight subclass gate on its line,
     -- "quest_hunters_lodge_slot_03" the first hunter. Holding either is impossible without them.
     requiredQuests = { "quest_bastion_slot_03", "quest_hunters_lodge_slot_03" },
     requiredPrestige = 2,
     map = {
-        biome = "forest",
+        biome = "tundra",
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },
         objective = {
             name = "The Ford",

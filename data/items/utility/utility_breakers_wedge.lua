@@ -21,6 +21,6 @@ return {
     class = "knight",
     discipline = "vanguard",
     price = 400,
-    unlockQuests = 6,
+    unlockQuests = 8,
     traits = { "trait_breakers_wedge" },
 }

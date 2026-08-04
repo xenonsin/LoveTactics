@@ -16,7 +16,7 @@ return {
     tags = { "arcane" },
     class = "alchemist",
     price = 280,
-    unlockQuests = 3,
+    unlockQuests = 7,
     aura = {
         appliesTo = { "consumable" }, -- only the throwables and potions it sits beside
         amountBonus = Curve.ramp(5, 15),              -- added to the neighbor consumable's ability magnitude

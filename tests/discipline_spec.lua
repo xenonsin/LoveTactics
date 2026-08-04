@@ -420,4 +420,49 @@ tests[#tests + 1] = { name = "a discipline-heavy build grows along the disciplin
     assert(after > before, "ninja growth adds magicDamage (rogue alone never would)")
 end }
 
+-- --------------------------------------------------------- missingParents (the shelf's direction)
+tests[#tests + 1] = { name = "missingParents names the crossing's unmet half, and empties as it is met", fn = function()
+    local Player = require("models.player")
+    local p = Player.new()
+    p.completedQuests = {}
+
+    -- Ninja is rogue x mage. With nothing done, BOTH halves are missing.
+    local missing = Discipline.missingParents(p, "ninja")
+    assert(#missing == 2, "a fresh player is short both of Ninja's parents, got " .. #missing)
+
+    -- Open every ROGUE subclass and only the rogue half is satisfied. This is the case the shop's
+    -- lockReason renders as "needs a mage path (The Arcanum)" -- if this ever returned the wrong
+    -- class, the shelf would point the player at the wrong building.
+    for _, def in pairs(Discipline.defs) do
+        if #(def.classes or {}) == 1 and def.classes[1] == "rogue" then
+            for _, q in ipairs(def.requiredQuests or {}) do p.completedQuests[q] = true end
+        end
+    end
+    missing = Discipline.missingParents(p, "ninja")
+    assert(#missing == 1 and missing[1] == "mage",
+        "only the mage half should remain, got " .. table.concat(missing, ","))
+
+    -- A SUBCLASS has no parent requirement of its own, so it never reports one -- its gate is its
+    -- own quest, which is a different sentence in the panel.
+    assert(#Discipline.missingParents(p, "assassin") == 0, "a subclass has no parents to be short of")
+    assert(#Discipline.missingParents(p, nil) == 0, "an absent id is not an error")
+    assert(#Discipline.missingParents(p, "not_a_discipline") == 0, "nor is an unknown one")
+end }
+
+tests[#tests + 1] = { name = "every class maps to the house that sells it, and the Forge agrees", fn = function()
+    local Vendor = require("models.vendor")
+    local Forge = require("models.forge")
+    local Item = require("models.item")
+
+    for class in pairs(Item.CLASSES) do
+        local id = Vendor.forClass(class)
+        assert(id, class .. " has no house")
+        assert((Vendor.get(id) or {}).class == class, "the house " .. tostring(id) .. " sells " .. class)
+        -- The Forge's own accessor now delegates here. Pinned because the two used to keep separate
+        -- reverse indexes over the same field, which is exactly how they would drift apart.
+        assert(Forge.houseVendorFor(class) == id, "Forge and Vendor must name the same house for " .. class)
+    end
+    assert(Vendor.forClass(nil) == nil, "a classless item wants no house")
+end }
+
 return tests

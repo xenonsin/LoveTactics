@@ -36,7 +36,6 @@ return {
     -- this slot's assassinate against a single forsworn knight -- the mirror returns his own big blow.
     rewardItems = { "utility_closed_entry", "weapon_splitglass_saber", "armor_reflecting_shield" },
     rewardGold = 180,
-    rewardPrestige = 1,
     requiredQuests = { "quest_bastion_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 2,
     requiredSponsorQuests = { vendor = "bastion", count = 3 }, -- 3 of this house's quests done

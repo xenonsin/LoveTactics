@@ -13,7 +13,7 @@ return {
     tags = { "pierce", "physical" },
     class = "hunter",
     price = 340,
-    unlockQuests = 6,
+    unlockQuests = 9,
     activeAbility = {
         -- A saturating volley is aimed at a CELL, not a single foe: it can be centred on any
         -- walkable tile in range -- empty ground, an enemy, or one of your own (allowOccupied) --

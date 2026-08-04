@@ -16,7 +16,7 @@ return {
     tags = { "utility", "holy" },
     class = "priest",
     price = 220,
-    unlockQuests = 3,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 5,

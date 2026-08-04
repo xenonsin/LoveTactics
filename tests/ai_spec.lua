@@ -9,6 +9,8 @@
 local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
+local Wall = require("models.wall")
+local Prop = require("models.prop")
 local AI = require("models.ai")
 
 -- A flat, all-walkable arena (no terrain), mirroring tests/combat_spec.lua's fixture.
@@ -511,6 +513,121 @@ return {
             local after = math.abs(home.move.x - guard.anchorX) + math.abs(home.move.y - guard.anchorY)
             assert(after < math.abs(guard.x - guard.anchorX) + math.abs(guard.y - guard.anchorY),
                 "and the step it takes is homeward")
+        end,
+    },
+    {
+        name = "a foe walled off by terrain rounds the wall instead of standing at it",
+        fn = function()
+            -- The stall this exists to prevent: the approach used to rank stand tiles by the straight
+            -- line to its goal, and every tile that rounds a corner is FARTHER in a straight line than
+            -- the one already stood on. So the unit marched up to the masonry, found nothing that got
+            -- it "closer", and held -- every turn, for the rest of the battle.
+            --
+            -- A five-wide slab across the middle of a nine-wide board, open down both flanks.
+            local map = arena(9, 9)
+            for x = 3, 7 do
+                for y = 4, 5 do
+                    map.tiles[y][x] = { type = "obstacle", moveCost = math.huge,
+                                        walkable = false, sightCost = math.huge }
+                end
+            end
+            local c = Combat.new(map, { unit(swordsman(), 5, 9) }, { unit("character_bandit", 5, 1) })
+            local hero, bandit = c.units[1], c.units[2]
+
+            -- Walk the plan out turn by turn: the stall was never visible in one step (the first move
+            -- toward the wall looks fine), only in the fact that the second one never came.
+            local moves, struck = 0, false
+            for _ = 1, 10 do
+                local plan = AI.plan(c, bandit)
+                assert(plan.move or plan.item, "the bandit keeps closing rather than holding at the wall")
+                if plan.move then
+                    bandit.x, bandit.y = plan.move.x, plan.move.y
+                    moves = moves + 1
+                end
+                if plan.item then struck = true; break end -- in reach: the approach is done
+            end
+            assert(struck and moves > 0, "it arrives and swings, in a finite number of walks")
+            assert(Combat.cellGap(bandit.x, bandit.y, hero) <= 1,
+                "from a tile adjacent to the party, having taken the long way around the slab")
+        end,
+    },
+    {
+        name = "a foe walled in by a conjured barrier breaks the one panel that opens its road",
+        fn = function()
+            -- The corner pocket: solid terrain east of the bandit, a conjured wall south of it. Nothing
+            -- to walk to, nobody in reach -- the old planner declared "nothing worth doing" and did it
+            -- again every turn for the rest of the fight, which is what made Summon Wall a stalemate
+            -- button rather than a delay.
+            local map = arena(7, 7)
+            map.tiles[1][2] = { type = "obstacle", moveCost = math.huge, walkable = false, sightCost = math.huge }
+            local raider = swordsman()
+            local c = Combat.new(map, { unit(swordsman(), 5, 5) }, { unit(raider, 1, 1) })
+            local bandit = c.units[2]
+            local wall = Wall.place(c, 1, 2, "illusory_wall")
+            assert(wall, "the barrier stands, sealing the pocket")
+
+            local plan = AI.plan(c, bandit)
+            assert(plan.strike, "it takes a swing at the way out instead of holding: " .. AI.explain(plan))
+            assert(plan.tx == 1 and plan.ty == 2, "at the wall, the only thing between it and the party")
+            assert(plan.item and plan.item.activeAbility, "with something it can actually hit for")
+
+            -- And the plan RESOLVES: the descriptor the battle state executes is the object verb, not
+            -- Combat.useItem, which has no notion of a target that isn't a body.
+            local before = wall.health
+            assert(Combat.strikeObject(c, bandit, plan.item, plan.tx, plan.ty), "the blow lands")
+            assert(wall.health < before, "and the barrier is coming down: " .. before .. " -> " .. wall.health)
+        end,
+    },
+    {
+        name = "a barrier is broken when the detour costs more turns than the axework",
+        fn = function()
+            -- The trade the whole clearing pass exists to make, set up twice on the same board. A
+            -- terrain wall spans the map at y=8 with the party on the far side; the ONE gap in it is
+            -- plugged by a conjured barrier, and the only other way round is the far edge.
+            local function board(hole)
+                local map = arena(15, 15)
+                for x = 1, 14 do
+                    map.tiles[8][x] = { type = "obstacle", moveCost = math.huge,
+                                        walkable = false, sightCost = math.huge }
+                end
+                map.tiles[8][2] = { type = "ground", moveCost = 1, walkable = true, sightCost = 0 }
+                -- A second gap, when the case wants the detour to be cheap.
+                if hole then
+                    map.tiles[8][hole] = { type = "ground", moveCost = 1, walkable = true, sightCost = 0 }
+                end
+                local c = Combat.new(map, { unit(swordsman(), 2, 9) }, { unit(swordsman(), 2, 7) })
+                assert(Wall.place(c, 2, 8, "illusory_wall"), "the barrier plugs the gap")
+                return c, c.units[2]
+            end
+
+            -- Thirteen tiles out to the map edge, across, and thirteen back -- against a couple of
+            -- turns swinging at the thing standing in the doorway.
+            local long, raider = board(nil)
+            local plan = AI.plan(long, raider)
+            assert(plan.strike and plan.tx == 2 and plan.ty == 8,
+                "the long way round is not worth it, so it breaks through: " .. AI.explain(plan))
+
+            -- Same barrier, same unit, one tile of detour: now walking is plainly cheaper, and a
+            -- planner that broke it anyway would be demolishing scenery for its own sake.
+            local short, walker = board(3)
+            local walk = AI.plan(short, walker)
+            assert(not walk.strike, "with a gap beside it, it walks: " .. AI.explain(walk))
+            assert(walk.move, "and the walk is toward the party")
+        end,
+    },
+    {
+        name = "furniture that is not in the way is walked around, not demolished",
+        fn = function()
+            -- The other half of the judgement, and the one that keeps a cluttered board from turning
+            -- into a demolition derby: a crate beside the bandit is breakable, in reach, and utterly
+            -- beside the point, because the road to the party is open.
+            local c = Combat.new(arena(9, 9), { unit(swordsman(), 5, 9) }, { unit(swordsman(), 5, 1) })
+            local bandit = c.units[2]
+            assert(Prop.place(c, 4, 1, "prop_crate"), "the crate stands beside it")
+
+            local plan = AI.plan(c, bandit)
+            assert(not plan.strike, "it ignores the crate: " .. AI.explain(plan))
+            assert(plan.move, "and gets on with closing the distance")
         end,
     },
     {

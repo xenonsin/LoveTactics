@@ -25,7 +25,6 @@ return {
     difficulty = "Hard",
     sponsor = nil, -- no vendor sends you here; the seven of them together did
     rewardGold = 2000,
-    rewardPrestige = 10,
     requiredPrestige = 10,
     endsCampaign = true,
     -- The last scene in the game, played over the frozen final frame before the credits roll.

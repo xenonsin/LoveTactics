@@ -21,7 +21,7 @@ return {
     class = "knight",
     discipline = "vanguard",
     price = 440,
-    unlockQuests = 6,
+    unlockQuests = 8,
     bonus = { defense = Curve.ramp(6, 16), movement = -2 },
     traits = { "trait_breakers_harness" },
 }

@@ -38,13 +38,12 @@ return {
     difficulty = "Hard",
     sponsor = "colosseum",
     rewardGold = 250,
-    rewardPrestige = 1,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_bastion_slot_03" the first knight. Holding either is impossible without them.
     requiredQuests = { "quest_colosseum_slot_03", "quest_bastion_slot_03" },
     requiredPrestige = 1,
     map = {
-        biome = "castle",
+        biome = "desert",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },
         objective = {
             name = "The Standing Challenge",

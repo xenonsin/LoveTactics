@@ -38,28 +38,63 @@ Game Boy Advance *Fire Emblem*. We need terrain tiles that dress that grid.
 
 ## Tiles needed
 
-Each biome = **6 tile types** (the battle board uses **1–4**; the world map uses all six). Order is
-the engine's index:
+**7 biomes × 6 tile types = 42 tiles.** Every biome supplies the same six *roles*; what changes is
+what that role is made of in that place. The engine's index order is the row order below.
 
-| # | type | role | forest | castle | underworld |
-|--|--|--|--|--|--|
-| 1 | forest | fill / obstacle | dense canopy | stone-wall block | black basalt block |
-| 2 | grass | fill | grass | mossy stone | cooled slag |
-| 3 | rock | obstacle | rock / boulder | lighter masonry | broken stone |
-| 4 | path | traversable | dirt trail | flagstone corridor | ash underfoot |
-| 5 | bridge\* | traversable | timber bridge | timber drawbridge | span of fused bone |
-| 6 | water\* | obstacle | river / water | moat | river of fire (lava) |
+| # | role | what it does |
+|--|--|--|
+| 1 | forest | the **solid fill** — the mass the trails are carved out of. Impassable on the world map |
+| 2 | grass | a **softer fill** variant, scattered through 1 by noise |
+| 3 | rock | a **harder fill** variant, scattered through 1 by noise |
+| 4 | path | the **traversable lane**. On most maps this is the only thing a player walks on |
+| 5 | bridge\* | a traversable span **across** 6 |
+| 6 | water\* | an **impassable channel** cutting the map |
 
 \* **bridge & water are world-map only — not drawn on the battle board.** Battle-critical tiles are
-**1–4**. Each biome must read as a **different place**: leafy forest vs cold castle stone vs
-volcanic underworld.
+**1–4**.
+
+### What each role is, per biome
+
+| biome | 1 forest (fill) | 2 grass | 3 rock | 4 path | 5 bridge | 6 water |
+|--|--|--|--|--|--|--|
+| **forest** | dense canopy | grass | rock / boulder | dirt trail | timber bridge | river |
+| **castle** | stone-wall block | mossy stone | lighter masonry | flagstone corridor | timber drawbridge | moat |
+| **underworld** | black basalt block | cooled slag | broken stone | ash underfoot | span of fused bone | river of fire |
+| **desert** | dune crest | dry scrub | weathered sandstone | packed track | planks over a wadi | wadi pool |
+| **tundra** | snow drift | frozen tussock | frost-split stone | trodden snow | a span of ice | meltwater lead |
+| **volcanic** | basalt block, **sunlit** | cooled slag | broken stone, bleached | ash underfoot | fused span | lava flow |
+| **swamp** | mangrove thicket | sedge and reed, yellowed | mossed-over boulder | churned mud / boardwalk | old timber | brackish standing water |
+
+Each biome must read as a **different place** at a glance. Two pairs need deliberate separation:
+
+- **volcanic vs underworld** share a vocabulary of rock and fire. The underworld is subterranean and
+  near-black; the volcanic surface is the same geology **under daylight** — warmer, lighter, with sun
+  on the stone.
+- **swamp vs forest** are both green. The forest reads as somewhere you walk *through*; the swamp
+  should read as somewhere you *wade*. Push its greens toward yellow-grey, and its standing water is
+  the murkiest in the game — barely lighter than its own fill.
+
+Two roles carry an unusual burden and are worth calling out:
+
+- **tundra path.** Snow wants to be white and so does the trail. The trodden path must read as a
+  *route* against the drifts, so it is the **bluest** thing in that biome rather than the brightest.
+- **desert path.** The reverse problem: everything is already pale, so the packed track is the
+  **lightest** value on the board and the dune fill sits a clear step darker.
+
+Reference fallback colours for every one of the 42 are already in the repo at
+`data/tilesets/<biome>.lua` — the game currently renders flat rects in those values, so they show the
+intended relative values and the separations above.
 
 ## Scope & phasing (suggested)
 
+Ordered by how much play each biome actually carries.
+
 - **Phase 1 — Forest, tiles 1–4** — proof of style on one battlefield.
 - **Phase 2 — Castle, tiles 1–4** — the most common battlefield.
-- **Phase 3 — bridge/water (5–6) for both + the full Underworld biome** — for the world map and the
-  underworld quest.
+- **Phase 3 — bridge/water (5–6) for forest + castle** — the world map for the two shipped biomes.
+- **Phase 4 — Desert, Tundra, Volcanic, Swamp, tiles 1–4** — the four new battlefields, in that
+  order. Each is a distinct tactical floor, not a reskin, so each needs to read as its own place.
+- **Phase 5 — bridge/water (5–6) for those four + the full Underworld biome.**
 
 ## Licensing
 

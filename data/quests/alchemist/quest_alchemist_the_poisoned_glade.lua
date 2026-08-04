@@ -25,13 +25,12 @@ return {
     difficulty = "Hard",
     sponsor = "alchemist",
     rewardGold = 250,
-    rewardPrestige = 1,
     -- Both parents, earned: "quest_hunters_lodge_slot_03" is the first hunter subclass gate on its line,
     -- "quest_alchemist_slot_04" the first alchemist. Holding either is impossible without them.
     requiredQuests = { "quest_hunters_lodge_slot_03", "quest_alchemist_slot_04" },
     requiredPrestige = 4,
     map = {
-        biome = "forest",
+        biome = "swamp",
         encounters = { min = 6, max = 9, always = { "encounter_boar" } },
         objective = {
             name = "The Glade",

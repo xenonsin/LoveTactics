@@ -25,7 +25,7 @@ return {
     tags = { "plate" },
     class = "knight",
     price = 340,
-    unlockQuests = 3,
+    unlockQuests = 4,
     traits = { "trait_muster_roll" },
     bonus = { defense = Curve.ramp(6, 16), movement = -1 },
     resist = { physical = 2 },

@@ -41,6 +41,11 @@
 --   { move = { x, y } }                                -- reposition only
 --   { wait = true }                                    -- nothing worth doing
 --
+-- ...plus `strike = true` on the one action that is aimed at a THING rather than a body: a wall or a
+-- prop standing between this unit and where it is trying to get (see AI.clearing). The battle state
+-- routes that one through Combat.strikeObject instead of Combat.useItem, because a barrier is not a
+-- target an ability can be "used on".
+--
 -- ...plus `reason`, a short human-readable string naming what decided it. That field is not
 -- decoration and should not be dropped as an optimisation: a priority system whose choices can't be
 -- read back is a priority system nobody can author against. It is the difference between tuning
@@ -958,6 +963,120 @@ end
 -- The tile to walk to when no rule produced an action, per the posture's `move` mode. Returns a
 -- plan descriptor or nil. Never returns a move that fails to improve the unit's situation, so a
 -- unit with nothing to do stands still instead of pacing.
+-- Ranking a tile the goal has NO road from: behind every tile that has one, and among themselves by
+-- the straight line -- so a unit sealed off entirely still presses as close as the geometry allows
+-- instead of freezing, which is what the approach did before it could read roads at all.
+local SEALED = 1e6
+
+local function roadCost(field, x, y, goal)
+    local Combat = require("models.combat")
+    return field[x .. "," .. y] or (SEALED + Combat.cellGap(x, y, goal))
+end
+
+-- The blow an approach takes when the WAY ITSELF is the problem: tear down the wall, or break the
+-- prop, standing between this unit and whatever it is trying to reach.
+--
+-- What a blocker is WORTH is measured rather than guessed. Field the road twice -- once honestly, once
+-- as though that one object were already gone (Combat.travelField's `ignore`) -- and the difference is
+-- the walking this unit saves by breaking it. An object that changes nothing was never the obstruction
+-- (some other wall was, or the terrain is), and no swing is taken at it. That is what puts a sealed-in
+-- unit's axe into the one panel that opens its road rather than whichever one it happens to face.
+--
+-- Then the trade, which is the whole judgement in one line: BREAKING BUYS TILES AND COSTS TURNS, and a
+-- turn spent swinging is a turn not spent walking. So the road saved has to beat what those same turns
+-- would have covered on foot -- `gain > turnsToBreak * this unit's stride`. Three consequences fall out
+-- of that one comparison, and none of them needs its own rule:
+--
+--   * A barrel beside an open road saves nothing and is left alone. A planner that broke whatever it
+--     could reach would turn every furnished board into a demolition derby.
+--   * A barrier with a walkable detour is smashed only when the detour is genuinely worse than the
+--     axework -- which is exactly the case a player builds a wall to create.
+--   * Anything that seals the road entirely scores in the thousands (see SEALED) and is always worth
+--     breaking, because no number of turns walking gets there at all.
+--
+-- Returns a plan { move?, item, tx, ty, strike = true }, or nil.
+function AI.clearing(ctx, goal, here)
+    local Combat = require("models.combat")
+    local combat, unit = ctx.combat, ctx.unit
+
+    -- Everything standing that bars a body, walls before props -- the order Combat.objectAt reads the
+    -- two layers in, so a tie between one of each is broken the same way every run.
+    local blockers = {}
+    for _, w in ipairs(combat.walls or {}) do
+        if w.alive and w.blocksMove then blockers[#blockers + 1] = w end
+    end
+    for _, p in ipairs(combat.props or {}) do
+        if p.alive and p.blocksMove then blockers[#blockers + 1] = p end
+    end
+    if #blockers == 0 then return nil end
+
+    -- Can this unit actually hit that thing this turn, and with what? The same reach test AI.candidates
+    -- makes of a body, asked of a tile: every stand tile it could be on (ctx.tiles, so a blow may follow
+    -- a walk) against every item it can afford. Ranked by the damage the blow lands -- Combat.strikeWall
+    -- and strikeProp both price it as computeTrapDamage, the weapon's attack stat -- then by the shortest
+    -- walk, so the axe comes out rather than the fists and the unit does not stroll to swing.
+    local function firingSolution(obj)
+        local best
+        for _, tile in ipairs(ctx.tiles or {}) do
+            for _, item in ipairs(ctx.items or {}) do
+                local ab = item.activeAbility
+                if ab and not Combat.isSupportAbility(ab) then
+                    local range = Combat.abilityRange(combat, unit, ab, tile.x, tile.y)
+                        + Combat.adjacencyRangeBonus(unit.char, item)
+                    local d = manhattan(tile.x, tile.y, obj.x, obj.y)
+                    if d <= range and d >= Combat.abilityMinRange(ab)
+                        and (not ab.requiresSight
+                             or Combat.hasLineOfSight(combat, tile.x, tile.y, obj.x, obj.y)) then
+                        local dmg = Combat.computeTrapDamage(unit, item)
+                        local steps = tile.steps or 0
+                        if not best or dmg > best.dmg or (dmg == best.dmg and steps < best.steps) then
+                            best = { tile = tile, item = item, dmg = dmg, steps = steps }
+                        end
+                    end
+                end
+            end
+        end
+        return best
+    end
+
+    -- What a turn of walking is worth to THIS body, which is what the turns spent breaking are priced
+    -- against. Floored at 1 so a rooted or crippled unit -- for whom walking buys nothing at all --
+    -- still gets to break its way out rather than dividing by zero and standing there.
+    local stride = math.max(1, Combat.flatStat(unit, "movement") or 1)
+
+    local pick
+    for _, obj in ipairs(blockers) do
+        -- Reach is asked FIRST: it is a handful of comparisons, where pricing the road is a whole
+        -- Dijkstra, and on most boards nothing breakable is in reach at all.
+        local shot = firingSolution(obj)
+        if shot then
+            local without = Combat.travelField(combat, unit, goal, obj)
+            local gain = here - roadCost(without, unit.x, unit.y, goal)
+            -- Turns of axework: what it still has standing, over what one blow takes off it. The blow
+            -- this unit would actually throw, so a heavy hitter breaks through where a fists-only
+            -- straggler correctly decides it is not worth its afternoon.
+            local turns = math.ceil(math.max(1, obj.health or 1) / shot.dmg)
+            if gain > turns * stride
+                and (not pick or gain > pick.gain
+                     or (gain == pick.gain and shot.steps < pick.shot.steps)) then
+                pick = { obj = obj, shot = shot, gain = gain }
+            end
+        end
+    end
+    if not pick then return nil end
+
+    local tile, name = pick.shot.tile, pick.obj.name or "an obstacle"
+    return {
+        move = (tile.x ~= unit.x or tile.y ~= unit.y) and { x = tile.x, y = tile.y } or nil,
+        item = pick.shot.item, tx = pick.obj.x, ty = pick.obj.y,
+        -- The one field that tells the battle state this action is aimed at a THING, not a body.
+        strike = true,
+        reason = pick.gain >= SEALED
+            and ("clearing the way: " .. name .. " is the only way through")
+            or string.format("clearing the way: %s (saves %d)", name, pick.gain),
+    }
+end
+
 local function fallbackMove(ctx, mode)
     local Combat = require("models.combat")
     local unit, combat = ctx.unit, ctx.combat
@@ -993,9 +1112,21 @@ local function fallbackMove(ctx, mode)
     local anchorX = unit.anchorX or unit.x
     local anchorY = unit.anchorY or unit.y
     local leash = ctx.posture.leash
+
+    -- How far the goal is FROM A TILE, by the road rather than by the crow's line. A unit whose goal
+    -- sits behind a wall has to walk AWAY from it to round the corner, and every one of those tiles is
+    -- farther in a straight line than the one it already stands on -- so a straight-line ranking says
+    -- "nothing gets me closer", the unit holds, and it holds again next turn. That is the bandit who
+    -- marches up to the masonry and stares at it for the rest of the battle.
+    --
+    -- A goal with no road at all (walled in, or across water a non-flier can't cross) falls back to the
+    -- straight line, ranked behind every tile that HAS one -- see SEALED.
+    --
     -- cellGap treats `goal` as its nearest footprint cell when it is a unit, and as a plain point when
     -- it is an objective tile (no w/h) -- so closing on a wide foe aims at its near edge either way.
-    local here = Combat.cellGap(unit.x, unit.y, goal)
+    local field = Combat.travelField(combat, unit, goal)
+    local function gapTo(x, y) return roadCost(field, x, y, goal) end
+    local here = gapTo(unit.x, unit.y)
 
     -- A kiter with nothing in range still has to close -- standing off from a foe it cannot shoot is
     -- not skirmishing, it is abstaining. Kiting is expressed in the EXPOSURE weight when it HAS a
@@ -1005,7 +1136,7 @@ local function fallbackMove(ctx, mode)
     -- scan's first-wins is the whole decision. See Combat.reachableList.
     for _, node in ipairs(Combat.reachableList(combat, unit)) do
         if not (mode == "leash" and manhattan(node.x, node.y, anchorX, anchorY) > leash) then
-            local d = Combat.cellGap(node.x, node.y, goal)
+            local d = gapTo(node.x, node.y)
             local bias = Hazard.tileBias(combat, node.x, node.y, unit.side)
                 + Prop.tileBias(combat, node.x, node.y)
             if not best or d < best.d
@@ -1027,6 +1158,13 @@ local function fallbackMove(ctx, mode)
             return { move = { x = home.x, y = home.y }, reason = "leash: returning to post" }
         end
     end
+
+    -- Is something in the way worth breaking instead? Asked BEFORE the walk is returned rather than
+    -- only when the walk fails, because the two are alternatives rather than a fallback: a barrier that
+    -- adds a thirty-tile detour is worth three turns of axework even though the detour is perfectly
+    -- walkable. AI.clearing has already priced that trade and only answers when breaking wins outright.
+    local clearing = AI.clearing(ctx, goal, here)
+    if clearing then return clearing end
 
     if best and best.d < here then
         -- Name the goal. A body names itself; a tile has no name of its own, so a post lends it the
@@ -1371,6 +1509,9 @@ function AI.plan(combat, unit)
             end
         end
     end
+    -- Carried so the movement fallback's clearing pass (AI.clearing) swings at a blocker from the same
+    -- set of tiles an ordinary blow may be thrown from -- including one walked to first.
+    ctx.tiles = tiles
 
     -- A posture's weights override the defaults term by term, so it only has to name the handful it
     -- actually cares about. Built fresh each plan rather than by hanging a metatable on the posture's

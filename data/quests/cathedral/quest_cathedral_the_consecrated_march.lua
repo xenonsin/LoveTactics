@@ -24,13 +24,12 @@ return {
     difficulty = "Hard",
     sponsor = "cathedral",
     rewardGold = 250,
-    rewardPrestige = 1,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_cathedral_slot_03" the first priest. Holding either is impossible without them.
     requiredQuests = { "quest_colosseum_slot_03", "quest_cathedral_slot_03" },
     requiredPrestige = 1,
     map = {
-        biome = "forest",
+        biome = "tundra",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },
         objective = {
             name = "The Incursion",

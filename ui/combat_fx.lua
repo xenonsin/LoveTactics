@@ -384,6 +384,12 @@ function CombatFx:playBeat(events, actor)
         elseif e.type == "death" then
             self:reaction(e.unit).dying = DEATH_TIME
             Sound.play("battle.death")
+        elseif e.type == "exit" then
+            -- A body that walked off rather than fell (Combat.withdraw -- a rotation). The same fade,
+            -- so the board token and the timeline card both animate out instead of blinking, and
+            -- deliberately silent: the rotation already made its own sound, and the death knell over
+            -- a unit that is standing perfectly well on the bench would be a lie.
+            self:reaction(e.unit).dying = DEATH_TIME
         end
     end
     -- The caster's own motion comes from its "cast" cue now. Fall back to the old damage-derived lunge

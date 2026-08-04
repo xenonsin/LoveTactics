@@ -14,7 +14,7 @@ return {
     class = "fighter",
     discipline = "crusader", -- fighter x priest; the Smite mechanic's first stock
     price = 300,
-    unlockQuests = 6,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 1,

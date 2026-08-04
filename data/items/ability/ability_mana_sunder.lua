@@ -14,7 +14,7 @@ return {
     class = "knight",
     discipline = "spellbreaker", -- knight x mage; the Counterspell mechanic's first stock
     price = 300,
-    unlockQuests = 6,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 1,

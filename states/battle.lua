@@ -27,6 +27,7 @@ local TileTooltip = require("ui.tile_tooltip")
 local InventoryPeek = require("ui.inventory_peek")
 local ActionPreview = require("ui.action_preview")
 local Character = require("models.character")
+local Discipline = require("models.discipline")
 local Growth = require("models.growth")
 local Item = require("models.item")
 local Combat = require("models.combat")
@@ -47,6 +48,7 @@ local Spoils = require("models.spoils")
 local BattleSummary = require("ui.panels.battle_summary")
 local WindupChooser = require("ui.panels.windup_chooser")
 local SpendChooser = require("ui.panels.spend_chooser")
+local BenchChooser = require("ui.panels.bench_chooser")
 local DebugMenu = require("ui.panels.debug_menu")
 local CloseButton = require("ui.close_button")
 local Debug = require("models.debug")
@@ -54,6 +56,8 @@ local ScreenFx = require("ui.screen_fx")
 local Settings = require("models.settings")
 local SettingsMenu = require("ui.settings_menu")
 local Cursor = require("ui.cursor")
+local DeployPhase = require("ui.deploy_phase")
+local Player = require("models.player")
 
 local battle = {}
 
@@ -115,9 +119,14 @@ local rangesButton = { x = 16, y = 148, w = 130, h = 36 }
 -- single unit. Any input still takes the current turn straight back (reclaimAutoTurn); the flag then
 -- re-arms the next unit, so "auto" holds across the side until the button is pressed off.
 local autoButton = { x = 16, y = 192, w = 130, h = 36 }
+-- Sends a body from the bench onto an OPEN slot (models/combat.lua's Combat.reinforce). A drawer entry
+-- rather than a button under the item grid, because it is not a turn action -- nobody spends anything for
+-- it, and it can be taken while any of the player's units is in hand. Drawn only when the fight has a
+-- bench at all, and greyed with its reason otherwise.
+local reinforceButton = { x = 16, y = 236, w = 130, h = 36 }
 -- Opens the settings overlay (volumes, tooltips, effects) over the paused fight -- so a player can
 -- turn the music down mid-battle without abandoning the encounter.
-local settingsButton = { x = 16, y = 236, w = 130, h = 36 }
+local settingsButton = { x = 16, y = 280, w = 130, h = 36 }
 -- Playback-speed cycler, drawn only while whole-side auto is ON (it is meaningless otherwise -- the
 -- player sets the pace of their own turns by taking them). Sits flush to the right of the Auto
 -- button as a paired control. Clicking it -- or F / gamepad right-stick -- steps battle.autoSpeed
@@ -170,6 +179,7 @@ local function overMenuEntry(x, y)
     return pointIn(forfeitButton, x, y) or pointIn(logButton, x, y) or pointIn(rangesButton, x, y)
         or (autoAllowed() and pointIn(autoButton, x, y)) or pointIn(settingsButton, x, y)
         or (autoAllowed() and battle.autoAll and pointIn(speedButton, x, y))
+        or (battle.hasBench and pointIn(reinforceButton, x, y))
         or (Debug.enabled and pointIn(winButton, x, y))
 end
 
@@ -185,6 +195,7 @@ local function hoveredMenuButton(x, y)
     if pointIn(logButton, x, y) then return "log" end
     if pointIn(rangesButton, x, y) then return "threats" end
     if autoAllowed() and pointIn(autoButton, x, y) then return "auto" end
+    if battle.hasBench and pointIn(reinforceButton, x, y) then return "reinforce" end
     if pointIn(settingsButton, x, y) then return "settings" end
     if autoAllowed() and battle.autoAll and pointIn(speedButton, x, y) then return "speed" end
     if Debug.enabled and pointIn(winButton, x, y) then return "win" end
@@ -374,25 +385,16 @@ end
 -- blueprint; the objective tile reads the quest's `map.objective`.
 local function specFor(opts, partyIds, seed)
     local spec = { biome = opts.biome, party = partyIds, seed = seed }
-    -- The player's persistent marching formation (models/player.lua), resolved from its charId->cell map
-    -- into a list ordered to MATCH partyIds so Arena.build's bindUnits seats each member on their chosen
-    -- tile. Honored on generated AND curated boards alike (Arena.build reseats an authored board's spawns
-    -- when a real formation is present); absent for a build/duel (no opts.formation), which fall back to
-    -- the even auto-placement as before. A scripted prologue fight passes none, so it keeps its authored
-    -- spawns.
-    if opts.formation or opts.formationSlots then
-        local Player = require("models.player")
-        -- Two ways in: a charId->cell map (the campaign's persistent formation, resolved against
-        -- partyIds), or a pre-resolved list of {col,row} already parallel to the party (Draft mode,
-        -- whose un-merged duplicate ids would collide in an id-keyed map -- see models/draft_run).
-        local slots = opts.formationSlots
-        if not slots then
-            slots = {}
-            for i, id in ipairs(partyIds) do slots[i] = opts.formation[id] end
-        end
-        spec.formation = slots
-        spec.formationCols = opts.formationCols or Player.FORMATION_COLS
-        spec.formationRows = opts.formationRows or Player.FORMATION_ROWS
+    -- A marching formation, as a list of {col,row} slots parallel to partyIds, so Arena.build's bindUnits
+    -- seats each member on their chosen tile. DRAFT MODE only: it keeps a 4x2 grid in its shop UI
+    -- (models/draft_run.lua) and hands it over pre-resolved, because its un-merged duplicate ids would
+    -- collide in an id-keyed map. The campaign brings none -- it chooses placement per battle in the
+    -- deployment phase (docs/deployment.md) -- and neither does a scripted fight, which keeps its
+    -- authored spawns.
+    if opts.formationSlots then
+        spec.formation = opts.formationSlots
+        spec.formationCols = opts.formationCols
+        spec.formationRows = opts.formationRows
     end
     -- A quest may name the exact board to fight on instead of rolling one (the prologue's tutorial,
     -- whose lesson is authored against specific tiles). Nil everywhere else, so ordinary fights keep
@@ -535,6 +537,10 @@ local function finishBattle(result)
     battle.summary = BattleSummary.new({
         result = result,
         spoils = spoils,
+        -- What the fight banked toward forging discipline gear (models/discipline.lua). Wins only:
+        -- a defeat panel is deliberately reward-free, and "Try Again" rolls the party back to its
+        -- pre-fight snapshot anyway, so naming a number there would be naming one about to be undone.
+        technique = result == "win" and battle.combat and battle.combat.techniqueEarned or nil,
         encounter = battle.encounter,
         actions = actions,
         -- The log survives the fight; let the player read back how it went before leaving the panel.
@@ -1291,6 +1297,19 @@ end
 -- a summon arrives through, so the newcomer joins the turn order, the board and every query with no
 -- further wiring; it gets a script key off its spawn cell exactly like the units placed at start.
 --
+-- The player's line is broken but their company is not: raise the bench chooser instead of letting the
+-- fight be decided. Defined further down, with the rest of the rotation UI (it leans on the chooser,
+-- notify and refreshView); declared here because resolveAdvance below has to consult it BEFORE it asks
+-- Combat.evaluate anything. See the rotation section.
+local offerLastStand
+
+-- Recompute the turn-order preview + battlefield overlays and hand them to the widgets. Defined far
+-- below (it leans on nearly every helper in this file); declared here because the rotation section --
+-- which sits between the turn loop and it -- has to call it after a swap changes what is on the board.
+-- Without the declaration those calls would resolve to a nil GLOBAL, which Lua only tells you about at
+-- the moment the player actually rotates.
+local refreshView
+
 -- Claimed once from the lesson rather than checked against the board, because a spawned unit can
 -- die: "is it already here?" has no honest answer, so the lesson remembers instead.
 local function spawnReinforcements()
@@ -1428,6 +1447,11 @@ local function resolveAdvance()
     -- with the very check it exists to forestall.
     spawnReinforcements()
     spawnWaves() -- timed enemy reinforcements (objective.waves), before the objective is judged
+    -- The player's last body just fell, but the company still has someone on the bench: the fight is not
+    -- decided, it is waiting. Ahead of Combat.evaluate for the same reason the lesson's reinforcement is
+    -- -- otherwise the defeat is declared a beat before the answer to it. Combat.outcomeFor agrees (a
+    -- side with a bench is not eliminated), so this is the UI half of one rule, not a second rule.
+    if offerLastStand() then return end
     local result = Combat.evaluate(battle.combat)
     if result == "win" then win() return
     elseif result == "loss" then lose() return end
@@ -2819,6 +2843,149 @@ local function waitTurn()
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- Rotation: trading the field for the bench, mid-fight
+-- ---------------------------------------------------------------------------
+--
+-- Two ways a benched member takes the field, both routed through the same chooser (see
+-- ui/panels/bench_chooser.lua) because the question -- which of these people -- is the same one:
+--
+--   ROTATE     the acting unit spends its TURN to trade places, and must be standing in the deploy zone
+--              (its own lines). The Rotate button under the item grid.
+--   REINFORCE  a slot has opened, so filling it is FREE. The drawer button, and -- when nothing of the
+--              player's is left standing -- a prompt raised automatically, because a company with a body
+--              still on the bench has not lost and the turn loop has nobody to hand the turn to.
+--
+-- Neither is spoken over the network: a duel would need a Command kind for it (models/command.lua) or the
+-- two peers desync. Rotation is a campaign feature and the deployment phase it belongs to is skipped in
+-- every duel and draft, so there is nothing to speak.
+
+local closeBenchChooser, openBenchChooser
+
+closeBenchChooser = function()
+    battle.benchChooser = nil
+end
+
+-- Rotate: the acting unit falls back and `index` comes on where it stood. Ends the turn.
+local function rotateTurn(index)
+    local current = battle.current
+    if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
+    if tutorialRefuses("rotate") then return end
+    local ok, why = Combat.rotate(battle.combat, current, index)
+    if not ok then
+        if why then notify(why) end
+        return
+    end
+    Sound.play("battle.wait") -- a fall-back and a hand-off; the same soft pass a wait makes
+    observeAction("wait", current, current.x, current.y)
+    advanceTurn()
+end
+
+-- Reinforce: `index` walks on at (x, y), free. Not a turn -- nobody acted -- so the turn in progress (if
+-- any) simply carries on, and a battle that had nobody to act is handed back to the turn loop.
+local function reinforceAt(index, x, y)
+    local unit, why = Combat.reinforce(battle.combat, index, x, y)
+    if not unit then
+        if why then notify(why) end
+        return false
+    end
+    Sound.play("battle.start")
+    battle.reinforcePick = nil
+    -- With nothing of the player's standing, the fight was waiting on this body: hand the turn loop
+    -- back its actor. Otherwise the current turn is untouched and only the view needs to catch up.
+    if not battle.current or not battle.current.alive then advanceTurn() else refreshView() end
+    return true
+end
+
+-- Raise the chooser. `mode` is "rotate" (costs the acting unit's turn) or "reinforce" (free, fills an
+-- open slot). A reinforce pick is followed by a TILE pick, since there is no vacated tile to inherit.
+--
+-- `mandatory` marks the LAST-STAND prompt: nothing of the player's is standing, so the fight is waiting
+-- on this one decision and there is no turn to hand back. Backing out of it would leave the turn loop
+-- with no actor and no way to reach one, so it simply cannot be backed out of -- Esc, B, the X and a
+-- click-off all re-raise it. Every other chooser cancels normally.
+-- Returns true if it actually opened one. The caller has to know: offerLastStand below is holding the
+-- turn loop on the promise that this chooser is up, and a silent refusal there strands the fight.
+openBenchChooser = function(mode, mandatory)
+    if battle.benchChooser or battle.over or busy() then return false end
+    local combat = battle.combat
+    if #(combat.bench or {}) == 0 then notify("No one is on the bench.") return false end
+
+    local anchorUnit = battle.current
+    if mode == "rotate" then
+        local ok, why = Combat.canRotate(combat, anchorUnit)
+        if not ok then notify(why or "You cannot rotate right now.") return false end
+    else
+        local ok, why = Combat.canReinforce(combat)
+        if not ok then notify(why or "There is no room to bring anyone in.") return false end
+    end
+
+    local m = battle.map
+    -- With nothing of the player's left standing there is no body to anchor to; the card goes to the
+    -- middle of the board, which is where the eye already is.
+    local ax, ay = Scale.WIDTH / 2, Scale.HEIGHT / 2
+    if anchorUnit and anchorUnit.alive then
+        ax = m.originX + (anchorUnit.x - 0.5) * m.size
+        ay = m.originY + (anchorUnit.y - 0.5) * m.size
+    end
+
+    local title = mode == "rotate" and "Rotate  --  costs this turn" or "Reinforce  --  free"
+    if mandatory then title = "Your line is broken" end -- the log carries the rest; the card is narrow
+
+    battle.benchChooser = BenchChooser.new({
+        entries = combat.bench,
+        title = title,
+        mandatory = mandatory,
+        anchorX = ax, anchorY = ay, tileSize = m.size,
+        onCancel = function()
+            closeBenchChooser()
+            battle.reinforcePick = nil
+            refreshView()
+        end,
+        onPick = function(index)
+            closeBenchChooser()
+            if mode == "rotate" then
+                rotateTurn(index)
+            else
+                -- Pick the ground next. One free tile means there is no decision to make, so it is made.
+                local tiles = Combat.reinforceTiles(battle.combat)
+                if #tiles == 1 then
+                    reinforceAt(index, tiles[1].x, tiles[1].y)
+                else
+                    battle.reinforcePick = { index = index, tiles = tiles, mandatory = mandatory }
+                    notify("Choose where they come in.")
+                    refreshView()
+                end
+            end
+        end,
+    })
+    return true
+end
+
+-- The turn loop found nobody of the player's to act. If there is a body on the bench, the fight is not
+-- over -- it is waiting for the player to send someone in, and the chooser is raised for them rather than
+-- the defeat panel. Returns true when it took over, so the caller holds off deciding the fight.
+-- (Forward-declared above resolveAdvance, which consults it.)
+--
+-- The blow that broke the line is usually still animating when this runs, and openBenchChooser refuses
+-- while the board is busy -- so a refusal RE-ARMS the advance rather than giving up. Without that the
+-- fight would sit with no actor, no chooser and nothing scheduled to produce either: the exact hang
+-- this function exists to prevent, reached by the exact path it exists for.
+offerLastStand = function()
+    if battle.over then return false end
+    if battle.benchChooser or battle.reinforcePick then return true end -- already in the player's hands
+    local combat = battle.combat
+    local side = combat.playerSide or "party"
+    if Combat.aliveCount(combat, side) > 0 then return false end
+    if not Combat.canReinforce(combat, side) then return false end
+    if not openBenchChooser("reinforce", true) then
+        battle.pendingAdvance = { hold = 0 } -- try again next frame, once the board has settled
+        return true
+    end
+    Combat.logEvent(combat, "system", "Your line is broken -- send someone in.")
+    return true
+end
+
 -- The keyboard Wait (Space / 0 / numpad-0 with nothing aimed) is a two-press action, mirroring how the
 -- mouse already reads: the first press ARMS a preview -- the delay slot lit on the timeline, exactly the
 -- ghost the mouse shows on Wait-button hover (battle.waitPreview feeds it, see the ghost block in
@@ -3000,6 +3167,21 @@ end
 -- Resolve a turn the player doesn't drive: an AI unit plans and acts, while an inert one (a decoy,
 -- control "none") simply holds position -- it still occupies the turn order and burns a tick, so
 -- from the far side of the board it is indistinguishable from a real, cautious unit.
+-- Resolve a plan's ACTION against the model, and report whether it spent the turn. Two verbs, because
+-- a plan can be aimed at two different kinds of thing: `strike` marks an action aimed at a board
+-- OBJECT -- the wall or barrel a planner decided to break its way through (models/ai.lua's clearing
+-- pass) -- which Combat.strikeObject resolves, since a barrier is not something an ability can be
+-- "used on". Everything else is an ordinary Combat.useItem. Shared by both branches below so the
+-- walked and unwalked turns can never learn different verbs.
+local function resolvePlanAction(current, act)
+    if not act.item then return false end
+    if act.strike then
+        local ok = Combat.strikeObject(battle.combat, current, act.item, act.tx, act.ty)
+        return ok
+    end
+    return Combat.useItem(battle.combat, current, act.item, act.tx, act.ty, act.windup, nil, act.spend)
+end
+
 local function executeEnemyAction()
     local current = battle.current
     -- A player-controlled unit reaches here only through auto-battle, and only while its pause is
@@ -3028,7 +3210,7 @@ local function executeEnemyAction()
         -- act.windup: the depth an AI rule asked a chargeable wind-up to be held at (models/ai.lua).
         -- act.spend: the gold an AI rule pours into a purchasable blow (Aurea's Gilded Wound). Both nil
         -- for an ordinary action; Combat.useItem/spendPurse clamp them to what the caster can actually pay.
-        if act.item then acted = Combat.useItem(battle.combat, current, act.item, act.tx, act.ty, act.windup, nil, act.spend) end
+        if act.item then acted = resolvePlanAction(current, act) end
         -- Reposition-only, nothing to do, or an item use that unexpectedly failed: pass so the
         -- turn always ends (paying the real move cost) and never soft-locks on this unit.
         if not acted then Combat.pass(battle.combat, current) end
@@ -3042,8 +3224,7 @@ local function executeEnemyAction()
         -- held back through the walk, exactly as the player's strike above (holdLanding's `pre`).
         local pre = boardObjects()
         if current.alive then
-            local acted = act.item
-                and Combat.useItem(battle.combat, current, act.item, act.tx, act.ty, act.windup, nil, act.spend)
+            local acted = resolvePlanAction(current, act)
             -- Reposition-only, nothing to do, or an item use that unexpectedly failed: pass so the
             -- turn always ends (paying the real move cost) and never soft-locks on this unit.
             if not acted then Combat.pass(battle.combat, current) end
@@ -3106,7 +3287,7 @@ local function moveGhostInitiative(unit)
 end
 
 -- Compute the turn-order preview + battlefield overlays and hand them to the widgets.
-local function refreshView()
+refreshView = function()
     local current = battle.current
     if not current then return end
     local isParty = Combat.isPlayerControlled(current) and not battle.over
@@ -3579,6 +3760,11 @@ local function refreshView()
     overlays.reinforcements = reinforcements
     battle.reinforceCells = reinforceCells
 
+    -- Your OWN ground, lit only while a reinforcement is being placed -- the same overlay the deployment
+    -- phase draws, so the invitation reads identically whether it is the opening bell or the moment after
+    -- a body dropped. Not lit the rest of the time: a permanently glowing home band would be noise.
+    if battle.reinforcePick then overlays.deployZone = battle.reinforcePick.tiles end
+
     -- Walls (conjured blockers) are always visible to both sides too. Keep a per-frame "x,y" lookup
     -- for click-to-strike (wallAt), mirroring battle.trapCells. The RENDER list withholds a wall a cast
     -- is still walking in to raise (shownObjects); the lookup stays live -- input is held mid-walk, so
@@ -3790,6 +3976,155 @@ local function openingConversation(opts)
     return battle.tutorial and Tutorial.opening(battle.tutorial) or nil
 end
 
+-- ---------------------------------------------------------------------------
+-- The deployment phase
+-- ---------------------------------------------------------------------------
+--
+-- Every ordinary battle opens on it: the board is built and the enemy is standing on it, the deploy zone
+-- is lit, and the player drags up to Combat.MAX_FIELD of their marching company onto it. Whoever is left
+-- on the strip is the bench, and can be rotated in later (models/combat.lua). See docs/deployment.md.
+--
+-- The phase itself is a widget (ui/deploy_phase.lua) -- it owns the strip, the drag and the placement --
+-- and this file owns the two things only the battle can: the RECT the strip lives in (the combat log's,
+-- so the two can never drift apart), and what committing MEANS.
+
+-- The gutter under the board, board-width: the combat log's rect, and the deployment strip's.
+local function gutterRect()
+    local m = battle.map
+    if not m then return { x = 0, y = 0, w = 0, h = 0 } end
+    local y = m.originY + battle.arena.rows * m.size + 8
+    return { x = m.originX, y = y, w = battle.arena.cols * m.size, h = Scale.HEIGHT - y - 8 }
+end
+
+-- Everything that used to happen at the bottom of battle.enter, now gated behind the player committing
+-- their line. Runs for a SKIPPED phase too (`deploy = false`), where the units were seated by whoever set
+-- the fight up -- so there is exactly one path into "the fight is now running".
+--
+-- `deployed` / `front` / `placed` are nil on that skipped path and supplied by the phase otherwise.
+local function commitDeploy(opts, deployed, front, placed)
+    if placed then
+        -- Resolve the opening now that the line exists: relic traits (front-row scopes included) and the
+        -- opening boons a companion ability or a relic queued. states/game.lua owns that logic; battle
+        -- only says who is standing where. A fight launched without the callback (a probe, a debug
+        -- board) simply gets none, which is what it had before.
+        local resolved = opts.resolveOpening and opts.resolveOpening(deployed, front) or {}
+        opts.openingBoons = resolved.openingBoons or opts.openingBoons
+        -- Stamped BEFORE the bell: Combat.openBattle's Trait.setup attaches every unit's traits (its own
+        -- plus whatever is sitting in relicTraits) and only then fires the openers, so a relic's trait is
+        -- on the body before anything asks it to react.
+        local traits = resolved.relicTraits or opts.relicTraits
+        for _, p in ipairs(placed) do
+            p.unit.relicTraits = traits and traits[p.char] or nil
+        end
+
+        -- Whoever was not placed waits on the bench, in company order, and can be rotated in.
+        local standing = {}
+        for _, c in ipairs(deployed) do standing[c] = true end
+        for _, char in ipairs(opts.party or {}) do
+            if not standing[char] then
+                Combat.benchUnit(battle.combat, { char = char, relicTraits = traits and traits[char] or nil })
+            end
+        end
+
+        -- battle.partyUnits is what the spoils roll and the post-fight roster read walk, so it names
+        -- everyone who took the field.
+        for _, p in ipairs(placed) do
+            battle.partyUnits[#battle.partyUnits + 1] = { char = p.char, x = p.x, y = p.y }
+        end
+
+        Player.noteDeployed(opts.player, deployed)
+        battle.deploy = nil
+        battle.map:setOverlays(nil)
+    end
+
+    -- Whether this fight has a bench AT ALL, fixed here rather than read live, so the drawer's
+    -- Reinforce entry (and the panel's Rotate button) cannot appear and vanish as reserves are spent.
+    -- False in every duel, draft and scripted lesson, which field exactly who they were given.
+    battle.hasBench = #(battle.combat.bench or {}) > 0
+
+    -- Ring the bell: passives, reservations, the stamina refill and every battle-opener trait, once,
+    -- with the company standing where it is going to stand. See Combat.openBattle.
+    Combat.openBattle(battle.combat)
+
+    -- Opening boons: statuses a run relic (or a companion ability) queued to open this fight under -- a
+    -- barrier, Haste, an empower (models/relic.lua's grantBoon). Applied here, once the units are built
+    -- and traits are set, so they read as present from the first turn without touching a live combat
+    -- action. Matched to their unit by char identity (the same instance game.lua queued them for).
+    for _, boon in ipairs(opts.openingBoons or {}) do
+        for _, unit in ipairs(battle.combat.units) do
+            if unit.side == "party" and unit.char == boon.char and unit.alive then
+                Status.apply(battle.combat, unit, boon.id, boon.opts)
+                break
+            end
+        end
+    end
+    -- A scripted lesson addresses units by name (Tutorial.scriptFor). A party member answers to its
+    -- character id, which is unique within a party; an enemy answers to the CELL IT SPAWNED ON,
+    -- because a lesson may field several of one blueprint and three identical imps would otherwise
+    -- share -- and race for -- a single queue. Stamped here, the one moment x/y still hold the spawn.
+    for _, u in ipairs(battle.combat.units) do
+        u.scriptKey = (u.side == "party") and u.char.id or (u.x .. "," .. u.y)
+    end
+    -- A guided fight's turn order is authored, not hoped for: the lesson seats every unit on the
+    -- timeline itself (Tutorial.startInitiative). Gear decides the order otherwise, and gear is
+    -- tuned for the fiction -- the mentor's mace is slower than the student's sword, so left alone
+    -- she cycles behind the very player she is demonstrating to. Rebased afterwards, per
+    -- Combat.openBattle's own convention; the seating is not elapsed time, so the clock goes back to 0.
+    if Tutorial.paces(battle.tutorial) then
+        for _, u in ipairs(battle.combat.units) do
+            u.initiative = Tutorial.startInitiative(battle.tutorial, u.scriptKey)
+        end
+        Combat.rebase(battle.combat)
+        battle.combat.clock = 0
+    end
+
+    battle.panel = CombatPanel.new(battle.combat, {
+        onActivateItem = function(item) armItem(item) end,
+        onHoverItem = function(item) battle.hoverItem = item end,
+        onHoverUnit = function(unit) battle.hoverUnit = unit end,
+        onWait = function() waitTurn() end, -- the long Wait button under the item grid
+        onRotate = function() openBenchChooser("rotate") end, -- trade places with the bench
+    })
+    battle.panel.fx = battle.fx
+
+    beginTurn()
+    refreshView()
+
+    -- Fingerprint the board BEFORE a single turn is taken, as turn 0 -- and AFTER the deployment commit,
+    -- because where the company is standing is part of the opening position.
+    --
+    -- Two peers that disagree about the opening position disagree about everything after it, and a
+    -- mismatch discovered on turn 1 is indistinguishable from one caused by the first command. This
+    -- separates the two questions: if turn 0 differs, the fight was never the same fight, and the
+    -- fault is in setup -- the rosters, the seed, the content -- rather than in anything either
+    -- player did.
+    if battle.session then
+        battle.session:report(0, battle.combat)
+        if battle.netLog then
+            battle.netLog("opening board hash "
+                .. require("models.state_hash").digestOf(battle.combat))
+        end
+    end
+    return true
+end
+
+-- Open the phase, or commit straight through for a caller that already decided placement.
+local function openDeployPhase(opts)
+    if opts.deploy == false then
+        commitDeploy(opts)
+        return
+    end
+    -- Light the ground. The phase's whole board-side statement, and the same overlay a reinforcement
+    -- uses later in the fight, so "you may come in here" looks the same at minute zero and at minute
+    -- ten (ui/battle_map.lua's drawDeployZone).
+    battle.map:setOverlays({ deployZone = battle.combat.deployZone or {} })
+    battle.deploy = DeployPhase.new({
+        combat = battle.combat, map = battle.map, arena = battle.arena,
+        roster = opts.party or {}, player = opts.player, gutter = gutterRect(),
+        onCommit = function(deployed, front, placed) commitDeploy(opts, deployed, front, placed) end,
+    })
+end
+
 function battle.enter(self, opts)
     opts = opts or {}
     battle.onWin = opts.onWin
@@ -3891,20 +4226,32 @@ function battle.enter(self, opts)
     battle.arena = Arena.build(ctx, specFor(opts, partyIds, seed))
 
     -- Combat unit lists: { char = <instance>, x, y }.
+    --
+    -- The PARTY's is filled in one of two ways, and this is the fork the deployment phase turns on:
+    --   * `deploy == false` -- a scripted fight (the prologue, a lesson), a duel, a draft or a build
+    --     match. Placement was decided by whoever set the fight up, so the arena's bound spawns ARE the
+    --     party and the fight opens on them, exactly as it always did.
+    --   * otherwise -- an ordinary campaign battle. Nothing is seated here at all: the board is built
+    --     with the enemy on it and no party, and the player stands their company through the deployment
+    --     phase (openDeployPhase below). The arena's bound spawns survive as that phase's auto-fill, so
+    --     "Auto" puts everyone exactly where this branch would have.
     battle.partyUnits, battle.enemyUnits = {}, {}
-    for i, u in ipairs(battle.arena.party) do
-        -- A tutorial may take a party member out of the player's hands (the mentor demonstrating the
-        -- lesson she just gave). Combat.new already honours a per-unit control override on the party
-        -- side -- the same seam escorted allies use -- so she stays a party unit for the objective
-        -- and the turn order, and simply isn't player-controlled.
-        battle.partyUnits[#battle.partyUnits + 1] = {
-            char = party[i], x = u.x, y = u.y,
-            control = battle.tutorial and Tutorial.controlFor(battle.tutorial, u.id) or nil,
-            -- Trait ids this member's run relics grant (models/relic.lua), keyed by char identity in
-            -- states/game.lua; Trait.attach folds them in with the char's own. Nil when the member wears
-            -- none, or in a fight with no relics carried (a tutorial leg, a duel).
-            relicTraits = opts.relicTraits and opts.relicTraits[party[i]] or nil,
-        }
+    battle.deployEnabled = opts.deploy ~= false
+    if not battle.deployEnabled then
+        for i, u in ipairs(battle.arena.party) do
+            -- A tutorial may take a party member out of the player's hands (the mentor demonstrating the
+            -- lesson she just gave). Combat.new already honours a per-unit control override on the party
+            -- side -- the same seam escorted allies use -- so she stays a party unit for the objective
+            -- and the turn order, and simply isn't player-controlled.
+            battle.partyUnits[#battle.partyUnits + 1] = {
+                char = party[i], x = u.x, y = u.y,
+                control = battle.tutorial and Tutorial.controlFor(battle.tutorial, u.id) or nil,
+                -- Trait ids this member's run relics grant (models/relic.lua), keyed by char identity in
+                -- states/game.lua; Trait.attach folds them in with the char's own. Nil when the member wears
+                -- none, or in a fight with no relics carried (a tutorial leg, a duel).
+                relicTraits = opts.relicTraits and opts.relicTraits[party[i]] or nil,
+            }
+        end
     end
     -- Escorted allies fight on the party's side but are not the player's characters (they
     -- are not in partyById), so they get fresh instances and run themselves. A `protect`
@@ -3932,7 +4279,12 @@ function battle.enter(self, opts)
         }
     end
 
-    battle.combat = Combat.new(battle.arena, battle.partyUnits, battle.enemyUnits)
+    -- Built but not OPENED when a deployment phase is coming: the ground, the enemy and the objective are
+    -- all real from this moment (so the phase draws the board the player is actually about to fight on),
+    -- but no passive has been applied and no battle-opener trait has fired. Combat.openBattle does that
+    -- once, in commitDeploy, when the company is standing where the player put them. See models/combat.lua.
+    battle.combat = Combat.new(battle.arena, battle.partyUnits, battle.enemyUnits,
+        { deferOpen = battle.deployEnabled })
 
     -- The battle purse: the pot the greed (rogue) money kit spends in-fight (fx.spendPurse ->
     -- Combat.spendPurse), and the pot the debug "Add gold" tool funds. EVERY battle gets one now, so a
@@ -3951,8 +4303,7 @@ function battle.enter(self, opts)
     --      discarded with the fight, so it never touches real or run gold.
     if opts.purse then
         battle.combat.purse = opts.purse
-    elseif not opts.draft and not battle.session and require("models.player").active then
-        local Player = require("models.player")
+    elseif not opts.draft and not battle.session and Player.active then
         local player = Player.active
         battle.combat.purse = {
             get = function() return player.gold or 0 end,
@@ -3983,37 +4334,6 @@ function battle.enter(self, opts)
             unit.control = (unit.side == battle.combat.playerSide) and "player" or "remote"
         end
     end
-    -- Opening boons: statuses a run relic (or, later, a companion ability) queued to open this fight
-    -- under -- a barrier, Haste, an empower (models/relic.lua's grantBoon). Applied here, once the units
-    -- are built and traits are set, so they read as present from the first turn without touching a live
-    -- combat action. Matched to their unit by char identity (the same instance game.lua queued them for).
-    for _, boon in ipairs(opts.openingBoons or {}) do
-        for _, unit in ipairs(battle.combat.units) do
-            if unit.side == "party" and unit.char == boon.char and unit.alive then
-                Status.apply(battle.combat, unit, boon.id, boon.opts)
-                break
-            end
-        end
-    end
-    -- A scripted lesson addresses units by name (Tutorial.scriptFor). A party member answers to its
-    -- character id, which is unique within a party; an enemy answers to the CELL IT SPAWNED ON,
-    -- because a lesson may field several of one blueprint and three identical imps would otherwise
-    -- share -- and race for -- a single queue. Stamped here, the one moment x/y still hold the spawn.
-    for _, u in ipairs(battle.combat.units) do
-        u.scriptKey = (u.side == "party") and u.char.id or (u.x .. "," .. u.y)
-    end
-    -- A guided fight's turn order is authored, not hoped for: the lesson seats every unit on the
-    -- timeline itself (Tutorial.startInitiative). Gear decides the order otherwise, and gear is
-    -- tuned for the fiction -- the mentor's mace is slower than the student's sword, so left alone
-    -- she cycles behind the very player she is demonstrating to. Rebased afterwards, per
-    -- Combat.new's own convention; the seating is not elapsed time, so the clock goes back to 0.
-    if Tutorial.paces(battle.tutorial) then
-        for _, u in ipairs(battle.combat.units) do
-            u.initiative = Tutorial.startInitiative(battle.tutorial, u.scriptKey)
-        end
-        Combat.rebase(battle.combat)
-        battle.combat.clock = 0
-    end
     -- The player's stash, by reference: Combat.steal appends here when a party thief's own 3x3 grid
     -- has no room, so the item is the player's the moment it's lifted, win or lose.
     battle.combat.stash = opts.stash
@@ -4043,46 +4363,23 @@ function battle.enter(self, opts)
     -- The board's point-effect controller (impact bursts, spell blooms, bolts in flight) is shared into
     -- the animation controller, which spawns from it as it plays out each blow. See ui/burst_fx.lua.
     battle.fx.bursts = battle.map.bursts
-    battle.panel = CombatPanel.new(battle.combat, {
-        onActivateItem = function(item) armItem(item) end,
-        onHoverItem = function(item) battle.hoverItem = item end,
-        onHoverUnit = function(unit) battle.hoverUnit = unit end,
-        onWait = function() waitTurn() end, -- the long Wait button under the item grid
-    })
-    battle.panel.fx = battle.fx
+    battle.panel = nil -- built by commitDeploy, once there is a company to draw a turn strip for
     -- The read-only kit card for a foe assayed by the Assayer's Eye (ui/inventory_peek.lua). `peekUnit`
     -- is the foe currently in focus; see updatePeekFocus (kept open while the cursor is over the foe or
     -- the card itself).
     battle.peek = InventoryPeek.new()
     battle.peekUnit = nil
-    -- The log toggles into a thin, board-width strip in the bottom gutter, directly under the
-    -- board (derived from the map so it stays aligned no matter the arena size).
-    local m = battle.map
-    local logY = m.originY + battle.arena.rows * m.size + 8
-    battle.log = CombatLog.new(battle.combat, {
-        x = m.originX,
-        y = logY,
-        w = battle.arena.cols * m.size,
-        h = Scale.HEIGHT - logY - 8,
-    })
+    -- The log toggles into a thin, board-width strip in the bottom gutter, directly under the board.
+    -- The deployment phase borrows exactly this rect for the company strip (gutterRect), which is why
+    -- the geometry lives in one function rather than being written out twice.
+    local g = gutterRect()
+    battle.log = CombatLog.new(battle.combat, { x = g.x, y = g.y, w = g.w, h = g.h })
 
-    beginTurn()
-    refreshView()
-
-    -- Fingerprint the board BEFORE a single turn is taken, as turn 0.
-    --
-    -- Two peers that disagree about the opening position disagree about everything after it, and a
-    -- mismatch discovered on turn 1 is indistinguishable from one caused by the first command. This
-    -- separates the two questions: if turn 0 differs, the fight was never the same fight, and the
-    -- fault is in setup -- the rosters, the seed, the content -- rather than in anything either
-    -- player did.
-    if battle.session then
-        battle.session:report(0, battle.combat)
-        if battle.netLog then
-            battle.netLog("opening board hash "
-                .. require("models.state_hash").digestOf(battle.combat))
-        end
-    end
+    -- The deployment phase, or straight into the fight for a caller that already decided placement.
+    -- Opened here but not INTERACTED with until the opening conversation below is dismissed -- a scene is
+    -- a global overlay on a frozen state (main.lua), so it plays over the lit zone and the player chooses
+    -- their line with whatever it just told them.
+    openDeployPhase(opts)
 
     -- Last, once the board is fully built: the fight may open with a scene played OVER it. A
     -- conversation is a global overlay on a frozen state (see main.lua), so the lane, the party and
@@ -4160,6 +4457,26 @@ local function updateDangerVignette()
     end
 end
 
+-- Float "+2 Ninja" over whoever just banked discipline technique, and clear the model's one-shot so it
+-- floats exactly once. Drained HERE, in update, rather than at each of the five Combat.useItem call
+-- sites: an action can be committed by a click, by the keyboard slot path, by the steered-route path,
+-- or by a queued command (auto-battle), and every one of them would otherwise need its own copy of
+-- this. The model banks synchronously inside useItem, so the number lands the same frame.
+--
+-- Deliberately the same channel as the damage numbers (CombatFx:floatText) -- this is a reward landing
+-- on a body, and it should read like the rest of what lands on a body. Amber rather than the damage
+-- reds or the heal green: it is the accent this UI already reserves for what is live and earned
+-- (ui/theme.lua's accentAmber).
+local function drainTechniqueFloat()
+    local award = battle.combat and battle.combat.techniqueAward
+    if not award then return end
+    battle.combat.techniqueAward = nil
+    -- A stale id prints nothing rather than a raw slug (the Discipline.displayName rule).
+    local name = Discipline.displayName(award.discipline)
+    if not name then return end
+    battle.fx:floatText(award.unit, "+" .. award.amount .. " " .. name, { 0.93, 0.76, 0.35 })
+end
+
 function battle.update(dt)
     -- The settings overlay freezes the fight: only the menu ticks, the board holds exactly where it
     -- was, and closing the overlay resumes from there. Nothing below runs while it is up.
@@ -4167,6 +4484,16 @@ function battle.update(dt)
         battle.settingsMenu:update(dt)
         return
     end
+
+    -- The deployment phase holds the fight before it starts: no turn is running, no unit is acting, and
+    -- there is nothing to advance. Only the board ticks, so its cursor and hover still feel live while
+    -- the player drags their company onto it.
+    if battle.deploy then
+        battle.map:update(dt)
+        return
+    end
+
+    drainTechniqueFloat()
     -- NOTE the wind-up chooser is deliberately NOT a freeze: it is a small slider over the aimed tile,
     -- and the board + turn-order strip behind it are its preview. The view has to keep refreshing so
     -- that sliding the depth (which writes battle.windup) slides the channel's resolve slot along the
@@ -4418,6 +4745,16 @@ end
 function battle.draw()
     Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
 
+    -- Before the bell: the board with the deploy zone lit and the company in the gutter. None of the
+    -- fight's own furniture is drawn -- no turn strip (nobody is acting), no combat log (nothing has
+    -- happened), no left-column drawer (there is no fight to forfeit) -- so the screen says one thing.
+    if battle.deploy then
+        battle.map:draw()
+        battle.deploy:draw({ x = LEFT_W, w = Scale.WIDTH - LEFT_W - PANEL_W })
+        love.graphics.setColor(1, 1, 1)
+        return
+    end
+
     battle.updatePeekFocus()
     battle.drawLeftColumn()
     battle.map:draw()
@@ -4520,6 +4857,8 @@ function battle.draw()
     if battle.windupChooser then battle.windupChooser:draw() end
     -- The spend chooser is the same kind of modal for a purchasable blow (The Gilded Wound).
     if battle.spendChooser then battle.spendChooser:draw() end
+    -- The bench chooser, while a rotation or a reinforcement is picking who comes on.
+    if battle.benchChooser then battle.benchChooser:draw() end
     -- The right-click debug menu (debug builds only) sits on top of every board overlay.
     if battle.debugMenu then battle.debugMenu:draw() end
     -- While the debug "Move to tile" picker is armed, a banner tells the player the next click lands it.
@@ -4816,6 +5155,14 @@ function battle.drawHud()
         toggleBtn(speedButton, tostring(battle.autoSpeed or 1) .. "x", true, { 0.42, 0.80, 0.82 })
     end
 
+    -- Reinforce: only in a fight that HAS a bench, and lit only while a slot is actually open. Greyed
+    -- the rest of the time rather than hidden, so the option is something the player learns is there
+    -- before the moment they need it.
+    if battle.hasBench then
+        local canReinforce = Combat.canReinforce(battle.combat)
+        toggleBtn(reinforceButton, "Reinforce", canReinforce, { 0.42, 0.66, 0.92 })
+    end
+
     -- Settings: a plain entry (never a toggle state), opening the overlay over the paused fight.
     toggleBtn(settingsButton, "Settings", false, { 0.70, 0.70, 0.78 })
 
@@ -4953,12 +5300,18 @@ local function cycleAutoSpeed()
 end
 
 function battle.keypressed(key)
+    -- The deployment phase owns every input until the player commits their line. It is not a modal over
+    -- the fight -- it is what the screen IS before the fight starts -- so it sits above even the settings
+    -- overlay's usual precedence and simply takes the key.
+    if battle.deploy then battle.deploy:keypressed(key); return end
     -- The settings overlay is the top-most modal: it eats every key while it is up. Esc closes it
     -- (never forfeits the fight underneath), the rest work the list.
     if battle.settingsMenu then
         if key == "escape" then closeSettings() else battle.settingsMenu:keypressed(key) end
         return
     end
+    -- The bench chooser owns the keyboard while someone is being picked off the bench.
+    if battle.benchChooser then battle.benchChooser:keypressed(key); return end
     -- The wind-up chooser eats every key while a chargeable swing is being sized (arrows/+- adjust,
     -- Enter commits the blow, Esc backs out and leaves it armed).
     if battle.spendChooser then battle.spendChooser:keypressed(key); return end
@@ -5050,10 +5403,12 @@ function battle.textinput(t)
 end
 
 function battle.gamepadpressed(joystick, button)
+    if battle.deploy then battle.deploy:gamepadpressed(joystick, button); return end
     if battle.settingsMenu then
         if button == "b" then closeSettings() else battle.settingsMenu:gamepadpressed(joystick, button) end
         return
     end
+    if battle.benchChooser then battle.benchChooser:gamepadpressed(joystick, button); return end
     -- The wind-up chooser owns the pad while a chargeable swing is being sized (D-pad / bumpers adjust,
     -- A commits, B backs out).
     if battle.spendChooser then battle.spendChooser:gamepadpressed(joystick, button); return end
@@ -5109,6 +5464,8 @@ end
 
 function battle.mousemoved(x, y, dx, dy)
     battle.mouseX, battle.mouseY = x, y -- drives the status tooltip (board + panel hit-tests)
+    if battle.deploy then battle.deploy:mousemoved(x, y); return end
+    if battle.benchChooser then battle.benchChooser:mousemoved(x, y); return end
     if battle.settingsMenu then
         battle.settingsMenu:mousemoved(x, y)
         battle.settingsClose:mousemoved(x, y)
@@ -5142,6 +5499,8 @@ end
 -- first when the cursor is inside it, so its own history still scrolls; contains() is false while
 -- the log is closed, so a wheel over the board falls through to the strip.
 function battle.wheelmoved(dx, dy)
+    if battle.deploy then return end -- the whole company fits on the strip; there is nothing to scroll
+    if battle.benchChooser then battle.benchChooser:wheelmoved(dx, dy); return end
     if battle.settingsMenu then return end -- the short list needs no scroll; swallow it
     -- The wind-up chooser owns the wheel while it is up: scrolling tunes the depth on the rung ladder.
     if battle.spendChooser then battle.spendChooser:wheelmoved(dx, dy); return end
@@ -5174,6 +5533,22 @@ local function openDebugMenu(x, y)
 end
 
 function battle.mousepressed(x, y, button)
+    if battle.deploy then battle.deploy:mousepressed(x, y, button); return end
+    if battle.benchChooser then battle.benchChooser:mousepressed(x, y, button); return end
+    -- Placing a reinforcement: the next board click on a lit tile lands them. A click anywhere else --
+    -- or a right-click -- puts the pick back on the bench rather than stranding the player in a mode.
+    -- Except on the last-stand prompt, which cannot be backed out of (see openBenchChooser): there the
+    -- click is simply ignored until it lands on ground somebody can come in on.
+    if battle.reinforcePick then
+        local cx, cy = battle.map:cellAt(x, y)
+        if button == 1 and cx then
+            reinforceAt(battle.reinforcePick.index, cx, cy)
+        elseif not battle.reinforcePick.mandatory then
+            battle.reinforcePick = nil
+            refreshView()
+        end
+        return
+    end
     -- The settings overlay is the top-most modal: its X or a click on the dim backdrop closes it, a
     -- click on a row works the list, and nothing falls through to the board underneath.
     if battle.settingsMenu then
@@ -5240,6 +5615,10 @@ function battle.mousepressed(x, y, button)
             toggleAutoAll()
             return
         end
+        if battle.hasBench and pointIn(reinforceButton, x, y) then
+            openBenchChooser("reinforce")
+            return
+        end
         if pointIn(settingsButton, x, y) then
             openSettings()
             return
@@ -5276,6 +5655,7 @@ end
 -- Only the wind-up slider cares about a mouse release (to end a rung drag); everything else on the
 -- board is press-driven.
 function battle.mousereleased(x, y, button)
+    if battle.deploy then battle.deploy:mousereleased(x, y, button); return end
     if battle.spendChooser then battle.spendChooser:mousereleased(x, y, button); return end
     if battle.windupChooser then battle.windupChooser:mousereleased(x, y, button) end
     if battle.debugMenu then battle.debugMenu:mousereleased(x, y, button) end
@@ -5289,6 +5669,7 @@ end
 function battle.cursorKind()
     local mx, my = battle.mouseX, battle.mouseY
     if not mx then return "arrow" end
+    if battle.deploy then return battle.deploy:cursorKind(mx, my) end
     if battle.settingsMenu then
         if battle.settingsClose:contains(mx, my) then return "hand" end
         return battle.settingsMenu:mouseOverItem(mx, my) and "hand" or "arrow"
@@ -5296,6 +5677,7 @@ function battle.cursorKind()
     if battle.logReview then
         return battle.logReview.close:contains(mx, my) and "hand" or "arrow"
     end
+    if battle.benchChooser then return battle.benchChooser:cursorKind(mx, my) end
     if battle.spendChooser then return battle.spendChooser:cursorKind(mx, my) end
     if battle.windupChooser then return battle.windupChooser:cursorKind(mx, my) end
     if battle.debugMenu then return battle.debugMenu:cursorKind(mx, my) end

@@ -15,6 +15,8 @@ local OverworldMap = require("ui.overworld_map")
 local Player = require("models.player")
 local Save = require("models.save")
 local Quest = require("models.quest")
+local Vendor = require("models.vendor")   -- the sponsoring house behind a quest, for its cache stock
+local Material = require("models.material")
 local EncounterPanel = require("ui.panels.encounter")
 local LootReveal = require("ui.panels.loot_reveal")
 local RelicReveal = require("ui.panels.relic_reveal")
@@ -266,6 +268,11 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
             cols = mp.cols,
             rows = mp.rows,
             keyCount = mp.keyCount,
+            cacheCount = mp.cacheCount, -- nil -> derived from the encounter count (Overworld.generate)
+            -- Which house's stock this map's caches pay out in: the quest's SPONSOR, not the party's
+            -- needs. That is the whole point -- running the Bastion's line yields Bastion stock, which
+            -- the Arcanum's gear will want at the Forge, so the seven lines feed one economy.
+            houseMaterial = Material.houseFor((Vendor.get(game.quest and game.quest.sponsor) or {}).class),
             objective = mp.objective,
             -- Denser default boards (~8-11 stops) so a rolled run has room for the roguelike texture --
             -- caches, rests and fights between them (guaranteed variety + a combat-share cap live in
@@ -312,6 +319,7 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
     if resume then
         game.map.px, game.map.py = resume.px or game.map.px, resume.py or game.map.py
         game.map.keysHeld = resume.keysHeld or {}
+        game.map.cacheHaul = resume.cacheHaul or {}
         -- Restore the party's attrition (HP/mana/stamina) captured with the run, clamped to each pool's
         -- max. A resume is NOT a hub visit, so nothing else refills these -- reloading must not heal the
         -- party (that would make Continue a free heal). Keyed by char id, like the run snapshot stored them.
@@ -414,7 +422,7 @@ function game:openEncounter(cell)
                 return
             end
             clearRun() -- the quest is over; Quest.complete's save below then writes no run to resume
-            game.reward = Quest.complete(game.player, game.quest)
+            game.reward = Quest.complete(game.player, game.quest, game.map and game.map.cacheHaul)
             if game.player and game.reward then game.player.pendingSummary = game.reward end
             State.switch(require("states.hub"))
         end
@@ -429,17 +437,34 @@ function game:openEncounter(cell)
     if kind == "combat" or kind == "elite" or kind == "objective" then
         -- The battle launch itself, deferred behind a fight-or-slip confirm for side fights (below).
         local function startBattle()
-        -- Companion overworld abilities spend their banked readiness onto the party's carried resources
-        -- right before the fight builds its units (the party chars ride in by reference): Rowan's Vigil
-        -- readies the front line, Saber's Held Swing pours her banked steps into her opening.
-        fireAbility("battleStart", { cell = cell })
-        -- Relics spend their opening readiness the same way: a battleStart dispatch queues each combat
-        -- relic's boon (a barrier, Haste, an empower) onto the party via grantBoon; battle setup drains
-        -- that queue onto the units at spawn. And the trait-relics (Martyr's Bell) resolve to the actual
-        -- members who wear them this fight, front-row or whole-party, by identity.
-        local relicCtx = fireRelics("battleStart", { cell = cell })
-        local openingBoons = Relic.openingBoons(relicCtx)
-        local relicTraits = Relic.combatTraitsByChar(game.relicState, game.player, game.player and game.player.party)
+        -- Everything that has to know WHO IS STANDING WHERE, resolved once the deployment phase commits
+        -- and handed back to the battle. It cannot be computed here any more: the player chooses which of
+        -- the company take the field, and on which tiles, over the real board (docs/deployment.md), so
+        -- the front line does not exist until they have. Battle calls this with:
+        --   deployed -- the company members actually placed, in placement order
+        --   front    -- those of them standing on the forward line of the deploy zone
+        -- and gets back the two things battle setup stamps onto the units at spawn.
+        --
+        -- What each half does is unchanged:
+        --   * companion overworld abilities spend their banked readiness onto the party's carried
+        --     resources (the chars ride in by reference): Rowan's Vigil readies the front line, Saber's
+        --     Held Swing pours her banked steps into her opening;
+        --   * relics do the same through a battleStart dispatch, queueing each combat relic's boon (a
+        --     barrier, Haste, an empower) via grantBoon for battle setup to drain onto the units, and the
+        --     trait-relics (Martyr's Bell) resolve to the members who wear them this fight, by identity.
+        local function resolveOpening(deployed, front)
+            local frontRow = function() return front or deployed end
+            fireAbility("battleStart", { cell = cell, party = deployed, frontRow = frontRow })
+            local relicCtx = fireRelics("battleStart", { cell = cell, party = deployed, frontRow = frontRow })
+            return {
+                openingBoons = Relic.openingBoons(relicCtx),
+                -- Over the whole COMPANY, not just the deployed four: a party-scope relic is worn by
+                -- everyone who marched, and a benched member has to arrive already wearing it when they
+                -- rotate on. Only frontRow scope narrows, to the line actually put forward.
+                relicTraits = Relic.combatTraitsByChar(game.relicState, game.player,
+                    game.player and game.player.party, front or deployed),
+            }
+        end
         -- Tutorial leg only (the prologue's flight): snapshot the party BEFORE the fight so the defeat
         -- panel's "Try Again" can restart THIS same encounter with a whole party -- consumed potions and
         -- any downed member undone. In-memory only, no disk save. The cell is not yet marked `cleared`
@@ -463,15 +488,13 @@ function game:openEncounter(cell)
             -- then the quest, so a line can set one floor for all its fights and a single beat can raise it.
             floorLevel = (kind == "objective" and mp.objective and mp.objective.floorLevel)
                 or (game.quest and game.quest.floorLevel) or nil,
+            -- The whole marching company. Battle's deployment phase decides which of them take the field
+            -- and where; the rest wait on the bench and can be rotated in (docs/deployment.md).
             party = game.player and game.player.party or {},
-            -- Run relics carried into this fight: `relicTraits` maps each party char to the trait ids its
-            -- relics grant (battle stamps them onto the unit); `openingBoons` is the queue of opening
-            -- statuses (barrier/Haste/empower) to lay on the named units at spawn. See models/relic.lua.
-            relicTraits = relicTraits,
-            openingBoons = openingBoons,
-            -- The player's persistent marching grid (charId -> cell); specFor resolves it onto the party's
-            -- spawns. See models/player.lua and the Formation tab of ui/panels/party.lua.
-            formation = game.player and game.player.formation,
+            player = game.player, -- so the phase can remember who was fielded (Player.noteDeployed)
+            -- Resolved AFTER placement, since the front line is a thing the player chooses on the board.
+            -- Returns { relicTraits, openingBoons } for battle setup to stamp at spawn; see above.
+            resolveOpening = resolveOpening,
             -- The player's stash, by reference: an item stolen mid-battle by a thief with a full
             -- grid is appended straight to it, so a theft survives whatever the battle does next.
             stash = game.player and game.player.stash,
@@ -507,7 +530,7 @@ function game:openEncounter(cell)
                     -- marked done (which is what advances the sponsor's standing), and the game saves.
                     -- Losing the quest (onLoss) pays nothing, so a wipe costs the run.
                     clearRun() -- quest cleared; Quest.complete's save (and the endsCampaign->credits path) writes no run
-                    game.reward = Quest.complete(game.player, game.quest)
+                    game.reward = Quest.complete(game.player, game.quest, game.map and game.map.cacheHaul)
                     -- The sting that marks a quest actually ending. Until now the single loudest
                     -- silence in the game was here: the objective clears, the board goes quiet, and
                     -- nothing at all says the run is over.

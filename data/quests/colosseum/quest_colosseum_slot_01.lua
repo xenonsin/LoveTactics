@@ -56,7 +56,6 @@ return {
     sponsor = "colosseum",
     rewardItems = { "weapon_ledgemans_axe", "armor_reckless_cuirass" },
     rewardGold = 60,
-    rewardPrestige = 1,
     requiredPrestige = 1,
     -- Bested, then kept (docs/story.md, "The other seven"). Player.recruit refuses a duplicate, so
     -- this is safe on any path that reaches Quest.complete more than once.
@@ -76,7 +75,7 @@ return {
     followUp = {
         name = "Off the Sand",
         map = {
-            biome = "castle",
+            biome = "desert",
             scripted = true, -- a cutscene walk, not a board quest: no Back button, no abandon
             -- One quiet breather on the way out, then the gate. No random bouts -- the climax was the
             -- bout; this leg is the walk down from it.
@@ -96,7 +95,7 @@ return {
         },
     },
     map = {
-        biome = "castle",
+        biome = "desert",
         -- The walk to the tunnel mouth is the undercard, not a maze to survive. A curated stop list
         -- rather than a bare roll, and it TEACHES THE BOUT before the bout: the concourse scene sells
         -- the mismatch, a house sparring pair (encounter_arena_undercard) introduces the Trapper's Root

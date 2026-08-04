@@ -26,7 +26,7 @@ return {
     tags = { "cloth", "holy" },
     class = "priest",
     price = 420,
-    unlockQuests = 6,
+    unlockQuests = 9,
     traits = { "trait_guardians_blessing" },
     bonus = { magicDefense = Curve.ramp(5, 15), defense = Curve.ramp(2, 12), movement = -1 },
     resist = { magical = 2 },

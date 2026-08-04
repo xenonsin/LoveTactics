@@ -17,6 +17,6 @@ return {
     class = "knight",
     discipline = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
     price = 340,
-    unlockQuests = 6,
+    unlockQuests = 7,
     traits = { "trait_unyielding" },
 }

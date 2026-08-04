@@ -21,6 +21,6 @@ return {
     class = "mage",
     discipline = "spellbreaker",
     price = 460,
-    unlockQuests = 10,
+    unlockQuests = 8,
     traits = { "trait_spell_eater" },
 }

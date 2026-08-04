@@ -29,7 +29,7 @@ return {
     tags = { "heavy", "ice" },
     class = "knight",
     price = 400,
-    unlockQuests = 10,
+    unlockQuests = 8,
     incense = { hazard = "hazard_rimeguard", radius = 1 },
     bonus = { defense = Curve.ramp(3, 13) },
     resist = { ice = 4 }, -- the wearer, at least, is used to it

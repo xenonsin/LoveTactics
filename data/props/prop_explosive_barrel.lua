@@ -35,7 +35,7 @@ return {
     -- Which biomes leave powder lying around, and how much of it. A castle yard and the underworld are
     -- built on the stuff; a forest trail has whatever a passing caravan dropped, so barrels are rare
     -- there and crates (data/props/prop_crate.lua) are what you mostly find instead.
-    biomes = { castle = 3, underworld = 3, forest = 1 },
+    biomes = { castle = 3, underworld = 3, volcanic = 2, forest = 1, desert = 1, tundra = 1 },
     onDestroy = function(ctx)
         local blast = ctx.power
         if blast <= 0 then return end

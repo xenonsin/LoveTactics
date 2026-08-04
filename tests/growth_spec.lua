@@ -264,4 +264,47 @@ return {
                 "an enemy's cast is not tallied")
         end,
     },
+
+    -- --------------------------------------------------- discipline technique (the wallet)
+    {
+        name = "casting discipline stock banks technique, capped per battle",
+        fn = function()
+            local Discipline = require("models.discipline")
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
+            local knight, bandit = c.units[1], c.units[2]
+
+            -- A hand-rolled discipline probe rather than a shelf item: this test is about the BANKING
+            -- rule, and picking a real ninja blade would couple it to whatever the shelf happens to
+            -- stock. Any real discipline id will do.
+            local disciplineId = next(Discipline.defs)
+            assert(disciplineId, "there is at least one discipline")
+            local probe = { discipline = disciplineId }
+
+            local first = Combat.awardTechnique(c, knight, probe)
+            assert(first == Discipline.TECHNIQUE_PER_ACTION, "one action banks one action's worth")
+            assert(knight.char.technique[disciplineId] == first, "onto the caster's own wallet")
+            assert(c.techniqueEarned[disciplineId] == first, "and onto the fight's ledger")
+            assert(c.techniqueAward and c.techniqueAward.unit == knight, "the floater one-shot is armed")
+
+            -- Run the battle ledger to the cap and the banking stops, while play carries on.
+            local guard = 0
+            while (c.techniqueEarned[disciplineId] or 0) < Discipline.TECHNIQUE_PER_BATTLE and guard < 1000 do
+                Combat.awardTechnique(c, knight, probe)
+                guard = guard + 1
+            end
+            assert(c.techniqueEarned[disciplineId] == Discipline.TECHNIQUE_PER_BATTLE, "the ledger stops at the cap")
+            assert(Combat.awardTechnique(c, knight, probe) == 0, "and further casts bank nothing")
+            assert(c.techniqueAward == nil, "a capped-out cast floats nothing rather than a zero")
+            assert(knight.char.technique[disciplineId] == Discipline.TECHNIQUE_PER_BATTLE,
+                "the wallet never exceeds what the fight was allowed to pay")
+
+            -- Plain stock banks nothing, and an enemy banks nothing at all.
+            assert(Combat.awardTechnique(c, knight, { class = "fighter" }) == 0, "plain stock is not a discipline")
+            local hammer = Item.instantiate("weapon_iron_hammer")
+            Character.addItem(bandit.char, hammer)
+            openTurn(c, bandit)
+            Combat.useItem(c, bandit, hammer, knight.x, knight.y)
+            assert(not (bandit.char.technique and next(bandit.char.technique)), "an enemy banks no technique")
+        end,
+    },
 }

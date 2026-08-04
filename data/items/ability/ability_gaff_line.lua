@@ -31,7 +31,7 @@ return {
     tags = { "pierce", "physical" },
     class = "alchemist",
     price = 320,
-    unlockQuests = 6,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 5,

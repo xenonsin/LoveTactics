@@ -33,7 +33,7 @@ return {
     hands = 2, -- a two-handed polearm, as every spear is
     class = "knight",
     price = 420,
-    unlockQuests = 10,
+    unlockQuests = 9,
     activeAbility = {
         target = "tile",       -- the aimed neighbour sets the direction the thrust runs
         allowOccupied = true,

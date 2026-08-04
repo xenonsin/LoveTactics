@@ -12,7 +12,7 @@ return {
     tags = { "holy", "restorative" },
     class = "priest",
     price = 360,
-    unlockQuests = 6,
+    unlockQuests = 9,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

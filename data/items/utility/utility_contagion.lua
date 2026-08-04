@@ -25,6 +25,6 @@ return {
     class = "alchemist",
     discipline = "plague_knight",
     price = 420,
-    unlockQuests = 10,
+    unlockQuests = 11,
     traits = { "trait_contagion" },
 }

@@ -114,7 +114,7 @@ local FLAVOR_GUARD = 3
 
 -- Draw `text` as a sheared italic aside, wrapped into a `w`-wide column at (x, y). Returns the
 -- height consumed, so callers laying out their own column can advance past it -- the shop and
--- blacksmith panels print flavor under an item's description without the block system. `font`
+-- forge panels print flavor under an item's description without the block system. `font`
 -- defaults to the tooltip's own body font; a caller with its own type scale passes that instead, so
 -- the flavor matches the column it sits in.
 function ItemTooltip.printFlavor(text, x, y, w, font)

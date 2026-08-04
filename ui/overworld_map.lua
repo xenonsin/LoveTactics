@@ -65,6 +65,12 @@ function OverworldMap.new(grid, opts)
     local start = grid:startCell()
     self.px, self.py = start.x, start.y
     self.keysHeld = {} -- keyId -> true
+    -- Materials picked out of caches this run, { materialId = count }. Held on the widget rather than
+    -- banked to the player on pickup: a map regenerates on re-entry, so paying at pickup would pay
+    -- again every time a quest was abandoned and restarted. Quest.complete merges this in (see
+    -- states/game.lua), which also means the advancement panel names the haul with the rest of the
+    -- spoils rather than as a silent number that changed somewhere.
+    self.cacheHaul = {}
 
     -- The tileset (sheet + fallback colours) is chosen by the grid's biome.
     self.tilesetDef = Tileset.get(grid.tilesetId)
@@ -169,6 +175,12 @@ function OverworldMap:arrive()
     if self.onArrive then self.onArrive(c) end
     if c.key and not self.keysHeld[c.key.keyId] then
         self.keysHeld[c.key.keyId] = true
+        c.picked = true
+    end
+    if c.cache and not c.picked then
+        for id, n in pairs(c.cache.materials or {}) do
+            self.cacheHaul[id] = (self.cacheHaul[id] or 0) + n
+        end
         c.picked = true
     end
     if c.encounter and not c.cleared and self.onEncounter then
@@ -568,6 +580,27 @@ function OverworldMap:drawMarkers()
             if c.key and not c.picked then
                 love.graphics.setColor(0.95, 0.85, 0.35)
                 love.graphics.printf("K", wx, wy + s / 2 - 8, s, "center")
+            end
+
+            -- Material cache: the reason a dead end is worth the walk. An ingot wedge rather than a
+            -- letter, so it never reads as another kind of encounter -- it costs no fight and opens no
+            -- panel, it is simply picked up on arrival. Copper against the key's gold: the same "walk
+            -- here and take it" family, a different thing in it. Sized and darkly outlined to carry at
+            -- 32px over a pale trail, because it is visible through the fog like every other marker,
+            -- and that is the whole point -- the detour has to be a decision made in advance.
+            if c.cache and not c.picked then
+                local pad = s * 0.22
+                local x1, y1 = wx + s / 2, wy + pad
+                local x2, y2 = wx + s - pad, wy + s - pad
+                local x3, y3 = wx + pad, wy + s - pad
+                love.graphics.setColor(0.12, 0.09, 0.06, 0.75)
+                love.graphics.polygon("fill", x1, y1 - 1, x2 + 1, y2 + 1, x3 - 1, y3 + 1)
+                love.graphics.setColor(0.90, 0.62, 0.30)
+                love.graphics.polygon("fill", x1, y1, x2, y2, x3, y3)
+                love.graphics.setColor(1, 0.86, 0.62)
+                love.graphics.setLineWidth(1.5)
+                love.graphics.polygon("line", x1, y1, x2, y2, x3, y3)
+                love.graphics.setLineWidth(1)
             end
 
             if c.encounter then
