@@ -134,6 +134,61 @@ return {
         end,
     },
     {
+        name = "the depth floor rises down a line and never appears before slot 4",
+        fn = function()
+            -- The brake that replaces the gates B1 removed. A line must stay ENTERABLE -- the first
+            -- three slots carry no floor at all -- and must then get harder with depth, or removing the
+            -- gates simply made a beeline cheaper.
+            local last = 0
+            for slot = 1, 10 do
+                local floor = Quest.SLOT_FLOOR[slot]
+                if slot <= 3 then
+                    assert(floor == nil, "slot " .. slot .. " must have no floor: a line has to be enterable")
+                else
+                    assert(floor, "slot " .. slot .. " should carry a floor")
+                    assert(floor > last, string.format(
+                        "slot %d's floor (%d) must exceed slot %d's (%d)", slot, floor, slot - 1, last))
+                    last = floor
+                end
+            end
+        end,
+    },
+    {
+        name = "the floor is derived for numbered slots and absent for crossings and the Gate",
+        fn = function()
+            local slot7 = Quest.floorLevelFor(Quest.defs.quest_bastion_slot_07, "quest_bastion_slot_07")
+            assert(slot7 == Quest.SLOT_FLOOR[7], "a numbered slot takes the ladder's value")
+
+            local slot1 = Quest.floorLevelFor(Quest.defs.quest_bastion_slot_01, "quest_bastion_slot_01")
+            assert(slot1 == nil, "slot 1 carries no floor")
+
+            -- A capstone is a crossing and already costs a second line; the Gate needs all seven slot
+            -- 10s, so nobody arrives at it green. Neither wants a floor on top.
+            local capstone = "quest_bastion_the_border_watch"
+            assert(Quest.floorLevelFor(Quest.defs[capstone], capstone) == nil, "a capstone has no floor")
+            assert(Quest.floorLevelFor(Quest.defs.quest_the_gate_below, "quest_the_gate_below") == nil,
+                "the Gate Below has no floor")
+
+            -- An authored floor outranks the ladder, so a single beat can be made heavier.
+            assert(Quest.floorLevelFor({ floorLevel = 40 }, "quest_bastion_slot_04") == 40,
+                "an authored floorLevel wins outright")
+        end,
+    },
+    {
+        name = "the board carries the floor, so the quest board can warn with it",
+        fn = function()
+            local Player = require("models.player")
+            local p = Player.new()
+            p.prestige = 60 -- deep enough that most of the board is open
+            for _, entry in ipairs(Quest.available(p)) do
+                local expected = Quest.floorLevelFor(Quest.defs[entry.id], entry.id)
+                assert(entry.floorLevel == expected, string.format(
+                    "%s should carry floorLevel %s, carries %s",
+                    entry.id, tostring(expected), tostring(entry.floorLevel)))
+            end
+        end,
+    },
+    {
         name = "the walk covers the whole board, not a prefix of it",
         fn = function()
             local total = questCount()

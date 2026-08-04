@@ -17,6 +17,68 @@ local Quest = {}
 
 Quest.defs = Registry.load("data/quests", "data.quests")
 
+-- What finishing ANY quest pays in prestige. Flat, and deliberately not authorable: prestige is simply
+-- the count of quests the company has completed (plus whatever New Game+ carried in), so the number on
+-- the character sheet answers "how far through the campaign am I" and nothing else.
+--
+-- There used to be a `rewardPrestige` field on every quest blueprint, paying 1, 2, 3 or -- for the Gate
+-- Below -- 10, back-loaded so that slots 7-10 of each line paid double. That weighting was invisible:
+-- prestige is never shown as a per-quest figure, and "this one mattered more" was already being said
+-- far better by the things a late quest actually hands over -- a relic, a companion, a discipline, a
+-- deeper shelf. What the field bought instead was 92 chances for the pacing to drift, in 92 files, with
+-- no single place to read the campaign's total off.
+--
+-- Deleting the field rather than setting every copy of it to 1 is the point. A constant cannot drift.
+Quest.PRESTIGE_PER_QUEST = 1
+
+-- ---------------------------------------------------------------------------
+-- The depth floor: what stops a line being beelined
+-- ---------------------------------------------------------------------------
+
+-- A house's line can be run to its end without touching the other six (see the solo walk in
+-- tools/progression_report.lua). What holds a player back is meant to be HOW HARD THE FIGHTS GET, not
+-- permission -- and until this existed there was no such thing as being underlevelled. Ordinary enemies
+-- track the party at `Growth.ENEMY_LEVEL_LAG` (0.9x), so a beeliner at level 7 met level 6 enemies and
+-- depth cost exactly nothing.
+--
+-- `floorLevel` on a fight is the answer, and it was already wired end to end -- quest -> states/game.lua
+-- -> battle.floorLevel -> Growth.combatantLevel, where it means "this fight is never easier than this,
+-- whoever walks into it". It was authored on zero quests of ninety-two. This is the ladder that fills it.
+--
+-- WHY DERIVED RATHER THAN AUTHORED IN 70 FILES. The floor is a function of one thing -- how deep down a
+-- line the fight sits -- and seventy hand-typed numbers is seventy chances to drift, with no single
+-- place to read the curve off. Same argument that deleted `rewardPrestige` above. A quest may still pin
+-- its own `floorLevel` and that wins outright, so a specific beat can be made heavier without touching
+-- the ladder.
+--
+-- WHY THESE NUMBERS. They are tuned against the SOLO pace, because a solo run is the only player they
+-- can bind on -- prestige is a flat count of quests finished, so a player who has run one line and its
+-- on-ramp arrives at slot N holding roughly `1 + (N + entry) / 2` levels: about 3 at slot 4, about 7 by
+-- slot 10. Anyone who has played more broadly is far above the floor and never feels it, which is the
+-- whole point of a floor rather than a scaling rule.
+--
+-- The margin is what the floor sits ABOVE that solo pace, and it widens with depth: nothing for the
+-- first three slots (a line has to be enterable), then one or two levels through the middle, reaching
+-- about six at slot 10 -- where the fight is a general, and a company that has done nothing else in the
+-- campaign should lose it. Six levels is a hard fight, not an impossible one: mitigation is subtractive
+-- (models/growth.lua) so the gap costs damage taken rather than a wall, and losing costs a retry
+-- rather than a run.
+--
+-- These are a first pass and want playtesting. They are in one table so that is a five-minute job.
+Quest.SLOT_FLOOR = { [4] = 5, [5] = 6, [6] = 8, [7] = 9, [8] = 11, [9] = 12, [10] = 13 }
+
+-- The level floor for `def`, whose blueprint key is `id`. An authored `floorLevel` wins; otherwise the
+-- ladder above applies to a numbered slot quest. Returns nil for anything with no floor -- the early
+-- slots, the named capstones (which are crossings and already cost a second line), and the Gate Below
+-- (which requires all seven slot 10s, so nobody arrives at it green).
+function Quest.floorLevelFor(def, id)
+    if not def then return nil end
+    if def.floorLevel then return def.floorLevel end
+
+    local slot = tonumber(tostring(id or ""):match("_slot_(%d+)$") or "")
+    return slot and Quest.SLOT_FLOOR[slot] or nil
+end
+
 -- How many of vendor `vendorId`'s quests this player has finished. This IS the player's standing
 -- with that house: the shelf opens (Vendor.stock) and the ability bench's cap climbs
 -- (Vendor.abilityLevelCap) as this number grows. Counts every completed quest whose blueprint names
@@ -135,7 +197,6 @@ function Quest.available(player)
                 description = def.description,
                 difficulty = def.difficulty,
                 rewardGold = def.rewardGold,
-                rewardPrestige = def.rewardPrestige or 0,
                 rewardItems = def.rewardItems, -- item ids granted on completion (a general's relic)
                 -- A character id who JOINS on completion. This is how a class line's main companion
                 -- is earned (docs/story.md, "The other seven": each companion is earned near the head
@@ -168,6 +229,11 @@ function Quest.available(player)
                 -- hub (states/game.lua). A flag rather than a quest id known to the engine, so an
                 -- alternate or additional ending is a data edit and nothing else.
                 endsCampaign = def.endsCampaign,
+                -- How deep down its line this fight sits, expressed as the level its enemies may
+                -- never drop below (Quest.floorLevelFor). Carried on the board entry rather than
+                -- resolved at battle time so the quest board can WARN with it: a soft lock nobody
+                -- can see before they commit is just an unfair fight.
+                floorLevel = Quest.floorLevelFor(def, id),
             }
         end
     end
@@ -191,19 +257,26 @@ function Quest.get(id)
     local q = {}
     for k, v in pairs(def) do q[k] = v end
     q.id = id
+    -- Resolve the depth floor onto the copy, so a resumed run fights the same fight a fresh one does.
+    q.floorLevel = Quest.floorLevelFor(def, id)
     return q
 end
 
 -- Pay out a finished quest and persist. Called once, from the objective-win branch in
 -- states/game.lua. Returns a summary the UI can show, or nil if the quest was already
 -- completed and is not repeatable (a guard against double payout).
-function Quest.complete(player, quest)
+--
+-- `carried` is the run's own haul of forging materials -- what the party picked out of the map's
+-- caches (ui/overworld_map.lua's cacheHaul). It banks HERE rather than at pickup so it rides the same
+-- double-payout guard as everything else, and so the advancement panel names it with the rest of the
+-- spoils. Abandoning a run therefore forfeits its haul, which is what keeps a cache from being farmed
+-- by restarting the quest.
+function Quest.complete(player, quest, carried)
     if Player.hasCompleted(player, quest.id) and not quest.repeatable then
         return nil
     end
 
     local gold = quest.rewardGold or 0
-    local prestige = quest.rewardPrestige or 0
 
     Player.addGold(player, gold)
     -- Prestige where it stood before this quest paid out. A level costs several prestige, so MOST
@@ -213,7 +286,7 @@ function Quest.complete(player, quest)
     local prestigeBefore = player.prestige
     -- Prestige raises every roster member's level; the returned summary (who advanced, and their stat
     -- gains from what they have been casting) rides out in the reward table for the advancement overlay.
-    local advancement = Player.addPrestige(player, prestige)
+    local advancement = Player.addPrestige(player, Quest.PRESTIGE_PER_QUEST)
     local prestigeAfter = player.prestige
 
     -- The sponsor's standing is its finished-quest count, so completing this quest is what advances it.
@@ -251,21 +324,25 @@ function Quest.complete(player, quest)
         recruited = Player.recruit(player, quest.rewardCharacter)
     end
 
-    -- Forging materials: `rewardMaterials = { material_steel_ingot = 3 }` accrues into the player's stock
-    -- (models/material.lua), the raw metal the Blacksmith spends on upgrades. Guarded by the same
-    -- double-payout check at the top, so a re-cleared tile can't mint a second haul.
+    -- Forging materials: the quest's own `rewardMaterials = { material_steel_ingot = 3 }` plus whatever
+    -- the party carried out of the map's caches, accruing into the player's stock (models/material.lua)
+    -- -- the stock the Forge spends on upgrades. Guarded by the same double-payout check at the top, so
+    -- a re-cleared tile can't mint a second haul.
     local materials = {}
-    for matId, count in pairs(quest.rewardMaterials or {}) do
+    local function grant(matId, count)
+        if not count or count <= 0 then return end
         Player.addMaterial(player, matId, count)
-        materials[matId] = count
+        materials[matId] = (materials[matId] or 0) + count
     end
+    for matId, count in pairs(quest.rewardMaterials or {}) do grant(matId, count) end
+    for matId, count in pairs(carried or {}) do grant(matId, count) end
 
     Player.save()
 
     local sponsorQuests = quest.sponsor and Quest.sponsorProgress(player, quest.sponsor)
     return {
         gold = gold,
-        prestige = prestige,
+        prestige = Quest.PRESTIGE_PER_QUEST,
         received = received, -- item instances, for the reward panel to name
         materials = materials, -- { id = count } granted, for the reward panel to name
         -- The companion instance that just joined, or nil (including when they were already owned).

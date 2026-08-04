@@ -9,6 +9,11 @@ local State = require("states")
 local Menu = require("ui.menu")
 local Quest = require("models.quest")
 local Player = require("models.player")
+local Vendor = require("models.vendor")
+local Discipline = require("models.discipline")
+local Growth = require("models.growth")
+local Item = require("models.item")
+local Character = require("models.character")
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
 local InputMode = require("input_mode")
@@ -211,8 +216,43 @@ function QuestBoard:drawDetail()
     Theme.set(Theme.ink)
     love.graphics.printf(quest.description, x, y + 78, w, "left")
 
-    Theme.set(Theme.muted)
-    love.graphics.printf("Difficulty: " .. tostring(quest.difficulty), x, y + 168, w, "left")
+    -- Everything below the description stacks, because it varies: a quest may promise a companion, a
+    -- relic, both or neither, and the pane used to draw two fixed lines and stop. `row` keeps the
+    -- offsets in one place so adding a line cannot silently overlap the next one.
+    local cy = y + 162
+    local function row(text, colour, gap)
+        Theme.set(colour or Theme.muted)
+        love.graphics.printf(text, x, cy, w, "left")
+        -- Advance by what the text ACTUALLY occupied, not by a fixed step. These lines wrap -- the
+        -- floor warning names two levels and runs to two lines in the pane's width -- and a fixed
+        -- step drew the next row straight through it.
+        local _, wrapped = self.bodyFont:getWrap(text, w)
+        local lines = math.max(1, #wrapped)
+        cy = cy + lines * self.bodyFont:getHeight() + (gap or 4)
+    end
+
+    -- WHAT THIS LINE LEADS TO. A house teaches a class, and its line is what opens that class's paths
+    -- (Discipline.subclassesOf). Naming them is the whole answer to "why commit to this house rather
+    -- than spread" -- the shop's section headers have said it for a while and the board, where the
+    -- choice is actually made, said nothing at all.
+    local paths = self:pathsFor(quest.sponsor)
+    if paths then row("Path: " .. paths, Theme.accentAmber) end
+
+    row("Difficulty: " .. tostring(quest.difficulty))
+
+    -- THE DEPTH FLOOR, AS A WARNING RATHER THAN AN AMBUSH. A line can be run alone all the way down;
+    -- what holds a player back is how hard it gets (Quest.SLOT_FLOOR). That is a soft lock only if it
+    -- can be seen coming -- otherwise it is an unfair fight -- so the floor reads here, and reads RED
+    -- when the company is under it.
+    if quest.floorLevel then
+        local ours = Growth.levelForPrestige(self.player and self.player.prestige or 1)
+        if ours < quest.floorLevel then
+            row(string.format("Enemies here fight at level %d or better -- your company is %d",
+                quest.floorLevel, ours), Theme.accentWeapon)
+        else
+            row(string.format("Enemies here fight at level %d or better", quest.floorLevel))
+        end
+    end
 
     -- A locked quest has no reward to offer yet, only a tally and whatever the dead have given up.
     -- This is the whole endgame UI: watch the count climb, watch the place name itself.
@@ -221,10 +261,59 @@ function QuestBoard:drawDetail()
         return
     end
 
-    local rewards = tostring(quest.rewardGold) .. " gold"
-    if quest.rewardPrestige > 0 then rewards = rewards .. ", " .. quest.rewardPrestige .. " prestige" end
-    love.graphics.setColor(0.7, 0.78, 0.7)
-    love.graphics.printf("Reward: " .. rewards, x, y + 190, w, "left")
+    cy = cy + 6
+
+    -- Gold only, on this line. Prestige is a flat 1 for every quest on the board
+    -- (Quest.PRESTIGE_PER_QUEST), and a figure identical on every card is not information -- it was
+    -- worth printing when quests paid 1, 2 or 3 and the card was where you learned which.
+    row("Reward: " .. tostring(quest.rewardGold) .. " gold", Theme.ink)
+
+    -- A RELIC, AND A COMPANION. Quest.available has carried both of these onto every board entry from
+    -- the beginning -- rewardCharacter with a comment saying a companion is the strongest reward in the
+    -- game and must not arrive as a surprise -- and no screen has ever read either one.
+    local items = self:rewardItemNames(quest)
+    if items then row("Relic: " .. items, Theme.ink) end
+
+    local joins = self:rewardCharacterName(quest)
+    if joins then row(joins .. " joins your party", Theme.accentAmber) end
+end
+
+-- The disciplines a sponsor's line opens, as a comma-joined display string, or nil for an unsponsored
+-- quest or a house whose class teaches none.
+function QuestBoard:pathsFor(sponsor)
+    local def = sponsor and Vendor.get(sponsor)
+    if not (def and def.class) then return nil end
+
+    local names = {}
+    for _, id in ipairs(Discipline.subclassesOf(def.class)) do
+        names[#names + 1] = Discipline.displayName(id)
+    end
+    if #names == 0 then return nil end
+
+    table.sort(names)
+    return table.concat(names, ", ")
+end
+
+-- The names behind `rewardItems`, or nil when the quest grants none. Falls back to the raw id for an
+-- item that has been renamed out of the data, so a stale reference reads as odd rather than vanishing.
+function QuestBoard:rewardItemNames(quest)
+    local ids = quest.rewardItems
+    if not (ids and #ids > 0) then return nil end
+
+    local names = {}
+    for _, id in ipairs(ids) do
+        local def = Item.defs[id]
+        names[#names + 1] = (def and def.name) or id
+    end
+    return table.concat(names, ", ")
+end
+
+-- The display name behind `rewardCharacter`, or nil when the quest recruits nobody.
+function QuestBoard:rewardCharacterName(quest)
+    local id = quest.rewardCharacter
+    if not id then return nil end
+    local def = Character.defs[id]
+    return (def and def.name) or id
 end
 
 -- The locked-quest pane: how many keys are held, and the location fragments the generals already
