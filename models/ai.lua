@@ -573,12 +573,26 @@ end
 -- oscillates between two posts and defends neither, which reads on screen as a unit pacing in a
 -- circle while its side dies around it.
 AI.CHARGE_WEIGHTS = {
-    -- The player's own body ends the run when it falls, so nothing may outrank it -- deliberately
-    -- larger than every other term ADDED TOGETHER, because a boss-healer ally would otherwise
-    -- out-total it and walk Rowan away from the one body the game is about.
+    -- The `protect` clause: the one term allowed above the avatar, and it earns that by being the
+    -- same KIND of fact rather than a bigger version of a smaller one. `obj.protect` is not the map
+    -- naming somebody interesting -- it is a LOSS CONDITION (Combat.resolveObjective returns "loss"
+    -- outright the moment that body falls, whatever the win type is), and the body it names is by
+    -- construction one nobody is steering: an escorted caravan, a witness, a driver on rails.
+    --
+    -- So the tie-break against AVATAR is not "which body is worth more" but "which body can do
+    -- anything about it". Both deaths end the battle; the player has a hand on their own and can
+    -- simply walk out of the fire, and the caravan has nobody at all. A bodyguard who stands in
+    -- front of the one body already being driven, while the one on rails is swarmed across the
+    -- board, is guarding the wrong thing -- and that is exactly what the escort legs of the relief
+    -- of Highwatch played like before this term existed.
+    PROTECT      = 250,
+    -- The player's own body ends the run when it falls, so nothing outranks it but the clause above
+    -- -- deliberately larger than every other term ADDED TOGETHER, because a boss-healer ally would
+    -- otherwise out-total it and walk Rowan away from the one body the game is about.
     AVATAR       = 200,
     BOSS         = 60,   -- the fight is authored around it
-    OBJECTIVE    = 50,   -- the body the map names on our side: an explicit assignment, so it ranks
+    OBJECTIVE    = 50,   -- the body the map names on our side WITHOUT staking the battle on it: an
+                         -- assassination's mark, a `reach` objective's walker. Heard, never decisive
     SUPPORT      = 40,   -- the healer. Kill it and the whole side dies slower but just as surely
     NONCOMBATANT = 30,   -- carries nothing hostile: an escortee, a driver, a witness
     FRAGILE      = 10,   -- a tie-break SLOPE among bodies that already qualify, never a qualification
@@ -603,11 +617,25 @@ function AI.chargeScore(combat, unit, ally)
     if char.id == AI.AVATAR_ID then score = score + w.AVATAR end
     if char.boss then score = score + w.BOSS end
 
-    -- Through allyNamed rather than an id compare, so a charge that has transformed is still the
-    -- charge -- the same reason the post lookup below matches that way.
+    -- What the map says about this body, in its two quite different strengths. Both read through
+    -- allyNamed rather than an id compare, so a charge that has transformed is still the charge --
+    -- the same reason the post lookup below matches that way.
+    --
+    -- Scored as two independent questions rather than the `or` chain this used to be. That chain
+    -- only ever consulted the FIRST field the objective happened to set, so a map naming both a mark
+    -- and an escortee silently dropped one of them -- and, worse, it flattened a loss clause and a
+    -- piece of flavour into the same 50 points.
     local obj = combat.objective
-    if obj and allyNamed(combat, unit, obj.target or obj.protect or obj.who) == ally then
-        score = score + w.OBJECTIVE
+    if obj then
+        -- The clause that loses the battle. See AI.CHARGE_WEIGHTS.PROTECT for why it is the one
+        -- thing allowed to outrank the player's own body.
+        if allyNamed(combat, unit, obj.protect) == ally then score = score + w.PROTECT end
+        -- ...and the softer naming: the mark, the walker. An explicit assignment worth hearing, but
+        -- the battle is not staked on either of them, so neither shouts down the run.
+        if allyNamed(combat, unit, obj.target) == ally
+            or allyNamed(combat, unit, obj.who) == ally then
+            score = score + w.OBJECTIVE
+        end
     end
 
     -- Read the KIT, not the class name: a body is a healer because it is carrying heals, and a

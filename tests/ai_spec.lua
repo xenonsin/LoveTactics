@@ -360,10 +360,41 @@ return {
             assert(Combat.cellGap(plan.move.x, plan.move.y, avatar) < Combat.cellGap(1, 1, avatar),
                 "closing on the player, not on the bandit across the board")
 
-            -- The map naming a charge is heard, but does not shout down the avatar: an escort's
-            -- witness is what the REST of the party is for.
-            c.objective = { type = "killAll", protect = "character_priest" }
+            -- The map naming a charge SOFTLY is heard, but does not shout down the avatar: an
+            -- assassination's mark and a `reach` objective's walker are assignments, not stakes.
+            c.objective = { type = "reach", who = "character_priest" }
             assert(AI.post(c, guard).what == avatar.char.name, "the player still outranks the map")
+        end,
+    },
+    {
+        name = "a protect clause is the one thing that takes the bodyguard off the player",
+        fn = function()
+            -- The escort legs of the relief of Highwatch: the driver's death is an outright loss
+            -- (Combat.resolveObjective), and unlike the avatar there is nobody driving it. A guard
+            -- who rings the body already being steered, while the one on rails is swarmed across the
+            -- board, is guarding the wrong thing -- which is exactly how those maps used to play.
+            local c = Combat.new(arena(14, 14, {
+                    type = "reach", who = "character_caravan_driver",
+                    protect = "character_caravan_driver", tiles = { { x = 1, y = 1 } },
+                }),
+                { unit("character_rowan", 3, 7), unit("character_avatar", 4, 7),
+                  unit("character_caravan_driver", 12, 7) },
+                { unit("character_demon_imp", 13, 6) })
+            local guard, avatar, driver = c.units[1], c.units[2], c.units[3]
+
+            assert(AI.chargeScore(c, guard, driver) > AI.chargeScore(c, guard, avatar),
+                "the loss clause nobody is steering outranks the body the player has the reins of")
+            assert(AI.post(c, guard).what == driver.char.name, "so the post is the column")
+            local plan = AI.plan(c, guard)
+            assert(plan.move, "and she leaves the player's shoulder to take it")
+            assert(Combat.cellGap(plan.move.x, plan.move.y, driver) < Combat.cellGap(3, 7, driver),
+                "closing on the caravan")
+
+            -- ...and only a protect clause. Drop it and the oath snaps straight back to the player,
+            -- with the very same body still named by `who`.
+            c.objective.protect = nil
+            assert(AI.post(c, guard).what == avatar.char.name,
+                "a map that merely NAMES the driver does not outrank the run")
         end,
     },
     {

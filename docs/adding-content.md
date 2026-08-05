@@ -520,9 +520,10 @@ The ranking (`AI.CHARGE_WEIGHTS`) scores each ally on what it **cannot do for it
 
 | Term | What it means |
 | --- | --- |
+| `PROTECT` | The body an objective's `protect` clause names — the **one** term above `AVATAR`. Its death is an outright loss just like the player's, and unlike the player nobody is driving it. |
 | `AVATAR` | The player's own body. Larger than every other term *added together* — losing it ends the run. |
 | `BOSS` | `boss = true`: the fight is authored around it. |
-| `OBJECTIVE` | The body the map names on our side. Heard, but it does not shout down the avatar. |
+| `OBJECTIVE` | The body the map names *without staking the battle on it* — an assassination's mark, a `reach` objective's `who`. Heard, but it does not shout down the avatar. |
 | `SUPPORT` | Carries a **repeatable** support ability, or `archetype = "support"`. A healing potion is a pocket, not a kit, and does not count — every frontliner has one. |
 | `NONCOMBATANT` | Carries nothing hostile: an escortee, a driver, a witness. |
 | `FRAGILE` | A slope on max health, used only to separate two bodies that already qualify. |
@@ -532,6 +533,11 @@ and the guard keeps plain hold-until-provoked. That refusal is deliberate: guard
 swing back is just two units standing where one was. Every term is a stable fact about the body —
 never current hp or distance — because a guard that re-picks its charge mid-fight paces between two
 posts and defends neither.
+
+`PROTECT` sitting above `AVATAR` is not the map overruling a sworn oath, it is the oath read
+properly: both deaths end the fight, and of the two bodies the player is the one with a hand on the
+reins. A guard rings the thing that cannot move itself out of the way. So on an escort — the caravan
+on the road to Highwatch — the bodyguard walks with the column, not with you.
 
 Rowan is the one that ships: sworn to the player in the prologue, and `"priority"` is how that oath
 survives the fights the avatar is not standing in.

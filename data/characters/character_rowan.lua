@@ -30,7 +30,7 @@ return {
     -- map, whatever the objective says (models/ai.lua's AI.postedUnit reads this ahead of
     -- `combat.objective`; AI.CHARGE_WEIGHTS is the ranking).
     --
-    -- Not a hard-coded "character_avatar", though that is what it resolves to in every fight the
+    -- Not a hard-coded "character_avatar", though that is what it resolves to in most fights the
     -- player is standing in -- the avatar outranks every other term put together, because losing that
     -- body ends the run. Naming the ranking instead of the id is what makes the oath survive the
     -- fights the avatar is NOT in: dropped into a defence where the party escorts a witness, or a
@@ -39,6 +39,12 @@ return {
     -- battlefield -- and it means the player never has to station her: she rings her charge at
     -- AI.POST_RADIUS, engages the moment anything contests that ring, and does not chase the wounded
     -- straggler across the board to leave the body she is guarding open.
+    --
+    -- The one body that takes her off the player is an objective's `protect` clause -- the caravan on
+    -- the road to Highwatch, the witness on a defence. That is not the map outranking the oath; it is
+    -- the oath read properly. Both deaths end the fight, and of the two the player is the one with a
+    -- hand on the reins. She stands in front of the thing that cannot move itself out of the way, and
+    -- trusts you to. (AI.CHARGE_WEIGHTS.PROTECT.)
     --
     -- On a side of nothing but hitters the ranking names nobody, and she is a plain defender holding
     -- until the fight reaches her.
