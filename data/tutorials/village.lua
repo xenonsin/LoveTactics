@@ -167,20 +167,27 @@ return {
         -- middle of the fight instead of the end of it. It also plays better -- the player watches it
         -- come while they wind up, rather than having it appear out of a cleared field.
         --
-        -- THE GRUNT'S 40 HEALTH IS SPENT EXACTLY, and every number below is load-bearing. The last
+        -- THE GRUNT'S HEALTH IS SPENT EXACTLY, and every number below is load-bearing. The last
         -- beat of this lesson is the player landing a killing blow themselves, which only reads as
         -- one if the grunt is genuinely one stroke from death when they swing -- not two, and not
         -- already dead. tests/tutorial_spec.lua pins the whole sum:
         --
-        --   66  the grunt walks on and charges the avatar
+        --   74  the grunt walks on and charges the avatar
         --   -14 its swing is PARRIED by the avatar's iron sword (data/traits/trait_parry.lua)
         --   -18 Rowan's mace -- which also SHOVES it two tiles clear (see below)
-        --   = 34 ...and now it is standing three tiles off, with a turn of its own coming
-        --   - 6 the Jolt, thrown across that gap -- and with it a Stun, +5 on its initiative
+        --   = 42 ...and now it is standing three tiles off, with a turn of its own coming
+        --   -14 the Jolt, thrown across that gap -- and with it a Stun, +5 on its initiative
+        --   = 28
         --   -22 Rowan's second blow, on a turn the stun just bought her: 18 from the mace, and 4
         --       more because this shove has nowhere to go and slams it into the top of the board
         --       (Combat.knockback bills a collision at the weapon's own power)
         --   = 6 ...and a 14-damage sword stroke ends it. The player's click wins the battle.
+        --
+        -- The Jolt used to bill 6 here and the grunt used to open at 66. The avatar's magicDamage came
+        -- up to match its Damage (data/characters/character_avatar.lua) and the spell went with it; the
+        -- grunt's pool followed, because that pool IS this column (see its header). Everything the
+        -- lesson actually turns on is untouched -- 28 before Rowan's second blow, 6 left for the
+        -- player's -- so the beat plays out beat-for-beat as it did.
         --
         -- Which is why the grunt and Rowan are both scripted through this stretch rather than left
         -- to the AI: a wandering ally or an extra swing anywhere in that column and the grunt either

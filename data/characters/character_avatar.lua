@@ -9,6 +9,20 @@
 -- square, is 3 -- the pace every enemy in the prologue moves at, so the opening fights read fairly
 -- while the player is still learning that armour costs pace at all (see armor_padded_vest's header).
 --
+-- THE STAT BLOCK IS SYMMETRIC ACROSS THE TWO SCHOOLS -- damage equals magicDamage, defense equals
+-- magicDefense -- and that is the blueprint agreeing with the paragraph above it. This is the one
+-- body in data/characters/ that declares no class and grows into whatever the player casts
+-- (models/growth.lua blends the level's gains across the ledger). A lopsided 12/4 opening said the
+-- opposite: it handed the player a swordsman and then invited them to become a mage from three
+-- points behind, so the first Fireball they ever threw was worse than the sword they were told to
+-- put down. A blank slate has to be blank on both sides, or the choice it offers is rhetorical.
+--
+-- The physical half is unchanged from that old block and cannot move: 12 is what makes the starting
+-- sword (power 6) fell an imp in exactly one stroke, which is the prologue's opening lesson, and 8
+-- defense is what prices the Demon Grunt's claw at the 20 the mana lesson is argued from (see
+-- data/characters/character_demon_imp.lua and data/tutorials/village.lua). The magic half came UP to
+-- meet it rather than the physical half coming down, for that reason alone.
+--
 -- The blueprint name is "Stranger": the avatar is nameless until the Colosseum announcer asks, and
 -- the typed name is written onto the instance (char.name) then -- see states/prologue.lua and the
 -- per-character name override in models/save.lua. Gender (and thus the sprite) is chosen at
@@ -23,8 +37,8 @@ return {
     stats = {
         health = 62, mana = 20, stamina = 15,
         staminaRegen = 2,
-        damage = 12, magicDamage = 4,
-        defense = 8, magicDefense = 6,
+        damage = 12, magicDamage = 12,
+        defense = 8, magicDefense = 8,
         movement = 4,
         speed = 3,
     },

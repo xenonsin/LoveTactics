@@ -22,7 +22,7 @@ be worth ratifying rather than replacing.
 | **Elite** | 3 | 84–115 | 16–22 | A signature relic and a rule list that reads. The discipline made flesh. |
 | **Boss** | 4 | 155+ | — | `boss = true`, a phase trait, an `assassinate` mark. A quest's ending. |
 
-The demons are the only faction that walks all four (Imp 14 → Grunt 66 → Champion 115 → Lord 420),
+The demons are the only faction that walks all four (Imp 14 → Grunt 74 → Champion 115 → Lord 420),
 which is why they are the one faction that reads as an army rather than a spawn list. Every other
 faction is missing at least one rung, and **chaff is the commonest hole** — the Forsworn, the pit
 companies and the Undercroft all field a Line body as their cheapest unit, so there is nothing in
@@ -30,7 +30,8 @@ those fights to swat.
 
 `tier` is a **declared label, not a multiplier.** Nothing derives stats from it. This codebase tunes
 by hand and defends the number in the header — `character_demon_grunt.lua` spends twenty lines
-explaining why its 66 health is the sum of five authored blows and cannot be rescaled. A tier field
+explaining why its 74 health is the sum of five authored blows and moves only when one of them does.
+A tier field
 that generated stats would quietly break exactly those beats. What the label buys instead:
 encounter compositions written as budgets rather than hardcoded lists, and a spec that fails the
 build when a body drifts out of its band.

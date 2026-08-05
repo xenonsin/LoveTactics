@@ -3,7 +3,7 @@
 -- two people -- it is the first thing in the game that has to be fought rather than swatted.
 -- The Demon Lord it serves is named in the scene, not met (see docs/story.md).
 --
--- ITS 66 HEALTH IS SPENT EXACTLY by the prologue's closing beat, and the whole column is written out
+-- ITS 74 HEALTH IS SPENT EXACTLY by the prologue's closing beat, and the whole column is written out
 -- in data/tutorials/village.lua (under `spawn`) with tests/tutorial_spec.lua pinning it. The short
 -- version: the lesson's last lesson is the turn order, so the grunt has to survive a parry, a mace,
 -- and a Jolt still standing and still dangerous -- and then fall to exactly one blow each from Rowan
@@ -12,12 +12,19 @@
 -- WHICH IS WHY IT IS THE ONE BODY THE HEALTH REBALANCE SKIPPED. Every other character in data/characters/
 -- had its pool cut to roughly 0.7 of what it was, to bring the hits-to-kill down across the game; this
 -- one could not go with them. Its health is not a balance number at all -- it is the SUM of five
--- authored blows, and the blows did not change, because only health was rescaled. Cut it to 46 with
--- everything else and the choreography kills it on Rowan's second swing, a full beat before the
--- player's own finishing stroke, which is the one thing the whole prologue is built to hand them.
--- So it stays at 66 and is deliberately the sturdiest common enemy in the game. In the siege
--- encounters that field it in packs (data/encounters/encounter_siege_*.lua) that reads as the horde's
--- heavy rather than as an oversight, which is the one place the exemption is actually visible.
+-- authored blows plus the sliver the last one is meant to leave. Cut it to 0.7 with everything else
+-- and the choreography kills it on Rowan's second swing, a full beat before the player's own finishing
+-- stroke, which is the one thing the whole prologue is built to hand them. So it is deliberately the
+-- sturdiest common enemy in the game. In the siege encounters that field it in packs
+-- (data/encounters/encounter_siege_*.lua) that reads as the horde's heavy rather than as an oversight,
+-- which is the one place the exemption is actually visible.
+--
+-- IT WAS 66, and it moved for the reason the paragraph above gives for why it usually does not: one of
+-- the five blows changed. The avatar's magicDamage came up to meet its Damage (character_avatar.lua --
+-- a class-less body should not open lopsided toward the sword), which prices its Jolt at 14 instead of
+-- 6, so the column bills 8 more before the last stroke and the pool follows it. That is the rule
+-- working, not an exception to it: this number is downstream of the blows, and it is the only number
+-- here that is allowed to be. The residual it leaves for the player's finishing swing is still 6.
 return {
     name = "Demon Grunt",
     kind = "demon",
@@ -47,7 +54,7 @@ return {
         -- "the demon that keeps swatting with its fists." staminaRegen = 2 refills the full 12 across a
         -- claw's own 6-tick cycle, so it swings claws every turn and the fists never come out. Starting
         -- stamina stays 15, so nothing about the prologue's opening arithmetic moves.
-        health = 66, mana = 0, stamina = 15, staminaRegen = 2,
+        health = 74, mana = 0, stamina = 15, staminaRegen = 2,
         damage = 8, magicDamage = 0,
         defense = 4, magicDefense = 2,
         movement = 4,
