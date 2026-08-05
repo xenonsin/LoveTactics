@@ -13,7 +13,9 @@
 --           loot = { "consumable_healing_potion", ... },
 --           materials = { material_iron_scrap = 1 },                         -- the salvage floor
 --       },
---       technique = { ninja = 14, rogue = 3 },                               -- banked this fight; wins only
+--       technique = {                                                        -- banked this fight; wins only
+--           { name = "Rowan", houses = { { key = "ninja", amount = 14 } } }, -- grouped by whose hand
+--       },
 --       encounter = battle.encounter,                                        -- { name, ... } (optional)
 --       actions = {                                                          -- 1 button (win) or 1-2 (loss)
 --           { label = "Try Again",     onSelect = function() ... end },      -- fired when chosen; each
@@ -55,11 +57,15 @@ local MAX_PER_ROW = 4
 local BUTTON_H = 44
 local BOTTOM_PAD = 22
 local REVIEW_H = 30   -- the slim "Review Combat Log" button under the action row
-local TECH_ROW_H = 22 -- one "Ninja  +14" technique line
--- How many of those the panel will show. Keys are classes as well as disciplines now, so a fight in
--- which the company ranged across its whole kit can bank a dozen; the panel grows its box per row and
--- would otherwise run off the screen on a battle that was merely varied.
-local MAX_TECH_ROWS = 6
+local TECH_ROW_H = 22    -- one "Ninja  +14" technique line
+local TECH_HEAD_H = 21   -- the name of the body those lines were earned by, above them
+local TECH_GROUP_GAP = 8 -- breathing room between one body's block and the next
+-- How many lines of that (names AND their rows together) the panel will show. Keys are classes as well
+-- as disciplines now, so a fight in which the company ranged across its whole kit can bank a dozen;
+-- the panel grows its box per line and would otherwise run off the screen on a battle that was merely
+-- varied. Budgeted as one figure rather than a per-body cap because it is the panel's HEIGHT that is
+-- scarce, and a fight where one body did everything spends it differently from one where four did.
+local MAX_TECH_LINES = 9
 
 -- Pacing (seconds), timed off `elapsed`. The banner lands, then gold counts up, then loot cards rise.
 local BANNER_IN  = 0.50   -- title fades + scales in over this
@@ -79,6 +85,22 @@ local function lerp(a, b, t) return a + (b - a) * t end
 
 local function inRect(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
+end
+
+-- The height a technique block occupies: each body's name line, its house rows, and the gaps between.
+local function techHeight(groups)
+    local h = 0
+    for i, g in ipairs(groups) do
+        if i > 1 then h = h + TECH_GROUP_GAP end
+        h = h + TECH_HEAD_H + #g.rows * TECH_ROW_H
+    end
+    return h
+end
+
+-- Biggest first, ties broken by name so the same haul always reads the same way.
+local function byAmount(a, b)
+    if a.amount ~= b.amount then return a.amount > b.amount end
+    return a.name < b.name
 end
 
 function BattleSummary.new(opts)
@@ -131,31 +153,54 @@ function BattleSummary.new(opts)
     end
     self.n = #self.cards
 
-    -- Technique banked this fight, as sorted { name, amount } rows (models/discipline.lua). The gold
-    -- line says what the fight was WORTH; this says what it BUILT -- and unlike the gold, it was earned
-    -- by choosing to fight a particular way rather than by winning at all. Sorted by amount so the
-    -- house the player actually committed to heads the list.
+    -- Technique banked this fight, as a block per body: its name, then that body's sorted
+    -- { name, amount } house rows (models/combat.lua banks it grouped this way). The gold line says
+    -- what the fight was WORTH; this says what it BUILT -- and unlike the gold, it was earned by
+    -- choosing to fight a particular way rather than by winning at all.
+    --
+    -- GROUPED BY WHO EARNED IT, because that is the ledger technique actually lives on: it accrues per
+    -- character and the Forge bills one body for it (models/discipline.lua), so a flat "+6 Rogue" named
+    -- a number the player could not act on without guessing whose it was. Bodies sorted by their total
+    -- and houses by theirs, so the body that carried the fight and the house it carried it in both head
+    -- their lists.
     --
     -- Keys are class ids as well as discipline ids now, so an ordinary fight with no discipline gear on
     -- the field finally reports something here; it used to bank nothing and show nothing. A discipline
     -- name is used when the key names one, and title-casing covers the seven classes -- "plague_knight"
     -- is "Plague Knight", which title-casing alone would render "Plague_knight".
     self.technique = nil
-    for id, amount in pairs(opts.technique or {}) do
-        if (amount or 0) > 0 then
-            local name = Discipline.displayName(id) or (id:gsub("^%l", string.upper))
+    for _, actor in ipairs(opts.technique or {}) do
+        local rows, total = {}, 0
+        for _, house in ipairs(actor.houses or {}) do
+            local amount = house.amount or 0
+            if amount > 0 then
+                local name = Discipline.displayName(house.key) or (house.key:gsub("^%l", string.upper))
+                rows[#rows + 1] = { name = name, amount = amount }
+                total = total + amount
+            end
+        end
+        if #rows > 0 then
+            table.sort(rows, byAmount)
             self.technique = self.technique or {}
-            self.technique[#self.technique + 1] = { name = name, amount = amount }
+            self.technique[#self.technique + 1] = { name = actor.name or "?", rows = rows, amount = total }
         end
     end
     if self.technique then
-        table.sort(self.technique, function(a, b)
-            if a.amount ~= b.amount then return a.amount > b.amount end
-            return a.name < b.name
-        end)
-        -- A fight that ranged widely can bank more houses than the panel has height for; the tail is
-        -- the small change and the committed houses are already at the top.
-        while #self.technique > MAX_TECH_ROWS do table.remove(self.technique) end
+        table.sort(self.technique, byAmount)
+        -- A fight that ranged widely can bank more lines than the panel has height for. Spend the
+        -- budget top-down: a body's rows are trimmed before the body below it is dropped, and a body
+        -- that cannot fit its name AND at least one row is dropped whole rather than left as a bare
+        -- name. Either way the tail is the small change -- the committed bodies are already at the top.
+        local budget, kept = MAX_TECH_LINES, {}
+        for _, group in ipairs(self.technique) do
+            if budget < 2 then break end
+            local room = math.min(#group.rows, budget - 1)
+            while #group.rows > room do table.remove(group.rows) end
+            budget = budget - (1 + #group.rows)
+            kept[#kept + 1] = group
+        end
+        self.technique = kept
+        if #self.technique == 0 then self.technique = nil end
     end
 
     self.bannerFont = Theme.display(44)
@@ -165,10 +210,11 @@ function BattleSummary.new(opts)
     self.hintFont = Theme.body(15)
     self.titleFont = Theme.display(30) -- the card icon-letter fallback font
     self.techFont = Theme.body(15)
+    self.techNameFont = Theme.body(16) -- the body a block of technique rows was earned by
 
     local hasGold = self.gold > 0
     local hasCards = self.n > 0
-    local techRows = self.technique and #self.technique or 0
+    local techH = self.technique and techHeight(self.technique) or 0
 
     -- Box width tracks the card row; a spoils-less panel (a defeat) stays compact.
     local cols = math.min(math.max(1, self.n), MAX_PER_ROW)
@@ -183,15 +229,15 @@ function BattleSummary.new(opts)
     if hasGold then self.goldRelY = y; y = y + 46 end
     -- Between the takings and the loot: what the fight was worth, then what it built, then what it
     -- dropped. Reads top-down as the three different things a won fight hands over.
-    if techRows > 0 then
+    if techH > 0 then
         self.techRelY = y
-        y = y + techRows * TECH_ROW_H + 10
+        y = y + techH + 10
     end
     if hasCards then
         self.gridRelY = y
         y = y + rows * CARD_H + (rows - 1) * CARD_GAP + 8
     end
-    if not hasGold and not hasCards and techRows == 0 then y = y + 10 end
+    if not hasGold and not hasCards and techH == 0 then y = y + 10 end
     self.buttonRelY = y + 8
     local afterButtons = self.buttonRelY + BUTTON_H
     if self.onReviewLog then
@@ -492,19 +538,29 @@ function BattleSummary:draw()
         love.graphics.print(label, startX + coinR * 2 + 10, gy)
     end
 
-    -- Discipline technique: "Ninja  +14", the name right-aligned into the panel's midline and the
-    -- amount left-aligned out of it, so a stack of rows reads as one column pair however long the
-    -- names are. Amber, matching the floater that showed each of these landing during the fight.
+    -- Discipline technique, a block per body: the fighter's name centred, then their "Ninja  +14" rows
+    -- under it -- the house name right-aligned into the panel's midline and the amount left-aligned out
+    -- of it, so a stack of rows reads as one column pair however long the names are. Amber, matching
+    -- the floater that showed each of these landing during the fight. The name is the brighter ink and
+    -- the houses sit a shade back from it, so the grouping reads as a heading over its rows without
+    -- needing a rule to say so.
     if self.technique then
-        love.graphics.setFont(self.techFont)
         local ty = by + self.techRelY
         local half = self.boxW / 2
-        for _, row in ipairs(self.technique) do
-            love.graphics.setColor(0.66, 0.70, 0.80, alpha)
-            love.graphics.printf(row.name, bx, ty, half - 10, "right")
-            love.graphics.setColor(0.93, 0.76, 0.35, alpha)
-            love.graphics.printf("+" .. row.amount, bx + half + 10, ty, half - 10, "left")
-            ty = ty + TECH_ROW_H
+        for i, group in ipairs(self.technique) do
+            if i > 1 then ty = ty + TECH_GROUP_GAP end
+            love.graphics.setFont(self.techNameFont)
+            Theme.set(Theme.ink, alpha)
+            love.graphics.printf(group.name, bx, ty, self.boxW, "center")
+            ty = ty + TECH_HEAD_H
+            love.graphics.setFont(self.techFont)
+            for _, row in ipairs(group.rows) do
+                love.graphics.setColor(0.60, 0.64, 0.74, alpha)
+                love.graphics.printf(row.name, bx, ty, half - 10, "right")
+                love.graphics.setColor(0.93, 0.76, 0.35, alpha)
+                love.graphics.printf("+" .. row.amount, bx + half + 10, ty, half - 10, "left")
+                ty = ty + TECH_ROW_H
+            end
         end
     end
 

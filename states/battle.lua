@@ -547,10 +547,11 @@ local function finishBattle(result)
     battle.summary = BattleSummary.new({
         result = result,
         spoils = spoils,
-        -- What the fight banked toward forging discipline gear (models/discipline.lua). Wins only:
-        -- a defeat panel is deliberately reward-free, and "Try Again" rolls the party back to its
-        -- pre-fight snapshot anyway, so naming a number there would be naming one about to be undone.
-        technique = result == "win" and battle.combat and battle.combat.techniqueEarned or nil,
+        -- What the fight banked toward forging discipline gear (models/discipline.lua), grouped by the
+        -- body that earned it. Wins only: a defeat panel is deliberately reward-free, and "Try Again"
+        -- rolls the party back to its pre-fight snapshot anyway, so naming a number there would be
+        -- naming one about to be undone.
+        technique = result == "win" and battle.combat and battle.combat.techniqueByActor or nil,
         encounter = battle.encounter,
         actions = actions,
         -- The log survives the fight; let the player read back how it went before leaving the panel.

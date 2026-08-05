@@ -444,6 +444,41 @@ return {
         end,
     },
     {
+        -- The same ledger, split by whose hand banked it: what the victory panel groups its rows under
+        -- (ui/panels/battle_summary.lua). Technique accrues per BODY and the Forge bills one body for
+        -- it, so a bare "+6 Rogue" on the summary named a number nobody owned.
+        name = "the fight's technique ledger records which body banked each house",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 2, 2), unit("character_saber", 2, 4) },
+                { unit("character_bandit", 5, 2) })
+            local rowan, saber = c.units[1], c.units[2]
+
+            Combat.awardTechnique(c, rowan, { class = "knight" })
+            Combat.awardTechnique(c, saber, { class = "rogue" })
+            Combat.awardTechnique(c, rowan, { class = "fighter" })
+            Combat.awardTechnique(c, rowan, { class = "knight" })
+
+            local ledger = c.techniqueByActor
+            assert(#ledger == 2, "two party bodies banked, so two blocks")
+            assert(ledger[1].char == rowan.char and ledger[1].name == rowan.char.name,
+                "in the order they first banked, each carrying the name the panel prints")
+
+            local knight, fighter
+            for _, house in ipairs(ledger[1].houses) do
+                if house.key == "knight" then knight = house end
+                if house.key == "fighter" then fighter = house end
+            end
+            assert(#ledger[1].houses == 2, "a body's houses are one row each, not one per cast")
+            assert(knight.amount == fighter.amount * 2, "and each row totals that body's casts in it")
+            assert(#ledger[2].houses == 1 and ledger[2].houses[1].key == "rogue",
+                "the second body carries only what it earned")
+
+            -- The flat ledger the per-battle cap is measured against still totals across the field.
+            assert(c.techniqueEarned.knight == knight.amount, "the two readings agree on a house")
+        end,
+    },
+    {
         -- The property the earned/spent split exists for, end to end: paying a real Forge bill must not
         -- move the career title or what the next level-up will apply.
         name = "forging spends the wallet without touching the title or the pending growth",

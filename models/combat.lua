@@ -7801,10 +7801,14 @@ end
 -- first walked into it. Nothing here needs to defend against that; it just must not be moved out of
 -- the saved character to somewhere the snapshot does not reach.
 --
--- `combat.techniqueEarned` is the fight's running ledger, { [key] = amount }, read by
--- ui/panels/battle_summary.lua. `combat.techniqueAward` is the LAST award only -- a one-shot the
--- battle state drains to float "+2 Ninja" over the caster (states/battle.lua) and then clears, so a
--- capped-out action floats nothing rather than a misleading zero.
+-- `combat.techniqueEarned` is the fight's running ledger, { [key] = amount } -- what the CAP is
+-- measured against, since the cap is per house across the whole field. `combat.techniqueByActor` is
+-- the same ledger split by whose hand banked it, `{ { char, name, houses = { { key, amount } } } }` in
+-- first-award order, and it is what the summary panel reports: technique is earned per body (the bill
+-- spends from one body, and specializing is what makes it pay), so "+6 Rogue" is only half a fact
+-- until it says which of the four earned it. `combat.techniqueAward` is the LAST award only -- a
+-- one-shot the battle state drains to float "+2 Ninja" over the caster (states/battle.lua) and then
+-- clears, so a capped-out action floats nothing rather than a misleading zero.
 function Combat.awardTechnique(combat, unit, item)
     combat.techniqueAward = nil
     local key = Discipline.growthClasses(item)[1]
@@ -7819,6 +7823,27 @@ function Combat.awardTechnique(combat, unit, item)
     Character.recordTechnique(unit.char, key, amount)
     combat.techniqueEarned[key] = earned + amount
     combat.techniqueAward = { unit = unit, discipline = key, amount = amount }
+
+    -- Linear scans, not maps keyed by char/key: a fight banks for a handful of bodies across a handful
+    -- of houses, and an ordered list is what both the display and a stable reading want anyway.
+    combat.techniqueByActor = combat.techniqueByActor or {}
+    local actor
+    for _, a in ipairs(combat.techniqueByActor) do
+        if a.char == unit.char then actor = a; break end
+    end
+    if not actor then
+        actor = { char = unit.char, name = unitName(unit), houses = {} }
+        combat.techniqueByActor[#combat.techniqueByActor + 1] = actor
+    end
+    local house
+    for _, h in ipairs(actor.houses) do
+        if h.key == key then house = h; break end
+    end
+    if not house then
+        house = { key = key, amount = 0 }
+        actor.houses[#actor.houses + 1] = house
+    end
+    house.amount = house.amount + amount
     return amount
 end
 
