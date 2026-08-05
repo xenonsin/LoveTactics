@@ -28,20 +28,27 @@ and the deployment strip pages sideways rather than shrinking its cards past leg
 
 ## The deploy zone
 
-`Arena.build` gives every board an `arena.deployZone`: the tiles you may put a body on. It is derived
-rather than authored, so every map gets one for free:
+`Arena.build` gives every board an `arena.deployZone`: the tiles you may put a body on. Where the map
+does not say otherwise it is a **fixed block**, so every board offers the same shape of choice:
 
 1. an authored `deployZone` on a curated layout wins outright — a map that wants to say *you come in
    through this gate* says so, as a list of `{ x, y }` in `data/arenas/<id>.lua`;
-2. otherwise, every walkable tile on the rows the party's own spawns occupy, **widened by one row
-   toward the enemy** (`Arena.DEPLOY_DEPTH = 2`). The spawn rows keep the zone where the generator (or
-   the board's author) already decided the party enters from; the extra row is what makes it a band
-   rather than a line, so front-and-back is a decision and not just left-and-right;
+2. otherwise, **the eight tiles at the bottom centre of the board** — `Arena.DEPLOY_COLS = 4` wide by
+   `Arena.DEPLOY_DEPTH = 2` deep, flush with the party's home edge. Four bodies over eight tiles is a
+   real placement, and the two rows are what make front-and-back a decision and not just
+   left-and-right. It is deliberately *not* derived from where the spawns landed: the generator spreads
+   those across the full board width, which lit the whole bottom of the board and made the zone
+   indistinguishable from "your half";
 3. tiles the board itself seated somebody on — an escorted survivor, an enemy authored deep — are
    excluded, so the phase never offers a cell that is already taken.
 
-If that yields fewer tiles than the party has bodies, it falls back to the authored spawns: a cramped
-board must never produce a phase with nowhere to stand.
+Bottom is the party's edge everywhere in `models/arena.lua` — enemies muster on the low rows, the
+draft's marching grid faces them — so a board that wants the party entering from elsewhere authors its
+own zone rather than being guessed at.
+
+If that yields fewer than `Arena.DEPLOY_MIN = 4` tiles (the field cap, mirrored the way
+`Combat.MAX_FIELD` mirrors `Player.MAX_FIELD`), it falls back to the authored spawns: a cramped board
+must never produce a phase with nowhere to stand.
 
 The zone is **one geometry with three uses** — placement at the bell, rotation mid-fight, and where a
 reinforcement walks on — and it is lit with one overlay (`BattleMap:drawDeployZone`) in the party's
@@ -176,7 +183,7 @@ everyone who marched, and a benched member has to arrive already wearing it.
 
 | File | What |
 | --- | --- |
-| `models/arena.lua` | `arena.deployZone`, `Arena.DEPLOY_DEPTH`, the authored `deployZone` field |
+| `models/arena.lua` | `arena.deployZone`, `Arena.DEPLOY_COLS`/`DEPLOY_DEPTH`/`DEPLOY_MIN`, the authored `deployZone` field |
 | `models/combat.lua` | `deferOpen` / `Combat.openBattle`, `deployUnit`, `undeployUnit`, the bench section (`benchUnit`, `canRotate`, `rotate`, `withdraw`, `canReinforce`, `reinforceTiles`, `reinforce`, `fieldCount`, `benchCount`, `eliminated`) |
 | `ui/deploy_phase.lua` | the phase: the strip, the drag, the placement |
 | `ui/panels/bench_chooser.lua` | who comes on, for both routes |

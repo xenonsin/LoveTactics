@@ -408,60 +408,61 @@ end
 -- deployment phase), and the same ground a rotation and a reinforcement use later in the fight
 -- (models/combat.lua). See docs/deployment.md.
 --
--- It is deliberately WIDER than the party -- placement is only a decision if there are more tiles than
--- units -- and it is derived from the board rather than authored, so every map gets one for free:
+-- It is deliberately WIDER than the field -- placement is only a decision if there are more tiles than
+-- bodies -- and where a map does not say otherwise it is a FIXED BLOCK, so every board offers the same
+-- shape of choice and the phase reads identically fight to fight:
 --
 --   1. an authored `deployZone` on a curated layout wins outright (a map that wants to say "you come in
 --      through this gate" says so);
---   2. otherwise, every walkable tile on the ROWS THE PARTY SPAWNS OCCUPY, widened by one row TOWARD the
---      enemy. The spawn rows keep the zone where the board's author (or the generator) already decided
---      the party enters from; the extra row is what makes it a band rather than a line, so front-and-back
---      is a decision and not just left-and-right. See Arena.DEPLOY_DEPTH;
+--   2. otherwise, the eight tiles at the BOTTOM CENTRE of the board -- DEPLOY_COLS wide, DEPLOY_DEPTH
+--      deep, against the party's own home edge. Four bodies over eight tiles is a real placement, and
+--      two rows make front-and-back a decision and not just left-and-right. The block is not derived
+--      from where the spawns happen to have landed: the generator spreads those across the full width,
+--      which lit up the whole bottom of the board and made "the zone" indistinguishable from "the near
+--      half";
 --   3. tiles another unit is authored onto (an escort, an enemy that spawned deep) are excluded, so the
 --      phase can never offer a cell somebody is already standing in.
 --
 -- Falls back to the party spawns themselves if that yields fewer than `minTiles` cells: a cramped
 -- authored board must never produce a phase with nowhere to stand.
+--
+-- BOTTOM is the party's edge everywhere in this file -- enemies muster on the low rows (placeUnits),
+-- the marching grid's front rank faces them (formationCell) -- so a board that wants the party coming in
+-- from anywhere else authors its own zone rather than being guessed at.
 
--- How many rows deep the derived zone is, counting the party's own spawn row. Two: one to stand the line
--- on and one to stand behind it, which is exactly the front/back choice the old marching grid offered.
+-- How many rows deep the block is: one to stand the line on and one to stand behind it, which is exactly
+-- the front/back choice the old marching grid offered.
 Arena.DEPLOY_DEPTH = 2
+-- How wide, in columns. Four by two is eight tiles -- the same shape the draft's marching grid keeps
+-- (DraftRun.FORMATION_COLS/ROWS), and twice the field cap.
+Arena.DEPLOY_COLS = 4
+-- The fewest tiles a zone may offer before it is treated as too cramped to choose on. The field cap:
+-- four bodies ever need somewhere to be at once. Mirrored here rather than reached for out of
+-- models/combat.lua, the same way Combat.MAX_FIELD mirrors Player.MAX_FIELD.
+Arena.DEPLOY_MIN = 4
+
+-- The default block, before walkability and occupancy are applied: DEPLOY_COLS x DEPLOY_DEPTH, centred
+-- on the board's width and flush with its bottom edge. Clamped to the board, so a board narrower or
+-- shallower than the block still gets whatever of it fits.
+local function defaultZoneBlock(layout)
+    local w = math.min(Arena.DEPLOY_COLS, layout.cols)
+    local d = math.min(Arena.DEPLOY_DEPTH, layout.rows)
+    -- Left-biased on an odd remainder (cols 3..6 of eight), matching how placeUnits centres a line.
+    local x0 = math.floor((layout.cols - w) / 2) + 1
+    local block = {}
+    for y = layout.rows - d + 1, layout.rows do
+        for x = x0, x0 + w - 1 do block[#block + 1] = { x = x, y = y } end
+    end
+    return block
+end
 
 local function deployZoneFor(layout, taken, minTiles)
     local authored = layout.deployZone
+    local offered = (authored and #authored > 0) and authored or defaultZoneBlock(layout)
     local zone = {}
-    if authored and #authored > 0 then
-        for _, t in ipairs(authored) do
-            if walkableAt(layout, t.x, t.y) and not taken[key(t.x, t.y)] then
-                zone[#zone + 1] = { x = t.x, y = t.y }
-            end
-        end
-    else
-        local rows, lo, hi = {}, nil, nil
-        for _, sp in ipairs(layout.partySpawns or {}) do
-            rows[sp.y] = true
-            lo = math.min(lo or sp.y, sp.y)
-            hi = math.max(hi or sp.y, sp.y)
-        end
-        -- Widen toward the enemy: the party lands on the near rows, so "toward the enemy" is whichever
-        -- direction the far edge lies in. Measured off the spawns themselves rather than assumed to be
-        -- upward, since a curated board is free to seat the party at the top.
-        if lo then
-            local towardTop = ((lo + hi) / 2) > (layout.rows / 2)
-            for d = 1, (Arena.DEPLOY_DEPTH - 1) do
-                local y = towardTop and (lo - d) or (hi + d)
-                if y >= 1 and y <= layout.rows then rows[y] = true end
-            end
-        end
-        local ordered = {}
-        for y in pairs(rows) do ordered[#ordered + 1] = y end
-        table.sort(ordered)
-        for _, y in ipairs(ordered) do
-            for x = 1, layout.cols do
-                if walkableAt(layout, x, y) and not taken[key(x, y)] then
-                    zone[#zone + 1] = { x = x, y = y }
-                end
-            end
+    for _, t in ipairs(offered) do
+        if walkableAt(layout, t.x, t.y) and not taken[key(t.x, t.y)] then
+            zone[#zone + 1] = { x = t.x, y = t.y }
         end
     end
     if #zone >= (minTiles or 1) then return zone end
@@ -819,9 +820,11 @@ function Arena.build(ctx, spec)
         allies = allies,
         enemies = enemies,
         -- Where the player may stand their company at the opening bell (and rotate/reinforce onto
-        -- later). Sized against the FIELD cap rather than the company, since that is how many bodies
-        -- ever need somewhere to be at once. See docs/deployment.md.
-        deployZone = deployZoneFor(layout, taken, math.max(#partyIds, 1)),
+        -- later). The floor it must clear is the FIELD cap, not the company: `partyIds` is the whole
+        -- marching roster (states/game.lua hands over `player.roster` entire), and only four of them
+        -- ever stand at once -- a nine-strong company must not be what makes an eight-tile block read
+        -- as "too cramped". See docs/deployment.md.
+        deployZone = deployZoneFor(layout, taken, math.min(math.max(#partyIds, 1), Arena.DEPLOY_MIN)),
         traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
         hazards = layout.hazards or {}, -- authored hazards (fire/rain/sanctuary) carried into combat (Combat.new places them)
         props = layout.props or {}, -- scattered/authored props (barrels, crates) carried into combat (Combat.new places them)

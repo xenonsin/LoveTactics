@@ -4,8 +4,8 @@
 -- The interactive half -- dragging portraits out of the gutter strip onto lit tiles -- is
 -- love.graphics-bound and lives in states/battle.lua; what is testable headless is everything it stands
 -- on, and that is what this covers:
---   * every board offers a zone, it is standable, and it is WIDER than the party (a placement you have
---     no choice in is not a decision);
+--   * every board offers a zone, it is standable, and it is WIDER than the field (a placement you have
+--     no choice in is not a decision) -- by default the fixed bottom-centre block, on every board;
 --   * an authored `deployZone` on a curated map wins outright;
 --   * the zone never offers a tile the board itself already seated somebody on;
 --   * Combat.new's `deferOpen` builds the world but fires no opener until Combat.openBattle, and doing
@@ -43,23 +43,44 @@ return {
         end,
     },
     {
-        name = "the zone is wider than the party -- there is something to choose",
+        name = "the zone is wider than the field -- there is something to choose",
         fn = function()
             local arena = build({ party = { "character_knight", "character_mage" } })
-            assert(#arena.deployZone > #arena.party,
-                string.format("zone (%d) offers more tiles than the party has bodies (%d)",
-                    #arena.deployZone, #arena.party))
+            assert(#arena.deployZone > Arena.DEPLOY_MIN,
+                string.format("zone (%d) offers more tiles than the field cap (%d)",
+                    #arena.deployZone, Arena.DEPLOY_MIN))
         end,
     },
     {
-        name = "the zone covers the rows the party's own spawns sit on",
+        name = "an unauthored board deploys on the bottom-centre block",
         fn = function()
+            -- The default is the same eight tiles on every board: four columns centred on the width,
+            -- two rows deep against the party's own edge. Not the rows the spawns happened to land on.
             local arena = build()
-            local rows = {}
-            for _, t in ipairs(arena.deployZone) do rows[t.y] = true end
-            for _, u in ipairs(arena.party) do
-                assert(rows[u.y], "the zone includes the row a party spawn was seated on (y=" .. u.y .. ")")
+            local w, d = Arena.DEPLOY_COLS, Arena.DEPLOY_DEPTH
+            local x0 = math.floor((arena.cols - w) / 2) + 1
+            local want = {}
+            for y = arena.rows - d + 1, arena.rows do
+                for x = x0, x0 + w - 1 do want[x .. "," .. y] = true end
             end
+            assert(#arena.deployZone == w * d,
+                string.format("the block is %dx%d tiles, got %d", w, d, #arena.deployZone))
+            for _, t in ipairs(arena.deployZone) do
+                assert(want[key(t)], "zone tile " .. key(t) .. " is outside the bottom-centre block")
+            end
+        end,
+    },
+    {
+        name = "the whole marching company does not widen the zone",
+        fn = function()
+            -- `spec.party` is the entire roster (states/game.lua hands over player.roster), and only
+            -- four of them stand at once: a company larger than the block must not read as "too
+            -- cramped" and drop the zone back onto the spawn spread.
+            local big = {}
+            for i = 1, 9 do big[i] = (i % 2 == 0) and "character_mage" or "character_knight" end
+            local arena = build({ party = big })
+            assert(#arena.deployZone == Arena.DEPLOY_COLS * Arena.DEPLOY_DEPTH,
+                "a nine-strong company still gets the eight-tile block, got " .. #arena.deployZone)
         end,
     },
     {
