@@ -17,6 +17,7 @@ local InputMode = require("input_mode")
 local Theme = require("ui.theme")
 local ProgressBar = require("ui.progress_bar")
 local Growth = require("models.growth")
+local Discipline = require("models.discipline")
 local Material = require("models.material")
 
 local Advancement = {}
@@ -76,7 +77,40 @@ local STAT_ORDER = { "health", "mana", "stamina", "damage", "magicDamage", "defe
 
 local function classLabel(class)
     if not class then return "" end
-    return (class:gsub("^%l", string.upper))
+    return Discipline.displayName(class) or (class:gsub("^%l", string.upper))
+end
+
+-- How a level-up's gains were apportioned, in words: "as Knight 52% · Mage 48%", or plainly "as Knight"
+-- when one house took the whole level. `shares` is Growth.resolve's own apportionment
+-- (models/growth.lua), so this reports what actually happened rather than re-deriving it.
+--
+-- A level is a BLEND now -- every house cast since the last one gets its share, instead of the leader
+-- taking all of it and the rest being discarded -- so naming only the leader would under-report most
+-- level-ups on this screen. Trimmed to the top three: a busy character can touch more houses than a
+-- row has width for, and the tail is rounding.
+local function sharesText(entry)
+    local shares = entry.shares
+    if not shares then return "as " .. classLabel(entry.class) end
+
+    local ranked = {}
+    for key, share in pairs(shares) do
+        if share > 0 then ranked[#ranked + 1] = { key = key, share = share } end
+    end
+    if #ranked <= 1 then return "as " .. classLabel(entry.class) end
+
+    table.sort(ranked, function(a, b)
+        if a.share ~= b.share then return a.share > b.share end
+        return a.key < b.key
+    end)
+
+    local parts = {}
+    for i = 1, math.min(3, #ranked) do
+        -- Rounded for reading, so the printed percentages can sum to 99 or 101. Naming the split is the
+        -- job here; the arithmetic that matters already happened in Growth.applyLevelBlend.
+        parts[#parts + 1] = classLabel(ranked[i].key)
+            .. " " .. tostring(math.floor(ranked[i].share * 100 + 0.5)) .. "%"
+    end
+    return "as " .. table.concat(parts, " · ")
 end
 
 -- "+3 Magic, +5 MP" from a { stat = amount } gains table, in the sheet's stat order.
@@ -517,13 +551,16 @@ function Advancement:drawEntry(entry, x, y, w, h)
     love.graphics.setColor(0.6, 0.85, 0.6)
     love.graphics.printf(levelText, x, y + 5, w - 10, "right")
 
-    -- Growth class + stat gains on the second line.
+    -- How the level was apportioned + the stat gains, on the second line. The split can run long on a
+    -- character who plays three houses, so it is fitted rather than left to overrun the gains beside it.
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(0.75, 0.7, 0.5)
-    local classText = "as " .. classLabel(entry.class)
+    local gt = gainsText(entry.gains)
+    local gainW = self.smallFont:getWidth(gt)
+    local classText = Theme.ellipsize(sharesText(entry), self.smallFont,
+        math.max(60, w - (tx - x) - gainW - 20))
     love.graphics.print(classText, tx, y + 24)
 
-    local gt = gainsText(entry.gains)
     love.graphics.setColor(0.72, 0.78, 0.86)
     local classW = self.smallFont:getWidth(classText)
     love.graphics.print(gt, tx + classW + 10, y + 24)

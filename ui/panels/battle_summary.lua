@@ -34,6 +34,7 @@
 
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip")
+local MaterialTooltip = require("ui.material_tooltip")
 local InputMode = require("input_mode")
 local Discipline = require("models.discipline")
 local Item = require("models.item")
@@ -54,7 +55,11 @@ local MAX_PER_ROW = 4
 local BUTTON_H = 44
 local BOTTOM_PAD = 22
 local REVIEW_H = 30   -- the slim "Review Combat Log" button under the action row
-local TECH_ROW_H = 22 -- one "Ninja  +14" discipline-technique line
+local TECH_ROW_H = 22 -- one "Ninja  +14" technique line
+-- How many of those the panel will show. Keys are classes as well as disciplines now, so a fight in
+-- which the company ranged across its whole kit can bank a dozen; the panel grows its box per row and
+-- would otherwise run off the screen on a battle that was merely varied.
+local MAX_TECH_ROWS = 6
 
 -- Pacing (seconds), timed off `elapsed`. The banner lands, then gold counts up, then loot cards rise.
 local BANNER_IN  = 0.50   -- title fades + scales in over this
@@ -94,9 +99,9 @@ function BattleSummary.new(opts)
     self.gold = math.max(0, spoils.gold or 0)
 
     -- Display-only instances, duplicate ids collapsed to one card carrying its count (three potions read
-    -- as "Healing Potion x3"), just as loot_reveal does. Each card is { name, sprite, count, item } --
-    -- `item` only for real loot, since that is what the hover tooltip needs and a material has no sheet
-    -- to show.
+    -- as "Healing Potion x3"), just as loot_reveal does. Each card is { name, sprite, count, item } for
+    -- real loot and { name, sprite, count, material } for salvage -- which of the two ids a card carries
+    -- picks the tooltip it hovers (item sheet vs. where more of the stock drops).
     local order, tally = {}, {}
     for _, id in ipairs(spoils.loot or {}) do
         if tally[id] then tally[id] = tally[id] + 1 else tally[id] = 1; order[#order + 1] = id end
@@ -120,23 +125,25 @@ function BattleSummary.new(opts)
         local count = spoils.materials[id]
         if def and (count or 0) > 0 then
             self.cards[#self.cards + 1] = {
-                name = def.name or id, sprite = Sprite.load(def.sprite), count = count,
+                name = def.name or id, sprite = Sprite.load(def.sprite), count = count, material = id,
             }
         end
     end
     self.n = #self.cards
 
-    -- Discipline technique banked this fight, as sorted { name, amount } rows (models/discipline.lua).
-    -- The gold line says what the fight was WORTH; this says what it BUILT -- and unlike the gold, it
-    -- was earned by choosing to fight a particular way rather than by winning at all. Sorted by amount
-    -- so the discipline the player actually committed to heads the list.
-    -- An id that no longer names a discipline is DROPPED rather than printed raw, the same rule
-    -- Discipline.displayName is written to (a stale id prints nothing instead of leaking a slug into
-    -- the panel). A fight can only bank real ids, so this is about a save outliving a data change.
+    -- Technique banked this fight, as sorted { name, amount } rows (models/discipline.lua). The gold
+    -- line says what the fight was WORTH; this says what it BUILT -- and unlike the gold, it was earned
+    -- by choosing to fight a particular way rather than by winning at all. Sorted by amount so the
+    -- house the player actually committed to heads the list.
+    --
+    -- Keys are class ids as well as discipline ids now, so an ordinary fight with no discipline gear on
+    -- the field finally reports something here; it used to bank nothing and show nothing. A discipline
+    -- name is used when the key names one, and title-casing covers the seven classes -- "plague_knight"
+    -- is "Plague Knight", which title-casing alone would render "Plague_knight".
     self.technique = nil
     for id, amount in pairs(opts.technique or {}) do
-        local name = Discipline.displayName(id)
-        if name and (amount or 0) > 0 then
+        if (amount or 0) > 0 then
+            local name = Discipline.displayName(id) or (id:gsub("^%l", string.upper))
             self.technique = self.technique or {}
             self.technique[#self.technique + 1] = { name = name, amount = amount }
         end
@@ -146,6 +153,9 @@ function BattleSummary.new(opts)
             if a.amount ~= b.amount then return a.amount > b.amount end
             return a.name < b.name
         end)
+        -- A fight that ranged widely can bank more houses than the panel has height for; the tail is
+        -- the small change and the committed houses are already at the top.
+        while #self.technique > MAX_TECH_ROWS do table.remove(self.technique) end
     end
 
     self.bannerFont = Theme.display(44)
@@ -539,13 +549,20 @@ function BattleSummary:draw()
         love.graphics.printf(hint, bx, self.buttonY + BUTTON_H / 2 - 9, self.boxW, "center")
     end
 
-    -- Loot inspect tooltip: a mouse-hover nicety only, so the default view keeps the Continue button
-    -- clear. The cards themselves announce what dropped (icon + name + count); full stats are on the
-    -- item once it's in the stash. Keyboard/gamepad just read the cards. A salvage card has no `item`
-    -- and shows no tooltip -- a material is a name and a number, which the card already is.
+    -- Inspect tooltip: a mouse-hover nicety only, so the default view keeps the Continue button clear.
+    -- The cards themselves announce what dropped (icon + name + count); full stats are on the item once
+    -- it's in the stash. Keyboard/gamepad just read the cards. A salvage card hovers the material
+    -- tooltip instead -- the name is the one thing a lump of stock does NOT explain, and its "where more
+    -- of it comes from" line is the whole point of the drop. No player is passed: the salvage has not
+    -- been granted yet at this point (the Continue action does that), so a "held" count read here would
+    -- name a number from before the fight.
     if self:isRevealed() and self.n > 0 and self.mouseOverCard and InputMode.isMouse() then
         local focused = self.cards[self.focus]
-        if focused and focused.item then ItemTooltip.draw(focused.item, self.mx, self.my, Scale.WIDTH) end
+        if focused and focused.item then
+            ItemTooltip.draw(focused.item, self.mx, self.my, Scale.WIDTH)
+        elseif focused and focused.material then
+            MaterialTooltip.draw(focused.material, self.mx, self.my, Scale.WIDTH)
+        end
     end
 
     self.closeButton:draw()

@@ -137,42 +137,87 @@ local function snapshotCharacter(char)
     -- keep an early-game save diffing clean; the same for an empty tally / no accumulated growth.
     if char.level and char.level > 1 then snap.level = char.level end
 
-    local classUse = {}
-    for class, count in pairs(char.classUse or {}) do
-        if count and count > 0 then classUse[class] = count end
-    end
-    if next(classUse) then snap.classUse = classUse end
-
     local growth = {}
     for stat, amount in pairs(char.growth or {}) do
         if amount and amount ~= 0 then growth[stat] = amount end
     end
     if next(growth) then snap.growth = growth end
 
-    -- Casts banked toward the NEXT level-up, and the per-class ledger of levels already credited.
-    -- Omitted while empty, like their neighbours above, so an early save stays small and readable.
-    local since = {}
-    for class, count in pairs(char.classUseSinceLevel or {}) do
-        if count and count > 0 then since[class] = count end
+    -- The fraction of a point a blended level-up could not spend, carried into the next one
+    -- (Growth.applyLevelBlend). Dropping it would lose up to a point per stat per save/load, which
+    -- over a campaign is a character quietly growing worse for having been saved.
+    local carry = {}
+    for stat, amount in pairs(char.growthCarry or {}) do
+        if amount and amount ~= 0 then carry[stat] = amount end
     end
-    if next(since) then snap.classUseSinceLevel = since end
+    if next(carry) then snap.growthCarry = carry end
 
+    -- The per-key ledger of levels credited. Fractional now (Growth.resolve books shares), so this is
+    -- stored as written rather than rounded -- Discipline.level does the flooring when it gates a shelf.
     local growthBy = {}
     for class, count in pairs(char.growthBy or {}) do
         if count and count > 0 then growthBy[class] = count end
     end
     if next(growthBy) then snap.growthBy = growthBy end
 
-    -- Banked discipline technique (models/discipline.lua) -- a wallet, not a tally, so unlike its
-    -- neighbours above it can be spent back down to nothing. A discipline that has been fully spent
-    -- drops out of the save exactly as an unearned one does, which is correct: both hold zero.
+    -- THE LEDGER and its two companions (Character.recordTechnique). Earned is monotonic; spent and the
+    -- level checkpoint both only ever rise toward it. Each omitted while empty, like their neighbours
+    -- above, so an early save stays small and readable.
     local technique = {}
     for id, amount in pairs(char.technique or {}) do
         if amount and amount > 0 then technique[id] = amount end
     end
     if next(technique) then snap.technique = technique end
 
+    local spent = {}
+    for id, amount in pairs(char.techniqueSpent or {}) do
+        if amount and amount > 0 then spent[id] = amount end
+    end
+    if next(spent) then snap.techniqueSpent = spent end
+
+    local atLevel = {}
+    for id, amount in pairs(char.techniqueAtLevel or {}) do
+        if amount and amount > 0 then atLevel[id] = amount end
+    end
+    if next(atLevel) then snap.techniqueAtLevel = atLevel end
+
     return snap
+end
+
+-- Fold a PRE-MERGE character snapshot into the one ledger. Before, a character carried `classUse` (one
+-- tick per action, the growth vote) and `technique` (two per action, disciplines only, spendable); now
+-- it carries earned + spent + a level checkpoint (models/character.lua).
+--
+-- Done here as a read-time fold rather than by moving Save.VERSION, because a version mismatch
+-- DISCARDS THE WHOLE SAVE (Save.load) -- a heavy price for a change that can be read forward exactly.
+--
+-- Earned is reconstructed at the merged rate: `classUse` counted every action, so it multiplies up to
+-- what the same play would bank today. Spent is deliberately reset to nothing rather than derived from
+-- the gap between the two old numbers -- that gap also contains the old per-battle cap's clipping, so
+-- deriving it would bill the player for forges they never made. Everyone's banks come back full once.
+local function migrateLedger(snap)
+    if not snap.classUse or snap.techniqueSpent then return end
+
+    local Discipline = require("models.discipline")
+    local technique = snap.technique or {}
+    for key, count in pairs(snap.classUse) do
+        local reconstructed = (count or 0) * Discipline.TECHNIQUE_PER_ACTION
+        if reconstructed > (technique[key] or 0) then technique[key] = reconstructed end
+    end
+    snap.technique = next(technique) and technique or nil
+
+    -- What was already spent toward the CURRENT level is not recoverable either, and starting the
+    -- checkpoint at zero would hand every loaded character one free level's worth of reading. Seed it
+    -- from the earned figure minus what the old since-level tally says is still outstanding.
+    local atLevel = {}
+    for key, amount in pairs(snap.technique or {}) do
+        local outstanding = ((snap.classUseSinceLevel or {})[key] or 0) * Discipline.TECHNIQUE_PER_ACTION
+        local checkpoint = amount - outstanding
+        if checkpoint > 0 then atLevel[key] = checkpoint end
+    end
+    snap.techniqueAtLevel = next(atLevel) and atLevel or nil
+
+    snap.classUse, snap.classUseSinceLevel = nil, nil
 end
 
 -- ---------------------------------------------------------------------------
@@ -372,15 +417,19 @@ local function known(defs, id)
 end
 
 local function restoreCharacter(snap)
+    -- Fold a pre-merge save's two tallies into the one ledger before anything reads them.
+    migrateLedger(snap)
+
     -- Pass the saved progression through instantiate, which re-bakes the accumulated growth onto the
     -- base stats (max for resource pools) so the character loads at its full leveled power.
     local char = Character.instantiate(snap.id, {
         level = snap.level,
-        classUse = snap.classUse,
         growth = snap.growth,
-        classUseSinceLevel = snap.classUseSinceLevel,
+        growthCarry = snap.growthCarry,
         growthBy = snap.growthBy,
         technique = snap.technique,
+        techniqueSpent = snap.techniqueSpent,
+        techniqueAtLevel = snap.techniqueAtLevel,
     })
 
     -- A save written before per-class level crediting existed carries no `growthBy`, so the ledger

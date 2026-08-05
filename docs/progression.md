@@ -118,8 +118,8 @@ The currency track has two forms, and never both at once:
 | Item | Pays | Ceiling |
 |---|---|---|
 | carries a `discipline` | **technique** in that discipline, `10 × target` | none — the price is the brake |
-| carries a `class` | gold, `40 × target` | the standing of the house that sells it (`Quest.sponsorProgress` → `Vendor.tier`) |
-| classless | gold | none; the materials are the only brake |
+| carries a `class` | **technique** in that class, `10 × target` | the standing of the house that sells it (`Quest.sponsorProgress` → `Vendor.tier`) |
+| classless | gold, `40 × target` | none; the materials are the only brake |
 
 The discipline row used to read *gold*, capped at `Discipline.level + 2`. Both halves of that are gone,
 for one reason: a quest spent playing a ninja bought the right to pay **the same gold a knight pays for
@@ -127,6 +127,15 @@ a knight thing**, and it bought it invisibly, at a bench, two quests later. That
 and permission slips are not felt. Billing the play itself closes the loop where the player can watch
 it: fight as a ninja, bank ninja technique, forge the ninja kit. Keeping the ceiling *as well* would
 charge twice for one rung, so it went with the gold.
+
+**That argument was never actually about disciplines**, so it now covers the whole shelf. Fight as a
+knight, forge the knight kit. What falls out is a clean division of labour where there had been an
+arbitrary one: **gold buys breadth** (a vendor hands you a thing you did not have), **technique buys
+depth** (a bench makes a thing you already carry better). Gold keeps its sinks — the shelves, the
+overworld caches, the purse abilities — and stops being the answer to two different questions. The
+class ceiling *survives* the move, and is not the double-charge the discipline ceiling was: that one
+measured play, which is exactly what the price now measures, while this one measures campaign standing.
+Two axes, one gate each.
 
 Why a second currency at all, when gold already exists: **gold is fungible.** Four hundred coin off a
 wolf pack and four hundred off a discipline elite are the same four hundred, so every choice the player
@@ -145,12 +154,66 @@ panel, and selling a unit returns its gear), and carrier-pays would strand a fre
 un-forgeable loot.
 
 Two grind doors, both shut: `Discipline.TECHNIQUE_PER_BATTLE` caps what one fight can bank in one
-discipline (a `free` ability does not end the turn, and nothing obliges a player to finish a fight),
-and losing on purpose to farm a bank is undone by "Try Again" restoring the pre-fight snapshot — which
-works only because technique rides in the *character* snapshot, pinned by a spec that says so.
+house (a `free` ability does not end the turn, and nothing obliges a player to finish a fight), and
+losing on purpose to farm a bank is undone by "Try Again" restoring the pre-fight snapshot — which
+works only because the ledger rides in the *character* snapshot, pinned by a spec that says so.
 
-`Discipline.level` survives, unchanged and no longer used by the forge: it still gates the shelf's
-optional per-item `unlockLevel` (`Vendor.stock`).
+### One ledger, three readings
+
+Technique used to sit beside two other per-character tallies — `classUse` (the career title) and
+`classUseSinceLevel` (what the next level-up applied) — on the stated ground that *"a vote and a bank
+cannot share a counter"*, since spending the bank would destroy the vote. They also shared a **key
+space**: `Discipline.growthClasses` files a discipline item under the discipline, so a character
+playing assassin gear carried `classUse.assassin` **and** `technique.assassin` — two unrelated numbers
+under one word, stacked as two near-identical lists on the character sheet.
+
+The objection was only ever about spending, and the fix is the one FFT's JP already uses: keep what was
+**earned** monotonic, and track what was **spent** beside it.
+
+| field | what it is |
+|---|---|
+| `char.technique[key]` | earned, never decremented. The career title (`Growth.dominantClass`) and the numerator of everything below |
+| `char.techniqueSpent[key]` | what the Forge has billed. Available to spend is the difference |
+| `char.techniqueAtLevel[key]` | a checkpoint taken when the last level landed, so the level-up reads the delta since |
+
+Consequences worth knowing. **The per-battle cap now bounds the level-up reading too**, since they are
+one number — thirty actions of one house in a single fight is far past the point commitment has been
+demonstrated, and the anti-grind rule is stated in one place instead of two. **The class-vote floater is
+gone**: it existed only to cover the silence technique left when it spoke for discipline stock alone
+(233 of 638 item files, all of it locked content), so an opening hand of plain gear banked and floated
+nothing. One currency, one award per action, one floater.
+
+`Discipline.level` still gates the shelf's optional per-item `unlockLevel` (`Vendor.stock`), and now
+**floors** a `growthBy` booked in shares (below). No data file authors an `unlockLevel` yet, so that
+tightening is latent rather than live.
+
+### A level credits everything you cast
+
+`Growth.resolve` used to take the argmax of the since-level reading, apply that one class's table, and
+**discard the rest** — casting knight 11 and mage 10 threw away all ten mage casts. 51% of the play
+decided 100% of the level, so there was no gradient anywhere: every cast was worthless except the one
+that crossed the threshold. It is also why the numbers meant nothing. Only `count > bestCount` was ever
+read, so `Knight 14` meant "more than 11" and not one thing besides.
+
+A level is now apportioned across everything cast since the last one (`Growth.shares`), with per-stat
+remainders carried in `char.growthCarry` so the stats stay whole numbers and nothing is thrown away.
+Two levels at 50/50 land exactly where one level of each would.
+
+Three properties hold it up, each pinned by a spec:
+
+- **The survivability floor comes along for free.** Survivability is *linear* in a growth table, so a
+  convex combination of tables that each clear `Growth.meetsSurvivabilityFloor` clears it too. Blending
+  cannot reopen the hole that rule exists to close.
+- **Determinism.** Float addition is not associative, so shares and gains are summed over **sorted
+  keys**. `models/build.lua` promises `(id, ledger, level)` rebuilds the identical character on any
+  machine and `state_hash` compares peers mid-duel; an unsorted sum is the same character with different
+  stats on another machine — exactly the failure `leaderOf`'s tie-break already guards against.
+- **Stats only ever rise.** Unchanged, and still why history is never re-apportioned: doing so would let
+  a character that changed direction *lose* max health on a level-up.
+
+The career title stays winner-take-all, because a title is singular — "Growing as Knight and a bit of
+Mage" is not a title. `growthBy` is booked in shares instead, so the ledger of levels agrees with the
+stats it summarizes.
 
 ## The plan, in dependency order
 
@@ -325,21 +388,26 @@ actually bills (see "The bill, and what caps it"). What that buys, felt in order
   learning would break "anyone can carry anything". So it buys the **rung** instead of the ability.
 - **done** — it floats over the caster as it lands (`+2 Ninja`, the same channel as damage numbers), so
   the reward is visible in the fight rather than reconstructed at a bench.
-- **done** — **and so does the class vote** (`+1 Knight`, `Combat.noteGrowthVote`). Technique alone left
-  most of the game silent: only 233 of 638 item files declare a discipline, and disciplines are *locked*
-  content, so an opening campaign hand — `weapon_iron_sword` is `class = "knight"` with no discipline —
-  floated nothing at all. Every action still casts a vote (`Character.recordUse`, one tick into
-  `classUseSinceLevel`), and that vote is what decides the next level-up, so it is worth putting on the
-  body at the moment it is earned. **One floater per action**, technique taking precedence: a discipline
-  item votes for the *discipline* id, so floating both would report one action twice under one name. The
-  units differ and the colour carries it — `Theme.accentAmber` for the wallet, `Theme.muted` for the
-  tally, which fires on every action and must not shout as loudly. A corollary: a discipline capped out
-  for the battle now floats `+1 Ninja` rather than nothing — not the misleading zero the cap was
-  guarding against, but the smaller true claim (*the wallet is full, the vote still counted*).
+- **superseded** — a second, quieter floater (`+1 Knight`, `Combat.noteGrowthVote`) once covered the
+  silence technique left behind. Only 233 of 638 item files declare a discipline, and disciplines are
+  *locked* content, so an opening campaign hand — `weapon_iron_sword` is `class = "knight"` with no
+  discipline — banked nothing and floated nothing. Two awards meant a precedence rule (technique won the
+  slot, so one action was never reported twice under one name) and two colours carrying the units apart.
+  **Every house banks the same currency now**, so there is one award, one floater, one colour, and the
+  rule deleted itself. See "One ledger, three readings".
 - **done** — the battle summary names what the fight built, under what it was worth: gold, then
-  technique, then loot. Three different things a won fight hands over.
+  technique, then loot. Three different things a won fight hands over. Now that class keys bank too, an
+  ordinary fight with no discipline gear on the field finally reports something here.
 - **done** — the Forge names the bank and who holds it ("Ninja — 62 held by Clem"), bills the row in
   technique, and its refusal names the verb that earns it.
+- **done** — the character sheet reads the ledger back (`ui/panels/party.lua`) as the two things a
+  player acts on: each house's **claim on the coming level**, and what it has **to spend**. The career
+  total is deliberately *not* shown. Nothing reads it — the title above already names its leader, and a
+  level-up reads only the delta since the last one — so printing it would put the one figure nothing
+  acts on beside the two that are acted on. The claim is a **percentage** because the fraction is all
+  the model reads: a level arrives on prestige, so twenty casts and two hundred in the same proportions
+  grow the identical character and a magnitude would imply a rate that does not exist. It is the same
+  number the advancement panel reports when the level lands, so the sheet predicts that screen exactly.
 - **reverted** — a "Growing as **Mage**" line briefly sat under the actions grid, reading
   `Growth.creditClass` live (the class the *next* level-up will apply, moving as you cast). It was
   removed: the growth floaters over the bodies already say the vote is being counted, and a second
@@ -347,7 +415,8 @@ actually bills (see "The bill, and what caps it"). What that buys, felt in order
   surfacing again, the party panel already shows it (`ui/panels/party.lua`).
 
 - **done** — the advancement panel shows its reasoning at both ends. When someone levels, each row
-  names the credited class and what it bought ("as Sentinel  +3 Magic, +5 MP"). When **nobody** does —
+  names how the level was apportioned and what it bought ("as Knight 52% · Mage 48%  +3 HP, +2 Magic";
+  plainly "as Sentinel" when one house took the whole level). When **nobody** does —
   which its own header admits is most quests — it does not fall silent: the prestige bar names the
   level either side, the caption reads "0 / 2 prestige to the next level" and "+1 this quest", and the
   line under it says *"No one crossed a level this time — the company still gains."* A flat "No
@@ -575,11 +644,13 @@ the paragraph at the end.
   every item the vendor sells and marks the unaffordable ones `locked`. The base rack folds like any
   other section now, so a player *can* shut it by hand, but it still opens expanded; capping how far
   ahead it reads is an open call (step 4).
-- **`char.growthBy` has no screen** that reads it as "Knight 3 / Mage 2". A discipline's standing now
-  surfaces in three places — the shop's section headers, the Forge's detail pane ("Ninja — 62 held by
-  Clem"), and the battle summary's technique rows — but the per-character ledger behind them does not.
-  It is written by `Growth.creditClass`, persisted by `models/save.lua`, read by `Discipline` and by
-  the specs, and by no UI module anywhere.
+- **`char.growthBy` has no screen** that reads it as "Knight 3 / Mage 2". Narrower than it was: the
+  per-character *technique* ledger now has one (`ui/panels/party.lua`), and a discipline's standing
+  already surfaced in the shop's section headers, the Forge's detail pane ("Ninja — 62 held by Clem")
+  and the battle summary. What is still unread is `growthBy` specifically — the count of **levels**
+  credited per house, which is a different unit from the ledger beside it and is now booked in
+  fractional shares. It is written by `Growth.resolve`, persisted by `models/save.lua`, read by
+  `Discipline.level` and by the specs, and by no UI module anywhere.
 - **The difficulty labels were never re-read, and now they are the only head-count dial there is.**
   Still 4 Easy, 25 Normal, 63 Hard. The original entry here claimed `quest_bastion_slot_01` was "Easy
   and fielding 73 bodies"; measured properly, that count is taken at end-campaign prestige and a first

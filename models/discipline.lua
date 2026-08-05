@@ -9,6 +9,7 @@
 -- Pure logic (no love.graphics), so it loads under the headless tests.
 
 local Registry = require("models.registry")
+local Character = require("models.character")
 
 local Discipline = {}
 
@@ -148,6 +149,10 @@ end
 -- id as a tally key, Character.recordUse accrues it per action, Growth.resolve banks a level against
 -- whichever key led at the time into char.growthBy, and models/save.lua persists it. This function is
 -- the first reader -- no new bookkeeping, just a question nobody had asked of the ledger yet.
+-- FLOORED, because growthBy is booked in shares now (Growth.resolve): a level split 52/48 books 0.52
+-- toward one path, so a whole discipline level is a whole level's worth of committed play rather than
+-- whatever happened to lead on the day. That is a real tightening of this gate against the old
+-- winner-take-all booking, and the honest reading of it.
 function Discipline.level(player, id)
     if not id or not Discipline.defs[id] then return 0 end
     local best = 0
@@ -155,7 +160,7 @@ function Discipline.level(player, id)
         local n = (char.growthBy or {})[id] or 0
         if n > best then best = n end
     end
-    return best
+    return math.floor(best)
 end
 
 -- ---------------------------------------------------------------------------
@@ -192,8 +197,14 @@ function Discipline.techniqueCost(target)
     return Discipline.TECHNIQUE_PER_LEVEL * math.max(1, target or 1)
 end
 
--- The roster member holding the most technique in `id`, as `char, amount`. Nil + 0 when nobody has
--- any. THE BILL IS PAID BY THE STRONGEST rather than by the carrier or by a shared pot, and each
+-- The roster member with the most SPENDABLE technique in `id`, as `char, amount` -- earned minus what
+-- the Forge has already billed them (Character.techniqueAvailable). Nil + 0 when nobody has any.
+--
+-- Spending is tracked in its own table rather than decremented off the earned figure, because that
+-- figure is now also the career title and the level-up reading (Character.recordTechnique): billing a
+-- forge against it would quietly un-grow the character who paid.
+--
+-- THE BILL IS PAID BY THE STRONGEST rather than by the carrier or by a shared pot, and each
 -- alternative was rejected for a reason worth keeping:
 --
 --   a shared pot     spreading one cheap discipline item over four bodies would out-earn committing
@@ -204,10 +215,10 @@ end
 --
 -- Ties settle by roster order, which is stable within a save.
 function Discipline.techniqueHolder(player, id)
-    if not id or not Discipline.defs[id] then return nil, 0 end
+    if not id then return nil, 0 end
     local best, bestAmount = nil, 0
     for _, char in ipairs((player and player.roster) or {}) do
-        local held = (char.technique or {})[id] or 0
+        local held = Character.techniqueAvailable(char, id)
         if held > bestAmount then best, bestAmount = char, held end
     end
     return best, bestAmount
@@ -223,12 +234,16 @@ end
 -- same body the ceiling test above named -- so a bill can never be met by pooling scraps from four
 -- characters who each fell short. Returns the character it was billed to, or nil when it could not be
 -- paid (the caller checks affordability first; this stays honest if it does not).
+--
+-- Recorded as SPENDING rather than as a decrement: `char.technique` is the career ledger the title and
+-- the level-up both read, so a forge that subtracted from it would make paying for gear cost growth.
 function Discipline.spendTechnique(player, id, amount)
     amount = amount or 0
     if amount <= 0 then return nil end
     local char, held = Discipline.techniqueHolder(player, id)
     if not char or held < amount then return nil end
-    char.technique[id] = held - amount
+    char.techniqueSpent = char.techniqueSpent or {}
+    char.techniqueSpent[id] = (char.techniqueSpent[id] or 0) + amount
     return char
 end
 

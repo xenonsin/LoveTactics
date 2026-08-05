@@ -9,22 +9,28 @@
 --              thereafter comes at that tier. Was Vendor.upgradeRecipe.
 --
 -- THE BILL is three tracks (see models/material.lua for the two material families):
---   gold OR        climbs with the target level -- what PLAIN stock is forged with
---   technique      what DISCIPLINE stock is forged with instead: the currency a character banks by
---                  playing that discipline (models/discipline.lua). Never both; the two are
---                  alternatives on one track, not a surcharge.
+--   technique      what stock belonging to a HOUSE is forged with: the currency a character banks by
+--                  playing that house, keyed on the item's discipline if it has one and its class
+--                  otherwise (models/discipline.lua).
+--   gold           only for stock belonging to no house at all -- a natural weapon. Never both; the
+--                  two are alternatives on one track, not a surcharge.
 --   craft stock    the grade the ITEM's own quality draws on, times a count that climbs
 --   house stock    the item's class's material -- and for a DISCIPLINE item, every parent class's
 --                  material at double the rate. That is the discipline gate: the deep cut of the shelf
 --                  costs stock from both lines it descends from, so you must have run them.
 --
--- WHY DISCIPLINE GEAR STOPPED COSTING GOLD. It used to cost gold like everything else and be held back
--- by a CEILING of `Discipline.level + 2` -- so a quest spent playing a ninja bought, eventually and
--- invisibly, the right to pay the same gold a knight pays for a knight thing. That is a permission
--- slip, not a reward, and permission slips are not felt. Billing the play itself makes the loop close
--- where the player can see it: fight as a ninja, bank ninja technique, forge the ninja kit. It is the
--- same conversion this bill already made once for the multiclass gate -- expressed as a price rather
--- than a lock -- applied to the last lock that was standing.
+-- WHY THE BENCH STOPPED TAKING GOLD. Discipline gear used to cost gold like everything else and be
+-- held back by a CEILING of `Discipline.level + 2` -- so a quest spent playing a ninja bought,
+-- eventually and invisibly, the right to pay the same gold a knight pays for a knight thing. That is a
+-- permission slip, not a reward, and permission slips are not felt. Billing the play itself closes the
+-- loop where the player can see it: fight as a ninja, bank ninja technique, forge the ninja kit.
+--
+-- That argument was never actually about disciplines -- it is about what a bench should charge for --
+-- so it now covers the whole shelf. Fight as a knight, forge the knight kit. Gold and technique end up
+-- with a clean division of labour instead of an arbitrary one: GOLD BUYS BREADTH (a vendor hands you a
+-- thing you did not have), TECHNIQUE BUYS DEPTH (a bench makes a thing you already carry better). Gold
+-- keeps its sinks -- the shelves, the overworld caches, the purse abilities -- and stops being the
+-- answer to two different questions.
 --
 -- THE CEILING is keyed on the item, not on where you stand (the old Vendor.abilityLevelCap gated by
 -- whichever shop happened to be open). See Forge.ceilingFor.
@@ -38,6 +44,9 @@ local Vendor = require("models.vendor")
 
 local Forge = {}
 
+-- What a rung costs in gold -- reached ONLY by classless stock now (see currencyFor). Everything with
+-- a house is billed in technique at Discipline.techniqueCost, which was tuned against this number so
+-- the ladder kept its shape when the currency moved.
 Forge.GOLD_PER_LEVEL = 40
 
 -- Is this item worked at the bench per INSTANCE? Weapons, armor, utility gear and abilities all are.
@@ -63,7 +72,10 @@ end
 --                     cannot buy a rung you have not played for, because the currency IS the playing.
 --                     A brake the player watches fill beats a lock that silently opens.
 --   class item        the standing of the house that sells it -- Quest.sponsorProgress through
---                     Vendor.tier, the same ladder its shelf opens on.
+--                     Vendor.tier, the same ladder its shelf opens on. This SURVIVED the move to a
+--                     technique price, and is not the double-charge the discipline ceiling was: that
+--                     one measured play, which is exactly what the price now measures, while this one
+--                     measures campaign standing. Two different axes, one of each.
 --   classless         no ceiling. Nothing gates it but the materials.
 --
 -- The discipline branch is FIRST and explicit, not a fall-through: discipline stock carries a `class`
@@ -121,14 +133,21 @@ local function materialsFor(target, price, class, discipline)
     return materials
 end
 
--- The currency half of a bill -- gold for plain stock, technique for discipline stock, never both.
+-- The currency half of a bill. TECHNIQUE for anything that belongs to a house -- its discipline if it
+-- has one, else its class -- and gold only for stock that belongs to no house at all. Never both.
 -- Returns the whole set the panel needs to draw the row and say who would pay it:
 --   gold, technique, techniqueId, techniqueHolder, techniqueHeld
-local function currencyFor(player, target, discipline)
-    if discipline and Discipline.defs[discipline] then
-        local holder, held = Discipline.techniqueHolder(player, discipline)
-        return 0, Discipline.techniqueCost(target), discipline, holder, held
+--
+-- The discipline is preferred over the class because it is the more specific claim: a Ninja blade is
+-- rogue stock too, and billing it as rogue would let generic rogue play pay for the deep cut.
+local function currencyFor(player, target, discipline, class)
+    local key = (discipline and Discipline.defs[discipline] and discipline) or class
+    if key then
+        local holder, held = Discipline.techniqueHolder(player, key)
+        return 0, Discipline.techniqueCost(target), key, holder, held
     end
+    -- Classless stock (a natural weapon) has no house to have played for, so there is nothing to bill
+    -- but coin. The last thing gold buys at this bench.
     return Forge.GOLD_PER_LEVEL * target, 0, nil, nil, 0
 end
 
@@ -143,7 +162,8 @@ function Forge.upgradeCost(player, item)
     local target = (item.level or 0) + 1
     if target > Item.MAX_LEVEL then return nil end
     local ceiling = Forge.ceilingFor(player, item)
-    local gold, technique, techId, holder, held = currencyFor(player, target, item.discipline)
+    local gold, technique, techId, holder, held =
+        currencyFor(player, target, item.discipline, Item.classOf(item))
     return {
         level = target,
         gold = gold,
@@ -208,7 +228,7 @@ function Forge.costTo(player, item, target)
     local materials, blockedAt = {}, nil
 
     for lvl = from + 1, target do
-        local g, t, id, h, bank = currencyFor(player, lvl, discipline)
+        local g, t, id, h, bank = currencyFor(player, lvl, discipline, class)
         gold = gold + g
         technique = technique + t
         techId, holder, held = id, h, bank
@@ -287,7 +307,8 @@ function Forge.recipeCost(player, itemId)
     if target > Item.MAX_LEVEL then return nil end
     local probe = { discipline = def.discipline, class = def.class, type = def.type }
     local ceiling = Forge.ceilingFor(player, probe)
-    local gold, technique, techId, holder, held = currencyFor(player, target, def.discipline)
+    local gold, technique, techId, holder, held =
+        currencyFor(player, target, def.discipline, def.class)
     return {
         level = target,
         gold = gold,

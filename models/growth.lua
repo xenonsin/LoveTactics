@@ -1,10 +1,11 @@
 -- Class growth: the level-up half of the character progression system. Characters do not carry
 -- individual XP -- every roster member's level tracks the player's global `prestige` (see
 -- Player.syncLevels). What makes two same-level characters differ is HOW you played them: each
--- character tallies which class's items it casts (Character.recordUse, fired from Combat.useItem),
--- and on each level-up it gains the stats of its MOST-USED class. A knight you keep casting Fireball
--- with grows into a battlemage. Inspired by Fire Emblem growth rates + FFT job emergence, realized
--- through the "anyone can carry anything" gear philosophy (models/item.lua).
+-- character banks technique under the class or discipline of every item it casts
+-- (Character.recordTechnique, fired from Combat.useItem), and each level-up apportions its stat gains
+-- across everything banked since the last one. A knight you keep casting Fireball with grows into a
+-- battlemage, in proportion to how much Fireball. Inspired by Fire Emblem growth rates + FFT job
+-- emergence, realized through the "anyone can carry anything" gear philosophy (models/item.lua).
 --
 -- Growth is DETERMINISTIC (fixed per-level gains per class, no RNG) -- prestige-lockstep gives no way
 -- to grind away a bad roll, so permanence favors predictability. Gains are BAKED into char.stats
@@ -167,8 +168,22 @@ local function isResourceStat(name)
     return false
 end
 
+-- Every key in `tally` holding a positive amount, SORTED. Sorted because what follows sums floats over
+-- them, and float addition is not associative: `pairs()` order holds still within one build and is
+-- promised by nothing across two, so an unsorted sum is the same character with different stats on
+-- another machine. models/build.lua promises `(id, tally, level)` rebuilds identically anywhere and
+-- models/state_hash.lua compares peers mid-duel, so that is a real failure, not a theoretical one.
+local function sortedKeys(tally)
+    local keys = {}
+    for key, amount in pairs(tally or {}) do
+        if (amount or 0) > 0 then keys[#keys + 1] = key end
+    end
+    table.sort(keys)
+    return keys
+end
+
 -- The class leading a usage tally, with `innate` (the blueprint's own class) as both tie-breaker and
--- fallback. Shared by the two readings below so they can never drift apart in how they settle a tie.
+-- fallback. Shared by the readings below so they can never drift apart in how they settle a tie.
 local function leaderOf(tally, innate)
     local best, bestCount = nil, 0
     for class, count in pairs(tally or {}) do
@@ -190,34 +205,68 @@ local function leaderOf(tally, innate)
     return best or innate or Growth.NEUTRAL_CLASS
 end
 
--- What this character IS, over its whole career: the most-cast class across the cumulative tally.
--- The player-facing title (ui/panels/party.lua). Deliberately NOT what a level-up applies -- see below.
+-- What this character IS, over its whole career: the most-earned key across the cumulative ledger.
+-- The player-facing TITLE (ui/panels/party.lua), and singular on purpose -- "Growing as Knight and a
+-- bit of Mage" is not a title. What a level-up actually applies is the blend below.
 function Growth.dominantClass(char)
-    return leaderOf(char.classUse, char.class)
+    return leaderOf(char.technique, char.class)
 end
 
--- What the NEXT level-up applies: the class led by what this character has been casting since it last
--- levelled. Reading the cumulative tally here instead would price a change of direction against the
--- character's entire history -- a veteran taking up a new discipline would have to out-cast everything
--- it had ever done before one level followed it, so experimenting would get steadily more expensive
--- the longer a character survived. Against the recent tally the cost of turning is constant: one
--- level's worth of casting buys one level, at level 3 or level 40 alike.
+-- What this character has earned toward its next level, per key: the delta since the last level-up
+-- (Character.techniqueSinceLevel). Reading the cumulative ledger here instead would price a change of
+-- direction against the character's entire history -- a veteran taking up a new discipline would have
+-- to out-cast everything it had ever done before one level followed it, so experimenting would get
+-- steadily more expensive the longer a character survived. Against the recent reading the cost of
+-- turning is constant: one level's worth of casting buys one level, at level 3 or level 40 alike.
+function Growth.sinceLevel(char)
+    local since = {}
+    for _, key in ipairs(sortedKeys(char and char.technique)) do
+        local delta = Character.techniqueSinceLevel(char, key)
+        if delta > 0 then since[key] = delta end
+    end
+    return since
+end
+
+-- The single key leading that reading. Kept as the HEADLINE for a level-up summary ("as Knight") and
+-- for the growthBy ledger's fallback; the stats themselves are blended, not credited to it.
 function Growth.creditClass(char)
-    return leaderOf(char.classUseSinceLevel, char.class)
+    return leaderOf(Growth.sinceLevel(char), char.class)
 end
 
--- Apply one level's worth of `class` growth to `char`: add each stat gain to the running total
--- (char.growth) and bake it into the live stat (the resource `.max` for health/mana/stamina).
--- Returns the per-stat gains applied, for a level-up summary. An unknown class is a no-op.
-function Growth.applyLevel(char, class)
-    local def = Growth.defs[class]
-    if not def then return {} end
+-- How one level's growth is apportioned: `{ [key] = share }` summing to 1 over what this character has
+-- been casting since it last levelled.
+--
+-- THIS REPLACES WINNER-TAKE-ALL. A level used to be credited entirely to the leader and the rest of the
+-- reading discarded, so casting knight 11 and mage 10 threw away all ten mage casts -- 51% of the play
+-- deciding 100% of the level, with no gradient anywhere: every cast worthless except the one that
+-- crossed the threshold. Now every cast moves the blend, which is also what makes the number on the
+-- character sheet mean something. It used to be purely ordinal (only `count > bestCount` was ever
+-- read), so "Knight 14" meant "more than 11" and nothing else.
+--
+-- Falls back to the innate class at share 1.0 when nothing has been cast -- the same fallback chain
+-- leaderOf uses (innate, else NEUTRAL_CLASS), so an enemy minted by Growth.spawn with no ledger at all
+-- grows exactly as it did before.
+function Growth.shares(char)
+    local since = Growth.sinceLevel(char)
+    local keys = sortedKeys(since)
 
+    local total = 0
+    for _, key in ipairs(keys) do total = total + since[key] end
+    if total <= 0 then
+        return { [leaderOf(nil, char and char.class)] = 1 }, 1
+    end
+
+    local shares = {}
+    for _, key in ipairs(keys) do shares[key] = since[key] / total end
+    return shares, total
+end
+
+-- Bake `gains` (whole points, per stat) into `char`: add to the running total (char.growth) and to the
+-- live stat -- the resource `.max` for health/mana/stamina, the number itself for everything else.
+local function bake(char, gains)
     char.growth = char.growth or {}
-    local gains = {}
-    for stat, amount in pairs(def) do
+    for stat, amount in pairs(gains) do
         char.growth[stat] = (char.growth[stat] or 0) + amount
-        gains[stat] = amount
 
         local live = char.stats and char.stats[stat]
         if type(live) == "table" and isResourceStat(stat) then
@@ -229,50 +278,125 @@ function Growth.applyLevel(char, class)
             char.stats[stat] = live + amount
         end
     end
+end
+
+-- Apply one level's worth of `class` growth to `char`, whole and undiluted. The single-class path,
+-- kept for callers that mean exactly one table. Returns the per-stat gains applied; unknown class is a
+-- no-op.
+function Growth.applyLevel(char, class)
+    local def = Growth.defs[class]
+    if not def then return {} end
+
+    local gains = {}
+    for stat, amount in pairs(def) do gains[stat] = amount end
+    bake(char, gains)
+    return gains
+end
+
+-- Apply one level's worth of BLENDED growth: each stat is the share-weighted sum across the class
+-- tables, and whatever does not come out a whole number is CARRIED in char.growthCarry rather than
+-- rounded away. Over a career the carry pays out in full, so a 50/50 knight/mage is exactly half of
+-- each table's total and not a rounding artefact of either.
+--
+-- Whole numbers at every step because the stats they bake into are integers and a save stores the
+-- accumulated delta (see the module header). Carrying rather than rounding is what lets the shares be
+-- fractional without the stats ever being.
+--
+-- The survivability floor needs no separate defence here: survivability is LINEAR in a growth table
+-- (Growth.survivability sums two of its fields), so a convex combination of tables that each clear
+-- Growth.meetsSurvivabilityFloor clears it too. Blending cannot reopen the hole that rule closes.
+function Growth.applyLevelBlend(char, shares)
+    char.growthCarry = char.growthCarry or {}
+    local carry = char.growthCarry
+
+    -- Sorted, for the reason sortedKeys exists: this sums floats.
+    local keys = {}
+    for key in pairs(shares or {}) do keys[#keys + 1] = key end
+    table.sort(keys)
+
+    -- Accumulate the fractional gain per stat, then spend the whole part and keep the remainder.
+    for _, key in ipairs(keys) do
+        local def = Growth.defs[key]
+        if def then
+            local share = shares[key]
+            for stat, amount in pairs(def) do
+                carry[stat] = (carry[stat] or 0) + amount * share
+            end
+        end
+    end
+
+    local gains = {}
+    for stat, pending in pairs(carry) do
+        local whole = math.floor(pending)
+        if whole ~= 0 then
+            gains[stat] = whole
+            carry[stat] = pending - whole
+        end
+    end
+    bake(char, gains)
     return gains
 end
 
 -- Catch `char` up to `targetLevel`. Idempotent: never runs backward, so calling it again at the same
--- level does nothing. Returns { fromLevel, toLevel, class, levels, gains } when the character actually
--- advanced, or nil when it was already caught up.
+-- level does nothing. Returns { fromLevel, toLevel, class, shares, levels, gains } when the character
+-- actually advanced, or nil when it was already caught up. `class` is the headline (the leading key);
+-- `shares` is how the gains were actually apportioned.
 --
--- The advance is credited to ONE class -- whatever it has been casting since it last levelled -- and
--- that reading is then CONSUMED, so the next level starts from a clean slate. Two consequences worth
--- knowing:
+-- The advance is apportioned across EVERYTHING cast since the last level (Growth.shares), and the
+-- reading is then checkpointed, so the next level measures from here rather than from zero. Three
+-- consequences worth knowing:
 --
---   * A blend emerges across a career without any fractional stats. Cast knight for two levels and mage
---     for two and you are genuinely both, in whole numbers, rather than being whichever you did 51% of.
+--   * Every cast moves the result. The old rule credited the whole level to the leader and discarded
+--     the rest, so there was no gradient anywhere -- only the cast that crossed the threshold mattered,
+--     and 51% of the play decided 100% of the level.
+--   * A blend emerges WITHIN a level, not merely across a career, and still in whole numbers: the
+--     fractions ride in char.growthCarry until they add up to a point (Growth.applyLevelBlend).
 --   * Levels already credited are never revisited, so a stat can only ever go UP. Re-apportioning
---     history against the current tally would be the alternative, and it would mean a character that
+--     history against the current reading would be the alternative, and it would mean a character that
 --     changed direction could LOSE max health on a level-up -- unshippable.
 --
--- A multi-level jump (a quest paying several prestige, a roster catching up on load) is credited as one
--- batch to the class that led it. Rare in practice, since a level costs a few prestige and quests pay
--- one or two, and the honest reading anyway: that whole stretch was spent doing one thing.
+-- The checkpoint is a SNAPSHOT of the ledger, not a wipe of it. The ledger is also the wallet and the
+-- career title now (Character.recordTechnique), so clearing it would pay for a level by deleting money
+-- and history; "consumed" is expressed as "the delta is measured from here".
+--
+-- A multi-level jump (a quest paying several prestige, a roster catching up on load) applies the same
+-- share vector once PER LEVEL rather than as one batch, so the carry accumulates level by level and
+-- three levels at once land exactly where three separate levels would.
 function Growth.resolve(char, targetLevel)
     char.level = char.level or 1
     if char.level >= targetLevel then return nil end
 
     local fromLevel = char.level
-    local class = Growth.creditClass(char)
-    char.classUseSinceLevel = {} -- consumed: what earned this level does not also earn the next one
+    local since = Growth.sinceLevel(char)
+    local shares = Growth.shares(char)
+    local class = leaderOf(since, char.class) -- the headline for a level-up summary
+
+    -- Checkpoint: from here on the level-up reading is the delta above these amounts.
+    char.techniqueAtLevel = char.techniqueAtLevel or {}
+    for key, amount in pairs(char.technique or {}) do
+        char.techniqueAtLevel[key] = amount
+    end
 
     local totalGains = {}
     while char.level < targetLevel do
         char.level = char.level + 1
-        for stat, amount in pairs(Growth.applyLevel(char, class)) do
+        for stat, amount in pairs(Growth.applyLevelBlend(char, shares)) do
             totalGains[stat] = (totalGains[stat] or 0) + amount
         end
     end
 
-    -- The per-class ledger of levels credited: monotonic, and the only record of HOW a character was
-    -- built rather than merely how far. The character sheet reads it as "Knight 3 / Mage 2".
+    -- The per-key ledger of levels credited: monotonic, and the only record of HOW a character was
+    -- built rather than merely how far. Credited in SHARES, so a level split 52/48 books 0.52 and 0.48
+    -- instead of booking the whole level to the winner -- which keeps this ledger agreeing with the
+    -- stats it summarizes. Discipline.level floors it for the shelf gate.
     local levels = char.level - fromLevel
     char.growthBy = char.growthBy or {}
-    char.growthBy[class] = (char.growthBy[class] or 0) + levels
+    for key, share in pairs(shares) do
+        char.growthBy[key] = (char.growthBy[key] or 0) + share * levels
+    end
 
     return { char = char, fromLevel = fromLevel, toLevel = char.level, class = class,
-             levels = levels, gains = totalGains }
+             shares = shares, levels = levels, gains = totalGains }
 end
 
 return Growth

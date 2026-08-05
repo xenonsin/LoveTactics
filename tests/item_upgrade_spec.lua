@@ -10,6 +10,16 @@ local Forge = require("models.forge")
 local Discipline = require("models.discipline")
 local Vendor = require("models.vendor")
 
+-- Bank `amount` of `key` on the player's first roster body, and return what it now holds. The Forge
+-- bills technique off a real character (Discipline.techniqueHolder), so a test that wants to pay for a
+-- rung has to put it somewhere a body can carry it.
+local function bank(player, key, amount)
+    local char = player.roster[1]
+    char.technique = { [key] = amount }
+    char.techniqueSpent = {}
+    return char
+end
+
 return {
     {
         name = "a +n weapon's Power resolves to that level's tuned value, and the name gains a suffix",
@@ -144,7 +154,7 @@ return {
         end,
     },
     {
-        name = "the Forge spends gold + materials and returns a leveled instance",
+        name = "the Forge spends technique + materials and returns a leveled instance",
         fn = function()
             local player = Player.new()
             player.gold = 1000
@@ -152,11 +162,14 @@ return {
 
             local cost = Forge.upgradeCost(player, sword)
             for id, n in pairs(cost.materials) do player.materials[id] = n end
-            local gold0 = player.gold
+            local char = bank(player, cost.techniqueId, cost.technique)
 
             local up = Forge.upgrade(player, sword)
             assert(up and up.level == 1, "the forge returns a +1 instance")
-            assert(player.gold == gold0 - cost.gold, "gold was spent")
+            assert(player.gold == 1000, "a knight blade costs no gold -- it costs knight play")
+            assert(Character.techniqueAvailable(char, cost.techniqueId) == 0, "the technique was spent")
+            assert(char.technique[cost.techniqueId] == cost.technique,
+                "off the spent ledger, leaving what was EARNED intact")
             for id, n in pairs(cost.materials) do
                 assert((player.materials[id] or 0) == 0, "every material in the bill was spent (" .. id .. " x" .. n .. ")")
             end
@@ -170,7 +183,8 @@ return {
             player.materials = {}
             local sword = Item.instantiate("weapon_iron_sword")
             local up, reason = Forge.upgrade(player, sword)
-            assert(up == nil and (reason == "gold" or reason == "materials"), "the forge refuses, got " .. tostring(reason))
+            assert(up == nil and (reason == "technique" or reason == "materials"),
+                "the forge refuses, got " .. tostring(reason))
             assert(player.gold == 0, "and charges nothing")
         end,
     },
@@ -185,10 +199,12 @@ return {
             local cost1 = Forge.upgradeCost(player, spell)
             assert(cost1 and not cost1.locked, "the first rung is open with no quests done")
             for id, n in pairs(cost1.materials) do player.materials[id] = n end
+            local char = bank(player, cost1.techniqueId, cost1.technique)
 
             local up = Forge.upgrade(player, spell)
             assert(up and up.level == 1, "the forge returns a +1 spell")
-            assert(player.gold == 1000 - cost1.gold, "gold was spent")
+            assert(cost1.techniqueId == "mage", "a fireball is honed by having cast as a mage")
+            assert(Character.techniqueAvailable(char, "mage") == 0, "and the technique was spent")
 
             -- Past the ceiling the bill is still quoted, but the bench will not take it.
             local hi = Item.instantiate("ability_fireball", 1, 3) -- already +3, next is +4
@@ -227,13 +243,14 @@ return {
             local cost = Forge.recipeCost(player, "consumable_acid_bomb")
             assert(cost.technique > 0 and cost.gold == 0, "Bombardier stock is billed in technique")
             for id, n in pairs(cost.materials) do player.materials[id] = n end
-            player.roster[1].technique = { [cost.techniqueId] = cost.technique }
+            local char = bank(player, cost.techniqueId, cost.technique)
 
             local level = Forge.refineRecipe(player, "consumable_acid_bomb")
             assert(level == 1, "the recipe rises to +1, got " .. tostring(level))
             assert(Player.recipeLevel(player, "consumable_acid_bomb") == 1, "the tier is stored on the player")
             assert(player.gold == 1000, "no gold was spent on discipline stock")
-            assert(player.roster[1].technique[cost.techniqueId] == 0, "the technique was spent instead")
+            assert(Character.techniqueAvailable(char, cost.techniqueId) == 0,
+                "the technique was spent instead")
 
             -- The shelf now lists acid_bomb at the raised tier and its scaled price. A purchase would
             -- instantiate at this level. Queried with a high quest count so its own gate is met.
@@ -261,31 +278,32 @@ return {
             -- Bank exactly enough for the first two rungs and not the third.
             local need = 0
             for tier = 1, 2 do need = need + Discipline.techniqueCost(tier) end
-            player.roster[1].technique = { [disciplineId] = need }
+            local char = bank(player, disciplineId, need)
 
             assert(Forge.refineRecipe(player, "consumable_acid_bomb") == 1)
             assert(Forge.refineRecipe(player, "consumable_acid_bomb") == 2)
-            assert(player.roster[1].technique[disciplineId] == 0, "both rungs came out of the bank")
+            assert(Character.techniqueAvailable(char, disciplineId) == 0, "both rungs came out of the bank")
 
             local up3, reason = Forge.refineRecipe(player, "consumable_acid_bomb")
             assert(up3 == nil and reason == "technique",
                 "+3 is past what was banked, got " .. tostring(reason))
             assert(Player.recipeLevel(player, "consumable_acid_bomb") == 2, "and the tier held at +2")
 
-            -- Broke on the other track: a PLAIN recipe still refuses on gold, unchanged.
+            -- A PLAIN class recipe rides the same track now, billed to its own house instead of to a
+            -- discipline -- so an empty ledger refuses it for the same reason and with the same word.
             local plain = Player.new()
             plain.gold = 0
             plain.materials = setmetatable({}, { __index = function() return 99 end })
             local plainId
             for id, def in pairs(Item.defs) do
-                if def.type == "consumable" and def.price and not def.discipline
+                if def.type == "consumable" and def.price and not def.discipline and def.class
                     and Item.isUpgradable(Item.instantiate(id)) then
                     plainId = plainId or id
                 end
             end
             if plainId then
                 local poor, r = Forge.refineRecipe(plain, plainId)
-                assert(poor == nil and r == "gold", "no gold -> refused, got " .. tostring(r))
+                assert(poor == nil and r == "technique", "an empty ledger -> refused, got " .. tostring(r))
                 assert(Player.recipeLevel(plain, plainId) == 0, "and nothing changed")
             end
         end,

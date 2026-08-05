@@ -86,27 +86,27 @@ return {
             assert(Growth.dominantClass(knight) == "knight", "empty tally uses the innate class")
 
             -- A clear leader wins outright, even over the innate class.
-            knight.classUse = { mage = 5, fighter = 2 }
+            knight.technique = { mage = 5, fighter = 2 }
             assert(Growth.dominantClass(knight) == "mage", "argmax should win")
 
             -- A tie that includes the innate class resolves to it.
-            knight.classUse = { mage = 3, knight = 3 }
+            knight.technique = { mage = 3, knight = 3 }
             assert(Growth.dominantClass(knight) == "knight", "the innate class breaks a tie it is in")
 
             -- A tie between two classes the character was NOT born into leaves that rule unfired,
-            -- and the tally is a keyed table -- so without a stated tie-break the winner is whichever
-            -- key the hash happened to yield. That decides which growth table the level-up applies,
-            -- so the same character could come out of the same level with different stats. Settled
-            -- by name: not because alphabetical order means anything, but because it is an answer.
-            knight.classUse = { mage = 4, fighter = 4 }
+            -- and the ledger is a keyed table -- so without a stated tie-break the winner is whichever
+            -- key the hash happened to yield. The title is what a player reads off the sheet, so the
+            -- same character could be described differently on two machines. Settled by name: not
+            -- because alphabetical order means anything, but because it is an answer.
+            knight.technique = { mage = 4, fighter = 4 }
             assert(Growth.dominantClass(knight) == "fighter",
                 "a tie outside the innate class settles by name")
 
             -- Stated the other way round, so the assertion cannot pass by luck of insertion order.
             local other = Character.instantiate("character_rowan")
-            other.classUse = { fighter = 4, mage = 4 }
+            other.technique = { fighter = 4, mage = 4 }
             assert(Growth.dominantClass(other) == "fighter",
-                "the same tie settles the same way whichever was tallied first")
+                "the same tie settles the same way whichever was banked first")
         end,
     },
     {
@@ -129,9 +129,10 @@ return {
             local baseHealthMax = knight.stats.health.max
 
             -- Cast nothing but mage spells: the whole 1->5 climb grows as a mage. What a level-up
-            -- applies is read off `classUseSinceLevel` -- the casts banked since the last level -- not
-            -- off the career-long `classUse` the displayed title uses.
-            knight.classUseSinceLevel = { mage = 20 }
+            -- apportions is the ledger's delta SINCE THE LAST LEVEL, not the career total the title
+            -- reads -- and with a single key the blend is that key at 100%, which is the old behaviour
+            -- exactly.
+            knight.technique = { mage = 20 }
             local mage = Growth.defs.mage
 
             local summary = Growth.resolve(knight, 5)
@@ -139,6 +140,7 @@ return {
             assert(knight.level == 5, "level should track the target")
             assert(summary.fromLevel == 1 and summary.toLevel == 5, "summary spans the climb")
             assert(summary.class == "mage", "it grew as a mage")
+            assert(summary.shares.mage == 1, "one house cast means one house credited, whole")
 
             -- 4 level-ups (1->5) of mage growth, baked onto the base stats.
             assert(knight.stats.magicDamage == baseMagic + 4 * mage.magicDamage, "magic grew 4x")
@@ -151,7 +153,7 @@ return {
         name = "resolve is idempotent and never runs backward",
         fn = function()
             local knight = Character.instantiate("character_rowan")
-            knight.classUse = { fighter = 5 }
+            knight.technique = { fighter = 5 }
             Growth.resolve(knight, 4)
             local magic = knight.stats.magicDamage
             local healthMax = knight.stats.health.max
@@ -163,36 +165,130 @@ return {
         end,
     },
     {
-        name = "a multi-level jump is credited as one batch to the class that led it",
+        name = "a multi-level jump apportions every level by the same shares, and checkpoints once",
         fn = function()
             local knight = Character.instantiate("character_rowan")
-            knight.classUseSinceLevel = { fighter = 3, mage = 1 }
+            knight.technique = { fighter = 3, mage = 1 }
             local summary = Growth.resolve(knight, 3)
-            assert(summary.class == "fighter", "fighter led the stretch, so the batch grew as fighter")
+            assert(summary.class == "fighter", "fighter led the stretch, so it heads the summary")
             assert(summary.levels == 2, "the summary counts the levels it credited")
-            assert(knight.growthBy.fighter == 2, "and the ledger records both against fighter")
-            assert(next(knight.classUseSinceLevel) == nil, "the reading is consumed once, not per level")
+            assert(math.abs(summary.shares.fighter - 0.75) < 1e-9
+                and math.abs(summary.shares.mage - 0.25) < 1e-9,
+                "three fighter casts to one mage is a 75/25 split, not a clean sweep")
+
+            -- The ledger books SHARES, so two levels at 75/25 are 1.5 and 0.5 -- not two whole levels
+            -- to the winner. The mage casts are credited rather than discarded, which is the point.
+            assert(math.abs(knight.growthBy.fighter - 1.5) < 1e-9
+                and math.abs(knight.growthBy.mage - 0.5) < 1e-9,
+                "the ledger splits the jump the way the stats were split")
+
+            -- Consumed once, not per level -- and expressed as a checkpoint, because the ledger is also
+            -- the wallet and the career title and must not be wiped to pay for a level.
+            assert(knight.technique.fighter == 3, "the ledger itself is untouched")
+            assert(knight.techniqueAtLevel.fighter == 3 and knight.techniqueAtLevel.mage == 1,
+                "the checkpoint caught up to it, so the next level reads from zero again")
+            assert(next(Growth.sinceLevel(knight)) == nil, "nothing is outstanding right after a level")
         end,
     },
     {
-        -- The property the reset exists for: the price of changing direction is one level's worth of
-        -- casting, and it does NOT rise with the character's history. Crediting against the cumulative
-        -- tally instead would make a veteran pay for its whole past before a new class took a level.
+        -- The headline property of proportional crediting: a level split between two houses is
+        -- genuinely half of each, and the halves that do not divide evenly are CARRIED rather than
+        -- rounded away. Two levels at 50/50 must land exactly where one level of each would.
+        name = "a blended level credits both houses, and the carry pays out in full",
+        fn = function()
+            local blended = Character.instantiate("character_rowan")
+            blended.technique = { knight = 10, mage = 10 }
+            Growth.resolve(blended, 3) -- two levels, each split 50/50
+
+            local split = Character.instantiate("character_rowan")
+            split.technique = { knight = 10 }
+            Growth.resolve(split, 2)                -- one whole knight level
+            split.technique.mage = 10
+            Growth.resolve(split, 3)                -- one whole mage level
+
+            for _, stat in ipairs({ "damage", "magicDamage", "defense", "magicDefense" }) do
+                assert(blended.stats[stat] == split.stats[stat],
+                    "two 50/50 levels must equal one of each for " .. stat
+                        .. " (" .. tostring(blended.stats[stat]) .. " vs " .. tostring(split.stats[stat]) .. ")")
+            end
+            for _, stat in ipairs({ "health", "mana", "stamina" }) do
+                assert(blended.stats[stat].max == split.stats[stat].max,
+                    "and for the " .. stat .. " pool")
+            end
+        end,
+    },
+    {
+        -- Float addition is not associative, so summing shares over `pairs()` would make the same
+        -- history grow differently depending on hash order. models/build.lua promises (id, ledger,
+        -- level) rebuilds the identical character anywhere and state_hash compares peers mid-duel, so
+        -- this is the property both of those rest on.
+        name = "the same ledger grows the same stats however its keys were inserted",
+        fn = function()
+            local function grownFrom(pairsInOrder)
+                local char = Character.instantiate("character_rowan")
+                char.technique = {}
+                for _, entry in ipairs(pairsInOrder) do char.technique[entry[1]] = entry[2] end
+                Growth.resolve(char, 9)
+                return char
+            end
+
+            local forward = grownFrom({ { "knight", 7 }, { "mage", 5 }, { "rogue", 3 }, { "priest", 2 } })
+            local backward = grownFrom({ { "priest", 2 }, { "rogue", 3 }, { "mage", 5 }, { "knight", 7 } })
+
+            for stat, amount in pairs(forward.growth) do
+                assert(backward.growth[stat] == amount,
+                    "insertion order changed " .. stat .. ": "
+                        .. tostring(amount) .. " vs " .. tostring(backward.growth[stat]))
+            end
+            assert(forward.stats.health.max == backward.stats.health.max, "and the health pool")
+        end,
+    },
+    {
+        -- Survivability is linear in a growth table, so a convex combination of tables that each clear
+        -- the floor clears it too. That is why blending cannot reopen the hole the floor exists to
+        -- close -- asserted here over the real tables rather than argued only in a comment.
+        name = "a blend of floor-clearing tables clears the floor itself",
+        fn = function()
+            local ids = {}
+            for id in pairs(Growth.defs) do ids[#ids + 1] = id end
+            table.sort(ids)
+
+            for _, magical in ipairs({ false, true }) do
+                for i = 1, #ids do
+                    local a, b = Growth.defs[ids[i]], Growth.defs[ids[(i % #ids) + 1]]
+                    -- The worst case for a blend is the lower of the two tables, so an even split can
+                    -- never fall under it -- and neither table is under the floor to begin with.
+                    local blended = 0.5 * Growth.survivability(a, magical)
+                        + 0.5 * Growth.survivability(b, magical)
+                    assert(blended >= Growth.ENEMY_DAMAGE_GROWTH,
+                        "a 50/50 blend of " .. ids[i] .. " and " .. ids[(i % #ids) + 1]
+                            .. " falls under the survivability floor")
+                end
+            end
+        end,
+    },
+    {
+        -- The property the checkpoint exists for: the price of changing direction is one level's worth
+        -- of casting, and it does NOT rise with the character's history. Apportioning against the
+        -- career total instead would make a veteran pay for its whole past before a new house took a
+        -- level.
         name = "turning to a new class costs the same at level 40 as at level 3",
         fn = function()
             local function turnsAt(level)
                 local char = Character.instantiate("character_rowan")
-                -- A long career spent as something else entirely.
-                char.classUse = { knight = 200, mage = 200 }
+                -- A long career spent as something else entirely -- and already accounted for, which
+                -- is what the checkpoint records.
+                char.technique = { knight = 200, mage = 200 }
+                char.techniqueAtLevel = { knight = 200, mage = 200 }
                 char.growthBy = { knight = level - 1 }
                 char.level = level
                 -- One level's worth of rogue casting, and nothing more.
-                char.classUseSinceLevel = { rogue = 4 }
+                char.technique.rogue = 4
                 return Growth.resolve(char, level + 1)
             end
 
-            assert(turnsAt(3).class == "rogue", "a young character turns on one level's casting")
-            assert(turnsAt(40).class == "rogue",
+            assert(turnsAt(3).shares.rogue == 1, "a young character turns on one level's casting")
+            assert(turnsAt(40).shares.rogue == 1,
                 "and so does a veteran -- history must not price the turn")
         end,
     },
@@ -201,11 +297,11 @@ return {
         fn = function()
             local char = Character.instantiate("character_rowan")
 
-            char.classUseSinceLevel = { knight = 5 }
+            char.technique = { knight = 5 }
             Growth.resolve(char, 2)
-            char.classUseSinceLevel = { knight = 5 }
+            char.technique.knight = 10
             Growth.resolve(char, 3)
-            char.classUseSinceLevel = { mage = 5 }
+            char.technique.mage = 5
             local health = char.stats.health.max
             Growth.resolve(char, 4)
 
@@ -220,28 +316,52 @@ return {
         end,
     },
 
-    -- ---------------------------------------------------- usage tally (recordUse)
+    -- ---------------------------------------------------- the ledger (recordTechnique)
     {
-        name = "recordUse tallies class casts, ignoring a nil class",
+        name = "recordTechnique banks under a key, ignoring a nil key and a non-positive amount",
         fn = function()
             local knight = Character.instantiate("character_rowan")
-            Character.recordUse(knight, "fighter")
-            Character.recordUse(knight, "fighter")
-            Character.recordUse(knight, "mage")
-            Character.recordUse(knight, nil) -- the unarmed fallback has no class
-            assert(knight.classUse.fighter == 2, "fighter counted twice")
-            assert(knight.classUse.mage == 1, "mage counted once")
+            Character.recordTechnique(knight, "fighter", 2)
+            Character.recordTechnique(knight, "fighter", 2)
+            Character.recordTechnique(knight, "mage", 2)
+            Character.recordTechnique(knight, nil, 2) -- the unarmed fallback has no class
+            Character.recordTechnique(knight, "rogue", 0)
+            assert(knight.technique.fighter == 4, "fighter banked twice")
+            assert(knight.technique.mage == 2, "mage banked once")
+            assert(knight.technique.rogue == nil, "a zero award writes no key")
         end,
     },
     {
-        name = "a party member's weapon strike feeds its class tally; an enemy's does not",
+        name = "earned, spendable and since-level are three readings of the one ledger",
+        fn = function()
+            local char = Character.instantiate("character_rowan")
+            Character.recordTechnique(char, "knight", 40)
+
+            assert(Character.techniqueAvailable(char, "knight") == 40, "all of it is spendable at first")
+            assert(Character.techniqueSinceLevel(char, "knight") == 40, "and all of it is unspent growth")
+
+            -- Spending is what the merge had to make safe: it must move the wallet and NOTHING else.
+            char.techniqueSpent = { knight = 30 }
+            assert(char.technique.knight == 40, "earned is untouched by spending")
+            assert(Character.techniqueAvailable(char, "knight") == 10, "the wallet fell")
+            assert(Character.techniqueSinceLevel(char, "knight") == 40,
+                "and the growth reading did not -- forging must never cost a level")
+
+            -- The checkpoint moves the growth reading and nothing else.
+            char.techniqueAtLevel = { knight = 25 }
+            assert(Character.techniqueSinceLevel(char, "knight") == 15, "measured above the checkpoint")
+            assert(Character.techniqueAvailable(char, "knight") == 10, "the wallet is unaffected by it")
+        end,
+    },
+    {
+        name = "a party member's weapon strike banks its item's house; an enemy's does not",
         fn = function()
             local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
             local knight, bandit = c.units[1], c.units[2]
 
-            -- Deliberately an OFF-CLASS weapon: a knight swinging a Colosseum hammer. The tally must
+            -- Deliberately an OFF-CLASS weapon: a knight swinging a Colosseum hammer. The ledger must
             -- follow the ITEM's class, not the character's own -- with a knight-class weapon in a
-            -- knight's hands, a tally that wrongly read char.class would pass this by coincidence.
+            -- knight's hands, a ledger that wrongly read char.class would pass this by coincidence.
             local hammer = Item.instantiate("weapon_iron_hammer")
             Character.addItem(knight.char, hammer)
             assert(hammer.class == "fighter", "the hammer is a fighter weapon")
@@ -250,24 +370,24 @@ return {
             openTurn(c, knight)
             local ok = Combat.useItem(c, knight, hammer, bandit.x, bandit.y)
             assert(ok, "the strike should resolve")
-            assert(knight.char.classUse and knight.char.classUse.fighter == 1,
-                "a player strike bumps the tally of the WEAPON's class")
-            assert(not knight.char.classUse.knight, "and never the wielder's own class")
+            assert(knight.char.technique and knight.char.technique.fighter > 0,
+                "a player strike banks under the WEAPON's house")
+            assert(not knight.char.technique.knight, "and never the wielder's own class")
 
-            -- The bandit striking back (AI-controlled) must not accrue a tally on its transient char.
+            -- The bandit striking back (AI-controlled) must not accrue anything on its transient char.
             local bWeapon = Combat.defaultWeapon(bandit.char)
             if bWeapon and bWeapon.activeAbility then
                 openTurn(c, bandit)
                 Combat.useItem(c, bandit, bWeapon, knight.x, knight.y)
             end
-            assert(not (bandit.char.classUse and next(bandit.char.classUse)),
-                "an enemy's cast is not tallied")
+            assert(not (bandit.char.technique and next(bandit.char.technique)),
+                "an enemy's cast banks nothing")
         end,
     },
 
-    -- --------------------------------------------------- discipline technique (the wallet)
+    -- --------------------------------------------------- banking in battle (one award, one floater)
     {
-        name = "casting discipline stock banks technique, capped per battle",
+        name = "every house banks technique, capped per battle, and one action arms one floater",
         fn = function()
             local Discipline = require("models.discipline")
             local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
@@ -282,11 +402,20 @@ return {
 
             local first = Combat.awardTechnique(c, knight, probe)
             assert(first == Discipline.TECHNIQUE_PER_ACTION, "one action banks one action's worth")
-            assert(knight.char.technique[disciplineId] == first, "onto the caster's own wallet")
+            assert(knight.char.technique[disciplineId] == first, "onto the caster's own ledger")
             assert(c.techniqueEarned[disciplineId] == first, "and onto the fight's ledger")
             assert(c.techniqueAward and c.techniqueAward.unit == knight, "the floater one-shot is armed")
 
-            -- Run the battle ledger to the cap and the banking stops, while play carries on.
+            -- PLAIN CLASS STOCK banks too -- the opening-campaign case that used to bank and float
+            -- nothing at all, since only 233 of 638 item files declare a discipline and disciplines are
+            -- locked content. A discipline item still banks its discipline rather than its class.
+            assert(Combat.awardTechnique(c, knight, { class = "fighter" })
+                == Discipline.TECHNIQUE_PER_ACTION, "a plain class cast banks its class")
+            assert(knight.char.technique.fighter == Discipline.TECHNIQUE_PER_ACTION, "onto the same ledger")
+            assert(c.techniqueAward.discipline == "fighter", "and arms the same one floater")
+
+            -- Run one key's battle ledger to the cap: banking stops while play carries on. The cap now
+            -- bounds the level-up reading too, since they are one number.
             local guard = 0
             while (c.techniqueEarned[disciplineId] or 0) < Discipline.TECHNIQUE_PER_BATTLE and guard < 1000 do
                 Combat.awardTechnique(c, knight, probe)
@@ -296,10 +425,17 @@ return {
             assert(Combat.awardTechnique(c, knight, probe) == 0, "and further casts bank nothing")
             assert(c.techniqueAward == nil, "a capped-out cast floats nothing rather than a zero")
             assert(knight.char.technique[disciplineId] == Discipline.TECHNIQUE_PER_BATTLE,
-                "the wallet never exceeds what the fight was allowed to pay")
+                "the ledger never exceeds what the fight was allowed to pay")
 
-            -- Plain stock banks nothing, and an enemy banks nothing at all.
-            assert(Combat.awardTechnique(c, knight, { class = "fighter" }) == 0, "plain stock is not a discipline")
+            -- The cap is PER KEY, so a capped discipline does not stop a different house banking.
+            assert(Combat.awardTechnique(c, knight, { class = "priest" }) > 0,
+                "another house still banks after the first has capped")
+
+            -- A class-less, discipline-less item (a natural weapon) banks nothing and floats nothing.
+            assert(Combat.awardTechnique(c, knight, { name = "claws" }) == 0, "an untagged item is not a house")
+            assert(c.techniqueAward == nil, "and arms nothing")
+
+            -- ...and an enemy is never on the ladder at all, through the real useItem path.
             local hammer = Item.instantiate("weapon_iron_hammer")
             Character.addItem(bandit.char, hammer)
             openTurn(c, bandit)
@@ -307,55 +443,29 @@ return {
             assert(not (bandit.char.technique and next(bandit.char.technique)), "an enemy banks no technique")
         end,
     },
-
-    -- --------------------------------------------------- the class-vote floater (the tally)
     {
-        name = "a plain class cast floats its vote, and a discipline cast lets technique speak instead",
+        -- The property the earned/spent split exists for, end to end: paying a real Forge bill must not
+        -- move the career title or what the next level-up will apply.
+        name = "forging spends the wallet without touching the title or the pending growth",
         fn = function()
             local Discipline = require("models.discipline")
-            local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
-            local knight, bandit = c.units[1], c.units[2]
+            local char = Character.instantiate("character_rowan")
+            Character.recordTechnique(char, "mage", 60)
+            Character.recordTechnique(char, "knight", 20)
+            local player = { roster = { char } }
 
-            -- Plain class stock -- the opening-campaign case that used to float nothing at all, since
-            -- only 233 of 638 item files declare a discipline and disciplines are locked content.
-            Combat.awardTechnique(c, knight, { class = "knight" })
-            Combat.noteGrowthVote(c, knight, { class = "knight" })
-            assert(c.techniqueAward == nil, "plain stock banks no technique")
-            assert(c.growthAward and c.growthAward.unit == knight and c.growthAward.class == "knight",
-                "so the class vote takes the floater instead")
+            assert(Growth.dominantClass(char) == "mage", "mage leads the career")
+            local beforeShares = Growth.shares(char)
 
-            -- A discipline cast votes for the DISCIPLINE (Discipline.growthClasses), so floating both
-            -- would report one action twice under one name. Technique wins the slot.
-            local disciplineId = next(Discipline.defs)
-            local probe = { discipline = disciplineId }
-            Combat.awardTechnique(c, knight, probe)
-            Combat.noteGrowthVote(c, knight, probe)
-            assert(c.techniqueAward, "a discipline cast banks technique")
-            assert(c.growthAward == nil, "and the vote yields the floater to it")
+            local billed = Discipline.spendTechnique(player, "mage", 50)
+            assert(billed == char, "the bill came off the only holder")
+            assert(Discipline.technique(player, "mage") == 10, "the wallet fell by what was billed")
+            assert(Growth.dominantClass(char) == "mage", "the title did not move")
 
-            -- Run that discipline to its battle cap: the wallet is full, but the vote still counts, so
-            -- the action reports the smaller truthful claim rather than falling silent.
-            local guard = 0
-            while (c.techniqueEarned[disciplineId] or 0) < Discipline.TECHNIQUE_PER_BATTLE and guard < 1000 do
-                Combat.awardTechnique(c, knight, probe)
-                guard = guard + 1
+            local afterShares = Growth.shares(char)
+            for key, share in pairs(beforeShares) do
+                assert(afterShares[key] == share, "the level-up reading did not move for " .. key)
             end
-            Combat.awardTechnique(c, knight, probe)
-            Combat.noteGrowthVote(c, knight, probe)
-            assert(c.techniqueAward == nil, "a capped-out cast banks nothing")
-            assert(c.growthAward and c.growthAward.class == disciplineId,
-                "but still floats the vote it did cast")
-
-            -- A class-less, discipline-less item (a natural weapon) tallies nothing and floats nothing.
-            Combat.noteGrowthVote(c, knight, { name = "claws" })
-            assert(c.growthAward == nil, "an untagged item is not a vote")
-
-            -- ...and an enemy is never on the ladder at all, through the real useItem path.
-            local hammer = Item.instantiate("weapon_iron_hammer")
-            Character.addItem(bandit.char, hammer)
-            openTurn(c, bandit)
-            Combat.useItem(c, bandit, hammer, knight.x, knight.y)
-            assert(c.growthAward == nil, "an enemy's cast arms no floater")
         end,
     },
 }

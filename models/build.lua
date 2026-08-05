@@ -125,17 +125,18 @@ end
 --
 -- Growth.resolve cannot run backward -- it is idempotent and never un-levels -- so a character is
 -- not levelled DOWN, it is grown again from scratch: start at the blueprint, then climb to `level`
--- reading the class tally the author actually built up. That tally is the interesting part of how
--- someone played, and it survives; the number of levels they had time to accumulate does not.
+-- reading the technique ledger the author actually built up. That ledger is the interesting part of
+-- how someone played, and it survives; the number of levels they had time to accumulate does not.
 --
 -- This is also why normalization and determinism are the same mechanism. Growth is RNG-free (fixed
--- per-level gains per class) and ties settle by name, so `(id, classUse, level)` rebuilds the identical
--- character on any machine -- which is what a duel needs from it anyway.
+-- per-level gains per class, shares summed over sorted keys) and ties settle by name, so
+-- `(id, ledger, level)` rebuilds the identical character on any machine -- which is what a duel needs
+-- from it anyway.
 --
--- The rebuild seeds the level-up tally FROM the career tally (see below). A live character banks casts
--- toward its next level in `classUseSinceLevel` and spends them when it lands, so a snapshot taken
+-- The rebuild reads the WHOLE career rather than the stretch since the author's last level (see below).
+-- A live character measures its next level from a checkpoint into the ledger, so a snapshot taken
 -- mid-climb holds only a partial reading -- and a rebuild that read it would grow the character on
--- whatever it happened to be doing the evening the build was saved. The career tally is the honest
+-- whatever it happened to be doing the evening the build was saved. The career ledger is the honest
 -- summary of how someone played, which is exactly what normalization is trying to preserve.
 --
 -- Item upgrade levels are clamped rather than stripped: gear below the ceiling keeps what its owner
@@ -145,15 +146,21 @@ local function normalized(charSnap, level, itemLevel)
     local snap = {}
     for k, v in pairs(charSnap) do snap[k] = v end
 
-    -- Drop the author's level, their accumulated stat deltas, and the per-class ledger of levels they
-    -- had been credited: all three are re-derived below from the tally. Keeping any would bake in the
-    -- climb this is meant to erase.
-    snap.level, snap.growth, snap.growthBy = nil, nil, nil
+    -- Drop the author's level, their accumulated stat deltas, the fraction of a point their last
+    -- level-up carried, and the per-key ledger of levels they had been credited: all four are
+    -- re-derived below from the ledger. Keeping any would bake in the climb this is meant to erase.
+    snap.level, snap.growth, snap.growthCarry, snap.growthBy = nil, nil, nil, nil
 
-    -- The whole rebuilt climb is spent as the career tally says it was spent. Growth.resolve reads the
-    -- banked casts, so handing it the career tally is what makes `(id, classUse, level)` reproduce the
-    -- same character everywhere -- a partial mid-climb reading would not.
-    snap.classUseSinceLevel = charSnap.classUse
+    -- The whole rebuilt climb is spent as the career ledger says it was spent. Growth.resolve measures
+    -- from the level checkpoint, so clearing the checkpoint makes the ENTIRE career the reading -- which
+    -- is what makes `(id, ledger, level)` reproduce the same character everywhere. A partial mid-climb
+    -- reading would not, and it is why this is not simply left as the author saved it.
+    --
+    -- Under proportional crediting the rebuild now applies the career BLEND to every level, where it
+    -- used to hand the whole climb to whichever key led. That is strictly more faithful to how the
+    -- author actually played, and it is the same determinism argument either way: shares are computed
+    -- over sorted keys, so two machines agree exactly.
+    snap.techniqueAtLevel = nil
 
     local inventory = {}
     for cell, itemSnap in pairs(charSnap.inventory or {}) do

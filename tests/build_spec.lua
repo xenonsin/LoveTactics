@@ -188,7 +188,7 @@ return {
         fn = function()
             local veteran = authoredKnight()
             veteran.level = 40
-            veteran.classUse = { fighter = 30 }
+            veteran.technique = { fighter = 30 }
 
             local chars = assert(Build.restore(roundTrip({ veteran })))
             assert(chars[1].level == Build.NORMAL_LEVEL,
@@ -226,7 +226,7 @@ return {
         fn = function()
             local function played(tally, level)
                 local c = Character.instantiate("character_rowan")
-                c.level, c.classUse = 30, tally
+                c.level, c.technique = 30, tally
                 return assert(Build.restore(roundTrip({ c }), { level = level }))[1]
             end
 
@@ -243,11 +243,11 @@ return {
             -- change rather than a data migration.
             local carried = roundTrip({ (function()
                 local c = Character.instantiate("character_rowan")
-                c.level, c.classUse = 30, { mage = 25 }
+                c.level, c.technique = 30, { mage = 25 }
                 return c
             end)() })
-            assert(carried.party[1].classUse and carried.party[1].classUse.mage == 25,
-                "the tally itself always travels, whatever the level erases")
+            assert(carried.party[1].technique and carried.party[1].technique.mage == 25,
+                "the ledger itself always travels, whatever the level erases")
         end,
     },
     {
@@ -257,7 +257,7 @@ return {
         fn = function()
             local function played(tally)
                 local c = Character.instantiate("character_rowan")
-                c.level, c.classUse = 30, tally
+                c.level, c.technique = 30, tally
                 return assert(Build.restore(roundTrip({ c })))[1]
             end
             local a, b = played({ fighter = 25 }).stats, played({ mage = 25 }).stats
@@ -270,9 +270,9 @@ return {
     },
     {
         -- Normalization and cross-machine agreement are the same mechanism: growth is RNG-free and
-        -- ties settle by name, so (id, classUse, level) is a complete description. Still true now that
-        -- a live character also carries banked casts and a per-class ledger -- Build.normalized drops
-        -- the ledger and re-seeds the banked casts from classUse, precisely so the triple stays whole.
+        -- ties settle by name and shares are summed over sorted keys, so (id, ledger, level) is a
+        -- complete description. Still true now that a live character also carries a level checkpoint and
+        -- a per-key ledger of levels -- Build.normalized drops both, precisely so the triple stays whole.
         name = "normalizing the same build twice produces the same character",
         fn = function()
             local snap = roundTrip({ authoredKnight() })
@@ -318,7 +318,7 @@ return {
         name = "your own build is flattened on the same terms as the build it faces",
         fn = function()
             local mine = Character.instantiate("character_rowan")
-            mine.level, mine.classUse = 40, { fighter = 30 }
+            mine.level, mine.technique = 40, { fighter = 30 }
             mine.inventory = {}
             mine.inventory[1] = Item.instantiate("weapon_iron_sword", 1, Item.MAX_LEVEL)
 
@@ -330,7 +330,7 @@ return {
             -- board should come out identical.
             local theirs = assert(Build.restore(roundTrip({ (function()
                 local c = Character.instantiate("character_rowan")
-                c.level, c.classUse = 40, { fighter = 30 }
+                c.level, c.technique = 40, { fighter = 30 }
                 c.inventory = {}
                 c.inventory[1] = Item.instantiate("weapon_iron_sword", 1, Item.MAX_LEVEL)
                 return c

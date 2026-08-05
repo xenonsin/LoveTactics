@@ -7744,68 +7744,54 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
     return result
 end
 
--- Bank discipline technique for a roster member's action with `item`, and record it on the battle so
--- the summary can name what the fight earned. No-op for anything that is not discipline stock.
+-- Bank technique for a roster member's action with `item`, and record it on the battle so the summary
+-- can name what the fight earned. Keyed by what the item votes for (Discipline.growthClasses): a
+-- discipline item banks its DISCIPLINE (a Ninja weapon grows data/growth/ninja.lua, not its two
+-- parents), a plain item banks its single `class`. No-op for stock with neither.
 --
--- CAPPED PER BATTLE, per discipline (Discipline.TECHNIQUE_PER_BATTLE). The cap is the whole reason
--- this does not reopen the grind door models/growth.lua deliberately shut: a `free` ability bills no
--- initiative and leaves the turn open, and nothing obliges a player to finish a fight, so the action
--- count in one encounter is not bounded by anything the rules enforce. Past the cap the player keeps
--- playing and stops banking, which is the correct shape -- the reward for committing to a discipline
--- is real and finite, and the thirty-first cast of the same knife is farming.
+-- ONE AWARD PER ACTION, where there used to be two. Technique was discipline-only, and a separate
+-- class-vote floater existed to cover the silence that left: only 233 of 638 item files declare a
+-- discipline and disciplines are LOCKED content, so an opening campaign hand -- weapon_iron_sword is
+-- `class = "knight"` with no discipline -- banked nothing and floated nothing. The two awards needed a
+-- precedence rule so one action was never reported twice under one name. Now that every house banks
+-- the same currency there is one thing to report, so the rule and its second floater are gone.
+--
+-- CAPPED PER BATTLE, per key (Discipline.TECHNIQUE_PER_BATTLE). The cap is the whole reason this does
+-- not reopen the grind door models/growth.lua deliberately shut: a `free` ability bills no initiative
+-- and leaves the turn open, and nothing obliges a player to finish a fight, so the action count in one
+-- encounter is not bounded by anything the rules enforce. Past the cap the player keeps playing and
+-- stops banking, which is the correct shape -- the reward for committing is real and finite, and the
+-- thirty-first cast of the same knife is farming.
+--
+-- The cap now bounds the LEVEL-UP READING as well as the wallet, since they are one ledger. That is
+-- the intended reading of it: thirty actions of one house in a single fight is far past the point the
+-- commitment has been demonstrated, and it keeps the anti-grind rule stated in one place.
 --
 -- The OTHER farm vector -- lose on purpose, keep the bank, try again -- closes itself: "Try Again"
--- restores the party from the pre-fight snapshot (states/game.lua), and technique rides in the
--- character snapshot (models/save.lua), so a retried fight starts from the technique the player had
--- when they first walked into it. Nothing here needs to defend against that; it just must not be
--- moved out of the saved character to somewhere the snapshot does not reach.
+-- restores the party from the pre-fight snapshot (states/game.lua), and the ledger rides in the
+-- character snapshot (models/save.lua), so a retried fight starts from what the player had when they
+-- first walked into it. Nothing here needs to defend against that; it just must not be moved out of
+-- the saved character to somewhere the snapshot does not reach.
 --
--- `combat.techniqueEarned` is the fight's running ledger, { [disciplineId] = amount }, read by
+-- `combat.techniqueEarned` is the fight's running ledger, { [key] = amount }, read by
 -- ui/panels/battle_summary.lua. `combat.techniqueAward` is the LAST award only -- a one-shot the
 -- battle state drains to float "+2 Ninja" over the caster (states/battle.lua) and then clears, so a
 -- capped-out action floats nothing rather than a misleading zero.
 function Combat.awardTechnique(combat, unit, item)
     combat.techniqueAward = nil
-    local id = item and item.discipline
-    if not (id and Discipline.defs[id]) then return 0 end
+    local key = Discipline.growthClasses(item)[1]
+    if not key then return 0 end
 
     combat.techniqueEarned = combat.techniqueEarned or {}
-    local earned = combat.techniqueEarned[id] or 0
+    local earned = combat.techniqueEarned[key] or 0
     local amount = math.min(Discipline.TECHNIQUE_PER_ACTION,
         Discipline.TECHNIQUE_PER_BATTLE - earned)
     if amount <= 0 then return 0 end
 
-    Character.recordTechnique(unit.char, id, amount)
-    combat.techniqueEarned[id] = earned + amount
-    combat.techniqueAward = { unit = unit, discipline = id, amount = amount }
+    Character.recordTechnique(unit.char, key, amount)
+    combat.techniqueEarned[key] = earned + amount
+    combat.techniqueAward = { unit = unit, discipline = key, amount = amount }
     return amount
-end
-
--- Arm the CLASS-VOTE floater for an action, the other half of what Combat.awardTechnique reports.
--- `combat.growthAward` is the same shape of one-shot -- { unit, class } -- drained and cleared by
--- states/battle.lua to float "+1 Knight" over the caster.
---
--- Technique alone left most of the game silent. Only 233 of 638 item files declare a discipline, and
--- disciplines are LOCKED content, so an opening campaign hand -- weapon_iron_sword is `class = "knight"`
--- with no discipline -- banked nothing and floated nothing. Every action still casts a vote though
--- (Character.recordUse, one tick per action into classUseSinceLevel), and that vote is the thing
--- CombatPanel:drawGrowthLine reads to say what the character is becoming. Floating the tick puts the
--- same fact on the body, at the moment it is earned, instead of only in a line under the grid.
---
--- ONE floater per action, and technique wins the slot: a discipline item votes for the discipline id
--- (Discipline.growthClasses), so floating both would report the same action twice under the same name.
--- The corollary is that a discipline capped out for the battle now floats "+1 Ninja" rather than
--- nothing -- which is not the misleading zero the cap was protecting against, but the truthful smaller
--- claim: the wallet is full, the vote still counted.
---
--- The units differ on purpose and the colour carries it (states/battle.lua): amber for technique, a
--- muted tone for the vote. One is a delta on a wallet, the other a tick on a tally.
-function Combat.noteGrowthVote(combat, unit, item)
-    combat.growthAward = nil
-    if combat.techniqueAward then return end
-    local key = Discipline.growthClasses(item)[1]
-    if not key then return end
-    combat.growthAward = { unit = unit, class = key }
 end
 
 -- Perform an item action: validate range + target kind + resource cost, spend the cost,
@@ -8787,20 +8773,12 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         end
     end
 
-    -- Tally a class-tagged action toward the actor's growth (models/growth.lua). A weapon strike, a
-    -- spell, or a thrown consumable all land here with the item's `class`. Only a real player roster
-    -- member counts: `control == "player"` excludes AI escortees, and `not summoned` excludes summons
-    -- (both use transient char instances that would never persist the tally anyway).
-    -- A discipline item tallies its DISCIPLINE (a Ninja weapon grows data/growth/ninja.lua, not its
-    -- two parents -- see Discipline.growthClasses); a plain item tallies its single `class`.
-    -- growthClasses returns {} for a class-less, discipline-less item, so the loop is a no-op there --
-    -- same effect as the old `item.class` guard.
+    -- Bank a class-tagged action on the actor's ledger (models/growth.lua, models/discipline.lua). A
+    -- weapon strike, a spell, or a thrown consumable all land here. Only a real player roster member
+    -- counts: `control == "player"` excludes AI escortees, and `not summoned` excludes summons (both
+    -- use transient char instances that would never persist the ledger anyway).
     if Combat.isPlayerControlled(unit) and not unit.summoned then
-        for _, cls in ipairs(Discipline.growthClasses(item)) do
-            Character.recordUse(unit.char, cls)
-        end
         Combat.awardTechnique(combat, unit, item)
-        Combat.noteGrowthVote(combat, unit, item)
     end
 
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed (or the

@@ -215,33 +215,29 @@ function Character.ensureBoundItems(char)
     end
 end
 
--- Add a class-usage cast to a character's running tallies. Fired from Combat.useItem whenever a party
--- member resolves an action with a class-tagged item (a spell, a weapon strike, a thrown consumable).
+-- Bank `amount` technique under `key` on this character. Fired from Combat.useItem whenever a party
+-- member resolves an action with a class- or discipline-tagged item. `key` is a class id OR a
+-- discipline id, whichever the item votes for (Discipline.growthClasses).
 --
--- TWO tallies, because they answer different questions and must not share an answer:
+-- ONE LEDGER, read three ways. This used to be three counters -- a career tally, a since-level tally,
+-- and a separate discipline wallet -- on the reasoning that "a vote and a bank cannot share a counter",
+-- since spending the bank would have destroyed the vote. That objection was only ever about SPENDING,
+-- and the fix is the one FFT's JP uses: keep what was EARNED monotonic and track what was SPENT beside
+-- it, rather than decrementing one number and losing the history in it.
 --
---   `classUse`            cumulative and never cleared -- what this character has BEEN, across its whole
---                         career. Drives the displayed title (Growth.dominantClass).
---   `classUseSinceLevel`  cleared on every level-up -- what it has been doing LATELY. Decides which
---                         table the next level-up applies (models/growth.lua).
+--   `technique`         earned, per key, never decremented. What this character has BEEN, across its
+--                       whole career -- so it drives the displayed title (Growth.dominantClass) -- and
+--                       simultaneously the numerator of everything below.
+--   `techniqueSpent`    what the Forge has billed (Discipline.spendTechnique). Available to spend is
+--                       `technique - techniqueSpent`; forging can never move the two readings above it.
+--   `techniqueAtLevel`  a SNAPSHOT of `technique` taken when the last level landed, so the level-up
+--                       reads the delta since (models/growth.lua). A checkpoint, not a counter -- which
+--                       is why one action now writes one table instead of two.
 --
--- Splitting them is what keeps changing your mind affordable. Crediting levels against the cumulative
--- tally instead would mean a veteran who takes up a new discipline has to out-cast its entire history
--- before a single level follows -- so the longer a character lived, the more it cost to develop it,
--- which is precisely backwards.
-function Character.recordUse(char, class)
-    if not class then return end
-    char.classUse = char.classUse or {}
-    char.classUse[class] = (char.classUse[class] or 0) + 1
-    char.classUseSinceLevel = char.classUseSinceLevel or {}
-    char.classUseSinceLevel[class] = (char.classUseSinceLevel[class] or 0) + 1
-end
-
--- Bank `amount` technique in discipline `id` on this character. A THIRD ledger alongside the two
--- above, and deliberately not folded into them: the tallies above are VOTES (they decide which growth
--- table the next level applies, and the loser's count is discarded on the level-up), while technique is
--- a BANK -- earmarked, monotonic until spent, and the currency the Forge bills for discipline gear
--- (models/forge.lua). A vote and a bank cannot share a counter.
+-- Reading the level-up off a DELTA rather than off the career total is what keeps changing your mind
+-- affordable: against the cumulative figure a veteran taking up a new discipline would have to out-cast
+-- its entire history before one level followed, so the longer a character lived the more it cost to
+-- develop -- precisely backwards.
 --
 -- PER CHARACTER, because that is what makes specializing pay. A pooled roster-wide total would make
 -- putting one cheap discipline item on all four bodies accrue four times as fast, so spreading would
@@ -250,16 +246,32 @@ end
 -- (Discipline.techniqueHolder), so gear stays free to circulate while the pressure stays on the body.
 --
 -- No `Discipline` require here: this module stays dependency-light, and only the caller
--- (Combat.useItem) needs to know an id is a real discipline. The key is stored as handed over.
-function Character.recordTechnique(char, id, amount)
-    if not (char and id) or (amount or 0) <= 0 then return 0 end
+-- (Combat.useItem) needs to know a key is a real discipline. It is stored as handed over.
+function Character.recordTechnique(char, key, amount)
+    if not (char and key) or (amount or 0) <= 0 then return 0 end
     char.technique = char.technique or {}
-    char.technique[id] = (char.technique[id] or 0) + amount
+    char.technique[key] = (char.technique[key] or 0) + amount
     return amount
 end
 
+-- What `char` has earned under `key` since its last level-up -- the reading models/growth.lua weighs
+-- one level's growth by. Never negative: `technique` only rises and the snapshot is only ever taken
+-- from it.
+function Character.techniqueSinceLevel(char, key)
+    if not (char and key) then return 0 end
+    local earned = (char.technique or {})[key] or 0
+    return math.max(0, earned - ((char.techniqueAtLevel or {})[key] or 0))
+end
+
+-- What `char` has left to spend under `key`: earned minus what the Forge has already billed.
+function Character.techniqueAvailable(char, key)
+    if not (char and key) then return 0 end
+    local earned = (char.technique or {})[key] or 0
+    return math.max(0, earned - ((char.techniqueSpent or {})[key] or 0))
+end
+
 -- Build a fresh, mutable character instance from a blueprint id. `progress` (optional) restores the
--- saved level-up state: { level, classUse, growth }. When present, the accumulated growth deltas are
+-- saved level-up state: { level, growth, technique, ... }. When present, the accumulated growth deltas are
 -- re-baked into the stats here (max for resource stats), so a loaded character comes back at its full
 -- leveled power without replaying its history. A new character passes nil -> level 1, no growth.
 function Character.instantiate(id, progress)
@@ -368,18 +380,18 @@ function Character.instantiate(id, progress)
         signatureWeapon = def.signatureWeapon,
         signatureAbility = def.signatureAbility,
         level = (progress and progress.level) or 1,
-        classUse = (progress and progress.classUse) or {},
         growth = (progress and progress.growth) or {},
-        -- What this character has cast since it last levelled, and the per-class ledger of levels it
-        -- has been credited. Both belong to the level-up rule rather than to the title (models/growth.lua):
-        -- the first decides which table the NEXT level applies and is cleared when it lands, the second
-        -- only ever grows and is what a character sheet reads as "Knight 3 / Mage 2".
-        classUseSinceLevel = (progress and progress.classUseSinceLevel) or {},
-        growthBy = (progress and progress.growthBy) or {},
-        -- Banked discipline technique, { [disciplineId] = amount } -- earned per action and SPENT at
-        -- the Forge (Character.recordTechnique). Unlike the tallies above this is a wallet, not a
-        -- reading, which is why it survives a level-up untouched and why it can go down.
+        -- The fractional part a blended level-up could not spend in whole points, carried into the next
+        -- one (models/growth.lua). Rides beside `growth` because it is the same quantity, unrounded.
+        growthCarry = (progress and progress.growthCarry) or {},
+        -- THE LEDGER, { [key] = amount } where key is a class id OR a discipline id. Earned per action
+        -- and never decremented -- see Character.recordTechnique for what each of the three tables is.
         technique = (progress and progress.technique) or {},
+        techniqueSpent = (progress and progress.techniqueSpent) or {},
+        techniqueAtLevel = (progress and progress.techniqueAtLevel) or {},
+        -- The per-key ledger of levels credited, in shares. Only ever grows, and is what gates the deep
+        -- cut of a vendor's shelf (Discipline.level).
+        growthBy = (progress and progress.growthBy) or {},
         inventory = {},
         -- Hidden fallback weapon (never in inventory, never shown in the item grid). Sourced
         -- from the blueprint's `unarmed` id or the generic default; explicitly `false` for a body

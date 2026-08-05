@@ -160,15 +160,22 @@ function ForgePanel:collectRecipes()
     return ids
 end
 
--- The cost in a card's right column: what the NEXT rung costs, or why there isn't one. Discipline
--- stock is billed in technique rather than gold, so its tail names the currency -- "40 Ninja" against
--- a plain "160g" -- and the difference is legible without opening the row.
+-- A billing key in words. It is a discipline id for the deep cut and a class id for ordinary stock, so
+-- the discipline name is tried first and title-casing is the fallback -- "plague_knight" is "Plague
+-- Knight", which title-casing alone would render "Plague_knight".
+local function keyLabel(key)
+    if not key then return "" end
+    return Discipline.displayName(key) or (key:gsub("^%l", string.upper))
+end
+
+-- The cost in a card's right column: what the NEXT rung costs, or why there isn't one. Anything
+-- belonging to a house is billed in technique, so the tail names the house it is owed to -- "40 Ninja",
+-- "30 Knight" -- and only classless stock still shows a plain "160g".
 local function costTail(cost)
     if not cost then return "fully forged", "max" end
     if cost.locked then return "standing", "locked" end
     if cost.technique > 0 then
-        local name = Discipline.displayName(cost.techniqueId) or cost.techniqueId
-        return cost.technique .. " " .. name, nil
+        return cost.technique .. " " .. keyLabel(cost.techniqueId), nil
     end
     return cost.gold .. "g", nil
 end
@@ -355,24 +362,23 @@ function ForgePanel:ceilingReason(item)
     return "Locked."
 end
 
--- What this thing's ladder is measured against. For a DISCIPLINE item that is the bank and who holds
--- it -- there is no ceiling left to name and the only question is whether the technique is there. For
--- a plain class item it is the house and the ceiling its standing sets.
+-- What this thing's ladder is measured against: the bank that bills it and who on the roster is
+-- carrying that bank. A DISCIPLINE item stops there -- it has no ceiling left, and the only question is
+-- whether the technique is there. A plain class item adds the ceiling its house's standing sets, which
+-- is a separate gate from the price and survives it (see Forge.ceilingFor).
 function ForgePanel:standingLine(item)
+    local key = (item.discipline and Discipline.defs[item.discipline] and item.discipline)
+        or Item.classOf(item)
+    if not key then return nil end
+
+    local name = keyLabel(key)
+    local holder, held = Discipline.techniqueHolder(self.player, key)
+    local bank = holder and (held .. " held by " .. (holder.name or "?")) or "none banked yet"
+
     if item.discipline and Discipline.defs[item.discipline] then
-        local name = Discipline.displayName(item.discipline) or item.discipline
-        local holder, held = Discipline.techniqueHolder(self.player, item.discipline)
-        if not holder then return name .. " - none banked yet" end
-        return name .. " - " .. held .. " held by " .. (holder.name or "?")
+        return name .. " - " .. bank
     end
-    local ceiling = Forge.ceilingFor(self.player, item)
-    local class = Item.classOf(item)
-    if class then
-        local vendorId = Forge.houseVendorFor(class)
-        local house = vendorId and (Vendor.get(vendorId) or {}).name or class
-        return house .. " - ceiling +" .. ceiling
-    end
-    return nil
+    return name .. " - " .. bank .. ", ceiling +" .. Forge.ceilingFor(self.player, item)
 end
 
 -- ---------------------------------------------------------------------------
@@ -382,7 +388,9 @@ end
 function ForgePanel:refusal(reason, item)
     if reason == "gold" then return "Not enough gold." end
     if reason == "technique" then
-        local name = Discipline.displayName(item.discipline) or "that discipline"
+        local key = (item.discipline and Discipline.defs[item.discipline] and item.discipline)
+            or Item.classOf(item)
+        local name = key and keyLabel(key) or "that house"
         return "Not enough technique. Fight with " .. name .. " gear to bank more."
     end
     if reason == "materials" then return "Not enough materials." end
@@ -911,11 +919,11 @@ function ForgePanel:drawBill(row, cost, x, y, w, batch, aim, level)
         cx = cx + tw + 8
     end
 
-    -- The currency track: technique for discipline stock, gold for everything else -- never both, so
-    -- exactly one of these draws (models/forge.lua).
+    -- The currency track: technique for anything belonging to a house, gold only for classless stock --
+    -- never both, so exactly one of these draws (models/forge.lua).
     if cost.technique > 0 then
-        local name = Discipline.displayName(cost.techniqueId) or cost.techniqueId
-        chip(nil, cost.technique .. " " .. name, cost.techniqueHeld or 0, cost.technique, "money")
+        chip(nil, cost.technique .. " " .. keyLabel(cost.techniqueId),
+            cost.techniqueHeld or 0, cost.technique, "money")
     else
         chip(nil, cost.gold .. " gold", self.player.gold, cost.gold, "money")
     end

@@ -1,22 +1,30 @@
--- Tests for the Forge: the three-track bill (a currency track -- gold for plain stock, DISCIPLINE
--- TECHNIQUE for discipline stock -- plus craft stock by the item's own quality and house stock by its
--- class, doubled across both parents for a discipline item) and the ceiling rules (house standing,
--- uncapped). Also covers the material model's two families and the technique wallet: how it is banked
--- per action, capped per battle, and spent off the single strongest holder. Headless.
+-- Tests for the Forge: the three-track bill (a currency track -- TECHNIQUE for anything belonging to a
+-- house, keyed on the item's discipline or else its class, and gold only for classless stock -- plus
+-- craft stock by the item's own quality and house stock by its class, doubled across both parents for
+-- a discipline item) and the ceiling rules (house standing, uncapped). Also covers the material model's
+-- two families and the technique ledger: how it is banked per action, capped per battle, and spent off
+-- the single strongest holder. Headless.
 
 local Forge = require("models.forge")
 local Material = require("models.material")
 local Discipline = require("models.discipline")
+local Character = require("models.character")
 local Item = require("models.item")
 local Player = require("models.player")
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
 
--- A player with unlimited stock, so a test about the BILL is never really a test about the purse.
+-- A player with unlimited stock, so a test about the BILL is never really a test about the purse. The
+-- technique holder is a real roster member with a bottomless ledger: the bill reads earned minus spent
+-- off one body (Discipline.techniqueHolder), so a bare number on the player would not be seen at all.
 local function richPlayer()
     local p = Player.new()
     p.gold = 100000
     p.materials = setmetatable({}, { __index = function() return 9999 end })
+    local deep = Character.instantiate("character_knight")
+    deep.technique = setmetatable({}, { __index = function() return 999999 end })
+    deep.techniqueSpent = {}
+    p.roster = { deep }
     return p
 end
 
@@ -75,7 +83,11 @@ return {
             local p = richPlayer()
             local sword = Item.instantiate("weapon_iron_sword") -- knight, price 60
             local cost = Forge.upgradeCost(p, sword)
-            assert(cost.level == 1 and cost.gold == 40, "+1 costs 40 gold")
+            -- The currency track is its HOUSE's technique, not gold -- a knight blade is forged by
+            -- having fought as a knight (models/forge.lua's header).
+            assert(cost.level == 1 and cost.gold == 0, "+1 costs no gold")
+            assert(cost.technique == Discipline.techniqueCost(1) and cost.techniqueId == "knight",
+                "+1 costs a rung of knight technique")
             assert(cost.materials.material_iron_scrap == 2, "and 2 of the grade its price draws on")
             assert(cost.materials[Material.houseFor("knight")] == 1, "plus 1 of the Bastion's stock")
             -- The counts climb with the rung: craft is target+1, house is ceil(target/2).
@@ -174,11 +186,15 @@ return {
             assert(cost.techniqueId == def.discipline, "billed in its OWN discipline")
             assert(not cost.locked, "never locked -- only unaffordable")
 
-            -- A plain class item is the other side of the same track: gold, no technique.
+            -- Plain class stock rides the same track, billed to its CLASS instead. The discipline is
+            -- preferred where an item has both: a Ninja blade is rogue stock too, and billing it as
+            -- rogue would let generic rogue play pay for the deep cut.
             local plain = Item.instantiate("weapon_iron_sword")
             local plainCost = Forge.upgradeCost(p, plain)
-            assert(plainCost.technique == 0, "plain stock banks no technique cost")
-            assert(plainCost.gold > 0, "it pays gold, exactly as before")
+            assert(plainCost.gold == 0, "plain stock costs no gold either")
+            assert(plainCost.techniqueId == "knight", "it is billed to its own house")
+            assert(def.class and def.class ~= def.discipline, "the discipline item carries a class too")
+            assert(cost.techniqueId ~= def.class, "and its bill went to the discipline, not that class")
         end,
     },
     {
@@ -197,7 +213,9 @@ return {
             -- Split the bill's worth across two characters: each falls short, so the forge refuses --
             -- even though the roster TOTAL is more than enough. This is the whole point of the rule.
             p.roster[1].technique = { [def.discipline] = need - 1 }
+            p.roster[1].techniqueSpent = {}
             p.roster[2].technique = { [def.discipline] = need - 1 }
+            p.roster[2].techniqueSpent = {}
             assert(Discipline.technique(p, def.discipline) == need - 1, "the read is the max, not the sum")
             local ok, why = Forge.upgrade(p, item)
             assert(ok == nil and why == "technique", "a pooled bill is refused: " .. tostring(why))
@@ -206,9 +224,15 @@ return {
             p.roster[1].technique = { [def.discipline] = need + 5 }
             local newItem = Forge.upgrade(p, item)
             assert(newItem and newItem.level == cost.level, "the specialist's bank forges the rung")
-            assert(p.roster[1].technique[def.discipline] == 5, "and it came off the holder")
-            assert(p.roster[2].technique[def.discipline] == need - 1, "the other body is untouched")
-            assert(p.gold == 100000, "no gold was spent on discipline stock")
+            -- Booked as SPENDING, not as a decrement: the earned figure is also the career title and the
+            -- level-up reading, so a bill that lowered it would charge growth for gear.
+            assert(p.roster[1].technique[def.discipline] == need + 5, "the earned ledger is untouched")
+            assert(p.roster[1].techniqueSpent[def.discipline] == need, "the bill was recorded as spent")
+            assert(Character.techniqueAvailable(p.roster[1], def.discipline) == 5,
+                "and what is left to spend fell by exactly the bill")
+            assert(Character.techniqueAvailable(p.roster[2], def.discipline) == need - 1,
+                "the other body is untouched")
+            assert(p.gold == 100000, "no gold was spent")
         end,
     },
     {
@@ -318,13 +342,14 @@ return {
             assert(batch.levels == 3, "three rungs from +3 to +6, got " .. batch.levels)
             assert(batch.level == 6, "the batch lands at +6")
 
-            local gold, materials = 0, {}
+            local technique, materials = 0, {}
             for lvl = 4, 6 do
                 local rung = Forge.upgradeCost(p, Item.instantiate("weapon_first_motion", 1, lvl - 1))
-                gold = gold + rung.gold
+                technique = technique + rung.technique
                 for matId, n in pairs(rung.materials) do materials[matId] = (materials[matId] or 0) + n end
             end
-            assert(batch.gold == gold, "batch gold " .. batch.gold .. " vs summed " .. gold)
+            assert(batch.technique == technique,
+                "batch technique " .. batch.technique .. " vs summed " .. technique)
             for matId, n in pairs(materials) do
                 assert(batch.materials[matId] == n,
                     matId .. ": batch " .. tostring(batch.materials[matId]) .. " vs summed " .. n)
@@ -378,13 +403,16 @@ return {
             assert(target >= 2, "need at least a two-rung climb to test a partial spend")
 
             local full = Forge.costTo(p, item, target)
-            p.gold = full.gold - 1 -- afford every rung but the last
+            -- Afford every rung but the last. A real ledger rather than the bottomless probe, since
+            -- what is under test is the refusal.
+            p.roster[1].technique = { [full.techniqueId] = full.technique - 1 }
+            p.roster[1].techniqueSpent = {}
 
-            local goldBefore = p.gold
             local out, reason = Forge.upgradeTo(p, item, target)
             assert(out == nil, "an unaffordable batch forges nothing")
-            assert(reason == "gold", "and says why: " .. tostring(reason))
-            assert(p.gold == goldBefore, "and the purse is untouched: " .. p.gold .. " vs " .. goldBefore)
+            assert(reason == "technique", "and says why: " .. tostring(reason))
+            assert(Character.techniqueAvailable(p.roster[1], full.techniqueId) == full.technique - 1,
+                "and the bank is untouched")
             assert((item.level or 0) == 0, "and the item never moved")
         end,
     },
@@ -395,15 +423,19 @@ return {
             local item = Item.instantiate("weapon_first_motion", 1, 0)
             local target = math.min(3, Forge.ceilingFor(p, item))
             local cost = Forge.costTo(p, item, target)
-            local goldBefore = p.gold
+
+            -- A real, finite ledger so the charge can be measured against it.
+            p.roster[1].technique = { [cost.techniqueId] = cost.technique + 100 }
+            p.roster[1].techniqueSpent = {}
+            local heldBefore = Character.techniqueAvailable(p.roster[1], cost.techniqueId)
 
             local out, reason = Forge.upgradeTo(p, item, target)
             assert(out, "the batch forged: " .. tostring(reason))
             assert(reason == nil, "and stopped nowhere short")
             assert(out.level == target, "landing at +" .. target .. ", got +" .. tostring(out.level))
             assert(out.id == item.id, "and it is still the same blade")
-            assert(goldBefore - p.gold == cost.gold,
-                "charged " .. (goldBefore - p.gold) .. ", billed " .. cost.gold)
+            local charged = heldBefore - Character.techniqueAvailable(p.roster[1], cost.techniqueId)
+            assert(charged == cost.technique, "charged " .. charged .. ", billed " .. cost.technique)
         end,
     },
     {

@@ -33,6 +33,7 @@ local Character = require("models.character")
 local Player = require("models.player")
 local Item = require("models.item")
 local Growth = require("models.growth")
+local Discipline = require("models.discipline")
 local Debug = require("models.debug")
 local Scale = require("scale")
 local Theme = require("ui.theme")
@@ -106,24 +107,74 @@ local function pointIn(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
+-- A ledger key in words. The key is a class id OR a discipline id (Discipline.growthClasses banks a
+-- discipline item under the discipline), so the discipline name is tried first and title-casing is only
+-- the fallback -- "plague_knight" is "Plague Knight", which title-casing alone would render
+-- "Plague_knight". The same rule states/battle.lua applies to the technique floater.
 local function classLabel(class)
     if not class then return "?" end
-    return (class:gsub("^%l", string.upper))
+    return Discipline.displayName(class) or (class:gsub("^%l", string.upper))
 end
 
--- "mage 18 · fighter 6" -- the character's top class-usage counts, most-used first, so the player can
--- see what a member is growing toward (and steer it by how they play). Empty until they cast something.
-local function usageBreakdown(char)
-    local ranked = {}
-    for class, count in pairs(char.classUse or {}) do
-        ranked[#ranked + 1] = { class = class, count = count }
+-- The member's technique ledger as sorted rows, biggest claim first:
+--   { name, share, available }
+--
+-- ONE list, where there were two. This panel used to stack a class-usage tally over a technique block,
+-- and they were near-impossible to tell apart: both per-character, both ranked name-and-number, and
+-- filed under the SAME KEYS -- a member playing assassin gear carried `classUse.assassin` and
+-- `technique.assassin`, two unrelated numbers under one word. They are one ledger now
+-- (Character.recordTechnique), so they are one list with the two readings that are actually live.
+--
+-- NEITHER COLUMN IS THE CAREER TOTAL, and that is deliberate. `char.technique` is cumulative, but no
+-- decision reads it: the title above already says which house leads it, and a level-up reads only the
+-- delta since the last one (Growth.shares). Printing the career figure beside a wallet would put the
+-- one number on this sheet nothing acts on directly under the two that are acted on.
+--
+-- `share` is that delta AS A FRACTION, because the fraction is the whole of what the model reads. A
+-- level arrives on prestige, not on casts, so twenty casts and two hundred casts in the same
+-- proportions grow the identical character -- the magnitude buys nothing and printing it would imply a
+-- rate that does not exist. It is the same number the advancement panel reports when the level lands
+-- ("as Knight 52% · Mage 48%"), so the sheet predicts exactly what that screen will say.
+--
+-- `available` is what the Forge can bill off this body (earned minus spent).
+--
+-- A row survives on EITHER reading: a house with nothing outstanding but a bank left to spend still has
+-- something to say, and so does the reverse.
+--
+-- A CLASS key has no discipline blueprint and is title-cased; a discipline uses its display name, so a
+-- renamed-away id reads as a slug rather than vanishing silently from a list about growth.
+--
+-- Pure and static (no panel, no love.graphics), so it is unit-testable -- see tests/party_spec.lua,
+-- alongside Party.regionCross and Party.equipDelta.
+function Party.techniqueRows(char)
+    if not char then return {} end
+
+    -- Only meaningful when something is actually outstanding: with an empty delta Growth.shares falls
+    -- back to the innate class at 1.0, which is a true statement about a hypothetical level but reads
+    -- on a sheet as a claim the player earned. Right after a level-up the honest answer is "nothing
+    -- yet".
+    local since = Growth.sinceLevel(char)
+    local shares = next(since) and Growth.shares(char) or {}
+
+    local seen, rows = {}, {}
+    local function add(key)
+        if seen[key] then return end
+        seen[key] = true
+        local available = Character.techniqueAvailable(char, key)
+        local share = shares[key] or 0
+        if share > 0 or available > 0 then
+            rows[#rows + 1] = { name = classLabel(key), share = share, available = available }
+        end
     end
-    table.sort(ranked, function(a, b) return a.count > b.count end)
-    local parts = {}
-    for i = 1, math.min(3, #ranked) do
-        parts[#parts + 1] = ranked[i].class .. " " .. ranked[i].count
-    end
-    return table.concat(parts, "   ")
+    for key in pairs(shares) do add(key) end
+    for key in pairs(char.technique or {}) do add(key) end
+
+    table.sort(rows, function(a, b)
+        if a.share ~= b.share then return a.share > b.share end
+        if a.available ~= b.available then return a.available > b.available end
+        return a.name < b.name
+    end)
+    return rows
 end
 
 function Party.new(opts)
@@ -1336,18 +1387,14 @@ function Party:drawFocus()
     Theme.set(Theme.ink)
     love.graphics.printf(char.name or "?", x, y + ps + 6, self.focusW, "center")
 
-    -- Level + growth class: level tracks the player's prestige, and the member gains the stats of its
-    -- most-used class on each level-up (models/growth.lua). The usage breakdown underneath shows what
-    -- it is trending toward, which the player steers by which items they cast in battle.
+    -- Level + career title: level tracks the player's prestige, and each level-up apportions its stat
+    -- gains across everything the member has been casting (models/growth.lua). The title names the
+    -- house it has leaned on most; the ledger below shows the whole reading behind it, which is what
+    -- the player steers by choosing what to carry.
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
     love.graphics.printf("Lv " .. tostring(char.level or 1) .. "  -  Growing as "
         .. classLabel(Growth.dominantClass(char)), x, y + ps + 30, self.focusW, "center")
-    local breakdown = usageBreakdown(char)
-    if breakdown ~= "" then
-        Theme.set(Theme.muted, 0.8)
-        love.graphics.printf(breakdown, x, y + ps + 46, self.focusW, "center")
-    end
 
     -- If an item is in hand, preview how it changes THIS member's flat stats (green gain / red
     -- loss). The sheet shows BASE stats -- equipped bonuses aren't folded in, a pre-existing gap --
@@ -1358,7 +1405,7 @@ function Party:drawFocus()
 
     -- Stats, two per row.
     love.graphics.setFont(self.bodyFont)
-    local sy = y + ps + 70
+    local sy = y + ps + 56
     local colW = self.focusW / 2
     local n = 0
     for _, row in ipairs(STAT_ROWS) do
@@ -1390,6 +1437,85 @@ function Party:drawFocus()
         end
     end
     if n % 2 == 1 then sy = sy + 22 end
+
+    self:drawTechnique(char, x, sy + 12)
+end
+
+-- The technique ledger, under the stats: one row per house with something live to say about this
+-- member, showing the two things a player acts on.
+--
+-- TWO COLUMNS, one ledger. `next lv` is the share of the coming level this house has claimed -- the
+-- steering read, and the reason to carry one thing over another -- shown as a percentage because the
+-- fraction is all the model reads (Party.techniqueRows). `to spend` is the wallet the Forge bills, so
+-- it takes the amber the battle floater and the Forge chip already use for that. The career total is
+-- deliberately absent: the title above already names its leader, and nothing else reads it.
+--
+-- Full-width rows rather than the stats' two columns -- a key is often two words ("Plague Knight"), not
+-- "M.Def". Rows are budgeted against the panel floor instead of a fixed cap: seven classes plus 37
+-- disciplines is a lot of ground for a long campaign to cover, so the list takes what room is left above
+-- the prompt bar and folds the rest into a "+N more" tail rather than drawing through the frame.
+function Party:drawTechnique(char, x, y)
+    local rows = Party.techniqueRows(char)
+
+    love.graphics.setFont(self.smallFont)
+    Theme.caption("Technique", x, y, self.focusW)
+    y = y + 20
+
+    -- The empty state names the VERB that earns it. A blank section here would read as a broken panel,
+    -- and this is every member until their first fight -- it is where the loop gets explained.
+    if #rows == 0 then
+        Theme.set(Theme.muted, 0.8)
+        love.graphics.printf("None yet -- fight, and every house you carry teaches this body.",
+            x, y + 2, self.focusW, "center")
+        return
+    end
+
+    local spendW = 64                     -- the amber wallet, right-aligned against the panel edge
+    local shareW = 66                     -- the claim on the coming level
+    local nameW = self.focusW - spendW - shareW - 20
+
+    -- Column heads, so the two numbers are never guessed at. "of next lv" rather than "next lv": a bare
+    -- "next lv 54%" reads as FIFTY-FOUR PERCENT OF THE WAY TO LEVELLING, which is precisely the rate
+    -- this number does not describe -- levels arrive on prestige and nothing here moves one closer. The
+    -- partitive says what it is instead: 54% OF the next level will be Knight, and partitives sum to a
+    -- whole, which is the other half of the reading.
+    Theme.set(Theme.muted, 0.7)
+    love.graphics.printf("of next lv", x + nameW, y, shareW, "right")
+    love.graphics.printf("to spend", x + nameW + shareW, y, spendW, "right")
+    y = y + 17
+
+    local floor = self.boxY + BOX_H - 64 -- above the message line and the prompt bar
+    local fit = math.max(1, math.floor((floor - y) / 20))
+    local shown = #rows
+    if shown > fit then shown = math.max(0, fit - 1) end -- the tail line costs a row
+
+    -- Muted label, ink value -- the same pairing as the stat rows directly above, so a row here reads as
+    -- one of them rather than as a third idiom. The wallet is the only thing that takes an accent, and
+    -- Theme.cursor is deliberately NOT used: that blue means "the selection is here", and spending it on
+    -- a data column would make every sheet look navigated.
+    love.graphics.setFont(self.bodyFont)
+    for i = 1, shown do
+        local row = rows[i]
+        Theme.set(Theme.muted)
+        love.graphics.print(Theme.ellipsize(row.name, self.bodyFont, nameW), x, y)
+
+        -- A house claiming none of the coming level shows a dash, not "0%" -- it is not competing for
+        -- this level at all, which is a different statement from having rounded down to nothing.
+        Theme.set(Theme.ink, row.share > 0 and 1 or 0.45)
+        local claim = row.share > 0 and (math.floor(row.share * 100 + 0.5) .. "%") or "-"
+        love.graphics.printf(claim, x + nameW, y, shareW, "right")
+
+        -- A fully spent house reads dim rather than shouting a zero in wallet gold.
+        Theme.set(row.available > 0 and Theme.accentAmber or Theme.muted,
+            row.available > 0 and 1 or 0.5)
+        love.graphics.printf(tostring(row.available), x + nameW + shareW, y, spendW, "right")
+        y = y + 20
+    end
+    if shown < #rows then
+        love.graphics.setFont(self.smallFont)
+        Theme.set(Theme.muted, 0.8)
+        love.graphics.print("+" .. (#rows - shown) .. " more", x, y)
+    end
 end
 
 -- The focused member's 3x3 grid (the anchor) with the adjacency legend beneath it.

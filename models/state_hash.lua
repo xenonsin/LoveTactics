@@ -19,9 +19,9 @@
 -- things on the board that act. What is left out is either static (the arena, rebuilt from the seed
 -- on both sides), presentation (the fx queue, the log), or genuinely local:
 --
---   * `classUse` is the big one. Each machine tallies growth only for the units it drives -- that is
---     correct, and it means the tallies MUST differ between peers. Hashing it would report a desync
---     on the first swing of every duel.
+--   * the technique ledger is the big one. Each machine banks growth only for the units it drives --
+--     that is correct, and it means the ledgers MUST differ between peers. Hashing it would report a
+--     desync on the first swing of every duel.
 --   * Character names and sprites: cosmetic, and a remote roster carries the author's names.
 --
 -- Pure data in, string out. No love.*, so it runs headless in the suite.

@@ -2,7 +2,7 @@
 -- (ui/panels/party.lua) is love.graphics-bound and mostly not exercised here; what it delegates
 -- to -- Vendor.sellValue, the buy/sell gold+stash moves, recruiting, and the save round trip -- is
 -- pure logic and lives below. The panel's few pure, love-free helpers (regionCross edge-crossing,
--- equipDelta filter) are covered at the end.
+-- equipDelta filter, techniqueRows ranking) are covered at the end.
 
 local Player = require("models.player")
 local Vendor = require("models.vendor")
@@ -10,6 +10,7 @@ local Forge = require("models.forge")
 local Item = require("models.item")
 local Character = require("models.character")
 local Save = require("models.save")
+local Discipline = require("models.discipline")
 local Party = require("ui.panels.party")
 
 -- A priced, non-stackable item id (so buying/selling doesn't merge into a consumable stack), and an
@@ -188,10 +189,13 @@ return {
             local item = Item.instantiate(abilityId)
             local cost = Forge.upgradeCost(p, item)
             for id, n in pairs(cost.materials) do p.materials[id] = n end
+            p.roster[1].technique = { [cost.techniqueId] = cost.technique }
+            p.roster[1].techniqueSpent = {}
             local newItem = Forge.upgrade(p, item)
             assert(newItem, "the first rung is open with no quests done")
             assert((newItem.level or 0) == (item.level or 0) + 1, "level should rise by one")
-            assert(p.gold == 5000 - cost.gold, "gold should be spent on the upgrade")
+            assert(Character.techniqueAvailable(p.roster[1], cost.techniqueId) == 0,
+                "the house's technique should be spent on the upgrade")
         end,
     },
     {
@@ -227,6 +231,69 @@ return {
         fn = function()
             assert(next(Party.equipDelta(Item.instantiate("weapon_iron_sword"))) == nil, "no bonus -> empty")
             assert(next(Party.equipDelta(nil)) == nil, "nil item -> empty")
+        end,
+    },
+    {
+        name = "techniqueRows reports each house's claim on the coming level, biggest first",
+        fn = function()
+            local char = Character.instantiate("character_knight")
+            -- A class key alongside two disciplines: one ledger holds both, which is the whole reason
+            -- this list replaced the two that used to be stacked here.
+            char.technique = { bulwark = 10, assassin = 60, knight = 30 }
+            local rows = Party.techniqueRows(char)
+            assert(#rows == 3, "one row per house with something live, got " .. #rows)
+
+            -- The SHARE, not the raw amount: a level arrives on prestige, so only the proportions are
+            -- read and the magnitude buys nothing. 60/30/10 of 100 is 60% / 30% / 10%.
+            assert(math.abs(rows[1].share - 0.6) < 1e-9
+                and math.abs(rows[2].share - 0.3) < 1e-9
+                and math.abs(rows[3].share - 0.1) < 1e-9, "rows carry the shares, descending")
+
+            -- Display names for a discipline, title-case for a class -- never the raw id.
+            assert(rows[1].name == Discipline.displayName("assassin"),
+                "a discipline row carries its display name")
+            assert(rows[2].name == "Knight", "and a class row is title-cased")
+
+            -- Doubling everything is the same character, so it must read identically.
+            local twice = Character.instantiate("character_knight")
+            twice.technique = { bulwark = 20, assassin = 120, knight = 60 }
+            assert(math.abs(Party.techniqueRows(twice)[1].share - rows[1].share) < 1e-9,
+                "twice the casting in the same proportions is the same level, and reads the same")
+        end,
+    },
+    {
+        name = "techniqueRows separates the coming level from the wallet, and shows a row for either",
+        fn = function()
+            local char = Character.instantiate("character_knight")
+            assert(#Party.techniqueRows(char) == 0, "a fresh member has played nothing")
+
+            -- Everything earned so far is already checkpointed into past levels, and half the bank is
+            -- spent. Nothing is claiming the coming level, but there is still coin to forge with -- so
+            -- the row survives on the wallet alone.
+            char.technique = { knight = 50 }
+            char.techniqueAtLevel = { knight = 50 }
+            char.techniqueSpent = { knight = 20 }
+            local rows = Party.techniqueRows(char)
+            assert(#rows == 1 and rows[1].share == 0 and rows[1].available == 30,
+                "a house with nothing outstanding but a bank left keeps its row")
+
+            -- And the reverse: fully spent, but claiming the whole of the coming level.
+            char.techniqueSpent = { knight = 50 }
+            char.techniqueAtLevel = {}
+            rows = Party.techniqueRows(char)
+            assert(#rows == 1 and rows[1].share == 1 and rows[1].available == 0,
+                "a spent-out house still shows what it is growing into")
+
+            -- Spending must never move the growth column. That is the property the earned/spent split
+            -- exists for, asserted at the surface the player reads it on.
+            local before = Party.techniqueRows(char)[1].share
+            char.techniqueSpent = { knight = 50 }
+            assert(Party.techniqueRows(char)[1].share == before, "forging does not move the claim")
+
+            -- Nothing earned at all is no row, so an untouched house never appears.
+            char.technique = { knight = 0 }
+            char.techniqueSpent, char.techniqueAtLevel = {}, {}
+            assert(#Party.techniqueRows(char) == 0, "a zero ledger entry is not a row")
         end,
     },
     {

@@ -997,16 +997,14 @@ return {
         end,
     },
     {
-        name = "a save round trip preserves level, class usage, and re-bakes accumulated growth",
+        name = "a save round trip preserves level, the ledger, and re-bakes accumulated growth",
         fn = function()
             withScratchSave(function()
                 local p = Player.new()
                 local knight = p.roster[1]
-                -- `classUse` is the career tally behind the displayed title; `classUseSinceLevel` is
-                -- the banked casts a level-up actually spends (models/growth.lua). Both are set, and
-                -- both must survive the trip.
-                knight.classUse = { mage = 12 }
-                knight.classUseSinceLevel = { mage = 12 }
+                -- One ledger, read as the career title AND as what the next level-up apportions
+                -- (models/growth.lua). Nothing is checkpointed yet, so all of it is outstanding.
+                knight.technique = { mage = 12 }
                 -- Prestige 13, which is level 5 on the curve -- prestige is not the level (see
                 -- Growth.levelForPrestige). Read back through the curve so a retune moves the fixture
                 -- rather than breaking it.
@@ -1026,7 +1024,7 @@ return {
 
                 local loadedKnight = loaded.roster[1]
                 assert(loadedKnight.level == expected, "level should survive")
-                assert(loadedKnight.classUse.mage == 12, "the class tally should survive")
+                assert(loadedKnight.technique.mage == 12, "the ledger should survive")
                 assert(loadedKnight.stats.magicDamage == grownMagic, "growth should re-bake onto magic")
                 assert(loadedKnight.stats.health.max == grownHealthMax, "growth should re-bake onto the HP pool")
                 assert(Growth.dominantClass(loadedKnight) == "mage", "the loaded knight still grows as a mage")
@@ -1106,8 +1104,7 @@ return {
         name = "a save from before the per-class ledger loads with its history seeded, not lost",
         fn = function()
             local live = Character.instantiate("character_rowan")
-            live.classUse = { mage = 30 }
-            live.classUseSinceLevel = { mage = 30 }
+            live.technique = { mage = 30 }
             Growth.resolve(live, 6)
 
             -- The same character as an OLD save would have stored it: level, tally and baked deltas,
@@ -1135,10 +1132,48 @@ return {
 
             -- A current save is never rewritten by that seed.
             local current = Save.restoreCharacter({
-                id = live.id, level = 4, classUse = { mage = 30 }, growthBy = { knight = 3 },
+                id = live.id, level = 4, technique = { mage = 60 }, growthBy = { knight = 3 },
             })
             assert(current.growthBy.knight == 3 and current.growthBy.mage == nil,
                 "a save that carries a ledger keeps exactly the one it carries")
+        end,
+    },
+    {
+        -- A save written before the growth tally and the technique wallet became one ledger carries
+        -- `classUse` (one tick per action) and `technique` (two per action, disciplines only). It is
+        -- folded forward on read rather than discarded -- Save.VERSION deliberately does not move,
+        -- because a mismatch throws the whole save away for a change that reads forward exactly.
+        name = "a pre-merge save folds its two tallies into the one ledger",
+        fn = function()
+            local Discipline = require("models.discipline")
+            local rate = Discipline.TECHNIQUE_PER_ACTION
+
+            local loaded = Save.restoreCharacter({
+                id = "character_rowan",
+                level = 4,
+                classUse = { mage = 30, knight = 10 },     -- the old growth vote, one per action
+                classUseSinceLevel = { mage = 6 },         -- six casts outstanding toward the next level
+                technique = { mage = 5 },                  -- an old wallet, mostly spent
+                growthBy = { mage = 3 },
+            })
+
+            -- Earned is reconstructed at the merged rate, so the same play banks what it would today.
+            assert(loaded.technique.mage == 30 * rate, "the career reading multiplies up to the new rate")
+            assert(loaded.technique.knight == 10 * rate, "for every house, not only the ones with a wallet")
+            assert(loaded.classUse == nil and loaded.classUseSinceLevel == nil, "the old tallies are gone")
+
+            -- Banks come back FULL. The gap between the two old numbers also contains the old
+            -- per-battle cap's clipping, so deriving spending from it would bill for forges never made.
+            assert(Character.techniqueAvailable(loaded, "mage") == 30 * rate, "the bank is refilled once")
+
+            -- The checkpoint is seeded so the outstanding reading survives -- otherwise every loaded
+            -- character would arrive holding a free level's worth of growth.
+            assert(Character.techniqueSinceLevel(loaded, "mage") == 6 * rate,
+                "what was outstanding toward the next level is still outstanding")
+            assert(Character.techniqueSinceLevel(loaded, "knight") == 0,
+                "and a house with nothing outstanding has nothing outstanding")
+
+            assert(Growth.dominantClass(loaded) == "mage", "the title reads the same as it did")
         end,
     },
 

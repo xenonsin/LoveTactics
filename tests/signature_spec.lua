@@ -88,8 +88,12 @@ return {
             local relic = Item.instantiate("armor_sworn_aegis")
             assert(Item.isUpgradable(relic), "the relic has a stat to scale")
             assert(Forge.canWork(relic), "and is worked at the Forge")
-            -- Stock exactly what this relic's bill asks for, whatever house it descends from.
-            for id, n in pairs(Forge.upgradeCost(player, relic).materials) do player.materials[id] = n end
+            -- Stock exactly what this relic's bill asks for, whatever house it descends from -- both
+            -- the materials and the technique its house is owed.
+            local cost = Forge.upgradeCost(player, relic)
+            for id, n in pairs(cost.materials) do player.materials[id] = n end
+            player.roster[1].technique = { [cost.techniqueId] = cost.technique }
+            player.roster[1].techniqueSpent = {}
 
             local up = Forge.upgrade(player, relic)
             assert(up and up.level == 1, "the forge returns a +1 instance")

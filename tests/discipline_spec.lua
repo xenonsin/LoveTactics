@@ -422,11 +422,15 @@ tests[#tests + 1] = { name = "a discipline-heavy build grows along the disciplin
     local c = Character.instantiate("character_clem") -- innate rogue
     for _ = 1, 5 do
         for _, cls in ipairs(Discipline.growthClasses({ class = "rogue", discipline = "ninja" })) do
-            Character.recordUse(c, cls)
+            Character.recordTechnique(c, cls, Discipline.TECHNIQUE_PER_ACTION)
         end
     end
-    Character.recordUse(c, "rogue") -- a little base-class use, but ninja leads
-    assert(Growth.dominantClass(c) == "ninja", "the ninja tally should lead the build")
+    Character.recordTechnique(c, "rogue", Discipline.TECHNIQUE_PER_ACTION) -- some base-class use, but ninja leads
+    assert(Growth.dominantClass(c) == "ninja", "the ninja ledger should lead the build")
+
+    -- And it leads the level-up's apportionment too, rather than merely the title.
+    local shares = Growth.shares(c)
+    assert(shares.ninja > shares.rogue, "the ninja share is the larger half of the next level")
 
     -- And applying that level uses the ninja table, which is neither parent's.
     local before = c.growth and c.growth.magicDamage or 0
