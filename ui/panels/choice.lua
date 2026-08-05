@@ -3,7 +3,7 @@
 -- ui/panels/rest_choice.lua is the same idea with fixed options; this one takes them as data. A state owns
 -- it as game.activePanel and forwards input; three-input + mouse-only.
 --
---   Choice.new({ title=, prompt=, options={ { label=, desc=, accent=?, cb=fn }, ... }, onClose= })
+--   Choice.new({ title=, prompt=, options={ { label=, desc=?, accent=?, cb=fn }, ... }, onClose= })
 --
 -- Choosing an option fires its cb (and the panel is spent); onClose fires on X/Esc/B when a back-out is
 -- allowed (pass nil to forbid leaving -- a committing choice).
@@ -112,13 +112,20 @@ function Choice:draw()
         love.graphics.setLineWidth(1)
         love.graphics.rectangle("fill", r.x, r.y, 4, r.h, 2, 2)
 
+        -- A bare option -- one whose label is the whole of it, like the shop's Buy / Cancel -- centers
+        -- in its card instead of sitting at the top of an empty one. A dilemma with descriptions is
+        -- laid out exactly as before.
+        local hasDesc = o.desc and o.desc ~= ""
         love.graphics.setFont(self.labelFont)
         love.graphics.setColor(0.96, 0.95, 0.92)
-        love.graphics.print(o.label, r.x + 18, r.y + 10)
+        love.graphics.print(o.label, r.x + 18,
+            hasDesc and (r.y + 10) or (r.y + r.h / 2 - self.labelFont:getHeight() / 2))
 
-        love.graphics.setFont(self.descFont)
-        love.graphics.setColor(0.78, 0.80, 0.86)
-        love.graphics.printf(o.desc or "", r.x + 18, r.y + 38, r.w - 34, "left")
+        if hasDesc then
+            love.graphics.setFont(self.descFont)
+            love.graphics.setColor(0.78, 0.80, 0.86)
+            love.graphics.printf(o.desc, r.x + 18, r.y + 38, r.w - 34, "left")
+        end
     end
 
     local leaveHint = self.onClose and (InputMode.isGamepad() and "  -  B leave" or "  -  Esc leave") or ""

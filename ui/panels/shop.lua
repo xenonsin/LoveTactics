@@ -11,6 +11,9 @@
 -- row (the detail follows with no extra press), A buys/sells it, the shoulder buttons cycle
 -- Buy<->Sell, B closes. No drag, no member targeting.
 --
+-- Buying puts a confirmation in front of the spend (Shop:buy) -- on the pad and the keyboard the
+-- confirm button is also the one that walks the list, and gold is quest-work to earn back.
+--
 -- The detail pane closes with a GLOSSARY block (ui/glossary_panel.lua, gathered by
 -- models/glossary.lua) defining every status the highlighted item can inflict and every keyword its
 -- ability declares -- docked into the column rather than floating, since this pane is a column of
@@ -21,6 +24,7 @@
 
 local Menu = require("ui.menu")
 local QuantityPopup = require("ui.quantity_popup")
+local Choice = require("ui.panels.choice") -- the generic yes/no modal, hosted here as the buy confirmation
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip") -- printFlavor (sheared italic story line) + printDiscipline
 local GlossaryPanel = require("ui.glossary_panel")
@@ -307,6 +311,13 @@ end
 -- transaction so newly unlocked stock / spent gold / changed stash is reflected without reopening.
 function Shop:refresh()
     local selected = self.menu and self.menu.selected or 1
+    -- The scroll window is carried over as well as the selection. A rebuild that kept only the
+    -- selection put the row back under the cursor but at whatever line scrollToSelection could reach
+    -- it from -- so buying something forty rows down threw the list back to the top and dragged the
+    -- window forward until the row scraped in at the bottom edge. A purchase changes no row's index;
+    -- the list must not appear to move at all. `setMode` drops the menu first, so a mode switch still
+    -- starts at the top.
+    local scroll = self.menu and self.menu.scroll or 0
     self.questsDone = Quest.sponsorProgress(self.player, self.vendorId)
     self.rows = {}
 
@@ -345,6 +356,7 @@ function Shop:refresh()
         maxVisible = MAX_VISIBLE,
     })
     self.menu.selected = math.min(selected, math.max(#items, 1))
+    self.menu.scroll = scroll -- scrollToSelection below clamps it and only nudges it if it has to
     -- Just folded a section: land on THAT header rather than on whatever row inherited its index.
     if self.selectKey then
         for i, row in ipairs(self.rows) do
@@ -441,12 +453,40 @@ function Shop:lockReason(entry)
     return "Locked."
 end
 
+-- Buying ASKS first. A shelf row is one press away from the cursor on every input device -- and on the
+-- pad and the keyboard, confirm is the same button that moves you around the list -- so the old
+-- straight-through buy meant a stray Enter spent gold that takes quests to earn back, with a sell-back
+-- at a fraction of the price as the only undo. The question names the item and the price and stops
+-- there: the purse is already on screen behind it, and the two buttons need no explaining.
+--
+-- Affordability is settled BEFORE the question is asked. Being walked through a confirmation and only
+-- then told no is a worse answer than being told no on the press.
 function Shop:buy(row)
     local entry = row.entry
     if entry.locked then
         self:setMsg(self:lockReason(entry), false)
         return
     end
+    local gold = self.player.gold or 0
+    if gold < entry.price then
+        self:setMsg("Not enough gold.", false)
+        return
+    end
+    local item = Item.instantiate(entry.id, nil, entry.level)
+    self.confirm = Choice.new({
+        title = "Confirm Purchase",
+        prompt = (item.name or "?") .. "  -  " .. entry.price .. " gold",
+        options = {
+            { label = "Buy", accent = { 0.42, 0.80, 0.62 },
+                cb = function() self.confirm = nil; self:commitBuy(entry) end },
+            { label = "Cancel", accent = { 0.78, 0.52, 0.50 },
+                cb = function() self.confirm = nil end },
+        },
+        onClose = function() self.confirm = nil end,
+    })
+end
+
+function Shop:commitBuy(entry)
     if not Player.spendGold(self.player, entry.price) then
         self:setMsg("Not enough gold.", false)
         return
@@ -500,6 +540,9 @@ end
 -- ---------------------------------------------------------------------------
 
 function Shop:update(dt)
+    -- The confirmation owns everything while it is up, the analog stick included -- Menu:update reads
+    -- the stick directly, so leaving it ticking would let the list scroll under the question.
+    if self.confirm then return end
     if self.quantityPopup then self.quantityPopup:update(dt) return end
     if self:hasRows() then
         self.menu:update(dt)
@@ -550,6 +593,7 @@ function Shop:draw()
     self:drawFooter()
     self.closeButton:draw()
     if self.quantityPopup then self.quantityPopup:draw() end
+    if self.confirm then self.confirm:draw() end
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -840,6 +884,7 @@ end
 -- ---------------------------------------------------------------------------
 
 function Shop:mousemoved(x, y)
+    if self.confirm then self.confirm:mousemoved(x, y) return end
     if self.quantityPopup then self.quantityPopup:mousemoved(x, y) return end
     self.closeButton:mousemoved(x, y)
     if self:hasRows() then self.menu:mousemoved(x, y) end
@@ -848,6 +893,7 @@ end
 -- Hand over the close X, the Buy/Sell mode tabs, or any item row; arrow elsewhere. When the
 -- sell-quantity popup is open it owns the pointer. See ui/cursor.lua.
 function Shop:cursorKind(x, y)
+    if self.confirm then return self.confirm:cursorKind(x, y) end
     if self.quantityPopup then return self.quantityPopup:cursorKind(x, y) end
     if self.closeButton:contains(x, y) then return "hand" end
     for _, m in ipairs(MODES) do
@@ -858,11 +904,13 @@ function Shop:cursorKind(x, y)
 end
 
 function Shop:wheelmoved(dx, dy)
+    if self.confirm then return end -- the list must not scroll out from under the question
     if self.quantityPopup then self.quantityPopup:wheelmoved(dy) return end
     if self:hasRows() then self.menu:wheelmoved(dx, dy) end
 end
 
 function Shop:mousepressed(x, y, button)
+    if self.confirm then self.confirm:mousepressed(x, y, button) return end
     if self.quantityPopup then self.quantityPopup:mousepressed(x, y, button) return end
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then self:close() return end
@@ -878,6 +926,7 @@ function Shop:mousepressed(x, y, button)
 end
 
 function Shop:keypressed(key)
+    if self.confirm then self.confirm:keypressed(key) return end
     if self.quantityPopup then self.quantityPopup:keypressed(key) return end
     if key == "escape" then self:close()
     elseif key == "tab" then self:cycleMode(1)
@@ -887,6 +936,7 @@ function Shop:keypressed(key)
 end
 
 function Shop:gamepadpressed(joystick, button)
+    if self.confirm then self.confirm:gamepadpressed(joystick, button) return end
     if self.quantityPopup then self.quantityPopup:gamepadpressed(joystick, button) return end
     if button == "b" then self:close()
     elseif button == "leftshoulder" then self:cycleMode(-1)
