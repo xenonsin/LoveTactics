@@ -181,6 +181,118 @@ return {
             assert(hp - v.char.stats.health.current == 15, "150g at 10g/point is 15 flat damage")
         end,
     },
+    -- THE OPEN ACCOUNT: the kit's defensive face -- coin spent to NOT be touched --------------------
+    {
+        name = "The Open Account is a toggle: one cast opens the account, the next closes it",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", items = { "ability_open_account" }, stats = { stamina = 99 } })
+            local foe = Fixture.unit("character_bandit", 6, 6, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h = combat.units[1]
+
+            assert(Fixture.strike(combat, h, h, "ability_open_account"), "the account opens")
+            assert(Status.has(h, "status_open_account"), "and the bearer is on account")
+            -- Ten points of a single blow at base, one more a forge level -- the cap the granter tunes,
+            -- against the rate the rule owns (data/status/status_open_account.lua).
+            assert(Status.get(h, "status_open_account").magnitude == 10, "ten points of cover at level 0")
+
+            assert(Fixture.strike(combat, h, h, "ability_open_account"), "the second cast is accepted")
+            assert(not Status.has(h, "status_open_account"),
+                "and it CLOSES the account -- the closing cast is the real mechanic, not a re-open")
+        end,
+    },
+    {
+        name = "an open account settles the wound out of the purse at five gold a point",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", items = { "ability_open_account" }, stats = { stamina = 99, defense = 0 } })
+            local foe = Fixture.unit("character_bandit", 6, 6, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h, f = combat.units[1], combat.units[2]
+            local purse = givePurse(combat, 500)
+            assert(Fixture.strike(combat, h, h, "ability_open_account"), "the account opens")
+
+            local hp = Fixture.hp(h)
+            local dealt = Combat.dealFlatDamage(combat, h, 8, { "physical" }, "test", f)
+            assert(dealt == 0, "nothing reached the body -- the blow was paid for, not survived")
+            assert(Fixture.hp(h) == hp, "the flesh is untouched")
+            assert(purse() == 460, "and eight points cost forty gold, at five a point")
+        end,
+    },
+    {
+        name = "the cap is per BLOW: the overflow lands on the flesh, so no purse buys off one huge hit",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", items = { "ability_open_account" }, stats = { stamina = 99, defense = 0 } })
+            local foe = Fixture.unit("character_bandit", 6, 6, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h, f = combat.units[1], combat.units[2]
+            local purse = givePurse(combat, 9999)
+            assert(Fixture.strike(combat, h, h, "ability_open_account"), "the account opens")
+
+            -- 30 points against a cap of 10: the account covers its ten and no more, however fat the bank.
+            local dealt = Combat.dealFlatDamage(combat, h, 30, { "physical" }, "test", f)
+            assert(dealt == 20, "twenty points past the cap land as an ordinary wound")
+            assert(purse() == 9999 - 50, "and only the covered ten were billed")
+        end,
+    },
+    {
+        name = "no purse (a duel, a draft run): the account is inert and the blow lands whole",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", items = { "ability_open_account" }, stats = { stamina = 99, defense = 0 } })
+            local foe = Fixture.unit("character_bandit", 6, 6, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h, f = combat.units[1], combat.units[2]
+            assert(Fixture.strike(combat, h, h, "ability_open_account"), "the account still opens")
+            assert(Combat.purseAvailable(combat, h) == 0, "but there is no bank behind it")
+            assert(Combat.dealFlatDamage(combat, h, 8, { "physical" }, "test", f) == 8,
+                "so the blow lands whole -- inert, and honest about it")
+        end,
+    },
+    {
+        name = "a thin bank covers what it can afford and no more -- you do not beat the account, you empty it",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", items = { "ability_open_account" }, stats = { stamina = 99, defense = 0 } })
+            local foe = Fixture.unit("character_bandit", 6, 6, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h, f = combat.units[1], combat.units[2]
+            local purse = givePurse(combat, 22) -- four points' worth, with two coppers over
+            assert(Fixture.strike(combat, h, h, "ability_open_account"), "the account opens")
+
+            assert(Combat.dealFlatDamage(combat, h, 8, { "physical" }, "test", f) == 4,
+                "four points bought, four points felt -- the dregs round DOWN, never a free half-point")
+            assert(purse() == 2, "the two coppers that could not buy a point stay in the bank")
+            assert(Combat.dealFlatDamage(combat, h, 8, { "physical" }, "test", f) == 8,
+                "and an emptied account covers nothing at all")
+        end,
+    },
+    {
+        name = "an enemy on account settles out of its OWN coffer, never the party's bank",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 2, 2, { isolate = "bare" })
+            local aurea = Fixture.unit("character_bandit", 2, 3,
+                { isolate = "bare", items = { "ability_open_account" },
+                  stats = { stamina = 99, defense = 0, health = 900 } })
+            aurea.char.coffer = 200
+            local combat = Fixture.combat(map, hero, aurea)
+            local h, a = combat.units[1], combat.units[2]
+            local partyPurse = givePurse(combat, 500)
+            assert(Fixture.strike(combat, a, a, "ability_open_account"), "she opens her own account")
+
+            assert(Combat.dealFlatDamage(combat, a, 6, { "physical" }, "test", h) == 0, "the blow is billed")
+            assert(a.coffer == 170, "to her coffer (200 - 30)")
+            assert(partyPurse() == 500, "and the party's bank is untouched")
+        end,
+    },
     {
         name = "a preview prices a purchasable blow at the intended spend, without paying a coin",
         fn = function()

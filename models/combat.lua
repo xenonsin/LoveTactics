@@ -5289,6 +5289,17 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- threshold phase and provokes no counter.
         if dmg <= 0 then return 0 end
     end
+    -- An open ACCOUNT (On Account) settles part of the wound out of the purse instead of the flesh.
+    -- Beside the Mana Shield above and for the same reason: what the account covers is the number that
+    -- would actually have reached the body. It pays second, so a bearer carrying both spends the smaller
+    -- pool before the bank -- mana regenerates between fights and gold does not.
+    local billed = Combat.soakIntoPurse(combat, target, dmg)
+    if billed > 0 then
+        dmg = dmg - billed
+        -- Fully settled: nothing reached the body, so -- exactly as above -- no rage, no threshold
+        -- phase, no counter. The blow was paid for, not survived.
+        if dmg <= 0 then return 0 end
+    end
     -- A standing BOND (Shared Burden) moves a share of the wound onto whoever swore it, wherever they
     -- are standing. Runs here, on the far side of mitigation, for the same reason the Mana Shield above
     -- it does: what a promise covers is the number that would actually have reached the body, not the
@@ -6691,6 +6702,52 @@ function Combat.soakIntoMana(combat, target, dmg)
             unitName(target), shield.name or "ward", coverable, spent), target)
     end
     return coverable
+end
+
+-- Pay part of an incoming wound out of `target`'s PURSE instead of its health, and return how much was
+-- covered. The engine half of On Account (data/status/status_open_account.lua), which The Open Account
+-- toggles on and off (data/items/ability/ability_open_account.lua).
+--
+-- The twin of Combat.soakIntoMana above, and deliberately the same shape: it runs on the far side of
+-- mitigation, so what the account is asked to settle is the number that would actually have reached the
+-- body -- armor gets its full say first, and a ward priced against the pre-armor figure would be
+-- strictly better than armor.
+--
+-- The two numbers come from opposite places on purpose (the status's own header argues this at length):
+-- `paysInGold` is the exchange RATE and belongs to the rule, so it is read off the def and is the same
+-- wherever the rule turns up; `magnitude` is the CAP -- how much of a single blow the account will
+-- cover -- and belongs to the granter, so it is read off the live instance, which the ability raises per
+-- forge level. Anything past the cap lands on the flesh, which is what keeps this a ward against
+-- attrition and no defence at all against one enormous hit.
+--
+-- Side-aware through Combat.spendPurse: an enemy wearing the status spends its own coffer and never
+-- reaches the player's bank. Outside the campaign there is no purse at all, so the account covers
+-- nothing and the blow simply lands -- inert, and the same counterplay the Mana Shield has: you do not
+-- beat it, you empty it.
+function Combat.soakIntoPurse(combat, target, dmg)
+    if not dmg or dmg <= 0 then return 0 end
+    local acct = target and Status.get(target, "status_open_account")
+    if not acct then return 0 end
+
+    local rate = (acct.def and acct.def.paysInGold) or 0
+    if rate <= 0 then return 0 end
+    local cap = acct.magnitude or 0
+    local available = Combat.purseAvailable(combat, target)
+
+    -- What the bank can actually cover, capped by the wound and by the account's per-blow ceiling.
+    -- Floored, so a partially-funded point is never covered for free -- the last coppers round DOWN,
+    -- exactly as the Mana Shield's dregs do.
+    local coverable = math.min(dmg, cap, math.floor(available / rate))
+    if coverable <= 0 then return 0 end
+
+    local spent = Combat.spendPurse(combat, target, coverable * rate)
+    -- spendPurse clamps to what is on hand; re-derive the coverage from what it actually took so a race
+    -- against the clamp can never bill less than it covers.
+    local covered = math.floor(spent / rate)
+    if covered <= 0 then return 0 end
+    Combat.logEvent(combat, "status", string.format("%s settles %d of the blow out of the purse (%dg).",
+        unitName(target), covered, covered * rate), target)
+    return covered
 end
 
 -- Bank gold lifted off the enemy mid-fight (data/items/utility/utility_skimmers_cut.lua). Returns what

@@ -493,7 +493,17 @@ local function finishBattle(result)
                 rewardGold = battle.encounter.rewardGold,
                 loot = battle.encounter.loot,
                 rewardScale = TIER_GOLD[battle.encounter.tier or 1] or 1.0,
+                tier = battle.encounter.tier,
+                houseMaterial = battle.houseMaterial,
             })
+        elseif kind == "objective" then
+            -- The general pays through Quest.complete, not through spoils -- but the SALVAGE floor is
+            -- owed by every won fight, and the last fight of a run is not the one to make an exception
+            -- of. Materials only: no gold and no loot roll here, so the quest stays the single payout
+            -- seam for both (states/game.lua's objective branch).
+            spoils = { gold = 0, loot = {}, materials = Spoils.materials({
+                kind = kind, tier = battle.encounter.tier, houseMaterial = battle.houseMaterial,
+            }) }
         end
         -- Gold picked off the enemy DURING the fight (Combat.skimGold, the Skimmer's Cut) rides out on
         -- the spoils rather than through a purse-path of its own. Folded in after the roll so it is
@@ -4136,6 +4146,10 @@ function battle.enter(self, opts)
     battle.onRetry = opts.onRetry
     battle.encounter = opts.encounter or { kind = "combat", name = "Battle" }
     battle.prestige = opts.prestige or 1 -- the company's prestige, used to roll the victory spoils
+    -- Which house's stock this run's fights salvage in: the quest's SPONSOR, the same resolution the
+    -- map's caches use (states/game.lua). Nil on an unsponsored leg -- the prologue -- where a fight
+    -- pays craft stock and nothing else.
+    battle.houseMaterial = opts.houseMaterial
     -- The level everyone the player did NOT bring is grown to. Enemies and escorted allies run through
     -- the same growth tables the roster does (Growth.spawn), so the far side climbs with the company
     -- instead of staying pinned at blueprint level 1. `floorLevel` is this fight's authored minimum --

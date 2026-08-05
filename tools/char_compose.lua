@@ -129,6 +129,10 @@ local DISCIPLINE_SILHOUETTE = {
     sentinel = "lorc/shield-echoes",      bulwark = "delapouite/vibrating-shield",
     -- rogue subclasses
     assassin = "lorc/backstab",           thief = "lorc/shiny-purse",
+    -- The contract, not the coin. The thief already owns the purse and Aurea the coins-pile, and the
+    -- Mammonite is neither of them stealing harder: it is a collections contractor whose paperwork is
+    -- impeccable and whose work is entirely legal (data/characters/character_mammonite.lua).
+    mammonite = "delapouite/contract",
     -- hunter subclasses
     druid = "lorc/werewolf",              beastmaster = "lorc/hound",       trapper = "lorc/mantrap",
     -- mage subclasses

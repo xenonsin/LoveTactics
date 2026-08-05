@@ -1,0 +1,259 @@
+-- The Reliquary. Opened when the player steps onto a `relic_cache` (see states/game.lua's openEncounter),
+-- which has already built a SLATE of up to three run relics (models/relic.lua's Relic.slate). This panel
+-- lays them out as three cards and takes exactly ONE -- the two refused are the price of the one kept, so
+-- the stop is a decision rather than a free gift with a confirm button. The slate is composed to contrast
+-- (a Vice against two Virtues where the shelf allows), and this panel spells that out on the cards: cool
+-- jade Virtue, warm crimson Vice with its standing cost printed.
+--
+-- Taking is IRREVERSIBLE, so a mouse click on a card only FOCUSES it; the Take button below commits. A
+-- keyboard/pad focus already lives on a card, so Enter/A takes the focused one outright. Same panel
+-- contract as ui/panels/relic_reveal.lua: a state owns it as game.activePanel and forwards input while it
+-- is open; three-input + mouse-only.
+--
+--   local panel = RelicOffer.new({
+--       title   = "Reliquary",                                  -- optional; titles the panel
+--       offer   = { { id = , info = Relic.info(id) }, ... },     -- 1..3 relics to choose between
+--       onTake  = function(entry) ... end,                       -- TAKE: grant that relic, clear the cell
+--       onLeave = function() ... end,                            -- LEAVE / dismissed: take nothing
+--   })
+
+local CloseButton = require("ui.close_button")
+local InputMode = require("input_mode")
+local RelicCard = require("ui.relic_card")
+local Scale = require("scale")
+local Sound = require("models.sound")
+local Theme = require("ui.theme")
+
+local RelicOffer = {}
+RelicOffer.__index = RelicOffer
+
+local PAD = 30
+local CARD_W = 300
+local CARD_GAP = 24
+local CARD_PAD = 16 -- inner margin of a card, for the wrapped name / blurb / cost
+
+local function inRect(r, x, y) return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h end
+
+function RelicOffer.new(opts)
+    opts = opts or {}
+    local self = setmetatable({}, RelicOffer)
+    self.title = opts.title or "Reliquary"
+    self.offer = opts.offer or {}
+    self.onTake = opts.onTake
+    self.onLeave = opts.onLeave
+    self.finished = false
+    self.focus = 1
+
+    self.titleFont = Theme.display(28)
+    self.promptFont = Theme.body(15)
+    self.nameFont = Theme.display(20)
+    self.badgeFont = Theme.body(11)
+    self.bodyFont = Theme.body(14)
+    self.hintFont = Theme.body(14)
+
+    -- Card interior, laid out top-down as running offsets from the card top: gem -> name -> badges ->
+    -- blurb -> (a Vice's cost). Every card gets the SAME height -- the tallest wrap wins -- so the three
+    -- read as one shelf and the eye compares like with like.
+    local textW = CARD_W - CARD_PAD * 2
+    local lineH = self.bodyFont:getHeight()
+    self.oGem, self.oName = 20, 74
+    local nameH = self.nameFont:getHeight()
+    self.oBadge = self.oName + nameH + 10
+    self.oBlurb = self.oBadge + self.badgeFont:getHeight() + 6 + 12
+
+    local tallest = 0
+    for _, entry in ipairs(self.offer) do
+        local info = entry.info or {}
+        local _, blurbLines = self.bodyFont:getWrap(info.blurb or "", textW)
+        local h = self.oBlurb + math.max(1, #blurbLines) * lineH
+        if info.alignment == "vice" and info.cost then
+            local _, costLines = self.bodyFont:getWrap("Cost: " .. info.cost, textW)
+            h = h + 8 + math.max(1, #costLines) * lineH
+        end
+        if h > tallest then tallest = h end
+    end
+    self.cardH = tallest + CARD_PAD
+
+    local n = math.max(1, #self.offer)
+    self.boxW = PAD * 2 + n * CARD_W + (n - 1) * CARD_GAP
+    self.oCards = 96
+    local bw, bh, gap = 150, 44, 16
+    self.oButtons = self.oCards + self.cardH + 18
+    self.oHint = self.oButtons + bh + 12
+    self.boxH = self.oHint + self.hintFont:getHeight() + PAD - 6
+    self.boxX = Scale.WIDTH / 2 - self.boxW / 2
+    self.boxY = Scale.HEIGHT / 2 - self.boxH / 2
+
+    self.closeButton = CloseButton.new(self.boxX + self.boxW, self.boxY)
+
+    for i, entry in ipairs(self.offer) do
+        entry.rect = {
+            x = self.boxX + PAD + (i - 1) * (CARD_W + CARD_GAP),
+            y = self.boxY + self.oCards, w = CARD_W, h = self.cardH,
+        }
+    end
+
+    local by = self.boxY + self.oButtons
+    self.leaveBtn = { x = self.boxX + self.boxW / 2 - bw - gap / 2, y = by, w = bw, h = bh, hovered = false }
+    self.takeBtn  = { x = self.boxX + self.boxW / 2 + gap / 2,      y = by, w = bw, h = bh, hovered = false }
+
+    Sound.play("treasure.reveal") -- a soft glint as the reliquary opens (silent until the file exists)
+    return self
+end
+
+function RelicOffer:take(i)
+    if self.finished then return end
+    local entry = self.offer[i or self.focus]
+    if not entry then return end
+    self.finished = true
+    if self.onTake then self.onTake(entry) end
+end
+
+function RelicOffer:leave()
+    if self.finished then return end
+    self.finished = true
+    if self.onLeave then self.onLeave() end
+end
+
+-- ---- drawing ----------------------------------------------------------------
+
+function RelicOffer:drawCard(entry, focused)
+    local r = entry.rect
+    local info = entry.info or {}
+    local accent = RelicCard.accentOf(info)
+    local cx = r.x + r.w / 2
+    local textW = r.w - CARD_PAD * 2
+
+    love.graphics.setColor(0.12, 0.13, 0.16, focused and 0.95 or 0.55)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 7, 7)
+    love.graphics.setColor(accent[1], accent[2], accent[3], focused and 1 or 0.4)
+    love.graphics.setLineWidth(focused and 2 or 1)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 7, 7)
+    love.graphics.setLineWidth(1)
+
+    RelicCard.gem(cx, r.y + self.oGem, 40, 40, accent)
+
+    -- The name never scales: a long one steps the face down a size or two, then ellipsizes (Theme.fitText).
+    local font, label = Theme.fitText(Theme.display, info.name or entry.id or "Relic", textW, 20, 15)
+    love.graphics.setFont(font)
+    love.graphics.setColor(0.96, 0.95, 0.92)
+    love.graphics.printf(label, r.x + CARD_PAD, r.y + self.oName, textW, "center")
+
+    RelicCard.badges(cx, r.y + self.oBadge, info, self.badgeFont)
+
+    love.graphics.setFont(self.bodyFont)
+    love.graphics.setColor(0.82, 0.83, 0.88)
+    love.graphics.printf(info.blurb or "", r.x + CARD_PAD, r.y + self.oBlurb, textW, "center")
+
+    -- A Vice spells out its standing cost in its own warm colour, under the blurb.
+    if info.alignment == "vice" and info.cost then
+        local _, blurbLines = self.bodyFont:getWrap(info.blurb or "", textW)
+        local y = r.y + self.oBlurb + math.max(1, #blurbLines) * self.bodyFont:getHeight() + 8
+        love.graphics.setColor(accent[1], accent[2], accent[3], 0.95)
+        love.graphics.printf("Cost: " .. info.cost, r.x + CARD_PAD, y, textW, "center")
+    end
+end
+
+function RelicOffer:drawButton(b, label, primary, focused)
+    local accent = primary and RelicCard.accentOf(self.offer[self.focus] and self.offer[self.focus].info)
+        or { 0.6, 0.63, 0.7 }
+    local lit = b.hovered or focused
+    love.graphics.setColor(accent[1], accent[2], accent[3], lit and 0.30 or 0.14)
+    love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
+    love.graphics.setColor(accent[1], accent[2], accent[3], lit and 1 or 0.7)
+    love.graphics.setLineWidth(lit and 2 or 1)
+    love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
+    love.graphics.setLineWidth(1)
+    love.graphics.setFont(self.bodyFont)
+    love.graphics.setColor(0.95, 0.95, 0.97)
+    love.graphics.printf(label, b.x, b.y + b.h / 2 - self.bodyFont:getHeight() / 2, b.w, "center")
+end
+
+function RelicOffer:draw()
+    love.graphics.setColor(0, 0, 0, 0.6)
+    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+
+    local bx, by = self.boxX, self.boxY
+    Theme.set(Theme.panel)
+    love.graphics.rectangle("fill", bx, by, self.boxW, self.boxH, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", bx, by, self.boxW, self.boxH, Theme.R, Theme.R)
+    -- The top rule takes the FOCUSED relic's colour, so moving the ring re-tints the whole panel and the
+    -- moral weight of the card under the cursor is legible from the frame in.
+    local accent = RelicCard.accentOf(self.offer[self.focus] and self.offer[self.focus].info)
+    love.graphics.setColor(accent[1], accent[2], accent[3], 0.85)
+    love.graphics.rectangle("fill", bx + Theme.R, by, self.boxW - Theme.R * 2, 3)
+
+    love.graphics.setFont(self.titleFont)
+    Theme.set(Theme.accentAmber)
+    love.graphics.printf(self.title, bx, by + 20, self.boxW, "center")
+
+    love.graphics.setFont(self.promptFont)
+    love.graphics.setColor(0.66, 0.69, 0.76)
+    love.graphics.printf("Take one. The rest stay sealed.", bx, by + 60, self.boxW, "center")
+
+    for i, entry in ipairs(self.offer) do self:drawCard(entry, i == self.focus) end
+
+    self:drawButton(self.leaveBtn, "Leave", false, false)
+    self:drawButton(self.takeBtn, "Take", true, true)
+
+    local hint = InputMode.isGamepad() and "D-pad choose  -  A take  -  B leave"
+        or "Arrows choose  -  Enter take  -  Esc leave"
+    love.graphics.setFont(self.hintFont)
+    love.graphics.setColor(0.55, 0.6, 0.7)
+    love.graphics.printf(hint, bx, by + self.oHint, self.boxW, "center")
+
+    self.closeButton:draw()
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- ---- input -------------------------------------------------------------------
+
+function RelicOffer:mousemoved(x, y)
+    self.closeButton:mousemoved(x, y)
+    self.leaveBtn.hovered = inRect(self.leaveBtn, x, y)
+    self.takeBtn.hovered = inRect(self.takeBtn, x, y)
+    for i, entry in ipairs(self.offer) do
+        if inRect(entry.rect, x, y) then self.focus = i; break end
+    end
+end
+
+function RelicOffer:cursorKind(x, y)
+    if self.closeButton:contains(x, y) then return "hand" end
+    if inRect(self.leaveBtn, x, y) or inRect(self.takeBtn, x, y) then return "hand" end
+    for _, entry in ipairs(self.offer) do if inRect(entry.rect, x, y) then return "hand" end end
+    return "arrow"
+end
+
+-- A click on a card only SELECTS it -- the choice is irreversible, so committing is always the deliberate
+-- second click on Take.
+function RelicOffer:mousepressed(x, y, button)
+    if button ~= 1 then return end
+    if self.closeButton:mousepressed(x, y, button) then self:leave(); return end
+    if inRect(self.takeBtn, x, y) then self:take(); return end
+    if inRect(self.leaveBtn, x, y) then self:leave(); return end
+    for i, entry in ipairs(self.offer) do
+        if inRect(entry.rect, x, y) then self.focus = i; return end
+    end
+end
+
+function RelicOffer:moveFocus(d)
+    if #self.offer == 0 then return end
+    self.focus = ((self.focus - 1 + d) % #self.offer) + 1
+end
+
+function RelicOffer:keypressed(key)
+    if key == "escape" then self:leave()
+    elseif key == "left" or key == "a" then self:moveFocus(-1)
+    elseif key == "right" or key == "d" then self:moveFocus(1)
+    elseif key == "return" or key == "kpenter" or key == "space" then self:take() end
+end
+
+function RelicOffer:gamepadpressed(_, button)
+    if button == "b" then self:leave()
+    elseif button == "dpleft" then self:moveFocus(-1)
+    elseif button == "dpright" then self:moveFocus(1)
+    elseif button == "a" or button == "start" then self:take() end
+end
+
+return RelicOffer

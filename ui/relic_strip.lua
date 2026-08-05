@@ -9,25 +9,20 @@
 -- Purely a reader over Relic.info / Relic.bankedCount; it never mutates the run.
 
 local Relic = require("models.relic")
+local RelicCard = require("ui.relic_card")
 local Theme = require("ui.theme")
 
 local RelicStrip = {}
-
-local VIRTUE = { 0.42, 0.80, 0.62 }
-local VICE   = { 0.90, 0.44, 0.40 }
 
 local ROW_H = 26
 local GEM = 12
 local WIDTH = 210
 local PAD = 8
 
-local function accentOf(info) return (info and info.alignment == "vice") and VICE or VIRTUE end
+local accentOf = RelicCard.accentOf
 
 -- A small faceted gem, the shared relic mark, at (cx, cy) with half-size `r`.
-local function gem(cx, cy, r, a)
-    love.graphics.setColor(a[1], a[2], a[3], 1)
-    love.graphics.polygon("fill", cx, cy - r, cx + r * 0.8, cy - r * 0.1, cx, cy + r, cx - r * 0.8, cy - r * 0.1)
-end
+local function gem(cx, cy, r, a) RelicCard.gem(cx, cy - r, r * 2, r * 2, a) end
 
 -- The height the strip will occupy for a run holding `n` relics (0 when empty -- nothing is drawn).
 function RelicStrip.height(n)

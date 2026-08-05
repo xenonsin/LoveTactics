@@ -124,10 +124,34 @@ return {
             assert(dealt == 0, "the first attack is negated")
             assert(b.char.stats.health.current == hp0, "no damage got through")
             assert(b.x > 3, "the bearer blinked away from the attacker")
-            -- The charge is spent: a second attack lands normally.
+            -- The single bomb is spent: a second attack lands normally.
+            assert(itemOf(b.char, "consumable_smoke_bomb").quantity == 0, "the bomb was burned")
             local again = Combat.dealFlatDamage(c, b, 20, { "physical" }, "test", attacker)
             assert(again > 0, "the second attack lands")
             assert(b.char.stats.health.current < hp0, "the second attack deals damage")
+        end,
+    },
+    {
+        name = "a Smoke Bomb STACK answers once per bomb, not once per battle",
+        fn = function()
+            local bearer = Character.instantiate("character_rowan")
+            bearer.traits = {}
+            bearer.inventory = {}
+            Character.addItem(bearer, Item.instantiate("consumable_smoke_bomb", 3))
+            local c = Combat.new(arena(12, 8), { unit(bearer, 3, 3) }, { unit("character_bandit", 2, 3) })
+            local b = c.units[1]
+            local attacker = Combat.unitAt(c, 2, 3)
+            local bomb = itemOf(b.char, "consumable_smoke_bomb")
+            local hp0 = b.char.stats.health.current
+            for i = 1, 3 do
+                assert(Combat.dealFlatDamage(c, b, 20, { "physical" }, "test", attacker) == 0,
+                    "attack " .. i .. " is negated -- there is still a bomb to burn")
+                assert(bomb.quantity == 3 - i, "one bomb per escape")
+            end
+            assert(b.char.stats.health.current == hp0, "three bombs bought three clean escapes")
+            -- Stack empty: the fourth blow lands, and the slot stays put for a restock.
+            assert(Combat.dealFlatDamage(c, b, 20, { "physical" }, "test", attacker) > 0, "an empty crate hides nobody")
+            assert(Character.slotIndex(b.char, bomb) ~= nil, "the emptied stack keeps its grid cell")
         end,
     },
     {

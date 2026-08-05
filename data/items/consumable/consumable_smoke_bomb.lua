@@ -1,6 +1,6 @@
--- Smoke Bomb: a one-use escape carried in the grid. It grants the Smoke Screen trait, whose pre-hit
--- reflex (Trait.trySmoke) negates the first attack that would land on the bearer and blinks it two
--- tiles clear of the attacker -- then the charge is spent for the battle.
+-- Smoke Bomb: an escape carried in the grid. It grants the Smoke Screen trait, whose pre-hit reflex
+-- (Trait.trySmoke) negates an attack that would land on the bearer and blinks it two tiles clear of
+-- the attacker -- burning one bomb off the stack each time it answers.
 --
 -- A consumable that is never THROWN: it declares no activeAbility, because the value is the reaction,
 -- not an action you choose to take. It sits on the alchemist's shelf with the other bombs (that is what
@@ -8,18 +8,18 @@
 -- blow it answers. Traits are collected off every grid item regardless of type (Trait.collect), so the
 -- reflex works exactly as it did as a utility.
 --
--- `maxStack = 1` against the consumable default of 9: the charge latches once per bearer per battle
--- (trait `stacks` 0 -> 1), so a second bomb in the same slot would buy nothing. One per grid square,
--- and a second escape costs a second square.
+-- It stacks to the consumable default of 9, and the STACK is the charge count: how many blows you can walk
+-- out of is how many bombs you bought, not a per-battle latch. That keeps the escape a supply question
+-- (restock between fights, or ration them) rather than a free reflex the grid square grants forever --
+-- which is the line between this and armor_smokecloth_wrap, the woven once-per-battle version.
 return {
     name = "Smoke Bomb",
-    description = "Once per battle, the first attack that would hit you is lost in smoke; you slip two tiles clear.",
+    description = "The next attack that would hit you is lost in smoke; you slip two tiles clear. One bomb per escape.",
     flavor = "The Undercroft does not teach fighting. It teaches leaving.",
     sprite = "assets/items/smoke_bomb.png",
     type = "consumable",
     tags = { "smoke" },
     class = "rogue",
-    maxStack = 1,
     price = 200,
     unlockQuests = 2,
     traits = { "trait_smoke_screen" },

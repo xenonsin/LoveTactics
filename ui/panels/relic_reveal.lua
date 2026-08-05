@@ -1,12 +1,12 @@
--- Relic reveal. Opened when the player steps onto a Reliquary (a `relic_cache` encounter -- see
--- states/game.lua's openEncounter). One relic has already been rolled from the eligible shelf; this
--- panel shows what it is and lets the player TAKE it into the run or LEAVE it. A Virtue reads cool and
+-- Single-relic reveal, with an optional toll. Opened by a Sin's Altar (a `shrine` encounter -- see
+-- states/game.lua's openEncounter), which rolls ONE Vice and sells it for gold; the Reliquary now offers a
+-- choice of three instead and has its own panel (ui/panels/relic_offer.lua). A Virtue reads cool and
 -- clean, a Vice reads warm with its standing cost spelled out -- so the greed of opening one at all is
 -- legible before you commit. Modeled on ui/panels/loot_reveal.lua: a state owns it as game.activePanel
 -- and forwards input while it is open; three-input + mouse-only.
 --
 --   local panel = RelicReveal.new({
---       title    = "Reliquary",              -- optional; titles the panel
+--       title    = "Sin's Altar",            -- optional; titles the panel
 --       relic    = { id = , info = Relic.info(id) }, -- the rolled relic + its display info
 --       onTake   = function() ... end,        -- TAKE: grant the relic, clear the cell
 --       onLeave  = function() ... end,        -- LEAVE / dismissed: grant nothing, leave the cell
@@ -14,6 +14,7 @@
 
 local CloseButton = require("ui.close_button")
 local InputMode = require("input_mode")
+local RelicCard = require("ui.relic_card")
 local Scale = require("scale")
 local Sound = require("models.sound")
 local Theme = require("ui.theme")
@@ -23,13 +24,6 @@ RelicReveal.__index = RelicReveal
 
 local BOX_W = 480
 local PAD = 30
-
--- Alignment palettes: a Virtue reads cool jade, a Vice warm crimson. Used for the accent rule, the gem
--- and the alignment badge, so the two halves of the shelf never read alike.
-local VIRTUE = { 0.42, 0.80, 0.62 }
-local VICE   = { 0.90, 0.44, 0.40 }
-local RARE   = { 0.86, 0.74, 0.36 } -- a rare relic's tier badge glints gold; common stays neutral steel
-local COMMON = { 0.62, 0.66, 0.74 }
 
 local function inRect(r, x, y) return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h end
 
@@ -42,7 +36,7 @@ function RelicReveal.new(opts)
     self.title = opts.title or "Reliquary"
     self.info = opts.relic and opts.relic.info or { name = "Relic", blurb = "", alignment = "virtue", tier = "common" }
     self.isVice = self.info.alignment == "vice"
-    self.accent = self.isVice and VICE or VIRTUE
+    self.accent = RelicCard.accentOf(self.info)
     self.focus = "take" -- "take" | "leave"
     -- A Shrine charges an upfront toll to take its gift: `priceLabel` is shown as a warning line and turns
     -- the primary button into "Pay"; `canPay` false greys it out (the caller checked affordability). A
@@ -107,29 +101,6 @@ end
 
 -- ---- drawing ----------------------------------------------------------------
 
--- A faceted gem, the same mark the map marker uses, drawn large and in the alignment's colour.
-function RelicReveal:drawGem(cx, top, w, h)
-    local a = self.accent
-    love.graphics.setColor(a[1], a[2], a[3], 1)
-    love.graphics.polygon("fill", cx, top, cx + w / 2, top + h * 0.38, cx, top + h, cx - w / 2, top + h * 0.38)
-    love.graphics.setColor(a[1] * 0.5, a[2] * 0.5, a[3] * 0.5, 1)
-    love.graphics.setLineWidth(1)
-    love.graphics.line(cx - w / 2, top + h * 0.38, cx + w / 2, top + h * 0.38)
-    love.graphics.line(cx, top, cx, top + h)
-end
-
-function RelicReveal:drawBadge(x, y, label, color)
-    local w = self.badgeFont:getWidth(label) + 16
-    local h = self.badgeFont:getHeight() + 6
-    love.graphics.setColor(color[1], color[2], color[3], 0.18)
-    love.graphics.rectangle("fill", x, y, w, h, 4, 4)
-    love.graphics.setColor(color[1], color[2], color[3], 0.9)
-    love.graphics.rectangle("line", x, y, w, h, 4, 4)
-    love.graphics.setFont(self.badgeFont)
-    love.graphics.print(label, x + 8, y + 3)
-    return w
-end
-
 function RelicReveal:drawButton(b, label, primary, focused, disabled)
     local a = disabled and { 0.4, 0.42, 0.46 } or (primary and self.accent or { 0.6, 0.63, 0.7 })
     local lit = not disabled and (b.hovered or focused)
@@ -161,26 +132,14 @@ function RelicReveal:draw()
     Theme.set(Theme.accentAmber)
     love.graphics.printf(self.title, bx, by + 20, self.boxW, "center")
 
-    self:drawGem(bx + self.boxW / 2, by + self.oGem, 44, 44)
+    RelicCard.gem(bx + self.boxW / 2, by + self.oGem, 44, 44, self.accent)
 
     love.graphics.setFont(self.nameFont)
     love.graphics.setColor(0.96, 0.95, 0.92)
     love.graphics.printf(self.info.name, bx + PAD, by + self.oName, self.boxW - PAD * 2, "center")
 
     -- Badges: alignment, tier, affinity -- centred as a row.
-    local alignLabel = self.isVice and "VICE" or "VIRTUE"
-    local tierColor = (self.info.tier == "rare") and RARE or COMMON
-    local labels = {
-        { alignLabel, self.accent },
-        { (self.info.tier or "common"):upper(), tierColor },
-    }
-    if self.info.affinity and self.info.affinity ~= "both" then
-        labels[#labels + 1] = { self.info.affinity:upper(), COMMON }
-    end
-    local totalW = 0
-    for _, l in ipairs(labels) do totalW = totalW + self.badgeFont:getWidth(l[1]) + 16 + 8 end
-    local bxi = bx + self.boxW / 2 - totalW / 2
-    for _, l in ipairs(labels) do bxi = bxi + self:drawBadge(bxi, by + self.oBadge, l[1], l[2]) + 8 end
+    RelicCard.badges(bx + self.boxW / 2, by + self.oBadge, self.info, self.badgeFont)
 
     -- Blurb.
     love.graphics.setFont(self.bodyFont)

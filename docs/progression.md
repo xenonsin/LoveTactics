@@ -183,6 +183,34 @@ standing with a house is the ceiling on how far its gear forges.
   is what stops a cache being farmed by restarting the quest.
 - `deriveDims` counts caches in its content sum, or maps would get denser rather than larger.
 
+#### …and a floor under every fight
+
+The cache answers *why leave the path*. It does not answer *why the fight on the path was worth having*,
+and until `Spoils.materials` there were fights that answered it with nothing: gold is a number on a
+panel, and the loot roll's first drop lands a little over half the time, so close to half of all common
+fights paid out nothing the player could carry home. A fight costs HP, consumables and a real chance of
+losing the run. **Every won fight now leaves forging stock behind** — including the objective, which
+takes this half through the run's haul while its gold, items and levels still flow through
+`Quest.complete`.
+
+It is **computed, never rolled**: no RNG, no zero case, and deliberately no per-encounter override, so
+nothing can author the floor away. Two knobs, both at the top of `models/spoils.lua`:
+
+| | Craft stock | House stock |
+|---|---|---|
+| common fight | 1 | — |
+| elite / objective | 2 | 1 |
+
+*Which* craft grade is the encounter's **difficulty tier** — the tell the fog already shows before you
+commit — bumped a grade for an elite or an objective. What you beat decides what it leaves; forge depth
+still decides nothing, per `Material.TIER_BY_LEVEL` above. *Which* house is the run's sponsor, the same
+value the caches are laid out with, so a run's fights and its dead ends pay into one house.
+
+The floor stays **under** the cache on purpose (1–4 craft and 1–3 house at the deepest detour). Leaving
+the path has to remain the thing that stocks the Forge; this is a floor, not a rival, and
+`tests/spoils_spec.lua` pins that ordering so a later tuning pass cannot quietly invert it. Loot and
+salvage share one card grid on the victory panel, items first — one answer to one question.
+
 ### 3 — A shelf that moves every quest — **done**
 
 - `tools/unlock_rescale.lua` (`. unlock-rescale [apply]`) rewrote 339 gates. 474 priced items now

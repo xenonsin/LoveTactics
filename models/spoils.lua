@@ -1,10 +1,13 @@
--- Battle spoils: the gold and loot a won combat/elite fight hands over. Gold is still COMPUTED from
+-- Battle spoils: the gold, loot and salvage a won fight hands over. Gold is still COMPUTED from
 -- the size of the roster that was beaten and the company's prestige -- richer fights the deeper the
 -- run. An encounter may override either half (rewardGold / loot on its blueprint), mirroring how a
 -- treasure cache authors its own `loot` list (data/encounters/encounter_treasure.lua).
 --
 --   local s = Spoils.roll({ enemyUnits = battle.enemyUnits, prestige = 3, kind = "combat" })
---   -- s = { gold = 71, loot = { "consumable_healing_potion" } }
+--   -- s = { gold = 71, loot = { "consumable_healing_potion" },
+--   --       materials = { material_iron_scrap = 1 } }
+--
+-- The third field is the FLOOR, and unlike the other two it is not a roll -- see "Salvage" below.
 --
 -- LOOT COMES OFF THE BODIES FIRST. It used to be a price-banded random draw over every item in the
 -- game, with no connection at all to the roster that was beaten -- there was no drop-table
@@ -31,6 +34,7 @@
 
 local Item = require("models.item")
 local Character = require("models.character")
+local Material = require("models.material")
 
 local Spoils = {}
 
@@ -154,6 +158,63 @@ local function rollLoot(prestige, kind, override, enemyUnits, scale)
     return out
 end
 
+-- ---------------------------------------------------------------------------
+-- Salvage: the floor under every won fight
+-- ---------------------------------------------------------------------------
+
+-- EVERY won fight hands over forging material, whatever else it does or does not roll. Gold and loot
+-- are both chances -- loot especially, whose first drop lands a little over half the time, so nearly
+-- half of all common fights used to pay a number on a panel and nothing you could carry home. A fight
+-- costs HP, consumables and a real chance of losing the run; paying out nothing is the one outcome the
+-- board cannot justify having walked into.
+--
+-- So this half is COMPUTED, never rolled: no RNG, no zero case, and (deliberately) no per-encounter
+-- override to author it away. It is also the SMALLEST payout in the economy, because a cache still
+-- pays 1-4 craft and 1-3 house stock (Overworld:placeCaches) and leaving the path is meant to stay the
+-- thing that stocks the Forge (docs/progression.md, "Materials as a reason to leave the path"). This
+-- is a floor, not a rival: one ingot for clearing a stop, two for an elite or a general.
+local SALVAGE_CRAFT = { combat = 1, elite = 2, objective = 2 }
+-- House stock -- the GATE half of the economy, the one that decides which house's bench a haul feeds
+-- -- is the reward for the fights you could have walked around, and for the one you came for. A common
+-- fight on the road never pays it; an elite and the objective pay one apiece.
+local SALVAGE_HOUSE = { elite = 1, objective = 1 }
+
+-- Which craft grade falls out of a fight: its DIFFICULTY TIER (1..3, stamped on the encounter by
+-- models/overworld.lua -- the same tell the fog shows before you commit), bumped a grade for an elite
+-- or an objective. What you beat decides what it leaves behind, which is exactly what the tier is
+-- already there to say. Never forge depth: that mapping died with Material.TIER_BY_LEVEL, and the
+-- reasoning is in models/material.lua.
+local function craftGradeFor(kind, tier)
+    local grades = Material.craftGrades()
+    local i = math.max(1, math.min(#grades, math.floor(tonumber(tier) or 1)))
+    if kind == "elite" or kind == "objective" then i = math.min(#grades, i + 1) end
+    return grades[i]
+end
+
+-- The materials a won fight hands over, as { [id] = count }. NEVER EMPTY -- that is the whole point.
+--   opts.kind          "combat" | "elite" | "objective" (anything else is treated as common)
+--   opts.tier          the encounter's difficulty tier, 1..3 (default 1)
+--   opts.houseMaterial the run's house stock -- the quest sponsor's, resolved by the caller exactly as
+--                      the map's caches resolve it (states/game.lua). Absent on an unsponsored leg
+--                      (the prologue), where the fight simply pays craft stock alone.
+--
+-- Exposed separately from Spoils.roll because the objective fight takes this half and not the other:
+-- a quest's gold and loot flow through Quest.complete, but the general still has to leave something on
+-- the sand like everything else on the road did.
+function Spoils.materials(opts)
+    opts = opts or {}
+    local kind = opts.kind or "combat"
+    local out = {}
+    out[craftGradeFor(kind, opts.tier)] = SALVAGE_CRAFT[kind] or SALVAGE_CRAFT.combat
+    local house = SALVAGE_HOUSE[kind] or 0
+    -- An id no longer in data/materials is dropped rather than granted, the same rule the loot
+    -- override follows -- a stale save or a removed house must not mint a phantom resource.
+    if house > 0 and opts.houseMaterial and Material.get(opts.houseMaterial) then
+        out[opts.houseMaterial] = (out[opts.houseMaterial] or 0) + house
+    end
+    return out
+end
+
 -- Roll the spoils for a won fight.
 --   opts.enemyUnits  the beaten roster (its length is the count); or pass opts.count directly
 --   opts.prestige    the company's prestige (default 1)
@@ -162,10 +223,15 @@ end
 --   opts.loot        encounter override: an explicit id list, skipping the roll
 --   opts.rewardScale difficulty-tier multiplier (default 1); scales the gold and, gentler, the loot.
 --                    Absent/1 reproduces the pre-tier payout exactly. Overrides ignore it.
+--   opts.tier        the encounter's difficulty tier 1..3, for the salvage grade (see Spoils.materials)
+--   opts.houseMaterial the run's house stock, for an elite's salvage (see Spoils.materials)
 --
--- `enemyUnits` now feeds BOTH halves: its length sets the gold, and its grids are the drop table.
--- Passing `count` alone still works and still pays gold, it just has no bodies to loot, so the
+-- `enemyUnits` now feeds BOTH rolled halves: its length sets the gold, and its grids are the drop
+-- table. Passing `count` alone still works and still pays gold, it just has no bodies to loot, so the
 -- roll falls back to the price band entirely.
+--
+-- The salvage draws no RNG, so a caller seeding the generator to compare two gold rolls still gets
+-- the same numbers it did before this field existed.
 function Spoils.roll(opts)
     opts = opts or {}
     local count = opts.count or (opts.enemyUnits and #opts.enemyUnits) or 1
@@ -175,6 +241,9 @@ function Spoils.roll(opts)
     return {
         gold = rollGold(count, prestige, kind, opts.rewardGold, scale),
         loot = rollLoot(prestige, kind, opts.loot, opts.enemyUnits, scale),
+        materials = Spoils.materials({
+            kind = kind, tier = opts.tier, houseMaterial = opts.houseMaterial,
+        }),
     }
 end
 

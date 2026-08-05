@@ -105,6 +105,40 @@ function Relic.roll(pool)
     return pool[#pool].id
 end
 
+-- Build a SLATE of up to `n` distinct relic ids for a pick-one-of-many offer (the Reliquary). Three plain
+-- rolls would collapse into "take the strongest"; a slate is COMPOSED to contrast, so the pick is a
+-- question and not an appraisal. One VICE is drawn first -- power with a standing cost, the tempting one --
+-- and the rest come off the VIRTUE shelf, each draw excluding what the slate already holds. When either
+-- half is dry (the shelf is small and a run keeps what it takes) the remainder is topped up from the
+-- unfiltered pool, so the Vice is a strong preference and never a contract; a thin shelf simply yields
+-- fewer than `n`. Shuffled before returning: a Vice pinned to the same card slot every time is a tell.
+function Relic.slate(ctx, n)
+    ctx = ctx or {}
+    n = n or 3
+    local taken, ids = Relic._excludeSet(ctx.exclude), {}
+
+    local function draw(alignment)
+        local sub = { exclude = taken }
+        for k, v in pairs(ctx) do if k ~= "exclude" and k ~= "alignment" then sub[k] = v end end
+        sub.alignment = alignment
+        local id = Relic.roll(Relic.pool(sub))
+        if not id then return false end
+        taken[id] = true
+        ids[#ids + 1] = id
+        return true
+    end
+
+    if n >= 2 then draw("vice") end            -- one temptation, when the vice shelf has any stock left
+    while #ids < n do if not draw("virtue") then break end end
+    while #ids < n do if not draw(nil) then break end end -- a thin shelf: take whatever is still eligible
+
+    for i = #ids, 2, -1 do                     -- Fisher-Yates, so the Vice lands in no fixed slot
+        local j = math.floor(rnd() * i) + 1
+        ids[i], ids[j] = ids[j], ids[i]
+    end
+    return ids
+end
+
 -- ---------------------------------------------------------------------------
 -- The run inventory (plain data, so it serialises into the run save beside abilityState)
 -- ---------------------------------------------------------------------------
@@ -193,7 +227,7 @@ end
 -- matching unit at spawn (the same seam the battle-affecting abilities spend through). Everything a hook
 -- needs to touch the run flows through here, so a data file never requires a model directly.
 local function ctxFor(ctx)
-    local party = ctx.party or (ctx.player and ctx.player.party) or {}
+    local party = ctx.party or (ctx.player and ctx.player.roster) or {}
     ctx.party = party
     ctx.boons = ctx.boons or {}
 
@@ -276,7 +310,7 @@ end
 -- worn by everyone who marched, and a benched member has to arrive already wearing it (Combat.rotate
 -- carries the entry's relicTraits onto the unit it builds). Only `frontRow` scope narrows, to `front`.
 function Relic.combatTraitsByChar(state, player, party, front)
-    party = party or (player and player.party) or {}
+    party = party or (player and player.roster) or {}
     local out = {}
     for _, g in ipairs(Relic.grantedTraits(state)) do
         local targets = (g.scope == "frontRow") and frontRow(front, party) or party

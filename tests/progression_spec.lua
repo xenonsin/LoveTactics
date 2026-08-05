@@ -464,6 +464,36 @@ return {
         end,
     },
 
+    {
+        -- The run's forging haul: the caches the party walked to PLUS the objective fight's own salvage
+        -- (states/game.lua merges the two before calling this). Both ride the double-payout guard, and
+        -- both must be named in the reward table -- that table is the only place the post-quest panel
+        -- can read them off, and before it did, the whole material economy moved in silence.
+        name = "Quest.complete banks the run's carried materials, names them, and never twice",
+        fn = function()
+            local Material = require("models.material")
+            local p = playerAt(1)
+            local scrap, house = "material_iron_scrap", Material.houseFor("knight")
+            assert(Material.get(scrap) and house, "the fixture materials must exist")
+            local before = Player.materialCount(p, scrap)
+
+            local quest = { id = "quest_colosseum_slot_01", rewardGold = 0, sponsor = "colosseum",
+                rewardMaterials = { [scrap] = 1 } }
+            -- 2 scrap from a cache + 1 more from the general's salvage, plus the quest's own 1.
+            local reward = Quest.complete(p, quest, { [scrap] = 3, [house] = 1 })
+            assert(reward, "a fresh quest should pay out")
+            assert(Player.materialCount(p, scrap) == before + 4,
+                "the quest's own materials and the carried haul should both bank")
+            assert(Player.materialCount(p, house) == 1, "the house stock should bank too")
+            assert(reward.materials[scrap] == 4 and reward.materials[house] == 1,
+                "the reward table must name the whole haul, for the advancement panel to print")
+
+            local held = Player.materialCount(p, scrap)
+            assert(Quest.complete(p, quest, { [scrap] = 3 }) == nil, "a re-clear pays nothing")
+            assert(Player.materialCount(p, scrap) == held, "...including no second haul")
+        end,
+    },
+
     -- ------------------------------------------------- the seven sins / the Gate Below
     {
         -- Quest.available copies blueprint fields ONE AT A TIME. A field the loop forgets reads nil

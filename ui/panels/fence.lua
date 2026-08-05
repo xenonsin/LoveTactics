@@ -11,6 +11,7 @@
 
 local CloseButton = require("ui.close_button")
 local InputMode = require("input_mode")
+local RelicCard = require("ui.relic_card")
 local Scale = require("scale")
 local Theme = require("ui.theme")
 
@@ -22,11 +23,8 @@ local PAD = 24
 local ROW_H = 64
 local ROW_GAP = 10
 
-local VIRTUE = { 0.42, 0.80, 0.62 }
-local VICE   = { 0.90, 0.44, 0.40 }
-local GOLD   = { 0.90, 0.78, 0.36 }
+local GOLD = { 0.90, 0.78, 0.36 }
 
-local function accentOf(info) return (info and info.alignment == "vice") and VICE or VIRTUE end
 local function inRect(r, x, y) return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h end
 
 function Fence.new(opts)
@@ -75,11 +73,6 @@ function Fence:close()
     if self.onClose then self.onClose() end
 end
 
-local function gem(cx, cy, r, a)
-    love.graphics.setColor(a[1], a[2], a[3], 1)
-    love.graphics.polygon("fill", cx, cy - r, cx + r * 0.8, cy - r * 0.1, cx, cy + r, cx - r * 0.8, cy - r * 0.1)
-end
-
 function Fence:draw()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
@@ -102,7 +95,7 @@ function Fence:draw()
     for i, entry in ipairs(self.stock) do
         local r = entry.rect
         local info = entry.info or {}
-        local accent = accentOf(info)
+        local accent = RelicCard.accentOf(info)
         local focused = (i == self.focus)
         local afford = not entry.bought and myGold >= (entry.price or 0)
 
@@ -114,7 +107,7 @@ function Fence:draw()
         love.graphics.setLineWidth(1)
 
         local dim = entry.bought and 0.45 or 1
-        gem(r.x + 22, r.y + r.h / 2, 11, { accent[1] * dim, accent[2] * dim, accent[3] * dim })
+        RelicCard.gem(r.x + 22, r.y + r.h / 2 - 11, 22, 22, { accent[1] * dim, accent[2] * dim, accent[3] * dim })
 
         love.graphics.setFont(self.nameFont)
         love.graphics.setColor(0.95 * dim, 0.94 * dim, 0.9 * dim, 1)

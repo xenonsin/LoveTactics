@@ -195,21 +195,41 @@ end
 -- it and blinking the bearer clear -- the way Trait.tryEvade voids a blow? Consulted in
 -- Combat.dealFlatDamage BEFORE mitigation, beside tryEvade: when it fires the hit deals 0 and the
 -- bearer is shoved `blink` tiles straight away from its attacker (Combat.knockback from the attacker's
--- side). Unlike the passive Dodge this is a once-per-battle charge, latched on `stacks` like Second
--- Wind, so a smoke bomb saves its bearer exactly once. Only a real ATTACK triggers it (an `attacker` is
--- known) -- a poison tick or a trap, which passes none, neither fires it nor wastes the charge. Mutates
--- (spends the charge, moves the unit, logs), so it must run on a REAL hit only, never the damage preview.
+-- side). Only a real ATTACK triggers it (an `attacker` is known) -- a poison tick or a trap, which
+-- passes none, neither fires it nor wastes a charge. Mutates (spends a charge, moves the unit, logs),
+-- so it must run on a REAL hit only, never the damage preview.
+--
+-- WHERE THE CHARGES COME FROM depends on what granted the trait, and the split is the point:
+--   * a CONSUMABLE stack (Smoke Bomb) -- the stack IS the charge count. Each escape burns one bomb, so
+--     three bombs answer three blows and an empty stack answers none. Spent through the same
+--     `quantity` decrement Combat.useItem uses on a thrown consumable, and the emptied slot stays put
+--     for a restock, so the crate you bought is exactly what you get to spend.
+--   * anything else (the Smokecloth Wrap's woven version, an innate or relic-granted one) -- a single
+--     once-per-battle charge latched on `stacks` like Second Wind. There is no stack to draw down, and
+--     a garment that vanished you every turn would be survivability rather than one free correction.
 function Trait.trySmoke(combat, unit, attacker)
     if not unit or not unit.traits or not attacker then return false end
     if reactionsSuppressed(unit) then return false end -- a stunned/frozen unit can't blink clear
     local Combat = require("models.combat")
     for _, t in ipairs(unit.traits) do
-        if t.def.blocksNextHit and t.stacks == 0 then
-            t.stacks = 1 -- spend the one charge FIRST, so the blink's own trap/hazard entries can't re-fire it
-            Combat.logEvent(combat, "action",
-                string.format("%s vanishes in a burst of smoke!", (unit.char and unit.char.name) or "Unit"), unit)
-            Combat.knockback(combat, attacker, unit, t.def.blink or 2)
-            return true
+        if t.def.blocksNextHit then
+            -- Spend FIRST, so the blink's own trap/hazard entries can't re-fire the charge we're inside of.
+            local spent = false
+            if t.item and t.item.type == "consumable" then
+                if (t.item.quantity or 1) > 0 then
+                    t.item.quantity = t.item.quantity - 1
+                    spent = true
+                end
+            elseif t.stacks == 0 then
+                t.stacks = 1
+                spent = true
+            end
+            if spent then
+                Combat.logEvent(combat, "action",
+                    string.format("%s vanishes in a burst of smoke!", (unit.char and unit.char.name) or "Unit"), unit)
+                Combat.knockback(combat, attacker, unit, t.def.blink or 2)
+                return true
+            end
         end
     end
     return false

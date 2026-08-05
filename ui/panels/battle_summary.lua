@@ -8,7 +8,11 @@
 --
 --   local panel = BattleSummary.new({
 --       result = "win" | "loss",
---       spoils = { gold = 71, loot = { "consumable_healing_potion", ... } }, -- nil for a loss/objective
+--       spoils = {                                                           -- nil for a loss
+--           gold = 71,
+--           loot = { "consumable_healing_potion", ... },
+--           materials = { material_iron_scrap = 1 },                         -- the salvage floor
+--       },
 --       technique = { ninja = 14, rogue = 3 },                               -- banked this fight; wins only
 --       encounter = battle.encounter,                                        -- { name, ... } (optional)
 --       actions = {                                                          -- 1 button (win) or 1-2 (loss)
@@ -17,15 +21,24 @@
 --       },
 --   })
 --
--- The panel only DISPLAYS the loot (throwaway Item.instantiate copies); the caller grants the real gold
--- and items in the win action's onSelect, so the reveal never double-grants. Three-input + mouse-only,
--- per project standard.
+-- Loot and salvage share one card grid, items first, because they are one answer to one question --
+-- what came off this fight. They differ in where they go afterwards (a grid slot vs the Forge's stock),
+-- which is not a distinction the victory panel is the place to teach; the card's own name says it.
+-- An OBJECTIVE win now reaches here too, carrying salvage alone: its gold, items and levels still flow
+-- through the hub's Company Advancement, but the general leaves stock behind like everything else on
+-- the road did.
+--
+-- The panel only DISPLAYS the spoils (throwaway Item.instantiate copies, and material blueprints read
+-- straight off models/material.lua); the caller grants the real gold, items and materials in the win
+-- action's onSelect, so the reveal never double-grants. Three-input + mouse-only, per project standard.
 
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip")
 local InputMode = require("input_mode")
 local Discipline = require("models.discipline")
 local Item = require("models.item")
+local Material = require("models.material")
+local Sprite = require("models.sprite")
 local Scale = require("scale")
 local Colors = require("ui.colors")
 local Theme = require("ui.theme")
@@ -81,17 +94,37 @@ function BattleSummary.new(opts)
     self.gold = math.max(0, spoils.gold or 0)
 
     -- Display-only instances, duplicate ids collapsed to one card carrying its count (three potions read
-    -- as "Healing Potion x3"), just as loot_reveal does.
+    -- as "Healing Potion x3"), just as loot_reveal does. Each card is { name, sprite, count, item } --
+    -- `item` only for real loot, since that is what the hover tooltip needs and a material has no sheet
+    -- to show.
     local order, tally = {}, {}
     for _, id in ipairs(spoils.loot or {}) do
         if tally[id] then tally[id] = tally[id] + 1 else tally[id] = 1; order[#order + 1] = id end
     end
-    self.items, self.counts = {}, {}
+    self.cards = {}
     for _, id in ipairs(order) do
-        self.items[#self.items + 1] = Item.instantiate(id, tally[id])
-        self.counts[#self.items] = tally[id]
+        local item = Item.instantiate(id, tally[id])
+        self.cards[#self.cards + 1] = {
+            name = item.name, sprite = item.sprite, count = tally[id], item = item,
+        }
     end
-    self.n = #self.items
+
+    -- The salvage every won fight leaves behind (models/spoils.lua), after the loot: it is the floor,
+    -- not the headline. Sorted by id so the same haul always reads the same way -- `pairs` would
+    -- reshuffle two materials between one fight and the next for no reason the player could see.
+    local matIds = {}
+    for id in pairs(spoils.materials or {}) do matIds[#matIds + 1] = id end
+    table.sort(matIds)
+    for _, id in ipairs(matIds) do
+        local def = Material.get(id)
+        local count = spoils.materials[id]
+        if def and (count or 0) > 0 then
+            self.cards[#self.cards + 1] = {
+                name = def.name or id, sprite = Sprite.load(def.sprite), count = count,
+            }
+        end
+    end
+    self.n = #self.cards
 
     -- Discipline technique banked this fight, as sorted { name, amount } rows (models/discipline.lua).
     -- The gold line says what the fight was WORTH; this says what it BUILT -- and unlike the gold, it
@@ -124,14 +157,14 @@ function BattleSummary.new(opts)
     self.techFont = Theme.body(15)
 
     local hasGold = self.gold > 0
-    local hasLoot = self.n > 0
+    local hasCards = self.n > 0
     local techRows = self.technique and #self.technique or 0
 
-    -- Box width tracks the loot row; a spoils-less panel (loss / objective) stays compact.
+    -- Box width tracks the card row; a spoils-less panel (a defeat) stays compact.
     local cols = math.min(math.max(1, self.n), MAX_PER_ROW)
     local rows = self.n > 0 and math.ceil(self.n / MAX_PER_ROW) or 0
     local gridW = cols * CARD_W + (cols - 1) * CARD_GAP
-    local BOX_W = math.max(460, hasLoot and (gridW + 80) or 0)
+    local BOX_W = math.max(460, hasCards and (gridW + 80) or 0)
 
     -- Vertical layout, top-down. Relative offsets first, so the total height is known before centring.
     local y = 34
@@ -144,11 +177,11 @@ function BattleSummary.new(opts)
         self.techRelY = y
         y = y + techRows * TECH_ROW_H + 10
     end
-    if hasLoot then
+    if hasCards then
         self.gridRelY = y
         y = y + rows * CARD_H + (rows - 1) * CARD_GAP + 8
     end
-    if not hasGold and not hasLoot and techRows == 0 then y = y + 10 end
+    if not hasGold and not hasCards and techRows == 0 then y = y + 10 end
     self.buttonRelY = y + 8
     local afterButtons = self.buttonRelY + BUTTON_H
     if self.onReviewLog then
@@ -215,7 +248,7 @@ function BattleSummary.new(opts)
     self.cardsStart = hasGold and (GOLD_START + GOLD_COUNT + CARD_GAP_T) or BANNER_IN
     local reveal = BANNER_IN
     if hasGold then reveal = math.max(reveal, GOLD_START + GOLD_COUNT) end
-    if hasLoot then reveal = self.cardsStart + (self.n - 1) * REVEAL_GAP + CARD_RISE end
+    if hasCards then reveal = self.cardsStart + (self.n - 1) * REVEAL_GAP + CARD_RISE end
     self.fullyRevealedAt = reveal
     return self
 end
@@ -331,8 +364,10 @@ function BattleSummary:drawParticles()
     end
 end
 
--- One loot card (icon + name + stack badge), matching the chest reveal's cards.
-function BattleSummary:drawCard(item, count, cx, cy, alpha, scale, focused)
+-- One spoils card (icon + name + stack badge), matching the chest reveal's cards. `card` is a loot
+-- item or a material -- both carry a name, a sprite and a count, which is all this draws.
+function BattleSummary:drawCard(card, cx, cy, alpha, scale, focused)
+    local item, count = card, card.count
     local w, h = CARD_W * scale, CARD_H * scale
     local x, y = cx - w / 2, cy - h / 2
 
@@ -463,12 +498,11 @@ function BattleSummary:draw()
         end
     end
 
-    -- Loot cards.
-    for i, item in ipairs(self.items) do
+    -- Loot and salvage cards.
+    for i, card in ipairs(self.cards) do
         local cs = self:cardState(i)
         if cs then
-            self:drawCard(item, self.counts[i], cs.cx, cs.cy, cs.alpha, cs.scale,
-                i == self.focus and self:isRevealed())
+            self:drawCard(card, cs.cx, cs.cy, cs.alpha, cs.scale, i == self.focus and self:isRevealed())
         end
     end
 
@@ -507,10 +541,11 @@ function BattleSummary:draw()
 
     -- Loot inspect tooltip: a mouse-hover nicety only, so the default view keeps the Continue button
     -- clear. The cards themselves announce what dropped (icon + name + count); full stats are on the
-    -- item once it's in the stash. Keyboard/gamepad just read the cards.
+    -- item once it's in the stash. Keyboard/gamepad just read the cards. A salvage card has no `item`
+    -- and shows no tooltip -- a material is a name and a number, which the card already is.
     if self:isRevealed() and self.n > 0 and self.mouseOverCard and InputMode.isMouse() then
-        local focused = self.items[self.focus]
-        if focused then ItemTooltip.draw(focused, self.mx, self.my, Scale.WIDTH) end
+        local focused = self.cards[self.focus]
+        if focused and focused.item then ItemTooltip.draw(focused.item, self.mx, self.my, Scale.WIDTH) end
     end
 
     self.closeButton:draw()

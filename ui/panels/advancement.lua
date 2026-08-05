@@ -1,7 +1,7 @@
 -- "Company Advancement" overlay: the post-quest summary, opened by the hub on entry whenever a quest
 -- was just completed (states/hub.lua consumes player.pendingSummary). It surfaces the reward table
--- that Quest.complete already builds -- gold / prestige / reputation -- and, front and centre, the
--- per-character LEVEL-UPS that riding prestige triggered: every roster member advanced to
+-- that Quest.complete already builds -- gold / prestige / the run's forging haul -- and, front and
+-- centre, the per-character LEVEL-UPS that riding prestige triggered: every roster member advanced to
 -- level == prestige, gaining the stats of its most-used class (models/growth.lua, Player.syncLevels).
 --
 -- Modal, owned by the hub (mirrors ui/panels/encounter.lua): the state forwards input while it is
@@ -16,6 +16,7 @@ local InputMode = require("input_mode")
 local Theme = require("ui.theme")
 local ProgressBar = require("ui.progress_bar")
 local Growth = require("models.growth")
+local Material = require("models.material")
 
 local Advancement = {}
 Advancement.__index = Advancement
@@ -129,13 +130,26 @@ function Advancement:update(dt)
     self.shownPrestige = self.prestigeFrom + (self.prestigeTo - self.prestigeFrom) * eased
 end
 
--- The one-line reward header: gold / prestige, plus a stock-unlocked shout when this quest opened a
--- fresh wave of the sponsor's shelf.
+-- The one-line reward header: gold, prestige, and the forging stock the run banked -- the caches the
+-- party walked to, plus the salvage the objective itself left behind (models/spoils.lua). The
+-- materials used to be granted in silence here, which made the whole detour economy a number that
+-- changed somewhere off screen; naming them is the only place a finished run says what it mined.
+-- Sorted by name so the same haul always reads the same way (`pairs` would reshuffle it every quest).
 function Advancement:rewardLine()
     local r = self.reward
     local parts = {}
     if (r.gold or 0) > 0 then parts[#parts + 1] = r.gold .. " gold" end
     if (r.prestige or 0) > 0 then parts[#parts + 1] = "+" .. r.prestige .. " prestige" end
+
+    local mats = {}
+    for id, count in pairs(r.materials or {}) do
+        if (count or 0) > 0 then
+            local def = Material.get(id)
+            mats[#mats + 1] = ((def and def.name) or id) .. " x" .. count
+        end
+    end
+    table.sort(mats)
+    if #mats > 0 then parts[#parts + 1] = table.concat(mats, ", ") end
     return table.concat(parts, "    ")
 end
 
@@ -152,10 +166,13 @@ function Advancement:draw()
     Theme.set(Theme.accentAmber)
     love.graphics.printf("Quest Complete", self.boxX, self.boxY + 22, BOX_W, "center")
 
-    -- Reward header.
-    love.graphics.setFont(self.headFont)
+    -- Reward header. Fitted rather than drawn at a fixed size: a run that emptied four caches names
+    -- four materials on this line, and the fix for that is a smaller native face, never a scaled one.
+    local line = self:rewardLine()
+    local font = Theme.fitText(Theme.display, line, BOX_W - 48, 18, 12)
+    love.graphics.setFont(font)
     Theme.set(Theme.ink)
-    love.graphics.printf(self:rewardLine(), self.boxX + 24, self.boxY + 66, BOX_W - 48, "center")
+    love.graphics.printf(line, self.boxX + 24, self.boxY + 66, BOX_W - 48, "center")
 
     -- A companion who just joined outranks every other line on this panel: gold and new stock change
     -- what you can buy, a recruit changes who you field. Drawn above the stock-unlocked line and in the

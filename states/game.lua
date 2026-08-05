@@ -19,7 +19,8 @@ local Vendor = require("models.vendor")   -- the sponsoring house behind a quest
 local Material = require("models.material")
 local EncounterPanel = require("ui.panels.encounter")
 local LootReveal = require("ui.panels.loot_reveal")
-local RelicReveal = require("ui.panels.relic_reveal")
+local RelicOffer = require("ui.panels.relic_offer")   -- the Reliquary's pick-one-of-three
+local RelicReveal = require("ui.panels.relic_reveal") -- the Sin's Altar's single relic + toll
 local Fence = require("ui.panels.fence")
 local Choice = require("ui.panels.choice")
 local Crossroads = require("models.crossroads")
@@ -135,13 +136,33 @@ function game:pushToast(text)
     while #game.toasts > 5 do table.remove(game.toasts) end
 end
 
+-- Say what a walked-over marker just handed over (ui/overworld_map.lua's onPickup). A cache and a key
+-- are the only two marks that pay out WITHOUT opening a panel -- they are simply taken as the token
+-- crosses them -- so this toast is the whole of their feedback, and the only place the copper wedge on
+-- the trail ever names itself. Materials are listed by name and count, sorted so the same haul always
+-- reads the same way; they ride the run in `cacheHaul` and are banked by Quest.complete.
+local function announcePickup(kind, payload)
+    if kind == "key" then
+        game:pushToast("Key taken -- it opens a barred gate")
+        return
+    end
+    local parts = {}
+    for id, n in pairs((payload and payload.materials) or {}) do
+        local def = Material.get(id)
+        parts[#parts + 1] = ((def and def.name) or id) .. " x" .. n
+    end
+    if #parts == 0 then return end
+    table.sort(parts)
+    game:pushToast("Supply cache: " .. table.concat(parts, ", "))
+end
+
 -- Fire a companion overworld-ability event (models/overworld_ability.lua) for the active party, carrying
 -- the per-run scratch (game.abilityState, reset each quest in enter), a toast notifier, and any event
 -- extras (cell, spoils).
 local function fireAbility(event, extra)
     local ctx = {
         player = game.player,
-        party = game.player and game.player.party,
+        party = game.player and game.player.roster,
         grid = game.grid,
         state = game.abilityState,
         notify = function(text) game:pushToast(text) end,
@@ -157,7 +178,7 @@ end
 local function fireRelics(event, extra)
     local ctx = {
         player = game.player,
-        party = game.player and game.player.party,
+        party = game.player and game.player.roster,
         grid = game.grid,
         state = game.relicState,
         prestige = game.prestige,
@@ -230,6 +251,11 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
     game.player = player -- kept so combat encounters can deploy the active party
     game.onComplete = onComplete
     local mp = quest and quest.map or {}
+    -- Which house's stock this run pays out in: the quest's SPONSOR, not the party's needs. That is the
+    -- whole point -- running the Bastion's line yields Bastion stock, which the Arcanum's gear will want
+    -- at the Forge, so the seven lines feed one economy. Resolved once here because BOTH payers need it:
+    -- the map's caches (below) and every fight's salvage (models/spoils.lua, via the battle state).
+    game.houseMaterial = Material.houseFor((Vendor.get(quest and quest.sponsor) or {}).class)
 
     -- Dynamic encounter selection: build the eligible weighted pool for this
     -- player's prestige + the quest's biome, plus any guaranteed "always" picks.
@@ -269,10 +295,7 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
             rows = mp.rows,
             keyCount = mp.keyCount,
             cacheCount = mp.cacheCount, -- nil -> derived from the encounter count (Overworld.generate)
-            -- Which house's stock this map's caches pay out in: the quest's SPONSOR, not the party's
-            -- needs. That is the whole point -- running the Bastion's line yields Bastion stock, which
-            -- the Arcanum's gear will want at the Forge, so the seven lines feed one economy.
-            houseMaterial = Material.houseFor((Vendor.get(game.quest and game.quest.sponsor) or {}).class),
+            houseMaterial = game.houseMaterial, -- the sponsor's stock; resolved once at the top of enter
             objective = mp.objective,
             -- Denser default boards (~8-11 stops) so a rolled run has room for the roguelike texture --
             -- caches, rests and fights between them (guaranteed variety + a combat-share cap live in
@@ -307,6 +330,8 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
         -- Every landed tile drives the per-step abilities (Kaya's forage, Saber's steps, ...) and the
         -- per-step relics (Poacher's Map, a Vice's road-toll).
         onArrive = function(cell) fireAbility("step", { cell = cell }); fireRelics("step", { cell = cell }) end,
+        -- A cache/key taken by walking over it: name it on screen (see announcePickup).
+        onPickup = function(kind, payload) announcePickup(kind, payload) end,
         -- Fog-of-war radius: the map's own reveal-a-neighbourhood radius (3 for a rolled board, 2 for an
         -- authored leg -- see models/overworld.lua), widened by a torch-carrier AND by Gyeom's Ledger.
         visionRadius = math.max(game.grid.visionRadius or 2, Player.visionRadius(player))
@@ -462,7 +487,7 @@ function game:openEncounter(cell)
                 -- everyone who marched, and a benched member has to arrive already wearing it when they
                 -- rotate on. Only frontRow scope narrows, to the line actually put forward.
                 relicTraits = Relic.combatTraitsByChar(game.relicState, game.player,
-                    game.player and game.player.party, front or deployed),
+                    game.player and game.player.roster, front or deployed),
             }
         end
         -- Tutorial leg only (the prologue's flight): snapshot the party BEFORE the fight so the defeat
@@ -481,6 +506,10 @@ function game:openEncounter(cell)
             -- time `outro` runs the target of an `assassinate` is dead.
             opening = kind == "objective" and mp.objective and mp.objective.opening or nil,
             prestige = game.prestige,
+            -- The sponsor's stock, for the salvage every won fight leaves behind (models/spoils.lua).
+            -- Same value the map's caches were laid out with, so a run's fights and its dead ends pay
+            -- into the same house.
+            houseMaterial = game.houseMaterial,
             -- This fight's authored difficulty FLOOR: the level its enemies may never drop below,
             -- however green the company walking in is. Scaling takes over above it (models/growth.lua,
             -- Growth.combatantLevel), so a floor stops a beat being walked on a replay or in New Game+
@@ -490,7 +519,7 @@ function game:openEncounter(cell)
                 or (game.quest and game.quest.floorLevel) or nil,
             -- The whole marching company. Battle's deployment phase decides which of them take the field
             -- and where; the rest wait on the bench and can be rotated in (docs/deployment.md).
-            party = game.player and game.player.party or {},
+            party = game.player and game.player.roster or {},
             player = game.player, -- so the phase can remember who was fielded (Player.noteDeployed)
             -- Resolved AFTER placement, since the front line is a thing the player chooses on the board.
             -- Returns { relicTraits, openingBoons } for battle setup to stamp at spawn; see above.
@@ -526,11 +555,21 @@ function game:openEncounter(cell)
                     if game.player and spoils and (spoils.gold or 0) > 0 then
                         Player.addGold(game.player, spoils.gold)
                     end
+                    -- The objective's own salvage (models/spoils.lua) rides in on the run's cache haul
+                    -- rather than being granted here. Same reason the caches bank at the objective: it
+                    -- inherits Quest.complete's double-payout guard, and it is named in the quest's
+                    -- reward table with the rest of the materials instead of arriving as a silent
+                    -- number. The battle summary only DISPLAYED it a moment ago; this is the grant.
+                    local haul = {}
+                    for id, n in pairs(game.map and game.map.cacheHaul or {}) do haul[id] = n end
+                    for id, n in pairs(spoils and spoils.materials or {}) do
+                        haul[id] = (haul[id] or 0) + n
+                    end
                     -- The single payout seam: gold and prestige are granted here, once, the quest is
                     -- marked done (which is what advances the sponsor's standing), and the game saves.
                     -- Losing the quest (onLoss) pays nothing, so a wipe costs the run.
                     clearRun() -- quest cleared; Quest.complete's save (and the endsCampaign->credits path) writes no run
-                    game.reward = Quest.complete(game.player, game.quest, game.map and game.map.cacheHaul)
+                    game.reward = Quest.complete(game.player, game.quest, haul)
                     -- The sting that marks a quest actually ending. Until now the single loudest
                     -- silence in the game was here: the objective clears, the board goes quiet, and
                     -- nothing at all says the run is over.
@@ -575,6 +614,14 @@ function game:openEncounter(cell)
                     if spoils then
                         if (spoils.gold or 0) > 0 then Player.addGold(game.player, spoils.gold) end
                         for _, id in ipairs(spoils.loot or {}) do Player.grantItem(game.player, id) end
+                        -- The salvage floor: every won fight leaves forging stock behind, so a stop
+                        -- that rolled no loot is still worth having stopped at (models/spoils.lua).
+                        -- Banked straight to the player rather than onto the run's cache haul, because
+                        -- a cleared fight does not un-clear -- there is nothing here for the objective's
+                        -- double-payout guard to protect.
+                        for id, n in pairs(spoils.materials or {}) do
+                            Player.addMaterial(game.player, id, n)
+                        end
                         Player.save()
                     end
                     -- Companion abilities react to the win (Amana mends, Ren distils a dose, Rowan banks a
@@ -681,35 +728,48 @@ function game:openEncounter(cell)
         return
     end
 
-    -- A Reliquary: rolls ONE run relic (models/relic.lua) from the eligible shelf, biased by the
-    -- blueprint's tier and never a duplicate of what the run already holds, and offers it. TAKE grants it
-    -- into game.relicState; LEAVE (or the X) leaves the cell uncleared to reconsider. An empty shelf (the
+    -- A Reliquary: builds a SLATE of three run relics (models/relic.lua's Relic.slate -- a Vice against two
+    -- Virtues where the shelf allows) and takes exactly ONE. The two refused are the price of the one kept,
+    -- which is the whole reason the stop exists: a single free relic was never a decision. The slate is
+    -- rolled ONCE and pinned to the cell (like the Fence's stock), so LEAVE -- which leaves the cell
+    -- uncleared to reconsider -- can't be walked off and back onto for a fresh roll. An empty shelf (the
     -- run already holds everything eligible) pays a small gold consolation rather than an empty panel.
     if kind == "relic_cache" then
         local enc = cell.encounter
         local def = enc.id and EncounterModel.get(enc.id)
-        local id = Relic.roll(Relic.pool({
-            prestige = game.prestige,
-            tier = enc.tier or (def and def.tier) or nil,
-            exclude = game.relicState,
-        }))
-        if not id then -- shelf exhausted: don't strand the player on an empty reliquary
+        if not enc.offer then
+            enc.offer = Relic.slate({
+                prestige = game.prestige,
+                tier = enc.tier or (def and def.tier) or nil,
+                exclude = game.relicState,
+            }, 3)
+        end
+        -- The pinned slate can go stale: a relic on it may have been bought at a Fence or won at a
+        -- Crossroads since. Drop what the run already holds rather than offering a duplicate.
+        local offer = {}
+        for _, id in ipairs(enc.offer) do
+            if not Relic.has(game.relicState, id) then
+                offer[#offer + 1] = { id = id, info = Relic.info(id) }
+            end
+        end
+        if #offer == 0 then -- shelf exhausted: don't strand the player on an empty reliquary
             cell.cleared = true
             if game.player then Player.addGold(game.player, 15); game:pushToast("The reliquary is bare  +15g") end
             saveRun()
             return
         end
-        game.activePanel = RelicReveal.new({
+        game.activePanel = RelicOffer.new({
             title = enc.name or "Reliquary",
-            relic = { id = id, info = Relic.info(id) },
-            onTake = function()
+            offer = offer,
+            onTake = function(entry)
                 cell.cleared = true
-                Relic.grant(game.relicState, id)
-                game:pushToast("Relic taken: " .. (Relic.info(id).name or id))
+                Relic.grant(game.relicState, entry.id)
+                game:pushToast("Relic taken: " .. (Relic.info(entry.id).name or entry.id))
                 game.activePanel = nil
                 saveRun()
             end,
-            onLeave = function() game.activePanel = nil end,
+            -- Persist on the way out too: the pin is what makes leaving safe instead of a free reroll.
+            onLeave = function() game.activePanel = nil; saveRun() end,
         })
         return
     end
@@ -797,7 +857,7 @@ function game:openEncounter(cell)
             addGold = function(n) if game.player then Player.addGold(game.player, n) end end,
             reveal = function() game:restStudy() end,
             drainParty = function(n)
-                for _, c in ipairs((game.player and game.player.party) or {}) do
+                for _, c in ipairs((game.player and game.player.roster) or {}) do
                     local hp = c.stats and c.stats.health
                     if type(hp) == "table" then hp.current = math.max(1, (hp.current or hp.max) - n) end
                 end
@@ -882,9 +942,8 @@ function game:restMend()
     if not game.player then return end
     -- Snapshot each shown member's wound BEFORE the refill: the reveal animates from it, and once
     -- Player.restore runs the live stat is already at max, so this is the only place the "before"
-    -- exists. Show the deployable party (who actually fight), falling back to the whole roster.
-    local shown = (game.player.party and #game.player.party > 0 and game.player.party)
-        or game.player.roster or {}
+    -- exists. The whole roster marches, so the whole roster is mended and shown.
+    local shown = game.player.roster or {}
     local entries = {}
     for _, char in ipairs(shown) do
         local hp = char.stats and char.stats.health
@@ -1061,7 +1120,7 @@ function game.drawHud()
     -- party it comes from. Newest on top; each fades over its life.
     if game.toasts and #game.toasts > 0 then
         love.graphics.setFont(hudFont)
-        local baseY = 60 + PartyStatus.stripHeight(#(game.player and game.player.party or {})) + 6
+        local baseY = 60 + PartyStatus.stripHeight(#(game.player and game.player.roster or {})) + 6
         for i, toast in ipairs(game.toasts) do
             local a = math.min(1, toast.t / 0.6) -- fade out over the last 0.6s
             love.graphics.setColor(0.85, 0.9, 0.7, a)

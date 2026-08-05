@@ -78,6 +78,68 @@ return {
         end,
     },
     {
+        name = "slate draws distinct relics and leans one Vice against the Virtues",
+        fn = function()
+            for _ = 1, 40 do -- the composition is randomised; assert it over many draws, not one
+                local ids = Relic.slate({}, 3)
+                assert(#ids == 3, "a healthy shelf fills all three slots")
+                local seen, vices = {}, 0
+                for _, id in ipairs(ids) do
+                    assert(not seen[id], "a slate never repeats a relic")
+                    seen[id] = true
+                    if Relic.get(id).alignment == "vice" then vices = vices + 1 end
+                end
+                assert(vices == 1, "exactly one card is the temptation, the rest are Virtues")
+            end
+        end,
+    },
+    {
+        name = "slate honours exclude and degrades gracefully on a thin shelf",
+        fn = function()
+            -- Everything the run already holds is off the slate.
+            local held = { "relic_pilgrims_coin", "relic_alms_bowl" }
+            for _ = 1, 20 do
+                for _, id in ipairs(Relic.slate({ exclude = held }, 3)) do
+                    assert(id ~= "relic_pilgrims_coin" and id ~= "relic_alms_bowl",
+                        "an excluded relic never appears on the slate")
+                end
+            end
+            -- Thin shelf: pin the pool to two relics and the slate returns two, not three, and never pads
+            -- with a duplicate. A shelf of one still answers with that one; an empty one answers empty.
+            local all = {}
+            for id in pairs(Relic.defs) do all[#all + 1] = id end
+            local function excludeAllBut(keep)
+                local ex = {}
+                for _, id in ipairs(all) do
+                    local wanted = false
+                    for _, k in ipairs(keep) do if k == id then wanted = true end end
+                    if not wanted then ex[#ex + 1] = id end
+                end
+                return ex
+            end
+            local two = Relic.slate({ exclude = excludeAllBut({ "relic_pilgrims_coin", "relic_gluttons_purse" }) }, 3)
+            assert(#two == 2, "a two-relic shelf yields a two-card slate")
+            assert(two[1] ~= two[2], "a short slate is short, never padded with a duplicate")
+            assert(#Relic.slate({ exclude = excludeAllBut({ "relic_alms_bowl" }) }, 3) == 1,
+                "a one-relic shelf yields a one-card slate")
+            assert(#Relic.slate({ exclude = all }, 3) == 0, "an exhausted shelf yields an empty slate")
+        end,
+    },
+    {
+        name = "slate falls back to Virtues when the vice shelf is spent",
+        fn = function()
+            local vices = {}
+            for id, def in pairs(Relic.defs) do
+                if def.alignment == "vice" then vices[#vices + 1] = id end
+            end
+            local ids = Relic.slate({ exclude = vices }, 3)
+            assert(#ids == 3, "with every Vice held the slate still fills from the Virtue shelf")
+            for _, id in ipairs(ids) do
+                assert(Relic.get(id).alignment == "virtue", "the Vice guarantee is a preference, not a contract")
+            end
+        end,
+    },
+    {
         name = "dispatch fires only held relics' hooks, namespaces scratch by id, and notifies",
         fn = function()
             local a = char("ally_a", { 60, 60 })

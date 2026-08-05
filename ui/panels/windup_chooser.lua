@@ -4,10 +4,12 @@
 -- commit until this does -- the check commits it at the chosen depth, a click-off / Esc backs out.
 --
 -- It is deliberately tiny and anchored to the target: the board and the turn-order strip stay fully
--- visible behind it, because they ARE the preview. Sliding the depth writes battle.windup live, so the
--- host's timeline slides the channel's resolve slot along the strip (states/battle.lua refreshView) and
--- the board footprint updates as the ladder fills -- the player reads the trade (harder hit vs. longer,
--- breakable tell) off the same board they are fighting on, not off a wall of numbers in a modal.
+-- visible behind it, because they ARE the preview. Sliding the depth -- or merely RESTING the pointer
+-- on a rung -- writes battle.windup live, so the host's timeline slides the channel's resolve slot
+-- along the strip (states/battle.lua refreshView) and the board footprint updates as the ladder fills
+-- -- the player reads the trade (harder hit vs. longer, breakable tell) off the same board they are
+-- fighting on, not off a wall of numbers in a modal. Hover previews cost nothing: only the check
+-- commits, and it commits the CHOSEN depth, so the whole ladder can be walked before spending a click.
 --
 -- Three-input + mouse-only by construction: click or drag the rungs (or scroll) to size it and the
 -- check to commit; arrows/+- and Enter on a keyboard; D-pad/bumpers and A on a pad; Esc / B / right-
@@ -31,7 +33,8 @@ local GAP = 8 -- between ladder and the check
 --   depth        initial depth (defaults to lo)
 --   anchorX/Y    the aimed tile's CENTRE in screen space; tileSize its size (to clear the tile)
 --   damageAt     optional fn(depth) -> { primary = n, total = n, count = k } | nil, priced per depth
---   onChange     fn(depth) -- called on every slide, so the host can preview it (battle.windup + strip)
+--   onChange     fn(depth) -- every slide AND every hovered rung, so the host previews it (battle.windup
+--                             + strip). Never a commitment: onConfirm is the only thing that swings.
 --   onConfirm    fn(depth) -- commit the swing at this depth
 --   onCancel     fn()      -- back out, staying armed
 function WindupChooser.new(opts)
@@ -45,7 +48,9 @@ function WindupChooser.new(opts)
     self.onConfirm = opts.onConfirm
     self.onCancel = opts.onCancel
 
-    self.font = Theme.body(14)
+    -- The face is fetched in draw, not here: Theme.body memoizes per size (and re-bakes on a resize),
+    -- and baking a font needs a window -- which the headless suite has none of. The geometry below is
+    -- all fixed constants, so nothing in here needs to measure text.
 
     -- Geometry: a readout line over a row of `hi` rungs, with a commit check to their right.
     self.ladderW = self.hi * RUNG_W + (self.hi - 1) * RUNG_GAP
@@ -73,23 +78,52 @@ function WindupChooser.new(opts)
     self.hoverRung = nil
     self.hoverCheck = false
     self.dragging = false
-    self:refreshDamage()
+    -- Price the opening depth without publishing it: the host set battle.windup to the floor when it
+    -- raised this panel, so an onChange here would only tell it what it already did.
+    self.shown = self.depth
+    self.dmg = self.damageAt and self.damageAt(self.depth) or nil
     return self
 end
 
-function WindupChooser:refreshDamage()
-    self.dmg = self.damageAt and self.damageAt(self.depth) or nil
+-- The depth being SHOWN, which is not always the one CHOSEN: resting the pointer on a rung previews
+-- that hold -- the damage read-out reprices and onChange slides the strip's resolve slot -- without
+-- spending the click. Nothing commits off a hover (onConfirm still swings at self.depth), so the whole
+-- ladder can be walked and each rung's trade read before one is picked. The preview drops back to the
+-- chosen depth the moment the pointer leaves the ladder. A drag is excluded: it is already driving
+-- setDepth from the same pointer, and its loose grip deliberately tracks past the ladder's ends.
+function WindupChooser:shownDepth()
+    if self.hoverRung and not self.dragging then
+        return math.max(self.lo, math.min(self.hi, self.hoverRung))
+    end
+    return self.depth
+end
+
+-- Reprice + republish whenever the shown depth moves, from either source. Gated on an actual change
+-- because damageAt runs a full board preview -- a hover that rests on one rung must not re-run it on
+-- every mousemoved, and the host must not be handed a depth it already has.
+function WindupChooser:refresh()
+    local d = self:shownDepth()
+    if d == self.shown then return end
+    self.shown = d
+    self.dmg = self.damageAt and self.damageAt(d) or nil
+    if self.onChange then self.onChange(d) end
 end
 
 function WindupChooser:setDepth(d)
     d = math.max(self.lo, math.min(self.hi, math.floor(d + 0.5)))
     if d == self.depth then return end
     self.depth = d
-    self:refreshDamage()
-    if self.onChange then self.onChange(self.depth) end
+    self:refresh()
 end
 
-function WindupChooser:adjust(delta) self:setDepth(self.depth + delta) end
+-- Keys, pad and wheel all step the CHOSEN depth, so they drop any hover preview riding over it --
+-- otherwise a pointer left resting on rung 3 would go on showing 3 while the arrows moved the real
+-- depth underneath it. The ring returns on the next mouse move.
+function WindupChooser:adjust(delta)
+    self.hoverRung = nil
+    self:setDepth(self.depth + delta)
+    self:refresh() -- setDepth no-ops at the ends; the cleared hover still has to fall back
+end
 function WindupChooser:confirm() if self.onConfirm then self.onConfirm(self.depth) end end
 function WindupChooser:cancel() if self.onCancel then self.onCancel() end end
 function WindupChooser:update(dt) end
@@ -100,8 +134,16 @@ end
 
 -- The rung under a pixel, clamped to the nearest one while the pointer is inside the ladder's vertical
 -- band (so a drag past either end still tracks the last rung rather than dropping the grip).
+--
+-- A plain hover is bounded HORIZONTALLY too, which a drag is not: the check sits at the ladder's right
+-- at the same height, and an unbounded read would call it rung `hi` -- lighting the top of the ladder
+-- and previewing the deepest hold while the pointer rests on the button that commits the CHOSEN one.
+-- The read-out and the swing must never disagree, so the ladder's reach ends with the ladder.
 function WindupChooser:rungAt(x, y, loose)
     if not loose and (y < self.ladderY - 4 or y > self.ladderY + RUNG_H + 4) then return nil end
+    if not loose and (x < self.ladderX - RUNG_GAP or x > self.ladderX + self.ladderW + RUNG_GAP) then
+        return nil
+    end
     for i = 1, self.hi do
         local rx = self:rungX(i)
         if x < rx + RUNG_W + RUNG_GAP / 2 then return math.max(1, i) end
@@ -126,15 +168,19 @@ function WindupChooser:draw()
     end
 
     -- Readout: the tell (hourglass + "lands in N") on the left, the damage the depth buys on the right.
-    love.graphics.setFont(self.font)
+    -- Both quote the SHOWN depth, so a hovered rung reads out its own hold and its own damage -- the
+    -- same depth the strip's resolve slot has already slid to.
+    local shown = self:shownDepth()
+    local font = Theme.body(14)
+    love.graphics.setFont(font)
     local ry = self.y + PAD
     Glyphs.hourglass(self.x + PAD, ry + 1, 12, 12, Theme.ink[1], Theme.ink[2], Theme.ink[3], 1)
     Theme.set(Theme.ink)
-    love.graphics.print(tostring(self.depth), self.x + PAD + 16, ry - 1)
-    local held = self.depth - self.lo
+    love.graphics.print(tostring(shown), self.x + PAD + 16, ry - 1)
+    local held = shown - self.lo
     if held > 0 then
         Theme.set(Theme.muted)
-        love.graphics.print("+" .. held, self.x + PAD + 16 + self.font:getWidth(tostring(self.depth)) + 6, ry - 1)
+        love.graphics.print("+" .. held, self.x + PAD + 16 + font:getWidth(tostring(shown)) + 6, ry - 1)
     end
     local n = self.dmg and (self.dmg.primary or self.dmg.total)
     if n then
@@ -142,13 +188,15 @@ function WindupChooser:draw()
         love.graphics.printf(tostring(n), self.x, ry - 1, self.w - PAD, "right")
     end
 
-    -- The rung ladder.
+    -- The rung ladder. Solid gold up to the depth the ladder AND the hover agree on; the band between
+    -- them -- the ticks a hovered rung would add, or the ones it would give back -- fills at half
+    -- weight, so the ladder shows the hold being considered without ever pretending it is chosen.
+    local firm, loose = math.min(self.depth, shown), math.max(self.depth, shown)
     for i = 1, self.hi do
         local rx = self:rungX(i)
         local locked = i <= self.lo        -- the base commitment, never given up
-        local chosen = i <= self.depth     -- filled to the current depth
-        local fill = locked and Theme.frame or (chosen and Theme.accentAmber or Theme.slot)
-        Theme.set(fill)
+        local fill = locked and Theme.frame or (i <= loose and Theme.accentAmber or Theme.slot)
+        Theme.set(fill, (not locked and i > firm and i <= loose) and 0.45 or nil)
         love.graphics.rectangle("fill", rx, self.ladderY, RUNG_W, RUNG_H, 2, 2)
         if self.hoverRung == i then
             Theme.set(Theme.cursor)
@@ -181,6 +229,7 @@ function WindupChooser:mousemoved(x, y)
     end
     self.hoverRung = self:rungAt(x, y)
     self.hoverCheck = pointIn(self.checkRect, x, y)
+    self:refresh() -- a rung under the pointer previews itself; leaving the ladder restores the choice
 end
 
 -- Hand cursor over anything clickable; arrow otherwise (see ui/cursor.lua).

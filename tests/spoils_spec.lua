@@ -1,10 +1,19 @@
--- Tests for models/spoils.lua: the computed gold + loot a won combat/elite fight pays out. Every
--- loot id must resolve to a real blueprint, overrides must short-circuit the computation, and the
--- module must load without love.graphics (the runner is headless).
+-- Tests for models/spoils.lua: the computed gold + loot a won combat/elite fight pays out, and the
+-- salvage floor under every won fight. Every loot id must resolve to a real blueprint, overrides must
+-- short-circuit the computation, no fight may ever pay nothing, and the module must load without
+-- love.graphics (the runner is headless).
 
 local Spoils = require("models.spoils")
 local Item = require("models.item")
 local Character = require("models.character")
+local Material = require("models.material")
+
+-- Total materials in a { id = count } table, and whether any of them is house stock.
+local function totalMaterials(mats)
+    local n = 0
+    for _, count in pairs(mats or {}) do n = n + count end
+    return n
+end
 
 -- A stand-in enemy roster: bare tables with no grid, so only the length matters. Kept as-is to
 -- prove the gold half still works for a caller that has no bodies to hand over.
@@ -185,6 +194,97 @@ return {
                 drops = drops + #s.loot
             end
             assert(drops > 0, "an empty carried pool must fall back to the band, not pay nothing")
+        end,
+    },
+    {
+        -- The headline rule: a fight that pays nothing is the one outcome the board cannot justify
+        -- having walked into, so the salvage floor holds for every kind, every tier, loot or no loot.
+        name = "every won fight pays at least one material",
+        fn = function()
+            for _, kind in ipairs({ "combat", "elite", "objective" }) do
+                for tier = 1, 3 do
+                    local mats = Spoils.materials({ kind = kind, tier = tier })
+                    assert(totalMaterials(mats) >= 1,
+                        kind .. " tier " .. tier .. " paid no material at all")
+                    for id in pairs(mats) do
+                        assert(Material.get(id), "salvage id must be a real blueprint: " .. tostring(id))
+                    end
+                end
+            end
+            -- ...and it rides out on a full roll too, not just the helper.
+            local s = Spoils.roll({ enemyUnits = roster(2), prestige = 1, kind = "combat", loot = {} })
+            assert(totalMaterials(s.materials) >= 1, "a rolled fight must carry its salvage")
+        end,
+    },
+    {
+        -- The grade is what you BEAT (the tier the fog already showed), never how deep the forge is.
+        name = "a harder tier salvages a better craft grade",
+        fn = function()
+            local grades = Material.craftGrades()
+            local function gradeOf(mats)
+                for i, id in ipairs(grades) do
+                    if mats[id] then return i end
+                end
+                return nil
+            end
+            local t1 = gradeOf(Spoils.materials({ kind = "combat", tier = 1 }))
+            local t3 = gradeOf(Spoils.materials({ kind = "combat", tier = 3 }))
+            assert(t1 == 1, "a tier-1 fight salvages the commonest grade")
+            assert(t3 and t3 > t1, "a tier-3 fight salvages a better grade than tier-1")
+            -- An elite is a grade up on the same ground.
+            local elite = gradeOf(Spoils.materials({ kind = "elite", tier = 1 }))
+            assert(elite and elite > t1, "an elite salvages better than a common fight of its tier")
+        end,
+    },
+    {
+        -- House stock is the gate half of the economy: the reward for the fights you could have walked
+        -- around, and for the one you came for -- not for every scrap on the road.
+        name = "house stock salvages off elites and objectives, never off a common fight",
+        fn = function()
+            local house = Material.houseFor("knight")
+            assert(house, "the knight house stock must exist for this test to mean anything")
+            assert(not Spoils.materials({ kind = "combat", houseMaterial = house })[house],
+                "a common road fight must not pay house stock")
+            assert(Spoils.materials({ kind = "elite", houseMaterial = house })[house],
+                "an elite must pay house stock")
+            assert(Spoils.materials({ kind = "objective", houseMaterial = house })[house],
+                "the objective must pay house stock")
+            -- An unsponsored leg (the prologue) passes none, and still pays craft stock.
+            assert(totalMaterials(Spoils.materials({ kind = "elite" })) >= 1,
+                "a fight with no house named still salvages craft stock")
+            -- A house id that no longer names a blueprint is dropped, not granted.
+            assert(not Spoils.materials({ kind = "elite", houseMaterial = "material_not_real" })
+                ["material_not_real"], "an unknown house id must never be granted")
+        end,
+    },
+    {
+        -- The salvage is computed, not rolled -- which is what lets the seeded gold comparison above
+        -- keep working, and what makes the floor a floor rather than a likely outcome.
+        name = "salvage draws no RNG and is identical for two identical fights",
+        fn = function()
+            local a = Spoils.materials({ kind = "elite", tier = 2, houseMaterial = Material.houseFor("mage") })
+            for _ = 1, 50 do
+                local b = Spoils.materials({ kind = "elite", tier = 2, houseMaterial = Material.houseFor("mage") })
+                for id, count in pairs(a) do
+                    assert(b[id] == count, "salvage must not vary between identical fights: " .. id)
+                end
+                assert(totalMaterials(a) == totalMaterials(b), "salvage totals must match")
+            end
+        end,
+    },
+    {
+        -- The floor must stay UNDER the cache, or leaving the path stops being the thing that stocks
+        -- the Forge (docs/progression.md). A cache pays up to 4 craft + 3 house; a fight pays a
+        -- fraction of that.
+        name = "a fight's salvage stays smaller than a cache's payout",
+        fn = function()
+            local CACHE_BEST = 4 + 3 -- Overworld:placeCaches' caps, the ceiling this must sit under
+            for _, kind in ipairs({ "combat", "elite", "objective" }) do
+                local mats = Spoils.materials({ kind = kind, tier = 3,
+                    houseMaterial = Material.houseFor("knight") })
+                assert(totalMaterials(mats) < CACHE_BEST,
+                    kind .. " salvage must stay under the deepest cache's payout")
+            end
         end,
     },
     {
