@@ -242,13 +242,38 @@ return {
             local ctx = ctxFor({ char("ally", { 40, 40 }) })
             Relic.grant(ctx.state, "relic_poachers_map")
             local cell = { x = 3, y = 3 }
-            ctx.cell = cell
+            ctx.cell, ctx.revealed = cell, 5
             Relic.dispatch("step", ctx)
             assert(cell.mapped, "a stepped tile is marked mapped")
             -- Re-walking the same cell must not re-mark or re-pay: cell.mapped short-circuits the hook.
             local goldAfterFirst = ctx.player.gold
             for _ = 1, 20 do Relic.dispatch("step", ctx) end
             assert(ctx.player.gold == goldAfterFirst, "a mapped tile never pays again (no pacing exploit)")
+        end,
+    },
+    {
+        name = "the Poacher's Map pays for lifting fog, not for walking",
+        fn = function()
+            -- A tour of never-stepped-on tiles that reveal NOTHING (already-mapped ground, ctx.revealed 0)
+            -- is the exploit the fog gate closes: every one of them marks, none of them pays.
+            local ctx = ctxFor({ char("ally", { 40, 40 }) })
+            Relic.grant(ctx.state, "relic_poachers_map")
+            ctx.grid.pathNeighbors = function() return {} end -- every tile a dead-end: the best payout odds
+            ctx.revealed = 0
+            local start = ctx.player.gold
+            for i = 1, 200 do
+                ctx.cell = { x = i, y = 1 }
+                Relic.dispatch("step", ctx)
+                assert(ctx.cell.mapped, "a re-trodden tile still gets marked")
+            end
+            assert(ctx.player.gold == start, "a step that discovers nothing pays nothing, however far you walk")
+            -- ...and the same walk into unmapped country does pay.
+            ctx.revealed = 7
+            for i = 1, 200 do
+                ctx.cell = { x = i, y = 2 }
+                Relic.dispatch("step", ctx)
+            end
+            assert(ctx.player.gold > start, "pushing into new ground still turns up coin")
         end,
     },
 }

@@ -18,7 +18,7 @@ return {
         range = 4,
         requiresSight = true,
         speed = 4,
-        cost = { stat = "stamina", amount = 8 },
+        cost = { stat = "stamina", amount = 4 },
         damage = Curve.ramp(6, 16),
         effect = function(fx)
             local t = fx.target

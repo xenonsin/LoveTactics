@@ -166,18 +166,21 @@ function OverworldMap:step(dx, dy)
     self.slidePrevX, self.slidePrevY = self.px, self.py -- slide the token from here
     self.slideT = self.slideDur
     self.px, self.py = nx, ny
-    self.grid:reveal(self.px, self.py, self.visionRadius) -- lift the fog around the new tile
+    -- Lift the fog around the new tile, keeping how much of it was NEW: a step into unmapped country
+    -- discovers cells, a step back across known ground discovers none, and the per-step hooks are told
+    -- which this was (see onArrive) so an explore-for-coin reward can't be farmed by pacing a cleared map.
+    local revealed = self.grid:reveal(self.px, self.py, self.visionRadius)
     self:updateCamera()
-    return not self:arrive()
+    return not self:arrive(revealed)
 end
 
 -- React to landing on a tile: pick up keys, trigger encounters. Returns true when
 -- it opened an encounter panel, so the caller can halt any in-progress hold-to-move.
-function OverworldMap:arrive()
+function OverworldMap:arrive(revealed)
     local c = self.grid:get(self.px, self.py)
     -- Every landed tile: the per-step abilities hook (Kaya's forage, Saber's steps, Gyeom's scouting).
     -- Fired before keys/encounters so a step's reward is banked even on a tile that also opens a fight.
-    if self.onArrive then self.onArrive(c) end
+    if self.onArrive then self.onArrive(c, revealed or 0) end
     if c.key and not self.keysHeld[c.key.keyId] then
         self.keysHeld[c.key.keyId] = true
         c.picked = true

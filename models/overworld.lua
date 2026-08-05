@@ -1162,15 +1162,23 @@ end
 -- Fog of war: mark every cell within vision `radius` of (cx, cy) as discovered.
 -- Discovery is permanent for the run (the grid is rebuilt fresh each quest); the
 -- renderer recomputes which discovered tiles are *currently* in vision each frame.
+-- Returns how many cells this call turned up for the FIRST time -- 0 when the step
+-- only walked back over ground already mapped. Callers that pay out for exploring
+-- (the Poacher's Map) gate on that, so re-treading can never mint anything.
 function Overworld:reveal(cx, cy, radius)
+    local found = 0
     for y = cy - radius, cy + radius do
         for x = cx - radius, cx + radius do
             if self:inVision(cx, cy, x, y, radius) then
                 local c = self:get(x, y)
-                if c then c.seen = true end
+                if c and not c.seen then
+                    c.seen = true
+                    found = found + 1
+                end
             end
         end
     end
+    return found
 end
 
 function Overworld:startCell() return self:get(self.start.x, self.start.y) end

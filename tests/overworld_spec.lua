@@ -620,6 +620,20 @@ return {
         end,
     },
     {
+        name = "reveal counts only cells discovered for the first time",
+        fn = function()
+            -- What the Poacher's Map gates on: a step into fog returns a positive count, and re-lighting
+            -- the same disc returns 0, so re-treading known ground can never read as exploration.
+            local grid = gen()
+            local cx, cy = 15, 11
+            local first = grid:reveal(cx, cy, 2)
+            assert(first > 0, "the first look at a patch of fog discovers cells")
+            assert(grid:reveal(cx, cy, 2) == 0, "lighting the same disc again discovers nothing")
+            local shifted = grid:reveal(cx + 1, cy, 2)
+            assert(shifted > 0 and shifted < first, "a step sideways discovers only the new sliver")
+        end,
+    },
+    {
         name = "pixel <-> cell round-trips",
         fn = function()
             local grid = gen()

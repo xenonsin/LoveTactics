@@ -328,8 +328,13 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
         -- party -- instead of resuming inside the battle they were about to walk into.
         onApproach = function() saveRun() end,
         -- Every landed tile drives the per-step abilities (Kaya's forage, Saber's steps, ...) and the
-        -- per-step relics (Poacher's Map, a Vice's road-toll).
-        onArrive = function(cell) fireAbility("step", { cell = cell }); fireRelics("step", { cell = cell }) end,
+        -- per-step relics (Poacher's Map, a Vice's road-toll). `revealed` is how many cells that step
+        -- lifted the fog off for the first time -- 0 when it only re-trod mapped ground -- so a hook that
+        -- pays for EXPLORING can tell a discovery from a lap.
+        onArrive = function(cell, revealed)
+            fireAbility("step", { cell = cell, revealed = revealed })
+            fireRelics("step", { cell = cell, revealed = revealed })
+        end,
         -- A cache/key taken by walking over it: name it on screen (see announcePickup).
         onPickup = function(kind, payload) announcePickup(kind, payload) end,
         -- Fog-of-war radius: the map's own reveal-a-neighbourhood radius (3 for a rolled board, 2 for an
