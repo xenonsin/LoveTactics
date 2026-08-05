@@ -718,7 +718,7 @@ function ForgePanel:drawDetail()
     -- --- band 3: what the rung buys -----------------------------------------
     local py = ty + 20 + ForgeTrack.HEIGHT + 16
     local batch = aim > level + 1
-    self:caption(batch and ("If forged to +" .. aim) or ("What +" .. aim .. " buys"), x, py, w)
+    self:caption("If forged to +" .. aim, x, py, w)
 
     local rowsX, rowsW = x, w
     if growth and growth.footprint and #growth.footprint.changedAt > 1 then
