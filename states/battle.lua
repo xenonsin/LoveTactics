@@ -4412,6 +4412,9 @@ function battle.enter(self, opts)
     -- opens on a full-colour board rather than the grey the loss faded to (ui/screen_fx.lua).
     ScreenFx.reset()
     battle.pendingAdvance = nil
+    -- A technique award parked by the last fight must never surface over this one's opening board:
+    -- it names a unit from a company that may not even be on this field (see releaseGrowthAward).
+    battle.pendingAward = nil
     -- The hamburger starts closed every fight: it is a transient drawer, not a remembered preference,
     -- and a battle that opened over its own tooltip column would be a worse first frame than one that
     -- didn't. See MENU_BUTTON / menuBottom.
@@ -4525,47 +4528,62 @@ local function updateDangerVignette()
     end
 end
 
--- Float what the action just fed over whoever performed it, and clear the model's one-shot so it
--- floats exactly once. Drained HERE, in update, rather than at each of the five Combat.useItem call
+-- Bank what the action just fed onto the reward the board will show, and clear the model's one-shot so
+-- it is shown exactly once. Drained HERE, in update, rather than at each of the five Combat.useItem call
 -- sites: an action can be committed by a click, by the keyboard slot path, by the steered-route path,
 -- or by a queued command (auto-battle), and every one of them would otherwise need its own copy of
--- this. The model banks synchronously inside useItem, so the number lands the same frame.
+-- this. The model banks synchronously inside useItem, so the award is here the same frame.
 --
--- TWO one-shots, never both on one action (Combat.noteGrowthVote yields to Combat.awardTechnique):
---   techniqueAward  "+2 Ninja"  -- a delta on the discipline WALLET the Forge bills
---   growthAward     "+1 Knight" -- a tick on the class VOTE that decides the next level-up
--- Technique alone only ever spoke for discipline stock, which is locked content on 233 of 638 items,
--- so an opening hand of plain gear floated nothing at all -- see Combat.noteGrowthVote's header.
+-- ONE one-shot: `techniqueAward`, "+2 Ninja" / "+2 Knight" -- what this action banked on the ledger
+-- that both bills the Forge and apportions the next level-up (Combat.awardTechnique). There used to be
+-- a second, quieter floater for the class vote, because technique only spoke for discipline stock --
+-- locked content on 233 of 638 items -- so an opening hand of plain gear floated nothing at all. Every
+-- house banks the same currency now, so there is one thing to say and one way to say it.
 --
--- Deliberately the same channel as the damage numbers (CombatFx:floatText) -- this is a reward landing
--- on a body, and it should read like the rest of what lands on a body. It lands on the CASTER while
--- damage lands on the TARGET, so the two rarely share a tile. Amber rather than the damage reds or the
--- heal green: it is the accent this UI already reserves for what is live and earned. The vote takes
--- Theme.muted instead -- same warm family, quieter -- because it fires on EVERY action and must not
--- shout as loudly as the currency does.
-local function drainGrowthFloat()
+-- It is only PARKED here, not shown: see releaseGrowthAward.
+local function bankGrowthAward()
     local combat = battle.combat
     if not combat then return end
 
     local award = combat.techniqueAward
-    if award then
-        combat.techniqueAward = nil
-        -- A stale id prints nothing rather than a raw slug (the Discipline.displayName rule).
-        local name = Discipline.displayName(award.discipline)
-        if name then
-            battle.fx:floatText(award.unit, "+" .. award.amount .. " " .. name, Theme.accentAmber)
-        end
-        return
-    end
+    if not award then return end
+    combat.techniqueAward = nil
+    -- The key is a class id OR a discipline id, so resolve it the way every other surface does:
+    -- "plague_knight" is "Plague Knight", which title-casing alone would render "Plague_knight".
+    local key = award.discipline
+    local name = Discipline.displayName(key) or (key:gsub("^%l", string.upper))
+    battle.pendingAward = { unit = award.unit, text = "+" .. award.amount .. " " .. name }
+end
 
-    local vote = combat.growthAward
-    if not vote then return end
-    combat.growthAward = nil
-    -- The tally key is a class id OR a discipline id, so resolve it exactly as CombatPanel's
-    -- "Growing as" line does -- "plague_knight" is "Plague Knight", which title-casing alone would
-    -- render "Plague_knight".
-    local name = Discipline.displayName(vote.class) or (vote.class:gsub("^%l", string.upper))
-    battle.fx:floatText(vote.unit, "+1 " .. name, Theme.muted)
+-- Float a parked award -- but only once the action that earned it has finished being an action.
+--
+-- It is a damage number in every respect but timing: the same channel (CombatFx:floatText), the same
+-- drift and fade, amber rather than the damage reds or the heal green because that is the accent this
+-- UI reserves for what is live and earned. It lands on the CASTER while damage lands on the TARGET.
+--
+-- What changed is WHEN. It used to go out the instant it was banked -- one more piece of amber text
+-- thrown up in the same frame as the reds, the burst, the shake and the HP drain -- and it was there
+-- without ever being seen, competing with the loudest half-second on the screen and losing. So it
+-- waits, the way FFT and Fire Emblem make the EXP/JP readout wait: the blow lands, the numbers float
+-- off, the bars stop moving, and only THEN does the ledger speak, over a board with nothing else on it.
+-- Nothing about the number is louder; it simply gets the screen to itself.
+--
+-- The gate is the whole animation, not a timer: every reaction settled (fx:busy), every bar arrived
+-- (hpSettled), every number gone (floatersDone), nobody mid-walk, and the impact beat elapsed. Those
+-- are the same conditions the hand-off itself waits on -- which is the point. The award floats into the
+-- gap between them and the turn moving, and because it is a floater the hand-off then waits on IT
+-- (floatersDone again), so the turn never restages over a number still on the board.
+local function releaseGrowthAward()
+    local award = battle.pendingAward
+    if not award then return end
+    -- The fight is decided: the summary panel owns the frame now, and it reports the whole fight's
+    -- ledger anyway. Drop it rather than float a number under a victory banner.
+    if battle.over or battle.summary then battle.pendingAward = nil; return end
+    if walking() then return end
+    if battle.pendingAdvance and battle.pendingAdvance.hold > 0 then return end
+    if battle.fx:busy() or not battle.fx:hpSettled() or not battle.fx:floatersDone() then return end
+    battle.pendingAward = nil
+    battle.fx:floatText(award.unit, award.text, Theme.accentAmber)
 end
 
 function battle.update(dt)
@@ -4584,7 +4602,8 @@ function battle.update(dt)
         return
     end
 
-    drainGrowthFloat()
+    bankGrowthAward()
+    releaseGrowthAward()
     -- NOTE the wind-up chooser is deliberately NOT a freeze: it is a small slider over the aimed tile,
     -- and the board + turn-order strip behind it are its preview. The view has to keep refreshing so
     -- that sliding the depth (which writes battle.windup) slides the channel's resolve slot along the
@@ -4660,8 +4679,11 @@ function battle.update(dt)
         -- An action just resolved: hold until the reaction beat elapses AND the sprite reactions finish
         -- AND the HP bars stop draining AND the damage numbers have floated away, then hand off (or fire
         -- win/loss). Holding the WHOLE damage animation keeps it from bleeding into the turn-order
-        -- restage, so the hit reads fully and THEN the turn moves as its own beat. Checked before the
-        -- channel/AI branches so the just-acted unit can't take a second action while its hit still reads.
+        -- restage, so the hit reads fully and THEN the turn moves as its own beat. The technique award
+        -- rides the same test twice: releaseGrowthAward (top of this update) floats it the frame these
+        -- clear, which re-arms floatersDone -- so the reward gets its own beat between the two, and the
+        -- restage still waits for it. Checked before the channel/AI branches so the just-acted unit can't
+        -- take a second action while its hit still reads.
         battle.pendingAdvance.hold = battle.pendingAdvance.hold - dt
         if battle.pendingAdvance.hold <= 0 and not battle.fx:busy()
             and battle.fx:hpSettled() and battle.fx:floatersDone() then
