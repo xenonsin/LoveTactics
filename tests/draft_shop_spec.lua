@@ -229,8 +229,8 @@ return {
     {
         name = "every round can fill its gear row off the shelf",
         fn = function()
-            -- The reason the shelf draw is banded: a uniform draw would leave round 1 (cap 70, which only
-            -- a dozen of the ~470 priced items clear) unable to fill a row.
+            -- The reason the shelf draw is banded: a uniform draw over the whole catalogue would land
+            -- only a handful under round 1's quest gate and leave the opening shop unable to fill a row.
             for seed = 1, 8 do
                 local run = DraftRun.new(seed * 13)
                 for round = 1, 12 do
@@ -270,10 +270,37 @@ return {
                 DraftShop.roll(run)
                 for _, entry in ipairs(run.shop.gear) do
                     assert(onShelf[entry.id], "round " .. round .. " offered off-shelf gear: " .. entry.id)
-                    assert(Item.defs[entry.id].price <= DraftShop.gearPriceCap(round),
-                        "and it respected the round's power gate")
+                    assert((Item.defs[entry.id].unlockQuests or 0) <= DraftShop.gearUnlockCap(round),
+                        "and it respected the round's quest gate")
                 end
             end
+        end,
+    },
+    {
+        name = "the early shop is a shelf, not a potion stall",
+        fn = function()
+            -- Why the round gate reads unlockQuests and not price (DraftShop.gearUnlockCap): consumables
+            -- are the cheapest things in the game because they are one-shot, so a gold cap sorted almost
+            -- the whole consumable catalogue into the opening rounds. Under the old cap they were 60-67%
+            -- of everything rounds 1-4 could show -- the entire build phase of a run, spent buying
+            -- potions. On the quest gate the same rounds run about a quarter. Sampled wide so this fails
+            -- on the distribution rather than on one unlucky seed.
+            local offers, consumables = 0, 0
+            for seed = 1, 20 do
+                local run = DraftRun.new(seed * 37)
+                for round = 1, 4 do
+                    run.round = round
+                    run.shop = nil
+                    DraftShop.roll(run)
+                    for _, entry in ipairs(run.shop.gear) do
+                        offers = offers + 1
+                        if entry.type == "consumable" then consumables = consumables + 1 end
+                    end
+                end
+            end
+            assert(offers > 0, "the early rounds offered something")
+            assert(consumables * 10 < offers * 4,
+                "consumables are " .. consumables .. " of " .. offers .. " early gear offers")
         end,
     },
     {
