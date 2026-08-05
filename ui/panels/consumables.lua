@@ -28,7 +28,7 @@ local Theme = require("ui.theme")
 local Consumables = {}
 Consumables.__index = Consumables
 
-local BOX_W, BOX_H = 860, 540
+local BOX_W = 860
 
 -- Left (party) column geometry.
 local MEMBER_W = 340
@@ -39,10 +39,24 @@ local MEMBER_GAP = 10
 local ITEM_H = 56
 local ITEM_GAP = 8
 
+-- The company column shows FOUR members before it scrolls, and the box is sized from that rather
+-- than the other way about. At three, a starting company already overflowed: the panel opened
+-- mid-scroll with a member parked off-screen, on a screen whose whole job is comparing pools against
+-- each other to pick who drinks. Deriving the height from the row means that promise survives a
+-- change to either number.
+local MIN_MEMBER_ROWS = 4
+
+-- The bands above and below the two columns: title + column captions overhead, message + prompt
+-- strip underneath. CARET_BAND is the sliver each column keeps clear at its head and foot for the
+-- more-above / more-below caret (see drawOverflow), so an arrow never lands on a caption or on the
+-- message line.
+local HEAD_H, FOOT_H, CARET_BAND = 90, 72, 14
+
 -- How tall each column may grow before it scrolls. The whole roster marches now, so both lists are
 -- unbounded -- the company on the left, and on the right every flask that company is carrying -- and
 -- neither can be laid out on the assumption that it fits.
-local LIST_H = BOX_H - 70 - 62 -- content top .. above the message/prompt footer
+local LIST_H = MIN_MEMBER_ROWS * MEMBER_H + (MIN_MEMBER_ROWS - 1) * MEMBER_GAP
+local BOX_H = HEAD_H + LIST_H + FOOT_H
 
 -- Prompt tints, matching the A=confirm / B=cancel language the other panels use.
 local PROMPT_GO = { 0.55, 0.90, 0.58 }
@@ -77,7 +91,8 @@ function Consumables.new(opts)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
-    self.contentY = self.boxY + 70
+    self.contentY = self.boxY + HEAD_H
+    self.captionY = self.contentY - CARET_BAND - 20 -- "Party" / "Potions", clear of the top caret
 
     self.members = (self.player and self.player.roster) or {}
     self.leftX = self.boxX + 24
@@ -135,18 +150,25 @@ function Consumables:clampScroll()
     self.itemScroll = math.max(0, math.min(self:maxItemScroll(), self.itemScroll))
 end
 
--- "n more below / above" for a column that overflows, drawn at the foot of the list. A count, not a
--- caret: it answers how much is down there rather than only that something is.
+-- A caret over the head / under the foot of a column that has rows scrolled out of sight, matching
+-- the pair ui/menu.lua draws around its own long lists.
+--
+-- An ARROW, not the count it used to print ("1 above", "2 more below"). The number was a figure no
+-- decision on this screen reads -- you keep scrolling because there is more, never because there are
+-- exactly two -- and two words set in a column of rows read as a row themselves, which is how a
+-- hidden member came to look like a label. The caret says the one thing that is acted on: keep going
+-- this way.
 function Consumables:drawOverflow(x, w, scroll, total, visible)
     if total <= visible then return end
-    love.graphics.setFont(self.tinyFont)
+    local cx = x + w / 2
     Theme.set(Theme.muted)
     if scroll > 0 then
-        love.graphics.printf(scroll .. " above", x, self.contentY - 20, w, "right")
+        local base = self.contentY - 4
+        love.graphics.polygon("fill", cx - 7, base, cx + 7, base, cx, base - 8)
     end
-    local below = total - scroll - visible
-    if below > 0 then
-        love.graphics.printf(below .. " more below", x, self.contentY + LIST_H + 2, w, "right")
+    if total - scroll - visible > 0 then
+        local base = self.contentY + LIST_H + 4
+        love.graphics.polygon("fill", cx - 7, base, cx + 7, base, cx, base + 8)
     end
 end
 
@@ -231,8 +253,8 @@ function Consumables:draw()
 
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
-    love.graphics.print("Party", self.leftX, self.contentY - 20)
-    love.graphics.print("Potions", self.rightX, self.contentY - 20)
+    love.graphics.print("Party", self.leftX, self.captionY)
+    love.graphics.print("Potions", self.rightX, self.captionY)
 
     self:drawMembers()
     self:drawItems()

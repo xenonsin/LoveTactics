@@ -391,7 +391,7 @@ return {
             Combat.dealFlatDamage(c, d, 5, { "physical" }, "test", a)
             assert(hp(a) < before, "the defender answered the blow")
 
-            -- Nothing is recharging, so a second blow in the same round is answered too. What bounds
+            -- Nothing is on cooldown, so a second blow in the same round is answered too. What bounds
             -- it is the price, not a timer.
             local mid = hp(a)
             Combat.dealFlatDamage(c, d, 5, { "physical" }, "test", a)
