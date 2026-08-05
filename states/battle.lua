@@ -3608,6 +3608,11 @@ refreshView = function()
     overlays.current = { x = current.x, y = current.y, unit = current }
     local hover = battle.hoverUnit
     if hover and hover.alive then overlays.hover = { x = hover.x, y = hover.y } end
+    -- ...and the board points BACK at the timeline: whoever stands under the tile cursor gets their
+    -- strip card ringed in the same cyan (ui/combat_panel's boardHover), so the pair answers "which
+    -- one is this" in both directions rather than only card -> board. Read off the CURSOR, not the
+    -- mouse, so steering the tile with keyboard/pad lights the card the same way a hover does.
+    local boardHover = Combat.unitAt(battle.combat, battle.map.cursor.x, battle.map.cursor.y)
     -- The intent line answers "who is this one coming for" for whichever foe is under the cursor,
     -- from EITHER surface: the timeline strip (battle.hoverUnit) or the board itself. A card hover
     -- sets hoverUnit; a board hover only moves the map cursor, so fall back to the foe standing on
@@ -3956,6 +3961,9 @@ refreshView = function()
         preview = bannerPreview,
         -- Units the hovered combat-log line is about, so their cards light up with their tiles.
         logHighlight = logHighlight,
+        -- The body under the board's tile cursor, so pointing at someone on the field finds them on
+        -- the timeline (the mirror of a card hover ringing the body -- overlays.hover above).
+        boardHover = boardHover,
         -- Each engaged foe's predicted action (models/intent.lua), so its turn-order card can show
         -- the Slay-the-Spire intent icon + incoming number. Same cache the board's target lines read,
         -- so icon and line can never disagree. Empty when the player has the read switched off.

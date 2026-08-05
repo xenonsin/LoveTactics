@@ -726,6 +726,18 @@ function CombatPanel:drawCard(entry, y, num, h, alpha)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", self.x + 8, y, self.w - 16, h, 6, 6)
         love.graphics.setLineWidth(1)
+    elseif u and u == self.view.boardHover then
+        -- Pointing at a body on the board rings ITS card here, in the exact cyan the board rings a
+        -- card-hovered body with (ui/battle_map's drawHighlights): one colour, meaning "this is the
+        -- one you are pointing at", answered on whichever surface the cursor is NOT on. Steady, not
+        -- pulsing -- it tracks the cursor rather than answering a question, which is what the log's
+        -- white pulse is for, and why that one wins the card when both apply.
+        love.graphics.setColor(0.75, 0.95, 1.0, 0.08)
+        love.graphics.rectangle("fill", self.x + 8, y, self.w - 16, h, 6, 6)
+        love.graphics.setColor(0.75, 0.95, 1.0, 0.85)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", self.x + 8, y, self.w - 16, h, 6, 6)
+        love.graphics.setLineWidth(1)
     end
     if dx ~= 0 or dy ~= 0 then love.graphics.pop() end
 end
