@@ -6,6 +6,7 @@
 local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
+local Status = require("models.status")
 local Fixture = require("tests.support.fixture")
 
 -- A flat, all-walkable arena of the given size (no terrain), with an objective.
@@ -141,6 +142,41 @@ return {
             end
             assert(Combat.stepMove(c, walk) == false, "the walk is over once the destination is reached")
             assert(u.initiative == 0, "walking does not change initiative on its own")
+        end,
+    },
+    {
+        -- The soft-lock this pins: a bleeding unit walked, the wound killed it on the tile it stepped
+        -- onto, and the battle stopped dead with "Enemy acting..." on screen forever. A unit felled on
+        -- its own approach reaches NO turn-ending path -- it never acts, so it never reaches endTurn,
+        -- and nothing passes for a corpse -- so `combat.turn` was left pointing at the body. The battle
+        -- state reads a still-set record as "carry on the open turn" (states/battle.lua's beginTurn
+        -- resume), handed the turn back to the dead unit, which planned nothing and ended nothing, and
+        -- was handed it again the next frame, forever. The record must not outlive the body.
+        name = "a unit that bleeds out mid-walk ends its turn -- the turn record never outlives the body",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { Fixture.unit("character_bandit", 2, 2, { isolate = "bare", stats = { health = 3 } }) },
+                { unit("character_bandit", 8, 8) })
+            local walker = c.units[1]
+            Status.apply(c, walker, "status_bleed") -- 3 damage per tile entered, on 3 HP
+            openTurn(c, walker)
+
+            Combat.moveUnit(c, walker, 4, 2)
+            assert(not walker.alive, "the first tile of the walk bleeds the body out")
+            assert(c.turn == nil, "and the turn dies with it -- an open record would be handed to a corpse")
+        end,
+    },
+    {
+        -- The other half of the same rule: a death is only a turn's end for the unit whose turn it is.
+        name = "a death on somebody else's turn leaves the actor's own turn open",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit(swordsman(), 3, 3) },
+                { Fixture.unit("character_bandit", 3, 4, { isolate = "bare", stats = { health = 1 } }) })
+            local knight, bandit = c.units[1], c.units[2]
+            openTurn(c, knight)
+            Combat.dealFlatDamage(c, bandit, 99, {}, nil, knight)
+            assert(not bandit.alive, "the bandit is cut down")
+            assert(c.turn and c.turn.unit == knight, "the killer is still standing in its own turn")
         end,
     },
     {

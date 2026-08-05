@@ -2487,6 +2487,24 @@ function Combat.grantExtraAction(unit, n)
     return unit.extraActions
 end
 
+-- A body that leaves the field mid-turn takes the turn record with it. `combat.turn` is the record of
+-- an OPEN turn -- a turn somebody is still standing in the middle of -- and a unit felled on its own
+-- approach (a Bleed tick on the tile it walked onto, a trap, an overwatch shot) never reaches any of
+-- the paths that close one: it does not act, so it never reaches endTurn, and nothing passes for it.
+--
+-- Left set, the record points at a corpse, and the UI reads a still-set `combat.turn` as "carry on the
+-- open turn" (states/battle.lua's beginTurn resume) -- so the turn is handed straight back to the body
+-- that just dropped, which plans nothing, ends nothing, and is handed it again on the next frame. That
+-- is the soft-lock: the enemy think-pause ticking forever over a unit that can no longer do anything.
+-- The state layer already assumes this ("a unit cut down on the approach just hands the turn on"); this
+-- is the model half of it, at the three points a body leaves the board with a turn possibly open.
+--
+-- Only ever clears a record belonging to THIS unit: a death on somebody else's turn -- the far more
+-- common case, a counter or an area blast -- must leave the actor's own turn open.
+local function leaveTurn(combat, unit)
+    if combat.turn and combat.turn.unit == unit then combat.turn = nil end
+end
+
 -- Wait (delay): the acting unit sits at initiative 0, so end the turn by setting its
 -- initiative to (next unit's initiative + 1) -- act one tick after them -- but never below the
 -- move cost it spent this turn, so a move is still paid. Rebasing then drops the next unit to
@@ -3438,14 +3456,17 @@ local function walkOut(combat, plan, capture)
                                   fx = Combat.drainFx(combat) }
         end
     end
-    return steps
+    -- The move initiative this walk ran up, read off the turn record it was written to. A walk that
+    -- KILLED its walker leaves no record to read (leaveTurn took the turn with the body) and owes 0:
+    -- there is no turn left for the ground to be billed to, and nobody to bill it.
+    return steps, (combat.turn and combat.turn.moveCost) or 0
 end
 
 -- Walk `plan` out and hand back the route for a view to replay. See walkOut. Note this DRAINS the
 -- cue queue as it goes -- the cues live in the returned steps instead, and the caller is expected to
 -- feed them to its animation controller. Callers that just want the move to happen want moveUnit.
 function Combat.runMove(combat, plan)
-    return walkOut(combat, plan, true), combat.turn.moveCost
+    return walkOut(combat, plan, true)
 end
 
 -- Move a unit to (x, y) if reachable this turn, all in one go. The headless equivalent of the
@@ -3455,8 +3476,8 @@ end
 function Combat.moveUnit(combat, unit, x, y)
     local plan, reason = Combat.planMove(combat, unit, x, y)
     if not plan then return false, reason end
-    walkOut(combat, plan, false)
-    return true, combat.turn.moveCost
+    local _, cost = walkOut(combat, plan, false)
+    return true, cost
 end
 
 -- ---------------------------------------------------------------------------
@@ -4638,6 +4659,7 @@ function Combat.dismiss(combat, unit, text)
     -- As in killUnit: a dismissed banner's ground goes with it, however it left the field.
     Hazard.dropOwnedBy(combat, unit)
     Combat.releaseHeldBy(combat, unit)
+    leaveTurn(combat, unit) -- and its turn, if it was standing in one (see leaveTurn)
 end
 
 -- ---------------------------------------------------------------------------
@@ -4761,6 +4783,10 @@ function Combat.withdraw(combat, unit, text)
     end
     Hazard.dropOwnedBy(combat, unit)
     Combat.releaseHeldBy(combat, unit)
+    -- A body on the bench is holding no turn either (see leaveTurn). Combat.rotate -- the one caller
+    -- today -- ends the turn itself a few lines later, and reads the move cost off the record BEFORE
+    -- this; stated here anyway so the rule holds for whoever withdraws a unit next.
+    leaveTurn(combat, unit)
 
     combat.bench = combat.bench or {}
     local entry = { char = unit.char, relicTraits = unit.relicTraits, statuses = unit.statuses }
@@ -4976,6 +5002,8 @@ local function killUnit(combat, target)
     Hazard.dropOwnedBy(combat, target)
     Combat.releaseHeldBy(combat, target)
     target.char.reservations = nil
+    -- ...and if the body that just dropped was the one whose turn it is, the turn drops with it.
+    leaveTurn(combat, target)
 end
 
 -- An adjacent ally may throw itself in front of a blow aimed at `target`, taking it instead. Returns
