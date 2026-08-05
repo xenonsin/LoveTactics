@@ -6,6 +6,7 @@
 
 local Character = require("models.character")
 local Combat = require("models.combat")
+local Status = require("models.status")
 local Trait = require("models.trait")
 
 local function arena(cols, rows)
@@ -50,49 +51,71 @@ return {
         end,
     },
     {
-        name = "Borrowed Time opens only after Clem has collected three kills",
+        name = "Borrowed Time is a blade first: it swings on an empty collection, gate-free",
         fn = function()
+            -- The rule this pins, and the reason the relic stopped carrying an `unlock`: a weapon always
+            -- swings. It was the only gated weapon in the game, which meant Clem opened every fight -- and
+            -- every fight AFTER each use, since the gate was repeatable -- holding a blade she could not
+            -- use. The three kills buy the jubilee now, never the stroke.
             local c = Combat.new(arena(6, 6),
                 { { char = Character.instantiate("character_clem"), x = 1, y = 1 } },
-                { { char = Character.instantiate("character_bandit"), x = 5, y = 5 } })
-            local clem = c.units[1]
+                { { char = Character.instantiate("character_bandit"), x = 2, y = 1 } })
+            local clem, foe = c.units[1], c.units[2]
             local relic = clem.char.inventory[5]
             assert(relic and relic.id == "weapon_borrowed_time", "the signature sits in the center cell")
 
-            assert(not Combat.unlockMet(clem, relic, c), "locked before she has collected")
-            Combat.tally(clem, "kill", 1)
-            Combat.tally(clem, "kill", 1)
-            assert(not Combat.unlockMet(clem, relic, c), "still locked at two")
-            Combat.tally(clem, "kill", 1)
-            assert(Combat.unlockMet(clem, relic, c), "open at the third -- the mercy-stroke")
+            local ab = relic.activeAbility
+            assert(not ab.unlock, "no unlock: the gate is a readout, not a purse")
+            assert(ab.counter and ab.counterGates == false, "the collection is drawn, and never gates the cast")
+            assert(ab.counter(clem, relic) == 0, "and it starts empty")
+            assert(Combat.itemBlockReason(clem, relic) == nil, "an empty collection still swings")
+
+            local before = foe.char.stats.health.current
+            assert(Combat.useItem(c, clem, relic, 2, 1), "the mercy-stroke lands with nothing collected")
+            assert(foe.char.stats.health.current < before, "and it drew blood")
+            assert(not Status.has(clem, "status_hasted"), "but nothing was minted -- the jubilee is unearned")
         end,
     },
     {
-        name = "a locked signature is never the default action -- the kill-gate cannot eat the basic attack",
+        name = "three collected kills mint the jubilee, which spends three and keeps the change",
         fn = function()
-            -- The shipped deadlock this guards: sell Clem's kris and pin the relic (a loadout the game
-            -- lets you build), and the click-to-use basic action was the mercy-stroke -- which asks for
-            -- three kills she has no other blade to take. Charging it required using it.
+            local c = Combat.new(arena(6, 6),
+                { { char = Character.instantiate("character_clem"), x = 1, y = 1 },
+                  { char = Character.instantiate("character_rowan"), x = 1, y = 2 } },
+                { { char = Character.instantiate("character_bandit"), x = 2, y = 1 } })
+            local clem, ally, foe = c.units[1], c.units[2], c.units[3]
+            local relic = clem.char.inventory[5]
+            -- A punching bag, so the stroke never fells it and muddies the collection it is reading.
+            foe.char.stats.health.max, foe.char.stats.health.current = 9999, 9999
+
+            Combat.tally(clem, "kill", 4)
+            assert(relic.activeAbility.counter(clem, relic) == 4, "four collected, and the badge says so")
+
+            assert(Combat.useItem(c, clem, relic, 2, 1), "the stroke lands")
+            assert(Status.has(clem, "status_hasted"), "she quickens with the party")
+            assert(Status.has(ally, "status_hasted"), "and she keeps none of it -- the whole party does")
+            assert(relic.activeAbility.counter(clem, relic) == 1,
+                "three were spent, not reset: the fourth is change she carries into the next one")
+        end,
+    },
+    {
+        name = "the collection is banked through fx, so a hover never spends it",
+        fn = function()
+            -- Ability effects mutate only through fx.* helpers, because both damage previews REPLAY the
+            -- effect against the real tables with an inert bank (models/combat.lua). A raw
+            -- `fx.user.mercySpent = ...` would empty her collection under the cursor.
             local c = Combat.new(arena(6, 6),
                 { { char = Character.instantiate("character_clem"), x = 1, y = 1 } },
-                { { char = Character.instantiate("character_bandit"), x = 5, y = 5 } })
-            local clem = c.units[1]
+                { { char = Character.instantiate("character_bandit"), x = 2, y = 1 } })
+            local clem, foe = c.units[1], c.units[2]
             local relic = clem.char.inventory[5]
-            for cell = 1, Character.MAX_INVENTORY do
-                if cell ~= 5 then clem.char.inventory[cell] = nil end
-            end
-            clem.char.defaultActionSlot = 5
-
-            local action = Combat.defaultAction(clem.char, clem)
-            assert(action ~= relic, "the locked signature is passed over, pin and all")
-            assert(action == clem.char.unarmed, "with nothing else in hand she still has her fists")
-            assert(Combat.itemBlockReason(clem, action) == nil, "and the default she is handed can be used")
-
-            -- Collect the three and the pin comes back: the turn after it charges opens on the swing.
             Combat.tally(clem, "kill", 3)
-            assert(Combat.defaultAction(clem.char, clem) == relic, "an open signature is the pinned default again")
-            -- Off the board (the Loadout screen, with no unit to ask) a gated relic is never the default.
-            assert(Combat.defaultAction(clem.char) == clem.char.unarmed, "no unit to ask -> locked stays locked")
+
+            for _ = 1, 5 do
+                assert(Combat.previewAbility(c, clem, relic, 2, 1), "the hover prices the stroke")
+            end
+            assert(relic.activeAbility.counter(clem, relic) == 3, "five hovers spent nothing")
+            assert(foe.char.stats.health.current == foe.char.stats.health.max, "and drew no blood")
         end,
     },
 }

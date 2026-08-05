@@ -1584,11 +1584,19 @@ Horn do:
   is everyone's tempo. Haste is the Undercroft's own rogue verb already (`trait_opportunist`, on the
   Opportunist's Charm), so it reads as an assassin's momentum, never a blessing. She keeps none of it: the
   time is spent on the party.
-- **The active (conditional-unlock):** a **mercy-stroke** — an execute on a wounded foe (the assassin's
+- **The active (always available):** a **mercy-stroke** — an execute on a wounded foe (the assassin's
   coup, and her name in a verb: *clementia → coup de grâce*) that secures the kill and so reliably lights
-  the engine. Charged on the shipped `kill` tally (`unlock = { event = "kill", count = N }` — no new seam,
-  unlike a bespoke "forgiven" event); the marquee grants a larger burst — extra Haste, or a free step —
-  across the party.
+  the engine. It runs off the shipped `kill` tally (no new seam, unlike a bespoke "forgiven" event), and
+  every third kill collected the same stroke also mints the marquee: **Haste across the whole party**.
+
+  The count is a **readout, not a purse** — `counter` + `counterGates = false`, the pair
+  `weapon_long_count` and `weapon_reapers_due` wear. It was an `unlock` at first, which made this the
+  only gated *weapon* in the game: a greyed-out armor or utility slot costs its bearer an option, but a
+  greyed-out weapon slot costs its bearer the thing a weapon is *for* — for the whole opening of every
+  fight, and again after every use, since the gate was repeatable. Saber's First Motion is the tell: the
+  one other signature that lives in a weapon slot carries no gate at all. **A weapon always swings**, so
+  the three kills buy the jubilee and never the stroke. Its base array is a full dagger's for the same
+  reason — a swing you no longer have to earn cannot be priced as if you had.
 
 Its second form, earned at slot 8, is the arc in a verb (Rowan's declared ward, Saber's chosen strike,
 Gyeom's persistence): the one who spends every kill on others may, **once, keep the tempo for herself.**
@@ -1768,8 +1776,8 @@ The one large piece, in dependency order — a note for whoever builds it, not a
    does (a move-end check).
 6. **The transform.** On the first `gold == 0`, `Transform.apply` (ships) to the Midas-horror, pull every
    pile into a fresh purse, and set the phase flag so the *second* zero is lethal.
-7. **Clem's Borrowed Time.** A kill-hook trait (the `kill` tally seam) that hastes the party, plus the
-   mercy-stroke active (`unlock = { event = "kill" }`). No new engine beyond the hook.
+7. **Clem's Borrowed Time.** A kill-hook trait (the `kill` tally seam) that hastes the party, on top of
+   the shipped mercy-stroke active. No new engine beyond the hook.
 
 Then the usual: `tools/extract_strings.lua`, and a `tests/*_spec.lua` mirroring `tests/devotion_spec.lua`
 that at minimum pins the ward redirect, the gold cost gate, and the haste-on-kill.
@@ -1785,8 +1793,9 @@ greed (`weapon_cutpurse_knife`, `utility_opportunists_charm` / `trait_opportunis
 ships as the **Golden Touch** — an `fx.steal` active on her **Bottomless Purse** relic (rank-4 drop,
 `noSteal`, `gateHint = "beneath the vault that was never full"`), the *take-a-thing* half of her design;
 greed's rule is an ability, not a trait, so the Purse carries the active rather than a passive. Clem's
-signature `weapon_borrowed_time` (bound, `unlock = { event = "kill", count = 3 }`, a mercy-stroke that
-hastes the whole party — the haste rides the active's effect, since the engine dispatches no `onKill`).
+signature `weapon_borrowed_time` (bound, an always-swingable mercy-stroke that hastes the whole party
+every third kill collected — the haste rides the active's effect, since the engine dispatches no `onKill`,
+and the collection is a `counter` readout rather than an `unlock`, because a weapon always swings).
 Three of the ten quests — slot 1 (`vault_heist`), the recruit slot 2 (`undercroft_clem`,
 `rewardCharacter = "character_clem"`, `killAll`), slot 5 (`accounts_settled`), and slot 10
 (`general_greed`, rank-4 gated, drops the Purse + `gateHint`). `general_greed` is in `quest_the_gate_below`

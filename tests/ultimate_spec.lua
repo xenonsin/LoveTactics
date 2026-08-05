@@ -144,6 +144,38 @@ return {
         end,
     },
     {
+        name = "a locked signature is never the default action -- the gate cannot eat the basic attack",
+        fn = function()
+            -- The deadlock this guards: strip a bearer to a gated signature alone (a loadout the game
+            -- lets you build) and pin it, and the click-to-use basic action would be a move it has to
+            -- earn -- with nothing else in hand to earn it WITH. Rowan's Sworn Aegis stands in for the
+            -- whole family here; the rule is the engine's, not any one relic's.
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 5, 5) })
+            local knight = c.units[1]
+            local aegis = findItem(knight.char, "armor_sworn_aegis")
+            assert(aegis, "the knight carries his gated signature")
+            local slot
+            for cell = 1, Character.MAX_INVENTORY do
+                if knight.char.inventory[cell] == aegis then slot = cell end
+            end
+            for cell = 1, Character.MAX_INVENTORY do
+                if cell ~= slot then knight.char.inventory[cell] = nil end
+            end
+            knight.char.defaultActionSlot = slot
+
+            local action = Combat.defaultAction(knight.char, knight)
+            assert(action ~= aegis, "the locked signature is passed over, pin and all")
+            assert(action == knight.char.unarmed, "with nothing else in hand he still has his fists")
+            assert(Combat.itemBlockReason(knight, action) == nil, "and the default he is handed can be used")
+
+            -- Weather the blows it asks for and the pin comes back: the turn after it charges auto-arms.
+            Combat.tally(knight, "hitTaken", 99)
+            assert(Combat.defaultAction(knight.char, knight) == aegis, "an open signature is the pinned default again")
+            -- Off the board (the Loadout screen, with no unit to ask) a gated relic is never the default.
+            assert(Combat.defaultAction(knight.char) == knight.char.unarmed, "no unit to ask -> locked stays locked")
+        end,
+    },
+    {
         name = "Saber's wind-up: floored at min, capped at max, and a deeper hold hits harder",
         fn = function()
             local function windupHit(depth)
