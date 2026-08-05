@@ -16,11 +16,24 @@
 --
 -- It still shoots what it is aimed at -- an arrow is an arrow -- but only for a token amount. The damage
 -- is not the sale and it is not meant to be a compromise; the trap is the weapon.
+--
+-- It aims a TILE (`target = "tile"`, `allowOccupied`) and not a body, which is the whole point and was
+-- once the whole bug: as an `enemy`-target ability it could only be pointed at somebody who was already
+-- standing there, so the one weapon whose sale is shooting empty ground could never be aimed at any.
+-- Occupied cells stay legal because the shot must be allowed to fall short of the read -- the foe walks
+-- onto the square this turn instead of next -- and when it does, the shaft goes through the body rather
+-- than into the dirt behind it: the same hold, delivered at once (status_root) instead of laid and
+-- waited on. No trap is left on that tile. What the hunter bought was the body held, and a trap armed
+-- under someone already caught would be the same purchase billed twice.
+--
+-- WHOEVER is standing there, as with data/items/weapon/weapon_hailfall_longbow.lua: a shaft driven into
+-- the ground does not check the colour of the boots above it, and the Lodge's shelf does not pretend
+-- otherwise. Loose it onto your own line and you have rooted your own.
 local Curve = require("models.curve")
 
 return {
     name = "Deadfall Bow",
-    description = "Channeled: arms a trap where it lands.",
+    description = "Channeled: arms a trap where it lands, or Roots whoever is already standing there.",
     flavor = "The Lodge's trappers do not draw on the animal. They draw on the path.",
     sprite = "assets/items/deadfall_bow.png",
     type = "weapon",
@@ -28,7 +41,8 @@ return {
     hands = 2,
     class = "hunter",
     activeAbility = {
-        target = "enemy",
+        target = "tile",       -- the path, not the animal: the aim is a square the foe has not reached
+        allowOccupied = true,  -- and a square they may already have reached (see the note above)
         range = 5,
         minRange = 2,
         requiresSight = true,
@@ -38,10 +52,15 @@ return {
         -- Token, and openly so: the shaft is being planted rather than loosed.
         damage = Curve.ramp(2, 12),
         effect = function(fx)
-            if fx.target then fx.damage(fx.target) end
-            -- Armed on the aimed CELL. A bear trap rather than a spike trap: what the Lodge sells is a
-            -- body held where you wanted it, not a body hurt where it stood -- and holding is what makes
-            -- the spent turn back for the rest of the party.
+            -- Somebody is standing on the read: the shaft pins them instead of the ground. Root delivered
+            -- now, and nothing left behind -- the trap would have no one left to catch.
+            if fx.target then
+                fx.damage(fx.target, { inflicts = "status_root" })
+                return
+            end
+            -- Otherwise it is armed on the aimed CELL. A bear trap rather than a spike trap: what the
+            -- Lodge sells is a body held where you wanted it, not a body hurt where it stood -- and
+            -- holding is what makes the spent turn back for the rest of the party.
             fx.placeTrap(fx.tx, fx.ty, "bear_trap", { amount = 6 + 2 * fx.level })
         end,
     },

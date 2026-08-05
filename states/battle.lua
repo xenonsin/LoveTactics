@@ -1127,9 +1127,13 @@ local function targetCells()
     -- there is no foe cell to snap onto directly. So offer the aim tiles whose resulting AoE actually
     -- sweeps a unit of the target side, ranked by how many it catches -- a cursor player arms the axe and
     -- lands at once on the tile that cleaves the most foes, then cycles among the other worthwhile facings.
-    -- A tile ability with no footprint (a trap, a summon) has no foe to aim at and yields nothing.
-    if ab.target == "tile" then
-        if not ab.aoe then return {} end
+    -- A tile ability with no footprint (a trap, a summon) has no foe to aim at and yields nothing --
+    -- UNLESS it also allows an occupied cell, in which case a body standing in reach is a legal aim and
+    -- often the point of it (the Deadfall Bow pins whoever is already on the read instead of arming the
+    -- jaws; a shove aims at the one being shoved). Those fall through to the unit ring below, so a
+    -- cursor player gets the same snap-and-cycle a unit-target ability gives. A placement onto genuinely
+    -- bare ground still offers nothing, because there is nothing to rank there.
+    if ab.target == "tile" and ab.aoe then
         local list = {}
         for _, entry in pairs(reach) do
             local hits = 0
@@ -1154,7 +1158,11 @@ local function targetCells()
         end)
         return list
     end
-    if ab.target ~= "enemy" and ab.target ~= "ally" then return {} end
+    if ab.target == "tile" then
+        if not ab.allowOccupied then return {} end
+    elseif ab.target ~= "enemy" and ab.target ~= "ally" then
+        return {}
+    end
     local list = {}
     for _, entry in pairs(reach) do
         local occ = Combat.unitAt(battle.combat, entry.x, entry.y)

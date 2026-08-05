@@ -221,7 +221,6 @@ return {
     "weapon_corvids_bow",
     "weapon_crozier",
     "weapon_cutpurse_knife",
-    "weapon_deadfall_bow",
     "weapon_debt_bell",
     "weapon_disarming_pike",
     "weapon_drowned_censer",

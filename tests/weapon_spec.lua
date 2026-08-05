@@ -896,6 +896,39 @@ return {
         end,
     },
     {
+        name = "the Deadfall Bow arms a trap on bare ground, and Roots outright when a body is on the tile",
+        fn = function()
+            -- Both halves of the same purchase (data/items/weapon/weapon_deadfall_bow.lua). The weapon
+            -- aims a TILE, which is the point: the shot is placed on the approach, not on the animal.
+            local Trap = require("models.trap")
+            local archer = plainChar("character_archer")
+            local bow = give(archer, "weapon_deadfall_bow")
+            local c = Combat.new(arena(10, 10),
+                { unit(archer, 2, 2) }, { unit(plainChar("character_bandit"), 6, 2) })
+            local shooter, bandit = c.units[1], c.units[2]
+            shooter.char.stats.stamina.max, shooter.char.stats.stamina.current = 999, 999
+
+            -- EMPTY GROUND: the shaft is planted and left armed. Aimed at (5,2), a tile nobody stands on.
+            openTurn(c, shooter)
+            assert(Combat.useItem(c, shooter, bow, 5, 2), "the draw begins on a tile with nobody on it")
+            Combat.resolveChannel(c, shooter) -- a longbow looses on the turn AFTER the draw
+            local trap = Trap.at(c, 5, 2)
+            assert(trap and trap.id == "bear_trap", "a bear trap is armed on the aimed cell")
+            assert(trap.side == "party", "and it belongs to the hunter's side")
+            assert(hp(bandit) == bandit.char.stats.health.max, "the foe two tiles off is untouched")
+
+            -- OCCUPIED: the same aim, now with the foe standing on it. The hold is delivered at once
+            -- and nothing is left behind -- a trap under a body already caught is the sale billed twice.
+            local before = hp(bandit)
+            openTurn(c, shooter)
+            assert(Combat.useItem(c, shooter, bow, 6, 2), "the aim is legal on an occupied tile too")
+            Combat.resolveChannel(c, shooter)
+            assert(hp(bandit) < before, "the shaft goes through the body")
+            assert(Status.has(bandit, "status_root"), "and holds it where it stands")
+            assert(Trap.at(c, 6, 2) == nil, "no trap is left under the one it already caught")
+        end,
+    },
+    {
         name = "the Slipknife answers a shot from across the board by arriving beside the shooter",
         fn = function()
             local rogue = plainChar("character_bandit")
