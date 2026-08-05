@@ -172,7 +172,7 @@ The objection was only ever about spending, and the fix is the one FFT's JP alre
 
 | field | what it is |
 |---|---|
-| `char.technique[key]` | earned, never decremented. The career title (`Growth.dominantClass`) and the numerator of everything below |
+| `char.technique[key]` | earned, never decremented. The numerator of everything below |
 | `char.techniqueSpent[key]` | what the Forge has billed. Available to spend is the difference |
 | `char.techniqueAtLevel[key]` | a checkpoint taken when the last level landed, so the level-up reads the delta since |
 
@@ -211,9 +211,12 @@ Three properties hold it up, each pinned by a spec:
 - **Stats only ever rise.** Unchanged, and still why history is never re-apportioned: doing so would let
   a character that changed direction *lose* max health on a level-up.
 
-The career title stays winner-take-all, because a title is singular — "Growing as Knight and a bit of
-Mage" is not a title. `growthBy` is booked in shares instead, so the ledger of levels agrees with the
-stats it summarizes.
+`growthBy` is booked in shares to match, so the ledger of levels agrees with the stats it summarizes.
+
+The one thing a blend cannot be is a **title**, because a title is singular — "Growing as Knight and a
+bit of Mage" is not a title. That tension was first settled by keeping the sheet's title winner-take-all
+over the *career* ledger (`Growth.dominantClass`), and that turned out to be the wrong half to keep: see
+"The sheet says one thing" below.
 
 ## The plan, in dependency order
 
@@ -402,12 +405,103 @@ actually bills (see "The bill, and what caps it"). What that buys, felt in order
   technique, and its refusal names the verb that earns it.
 - **done** — the character sheet reads the ledger back (`ui/panels/party.lua`) as the two things a
   player acts on: each house's **claim on the coming level**, and what it has **to spend**. The career
-  total is deliberately *not* shown. Nothing reads it — the title above already names its leader, and a
-  level-up reads only the delta since the last one — so printing it would put the one figure nothing
-  acts on beside the two that are acted on. The claim is a **percentage** because the fraction is all
-  the model reads: a level arrives on prestige, so twenty casts and two hundred in the same proportions
-  grow the identical character and a magnitude would imply a rate that does not exist. It is the same
-  number the advancement panel reports when the level lands, so the sheet predicts that screen exactly.
+  total is deliberately *not* shown. Nothing reads it — a level-up reads only the delta since the last
+  one, and the Forge bills the bank — so printing it would put the one figure nothing acts on beside the
+  two that are acted on. The claim is a **percentage** because the fraction is all the model reads: a
+  level arrives on prestige, so twenty casts and two hundred in the same proportions grow the identical
+  character and a magnitude would imply a rate that does not exist. It is the same number the
+  advancement panel reports when the level lands, so the sheet predicts that screen exactly.
+- **done** — *the sheet says one thing.* Those two readings first shipped as **two right-aligned columns
+  of one table** (`of next lv` / `to spend`) under a title naming `Growth.dominantClass`, and that sheet
+  did not survive contact: it read `Growing as Hunter` directly above `Alchemist 33% · Hunter 25%`. Both
+  statements were true and they described **different windows of time** — the title the whole career, the
+  column the delta since the last level-up — and nothing on screen said so. Two fixes, one cause:
+  - The title is the **present** now. "Growing" is present-progressive, so it takes its name from the
+    leader of the reading a level-up actually applies (`Party.growthShares`) rather than from the career
+    ledger. When nothing has been cast since the last level the clause is **dropped** rather than
+    falling back to the innate class, which would print a claim the player never earned.
+  - The percentages are **gone**, and so are the column heads that named them. That pairing was tried in
+    every arrangement it had — two right-aligned columns with heads, then lifted out into a sentence
+    under the member's name (`33% Alchemist · 25% Hunter · …`), then back — and the conclusion was that
+    the second number was never worth its keep. A bank of **50 Hunter against 16 Alchemist already says
+    which house this body lives in**; the percentage restated the same standing in a second unit, and
+    every attempt to keep the two legible side by side cost a header row, a partitive, and a paragraph
+    of explanation. The ledger is one figure per house, ranked. Nothing needs a head.
+  The career leader is now shown nowhere, and is not missed: it named a thing no decision reads. The
+  claim on the coming level is still what a level-up reads (`Growth.shares`) and still what the
+  advancement panel reports when it lands — it is simply not a number the sheet has to print.
+- **done** — *the sheet shows what the level buys.* The percentages answer "which houses", and raised a
+  question they could not settle: **33% Alchemist of what**. Until this landed, the only way to find out
+  what a level was worth was to take it and compare. Point at the "Growing as X" clause — the clause is
+  a handle — and every stat the coming level moves shows where it is going: `Attack 16 → 17`,
+  `HP 77/77 → 80` (a resource row moves its ceiling, so the target is the new max alone).
+
+  **It is a transition, not an addition, and it is not always on.** Both of those were learned by
+  shipping the opposite. The forecast first sat there permanently as a green `+3` beside each value,
+  which is the universal *this is buffed right now* idiom, and it read as exactly that. The equip delta
+  gets away with the same glyph only because it lives for as long as the gesture that causes it — so the
+  forecast borrows that property (it appears while the handle is engaged) and drops the grammar (an
+  arrow to the value it becomes cannot describe a bonus already in effect). Gating it on the growth
+  clause also ties the numbers to the sentence that explains them.
+
+  Hover is the mouse path; **G** and gamepad **LS** pin it, and clicking the clause pins it too, so a
+  mouse user can read the whole column without holding the pointer still on one line. A hover nobody
+  knows about is a feature nobody has, so the toggle is spelt out in the prompt bar for every device.
+
+  Two properties make it worth the pixels rather than merely decorative:
+  - **It is not an estimate.** `Growth.applyLevelBlend` and the forecast are one function (`blendGains`,
+    pure), run against the same shares and the same carry. A separate preview implementation would be
+    free to drift from the outcome; there is no second implementation to drift. Being pure is also what
+    makes it safe to call every frame — a forecast that banked its remainder as it went would advance a
+    character *by being looked at*.
+  - **It is honest about the carry**, which is why this cannot be eyeballed off a growth table. A stat
+    earning half a point a level arrives as +1 every *other* level, so the forecast legitimately differs
+    between two levels that grew identically. That is the carry becoming visible for the first time —
+    `char.growthCarry` was previously a number the player could feel and never see.
+
+- **done** — *the sheet prints the stat a body actually fights at, and says where it came from.* It did
+  not use to. The focus sheet printed `char.stats` — blueprint plus banked level-ups — while equipped
+  gear reached the number only when `Combat.applyUnitPassives` ran at the start of a battle. A member
+  reading **Attack 17** with a spear and a hauberk in the grid swung for **22**, and no surface anywhere
+  in the game said so; the sheet quietly described the body with its kit taken off. `Party.statTotal`
+  folds the gear in, so the row is the real figure.
+
+  Hovering a row then opens `ui/stat_tooltip.lua` and itemises it (`Party.statSources`): the body first
+  — blueprint and level-ups as **one** row, because "what this character is worth naked" is one fact and
+  the split between them is a storage detail of `Growth.resolve` — then one row per piece of gear that
+  moves it. `Base 17 / Iron Sword +6 / Chainmail −1`. **No total row**: the parts sum to the figure
+  printed on the row the tooltip is anchored to, and `statTotal` reads this very list, so the two cannot
+  disagree.
+
+  A row with **no gear on it still gets a box**, showing its one part. Suppressing that case was the
+  first cut — `Base 4` under a row already reading `Magic 4` looked like a wasted hover — but it makes
+  the tooltip *unreliable*, and an unreliable tooltip is worse than a redundant one: a player who points
+  at a stat, gets nothing, and cannot tell "nothing modifies this" apart from "hovering does not work
+  here" has been taught to stop pointing at things. The single row says it on its own.
+- **done** — *the TECHNIQUE caption explains its own currency.* Hovering the heading opens
+  `ui/note_tooltip.lua` (a titled block of prose — the other tooltips in `ui/` all itemise a *thing*;
+  this one answers "what is this section counting?"). Three short paragraphs, in the order a player
+  meets them: technique is practice banked per house and capped per battle; it is what the Forge bills
+  to raise an item a rung, paid by whichever member holds the most of that house rather than by the
+  item's carrier; and what a member has been casting lately is also what its next level-up is made of.
+  `Theme.caption` now returns the word's rect so any caption can be a hover target without the caller
+  re-deriving a tracked width. The list underneath is legible on its own — a house and a ranked figure —
+  but nothing else on the sheet said where that figure comes *from*, and "technique" is the one word
+  here that is neither gold nor experience and is earned and spent in two entirely different places.
+
+  **Two different fields feed it, and reading the wrong one is silent.** A flat stat is raised by
+  `item.bonus` (→ `unit.bonus`, `Combat.flatStat`); a resource CEILING is raised by `item.maxBonus`
+  instead (→ `char.maxBonus`, `Combat.unreservedMax`) — Toughness, Endurance, Attunement. A reader that
+  checked only `bonus` would report nothing on exactly the three rows whose ceilings a player most wants
+  accounted for, so `tests/party_spec.lua` pins both directions: a `bonus.health` must raise no ceiling,
+  a `maxBonus.health` must. For a resource the sheet moves the ceiling only — `77/89` — so a wounded
+  member still reads as wounded, as it already did against the unraised max.
+
+  Statuses are absent on purpose rather than forgotten — `Status.statBonus` is a battle-time reading of
+  a live unit, and nothing on this screen is in a battle. Mouse only: the stat block is not a focus
+  region, so a pad has no cursor to put on a row, and inventing one would be a navigation change rather
+  than a tooltip. The forecast above — the reading a player *steers* by — is on every device; this is
+  the reference lookup beside it.
 - **reverted** — a "Growing as **Mage**" line briefly sat under the actions grid, reading
   `Growth.creditClass` live (the class the *next* level-up will apply, moving as you cast). It was
   removed: the growth floaters over the bodies already say the vote is being counted, and a second

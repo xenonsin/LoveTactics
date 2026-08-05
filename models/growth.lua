@@ -206,8 +206,14 @@ local function leaderOf(tally, innate)
 end
 
 -- What this character IS, over its whole career: the most-earned key across the cumulative ledger.
--- The player-facing TITLE (ui/panels/party.lua), and singular on purpose -- "Growing as Knight and a
--- bit of Mage" is not a title. What a level-up actually applies is the blend below.
+--
+-- NOT PLAYER-FACING any more. This was the character sheet's title, and it read "Growing as Hunter"
+-- directly above a column showing the delta since the last level-up -- two true statements about two
+-- different windows of time, with nothing on screen to say which was which. The sheet names the present
+-- now (Growth.creditClass, via Party.growthShares) and the career leader is shown nowhere, because no
+-- decision reads it. What survives is models/save.lua, which needs a single key to attribute the levels
+-- of a save written before per-class crediting existed; migration is exactly the job winner-take-all
+-- over a career ledger is still right for.
 function Growth.dominantClass(char)
     return leaderOf(char.technique, char.class)
 end
@@ -293,47 +299,82 @@ function Growth.applyLevel(char, class)
     return gains
 end
 
--- Apply one level's worth of BLENDED growth: each stat is the share-weighted sum across the class
--- tables, and whatever does not come out a whole number is CARRIED in char.growthCarry rather than
--- rounded away. Over a career the carry pays out in full, so a 50/50 knight/mage is exactly half of
--- each table's total and not a rounding artefact of either.
+-- One level of blended growth as `gains, carry`: the whole points each stat takes, and the fractional
+-- remainder left over. Each stat is the share-weighted sum across the class tables added to whatever
+-- was already carried, and whatever does not come out whole is CARRIED rather than rounded away. Over a
+-- career the carry pays out in full, so a 50/50 knight/mage is exactly half of each table's total and
+-- not a rounding artefact of either.
 --
 -- Whole numbers at every step because the stats they bake into are integers and a save stores the
 -- accumulated delta (see the module header). Carrying rather than rounding is what lets the shares be
 -- fractional without the stats ever being.
 --
--- The survivability floor needs no separate defence here: survivability is LINEAR in a growth table
--- (Growth.survivability sums two of its fields), so a convex combination of tables that each clear
--- Growth.meetsSurvivabilityFloor clears it too. Blending cannot reopen the hole that rule closes.
-function Growth.applyLevelBlend(char, shares)
-    char.growthCarry = char.growthCarry or {}
-    local carry = char.growthCarry
-
+-- PURE: it writes to neither argument, and that is load-bearing rather than tidiness. The character
+-- sheet forecasts the coming level every frame it is open (Growth.previewLevel), so this arithmetic is
+-- run far more often to ASK than to apply -- a version that banked its remainder as it went would
+-- advance a character by looking at them. It is also why the forecast cannot drift from the outcome:
+-- there is one implementation, not a preview beside it.
+local function blendGains(shares, carry)
     -- Sorted, for the reason sortedKeys exists: this sums floats.
     local keys = {}
     for key in pairs(shares or {}) do keys[#keys + 1] = key end
     table.sort(keys)
 
-    -- Accumulate the fractional gain per stat, then spend the whole part and keep the remainder.
+    local pending = {}
+    for stat, amount in pairs(carry or {}) do pending[stat] = amount end
     for _, key in ipairs(keys) do
         local def = Growth.defs[key]
         if def then
             local share = shares[key]
             for stat, amount in pairs(def) do
-                carry[stat] = (carry[stat] or 0) + amount * share
+                pending[stat] = (pending[stat] or 0) + amount * share
             end
         end
     end
 
-    local gains = {}
-    for stat, pending in pairs(carry) do
-        local whole = math.floor(pending)
-        if whole ~= 0 then
-            gains[stat] = whole
-            carry[stat] = pending - whole
-        end
+    -- Spend the whole part, keep the remainder. A stat whose whole part is zero keeps its whole
+    -- accumulation, which is the same statement -- `amount - 0` -- and is why one branch covers both.
+    local gains, rest = {}, {}
+    for stat, amount in pairs(pending) do
+        local whole = math.floor(amount)
+        if whole ~= 0 then gains[stat] = whole end
+        rest[stat] = amount - whole
     end
+    return gains, rest
+end
+
+-- Apply one level's worth of blended growth to `char`, banking the remainder in char.growthCarry.
+--
+-- The survivability floor needs no separate defence here: survivability is LINEAR in a growth table
+-- (Growth.survivability sums two of its fields), so a convex combination of tables that each clear
+-- Growth.meetsSurvivabilityFloor clears it too. Blending cannot reopen the hole that rule closes.
+function Growth.applyLevelBlend(char, shares)
+    local gains, carry = blendGains(shares, char.growthCarry)
+    char.growthCarry = carry
     bake(char, gains)
+    return gains
+end
+
+-- What the next level would add, per stat, if it landed right now -- `{ health = 2, damage = 1 }`, and
+-- only the stats actually taking a whole point. The character sheet's forecast (ui/panels/party.lua),
+-- answering the question the percentages beside it raise but cannot settle: 33% Alchemist of WHAT.
+--
+-- Side-effect-free, so a panel may call it every frame. It reads the same shares and the same carry
+-- through the same arithmetic Growth.resolve will use, so this is not an estimate of the coming level;
+-- it is the coming level, computed early.
+--
+-- HONEST ABOUT THE CARRY, which is the whole reason this cannot be eyeballed off a growth table. A stat
+-- earning 0.5 a level arrives as +1 every OTHER level, so a forecast that ignored the remainder would
+-- promise a point that is not coming this time and then look broken when it failed to land. It also
+-- means the forecast legitimately CHANGES between two levels that grew identically -- that is the carry
+-- becoming visible, which is the first time it ever has been.
+--
+-- Nothing cast since the last level still forecasts a level: one arrives on prestige regardless, and
+-- Growth.shares answers the innate class at 1.0 for exactly that case. The sheet drops its "growing as"
+-- clause there (it would be a claim the player did not earn) but the stat gains are real and shown.
+function Growth.previewLevel(char)
+    if not char then return {} end
+    local gains = blendGains(Growth.shares(char), char.growthCarry)
     return gains
 end
 

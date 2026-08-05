@@ -247,6 +247,10 @@ end
 -- A section caption -- ink text centred in [x, w] with a short rule fading out to either side, the
 -- "TURN ORDER" / "ACTIONS" header. Flanking lines, never an underscore (the chosen look). Draws in the
 -- current font; the caller sets the display face and passes the label's baseline `y`.
+--
+-- Returns { x, y, w, h } for the WORD itself -- not the flanking rules, and not the full span it was
+-- centred in. A caption is the natural place to hang "what is this section?" on, and hit-testing it
+-- otherwise means re-deriving a tracked width the caller has no business knowing how to compute.
 function Theme.caption(text, x, y, w, opts)
     opts = opts or {}
     -- Section captions are UPPERCASE -- a header voice that reads as chrome, distinct from body prose.
@@ -277,6 +281,8 @@ function Theme.caption(text, x, y, w, opts)
     end
     taper(lx1, lx1 - reach)
     taper(rx1, rx1 + reach)
+
+    return { x = cx - tw / 2, y = y, w = tw, h = font:getHeight() }
 end
 
 -- Register 5 frames are near-sharp; one knob for every panel corner so they stay consistent.

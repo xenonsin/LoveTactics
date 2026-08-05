@@ -191,6 +191,56 @@ return {
         end,
     },
     {
+        -- The character sheet forecasts the coming level on every frame it is open, so this is the one
+        -- reading in the module that must be BOTH exact and free. Exact because a forecast that missed
+        -- would look like a bug in the level-up rather than in the forecast; free because a preview that
+        -- banked its remainder would advance a character by being looked at.
+        name = "previewLevel is exactly the level that lands, and costs nothing to ask",
+        fn = function()
+            local char = Character.instantiate("character_rowan")
+            char.technique = { fighter = 3, mage = 1 }
+
+            local forecast = Growth.previewLevel(char)
+            assert(next(forecast), "a 75/25 split must forecast something")
+
+            -- Asking must not answer differently the second time, and must not move the character.
+            local before = { level = char.level, health = char.stats.health.max,
+                damage = char.stats.damage, carry = char.growthCarry }
+            for _ = 1, 5 do Growth.previewLevel(char) end
+            assert(char.level == before.level and char.stats.health.max == before.health
+                and char.stats.damage == before.damage and char.growthCarry == before.carry,
+                "six forecasts left the character exactly where it was")
+            for stat, amount in pairs(Growth.previewLevel(char)) do
+                assert(forecast[stat] == amount, "and the forecast itself is stable: " .. stat)
+            end
+
+            -- Now let it land. Every point promised arrives, and nothing arrives that was not promised.
+            local summary = Growth.resolve(char, char.level + 1)
+            for stat, amount in pairs(summary.gains) do
+                assert(forecast[stat] == amount, string.format(
+                    "%s landed %s, forecast said %s", stat, amount, tostring(forecast[stat])))
+            end
+            for stat, amount in pairs(forecast) do
+                assert(summary.gains[stat] == amount, stat .. " was promised and did not land")
+            end
+
+            -- The CARRY is what makes this worth pinning: a stat earning half a point a level arrives
+            -- every OTHER level, so the very next forecast is allowed to differ from the one just spent.
+            -- What it may never do is disagree with the level that follows it.
+            local next2 = Growth.previewLevel(char)
+            local landed = Growth.resolve(char, char.level + 1)
+            for stat, amount in pairs(landed.gains) do
+                assert(next2[stat] == amount, "the second level was forecast too: " .. stat)
+            end
+
+            -- Cast nothing, and a level still arrives on prestige -- Growth.shares falls back to the
+            -- innate class, so the forecast is of that table rather than of nothing at all.
+            local idle = Character.instantiate("character_rowan")
+            assert(next(Growth.previewLevel(idle)) ~= nil,
+                "an untouched character still forecasts the level prestige will hand it")
+        end,
+    },
+    {
         -- The headline property of proportional crediting: a level split between two houses is
         -- genuinely half of each, and the halves that do not divide evenly are CARRIED rather than
         -- rounded away. Two levels at 50/50 must land exactly where one level of each would.

@@ -234,14 +234,14 @@ return {
         end,
     },
     {
-        name = "techniqueRows reports each house's claim on the coming level, biggest first",
+        name = "growthShares reports each house's claim on the coming level, biggest first",
         fn = function()
             local char = Character.instantiate("character_knight")
             -- A class key alongside two disciplines: one ledger holds both, which is the whole reason
             -- this list replaced the two that used to be stacked here.
             char.technique = { bulwark = 10, assassin = 60, knight = 30 }
-            local rows = Party.techniqueRows(char)
-            assert(#rows == 3, "one row per house with something live, got " .. #rows)
+            local rows = Party.growthShares(char)
+            assert(#rows == 3, "one row per house claiming the level, got " .. #rows)
 
             -- The SHARE, not the raw amount: a level arrives on prestige, so only the proportions are
             -- read and the magnitude buys nothing. 60/30/10 of 100 is 60% / 30% / 10%.
@@ -254,46 +254,119 @@ return {
                 "a discipline row carries its display name")
             assert(rows[2].name == "Knight", "and a class row is title-cased")
 
+            -- The printed form, which is what the title line and the forecast under it are built from.
+            local parts = Party.growthParts(char)
+            assert(parts[1] == "60% " .. Discipline.displayName("assassin")
+                and parts[2] == "30% Knight", "the parts read as percent-then-house")
+
             -- Doubling everything is the same character, so it must read identically.
             local twice = Character.instantiate("character_knight")
             twice.technique = { bulwark = 20, assassin = 120, knight = 60 }
-            assert(math.abs(Party.techniqueRows(twice)[1].share - rows[1].share) < 1e-9,
+            assert(math.abs(Party.growthShares(twice)[1].share - rows[1].share) < 1e-9,
                 "twice the casting in the same proportions is the same level, and reads the same")
         end,
     },
     {
-        name = "techniqueRows separates the coming level from the wallet, and shows a row for either",
+        name = "growthShares is empty when nothing is outstanding, rather than claiming the innate class",
         fn = function()
             local char = Character.instantiate("character_knight")
-            assert(#Party.techniqueRows(char) == 0, "a fresh member has played nothing")
+            assert(#Party.growthShares(char) == 0, "a fresh member has played nothing")
+            assert(#Party.growthParts(char) == 0, "and so prints nothing")
 
-            -- Everything earned so far is already checkpointed into past levels, and half the bank is
-            -- spent. Nothing is claiming the coming level, but there is still coin to forge with -- so
-            -- the row survives on the wallet alone.
+            -- Everything earned is already checkpointed into past levels. Growth.shares would answer
+            -- the innate class at 1.0 here -- true of a hypothetical level, but on a sheet it reads as
+            -- a claim the player earned, and the title drops the clause instead.
             char.technique = { knight = 50 }
             char.techniqueAtLevel = { knight = 50 }
-            char.techniqueSpent = { knight = 20 }
-            local rows = Party.techniqueRows(char)
-            assert(#rows == 1 and rows[1].share == 0 and rows[1].available == 30,
-                "a house with nothing outstanding but a bank left keeps its row")
+            assert(#Party.growthShares(char) == 0, "a fully checkpointed ledger claims nothing")
 
-            -- And the reverse: fully spent, but claiming the whole of the coming level.
-            char.techniqueSpent = { knight = 50 }
-            char.techniqueAtLevel = {}
-            rows = Party.techniqueRows(char)
-            assert(#rows == 1 and rows[1].share == 1 and rows[1].available == 0,
-                "a spent-out house still shows what it is growing into")
-
-            -- Spending must never move the growth column. That is the property the earned/spent split
+            -- Spending must never move the growth reading. That is the property the earned/spent split
             -- exists for, asserted at the surface the player reads it on.
-            local before = Party.techniqueRows(char)[1].share
+            char.techniqueAtLevel = {}
+            local before = Party.growthShares(char)[1].share
             char.techniqueSpent = { knight = 50 }
-            assert(Party.techniqueRows(char)[1].share == before, "forging does not move the claim")
+            assert(Party.growthShares(char)[1].share == before, "forging does not move the claim")
+        end,
+    },
+    {
+        name = "techniqueRows is one figure per house, fattest bank first",
+        fn = function()
+            local char = Character.instantiate("character_knight")
+            assert(#Party.techniqueRows(char) == 0, "a fresh member has nothing banked")
 
-            -- Nothing earned at all is no row, so an untouched house never appears.
+            -- A class key alongside two disciplines: one ledger holds both, which is the whole reason
+            -- this list replaced the two that used to be stacked here.
+            char.technique = { bulwark = 10, assassin = 60, knight = 30 }
+            char.techniqueSpent = { assassin = 55 }
+            local rows = Party.techniqueRows(char)
+            assert(#rows == 3, "one row per house with coin left, got " .. #rows)
+
+            -- Ranked by what is LEFT, not by what was earned: assassin earned the most by a mile and
+            -- sits last, because the Forge has already billed all but 5 of it.
+            assert(rows[1].name == "Knight" and rows[1].available == 30, "the fattest bank leads")
+            assert(rows[2].name == Discipline.displayName("bulwark") and rows[2].available == 10,
+                "then the next -- and a discipline row carries its display name")
+            assert(rows[3].name == Discipline.displayName("assassin") and rows[3].available == 5,
+                "and a forged-down house falls to the bottom on 5")
+            assert(rows[1].share == nil, "the claim column is gone, not merely unread")
+
+            -- A house billed flat leaves the list entirely: there is nothing left to spend on it.
+            char.techniqueSpent = { assassin = 60, bulwark = 10, knight = 30 }
+            assert(#Party.techniqueRows(char) == 0, "spent out is no rows at all")
+
+            -- Nothing earned at all is no row either, so an untouched house never appears.
             char.technique = { knight = 0 }
-            char.techniqueSpent, char.techniqueAtLevel = {}, {}
+            char.techniqueSpent = {}
             assert(#Party.techniqueRows(char) == 0, "a zero ledger entry is not a row")
+        end,
+    },
+    {
+        -- The sheet prints the EFFECTIVE stat now, so the tooltip's parts and the sheet's figure are
+        -- one list added up two ways -- Party.statTotal reads exactly what Party.statSources lists.
+        name = "statSources itemizes a stat, and statTotal is the sum the sheet prints",
+        fn = function()
+            local char = Character.instantiate("character_knight")
+            local blueprint = char.stats.damage
+            char.growth = { damage = 4 }
+            char.stats.damage = blueprint + 4
+
+            local parts = Party.statSources(char, "damage")
+            assert(#parts == 1, "no gear yet, so the body is the only source -- got " .. #parts)
+            assert(parts[1].label == "Base" and parts[1].value == blueprint + 4,
+                "the blueprint and its banked level-ups are ONE row: what the body is worth naked")
+            assert(Party.statTotal(char, "damage") == blueprint + 4, "and that is the whole figure")
+
+            char.inventory[1] = Item.instantiate("weapon_iron_sword")
+            char.inventory[1].bonus = { damage = 6 }
+            char.inventory[2] = Item.instantiate("weapon_iron_sword")
+            char.inventory[2].bonus = { damage = -1, speed = 2 }
+            parts = Party.statSources(char, "damage")
+            assert(#parts == 3, "both bonus-bearing items are listed, got " .. #parts)
+            assert(parts[2].value == 6 and parts[3].value == -1, "and a penalty is listed as one")
+            assert(Party.statTotal(char, "damage") == blueprint + 4 + 6 - 1,
+                "the sheet prints the body plus its gear -- what the unit actually swings for")
+
+            -- An item that does not move THIS stat stays out of THIS list.
+            local speed = Party.statSources(char, "speed")
+            assert(#speed == 2 and speed[2].value == 2, "only the speed-moving item is listed there")
+
+            -- A RESOURCE ceiling rides item.maxBonus, not item.bonus -- two different fields, kept
+            -- apart by Combat (unit.bonus vs char.maxBonus). Reading the wrong one is silent, so it is
+            -- pinned: a `bonus.health` must NOT count, and a `maxBonus.health` must.
+            local baseHp = char.stats.health.max
+            char.inventory[3] = Item.instantiate("weapon_iron_sword")
+            char.inventory[3].bonus = { health = 99 }
+            assert(Party.statTotal(char, "health") == baseHp,
+                "a health bonus filed under `bonus` raises no ceiling, exactly as in battle")
+            char.inventory[3].bonus = nil
+            char.inventory[3].maxBonus = { health = 12 }
+            local hp = Party.statSources(char, "health")
+            assert(#hp == 2 and hp[1].value == baseHp and hp[2].value == 12,
+                "a maxBonus item is what raises it, and it is named")
+            assert(Party.statTotal(char, "health") == baseHp + 12, "so the ceiling reads 12 higher")
+
+            assert(#Party.statSources(char, nil) == 0, "a nil key is answered, not raised")
+            assert(#Party.statSources(nil, "damage") == 0, "and so is a nil character")
         end,
     },
     {

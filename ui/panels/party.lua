@@ -27,6 +27,8 @@ local AdjacencyLinks = require("ui.adjacency_links")
 local CloseButton = require("ui.close_button")
 local QuantityPopup = require("ui.quantity_popup")
 local ItemTooltip = require("ui.item_tooltip")
+local StatTooltip = require("ui.stat_tooltip")
+local NoteTooltip = require("ui.note_tooltip")
 local ButtonPrompt = require("ui.button_prompt")
 local InputMode = require("input_mode")
 local Character = require("models.character")
@@ -103,6 +105,19 @@ for _, row in ipairs(STAT_ROWS) do
     if not row.res then DELTA_KEYS[row.key] = true end
 end
 
+-- The focus sheet's stat-annotation palette. GAIN / LOSS are the signed figure beside a value while an
+-- item is in hand: what equipping it would do to that number.
+--
+-- PENDING is the level forecast, and it is deliberately NOT written in the same grammar. A signed figure
+-- parked next to a value is the universal "this is buffed right now" idiom, and when the forecast wore
+-- it that is exactly how it read -- the equip delta gets away with the glyph only because it lives for
+-- as long as the gesture that caused it. The forecast states a TRANSITION instead, "16 → 17", which
+-- cannot describe a bonus already in effect, and it appears only while the growth clause is engaged.
+local ANNOT_GAIN    = { 0.55, 0.90, 0.58 }
+local ANNOT_LOSS    = { 0.95, 0.45, 0.42 }
+local ANNOT_PENDING = { 0.48, 0.74, 0.51 }
+local ARROW = "→"
+
 local function pointIn(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
@@ -116,8 +131,63 @@ local function classLabel(class)
     return Discipline.displayName(class) or (class:gsub("^%l", string.upper))
 end
 
--- The member's technique ledger as sorted rows, biggest claim first:
---   { name, share, available }
+-- What this member is growing as RIGHT NOW, ranked biggest claim first: { key, name, share }.
+--
+-- ONE READING, TWO PLACES ON THE SHEET, and they can no longer disagree -- which is exactly how the old
+-- sheet confused people. The title line named `Growth.dominantClass`, the leader of the CAREER ledger,
+-- directly above a column showing the delta since the last level-up: "Growing as Hunter" over
+-- "Alchemist 33% · Hunter 25%" is two true statements about two different windows of time, and nothing
+-- on the sheet said which was which. "Growing" is present-progressive, so it means the present now --
+-- the title takes its name from row 1 here and the forecast beneath it prints the rest.
+--
+-- `share` is the delta AS A FRACTION, because the fraction is the whole of what the model reads. A
+-- level arrives on prestige, not on casts, so twenty casts and two hundred casts in the same
+-- proportions grow the identical character -- the magnitude buys nothing and printing it would imply a
+-- rate that does not exist.
+--
+-- EMPTY when nothing has been cast since the last level-up. Growth.shares answers the innate class at
+-- 1.0 there, which is a true statement about a hypothetical level but reads on a sheet as a claim the
+-- player earned; right after a level-up the honest answer is nothing, and the title drops the clause
+-- rather than inventing one.
+--
+-- Ranked share-desc then key-asc, the SAME order ui/panels/advancement.lua ranks the summary it prints
+-- when the level actually lands, so this forecast and that screen name the same houses in the same
+-- order and the sheet predicts that screen exactly.
+--
+-- A CLASS key has no discipline blueprint and is title-cased; a discipline uses its display name, so a
+-- renamed-away id reads as a slug rather than vanishing silently from a list about growth.
+function Party.growthShares(char)
+    if not char then return {} end
+    local since = Growth.sinceLevel(char)
+    if not next(since) then return {} end
+
+    local ranked = {}
+    for key, share in pairs(Growth.shares(char)) do
+        if share > 0 then
+            ranked[#ranked + 1] = { key = key, name = classLabel(key), share = share }
+        end
+    end
+    table.sort(ranked, function(a, b)
+        if a.share ~= b.share then return a.share > b.share end
+        return a.key < b.key
+    end)
+    return ranked
+end
+
+-- Those claims as the text the sheet prints, biggest first: { "33% Alchemist", "25% Hunter", ... }.
+-- Rounded for reading, so the printed percentages can sum to 99 or 101 -- naming the split is the job
+-- here, and the arithmetic that matters already happened in Growth.applyLevelBlend. Split out of the
+-- draw so the rounding is testable and the caller is left with only the question it needs a font to
+-- answer: how many of these terms the 300px column actually fits.
+function Party.growthParts(char)
+    local parts = {}
+    for _, row in ipairs(Party.growthShares(char)) do
+        parts[#parts + 1] = math.floor(row.share * 100 + 0.5) .. "% " .. row.name
+    end
+    return parts
+end
+
+-- The member's technique ledger as sorted rows, biggest claim first: { name, share, available }.
 --
 -- ONE list, where there were two. This panel used to stack a class-usage tally over a technique block,
 -- and they were near-impossible to tell apart: both per-character, both ranked name-and-number, and
@@ -125,21 +195,19 @@ end
 -- `technique.assassin`, two unrelated numbers under one word. They are one ledger now
 -- (Character.recordTechnique), so they are one list with the two readings that are actually live.
 --
--- NEITHER COLUMN IS THE CAREER TOTAL, and that is deliberate. `char.technique` is cumulative, but no
--- decision reads it: the title above already says which house leads it, and a level-up reads only the
--- delta since the last one (Growth.shares). Printing the career figure beside a wallet would put the
--- one number on this sheet nothing acts on directly under the two that are acted on.
+-- ONE NUMBER PER HOUSE, and it is the bank: earned under that house, less what the Forge has billed.
 --
--- `share` is that delta AS A FRACTION, because the fraction is the whole of what the model reads. A
--- level arrives on prestige, not on casts, so twenty casts and two hundred casts in the same
--- proportions grow the identical character -- the magnitude buys nothing and printing it would imply a
--- rate that does not exist. It is the same number the advancement panel reports when the level lands
--- ("as Knight 52% · Mage 48%"), so the sheet predicts exactly what that screen will say.
+-- The percentages are gone from here, and so are the column heads that named them. That pairing went
+-- through every arrangement it had -- two columns with heads, then a sentence up beside the member's
+-- name, then back -- and the answer was that the second number was never worth its keep. A bank of 50
+-- Hunter against 16 Alchemist already tells a player which house this body has been living in; the
+-- percentage restated the same standing in a second unit, and every attempt to label the two apart cost
+-- a header row, a partitive, and a paragraph of explanation. A list of houses ranked by a plain number
+-- needs none of that.
 --
--- `available` is what the Forge can bill off this body (earned minus spent).
---
--- A row survives on EITHER reading: a house with nothing outstanding but a bank left to spend still has
--- something to say, and so does the reverse.
+-- NOT THE CAREER TOTAL. `char.technique` is cumulative and no decision reads it; this is the figure the
+-- Forge actually bills. Per-body on purpose even though Discipline.techniqueHolder bills the roster's
+-- STRONGEST holder rather than any particular character: this sheet is where you find out who that is.
 --
 -- A CLASS key has no discipline blueprint and is title-cased; a discipline uses its display name, so a
 -- renamed-away id reads as a slug rather than vanishing silently from a list about growth.
@@ -149,28 +217,15 @@ end
 function Party.techniqueRows(char)
     if not char then return {} end
 
-    -- Only meaningful when something is actually outstanding: with an empty delta Growth.shares falls
-    -- back to the innate class at 1.0, which is a true statement about a hypothetical level but reads
-    -- on a sheet as a claim the player earned. Right after a level-up the honest answer is "nothing
-    -- yet".
-    local since = Growth.sinceLevel(char)
-    local shares = next(since) and Growth.shares(char) or {}
-
-    local seen, rows = {}, {}
-    local function add(key)
-        if seen[key] then return end
-        seen[key] = true
+    local rows = {}
+    for key in pairs(char.technique or {}) do
         local available = Character.techniqueAvailable(char, key)
-        local share = shares[key] or 0
-        if share > 0 or available > 0 then
-            rows[#rows + 1] = { name = classLabel(key), share = share, available = available }
+        if available > 0 then
+            rows[#rows + 1] = { name = classLabel(key), available = available }
         end
     end
-    for key in pairs(shares) do add(key) end
-    for key in pairs(char.technique or {}) do add(key) end
 
     table.sort(rows, function(a, b)
-        if a.share ~= b.share then return a.share > b.share end
         if a.available ~= b.available then return a.available > b.available end
         return a.name < b.name
     end)
@@ -1153,6 +1208,32 @@ end
 -- Equip-delta preview (read-only): how a picked item would change the focused member's stats.
 -- ---------------------------------------------------------------------------
 
+-- Is the level forecast showing? True while the pointer is over the "Growing as X" clause, or while the
+-- peek is pinned.
+--
+-- THE PIN IS NOT A LUXURY. Hover alone would make this the one reading on the sheet a pad or a keyboard
+-- cannot reach, and three-input is the house rule (ui/menu.lua, ui/building_map.lua). G and gamepad X
+-- toggle it; clicking the clause toggles it too, which also gives a mouse user a way to hold the
+-- forecast open while they read the whole column instead of freezing their hand over one line.
+function Party:growthPeeking()
+    if self.growthPeek then return true end
+    local r = self.growthRect
+    return (r and self.mx and pointIn(r, self.mx, self.my)) or false
+end
+
+function Party:toggleGrowthPeek()
+    self.growthPeek = not self.growthPeek
+end
+
+-- The stat key whose row is under (x, y), or nil -- drives the source tooltip. Rects are stashed by
+-- drawFocus, so this answers nil until the sheet has been drawn once.
+function Party:statAt(x, y)
+    for _, r in ipairs(self.statRects or {}) do
+        if pointIn(r, x, y) then return r.key end
+    end
+    return nil
+end
+
 -- The item currently in hand and where it came from ("grid" | "pool"), or nil.
 function Party:pickedItem()
     if self.grid.picked then
@@ -1174,6 +1255,59 @@ function Party.equipDelta(item)
         end
     end
     return delta
+end
+
+-- Everything feeding one stat on this member: { { label, value }, ... }, base first and then one row per
+-- piece of gear that moves it.
+--
+-- "Base" is the body itself -- the blueprint value with its banked level-ups already in it. They are one
+-- row because they are one fact from the player's side: this is what the character is worth naked. The
+-- split between them is a bookkeeping detail of how Growth.resolve stores things, and a tooltip about
+-- gear is not the place to explain it.
+--
+-- TWO DIFFERENT FIELDS, and reading the wrong one is silent. A flat stat is raised by `item.bonus`,
+-- which Combat folds into unit.bonus for Combat.flatStat. A resource CEILING is raised by
+-- `item.maxBonus` instead (Toughness, Endurance, Attunement), which lands in char.maxBonus for
+-- Combat.unreservedMax. They are deliberately separate over there, so a reader that checked only
+-- `bonus` would report nothing at all on exactly the three rows -- HP, MP, SP -- whose ceilings a player
+-- most wants accounted for.
+--
+-- Statuses are absent on purpose rather than forgotten -- Status.statBonus is a battle-time reading of a
+-- live unit, and nothing here is in a battle.
+--
+-- Pure and static (no panel, no love.graphics, no Combat), so it is unit-testable -- see
+-- tests/party_spec.lua alongside Party.equipDelta, whose `item.bonus` reading this shares.
+function Party.statSources(char, key)
+    if not (char and key) then return {} end
+    local live = char.stats and char.stats[key]
+    local resource = type(live) == "table"
+    local base = resource and (live.max or 0) or live
+    if type(base) ~= "number" then return {} end
+
+    local parts = { { label = "Base", value = base } }
+    local field = resource and "maxBonus" or "bonus"
+    for _, item in ipairs(Character.eachItem(char)) do
+        local v = item[field] and item[field][key]
+        if v and v ~= 0 then
+            parts[#parts + 1] = { label = item.name or "Equipment", value = v }
+        end
+    end
+    return parts
+end
+
+-- The figure the sheet PRINTS for `key`: every source above, summed -- so the number on the row and the
+-- rows in its tooltip cannot disagree, because they are the same list added up two ways.
+--
+-- This is the effective stat, gear included. It did not use to be: the sheet printed char.stats alone,
+-- and equipped gear reached the number only once Combat.applyUnitPassives ran at the start of a battle.
+-- A member reading "Attack 17" with a +6 spear in the grid actually swung for 22, and no surface said
+-- so -- the sheet quietly described a body with its kit taken off. For a resource this is the CEILING;
+-- `current` is left alone, so a wounded member still reads as wounded against the raised max, exactly as
+-- it already did against the unraised one.
+function Party.statTotal(char, key)
+    local total = 0
+    for _, part in ipairs(Party.statSources(char, key)) do total = total + part.value end
+    return total
 end
 
 -- Sign of the picked item's effect on the FOCUSED member (the one the sheet shows): a stash item
@@ -1387,14 +1521,42 @@ function Party:drawFocus()
     Theme.set(Theme.ink)
     love.graphics.printf(char.name or "?", x, y + ps + 6, self.focusW, "center")
 
-    -- Level + career title: level tracks the player's prestige, and each level-up apportions its stat
-    -- gains across everything the member has been casting (models/growth.lua). The title names the
-    -- house it has leaned on most; the ledger below shows the whole reading behind it, which is what
-    -- the player steers by choosing what to carry.
+    -- Level + what this body is becoming. The level tracks the player's prestige, and each level-up
+    -- apportions its stat gains across everything the member has been casting since the last one
+    -- (models/growth.lua). The clause names the house leading THAT reading, not the career leader --
+    -- see Party.growthShares for why the career title came off this line.
+    --
+    -- The clause is also a HANDLE. Point at it and the stats below show where that level is taking them
+    -- (Party:growthPeeking); its own hit rect is stashed for the hover test and for the click that pins
+    -- the peek open. Lit to full ink while it is engaged, so the handle says it is one.
+    local growth = Party.growthShares(char)
     love.graphics.setFont(self.smallFont)
-    Theme.set(Theme.muted)
-    love.graphics.printf("Lv " .. tostring(char.level or 1) .. "  -  Growing as "
-        .. classLabel(Growth.dominantClass(char)), x, y + ps + 30, self.focusW, "center")
+    local heading = "Lv " .. tostring(char.level or 1)
+    local clause = growth[1] and ("  -  Growing as " .. growth[1].name) or nil
+    local hy = y + ps + 30
+    self.growthRect = nil
+    if clause then
+        -- Only the clause is the handle, not the "Lv 4" beside it, so the rect is measured off the
+        -- centred line rather than taking the whole width.
+        local full = self.smallFont:getWidth(heading .. clause)
+        local lead = self.smallFont:getWidth(heading)
+        local left = x + (self.focusW - full) / 2
+        self.growthRect = { x = left + lead, y = hy - 2,
+            w = full - lead, h = self.smallFont:getHeight() + 4 }
+    end
+    Theme.set(self:growthPeeking() and Theme.ink or Theme.muted)
+    love.graphics.printf(heading .. (clause or ""), x, hy, self.focusW, "center")
+
+    -- What the coming level buys, per stat (models/growth.lua). Read every frame and side-effect-free
+    -- by construction; see Growth.previewLevel.
+    --
+    -- SHOWN ONLY WHILE THE HANDLE IS ENGAGED, and as a transition rather than an addition. Both halves
+    -- of that were learned the hard way: a permanent green "+3" beside a value is the universal "this
+    -- is buffed right now" idiom, and it read as one. (The equip delta gets away with the same glyph
+    -- because it exists only while an item is in hand, so it is visibly tied to a gesture.) An arrow to
+    -- the value it becomes cannot be read as a bonus already in effect, and gating it on the growth
+    -- clause ties it to the sentence that explains it.
+    local pending = self:growthPeeking() and Growth.previewLevel(char) or {}
 
     -- If an item is in hand, preview how it changes THIS member's flat stats (green gain / red
     -- loss). The sheet shows BASE stats -- equipped bonuses aren't folded in, a pre-existing gap --
@@ -1403,34 +1565,63 @@ function Party:drawFocus()
     local delta = held and Party.equipDelta(held) or nil
     local sign = held and self:deltaSign(heldSource) or 0
 
-    -- Stats, two per row.
+    -- Stats, two per row. Each row's rect is stashed for the source tooltip (Party:statAt).
     love.graphics.setFont(self.bodyFont)
     local sy = y + ps + 56
     local colW = self.focusW / 2
+    local rowH = self.bodyFont:getHeight()
     local n = 0
+    self.statRects = {}
     for _, row in ipairs(STAT_ROWS) do
         local stat = char.stats and char.stats[row.key]
         if stat ~= nil then
             local col = n % 2
             local cx = x + col * colW
+            -- The EFFECTIVE figure, gear folded in (Party.statTotal) -- for a resource that is the
+            -- ceiling, with `current` left where it is, so a wounded member still reads as wounded.
+            local total = Party.statTotal(char, row.key)
             local value
             if row.res and type(stat) == "table" then
-                value = (stat.current or stat.max) .. "/" .. (stat.max or 0)
+                value = (stat.current or total) .. "/" .. total
             else
-                value = tostring(stat)
+                value = tostring(total)
             end
+            self.statRects[#self.statRects + 1] =
+                { key = row.key, x = cx, y = sy - 2, w = colW - 10, h = rowH + 4 }
+
             Theme.set(Theme.muted)
             love.graphics.print(row.label, cx, sy)
-            Theme.set(Theme.ink)
-            love.graphics.printf(value, cx, sy, colW - 16, "right")
+
+            -- The row's right-hand slot holds ONE of three things, in this order of precedence:
+            -- the item in hand's delta (the question the player is actively asking), the level
+            -- forecast as an arrow, or just the number.
+            local change, tint
             if delta and sign ~= 0 and delta[row.key] and delta[row.key] ~= 0 then
-                local change = sign * delta[row.key]
+                change = sign * delta[row.key]
+                tint = change > 0 and ANNOT_GAIN or ANNOT_LOSS
+            end
+
+            if change then
+                Theme.set(Theme.ink)
+                love.graphics.printf(value, cx, sy, colW - 16, "right")
                 local text = (change > 0 and "+" or "") .. change
-                if change > 0 then love.graphics.setColor(0.55, 0.9, 0.58)
-                else love.graphics.setColor(0.95, 0.45, 0.42) end
+                love.graphics.setColor(tint)
                 local dw = self.bodyFont:getWidth(text)
                 local vw = self.bodyFont:getWidth(value)
                 love.graphics.print(text, cx + (colW - 16) - vw - 6 - dw, sy)
+            elseif (pending[row.key] or 0) > 0 then
+                -- "16 → 17", right-aligned as one unit. A resource row moves its CEILING, so the
+                -- target is the new max alone -- "77/77 → 80" -- rather than a second pair, which
+                -- would not fit the column and would imply the current reading moved too.
+                local tail = " " .. ARROW .. " " .. (total + pending[row.key])
+                local tw = self.bodyFont:getWidth(tail)
+                Theme.set(Theme.ink)
+                love.graphics.printf(value, cx, sy, colW - 16 - tw, "right")
+                Theme.set(ANNOT_PENDING)
+                love.graphics.print(tail, cx + (colW - 16) - tw, sy)
+            else
+                Theme.set(Theme.ink)
+                love.graphics.printf(value, cx, sy, colW - 16, "right")
             end
             n = n + 1
             if col == 1 then sy = sy + 22 end
@@ -1441,14 +1632,13 @@ function Party:drawFocus()
     self:drawTechnique(char, x, sy + 12)
 end
 
--- The technique ledger, under the stats: one row per house with something live to say about this
--- member, showing the two things a player acts on.
+-- The technique ledger, under the stats: one house per row, one number each.
 --
--- TWO COLUMNS, one ledger. `next lv` is the share of the coming level this house has claimed -- the
--- steering read, and the reason to carry one thing over another -- shown as a percentage because the
--- fraction is all the model reads (Party.techniqueRows). `to spend` is the wallet the Forge bills, so
--- it takes the amber the battle floater and the Forge chip already use for that. The career total is
--- deliberately absent: the title above already names its leader, and nothing else reads it.
+-- NO COLUMN HEADS, because there is only one column and its rows are already named. The heads existed to
+-- keep two unlike numbers apart ("of next lv" against "to spend"); with the percentage gone there is
+-- nothing to tell apart, and a lone head over a lone column is a label for a label. The house name and a
+-- ranked figure in wallet gold say the whole thing: this is what each house has banked on this body, and
+-- the one at the top is the one it has been living in.
 --
 -- Full-width rows rather than the stats' two columns -- a key is often two words ("Plague Knight"), not
 -- "M.Def". Rows are budgeted against the panel floor instead of a fixed cap: seven classes plus 37
@@ -1457,58 +1647,51 @@ end
 function Party:drawTechnique(char, x, y)
     local rows = Party.techniqueRows(char)
 
+    -- The caption doubles as the section's explainer handle (Party:drawTechniqueTooltip): a heading has
+    -- no room to say what a currency IS, and "Technique" is the one word on this sheet a new player has
+    -- no way to unpack from context.
     love.graphics.setFont(self.smallFont)
-    Theme.caption("Technique", x, y, self.focusW)
+    self.techniqueRect = Theme.caption("Technique", x, y, self.focusW)
     y = y + 20
 
-    -- The empty state names the VERB that earns it. A blank section here would read as a broken panel,
-    -- and this is every member until their first fight -- it is where the loop gets explained.
+    -- Two empty states, because they are different facts. Nothing earned yet names the VERB that earns
+    -- it -- a blank section would read as a broken panel, and this is every member until their first
+    -- fight, so it is where the loop gets explained. A ledger that exists but is billed flat is not that
+    -- member: telling a veteran who has forged everything to go and learn some technique would read as
+    -- the panel having forgotten them.
     if #rows == 0 then
+        local earned = false
+        for _, amount in pairs(char.technique or {}) do
+            if (amount or 0) > 0 then earned = true end
+        end
         Theme.set(Theme.muted, 0.8)
-        love.graphics.printf("None yet -- fight, and every house you carry teaches this body.",
+        love.graphics.printf(earned
+            and "Spent out -- every house here is already forged into something."
+            or "None yet -- fight, and every house you carry teaches this body.",
             x, y + 2, self.focusW, "center")
         return
     end
 
-    local spendW = 64                     -- the amber wallet, right-aligned against the panel edge
-    local shareW = 66                     -- the claim on the coming level
-    local nameW = self.focusW - spendW - shareW - 20
-
-    -- Column heads, so the two numbers are never guessed at. "of next lv" rather than "next lv": a bare
-    -- "next lv 54%" reads as FIFTY-FOUR PERCENT OF THE WAY TO LEVELLING, which is precisely the rate
-    -- this number does not describe -- levels arrive on prestige and nothing here moves one closer. The
-    -- partitive says what it is instead: 54% OF the next level will be Knight, and partitives sum to a
-    -- whole, which is the other half of the reading.
-    Theme.set(Theme.muted, 0.7)
-    love.graphics.printf("of next lv", x + nameW, y, shareW, "right")
-    love.graphics.printf("to spend", x + nameW + shareW, y, spendW, "right")
-    y = y + 17
+    local spendW = 64                     -- the amber bank, right-aligned against the panel edge
+    local nameW = self.focusW - spendW - 20
 
     local floor = self.boxY + BOX_H - 64 -- above the message line and the prompt bar
     local fit = math.max(1, math.floor((floor - y) / 20))
     local shown = #rows
     if shown > fit then shown = math.max(0, fit - 1) end -- the tail line costs a row
 
-    -- Muted label, ink value -- the same pairing as the stat rows directly above, so a row here reads as
-    -- one of them rather than as a third idiom. The wallet is the only thing that takes an accent, and
-    -- Theme.cursor is deliberately NOT used: that blue means "the selection is here", and spending it on
-    -- a data column would make every sheet look navigated.
+    -- Muted label, accented value -- the same pairing as the stat rows directly above, so a row here
+    -- reads as one of them rather than as a third idiom. The figure takes the amber the battle floater
+    -- and the Forge chip already use for spendable technique; Theme.cursor is deliberately NOT used,
+    -- because that blue means "the selection is here" and spending it on a data column would make every
+    -- sheet look navigated.
     love.graphics.setFont(self.bodyFont)
     for i = 1, shown do
         local row = rows[i]
         Theme.set(Theme.muted)
         love.graphics.print(Theme.ellipsize(row.name, self.bodyFont, nameW), x, y)
-
-        -- A house claiming none of the coming level shows a dash, not "0%" -- it is not competing for
-        -- this level at all, which is a different statement from having rounded down to nothing.
-        Theme.set(Theme.ink, row.share > 0 and 1 or 0.45)
-        local claim = row.share > 0 and (math.floor(row.share * 100 + 0.5) .. "%") or "-"
-        love.graphics.printf(claim, x + nameW, y, shareW, "right")
-
-        -- A fully spent house reads dim rather than shouting a zero in wallet gold.
-        Theme.set(row.available > 0 and Theme.accentAmber or Theme.muted,
-            row.available > 0 and 1 or 0.5)
-        love.graphics.printf(tostring(row.available), x + nameW + shareW, y, spendW, "right")
+        Theme.set(Theme.accentAmber)
+        love.graphics.printf(tostring(row.available), x + nameW, y, spendW, "right")
         y = y + 20
     end
     if shown < #rows then
@@ -1665,6 +1848,10 @@ function Party:drawPromptBar()
         add(regionGlyph, "Region")
         add(switchGlyph, "Switch")
         add(pad and "LT/RT" or self:tabGlyph(), "Tab")
+        -- The level forecast. A mouse can just point at the "Growing as X" clause, but a hover nobody
+        -- knows about is a feature nobody has, and a pad has no hover at all -- so the toggle is spelt
+        -- out here for every device.
+        add(pad and "LS" or "G", "Growth")
         -- Set-default-action control, shown only when an ability cell is focused (it's the only place
         -- pinning does anything). Matches the star badge drawn on the grid cell.
         if self.focus == "grid" and self.grid:isActionCell(self.grid.cursor) then
@@ -1728,6 +1915,51 @@ function Party:drawStarTooltip(cell)
     love.graphics.setColor(1, 1, 1)
 end
 
+-- What the numbers under the TECHNIQUE caption actually are, shown when the caption is hovered. Returns
+-- true when it drew.
+--
+-- The list is legible without this -- a house and a figure, ranked -- but nothing on the sheet says
+-- where the figure comes FROM or what it is for, and technique is the one word here a player cannot
+-- unpack from context: it is not gold, it is not experience, and it is earned and spent in two entirely
+-- different places (a battle, and the Forge). Three short paragraphs, in the order a player meets them.
+local TECHNIQUE_NOTE = {
+    "Practice, banked per house. Every action a member takes teaches the house whose gear they used -- "
+        .. "capped per battle, so no one long fight buys a discipline.",
+    "It is what the Forge bills to raise an item a rung, and the bill is paid by whichever member holds "
+        .. "the most of that house -- not by whoever happens to be carrying the item.",
+    "What a member has been casting lately is also what its next level-up is made of. The line under "
+        .. "their name names the house leading that; point at it to see what the level buys.",
+}
+
+function Party:drawTechniqueTooltip()
+    local r = self.techniqueRect
+    if not (r and self.mx and pointIn(r, self.mx, self.my)) then return false end
+    return NoteTooltip.draw("Technique", TECHNIQUE_NOTE, self.mx, self.my, self.pool.x) ~= nil
+end
+
+-- Where the hovered stat's number comes from (ui/stat_tooltip.lua). Returns true when it drew, so the
+-- caller can stop -- the stat block and the item grid never overlap, but the sheet is a legitimate place
+-- to be pointing while an item sits under the pointer's LAST position, and two boxes at once is a mess.
+--
+-- Mouse only. The stat block is not a focus region -- Tab cycles grid / stash / rail and stops there --
+-- so a pad has no cursor to put on a stat row, and inventing one to hang a tooltip off would be a
+-- navigation change rather than a tooltip. The forecast, which is the reading a player steers by, is
+-- reachable on every device (Party:growthPeeking); this is the reference lookup beside it.
+function Party:drawStatTooltip()
+    local key = self.mx and self:statAt(self.mx, self.my)
+    if not key then return false end
+    local char = self:currentChar()
+    if not char then return false end
+
+    local label
+    for _, row in ipairs(STAT_ROWS) do
+        if row.key == key then label = row.label break end
+    end
+
+    return StatTooltip.draw(Party.statSources(char, key), label or key,
+        self.mx, self.my, self.pool.x) ~= nil
+end
+
 -- Item tooltip, sourced by the device in use so it never lingers out of place: with the mouse it
 -- follows the pointer and shows only while a cell is hovered (so it clears the moment the pointer
 -- leaves); with keyboard/gamepad it sits at the active region's cursor cell. Out of combat there is
@@ -1735,6 +1967,8 @@ end
 function Party:drawActiveTooltip()
     if self:columnEditor() then return end -- an editor labels its own fields; no item is on show
     if self.filterOpen then return end     -- the dropdown overlays the stash; no cell tooltip beneath it
+    if InputMode.isMouse() and self:drawTechniqueTooltip() then return end
+    if InputMode.isMouse() and self:drawStatTooltip() then return end
     if InputMode.isMouse() then
         -- The star badge under the pointer wins over the item tooltip (they'd otherwise stack in the
         -- cell's top-right corner), naming what a click there does.
@@ -1836,6 +2070,15 @@ function Party:mousepressed(x, y, button)
         if pointIn(self.segRects[m], x, y) then self:setMode(m) return end
     end
     if self:debugHit(x, y) then self:toggleDebugAll() return end
+
+    -- Clicking the growth clause pins the forecast open, so reading the whole stat column does not mean
+    -- holding the pointer still on one line of text. Only with empty hands: mid-transfer, a click
+    -- anywhere is about the item.
+    if self.growthRect and not (self.grid.picked or self.pool.picked)
+        and pointIn(self.growthRect, x, y) then
+        self:toggleGrowthPeek()
+        return
+    end
 
     local empty = not (self.grid.picked or self.pool.picked)
 
@@ -1962,6 +2205,8 @@ function Party:keypressed(key)
         if not caught then self:close() end
     elseif key == "f1" then
         self:toggleDebugAll()
+    elseif key == "g" then
+        self:toggleGrowthPeek()
     elseif key == "tab" then
         self:cycleFocus(1)
     elseif key == "q" then
@@ -2019,6 +2264,10 @@ function Party:gamepadpressed(joystick, button)
         elseif self.focus == "grid" then
             self.grid:setDefaultAt(self.grid.cursor)
         end
+    elseif button == "leftstick" then
+        -- The keyboard's G. X and Back are both spoken for above, and the stick click is the only free
+        -- button left that is not already load-bearing somewhere in this panel.
+        self:toggleGrowthPeek()
     elseif button == "back" then
         if editor and self.focus == "editor" and editor.removeRule then
             editor:removeRule(editor.cursor)
