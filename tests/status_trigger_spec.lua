@@ -157,7 +157,7 @@ return {
         end,
     },
     {
-        name = "Cleansing Ward strips the first debuff to land, then must recharge",
+        name = "Cleansing Ward strips the first debuff to land, then goes on cooldown",
         fn = function()
             local bearer = withGrid("character_rowan", { "utility_cleansing_ward" })
             local c = Combat.new(arena(8, 8), { unit(bearer, 1, 1) }, {})

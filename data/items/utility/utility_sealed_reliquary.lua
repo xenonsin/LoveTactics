@@ -17,14 +17,14 @@
 --     because a blast does not aim at anybody. Every class in this game owns one.
 --
 -- AND THE CASTER STILL PAID -- cost, cooldown, turn -- so a refused spell is an enemy turn deleted,
--- which is why the recharge is long and the item is not cheap.
+-- which is why the cooldown is long and the item is not cheap.
 --
 -- It carries the ward from the first beat of the battle: a relic that had to be switched on would just
 -- be an ability, and the point of this one is that the enemy has to plan around it before they know
 -- whether it is there.
 return {
     name = "The Sealed Reliquary",
-    description = "Deflects one spell aimed at you, then recharges.",
+    description = "Deflects one spell aimed at you, then goes on cooldown.",
     flavor = "The Cathedral will confirm that it is empty. It will not explain why it is locked.",
     sprite = "assets/items/utility_sealed_reliquary.png",
     type = "utility",

@@ -28,7 +28,7 @@ return {
     onDamaged = function(ctx)
         local unit = ctx.unit
         if not (unit and unit.alive) then return end -- it hides the living; a corpse is nobody's problem
-        if ctx.onCooldown("vanishing_act") then return end
+        if ctx.onCooldown("trait_vanishing_act") then return end
         -- Already gone: a second hit in the same beat must not spend the cooldown re-applying it.
         if ctx.trait and unit.statuses then
             for _, s in ipairs(unit.statuses) do
@@ -36,7 +36,7 @@ return {
             end
         end
         ctx.applyStatus(unit, "status_invisible")
-        ctx.setCooldown("vanishing_act", ctx.def.cooldown)
+        ctx.setCooldown("trait_vanishing_act", ctx.def.cooldown)
         -- Invisible is `hideLog` precisely so it does not announce itself, and the announcement is the
         -- one thing that would undo it. Say that the lamp went out, which is what the room sees.
         ctx.log("action", string.format("%s's lamp gutters, and %s is not where it was.",

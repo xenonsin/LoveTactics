@@ -20,7 +20,7 @@
 return {
     name = "Survivor's Reflex",
     description = "Bloodied by a blow, you drink a healing potion at once -- no turn spent.",
-    magnitude = 6, -- ticks before the reflex can fire again
+    cooldown = 6, -- ticks before the reflex can fire again
     threshold = 0.4, -- fires when the blow leaves the bearer below this share of max health
     onDamaged = function(ctx)
         local u = ctx.unit
@@ -33,7 +33,7 @@ return {
         -- reached for a potion it did not have would go quiet for six ticks having done nothing.
         local flask = Combat.carriedRestorative(u, "health")
         if not flask then return end
-        ctx.setCooldown(ctx.trait.id, ctx.def.magnitude or 0)
+        ctx.setCooldown(ctx.trait.id, ctx.def.cooldown or 0)
         ctx.log("action", string.format("%s reaches for a flask on reflex!",
             (u.char and u.char.name) or "Unit"))
         Combat.quaff(ctx.combat, u, flask)

@@ -43,13 +43,13 @@ return {
             assert(Combat.onCooldown(u, "test"), "on cooldown after being set")
 
             Combat.tickCooldowns(c, 5)
-            assert(Combat.onCooldown(u, "test"), "still recharging after 5 of 8 ticks")
+            assert(Combat.onCooldown(u, "test"), "still on cooldown after 5 of 8 ticks")
             Combat.tickCooldowns(c, 3)
             assert(not Combat.onCooldown(u, "test"), "cleared once the ticks run out")
         end,
     },
     {
-        -- The heart of the rework: nothing recharges, so a swordsman answers every blow they can
+        -- The heart of the rework: nothing has a cooldown, so a swordsman answers every blow they can
         -- reach for as long as the pool holds out -- and the pool is what runs down, in public.
         name = "melee_counter answers every adjacent blow it can pay for -- no timer gates it",
         fn = function()
@@ -225,10 +225,43 @@ return {
         end,
     },
     {
-        -- The read behind the item grid's recharge clock. It survives the rework, but only serves the
+        -- The bug this guards, and it is a silent one: a cooldown keyed on a bespoke string
+        -- ("sealed_reliquary" rather than "trait_sealed_reliquary") ticks down perfectly and is
+        -- invisible to Combat.itemCooldown, which walks a bearer's timers back to a grid slot BY TRAIT
+        -- ID. The reflex is spent, and the slot goes on reading as ready -- no grey, no clock, nothing
+        -- the player can see. Four traits shipped that way. So: every literal key a trait file passes
+        -- to set/onCooldown must be that file's own id.
+        --
+        -- The length must be DECLARED as `cooldown` for the same reason: the tooltip quotes it on a shop
+        -- shelf, where there is no bearer to read a live timer off. `magnitude` cannot stand in -- on
+        -- some defs it is the effect's own size (the Stayed Hand's health fraction), and reading it as
+        -- ticks would print a confident lie.
+        name = "every trait cooldown is keyed on its own id and declares its length",
+        fn = function()
+            for _, entry in ipairs(love.filesystem.getDirectoryItems("data/traits")) do
+                if entry:sub(-4) == ".lua" then
+                    local id = entry:sub(1, -5)
+                    local src = assert(love.filesystem.read("data/traits/" .. entry), "readable: " .. entry)
+                    for key in src:gmatch("Cooldown%(%s*\"([%w_]+)\"") do
+                        assert(key == id, id .. " keys a cooldown on \"" .. key ..
+                            "\"; the item grid only finds timers keyed on the trait's own id")
+                    end
+                    -- A cooldown set from the file itself, or by the shared paths in models/trait.lua
+                    -- that gate the evade and counterspell reflexes.
+                    local def = Trait.defs[id]
+                    if src:find("setCooldown", 1, true) or def.evadesPhysical or def.countersSpell then
+                        assert(type(def.cooldown) == "number" and def.cooldown > 0,
+                            id .. " gates itself on a cooldown but declares no `cooldown` length")
+                    end
+                end
+            end
+        end,
+    },
+    {
+        -- The read behind the item grid's cooldown clock. It survives the rework, but only serves the
         -- reflexes that still HAVE a timer -- all of them passive utilities with no ability of their
         -- own, which is what keeps the clock off a slot the player could still act with.
-        name = "itemCooldown traces a recharging reflex back to the grid slot that granted it",
+        name = "itemCooldown traces a spent reflex back to the grid slot that granted it",
         fn = function()
             local ward = Item.instantiate("utility_cleansing_ward")
             local char = Character.instantiate("character_rowan")
@@ -241,26 +274,26 @@ return {
             Combat.setCooldown(knight, "trait_cleansing_ward", 20)
             local cd = Combat.itemCooldown(knight, ward)
             assert(cd and cd.remaining == 20, "the fresh cooldown reports its full length")
-            assert(cd.total == 20, "priced against the trait's own magnitude")
-            assert(cd.trait.id == "trait_cleansing_ward", "and names the reflex that is recharging")
+            assert(cd.total == 20, "priced against the trait's own declared cooldown")
+            assert(cd.trait.id == "trait_cleansing_ward", "and names the reflex that is spent")
 
             Combat.tickCooldowns(c, 14)
             local left = Combat.itemCooldown(knight, ward)
             assert(left and left.remaining == 6, "it counts down with every other duration")
             assert(left.total == 20, "while the total it is measured against holds")
 
-            -- A slot that granted no trait never reads as recharging, cooldowns on the bearer or not.
+            -- A slot that granted no trait never reads as spent, cooldowns on the bearer or not.
             local plain = Item.instantiate("weapon_iron_sword")
             assert(Combat.itemCooldown(knight, plain) == nil, "an item with no reflex has no clock")
 
             Combat.tickCooldowns(c, 6)
-            assert(Combat.itemCooldown(knight, ward) == nil, "and the clock clears once it recovers")
+            assert(Combat.itemCooldown(knight, ward) == nil, "and the clock clears once it runs out")
         end,
     },
     {
         -- A sword grants Parry, which no longer sets a cooldown -- so the slot the player attacks with
-        -- can never wear a recovery clock. This is the confusion the rework was for.
-        name = "a sword slot never reads as recharging, however hard its parry has been working",
+        -- can never wear a cooldown clock. This is the confusion the rework was for.
+        name = "a sword slot never reads as spent, however hard its parry has been working",
         fn = function()
             local sword = Item.instantiate("weapon_iron_sword")
             local char = Character.instantiate("character_rowan")

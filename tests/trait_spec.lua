@@ -406,7 +406,7 @@ return {
         end,
     },
     {
-        -- No reflex recharges any more. What stops a priest answering a whole flurry is that each
+        -- No reflex has a cooldown any more. What stops a priest answering a whole flurry is that each
         -- answer in a round costs double the last, so the pool prices them out -- and a priest's pool
         -- is wanted for casting besides.
         name = "Keen Senses answers again and again, at double the price each time, until it can't",

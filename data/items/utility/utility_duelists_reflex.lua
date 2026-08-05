@@ -1,12 +1,12 @@
 -- The item equivalent of the Dodge reflex: a duelist's trained instinct that slips a blow on its own.
 -- A passive utility (no ability of its own) -- its whole effect is the `traits` it grants
 -- (models/trait.lua). While it sits in the bearer's grid they automatically evade the next physical
--- attack, then the reflex recharges before it can save them again; a spell it cannot dodge. Kin to the
+-- attack, then the reflex cools down before it can save them again; a spell it cannot dodge. Kin to the
 -- Reprisal Quiver, which packages the Ranged Counter the same way. A fighter-class piece, sold at the
 -- Colosseum.
 return {
     name = "Duelist's Reflex",
-    description = "Deflects the next physical attack, then recharges. Magic still lands.",
+    description = "Deflects the next physical attack, then goes on cooldown. Magic still lands.",
     flavor = "Trained instinct, sold by the yard. The Colosseum has never been short of duelists to copy.",
     sprite = "assets/items/duelists_reflex.png",
     type = "utility",

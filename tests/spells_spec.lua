@@ -195,7 +195,7 @@ return {
         end,
     },
     {
-        name = "the Dodge trait auto-evades a physical hit, then recharges; magic ignores it",
+        name = "the Dodge trait auto-evades a physical hit, then cools down; magic ignores it",
         fn = function()
             -- Give a knight the Duelist's Reflex (grants the passive Dodge trait). Combat.new attaches it.
             local knightChar = Character.instantiate("character_rowan")
@@ -208,16 +208,16 @@ return {
             local before = hp.current
             Combat.dealFlatDamage(c, knight, 15, { "physical" }, "a blow")
             assert(hp.current == before, "the first physical blow was dodged")
-            assert(Combat.onCooldown(knight, "trait_dodge"), "the reflex is now recharging")
+            assert(Combat.onCooldown(knight, "trait_dodge"), "the reflex is now on cooldown")
 
-            -- A second physical blow while recharging lands normally.
+            -- A second physical blow while it is on cooldown lands normally.
             before = hp.current
             Combat.dealFlatDamage(c, knight, 15, { "physical" }, "a blow")
-            assert(hp.current < before, "a second blow lands while the reflex recharges")
+            assert(hp.current < before, "a second blow lands while the reflex is spent")
 
             -- Recharge, then a magical hit is NOT dodged even though the reflex is ready.
             Combat.tickCooldowns(c, 99)
-            assert(not Combat.onCooldown(knight, "trait_dodge"), "the reflex has recharged")
+            assert(not Combat.onCooldown(knight, "trait_dodge"), "the cooldown has run out")
             before = hp.current
             Combat.dealFlatDamage(c, knight, 15, { "magical" }, "a spell")
             assert(hp.current < before, "a spell cannot be dodged")

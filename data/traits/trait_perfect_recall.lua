@@ -20,7 +20,7 @@
 return {
     name = "Perfect Recall",
     description = "A single-target spell aimed at her is answered and unravelled -- she already knows it.",
-    magnitude = 6,  -- ticks before she can answer another spell; short, because she is the Unequalled
+    cooldown = 6,   -- ticks before she can answer another spell; short, because she is the Unequalled
     cost = { stat = "mana", amount = 12 }, -- paid on every firing; an empty pool means no answer
     countersSpell = true,
 }

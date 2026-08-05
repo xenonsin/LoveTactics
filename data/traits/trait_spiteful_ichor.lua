@@ -8,7 +8,7 @@
 --
 -- Free, uncooled, and it answers an answer (`answersReactions`), which puts it in the same bracket as
 -- Thorns (data/traits/trait_thorns.lua) -- and for the same stated reason: a body that is simply
--- CAUSTIC holds no guard to be worn down, so there is nothing to price and nothing to recharge. What
+-- CAUSTIC holds no guard to be worn down, so there is nothing to price and nothing to cool down. What
 -- keeps it honest is that Poison is slow. A foe that eats three stacks of it has bought three turns of
 -- rot it will feel later, which is exactly the tempo the alchemist trades in.
 --

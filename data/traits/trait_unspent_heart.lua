@@ -17,14 +17,14 @@
 -- ONE HOOK, and that is the whole file. The RECOVERY lives where every other recovery in this game
 -- lives -- Combat.regenerate, which runs on the shared clock and already knows how to pay a rate per
 -- elapsed tick. All this trait does is SHUT it: any wound at all, from anyone, including a poison tick
--- or a fire, puts "unspent_heart" on cooldown, and the regen loop simply declines to pay while that
+-- or a fire, puts this trait's id on cooldown, and the regen loop simply declines to pay while that
 -- timer stands. Splitting it that way is why there is no per-tick trait hook and why there should not
 -- be one (see models/trait.lua): a reflex is a thing that answers an event, and the clock is not one.
 return {
     name = "Unspent Heart",
     description = "Mends hard while untouched; any wound stops it for a while.",
-    magnitude = 25, -- ticks the heart stays shut after a wound (~5 turns)
+    cooldown = 25, -- ticks the heart stays shut after a wound (~5 turns)
     onDamaged = function(ctx)
-        ctx.setCooldown("unspent_heart", ctx.def.magnitude or 25)
+        ctx.setCooldown("trait_unspent_heart", ctx.def.cooldown or 25)
     end,
 }

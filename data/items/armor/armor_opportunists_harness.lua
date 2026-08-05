@@ -1,6 +1,6 @@
 -- Quest-only: `class` with no `price` (docs/classes.md).
 --
--- Afflict a foe with any debuff and the harness pays you a Haste (trait_opportunist), then recharges.
+-- Afflict a foe with any debuff and the harness pays you a Haste (trait_opportunist), then cools down.
 -- The one armor whose value is decided entirely by what ELSE is in the grid: beside a bleeding dagger
 -- or a poisoned kris it fires most turns, and on a character carrying nothing but a sword it never
 -- fires at all.
@@ -16,7 +16,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Opportunist's Harness",
-    description = "On inflicting a debuff: gain Haste, then recharge.",
+    description = "On inflicting a debuff: gain Haste, then go on cooldown.",
     flavor = "Undercroft tailoring: the buckles are placed for someone who intends to be elsewhere shortly.",
     sprite = "assets/items/armor_opportunists_harness.png",
     type = "armor",

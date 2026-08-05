@@ -1,6 +1,6 @@
 -- Quest-only: `class` with no `price` (docs/classes.md).
 --
--- Shrugs off the first debuff to touch the wearer, then recharges (trait_cleansing_ward). The
+-- Shrugs off the first debuff to touch the wearer, then cools down (trait_cleansing_ward). The
 -- Cathedral's `cleanse` verb, moved from something you spend a turn casting on somebody else to
 -- something that happens to you without being asked.
 --
@@ -20,7 +20,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Reliquary Mantle",
-    description = "On a debuff taken: shrug it off, then recharge.",
+    description = "On a debuff taken: shrug it off, then go on cooldown.",
     flavor = "There is a bone in the collar. The Cathedral will not say whose and does not consider the question devout.",
     sprite = "assets/items/armor_reliquary_mantle.png",
     type = "armor",

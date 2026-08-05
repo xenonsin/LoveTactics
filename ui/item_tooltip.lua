@@ -26,6 +26,7 @@ local Scale = require("scale")
 local Combat = require("models.combat")
 local Character = require("models.character")
 local Item = require("models.item")
+local Trait = require("models.trait")
 local Discipline = require("models.discipline")
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
@@ -97,6 +98,23 @@ local STAT_GAP = 8  -- least space kept between a stat row's label and its value
 
 local function titleCase(s)
     return (tostring(s):gsub("^%l", string.upper))
+end
+
+-- The longest cooldown any reflex on this item declares, in ticks (nil when none of them has one).
+-- Read off the trait BLUEPRINTS rather than off a bearer, so a shop shelf can quote the number with
+-- nobody wearing the thing -- which is the whole point of the row: "then it goes on cooldown" is a
+-- sentence with a number missing, and the number belongs to the item, not to the battle.
+-- Only `cooldown` counts. `magnitude` on the same defs is the effect's own size (the Stayed Hand's
+-- health fraction, Adrenal Surge's initiative pull), and reading it here would print a nonsense
+-- duration -- the same trap Combat.itemCooldown avoids.
+local function declaredCooldown(item)
+    local best
+    for _, id in ipairs((item and item.traits) or {}) do
+        local def = Trait.defs[id]
+        local ticks = def and def.cooldown
+        if ticks and ticks > 0 and (not best or ticks > best) then best = ticks end
+    end
+    return best
 end
 
 -- The flavor line is set in a REAL italic cut (Alegreya Italic, via Theme.bodyItalic) -- LOVE cannot
@@ -455,17 +473,28 @@ local function buildBlocks(item, actor, innerW, out)
         end
     end
 
-    -- This item's triggered reflex (a Riposte Blade's parry) has fired and is still recovering, so it
-    -- cannot answer again yet -- the words behind the item grid's recovery clock. Not a `blocked`
-    -- reason: nothing is being cast, so there is nothing to refuse. Quoted in bare ticks under the
-    -- hourglass, like every other duration.
+    -- What this item's triggered reflex (a Riposte Blade's parry) costs in TIME. Always quoted when the
+    -- item has one, because the length is the item's own property and the description cannot carry it:
+    -- "then it goes on cooldown" is a sentence with the number missing, and a player deciding whether to
+    -- buy the thing is deciding on exactly that number.
+    --
+    -- While the reflex IS spent the same row counts down instead ("3 of 8", red) and a note says so --
+    -- the words behind the item grid's cooldown clock. Not a `blocked` reason: nothing is being cast, so
+    -- there is nothing to refuse. Bare ticks under the hourglass, like every other duration.
     local cooling = Combat.itemCooldown(actor, item)
-    if cooling then
+    local cdTicks = declaredCooldown(item)
+    if cooling or cdTicks then
         blocks[#blocks + 1] = { kind = "sep" }
-        blocks[#blocks + 1] = { kind = "stat", label = "Recovery", icon = "hourglass",
-            value = tostring(math.max(0, math.ceil(cooling.remaining))), valueColor = WARN }
-        blocks[#blocks + 1] = { kind = "note",
-            text = (cooling.trait.name or "Its reflex") .. " has fired; it cannot trigger again until it recovers." }
+        if cooling then
+            local left = math.max(0, math.ceil(cooling.remaining))
+            blocks[#blocks + 1] = { kind = "stat", label = "Cooldown", icon = "hourglass",
+                value = left .. " of " .. math.max(left, math.ceil(cooling.total)), valueColor = WARN }
+            blocks[#blocks + 1] = { kind = "note",
+                text = (cooling.trait.name or "Its reflex") .. " has fired; it cannot trigger again until the cooldown runs out." }
+        else
+            blocks[#blocks + 1] = { kind = "stat", label = "Cooldown", icon = "hourglass",
+                value = tostring(cdTicks) }
+        end
     end
 
     -- Passive armor: flat stat bonuses + tag-keyed damage resistances. The stat that already leads as

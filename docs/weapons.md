@@ -594,7 +594,7 @@ answers only within *its own weapon's* band, so a bow sharing the grid does not 
 tiles (*"how can the bow parry?"*). A counter granted by a **utility** with no weapon of its own — the
 Reprisal Quiver's Ranged Counter — answers with whatever weapon in the grid can reach, via
 `Combat.answeringWeapon`, which honours each weapon's `minRange` dead zone as well as its range. Both
-paths gate on `Trait.mayCounter`. Nothing recharges; there are no cooldowns on anything that answers
+paths gate on `Trait.mayCounter`. There are no cooldowns on anything that answers
 with a blow. That is deliberate and it is the point: the answer to *"why didn't I get countered?"* has to be
 a fact the player can see on the board before committing, not a hidden timer. An archer cannot answer
 a foe in its face, and closing that distance is the counter to a counter.

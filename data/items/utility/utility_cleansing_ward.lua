@@ -2,7 +2,7 @@
 -- off (on a cooldown). A defensive charm for a front-liner who expects to be poisoned, blinded or marked.
 return {
     name = "Cleansing Ward",
-    description = "Strips the first debuff to land on you, then must recharge.",
+    description = "Strips the first debuff to land on you, then goes on cooldown.",
     flavor = "The Cathedral's cheapest mercy, and the one it is proudest of.",
     sprite = "assets/items/cleansing_ward.png",
     type = "utility",

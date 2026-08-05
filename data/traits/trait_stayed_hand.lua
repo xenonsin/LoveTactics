@@ -21,12 +21,13 @@ return {
     name = "The Stayed Hand",
     description = "At the edge of death, cleanses its wearer and lifts them out of reach.",
     magnitude = 0.25, -- the health fraction it watches for
+    cooldown = 60,    -- ~12 turns: once a battle, in practice
     onDamaged = function(ctx)
-        if ctx.onCooldown("stayed_hand") then return end
+        if ctx.onCooldown("trait_stayed_hand") then return end
         local hp = ctx.unit.char and ctx.unit.char.stats and ctx.unit.char.stats.health
         if not hp or hp.max <= 0 then return end
         if (hp.current / hp.max) > (ctx.def.magnitude or 0.25) then return end
-        ctx.setCooldown("stayed_hand", 60) -- ~12 turns: once a battle, in practice
+        ctx.setCooldown("trait_stayed_hand", ctx.def.cooldown or 60)
         -- Cleanse first, then lift. The order matters: a Suspended unit is untargetable, and the
         -- cleanse is something being done TO the wearer -- doing it second would be doing it to
         -- somebody who is, by the letter of the status, not there to have it done to.

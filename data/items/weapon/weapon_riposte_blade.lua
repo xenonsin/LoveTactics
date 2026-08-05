@@ -15,7 +15,7 @@
 --   this blade ripostes       -- turns the blow aside so it deals nothing, and answers it anyway.
 --
 -- Which is what the word has always meant with a sword in hand, and what this blade was missing back
--- when its only claim was a shorter recharge than the sword every recruit carries. Standing a duelist
+-- when its only claim was a shorter cooldown than the sword every recruit carries. Standing a duelist
 -- in a doorway is a real tactic: adjacent attackers simply fail, for as long as the duelist's stamina
 -- holds out -- and since each answer in a round costs double the last, a doorway held against three
 -- foes empties a pool fast. That escalating bill is the doorway's real price.

@@ -1,6 +1,6 @@
 -- Quest-only: `class` with no `price` (docs/classes.md).
 --
--- Stun or freeze a foe and the hide Marks it for the kill (trait_executioners_eye), then recharges.
+-- Stun or freeze a foe and the hide Marks it for the kill (trait_executioners_eye), then cools down.
 -- Armor that turns the party's CONTROL into the party's damage, which is the hunter's own loop --
 -- mark, then collect -- arriving from a slot that has never been able to say it.
 --
@@ -16,7 +16,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Quarryhide",
-    description = "On inflicting Stun or Freeze: inflict Mark, then recharge.",
+    description = "On inflicting Stun or Freeze: inflict Mark, then go on cooldown.",
     flavor = "The Warren tans it from things that were caught rather than run down. The distinction matters to them.",
     sprite = "assets/items/armor_quarryhide.png",
     type = "armor",

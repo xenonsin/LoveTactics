@@ -7,7 +7,7 @@
 -- never casts anything, because the harness is the only thing in their grid that draws on it.
 --
 -- Read against armor_reliquary_mantle (the Cathedral's, quest-only): that one refuses ONE debuff and
--- then recharges on a clock. This refuses every debuff and bills each time. Same problem, two
+-- then cools down on a clock. This refuses every debuff and bills each time. Same problem, two
 -- economies -- and the difference is what the two sins are. Lust's answer is a mercy that arrives when
 -- it arrives; sloth's is a flat refusal that keeps working exactly as long as you can pay for it, and
 -- stops dead when you cannot.

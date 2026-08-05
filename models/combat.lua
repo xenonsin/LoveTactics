@@ -1253,7 +1253,7 @@ end
 --
 -- A cooldown is a per-unit timer keyed by a string (usually a trait id), measured in the same
 -- *ticks* every duration uses. A triggered ability (a counter) fires, sets a cooldown, and stays
--- silent until it counts back to 0 -- the recharge Combat.tickCooldowns runs from rebase, beside
+-- silent until it counts back to 0 -- the countdown Combat.tickCooldowns runs from rebase, beside
 -- Status.tick. Deliberately generic: any future "once every N ticks" effect hangs its key here
 -- rather than inventing its own clock.
 -- ---------------------------------------------------------------------------
@@ -1264,11 +1264,11 @@ function Combat.setCooldown(unit, key, ticks)
     unit.cooldowns[key] = math.max(unit.cooldowns[key] or 0, ticks or 0)
 end
 
--- Wipe every recharging timer on `unit` and report how many were standing. The one thing in this
+-- Wipe every standing cooldown on `unit` and report how many there were. The one thing in this
 -- game that gives an action BACK rather than making one bigger (data/items/utility/utility_hour_
 -- returned.lua) -- and the reason it is worth its own helper is that "a cooldown" here is one table
 -- keyed two ways: a trait's own id, and an item's reflex key (see Combat.itemCooldown). A refresh that
--- knew about only one of those would silently leave half a kit recharging.
+-- knew about only one of those would silently leave half a kit still cooling.
 function Combat.clearCooldowns(unit)
     if not (unit and unit.cooldowns) then return 0 end
     local n = 0
@@ -1279,7 +1279,7 @@ function Combat.clearCooldowns(unit)
     return n
 end
 
--- Is `key` still recharging on `unit`? False once it has counted back to 0 (or was never set).
+-- Is `key` still on cooldown on `unit`? False once it has counted back to 0 (or was never set).
 function Combat.onCooldown(unit, key)
     local cd = unit.cooldowns
     return cd ~= nil and (cd[key] or 0) > 0
@@ -1300,14 +1300,15 @@ function Combat.tickCooldowns(combat, elapsed)
     end
 end
 
--- Is `item`'s reflex still recharging on `unit`, and how far along? A cooldown is keyed on the
+-- Is `item`'s reflex still on cooldown on `unit`, and how far along? A cooldown is keyed on the
 -- trait's id and the trait remembers the item that granted it (Trait.instantiate), so this walks the
 -- bearer's traits back to the slot they came from -- the read the item grid needs to say "this blade
 -- cannot parry again yet". The longest remaining wins when one item grants several reflexes: the slot
 -- is ready only once all of them are. Returns nil for a ready item, else:
---   { remaining = ticks left, total = the full cooldown, trait = the reflex that is recharging }
--- `total` is floored at `remaining`, so a def whose magnitude was raised mid-battle can't report a
--- fraction above 1.
+--   { remaining = ticks left, total = the full cooldown, trait = the reflex that is spent }
+-- `total` comes off the def's declared `cooldown` -- never `magnitude`, which on some traits is the
+-- effect's own size (the Stayed Hand's health fraction) and would report a nonsense fraction. It is
+-- floored at `remaining`, so a def whose cooldown was raised mid-battle can't report above 1.
 function Combat.itemCooldown(unit, item)
     if not unit or not item or not unit.traits then return nil end
     local best
@@ -1315,7 +1316,7 @@ function Combat.itemCooldown(unit, item)
         if t.item == item then
             local left = unit.cooldowns and unit.cooldowns[t.id]
             if left and left > 0 and (not best or left > best.remaining) then
-                best = { remaining = left, total = math.max(t.def.magnitude or left, left), trait = t }
+                best = { remaining = left, total = math.max(t.def.cooldown or left, left), trait = t }
             end
         end
     end
@@ -1624,7 +1625,7 @@ end
 
 -- Fire-time bookkeeping for a raw unlock, keyed like Combat.unlockReady: a repeatable unlock
 -- rebaselines to the current tally (so the requirement must be met AGAIN before the next use -- the
--- recharge feel), while a `once` unlock latches open for the rest of the battle. A `when`-gated or
+-- cooldown feel), while a `once` unlock latches open for the rest of the battle. A `when`-gated or
 -- absent unlock needs nothing. The shared core of Combat.unlockConsume (and ctx.unlockConsume).
 function Combat.unlockSpend(unit, unlock, key)
     if not unlock or unlock.when then return end
@@ -1695,7 +1696,7 @@ function Combat.regenerate(combat, elapsed)
                 Combat.restoreResource(u.char, "health", Combat.SANCTIFY_HEAL * elapsed)
             end
             -- The Unspent Heart: a much larger recovery that is only paid while its wearer has been
-            -- left alone. The trait's own onDamaged puts "unspent_heart" on cooldown for every wound
+            -- left alone. The trait's own onDamaged puts its id on cooldown for every wound
             -- taken, so the rate here is simply gated on that timer having run out -- which is the
             -- whole mechanic, and why the trait file itself has nothing in it but the shutting.
             --
@@ -1703,7 +1704,7 @@ function Combat.regenerate(combat, elapsed)
             -- a trait has no per-tick hook (and deliberately shouldn't -- see models/trait.lua), and a
             -- status would put a countdown on the badge row that told the enemy exactly when the heart
             -- comes back.
-            if Trait.has(u, "trait_unspent_heart") and not Combat.onCooldown(u, "unspent_heart") then
+            if Trait.has(u, "trait_unspent_heart") and not Combat.onCooldown(u, "trait_unspent_heart") then
                 Combat.restoreResource(u.char, "health", Combat.UNSPENT_HEART_REGEN * elapsed)
             end
         end
@@ -2297,7 +2298,7 @@ function Combat.startTurn(combat)
     -- answer since the bearer last acted costs double the one before it, and coming back around to
     -- act is what clears the tally. So a unit surrounded by three foes answers the first blow at
     -- price, the second at double and the third at quadruple, and runs itself dry holding the
-    -- doorway -- the job the old per-trait recharge did, but visible in a pool the player can watch.
+    -- doorway -- the job the old per-trait cooldown did, but visible in a pool the player can watch.
     if unit then unit.answersThisRound = 0 end
     -- Coming around to act is a `turnTaken` -- what a signature gated "not on turn 1" or on outlasting
     -- the opening counts (see Combat.tally). Counted before the turn's own actions, so its own cast

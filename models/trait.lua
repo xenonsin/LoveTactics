@@ -172,8 +172,8 @@ end
 -- Does a standing evade reflex (the Dodge trait) let `unit` slip a would-be PHYSICAL hit? Mirrors
 -- Status.barrierAgainst in shape and role: Combat.dealFlatDamage consults it BEFORE mitigation and,
 -- when it fires, deals 0. Unlike a barrier (a consumed status) this is a passive gated by a cooldown
--- keyed on the trait's id -- the first physical blow is evaded, then the reflex recharges for
--- `magnitude` ticks before it can void another, so a dodger can't stand permanently untouchable. Only a
+-- keyed on the trait's id -- the first physical blow is evaded, then the reflex is spent for
+-- `cooldown` ticks before it can void another, so a dodger can't stand permanently untouchable. Only a
 -- physical (non-magical) hit is evaded; a spell passes through. Mutates (starts the cooldown, logs), so
 -- it must run on a REAL hit only -- never the damage preview, which reads mitigatedDamage instead.
 function Trait.tryEvade(combat, unit, tags)
@@ -182,7 +182,7 @@ function Trait.tryEvade(combat, unit, tags)
     local Combat = require("models.combat")
     for _, t in ipairs(unit.traits) do
         if t.def.evadesPhysical and not Combat.onCooldown(unit, t.id) then
-            Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
+            Combat.setCooldown(unit, t.id, t.def.cooldown or 0)
             Combat.logEvent(combat, "action",
                 string.format("%s dodges the blow!", (unit.char and unit.char.name) or "Unit"), unit)
             return true
@@ -410,7 +410,7 @@ end
 --
 -- The trait's economy is the whole point, and it is the counterspell's classic bargain: it is not
 -- gated on the spell being SMALL, so it eats a meteor as happily as a spark -- but it costs a flat
--- price to do so and then goes quiet for `magnitude` ticks. Answering a cantrip with it is a poor
+-- price to do so and then goes quiet for `cooldown` ticks. Answering a cantrip with it is a poor
 -- trade the bearer chose to make; catching the big one is what it was carried for. Unlike a barrier,
 -- nothing about it is spent by being aimed at, so a mage who bluffs at it wastes only their own turn.
 --
@@ -426,7 +426,7 @@ function Trait.tryCounterMagic(combat, unit, attacker, tags)
         -- Cost last, so a counter already on cooldown is never weighed against mana it needn't spend.
         if t.def.countersSpell and not Combat.onCooldown(unit, t.id) and canPay(unit, t.def.cost) then
             payCost(unit, t.def.cost)
-            Combat.setCooldown(unit, t.id, t.def.magnitude or 0)
+            Combat.setCooldown(unit, t.id, t.def.cooldown or 0)
             Combat.logEvent(combat, "action", string.format("%s unravels %s's spell!",
                 (unit.char and unit.char.name) or "Unit", (attacker.char and attacker.char.name) or "the caster"),
                 { unit, attacker })
@@ -887,7 +887,9 @@ local function ctxFor(combat, unit, trait, event)
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         -- A cooldown keyed on the bearer, so a triggered reaction (a counter) can gate its own
         -- re-fire without the data file reaching into the combat module. Measured in ticks; it
-        -- recharges from Combat.rebase alongside status durations.
+        -- counts down from Combat.rebase alongside status durations. KEY IT ON THE TRAIT'S OWN ID:
+        -- Combat.itemCooldown walks the bearer's timers back to the grid slot by trait id, and a
+        -- bespoke key leaves the slot reading as ready while the reflex is spent.
         onCooldown = function(key) return Combat.onCooldown(unit, key) end,
         setCooldown = function(key, ticks) Combat.setCooldown(unit, key, ticks) end,
         -- The bearer's running count of an in-battle event (blows landed, hits taken, ...): what a

@@ -104,8 +104,8 @@ local function edgeRadius(a, hw, hh)
     return math.min(c > 1e-6 and hw / c or math.huge, s > 1e-6 and hh / s or math.huge)
 end
 
--- The recovery clock over a slot whose reflex is still recovering: a dark wedge covering the share of
--- the recovery still to run, sweeping clockwise from 12 o'clock and shrinking away as the reflex comes
+-- The cooldown clock over a slot whose reflex is spent: a dark wedge covering the share of the
+-- cooldown still to run, sweeping clockwise from 12 o'clock and shrinking away as the reflex comes
 -- back. Just the wedge: the ticks left ride in an hourglass badge its caller centres on it (see
 -- drawItemGrid), so this stays a shape and the count stays a badge like every other number in a slot.
 --
@@ -1300,18 +1300,18 @@ function CombatPanel:drawItemGrid()
         -- toggles teleport movement rather than arming a cast.
         local isBlink = item and item.moveBehavior ~= nil
         local usable = item and (item.activeAbility ~= nil or isBlink) and isPartyTurn and not blocked
-        -- A triggered reflex that has fired and is still recovering. Not a blockReason: nothing here
+        -- A triggered reflex that has fired and is still on cooldown. Not a blockReason: nothing here
         -- is being cast, so there is no arm to refuse -- the slot simply cannot answer yet.
         local cooling = item and self.view.current and Combat.itemCooldown(self.view.current, item)
-        -- ...but a recovering reflex may only speak for the WHOLE slot when the slot has nothing else
-        -- to offer. Grey out a sword because its parry is recharging and the panel tells a flat lie:
-        -- the sword is right there and swinging it is legal. Counters no longer recharge at all
+        -- ...but a spent reflex may only speak for the WHOLE slot when the slot has nothing else
+        -- to offer. Grey out a sword because its parry is on cooldown and the panel tells a flat lie:
+        -- the sword is right there and swinging it is legal. Counters have no cooldown at all any more
         -- (models/trait.lua prices an answer instead of timing it), so in practice only passive
         -- utilities reach this branch -- the guard is here so it stays that way.
         local inert = cooling and not usable
 
         if item then
-            -- Grayer than an ordinary idle slot: a reflex-only item that is recovering is inert in a
+            -- Grayer than an ordinary idle slot: a reflex-only item on cooldown is inert in a
             -- way a merely passive one isn't, so it must not read as ready at a glance.
             local dim = inert and 0.3 or ((not usable) and 0.45 or 1)
             local ab = item.activeAbility
@@ -1334,9 +1334,9 @@ function CombatPanel:drawItemGrid()
                 love.graphics.printf((item.name or "?"):sub(1, 1), icx - ph / 2, icy - 12, ph, "center")
             end
 
-            -- The recovery clock over the icon (never over the name band, which stays readable): the
+            -- The cooldown clock over the icon (never over the name band, which stays readable): the
             -- wedge, then the ticks left in an hourglass badge centred on it. Centred rather than
-            -- tucked in a corner because the clock is the whole story of a recovering slot -- it is
+            -- tucked in a corner because the clock is the whole story of a spent slot -- it is
             -- what the eye should land on, not a footnote to the art behind it. Red, like every other
             -- badge that says "not yet".
             if inert then
@@ -1348,7 +1348,7 @@ function CombatPanel:drawItemGrid()
                 self:drawBadgeAt(cwx + (cww - bw) / 2, cwy + (cwh - bh) / 2,
                     "hourglass", left, WARN_COLOR, 1)
             elseif cooling then
-                -- Recovering, but the slot can still ACT: the clock is news about one reflex on the
+                -- On cooldown, but the slot can still ACT: the clock is news about one reflex on the
                 -- item, not a verdict on the item, so it rides in a corner badge like every other
                 -- qualifier instead of covering the art. Red under the gold speed badge -- the same
                 -- hourglass, because both are ticks, and the colour carries the difference between

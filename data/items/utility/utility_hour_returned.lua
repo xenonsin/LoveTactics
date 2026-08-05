@@ -1,4 +1,4 @@
--- The Hour Returned: every recharging thing its bearer owns is simply not recharging any more.
+-- The Hour Returned: every cooldown its bearer is waiting on is simply not running any more.
 --
 -- THE ONLY ITEM IN THE GAME THAT GIVES AN ACTION BACK rather than making one bigger, and that is a
 -- genuinely different axis to buy on. Everything else in this catalog raises a number, opens a window,
@@ -8,7 +8,7 @@
 --
 -- Which makes its value entirely a property of the LOADOUT rather than of the item. In a grid of
 -- cheap fast abilities it does nothing worth the mana. In a grid built around one enormous
--- once-a-battle relic -- a Stayed Hand, a signature, a guard with a sixty-tick recharge -- it is worth
+-- once-a-battle relic -- a Stayed Hand, a signature, a guard with a sixty-tick cooldown -- it is worth
 -- exactly that relic a second time, which is more than any other single item on the shelf can promise.
 --
 -- It wipes the trait cooldowns and the per-item reflex timers together, because in this model those

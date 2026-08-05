@@ -115,7 +115,7 @@ return {
         end,
     },
     {
-        name = "Counter Magic unravels a spell for mana, then must recharge",
+        name = "Counter Magic unravels a spell for mana, then goes on cooldown",
         fn = function()
             local caster = armed("character_mage", { "ability_fire_bolt" })
             local target = armed("character_mage", { "utility_counter_magic" }) -- a mage has the mana to run it
@@ -134,7 +134,7 @@ return {
             -- On cooldown now: the next spell in the same flurry gets through.
             hp = warded.char.stats.health.current
             Combat.dealDamage(c, attacker, warded, caster.inventory[1])
-            assert(warded.char.stats.health.current < hp, "a second spell lands while it recharges")
+            assert(warded.char.stats.health.current < hp, "a second spell lands while it is on cooldown")
         end,
     },
     {

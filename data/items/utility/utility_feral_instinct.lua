@@ -1,7 +1,7 @@
 -- Feral Instinct: a beast's reflex to being cornered. The natural cousin of the Reprisal Quiver
 -- (data/items/utility/utility_reprisal_quiver.lua) -- a passive utility whose whole effect is the Melee Counter
 -- trait it grants (data/traits/melee_counter.lua): strike an animal carrying it from an adjacent tile
--- and, if it survives, it whips straight back with its fangs before the reflex has to recharge. Where
+-- and, if it survives, it whips straight back with its fangs before the reflex has to cool down. Where
 -- the quiver answers a shot, this answers a blow up close, which is how a boar or a wolf fights.
 --
 -- No `class`/`price`: it is not crafted or sold, only born with. It sits in the loadout of the wild
