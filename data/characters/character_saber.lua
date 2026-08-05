@@ -34,10 +34,19 @@ return {
     portrait = "assets/portraits/saber.png", -- large VN portrait for conversations (falls back if missing)
     class = "fighter",
     overworldAbility = "held_swing", -- patience: steps since her last fight bank into her next opening
+    -- Above the fighter base (character_fighter.lua) on the physical side -- she is tier 3 and the
+    -- greatsword's own body -- and EXACTLY the base on the magic side, which is the companion
+    -- convention (Rowan holds the knight base's 15/4 untouched). The magic side used to read 0/0, and
+    -- zero is not "she is martial", it is an EQUIP GATE: class never gates gear (docs/classes.md --
+    -- anyone can carry anything), so an empty pool silently made every mana-costed item in the game
+    -- unusable on her, and the sheet printed two dead rows to say so. Nothing in her kit spends mana
+    -- (First Motion and the bolas are stamina, which is what the 20/+2 is for), and the fighter growth
+    -- table grows neither mana nor magicDamage -- so this is a starting floor she never climbs, the same
+    -- token pool every other fighter walks around with.
     stats = {
-        health = 84, mana = 0, stamina = 20,
+        health = 84, mana = 5, stamina = 20,
         staminaRegen = 2,
-        damage = 22, magicDamage = 0,
+        damage = 22, magicDamage = 3,
         defense = 11, magicDefense = 6,
         movement = 4,
         speed = 4, -- quick for a greatsword: she picks her moment

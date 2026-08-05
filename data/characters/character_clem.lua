@@ -35,10 +35,17 @@ return {
     boss = true,
     overworldAbility = "jubilee", -- clemency: mints a cut on top of every side-fight win
     archetype = "aggressive", -- a glass-cannon skirmisher; she opens the wound and takes the kill
+    -- The rogue base (character_rogue.lua) with the fixer's edge: harder hand, thinner stamina, faster
+    -- regen, a point more speed. The magic side is the base's UNTOUCHED, which is the companion
+    -- convention (Rowan holds the knight base's 15/4). It used to read 0/0, and zero is not "she is a
+    -- knife", it is an EQUIP GATE: class never gates gear (docs/classes.md -- anyone can carry
+    -- anything), so an empty pool silently made every mana-costed item unusable on her. Her whole loop
+    -- is stamina (kris 5, Borrowed Time 8, the shadow kit 4 each -- which is what the 17/+3 buys), and
+    -- the rogue growth table grows neither mana nor magicDamage, so this is a floor she never climbs.
     stats = {
-        health = 54, mana = 0, stamina = 17,
+        health = 54, mana = 8, stamina = 17,
         staminaRegen = 3,
-        damage = 18, magicDamage = 0, -- high, fragile: the fixer who must never be caught
+        damage = 18, magicDamage = 3, -- high, fragile: the fixer who must never be caught
         defense = 8, magicDefense = 8,
         movement = 4,
         speed = 6, -- the fastest hand on the floor
