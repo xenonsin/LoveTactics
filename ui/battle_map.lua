@@ -1396,6 +1396,43 @@ function BattleMap:drawHighlights()
         love.graphics.setLineWidth(1)
     end
 
+    -- Where the aimed cast would leave the acting unit (self.overlays.landing): the tile a blink puts
+    -- it on beside its mark, or the one a hit-and-run step-back retreats to. It is the ACTOR'S OWN gold
+    -- ring, hollowed out and breathing on the same pulse -- the same mark it wears now, drawn where it
+    -- is about to be -- so it reads as "this ring moves there" and not as a fourth kind of highlight or
+    -- a second body. A dashed tether runs from the tile the cast fires from, picking up where the white
+    -- approach arrow stopped, so a walk-then-blink reads as one plan with two legs.
+    local landing = self.overlays.landing
+    if landing then
+        local wx, wy = self:cellToPixel(landing.x, landing.y)
+        local lw = (landing.unit and landing.unit.w or 1) * s
+        local lh = (landing.unit and landing.unit.h or 1) * s
+        local pulse = 0.65 + 0.35 * math.sin((self.time or 0) * 4)
+        if landing.fromX then
+            -- Dashes rather than a solid line: the actor does not travel this ground, it is put down at
+            -- the far end of it, and a solid stroke here would read as the walk route above.
+            local fwx, fwy = self:cellToPixel(landing.fromX, landing.fromY)
+            local ax, ay = fwx + s / 2, fwy + s / 2
+            local bx, by = wx + lw / 2, wy + lh / 2
+            local dist = math.sqrt((bx - ax) ^ 2 + (by - ay) ^ 2)
+            local ux, uy = (bx - ax) / math.max(dist, 1), (by - ay) / math.max(dist, 1)
+            love.graphics.setColor(0.98, 0.82, 0.35, 0.30 + 0.25 * pulse)
+            love.graphics.setLineWidth(2)
+            local step, d = 8, s * 0.35 -- start clear of the ring the actor already wears
+            while d < dist - s * 0.35 do
+                local e = math.min(d + step * 0.55, dist - s * 0.35)
+                love.graphics.line(ax + ux * d, ay + uy * d, ax + ux * e, ay + uy * e)
+                d = d + step
+            end
+        end
+        love.graphics.setColor(0.98, 0.82, 0.35, 0.08)
+        love.graphics.rectangle("fill", wx + 3, wy + 3, lw - 6, lh - 6, 5, 5)
+        love.graphics.setColor(0.98, 0.82, 0.35, 0.35 + 0.30 * pulse)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", wx + 3, wy + 3, lw - 6, lh - 6, 5, 5)
+        love.graphics.setLineWidth(1)
+    end
+
     -- Whoever the hovered combat-log line is about: a pulsing white ring, deliberately a third colour
     -- (gold = acting, cyan = pointed at, white = the log is talking about this one). When a line names
     -- two -- a striker and the struck -- a thread joins the first to the rest, so the pair reads as

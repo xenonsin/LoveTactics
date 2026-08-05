@@ -1,6 +1,11 @@
 -- Shadow Step: slip through the dark to a foe's side and cut it. The caster blinks to an open tile
 -- beside the target (Combat.openTileNear, springing whatever waits there) and strikes. If the target
 -- is hemmed in with no open neighbour, the strike still lands from where the caster stood.
+--
+-- Where it puts you is half of what the cast is weighed on, so it previews: the dry run records the
+-- landing (Combat.previewAbility's userRestsX/userRestsY -- fx.teleportUser is inert but no longer
+-- silent), the board rings that tile while the blink is aimed, and the counter preview weighs the
+-- blow from it rather than from the tile four squares back that it is nominally thrown from.
 local Curve = require("models.curve")
 
 return {

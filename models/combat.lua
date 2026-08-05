@@ -6125,7 +6125,8 @@ end
 -- after mitigation, the clamped heal, the status a hit would apply -- and record it per affected
 -- unit. Because it replays the real effect it handles AoE / multi-hit / self-effects correctly.
 -- Returns { entries = { [unit] = { unit, damage, heal, lethal, statuses = { { id, def, opts } } } },
--- order = {entries...} } (order is affected-unit order), or nil for an ability with no effect.
+-- order = {entries...} } (order is affected-unit order), plus userRestsX/userRestsY when the cast
+-- MOVES the caster (a blink, a step-back), or nil for an ability with no effect.
 -- The effect is pcall-guarded so a data-file quirk in a dry run can never crash the tooltip.
 function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
     local ab = item and item.activeAbility
@@ -6147,6 +6148,13 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
     -- only means to walk onto. Flavour is not an effect: fx.log and fx.burst leave it alone.
     local mutates = false
     local function touchesBoard() mutates = true end
+    -- Where the cast would leave the CASTER, when it moves it at all: the tile a blink lands it on
+    -- (Shadow Step slips to a square beside its mark before it cuts) or the one a hit-and-run step-back
+    -- retreats to. Reported at the TOP level rather than on the caster's entry, deliberately: an entry
+    -- would enrol the caster as an affected unit, and a single-target blink would start reading as a
+    -- two-body blast (ui/action_preview summarises `order` as an area hit). Last write wins, so an
+    -- effect that moves twice reports where it comes to rest.
+    local userRestsX, userRestsY
     local function entryFor(tgt)
         local e = entries[tgt]
         if not e then
@@ -6395,6 +6403,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             if tgt then
                 local e = entryFor(unit)
                 e.restsX, e.restsY = Combat.knockbackTile(combat, tgt, unit, distance or 1)
+                userRestsX, userRestsY = e.restsX, e.restsY
             end
             return 0
         end,
@@ -6406,7 +6415,16 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         objectAt = function(px, py) return Combat.throwableAt(combat, px, py, unit.side) end,
         hurl = function() touchesBoard() return 0, false end,
         pullObject = function() touchesBoard() return false end,
-        teleportUser = function() touchesBoard() return false end,
+        -- Inert to the board like the rest -- but a blink is the one mutation whose subject is the
+        -- CASTER, and "where does this leave me" is half of what the cast is being weighed on. Record
+        -- the landing (see userRestsX above): states/battle.lua marks that tile, and the counter
+        -- preview weighs the blow from it, since a Shadow Step thrown from four tiles out is actually
+        -- thrown from the square beside its mark and is answered from there.
+        teleportUser = function(x, y)
+            touchesBoard()
+            if x and y then userRestsX, userRestsY = x, y end
+            return false
+        end,
         teleport = function() touchesBoard() return false end,
         charge = function() touchesBoard() return 0 end,
         steal = function() touchesBoard() return nil end,
@@ -6459,7 +6477,8 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         local hp = e.unit.char and e.unit.char.stats and e.unit.char.stats.health
         e.lethal = e.damage > 0 and hp ~= nil and e.damage >= (hp.current or 0)
     end
-    return { entries = entries, order = order, mutates = mutates }
+    return { entries = entries, order = order, mutates = mutates,
+             userRestsX = userRestsX, userRestsY = userRestsY }
 end
 
 -- Pure: would this cast, aimed at (tx, ty), DO anything -- land on a unit, or touch the board at all?

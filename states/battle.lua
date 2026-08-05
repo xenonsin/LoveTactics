@@ -2354,6 +2354,19 @@ end
 -- Every item-driven action also carries `spend` (Combat.abilitySpend): what the cast would take out
 -- of the actor's own pools -- the resource cost AND a summon's reservation -- which the preview
 -- panel lists and the actor's turn-strip bars project as a red loss slice.
+-- Where a previewed cast would leave the ACTOR, as { x, y, fromX, fromY }, or nil when it leaves it
+-- where it stands. `sx, sy` is the tile the cast fires from -- which a click-to-use approach may have
+-- moved off the actor's own square, so the walk and the blink are two legs of one plan and the second
+-- is measured from the end of the first. A landing equal to that tile is dropped: an ability that puts
+-- you back where you already were (Shadow Strike, when the turn started here) moves nobody, and a
+-- marker on the tile the actor is already ringed on says nothing.
+local function castLanding(preview, sx, sy)
+    if not (preview and preview.userRestsX) then return nil end
+    local x, y = preview.userRestsX, preview.userRestsY
+    if x == sx and y == sy then return nil end
+    return { x = x, y = y, fromX = sx, fromY = sy }
+end
+
 local function actionPreviewFor(cx, cy)
     local current = battle.current
     if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return nil end
@@ -2424,15 +2437,21 @@ local function actionPreviewFor(cx, cy)
             return Combat.previewAbility(battle.combat, current, item, cx, cy)
         end)
         local entry = preview and unit and preview.entries[unit] or nil
+        local lands = castLanding(preview, plan.entry.fromX, plan.entry.fromY)
         return {
             kind = (item.activeAbility.target == "tile") and "place" or "ability",
             item = item, actor = current, target = unit, support = battle.armedSupport,
             spend = Combat.abilitySpend(current, item.activeAbility),
             entry = entry,
+            lands = lands, -- where the cast puts the actor, for the board's landing mark
             -- Weighed from the tile the cast fires from -- the plan's stand tile, which a steered
-            -- approach may have moved off the actor's own square.
+            -- approach may have moved off the actor's own square, and which a blink moves off again
+            -- before the blow lands (Shadow Step cuts from the square it slipped to, and is answered
+            -- from there -- so a preview weighed from four tiles out would promise safety it hasn't).
             counters = Combat.previewCounters(battle.combat, current, item, unit,
-                { entry = entry, fromX = plan.entry.fromX, fromY = plan.entry.fromY }),
+                { entry = entry,
+                  fromX = lands and lands.x or plan.entry.fromX,
+                  fromY = lands and lands.y or plan.entry.fromY }),
             entries = preview and preview.entries or nil, -- every affected unit (AoE), for banner preview
             order = preview and preview.order or nil, -- ordered affected units, for the AoE summary
         }
@@ -2455,13 +2474,18 @@ local function actionPreviewFor(cx, cy)
                     return Combat.previewAbility(battle.combat, current, action, cx, cy)
                 end)
                 local entry = preview and preview.entries[unit] or nil
+                local lands = castLanding(preview, inReach.fromX, inReach.fromY)
                 return { kind = support and "ability" or "attack", item = action, actor = current,
                          target = unit, support = support,
                          entry = entry,
+                         lands = lands, -- where the action puts the actor, for the board's landing mark
                          -- Click-to-use walks into reach first, so the answer is weighed from the
-                         -- stand tile the strike fires from, not the tile the actor stands on now.
+                         -- stand tile the strike fires from, not the tile the actor stands on now --
+                         -- and from the landing tile when the strike itself blinks the actor there.
                          counters = Combat.previewCounters(battle.combat, current, action, unit,
-                             { entry = entry, fromX = inReach.fromX, fromY = inReach.fromY }),
+                             { entry = entry,
+                               fromX = lands and lands.x or inReach.fromX,
+                               fromY = lands and lands.y or inReach.fromY }),
                          spend = Combat.abilitySpend(current, action.activeAbility),
                          entries = preview and preview.entries or nil,
                          order = preview and preview.order or nil }
@@ -3824,6 +3848,17 @@ refreshView = function()
             end
         end
     end
+    -- ...and where the aimed cast would leave the ACTOR, when it moves it: Shadow Step slips to a tile
+    -- beside its mark before it cuts, a hit-and-run blow steps back out of reach. The board marks that
+    -- tile (ui/battle_map's landing ring), because "where do I end up" is half of what a cast like that
+    -- is being weighed on -- the reach band answers where it can be thrown from, and nothing until now
+    -- answered where it puts you. The white approach arrow already drawn above ends on the tile the
+    -- cast fires from, so the mark picks up from there and the two legs read as one plan.
+    if battle.hoverAction and battle.hoverAction.lands then
+        local l = battle.hoverAction.lands
+        overlays.landing = { x = l.x, y = l.y, fromX = l.fromX, fromY = l.fromY, unit = current }
+    end
+
     -- Now the aimed action is known: paint the hovered foe's intent badge on its body UNLESS the actor
     -- is aiming an offensive strike right at it. Aiming it, its incoming-damage number sits on the very
     -- body being targeted and reads as the damage the PLAYER deals; the tile tooltip already prices that
