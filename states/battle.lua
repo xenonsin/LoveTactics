@@ -4176,7 +4176,16 @@ local function openDeployPhase(opts)
     battle.deploy = DeployPhase.new({
         combat = battle.combat, map = battle.map, arena = battle.arena,
         roster = opts.party or {}, player = opts.player, gutter = gutterRect(),
-        onCommit = function(deployed, front, placed) commitDeploy(opts, deployed, front, placed) end,
+        -- Whether the fight is played or watched is asked HERE, next to the bell, seeded from the
+        -- standing preference (battle.autoAll carries across fights, like the playback speed) and
+        -- handed back on the commit -- so the phase's switch and the drawer's Auto entry are one flag
+        -- read and written in two places, never two settings that can disagree. A tutorial forbids it
+        -- outright (autoAllowed), and the toggle does not draw at all there.
+        autoBattle = battle.autoAll, allowAuto = autoAllowed(),
+        onCommit = function(deployed, front, placed, auto)
+            if autoAllowed() then battle.autoAll = auto and true or false end
+            commitDeploy(opts, deployed, front, placed)
+        end,
     })
 end
 

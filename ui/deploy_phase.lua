@@ -46,8 +46,10 @@ local MIN_CARD_W = 62
 --   combat, map, arena  the live (unopened) battle and its board widget
 --   roster              the marching company, in order
 --   player              for the opening pick (Player.wasDeployed); nil in a probe/test harness
---   onCommit(chars, front, placed)  what Begin means; the host rings the bell
+--   onCommit(chars, front, placed, auto)  what Begin means; the host rings the bell
 --   gutter              { x, y, w, h } -- the strip's rect (the combat log's)
+--   autoBattle          whether the fight should open handed to the AI (the host's standing preference)
+--   allowAuto           false where auto-battle is forbidden (a tutorial); hides the toggle outright
 function DeployPhase.new(opts)
     opts = opts or {}
     local self = setmetatable({}, DeployPhase)
@@ -58,6 +60,14 @@ function DeployPhase.new(opts)
     self.player = opts.player
     self.onCommit = opts.onCommit
     self.gutter = opts.gutter or { x = 0, y = 0, w = 0, h = 0 }
+
+    -- Whether the bell rings on a fight the player takes themselves or one handed straight to the AI.
+    -- Decided HERE, on the same screen as the line, because "who plays this" is part of committing to a
+    -- fight -- a player who wants a grind auto-run should never have to open the drawer on turn one to
+    -- say so. Seeded from (and handed back to) the host's standing preference, so it stays a preference
+    -- that carries across fights rather than a per-battle question. See states/battle.lua's autoAll.
+    self.allowAuto = opts.allowAuto ~= false
+    self.autoBattle = self.allowAuto and opts.autoBattle and true or false
 
     self.placed = {}        -- { { char, unit, x, y }, ... } in placement order
     self.held = nil         -- the member the keyboard/pad picked up
@@ -73,7 +83,7 @@ function DeployPhase.new(opts)
 
     -- Open on last battle's four, already placed. A player happy with them presses Begin; anyone else
     -- drags. Nobody is made to re-solve a decision they already made.
-    self:auto()
+    self:autoFill()
     if not self.player then self:reset() end -- no player (a probe): open empty rather than guess
 
     return self
@@ -159,7 +169,7 @@ end
 -- Auto-fill: put the first MAX_FIELD company members on the arena's own bound spawns -- exactly where
 -- they would have stood before there was a phase to choose in. Members who fought last battle come
 -- first, so a player who fields the same four is one button from ready.
-function DeployPhase:auto()
+function DeployPhase:autoFill()
     self:reset()
     local order = {}
     for _, char in ipairs(self.roster) do
@@ -220,8 +230,18 @@ function DeployPhase:begin()
         self.message = "Put at least one of your company on the field."
         return false
     end
-    if self.onCommit then self.onCommit(self:deployedChars(), self:frontLine(), self.placed) end
+    if self.onCommit then
+        self.onCommit(self:deployedChars(), self:frontLine(), self.placed, self.autoBattle)
+    end
     return true
+end
+
+function DeployPhase:toggleAuto()
+    if not self.allowAuto then return end
+    self.autoBattle = not self.autoBattle
+    -- Deliberately says nothing in the hint line: the switch reads its own state ("Auto: On") and the
+    -- bell beside it reads "Begin (Auto)". A sentence there would only shout over a placement refusal,
+    -- which is the one thing in that line the player cannot see any other way.
 end
 
 -- ---------------------------------------------------------------------------
@@ -273,7 +293,7 @@ function DeployPhase:cardAt(px, py)
     return nil
 end
 
-function DeployPhase:autoRect()
+function DeployPhase:autoFillRect()
     local r = self.gutter
     return { x = r.x, y = r.y + r.h - BUTTON_H - 2, w = 70, h = BUTTON_H }
 end
@@ -285,7 +305,17 @@ end
 
 function DeployPhase:beginRect()
     local r = self.gutter
-    return { x = r.x + r.w - 150, y = r.y + r.h - BUTTON_H - 2, w = 150, h = BUTTON_H }
+    return { x = r.x + r.w - 130, y = r.y + r.h - BUTTON_H - 2, w = 130, h = BUTTON_H }
+end
+
+-- The auto-battle switch, paired flush to the LEFT of Begin: it is a modifier on the button beside it
+-- ("begin -- like this"), not a third placement tool, so it sits with the bell and not with Auto-Fill
+-- and Clear at the other end of the strip. Kept narrow because the whole row has to fit the NARROWEST
+-- gutter there is -- an eight-column board is 480px, and the hint between the clusters pays for every
+-- pixel a button takes.
+function DeployPhase:autoRect()
+    local r = self.gutter
+    return { x = r.x + r.w - 220, y = r.y + r.h - BUTTON_H - 2, w = 84, h = BUTTON_H }
 end
 
 local function rectHas(r, x, y)
@@ -362,13 +392,19 @@ function DeployPhase:drawCard(i, char)
     end
 end
 
-function DeployPhase:drawButton(r, label, enabled)
-    love.graphics.setColor(enabled and 0.20 or 0.13, enabled and 0.24 or 0.14, enabled and 0.30 or 0.18)
+-- `on` marks a SWITCH that is currently thrown (the auto-battle toggle). It wears the spotlight gold
+-- the rest of the UI spends on what is live, so an armed auto-battle is legible from the far side of
+-- the screen -- a fight that plays itself is not a thing to discover after the bell.
+function DeployPhase:drawButton(r, label, enabled, on)
+    if on then love.graphics.setColor(0.26, 0.21, 0.12) -- a warm wash under the gold, against the row's cool slate
+    else love.graphics.setColor(enabled and 0.20 or 0.13, enabled and 0.24 or 0.14, enabled and 0.30 or 0.18) end
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 4, 4)
-    love.graphics.setColor(enabled and 0.72 or 0.34, enabled and 0.62 or 0.36, enabled and 0.40 or 0.44)
+    if on then Theme.set(Theme.accentAmber)
+    else love.graphics.setColor(enabled and 0.72 or 0.34, enabled and 0.62 or 0.36, enabled and 0.40 or 0.44) end
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 4, 4)
     love.graphics.setFont(self.font)
-    love.graphics.setColor(enabled and 0.95 or 0.52, enabled and 0.90 or 0.54, enabled and 0.70 or 0.58)
+    if on then Theme.set(Theme.accentAmber)
+    else love.graphics.setColor(enabled and 0.95 or 0.52, enabled and 0.90 or 0.54, enabled and 0.70 or 0.58) end
     love.graphics.printf(label, r.x, r.y + 4, r.w, "center")
 end
 
@@ -404,21 +440,38 @@ function DeployPhase:draw(bounds)
         end
     end
 
-    self:drawButton(self:autoRect(), "Auto", true)
+    self:drawButton(self:autoFillRect(), "Auto-Fill", true)
     self:drawButton(self:resetRect(), "Clear", #self.placed > 0)
-    self:drawButton(self:beginRect(), "Begin Battle", #self.placed > 0)
+    -- The bell says which fight it is ringing for. A player who armed auto and then pressed a button
+    -- reading "Begin Battle" would have been told nothing about the fight they were about to not play.
+    -- Spelt out rather than ticked: the switch has to answer "played or watched?" on its own, from a
+    -- glance, with no second control to compare itself against.
+    if self.allowAuto then
+        self:drawButton(self:autoRect(), self.autoBattle and "Auto: On" or "Auto: Off",
+            true, self.autoBattle)
+    end
+    self:drawButton(self:beginRect(), self.autoBattle and "Begin (Auto)" or "Begin Battle",
+        #self.placed > 0)
 
     -- One line, between the Clear and Begin buttons: either the last refusal, or how to work the phase.
     -- Ellipsized rather than wrapped -- a second line has nowhere to go in a strip this tall.
     local r = self.gutter
     love.graphics.setFont(self.font)
-    local hintX, hintW = r.x + 152, r.w - 310
+    local hintX = r.x + 152
+    local hintW = (self.allowAuto and r.w - 380 or r.w - 290)
     local line, color = self.message, { 0.92, 0.62, 0.55 }
     if not line then
         color = { 0.55, 0.58, 0.68 }
-        line = InputMode.isGamepad()
-            and "D-pad: choose   A: pick up / place   Start: begin"
-            or "Drag onto the lit ground; drag back here to withdraw"
+        -- The long form on a wide board, a short one on a narrow gutter. A hint the strip cuts in half
+        -- teaches nothing, so it says less rather than saying it truncated.
+        local roomy = hintW >= 240
+        if InputMode.isGamepad() then
+            line = roomy and "D-pad: choose   A: pick up / place   Y: auto   Start: begin"
+                or "A: place   Y: auto   Start: begin"
+        else
+            line = roomy and "Drag onto the lit ground; drag back here to withdraw"
+                or "Drag onto lit tiles"
+        end
     end
     love.graphics.setColor(color[1], color[2], color[3])
     love.graphics.print(Theme.ellipsize(line, self.font, hintW), hintX, r.y + r.h - BUTTON_H + 3)
@@ -449,7 +502,8 @@ function DeployPhase:mousepressed(x, y, button)
     self.mx, self.my = x, y
 
     if rectHas(self:beginRect(), x, y) then self:begin() return end
-    if rectHas(self:autoRect(), x, y) then self:auto() return end
+    if self.allowAuto and rectHas(self:autoRect(), x, y) then self:toggleAuto() return end
+    if rectHas(self:autoFillRect(), x, y) then self:autoFill() return end
     if rectHas(self:resetRect(), x, y) then self:reset() return end
 
     -- A member already in hand from the keyboard drops wherever the click lands.
@@ -554,6 +608,9 @@ function DeployPhase:keypressed(key)
     elseif key == "escape" then
         if self.held then self.held = nil else self.message = "Deploy your company, then Begin Battle." end
     elseif key == "space" then self:confirm()
+    -- V, the same key that flips whole-side auto inside the fight (states/battle.lua): one binding for
+    -- one idea, before the bell and after it.
+    elseif key == "v" then self:toggleAuto()
     elseif key == "left" or key == "a" then self:navigate(-1, 0)
     elseif key == "right" or key == "d" then self:navigate(1, 0)
     elseif key == "up" or key == "w" then self:navigate(0, -1)
@@ -565,6 +622,8 @@ function DeployPhase:gamepadpressed(_, button)
     if button == "start" then self:begin()
     elseif button == "b" then self.held = nil
     elseif button == "a" then self:confirm()
+    -- Y, not the fight's A: here A is already "pick up / place", and placement outranks a switch.
+    elseif button == "y" then self:toggleAuto()
     elseif button == "dpleft" then self:navigate(-1, 0)
     elseif button == "dpright" then self:navigate(1, 0)
     elseif button == "dpup" then self:navigate(0, -1)
@@ -573,11 +632,12 @@ function DeployPhase:gamepadpressed(_, button)
 end
 
 -- A hand over anything that can be picked up or pressed: a company card, a member already standing on
--- the board, and the three buttons.
+-- the board, and the strip's buttons.
 function DeployPhase:cursorKind(x, y)
     if self:cardAt(x, y) then return "hand" end
-    if rectHas(self:beginRect(), x, y) or rectHas(self:autoRect(), x, y)
+    if rectHas(self:beginRect(), x, y) or rectHas(self:autoFillRect(), x, y)
         or rectHas(self:resetRect(), x, y) then return "hand" end
+    if self.allowAuto and rectHas(self:autoRect(), x, y) then return "hand" end
     local cx, cy = self.map:cellAt(x, y)
     if cx and (self.held or self:deployedAt(cx, cy)) then return "hand" end
     return "arrow"

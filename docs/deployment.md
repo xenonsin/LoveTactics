@@ -68,9 +68,16 @@ takes its rect back the moment the fight starts.
 - The strip fits the whole company where it can. Past that, cards stop shrinking (`MIN_CARD_W`) and it
   **pages**: the wheel scrolls it, keyboard/pad navigation drags it along, and a small `<n` / `n>` tab
   at each end counts who is off-screen.
-- **Auto** places the four who fought last battle (`Player.lastDeployed`, ids only — no tiles are ever
-  persisted) on the board's own bound spawns: exactly where they would have stood before there was a
-  phase to choose in. **Clear** empties the board. **Begin Battle** commits.
+- **Auto-Fill** places the four who fought last battle (`Player.lastDeployed`, ids only — no tiles are
+  ever persisted) on the board's own bound spawns: exactly where they would have stood before there was
+  a phase to choose in. **Clear** empties the board. **Begin Battle** commits.
+- **Auto** (paired flush left of the bell; `V`, pad `Y`) decides whether the fight opens played or
+  watched — it is the same `battle.autoAll` flag the in-fight drawer's Auto entry flips, seeded from it
+  and handed back on the commit, so the two can never disagree and the setting carries across fights
+  like the playback speed does. Armed, the switch and the bell both wear the spotlight gold and the
+  bell reads **Begin (Auto)** — a fight that plays itself is not a thing to discover after turn one.
+  Any input still takes the current turn straight back (`reclaimAutoTurn`). A tutorial forbids
+  auto-battle outright (`autoAllowed`), and there the switch does not draw at all.
 - Keyboard and pad reach all of it: the cursor crosses between the strip and the board, confirm picks
   a member up, confirm on a zone tile places them.
 
