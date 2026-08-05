@@ -67,4 +67,32 @@ return {
             assert(Combat.unlockMet(clem, relic, c), "open at the third -- the mercy-stroke")
         end,
     },
+    {
+        name = "a locked signature is never the default action -- the kill-gate cannot eat the basic attack",
+        fn = function()
+            -- The shipped deadlock this guards: sell Clem's kris and pin the relic (a loadout the game
+            -- lets you build), and the click-to-use basic action was the mercy-stroke -- which asks for
+            -- three kills she has no other blade to take. Charging it required using it.
+            local c = Combat.new(arena(6, 6),
+                { { char = Character.instantiate("character_clem"), x = 1, y = 1 } },
+                { { char = Character.instantiate("character_bandit"), x = 5, y = 5 } })
+            local clem = c.units[1]
+            local relic = clem.char.inventory[5]
+            for cell = 1, Character.MAX_INVENTORY do
+                if cell ~= 5 then clem.char.inventory[cell] = nil end
+            end
+            clem.char.defaultActionSlot = 5
+
+            local action = Combat.defaultAction(clem.char, clem)
+            assert(action ~= relic, "the locked signature is passed over, pin and all")
+            assert(action == clem.char.unarmed, "with nothing else in hand she still has her fists")
+            assert(Combat.itemBlockReason(clem, action) == nil, "and the default she is handed can be used")
+
+            -- Collect the three and the pin comes back: the turn after it charges opens on the swing.
+            Combat.tally(clem, "kill", 3)
+            assert(Combat.defaultAction(clem.char, clem) == relic, "an open signature is the pinned default again")
+            -- Off the board (the Loadout screen, with no unit to ask) a gated relic is never the default.
+            assert(Combat.defaultAction(clem.char) == clem.char.unarmed, "no unit to ask -> locked stays locked")
+        end,
+    },
 }

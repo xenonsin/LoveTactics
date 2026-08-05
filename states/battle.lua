@@ -777,7 +777,10 @@ end
 -- overlay so the two never stack into a muddy overlap. Reads the live `battle.reachable`, so once the
 -- unit has moved (reachable cleared) only what it can reach from where it now stands shows.
 local function computeThreat(unit)
-    local action = Combat.defaultAction(unit.char)
+    -- The unit rides along so a signature's `unlock` is asked live: while it is still charging the
+    -- default falls through to something the unit can actually open with, and the swing it lit the
+    -- band with is the swing the click will land.
+    local action = Combat.defaultAction(unit.char, unit)
     battle.defaultAction = action
     local ab = action and action.activeAbility
     local support = ab ~= nil and Combat.isSupportAbility(ab)

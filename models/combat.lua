@@ -536,17 +536,31 @@ end
 -- falls back), else the first inventory weapon with an ability, else the first ability item of any
 -- kind, else the hidden unarmed weapon. So a fighter defaults to its sword and a mage with no weapon
 -- to its attack spell, until the player pins something else.
-function Combat.defaultAction(char)
+--
+-- A signature still charging toward its in-battle `unlock` is passed over at every step, the pin
+-- included -- the same reading Combat.initiative already takes of a locked ability when it sets the
+-- opening tempo. The default action is the click-to-use BASIC action, and a move the unit has to earn
+-- cannot be the one it opens with: a bearer carrying nothing else would be left with no basic attack
+-- at all, and a kill-gated signature (Borrowed Time) deadlocks outright, since the kills that open it
+-- can only be taken with it. Passing the live `unit` asks the lock rather than assuming it -- so the
+-- pin comes back the moment the signature opens, and the turn after it charges auto-arms the
+-- marquee swing. Without a unit (the Loadout screen, which has no battle to ask) a locked ability is
+-- simply not the default.
+function Combat.defaultAction(char, unit)
+    local function ready(item)
+        local ab = item and item.activeAbility
+        if not ab then return false end
+        if not ab.unlock then return true end
+        if not unit then return false end
+        return Combat.unlockMet(unit, item) and true or false
+    end
     local slot = char.defaultActionSlot
-    if slot then
-        local item = char.inventory[slot]
-        if item and item.activeAbility then return item end
+    if slot and ready(char.inventory[slot]) then return char.inventory[slot] end
+    for _, item in ipairs(Character.eachItem(char)) do
+        if item.type == "weapon" and ready(item) then return item end
     end
     for _, item in ipairs(Character.eachItem(char)) do
-        if item.type == "weapon" and item.activeAbility then return item end
-    end
-    for _, item in ipairs(Character.eachItem(char)) do
-        if item.activeAbility then return item end
+        if ready(item) then return item end
     end
     return char.unarmed
 end
