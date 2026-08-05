@@ -216,14 +216,29 @@ return {
         end,
     },
     {
-        name = "equipDelta keeps only the flat stats the focus sheet shows",
+        name = "equipDelta previews a flat bonus and a resource ceiling, off the right field for each",
         fn = function()
             -- iron_plate: bonus = { defense = 13, movement = -2 }, plus a resist bag.
             local delta = Party.equipDelta(Item.instantiate("armor_iron_plate"))
             assert(delta.defense == 13, "defense bonus surfaced")
             assert(delta.movement == -2, "negative movement bonus surfaced")
-            -- Resistances aren't flat stat rows, so they never leak into the delta.
+            -- Resistances aren't stat rows, so they never leak into the delta.
             assert(delta.physical == nil and delta.slash == nil, "resist keys excluded")
+
+            -- A POOL ROW moves too, and its raise lives on item.maxBonus (Toughness, Endurance,
+            -- Attunement). The sheet counts those toward the ceiling it prints, so the preview of
+            -- picking one up has to read the same field the sheet does.
+            local charm = Item.instantiate("armor_iron_plate")
+            charm.bonus, charm.maxBonus = nil, { health = 12, stamina = 3 }
+            delta = Party.equipDelta(charm)
+            assert(delta.health == 12 and delta.stamina == 3,
+                "a maxBonus ceiling raise is previewed, on every pool row")
+
+            -- And the mirror: `bonus.health` raises no ceiling anywhere in Combat, so previewing it
+            -- would promise a pool the item never delivers.
+            charm.bonus, charm.maxBonus = { health = 99 }, nil
+            assert(next(Party.equipDelta(charm)) == nil,
+                "a health bonus filed under `bonus` previews nothing, exactly as it does nothing")
         end,
     },
     {

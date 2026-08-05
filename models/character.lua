@@ -104,6 +104,71 @@ function Character.eachItem(char)
     return list
 end
 
+-- Which field on an ITEM carries a bonus to `key`: `maxBonus` for a resource pool, `bonus` for a flat
+-- stat. THE one answer to that question, because getting it wrong is silent -- an item raising
+-- `bonus.health` raises no ceiling anywhere in Combat, and a reader that checked `bonus` for HP would
+-- report nothing where a Toughness charm plainly does something. Combat keeps the two apart deliberately
+-- (applyUnitPassives folds `bonus` into unit.bonus for Combat.flatStat and `maxBonus` into char.maxBonus
+-- for Combat.unreservedMax); this is that same split, exposed so the readouts cannot each guess.
+function Character.bonusField(key)
+    return isResourceStat(key) and "maxBonus" or "bonus"
+end
+
+-- Everything feeding one stat on this member: { { label, value }, ... }, base first and then one row per
+-- piece of gear that moves it.
+--
+-- "Base" is the body itself -- the blueprint value with its banked level-ups already in it. They are one
+-- row because they are one fact from the player's side: this is what the character is worth naked. The
+-- split between them is a bookkeeping detail of how Growth.resolve stores things, and a tooltip about
+-- gear is not the place to explain it.
+--
+-- TWO DIFFERENT FIELDS, and reading the wrong one is silent. A flat stat is raised by `item.bonus`,
+-- which Combat folds into unit.bonus for Combat.flatStat. A resource CEILING is raised by
+-- `item.maxBonus` instead (Toughness, Endurance, Attunement), which lands in char.maxBonus for
+-- Combat.unreservedMax. They are deliberately separate over there, so a reader that checked only
+-- `bonus` would report nothing at all on exactly the three rows -- HP, MP, SP -- whose ceilings a player
+-- most wants accounted for.
+--
+-- Statuses are absent on purpose rather than forgotten -- Status.statBonus is a battle-time reading of a
+-- live unit, and nothing here is in a battle.
+--
+-- This lives on the model rather than on the sheet that prints it because it has a second reader now:
+-- models/muster.lua rates a body by exactly these numbers, and a model may not require a panel. The
+-- Loadout sheet keeps its Party.statSources/statTotal names as delegates. Pure and static (no panel, no
+-- love.graphics, no Combat), so it is unit-testable -- see tests/party_spec.lua.
+function Character.statSources(char, key)
+    if not (char and key) then return {} end
+    local live = char.stats and char.stats[key]
+    local resource = type(live) == "table"
+    local base = resource and (live.max or 0) or live
+    if type(base) ~= "number" then return {} end
+
+    local parts = { { label = "Base", value = base } }
+    local field = Character.bonusField(key)
+    for _, item in ipairs(Character.eachItem(char)) do
+        local v = item[field] and item[field][key]
+        if v and v ~= 0 then
+            parts[#parts + 1] = { label = item.name or "Equipment", value = v }
+        end
+    end
+    return parts
+end
+
+-- The figure the sheet PRINTS for `key`: every source above, summed -- so the number on the row and the
+-- rows in its tooltip cannot disagree, because they are the same list added up two ways.
+--
+-- This is the effective stat, gear included. It did not use to be: the sheet printed char.stats alone,
+-- and equipped gear reached the number only once Combat.applyUnitPassives ran at the start of a battle.
+-- A member reading "Attack 17" with a +6 spear in the grid actually swung for 22, and no surface said
+-- so -- the sheet quietly described a body with its kit taken off. For a resource this is the CEILING;
+-- `current` is left alone, so a wounded member still reads as wounded against the raised max, exactly as
+-- it already did against the unraised one.
+function Character.statTotal(char, key)
+    local total = 0
+    for _, part in ipairs(Character.statSources(char, key)) do total = total + part.value end
+    return total
+end
+
 -- The 1-based cell holding `item` (identity match), or nil if it isn't in the grid (e.g. the
 -- hidden unarmed weapon, which never sits in the inventory).
 function Character.slotIndex(char, item)

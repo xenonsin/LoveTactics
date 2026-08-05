@@ -98,12 +98,12 @@ local MODE_H = 28
 local PROMPT_GO = { 0.55, 0.90, 0.58 }
 local PROMPT_NO = { 0.95, 0.50, 0.47 }
 
--- Flat stat keys the focus sheet prints (STAT_ROWS minus the resource pools), so an equip-delta
--- preview only annotates a row that actually shows a plain number.
-local DELTA_KEYS = {}
-for _, row in ipairs(STAT_ROWS) do
-    if not row.res then DELTA_KEYS[row.key] = true end
-end
+-- Every stat key the focus sheet prints, in row order -- what Party.equipDelta walks to decide which of
+-- an item's bonuses are worth previewing. WHICH ROWS EXIST is the sheet's business and lives here; WHERE
+-- a bonus to a given row lives on an item is the model's (Character.bonusField), so the two readouts
+-- cannot each guess at the bonus/maxBonus split and disagree.
+local SHEET_KEYS = {}
+for _, row in ipairs(STAT_ROWS) do SHEET_KEYS[#SHEET_KEYS + 1] = row.key end
 
 -- The focus sheet's stat-annotation palette. GAIN / LOSS are the signed figure beside a value while an
 -- item is in hand: what equipping it would do to that number.
@@ -1245,69 +1245,42 @@ function Party:pickedItem()
     return nil
 end
 
--- Flat stat changes `item.bonus` would apply, limited to the flat rows the sheet shows. Pure and
--- static (no Combat, no mutation) so it's unit-testable without constructing a panel.
+-- What `item` would do to each row of the focus sheet if it were equipped, keyed by stat: the flat
+-- bonuses AND the resource-ceiling raises, each read off the field that actually carries it
+-- (Character.bonusField). Only rows the sheet prints -- an item's resist bag and its unarmed buffs move
+-- nothing here and never leak in.
+--
+-- THE POOL ROWS USED TO BE FILTERED OUT, on the grounds that HP shows "77/89" rather than a plain number
+-- and had nothing an item could move. The first half was never a reason and the second stopped being
+-- true the moment the sheet started counting gear toward the ceiling: what was left was a preview that
+-- went silent over Toughness, Endurance and Attunement -- the three items whose whole text is the number
+-- it was declining to show.
+--
+-- Pure and static (no Combat, no mutation) so it's unit-testable without constructing a panel.
 function Party.equipDelta(item)
     local delta = {}
-    if item and item.bonus then
-        for k, v in pairs(item.bonus) do
-            if DELTA_KEYS[k] then delta[k] = v end
-        end
+    if not item then return delta end
+    for _, key in ipairs(SHEET_KEYS) do
+        local field = Character.bonusField(key)
+        local v = item[field] and item[field][key]
+        if v and v ~= 0 then delta[key] = v end
     end
     return delta
 end
 
--- Everything feeding one stat on this member: { { label, value }, ... }, base first and then one row per
--- piece of gear that moves it.
+-- Everything feeding one stat on this member (base first, then one row per piece of gear that moves it),
+-- and that list summed -- the effective stat with gear folded in, which is the figure the sheet PRINTS.
 --
--- "Base" is the body itself -- the blueprint value with its banked level-ups already in it. They are one
--- row because they are one fact from the player's side: this is what the character is worth naked. The
--- split between them is a bookkeeping detail of how Growth.resolve stores things, and a tooltip about
--- gear is not the place to explain it.
---
--- TWO DIFFERENT FIELDS, and reading the wrong one is silent. A flat stat is raised by `item.bonus`,
--- which Combat folds into unit.bonus for Combat.flatStat. A resource CEILING is raised by
--- `item.maxBonus` instead (Toughness, Endurance, Attunement), which lands in char.maxBonus for
--- Combat.unreservedMax. They are deliberately separate over there, so a reader that checked only
--- `bonus` would report nothing at all on exactly the three rows -- HP, MP, SP -- whose ceilings a player
--- most wants accounted for.
---
--- Statuses are absent on purpose rather than forgotten -- Status.statBonus is a battle-time reading of a
--- live unit, and nothing here is in a battle.
---
--- Pure and static (no panel, no love.graphics, no Combat), so it is unit-testable -- see
--- tests/party_spec.lua alongside Party.equipDelta, whose `item.bonus` reading this shares.
+-- Both moved down to models/character.lua, where the body they describe lives: models/muster.lua rates a
+-- character by exactly these numbers to weigh a fight against the company, and a model may not require a
+-- panel. The names stay here because the sheet is still their loudest reader; see the model for the
+-- `bonus` vs `maxBonus` split and why reading the wrong one is silent.
 function Party.statSources(char, key)
-    if not (char and key) then return {} end
-    local live = char.stats and char.stats[key]
-    local resource = type(live) == "table"
-    local base = resource and (live.max or 0) or live
-    if type(base) ~= "number" then return {} end
-
-    local parts = { { label = "Base", value = base } }
-    local field = resource and "maxBonus" or "bonus"
-    for _, item in ipairs(Character.eachItem(char)) do
-        local v = item[field] and item[field][key]
-        if v and v ~= 0 then
-            parts[#parts + 1] = { label = item.name or "Equipment", value = v }
-        end
-    end
-    return parts
+    return Character.statSources(char, key)
 end
 
--- The figure the sheet PRINTS for `key`: every source above, summed -- so the number on the row and the
--- rows in its tooltip cannot disagree, because they are the same list added up two ways.
---
--- This is the effective stat, gear included. It did not use to be: the sheet printed char.stats alone,
--- and equipped gear reached the number only once Combat.applyUnitPassives ran at the start of a battle.
--- A member reading "Attack 17" with a +6 spear in the grid actually swung for 22, and no surface said
--- so -- the sheet quietly described a body with its kit taken off. For a resource this is the CEILING;
--- `current` is left alone, so a wounded member still reads as wounded against the raised max, exactly as
--- it already did against the unraised one.
 function Party.statTotal(char, key)
-    local total = 0
-    for _, part in ipairs(Party.statSources(char, key)) do total = total + part.value end
-    return total
+    return Character.statTotal(char, key)
 end
 
 -- Sign of the picked item's effect on the FOCUSED member (the one the sheet shows): a stash item
