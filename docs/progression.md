@@ -250,6 +250,62 @@ standing with a house is the ceiling on how far its gear forges.
   is what stops a cache being farmed by restarting the quest.
 - `deriveDims` counts caches in its content sum, or maps would get denser rather than larger.
 
+### 2a — The run is an extraction — **done**
+
+The cache rule above was right and too narrow. Materials were held to the objective so a cache could not
+be farmed by restarting a quest, but everything *else* a run picked up — chest loot, a fight's spoils and
+salvage, gold — was granted and saved on pickup. A failed quest dropped `activeRun` and nothing else, so
+the company walked home with the lot. That made forfeiting before the objective the optimal play, and it
+made every risk judgment on the board decorative: the correct answer to *should I take this fight* was
+always yes, because losing cost nothing but time.
+
+**What you carry is only yours if you get out with it.** One rule, applied to the whole haul:
+
+- **The objective is the only extract.** Clearing it drops the run — and with it the rollback point —
+  so the finds become permanent alongside `Quest.complete`'s gold, prestige and reward items.
+- **Every other exit voids the run.** A wipe and a walk-out are the same event; they differ only in how
+  the player got there. `states/game.lua`'s `rollbackRun` restores the company from an entry snapshot
+  taken once at run start (`Save.snapshot`, parked on `activeRun.entry` and serialized with it).
+- **Finds stay live the whole run.** Nothing is deferred into a holding pen: a chest's sword lands in the
+  stash and equips at the Loadout immediately. What the rollback changes is not where loot goes, only
+  whether it survives the way out. This is why the fix is a snapshot rather than a ledger — no grant seam
+  had to learn a new rule, including ones added later.
+- **Gold *spent* comes back too.** Otherwise a forfeit launders run gold into permanent hub goods.
+- **The company's own kit is never at stake.** The snapshot *is* the state walked in with, so restoring
+  it can only take back what the run added. A lost expedition costs what it found, never what it brought.
+- **The stake is on screen.** A "Carried this run" readout is computed by diffing the live company
+  against the entry snapshot (`game:refreshHaul`), and both the turn-back prompt and the defeat panel
+  name the loss in the same words (`game:haulPhrase`). A stake nobody can see is not a bet.
+
+Pinned by `tests/extraction_spec.lua`.
+
+### 2b — A fight in front of the reward — **done**
+
+Placement used to make a fight and a reward **alternatives**: `placeCaches` ran after `placeEncounters`
+specifically to pay out the dead ends the encounters had not claimed. They are a **pair** now — the boon
+at the end of the spur, the fight in the corridor to it — so a detour is one priced offer instead of two
+unrelated tiles. `Overworld:guardBoons` runs after both and re-seats fights that are already placed, so
+the encounter count the map was sized around never moves.
+
+- **The gate is checked, not assumed.** A guard is only seated where removing its tile actually
+  disconnects the boon from the start. The tempting shortcut — take the neighbour nearest the spine —
+  silently assumes every boon ends a degree-1 spur, and produces guards the player walks around on a
+  braided board.
+- **Seeing the guard reveals what it is for.** Handled in `Overworld:reveal`, so every fog source gets
+  it. A reward you cannot see behind a fight is not an offer.
+- **The finds are guarded, never the services.** A shop behind a fight is friction, and rest is the
+  pressure valve the extraction rule above makes necessary.
+- **Guards live off the spine**, so this and the combat-free-spine rule reinforce each other. What falls
+  out is the board's contract: **the objective is the only fight you must take; every other fight is
+  optional, and an optional fight should be attached to something worth having.**
+
+> **Open knob.** How *many* boons end up guarded is set by the content mix, not by this pass. A board
+> carries roughly two and a half boons per fight (`cacheTarget` is half the encounter count, and the
+> pool's finds take a further share of what survives `combatShare`), so even perfect deployment leaves
+> most boons loose. `tests/guarded_boon_spec.lua` pins what the pass owns — that nearly every available
+> fight is spent guarding something — and deliberately does not pin the boon-side share. Moving it means
+> moving `cacheTarget` and `combatShare`, which changes both what a run is worth and what it costs.
+
 #### …and a floor under every fight
 
 The cache answers *why leave the path*. It does not answer *why the fight on the path was worth having*,

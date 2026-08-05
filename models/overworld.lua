@@ -160,8 +160,9 @@ function Overworld.generate(params)
     self:thinBridges() -- guarantee every bridge is exactly one tile
     self:decorate()
     self:placeObjectiveAndGates(params)
-    self:placeEncounters(params)
-    self:placeCaches(params)    -- pay out the dead ends nothing else claimed
+    self:placeCaches(params)    -- the rewards take the spur ends FIRST (see placeCaches)
+    self:placeEncounters(params)-- then the fights fill the corridors between them
+    self:guardBoons(params)     -- stand a fight in front of most of the rewards
     self:pruneDeadStubs()       -- trim barren spur-and-return corridors (no RNG)
     self:assignEncounterTiers() -- difficulty tell for the fog (drawn from rng LAST)
 
@@ -732,10 +733,15 @@ end
 local CACHE_CRAFT_MIN, CACHE_CRAFT_MAX = 1, 4
 local CACHE_HOUSE_MIN, CACHE_HOUSE_MAX = 1, 3
 
--- Scatter material caches onto the dead ends nothing else claimed. Runs AFTER placeEncounters so it
--- takes the leftovers -- an encounter is the better payoff for a spur, and this pays out the ones that
--- would otherwise end in nothing. Runs BEFORE pruneDeadStubs, which treats a cache as reason enough to
--- keep a corridor alive.
+-- Scatter material caches onto the dead ends, FIRST -- before placeEncounters, so the rewards get their
+-- pick of the spur ends and the fights fill the corridors leading to them (see guardBoons).
+--
+-- This order used to be the other way round, and the reasoning it carried was the opposite one: an
+-- encounter was "the better payoff for a spur", and caches paid out the dead ends nothing else claimed.
+-- That made a fight and a reward ALTERNATIVES competing for the same tile. They are a pair now -- the
+-- boon at the end, the fight in the way -- which only works if the boon is placed where a corridor can
+-- gate it. Still runs BEFORE pruneDeadStubs, which treats a cache as reason enough to keep a corridor
+-- alive.
 --
 -- TWO AXES, both already measured by the time this runs:
 --   WHICH   the sponsoring house's stock (params.houseMaterial, resolved by the caller from the
@@ -815,6 +821,175 @@ function Overworld:placeCaches(params)
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- Guarded boons
+-- ---------------------------------------------------------------------------
+
+-- What share of a board's boons stand behind a fight. Not all of them, deliberately: an unbroken "every
+-- reward has a guard" rule turns the map into a checklist and teaches the player to read markers instead
+-- of the board. The loose remainder is what keeps a find on the road feeling like a find.
+local GUARDED_BOON_SHARE = 0.8
+
+-- What can be guarded: the FINDS, never the services. A shop behind a fight is friction rather than
+-- tension, and a rest is the pressure valve the attrition model needs -- gating the one stop that gives
+-- resources back would compound exactly the wrong way. A `cache` is a tile property, not an encounter,
+-- so it is checked separately below.
+local GUARDABLE_KINDS = { treasure = true, relic_cache = true }
+
+-- What a guarded cache pays on top of what the detour already earned it, so the fight in the way is a
+-- PRICE and not a tax. Capped by the same ceilings the detour scale honours (see placeCaches).
+local GUARD_CRAFT_BONUS, GUARD_HOUSE_BONUS = 1, 1
+
+-- Stand a fight in front of the reward, so a spur is one offer made of two tiles rather than a fight OR
+-- a payout. This is the tile-level shape of the whole overworld decision: the objective is the only
+-- fight the player MUST take, every other fight is optional, and an optional fight should be attached to
+-- something worth having.
+--
+-- Re-seats encounters that are ALREADY PLACED rather than adding any, so the encounter count the map was
+-- sized around (deriveDims) does not move and the quest's authored pool is still exactly what it asked
+-- for. Runs after placeEncounters and placeCaches -- both have had their pick of the board -- and before
+-- pruneDeadStubs, which reads the final positions to decide which corridors earned their keep.
+--
+-- THE GATE IS FREE. A boon sits at the end of a degree-1 spur, so the tile you must cross to reach it is
+-- a cut vertex: standing a fight there makes the boon genuinely unreachable without clearing it, with no
+-- pathfinding beyond "which neighbour is closer to the spine". A boon hanging directly off the critical
+-- path has its approach ON the spine and is left alone -- a wounded party must always be able to walk to
+-- the objective, which is the rule that lets every other fight be optional in the first place.
+--
+-- Ascent maps opt out, as they do for the spine rule: there combat IS the route.
+function Overworld:guardBoons(params)
+    if params and params.ascent then return end
+    if not self.spineKeys then return end
+    local spineDist = self:spineDistances()
+
+    local function shuffle(t)
+        for i = #t, 2, -1 do
+            local j = self.rng:random(i)
+            t[i], t[j] = t[j], t[i]
+        end
+    end
+
+    -- Walked in a stable grid order first, then shuffled, so the run of boons left unguarded is not
+    -- always the same corner of the board while the draw stays reproducible from the seed.
+    local boons, guards = {}, {}
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local c = self.cells[y][x]
+            if self:typeWalkable(c.tile) then
+                if c.cache or (c.encounter and GUARDABLE_KINDS[c.encounter.kind]) then
+                    boons[#boons + 1] = c
+                elseif c.encounter and (c.encounter.kind == "combat" or c.encounter.kind == "elite") then
+                    guards[#guards + 1] = c
+                end
+            end
+        end
+    end
+    shuffle(boons)
+    shuffle(guards)
+
+    -- Can the party still reach `goal` from the start with `blocked` treated as impassable? A guard is
+    -- only a guard if the answer is no.
+    --
+    -- Checked EXACTLY, by walking the board, rather than inferred from the tile's shape. The tempting
+    -- shortcut -- "take the neighbour closest to the critical path" -- silently assumes every boon sits
+    -- at the end of a degree-1 spur, and that is not true: caches fall back to through-tiles once the
+    -- dead ends run out, and a treasure or reliquary comes off the encounter pool onto whatever corridor
+    -- it was dealt. On a braided board that shortcut produces a "guard" the player simply walks around,
+    -- which is the worst outcome available -- the fight looks like a price and is not one. Boards are
+    -- small and boons are few, so a handful of floods at generation time costs nothing.
+    local function reachableWithout(goal, blocked)
+        local start = self:startCell()
+        if not start then return true end
+        if start == goal then return true end
+        local seen = { [cellKey(start)] = true }
+        local q, qi = { start }, 1
+        while qi <= #q do
+            local c = q[qi]; qi = qi + 1
+            for _, n in ipairs(self:pathNeighbors(c.x, c.y)) do
+                if n == goal then return true end
+                local k = cellKey(n)
+                if not seen[k] and n ~= blocked then
+                    seen[k] = true
+                    q[#q + 1] = n
+                end
+            end
+        end
+        return false
+    end
+
+    local function seatable(c)
+        return c and self:typeWalkable(c.tile) and not c.gate and not c.key and not c.cache
+            and not self.spineKeys[cellKey(c)]
+            and not (self.start.x == c.x and self.start.y == c.y)
+            and not (self.objective and self.objective.x == c.x and self.objective.y == c.y)
+    end
+
+    -- A guarded cache reads above a loose one. The detour scale already pays the far spur best, which
+    -- correlates with being guarded but is not the same thing -- so the guard is priced explicitly.
+    local function payGuarded(c)
+        if not c.cache or not c.cache.materials then return end
+        local grades = Material.craftGrades()
+        for _, g in ipairs(grades) do
+            if c.cache.materials[g] then
+                c.cache.materials[g] = math.min(CACHE_CRAFT_MAX, c.cache.materials[g] + GUARD_CRAFT_BONUS)
+                break
+            end
+        end
+        if params and params.houseMaterial and c.cache.materials[params.houseMaterial] then
+            c.cache.materials[params.houseMaterial] =
+                math.min(CACHE_HOUSE_MAX, c.cache.materials[params.houseMaterial] + GUARD_HOUSE_BONUS)
+        end
+    end
+
+    -- Which neighbour of `boon` genuinely gates it. Adjacency is a legibility rule, not a correctness
+    -- one -- any cut vertex on the corridor would do -- but standing the fight right beside what it
+    -- guards is what makes the offer readable from the mouth of the spur. Ties are broken in grid order
+    -- so a seed still reproduces its board exactly.
+    local function approachTo(boon)
+        local best
+        for _, n in ipairs(self:pathNeighbors(boon.x, boon.y)) do
+            if seatable(n) and not n.guards and not reachableWithout(boon, n) then
+                if not best or n.y < best.y or (n.y == best.y and n.x < best.x) then best = n end
+            end
+        end
+        return best
+    end
+
+    local target = math.floor(#boons * GUARDED_BOON_SHARE + 0.5)
+    local placed, next_ = 0, 1
+    for _, boon in ipairs(boons) do
+        if placed >= target then break end
+        local app = approachTo(boon)
+        if app then
+            if app.encounter then
+                -- Something already stands here. If it is a fight, it was ALREADY guarding this boon by
+                -- accident of placement -- name it as one and count it, rather than shuffling the board
+                -- to arrange what the board arranged for itself. A non-combat stop is left alone.
+                if app.encounter.kind == "combat" or app.encounter.kind == "elite" then
+                    app.guards = { x = boon.x, y = boon.y }
+                    payGuarded(boon)
+                    placed = placed + 1
+                end
+            else
+                -- Walk the shuffled supply for a fight that is not already guarding something, and move
+                -- it here. Moving rather than minting is what keeps the encounter count honest.
+                while next_ <= #guards and (guards[next_].guards or not guards[next_].encounter) do
+                    next_ = next_ + 1
+                end
+                local src = guards[next_]
+                if not src then break end -- no loose fights left; the rest of the boons stay in the open
+                next_ = next_ + 1
+                app.encounter = src.encounter
+                src.encounter = nil
+                app.guards = { x = boon.x, y = boon.y }
+                payGuarded(boon)
+                placed = placed + 1
+            end
+        end
+    end
+    self.guardedBoons = placed
+end
+
 -- Place encounters on spaced trail tiles (never on start/objective/gate/key).
 -- `params.encounterCount` is a number or { min, max } range (total encounters).
 -- `params.alwaysEncounters` are guaranteed picks placed first; the rest are
@@ -830,7 +1005,9 @@ function Overworld:placeEncounters(params)
     for y = 1, self.rows do
         for x = 1, self.cols do
             local c = self.cells[y][x]
-            if self:typeWalkable(c.tile) and not c.encounter and not c.gate and not c.key
+            -- `not c.cache` matters now that caches are placed FIRST: a stop dropped onto a cache tile
+            -- would bury the reward under it and leave nothing for a guard to stand in front of.
+            if self:typeWalkable(c.tile) and not c.encounter and not c.gate and not c.key and not c.cache
                 and not (self.start.x == x and self.start.y == y) then
                 cands[#cands + 1] = c
             end
@@ -982,6 +1159,11 @@ function Overworld:placeEncounters(params)
             if isFight(pick.kind) and (onSpine or combatPlaced >= combatCap) then
                 pick = self:pickNonCombat(pool) or pick
             end
+            -- NOTE: steering spur ends toward rewards was tried here and removed. It reads well -- a
+            -- find belongs at the end of a corridor -- but placeCaches already claims the dead ends one
+            -- pass earlier, so the only thing left for the steer to do was convert fights into boons. On
+            -- a board where boons already outnumber fights, that spends the guards it was meant to
+            -- create. What limits guarding is the SUPPLY OF FIGHTS, not where the rewards sit.
             if pick then
                 c.encounter = { kind = pick.kind, id = pick.id, name = pick.name }
                 placed[#placed + 1] = c
@@ -1077,7 +1259,9 @@ end
 -- (`cleared`), and a lifted key (`picked`). The `encounter`/`gate`/`key` sub-tables are plain data (ids,
 -- names, tiers, loot/conversation ids) and ride along whole. `x`/`y` equal the cell's own indices, so they
 -- are rebuilt from position rather than stored (this is most of the file's cells, so it matters).
-local CELL_FIELDS = { "tile", "river", "bridge", "seen", "cleared", "picked", "encounter", "gate", "key", "cache" }
+-- `guards` is the {x,y} of the boon a fight stands in front of (see guardBoons): plain data, and it must
+-- ride along or a resumed run would stop revealing rewards past their guard.
+local CELL_FIELDS = { "tile", "river", "bridge", "seen", "cleared", "picked", "encounter", "gate", "key", "cache", "guards" }
 
 -- Snapshot the grid to plain data (no metatable, no love objects, no functions). The map cannot be
 -- regenerated from a seed on load -- the encounter pool is drawn in an unspecified (`pairs`) order, so the
@@ -1167,6 +1351,7 @@ end
 -- (the Poacher's Map) gate on that, so re-treading can never mint anything.
 function Overworld:reveal(cx, cy, radius)
     local found = 0
+    local uncovered
     for y = cy - radius, cy + radius do
         for x = cx - radius, cx + radius do
             if self:inVision(cx, cy, x, y, radius) then
@@ -1174,8 +1359,24 @@ function Overworld:reveal(cx, cy, radius)
                 if c and not c.seen then
                     c.seen = true
                     found = found + 1
+                    if c.guards then uncovered = uncovered or {}; uncovered[#uncovered + 1] = c end
                 end
             end
+        end
+    end
+
+    -- SEEING THE FIGHT MEANS SEEING WHAT IT IS FOR. A guarded reward sits one tile past its guard, which
+    -- is often one tile past the vision disc -- so without this the player meets a fight blocking a
+    -- corridor and has no idea anything is behind it. That is not an offer, it is just a fight, and the
+    -- whole push-or-press-on decision depends on the offer being legible from outside it. Handled here
+    -- rather than at the walking seam so every way of lifting fog gets it: a step, a rest's Study,
+    -- Gyeom's Ledger, the Cartographer's Eye. Counted in `found` because it IS a discovery -- the
+    -- explore-paying hooks (Kaya's forage, Poacher's Map) should read it as one.
+    for _, guard in ipairs(uncovered or {}) do
+        local boon = self:get(guard.guards.x, guard.guards.y)
+        if boon and not boon.seen then
+            boon.seen = true
+            found = found + 1
         end
     end
     return found

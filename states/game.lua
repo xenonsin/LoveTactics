@@ -219,12 +219,114 @@ local function clearRun()
     if game.player then game.player.activeRun = nil end
 end
 
+-- LEAVING WITHOUT THE OBJECTIVE. Put the company back exactly as it walked in, then drop the run.
+--
+-- This is the whole extraction rule in one function. A run's finds are granted the moment they are
+-- picked up -- a chest's sword is in the stash and equippable at the next fight -- but they are not the
+-- player's until the objective banks them. Both ways out that are not the objective come through here:
+-- a wipe (the defeat panel's Return to Hub) and a walk-out (Back / Esc). They differ only in how the
+-- player arrived; neither pays.
+--
+-- What comes back: items found, gold gained, gold SPENT (a Fence relic, a Sin's Altar toll), materials
+-- picked, recipes, story flags. Reversing the spending is not generosity -- without it a forfeit would
+-- launder run gold into permanent hub goods, which is the same hole from the other side.
+--
+-- What is NEVER at stake: the gear the company walked in with, its forge levels, the stash, the roster.
+-- The snapshot IS that state, so restoring it can only take back what the run added.
+--
+-- Restored IN PLACE (field by field onto the existing table) so `game.player` and `Player.active` -- the
+-- same table -- both carry the rolled-back company, exactly as the prologue's Try Again does. Returns
+-- true when a rollback actually happened, so a caller can say so on screen.
+local function rollbackRun()
+    local run = game.player and game.player.activeRun
+    local entry = run and run.entry
+    if not entry then clearRun() return false end
+    local fresh = Save.restore(entry)
+    if not fresh then clearRun() return false end -- unreadable snapshot: drop the run, keep the player
+    for k, v in pairs(fresh) do game.player[k] = v end
+    clearRun()
+    return true
+end
+
+-- WHAT THIS RUN IS CARRYING, and would lose by leaving any way but through the objective.
+--
+-- Read by DIFFING the live company against the entry snapshot rather than by tallying at each grant.
+-- That is the whole reason it can be trusted: a chest, a fight's spoils, an event's gift, a relic's
+-- payout and anything added later all land in the same places, and none of them has to remember to
+-- report. There is no ledger to fall out of step with the stash.
+--
+-- Positive differences only. Drinking a potion the company marched in with is not a negative find, and
+-- gold spent at a Fence is not at stake -- a rollback would hand it back. What is shown is what a wipe
+-- would actually take.
+local function tallyItems(roster, stash)
+    local t = {}
+    local function add(it)
+        if it and it.id then t[it.id] = (t[it.id] or 0) + (it.quantity or 1) end
+    end
+    for _, char in ipairs(roster or {}) do
+        -- `pairs`, not a numeric walk: a live grid is keyed 1..9 with holes and the snapshot stores a
+        -- sparse map. Both read the same this way.
+        for _, it in pairs(char.inventory or {}) do add(it) end
+    end
+    for _, it in ipairs(stash or {}) do add(it) end
+    return t
+end
+
+function game:refreshHaul()
+    local run = game.player and game.player.activeRun
+    local entry = run and run.entry
+    if not entry then game.haul = nil return end
+
+    local was = tallyItems(entry.roster, entry.stash)
+    local now = tallyItems(game.player.roster, game.player.stash)
+    local items = 0
+    for id, n in pairs(now) do
+        local gained = n - (was[id] or 0)
+        if gained > 0 then items = items + gained end
+    end
+
+    local materials = 0
+    for id, n in pairs(game.player.materials or {}) do
+        local gained = (n or 0) - ((entry.materials or {})[id] or 0)
+        if gained > 0 then materials = materials + gained end
+    end
+    -- The run's unbanked cache haul rides on the map, not the player, until the objective pays it out --
+    -- so it has to be added by hand or the readout would under-report the very thing the caches exist
+    -- for (models/spoils.lua, states/game.lua's objective branch).
+    for _, n in pairs(game.map and game.map.cacheHaul or {}) do materials = materials + (n or 0) end
+
+    local gold = math.max(0, (game.player.gold or 0) - (entry.gold or 0))
+
+    game.haul = (items > 0 or gold > 0 or materials > 0)
+        and { items = items, gold = gold, materials = materials } or nil
+end
+
+-- The haul as a plain phrase ("4 items, 210 gold, 6 stock"), or nil when the run has found nothing.
+-- One writer for it, so the turn-back confirmation and the defeat panel name the same loss the same way
+-- -- a player who reads "4 items" before the fight and "3 items" after it has been told the rule wrong.
+function game:haulPhrase()
+    if not game.haul then return nil end
+    local parts = {}
+    if game.haul.items > 0 then
+        parts[#parts + 1] = game.haul.items .. (game.haul.items == 1 and " item" or " items")
+    end
+    if game.haul.gold > 0 then parts[#parts + 1] = game.haul.gold .. " gold" end
+    if game.haul.materials > 0 then parts[#parts + 1] = game.haul.materials .. " stock" end
+    return table.concat(parts, ", ")
+end
+
 -- Persist the run if one is active (a resumable board quest). No-op otherwise, so it is safe to sprinkle at
 -- every point the board changes -- entering the map, approaching an encounter, and resolving one. The
 -- resolution saves matter: a treasure collected or an event resolved marks its cell cleared, and without
 -- persisting that a resume would replay the stop and grant its spoils twice (a combat win already saves).
 local function saveRun()
-    if game.player and game.player.activeRun then Player.save() end
+    if game.player and game.player.activeRun then
+        Player.save()
+        -- Every seam that changes what the run is carrying already passes through here -- a collected
+        -- chest, a cleared fight, a bought relic, a paid toll -- so the readout is re-read here rather
+        -- than at each of them. One call site instead of a dozen that could each forget.
+        game:refreshHaul()
+    end
 end
 
 -- prestige defaults to 1 when a quest is launched without it (e.g. dev/test).
@@ -392,6 +494,12 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
     -- grid + map widget are parked on the player so ANY later Player.save (a won fight's spoils, the next
     -- encounter) re-snapshots the current board; cleared on the way out (clearRun / hub.enter backstop).
     if runResumable() and quest and quest.id then
+        -- Take the rollback point with NO run parked on the player. Save.snapshot folds the active run
+        -- into what it writes, so snapshotting while a stale one is still attached would nest a run
+        -- inside the entry snapshot inside the next run -- growing the save on every quest. The hub
+        -- clears it on the way through and so does every exit; this is the belt to that pair of braces.
+        game.player.activeRun = nil
+        local entry = resume and resume.entry or Save.snapshot(game.player)
         game.player.activeRun = {
             questId = quest.id,
             prestige = game.prestige,
@@ -399,6 +507,17 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
             map = game.map,
             abilityState = game.abilityState,
             relicState = game.relicState,
+            -- THE ROLLBACK POINT: the company exactly as it walked in. Everything a run finds -- chest
+            -- loot, a fight's spoils, salvage, an event's gift -- still lands in the stash the instant it
+            -- is picked up and equips at the Loadout like any other gear. What this makes it is
+            -- PROVISIONAL: the objective banks it (clearRun drops this snapshot and the gains stand),
+            -- and any other way out puts it all back (rollbackRun). The gear the player walked in with is
+            -- never at stake -- a lost run costs what it found, never what it brought.
+            --
+            -- Taken ONCE, above, and carried by reference: a re-snapshot mid-run would quietly bank
+            -- whatever had been picked up by then. On a resume the snapshot travels with the run, so
+            -- quitting and continuing keeps the same rollback point rather than minting a new one.
+            entry = entry,
         }
         Player.save() -- the first autosave: entering the overworld (and, on a resume, re-establishing it)
     else
@@ -438,6 +557,9 @@ end
 -- run opening, and a panel closing (the Loadout is the one that re-kits anybody mid-run).
 function game:refreshMuster()
     game.partyMuster = Muster.company(Muster.fielded(game.player))
+    -- A won fight banks its spoils on the way back to the map and re-rates the company here; the run's
+    -- ledger moved with it, so it is re-read on the same beat.
+    game:refreshHaul()
 end
 
 -- What this fight is worth, memoised per cell. Fixed for the whole run -- an encounter's composition
@@ -501,6 +623,8 @@ function game:openEncounter(cell)
                 game.onComplete()
                 return
             end
+            -- A `meet` objective extracts exactly as a fought one does: dropping the run drops the
+            -- rollback point with it, so the leg's finds stand. See the combat objective's branch below.
             clearRun() -- the quest is over; Quest.complete's save below then writes no run to resume
             game.reward = Quest.complete(game.player, game.quest, game.map and game.map.cacheHaul)
             if game.player and game.reward then game.player.pendingSummary = game.reward end
@@ -589,6 +713,10 @@ function game:openEncounter(cell)
             -- time `outro` runs the target of an `assassinate` is dead.
             opening = kind == "objective" and mp.objective and mp.objective.opening or nil,
             prestige = game.prestige,
+            -- What this run stands to lose here, named on the defeat panel (ui/panels/battle_summary).
+            -- Read at launch rather than at the loss, because by then the rollback has already put it
+            -- back and there would be nothing left to count.
+            lostHaul = game:haulPhrase(),
             -- The sponsor's stock, for the salvage every won fight leaves behind (models/spoils.lua).
             -- Same value the map's caches were laid out with, so a run's fights and its dead ends pay
             -- into the same house.
@@ -650,7 +778,13 @@ function game:openEncounter(cell)
                     end
                     -- The single payout seam: gold and prestige are granted here, once, the quest is
                     -- marked done (which is what advances the sponsor's standing), and the game saves.
-                    -- Losing the quest (onLoss) pays nothing, so a wipe costs the run.
+                    --
+                    -- THIS IS THE EXTRACTION. Everything the run found has been in the stash all along --
+                    -- live, equippable, spendable -- but provisional: the entry snapshot on the run could
+                    -- put it all back. Dropping the run here drops that snapshot, and the finds become
+                    -- permanent. The objective is the ONLY exit that does this; a wipe and a walk-out both
+                    -- roll back instead (see rollbackRun). So the haul comes home through the boss or it
+                    -- does not come home.
                     clearRun() -- quest cleared; Quest.complete's save (and the endsCampaign->credits path) writes no run
                     game.reward = Quest.complete(game.player, game.quest, haul)
                     -- The sting that marks a quest actually ending. Until now the single loudest
@@ -728,13 +862,16 @@ function game:openEncounter(cell)
                 require("models.sound").music("music.overworld")
                 State.current = game
             end or nil,
-            -- "Return to Hub": give the fight up and fail the quest (no reward). Offered only once there
-            -- is a hub to return to -- the prologue's flight leg (game.tutorial) has none yet, so there
-            -- the panel shows Try Again alone.
+            -- "Return to Hub": give the fight up and fail the quest. Offered only once there is a hub to
+            -- return to -- the prologue's flight leg (game.tutorial) has none yet, so there the panel
+            -- shows Try Again alone.
             onLoss = (not game.tutorial) and function()
-                -- A wipe fails the quest: drop its run so Continue can't resume a lost fight, and persist
-                -- the drop before heading home.
-                if game.player then game.player.activeRun = nil; Player.save() end
+                -- A wipe VOIDS the run. Everything this expedition found goes back with it: the chest
+                -- loot, the fights' spoils and salvage, the gold, and the gold spent along the way. The
+                -- company keeps exactly what it marched in with. See rollbackRun -- the objective is the
+                -- only exit that banks, and this is the other side of that rule.
+                rollbackRun()
+                if game.player then Player.save() end
                 State.switch(require("states.hub"))
             end or nil,
         })
@@ -1186,13 +1323,36 @@ function game:resolveNonCombat(cell)
 end
 
 local function toHub()
-    -- Abandoning a quest (Back / Esc) drops its run, so Continue won't resume the map they walked out of.
-    -- Persist the drop so disk agrees; the hub would clear it as a backstop regardless.
+    -- Abandoning a quest (Back / Esc) VOIDS the run, exactly as a wipe does -- the two differ only in how
+    -- the player got here. The expedition's finds go back, the company's own gear does not move, and
+    -- Continue has no map to drop them back into. Persist so disk agrees; the hub clears as a backstop.
     if game.player and game.player.activeRun then
-        game.player.activeRun = nil
+        rollbackRun()
         Player.save()
     end
     State.switch(require("states.hub"))
+end
+
+-- Back / Esc / pad-Back. Walking out now costs the whole haul, so it asks first -- and the asking names
+-- the price in items and coin rather than saying "are you sure", which tells the player nothing they
+-- did not already know. A run carrying nothing leaves without ceremony: there is no decision to put in
+-- front of someone who has found nothing yet.
+local function leaveQuest()
+    local lost = game:haulPhrase()
+    if not (game.player and game.player.activeRun and lost) then toHub() return end
+    game.activePanel = Choice.new({
+        title = "Turn Back?",
+        prompt = "Nothing you have found is yours until the objective is cleared. Walk out now and "
+            .. lost .. " stay where you found them.",
+        options = {
+            { label = "Keep going", desc = "The objective is the only way home with any of it.",
+              accent = { 0.83, 0.73, 0.45 },
+              cb = function() game.activePanel = nil end },
+            { label = "Walk out empty", desc = "Return to the city. The expedition counts for nothing.",
+              accent = { 0.88, 0.45, 0.33 },
+              cb = function() game.activePanel = nil; toHub() end },
+        },
+    })
 end
 
 function game.update(dt)
@@ -1307,6 +1467,33 @@ function game.drawHud()
         PartyStatus.drawStrip(game.player, 16, 60, mx, my, game.abilityState)
         -- Run relics carried this quest, top-right (models/relic.lua) -- the snowball, legible while routing.
         RelicStrip.draw(game.relicState, Scale.WIDTH - 16, 60, mx, my)
+
+        -- WHAT THIS RUN IS CARRYING. Stacked under the relics, because both answer the same question --
+        -- what has this expedition accrued -- and because the decision it feeds is taken out here on the
+        -- map, not in a panel. Without a figure on screen there is nothing to be greedy about: the
+        -- push-one-more-spur choice is a bet, and a bet needs a stake the player can see. It also means
+        -- a wipe takes something the player was watching rather than something they find out about.
+        --
+        -- Absent entirely when the run has found nothing yet -- an empty ledger is not information, and
+        -- a row of zeroes would read as a broken readout.
+        if game.haul then
+            local x = Scale.WIDTH - 16
+            local y = 60 + RelicStrip.height(#Relic.held(game.relicState)) + (game.haul and 8 or 0)
+            love.graphics.setFont(hudFont)
+            -- Named for what it IS, not what it counts: "carried" says the thing the number turns on --
+            -- that none of this is yours yet.
+            love.graphics.setColor(Theme.muted)
+            love.graphics.printf("Carried this run", x - 240, y, 240, "right")
+            local parts = {}
+            if game.haul.items > 0 then
+                parts[#parts + 1] = game.haul.items .. (game.haul.items == 1 and " item" or " items")
+            end
+            if game.haul.gold > 0 then parts[#parts + 1] = game.haul.gold .. "g" end
+            if game.haul.materials > 0 then parts[#parts + 1] = game.haul.materials .. " stock" end
+            love.graphics.setColor(Theme.accentAmber)
+            love.graphics.printf(table.concat(parts, "   "), x - 240, y + 18, 240, "right")
+            love.graphics.setColor(1, 1, 1)
+        end
     end
 
     -- Companion-ability toasts, stacked just under the party strip so ability feedback groups with the
@@ -1394,7 +1581,7 @@ function game.mousepressed(x, y, button)
     if game.activePanel then
         game.activePanel:mousepressed(x, y, button)
     elseif button == 1 and backVisible() and backContains(x, y) then
-        toHub()
+        leaveQuest()
     elseif button == 1 and game.itemsVisible and rectContains(itemsButton, x, y) then
         openLoadout()
     elseif button == 1 and useVisible() and rectContains(useButton, x, y) then
@@ -1419,7 +1606,7 @@ function game.keypressed(key)
     if game.activePanel then
         game.activePanel:keypressed(key)
     elseif key == "escape" and backVisible() then
-        toHub()
+        leaveQuest()
     elseif key == "i" and game.itemsVisible then
         openLoadout()
     elseif key == "u" and useVisible() then
@@ -1433,7 +1620,7 @@ function game.gamepadpressed(joystick, button)
     if game.activePanel then
         game.activePanel:gamepadpressed(joystick, button)
     elseif button == "back" and backVisible() then
-        toHub()
+        leaveQuest()
     elseif button == "y" and game.itemsVisible then
         openLoadout()
     elseif button == "x" and useVisible() then

@@ -483,6 +483,10 @@ local function finishBattle(result)
         technique = result == "win" and battle.combat and battle.combat.techniqueByActor or nil,
         encounter = battle.encounter,
         actions = actions,
+        -- What the overworld run was carrying, named on a defeat so the cost of the loss is on the panel
+        -- that announces it rather than discovered later in the stash. Supplied by the launcher
+        -- (states/game.lua) because only it knows what the expedition has picked up; nil everywhere else.
+        lost = result == "loss" and battle.lostHaul or nil,
         -- The log survives the fight; let the player read back how it went before leaving the panel.
         onReviewLog = openLogReview,
     })
@@ -4147,6 +4151,9 @@ function battle.enter(self, opts)
     -- See states/game.lua and states/prologue.lua.
     battle.onLoss = opts.onLoss
     battle.onRetry = opts.onRetry
+    -- A phrase naming what the overworld run stands to lose here ("4 items, 210 gold"), shown on the
+    -- defeat panel. Passed down rather than computed, since the fight knows nothing about the run.
+    battle.lostHaul = opts.lostHaul
     battle.encounter = opts.encounter or { kind = "combat", name = "Battle" }
     battle.prestige = opts.prestige or 1 -- the company's prestige, used to roll the victory spoils
     -- Which house's stock this run's fights salvage in: the quest's SPONSOR, the same resolution the

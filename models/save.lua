@@ -274,6 +274,11 @@ function Save.snapshotRun(run, player)
         abilityState = run.abilityState, -- companion overworld scratch (banked vigils/steps/...); plain data
         relicState = run.relicState,     -- run relics carried this quest ({ held, scratch }); plain data
         resources = resources,
+        -- The company as it walked in: a full Save.snapshot taken once at run start and carried by
+        -- reference (never re-taken), so leaving without the objective can put everything back. This is
+        -- what makes the run's finds PROVISIONAL -- a chest lands in the stash and equips immediately,
+        -- but it is not yours until the objective banks it. See states/game.lua's rollbackRun.
+        entry = run.entry,
         grid = run.grid:snapshot(),
     }
 end
@@ -295,6 +300,11 @@ function Save.restoreRun(snap)
         abilityState = snap.abilityState or {},
         relicState = snap.relicState or { held = {}, scratch = {} }, -- run relics; see snapshotRun
         resources = snap.resources or {}, -- charId -> { health/mana/stamina = current }; see snapshotRun
+        -- The rollback point, carried through a quit-and-Continue. A resumed run WITHOUT one (an older
+        -- save, written before the run kept its entry) simply cannot roll back: the rest of the run is
+        -- still perfectly playable, so this degrades to the previous behaviour rather than dropping a
+        -- board the player is standing on.
+        entry = snap.entry,
         grid = grid,
     }
 end

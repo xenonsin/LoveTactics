@@ -113,6 +113,11 @@ function BattleSummary.new(opts)
     self.actions = opts.actions or {}
     self.finished = false
     self.subtitle = opts.encounter and opts.encounter.name or nil
+    -- What the run was carrying and just lost, as a plain phrase ("4 items, 210 gold"). Defeat only, and
+    -- only when the expedition had actually found something. A loss the player cannot see is a loss they
+    -- report as a bug -- and it is also the beat that teaches the rule, since somebody who watches four
+    -- items go plays the next run differently. Nil on a win, where nothing was at stake by definition.
+    self.lost = (not self.win) and opts.lost or nil
     -- Optional "Review Combat Log" affordance: a callback that opens the fight's log OVER this panel
     -- (states/battle.lua). Laid out below the action row when present; does NOT dismiss the panel.
     self.onReviewLog = opts.onReviewLog
@@ -518,6 +523,15 @@ function BattleSummary:draw()
         love.graphics.setFont(self.subFont)
         love.graphics.setColor(0.75, 0.77, 0.85, alpha)
         love.graphics.printf(self.subtitle, bx, by + self.subRelY, self.boxW, "center")
+    end
+
+    -- The haul that went down with the run, under the encounter's name. Same warm red as the Defeat
+    -- banner, so it reads as part of the same sentence rather than as a second announcement.
+    if self.lost then
+        love.graphics.setFont(self.subFont)
+        love.graphics.setColor(0.95, 0.45, 0.42, alpha)
+        love.graphics.printf("Lost with the run: " .. self.lost,
+            bx, by + self.subRelY + self.subFont:getHeight() + 4, self.boxW, "center")
     end
 
     -- Gold line: a coin + the counting-up total.
