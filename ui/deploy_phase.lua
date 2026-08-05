@@ -26,7 +26,9 @@ local Scale = require("scale")
 local Theme = require("ui.theme")
 local InputMode = require("input_mode")
 local Colors = require("ui.colors")
+local TileTooltip = require("ui.tile_tooltip")
 local Combat = require("models.combat")
+local Hazard = require("models.hazard")
 local Player = require("models.player")
 
 local DeployPhase = {}
@@ -476,11 +478,81 @@ function DeployPhase:draw(bounds)
     love.graphics.setColor(color[1], color[2], color[3])
     love.graphics.print(Theme.ellipsize(line, self.font, hintW), hintX, r.y + r.h - BUTTON_H + 3)
 
+    self:drawHover(bounds)
+
     -- The carried portrait rides the cursor above everything else.
     if self.drag and self.drag.active and self.drag.char then
         drawPortrait(self.drag.char, self.mx - 22, self.my - 22, 44, self.font)
     end
     love.graphics.setColor(1, 1, 1)
+end
+
+-- ---------------------------------------------------------------------------
+-- Hover readout
+-- ---------------------------------------------------------------------------
+
+-- The board tile being READ this frame, as (x, y, anchorX, anchorY): the tile under the pointer on
+-- mouse, and the board cursor's tile on keyboard/pad -- where there is no pointer, so the box is
+-- anchored to the tile itself. Nil while the cursor is off the board (the strip, the buttons).
+function DeployPhase:hoverCell()
+    if InputMode.isMouse() then
+        local cx, cy = self.map:cellAt(self.mx, self.my)
+        if not cx then return nil end
+        return cx, cy, self.mx, self.my
+    end
+    if not self.boardFocus then return nil end
+    local c = self.map.cursor
+    local px, py = self.map:cellToPixel(c.x, c.y)
+    return c.x, c.y, px + self.map.size, py + self.map.size / 2
+end
+
+-- The tile under the cursor, read exactly as the fight reads it (ui/tile_tooltip.lua): the ground,
+-- and whoever is standing on it. The enemy line is already on the board during this phase and where
+-- to stand is a decision ABOUT it -- its reach, its armour, what it is carrying -- so the readout
+-- that answers that question is here at minute zero rather than one turn after the bell.
+--
+-- DOCKED into the left column, in the two stacked boxes the fight uses (states/battle.lua's
+-- drawTileTooltip): terrain at the column's foot, the occupant in its own box above it. Same place,
+-- same split, before the bell and after it -- and a box parked off the board never covers the ground
+-- being aimed at, which is why it can stay up through a drag.
+--
+-- `bounds` is the board region the phase draws its title over, so its left edge IS the column.
+function DeployPhase:drawHover(bounds)
+    local cx, cy, ax, ay = self:hoverCell()
+    if not cx then return end
+    local cell = self.arena and self.arena.tiles[cy] and self.arena.tiles[cy][cx]
+    if not cell then return end
+
+    local unit = Combat.unitAt(self.combat, cx, cy)
+    local obj, kind = Combat.objectAt(self.combat, cx, cy)
+    local terrainInfo = { cell = cell,
+                          bonus = Combat.fieldBonus(self.combat, cx, cy),
+                          hazards = Hazard.allAt(self.combat, cx, cy),
+                          -- Marked objective ground, so "hold this" is read while choosing who stands on it.
+                          objective = Combat.objectiveTileInfo(self.combat, cx, cy) }
+    local objInfo
+    if unit and unit.char then objInfo = { unit = unit }
+    elseif kind == "wall" then objInfo = { wall = obj }
+    elseif kind == "prop" then objInfo = { prop = obj } end
+
+    -- The column's full width, minus the 16px margins the fight's docked boxes keep. There is no
+    -- menu drawer open before the bell, so the stack may rise the whole height of the column.
+    local W = math.max(180, ((bounds and bounds.x) or 0) - 32)
+    local gap, dockTop = 8, 8
+    local dock = { dock = true, dockX = 16, dockTop = dockTop, width = W }
+
+    -- Terrain never yields; the OCCUPANT is the valve, exactly as in the fight -- losing it costs the
+    -- player only a detail view of something already standing in front of them on the board.
+    local budget = Scale.HEIGHT - 8 - dockTop
+    local terrainH = TileTooltip.measure(terrainInfo, W) + gap
+    local objH = objInfo and (TileTooltip.measure(objInfo, W) + gap) or 0
+
+    local box = TileTooltip.draw(terrainInfo, ax, ay, Scale.WIDTH, dock)
+    if objInfo and objH + terrainH <= budget then
+        TileTooltip.draw(objInfo, ax, ay, Scale.WIDTH,
+            { dock = true, dockX = 16, dockTop = dockTop, width = W,
+              dockBottom = (box and box.y or Scale.HEIGHT - 8) - gap })
+    end
 end
 
 -- ---------------------------------------------------------------------------
