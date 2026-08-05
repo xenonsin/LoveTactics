@@ -3,8 +3,11 @@
 -- data/disciplines/saboteur.lua.
 return {
     name = "Saboteur",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/saboteur.png",
     class = "rogue",
+    discipline = "saboteur",
     -- Seeds charges from cover, then blows the line at once (models/ai.lua `skirmish`).
     archetype = "skirmish",
     stats = {

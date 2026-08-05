@@ -694,7 +694,14 @@ local function updateMovePath(unit)
 
     local plan = candidate and Combat.planMoveVia(battle.combat, unit, candidate)
     plan = plan or Combat.planMove(battle.combat, unit, cx, cy)
-    battle.movePath = plan and { cells = plan.path, cost = plan.cost } or nil
+    if not plan then battle.movePath = nil return end
+    -- Ground that STOPS a walk (quicksand mires, and a mired unit goes no further -- Combat.stepMove)
+    -- makes the route's price a promise the board will not keep: the timeline ghost is charged for the
+    -- ground actually crossed, not for the walk the player drew. The cells stay WHOLE -- steering trims
+    -- and extends them, and an armed strike fires from the tile they end on. Where the line stops being
+    -- solid is answered per frame in refreshView, off whichever route it ends up drawing.
+    local stop, walked = Combat.walkStop(battle.combat, unit, plan.path)
+    battle.movePath = { cells = plan.path, cost = stop < #plan.path and walked or plan.cost }
 end
 
 -- The steered route, only when it actually ends on (x, y) -- so a caller reading it for a specific
@@ -2320,6 +2327,37 @@ local function armedActionAt(cx, cy)
     local inPlace = standCanHit(battle.current, ab, item, battle.current.x, battle.current.y, cx, cy)
     local steered = stand ~= nil and not inPlace and not (stand.x == cx and stand.y == cy)
         and standCanHit(battle.current, ab, item, stand.x, stand.y, cx, cy)
+    -- A steered route names the APPROACH LANE, not a demand to walk its whole length. The trail extends
+    -- itself over every reachable tile the cursor crosses, so sweeping the mouse out to a distant foe
+    -- drags the route to the far edge of the move band -- the tile CLOSEST to the target. For a reach
+    -- weapon that is the worst tile on the lane: the shot came into range several steps back, and the
+    -- extra steps only give away the distance a bow exists to keep. So the route is cut to its EARLIEST
+    -- tile that can already land the blow -- the same lane the player drew, stopped at the first tile
+    -- that can fire, which is the farthest one on it from the target. Melee is untouched: with reach 1
+    -- the first firing tile on a lane is also its last. A prefix the walk gate refuses (it would stop on
+    -- an ally, or it prices differently) keeps the full route rather than inventing an illegal one.
+    if steered then
+        for i = 2, #mp.cells do
+            local c = mp.cells[i]
+            if not (c.x == cx and c.y == cy)
+                and standCanHit(battle.current, ab, item, c.x, c.y, cx, cy) then
+                if i < #mp.cells then
+                    local cut = {}
+                    for j = 1, i do cut[j] = mp.cells[j] end
+                    local trimmed = Combat.planMoveVia(battle.combat, battle.current, cut)
+                    if trimmed then
+                        -- Priced exactly as updateMovePath prices the drawn route: ground that STOPS a
+                        -- walk (a quicksand mire) is charged for what is actually crossed.
+                        local stop, walked = Combat.walkStop(battle.combat, battle.current, trimmed.path)
+                        stand = trimmed.path[#trimmed.path]
+                        mp = { cells = trimmed.path,
+                               cost = stop < #trimmed.path and walked or trimmed.cost }
+                    end
+                end
+                break
+            end
+        end
+    end
     local fromX = steered and stand.x or (entry and entry.fromX)
     local fromY = steered and stand.y or (entry and entry.fromY)
     -- A tile aim that would connect with nothing is a step, as long as there is still a step to take
@@ -3551,6 +3589,13 @@ refreshView = function()
             end
         end
     end
+    -- Where whichever route was drawn above actually ENDS. Ground that stops a walk dead (quicksand
+    -- mires, and a mired unit is going nowhere else this turn -- Combat.stepMove) would otherwise let
+    -- the line promise an approach the board cuts in half; past the stop tile it draws as a ghost.
+    -- Asked here, once, so the plain move route and the armed approach route are both told the truth.
+    if overlays.path then
+        overlays.pathStop = Combat.walkStop(battle.combat, current, overlays.path)
+    end
     overlays.current = { x = current.x, y = current.y, unit = current }
     local hover = battle.hoverUnit
     if hover and hover.alive then overlays.hover = { x = hover.x, y = hover.y } end
@@ -4471,24 +4516,47 @@ local function updateDangerVignette()
     end
 end
 
--- Float "+2 Ninja" over whoever just banked discipline technique, and clear the model's one-shot so it
+-- Float what the action just fed over whoever performed it, and clear the model's one-shot so it
 -- floats exactly once. Drained HERE, in update, rather than at each of the five Combat.useItem call
 -- sites: an action can be committed by a click, by the keyboard slot path, by the steered-route path,
 -- or by a queued command (auto-battle), and every one of them would otherwise need its own copy of
 -- this. The model banks synchronously inside useItem, so the number lands the same frame.
 --
+-- TWO one-shots, never both on one action (Combat.noteGrowthVote yields to Combat.awardTechnique):
+--   techniqueAward  "+2 Ninja"  -- a delta on the discipline WALLET the Forge bills
+--   growthAward     "+1 Knight" -- a tick on the class VOTE that decides the next level-up
+-- Technique alone only ever spoke for discipline stock, which is locked content on 233 of 638 items,
+-- so an opening hand of plain gear floated nothing at all -- see Combat.noteGrowthVote's header.
+--
 -- Deliberately the same channel as the damage numbers (CombatFx:floatText) -- this is a reward landing
--- on a body, and it should read like the rest of what lands on a body. Amber rather than the damage
--- reds or the heal green: it is the accent this UI already reserves for what is live and earned
--- (ui/theme.lua's accentAmber).
-local function drainTechniqueFloat()
-    local award = battle.combat and battle.combat.techniqueAward
-    if not award then return end
-    battle.combat.techniqueAward = nil
-    -- A stale id prints nothing rather than a raw slug (the Discipline.displayName rule).
-    local name = Discipline.displayName(award.discipline)
-    if not name then return end
-    battle.fx:floatText(award.unit, "+" .. award.amount .. " " .. name, { 0.93, 0.76, 0.35 })
+-- on a body, and it should read like the rest of what lands on a body. It lands on the CASTER while
+-- damage lands on the TARGET, so the two rarely share a tile. Amber rather than the damage reds or the
+-- heal green: it is the accent this UI already reserves for what is live and earned. The vote takes
+-- Theme.muted instead -- same warm family, quieter -- because it fires on EVERY action and must not
+-- shout as loudly as the currency does.
+local function drainGrowthFloat()
+    local combat = battle.combat
+    if not combat then return end
+
+    local award = combat.techniqueAward
+    if award then
+        combat.techniqueAward = nil
+        -- A stale id prints nothing rather than a raw slug (the Discipline.displayName rule).
+        local name = Discipline.displayName(award.discipline)
+        if name then
+            battle.fx:floatText(award.unit, "+" .. award.amount .. " " .. name, Theme.accentAmber)
+        end
+        return
+    end
+
+    local vote = combat.growthAward
+    if not vote then return end
+    combat.growthAward = nil
+    -- The tally key is a class id OR a discipline id, so resolve it exactly as CombatPanel's
+    -- "Growing as" line does -- "plague_knight" is "Plague Knight", which title-casing alone would
+    -- render "Plague_knight".
+    local name = Discipline.displayName(vote.class) or (vote.class:gsub("^%l", string.upper))
+    battle.fx:floatText(vote.unit, "+1 " .. name, Theme.muted)
 end
 
 function battle.update(dt)
@@ -4507,7 +4575,7 @@ function battle.update(dt)
         return
     end
 
-    drainTechniqueFloat()
+    drainGrowthFloat()
     -- NOTE the wind-up chooser is deliberately NOT a freeze: it is a small slider over the aimed tile,
     -- and the board + turn-order strip behind it are its preview. The view has to keep refreshing so
     -- that sliding the depth (which writes battle.windup) slides the channel's resolve slot along the
@@ -5513,7 +5581,9 @@ end
 -- first when the cursor is inside it, so its own history still scrolls; contains() is false while
 -- the log is closed, so a wheel over the board falls through to the strip.
 function battle.wheelmoved(dx, dy)
-    if battle.deploy then return end -- the whole company fits on the strip; there is nothing to scroll
+    -- The deployment strip owns the wheel while the phase is up: the company is the whole roster and
+    -- an unbounded one overflows the strip, which then pages sideways (ui/deploy_phase.lua).
+    if battle.deploy then battle.deploy:wheelmoved(dx, dy); return end
     if battle.benchChooser then battle.benchChooser:wheelmoved(dx, dy); return end
     if battle.settingsMenu then return end -- the short list needs no scroll; swallow it
     -- The wind-up chooser owns the wheel while it is up: scrolling tunes the depth on the rung ladder.

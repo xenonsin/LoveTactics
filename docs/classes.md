@@ -475,7 +475,7 @@ not a new vocabulary.
 |---|---|
 | `fighter` | **Barbarian** (fury, self-harm, `frenzy`) · **Warlord** (banners, `hazard_rally`, inspiration) |
 | `knight` | **Sentinel** (guard redirect: `oathward`/`martyr`) · **Bulwark** (taunt, knockback, `defending`) |
-| `rogue` | **Assassin** (execute, blink-strike) · **Thief** (`steal`, pickpocket, drain) |
+| `rogue` | **Assassin** (execute, blink-strike) · **Thief** (`steal`, pickpocket, drain) · **Mammonite** (the purse: gold spent and banked as a combat resource) |
 | `hunter` | **Druid** (shapeshifting) · **Beastmaster** (animal summons) · **Trapper** (traps) |
 | `mage` | **Elementalist** (`channel`, hazards) · **Summoner** (`reserve`) · **Necromancer** (raise dead, `dark`) |
 | `priest` | **Monk** (`unarmed`) · **Exorcist** (banish, dispel) |
@@ -536,9 +536,9 @@ Recorded here so it stays a decision rather than drift:
   the old rank name, and each locked row says how many more of the house's quests (or which discipline
   path) unlock it. The waves open at `Vendor.TIERS = { 0, 3, 6, 10 }`, which also caps the
   ability/recipe upgrade bench. See *The ten slots* in [story.md](story.md).
-- ~~**`data/disciplines/` does not exist yet.**~~ **Built.** All 37 blueprints (16 subclasses + 21
+- ~~**`data/disciplines/` does not exist yet.**~~ **Built.** All 38 blueprints (17 subclasses + 21
   multiclasses) load through `models/discipline.lua`, growth tallies both parents, the vendor gate
-  greys locked stock, and every gate quest — both the 16 subclass gates and all 21 multiclass
+  greys locked stock, and every gate quest — both the 17 subclass gates and all 21 multiclass
   capstones — exists on disk. `tests/discipline_spec.lua` pins the structure and both gate tiers.
   What remains is content rather than plumbing: ~27 exemplar NPCs are still stand-ins, and about
   half the signature mechanics are approximations their item headers admit to. See

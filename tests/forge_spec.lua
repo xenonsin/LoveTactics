@@ -279,4 +279,144 @@ return {
             end
         end,
     },
+
+    -- -----------------------------------------------------------------------
+    -- The batch: several rungs in one commit
+    -- -----------------------------------------------------------------------
+    {
+        name = "a one-rung batch bills exactly what the single-rung bill bills",
+        fn = function()
+            local p = richPlayer()
+            -- The panel prices every climb through costTo, including the ordinary next-rung case, so
+            -- the two must not be allowed to drift apart on any item in the catalogue.
+            for id in pairs(Item.defs) do
+                local probe = Item.instantiate(id)
+                if Forge.canWork(probe) then
+                    local item = Item.instantiate(id, 1, 3)
+                    local one = Forge.upgradeCost(p, item)
+                    local batch = Forge.costTo(p, item, 4)
+                    assert(batch, id .. " prices no one-rung batch")
+                    assert(batch.levels == 1, id .. " counts a one-rung batch as " .. batch.levels)
+                    for _, field in ipairs({ "level", "gold", "technique", "techniqueId",
+                        "techniqueHeld", "locked", "ceiling" }) do
+                        assert(one[field] == batch[field],
+                            id .. " disagrees on " .. field .. " between upgradeCost and costTo")
+                    end
+                    for matId, n in pairs(one.materials) do
+                        assert(batch.materials[matId] == n, id .. " disagrees on " .. matId)
+                    end
+                end
+            end
+        end,
+    },
+    {
+        name = "a batch costs the sum of the rungs it buys -- convenience, never a discount",
+        fn = function()
+            local p = richPlayer()
+            local item = Item.instantiate("weapon_first_motion", 1, 3)
+            local batch = Forge.costTo(p, item, 6)
+            assert(batch.levels == 3, "three rungs from +3 to +6, got " .. batch.levels)
+            assert(batch.level == 6, "the batch lands at +6")
+
+            local gold, materials = 0, {}
+            for lvl = 4, 6 do
+                local rung = Forge.upgradeCost(p, Item.instantiate("weapon_first_motion", 1, lvl - 1))
+                gold = gold + rung.gold
+                for matId, n in pairs(rung.materials) do materials[matId] = (materials[matId] or 0) + n end
+            end
+            assert(batch.gold == gold, "batch gold " .. batch.gold .. " vs summed " .. gold)
+            for matId, n in pairs(materials) do
+                assert(batch.materials[matId] == n,
+                    matId .. ": batch " .. tostring(batch.materials[matId]) .. " vs summed " .. n)
+            end
+        end,
+    },
+    {
+        name = "technique sums across a batch, but the BANK is not added up with it",
+        fn = function()
+            local id = anyDisciplineItem()
+            if not id then return end
+            local p = richPlayer()
+            local item = Item.instantiate(id, 1, 0)
+            local one = Forge.upgradeCost(p, item)
+            local batch = Forge.costTo(p, item, 3)
+            assert(batch.technique > one.technique, "three rungs of technique cost more than one")
+            -- techniqueHeld is what the strongest holder HAS. Accumulating it per rung would claim
+            -- the player is sitting on three times their actual bank and let an unaffordable climb
+            -- through the pre-check.
+            assert(batch.techniqueHeld == one.techniqueHeld, "the bank is read, not summed")
+            assert(batch.gold == 0, "discipline stock never bills gold, batched or not")
+        end,
+    },
+    {
+        name = "a batch reaching past the standing ceiling is locked, and names where the wall is",
+        fn = function()
+            local p = richPlayer()
+            local item = Item.instantiate("weapon_first_motion", 1, 0)
+            local ceiling = Forge.ceilingFor(p, item)
+            assert(ceiling < Item.MAX_LEVEL, "a fresh player has not earned the whole ladder")
+
+            local ok = Forge.costTo(p, item, ceiling)
+            assert(not ok.locked, "a climb that stops at the ceiling is payable")
+            assert(ok.blockedAt == nil, "and names no wall")
+
+            local over = Forge.costTo(p, item, ceiling + 1)
+            assert(over.locked, "one rung past the ceiling is locked")
+            assert(over.blockedAt == ceiling + 1,
+                "the wall is the first rung past the ceiling, got " .. tostring(over.blockedAt))
+        end,
+    },
+    {
+        name = "an unaffordable batch spends NOTHING -- the whole climb is refused before any of it is paid",
+        fn = function()
+            -- The one failure mode a multi-rung commit introduces that a single rung cannot have:
+            -- looping upgrade() and letting it refuse partway leaves gold and materials gone on a
+            -- climb the player never got.
+            local p = richPlayer()
+            local item = Item.instantiate("weapon_first_motion", 1, 0)
+            local target = Forge.ceilingFor(p, item)
+            assert(target >= 2, "need at least a two-rung climb to test a partial spend")
+
+            local full = Forge.costTo(p, item, target)
+            p.gold = full.gold - 1 -- afford every rung but the last
+
+            local goldBefore = p.gold
+            local out, reason = Forge.upgradeTo(p, item, target)
+            assert(out == nil, "an unaffordable batch forges nothing")
+            assert(reason == "gold", "and says why: " .. tostring(reason))
+            assert(p.gold == goldBefore, "and the purse is untouched: " .. p.gold .. " vs " .. goldBefore)
+            assert((item.level or 0) == 0, "and the item never moved")
+        end,
+    },
+    {
+        name = "an affordable batch lands the item at the target and charges the summed bill once",
+        fn = function()
+            local p = richPlayer()
+            local item = Item.instantiate("weapon_first_motion", 1, 0)
+            local target = math.min(3, Forge.ceilingFor(p, item))
+            local cost = Forge.costTo(p, item, target)
+            local goldBefore = p.gold
+
+            local out, reason = Forge.upgradeTo(p, item, target)
+            assert(out, "the batch forged: " .. tostring(reason))
+            assert(reason == nil, "and stopped nowhere short")
+            assert(out.level == target, "landing at +" .. target .. ", got +" .. tostring(out.level))
+            assert(out.id == item.id, "and it is still the same blade")
+            assert(goldBefore - p.gold == cost.gold,
+                "charged " .. (goldBefore - p.gold) .. ", billed " .. cost.gold)
+        end,
+    },
+    {
+        name = "costTo refuses to climb below where the item already stands",
+        fn = function()
+            local p = richPlayer()
+            local item = Item.instantiate("weapon_first_motion", 1, 5)
+            assert(Forge.costTo(p, item, 5) == nil, "aiming at the current level buys nothing")
+            assert(Forge.costTo(p, item, 3) == nil, "and the ladder does not run backwards")
+            local maxed = Item.instantiate("weapon_first_motion", 1, Item.MAX_LEVEL)
+            assert(Forge.costTo(p, maxed, Item.MAX_LEVEL) == nil, "a fully forged piece prices nothing")
+            local out, reason = Forge.upgradeTo(p, maxed, Item.MAX_LEVEL)
+            assert(out == nil and reason == "max level", "and refuses with 'max level'")
+        end,
+    },
 }

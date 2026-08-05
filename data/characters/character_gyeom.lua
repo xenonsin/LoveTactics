@@ -31,6 +31,8 @@
 -- moment she is an ally, when only the Ledger's concealment still stands.
 return {
     name = "Gyeom",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/gyeom.png",
     portrait = "assets/portraits/gyeom.png", -- large VN portrait for conversations (falls back if missing)
     class = "mage",

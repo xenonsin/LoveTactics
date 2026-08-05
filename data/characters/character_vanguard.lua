@@ -3,9 +3,12 @@
 -- data/disciplines/vanguard.lua.
 return {
     name = "Vanguard",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/vanguard.png",
     boss = true,
     class = "knight",
+    discipline = "vanguard",
     -- Shatters guard first, then pours through the gap (models/ai.lua `aggressive`).
     archetype = "aggressive",
     stats = {

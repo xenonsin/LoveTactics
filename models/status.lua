@@ -29,6 +29,9 @@
 --   * onEnterTile(ctx)    -- the unit arrived on a tile by ground movement -- walked, shoved, or
 --                            dragged, but never blinked or swapped (e.g. bleed damage)
 --   * blocksMove = true   -- the unit cannot move on its turn (root)
+--   * stopsMovement = true-- a walk that GAINS this status mid-route stops on the tile that landed it
+--                            (Mired: you step into the sand and you are going no further this turn).
+--                            Only the gain halts -- a unit that already had it walks normally
 --   * turnEndMoveCost(ctx)-> a move cost the unit pays at end of turn even if it stayed put
 --                            (root: as if it had moved max spaces)
 --   * fx = { pattern = ...}  -- read only by the view: this status also paints a full-tile FIELD under
@@ -1066,6 +1069,18 @@ end
 function Status.blocksMove(unit)
     for _, s in ipairs(unit.statuses or {}) do
         if s.def.blocksMove then return true end
+    end
+    return false
+end
+
+-- Does any active status stop a walk DEAD the moment it lands (Mired)? The sibling of blocksMove,
+-- and the pair is meant to be read together: blocksMove is asked before the feet leave and refuses the
+-- move outright, this is asked after each tile is entered and cuts the rest of the route off. A unit
+-- that already bore the status when the walk began is not stopped by it -- see Combat.stepMove, which
+-- only halts on a status GAINED en route -- so being mired never means being unable to wade out again.
+function Status.stopsMovement(unit)
+    for _, s in ipairs(unit.statuses or {}) do
+        if s.def.stopsMovement then return true end
     end
     return false
 end

@@ -13,6 +13,8 @@
 -- blueprint shape.
 return {
     name = "Banner",
+    kind = "object",
+    tier = 0,
     sprite = "assets/chars/banner.png",
     stats = {
         health = 32, mana = 0, stamina = 0,

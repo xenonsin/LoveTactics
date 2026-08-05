@@ -1,5 +1,7 @@
 return {
     name = "Archer",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/archer.png",
     -- No portrait: retired from the player's party (data/player.lua). Only ever an enemy/ally/test
     -- stand-in now, so it owes no painted VN portrait -- it falls back to the letter token if it speaks.

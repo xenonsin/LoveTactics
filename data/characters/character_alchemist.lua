@@ -1,5 +1,7 @@
 return {
     name = "Alchemist",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/alchemist.png",
     -- No portrait: the GENERIC alchemist template, not a companion. Ren (the alchemist companion) is the
     -- named specialization built on this base. Only ever an enemy / ally / test body -- it falls back to

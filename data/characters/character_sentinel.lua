@@ -4,8 +4,11 @@
 -- discipline exemplar is authored here with the full Sentinel kit. Kit from data/disciplines/sentinel.lua.
 return {
     name = "Sentinel",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/sentinel.png",
     class = "knight",
+    discipline = "sentinel",
     -- Stands between the foe and the wounded ally; holds until the fight comes (models/ai.lua `defensive`).
     archetype = "defensive",
     stats = {

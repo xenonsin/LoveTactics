@@ -19,6 +19,8 @@
 -- nothing to disarm it of and nothing to steal.
 return {
     name = "Crucible Golem",
+    kind = "construct",
+    tier = 2,
     sprite = "assets/chars/crucible_golem.png",
     stats = {
         health = 55, mana = 0, stamina = 15,

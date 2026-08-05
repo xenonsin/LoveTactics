@@ -3304,24 +3304,114 @@ function Combat.beginMove(combat, plan)
     combat.turn.moveCost = Combat.moveInitiative(unit, plan.cost)
     Combat.logEvent(combat, "move",
         string.format("%s moves to (%d, %d).", unitName(unit), dest.x, dest.y), unit)
-    return { unit = unit, path = plan.path, index = 1 }
+    -- `flying` and `mult` are read off the unit ONCE, here, and carried for the length of the walk:
+    -- both are only wanted if the route is cut short (haltWalk re-prices it), and the walk must be
+    -- priced by the unit as it set off. Mired is the very thing that stops a walk and it doubles
+    -- costMultiplier, so re-reading it at the halt would charge the interrupted walk double for
+    -- being interrupted.
+    return { unit = unit, path = plan.path, index = 1, walked = 0,
+             flying = Combat.isFlying(unit), mult = Status.costMultiplier(unit) }
+end
+
+-- The terrain cost of putting this body's footprint on (x, y): the roughest cell under it, or a flat 1
+-- for a flier. The same arithmetic moveGraph prices a step with and planMoveVia re-derives -- stated a
+-- third time here because both of those fuse it into a legality loop, and a walk cut short needs the
+-- number alone, for ground it has already been ruled allowed to cross.
+local function stepTerrainCost(combat, unit, x, y, flying)
+    if flying then return 1 end
+    local tiles = combat.arena and combat.arena.tiles
+    local worst = 0
+    for _, c in ipairs(Combat.cellsAt(unit.w or 1, unit.h or 1, x, y)) do
+        local row = tiles and tiles[c.y]
+        local cell = row and row[c.x]
+        local mc = (cell and cell.moveCost) or 1
+        if mc > worst then worst = mc end
+    end
+    return worst
+end
+
+-- Cut a walk off where it stands: the tiles still ahead of it are never entered, and the move is
+-- re-priced down to the ground actually crossed (at the multiplier the unit set off under -- see
+-- beginMove). The move itself stays SPENT: `turn.moved` is not given back, so a unit bogged down two
+-- tiles into a five-tile route does not get to try a different five tiles. It may still act from where
+-- it stopped, exactly as any unit that finished its walk may.
+local function haltWalk(combat, walk)
+    walk.halted = true
+    combat.turn.moveCost = math.floor((walk.walked or 0) * (walk.mult or 1) + 0.5)
+    Combat.logEvent(combat, "move",
+        string.format("%s is stopped at (%d, %d).", unitName(walk.unit), walk.unit.x, walk.unit.y),
+        walk.unit)
+end
+
+-- Would the ground on (x, y) -- anywhere under this body's footprint -- land a movement-stopping
+-- status on `unit`? Dry-run through Hazard.preview, so nothing on the board is touched and nobody is
+-- mired to find the answer out: this is asked once per route tile, every frame the cursor moves.
+-- An immunity (the Slipchain Charm) answers no, exactly as it will when the unit really steps there.
+local function groundStopsMovement(combat, unit, x, y)
+    for _, c in ipairs(Combat.cellsAt(unit.w or 1, unit.h or 1, x, y)) do
+        for _, h in ipairs(Hazard.allAt(combat, c.x, c.y)) do
+            local preview = Hazard.preview(h.id, h.amount)
+            for _, st in ipairs((preview and preview.statuses) or {}) do
+                if st.def and st.def.stopsMovement and not Status.isImmune(unit, st.id) then return true end
+            end
+        end
+    end
+    return false
+end
+
+-- How a walk down `path` (origin-first) would really end: the INDEX of the tile the unit comes to rest
+-- on -- short of the destination when the ground stops it -- and the terrain cost of the tiles it
+-- actually crosses to get there. Pure: it reads the board and changes nothing, which is what lets the
+-- route preview draw an honest line into a quicksand patch (states/battle.lua) instead of promising a
+-- walk the sand will cut in half.
+--
+-- The carry rule mirrors Combat.stepMove's: only ground that lands the status on a unit not already
+-- bearing one halts it, so a route that wades out of the sand and back in stops on the tile it
+-- re-enters. Traps and overwatch are deliberately NOT modelled here -- a route preview does not know
+-- what an unrevealed trap will do, and never has.
+function Combat.walkStop(combat, unit, path)
+    local flying = Combat.isFlying(unit)
+    local carrying = Status.stopsMovement(unit)
+    local cost = 0
+    for i = 2, #path do
+        local t = path[i]
+        cost = cost + stepTerrainCost(combat, unit, t.x, t.y, flying)
+        local grants = groundStopsMovement(combat, unit, t.x, t.y)
+        if grants and not carrying then return i, cost end
+        carrying = grants
+    end
+    return #path, cost
 end
 
 -- Carry the walk's unit onto the next tile of its path, setting off everything that tile holds:
 -- an opposing trap, and the on-entry effect of any hazard standing on it. Returns true while the
 -- walk has further to go, so a caller can drive it either flat-out (moveUnit) or a tile per
 -- animation beat (states/battle.lua). A unit killed en route -- a spike trap, a fire it walked
--- into -- stops on the tile it fell on rather than sliding on to the destination.
+-- into -- stops on the tile it fell on rather than sliding on to the destination, and so does a unit
+-- MIRED en route (see the halt below): both are a route that ends early, and both end it here.
 function Combat.stepMove(combat, walk)
-    if not walk.unit.alive or walk.index >= #walk.path then return false end
+    if walk.halted or not walk.unit.alive or walk.index >= #walk.path then return false end
+    -- Read BEFORE the step: only a status GAINED on the tile ahead halts the walk. A unit that set off
+    -- already mired -- standing in the sand when its turn came round -- has to be able to wade out, and
+    -- would otherwise be stopped by its own condition after a single tile, every turn, forever.
+    local wasStopped = Status.stopsMovement(walk.unit)
     walk.index = walk.index + 1
     local tile = walk.path[walk.index]
     local fromX, fromY = walk.unit.x, walk.unit.y -- the tile being vacated, for a trail laid behind
     walk.unit.x, walk.unit.y = tile.x, tile.y
+    walk.walked = (walk.walked or 0) + stepTerrainCost(combat, walk.unit, tile.x, tile.y, walk.flying)
     Combat.enterTile(combat, walk.unit, tile.x, tile.y, "walk", fromX, fromY)
     -- A unit walking into an opposing Overwatch stance's firing line is shot for it. Only a walk
     -- triggers this (not a knockback or a summon appearing), so it lives here rather than in enterTile.
     Combat.triggerOverwatch(combat, walk.unit)
+    -- BOGGED DOWN. Everything this tile could do to the unit has now happened -- the ground it stepped
+    -- on, and the shots that ground crossing invited -- so this is the first honest moment to ask
+    -- whether the unit is still going anywhere. Asked of the STATUS rather than of the hazard, so it is
+    -- one rule and not two: stepping into quicksand stops you because quicksand mires you, and an
+    -- overwatching Mired Kris that mires you mid-route stops you for exactly the same reason.
+    if walk.unit.alive and not wasStopped and Status.stopsMovement(walk.unit) then
+        haltWalk(combat, walk)
+    end
     return true
 end
 
@@ -7525,7 +7615,7 @@ end
 -- victim carried nothing worth taking.
 --
 -- A bearer of the Jealous Resin (Trait.flag `wardsTheft`) refuses the whole grid rather than one item,
--- so every theft vector -- Pickpocket, Shakedown -- comes away empty against it. The refusal is logged
+-- so every theft vector -- Pickpocket, an enemy thief's own grab -- comes away empty. The refusal is logged
 -- as a failure of the ATTEMPT and never names the charm: an enemy's grid is hidden until it is assayed
 -- (Combat.revealInventory), and a log line that read "the Jealous Resin holds" would hand over an item
 -- the player has not earned the right to see.
@@ -7689,6 +7779,33 @@ function Combat.awardTechnique(combat, unit, item)
     combat.techniqueEarned[id] = earned + amount
     combat.techniqueAward = { unit = unit, discipline = id, amount = amount }
     return amount
+end
+
+-- Arm the CLASS-VOTE floater for an action, the other half of what Combat.awardTechnique reports.
+-- `combat.growthAward` is the same shape of one-shot -- { unit, class } -- drained and cleared by
+-- states/battle.lua to float "+1 Knight" over the caster.
+--
+-- Technique alone left most of the game silent. Only 233 of 638 item files declare a discipline, and
+-- disciplines are LOCKED content, so an opening campaign hand -- weapon_iron_sword is `class = "knight"`
+-- with no discipline -- banked nothing and floated nothing. Every action still casts a vote though
+-- (Character.recordUse, one tick per action into classUseSinceLevel), and that vote is the thing
+-- CombatPanel:drawGrowthLine reads to say what the character is becoming. Floating the tick puts the
+-- same fact on the body, at the moment it is earned, instead of only in a line under the grid.
+--
+-- ONE floater per action, and technique wins the slot: a discipline item votes for the discipline id
+-- (Discipline.growthClasses), so floating both would report the same action twice under the same name.
+-- The corollary is that a discipline capped out for the battle now floats "+1 Ninja" rather than
+-- nothing -- which is not the misleading zero the cap was protecting against, but the truthful smaller
+-- claim: the wallet is full, the vote still counted.
+--
+-- The units differ on purpose and the colour carries it (states/battle.lua): amber for technique, a
+-- muted tone for the vote. One is a delta on a wallet, the other a tick on a tally.
+function Combat.noteGrowthVote(combat, unit, item)
+    combat.growthAward = nil
+    if combat.techniqueAward then return end
+    local key = Discipline.growthClasses(item)[1]
+    if not key then return end
+    combat.growthAward = { unit = unit, class = key }
 end
 
 -- Perform an item action: validate range + target kind + resource cost, spend the cost,
@@ -8683,6 +8800,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             Character.recordUse(unit.char, cls)
         end
         Combat.awardTechnique(combat, unit, item)
+        Combat.noteGrowthVote(combat, unit, item)
     end
 
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed (or the

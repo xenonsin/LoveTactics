@@ -3,9 +3,12 @@
 -- (Harrier's Bow). Kit from data/disciplines/skirmisher.lua.
 return {
     name = "Skirmisher",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/skirmisher.png",
     boss = true,
     class = "hunter",
+    discipline = "skirmisher",
     -- Wants distance and buys it: strike, then use the free move to break contact (models/ai.lua).
     archetype = "skirmish",
     stats = {

@@ -4,6 +4,8 @@
 -- foes Wet. See data/characters/fire_elemental.lua for the blueprint shape.
 return {
     name = "Water Elemental",
+    kind = "elemental",
+    tier = 1,
     sprite = "assets/chars/water_elemental.png",
     stats = {
         health = 28, mana = 0, stamina = 15,

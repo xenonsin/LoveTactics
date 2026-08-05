@@ -2,8 +2,8 @@
 --
 -- Flag-shaped rather than hook-shaped, for the reason models/trait.lua gives: the interesting code is
 -- already written -- Combat.steal knows who is being robbed and what it was about to take -- and the
--- charm only has to answer one yes/no question at that seam. Both theft vectors (Pickpocket and the
--- Thief discipline's Shakedown) run through Combat.steal, so warding it there covers every one of them.
+-- charm only has to answer one yes/no question at that seam. Every theft vector in the game runs
+-- through Combat.steal (Pickpocket, and any enemy thief), so warding it there covers all of them.
 --
 -- The ward is PERSONAL, not a party rule: it protects the grid it sits in and no other. That is the
 -- whole cost of the item -- a cell spent on the one character carrying something worth keeping, while

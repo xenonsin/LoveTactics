@@ -4,8 +4,11 @@
 -- data/disciplines/monk.lua.
 return {
     name = "Monk",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/monk.png",
     class = "priest",
+    discipline = "monk",
     -- Punches to build chi, then dumps it on a burst; walks straight in (models/ai.lua `aggressive`).
     archetype = "aggressive",
     stats = {

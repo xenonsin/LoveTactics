@@ -2,9 +2,12 @@
 -- Met as a vat-master, a boss. Kit from data/disciplines/poisoner.lua.
 return {
     name = "Poisoner",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/poisoner.png",
     boss = true,
     class = "alchemist",
+    discipline = "poisoner",
     -- Coats the blade, then knifes from a kept distance (models/ai.lua `skirmish`).
     archetype = "skirmish",
     stats = {

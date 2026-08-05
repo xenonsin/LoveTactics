@@ -147,6 +147,54 @@ return {
         end,
     },
     {
+        name = "walking into quicksand stops the walk on the sand, and re-prices it to the ground crossed",
+        fn = function()
+            -- A one-row corridor, so the route to (5,1) can only be the straight line through the sand.
+            local c = Combat.new(arena(8, 1), { unit("character_mage", 1, 1) }, {})
+            local mage = c.units[1]
+            Hazard.place(c, 3, 1, "hazard_quicksand")
+
+            -- Asked BEFORE the walk, the model reports the same stop -- and mires nobody to do it.
+            local path = { { x = 1, y = 1 }, { x = 2, y = 1 }, { x = 3, y = 1 }, { x = 4, y = 1 } }
+            local stop, walked = Combat.walkStop(c, mage, path)
+            assert(stop == 3, "the preview stops on the sand tile, got " .. tostring(stop))
+            assert(walked == 2, "priced over the two tiles actually crossed, got " .. tostring(walked))
+            assert(not Status.has(mage, "status_mired"), "asking the question mired nobody")
+
+            openTurn(c, mage)
+            local ok, cost = Combat.moveUnit(c, mage, 4, 1)
+            assert(ok, "the walk is legal -- it is the sand that ends it, not the rules: " .. tostring(cost))
+            assert(mage.x == 3, "the walk stopped on the tile that mired it, got x=" .. tostring(mage.x))
+            assert(Status.has(mage, "status_mired"), "and it is mired, standing in the sand")
+            assert(c.turn.moved, "the move is spent: no second route out of the bog")
+            assert(cost == 2, "charged for the two tiles walked, not the three intended, got " .. tostring(cost))
+
+            -- Already mired: the sand it is standing in must not stop it from wading out again.
+            openTurn(c, mage)
+            assert(Combat.moveUnit(c, mage, 1, 1), "the mired mage sets off")
+            assert(mage.x == 1, "and walks its whole route clear of the sand")
+            assert(not Status.has(mage, "status_mired"), "which lifts the mire")
+        end,
+    },
+    {
+        name = "an immunity to Mired walks through quicksand without stopping",
+        fn = function()
+            local rogueChar = Character.instantiate("character_rogue")
+            Character.addItem(rogueChar, Item.instantiate("utility_slipchain_charm"))
+            local c = Combat.new(arena(8, 1), { { char = rogueChar, x = 1, y = 1 } }, {})
+            local rogue = c.units[1]
+            Hazard.place(c, 3, 1, "hazard_quicksand")
+
+            local stop = Combat.walkStop(c, rogue, { { x = 1, y = 1 }, { x = 2, y = 1 },
+                                                     { x = 3, y = 1 }, { x = 4, y = 1 } })
+            assert(stop == 4, "nothing on this route stops a body the sand cannot hold")
+            openTurn(c, rogue)
+            assert(Combat.moveUnit(c, rogue, 4, 1), "the rogue walks it")
+            assert(rogue.x == 4, "straight through the sand to the far end, got x=" .. tostring(rogue.x))
+            assert(not Status.has(rogue, "status_mired"), "the charm refused the mire")
+        end,
+    },
+    {
         name = "the Dodge trait auto-evades a physical hit, then recharges; magic ignores it",
         fn = function()
             -- Give a knight the Duelist's Reflex (grants the passive Dodge trait). Combat.new attaches it.

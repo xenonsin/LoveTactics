@@ -299,6 +299,18 @@ spike trap, or conjured on top of one, is exactly as dangerous as walking over i
 therefore die on arrival: `fx.summon` / `fx.copy` bind the ability's reservation and its
 `activeSummon` claim only to a creature that survived, or the caster would hold mana for a corpse.
 
+**A walk can end early.** `Combat.stepMove` carries a unit one tile at a time, and two things stop it
+short of where it was going: the unit dies on the way, or it *gains a status that declares
+`stopsMovement`* on the tile it just entered — Mired, and so quicksand, since the sand is only a
+delivery mechanism for the status. Asking the status rather than the ground makes it one rule: an
+overwatching Mired Kris that mires a unit mid-route stops it for exactly the same reason a patch of
+sand does. Only the *gain* halts, so a unit that set off already mired can still wade out. The move
+stays spent (`turn.moved` is not refunded), but the initiative it owes is re-priced down to the ground
+actually crossed. `Combat.walkStop` answers the same question purely — it dry-runs the ground through
+`Hazard.preview` and touches nothing — which is what lets `states/battle.lua` draw the route solid to
+the tile the walk really ends on and ghost the rest, rather than promising a walk the board will cut in
+half.
+
 Its `reason` argument says *how* the unit got there — `"walk"` (a metered step), `"forced"` (shoved,
 pulled, trampled), or nil (a blink, a swap, a summon's arrival: no ground crossed). Traps and hazards
 ignore it, since the ground does not care how you came to stand on it; only

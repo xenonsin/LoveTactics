@@ -3,9 +3,12 @@
 -- data/disciplines/artificer.lua.
 return {
     name = "Artificer",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/artificer.png",
     boss = true,
     class = "mage",
+    discipline = "artificer",
     -- Deploys turrets, hangs back, and overcharges the line (models/ai.lua `skirmish`).
     archetype = "skirmish",
     stats = {

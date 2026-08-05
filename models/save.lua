@@ -255,17 +255,12 @@ function Save.restoreRun(snap)
 end
 
 function Save.snapshot(player)
-    local roster, indexOf = {}, {}
+    -- The roster IS the company (every owned character marches), so there is one list to store and no
+    -- second one whose members have to be re-aliased back onto it at load. An older save still carries
+    -- a `party` index list; it is simply ignored on restore.
+    local roster = {}
     for i, char in ipairs(player.roster) do
         roster[i] = snapshotCharacter(char)
-        indexOf[char] = i
-    end
-
-    -- Party members are the *same instances* held in the roster, so store indices to
-    -- keep that identity across a save/load round trip rather than duplicating them.
-    local party = {}
-    for _, char in ipairs(player.party) do
-        party[#party + 1] = assert(indexOf[char], "party member missing from roster: " .. tostring(char.id))
     end
 
     local stash = {}
@@ -298,6 +293,18 @@ function Save.snapshot(player)
     local announcedDisciplines = {}
     for disciplineId, seen in pairs(player.announcedDisciplines or {}) do
         if seen then announcedDisciplines[disciplineId] = true end
+    end
+
+    -- The red-dot ledgers: item ids that arrived in the stash, and item ids a quest put on a shelf,
+    -- neither yet looked at (Player.markNew). Same shape and same additive rule as the flags above --
+    -- Save.VERSION does not move, and an older save loads with nothing marked, which reads as a player
+    -- who has already seen everything they own. Written only when non-empty so a clean game diffs clean.
+    local newItems, newStock
+    for itemId, unseen in pairs(player.newItems or {}) do
+        if unseen then newItems = newItems or {}; newItems[itemId] = true end
+    end
+    for itemId, unseen in pairs(player.newStock or {}) do
+        if unseen then newStock = newStock or {}; newStock[itemId] = true end
     end
 
     -- How many times this campaign has been finished and carried forward (Player.newGamePlus). Purely
@@ -346,9 +353,10 @@ function Save.snapshot(player)
         recipes = recipes,
         visitedVendors = visitedVendors,
         announcedDisciplines = announcedDisciplines,
+        newItems = newItems,
+        newStock = newStock,
         lastDeployed = lastDeployed,
         roster = roster,
-        party = party,
         stash = stash,
     }
 end
@@ -434,11 +442,9 @@ function Save.restore(snap)
     end
     if #roster == 0 then return nil end -- nothing left to play with
 
-    local party = {}
-    for _, index in ipairs(snap.party or {}) do
-        local char = roster[index]
-        if char then party[#party + 1] = char end
-    end
+    -- `snap.party` (an older save's marching subset) is deliberately not read: the roster is the
+    -- company now, so a save made when it was a subset loads with everyone marching -- which is what
+    -- the game would have done with them anyway.
 
     local stash = {}
     for _, itemSnap in ipairs(snap.stash or {}) do
@@ -476,6 +482,16 @@ function Save.restore(snap)
         if seen then announcedDisciplines[disciplineId] = true end
     end
 
+    -- The red-dot ledgers (Player.markNew). An id no longer in data/ is dropped like every other, so a
+    -- removed item cannot leave a dot on nothing.
+    local newItems, newStock = {}, {}
+    for itemId, unseen in pairs(snap.newItems or {}) do
+        if unseen and known(Item.defs, itemId) then newItems[itemId] = true end
+    end
+    for itemId, unseen in pairs(snap.newStock or {}) do
+        if unseen and known(Item.defs, itemId) then newStock[itemId] = true end
+    end
+
     -- Who was fielded last battle, by charId. An id no longer on the roster is harmless -- the
     -- deployment phase only ever asks about a live company member -- so it is kept as-is rather than
     -- filtered, the same forgiving default the flags above take.
@@ -503,9 +519,10 @@ function Save.restore(snap)
         recipes = recipes,
         visitedVendors = visitedVendors,
         announcedDisciplines = announcedDisciplines,
+        newItems = newItems,
+        newStock = newStock,
         lastDeployed = lastDeployed,
         roster = roster,
-        party = party,
         stash = stash,
     }
 end

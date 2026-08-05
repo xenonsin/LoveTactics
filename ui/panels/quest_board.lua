@@ -9,11 +9,9 @@ local State = require("states")
 local Menu = require("ui.menu")
 local Quest = require("models.quest")
 local Player = require("models.player")
-local Vendor = require("models.vendor")
-local Discipline = require("models.discipline")
 local Growth = require("models.growth")
 local Item = require("models.item")
-local Character = require("models.character")
+local ItemTooltip = require("ui.item_tooltip")
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
 local InputMode = require("input_mode")
@@ -30,6 +28,12 @@ local BOX_W, BOX_H = 760, 520
 
 local LIST_TOP = 96
 local ROW_H, ROW_SPACING, MAX_VISIBLE = 44, 8, 6
+
+-- The reward relics read as ITEM ICONS rather than a comma-joined list of names: a relic is the
+-- reason to take one quest over another, and a name alone says nothing about what it does. Each
+-- plate opens the game's standard item tooltip on hover (mouse) or on focus (keyboard/gamepad,
+-- left/right along the row), so the full stat block is one gesture away without leaving the board.
+local ICON, ICON_GAP = 46, 8
 
 function QuestBoard.new(opts)
     opts = opts or {}
@@ -66,6 +70,9 @@ end
 -- sponsor's later quests only appear once you have finished enough of that sponsor's earlier ones.
 function QuestBoard:rebuild()
     self.quests = Quest.available(self.player)
+    -- The relic plates belong to whichever quest was selected; a rebuilt board has none until the
+    -- detail pane draws again.
+    self.relicRects, self.relicFocus = nil, nil
 
     -- Build the quest list. Selecting a quest starts it: the game state generates the overworld map
     -- from the quest's `map` params, using the player's prestige to pick dynamic encounters (see
@@ -81,13 +88,14 @@ function QuestBoard:rebuild()
             label = quest.locked and (quest.name .. " (Locked)") or quest.name,
             action = function()
                 if quest.locked then return end
-                -- Pick the deployable party before the overworld: party_select commits the choice
-                -- and switches on to states.game with the same (quest, prestige, player).
+                -- Straight into the overworld. There is nothing to assemble first: the whole roster
+                -- marches, and which of them take the field is chosen per battle in the deployment
+                -- phase, over the actual board (docs/deployment.md).
                 local function begin()
-                    State.switch(require("states.party_select"), quest, self.prestige, self.player)
+                    State.switch(require("states.game"), quest, self.prestige, self.player)
                 end
                 -- An intro scene plays first (over the hub, which stays frozen behind it); once it
-                -- concludes we proceed into party select. No intro -> straight through.
+                -- concludes we set out. No intro -> straight through.
                 if quest.intro then
                     require("models.conversation").play(quest.intro, begin)
                 else
@@ -122,6 +130,12 @@ end
 
 function QuestBoard:update(dt)
     self.menu:update(dt)
+    -- A new quest brings a new set of relics, so the focus ring cannot survive the move -- index 2 on
+    -- the last quest means nothing on this one.
+    if self.lastSelected ~= self.menu.selected then
+        self.lastSelected = self.menu.selected
+        self.relicFocus = nil
+    end
 end
 
 function QuestBoard:draw()
@@ -157,12 +171,24 @@ function QuestBoard:draw()
     Theme.set(Theme.muted)
     -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
     local hint = InputMode.isGamepad()
-        and "A: Start    D-pad: Scroll    B: Close"
+        and "A: Start    D-pad: Scroll / Relics    B: Close"
         or "Click a quest / Enter: Start    Wheel / PgUp / PgDn: Scroll    Click X / Esc: Close"
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 34, BOX_W, "center")
 
     self:drawDebugToggle()
     self.closeButton:draw()
+
+    -- The hovered (or focused) relic's tooltip, last of all, so it floats over everything else. Hung off
+    -- the CURSOR, like every other item hover in the game -- a pad/keyboard focus has no cursor to hang
+    -- from, so that one anchors on the plate instead. ItemTooltip clamps either to the screen.
+    local rect, pointed = self:hoveredRelic()
+    if rect and rect.relic.item then
+        if pointed then
+            ItemTooltip.draw(rect.relic.item, self.mx, self.my)
+        else
+            ItemTooltip.draw(rect.relic.item, rect.x + rect.w, rect.y - 12)
+        end
+    end
 
     love.graphics.setColor(1, 1, 1)
 end
@@ -231,13 +257,6 @@ function QuestBoard:drawDetail()
         cy = cy + lines * self.bodyFont:getHeight() + (gap or 4)
     end
 
-    -- WHAT THIS LINE LEADS TO. A house teaches a class, and its line is what opens that class's paths
-    -- (Discipline.subclassesOf). Naming them is the whole answer to "why commit to this house rather
-    -- than spread" -- the shop's section headers have said it for a while and the board, where the
-    -- choice is actually made, said nothing at all.
-    local paths = self:pathsFor(quest.sponsor)
-    if paths then row("Path: " .. paths, Theme.accentAmber) end
-
     row("Difficulty: " .. tostring(quest.difficulty))
 
     -- THE DEPTH FLOOR, AS A WARNING RATHER THAN AN AMBUSH. A line can be run alone all the way down;
@@ -257,6 +276,7 @@ function QuestBoard:drawDetail()
     -- A locked quest has no reward to offer yet, only a tally and whatever the dead have given up.
     -- This is the whole endgame UI: watch the count climb, watch the place name itself.
     if quest.locked then
+        self.relicRects = nil
         self:drawKeys(quest, x, y, w)
         return
     end
@@ -268,52 +288,109 @@ function QuestBoard:drawDetail()
     -- worth printing when quests paid 1, 2 or 3 and the card was where you learned which.
     row("Reward: " .. tostring(quest.rewardGold) .. " gold", Theme.ink)
 
-    -- A RELIC, AND A COMPANION. Quest.available has carried both of these onto every board entry from
-    -- the beginning -- rewardCharacter with a comment saying a companion is the strongest reward in the
-    -- game and must not arrive as a surprise -- and no screen has ever read either one.
-    local items = self:rewardItemNames(quest)
-    if items then row("Relic: " .. items, Theme.ink) end
-
-    local joins = self:rewardCharacterName(quest)
-    if joins then row(joins .. " joins your party", Theme.accentAmber) end
-end
-
--- The disciplines a sponsor's line opens, as a comma-joined display string, or nil for an unsponsored
--- quest or a house whose class teaches none.
-function QuestBoard:pathsFor(sponsor)
-    local def = sponsor and Vendor.get(sponsor)
-    if not (def and def.class) then return nil end
-
-    local names = {}
-    for _, id in ipairs(Discipline.subclassesOf(def.class)) do
-        names[#names + 1] = Discipline.displayName(id)
+    -- THE RELIC, AND ONLY THE RELIC. `rewardCharacter` is deliberately NOT read here: the board is
+    -- read before the quest, and printing "Clem joins your party" hands you the ending of a scene
+    -- whose whole job is to earn her. A companion arrives through the outro and the join banner
+    -- (Conversation.pendingJoins), which is where the surprise belongs -- the board promises gear.
+    local relics = self:rewardRelics(quest)
+    if #relics > 0 then
+        row(#relics == 1 and "Relic" or "Relics", Theme.muted, 2)
+        cy = cy + self:drawRelicIcons(relics, x, cy, w) + 6
+    else
+        self.relicRects = nil
     end
-    if #names == 0 then return nil end
-
-    table.sort(names)
-    return table.concat(names, ", ")
 end
 
--- The names behind `rewardItems`, or nil when the quest grants none. Falls back to the raw id for an
--- item that has been renamed out of the data, so a stale reference reads as odd rather than vanishing.
-function QuestBoard:rewardItemNames(quest)
-    local ids = quest.rewardItems
-    if not (ids and #ids > 0) then return nil end
+-- The items behind `rewardItems`, instantiated so the hover tooltip can quote the real thing (its
+-- stats, its ability, its flavour) rather than a name. Memoized per quest: instantiation copies the
+-- whole blueprint, and the detail pane rebuilds every frame. An id that has been renamed out of the
+-- data yields `{ id = id }` with no item, so a stale reference reads as an odd plate rather than
+-- crashing Item.instantiate.
+function QuestBoard:rewardRelics(quest)
+    self.relicCache = self.relicCache or {}
+    local cached = self.relicCache[quest]
+    if cached then return cached end
 
-    local names = {}
-    for _, id in ipairs(ids) do
-        local def = Item.defs[id]
-        names[#names + 1] = (def and def.name) or id
+    local relics = {}
+    for _, id in ipairs(quest.rewardItems or {}) do
+        relics[#relics + 1] = { id = id, item = Item.defs[id] and Item.instantiate(id) or nil }
     end
-    return table.concat(names, ", ")
+    self.relicCache[quest] = relics
+    return relics
 end
 
--- The display name behind `rewardCharacter`, or nil when the quest recruits nobody.
-function QuestBoard:rewardCharacterName(quest)
-    local id = quest.rewardCharacter
-    if not id then return nil end
-    local def = Character.defs[id]
-    return (def and def.name) or id
+-- Draw the relic plates in a row at (x, cy), wrapping into further rows if a quest ever grants more
+-- than the column fits. Records each plate's rect in self.relicRects so the hover test and the
+-- keyboard/gamepad focus ring both read the same geometry. Returns the height consumed.
+function QuestBoard:drawRelicIcons(relics, x, cy, w)
+    local perRow = math.max(1, math.floor((w + ICON_GAP) / (ICON + ICON_GAP)))
+    local rects = {}
+
+    for i, relic in ipairs(relics) do
+        local col, rowIndex = (i - 1) % perRow, math.floor((i - 1) / perRow)
+        local ix = x + col * (ICON + ICON_GAP)
+        local iy = cy + rowIndex * (ICON + ICON_GAP)
+        rects[i] = { x = ix, y = iy, w = ICON, h = ICON, relic = relic }
+
+        local focused = (self.relicFocus == i) or self:relicHit(i)
+        Theme.set(Theme.panel2)
+        love.graphics.rectangle("fill", ix, iy, ICON, ICON, 6, 6)
+        if focused then Theme.set(Theme.accentAmber) else Theme.set(Theme.frame, 0.7) end
+        love.graphics.setLineWidth(focused and 2 or 1)
+        love.graphics.rectangle("line", ix, iy, ICON, ICON, 6, 6)
+        love.graphics.setLineWidth(1)
+
+        -- Art when the item has it, its initial on a plate when it does not -- the same fallback the
+        -- inventory grid draws, so a relic with no sprite yet still reads as a thing you can hover.
+        local item = relic.item
+        local sprite = item and item.sprite
+        local label = (item and item.name) or relic.id
+        if type(sprite) == "userdata" then
+            local iw, ih = sprite:getDimensions()
+            local scale = math.min((ICON - 10) / iw, (ICON - 10) / ih)
+            love.graphics.setColor(1, 1, 1)
+            love.graphics.draw(sprite, ix + ICON / 2, iy + ICON / 2, 0, scale, scale, iw / 2, ih / 2)
+        else
+            love.graphics.setFont(self.headFont)
+            Theme.set(Theme.ink)
+            love.graphics.printf(label:sub(1, 1):upper(), ix,
+                iy + (ICON - self.headFont:getHeight()) / 2, ICON, "center")
+        end
+    end
+
+    self.relicRects = rects
+    local rows = math.ceil(#relics / perRow)
+    return rows * ICON + (rows - 1) * ICON_GAP
+end
+
+-- True when the mouse is over relic plate `i`. Nil-safe both ways: the pointer may not have moved
+-- since the panel opened, and the pane may not have drawn any plates yet.
+function QuestBoard:relicHit(i)
+    local r = self.relicRects and self.relicRects[i]
+    if not (r and self.mx) then return false end
+    return self.mx >= r.x and self.mx <= r.x + r.w and self.my >= r.y and self.my <= r.y + r.h
+end
+
+-- The plate the pointer is over, or the one the keyboard/gamepad focus ring sits on, plus whether it
+-- was the POINTER that found it (the caller hangs the tooltip off the cursor if so, off the plate if
+-- not). The pointer wins: if it is over a plate, that is the one the player is asking about.
+function QuestBoard:hoveredRelic()
+    for i in ipairs(self.relicRects or {}) do
+        if self:relicHit(i) then return self.relicRects[i], true end
+    end
+    local focused = self.relicFocus and self.relicRects and self.relicRects[self.relicFocus]
+    return focused, false
+end
+
+-- Step the focus ring along the relic row (keyboard/gamepad, which cannot hover). Wraps, and stays
+-- nil-safe on a quest granting none -- left/right then falls through to the menu as before.
+function QuestBoard:moveRelicFocus(dir)
+    local n = self.relicRects and #self.relicRects or 0
+    if n == 0 then return false end
+    local i = (self.relicFocus or 0) + dir
+    if i < 1 then i = n elseif i > n then i = 1 end
+    self.relicFocus = i
+    return true
 end
 
 -- The locked-quest pane: how many keys are held, and the location fragments the generals already
@@ -342,6 +419,7 @@ local function isInsideBox(self, x, y)
 end
 
 function QuestBoard:mousemoved(x, y)
+    self.mx, self.my = x, y
     self.closeButton:mousemoved(x, y)
     self.menu:mousemoved(x, y)
 end
@@ -377,6 +455,11 @@ function QuestBoard:keypressed(key)
         self:close()
     elseif key == "f1" then
         self:toggleDebug()
+    -- Left/right walks the relic plates -- the only way a player without a mouse can read a reward's
+    -- tooltip. It falls through to the menu when the quest grants no relic, where the pair is a no-op
+    -- anyway (a quest row carries no `adjust`).
+    elseif (key == "left" or key == "a") and self:moveRelicFocus(-1) then
+    elseif (key == "right" or key == "d") and self:moveRelicFocus(1) then
     else
         self.menu:keypressed(key)
     end
@@ -385,6 +468,8 @@ end
 function QuestBoard:gamepadpressed(joystick, button)
     if button == "b" then
         self:close()
+    elseif button == "dpleft" and self:moveRelicFocus(-1) then
+    elseif button == "dpright" and self:moveRelicFocus(1) then
     else
         self.menu:gamepadpressed(joystick, button)
     end

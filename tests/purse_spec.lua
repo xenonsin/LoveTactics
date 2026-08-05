@@ -12,7 +12,22 @@
 local Combat = require("models.combat")
 local Status = require("models.status")
 local Item = require("models.item")
+local Discipline = require("models.discipline")
+local Player = require("models.player")
 local Fixture = require("tests.support.fixture")
+
+-- THE MONEY KIT, named. Every ware that spends or banks campaign gold as a combat resource, and the one
+-- shelf they all belong to (data/disciplines/mammonite.lua). Held as an explicit roster rather than
+-- derived, because there is nothing in an item's DATA that says "this one touches the purse" -- the tell
+-- is inside its effect body, which no sweep can read. So a new money item that forgets its tag cannot be
+-- caught automatically; what this list catches is the other half of the same mistake, an existing one
+-- quietly losing the tag. Adding to the kit means adding a line here on purpose.
+local MONEY_KIT = {
+    -- The spenders: gold out, as a resource (Combat.spendPurse).
+    "ability_blood_money", "ability_gilded_wound", "ability_grease_palms", "ability_open_account",
+    -- The earners: gold in (Combat.bounty and kin).
+    "ability_ledgers_due", "ability_price_on_the_head", "utility_skimmers_cut", "armor_cutpurse_coat",
+}
 
 -- Inject a purse over a local gold cell, the way states/battle.lua injects one over Player.active.
 -- Returns a reader so a case can assert what is left.
@@ -312,6 +327,168 @@ return {
             local priced = Combat.previewAbility(combat, h, item, f.x, f.y, nil, nil, 120)
             assert(priced.entries[f].damage == 12, "priced at 120g the preview shows twelve")
             assert(purse() == 300, "and previewing spent not a coin")
+        end,
+    },
+
+    -- THE OPEN ACCOUNT: the toggle that pays wounds out of the purse instead of the flesh -------------
+    {
+        name = "The Open Account is a TOGGLE: one cast opens it, the next closes it",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", items = { "ability_open_account" }, stats = { stamina = 99 } })
+            local foe = Fixture.unit("character_bandit", 6, 6, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h = combat.units[1]
+
+            assert(Fixture.strike(combat, h, h, "ability_open_account"), "the account opens")
+            assert(Status.has(h, "status_open_account"), "and the bearer carries it")
+            assert(Fixture.strike(combat, h, h, "ability_open_account"), "the same cast again")
+            assert(not Status.has(h, "status_open_account"), "closes it -- a toggle, not a refresh")
+        end,
+    },
+    {
+        name = "an open account settles the wound out of the purse at 5 gold a point, and spares the body",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local victim = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", stats = { defense = 0, health = 900 } })
+            local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare" })
+            local combat = Fixture.combat(map, victim, foe)
+            local v = combat.units[1]
+            local purse = givePurse(combat, 500)
+            -- Applied directly (rather than cast) so the case pins the RULE, not the ability that flips it.
+            Status.apply(combat, v, "status_open_account", { magnitude = 10 })
+
+            local hp = v.char.stats.health.current
+            assert(Combat.dealFlatDamage(combat, v, 8, { "physical" }) == 0,
+                "a blow inside the cap draws no blood at all")
+            assert(v.char.stats.health.current == hp, "the flesh is untouched")
+            assert(purse() == 460, "and the eight points cost forty gold")
+        end,
+    },
+    {
+        name = "the cap is per blow: what the account will not cover lands on the flesh",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local victim = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", stats = { defense = 0, health = 900 } })
+            local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare" })
+            local combat = Fixture.combat(map, victim, foe)
+            local v = combat.units[1]
+            local purse = givePurse(combat, 500)
+            Status.apply(combat, v, "status_open_account", { magnitude = 10 })
+
+            local hp = v.char.stats.health.current
+            local dealt = Combat.dealFlatDamage(combat, v, 30, { "physical" })
+            assert(dealt == 20, "ten of the thirty are bought off; the other twenty land, got " .. dealt)
+            assert(hp - v.char.stats.health.current == 20, "and that is what the body actually takes")
+            assert(purse() == 450, "ten points billed at 5g is fifty gold -- never more than the cap")
+        end,
+    },
+    {
+        name = "an empty bank wards nothing -- you do not beat an account, you bankrupt it",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local victim = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", stats = { defense = 0, health = 900 } })
+            local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare" })
+            local combat = Fixture.combat(map, victim, foe)
+            local v = combat.units[1]
+            Status.apply(combat, v, "status_open_account", { magnitude = 10 })
+
+            -- No purse at all (a duel, a draft run): the toggle is inert and the blow simply lands.
+            assert(Combat.soakIntoPurse(combat, v, 8) == 0, "no purse covers nothing")
+
+            -- A bank with 12g in it covers two whole points and not the third: the dregs round DOWN.
+            local purse = givePurse(combat, 12)
+            assert(Combat.soakIntoPurse(combat, v, 8) == 2, "12g at 5g a point buys exactly two")
+            assert(purse() == 2, "and leaves the two coppers that could not buy a third")
+            assert(Combat.soakIntoPurse(combat, v, 8) == 0, "broke, it covers nothing further")
+        end,
+    },
+    {
+        name = "an enemy's account draws on its OWN coffer, and leaves the party's bank alone",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 2, 2, { isolate = "bare" })
+            local aurea = Fixture.unit("character_bandit", 2, 3,
+                { isolate = "bare", stats = { defense = 0, health = 900 } })
+            aurea.char.coffer = 200 -- a walking treasury, as in the Gilded Wound case above
+            local combat = Fixture.combat(map, hero, aurea)
+            local a = combat.units[2]
+            local partyPurse = givePurse(combat, 500)
+            Status.apply(combat, a, "status_open_account", { magnitude = 10 })
+
+            local hp = a.char.stats.health.current
+            assert(Combat.dealFlatDamage(combat, a, 6, { "physical" }) == 0, "her gold takes the blow")
+            assert(a.char.stats.health.current == hp, "not her flesh")
+            assert(a.coffer == 170, "six points off her own coffer at 5g")
+            assert(partyPurse() == 500, "and the party's bank is untouched")
+        end,
+    },
+    {
+        name = "the mana shield is spent before the purse is billed",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            -- Both wards at once: the Mana Shield (item) and an open account (status).
+            local knight = Fixture.unit("character_knight", 2, 2,
+                { isolate = "bare", items = { "utility_mana_shield" },
+                  stats = { defense = 0, health = 900, mana = 5 } })
+            local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare" })
+            local combat = Fixture.combat(map, knight, foe)
+            local k = combat.units[1]
+            k.char.stats.mana.current = 5
+            local purse = givePurse(combat, 500)
+            Status.apply(combat, k, "status_open_account", { magnitude = 10 })
+
+            local hp = k.char.stats.health.current
+            assert(Combat.dealFlatDamage(combat, k, 8, { "physical" }) == 0, "between them the blow is covered")
+            assert(k.char.stats.health.current == hp, "and nothing reaches the body")
+            assert(k.char.stats.mana.current == 0, "the renewable pool goes first, all five points of it")
+            assert(purse() == 485, "and only the remaining three are billed -- 15g, not 40g")
+        end,
+    },
+
+    -- THE MAMMONITE: the shelf the whole kit lives on ------------------------------------------------
+    {
+        name = "every money item is on the Mammonite shelf, and the Mammonite is a rogue subclass",
+        fn = function()
+            for _, id in ipairs(MONEY_KIT) do
+                local def = Item.defs[id]
+                assert(def, id .. " is named in the money kit but does not exist")
+                assert(def.class == "rogue", id .. " left the rogue shelf")
+                assert(def.discipline == "mammonite",
+                    id .. " spends or banks the purse but is not tagged mammonite -- the money kit is one"
+                        .. " shelf (data/disciplines/mammonite.lua), not eight loose wares")
+            end
+
+            -- One parent, so a subclass rather than a multiclass -- which is what makes its gate a single
+            -- quest in its own line rather than earned advancement across two.
+            assert(Discipline.arity("mammonite") == 1, "the Mammonite is a subclass (one parent)")
+            assert(Discipline.parents("mammonite")[1] == "rogue", "and its parent is the rogue")
+        end,
+    },
+    {
+        name = "the Mammonite shelf opens on Quarter-End, and its two tiers straddle that gate",
+        fn = function()
+            local p = Player.new()
+            assert(not Discipline.isUnlocked(p, "mammonite"), "a fresh player has not earned it")
+            p.completedQuests.quest_undercroft_slot_06 = true
+            assert(Discipline.isUnlocked(p, "mammonite"), "Quarter-End (slot 6) is the gate")
+
+            -- The gate sits BETWEEN the halves, which is the whole reason slot 6 was chosen: the earners
+            -- are already on sale by then, and the spenders are Aurea's own art, still two tiers off.
+            -- Pinned as an ordering rather than as literal numbers, so retuning either tier stays free.
+            local function gate(id) return Item.defs[id].unlockQuests or 0 end
+            local SLOT_6 = 5 -- `unlockQuests` is a count already done, so slot 6 clears a gate of 5
+            for _, id in ipairs({ "ability_ledgers_due", "ability_price_on_the_head" }) do
+                assert(gate(id) <= SLOT_6, id .. " is an earner: it must already be buyable at the gate")
+            end
+            for _, id in ipairs({ "ability_blood_money", "ability_gilded_wound",
+                                  "ability_grease_palms", "ability_open_account" }) do
+                assert(gate(id) > SLOT_6, id .. " spends the purse: it is Aurea's art, and waits for her")
+            end
         end,
     },
 }

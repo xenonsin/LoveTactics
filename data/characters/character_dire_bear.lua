@@ -14,6 +14,8 @@
 -- the hide, and the feet, and those it brings in full.
 return {
     name = "Dire Bear",
+    kind = "beast",
+    tier = 0,
     sprite = "assets/chars/dire_bear.png",
     stats = {
         health = 1, mana = 0, stamina = 1, -- placeholders: the hunter's own pools are carried across

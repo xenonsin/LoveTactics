@@ -13,46 +13,39 @@ return {
             local p = Player.new()
             assert(p.gold == Player.defaults.gold, "gold should come from the defaults")
             assert(p.prestige == Player.defaults.prestige, "prestige should come from the defaults")
-            -- The party is earned through play, so the default is lean: just Rowan (the generic
+            -- The company is earned through play, so the default is lean: just Rowan (the generic
             -- Mage/Archer/Priest were retired from the roster -- see data/player.lua).
             assert(#p.roster == 1, "roster should have 1 member (Rowan)")
-            assert(#p.party == 1, "party should have 1 member (Rowan)")
             assert(p.roster[1].id == "character_rowan", "the lone default is Rowan")
             assert(next(p.completedQuests) == nil, "a new player has completed no quests (and so stands at every shop's opening stock)")
         end,
     },
     {
-        name = "party members reference the same roster instances",
+        -- The roster IS the company: there is no second list to fall out of step with it, and no cap
+        -- to be turned away by. A recruit marches by virtue of being owned.
+        name = "the roster is the whole marching company",
         fn = function()
             local p = Player.new()
-            assert(p.party[1] == p.roster[1], "party[1] should be the roster[1] instance")
-        end,
-    },
-    {
-        name = "party is capped at Player.MAX_PARTY",
-        fn = function()
-            local p = Player.new()
-            -- The lean default starts with one member; fill the party to the cap first.
-            while #p.party < Player.MAX_PARTY do
-                assert(Player.addToParty(p, Character.instantiate("character_rowan")),
-                    "adding within the cap should succeed")
+            assert(p.party == nil, "there is no separate marching-company list")
+            for i = 1, 12 do
+                assert(Player.recruit(p, "character_saber") or i > 1,
+                    "the first recruit joins; the rest are refused as duplicates")
             end
-            assert(#p.party == Player.MAX_PARTY, "party should reach the cap")
-            local extra = Character.instantiate("character_rowan")
-            assert(Player.addToParty(p, extra) == false, "adding past the cap must be rejected")
-            assert(#p.party == Player.MAX_PARTY, "party must not grow past the cap")
+            assert(#p.roster == 2, "a duplicate is refused, but nothing else caps the roster")
+            -- Everyone owned is handed to the battle as the company (states/game.lua), so the only
+            -- number left about the board is how many of them may stand on it.
+            assert(Player.MAX_PARTY == nil, "the company cap is gone")
+            assert(Player.MAX_FIELD == 4, "the field cap is what remains")
         end,
     },
     {
-        name = "removeFromParty frees a slot without touching the roster",
+        -- A new game opens the deployment phase with somebody already standing rather than an empty
+        -- board, which is what lastDeployed is for.
+        name = "a new player's starting roster counts as last battle's field",
         fn = function()
             local p = Player.new()
-            local rosterBefore, partyBefore = #p.roster, #p.party
-            local member = p.party[1]
-            assert(Player.removeFromParty(p, member), "member should be removed")
-            assert(#p.party == partyBefore - 1, "party should have one fewer member")
-            assert(#p.roster == rosterBefore, "roster is unchanged by party removal")
-            assert(Player.addToParty(p, member), "a freed slot accepts a new member")
+            assert(#p.lastDeployed == #p.roster, "every starting member is pre-selected")
+            assert(Player.wasDeployed(p, p.roster[1]), "the lone default opens the phase placed")
         end,
     },
     {
@@ -147,15 +140,15 @@ return {
         end,
     },
     {
-        name = "party vision radius is driven by a torch-carrying member",
+        name = "company vision radius is driven by a torch-carrying member",
         fn = function()
             local p = Player.new()
-            -- The knight starts with a torch, so the party sees at the torch's radius.
+            -- The knight starts with a torch, so the company sees at the torch's radius.
             assert(Player.visionRadius(p) == Item.defs.utility_torch.visionRadius,
-                "party with a torch should see at the torch's radius")
+                "a company with a torch should see at the torch's radius")
 
-            -- With no torch anywhere, the party falls back to the base radius.
-            for _, char in ipairs(p.party) do char.inventory = {} end
+            -- With no torch anywhere, it falls back to the base radius.
+            for _, char in ipairs(p.roster) do char.inventory = {} end
             assert(Player.visionRadius(p) == Player.BASE_VISION,
                 "torchless party should see at BASE_VISION")
 

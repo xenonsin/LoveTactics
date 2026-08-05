@@ -16,6 +16,7 @@
 --   map:keypressed(key); map:gamepadpressed(joystick, button)
 
 local Theme = require("ui.theme")
+local Glyphs = require("ui.glyphs")
 
 local BuildingMap = {}
 BuildingMap.__index = BuildingMap
@@ -29,6 +30,11 @@ function BuildingMap.new(buildings, opts)
     local self = setmetatable({}, BuildingMap)
     self.buildings = buildings
     self.onActivate = opts.onActivate
+    -- Optional `badge(building)` predicate: true puts the red unseen dot in that plate's top-right
+    -- corner (ui/glyphs.lua). Asked every frame rather than baked in at construction, because what it
+    -- reports (a shop holding wares the player has not looked at) is cleared inside a panel this same
+    -- map is still sitting behind -- closing the shop should take the dot with it.
+    self.badge = opts.badge
     self.font = opts.font or Theme.display(18)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
@@ -105,6 +111,12 @@ function BuildingMap:draw()
         local label = b.locked and ("? (prestige " .. b.unlockPrestige .. ")") or b.name
         Theme.set(active and Theme.accentAmber or (b.locked and Theme.muted or Theme.ink))
         love.graphics.printf(label, b.x, b.y + b.h / 2 - 10, b.w, "center")
+
+        -- The unseen dot rides the corner of the plate itself, so the city tells you which door to
+        -- walk through before you have opened any of them. A locked building never carries one.
+        if not b.locked and self.badge and self.badge(b) then
+            Glyphs.unseenDot(b.x + b.w - 10, b.y + 10, 5)
+        end
     end
     love.graphics.setColor(1, 1, 1)
 end

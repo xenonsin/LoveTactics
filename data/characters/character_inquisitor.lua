@@ -3,9 +3,12 @@
 -- Kit from data/disciplines/inquisitor.lua.
 return {
     name = "Inquisitor",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/inquisitor.png",
     boss = true,
     class = "rogue",
+    discipline = "inquisitor",
     -- Marks, strips the buff, then sentences the marked (models/ai.lua `aggressive`).
     archetype = "aggressive",
     stats = {

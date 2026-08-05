@@ -2,9 +2,12 @@
 -- Corpse Burst. Met as an Adept of the inner circle, a boss. Kit from data/disciplines/necromancer.lua.
 return {
     name = "Necromancer",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/necromancer.png",
     boss = true,
     class = "mage",
+    discipline = "necromancer",
     -- Hangs back, raises the fallen, and spends corpses (models/ai.lua `skirmish`).
     archetype = "skirmish",
     stats = {

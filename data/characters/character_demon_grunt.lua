@@ -20,6 +20,8 @@
 -- heavy rather than as an oversight, which is the one place the exemption is actually visible.
 return {
     name = "Demon Grunt",
+    kind = "demon",
+    tier = 2,
     sprite = "assets/chars/demon_grunt.png",
     revivable = false, -- a demon does not come back: no downed window, and no revive takes it
     -- Blueprint-exact forever: every other enemy grows with the company (models/growth.lua,

@@ -28,6 +28,8 @@
 -- rule rewards a long trade. A potion beside it keeps her patient: she does not have to win fast.
 return {
     name = "Saber",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/saber.png",
     portrait = "assets/portraits/saber.png", -- large VN portrait for conversations (falls back if missing)
     class = "fighter",

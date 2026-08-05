@@ -163,7 +163,7 @@ function Party.new(opts)
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
 
-    self.chars = (self.player and self.player.roster) or (self.player and self.player.party) or {}
+    self.chars = (self.player and self.player.roster) or {}
     self.charIndex = 1
     self.railOffset = 0
     self.railCursor = 1 -- rail navigation cursor (distinct from charIndex, the edited member)
@@ -209,6 +209,15 @@ function Party.new(opts)
         y = poolTop,
         w = self.boxX + BOX_W - 24 - poolX,
         h = bottom - poolTop,
+        -- The red corner dot on anything that arrived in the stash and has not been looked at
+        -- (Player.markNew). Cleared on a look, and persisted then and there: the Armory is a screen a
+        -- player can close by walking out of the city, so a mark cleared here must not come back.
+        isNew = function(item)
+            return Player.isNew(self.player, Player.NEW_STASH, item and item.id)
+        end,
+        onSeen = function(item)
+            if Player.seeNew(self.player, Player.NEW_STASH, item and item.id) then Player.save() end
+        end,
     })
     self.pool:setItems(self.player and self.player.stash or {})
 
@@ -435,8 +444,11 @@ function Party:railContains(x, y)
         and y >= self.railY and y <= self.railY + self.railH
 end
 
--- Is `char` in the deployable party? (Shown as a badge; not editable here.)
-function Party:inParty(char)
+-- Is `char` one of the units currently FIELDED, as opposed to merely owned? (Shown as a badge; not
+-- editable here.) Only a caller that actually splits its units into a fielded set and a bench supplies
+-- `player.party` -- in practice the draft's synthetic player (states/draft.lua). The campaign has no
+-- such split: its roster IS its company and the field is picked per battle, so nothing is badged.
+function Party:isFielded(char)
     for _, m in ipairs(self.player and self.player.party or {}) do
         if m == char then return true end
     end
@@ -1275,7 +1287,7 @@ function Party:drawRailPortrait(char, i, rx, ry, rw, rh)
     Theme.set(Theme.ink)
     love.graphics.printf(char.name or "?", rx + 2, ry + rh - 16, rw - 4, "center")
 
-    if self:inParty(char) then
+    if self:isFielded(char) then
         Theme.set(Theme.accentAmber)
         love.graphics.circle("fill", rx + rw - 8, ry + 8, 4)
     end

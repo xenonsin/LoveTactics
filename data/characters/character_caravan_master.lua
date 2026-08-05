@@ -10,6 +10,8 @@
 -- but it is now the problem of covering ground he is standing on instead of chasing him into it.
 return {
     name = "Caravan Master",
+    kind = "humanoid",
+    tier = 0,
     archetype = "defensive",
     sprite = "assets/chars/caravan_master.png",
     stats = {

@@ -304,6 +304,29 @@ function Character.instantiate(id, progress)
         -- Progression state (models/growth.lua): innate growth class (fallback/tie-break), the level
         -- (tracks player prestige), the per-class cast tally, and the accumulated stat growth.
         class = def.class,
+        -- What KIND of body this is: "humanoid" | "beast" | "demon" | "undead" | "construct" |
+        -- "elemental" | "object". Declared by every blueprint rather than guessed -- tools/char_compose
+        -- used to infer it from words in the id, which read every wolf and boar as a humanoid because
+        -- nothing in "character_boar" says otherwise. It is also the line the bestiary's outfitting rule
+        -- is drawn along (docs/bestiary.md): a HUMANOID carries priced, lootable, shareable gear off a
+        -- shelf and names the class that shelf belongs to; every other kind carries natural weapons
+        -- only -- unpriced, `noSteal`, and never a discipline item. A wolf is not a Beastmaster; a wolf
+        -- is what a Beastmaster has.
+        kind = def.kind,
+        -- Which RUNG of the ladder this body sits on (docs/bestiary.md): 1 chaff · 2 line · 3 elite ·
+        -- 4 boss, or 0 for a body that is not on the ladder at all -- a prop, an escortee, or a shape
+        -- worn by Wild Shape. A DECLARED LABEL, never a multiplier: nothing derives a stat from it.
+        -- What it buys is encounters composed as budgets rather than hardcoded lists, and a spec that
+        -- fails the build when a body's health drifts out of the band it claims
+        -- (tests/bestiary_spec.lua).
+        tier = def.tier,
+        -- The discipline this body IS, for a body built as one (data/disciplines/*.lua). Sparse: most
+        -- bodies carry none, and the ones that do are the discipline exemplars plus the Elite-rung
+        -- humanoids that read as a deeper cut of their faction. Declared rather than derived from the
+        -- kit, so the spec can check the kit against it instead of trusting it -- an Elite that claims
+        -- Thief and carries no thief item is the failure this field exists to catch. `class` must be
+        -- one of the discipline's parent classes, the same invariant items obey.
+        discipline = def.discipline,
         -- A general/boss blueprint sets `boss = true`; carried through so an ability can refuse to work
         -- on one (Coup de Grace won't execute a boss, Charm won't turn it). Nil for an ordinary unit.
         boss = def.boss,

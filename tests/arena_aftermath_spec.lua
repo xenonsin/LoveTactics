@@ -71,7 +71,6 @@ return {
             clearJoins()
             local p = Player.new()
             p.roster = { Character.instantiate("character_avatar") }
-            p.party = { p.roster[1] }
             -- The debut recruits her; the arena outro holds the banner (deferJoins) so it lands here.
             local saber = Player.recruit(p, "character_saber")
             assert(saber, "Saber recruited")

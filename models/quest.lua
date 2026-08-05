@@ -10,6 +10,7 @@
 local Registry = require("models.registry")
 local Player = require("models.player")
 local Vendor = require("models.vendor")
+local Discipline = require("models.discipline") -- unlockedSet/levelSet: the shelf's other two gates
 local Building = require("models.building")
 local Debug = require("models.debug")
 
@@ -92,6 +93,41 @@ function Quest.sponsorProgress(player, vendorId)
         if def and def.sponsor == vendorId then done = done + 1 end
     end
     return done
+end
+
+-- The sponsor's shelf as it stands right now, for the before/after diff in Quest.complete. Asks
+-- Vendor.stock the same question the shop asks it (ui/panels/shop.lua), with the same three gates --
+-- quest count, discipline unlocked, discipline level -- so what the reward panel announces as newly on
+-- sale is exactly what the player will find on sale when they walk in.
+local function shelfOf(player, vendorId)
+    if not vendorId then return nil end
+    return Vendor.stock(vendorId, Quest.sponsorProgress(player, vendorId), player.recipes,
+        Discipline.unlockedSet(player), Discipline.levelSet(player))
+end
+
+-- What a completion PUT ON the sponsor's shelf: every item that was locked in `before` and is for sale
+-- now. Derived by diffing the shelf rather than by re-deriving the gate here, because a shelf opens per
+-- QUEST (each priced item names its own `unlockQuests`), so "did this quest open anything" has no
+-- shorter honest answer than asking the shelf twice.
+--
+-- Returns nil when nothing opened -- most quests -- so the panel simply has no section to draw.
+local function openedStock(player, vendorId, before)
+    if not before then return nil end
+    local wasLocked = {}
+    for _, entry in ipairs(before) do
+        if entry.locked then wasLocked[entry.id] = true end
+    end
+
+    local opened = {}
+    for _, entry in ipairs(shelfOf(player, vendorId)) do -- already in shelf order: gate, then price
+        if wasLocked[entry.id] and not entry.locked then
+            opened[#opened + 1] = { id = entry.id, name = entry.name, type = entry.type, price = entry.price }
+        end
+    end
+    if #opened == 0 then return nil end
+
+    local def = Vendor.get(vendorId)
+    return { vendorId = vendorId, vendor = def and def.name or vendorId, items = opened }
 end
 
 -- Does the player meet a quest's sponsor-quest gate? `requiredSponsorQuests = { vendor = id, count = n }`
@@ -290,12 +326,9 @@ function Quest.complete(player, quest, carried)
     local prestigeAfter = player.prestige
 
     -- The sponsor's standing is its finished-quest count, so completing this quest is what advances it.
-    -- Capture the count and its upgrade tier BEFORE marking done, so we can tell whether this completion
-    -- crossed a tier threshold -- the moment a new wave of stock lands on the shelf, worth announcing.
-    local tierBefore
-    if quest.sponsor then
-        tierBefore = Vendor.tier(Quest.sponsorProgress(player, quest.sponsor))
-    end
+    -- Photograph the shelf BEFORE marking done, so the payout can name the wares this quest just put
+    -- on sale (openedStock above) rather than only saying that some appeared.
+    local shelfBefore = shelfOf(player, quest.sponsor)
 
     player.completedQuests = player.completedQuests or {}
     player.completedQuests[quest.id] = true
@@ -337,6 +370,15 @@ function Quest.complete(player, quest, carried)
     for matId, count in pairs(quest.rewardMaterials or {}) do grant(matId, count) end
     for matId, count in pairs(carried or {}) do grant(matId, count) end
 
+    -- What this quest put on its sponsor's shelf. Marked UNSEEN as well as reported, so the shop
+    -- itself dots the new rows (Player.markNew) -- the reward panel names three of them, and the
+    -- shelf they landed on is forty rows deep. Resolved before the save below so the marks persist
+    -- with everything else this completion changed.
+    local unlockedStock = openedStock(player, quest.sponsor, shelfBefore)
+    for _, entry in ipairs(unlockedStock and unlockedStock.items or {}) do
+        Player.markNew(player, Player.NEW_STOCK, entry.id)
+    end
+
     Player.save()
 
     local sponsorQuests = quest.sponsor and Quest.sponsorProgress(player, quest.sponsor)
@@ -357,9 +399,11 @@ function Quest.complete(player, quest, carried)
         prestigeAfter = prestigeAfter,
         sponsor = quest.sponsor,
         sponsorQuests = sponsorQuests, -- the sponsor's new finished-quest count (its standing), for the reward panel
-        -- True when this completion crossed a tier threshold -- the moment a fresh wave of stock
-        -- appears on the sponsor's shelf, and the thing worth announcing.
-        unlockedStock = tierBefore ~= nil and Vendor.tier(sponsorQuests or 0) > tierBefore,
+        -- The wares this completion put on the sponsor's shelf, or nil when it opened none:
+        -- { vendorId, vendor = shop name, items = { { id, name, type, price }, ... } }. The reward panel
+        -- lists them by name -- "run the quest, then spend at the shelf it opened" is the campaign loop,
+        -- and it only closes if the player is told which shelf moved and what landed on it.
+        unlockedStock = unlockedStock,
     }
 end
 

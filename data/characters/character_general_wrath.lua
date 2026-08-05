@@ -21,6 +21,8 @@
 -- Her mail carries the same rule for whoever lifts it off her (data/items/armor/armor_mail_of_the_unappeased.lua).
 return {
     name = "Ira, the Unappeased",
+    kind = "humanoid",
+    tier = 4,
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_wrath.png",
     portrait = "assets/portraits/general_wrath.png", -- large VN portrait for conversations (falls back if missing)

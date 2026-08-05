@@ -19,6 +19,8 @@
 -- casting -- so the vigil has already worked even when it is destroyed immediately.
 return {
     name = "Gaunt Vigil",
+    kind = "object",
+    tier = 0,
     sprite = "assets/chars/gaunt_vigil.png",
     stats = {
         health = 26, mana = 0, stamina = 0,

@@ -2,9 +2,12 @@
 -- Met as a spell-and-steel veteran, a boss. Home shelf is mage. Kit from data/disciplines/battlemage.lua.
 return {
     name = "Battlemage",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/battlemage.png",
     boss = true,
     class = "mage",
+    discipline = "battlemage",
     -- Closes and cleaves; each swing carries the last spell (models/ai.lua `aggressive`).
     archetype = "aggressive",
     stats = {

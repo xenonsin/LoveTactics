@@ -76,20 +76,46 @@ return {
         end,
     },
     {
-        name = "Shakedown wounds the target and lifts an item off them",
+        -- The inverse of Coup de Grace, and the line that keeps it from being a second Pickpocket:
+        -- nothing leaves the target's grid. What it takes is paid for in blood and in coin, and both
+        -- shrink as the body does.
+        name = "Shakedown hits hardest on an untouched foe and fades as one is worn down",
         fn = function()
-            local map = Fixture.new(8, 8)
-            local hero = Fixture.unit("character_clem", 2, 2, { isolate = "bare", items = { "ability_shakedown" } })
-            local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare", stats = { defense = 0, health = 100 }, items = { "weapon_iron_dagger" } })
-            local combat = Fixture.combat(map, hero, foe)
-            local h, f = combat.units[1], combat.units[2]
-            h.char.stats.stamina.current = 99
+            local function shake(healthFraction)
+                local map = Fixture.new(8, 8)
+                local hero = Fixture.unit("character_clem", 2, 2, { isolate = "bare", items = { "ability_shakedown" } })
+                local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare",
+                    stats = { defense = 0, health = 1000 }, items = { "weapon_iron_dagger" } })
+                local combat = Fixture.combat(map, hero, foe)
+                local h, f = combat.units[1], combat.units[2]
+                h.char.stats.stamina.current = 99
+                f.char.stats.health.current = math.floor(1000 * healthFraction)
 
-            local hp0 = f.char.stats.health.current
-            assert(Fixture.strike(combat, h, f, "ability_shakedown"), "Shakedown strikes the adjacent foe")
-            assert(f.char.stats.health.current < hp0, "Shakedown deals damage")
-            assert(Fixture.itemNamed(f.char, "weapon_iron_dagger") == nil, "the foe's weapon is stolen off them")
-            assert(Fixture.itemNamed(h.char, "weapon_iron_dagger") ~= nil, "and lands in the thief's own grid")
+                local hp0 = f.char.stats.health.current
+                assert(Fixture.strike(combat, h, f, "ability_shakedown"), "Shakedown strikes the adjacent foe")
+                return hp0 - f.char.stats.health.current, combat.bounty or 0, f, h
+            end
+
+            local whole, richPurse, foe, thief = shake(1.0)
+            local half = shake(0.5)
+            local broken, thinPurse = shake(0.05)
+
+            assert(broken > 0, "it is still a blow at the bottom of the bar")
+            assert(whole > half and half > broken, "the haul falls off as the body does, got "
+                .. whole .. " / " .. half .. " / " .. broken)
+            -- The bonus is the ability's OWN magnitude put through again -- Curve.ramp(10, 22) at forge
+            -- 0, so 10 -- and the attack stat rides on top of both ends alike rather than doubling with
+            -- them. That is why the gap is the base and not the whole hit.
+            assert(whole - broken >= 9, "an untouched foe eats the ability's base damage again, got "
+                .. whole .. " vs " .. broken)
+
+            assert(richPurse > thinPurse and thinPurse >= 0,
+                "and the coin that falls out follows the same scale, got " .. richPurse .. " vs " .. thinPurse)
+
+            -- The line that made this a redo rather than a repricing: Pickpocket lifts the kit, this
+            -- does not touch it.
+            assert(Fixture.itemNamed(foe.char, "weapon_iron_dagger") ~= nil, "nothing is lifted -- that is Pickpocket's verb")
+            assert(Fixture.itemNamed(thief.char, "weapon_iron_dagger") == nil, "and the thief's own grid is untouched")
         end,
     },
 

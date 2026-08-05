@@ -11,6 +11,8 @@
 -- puts in front of the thing it does not want read.
 return {
     name = "Sworn of the Bastion",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/bastion_sworn.png",
     class = "knight",
     stats = {

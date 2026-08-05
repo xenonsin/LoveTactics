@@ -2,8 +2,11 @@
 -- Halted. Met as a march-warden, a mentor. Home shelf is knight. Kit from data/disciplines/warden.lua.
 return {
     name = "Warden",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/warden.png",
     class = "knight",
+    discipline = "warden",
     -- Lays the ground down, then denies it (models/ai.lua `defensive`).
     archetype = "defensive",
     stats = {

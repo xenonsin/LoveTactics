@@ -81,6 +81,28 @@ function Glyphs.charges(x, y, w, h, r, g, b, a)
     end
 end
 
+-- The UNSEEN mark: the red dot worn in the top-right corner of anything the player has not looked at
+-- yet -- an item that just landed in the stash, a ware a quest just put on a shelf (Player.markNew).
+-- It is a NOTICE, not a status, so it is the one place in the UI that spends a saturated red on
+-- something harmless: nothing else on a shelf or in a grid is this colour, which is the whole job.
+--
+-- Drawn as a filled disc inside a dark rim, because it sits over whatever the icon happens to be --
+-- a bright sprite, a tinted plate, a lit border -- and a bare disc loses its edge against the warm
+-- ones. Centred on (cx, cy) rather than filling a box: every caller anchors it to a corner.
+local UNSEEN = { 0.851, 0.267, 0.251 }
+function Glyphs.unseenDot(cx, cy, radius)
+    local r = radius or 4
+    love.graphics.setColor(0.05, 0.05, 0.06, 0.85)
+    love.graphics.circle("fill", cx, cy, r + 1.5)
+    love.graphics.setColor(UNSEEN[1], UNSEEN[2], UNSEEN[3])
+    love.graphics.circle("fill", cx, cy, r)
+    -- A faint top-left highlight: it is a bead, not a flat hole punched in the plate. Kept small and
+    -- dim on purpose -- at this size a bright specular eats the middle of the disc and the mark reads
+    -- as a ring instead of a dot.
+    love.graphics.setColor(1, 0.80, 0.76, 0.40)
+    love.graphics.circle("fill", cx - r * 0.32, cy - r * 0.32, r * 0.28)
+end
+
 -- ---------------------------------------------------------------------------
 -- Intent marks (models/intent.lua): what an enemy is about to do, on its turn-order card and beside
 -- its target line. One shape per kind, in the same fill-the-box, set-your-own-colour contract as the

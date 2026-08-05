@@ -4,6 +4,8 @@
 -- for the beast-summon shape this follows.
 return {
     name = "Hawk",
+    kind = "beast",
+    tier = 1,
     sprite = "assets/chars/hawk.png",
     stats = {
         health = 14, mana = 0, stamina = 16,

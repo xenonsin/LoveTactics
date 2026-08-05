@@ -165,7 +165,7 @@ function prologue.runBattle(map, onWinExtra)
         encounter = { kind = "objective" },
         biome = map.biome,
         prestige = p.prestige,
-        party = p.party,
+        party = p.roster,
         -- No deployment phase in Act 0. Every prologue fight is placed by hand -- a lesson addresses
         -- units by the cell they spawned on, and the flight's beats are authored against specific
         -- tiles -- so the board's own spawns are the placement, exactly as they always were. See
@@ -257,7 +257,7 @@ function prologue.next()
 end
 
 -- First entry of a New Game: build the avatar from the body and name chosen at character creation,
--- reset the roster/party to just the avatar (the party is earned through play), and start the beats.
+-- reset the roster to just the avatar (the company is earned through play), and start the beats.
 function prologue.begin()
     local p = Player.active
     local avatar = Character.instantiate("character_avatar")
@@ -266,7 +266,6 @@ function prologue.begin()
     if p and p.name then avatar.name = p.name end
     prologue.avatar = avatar
     p.roster = { avatar }
-    p.party = { avatar }
     -- Stamp the chosen body's sprite/portrait onto the avatar (Player.applyAvatarBody, which the load
     -- path also runs). The board draws a unit only when char.sprite is a loaded image, so this is what
     -- keeps the avatar from falling back to the bare letter token; it reads p.body, defaulting to body 1.

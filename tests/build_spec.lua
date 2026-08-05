@@ -312,15 +312,17 @@ return {
     },
     {
         -- The local player's own team gets the identical treatment, or "normalized" would only mean
-        -- "the opponent was weakened".
-        name = "your own party is flattened on the same terms as the build it faces",
+        -- "the opponent was weakened". It gets it for free now: a duel restores YOUR published build
+        -- through the same Build.restore the opponent's goes through (ui/panels/pvp.lua), so there is
+        -- one flattening path rather than two that could drift.
+        name = "your own build is flattened on the same terms as the build it faces",
         fn = function()
             local mine = Character.instantiate("character_rowan")
             mine.level, mine.classUse = 40, { fighter = 30 }
             mine.inventory = {}
             mine.inventory[1] = Item.instantiate("weapon_iron_sword", 1, Item.MAX_LEVEL)
 
-            local flat = Build.normalizeParty({ mine })
+            local flat = assert(Build.restore(roundTrip({ mine })))
             assert(flat[1].level == Build.NORMAL_LEVEL, "same level as the opponent")
             assert(flat[1].inventory[1].level == Build.NORMAL_ITEM_LEVEL, "same gear ceiling")
 

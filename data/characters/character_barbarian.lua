@@ -3,9 +3,12 @@
 -- dying. Kit drawn from the Barbarian shelf (data/disciplines/barbarian.lua).
 return {
     name = "Barbarian",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/barbarian.png",
     boss = true,
     class = "fighter",
+    discipline = "barbarian",
     -- Walks straight at the enemy and hits the best thing it can reach (models/ai.lua `aggressive`).
     archetype = "aggressive",
     stats = {

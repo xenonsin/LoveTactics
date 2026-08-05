@@ -3,8 +3,11 @@
 -- is fighter for its steel, priest for the smite. Kit from data/disciplines/crusader.lua.
 return {
     name = "Crusader",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/crusader.png",
     class = "fighter",
+    discipline = "crusader",
     -- Smites the unclean and wades in; heal-on-kill keeps it standing (models/ai.lua `aggressive`).
     archetype = "aggressive",
     stats = {

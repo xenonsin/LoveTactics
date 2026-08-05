@@ -33,6 +33,8 @@
 -- the pool that carries across.
 return {
     name = "Ira, Unbound",
+    kind = "demon",
+    tier = 4,
     boss = true, -- still a quest objective: immune to execute (Coup de Grace) and Charm past the swap
     revivable = false, -- a demon does not go down and get up: no incapacitated window (docs, downed system)
     archetype = "aggressive", -- awake now, and hunting; explicit for readability

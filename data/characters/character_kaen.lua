@@ -4,9 +4,12 @@
 -- data/disciplines/ninja.lua.
 return {
     name = "Kaen",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/kaen.png",
     boss = true,
     class = "rogue",
+    discipline = "ninja",
     -- Scatters clones, stays unseen, strikes and swaps out (models/ai.lua `skirmish`).
     archetype = "skirmish",
     stats = {

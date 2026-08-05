@@ -7,9 +7,12 @@
 -- not a companion) -- it falls back to its composed token.
 return {
     name = "Ninja",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/ninja.png",
     boss = true, -- a boss objective: immune to execute (Coup de Grace) and to Charm
     class = "rogue",
+    discipline = "ninja",
     -- Scatters clones, stays unseen, strikes and swaps out (models/ai.lua `skirmish`).
     archetype = "skirmish",
     stats = {

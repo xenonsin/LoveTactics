@@ -27,6 +27,8 @@
 -- slot-8 keep-the-tempo second form are deferred with the mid-line.
 return {
     name = "Clem",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/clem.png",
     portrait = "assets/portraits/clem.png", -- large VN portrait for conversations (falls back if missing)
     class = "rogue",

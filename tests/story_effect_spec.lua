@@ -9,13 +9,11 @@ local Character = require("models.character")
 local Item = require("models.item")
 local Conversation = require("models.conversation")
 
--- A fresh player with one character in both the roster (what `restore` walks) and the active party
--- (what `heal`/`maxHpCost` touch), so every effect has a body to act on.
+-- A fresh player with one character in the roster -- which is both what `restore` walks and what
+-- `heal`/`maxHpCost` touch, since the roster is the whole company -- so every effect has a body.
 local function freshPlayer()
     local p = Player.new()
-    local char = Character.instantiate("character_rowan")
-    p.roster = { char }
-    p.party = { char }
+    p.roster = { Character.instantiate("character_rowan") }
     return p
 end
 
@@ -49,7 +47,7 @@ return {
         name = "restore refills every resource to full",
         fn = function()
             local p = freshPlayer()
-            local hp = health(p.party[1])
+            local hp = health(p.roster[1])
             hp.current = 1
             StoryEffect.apply({ restore = true }, p)
             assert(hp.current == hp.max, "restore topped health back to max")
@@ -59,7 +57,7 @@ return {
         name = "heal tops up current health but never past max",
         fn = function()
             local p = freshPlayer()
-            local hp = health(p.party[1])
+            local hp = health(p.roster[1])
             hp.current = hp.max - 5
             StoryEffect.apply({ heal = 3 }, p)
             assert(hp.current == hp.max - 2, "healed by 3")
@@ -71,7 +69,7 @@ return {
         name = "maxHpCost shaves the ceiling and drags current down with it",
         fn = function()
             local p = freshPlayer()
-            local hp = health(p.party[1])
+            local hp = health(p.roster[1])
             local max0 = hp.max
             hp.current = hp.max
             StoryEffect.apply({ maxHpCost = 7 }, p)

@@ -40,7 +40,7 @@ return {
 The discipline **system** is implemented and passes `tests/discipline_spec.lua`. What remains is
 *content*: the exemplar characters, the capstone quests, and the item rosters below.
 
-- **Loader** — `models/discipline.lua` loads `data/disciplines/`; all 37 blueprints exist (16 subclasses
+- **Loader** — `models/discipline.lua` loads `data/disciplines/`; all 38 blueprints exist (17 subclasses
   + 21 multiclasses).
 - **Its own growth path** — every discipline has a `data/growth/<id>.lua` table, and a discipline item
   tallies the *discipline* (`Combat.useItem` → `Discipline.growthClasses`), so a Ninja build grows on
@@ -71,7 +71,7 @@ listed so the branches have something to branch *from*.
 | priest | Amana | `character_amana` |
 | alchemist | Ren | `character_ren` |
 
-## The subclasses (16)
+## The subclasses (17)
 
 One existing quest per discipline, no reuse, and — the rule that moved nine of them — **never earlier
 than slot 3 of its line**. A discipline handed over on a line's first or second quest is not earned
@@ -90,6 +90,7 @@ chain and fails the build below the floor.
 | **Bulwark** | knight | Road-Captain (`character_greywatch_captain`) | E | mentor / ally | `held_position` · slot 3 |
 | **Assassin** | rogue | a killer sent for you | N | boss | `accounts_settled` · slot 5 |
 | **Thief** | rogue | a guild fence | N | recruit / mentor | `one_client` · slot 4 |
+| **Mammonite** | rogue | Collections Contractor (`character_mammonite`) | E | recruit | `quarter_end` · slot 6 |
 | **Druid** | hunter | a wild shapeshifter | N | mentor | `the_manufactured_cull` · slot 4 |
 | **Beastmaster** | hunter | Kaya (`character_kaya`)* | E | recruit | `the_starving_dark` · slot 3 |
 | **Trapper** | hunter | a woodland ambusher | N | boss | `the_silent_wood` · slot 5 |
@@ -254,6 +255,10 @@ assigned by signature mechanic). Before this pass every subclass unlocked an *em
 multiclasses carried their two items each, but the 16 subclasses had zero, so the first sixteen rungs
 of the earned-advancement lattice paid out nothing. `tests/discipline_spec.lua` now fails the build if
 any discipline has no priced item.
+
+The **Mammonite** (17th subclass) was retagged later and by the same rules — 7 priced wares plus the
+unpriced Cutpurse's Coat, all of them already-shipped rogue money items, none rebalanced. See the
+reversed bullet under *Judgment calls* below.
 
 Three rules shaped the pass, and they are the rules for any future retag:
 
@@ -611,14 +616,24 @@ spelling belongs in quest stock, not on the rack), not an oversight. Priest 33 �
 - **Two items argue against their own gating in their own headers** — the Guttering Lamp ("rank 2 and
   cheap … a survival floor rather than a build piece") and Binding Grace, whose design is that a knight,
   a monk and nobody else wants it.
-- **The rogue's purse kit stays base.** Blood Money, The Gilded Wound, Grease Palms, Skimmer's Cut and
-  The Ledger's Due are the greed identity itself, not a deeper cut of it.
+- ~~**The rogue's purse kit stays base.** Blood Money, The Gilded Wound, Grease Palms, Skimmer's Cut and
+  The Ledger's Due are the greed identity itself, not a deeper cut of it.~~ **Reversed — it is the
+  Mammonite** (`data/disciplines/mammonite.lua`, a 17th subclass, gated on Quarter-End · slot 6). The
+  call was right about the identity and wrong about the shelf. The kit grew to eight wares on one
+  resource nothing else in the game touches (`Combat.spendPurse` / `Combat.bounty`), and a resource that
+  changes how you fight the *whole battle* is not a flavour of rogue — it is an opt-in with its own
+  growth table, which is what a discipline is here. A player who wants it wants all eight; a player who
+  does not wants none. Its two existing tiers survived the move untouched: the **earners** (The Ledger's
+  Due, A Price on the Head, Skimmer's Cut) sit at q4–q7 and the **spenders** (Blood Money, The Gilded
+  Wound, Grease Palms, The Open Account) at q9, so slot 6 lands the gate between the halves — the shelf
+  opens on the income side and completes once Aurea falls. Not one `unlockQuests` moved. Cutpurse's Coat
+  is tagged too, unpriced, for growth and identity rather than stock.
 
 ## Content bill
 
 | | Existing exemplar | New NPC | New quest |
 |---|---|---|---|
-| 16 subclasses | 5 (Warlord, Sentinel, Bulwark; +Kaya, Gyeom, Amana if starred reuses stand) | 10–13 | 0 (all gate on existing quests) |
+| 17 subclasses | 6 (Warlord, Sentinel, Bulwark, Mammonite; +Kaya, Gyeom, Amana if starred reuses stand) | 10–13 | 0 (all gate on existing quests) |
 | 21 multiclasses | 3 (Champion, Plague Knight, Apothecary) | ~17 | ~~21~~ **0 — all written** |
 
 The quest column is paid. What is left of the bill is **exemplars**: ~27 NPCs across both tiers, each

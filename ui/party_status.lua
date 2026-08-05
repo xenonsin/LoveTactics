@@ -26,12 +26,11 @@ local PORTRAIT = 26
 local STRIP_W = 210
 local BADGE_R = 7 -- the ability badge sits at the right end of each row, with a banked-count number
 
--- The deployable party, falling back to the whole roster (mirrors how the rest of the overworld picks
--- who to show). Returns a list of characters.
+-- Who the strip shows: the whole roster, which is the whole marching company -- everyone owned comes to
+-- the quest, and which of them stand on a given board is a per-battle decision the overworld does not
+-- make (docs/deployment.md). Returns a list of characters.
 local function shownParty(player)
-    if not player then return {} end
-    if player.party and #player.party > 0 then return player.party end
-    return player.roster or {}
+    return (player and player.roster) or {}
 end
 
 -- The companion's portrait square (its board token, or a coloured letter box) -- the same read as a

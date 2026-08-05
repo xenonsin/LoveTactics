@@ -3,9 +3,12 @@
 -- Blade). Kit from data/disciplines/spellbreaker.lua.
 return {
     name = "Spellbreaker",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/spellbreaker.png",
     boss = true,
     class = "knight",
+    discipline = "spellbreaker",
     -- Hunts the caster; holds a leash and punishes the cast (models/ai.lua `guard`).
     archetype = "guard",
     stats = {

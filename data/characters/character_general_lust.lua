@@ -28,6 +28,8 @@
 -- Her reliquary carries her rule for whoever lifts it (data/items/utility/utility_reliquary_unbidden.lua).
 return {
     name = "Luxuria, the Unbidden",
+    kind = "humanoid",
+    tier = 4,
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_lust.png",
     portrait = "assets/portraits/general_lust.png", -- large VN portrait for conversations (falls back if missing)

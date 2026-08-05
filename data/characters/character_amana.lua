@@ -29,6 +29,8 @@
 -- refusal still stands.
 return {
     name = "Amana",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/amana.png",
     portrait = "assets/portraits/amana.png", -- large VN portrait for conversations (falls back if missing)
     class = "priest",

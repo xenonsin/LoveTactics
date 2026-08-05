@@ -2,8 +2,11 @@
 -- as a wild shapeshifter, a mentor. Kit from data/disciplines/druid.lua.
 return {
     name = "Druid",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/druid.png",
     class = "hunter",
+    discipline = "druid",
     -- Shifts to bear and wades in, raven to reposition (models/ai.lua `aggressive` once in a form).
     archetype = "aggressive",
     stats = {

@@ -9,6 +9,8 @@
 -- pool of health and almost nothing behind it. Every threat in this battle is borrowed.
 return {
     name = "The Hollow Crown",
+    kind = "demon",
+    tier = 4,
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/demon_lord.png",
     revivable = false, -- a demon does not come back: no downed window, and no revive takes it

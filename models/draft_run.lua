@@ -25,10 +25,10 @@ local DraftRun = {}
 DraftRun.WIN_TARGET = 10
 DraftRun.LIVES = 3
 
--- The deployable party cap -- the same four the tactical game puts ON THE BOARD (Player.MAX_FIELD, not
--- MAX_PARTY: the campaign now brings a company of eight and fields half of it, rotating the bench in
--- mid-fight). A draft run has no bench, so its company and its field are the same number. Named here
--- rather than required so this module stays player-free, like models/vendor.lua.
+-- The deployable party cap -- the same four the tactical game puts ON THE BOARD (Player.MAX_FIELD).
+-- The campaign brings its whole roster and fields four of it, rotating the bench in mid-fight; a draft
+-- run's units are split into a fielded set and a bench at the shop instead, so this caps the fielded
+-- half. Named here rather than required so this module stays player-free, like models/vendor.lua.
 DraftRun.PARTY_MAX = 4
 
 -- The marching FORMATION the fielded party stands in: a COLS x ROWS grid (row 1 is the front line,

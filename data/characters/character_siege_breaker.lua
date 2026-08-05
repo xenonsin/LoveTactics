@@ -12,6 +12,8 @@
 -- (character_forsworn_knight), not this.
 return {
     name = "The Breachward",
+    kind = "construct",
+    tier = 3,
     archetype = "holdGround",
     sprite = "assets/chars/siege_breaker.png",
     stats = {
@@ -22,6 +24,16 @@ return {
         movement = 0,
         speed = 2,
     },
+    -- Its hands, and the only thing it carries. It had NOTHING before this line, which meant an 84-health
+    -- assassinate mark was swinging weapon_unarmed -- the generic bare fist whose own flavour reads "it
+    -- has never once been enough" -- at a party that had walked a mountain road to reach it. A `natural`
+    -- weapon (docs/weapons.md): unpriced and `noSteal`, because it is a body part and because the
+    -- creature rule says a thing that is not a person drops no shelf gear (docs/bestiary.md). The Stone
+    -- Fists are shared with the ogre rather than given their own file -- there is no trait riding on
+    -- them, and a second identical file would be a spelling, not a body.
+    startingItems = { "weapon_stone_fists" },
+    defaultAction = "weapon_stone_fists",
+    signatureWeapon = "weapon_stone_fists",
     -- Basic tactics (models/ai.lua): rooted at the gate by `holdGround`, it still chooses its blow --
     -- press whatever walks into reach that is closest to falling.
     ai = {

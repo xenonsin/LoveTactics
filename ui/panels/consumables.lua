@@ -3,9 +3,10 @@
 -- (states/game.lua's Use button / U / gamepad X); a run's wounds carry across its fights, and this is
 -- the paid way to undo some of them mid-quest -- a Rest tile is the only free mend.
 --
--- Two columns, one cursor: the LEFT list is the party (the target -- the highlighted member is who
--- drinks), the RIGHT list is every restorative the party can reach (each member's grid + the shared
--- stash, gathered by Player.partyRestoratives). Confirm on the right pours the selected flask into the
+-- Two columns, one cursor: the LEFT list is the company -- which is the whole roster, so it scrolls --
+-- and its highlighted member is the target who drinks; the RIGHT list is every restorative that
+-- company can reach (each member's grid + the shared stash, gathered by Player.partyRestoratives), and
+-- it scrolls for the same reason. Confirm on the right pours the selected flask into the
 -- targeted member; the item and its magnitudes come straight from the same combat helpers a battlefield
 -- quaff uses (Player.useConsumableOn -> Combat.restoreResource), so a potion is worth the same here as
 -- in a fight, minus the turn.
@@ -38,6 +39,11 @@ local MEMBER_GAP = 10
 local ITEM_H = 56
 local ITEM_GAP = 8
 
+-- How tall each column may grow before it scrolls. The whole roster marches now, so both lists are
+-- unbounded -- the company on the left, and on the right every flask that company is carrying -- and
+-- neither can be laid out on the assumption that it fits.
+local LIST_H = BOX_H - 70 - 62 -- content top .. above the message/prompt footer
+
 -- Prompt tints, matching the A=confirm / B=cancel language the other panels use.
 local PROMPT_GO = { 0.55, 0.90, 0.58 }
 local PROMPT_NO = { 0.95, 0.50, 0.47 }
@@ -51,8 +57,9 @@ local BAR_COLOR = {
 }
 local BAR_LABEL = { health = "HP", mana = "MP", stamina = "SP" }
 
+-- Nil-tolerant: a scrolled-out row has no rect and can never be under the mouse.
 local function pointIn(r, x, y)
-    return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
+    return r ~= nil and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
 function Consumables.new(opts)
@@ -72,13 +79,15 @@ function Consumables.new(opts)
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
     self.contentY = self.boxY + 70
 
-    self.members = (self.player and self.player.party) or {}
+    self.members = (self.player and self.player.roster) or {}
     self.leftX = self.boxX + 24
     self.rightX = self.leftX + MEMBER_W + 24
     self.rightW = self.boxX + BOX_W - 24 - self.rightX
 
     self.target = 1        -- index into self.members: the highlighted member is who drinks
     self.itemCursor = 1    -- index into self.entries
+    self.memberScroll = 0  -- first member row drawn (see memberRect)
+    self.itemScroll = 0    -- first potion row drawn (see itemRect)
     self.focus = "members" -- "members" | "items"
     self.hoverMember = nil
     self.hoverItem = nil
@@ -95,10 +104,50 @@ function Consumables:refresh()
     self.entries = Player.partyRestoratives(self.player)
     if self.itemCursor > #self.entries then self.itemCursor = math.max(1, #self.entries) end
     if #self.entries == 0 then self.focus = "members" end
+    self:clampScroll()
 end
 
 function Consumables:currentTarget()
     return self.members[self.target]
+end
+
+-- ---------------------------------------------------------------------------
+-- Scrolling (both columns; see LIST_H)
+-- ---------------------------------------------------------------------------
+
+local function rowsIn(rowH, gap) return math.max(1, math.floor((LIST_H + gap) / (rowH + gap))) end
+
+function Consumables:visibleMembers() return rowsIn(MEMBER_H, MEMBER_GAP) end
+function Consumables:visibleItems() return rowsIn(ITEM_H, ITEM_GAP) end
+
+function Consumables:maxMemberScroll() return math.max(0, #self.members - self:visibleMembers()) end
+function Consumables:maxItemScroll() return math.max(0, #self.entries - self:visibleItems()) end
+
+-- Drag each column's window along so the row its cursor is on stays drawn. Called after any cursor
+-- move and after a refresh, which can shorten the potion list under the cursor.
+function Consumables:clampScroll()
+    local mv, iv = self:visibleMembers(), self:visibleItems()
+    if self.memberScroll > self.target - 1 then self.memberScroll = self.target - 1
+    elseif self.target > self.memberScroll + mv then self.memberScroll = self.target - mv end
+    if self.itemScroll > self.itemCursor - 1 then self.itemScroll = self.itemCursor - 1
+    elseif self.itemCursor > self.itemScroll + iv then self.itemScroll = self.itemCursor - iv end
+    self.memberScroll = math.max(0, math.min(self:maxMemberScroll(), self.memberScroll))
+    self.itemScroll = math.max(0, math.min(self:maxItemScroll(), self.itemScroll))
+end
+
+-- "n more below / above" for a column that overflows, drawn at the foot of the list. A count, not a
+-- caret: it answers how much is down there rather than only that something is.
+function Consumables:drawOverflow(x, w, scroll, total, visible)
+    if total <= visible then return end
+    love.graphics.setFont(self.tinyFont)
+    Theme.set(Theme.muted)
+    if scroll > 0 then
+        love.graphics.printf(scroll .. " above", x, self.contentY - 20, w, "right")
+    end
+    local below = total - scroll - visible
+    if below > 0 then
+        love.graphics.printf(below .. " more below", x, self.contentY + LIST_H + 2, w, "right")
+    end
 end
 
 function Consumables:close()
@@ -146,6 +195,7 @@ function Consumables:navigate(dc, dr)
             self.focus = "members"
         end
     end
+    self:clampScroll()
 end
 
 function Consumables:confirm()
@@ -186,69 +236,77 @@ function Consumables:draw()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- The row's rect, or nil when it is scrolled out of the column.
 function Consumables:memberRect(i)
-    return { x = self.leftX, y = self.contentY + (i - 1) * (MEMBER_H + MEMBER_GAP),
+    local slot = i - self.memberScroll
+    if slot < 1 or slot > self:visibleMembers() then return nil end
+    return { x = self.leftX, y = self.contentY + (slot - 1) * (MEMBER_H + MEMBER_GAP),
              w = MEMBER_W, h = MEMBER_H }
 end
 
 function Consumables:drawMembers()
+    self:drawOverflow(self.leftX, MEMBER_W, self.memberScroll, #self.members, self:visibleMembers())
     for i, char in ipairs(self.members) do
         local r = self:memberRect(i)
-        local targeted = (i == self.target)
-        love.graphics.setColor(targeted and 0.20 or 0.15, targeted and 0.24 or 0.16,
-            targeted and 0.32 or 0.21)
-        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 6, 6)
-
-        -- Portrait chip: the sprite when the art loaded (models/sprite.lua hands back the path string
-        -- otherwise), else the name's first letter -- the same fallback the loadout rail uses.
-        local ps = MEMBER_H - 16
-        local px, py = r.x + 8, r.y + 8
-        local sprite = char.sprite
-        if type(sprite) == "userdata" then
-            love.graphics.setColor(1, 1, 1)
-            local sw, sh = sprite:getDimensions()
-            local scale = math.min(ps / sw, ps / sh)
-            love.graphics.draw(sprite, px + ps / 2, py + ps / 2, 0, scale, scale, sw / 2, sh / 2)
-        else
-            love.graphics.setColor(0.3, 0.32, 0.4)
-            love.graphics.rectangle("fill", px, py, ps, ps, 5, 5)
-            love.graphics.setFont(self.headFont)
-            love.graphics.setColor(0.9, 0.9, 0.95)
-            love.graphics.printf((char.name or "?"):sub(1, 1), px, py + ps / 2 - 10, ps, "center")
-        end
-
-        local tx = px + ps + 12
-        local tw = r.x + r.w - tx - 10
-        love.graphics.setFont(self.bodyFont)
-        love.graphics.setColor(0.94, 0.94, 0.97)
-        love.graphics.print(char.name or "?", tx, r.y + 8)
-
-        -- HP / MP / SP bars, skipping any pool the member doesn't have (a fighter shows no MP row).
-        local by = r.y + 32
-        for _, stat in ipairs(Character.RESOURCE_STATS) do
-            local res = char.stats and char.stats[stat]
-            if type(res) == "table" then
-                self:drawBar(tx, by, tw, stat, res.current or res.max or 0, res.max or 0)
-                by = by + 18
-            end
-        end
-
-        if targeted then
-            love.graphics.setColor(0.95, 0.82, 0.4)
-            love.graphics.setLineWidth(2)
-            love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 6, 6)
-            love.graphics.setLineWidth(1)
-        end
-        -- Cyan focus ring only while the left column has keyboard/pad focus, so it never fights the
-        -- gold target ring for meaning.
-        if self.focus == "members" and i == self.target and not InputMode.isMouse() then
-            love.graphics.setColor(0.6, 0.75, 0.95)
-            love.graphics.setLineWidth(2)
-            love.graphics.rectangle("line", r.x - 2, r.y - 2, r.w + 4, r.h + 4, 7, 7)
-            love.graphics.setLineWidth(1)
-        end
+        if r then self:drawMemberRow(i, char, r) end
     end
     love.graphics.setColor(1, 1, 1)
+end
+
+function Consumables:drawMemberRow(i, char, r)
+    local targeted = (i == self.target)
+    love.graphics.setColor(targeted and 0.20 or 0.15, targeted and 0.24 or 0.16,
+        targeted and 0.32 or 0.21)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 6, 6)
+
+    -- Portrait chip: the sprite when the art loaded (models/sprite.lua hands back the path string
+    -- otherwise), else the name's first letter -- the same fallback the loadout rail uses.
+    local ps = MEMBER_H - 16
+    local px, py = r.x + 8, r.y + 8
+    local sprite = char.sprite
+    if type(sprite) == "userdata" then
+        love.graphics.setColor(1, 1, 1)
+        local sw, sh = sprite:getDimensions()
+        local scale = math.min(ps / sw, ps / sh)
+        love.graphics.draw(sprite, px + ps / 2, py + ps / 2, 0, scale, scale, sw / 2, sh / 2)
+    else
+        love.graphics.setColor(0.3, 0.32, 0.4)
+        love.graphics.rectangle("fill", px, py, ps, ps, 5, 5)
+        love.graphics.setFont(self.headFont)
+        love.graphics.setColor(0.9, 0.9, 0.95)
+        love.graphics.printf((char.name or "?"):sub(1, 1), px, py + ps / 2 - 10, ps, "center")
+    end
+
+    local tx = px + ps + 12
+    local tw = r.x + r.w - tx - 10
+    love.graphics.setFont(self.bodyFont)
+    love.graphics.setColor(0.94, 0.94, 0.97)
+    love.graphics.print(char.name or "?", tx, r.y + 8)
+
+    -- HP / MP / SP bars, skipping any pool the member doesn't have (a fighter shows no MP row).
+    local by = r.y + 32
+    for _, stat in ipairs(Character.RESOURCE_STATS) do
+        local res = char.stats and char.stats[stat]
+        if type(res) == "table" then
+            self:drawBar(tx, by, tw, stat, res.current or res.max or 0, res.max or 0)
+            by = by + 18
+        end
+    end
+
+    if targeted then
+        love.graphics.setColor(0.95, 0.82, 0.4)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 6, 6)
+        love.graphics.setLineWidth(1)
+    end
+    -- Cyan focus ring only while the left column has keyboard/pad focus, so it never fights the
+    -- gold target ring for meaning.
+    if self.focus == "members" and i == self.target and not InputMode.isMouse() then
+        love.graphics.setColor(0.6, 0.75, 0.95)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", r.x - 2, r.y - 2, r.w + 4, r.h + 4, 7, 7)
+        love.graphics.setLineWidth(1)
+    end
 end
 
 -- One labelled resource bar: "HP  [=====     ]  cur/max".
@@ -274,8 +332,11 @@ function Consumables:drawBar(x, y, w, stat, cur, max)
     love.graphics.printf(math.floor(cur) .. "/" .. math.floor(max), barX + barW + 4, y, 58, "left")
 end
 
+-- The row's rect, or nil when it is scrolled out of the column.
 function Consumables:itemRect(i)
-    return { x = self.rightX, y = self.contentY + (i - 1) * (ITEM_H + ITEM_GAP),
+    local slot = i - self.itemScroll
+    if slot < 1 or slot > self:visibleItems() then return nil end
+    return { x = self.rightX, y = self.contentY + (slot - 1) * (ITEM_H + ITEM_GAP),
              w = self.rightW, h = ITEM_H }
 end
 
@@ -287,67 +348,72 @@ function Consumables:drawItems()
         return
     end
 
+    self:drawOverflow(self.rightX, self.rightW, self.itemScroll, #self.entries, self:visibleItems())
     local target = self:currentTarget()
     for i, entry in ipairs(self.entries) do
         local r = self:itemRect(i)
-        local item = entry.item
-        -- Dim a flask that would do the CURRENT target no good (their matching pool is full): the row
-        -- is still there for another member, but it reads as spent effort on this one.
-        local usable = target and Player.canUseConsumableOn(target, item)
-        local cursored = (self.focus == "items" and i == self.itemCursor)
-
-        love.graphics.setColor(cursored and 0.22 or 0.15, cursored and 0.26 or 0.16, cursored and 0.34 or 0.21)
-        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 6, 6)
-
-        local ps = ITEM_H - 12
-        local px, py = r.x + 6, r.y + 6
-        local sprite = item.sprite
-        local dim = usable and 1 or 0.45
-        if type(sprite) == "userdata" then
-            love.graphics.setColor(dim, dim, dim)
-            local sw, sh = sprite:getDimensions()
-            local scale = math.min(ps / sw, ps / sh)
-            love.graphics.draw(sprite, px + ps / 2, py + ps / 2, 0, scale, scale, sw / 2, sh / 2)
-        else
-            love.graphics.setColor(0.3 * dim, 0.32 * dim, 0.4 * dim)
-            love.graphics.rectangle("fill", px, py, ps, ps, 5, 5)
-            love.graphics.setFont(self.smallFont)
-            love.graphics.setColor(0.9 * dim, 0.9 * dim, 0.95 * dim)
-            love.graphics.printf((item.name or "?"):sub(1, 1), px, py + ps / 2 - 8, ps, "center")
-        end
-
-        local tx = px + ps + 12
-        love.graphics.setFont(self.bodyFont)
-        love.graphics.setColor(0.94 * dim, 0.94 * dim, 0.97 * dim)
-        love.graphics.print(item.name or "?", tx, r.y + 8)
-
-        -- "+N HP" in the pool's own tint -- what one swallow of this flask would pour.
-        local stat = Player.restorativeStat(item)
-        local ab = item.activeAbility or {}
-        local mag = ab.healing or ab.restore or 0
-        local c = BAR_COLOR[stat] or { 0.7, 0.7, 0.7 }
-        love.graphics.setFont(self.smallFont)
-        love.graphics.setColor(c[1] * dim + (1 - dim) * 0.5, c[2] * dim + (1 - dim) * 0.5, c[3] * dim + (1 - dim) * 0.5)
-        love.graphics.print("+" .. mag .. " " .. (BAR_LABEL[stat] or stat), tx, r.y + 30)
-
-        -- Quantity on the right, plus where it sits (a stash flask is shared; a grid flask a member
-        -- is already carrying), so the player can tell a satchel potion from a carried one.
-        love.graphics.setFont(self.smallFont)
-        love.graphics.setColor(0.85, 0.87, 0.92)
-        love.graphics.printf("x" .. (item.quantity or 1), r.x, r.y + 8, r.w - 12, "right")
-        love.graphics.setFont(self.tinyFont)
-        love.graphics.setColor(0.55, 0.58, 0.66)
-        local from = entry.where == "stash" and "stash" or (entry.char and entry.char.name or "carried")
-        love.graphics.printf(from, r.x, r.y + 30, r.w - 12, "right")
-
-        if cursored then
-            love.graphics.setColor(0.6, 0.75, 0.95)
-            love.graphics.setLineWidth(2)
-            love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 6, 6)
-            love.graphics.setLineWidth(1)
-        end
+        if r then self:drawItemRow(i, entry, r, target) end
     end
     love.graphics.setColor(1, 1, 1)
+end
+
+function Consumables:drawItemRow(i, entry, r, target)
+    local item = entry.item
+    -- Dim a flask that would do the CURRENT target no good (their matching pool is full): the row
+    -- is still there for another member, but it reads as spent effort on this one.
+    local usable = target and Player.canUseConsumableOn(target, item)
+    local cursored = (self.focus == "items" and i == self.itemCursor)
+
+    love.graphics.setColor(cursored and 0.22 or 0.15, cursored and 0.26 or 0.16, cursored and 0.34 or 0.21)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 6, 6)
+
+    local ps = ITEM_H - 12
+    local px, py = r.x + 6, r.y + 6
+    local sprite = item.sprite
+    local dim = usable and 1 or 0.45
+    if type(sprite) == "userdata" then
+        love.graphics.setColor(dim, dim, dim)
+        local sw, sh = sprite:getDimensions()
+        local scale = math.min(ps / sw, ps / sh)
+        love.graphics.draw(sprite, px + ps / 2, py + ps / 2, 0, scale, scale, sw / 2, sh / 2)
+    else
+        love.graphics.setColor(0.3 * dim, 0.32 * dim, 0.4 * dim)
+        love.graphics.rectangle("fill", px, py, ps, ps, 5, 5)
+        love.graphics.setFont(self.smallFont)
+        love.graphics.setColor(0.9 * dim, 0.9 * dim, 0.95 * dim)
+        love.graphics.printf((item.name or "?"):sub(1, 1), px, py + ps / 2 - 8, ps, "center")
+    end
+
+    local tx = px + ps + 12
+    love.graphics.setFont(self.bodyFont)
+    love.graphics.setColor(0.94 * dim, 0.94 * dim, 0.97 * dim)
+    love.graphics.print(item.name or "?", tx, r.y + 8)
+
+    -- "+N HP" in the pool's own tint -- what one swallow of this flask would pour.
+    local stat = Player.restorativeStat(item)
+    local ab = item.activeAbility or {}
+    local mag = ab.healing or ab.restore or 0
+    local c = BAR_COLOR[stat] or { 0.7, 0.7, 0.7 }
+    love.graphics.setFont(self.smallFont)
+    love.graphics.setColor(c[1] * dim + (1 - dim) * 0.5, c[2] * dim + (1 - dim) * 0.5, c[3] * dim + (1 - dim) * 0.5)
+    love.graphics.print("+" .. mag .. " " .. (BAR_LABEL[stat] or stat), tx, r.y + 30)
+
+    -- Quantity on the right, plus where it sits (a stash flask is shared; a grid flask a member
+    -- is already carrying), so the player can tell a satchel potion from a carried one.
+    love.graphics.setFont(self.smallFont)
+    love.graphics.setColor(0.85, 0.87, 0.92)
+    love.graphics.printf("x" .. (item.quantity or 1), r.x, r.y + 8, r.w - 12, "right")
+    love.graphics.setFont(self.tinyFont)
+    love.graphics.setColor(0.55, 0.58, 0.66)
+    local from = entry.where == "stash" and "stash" or (entry.char and entry.char.name or "carried")
+    love.graphics.printf(from, r.x, r.y + 30, r.w - 12, "right")
+
+    if cursored then
+        love.graphics.setColor(0.6, 0.75, 0.95)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 6, 6)
+        love.graphics.setLineWidth(1)
+    end
 end
 
 function Consumables:drawFooter()
@@ -391,6 +457,18 @@ end
 function Consumables:mousemoved(x, y)
     self.mx, self.my = x, y
     self.closeButton:mousemoved(x, y)
+end
+
+-- The wheel scrolls whichever column the cursor is over -- the company on the left, the flasks on the
+-- right -- so a long list is reachable without first moving the keyboard focus into it.
+function Consumables:wheelmoved(_, dy)
+    if dy == 0 then return end
+    local overLeft = self.mx >= self.leftX and self.mx <= self.leftX + MEMBER_W
+    if overLeft then
+        self.memberScroll = math.max(0, math.min(self:maxMemberScroll(), self.memberScroll - dy))
+    else
+        self.itemScroll = math.max(0, math.min(self:maxItemScroll(), self.itemScroll - dy))
+    end
 end
 
 function Consumables:mousepressed(x, y, button)

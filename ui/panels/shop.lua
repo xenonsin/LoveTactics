@@ -194,10 +194,16 @@ function Shop:buildBuyRows()
         g.discipline = entry.discipline
         g.arity = entry.discipline and Discipline.arity(entry.discipline) or 0
         g.open = (g.open or 0) + (entry.locked and 0 or 1)
+        -- Stock a quest opened and the player has not looked at yet wears the red dot (Player.markNew).
+        -- A shelf runs dozens of rows deep and the reward panel names at most four of them, so without
+        -- this the player is told that something new is here and then left to find it by reading.
+        local isNew = not entry.locked and Player.isNew(self.player, Player.NEW_STOCK, entry.id)
+        if isNew then g.isNew = true end -- so a shut section still shows there is something under it
         g.rows[#g.rows + 1] = {
             item = item, entry = entry,
             label = item.name .. "  -  " .. (entry.locked and "locked" or (entry.price .. "g")),
             locked = entry.locked,
+            isNew = isNew,
         }
     end
 
@@ -235,6 +241,9 @@ function Shop:buildBuyRows()
                 meta = self:pathMeta(g.discipline), blurb = self:sectionBlurb(g.discipline),
                 count = (g.open or 0) .. " / " .. #g.rows,
                 open = g.open or 0, total = #g.rows, collapsed = folded,
+                -- Only while SHUT: an open section shows the dots on the rows themselves, and two
+                -- marks for one piece of news reads as two pieces of news.
+                isNew = folded and g.isNew or nil,
             }
         end
         if not folded then
@@ -320,9 +329,10 @@ function Shop:refresh()
         if row.header then
             -- A header with an `action` is a fold Menu will let the cursor land on (ui/menu.lua).
             items[#items + 1] = { label = row.label, header = true, collapsed = row.collapsed,
-                action = function() self:toggleSection(row.discipline) end }
+                isNew = row.isNew, action = function() self:toggleSection(row.discipline) end }
         else
-            items[#items + 1] = { label = row.label, action = function() self:activateRow(self.rows[i]) end }
+            items[#items + 1] = { label = row.label, isNew = row.isNew,
+                action = function() self:activateRow(self.rows[i]) end }
         end
     end
     self.menu = Menu.new(items, {
@@ -443,6 +453,10 @@ function Shop:buy(row)
     end
     local item = Item.instantiate(entry.id, nil, entry.level)
     Player.addToStash(self.player, item)
+    -- Unseen in the stash until looked at, exactly like a granted reward: the message below says it is
+    -- in the stash, and the dot is what makes that findable once the stash is sixty rows long. (An
+    -- inventory RESHUFFLE never marks -- see Player.markNew -- so only arrivals dot.)
+    Player.markNew(self.player, Player.NEW_STASH, entry.id)
     Player.save()
     self:setMsg(item.name .. " bought. It is in your stash.", true)
     self:refresh()
@@ -487,7 +501,24 @@ end
 
 function Shop:update(dt)
     if self.quantityPopup then self.quantityPopup:update(dt) return end
-    if self:hasRows() then self.menu:update(dt) end
+    if self:hasRows() then
+        self.menu:update(dt)
+        self:seeSelectedRow()
+    end
+end
+
+-- The selected row is the row being READ -- the detail pane on the right is showing it in full -- so
+-- landing on it is what clears its unseen dot, whether the cursor got there by mouse, key or pad.
+-- Checked here rather than at each of those input paths for exactly that reason, and it costs nothing
+-- while the selection sits on a row with no mark (Player.seeNew is a table lookup, and only a real
+-- clearing writes a save).
+function Shop:seeSelectedRow()
+    local row = self.rows and self.rows[self.menu.selected]
+    if not (row and row.isNew and row.entry) then return end
+    row.isNew = false
+    local menuItem = self.menu.items[self.menu.selected]
+    if menuItem then menuItem.isNew = nil end
+    if Player.seeNew(self.player, Player.NEW_STOCK, row.entry.id) then Player.save() end
 end
 
 function Shop:draw()

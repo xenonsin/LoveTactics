@@ -7,8 +7,11 @@
 -- stats. No VN portrait (a template, not a companion) -- it falls back to its composed token.
 return {
     name = "Apothecary",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/apothecary.png",
     class = "alchemist",
+    discipline = "apothecary",
     -- Reads the company's wounds before the enemy's throats (models/ai.lua `support`): she lifts, she
     -- does not kill.
     archetype = "support",

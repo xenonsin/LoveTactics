@@ -27,7 +27,7 @@ local function adjustResource(char, stat, field, delta)
 end
 
 local function eachPartyMember(player, fn)
-    for _, char in ipairs((player and player.party) or {}) do fn(char) end
+    for _, char in ipairs((player and player.roster) or {}) do fn(char) end
 end
 
 -- Apply one effect table to `player`. Order is cost-then-reward so a `maxHpCost` that would drop a

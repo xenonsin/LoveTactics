@@ -29,6 +29,8 @@
 -- Her codex carries her rule for whoever lifts it (data/items/utility/utility_codex_unanswered.lua).
 return {
     name = "Sublimitas, the Unequalled",
+    kind = "humanoid",
+    tier = 4,
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_pride.png",
     portrait = "assets/portraits/general_pride.png", -- large VN portrait for conversations (falls back if missing)

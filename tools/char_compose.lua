@@ -127,7 +127,9 @@ local DISCIPLINE_SILHOUETTE = {
     barbarian = "delapouite/enrage",      warlord = "lorc/tattered-banner",
     -- knight subclasses
     sentinel = "lorc/shield-echoes",      bulwark = "delapouite/vibrating-shield",
-    -- rogue subclasses
+    -- rogue subclasses. The Thief wears the purse it takes; the Mammonite wears the hand PAYING one,
+    -- which is the whole difference between them (data/disciplines/mammonite.lua) -- and neither is
+    -- Aurea's coins-pile below, a hoard rather than a transaction.
     assassin = "lorc/backstab",           thief = "lorc/shiny-purse",
     -- The contract, not the coin. The thief already owns the purse and Aurea the coins-pile, and the
     -- Mammonite is neither of them stealing harder: it is a collections contractor whose paperwork is
@@ -177,8 +179,13 @@ local CHARACTER_SILHOUETTE = {
     trapper = "delapouite/hunting-bolas",
 
     -- Off the rogue's hood. Kaen's whole read is the decoys (Shadowclone), so he wears two shadows.
+    -- The Bandit Chief used to fall through to the classless BOSS lift; the bestiary pass made him a
+    -- Thief (docs/bestiary.md), which handed him the rogue's hood and put him pixel-identical to the
+    -- generic rogue. He wears what he actually does instead -- the Undercroft does not kill you, it
+    -- prices you, and the fist of coins is his Shakedown.
     clem = "lorc/cloak-dagger",
     kaen = "lorc/two-shadows",
+    bandit_chief = "lorc/profit",
 
     -- Off the hunter's drawn bow.
     kaya = "delapouite/bow-string",

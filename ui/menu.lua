@@ -10,6 +10,10 @@
 --       { label = "Exit",       action = function() love.event.quit() end },
 --   })
 --
+-- A row may carry `isNew = true`, which puts the red unseen dot in its top-right corner (ui/glyphs.lua)
+-- -- the shop's Buy list wears it on stock a quest has just opened. The flag is read at draw time, so
+-- the host clears it the moment the row is looked at without rebuilding the menu.
+--
 -- A row may also carry a `value` -- a string, or a function returning one -- which turns it from a
 -- button into a SETTING: the label sits left, the value right, and left/right (or the d-pad's
 -- horizontal axis) work it as well as Enter does. `adjust(dir)` handles a row with more than two
@@ -27,6 +31,7 @@
 
 local Scale = require("scale")
 local Sound = require("models.sound")
+local Glyphs = require("ui.glyphs") -- unseenDot: the red "not looked at yet" mark on a row
 local Theme = require("ui.theme")
 
 local Menu = {}
@@ -321,6 +326,8 @@ function Menu:drawHeader(item, active)
     love.graphics.printf((item.label or ""):upper(), lx, ty, item.x + item.w - VALUE_PAD - lx, "left")
     Theme.set(Theme.frame, 0.7)
     love.graphics.line(item.x, item.y + item.h - 2, item.x + item.w, item.y + item.h - 2)
+    -- A shut section hides its rows, dots and all, so the band carries the mark for what is under it.
+    if item.isNew then Glyphs.unseenDot(item.x + item.w - 10, item.y + 10, 4) end
     if active then
         Theme.set(Theme.cursor)
         love.graphics.rectangle("line", item.x, item.y, item.w, item.h, Theme.R, Theme.R)
@@ -369,6 +376,9 @@ function Menu:draw()
             else
                 love.graphics.printf(item.label, item.x, ty, item.w, "center")
             end
+
+            -- The unseen dot, top-right, drawn last so it sits over the plate and its border.
+            if item.isNew then Glyphs.unseenDot(item.x + item.w - 10, item.y + 10, 4) end
         end
     end
     self:drawScrollHints()

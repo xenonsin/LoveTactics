@@ -23,6 +23,8 @@
 -- as a mid-tier demon boss in later content -- the phase system is all in the Sigil.
 return {
     name = "Demon Champion",
+    kind = "demon",
+    tier = 3,
     boss = true,
     archetype = "aggressive", -- a slow menace that hunts; explicit for readability
     sprite = "assets/chars/demon_champion.png",

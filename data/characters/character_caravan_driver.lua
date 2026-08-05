@@ -29,6 +29,9 @@ return {
     -- the rolling column, and a wooden wagon reads as a thing to shepherd rather than one more fighter.
     -- `object` tints it wood (tools/char_compose.lua); the caravan silhouette is matched by id there too.
     kind = "object",
+    -- Rung 0: not on the ladder at all (docs/bestiary.md). It is a clock with wheels, and the fight it
+    -- appears in is not measured against it.
+    tier = 0,
     stats = {
         health = 38, mana = 0, stamina = 8,
         staminaRegen = 1,

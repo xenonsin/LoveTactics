@@ -1,4 +1,4 @@
--- Tests for out-of-combat consumable use (models/player.lua): gathering the party's restorative
+-- Tests for out-of-combat consumable use (models/player.lua): gathering the company's restorative
 -- draughts, gating a use behind a non-full pool, pouring a flask's leveled magnitude into a member,
 -- and clearing a spent stash stack. Pure logic (no combat object, no love.graphics), runs headless.
 
@@ -6,9 +6,10 @@ local Character = require("models.character")
 local Item = require("models.item")
 local Player = require("models.player")
 
--- A minimal player table: just the two fields the consumable API reads.
-local function playerWith(party, stash)
-    return { party = party or {}, stash = stash or {} }
+-- A minimal player table: just the two fields the consumable API reads. The roster IS the company,
+-- so that is the list the draughts are gathered from.
+local function playerWith(roster, stash)
+    return { roster = roster or {}, stash = stash or {} }
 end
 
 -- A character with an EMPTY grid: blueprints ship starting gear (a knight carries potions), which would
@@ -35,7 +36,7 @@ return {
 
             assert(#entries == 2, "the healing potion (grid) and mana potion (stash), not the bomb")
             assert(entries[1].where == "grid" and entries[1].char == knight, "grid entry names its holder")
-            assert(entries[1].item.id == "consumable_healing_potion", "party grids come before the stash")
+            assert(entries[1].item.id == "consumable_healing_potion", "company grids come before the stash")
             assert(entries[2].where == "stash" and entries[2].char == nil, "stash entry has no holder")
         end,
     },

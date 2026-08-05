@@ -4,9 +4,12 @@
 -- (Tests that use this body bare() its grid first, so the enriched kit below is safe.)
 return {
     name = "Champion",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/champion.png",
     boss = true,
     class = "fighter",
+    discipline = "champion",
     -- Holds the middle, provokes the crowd, and punishes each attacker (models/ai.lua `defensive`).
     archetype = "defensive",
     stats = {

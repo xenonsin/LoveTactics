@@ -12,6 +12,8 @@
 -- were in the same gateway on the same night, and nothing in slot 2 may say so.
 return {
     name = "Road-Captain",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/greywatch_captain.png",
     class = "knight",
     archetype = "guard",

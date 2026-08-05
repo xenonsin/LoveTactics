@@ -1,11 +1,11 @@
 -- Player logic. Defaults live in data/player.lua; `Player.new` builds the
--- mutable runtime state: the full roster of owned characters, the marching company
--- (a capped subset of the roster), the stash of unequipped items, and the
+-- mutable runtime state: the roster of owned characters, the stash of unequipped items, and the
 -- progression state (gold, prestige, completed quests -- which double as vendor standing).
 --
--- The company is who comes to the quest; WHO OF THEM FIGHTS, and where they stand, is decided per
--- battle in the deployment phase (states/battle.lua) and rotated during it (models/combat.lua). This
--- file therefore knows two numbers about the board -- MAX_PARTY and MAX_FIELD -- and nothing else.
+-- THE ROSTER IS THE COMPANY. Everyone the player owns comes to the quest; there is no capped subset
+-- to assemble in the hub and no screen that assembles one. WHO OF THEM FIGHTS, and where they stand,
+-- is decided per battle in the deployment phase (states/battle.lua) and rotated during it
+-- (models/combat.lua). This file therefore knows exactly one number about the board -- MAX_FIELD.
 --
 -- `Player.active` is the one live player for the session. States must read it via
 -- `Player.start()` rather than calling `Player.new()`, which discards all progress.
@@ -24,48 +24,28 @@ Player.defaults = require("data.player")
 -- the player to. nil until a game is started or loaded.
 Player.active = nil
 
--- Hard cap on the COMPANY -- the members who march to a quest. The roster (owned characters) is
--- unbounded; only this many come along. It is deliberately twice MAX_FIELD: half the company opens the
--- fight and the other half is the bench you rotate from (models/combat.lua's Combat.rotate).
-Player.MAX_PARTY = 8
-
 -- Hard cap on the FIELD -- how many of the company may stand on the board at once. Which of them do,
 -- and on which tiles, is chosen per battle in the deployment phase (states/battle.lua); nothing about
 -- placement is persisted, so this is the only number the hub needs to know about the board.
 -- models/combat.lua declares its own mirror of this (Combat.MAX_FIELD) to stay player-free.
 Player.MAX_FIELD = 4
 
--- Base overworld fog-of-war vision radius (tiles seen around the player). A party
+-- Base overworld fog-of-war vision radius (tiles seen around the player). A company
 -- member carrying an item with a larger visionRadius (e.g. a torch) raises it.
 Player.BASE_VISION = 2
 
--- Effective overworld vision radius for a player's active party: BASE_VISION raised
--- by the largest visionRadius of any item any party member is carrying. Kept here so
--- the "does the party have a torch" logic lives in one place; the item's field is the
+-- Effective overworld vision radius for a player's company: BASE_VISION raised
+-- by the largest visionRadius of any item any member is carrying. Kept here so
+-- the "does the company have a torch" logic lives in one place; the item's field is the
 -- single source of truth. A nil player (dev/test) returns the base.
 function Player.visionRadius(player)
     local r = Player.BASE_VISION
-    if player and player.party then
-        for _, char in ipairs(player.party) do
-            for _, item in ipairs(char.inventory or {}) do
-                if item.visionRadius and item.visionRadius > r then r = item.visionRadius end
-            end
+    for _, char in ipairs((player and player.roster) or {}) do
+        for _, item in ipairs(char.inventory or {}) do
+            if item.visionRadius and item.visionRadius > r then r = item.visionRadius end
         end
     end
     return r
-end
-
--- Add a roster member to the marching company, enforcing the company cap and rejecting a member who is
--- already marching. Returns true on success, false if the company is full or already holds `char`.
-function Player.addToParty(player, char)
-    if #player.party >= Player.MAX_PARTY then
-        return false
-    end
-    for _, member in ipairs(player.party) do
-        if member == char then return false end
-    end
-    player.party[#player.party + 1] = char
-    return true
 end
 
 -- ---------------------------------------------------------------------------
@@ -77,7 +57,7 @@ end
 -- only -- no tiles. Placement itself is a per-battle decision and is deliberately not persisted anywhere:
 -- the board decides where the good ground is, and the board is different every fight.
 
--- Remember the company members who took the field, by id. Called by the deployment phase on commit.
+-- Remember the roster members who took the field, by id. Called by the deployment phase on commit.
 function Player.noteDeployed(player, chars)
     if not player then return end
     local ids = {}
@@ -88,7 +68,7 @@ function Player.noteDeployed(player, chars)
 end
 
 -- Was `char` on the field last fight? Drives the deployment phase's opening selection; false for a
--- fresh player, whose phase simply opens with nobody placed.
+-- member who has never been fielded, who simply sorts behind the ones who have.
 function Player.wasDeployed(player, char)
     if not (player and char) then return false end
     for _, id in ipairs(player.lastDeployed or {}) do
@@ -139,8 +119,52 @@ Player.onItemGranted = nil
 function Player.grantItem(player, itemId)
     local item = Item.instantiate(itemId)
     Player.addToStash(player, item)
+    -- Unseen until looked at: the Armory dots it so a reward found mid-quest is still findable in a
+    -- sixty-row stash an hour later. See Player.markNew.
+    Player.markNew(player, Player.NEW_STASH, itemId)
     if Player.onItemGranted then Player.onItemGranted(item) end
     return item
+end
+
+-- ---------------------------------------------------------------------------
+-- Unseen marks: the red dot on something new
+-- ---------------------------------------------------------------------------
+
+-- Two ledgers of item ids the player has not LOOKED AT yet, each drawn as a red dot in the corner of
+-- the item's icon and cleared the moment the cursor rests on it (hover, or the keyboard/gamepad
+-- cursor landing -- all three inputs clear it, per the project standard):
+--
+--   NEW_STASH   an item that ARRIVED in the stash -- quest reward, battle loot, a chest, a purchase.
+--               Not a reshuffle: moving gear off a character and back is not news.
+--   NEW_STOCK   an item a completed quest put on its sponsor's SHELF (models/quest.lua). The
+--               campaign loop ends at a shop, and a shelf 40 rows deep does not announce which
+--               three rows are the ones the last quest bought.
+--
+-- Keyed by item ID rather than per instance, because that is what survives a save (an instance is
+-- rebuilt from { id, quantity, level } and carries nothing else -- models/save.lua) and what the
+-- shop's catalog rows are keyed by anyway. The cost is that a second Iron Sword shares the first
+-- one's mark, which is invisible in practice: stacks merge, and the mark clears on a look.
+Player.NEW_STASH = "newItems"
+Player.NEW_STOCK = "newStock"
+
+function Player.markNew(player, kind, itemId)
+    if not (player and kind and itemId) then return end
+    player[kind] = player[kind] or {}
+    player[kind][itemId] = true
+end
+
+function Player.isNew(player, kind, itemId)
+    if not (player and kind and itemId) then return false end
+    local marks = player[kind]
+    return (marks and marks[itemId]) == true
+end
+
+-- The player has now looked at it. Returns true when a mark was actually cleared, so a caller can
+-- persist only on a real change rather than on every frame the pointer sits still.
+function Player.seeNew(player, kind, itemId)
+    if not Player.isNew(player, kind, itemId) then return false end
+    player[kind][itemId] = nil
+    return true
 end
 
 -- Pull the item at `index` out of the stash and hand it back (nil if there is nothing there).
@@ -150,28 +174,16 @@ function Player.takeFromStash(player, index)
     return table.remove(stash, index)
 end
 
--- Remove a character from the marching company (leaves them in the roster).
--- Returns true if the character was marching.
-function Player.removeFromParty(player, char)
-    for i, member in ipairs(player.party) do
-        if member == char then
-            table.remove(player.party, i)
-            return true
-        end
-    end
-    return false
-end
-
 -- Gain a companion. The one path by which the player ADDS a character to the roster after the
--- starting party -- a prologue recruit (the knight sworn in the village, the gladiator bested on the
+-- starting roster -- a prologue recruit (the knight sworn in the village, the gladiator bested on the
 -- sand), and how a class line's main companion joins. Instantiates a fresh copy from the blueprint,
 -- refuses a duplicate of one already owned, and levels the newcomer up to the company's current
 -- prestige so a late recruit is not a level-1 liability (Player.syncLevels is idempotent for the
--- rest). Unless `opts.rosterOnly`, the recruit also joins the marching company when there is
--- room -- a full company leaves them in the roster, not un-recruited. Returns the instance, or nil if
--- the id was already on the roster. Persistence is the caller's call (like addToParty, unlike
--- Quest.complete), so a recruit granted mid-prologue is saved at the next real save point.
-function Player.recruit(player, charId, opts)
+-- rest). Joining the roster IS joining the company -- there is no cap to be turned away by and no
+-- second list to be added to. Returns the instance, or nil if the id was already on the roster.
+-- Persistence is the caller's call (unlike Quest.complete), so a recruit granted mid-prologue is
+-- saved at the next real save point.
+function Player.recruit(player, charId)
     player.roster = player.roster or {}
     for _, char in ipairs(player.roster) do
         if char.id == charId then return nil end
@@ -179,7 +191,6 @@ function Player.recruit(player, charId, opts)
     local char = Character.instantiate(charId)
     player.roster[#player.roster + 1] = char
     Player.syncLevels(player)
-    if not (opts and opts.rosterOnly) then Player.addToParty(player, char) end
     -- Announce the newcomer in the next conversation to play: "[<name> has joined your Party]" folded
     -- onto the end of that scene (models/conversation.lua). Required lazily so this stays the low-level
     -- model it is -- the queue is display-only data, and a scene always follows a recruit.
@@ -210,15 +221,11 @@ function Player.applyAvatarBody(player)
     end
 end
 
--- Build fresh mutable player state for a new game. Party members reference the
--- same instances held in the roster, so a character is instantiated once.
+-- Build fresh mutable player state for a new game.
 function Player.new()
     local roster = {}
-    local byId = {}
     for _, charId in ipairs(Player.defaults.startingRoster) do
-        local char = Character.instantiate(charId)
-        roster[#roster + 1] = char
-        byId[charId] = char
+        roster[#roster + 1] = Character.instantiate(charId)
     end
 
     local player = {
@@ -235,13 +242,16 @@ function Player.new()
         -- and `name` cannot do that job: it is typed at creation, changeable, and two people will
         -- pick the same one. Generated once and then persisted -- see Player.authorId.
         authorId = nil,
+        -- The roster IS the company: everyone owned marches, and the deployment phase picks
+        -- MAX_FIELD of them per battle. Unbounded, and there is no second list beside it.
         roster = roster,
-        party = {},
         lastDeployed = {}, -- char ids fielded last battle; the deployment phase's opening pick (Player.noteDeployed)
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board AND is a vendor's standing (Quest.sponsorProgress)
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
+        newItems = {},        -- item id -> true; arrived in the stash and not yet looked at (Player.markNew)
+        newStock = {},        -- item id -> true; put on a vendor's shelf by a quest and not yet looked at
         visitedVendors = {},  -- vendor id -> true; a shop plays its intro scene the first time only (states/hub.lua)
         announcedDisciplines = {}, -- discipline id -> true; a vendor announces a newly unlocked discipline once (states/hub.lua)
         ngPlus = 0,           -- completed campaigns carried forward; see Player.newGamePlus
@@ -251,10 +261,9 @@ function Player.new()
         player.materials[matId] = count
     end
 
-    for _, charId in ipairs(Player.defaults.startingParty) do
-        local char = byId[charId]
-        assert(char, "startingParty id not in roster: " .. tostring(charId))
-        assert(Player.addToParty(player, char), "startingParty exceeds MAX_PARTY of " .. Player.MAX_PARTY)
+    -- The opening roster counts as "fielded last battle", so the deployment phase's first open
+    -- stands them up rather than facing a new player with an empty board.
+    for _, charId in ipairs(Player.defaults.startingRoster) do
         player.lastDeployed[#player.lastDeployed + 1] = charId
     end
 
@@ -281,7 +290,7 @@ function Player.spendGold(player, amount)
     return true
 end
 
--- Grant prestige and level the company to match. Returns the advancement summary from Player.syncLevels
+-- Grant prestige and level the roster to match. Returns the advancement summary from Player.syncLevels
 -- (the leveled members and their gains), which Quest.complete folds into its reward table.
 function Player.addPrestige(player, amount)
     player.prestige = player.prestige + amount
@@ -479,11 +488,11 @@ function Player.useConsumableOn(char, item)
     return restored, stat
 end
 
--- Every restorative draught the party can reach out of combat, gathered from each ACTIVE member's grid
+-- Every restorative draught the company can reach out of combat, gathered from each member's grid
 -- and the shared stash into one list for the overworld panel. Each entry is
 -- { item = <instance>, where = "grid" | "stash", char = <member or nil> } -- `char` names the grid the
 -- flask sits in (nil for the stash) so an emptied stash stack can be dropped from the list. Order is
--- party order then stash, each in grid/list order: stable, so the list doesn't reshuffle under the
+-- roster order then stash, each in grid/list order: stable, so the list doesn't reshuffle under the
 -- cursor between opens. A depleted stack (quantity 0) is skipped, as combat's out-of-stock gate does.
 function Player.partyRestoratives(player)
     local Combat = require("models.combat")
@@ -497,7 +506,7 @@ function Player.partyRestoratives(player)
             out[#out + 1] = { item = item, where = where, char = char }
         end
     end
-    for _, char in ipairs(player and player.party or {}) do
+    for _, char in ipairs(player and player.roster or {}) do
         for _, item in ipairs(Character.eachItem(char)) do consider(item, "grid", char) end
     end
     for _, item in ipairs(player and player.stash or {}) do consider(item, "stash") end
@@ -554,6 +563,9 @@ function Player.newGamePlus(player)
     player.completedQuests = {}
     -- The post-quest advancement overlay is owed to the run that just ended, not to the new one.
     player.pendingSummary = nil
+    -- Every shelf just dropped back to its opening stock, so nothing on one is new any more. The
+    -- stash's own marks carry, along with the stash.
+    player.newStock = {}
 
     Player.save()
     return player

@@ -1,23 +1,30 @@
 # Deployment, the field, and the bench
 
-You march **eight**. You field **four**. Which four, and where they stand, is decided at the start of
-every battle — on the board, with the enemy already on it — and can be changed mid-fight by rotating
+You march **everyone**. You field **four**. Which four, and where they stand, is decided at the start
+of every battle — on the board, with the enemy already on it — and can be changed mid-fight by rotating
 someone off the line and someone else on.
 
 This replaced a persistent *marching grid* arranged once in the hub. Placement is a decision about
 **ground** — where the cover is, which flank is open, how far the enemy line is — and none of that
 exists until the board does. So it is made where the ground is.
 
-## The three numbers
+## The two numbers
 
 | Number | Where | What it caps |
 | --- | --- | --- |
-| `Player.MAX_PARTY = 8` | `models/player.lua` | The **company**: who marches to the quest. Chosen in the hub (`states/party_select.lua`). |
 | `Player.MAX_FIELD = 4` | `models/player.lua` | The **field**: how many stand on the board at once. |
 | `Combat.MAX_FIELD = 4` | `models/combat.lua` | The model's own mirror of the above, so combat stays player-free (the same rule `DraftRun.PARTY_MAX` follows). |
 
-The company is deliberately twice the field: half open the fight and half are the **bench**
-(`combat.bench`), which is the whole point — a reserve you can spend.
+**The company is the roster, and it is uncapped.** There is no `MAX_PARTY` and no screen that picks a
+subset before an embark: everyone you own comes to the quest, and the only question anyone is ever
+asked about who fights is asked over the board. A capped company plus a hub screen to fill it was one
+decision too many — you were choosing eight of nine without the board in front of you, and then
+choosing four of the eight ten seconds later with it. The second choice is the real one, so it is now
+the only one.
+
+Everyone not standing is the **bench** (`combat.bench`), which is the whole point — a reserve you can
+spend. It grows with the roster: a late-campaign company benches more than it fields by a wide margin,
+and the deployment strip pages sideways rather than shrinking its cards past legibility.
 
 ## The deploy zone
 
@@ -51,6 +58,9 @@ takes its rect back the moment the fight starts.
 - **Drag** a card onto a lit tile to deploy. Tile to tile repositions; dropping on an occupied tile
   **swaps** the two; dragging a body back off the board withdraws it to the bench. A drop on illegal
   ground returns the portrait — nothing is lost by a bad drag.
+- The strip fits the whole company where it can. Past that, cards stop shrinking (`MIN_CARD_W`) and it
+  **pages**: the wheel scrolls it, keyboard/pad navigation drags it along, and a small `<n` / `n>` tab
+  at each end counts who is off-screen.
 - **Auto** places the four who fought last battle (`Player.lastDeployed`, ids only — no tiles are ever
   persisted) on the board's own bound spawns: exactly where they would have stood before there was a
   phase to choose in. **Clear** empties the board. **Begin Battle** commits.
@@ -121,7 +131,7 @@ arrival takes `Combat.addUnit`'s natural-clamped-at-0 slot, so it cannot cut ahe
 
 The **last-stand override**: with nothing of yours left standing you may always send one in, even past
 the four-body cap. Without it, a field of four fallen bodies would be a defeat with a full bench in
-hand — and that body walking on to stand over its own dead is the whole reason a company is eight.
+hand — and that body walking on to stand over its own dead is the whole reason the bench exists.
 
 ## Two derived rules
 

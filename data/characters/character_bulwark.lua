@@ -4,8 +4,11 @@
 -- is authored here with the full Bulwark kit. Kit from data/disciplines/bulwark.lua.
 return {
     name = "Bulwark",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/bulwark.png",
     class = "knight",
+    discipline = "bulwark",
     -- Taunts, then shoves attackers off the line and Halts them (models/ai.lua `defensive`).
     archetype = "defensive",
     stats = {

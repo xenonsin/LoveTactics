@@ -6,8 +6,11 @@
 -- to its composed token.
 return {
     name = "Beastmaster",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/beastmaster.png",
     class = "hunter",
+    discipline = "beastmaster",
     -- Fields the wolf, keeps the distance a kiter needs, and lets the Bond do the closing (models/ai.lua
     -- `skirmish`).
     archetype = "skirmish",

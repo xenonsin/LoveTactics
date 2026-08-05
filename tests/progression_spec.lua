@@ -112,11 +112,11 @@ return {
         end,
     },
     {
-        name = "Player.restore reaches roster members who are not in the active party",
+        name = "Player.restore reaches every roster member, fielded last battle or not",
         fn = function()
             local p = Player.new()
-            local benched = p.roster[#p.roster]
-            Player.removeFromParty(p, benched)
+            local benched = assert(Player.recruit(p, "character_saber"))
+            Player.noteDeployed(p, { p.roster[1] }) -- the newcomer sat out the last fight
             benched.stats.health.current = 5
 
             Player.restore(p)
@@ -658,28 +658,157 @@ return {
         end,
     },
     {
-        name = "Quest.complete flags unlocked stock exactly when a completion crosses a tier threshold",
+        name = "Quest.complete names the wares its completion put on the sponsor's shelf",
         fn = function()
             local p = playerAt(1)
-            -- Two Colosseum quests done: count 2, still inside the opening tier (Vendor.TIERS = {0,3,6,10}).
-            p.completedQuests.quest_colosseum_slot_01 = true
-            p.completedQuests.quest_colosseum_slot_02 = true
+            -- The shelf as the player would see it walking in before the quest (same three gates the
+            -- shop reads: quest count, discipline unlocked, discipline level).
+            local function shelf()
+                local locked = {}
+                for _, entry in ipairs(Vendor.stock("colosseum", Quest.sponsorProgress(p, "colosseum"),
+                        p.recipes, Discipline.unlockedSet(p), Discipline.levelSet(p))) do
+                    locked[entry.id] = entry.locked
+                end
+                return locked
+            end
 
-            -- Completing a 3rd crosses into the next tier, so a fresh wave of stock lands on the shelf.
-            local crossing = { id = "quest_colosseum_slot_03", sponsor = "colosseum",
-                               rewardGold = 0 }
-            local reward = Quest.complete(p, crossing)
-            assert(reward.unlockedStock == true, "the 3rd Colosseum quest crosses into the next stock tier")
+            local before = shelf()
+            local reward = Quest.complete(p, { id = "quest_colosseum_slot_01", sponsor = "colosseum", rewardGold = 0 })
+            local after = shelf()
 
-            -- A 4th stays inside that tier (3 -> 4, both tier 2), so nothing new unlocks.
-            local within = { id = "quest_colosseum_slot_04", sponsor = "colosseum",
-                             rewardGold = 0 }
-            reward = Quest.complete(p, within)
-            assert(reward.unlockedStock == false, "a completion inside the same tier unlocks nothing new")
+            local opened = 0
+            for id, wasLocked in pairs(before) do
+                if wasLocked and not after[id] then opened = opened + 1 end
+            end
+
+            if opened == 0 then
+                assert(reward.unlockedStock == nil, "a quest that opened nothing announces nothing")
+            else
+                local stock = reward.unlockedStock
+                assert(type(stock) == "table", "a quest that opened stock reports it")
+                assert(stock.vendorId == "colosseum", "and names the house whose shelf moved")
+                assert(stock.vendor and stock.vendor ~= "colosseum", "by its shop name, not its id")
+                assert(#stock.items == opened, "listing exactly the items that came off the gate")
+                for _, item in ipairs(stock.items) do
+                    assert(before[item.id] and not after[item.id], item.id .. " should be newly on sale")
+                    assert(item.name, "each named for the panel")
+                end
+            end
+        end,
+    },
+    {
+        name = "Quest.complete announces no new stock when the completion opened none",
+        fn = function()
+            local p = playerAt(1)
+            -- An unsponsored quest (the Gate Below is one) moves no house's standing, so no shelf moves.
+            local reward = Quest.complete(p, { id = "quest_spec_unsponsored", rewardGold = 0 })
+            assert(reward.unlockedStock == nil, "no sponsor, no shelf to open")
+        end,
+    },
+
+    -- ------------------------------------------------------ unseen (red dot) marks
+    {
+        name = "an item granted into the stash is marked unseen until it is looked at",
+        fn = function()
+            local p = Player.new()
+            p.newItems = {}
+            assert(not Player.isNew(p, Player.NEW_STASH, "consumable_healing_potion"),
+                "nothing is new before it arrives")
+
+            Player.grantItem(p, "consumable_healing_potion")
+            assert(Player.isNew(p, Player.NEW_STASH, "consumable_healing_potion"),
+                "a granted item wears the dot")
+
+            assert(Player.seeNew(p, Player.NEW_STASH, "consumable_healing_potion") == true,
+                "looking at it clears the mark, and reports that it did")
+            assert(not Player.isNew(p, Player.NEW_STASH, "consumable_healing_potion"), "and it stays cleared")
+            assert(Player.seeNew(p, Player.NEW_STASH, "consumable_healing_potion") == false,
+                "a second look changes nothing, so the caller does not re-save")
+        end,
+    },
+    {
+        name = "the two unseen ledgers are separate: reading a stash mark leaves the shelf mark standing",
+        fn = function()
+            local p = Player.new()
+            Player.markNew(p, Player.NEW_STASH, "weapon_iron_sword")
+            Player.markNew(p, Player.NEW_STOCK, "weapon_iron_sword")
+
+            Player.seeNew(p, Player.NEW_STASH, "weapon_iron_sword")
+            assert(Player.isNew(p, Player.NEW_STOCK, "weapon_iron_sword"),
+                "owning one is not the same news as a house starting to sell it")
+        end,
+    },
+    {
+        name = "Quest.complete marks the stock it opened as unseen, so the shop can dot it",
+        fn = function()
+            local p = playerAt(1)
+            p.newStock = {}
+            local reward = Quest.complete(p, { id = "quest_colosseum_slot_01", sponsor = "colosseum", rewardGold = 0 })
+            for _, item in ipairs(reward.unlockedStock and reward.unlockedStock.items or {}) do
+                assert(Player.isNew(p, Player.NEW_STOCK, item.id),
+                    item.id .. " was announced as new stock, so it must carry the mark the shop draws")
+            end
+        end,
+    },
+    {
+        name = "a shelf mark dots its own house's door in the hub, and nobody else's",
+        fn = function()
+            local p = playerAt(1)
+            p.newStock = {}
+            assert(not Vendor.hasMarkedStock("colosseum", p.newStock),
+                "an unread shelf is the only thing that dots a door")
+
+            Quest.complete(p, { id = "quest_colosseum_slot_01", sponsor = "colosseum", rewardGold = 0 })
+            assert(Vendor.hasMarkedStock("colosseum", p.newStock),
+                "the house whose quest opened the stock wears the dot")
+            assert(not Vendor.hasMarkedStock("undercroft", p.newStock),
+                "a house that sells none of those wares does not")
+
+            for id in pairs(p.newStock) do Player.seeNew(p, Player.NEW_STOCK, id) end
+            assert(not Vendor.hasMarkedStock("colosseum", p.newStock),
+                "and reading the shelf takes the dot off the door")
+        end,
+    },
+    {
+        name = "New Game+ clears the shelf marks, since every shelf re-locked with the quest ledger",
+        fn = function()
+            withScratchSave(function()
+                local p = Player.new()
+                Player.active = p
+                Player.markNew(p, Player.NEW_STOCK, "weapon_iron_sword")
+                Player.markNew(p, Player.NEW_STASH, "weapon_iron_sword")
+
+                Player.newGamePlus(p)
+                assert(not Player.isNew(p, Player.NEW_STOCK, "weapon_iron_sword"),
+                    "nothing on a shelf that dropped back to its opening stock is new")
+                assert(Player.isNew(p, Player.NEW_STASH, "weapon_iron_sword"),
+                    "the stash carries over, and so do its marks")
+                Player.active = nil
+            end)
         end,
     },
 
     -- ------------------------------------------------------------------- save
+    {
+        name = "a save round trip preserves the unseen marks on both ledgers",
+        fn = function()
+            withScratchSave(function()
+                local p = Player.new()
+                Player.markNew(p, Player.NEW_STASH, "consumable_healing_potion")
+                Player.markNew(p, Player.NEW_STOCK, "weapon_iron_sword")
+                Player.markNew(p, Player.NEW_STOCK, "item_that_no_longer_exists")
+
+                Save.write(p)
+                local loaded = Save.read()
+
+                assert(Player.isNew(loaded, Player.NEW_STASH, "consumable_healing_potion"),
+                    "a stash mark survives -- a dot must not be cleared by closing the game")
+                assert(Player.isNew(loaded, Player.NEW_STOCK, "weapon_iron_sword"), "and so does a shelf mark")
+                assert(not Player.isNew(loaded, Player.NEW_STOCK, "item_that_no_longer_exists"),
+                    "an id no longer in data/ is dropped rather than dotting nothing")
+            end)
+        end,
+    },
     {
         name = "a save round trip preserves gold, prestige and completed quests",
         fn = function()
@@ -716,14 +845,10 @@ return {
                 local loaded = Save.read()
 
                 assert(#loaded.roster == #p.roster, "roster size should survive")
-                assert(#loaded.party == #p.party, "party size should survive")
                 assert(loaded.roster[1].id == "character_rowan", "roster order should survive")
                 assert(loaded.roster[1].inventory[7], "the item should be back in cell 7")
                 assert(loaded.roster[1].inventory[7].id == "consumable_fire_stone", "the right item should be in cell 7")
                 assert(loaded.roster[1].inventory[1] == nil, "empty cells should stay empty")
-
-                -- Party members are the same instances as their roster entries, not copies.
-                assert(loaded.party[1] == loaded.roster[1], "party should reference the roster instance")
             end)
         end,
     },

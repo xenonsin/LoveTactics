@@ -163,7 +163,12 @@ function M.serialize(char)
     out[#out + 1] = "    name = " .. q(char.name or char.id) .. ",\n"
     if char.spritePath then out[#out + 1] = "    sprite = " .. q(char.spritePath) .. ",\n" end
     if char.portraitPath then out[#out + 1] = "    portrait = " .. q(char.portraitPath) .. ",\n" end
+    if char.kind then out[#out + 1] = "    kind = " .. q(char.kind) .. ",\n" end
+    -- Written even at 0: the rung is three-valued to a reader (on the ladder / deliberately off it /
+    -- nobody has said), and dropping the zero would turn "this is a prop" back into "nobody has said".
+    if char.tier then out[#out + 1] = "    tier = " .. tostring(char.tier) .. ",\n" end
     if char.class then out[#out + 1] = "    class = " .. q(char.class) .. ",\n" end
+    if char.discipline then out[#out + 1] = "    discipline = " .. q(char.discipline) .. ",\n" end
     if char.archetype then out[#out + 1] = "    archetype = " .. q(char.archetype) .. ",\n" end
     if char.guards then out[#out + 1] = "    guards = " .. q(char.guards) .. ",\n" end
     if char.boss then out[#out + 1] = "    boss = true,\n" end

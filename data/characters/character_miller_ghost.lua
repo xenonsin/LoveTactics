@@ -6,6 +6,8 @@
 -- only holds for the undead somebody remembered is not a rule.
 return {
     name = "The Miller's Ghost",
+    kind = "undead",
+    tier = 3,
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/miller_ghost.png",
     -- A spellcaster with a full mana pool and no armor to speak of: it keeps its distance and throws

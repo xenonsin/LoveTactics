@@ -145,9 +145,9 @@ return {
         name = "Gyeom's Ledger widens vision and lifts the fog off the quarry after three fights",
         fn = function()
             local gyeom = char("character_gyeom", "ledger", { 56, 56 }, { 46, 46 })
-            assert(OverworldAbility.visionBonus({ party = { gyeom } }) == 1,
-                "Gyeom in the party should grant +1 vision")
-            assert(OverworldAbility.visionBonus({ party = {} }) == 0, "no Ledger, no bonus")
+            assert(OverworldAbility.visionBonus({ roster = { gyeom } }) == 1,
+                "Gyeom in the company should grant +1 vision")
+            assert(OverworldAbility.visionBonus({ roster = {} }) == 0, "no Ledger, no bonus")
             local ctx = ctxFor({ gyeom }, { cell = combatCell() })
             OverworldAbility.dispatch("encounterCleared", ctx)
             OverworldAbility.dispatch("encounterCleared", ctx)
@@ -169,7 +169,7 @@ return {
             for y = 1, 5 do grid.cells[y] = {}; for x = 1, 5 do grid.cells[y][x] = { x = x, y = y } end end
             grid.cells[3][4].encounter = { kind = "relic_cache" } -- the cell at (x=4, y=3)
             local kaya = char("character_kaya", "forage", { 40, 40 })
-            local ctx = { player = { party = { kaya }, gold = 0 }, party = { kaya }, grid = grid,
+            local ctx = { player = { roster = { kaya }, gold = 0 }, party = { kaya }, grid = grid,
                 state = {}, cell = grid.cells[3][3] } -- step onto (3,3): the cache at (4,3) is within 2
             OverworldAbility.dispatch("step", ctx)
             assert(revealed["4,3"], "a reliquary within two tiles surfaces through the fog")

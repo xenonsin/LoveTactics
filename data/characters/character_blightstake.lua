@@ -19,6 +19,8 @@
 -- different threat from one that has to be shot four times.
 return {
     name = "Blightstake",
+    kind = "undead",
+    tier = 1,
     sprite = "assets/chars/blightstake.png",
     -- `guard` rather than `skirmish`: a stake with no movement must not be given a posture whose whole
     -- plan is repositioning, or the AI spends every turn trying to walk somewhere it cannot go.

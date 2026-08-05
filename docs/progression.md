@@ -30,11 +30,11 @@ steps left behind.
 | Axis | State | What is true |
 |---|---|---|
 | Level & stats | By design | Flat, correctly, for the reason above |
-| Emergent class | **Done** | `Growth.creditClass` grows a character into whatever gear it casts. It was surfaced nowhere at all in a fight; it now reads live under the actions grid as "Growing as Mage", so it can be steered rather than discovered |
+| Emergent class | **Done** | `Growth.creditClass` grows a character into whatever gear it casts. In-fight it reads through the growth floaters over the bodies ("+1 Knight" per action); the standing read-out that once sat under the actions grid was removed as clutter |
 | Gear & forge | **Done** | One bench, The Forge, reachable from the city; one bill, one ladder. Was two doors onto one ladder, one of which no building opened. Discipline stock is billed in technique and carries no ceiling at all |
 | Shelf waves | **Done** | Stock keys on the vendor's own quest count (always correct), now at per-quest granularity: 474 items across 13 gates instead of clumps of 33 / 123 / 208 / 105 |
 | Disciplines | **Done** | 37 of them, forming a COMPLETE lattice — 21 crossings = C(7,2), every pair of houses. A discipline is a currency (`char.technique`) banked per action and spent to forge its own gear, and the shelf reads as the tree: each section a path, with its shape, standing and what it still needs |
-| Roster | **Done** | A company of 8 travels (`Player.MAX_PARTY`), 4 stand on the board (`Player.MAX_FIELD`), and `Combat.rotate` swaps the bench in mid-fight |
+| Roster | **Done** | The whole roster travels, 4 stand on the board (`Player.MAX_FIELD`), and `Combat.rotate` swaps the bench in mid-fight |
 
 ### The payout cadence is the root cause
 
@@ -325,18 +325,26 @@ actually bills (see "The bill, and what caps it"). What that buys, felt in order
   learning would break "anyone can carry anything". So it buys the **rung** instead of the ability.
 - **done** — it floats over the caster as it lands (`+2 Ninja`, the same channel as damage numbers), so
   the reward is visible in the fight rather than reconstructed at a bench.
+- **done** — **and so does the class vote** (`+1 Knight`, `Combat.noteGrowthVote`). Technique alone left
+  most of the game silent: only 233 of 638 item files declare a discipline, and disciplines are *locked*
+  content, so an opening campaign hand — `weapon_iron_sword` is `class = "knight"` with no discipline —
+  floated nothing at all. Every action still casts a vote (`Character.recordUse`, one tick into
+  `classUseSinceLevel`), and that vote is what decides the next level-up, so it is worth putting on the
+  body at the moment it is earned. **One floater per action**, technique taking precedence: a discipline
+  item votes for the *discipline* id, so floating both would report one action twice under one name. The
+  units differ and the colour carries it — `Theme.accentAmber` for the wallet, `Theme.muted` for the
+  tally, which fires on every action and must not shout as loudly. A corollary: a discipline capped out
+  for the battle now floats `+1 Ninja` rather than nothing — not the misleading zero the cap was
+  guarding against, but the smaller true claim (*the wallet is full, the vote still counted*).
 - **done** — the battle summary names what the fight built, under what it was worth: gold, then
   technique, then loot. Three different things a won fight hands over.
 - **done** — the Forge names the bank and who holds it ("Ninja — 62 held by Clem"), bills the row in
   technique, and its refusal names the verb that earns it.
-- **done** — "Growing as **Mage**" sits under the actions grid (`CombatPanel:drawGrowthLine`), reading
-  `Growth.creditClass` live: the class the *next* level-up will apply, moving as you cast. It had no
-  reader outside `models/growth.lua` at all — the best idea in the system was computed every level-up
-  and shown to nobody until the hub, after it was too late to steer. Deliberately kept **alongside**
-  the technique floater rather than folded into it: the floater is a *delta* on a *wallet* (what that
-  action banked, discipline stock only), this is a *standing* on a *vote* (what the character is
-  becoming). It also covers plain class play, which the floater cannot — 375 of the 580 class-tagged
-  item files carry no discipline, so the floater alone leaves most casting silent.
+- **reverted** — a "Growing as **Mage**" line briefly sat under the actions grid, reading
+  `Growth.creditClass` live (the class the *next* level-up will apply, moving as you cast). It was
+  removed: the growth floaters over the bodies already say the vote is being counted, and a second
+  standing read-out in the action panel was one line too many for the space. If the standing ever needs
+  surfacing again, the party panel already shows it (`ui/panels/party.lua`).
 
 - **done** — the advancement panel shows its reasoning at both ends. When someone levels, each row
   names the credited class and what it bought ("as Sentinel  +3 Magic, +5 MP"). When **nobody** does —
@@ -348,7 +356,7 @@ actually bills (see "The bill, and what caps it"). What that buys, felt in order
 ### 6 — Fix the rates — **done**
 
 All three items are closed: the enemy count is capped, prestige is a flat quest count, and the roster
-became a company of eight with a rotating field of four. The one thing this step did NOT settle is
+became the marching company itself, with a rotating field of four. The one thing this step did NOT settle is
 whether every quest should land a level — that turned out to be a question about how long the campaign
 is, which is step 7.
 
@@ -407,11 +415,15 @@ has since closed it. The rate stays at 2.** With the length settled at 92, one p
 end the campaign 43 levels past the cap.
 
 **The roster — done, and answered better than this document asked.** The bullet here proposed widening
-`MAX_PARTY` in the back half. What landed instead splits the number in two: `Player.MAX_PARTY = 8` is
-the **company** that travels, `Player.MAX_FIELD = 4` is how many of it stand on the board at once, and
+a company cap in the back half. What landed instead removed the cap entirely: the **roster is the
+company** and travels whole, `Player.MAX_FIELD = 4` is how many of it stand on the board at once, and
 `Combat.rotate` swaps the bench in mid-fight. So the roster stopped being a bench in the pejorative
 sense and became one in the useful sense — every companion comes along, and which four are fighting is
 a live tactical decision rather than a menu choice made before the quest.
+
+(An intermediate step here capped the travelling company at eight and had you fill it on a hub screen,
+`states/party_select.lua`. That screen is gone: it asked you to choose eight of nine without a board in
+front of you, and then the deployment phase asked the same question properly ten seconds later.)
 
 ### 7 — Only now, decide the campaign's length — **done. The answer was "not the length"**
 

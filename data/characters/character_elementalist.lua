@@ -6,8 +6,11 @@
 -- VN portrait (a template, not a companion) -- it falls back to its composed token.
 return {
     name = "Elementalist",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/elementalist.png",
     class = "mage",
+    discipline = "elementalist",
     -- A glass caster: keeps its distance, lays its sigils, and breaks off when bloodied (models/ai.lua
     -- `skirmish`). The storm in its grid carries its own rule about when the wind-up is worth paying.
     archetype = "skirmish",

@@ -1,6 +1,8 @@
 -- Enemy character blueprint. See data/characters/bandit.lua for the shape.
 return {
     name = "Wild Boar",
+    kind = "beast",
+    tier = 2,
     sprite = "assets/chars/boar.png",
     stats = {
         health = 50, mana = 0, stamina = 10,

@@ -193,6 +193,23 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
     return stock
 end
 
+-- Whether any of the item ids in `marked` (a bare set, i.e. player.newStock) sits on this vendor's
+-- shelf. What the hub city's red dot on a shop reads: the reward panel names the wares once, and
+-- without a mark on the door itself the player has to remember which house it said. Takes the bare
+-- set rather than a player so this module stays player-free, like everything else here.
+--
+-- A ware that two shelves carry (a potion, resold at the Cafe) dots both doors, which is simply true:
+-- it is new on both.
+function Vendor.hasMarkedStock(vendorId, marked)
+    local def = Vendor.defs[vendorId]
+    if not (def and marked) then return false end
+    for id in pairs(marked) do
+        local item = Item.defs[id]
+        if item and item.price and Vendor.sells(def, item) then return true end
+    end
+    return false
+end
+
 -- What a vendor pays to buy `item` back: half its shelf price at the item's own level, rounded down --
 -- so a refined consumable sells for more than a base one, matching what it cost. An item with no
 -- `price` was never for sale and so can't be sold (returns 0) -- the Party screen refuses those

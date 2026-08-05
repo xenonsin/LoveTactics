@@ -116,11 +116,14 @@ return {
         -- only the gold badge would tell them apart. The overlord figure lifts them.
         name = "a classless boss (a general) is lifted to the overlord silhouette",
         fn = function()
-            -- Asserted on the rank classless boss. The seven sin generals used to be the example here, and
-            -- that was exactly the bug: the lift is a BUCKET body, so all seven marquee kills came out one
-            -- picture. They are named out of it now (CHARACTER_SILHOUETTE) and each reads as its sin; the
-            -- lift still catches every classless boss that has earned no body of its own.
-            assert(slug("character_bandit_chief") == Char.BOSS_SILHOUETTE, "a rank classless boss -> overlord")
+            -- Asserted on a SYNTHETIC classless boss rather than borrowed off a real blueprint. It used to
+            -- be character_bandit_chief, until the bestiary pass made him a Thief with a class and a
+            -- discipline (docs/bestiary.md) and this test failed for a content reason rather than a
+            -- composer one. A rule about the guesser should be fixtured on the guesser's inputs: the lift
+            -- catches a boss that is classless and has earned no body of its own, and that is now stated
+            -- directly instead of depending on some particular mook staying anonymous forever.
+            assert(Char.slugFor({ boss = true }, "nameless_warband_boss") == Char.BOSS_SILHOUETTE,
+                "a rank classless boss -> overlord")
             assert(Char.BOSS_SILHOUETTE ~= Char.HUMANOID_DEFAULT, "the boss figure must differ from the rank one")
             assert(slug("character_general_gluttony") == "lorc/gluttony", "a general reads as its sin, not the lift")
             assert(slug("character_general_greed") == "delapouite/coins-pile", "... and no two of them agree")

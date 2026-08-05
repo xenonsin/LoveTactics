@@ -96,10 +96,10 @@ return {
         end,
     },
     {
-        name = "a wounded party's resource pools ride on the run (a resume is not a free heal)",
+        name = "a wounded company's resource pools ride on the run (a resume is not a free heal)",
         fn = function()
             local player = Player.new()
-            local char = player.party[1] or player.roster[1]
+            local char = player.roster[1]
             local hp = char.stats and char.stats.health
             assert(type(hp) == "table", "the test character has a health pool")
             hp.current = 1 -- wound them

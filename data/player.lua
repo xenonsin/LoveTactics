@@ -3,16 +3,15 @@ return {
     -- usable before the first quest is finished.
     gold = 250,
     prestige = 1,
-    -- Every character the player owns (unlimited size). The party is earned through play, not handed
-    -- over up front: a New Game resets this to just the avatar (states/prologue.lua's begin), then Rowan
+    -- Every character the player owns, which is also the whole marching company -- everyone comes to
+    -- the quest, and which of them take the field is chosen per battle in the deployment phase (see
+    -- docs/deployment.md). Unlimited size. The company is earned through play, not handed over up
+    -- front: a New Game resets this to just the avatar (states/prologue.lua's begin), then Rowan
     -- (character_rowan) is sworn in the prologue and the rest are recruited at slot 2 of each vendor
     -- line. This default is only the non-prologue baseline (Player.reset), kept lean to match. The old
-    -- generic Mage/Archer/Priest are retired from the party -- they live on only as enemy/ally/test
+    -- generic Mage/Archer/Priest are retired from the roster -- they live on only as enemy/ally/test
     -- stand-ins (data/quests, tests) with no portrait of their own.
     startingRoster = { "character_rowan" }, -- character ids
-    -- The marching company: a subset of the roster, capped at Player.MAX_PARTY. Which of them take the
-    -- field, and where, is chosen per battle in the deployment phase -- see docs/deployment.md.
-    startingParty = { "character_rowan" }, -- character ids
     -- Items the player owns that nobody is carrying. The stash is unbounded; move gear between it
     -- and a character's 3x3 grid in the Loadout panel. A pickpocket whose grid is full pockets its
     -- loot in here too. A new game starts with an EMPTY stash -- the first items the player owns are

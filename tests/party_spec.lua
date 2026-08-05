@@ -1,8 +1,8 @@
--- Tests for the Party screen's model-level economy and the quest party-composition rules. The UI
--- (ui/panels/party.lua, states/party_select.lua) is love.graphics-bound and mostly not exercised
--- here; what it delegates to -- Vendor.sellValue, the buy/sell gold+stash moves, the party
--- cap/duplicate guard, and the save round trip -- is pure logic and lives below. The panel's few
--- pure, love-free helpers (regionCross edge-crossing, equipDelta filter) are covered at the end.
+-- Tests for the Party screen's model-level economy and the rules about who marches. The UI
+-- (ui/panels/party.lua) is love.graphics-bound and mostly not exercised here; what it delegates
+-- to -- Vendor.sellValue, the buy/sell gold+stash moves, recruiting, and the save round trip -- is
+-- pure logic and lives below. The panel's few pure, love-free helpers (regionCross edge-crossing,
+-- equipDelta filter) are covered at the end.
 
 local Player = require("models.player")
 local Vendor = require("models.vendor")
@@ -70,29 +70,20 @@ return {
         end,
     },
     {
-        name = "addToParty enforces MAX_PARTY",
+        -- The roster IS the company: every owned character marches, and the only number left about the
+        -- board is how many of them may stand on it at once (docs/deployment.md). A cap on the
+        -- travelling company, and the hub screen that filled it, are both gone.
+        name = "the whole roster marches; only the field is capped",
         fn = function()
             local p = Player.new()
-            p.party = {}
-            for i = 1, Player.MAX_PARTY do
-                assert(Player.addToParty(p, p.roster[i] or Character.instantiate("character_rowan")),
-                    "add " .. i .. " within the cap should succeed")
-            end
-            assert(not Player.addToParty(p, Character.instantiate("character_rowan")),
-                "adding past MAX_PARTY must fail")
-            assert(#p.party == Player.MAX_PARTY, "party overfilled")
-        end,
-    },
-    {
-        -- The company is what marches; the field is how many of them stand on the board at once, chosen
-        -- per battle in the deployment phase (docs/deployment.md). The whole point of the change is that
-        -- the leftovers are a BENCH, so the company has to be big enough to have one.
-        name = "the company is bigger than the field, so there is always a bench to rotate from",
-        fn = function()
-            assert(Player.MAX_FIELD < Player.MAX_PARTY,
-                "a company no bigger than the field leaves nobody to rotate in")
-            assert(Player.MAX_PARTY == Player.MAX_FIELD * 2,
-                "half the company opens the fight and half waits -- see models/player.lua")
+            assert(p.party == nil, "there is no marching-company list beside the roster")
+            assert(Player.MAX_PARTY == nil, "the company cap is gone")
+            assert(Player.addToParty == nil and Player.removeFromParty == nil,
+                "and so is the API that maintained it")
+            assert(Player.MAX_FIELD == 4, "the field cap is what remains")
+            -- The leftovers are the BENCH, so a company one over the field already has one.
+            Player.recruit(p, "character_saber")
+            for _, c in ipairs(p.roster) do assert(c, "every roster member is company") end
         end,
     },
     {
@@ -111,74 +102,50 @@ return {
         end,
     },
     {
-        name = "addToParty rejects a duplicate member",
+        name = "recruit adds a new companion to the company, and refuses a duplicate",
         fn = function()
             local p = Player.new()
-            p.party = {}
-            local knight = p.roster[1]
-            assert(Player.addToParty(p, knight), "first add should succeed")
-            assert(not Player.addToParty(p, knight), "second add of the same member must fail")
-            assert(#p.party == 1, "duplicate should not have been added")
-        end,
-    },
-    {
-        name = "removeFromParty removes a member, reports absence",
-        fn = function()
-            local p = Player.new()
-            p.party = {}
-            local knight = p.roster[1]
-            Player.addToParty(p, knight)
-            assert(Player.removeFromParty(p, knight), "removing a present member returns true")
-            assert(#p.party == 0, "member not removed")
-            assert(not Player.removeFromParty(p, knight), "removing an absent member returns false")
-        end,
-    },
-    {
-        name = "recruit adds a new companion to roster and party, and refuses a duplicate",
-        fn = function()
-            local p = Player.new()
-            p.party = {}
             local before = #p.roster
             local saber = Player.recruit(p, "character_saber")
             assert(saber, "a first recruit returns the instance")
             assert(saber.id == "character_saber", "the recruited id is right")
             assert(#p.roster == before + 1, "the recruit joined the roster")
-            assert(p.party[#p.party] == saber, "the recruit was deployed to the party")
+            -- Joining the roster IS joining the company: nothing else has to happen, and there is no
+            -- cap that could have left a recruit owned but not marching.
+            assert(p.roster[#p.roster] == saber, "the recruit marches by virtue of being owned")
             -- Recruiting the same blueprint again is refused (one copy of a named companion).
             assert(Player.recruit(p, "character_saber") == nil, "a duplicate recruit is refused")
             assert(#p.roster == before + 1, "a refused recruit does not grow the roster")
         end,
     },
     {
-        name = "recruit with rosterOnly benches the newcomer instead of deploying",
-        fn = function()
-            local p = Player.new()
-            p.party = {}
-            local saber = Player.recruit(p, "character_saber", { rosterOnly = true })
-            assert(saber, "the recruit still joins the roster")
-            for _, m in ipairs(p.party) do
-                assert(m ~= saber, "rosterOnly must not deploy to the party")
-            end
-        end,
-    },
-    {
-        name = "a chosen party survives a save/load round trip by identity",
+        name = "the company survives a save/load round trip by identity",
         fn = function()
             local p = Player.new()
             -- The lean default roster is just Rowan; recruit a second identity to save alongside it.
-            Player.recruit(p, "character_saber", { rosterOnly = true })
-            p.party = {}
-            Player.addToParty(p, p.roster[1])
-            Player.addToParty(p, p.roster[2])
+            Player.recruit(p, "character_saber")
 
             local restored = Save.restore(Save.snapshot(p))
             assert(restored, "snapshot did not restore")
-            assert(#restored.party == 2, "party size not preserved")
-            assert(restored.party[1].id == p.roster[1].id, "first party member id changed")
-            assert(restored.party[2].id == p.roster[2].id, "second party member id changed")
-            -- Party members must be the SAME instances as the restored roster, not copies.
-            assert(restored.party[1] == restored.roster[1], "party[1] not aliased to roster")
-            assert(restored.party[2] == restored.roster[2], "party[2] not aliased to roster")
+            assert(restored.party == nil, "a restored player has no second list either")
+            assert(#restored.roster == 2, "company size not preserved")
+            assert(restored.roster[1].id == p.roster[1].id, "first member id changed")
+            assert(restored.roster[2].id == p.roster[2].id, "second member id changed")
+        end,
+    },
+    {
+        -- A save written when the company was a capped subset carries a `party` index list. It is
+        -- ignored on load rather than honoured: the roster marches whole now, so a legacy save must
+        -- not quietly bench the members its old company left behind.
+        name = "a legacy save's party subset is ignored, and everyone marches",
+        fn = function()
+            local p = Player.new()
+            Player.recruit(p, "character_saber")
+            local snap = Save.snapshot(p)
+            snap.party = { 1 } -- as an older save would have written it
+            local restored = Save.restore(snap)
+            assert(restored and #restored.roster == 2, "both members came back")
+            assert(restored.party == nil, "the old subset was not resurrected")
         end,
     },
     {

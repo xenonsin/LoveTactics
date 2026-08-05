@@ -17,7 +17,13 @@
 -- confirm, which scrolls the view to follow. The host draws the tooltip (ui/item_tooltip.lua) for
 -- whatever `hover`/`cursor` names, via :itemAt.
 --
---   local pool = PoolGrid.new({ x =, y =, w =, h = })
+-- An optional pair of callbacks marks cells the player has not looked at yet: `isNew(item)` decides
+-- which wear the red corner dot, and `onSeen(item)` is called the moment the pointer or the cursor
+-- lands on one, so the mark clears on a LOOK rather than on a click. The widget owns neither the
+-- ledger nor its persistence -- the host passes closures over the player (models/player.lua's
+-- Player.markNew) -- so this stays a pure view of whatever list it was handed.
+--
+--   local pool = PoolGrid.new({ x =, y =, w =, h =, isNew = fn, onSeen = fn })
 --   pool:setItems(player.stash)        -- stash source
 --   pool:setStore(Vendor.stock(...))   -- store source
 --   pool:draw(); pool:mousemoved(x, y); pool:mousepressed(x, y, button) -> handled, index
@@ -25,6 +31,7 @@
 --   pool:keypressed(key); pool:gamepadpressed(joystick, button); pool:cancelPickup()
 
 local Item = require("models.item")
+local Glyphs = require("ui.glyphs")
 local Theme = require("ui.theme")
 
 local PoolGrid = {}
@@ -56,6 +63,10 @@ function PoolGrid.new(opts)
     self.picked = nil   -- the cell currently picked up, or nil
     self.hover = nil
     self.focused = false
+    -- Unseen marks: which cells wear the red dot, and who to tell when one is looked at. Both
+    -- optional -- a pool given neither simply never dots anything.
+    self.isNew = opts.isNew
+    self.onSeen = opts.onSeen
     self.nameFont = Theme.body(11)
     self.smallFont = Theme.body(11)
     self.bigFont = Theme.display(20)
@@ -170,6 +181,16 @@ function PoolGrid:moveCursor(dc, dr)
     if n == 0 then return end
     self.cursor = math.max(1, math.min(n, self.cursor + dc + dr * self.cols))
     self:scrollToCursor()
+    self:see(self.cursor)
+end
+
+-- The player is looking at cell `i`: clear its unseen mark. Called from every route the eye can
+-- arrive by -- the pointer crossing it, the keyboard/gamepad cursor landing on it, a click -- so the
+-- dot answers to a LOOK and not to a particular input device.
+function PoolGrid:see(i)
+    if not self.onSeen then return end
+    local cell = self.cells[i]
+    if cell and cell.item then self.onSeen(cell.item, cell) end
 end
 
 -- Pick up cell `i` (or drop the current pickup if it's the same cell). The host reads `picked` and
@@ -260,14 +281,18 @@ function PoolGrid:drawCell(i, sx, sy)
     love.graphics.setColor(col[1] * dim, col[2] * dim, col[3] * dim)
     love.graphics.print(name, sx + CELL / 2 - font:getWidth(name) / 2, sy + CELL - 14)
 
-    -- Corner badge: a store price, or a stack count.
+    -- Corner badge: a store price, or a stack count. The unseen dot claims the same top-right corner
+    -- (it is the mark the eye should find first), so the badge steps aside for it rather than printing
+    -- underneath -- see the dot below.
+    local unseen = self.isNew and self.isNew(item, cell) or false
+    local badgeInset = unseen and 16 or 4
     love.graphics.setFont(self.smallFont)
     if self.mode == "store" then
         Theme.set(Theme.accentAmber, dim)
-        love.graphics.printf(tostring(cell.price) .. "g", sx, sy + 3, CELL - 4, "right")
+        love.graphics.printf(tostring(cell.price) .. "g", sx, sy + 3, CELL - badgeInset, "right")
     elseif (item.quantity or 1) > 1 then
         Theme.set(Theme.ink, dim)
-        love.graphics.printf("x" .. item.quantity, sx, sy + 3, CELL - 4, "right")
+        love.graphics.printf("x" .. item.quantity, sx, sy + 3, CELL - badgeInset, "right")
     end
 
     -- Quest-locked store cell: greyed, so seeing what more quests will buy is still possible.
@@ -277,6 +302,9 @@ function PoolGrid:drawCell(i, sx, sy)
         Theme.set(Theme.accentWeapon, 0.9)
         love.graphics.printf("locked", sx, sy + CELL / 2 - 6, CELL, "center")
     end
+
+    -- Unseen: the red dot, top-right, over the locked wash and the name band so it survives both.
+    if unseen then Glyphs.unseenDot(sx + CELL - 7, sy + 7, 4) end
 
     -- Overlays: picked (in hand), hover (mouse), the keyboard/gamepad cursor.
     if lifted then
@@ -300,7 +328,10 @@ function PoolGrid:drawCell(i, sx, sy)
 end
 
 function PoolGrid:mousemoved(x, y)
+    local was = self.hover
     self.hover = self:indexAt(x, y)
+    -- Only on a CROSSING: a pointer resting on a cell must not re-ask (and re-save) every frame.
+    if self.hover and self.hover ~= was then self:see(self.hover) end
 end
 
 -- Returns true if the click landed on this widget (a cell or a scroll arrow), so the host can treat
@@ -312,6 +343,7 @@ function PoolGrid:mousepressed(x, y, button)
     local i = self:indexAt(x, y)
     if not i then return false end
     self.cursor = i
+    self:see(i)
     return true, i
 end
 

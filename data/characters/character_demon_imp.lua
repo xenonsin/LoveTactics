@@ -15,6 +15,8 @@
 -- teaching is over.
 return {
     name = "Imp",
+    kind = "demon",
+    tier = 1,
     sprite = "assets/chars/demon_imp.png",
     revivable = false, -- a demon does not come back: no downed window, and no revive takes it
     stats = {

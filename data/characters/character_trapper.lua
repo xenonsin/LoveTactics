@@ -20,6 +20,8 @@
 -- minRange 2), so an aggressive footwork that walked into melee would strand its fallback weapon.
 return {
     name = "Trapper",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/trapper.png",
     archetype = "skirmish",             -- keeps its range; see the note above
     stats = {

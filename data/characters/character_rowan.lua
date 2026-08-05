@@ -12,6 +12,8 @@
 -- data/characters/character_knight.lua for the generic she is built on.
 return {
     name = "Rowan",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/rowan.png",
     portrait = "assets/portraits/knight.png", -- large VN portrait for conversations (falls back if missing)
     -- Innate growth class: the fallback (and tie-break) for the level-up growth system when this

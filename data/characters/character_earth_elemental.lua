@@ -4,6 +4,8 @@
 -- Fists crush (and shatter the Frozen) rather than cast. See data/characters/fire_elemental.lua.
 return {
     name = "Earth Elemental",
+    kind = "elemental",
+    tier = 2,
     sprite = "assets/chars/earth_elemental.png",
     stats = {
         health = 42, mana = 0, stamina = 15,

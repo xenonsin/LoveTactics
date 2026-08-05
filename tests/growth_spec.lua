@@ -307,4 +307,55 @@ return {
             assert(not (bandit.char.technique and next(bandit.char.technique)), "an enemy banks no technique")
         end,
     },
+
+    -- --------------------------------------------------- the class-vote floater (the tally)
+    {
+        name = "a plain class cast floats its vote, and a discipline cast lets technique speak instead",
+        fn = function()
+            local Discipline = require("models.discipline")
+            local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
+            local knight, bandit = c.units[1], c.units[2]
+
+            -- Plain class stock -- the opening-campaign case that used to float nothing at all, since
+            -- only 233 of 638 item files declare a discipline and disciplines are locked content.
+            Combat.awardTechnique(c, knight, { class = "knight" })
+            Combat.noteGrowthVote(c, knight, { class = "knight" })
+            assert(c.techniqueAward == nil, "plain stock banks no technique")
+            assert(c.growthAward and c.growthAward.unit == knight and c.growthAward.class == "knight",
+                "so the class vote takes the floater instead")
+
+            -- A discipline cast votes for the DISCIPLINE (Discipline.growthClasses), so floating both
+            -- would report one action twice under one name. Technique wins the slot.
+            local disciplineId = next(Discipline.defs)
+            local probe = { discipline = disciplineId }
+            Combat.awardTechnique(c, knight, probe)
+            Combat.noteGrowthVote(c, knight, probe)
+            assert(c.techniqueAward, "a discipline cast banks technique")
+            assert(c.growthAward == nil, "and the vote yields the floater to it")
+
+            -- Run that discipline to its battle cap: the wallet is full, but the vote still counts, so
+            -- the action reports the smaller truthful claim rather than falling silent.
+            local guard = 0
+            while (c.techniqueEarned[disciplineId] or 0) < Discipline.TECHNIQUE_PER_BATTLE and guard < 1000 do
+                Combat.awardTechnique(c, knight, probe)
+                guard = guard + 1
+            end
+            Combat.awardTechnique(c, knight, probe)
+            Combat.noteGrowthVote(c, knight, probe)
+            assert(c.techniqueAward == nil, "a capped-out cast banks nothing")
+            assert(c.growthAward and c.growthAward.class == disciplineId,
+                "but still floats the vote it did cast")
+
+            -- A class-less, discipline-less item (a natural weapon) tallies nothing and floats nothing.
+            Combat.noteGrowthVote(c, knight, { name = "claws" })
+            assert(c.growthAward == nil, "an untagged item is not a vote")
+
+            -- ...and an enemy is never on the ladder at all, through the real useItem path.
+            local hammer = Item.instantiate("weapon_iron_hammer")
+            Character.addItem(bandit.char, hammer)
+            openTurn(c, bandit)
+            Combat.useItem(c, bandit, hammer, knight.x, knight.y)
+            assert(c.growthAward == nil, "an enemy's cast arms no floater")
+        end,
+    },
 }

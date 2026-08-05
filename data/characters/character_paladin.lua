@@ -3,8 +3,11 @@
 -- is knight. Kit from data/disciplines/paladin.lua.
 return {
     name = "Paladin",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/paladin.png",
     class = "knight",
+    discipline = "paladin",
     -- Shields the line and pulls allies' debuffs onto itself (models/ai.lua `support`).
     archetype = "support",
     stats = {

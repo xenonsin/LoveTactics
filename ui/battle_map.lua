@@ -856,6 +856,11 @@ end
 -- the exact path the unit will take reads at a glance (Fire Emblem / Advance Wars). A dark backing
 -- stroke under the line keeps it legible over any terrain, mirroring drawOverlays' boundary pass.
 -- Only the origin tile holds a unit; every later tile is empty, so the line never hides a token.
+--
+-- `self.overlays.pathStop` is the index the walk really ends on (Combat.walkStop): a route into
+-- quicksand stops on the sand, so the line runs SOLID to that tile and puts its arrowhead there, and
+-- what the unit meant to do afterwards trails off as a faint ghost. The cursor still sits on the tile
+-- the player aimed at -- the ghost is the whole point, it says "you wanted there, you get here".
 function BattleMap:drawMovePath()
     local path = self.overlays.path
     if not path or #path < 2 then return end
@@ -866,16 +871,33 @@ function BattleMap:drawMovePath()
         pts[#pts + 1] = wx + s / 2
         pts[#pts + 1] = wy + s / 2
     end
+    -- Split at the stop tile. `stop` counts TILES; each tile is an x,y pair, so the solid run is the
+    -- first 2*stop numbers, and the ghost picks up from the stop tile so the two meet rather than gap.
+    local stop = math.max(2, math.min(self.overlays.pathStop or #path, #path))
+    local solid, ghost = pts, nil
+    if stop < #path then
+        solid = {}
+        for i = 1, stop * 2 do solid[i] = pts[i] end
+        ghost = {}
+        for i = (stop - 1) * 2 + 1, #pts do ghost[#ghost + 1] = pts[i] end
+    end
+
     local prevJoin = love.graphics.getLineJoin()
     love.graphics.setLineJoin("bevel")
+    if ghost then
+        love.graphics.setColor(1, 1, 1, 0.22)
+        love.graphics.setLineWidth(1.5)
+        love.graphics.line(ghost)
+    end
     love.graphics.setColor(0, 0, 0, 0.55)
     love.graphics.setLineWidth(3)
-    love.graphics.line(pts)
+    love.graphics.line(solid)
     love.graphics.setColor(1, 1, 1, 0.95)
     love.graphics.setLineWidth(1.5)
-    love.graphics.line(pts)
+    love.graphics.line(solid)
 
-    -- Arrowhead at the destination, pointed along the final segment.
+    -- Arrowhead where the walk comes to rest, pointed along its final segment.
+    pts = solid
     local n = #pts
     local ex, ey = pts[n - 1], pts[n]
     local ang = math.atan2(ey - pts[n - 2], ex - pts[n - 3])

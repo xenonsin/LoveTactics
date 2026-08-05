@@ -73,7 +73,8 @@ Build.VERSION = 1
 -- Taking a build
 -- ---------------------------------------------------------------------------
 
--- Freeze `party` (a list of live character instances -- normally player.party) as a build.
+-- Freeze `party` (a list of live character instances -- the team picked in states/build_select.lua) as
+-- a build.
 --
 -- `meta.author` is who made it: { id, name }. The id has to be STABLE and comparable, because the
 -- one thing matchmaking must never do is hand somebody their own team to fight -- a mirror of your
@@ -198,27 +199,13 @@ function Build.restore(snap, opts)
     local chars = {}
     for i, charSnap in ipairs(snap.party) do
         chars[i] = normalized(charSnap, level, itemLevel)
-        -- The author's own auto-battle preference is theirs and means nothing here: it is only ever
-        -- consulted for player-controlled units, and every unit in a restored build is run by the
-        -- AI. Cleared so a build can never be read as asking for control it does not get.
+        -- An auto-battle preference is a thing a player sets for units they pilot, and it does not
+        -- travel: on the far side of a duel the build is run by the AI regardless, and on YOUR side
+        -- (a duel restores your own published build too) control is the game's to hand out, not a
+        -- saved flag's. Cleared either way, so a build never reads as asking for control.
         chars[i].autoBattle = nil
     end
     return chars
-end
-
--- Flatten `party` (live instances -- the local player's own team) the same way a restored build is,
--- so both sides of a duel meet on the same terms. Goes through a snapshot on purpose: normalizing
--- means rebuilding from the blueprint, and the snapshot is already the description of a character
--- that a rebuild reads.
-function Build.normalizeParty(party, opts)
-    local level = (opts and opts.level) or Build.NORMAL_LEVEL
-    local itemLevel = (opts and opts.itemLevel) or Build.NORMAL_ITEM_LEVEL
-    local out = {}
-    for i, char in ipairs(party or {}) do
-        if i > Build.TEAM_SIZE then break end
-        out[i] = normalized(Save.snapshotCharacter(char), level, itemLevel)
-    end
-    return out
 end
 
 -- ---------------------------------------------------------------------------

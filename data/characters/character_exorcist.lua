@@ -7,8 +7,11 @@
 -- falls back to its composed token.
 return {
     name = "Exorcist",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/exorcist.png",
     class = "priest",
+    discipline = "exorcist",
     -- Reads the field's foul work before the enemy's throats (models/ai.lua `support`): she unmakes
     -- summons and strips buffs, and mends what is left.
     archetype = "support",

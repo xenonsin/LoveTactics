@@ -13,6 +13,8 @@
 -- conjured-creature blueprint shape.
 return {
     name = "Wolfsong Spirit",
+    kind = "undead",
+    tier = 2,
     sprite = "assets/chars/wolfsong_spirit.png",
     stats = {
         health = 62, mana = 0, stamina = 20,

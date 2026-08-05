@@ -6,6 +6,8 @@
 -- the blueprint shape.
 return {
     name = "Homunculus",
+    kind = "construct",
+    tier = 1,
     sprite = "assets/chars/homunculus.png",
     stats = {
         health = 18, mana = 0, stamina = 12,

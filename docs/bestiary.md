@@ -161,7 +161,7 @@ Disciplines: **Barbarian · Warlord · Duelist · Skirmisher · Champion · Crus
 
 ### The Undercroft — rogue
 
-Disciplines: **Thief · Assassin · Ninja · Inquisitor · Saboteur · Poacher**
+Disciplines: **Thief · Assassin · Mammonite · Ninja · Inquisitor · Saboteur · Poacher**
 
 | Rung | Name | | |
 |---|---|---|---|
@@ -187,7 +187,7 @@ Disciplines: **Monk · Exorcist · Inquisitor · Crusader · Paladin · Theurge 
 
 | Rung | Name | | |
 |---|---|---|---|
-| 1 | Penitent | E | `character_gaunt_vigil` |
+| 1 | Penitent | N | the gap. `character_gaunt_vigil` was listed here and is not a body at all — its own header calls it "a standing object rather than a fighter", a ward a knight drives into the ground. It is `kind = "object"`, rung 0 |
 | 2 | Sworn | E | `character_priest`, `character_bastion_sworn` |
 | 3 | Confessor | N | per discipline |
 | 4 | Luxuria, the Unbidden | E | `character_general_lust` |
@@ -277,15 +277,88 @@ An item stays exclusive only where sharing it would be incoherent, not merely st
   read better as *this creature's alone* than as a shelf item, and the file header has to say which.
   Everything else gets a price.
 
+## The ratification pass
+
+Step 2 of the build order, run over all 107 blueprints. It was scoped as a labelling pass — "no number
+moves" — and it mostly was, but three of the things it turned up are worth more than the labels.
+
+### Two declared fields, and why they had to be declared
+
+- **`kind`** — `humanoid` · `beast` · `demon` · `undead` · `construct` · `elemental` · `object`. This
+  existed already, but only as a *guess*: `tools/char_compose.lua` inferred it from words in the id, and
+  its own fallback was "most portraitless enemies are people". Every wolf, boar, hawk and stag in the
+  folder was therefore a humanoid as far as the code was concerned — which is the exact line the
+  creature rule above is drawn along, so the rule could not have been checked at all. Declared, it costs
+  one line per body and makes the rule mechanical.
+- **`tier`** — 1 chaff · 2 line · 3 elite · 4 boss, and **0 for a body that is not on the ladder**: a
+  prop, an escortee, or a shape worn by Wild Shape. Rung 0 is declared rather than left absent so that
+  "this will never fight" and "nobody has labelled this" stay different states.
+
+**The bands had to be widened to be checkable.** The table at the top of this document was read off a
+sort of the folder and left real gaps between the rungs — nothing covered 31–37, 71–83 or 116–154, and
+bodies live in all three. The spec's bands are contiguous instead (1–30 / 31–80 / 81–154 / 155+), so
+every health value has exactly one legal rung and the assertion is a constraint rather than a band a
+body can quietly fall between.
+
+### `class` on an enemy is a growth declaration, not a label
+
+The finding that changed the pass. The obvious tidy-up — every humanoid names the shelf it fights from —
+turns out to be a balance change wearing a taxonomy change, because `class` is the growth table an enemy
+climbs (`models/growth.lua`, `Growth.creditClass`). The tables say why:
+
+| | health | damage | defense |
+|---|---|---|---|
+| knight | +6 | +1 | +2 |
+| fighter *(`Growth.NEUTRAL_CLASS`, the classless fallback)* | +4 | +3 | — |
+| rogue | +3 | +2 | — |
+| hunter | +3 | +2 | — |
+
+A rogue gains +2 damage a level against a knight's +2 defense. **They cancel exactly**, so a
+rogue-classed body's post-mitigation damage never rises at all while its target gains +6 health a level.
+Declaring `class = "rogue"` on `character_bandit` — true in the fiction, one line, obviously correct —
+made a level-20 bandit unable to hurt an armoured party, which `tests/enemy_scaling_spec.lua` caught
+immediately. Only the classless fighter fallback (+3) outpaces armour, and that is the sole reason
+ordinary stock has been scaling: *every un-classed body in the folder has been growing as a fighter, and
+none of them said so.*
+
+So the shelf is declared **where something reads it** — on the bodies that name a `discipline` — and the
+plain chaff keeps the fallback, with the reason written into `character_bandit.lua` rather than left for
+the next person to rediscover. The seven sin generals stay classless for the same reason plus a second
+one: they are outside the class system by design, and `tools/char_compose.lua` reserves a silhouette
+bucket for exactly "a boss that is not one of the seven".
+
+The open thread this leaves: **the rogue and hunter growth tables cannot carry a body whose offense is a
+base weapon.** A player rogue compensates with abilities; an enemy holding one dagger does not. That is
+a growth-table question, not a bestiary one, but the bestiary is where it surfaced.
+
+### The Elite rung was the hole, and it was one line deep
+
+Three bodies were carrying chaff kits at rungs that are supposed to be the demonstration:
+
+| Body | Was | Now |
+|---|---|---|
+| **Bandit Chief** *(Undercroft elite)* | 105 health, one iron sword | a **Thief**: Shakedown, Sap, and the Cutpurse's Tally, which prices every blow by what has already been lifted off the target. He keeps the iron sword his men carry — there is no chief's blade on the rogue shelf, and what makes him the chief is the other hand |
+| **The Breachward** *(the mark of the knight line's slot 1)* | 84 health and an **empty grid**, so it swung `weapon_unarmed` — the generic bare fist whose own flavour reads "it has never once been enough" | `weapon_stone_fists`, a natural weapon, per the creature rule |
+| **Forsworn Captain** *(Forsworn elite)* | 98 health, mace and shield | a **Sentinel**. Her header already claimed Intercept word for word — "covers every adjacent ally" — and now carries it: Warden's Oath and The Lent Aegis |
+
+No stat moved on any of the three. The Chief is also the case that answers the growth finding above: he
+can afford to be a rogue precisely because his kit scales on *debuffs* rather than on raw damage.
+
+### One rule from step 2 was NOT built, on purpose
+
+The sketch asked for "`boss = true` appears only on a body some quest names as an `assassinate` mark."
+It is not asserted, because the flag is already doing a second job the sketch did not account for: four
+**companions** carry it (Clem, Amana, Gyeom, Ren) since they are recruited out of boss fights, and a
+dozen Elites carry it at tier 3. `boss` and `tier 4` are not the same claim and the data says so. Pinning
+the rule means first deciding what the flag means on a recruitable body — a separate call.
+
 ## Build order
 
 1. ~~**The drop path**~~ **— done.** Character-sourced spoils, so beating a discipline pays out in
    its shelf. Built first because every rung below depends on loot meaning something.
-2. **Ratify the ladder.** Add `tier` to the existing ~60 bodies (a labelling pass, no number moves),
-   plus `tests/bestiary_spec.lua`: every non-boss combatant declares a tier; tiers hold their bands;
-   an Elite carries at least one item of its declared discipline; a creature-kind body carries no
-   priced discipline item; and `boss = true` appears only on a body some quest names as an
-   `assassinate` mark.
+2. ~~**Ratify the ladder.**~~ **— done.** All 107 bodies declare `tier` *and* `kind`, and
+   `tests/bestiary_spec.lua` pins the rules. See "The ratification pass" below for what the labelling
+   actually turned up, which was more than labels.
 3. **Fill the chaff holes** — the Forsworn levy, the pit hopeful, the cutpurse, the vat-hand, the
    Lodge beater. Five bodies, cheap, and they make five factions read as armies. Do this before any
    Elite: an Elite with nothing to lead is just a stat block.

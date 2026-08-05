@@ -24,6 +24,8 @@
 -- Pall, Covet and Grudge. All are new work over what ships here.
 return {
     name = "Livia, the Unborn",
+    kind = "humanoid",
+    tier = 4,
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_envy.png",
     portrait = "assets/portraits/general_envy.png", -- large VN portrait for conversations (falls back if missing)

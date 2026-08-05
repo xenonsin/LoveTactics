@@ -5,9 +5,12 @@
 -- Kit from data/disciplines/plague_knight.lua.
 return {
     name = "Plague Knight",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/plague_knight.png",
     boss = true,
     class = "knight",
+    discipline = "plague_knight",
     -- Wades in poisoned and lets proximity do the work (models/ai.lua `aggressive`).
     archetype = "aggressive",
     stats = {

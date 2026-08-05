@@ -18,6 +18,8 @@
 -- also had tempo would be strictly better than the archer standing beside it.
 return {
     name = "Ordnance Sentry",
+    kind = "construct",
+    tier = 1,
     sprite = "assets/chars/ordnance_sentry.png",
     stats = {
         health = 22, mana = 0, stamina = 20,

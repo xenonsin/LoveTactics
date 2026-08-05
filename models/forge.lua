@@ -182,6 +182,93 @@ function Forge.upgrade(player, item)
 end
 
 -- ---------------------------------------------------------------------------
+-- The batch: several rungs in one commit
+-- ---------------------------------------------------------------------------
+
+-- The summed bill for taking `item` from where it stands up to `target`, as one transaction. Same
+-- shape as Forge.upgradeCost plus `levels` (how many rungs are being bought) and `blockedAt` (the
+-- first rung past the ceiling, or nil) -- so a panel that lets the player aim at a rung further up
+-- the ladder can price the whole climb before charging for any of it.
+--
+-- Every rung is billed exactly as it would be alone, then added up: the craft-stock count climbs per
+-- level, so three rungs cost three separate counts rather than one at the top level. Buying the climb
+-- in one commit is a convenience, never a discount.
+--
+-- `technique` sums across the rungs, but `techniqueHeld` is the BANK and so is taken as-is rather than
+-- accumulated -- it is the same number at every level, and adding it up would claim the player holds
+-- three times what they do. Returns nil when there is nothing left to buy.
+function Forge.costTo(player, item, target)
+    local from = item.level or 0
+    target = math.min(target or (from + 1), Item.MAX_LEVEL)
+    if target <= from then return nil end
+
+    local ceiling = Forge.ceilingFor(player, item)
+    local class, discipline = Item.classOf(item), item.discipline
+    local gold, technique, techId, holder, held = 0, 0, nil, nil, 0
+    local materials, blockedAt = {}, nil
+
+    for lvl = from + 1, target do
+        local g, t, id, h, bank = currencyFor(player, lvl, discipline)
+        gold = gold + g
+        technique = technique + t
+        techId, holder, held = id, h, bank
+        for mid, n in pairs(materialsFor(lvl, item.price, class, discipline)) do
+            materials[mid] = (materials[mid] or 0) + n
+        end
+        if not blockedAt and lvl > ceiling then blockedAt = lvl end
+    end
+
+    return {
+        level = target,
+        levels = target - from,
+        gold = gold,
+        technique = technique,
+        techniqueId = techId,
+        techniqueHolder = holder,
+        techniqueHeld = held,
+        materials = materials,
+        locked = blockedAt ~= nil,
+        blockedAt = blockedAt,
+        ceiling = ceiling,
+    }
+end
+
+-- Forge `item` all the way to `target` in one commit. Returns a fresh instance at the new level, or
+-- nil + one of Forge.upgrade's reasons.
+--
+-- THE WHOLE BATCH IS PRICED AND REFUSED BEFORE ANY OF IT IS PAID FOR. Looping Forge.upgrade and
+-- letting it refuse partway would leave the player having spent gold and materials on a climb they
+-- did not get -- the one failure mode a multi-rung commit introduces that a single rung cannot have.
+--
+-- If the loop somehow breaks anyway (it cannot, given the pre-check, but a silently swallowed rung
+-- would cost the player real materials) the item reached so far is returned ALONGSIDE the reason, so
+-- the caller still has something to put back in the slot. A non-nil second return therefore means
+-- "this is not what you asked for", not "nothing happened".
+function Forge.upgradeTo(player, item, target)
+    if not Forge.canWork(item) then return nil, "not forgeable" end
+    local from = item.level or 0
+    target = math.min(target or (from + 1), Item.MAX_LEVEL)
+    if target <= from then return nil, "max level" end
+
+    local cost = Forge.costTo(player, item, target)
+    if not cost then return nil, "max level" end
+    if cost.locked then return nil, "locked" end
+    if player.gold < cost.gold then return nil, "gold" end
+    if cost.technique > 0 and cost.techniqueHeld < cost.technique then return nil, "technique" end
+    if not Player.canAffordMaterials(player, cost.materials) then return nil, "materials" end
+
+    local current = item
+    for _ = from + 1, target do
+        local stepped, reason = Forge.upgrade(player, current)
+        if not stepped then
+            return (current ~= item) and current or nil, reason
+        end
+        current = stepped
+    end
+    return current
+end
+
+-- ---------------------------------------------------------------------------
 -- Consumable recipes (per type)
 -- ---------------------------------------------------------------------------
 

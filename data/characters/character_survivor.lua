@@ -13,6 +13,8 @@
 -- character_caravan_driver (a clock, not a combatant) but rooted where the driver walks.
 return {
     name = "Survivor",
+    kind = "humanoid",
+    tier = 0,
     archetype = "holdGround",
     sprite = "assets/chars/survivor.png",
     stats = {

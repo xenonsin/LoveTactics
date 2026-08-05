@@ -1,5 +1,7 @@
 return {
     name = "Fighter",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/fighter.png",
     -- No portrait: the GENERIC fighter template, not a companion. Saber (the fighter companion) is the
     -- named specialization built on this base; like the other generic stand-ins (Knight, Rogue, Mage,

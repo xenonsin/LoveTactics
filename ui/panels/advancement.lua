@@ -31,6 +31,20 @@ local ROW_H = 46
 local HEAD_H, FOOT_H = 205, 56
 local MAX_ROWS = 6
 
+-- The "new on the shelf" section, drawn between the prestige bar and the level-up list on the quests
+-- that opened stock (reward.unlockedStock). It names the shop and lists the wares, because the
+-- campaign loop is "run a house's quest, then spend at the shelf it opened" -- and a player who is not
+-- told which shop moved has to go door-knocking to find out.
+local STOCK_HEAD_H = 22 -- the "New items unlocked at <shop>" heading
+local STOCK_ROW_H = 19  -- one "Bell Hammer ....... 120g" line
+local STOCK_TOP_PAD = 10 -- clearance under the prestige bar's caption row
+local STOCK_PAD = 12    -- gap between the section and the heading under it
+local STOCK_MAX_ROWS = 4
+
+-- Where the section starts, as an offset from the box top: just below the prestige bar, which is also
+-- where "The company grows" sits when there is no section (hence the shared 177).
+local STOCK_Y = 177 + STOCK_TOP_PAD
+
 -- The prestige bar's fill: a beat to read the starting state, then the climb. Slow enough that a
 -- single prestige is a visible movement rather than a jump -- the whole point of the bar is that a
 -- quest which levels nobody still shows the company advancing.
@@ -75,9 +89,24 @@ function Advancement.new(opts)
     self.bodyFont = Theme.body(15)
     self.smallFont = Theme.body(13)
 
+    -- The shelf this quest opened, as { vendor = shop name, items = { { name, price }, ... } }. A quest
+    -- that opened nothing carries nil and the section costs no height at all.
+    local stock = self.reward.unlockedStock
+    self.stock = (type(stock) == "table" and stock.items and #stock.items > 0) and stock or nil
+    self.stockH = 0
+    if self.stock then
+        -- A long haul is truncated to a "+N more" line rather than growing the box without limit; the
+        -- shop itself is where the full shelf is read.
+        self.stockRows = math.min(#self.stock.items, STOCK_MAX_ROWS)
+        self.stockMore = #self.stock.items - self.stockRows
+        local rows = self.stockRows + (self.stockMore > 0 and 1 or 0)
+        self.stockH = STOCK_TOP_PAD + STOCK_HEAD_H + rows * STOCK_ROW_H + STOCK_PAD
+    end
+
     -- One row minimum, so the "no one levelled" line has somewhere to sit.
     self.visible = math.max(1, math.min(#self.entries, MAX_ROWS))
-    self.boxH = HEAD_H + self.visible * ROW_H + FOOT_H
+    self.headH = HEAD_H + self.stockH
+    self.boxH = self.headH + self.visible * ROW_H + FOOT_H
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - self.boxH / 2
@@ -95,7 +124,7 @@ function Advancement.new(opts)
     -- `visible` above rather than the other way round, so the box wraps the rows instead of the rows
     -- being fitted into a fixed box.
     self.listX = self.boxX + 24
-    self.listY = self.boxY + HEAD_H
+    self.listY = self.boxY + self.headH
     self.listW = BOX_W - 48
     self.listH = self.visible * ROW_H
 
@@ -175,27 +204,22 @@ function Advancement:draw()
     love.graphics.printf(line, self.boxX + 24, self.boxY + 66, BOX_W - 48, "center")
 
     -- A companion who just joined outranks every other line on this panel: gold and new stock change
-    -- what you can buy, a recruit changes who you field. Drawn above the stock-unlocked line and in the
-    -- brightest colour the box uses, and the two never collide -- a quest that earns a companion is
-    -- the head of its vendor's line, so it is not also the one that opens a fresh wave of its shelf.
+    -- what you can buy, a recruit changes who you field. So it sits highest, in the brightest colour
+    -- the box uses, while the shelf gets its own section below the bar.
     local joined = self.reward.recruited
     if joined then
         love.graphics.setFont(self.bodyFont)
         love.graphics.setColor(0.6, 0.95, 0.7)
         love.graphics.printf(tostring(joined.name or "A companion") .. " joins the company",
             self.boxX + 24, self.boxY + 92, BOX_W - 48, "center")
-    elseif self.reward.unlockedStock then
-        love.graphics.setFont(self.bodyFont)
-        love.graphics.setColor(0.95, 0.82, 0.4)
-        love.graphics.printf("New stock unlocked at the sponsor's shop",
-            self.boxX + 24, self.boxY + 92, BOX_W - 48, "center")
     end
 
     self:drawPrestigeBar()
+    self:drawStock()
 
     love.graphics.setFont(self.headFont)
     Theme.set(Theme.muted)
-    love.graphics.print("The company grows", self.listX, self.boxY + 177)
+    love.graphics.print("The company grows", self.listX, self.boxY + 177 + self.stockH)
 
     self:drawList()
     self:drawFooter()
@@ -241,6 +265,64 @@ function Advancement:drawPrestigeBar()
     if earned > 0 then
         Theme.set(Theme.accentAmber)
         love.graphics.printf("+" .. earned .. " this quest", x, y + 40, w, "right")
+    end
+end
+
+-- "New items unlocked at the Colosseum Armory" -- the wares this quest put on its sponsor's shelf, by name and price.
+-- The panel used to say only that stock had appeared *somewhere*, which left the player to go
+-- door-knocking for it; naming the shop and the goods is what makes the quest read as the thing that
+-- bought them. Sits directly under the prestige bar: what the company earned, then what it may now buy,
+-- then who grew.
+function Advancement:drawStock()
+    if not self.stock then return end
+
+    local x, w = self.listX, self.listW
+    local y = self.boxY + STOCK_Y
+
+    Theme.set(Theme.panel2)
+    love.graphics.rectangle("fill", x - 6, y - 6, w + 12,
+        self.stockH - STOCK_TOP_PAD - STOCK_PAD + 12, Theme.R, Theme.R)
+
+    -- "New items unlocked at <shop>" spelled out: "New at <shop>" read as a place rather than as an
+    -- event, and the whole point of the line is that a quest just PUT something on that shelf. The
+    -- count keeps its width and the heading steps down a size to fit beside it (never a scaled font).
+    local n = #self.stock.items
+    local count = n == 1 and "1 item" or (n .. " items")
+    local countW = self.smallFont:getWidth(count) + 12
+    local font, head = Theme.fitText(Theme.body,
+        "New items unlocked at " .. tostring(self.stock.vendor or "the sponsor's shop"),
+        w - countW, 15, 12)
+    love.graphics.setFont(font)
+    Theme.set(Theme.accentAmber)
+    love.graphics.print(head, x, y)
+
+    love.graphics.setFont(self.smallFont)
+    Theme.set(Theme.muted)
+    love.graphics.printf(count, x, y + 2, w, "right")
+
+    local ry = y + STOCK_HEAD_H
+    for i = 1, self.stockRows do
+        local entry = self.stock.items[i]
+        -- The price is what turns this from news into a plan, so it is never squeezed out: the name
+        -- gets whatever width is left over and steps down a size to fit (never a scaled font).
+        local price = entry.price and (entry.price .. " gold") or ""
+        local priceW = price ~= "" and self.smallFont:getWidth(price) + 12 or 0
+        local font, name = Theme.fitText(Theme.body, entry.name or "?", w - priceW, 14, 11)
+        love.graphics.setFont(font)
+        Theme.set(Theme.ink)
+        love.graphics.print(name, x, ry)
+        if price ~= "" then
+            love.graphics.setFont(self.smallFont)
+            love.graphics.setColor(0.95, 0.82, 0.4)
+            love.graphics.printf(price, x, ry + 1, w, "right")
+        end
+        ry = ry + STOCK_ROW_H
+    end
+
+    if self.stockMore > 0 then
+        love.graphics.setFont(self.smallFont)
+        Theme.set(Theme.muted)
+        love.graphics.print("+" .. self.stockMore .. " more on the shelf", x, ry)
     end
 end
 

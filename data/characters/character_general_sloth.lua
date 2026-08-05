@@ -21,6 +21,8 @@
 -- is the losing line, and it is meant to look tempting.
 return {
     name = "Acedia, the Unrelieved",
+    kind = "humanoid",
+    tier = 4,
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_sloth.png",
     portrait = "assets/portraits/general_sloth.png", -- large VN portrait for conversations (falls back if missing)

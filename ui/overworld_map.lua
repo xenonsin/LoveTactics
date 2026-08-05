@@ -3,7 +3,8 @@
 -- a player token along the trail network (hold a direction to keep walking; single
 -- taps move one tile) and the camera follows. Stepping onto an encounter tile fires
 -- opts.onEncounter(cell) -- and opts.onApproach(cell) one beat earlier, while the token still stands on
--- the tile before it; keys are picked up automatically and unlock their gate.
+-- the tile before it; keys and material caches are picked up automatically (opts.onPickup announces
+-- what was taken), and a key unlocks its gate.
 --
 -- Tiles are drawn from a tileset spritesheet (quads + SpriteBatch). If the art is
 -- missing (Sprite.load returned a path string), it falls back to colored rects per
@@ -45,6 +46,10 @@ function OverworldMap.new(grid, opts)
     -- Fired the instant BEFORE the token steps onto an un-engaged encounter, while it still stands on
     -- the tile it is leaving and nothing about the step has happened yet. The autosave seam: see :step.
     self.onApproach = opts.onApproach
+    -- Fired when a walked-over marker pays out: onPickup(kind, payload, cell) with kind "cache" or
+    -- "key". These are the only two markers that give something WITHOUT opening a panel, so without
+    -- this the board takes them in silence and the mark on the trail never explains itself. See :arrive.
+    self.onPickup = opts.onPickup
     self.font = opts.font or Theme.body(16)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.heldDir = nil   -- { dx, dy } of the direction currently held (any input)
@@ -176,12 +181,15 @@ function OverworldMap:arrive()
     if c.key and not self.keysHeld[c.key.keyId] then
         self.keysHeld[c.key.keyId] = true
         c.picked = true
+        if self.onPickup then self.onPickup("key", c.key, c) end
     end
     if c.cache and not c.picked then
         for id, n in pairs(c.cache.materials or {}) do
             self.cacheHaul[id] = (self.cacheHaul[id] or 0) + n
         end
         c.picked = true
+        -- Announced AFTER the haul is banked, so the line a player reads is the haul they now hold.
+        if self.onPickup then self.onPickup("cache", c.cache, c) end
     end
     if c.encounter and not c.cleared and self.onEncounter then
         self.onEncounter(c)

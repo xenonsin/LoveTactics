@@ -2,9 +2,12 @@
 -- finish, return. Met as a killer sent for the player, a boss. Kit from data/disciplines/assassin.lua.
 return {
     name = "Assassin",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/assassin.png",
     boss = true,
     class = "rogue",
+    discipline = "assassin",
     -- Opens from stealth and darts on the wounded, giving up ground to keep the opening (skirmish).
     archetype = "skirmish",
     stats = {

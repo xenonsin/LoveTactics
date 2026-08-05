@@ -23,6 +23,8 @@
 -- receive-in-return form are deferred with the rest of the mid-line.
 return {
     name = "Ren",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/ren.png",
     portrait = "assets/portraits/ren.png", -- large VN portrait for conversations (falls back if missing)
     class = "alchemist",

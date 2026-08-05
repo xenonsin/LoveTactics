@@ -3,8 +3,11 @@
 -- data/disciplines/totemist.lua.
 return {
     name = "Totemist",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/totemist.png",
     class = "hunter",
+    discipline = "totemist",
     -- Raises totems and holds the ground they bless (models/ai.lua `support`).
     archetype = "support",
     stats = {

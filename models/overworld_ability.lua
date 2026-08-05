@@ -273,7 +273,7 @@ end
 -- Fire `event` for every party member whose overworld ability defines a hook for it. `ctx.state` is the
 -- per-run scratch (game.abilityState); each ability's bucket is namespaced under the character's id.
 function OverworldAbility.dispatch(event, ctx)
-    local party = ctx.party or (ctx.player and ctx.player.party) or {}
+    local party = ctx.party or (ctx.player and ctx.player.roster) or {}
     ctx.state = ctx.state or {}
     for _, char in ipairs(party) do
         local h = A[abilityId(char)]
@@ -289,7 +289,7 @@ end
 -- builds the map's vision. Returns the largest bonus in the party (they don't stack).
 function OverworldAbility.visionBonus(player)
     local best = 0
-    for _, char in ipairs((player and player.party) or {}) do
+    for _, char in ipairs((player and player.roster) or {}) do
         if abilityId(char) == "ledger" then best = math.max(best, 1) end
     end
     return best

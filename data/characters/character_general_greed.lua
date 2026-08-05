@@ -29,6 +29,8 @@
 -- `assassinate` is the honest objective -- her retinue is a wall to pass, not a thing to grind.
 return {
     name = "Aurea, the Ever-Owed",
+    kind = "humanoid",
+    tier = 4,
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_greed.png",
     portrait = "assets/portraits/general_greed.png", -- large VN portrait for conversations (falls back if missing)

@@ -4,6 +4,8 @@
 -- reap the bonus on a Wet foe. See data/characters/fire_elemental.lua for the blueprint shape.
 return {
     name = "Lightning Elemental",
+    kind = "elemental",
+    tier = 1,
     sprite = "assets/chars/lightning_elemental.png",
     stats = {
         health = 18, mana = 0, stamina = 15,

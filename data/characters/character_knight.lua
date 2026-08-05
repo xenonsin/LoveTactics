@@ -1,5 +1,7 @@
 return {
     name = "Knight",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/knight.png",
     -- No portrait: this is the GENERIC knight template, not a companion. Rowan (the knight companion)
     -- lives in character_rowan.lua and specializes from this base by adding her bound relic (the Sworn

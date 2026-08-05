@@ -55,7 +55,7 @@ return {
         { "ground", "ground",   "ground", "ground", "ground", "ground", "ground", "ground"   },
     },
     -- Slot 1 is the avatar, slot 2 is Rowan -- Arena.build binds these in party order, and
-    -- prologue.begin puts the avatar at party[1] with Player.recruit appending Rowan. The tutorial's
+    -- prologue.begin puts the avatar at roster[1] with Player.recruit appending Rowan. The tutorial's
     -- authored cells assume that pairing (tests/prologue_spec.lua pins it).
     partySpawns = {
         { x = 4, y = 8 }, { x = 6, y = 8 },

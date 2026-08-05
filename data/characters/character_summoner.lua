@@ -2,9 +2,12 @@
 -- a conjurer with an elemental court, a boss. Kit from data/disciplines/summoner.lua.
 return {
     name = "Summoner",
+    kind = "humanoid",
+    tier = 3,
     sprite = "assets/chars/summoner.png",
     boss = true,
     class = "mage",
+    discipline = "summoner",
     -- Hangs back and keeps an elemental court on the board (models/ai.lua `skirmish`).
     archetype = "skirmish",
     stats = {

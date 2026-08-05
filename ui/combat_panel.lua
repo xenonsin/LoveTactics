@@ -23,8 +23,6 @@
 
 local Scale = require("scale")
 local Combat = require("models.combat")
-local Growth = require("models.growth")         -- Growth.creditClass: the "Growing as" read-out
-local Discipline = require("models.discipline") -- ...whose key may be a discipline id, not a class
 local Item = require("models.item") -- for Item.costs: a cast may draw on more than one pool
 local AdjacencyLinks = require("ui.adjacency_links")
 local StatusBadge = require("ui.status_badge")
@@ -238,11 +236,7 @@ function CombatPanel.new(combat, opts)
     self.rotateBtn = { x = self.gridX, w = self.gridW, h = 26 }
     self.rotateBtn.y = self.waitBtn.y - 6 - self.rotateBtn.h
     self.rotateHover = false
-    -- The gap under the grid carries the "Growing as" line (drawGrowthLine) -- deliberately BELOW the
-    -- actions rather than beside the turn order, because the grid is what feeds it: every cast from
-    -- these nine slots is the vote that decides it.
-    self.growthY = (self.hasRotate and self.rotateBtn.y or self.waitBtn.y) - 22
-    self.gridY = self.growthY - 8 - self.gridH
+    self.gridY = (self.hasRotate and self.rotateBtn.y or self.waitBtn.y) - 14 - self.gridH
     -- Turn strip lives above the item grid; stripTop leaves the "Turn Order" caption clear breathing
     -- room above it (top + bottom margin around the header).
     self.stripTop = 52
@@ -491,7 +485,6 @@ function CombatPanel:draw()
 
     self:drawTurnStrip()
     self:drawItemGrid()
-    self:drawGrowthLine()
     self:drawRotateButton()
     self:drawWaitButton()
     love.graphics.setColor(1, 1, 1)
@@ -536,41 +529,6 @@ function CombatPanel:overRotate(px, py)
     if not self.hasRotate then return false end
     local b = self.rotateBtn
     return px >= b.x and px <= b.x + b.w and py >= b.y and py <= b.y + b.h
-end
-
--- "Growing as: Sentinel" -- the class the NEXT level-up will apply, live, under the grid that decides
--- it. Growth.creditClass reads `classUseSinceLevel`, so this moves as the player casts and resets when
--- a level lands; that is the whole point of showing it. Before this it was computed on every level-up
--- and read by nothing outside models/growth.lua -- the emergent-class idea was invisible for the entire
--- fight and first surfaced at the hub, after the fact, when it was too late to steer.
---
--- Distinct from the "+2 Ninja" technique floater, and both are wanted: that is a DELTA on a wallet
--- (what this action just banked, discipline stock only), this is a STANDING on a vote (what the
--- character is currently becoming, and it covers plain class casts -- 375 of the 580 class-tagged item
--- files carry no discipline at all, so the floater alone leaves most casting silent).
---
--- Only for a real roster member: Combat.isPlayerControlled excludes AI escortees and `summoned`
--- excludes summons, exactly matching who Combat.useItem actually tallies.
-function CombatPanel:drawGrowthLine()
-    local unit = self.view.current
-    if not (unit and unit.char) then return end
-    if not Combat.isPlayerControlled(unit) or unit.summoned then return end
-
-    -- The tally key is a class id OR a discipline id (Discipline.growthClasses returns the discipline
-    -- for discipline stock), so a discipline resolves through its blueprint name -- "plague_knight" is
-    -- "Plague Knight", which title-casing alone would render "Plague_knight".
-    local key = Growth.creditClass(unit.char)
-    if not key then return end
-    local name = Discipline.displayName(key) or (key:gsub("^%l", string.upper))
-
-    love.graphics.setFont(self.smallFont)
-    local lead = "Growing as  "
-    local total = self.smallFont:getWidth(lead) + self.smallFont:getWidth(name)
-    local lx = self.x + (self.w - total) / 2
-    Theme.set(Theme.muted)
-    love.graphics.print(lead, lx, self.growthY)
-    Theme.set(Theme.accentAmber)
-    love.graphics.print(name, lx + self.smallFont:getWidth(lead), self.growthY)
 end
 
 -- The long Wait button under the item grid. Its label mirrors the acting unit's wait behavior

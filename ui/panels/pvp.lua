@@ -2,8 +2,8 @@
 --
 -- Both halves lean on models/build.lua and models/builds.lua and hold no rules of their own. In
 -- particular the panel does NOT decide what a fair fight is -- normalization does, on both sides at
--- once (Build.restore for the opponent, Build.normalizeParty for you), so there is no place here for
--- a matchmaking rule to quietly disagree with the one the model states.
+-- once (Build.restore, run over the opponent's published build AND your own), so there is no place
+-- here for a matchmaking rule to quietly disagree with the one the model states.
 --
 -- Modeled on ui/panels/encounter.lua: the hub owns it, forwards input while it is open, and it
 -- closes via the X, Esc, or gamepad B. Mouse, keyboard and gamepad all drive it.
@@ -67,24 +67,20 @@ end
 -- Actions
 -- ---------------------------------------------------------------------------
 
--- Pick the team that will stand in for you when you are not here. Reuses the embark screen, which
--- already knows how to choose a company from a roster with all three input devices
--- (states/party_select). Only the first Build.TEAM_SIZE of them are published: a duel has no
--- deployment phase and no bench, so a build is exactly the four who take the field.
+-- Pick the team that will stand in for you when you are not here (states/build_select.lua). A duel has
+-- no deployment phase and no bench, so a build is exactly the Build.TEAM_SIZE who take the field --
+-- which is why this is the one screen left that picks a subset of the roster at all.
 function Pvp:assemble()
     local State = require("states")
     local player = self.player
-    State.switch(require("states.party_select"), nil, player.prestige, player, {
-        title = "Assemble Your Build",
-        subtitle = "The team others face when you are not here -- and the tactics you gave it",
-        embarkLabel = "Publish",
-        onEmbark = function(p)
-            local build = Build.from(p.party, {
-                author = { id = Player.authorId(p), name = p.name },
-                prestige = p.prestige,
+    State.switch(require("states.build_select"), player, {
+        onPublish = function(team)
+            local build = Build.from(team, {
+                author = { id = Player.authorId(player), name = player.name },
+                prestige = player.prestige,
             })
             local _, why = Builds.publish(build)
-            p.lastPublishError = why -- nil on success; the panel reads it when it reopens
+            player.lastPublishError = why -- nil on success; the panel reads it when it reopens
             -- authorId may have been minted just now, and it has to outlive the session or the
             -- next one would be a stranger to its own build.
             Player.save()
@@ -98,8 +94,13 @@ end
 function Pvp:findMatch()
     local State = require("states")
     local player = self.player
-    if #(player.party or {}) == 0 then
-        self.message = "Take someone with you first."
+    -- You duel with the build you published, not with "whoever is at the top of the roster". The
+    -- roster is the campaign's whole company and has no team of four in it to read off; your build is
+    -- the four you named, so it is both what others face and what you bring to the sand.
+    local mine = Builds.backend.read(Builds.idFor(Player.authorId(player)))
+    local myTeam = mine and Build.restore(mine) or nil
+    if not myTeam then
+        self.message = "Assemble a build first -- it is the team you fight with too."
         return
     end
 
@@ -126,7 +127,7 @@ function Pvp:findMatch()
         prestige = Build.NORMAL_LEVEL,
         -- Normalized COPIES, never the live roster. Fresh instances mean a duel cannot spend the
         -- player's real health or lose them an item, so nothing about the campaign rides on it.
-        party = Build.normalizeParty(player.party),
+        party = myTeam,
         enemyChars = foes,
         -- No deployment phase: both teams are normalized copies on a fixed board, and a build is the
         -- four who take the field (Build.TEAM_SIZE) with no bench behind them.

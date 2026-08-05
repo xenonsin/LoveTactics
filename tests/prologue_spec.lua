@@ -41,18 +41,17 @@ return {
         end,
     },
     {
-        name = "the prologue's two recruits build the party through play",
+        name = "the prologue's two recruits build the company through play",
         fn = function()
             local p = Player.new()
             -- Mirror prologue.begin: the roster is just the avatar to start.
             p.roster = { Character.instantiate("character_avatar") }
-            p.party = { p.roster[1] }
 
             local rowan = Player.recruit(p, "character_rowan")
             assert(rowan and rowan.name == "Rowan", "Rowan joins as the first recruit")
             local saber = Player.recruit(p, "character_saber")
             assert(saber and saber.name == "Saber", "Saber joins as the second recruit")
-            assert(#p.party == 3, "avatar + two recruits are all deployed, got " .. #p.party)
+            assert(#p.roster == 3, "avatar + two recruits all march, got " .. #p.roster)
         end,
     },
     {
@@ -95,16 +94,15 @@ return {
         end,
     },
     {
-        name = "the avatar leads the party and Rowan follows -- the order the tutorial's spawns assume",
+        name = "the avatar leads the company and Rowan follows -- the order the tutorial's spawns assume",
         fn = function()
-            -- data/arenas/tutorial_village.lua binds partySpawns in party order, so the avatar takes
+            -- data/arenas/tutorial_village.lua binds partySpawns in roster order, so the avatar takes
             -- slot 1 and Rowan slot 2. The whole lesson's authored cells rest on that pairing.
             local p = Player.new()
             p.roster = { Character.instantiate("character_avatar") } -- mirrors prologue.begin
-            p.party = { p.roster[1] }
             Player.recruit(p, "character_rowan")
-            assert(p.party[1].id == "character_avatar", "the avatar holds the first spawn")
-            assert(p.party[2].id == "character_rowan", "Rowan holds the second")
+            assert(p.roster[1].id == "character_avatar", "the avatar holds the first spawn")
+            assert(p.roster[2].id == "character_rowan", "Rowan holds the second")
         end,
     },
     {

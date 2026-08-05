@@ -38,6 +38,9 @@ local DRAG_THRESHOLD = 5
 
 local BUTTON_H = 22
 local CARD_GAP = 6
+-- The narrowest a company card may get before the strip pages instead of squeezing. Roughly a
+-- portrait plus its health pip -- below this a card carries no information you can act on.
+local MIN_CARD_W = 62
 
 -- opts:
 --   combat, map, arena  the live (unopened) battle and its board widget
@@ -60,6 +63,7 @@ function DeployPhase.new(opts)
     self.held = nil         -- the member the keyboard/pad picked up
     self.drag = nil         -- the member the mouse is carrying
     self.cursor = 1         -- index into the strip while the strip has focus
+    self.scroll = 0         -- first roster index shown in the strip (see cardRect)
     self.boardFocus = false -- keyboard/pad focus is on the board rather than the strip
     self.message = nil
     self.mx, self.my = 0, 0
@@ -224,19 +228,47 @@ end
 -- Layout
 -- ---------------------------------------------------------------------------
 
--- One card per company member, laid across the strip. Sized to fit the whole company at once, so "who
--- is left" is a glance rather than a count.
+-- One card per company member, laid across the strip. It fits the whole company at once where it can,
+-- so "who is left" is a glance rather than a count -- but the company is the whole roster and the
+-- roster is unbounded, so cards stop shrinking at MIN_CARD_W and the strip scrolls instead. A card
+-- narrower than that is a smear, and a smear you cannot pick out of is worse than a page you turn.
+function DeployPhase:cardWidth()
+    local n = math.max(1, #self.roster)
+    local w = (self.gutter.w - CARD_GAP * (n - 1)) / n
+    return math.max(MIN_CARD_W, w)
+end
+
+-- How many cards fit at the current width, and the largest first-index the strip may scroll to.
+function DeployPhase:cardsVisible()
+    local w = self:cardWidth()
+    return math.max(1, math.floor((self.gutter.w + CARD_GAP) / (w + CARD_GAP)))
+end
+
+function DeployPhase:maxScroll()
+    return math.max(0, #self.roster - self:cardsVisible())
+end
+
+-- Keep the strip cursor on screen. Called after any move of `self.cursor`.
+function DeployPhase:scrollToCursor()
+    local visible = self:cardsVisible()
+    if self.scroll > self.cursor - 1 then self.scroll = self.cursor - 1
+    elseif self.cursor > self.scroll + visible then self.scroll = self.cursor - visible end
+    self.scroll = math.max(0, math.min(self:maxScroll(), self.scroll))
+end
+
+-- The rect of roster index `i`, or nil when it is scrolled out of the strip.
 function DeployPhase:cardRect(i)
     local r = self.gutter
-    local n = math.max(1, #self.roster)
-    local w = (r.w - CARD_GAP * (n - 1)) / n
-    return r.x + (i - 1) * (w + CARD_GAP), r.y + 4, w, r.h - BUTTON_H - 8
+    local slot = i - self.scroll
+    if slot < 1 or slot > self:cardsVisible() then return nil end
+    local w = self:cardWidth()
+    return r.x + (slot - 1) * (w + CARD_GAP), r.y + 4, w, r.h - BUTTON_H - 8
 end
 
 function DeployPhase:cardAt(px, py)
     for i = 1, #self.roster do
         local x, y, w, h = self:cardRect(i)
-        if px >= x and px <= x + w and py >= y and py <= y + h then return i end
+        if x and px >= x and px <= x + w and py >= y and py <= y + h then return i end
     end
     return nil
 end
@@ -284,6 +316,7 @@ end
 
 function DeployPhase:drawCard(i, char)
     local x, y, w, h = self:cardRect(i)
+    if not x then return end -- scrolled out of the strip
     local placed = self:deployedOf(char)
     local held = self.held == char or (self.drag and self.drag.active and self.drag.char == char)
 
@@ -293,8 +326,8 @@ function DeployPhase:drawCard(i, char)
     love.graphics.rectangle("line", x, y, w, h, 6, 6)
 
     -- "This one is standing" is an amber bar across the card's top rather than a word over the
-    -- portrait: at eight cards to a board's width there is no room for a caption, and the bar reads
-    -- from further away than the text ever did.
+    -- portrait: at a company's worth of cards to a board's width there is no room for a caption, and
+    -- the bar reads from further away than the text ever did.
     if placed then
         Theme.set(Theme.accentAmber)
         love.graphics.rectangle("fill", x + 3, y + 3, w - 6, 3, 2, 2)
@@ -306,7 +339,7 @@ function DeployPhase:drawCard(i, char)
     end
 
     -- The ones standing read BRIGHT; the reserve reads quieter. The bar above already says which is
-    -- which -- this just keeps the two groups from looking like one row of eight identical cards.
+    -- which -- this just keeps the two groups from looking like one row of identical cards.
     love.graphics.setFont(self.font)
     love.graphics.setColor(placed and 0.95 or 0.70, placed and 0.93 or 0.72, placed and 0.98 or 0.80)
     love.graphics.printf(Theme.ellipsize(char.name or "?", self.font, w - 4), x + 2, y + h - 15, w - 4, "center")
@@ -349,6 +382,27 @@ function DeployPhase:draw(bounds)
         .. " on the field", bounds.x, 64, bounds.w, "center")
 
     for i, char in ipairs(self.roster) do self:drawCard(i, char) end
+    -- Only when the company overflows the strip: how many are off each end, tabbed over the card at
+    -- that end. A count rather than an arrow, because "3 more" answers the question an arrow raises.
+    -- Inside the gutter, never beside it -- the gutter is exactly the board's width and there is no
+    -- promise of margin on either side of it.
+    if self:maxScroll() > 0 then
+        local r = self.gutter
+        local after = #self.roster - self.scroll - self:cardsVisible()
+        local function tab(label, x)
+            local w = self.font:getWidth(label) + 8
+            love.graphics.setColor(0.08, 0.09, 0.12, 0.9)
+            love.graphics.rectangle("fill", x, r.y + 4, w, 16, 3, 3)
+            love.graphics.setColor(0.60, 0.64, 0.75)
+            love.graphics.print(label, x + 4, r.y + 5)
+        end
+        love.graphics.setFont(self.font)
+        if self.scroll > 0 then tab("<" .. self.scroll, r.x + 2) end
+        if after > 0 then
+            local label = after .. ">"
+            tab(label, r.x + r.w - self.font:getWidth(label) - 10)
+        end
+    end
 
     self:drawButton(self:autoRect(), "Auto", true)
     self:drawButton(self:resetRect(), "Clear", #self.placed > 0)
@@ -463,6 +517,14 @@ function DeployPhase:navigate(dx, dy)
     end
     if dy < 0 then self.boardFocus = true return end
     self.cursor = math.max(1, math.min(#self.roster, self.cursor + dx))
+    self:scrollToCursor()
+end
+
+-- Wheel over the strip pages the company sideways. Only bound when there is something off-screen, so
+-- on an ordinary company the wheel does nothing rather than jittering a strip that already fits.
+function DeployPhase:wheelmoved(_, dy)
+    if dy == 0 or self:maxScroll() == 0 then return end
+    self.scroll = math.max(0, math.min(self:maxScroll(), self.scroll - dy))
 end
 
 function DeployPhase:confirm()

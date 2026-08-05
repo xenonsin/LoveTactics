@@ -334,12 +334,13 @@ local function placeUnits(rowList, count, cols, occupied)
     return spawns
 end
 
--- The board cell a marching-grid slot maps to. Grid ROW 1 is the FRONT line -- it "faces the enemy"
--- (states/party_select.lua), and the enemy holds the FAR edge (low y) while the party lands on the near
--- rows -- so the front rank must sit one row TOWARD the enemy from the party's home edge, not on it:
+-- The board cell a marching-grid slot maps to. Only the DRAFT has such a grid now (the campaign places
+-- per battle, in the deployment phase); see DraftRun.FORMATION. Grid ROW 1 is the FRONT line -- it
+-- faces the enemy, and the enemy holds the FAR edge (low y) while the party lands on the near rows --
+-- so the front rank must sit one row TOWARD the enemy from the party's home edge, not on it:
 -- front (row 1) -> rows-frows+1, back (row frows) -> rows (the home edge). Deeper grid rows step BACK
 -- toward that edge. Grid columns spread across the full board width with the SAME even spacing
--- placeUnits uses. See models/player.lua for the grid the player edits.
+-- placeUnits uses.
 local function formationCell(slot, fcols, frows, cols, rows)
     local x = math.floor(slot.col * (cols + 1) / (fcols + 1) + 0.5)
     x = math.max(1, math.min(cols, x))

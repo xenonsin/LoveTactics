@@ -1,6 +1,10 @@
 -- Enemy boss blueprint (quest objective). See data/characters/bandit.lua.
 return {
     name = "Warlord",
+    kind = "humanoid",
+    tier = 4,
+    class = "fighter",
+    discipline = "warlord",
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/warlord.png",
     stats = {

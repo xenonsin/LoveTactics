@@ -3,8 +3,11 @@
 -- is hunter. Kit from data/disciplines/herbalist.lua.
 return {
     name = "Herbalist",
+    kind = "humanoid",
+    tier = 2,
     sprite = "assets/chars/herbalist.png",
     class = "hunter",
+    discipline = "herbalist",
     -- Harvests the field, brews, and mends or poisons from it (models/ai.lua `support`).
     archetype = "support",
     stats = {
