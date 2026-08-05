@@ -162,8 +162,14 @@ function Consumables:useSelected()
     if not (entry and char) then return end
     if not Player.canUseConsumableOn(char, entry.item) then
         local stat = Player.restorativeStat(entry.item)
-        self:setMsg((char.name or "That member") .. "'s " .. (BAR_LABEL[stat] or "pool")
-            .. " is already full.", false)
+        local label = BAR_LABEL[stat] or "pool"
+        -- A pool the member doesn't own at all (Saber has no mana) is refused for a different reason
+        -- than a topped-up one, and "already full" reads as a lie next to an absent bar.
+        local res = char.stats and char.stats[stat]
+        local owns = type(res) ~= "table" or (res.max or 0) > 0
+        self:setMsg((char.name or "That member") .. (owns
+            and ("'s " .. label .. " is already full.")
+            or (" has no " .. label .. " to restore.")), false)
         return
     end
     local name = entry.item.name or "a potion"
@@ -284,10 +290,12 @@ function Consumables:drawMemberRow(i, char, r)
     love.graphics.print(char.name or "?", tx, r.y + 8)
 
     -- HP / MP / SP bars, skipping any pool the member doesn't have (a fighter shows no MP row).
+    -- Every resource stat instantiates as a table even when the blueprint authored it as 0, so the
+    -- "doesn't have it" test is a max of 0, not the absence of the table (as ui/tile_tooltip.lua does).
     local by = r.y + 32
     for _, stat in ipairs(Character.RESOURCE_STATS) do
         local res = char.stats and char.stats[stat]
-        if type(res) == "table" then
+        if type(res) == "table" and (res.max or 0) > 0 then
             self:drawBar(tx, by, tw, stat, res.current or res.max or 0, res.max or 0)
             by = by + 18
         end
