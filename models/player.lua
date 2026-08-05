@@ -167,6 +167,24 @@ function Player.seeNew(player, kind, itemId)
     return true
 end
 
+-- Does the stash hold anything the player has not looked at yet? What the red dot on the Armory's
+-- door reads (states/hub.lua), the same way Vendor.hasMarkedStock answers it for a shop's shelf: the
+-- advancement panel names a quest's spoils once, on the way home, and the dot is what still says so
+-- three screens later.
+--
+-- A mark is checked AGAINST THE STASH rather than trusted on its own. Marks are keyed by item id and
+-- cleared by a look, so one for an id that is no longer in the stash (sold, or carried off to a
+-- character's grid by some route that never rested a cursor on it) would otherwise light the door
+-- forever, pointing at nothing.
+function Player.hasNewStash(player)
+    local marks = player and player.newItems
+    if not marks or not next(marks) then return false end
+    for _, item in ipairs(player.stash or {}) do
+        if marks[item.id] then return true end
+    end
+    return false
+end
+
 -- Pull the item at `index` out of the stash and hand it back (nil if there is nothing there).
 function Player.takeFromStash(player, index)
     local stash = player.stash

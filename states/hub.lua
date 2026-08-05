@@ -253,12 +253,19 @@ function hub.enter()
     -- getting richer (Building.list).
     map = BuildingMap.new(Building.list(hub.player), {
         onActivate = openPanel,
-        -- A shop whose shelf holds wares the player has not looked at yet wears the red dot on its
-        -- door. The advancement panel names the house once, on the way home; the dot is what still
-        -- says so three screens later, and it goes out as soon as the shelf has been read
-        -- (Player.seeNew in ui/panels/shop.lua).
+        -- A door behind which something unlooked-at is waiting wears the red dot. The advancement
+        -- panel names the house once, on the way home; the dot is what still says so three screens
+        -- later, and it goes out as soon as the goods have been read (Player.seeNew).
+        --
+        --   a shop     wares a quest put on its shelf   (newStock, cleared in ui/panels/shop.lua)
+        --   the Armory items that arrived in the stash  (newItems, cleared in ui/panels/party.lua)
+        --
+        -- The Armory is the non-vendor door onto the Party panel -- it holds the stash rather than a
+        -- shelf, which is exactly the difference the two ledgers draw.
         badge = function(b)
-            return b.vendor ~= nil and Vendor.hasMarkedStock(b.vendor, hub.player.newStock)
+            if b.vendor then return Vendor.hasMarkedStock(b.vendor, hub.player.newStock) end
+            if b.panel == "party" then return Player.hasNewStash(hub.player) end
+            return false
         end,
     })
     burger = BurgerButton.new(BURGER_X, BURGER_Y)

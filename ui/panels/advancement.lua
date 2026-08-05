@@ -11,6 +11,7 @@
 --   local panel = Advancement.new({ reward = questRewardTable, onClose = fn })
 
 local CloseButton = require("ui.close_button")
+local ItemTooltip = require("ui.item_tooltip")
 local Scale = require("scale")
 local InputMode = require("input_mode")
 local Theme = require("ui.theme")
@@ -31,19 +32,33 @@ local ROW_H = 46
 local HEAD_H, FOOT_H = 205, 56
 local MAX_ROWS = 6
 
--- The "new on the shelf" section, drawn between the prestige bar and the level-up list on the quests
--- that opened stock (reward.unlockedStock). It names the shop and lists the wares, because the
--- campaign loop is "run a house's quest, then spend at the shelf it opened" -- and a player who is not
--- told which shop moved has to go door-knocking to find out.
-local STOCK_HEAD_H = 22 -- the "New items unlocked at <shop>" heading
-local STOCK_ROW_H = 19  -- one "Bell Hammer ....... 120g" line
-local STOCK_TOP_PAD = 10 -- clearance under the prestige bar's caption row
-local STOCK_PAD = 12    -- gap between the section and the heading under it
-local STOCK_MAX_ROWS = 4
+-- The two boxed sections that sit between the prestige bar and the level-up list, stacked in this
+-- order and each costing no height at all on a quest that has none of it:
+--
+--   "Items gained"                 what the quest HANDED OVER (reward.received) -- named, because they
+--                                  are already in the stash and the panel is the only place they are
+--                                  announced (battle loot and chests get their own reveal en route).
+--   "New items unlocked at <shop>" what the quest put on its sponsor's SHELF (reward.unlockedStock) --
+--                                  counted but deliberately NOT named: the campaign loop is "run a
+--                                  house's quest, then spend at the shelf it opened", so the player is
+--                                  told which shop moved and reads the goods at the shop itself.
+local SEC_HEAD_H = 22 -- a section heading ("Items gained", "New items unlocked at <shop>")
+local SEC_ROW_H = 19  -- one plain text row under a heading (the "+N more" line)
+local SEC_TOP_PAD = 10 -- clearance above a section (under the prestige bar's caption row)
+local SEC_PAD = 12    -- gap between a section and whatever sits under it
+local GAIN_MAX_ROWS = 4
 
--- Where the section starts, as an offset from the box top: just below the prestige bar, which is also
--- where "The company grows" sits when there is no section (hence the shared 177).
-local STOCK_Y = 177 + STOCK_TOP_PAD
+-- A gained row carries the item's ICON, so it is taller than a text row: the name alone asks the
+-- player to remember what "The Drowned Censer" looked like when they next open the Armory, and the
+-- icon is what they will actually be scanning that stash for. Hovering the row opens the item's full
+-- sheet (ui/item_tooltip.lua), which is the only way to read what the thing DOES without walking to
+-- the Armory first.
+local GAIN_ROW_H = 28
+local GAIN_ICON = 22
+
+-- Where the first section starts, as an offset from the box top: just below the prestige bar, which is
+-- also where "The company grows" sits when there is no section at all (hence the shared 177).
+local SECTION_Y = 177
 
 -- The prestige bar's fill: a beat to read the starting state, then the climb. Slow enough that a
 -- single prestige is a visible movement rather than a jump -- the whole point of the bar is that a
@@ -76,6 +91,40 @@ local function gainsText(gains)
     return table.concat(parts, ", ")
 end
 
+-- How much room the two sections take, and what goes in them, from the reward table alone -- font-free
+-- so the sizing can be read (and tested) without a window:
+--
+--   gained / gainRows / gainMore / gainH   the items the quest handed over, capped to GAIN_MAX_ROWS
+--                                          with the overflow spoken as a "+N more" line
+--   stock / stockH                         the sponsor shelf it opened, one heading whatever the count
+--   sectionsH                              the two stacked, which is what the box grows by
+function Advancement.sections(reward)
+    local s = {}
+
+    -- What the quest handed over: the item instances Quest.complete granted into the stash. A long
+    -- haul truncates rather than growing the box without limit -- the Armory is where the whole stash
+    -- is read, and those rows wear the unseen dot until they are.
+    s.gained = reward.received or {}
+    s.gainH, s.gainRows, s.gainMore = 0, 0, 0
+    if #s.gained > 0 then
+        s.gainRows = math.min(#s.gained, GAIN_MAX_ROWS)
+        s.gainMore = #s.gained - s.gainRows
+        s.gainH = SEC_TOP_PAD + SEC_HEAD_H + s.gainRows * GAIN_ROW_H
+            + (s.gainMore > 0 and SEC_ROW_H or 0) + SEC_PAD
+    end
+
+    -- The shelf this quest opened, as { vendor = shop name, items = { { name, price }, ... } }. A quest
+    -- that opened nothing carries nil and the section costs no height at all.
+    local stock = reward.unlockedStock
+    s.stock = (type(stock) == "table" and stock.items and #stock.items > 0) and stock or nil
+    -- One heading, whatever the size of the haul: the section is a pointer to a shop, not a catalogue,
+    -- so its height does not move with the item count.
+    s.stockH = s.stock and (SEC_TOP_PAD + SEC_HEAD_H + SEC_PAD) or 0
+
+    s.sectionsH = s.gainH + s.stockH
+    return s
+end
+
 function Advancement.new(opts)
     opts = opts or {}
     local self = setmetatable({}, Advancement)
@@ -89,23 +138,15 @@ function Advancement.new(opts)
     self.bodyFont = Theme.body(15)
     self.smallFont = Theme.body(13)
 
-    -- The shelf this quest opened, as { vendor = shop name, items = { { name, price }, ... } }. A quest
-    -- that opened nothing carries nil and the section costs no height at all.
-    local stock = self.reward.unlockedStock
-    self.stock = (type(stock) == "table" and stock.items and #stock.items > 0) and stock or nil
-    self.stockH = 0
-    if self.stock then
-        -- A long haul is truncated to a "+N more" line rather than growing the box without limit; the
-        -- shop itself is where the full shelf is read.
-        self.stockRows = math.min(#self.stock.items, STOCK_MAX_ROWS)
-        self.stockMore = #self.stock.items - self.stockRows
-        local rows = self.stockRows + (self.stockMore > 0 and 1 or 0)
-        self.stockH = STOCK_TOP_PAD + STOCK_HEAD_H + rows * STOCK_ROW_H + STOCK_PAD
-    end
+    for k, v in pairs(Advancement.sections(self.reward)) do self[k] = v end
 
-    -- One row minimum, so the "no one levelled" line has somewhere to sit.
-    self.visible = math.max(1, math.min(#self.entries, MAX_ROWS))
-    self.headH = HEAD_H + self.stockH
+    -- One row minimum, so the "no one levelled" line has somewhere to sit. The roster list is also
+    -- what YIELDS when the sections above it are tall: a full haul plus an opened shelf plus six
+    -- level-ups is taller than 720, and the list is the part that already scrolls, so it gives up
+    -- rows rather than letting the box run off the screen.
+    self.headH = HEAD_H + self.sectionsH
+    local room = math.floor((Scale.HEIGHT - 40 - self.headH - FOOT_H) / ROW_H)
+    self.visible = math.max(1, math.min(#self.entries, MAX_ROWS, room))
     self.boxH = self.headH + self.visible * ROW_H + FOOT_H
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
@@ -129,6 +170,21 @@ function Advancement.new(opts)
     self.listH = self.visible * ROW_H
 
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
+
+    -- Hit rects for the gained rows, laid out once here so drawGained and the hover test can never
+    -- disagree about where a row is. Mouse-only, like the loot cards on the victory panel: this is a
+    -- summary you read and close, so the tooltip stays out of the keyboard/pad path (up/down keep
+    -- scrolling the roster).
+    self.gainRects = {}
+    local gainRowsY = self.boxY + SECTION_Y + SEC_TOP_PAD + SEC_HEAD_H
+    for i = 1, self.gainRows do
+        self.gainRects[i] = {
+            x = self.listX - 6, y = gainRowsY + (i - 1) * GAIN_ROW_H,
+            w = self.listW + 12, h = GAIN_ROW_H,
+        }
+    end
+    self.hoverGain = nil
+    self.mx, self.my = 0, 0
 
     -- The company grew: ring the level-up cue as the overlay opens, but only when there is actually an
     -- advancement to celebrate (a quest with no level-ups shows "No advancement this time" in silence).
@@ -215,16 +271,23 @@ function Advancement:draw()
     end
 
     self:drawPrestigeBar()
+    self:drawGained()
     self:drawStock()
 
     love.graphics.setFont(self.headFont)
     Theme.set(Theme.muted)
-    love.graphics.print("The company grows", self.listX, self.boxY + 177 + self.stockH)
+    love.graphics.print("The company grows", self.listX, self.boxY + SECTION_Y + self.sectionsH)
 
     self:drawList()
     self:drawFooter()
 
     self.closeButton:draw()
+
+    -- The hovered item's full sheet, last so it sits over the panel it hangs off.
+    local hovered = self.hoverGain and self.gained[self.hoverGain]
+    if hovered and InputMode.isMouse() then
+        ItemTooltip.draw(hovered, self.mx, self.my, Scale.WIDTH)
+    end
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -268,20 +331,109 @@ function Advancement:drawPrestigeBar()
     end
 end
 
--- "New items unlocked at the Colosseum Armory" -- the wares this quest put on its sponsor's shelf, by name and price.
--- The panel used to say only that stock had appeared *somewhere*, which left the player to go
--- door-knocking for it; naming the shop and the goods is what makes the quest read as the thing that
--- bought them. Sits directly under the prestige bar: what the company earned, then what it may now buy,
--- then who grew.
+-- "Items gained" -- what the quest itself handed over (reward.received: a general's relic, whatever a
+-- sponsor pays in kind), already sitting in the stash by the time this panel opens. Named, unlike the
+-- shelf below it: these are owned, not offered, and this panel is their only announcement -- loot picked
+-- up on the map got its chest reveal en route, but a quest's own reward arrived in silence and the
+-- player had to go find it in a sixty-row stash to learn what it was.
+--
+-- Each row is icon + name + kind, and hovering one opens the item's full sheet. A name on its own
+-- announced that something arrived without ever saying what it was worth carrying: the icon is what
+-- the player will recognise in the stash later, and the tooltip is the only chance to read the thing
+-- before deciding whether the Armory is the next door.
+function Advancement:drawGained()
+    if self.gainH == 0 then return end
+
+    local x, w = self.listX, self.listW
+    local y = self.boxY + SECTION_Y + SEC_TOP_PAD
+
+    Theme.set(Theme.panel2)
+    love.graphics.rectangle("fill", x - 6, y - 6, w + 12,
+        self.gainH - SEC_TOP_PAD - SEC_PAD + 12, Theme.R, Theme.R)
+
+    local n = #self.gained
+    local count = n == 1 and "1 item" or (n .. " items")
+    local countW = self.smallFont:getWidth(count) + 12
+    local font, head = Theme.fitText(Theme.body, "Items gained", w - countW, 15, 12)
+    love.graphics.setFont(font)
+    Theme.set(Theme.accentAmber)
+    love.graphics.print(head, x, y)
+
+    love.graphics.setFont(self.smallFont)
+    Theme.set(Theme.muted)
+    love.graphics.printf(count, x, y + 2, w, "right")
+
+    local ry = y + SEC_HEAD_H
+    for i = 1, self.gainRows do
+        local item = self.gained[i]
+        local rect = self.gainRects[i]
+        if self.hoverGain == i then
+            Theme.set(Theme.slot, 0.8)
+            love.graphics.rectangle("fill", rect.x, rect.y, rect.w, rect.h, Theme.R, Theme.R)
+        end
+
+        self:drawGainIcon(item, x, ry + (GAIN_ROW_H - GAIN_ICON) / 2)
+        local tx = x + GAIN_ICON + 10
+
+        -- The kind is what says where the thing goes -- a weapon to a grid, a consumable to the pack --
+        -- so it holds its width and the name steps down a size to fit (never a scaled font).
+        local kind = classLabel(item.type)
+        local kindW = kind ~= "" and self.smallFont:getWidth(kind) + 12 or 0
+        local avail = w - (tx - x) - kindW
+        local font, name = Theme.fitText(Theme.body, item.name or "?", avail, 14, 11)
+        love.graphics.setFont(font)
+        Theme.set(Theme.ink)
+        love.graphics.print(name, tx, ry + (GAIN_ROW_H - font:getHeight()) / 2)
+        if kind ~= "" then
+            love.graphics.setFont(self.smallFont)
+            Theme.set(Theme.muted)
+            love.graphics.printf(kind, x, ry + (GAIN_ROW_H - self.smallFont:getHeight()) / 2, w, "right")
+        end
+        ry = ry + GAIN_ROW_H
+    end
+
+    if self.gainMore > 0 then
+        love.graphics.setFont(self.smallFont)
+        Theme.set(Theme.muted)
+        love.graphics.print("+" .. self.gainMore .. " more in the stash", x, ry)
+    end
+end
+
+-- One gained item's icon, GAIN_ICON square with its top-left at (x, y). A missing image falls back to
+-- the name's initial on a plate, the same convention every other icon in the game uses -- art lands
+-- incrementally here (models/sprite.lua returns the path string when the file is not there yet).
+function Advancement:drawGainIcon(item, x, y)
+    local sprite = item.sprite
+    if type(sprite) == "userdata" then
+        love.graphics.setColor(1, 1, 1)
+        local sw, sh = sprite:getDimensions()
+        local scale = math.min(GAIN_ICON / sw, GAIN_ICON / sh)
+        love.graphics.draw(sprite, x + GAIN_ICON / 2, y + GAIN_ICON / 2, 0, scale, scale, sw / 2, sh / 2)
+    else
+        Theme.set(Theme.slot)
+        love.graphics.rectangle("fill", x, y, GAIN_ICON, GAIN_ICON, 4, 4)
+        love.graphics.setFont(self.smallFont)
+        Theme.set(Theme.muted)
+        love.graphics.printf((item.name or "?"):sub(1, 1), x,
+            y + GAIN_ICON / 2 - self.smallFont:getHeight() / 2, GAIN_ICON, "center")
+    end
+end
+
+-- "New items unlocked at the Colosseum Armory -- 2 items": that this quest moved that shelf, and how
+-- much of it. The panel used to say only that stock had appeared *somewhere*, which left the player to
+-- go door-knocking for it; naming the shop is what makes the quest read as the thing that bought the
+-- goods. The goods themselves stay unnamed -- reading them is what the visit to the shop is for. Sits
+-- directly under the prestige bar: what the company earned, then where it may now spend, then who grew.
 function Advancement:drawStock()
     if not self.stock then return end
 
     local x, w = self.listX, self.listW
-    local y = self.boxY + STOCK_Y
+    -- Stacked under the "Items gained" section, which is nothing at all on a quest that gave none.
+    local y = self.boxY + SECTION_Y + self.gainH + SEC_TOP_PAD
 
     Theme.set(Theme.panel2)
     love.graphics.rectangle("fill", x - 6, y - 6, w + 12,
-        self.stockH - STOCK_TOP_PAD - STOCK_PAD + 12, Theme.R, Theme.R)
+        self.stockH - SEC_TOP_PAD - SEC_PAD + 12, Theme.R, Theme.R)
 
     -- "New items unlocked at <shop>" spelled out: "New at <shop>" read as a place rather than as an
     -- event, and the whole point of the line is that a quest just PUT something on that shelf. The
@@ -299,31 +451,6 @@ function Advancement:drawStock()
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
     love.graphics.printf(count, x, y + 2, w, "right")
-
-    local ry = y + STOCK_HEAD_H
-    for i = 1, self.stockRows do
-        local entry = self.stock.items[i]
-        -- The price is what turns this from news into a plan, so it is never squeezed out: the name
-        -- gets whatever width is left over and steps down a size to fit (never a scaled font).
-        local price = entry.price and (entry.price .. " gold") or ""
-        local priceW = price ~= "" and self.smallFont:getWidth(price) + 12 or 0
-        local font, name = Theme.fitText(Theme.body, entry.name or "?", w - priceW, 14, 11)
-        love.graphics.setFont(font)
-        Theme.set(Theme.ink)
-        love.graphics.print(name, x, ry)
-        if price ~= "" then
-            love.graphics.setFont(self.smallFont)
-            love.graphics.setColor(0.95, 0.82, 0.4)
-            love.graphics.printf(price, x, ry + 1, w, "right")
-        end
-        ry = ry + STOCK_ROW_H
-    end
-
-    if self.stockMore > 0 then
-        love.graphics.setFont(self.smallFont)
-        Theme.set(Theme.muted)
-        love.graphics.print("+" .. self.stockMore .. " more on the shelf", x, ry)
-    end
 end
 
 function Advancement:drawList()
@@ -411,7 +538,15 @@ function Advancement:drawFooter()
 end
 
 function Advancement:mousemoved(x, y)
+    self.mx, self.my = x, y
     self.closeButton:mousemoved(x, y)
+    self.hoverGain = nil
+    for i, r in ipairs(self.gainRects) do
+        if x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
+            self.hoverGain = i
+            break
+        end
+    end
 end
 
 -- Hand over the close X (the only button; the rest is a summary). See ui/cursor.lua.

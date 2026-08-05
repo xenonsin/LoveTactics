@@ -770,6 +770,28 @@ return {
         end,
     },
     {
+        name = "a stash mark dots the Armory's door, and only while the item is still in the stash",
+        fn = function()
+            local p = Player.new()
+            p.newItems = {}
+            p.stash = {}
+            assert(not Player.hasNewStash(p), "an unread stash is the only thing that dots that door")
+
+            Player.grantItem(p, "consumable_healing_potion")
+            assert(Player.hasNewStash(p), "a granted item lights the Armory")
+
+            -- The mark stands, but the item is gone (sold, or carried off into a character's grid):
+            -- a door that points at nothing must not keep glowing.
+            p.stash = {}
+            assert(not Player.hasNewStash(p), "a mark with nothing behind it is not news")
+
+            p.stash = { Item.instantiate("consumable_healing_potion") }
+            assert(Player.hasNewStash(p), "and it is news again the moment the item is back")
+            Player.seeNew(p, Player.NEW_STASH, "consumable_healing_potion")
+            assert(not Player.hasNewStash(p), "reading the stash takes the dot off the door")
+        end,
+    },
+    {
         name = "New Game+ clears the shelf marks, since every shelf re-locked with the quest ledger",
         fn = function()
             withScratchSave(function()
