@@ -73,9 +73,6 @@ local backButton = { x = 16, y = 16, w = 110, h = 36 }
 local itemsButton = { x = 138, y = 16, w = 110, h = 36 }
 -- Clickable "Use" button: opens the consumables screen to drink a restorative draught between fights.
 local useButton = { x = 260, y = 16, w = 110, h = 36 }
--- Clickable "Party" button: opens the party panel -- HP/mana readout + the marching-grid editor -- so
--- the formation can be re-set between fights while the attrition is in view.
-local partyButton = { x = 382, y = 16, w = 110, h = 36 }
 
 local function rectContains(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
@@ -111,20 +108,12 @@ local function openConsumables()
     })
 end
 
--- The party panel (HP/mana readout + marching-grid editor) and its always-on HP strip ride on every
--- normal quest, but not the flight tutorial: that leg's HUD is deliberately spare and its coach bubble
--- lives where the strip would sit.
+-- The always-on party HP/mana strip rides on every normal quest, but not the flight tutorial: that
+-- leg's HUD is deliberately spare and its coach bubble lives where the strip would sit. The strip IS
+-- the readout now -- it once had a Party button opening the same figures at modal size, which stopped
+-- earning its place on the HUD the day the deployment phase took the marching grid out of that panel.
 local function partyVisible()
     return game.tutorial ~= "flight"
-end
-
--- Open the party panel over the overworld (same modal slot as the encounter panel).
-local function openParty()
-    game.activePanel = PartyStatus.new({
-        player = game.player,
-        abilityState = game.abilityState, -- so the panel can show what each companion has banked
-        onClose = function() game.activePanel = nil end,
-    })
 end
 
 -- A transient on-screen line an ability pushes when it fires (Amana mends X, Kaya forages, ...). Fades
@@ -1099,18 +1088,6 @@ function game.drawHud()
             useButton.w, "center")
     end
 
-    -- Party button, beside Use. Opens the HP/mana + marching-grid panel.
-    if partyVisible() then
-        love.graphics.setColor(0.20, 0.23, 0.32)
-        love.graphics.rectangle("fill", partyButton.x, partyButton.y, partyButton.w, partyButton.h, 6, 6)
-        love.graphics.setColor(0.5, 0.55, 0.7)
-        love.graphics.rectangle("line", partyButton.x, partyButton.y, partyButton.w, partyButton.h, 6, 6)
-        love.graphics.setColor(0.95, 0.95, 0.95)
-        love.graphics.setFont(hudFont)
-        love.graphics.printf("Party", partyButton.x, partyButton.y + partyButton.h / 2 - 8,
-            partyButton.w, "center")
-    end
-
     -- Always-on party HP/mana strip: the run's attrition, legible while routing (models/player.lua).
     -- Pass the mouse (logical space) so the per-companion ability badge shows its tooltip on hover.
     if partyVisible() then
@@ -1155,12 +1132,11 @@ function game.drawHud()
     -- otherwise. The items key only appears once the Loadout button itself does.
     local items = game.itemsVisible and (InputMode.isGamepad() and "Y: items      " or "I: items      ") or ""
     local use = useVisible() and (InputMode.isGamepad() and "X: use      " or "U: use      ") or ""
-    local party = partyVisible() and (InputMode.isGamepad() and "LB: party      " or "P: party      ") or ""
     -- The "back to hub" hint is dropped alongside the button itself during the flight tutorial.
     local back = backVisible() and (InputMode.isGamepad() and "Back: hub" or "Esc: hub") or ""
     local hint = InputMode.isGamepad()
-        and ("Move: D-pad / Stick      " .. items .. use .. party .. back)
-        or ("Move: WASD / Arrows / click adjacent tile      " .. items .. use .. party .. back)
+        and ("Move: D-pad / Stick      " .. items .. use .. back)
+        or ("Move: WASD / Arrows / click adjacent tile      " .. items .. use .. back)
     love.graphics.printf(hint, 0, Scale.HEIGHT - 30, Scale.WIDTH, "center")
     love.graphics.setColor(1, 1, 1)
 end
@@ -1180,8 +1156,7 @@ function game:cursorKind(x, y)
         return game.activePanel.cursorKind and game.activePanel:cursorKind(x, y) or "arrow"
     end
     if (backVisible() and backContains(x, y)) or (game.itemsVisible and rectContains(itemsButton, x, y))
-        or (useVisible() and rectContains(useButton, x, y))
-        or (partyVisible() and rectContains(partyButton, x, y)) then
+        or (useVisible() and rectContains(useButton, x, y)) then
         return "hand"
     end
     return "arrow"
@@ -1196,8 +1171,6 @@ function game.mousepressed(x, y, button)
         openLoadout()
     elseif button == 1 and useVisible() and rectContains(useButton, x, y) then
         openConsumables()
-    elseif button == 1 and partyVisible() and rectContains(partyButton, x, y) then
-        openParty()
     else
         game.map:mousepressed(x, y, button)
     end
@@ -1223,8 +1196,6 @@ function game.keypressed(key)
         openLoadout()
     elseif key == "u" and useVisible() then
         openConsumables()
-    elseif key == "p" and partyVisible() then
-        openParty()
     else
         game.map:keypressed(key)
     end
@@ -1239,8 +1210,6 @@ function game.gamepadpressed(joystick, button)
         openLoadout()
     elseif button == "x" and useVisible() then
         openConsumables()
-    elseif button == "leftshoulder" and partyVisible() then
-        openParty()
     else
         game.map:gamepadpressed(joystick, button)
     end
