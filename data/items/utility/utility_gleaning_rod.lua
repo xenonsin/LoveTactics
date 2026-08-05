@@ -51,8 +51,10 @@ return {
             end
             local weight = charges * (5 + fx.level)
             -- Spent to nothing, whatever it bought. A purse rather than a rate -- see the note above,
-            -- and see the trait, which is the only thing that ever fills it.
-            fx.item.charges = 0
+            -- and see the trait, which is the only thing that ever fills it. Written through
+            -- fx.bankItem rather than assigned onto fx.item: both damage previews replay this effect
+            -- against the real rod, so a direct write emptied the purse under the aim cursor.
+            fx.bankItem("charges", 0)
             if body.side == fx.user.side then
                 fx.heal(body, weight)
             else

@@ -473,6 +473,28 @@ local function buildBlocks(item, actor, innerW, out)
         end
     end
 
+    -- A CHARGE POOL this item banks into or spends from -- Zeal, Defiance, Tempo, Arcane, the monk's
+    -- chi -- named and counted, in the same charges glyph the purse row above wears. Deliberately
+    -- OUTSIDE the ability section that closes just above: half the pool items have no ability at all
+    -- (the Crusader's Tabard, the Vow of the March), and a charm whose entire function is to accrue is
+    -- the one that most needs to say how much it is holding.
+    --
+    -- Quoted as n of max because banking past a full pool is silently discarded, so the ceiling is the
+    -- number that says when to stop saving and spend. Named for the pool rather than called "Charges",
+    -- since these are shared bars the whole grid banks into -- "Zeal 5 of 8" tells you which of the
+    -- unit's pools moved; a row reading "Charges" over two different pools would not.
+    -- Falling back to a stacking TRAIT's count (Trait.stackReadout) when there is no pool: the
+    -- Butcher's Tally and the Blood Fever Mail bank bodies with no ability to hang a counter on, and
+    -- the strap is literally named for notches it was not showing. Named for the trait, since that is
+    -- what the count belongs to and what the description above has already introduced.
+    local pool, poolMax, poolLabel = Combat.itemChargeReadout(actor, item)
+    if not pool then pool, poolMax, poolLabel = Trait.stackReadout(actor, item) end
+    if pool and not (ab and ab.counter) then
+        blocks[#blocks + 1] = { kind = "sep" }
+        blocks[#blocks + 1] = { kind = "stat", label = poolLabel, icon = "charges",
+            value = pool .. " of " .. poolMax }
+    end
+
     -- What this item's triggered reflex (a Riposte Blade's parry) costs in TIME. Always quoted when the
     -- item has one, because the length is the item's own property and the description cannot carry it:
     -- "then it goes on cooldown" is a sentence with the number missing, and a player deciding whether to

@@ -39,6 +39,18 @@ return {
         -- Well under the iron longbow's, and that is the FLOOR: this is what it lands while the party is
         -- intact, which should feel like carrying the wrong bow.
         damage = Curve.ramp(5, 15),
+        -- The count made visible. It reads the very tally the Reliquary of Tallies already puts on
+        -- screen (`allyDown`), and there is no defending the two quoting the same number in different
+        -- ways: at +60% a body this is the steepest scaling on the shelf, so the figure the shot is
+        -- multiplied by is the one thing the archer most needs in front of them.
+        --
+        -- `counterGates = false`: an intact party is 0, and the bow still shoots. It is a floor -- and
+        -- a deliberately poor one -- not an empty purse that should grey the slot out.
+        counter = function(unit)
+            return unit and unit.char and require("models.combat").tallyCount(unit, "allyDown") or 0
+        end,
+        counterGates = false,
+        counterLabel = "Fallen",
         effect = function(fx)
             local t = fx.target
             if not t then return end

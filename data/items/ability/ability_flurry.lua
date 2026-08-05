@@ -34,6 +34,11 @@ return {
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 6 },
+        -- Names the pool it spends so the slot and the tooltip quote the monk's chi (Combat.itemChargeKey).
+        -- A pool-spender normally declares the pool with `charge`, but chi's source is the BODY rather
+        -- than anything you can buy (Combat.CHARGE_DEFS), so there is nothing here to declare -- only to
+        -- read. Without this the ability asks you to decide about a number you cannot see.
+        spendsCharge = "chi",
         unlock = {
             when = function(unit) return require("models.combat").chi(unit) >= 3 end,
             text = "Gather 3 chi",

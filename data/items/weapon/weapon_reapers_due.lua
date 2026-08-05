@@ -32,6 +32,19 @@ return {
         -- on the opening turn, before the count has anything in it.
         damage = Curve.ramp(3, 13),
         aoe = { shape = "front", width = 3 },
+        -- The count made visible, exactly as weapon_long_count wears its turn tally: the same `kill`
+        -- number the effect below multiplies by, drawn on the slot and quoted in the tooltip. Without
+        -- it the axe asks the player to hold the running total in their head to know what the next
+        -- swing is worth -- and this one is uncapped, so the gap between the floor and the real number
+        -- only widens as the fight goes on.
+        --
+        -- `counterGates = false`: a count of 0 is the opening turn, not a spent purse. The axe swings
+        -- fine before it has killed anything; an empty count is the floor it grows from.
+        counter = function(unit)
+            return unit and unit.char and require("models.combat").tallyCount(unit, "kill") or 0
+        end,
+        counterGates = false,
+        counterLabel = "Kills",
         effect = function(fx)
             local Combat = require("models.combat")
             -- +25% per kill, uncapped, applied to every body in the arc. Steeper per stack than

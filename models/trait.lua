@@ -1012,6 +1012,34 @@ function Trait.flag(unit, name)
     return nil
 end
 
+-- What `item`'s stacking trait is currently holding: `stacks, max, name`, or nil when the item grants
+-- no capped stacking trait. The third readout the UI draws a count from, beside a per-item purse
+-- (`activeAbility.counter`) and a shared pool (Combat.itemChargeReadout).
+--
+-- It exists because those two both hang off an ABILITY, and the items that stack hardest have none:
+-- the Butcher's Tally is a passive strap "notched once per body carried off the sand" whose notches
+-- were nowhere on screen, and the Blood Fever Mail is the same trait worn as armour. An accruing
+-- resource has to be readable, and a charm named after its own tally that never showed one was the
+-- plainest case in the catalog.
+--
+-- Keyed on `maxStacks`, which is what separates an accruing COUNT from the other things `stacks`
+-- holds in this file: a once-per-battle latch (Second Wind, Last Stand, flipping 0 -> 1) and a boss's
+-- phase cursor are not resources the player banks, and neither declares a ceiling. So the ceiling IS
+-- the marker -- and it is worth showing beside the count, since a full stack discards what it is
+-- offered next, exactly as a full charge pool does.
+--
+-- Not gagged by Sunder, unlike Trait.flag: this reports what the trait HOLDS, and a silenced relic has
+-- not forgotten its tally. Whether the stack still pays out is dispatch's business to refuse.
+function Trait.stackReadout(unit, item)
+    if not (unit and item) then return nil end
+    for _, t in ipairs(unit.traits or {}) do
+        if t.item == item and t.def and t.def.maxStacks then
+            return t.stacks or 0, t.def.maxStacks, t.def.name
+        end
+    end
+    return nil
+end
+
 -- The extra pre-mitigation damage `user`'s standing charms add against THIS target with THIS strike.
 --
 -- A PURE query, deliberately not routed through dispatch(): it fires on every damage preview (the

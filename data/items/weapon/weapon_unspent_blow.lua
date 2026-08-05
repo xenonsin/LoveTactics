@@ -36,6 +36,16 @@ return {
         -- Read this as the BANKING number: it is what the first two swings land. The third is worth three
         -- of them and ignores armour, which is where the weapon's actual output lives.
         damage = Curve.ramp(7, 17),
+        -- How many blows are being held, on the slot badge and in the tooltip. It used to say so only in
+        -- the combat log, which meant the one number this weapon is entirely about scrolled away: a
+        -- player looking at the hammer could not tell a first swing from the one that lands triple and
+        -- unblockable, and had to have been counting. Everything that accrues quotes its count.
+        --
+        -- `counterGates = false`: a held count of 0 is a fresh hammer, not a spent purse. The first
+        -- swing is a real swing, so an empty count must never grey the slot out (cf. the Long Count).
+        counter = function(unit) return (unit and unit.unspentBlows) or 0 end,
+        counterLabel = "Held",
+        counterGates = false,
         effect = function(fx)
             local t = fx.target
             if not t then return end

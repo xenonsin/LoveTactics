@@ -24,6 +24,7 @@
 local Scale = require("scale")
 local Combat = require("models.combat")
 local Item = require("models.item") -- for Item.costs: a cast may draw on more than one pool
+local Trait = require("models.trait") -- for Trait.stackReadout: a passive charm's banked stacks
 local AdjacencyLinks = require("ui.adjacency_links")
 local StatusBadge = require("ui.status_badge")
 local Glyphs = require("ui.glyphs")
@@ -1389,8 +1390,14 @@ function CombatPanel:drawItemGrid()
             -- What the cast takes (top-left, stacked downward) + speed (top-right), for ability
             -- items only. A badge whose demand is the one blocking the cast flips to red at full
             -- alpha, so it reads as the reason the slot is grayed out.
+            --
+            -- `row` is hoisted out of the ability branch because ONE of these badges belongs to items
+            -- with no ability at all: a charge pool's count. Five of the ten pool items are pure
+            -- passive bankers (the Crusader's Tabard, the Vow of the March) whose entire job is to
+            -- accrue -- exactly the slots that most need their number on screen, and exactly the ones
+            -- an `if ab` gate would have hidden it from.
+            local row = 0
             if ab then
-                local row = 0
                 -- A badge per pool the cast draws on, stacked in authored order, so a weapon paid for
                 -- in two shows two. Only the pool that is actually short flips to red -- with two
                 -- badges up, reddening both would blame a pool the caster can well afford. Priced
@@ -1433,6 +1440,39 @@ function CombatPanel:drawItemGrid()
                         empty and WARN_COLOR or COUNTER_COLOR, empty and 1 or dim, row)
                     row = row + 1
                 end
+            end
+            -- A CHARGE POOL's count, in the same lavender badge as the purse above and for the same
+            -- reason: a resource that accrues has to be readable, or the decision these items exist to
+            -- ask -- spend now, or bank one more turn -- is being asked off a number the player cannot
+            -- see. Covers Zeal, Defiance, Tempo, Arcane and the monk's chi at once, since
+            -- Combat.itemChargeKey finds the pool whether the item declares it or only spends it.
+            --
+            -- OUTSIDE the ability branch, which is the whole point: five of the ten pool items carry no
+            -- ability at all (the Crusader's Tabard, the Vow of the March, the Arcane Conduit), and a
+            -- pure banker is precisely the slot whose only visible job is the number.
+            --
+            -- Quoted as n/max where a purse quotes a bare n, and the ceiling is not decoration: banking
+            -- past a full pool is silently DISCARDED (Combat.chargePool caps), so "am I about to waste
+            -- this" is a question only the max answers. The MERGED cap, so a Crusader wearing two Zeal
+            -- charms is told the deeper one they actually bank into rather than one file's figure.
+            --
+            -- Never red. An empty purse is an error state -- it refuses the cast -- but a pool at zero
+            -- is just an early turn, and the lock badge already speaks for a spender that is not ready
+            -- yet. Lavender throughout keeps "banked resource" one colour wherever it is quoted.
+            if not (ab and ab.counter) then
+                local n, max = Combat.itemChargeReadout(self.view.current, item)
+                -- ...and failing that, a stacking TRAIT's count (Trait.stackReadout): the Butcher's
+                -- Tally, the Blood Fever Mail. Third and last because it is the narrowest source, but
+                -- it is the one that reaches items with no ability at all to hang a counter on. Same
+                -- badge, same n/max, since a full stack discards the next body exactly as a full pool
+                -- discards the next point.
+                if not n then n, max = Trait.stackReadout(self.view.current, item) end
+                if n then
+                    self:drawBadge(sx, sy, sw, "left", "charges", n .. "/" .. max, COUNTER_COLOR, dim, row)
+                    row = row + 1
+                end
+            end
+            if ab then
                 if ab.speed then
                     self:drawBadge(sx, sy, sw, "right", "hourglass", ab.speed, SPEED_COLOR, dim)
                 end

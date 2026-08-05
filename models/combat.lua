@@ -1469,6 +1469,59 @@ function Combat.chargePool(unit, key)
     return math.max(0, math.min(banked - spent, def.max))
 end
 
+-- Display names for the pools, for the badge and tooltip row that quote them. A pool the table does
+-- not name falls back to its capitalised key, so a new pool is legible the day it is declared and
+-- only needs an entry here when the key is not the word the player should read.
+Combat.CHARGE_LABEL = {
+    chi = "Chi", zeal = "Zeal", arcane = "Arcane", defiance = "Defiance", tempo = "Tempo",
+}
+
+function Combat.chargeLabel(key)
+    if not key then return nil end
+    return Combat.CHARGE_LABEL[key] or (key:sub(1, 1):upper() .. key:sub(2))
+end
+
+-- Which pool does this item traffic in, if any -- the key whose count its badge and tooltip should
+-- quote. Two sources, because banking and spending are declared in different places:
+--
+--   `item.charge.key`        -- the item DECLARES (or deepens) the pool. Every banker names itself
+--                               here, and so does every spender, since a spender that banked nothing
+--                               would be inert until you happened to own the banker too.
+--   `activeAbility.spendsCharge` -- the item only SPENDS a pool it cannot declare. Exactly one pool is
+--                               like that: chi's source is the body rather than anything you can buy
+--                               (Combat.CHARGE_DEFS), so a fist ability has nothing to declare and
+--                               would otherwise show no count at all.
+--
+-- The rule this exists to serve: a resource that accrues has to be readable. A pool the player cannot
+-- see the size of is a pool they cannot decide about -- whether to spend now or bank one more turn is
+-- the whole of what these items ask, and it is unanswerable off a hidden number.
+function Combat.itemChargeKey(item)
+    if not item then return nil end
+    if item.charge and item.charge.key then return item.charge.key end
+    local ab = item.activeAbility
+    return ab and ab.spendsCharge or nil
+end
+
+-- What `unit` holds of `item`'s pool, and the pool's ceiling: `count, max, label`, or nil when the
+-- item traffics in no pool. The ceiling comes from the MERGED def (Combat.chargeDef), so a Crusader
+-- wearing two Zeal charms is quoted the deeper cap both of them actually bank into -- not the one
+-- printed in whichever file the badge happened to read.
+function Combat.itemChargeReadout(unit, item)
+    local key = Combat.itemChargeKey(item)
+    if not key then return nil end
+    local def = Combat.chargeDef(unit, key)
+    local max = def and def.max
+    if not max then
+        -- Nobody to merge against -- a shop shelf, an Armory row with no member picked. Fall back to
+        -- the ceiling the item declares for itself, so the count is still quotable off the board: what
+        -- a thing banks INTO is a fact about the thing, and a buyer is deciding on exactly that.
+        local builtin = Combat.CHARGE_DEFS[key]
+        max = (item.charge and item.charge.max) or (builtin and builtin.max)
+    end
+    if not max then return nil end
+    return Combat.chargePool(unit, key), max, Combat.chargeLabel(key)
+end
+
 -- Spend `n` of pool `key` (default: ALL of it), returning how much was actually spent.
 --
 -- Spending ALL of it moves the baseline to the whole tally rather than subtracting the capped figure,
@@ -6261,6 +6314,10 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         -- fire/frost, the Unspent Blow's tally). Reads stay a plain `fx.user.<field>` and are truthful,
         -- since `fx.user` is the real unit -- the preview simply shows the branch THIS cast would run.
         bank = function() touchesBoard() end,
+        -- ...and banking on the ITEM is the same mutation aimed at the relic instead of the bearer.
+        -- Inert for the sharper reason: `fx.item` here IS the player's real item, so a live write would
+        -- empty a banked purse every time the aim cursor crossed a tile.
+        bankItem = function() touchesBoard() end,
         -- Read-only, so the dry run may answer truthfully; the mutating ones are inert.
         hasStatus = function(tgt, id) return tgt ~= nil and Status.has(tgt, id) end,
         clearStatus = function() touchesBoard() end,
@@ -6672,6 +6729,10 @@ function Combat.abilityOutput(unit, item)
         -- advances the count nor flips the branch. (The userProxy above backstops any stray direct
         -- write for the same reason, but fx.bank is the path a data effect is meant to take.)
         bank = function() end,
+        -- Inert for the same reason, and more urgently: this table hands the effect the REAL item as
+        -- `fx.item` (it has to -- the tooltip quotes the item's own level and counters off it), so an
+        -- effect that spent its purse directly would drain it on every hover of the inventory grid.
+        bankItem = function() end,
         -- Inert here: the dry run reports what an ability WOULD do, and "acts again" is not a thing
         -- the inventory tooltip can render. It is recorded so a describer could name it if one ever wants to.
         grantExtraAction = function(n) out.extraActions = (out.extraActions or 0) + (n or 1); return 0 end,
@@ -7752,6 +7813,9 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
         -- runs its effect here too (Dual Wield), and this path is not pcall-guarded, so the helper has
         -- to exist or a swung weapon that banks would fault. Real, like the rest of strikeWith.
         bank = function(key, value) if user then user[key] = value end end,
+        -- The item-scoped twin (a relic's own purse). Present for the same reason `bank` is: this path
+        -- is not pcall-guarded, so a sub-struck weapon that banks on itself would fault without it.
+        bankItem = function(key, value) if weapon then weapon[key] = value end end,
         damage = function(tgt, opts)
             if not tgt then return 0 end
             opts = opts or {}
@@ -8707,11 +8771,19 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- takes (the flicker fx.spendCharge / fx.setSpeed avoid the same way). Reads stay a plain
         -- `fx.user.<field>` -- truthful in every builder because they mutate nothing.
         bank = function(key, value) if unit then unit[key] = value end end,
+        -- The same stash, but ON THE ITEM rather than on its bearer: a purse that belongs to the relic
+        -- and not to whoever is holding it this battle (the Gleaning Rod's charges, the Gleaner's
+        -- Mantle's). Separate from fx.bank because the two answer different questions -- state banked on
+        -- the unit follows the BODY and is battle-scoped, state banked on the item follows the OBJECT and
+        -- survives being handed to somebody else. An effect must not write `fx.item.<field>` directly for
+        -- exactly the reason it must not write `fx.user.<field>`: both damage previews replay the effect
+        -- against the REAL item table, so a hover would empty the purse under the cursor.
+        bankItem = function(key, value) if item then item[key] = value end end,
         -- Write a line straight into the combat log, for an ability whose entry must not read as
         -- what it actually is (a Decoy reports a move, not a cast -- see `ab.silent`). Hands back
         -- the entry, so an effect can keep a handle on a line it may later have to correct.
         log = function(kind, text, subjects) return Combat.logEvent(combat, kind, text, subjects) end,
-        -- Clear every recharging thing on a unit at once -- the trait cooldowns AND the per-item
+        -- Clear every timer standing on a unit at once -- the trait cooldowns AND the per-item
         -- reflex timers, which are the same table keyed two ways (see Combat.setCooldown). What the
         -- Hour Returned spends itself to buy: not another cast, but every cast you have already made.
         -- Returns how many timers it wiped, so the effect can decline to narrate an empty refresh.
