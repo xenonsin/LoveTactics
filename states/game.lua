@@ -27,6 +27,12 @@ local Crossroads = require("models.crossroads")
 local RestChoice = require("ui.panels.rest_choice")
 local RestReveal = require("ui.panels.rest")
 local EncounterModel = require("models.encounter")
+local Muster = require("models.muster")                     -- how the company stands against a fight
+local EncounterBattle = require("models.encounter_battle")  -- the board + the payout, shared with states/battle.lua
+local Autobattle = require("models.autobattle")             -- and the fight itself, run with nobody watching
+local Combat = require("models.combat")
+local Debug = require("models.debug") -- gates the walk-off's calibration warning to a dev build
+local BattleSummary = require("ui.panels.battle_summary")
 local Party = require("ui.panels.party")
 local Consumables = require("ui.panels.consumables")
 local PartyStatus = require("ui.party_status")
@@ -309,6 +315,11 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
     -- the fog: relics are CARRIED, not kept -- picked up on the expedition, gone when it ends.
     game.relicState = resume and resume.relicState or Relic.newState()
     game.toasts = {} -- transient ability feedback lines (see game:pushToast)
+    -- Where the company stands against each fight on this board. The far side of every marker is
+    -- priced lazily and once (game:cellMuster); the company's own worth is re-rated here and whenever
+    -- a panel closes over it (game.update).
+    game.encounterMuster = nil
+    game:refreshMuster()
     game.map = OverworldMap.new(game.grid, {
         onEncounter = function(cell) game:openEncounter(cell) end,
         -- The autosave seam, fired one beat BEFORE the step onto an un-engaged stop: the snapshot is
@@ -326,6 +337,9 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
         end,
         -- A cache/key taken by walking over it: name it on screen (see announcePickup).
         onPickup = function(kind, payload) announcePickup(kind, payload) end,
+        -- What colours a fight's marker and counts its pips: where the company stands against THIS fight
+        -- (models/muster.lua). The map owns no roster and does no comparing -- it asks.
+        musterBand = function(cell) return game:musterBand(cell) end,
         -- Fog-of-war radius: the map's own reveal-a-neighbourhood radius (3 for a rolled board, 2 for an
         -- authored leg -- see models/overworld.lua), widened by a torch-carrier AND by Gyeom's Ledger.
         visionRadius = math.max(game.grid.visionRadius or 2, Player.visionRadius(player))
@@ -415,6 +429,53 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- Muster: where the company stands against each fight on the board
+-- ---------------------------------------------------------------------------
+
+-- Re-rate the company. Cheap, but not per-frame cheap (it walks four bodies' grids), and it only
+-- changes when the roster's gear does -- so it is recomputed at the two moments that can move it: the
+-- run opening, and a panel closing (the Loadout is the one that re-kits anybody mid-run).
+function game:refreshMuster()
+    game.partyMuster = Muster.company(Muster.fielded(game.player))
+end
+
+-- What this fight is worth, memoised per cell. Fixed for the whole run -- an encounter's composition
+-- is a deterministic function of prestige, and prestige does not move until the quest pays out -- so
+-- this is computed once per marker and never again.
+--
+-- Deliberately kept in a side table rather than written onto `cell.encounter`: models/overworld.lua's
+-- CELL_FIELDS persists that table whole into the run save, and a cached score would ride along and
+-- come back stale into a run resumed at a different prestige.
+function game:cellMuster(cell)
+    game.encounterMuster = game.encounterMuster or {}
+    local cached = game.encounterMuster[cell]
+    if cached == nil then
+        local enc = cell.encounter
+        local def = enc and enc.id and EncounterModel.get(enc.id)
+        cached = def and Muster.encounter(def, {
+            prestige = game.prestige,
+            quest = game.quest,
+            floorLevel = game.quest and game.quest.floorLevel,
+        }) or false
+        game.encounterMuster[cell] = cached
+    end
+    return cached or nil
+end
+
+-- How this fight stands to the company, as a margin in percent -- nil for a cell there is no
+-- comparison to make about.
+function game:musterMargin(cell)
+    if not EncounterBattle.cellEligible(cell) then return nil end
+    if not game.partyMuster then game:refreshMuster() end
+    return Muster.margin(game.partyMuster, game:cellMuster(cell))
+end
+
+-- ...and that margin as a band name, which is all the map wants (ui/overworld_map.lua's marker).
+function game:musterBand(cell)
+    return Muster.band(game:musterMargin(cell))
+end
+
 -- Engaging an encounter. Combat kinds (combat / elite / objective) drop into the
 -- battle arena; the non-combat kinds (town / treasure) keep the simple modal.
 function game:openEncounter(cell)
@@ -454,8 +515,6 @@ function game:openEncounter(cell)
     end
 
     if kind == "combat" or kind == "elite" or kind == "objective" then
-        -- The battle launch itself, deferred behind a fight-or-slip confirm for side fights (below).
-        local function startBattle()
         -- Everything that has to know WHO IS STANDING WHERE, resolved once the deployment phase commits
         -- and handed back to the battle. It cannot be computed here any more: the player chooses which of
         -- the company take the field, and on which tiles, over the real board (docs/deployment.md), so
@@ -484,6 +543,36 @@ function game:openEncounter(cell)
                     game.player and game.player.roster, front or deployed),
             }
         end
+
+        -- A side-fight's takings, granted. THE single seam for them, and it is reached two ways now:
+        -- from the battle summary's Continue when the fight was played, and from the walk-off below
+        -- when it was not. Both panels only DISPLAY the spoils; this is where they land, which is what
+        -- keeps them from ever being counted twice or paid differently depending on how the fight was
+        -- resolved. (The objective pays through Quest.complete instead -- see onWin.)
+        local function grantSideSpoils(spoils)
+            if spoils then
+                if (spoils.gold or 0) > 0 then Player.addGold(game.player, spoils.gold) end
+                for _, id in ipairs(spoils.loot or {}) do Player.grantItem(game.player, id) end
+                -- The salvage floor: every won fight leaves forging stock behind, so a stop that
+                -- rolled no loot is still worth having stopped at (models/spoils.lua). Banked straight
+                -- to the player rather than onto the run's cache haul, because a cleared fight does not
+                -- un-clear -- there is nothing here for the objective's double-payout guard to protect.
+                for id, n in pairs(spoils.materials or {}) do
+                    Player.addMaterial(game.player, id, n)
+                end
+                Player.save()
+            end
+            -- Companion abilities react to the win (Amana mends, Ren distils a dose, Rowan banks a
+            -- vigil, Clem takes her cut, Gyeom studies), then the relics do too (Pilgrim's Coin pays,
+            -- Alms Bowl mends, a Vice bites). Save so their effects persist.
+            fireAbility("encounterCleared", { cell = cell, spoils = spoils })
+            fireRelics("encounterCleared", { cell = cell, spoils = spoils })
+            if game.player then Player.save() end
+        end
+
+        -- The battle launch itself, deferred behind the walk-off offer for a fight the company has
+        -- outgrown (below).
+        local function startBattle()
         -- Tutorial leg only (the prologue's flight): snapshot the party BEFORE the fight so the defeat
         -- panel's "Try Again" can restart THIS same encounter with a whole party -- consumed potions and
         -- any downed member undone. In-memory only, no disk save. The cell is not yet marked `cleared`
@@ -602,28 +691,13 @@ function game:openEncounter(cell)
                         goNext()
                     end
                 else
-                    -- A combat/elite win: grant the spoils the battle summary just revealed (gold +
-                    -- loot), save, then resume THIS overworld. The panel only displayed them; this is
-                    -- the single grant, so nothing double-counts.
-                    if spoils then
-                        if (spoils.gold or 0) > 0 then Player.addGold(game.player, spoils.gold) end
-                        for _, id in ipairs(spoils.loot or {}) do Player.grantItem(game.player, id) end
-                        -- The salvage floor: every won fight leaves forging stock behind, so a stop
-                        -- that rolled no loot is still worth having stopped at (models/spoils.lua).
-                        -- Banked straight to the player rather than onto the run's cache haul, because
-                        -- a cleared fight does not un-clear -- there is nothing here for the objective's
-                        -- double-payout guard to protect.
-                        for id, n in pairs(spoils.materials or {}) do
-                            Player.addMaterial(game.player, id, n)
-                        end
-                        Player.save()
-                    end
-                    -- Companion abilities react to the win (Amana mends, Ren distils a dose, Rowan banks a
-                    -- vigil, Clem takes her cut, Gyeom studies), then save so their effects persist.
-                    fireAbility("encounterCleared", { cell = cell, spoils = spoils })
-                    -- ...and the relics react to it too (Pilgrim's Coin pays, Alms Bowl mends, a Vice bites).
-                    fireRelics("encounterCleared", { cell = cell, spoils = spoils })
-                    if game.player then Player.save() end
+                    -- A combat/elite win: grant the spoils the battle summary just revealed, then
+                    -- resume THIS overworld. See grantSideSpoils -- the walk-off path pays through the
+                    -- very same call, so a fight is worth the same whether it was played or skipped.
+                    grantSideSpoils(spoils)
+                    -- The fight cost the company health, mana and potions, so what it is worth against
+                    -- the NEXT marker has moved. Re-rate before the map comes back.
+                    game:refreshMuster()
                     -- Resuming the map does NOT re-run game.enter, so the overworld bed the battle
                     -- swapped out for its victory sting has to be restored here by hand (idempotent).
                     require("models.sound").music("music.overworld")
@@ -666,13 +740,145 @@ function game:openEncounter(cell)
         })
         end -- startBattle
 
-        -- Stepping onto a fight enters it immediately -- no confirm. You skip a fight by routing AROUND
-        -- it: combats never sit on the objective spine (models/overworld.lua), and the marker's danger
-        -- pips + the party strip already let you judge it before you commit the step. The boss takes
-        -- Ren's dose pour first.
+        -- WALKING THE FIGHT OFF. The company has outgrown this one (Muster.WALK_OVER), so it is
+        -- resolved against the combat model with nobody watching and the player is handed the same
+        -- victory panel the board would have shown them.
+        --
+        -- The fight is REAL. It is built from the same spec (EncounterBattle.build), the company is
+        -- stood where Auto-Fill would have stood them, the opening abilities and relics still fire,
+        -- and every turn is planned by the same AI that drives an enemy. What it spends, it spends off
+        -- the roster by reference -- health, mana, potions, a purse, a theft -- because those are the
+        -- ordinary code paths and there is no second set. That spending is the whole cost of the
+        -- convenience, and it is why this is worth doing at all rather than just handing over gold.
+        --
+        -- The WIN, however, is not in doubt: the gate is set high enough that the outcome is a
+        -- formality, so a simulation that somehow went badly is still finished as a victory rather
+        -- than costing a run the player was never shown. Combat.reviveFallenParty carries anyone who
+        -- fell out at a sliver of health -- exactly what a won battle does -- so a bad roll reads as a
+        -- mauling, which is an honest price, instead of as a defeat.
+        local function autoResolve()
+            local built = EncounterBattle.build({
+                encounter = cell.encounter,
+                biome = mp.biome,
+                quest = game.quest,
+                prestige = game.prestige,
+                floorLevel = game.quest and game.quest.floorLevel or nil,
+                party = game.player and game.player.roster or {},
+            })
+            local combat = built.combat
+            -- The player's stash by reference, so a theft mid-fight survives it, exactly as in battle.
+            combat.stash = game.player and game.player.stash
+
+            -- Stand the line where pressing Auto-Fill and Begin would have stood it, then let the
+            -- companion abilities and relics spend their openings on it (the same resolveOpening the
+            -- battle state calls at commit) before the bell.
+            -- Same order commitDeploy uses, and the order matters: place the line, resolve the opening
+            -- against it, stamp the relic traits BEFORE the bell (Combat.openBattle's Trait.setup
+            -- attaches them and only then fires the openers), ring the bell, then lay the boons on.
+            local deployed, front = EncounterBattle.autoDeploy(combat, built.arena,
+                Muster.fielded(game.player))
+            local opening = resolveOpening(deployed, front)
+            if game.player then Player.noteDeployed(game.player, deployed) end
+
+            local traits = opening.relicTraits
+            for _, unit in ipairs(combat.units) do
+                if unit.side == "party" then unit.relicTraits = traits and traits[unit.char] or nil end
+            end
+            -- A benched member has to arrive already wearing their party-scope relic when they rotate
+            -- in, exactly as commitDeploy seats them.
+            for _, entry in ipairs(combat.bench or {}) do
+                entry.relicTraits = traits and traits[entry.char] or nil
+            end
+
+            Combat.openBattle(combat)
+
+            -- Opening boons a relic or companion ability queued (a barrier, Haste, an empower),
+            -- matched to their unit by char identity -- the same instance resolveOpening queued them
+            -- for. Applied after the bell, once traits are on and the units are built.
+            local Status = require("models.status")
+            for _, boon in ipairs(opening.openingBoons or {}) do
+                for _, unit in ipairs(combat.units) do
+                    if unit.side == "party" and unit.char == boon.char and unit.alive then
+                        Status.apply(combat, unit, boon.id, boon.opts)
+                        break
+                    end
+                end
+            end
+
+            local result = Autobattle.run(combat)
+            -- Carried out and unhooked, the same two calls a won battle makes (states/battle.lua's
+            -- win + releaseParty). Done on ANY result: see the note above on why the win is a
+            -- formality.
+            --
+            -- A result that was not a win is the one signal that WALK_OVER is set too low, and it is
+            -- addressed to whoever tunes it rather than to the player -- who is about to be handed a
+            -- victory either way and would only be alarmed by it. So it goes to the console in a
+            -- development build and nowhere at all in a release one.
+            if result ~= "win" and Debug.enabled then
+                print(("[autoresolve] %s resolved as %s -- the walk-off gate may be too low")
+                    :format(tostring(cell.encounter.id), tostring(result)))
+            end
+            Combat.reviveFallenParty(combat)
+            for _, unit in ipairs(combat.units) do
+                if unit.side == "party" then Combat.releaseClaims(unit.char) end
+            end
+
+            local spoils = EncounterBattle.spoils({
+                encounter = cell.encounter,
+                enemyUnits = built.enemyUnits,
+                prestige = game.prestige,
+                houseMaterial = game.houseMaterial,
+                combat = combat,
+            })
+
+            cell.cleared = true
+            require("models.sound").play("battle.win")
+            -- The same victory panel the board shows, opened over the OVERWORLD instead -- it is a
+            -- panel and not a state, and this file already hosts panels. Continue pays out through the
+            -- one grant seam, so a walked-off fight and a fought one bank identically. No log to
+            -- review: there was no battle to watch.
+            game.activePanel = BattleSummary.new({
+                result = "win",
+                spoils = spoils,
+                technique = combat.techniqueByActor,
+                encounter = cell.encounter,
+                actions = { { label = "Continue", onSelect = function()
+                    game.activePanel = nil
+                    grantSideSpoils(spoils)
+                    game:refreshMuster() -- the fight was paid for in health and potions; re-rate
+                    saveRun()
+                end } },
+            })
+        end
+
+        -- Stepping onto a fight enters it immediately -- no confirm -- UNLESS the company has plainly
+        -- outgrown it, which is the one case where the fight is not a decision any more and playing it
+        -- out is just clicking. Then, and only then, the choice is offered. You still skip an ordinary
+        -- fight by routing AROUND it: combats never sit on the objective spine
+        -- (models/overworld.lua), and the marker already lets you judge one before you commit the
+        -- step -- a marker gone calm IS this offer, seen from across the board. The boss takes
+        -- Ren's dose pour first, and is never walked off.
         if kind == "objective" then
             fireAbility("objectiveReached", { cell = cell })
             fireRelics("objectiveReached", { cell = cell })
+        end
+        if Muster.canWalkOver(game:musterMargin(cell)) then
+            game.activePanel = Choice.new({
+                title = cell.encounter.name or "A Fight Beneath You",
+                prompt = "Your company outmatches what is waiting here.",
+                options = {
+                    { label = "Auto-resolve", desc = "Settle it without drawing the board. It still costs you.",
+                      accent = { 0.42, 0.80, 0.62 },
+                      cb = function() game.activePanel = nil; autoResolve() end },
+                    { label = "Fight", desc = "Take the field anyway.",
+                      accent = { 0.88, 0.45, 0.33 },
+                      cb = function() game.activePanel = nil; startBattle() end },
+                },
+                -- No backing out: the token is standing on the fight. Closing the panel would leave a
+                -- live encounter underfoot with no way back into it.
+                onClose = nil,
+            })
+            return
         end
         startBattle()
         return
@@ -1002,8 +1208,13 @@ function game.update(dt)
     if game.activePanel then
         if game.activePanel.update then game.activePanel:update(dt) end
     else
+        -- A panel just closed. The Loadout is the one that can re-kit the company mid-run, and gear is
+        -- what the muster ruler is made of -- so re-rate here and the markers answer to the
+        -- weapon that was just handed over before the player has taken a step.
+        if game.panelWasOpen then game:refreshMuster() end
         game.map:update(dt)
     end
+    game.panelWasOpen = game.activePanel ~= nil
 end
 
 function game.draw()
@@ -1124,6 +1335,23 @@ function game.drawHud()
         love.graphics.setFont(hudFont)
         love.graphics.setColor(0.95, 0.85, 0.35)
         love.graphics.printf("Keys: " .. held .. " / " .. total, 0, 52, Scale.WIDTH, "center")
+    end
+
+    -- THE FIGHT YOU ARE WEIGHING UP, in words. The marker is the at-a-glance read across
+    -- the whole board; this is the exact one, for the moment you are actually deciding. Docked here,
+    -- under the quest name with the keys count -- both are facts about the board rather than about a
+    -- point on it -- rather than floating at the cursor, so it is always found in the same place
+    -- however the player is driving (see ui/overworld_map.lua's hoveredFight for what "weighing up"
+    -- means with a pad, which has no pointer to hover with).
+    local fight = game.map:hoveredFight()
+    if fight then
+        local band = game:musterBand(fight)
+        local line = fight.encounter.name or "A fight"
+        if fight.encounter.tier then line = line .. "  -  Tier " .. fight.encounter.tier end
+        if band then line = line .. "  -  " .. (Muster.BAND_LABEL[band] or band) end
+        love.graphics.setFont(hudFont)
+        love.graphics.setColor(0.72, 0.72, 0.66)
+        love.graphics.printf(line, 0, total > 0 and 72 or 52, Scale.WIDTH, "center")
     end
 
     love.graphics.setFont(hudFont)

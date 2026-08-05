@@ -35,6 +35,7 @@ steps left behind.
 | Shelf waves | **Done** | Stock keys on the vendor's own quest count (always correct), now at per-quest granularity: 474 items across 13 gates instead of clumps of 33 / 123 / 208 / 105 |
 | Disciplines | **Done** | 37 of them, forming a COMPLETE lattice — 21 crossings = C(7,2), every pair of houses. A discipline is a currency (`char.technique`) banked per action and spent to forge its own gear, and the shelf reads as the tree: each section a path, with its shape, standing and what it still needs |
 | Roster | **Done** | The whole roster travels, 4 stand on the board (`Player.MAX_FIELD`), and `Combat.rotate` swaps the bench in mid-fight |
+| Outgrown fights | **Done** | `models/muster.lua` rates both sides by effective stats with gear folded in; a marker's pips count the steps a fight stands above the company, and at 200%+ it goes calm and offers to be walked off (step 8) |
 
 ### The payout cadence is the root cause
 
@@ -727,6 +728,85 @@ numbered slots and leaves a house at 10–12, while the shelf spreads over `0 ..
   constant per difficulty tier. So `difficulty` is now the *only* head-count dial in the game, which
   makes a considered pass over the 92 labels worth doing — but it is a design pass, not a correction,
   and it wants the author rather than a sweep.
+
+### 8 — Stop making the player replay fights they have already won — **done**
+
+The last thing eating a run's pacing was not a payout at all. A trail fight you have outgrown still
+costs a deployment phase and a dozen turns to collect its gold, and the interesting question — *do I
+spend health here, before the boss?* — has already been answered by the time the board loads. That is
+the definition of a fight that should not be played.
+
+Two things were missing, and they turned out to be one thing read twice.
+
+**A ruler.** Nothing rated a body's strength, and level cannot: `Player.syncLevels` pins every roster
+member to one prestige-derived level, and stat growth is flat by design (the top of this document), so
+two companies at the same level differ only in what they are carrying. So `models/muster.lua` rates a
+body by its **effective stats with gear folded in** — `Character.statTotal`, the same numbers the
+Loadout sheet prints, which is what makes the reading checkable by a player who wonders about it. One
+function is applied to both sides; the far side's bodies are minted with `Growth.spawn` at the level the
+fight will actually spawn them at, so it is not an estimate of the enemy, it *is* the enemy.
+
+The score is never printed. It surfaces only as a **margin in percent** (100 = an even match) and the
+band that margin falls in:
+
+| Band | Margin | Reads as | Pips | Marker |
+|---|---|---|---|---|
+| `above3` | under 40% | far above you | ●●● | red |
+| `above2` | 40–60% | two steps above you | ●● | red |
+| `above1` | 60–85% | a step above you | ● | red |
+| `even` | 85–200% | an even fight — it will cost you | — | red |
+| `beneath` | **200%+** | nothing here left to spend | — | **calm** |
+
+The scale is **one-sided on purpose**. Being further ahead than `beneath` changes nothing you would do
+— the fight is already skippable — so there is one band for it and no ladder of increasingly emphatic
+safety. Only the half where the fight is a real fight is graded. That is also why `even` spans so wide:
+"you are somewhat ahead" and "you are dead level" are the same decision.
+
+**Two readings of that one number.** Continuously, it draws the marker on an overworld stop
+(`ui/overworld_map.lua`): the **box colour** says whether this is a fight at all — hostile red, or a
+calm slate once you have outgrown it — and the **pips** say how many steps above you it stands, none at
+all for a fight that is even or beneath you. Against the threshold, the same number gates the offer:
+`Muster.WALK_OVER` is deliberately the floor of the top band and not a constant of its own, so the
+marker that goes calm and the option that appears cannot drift into disagreeing about the same tile.
+The HUD also names the hovered (or adjacent) fight in words — `"Dire Wolf - Tier 2 - A step above you"`
+— since a glyph is the read across the whole board and a word is the read at the moment of deciding.
+
+**What the pips count changed, and that is the point.** They used to count the authored TIER, which is a
+fact about the encounter table rather than about this run: the same three dots whether the company
+walked in naked or fully forged. Counting *steps above you* instead means the mark moves as the company
+does. The tier is not lost — it is named in the HUD line, where an absolute number can sit without
+competing with the glyph.
+
+Two failures on the way here are worth keeping, because both are easy to re-commit:
+
+- The old pips said one thing **twice**: count *and* colour were both the tier. Giving the colour away
+  looked like a free upgrade — one glyph, two facts — but it removed the redundancy that was the only
+  reason the glyph worked. At a 32px tile a pip is under 2px across; nobody was ever counting them,
+  they were reading "red" for tier 3. Pips are now `s * 0.09` on a dark seat, sized to be counted.
+- An intermediate design put the tier in a **numeral badge**. It read well, but it answered the wrong
+  question — the player wants to know where a fight stands relative to *them*, not its absolute rating.
+  (It also surfaced a font trap: `Theme.display` is Alegreya with **old-style** figures, so digits are
+  x-height and "3" hangs below the baseline. Use `Theme.body` — Alegreya Sans, lining figures — for any
+  standalone numeral.)
+
+**What the offer does.** Stepping onto a fight beneath you opens a two-option prompt instead of entering
+it. Auto-resolve builds the same fight the battle state would (`models/encounter_battle.lua`, lifted out
+of `states/battle.lua` for exactly this reason), stands the company where Auto-Fill would have, fires
+the same opening abilities and relics, and runs every turn through the same AI that drives an enemy
+(`models/autobattle.lua`). Then it pays through the same grant seam, and the victory panel opens over
+the overworld.
+
+**It is not free, and that is the point.** Party characters ride into the simulation by reference, as
+they do in any battle, so health and mana come off the roster, potions are drunk, technique banks, purse
+gold is spent and a theft lands in the stash — through the ordinary code paths, because there is no
+second set of them. Walking a fight off buys you the *clicking*, not the *attrition*. What it cannot
+cost you is the run: the gate is high enough that the outcome is a formality, so a simulation that goes
+badly is still finished as a victory (`Combat.reviveFallenParty` carries the fallen out at a sliver of
+health, exactly as a won battle does). A bad roll reads as a mauling, which is an honest price.
+
+Scope is `combat` and `elite` only. The quest objective is always played, and so is any encounter
+carrying `allies` or an `objective` of its own — those have a win clock driven by `states/battle.lua`
+rather than by `models/combat.lua`, and a headless loop would never be told they had ended.
 
 ## Known debt
 

@@ -164,6 +164,71 @@ existing dynamic `weight`), returning a list of `data/characters/` ids that **sc
 schema (`Character.instantiate`). The objective tile reads its roster + win condition from the
 quest's `map.objective` (`composition` + `win = { type, target }`).
 
+**Two decisions are not `states/battle.lua`'s to own alone** — *who* you fight and *what the win is
+worth* — because a fight can now also be resolved without the board ever loading (the walk-off, below).
+Both live in **`models/encounter_battle.lua`**: `EncounterBattle.spec` (composition / escorts / win
+condition / layout, read off the quest objective or the encounter blueprint) and
+`EncounterBattle.spoils` (the `TIER_GOLD` payout scale, the `Spoils.roll`/`Spoils.materials` branch,
+and the in-fight skim + bounty fold). The battle state calls both. What deliberately did *not* move is
+its unit assembly: six launchers reach `battle.enter` and its forks over tutorial control overrides,
+live opponent instances and the deployment phase belong to the state that owns those cases.
+`EncounterBattle.build` composes the campaign shape only, off the same spec, for a caller with no board.
+
+### Walking a fight off
+
+A side-fight the company has plainly outgrown can be settled without drawing the board. Three pieces:
+
+- **`models/muster.lua`** — the ruler. Rates a body by its effective stats with gear folded in
+  (`Character.statTotal`), applied to *both* sides, and reports the company's standing as a **margin in
+  percent** and a band name. Level cannot do this job: `Player.syncLevels` pins the whole roster to one
+  prestige-derived level, so gear is the only thing that differs.
+- **`models/autobattle.lua`** — the fight. `Autobattle.run(combat)` drives both sides through
+  `Combat.planEnemyAction` in the same plan → walk → act → pass order `states/battle.lua` uses, and
+  returns `"win" | "loss" | nil` (nil = the turn guard tripped; the fight is *undecided*, not a draw).
+  Party characters ride in by reference as they always do, so what the simulation spends — health,
+  mana, consumable stacks, technique, purse gold, a theft — comes off the roster through the ordinary
+  code paths. **That spending is the whole cost of the convenience.**
+- **`states/game.lua`** — the offer. Stepping onto a fight at or above `Muster.WALK_OVER` opens a
+  two-option `ui/panels/choice.lua` (Fight / Auto-resolve) instead of entering; below it, nothing
+  changes and the fight is entered immediately as before. Auto-resolve builds the same fight
+  (`EncounterBattle.build`), stands the line where Auto-Fill would have (`EncounterBattle.autoDeploy`),
+  fires the same `resolveOpening`, runs it, and opens `ui/panels/battle_summary.lua` **over the
+  overworld** — whose Continue pays out through the one grant seam a fought battle uses.
+
+Only a plain kill-them-all side-fight qualifies (`EncounterBattle.eligible`): an `objective`, an
+encounter with `allies`, or one with reinforcement `waves` has a win clock driven by
+`states/battle.lua` rather than by `models/combat.lua`, and a headless loop would never be told such a
+fight had ended. The quest objective is never walked off.
+
+The same margin draws the marker (`ui/overworld_map.lua`), in **two marks answering two questions**:
+
+| Mark | Question | Reading |
+|---|---|---|
+| Box **colour** | is this a fight at all? | the hostile red/orange it has always worn — or a calm slate once the company has outgrown it (`beneath`, i.e. `WALK_OVER`) |
+| **Pips** | and by how much is it above me? | one per step above: `above1` / `above2` / `above3`. **None** for `even` or `beneath` |
+
+An even fight draws **no pips and stays red**, which is the pairing that makes the whole thing work:
+"no pips" must not read as "safe", so the *colour* says safe and the pips only ever count danger past
+even. The marker going calm is also the walk-off offer, seen from across the board.
+
+Two things this deliberately is *not*. The pips no longer count the **authored tier** — that is a fact
+about the encounter table, the same three dots whether the company walked in naked or fully forged,
+where what a marker has to answer is "how far above *me*". And the scale is one-sided: being further
+ahead than `beneath` changes nothing you would do, so there is one band for it and no ladder of
+increasingly emphatic safety. The tier still exists and is still authored; it is named in words in the
+HUD line below, where an absolute number can sit without competing with the glyph.
+
+Pips are sized to be **counted** (`s * 0.09`, on a dark seat). The originals were `s * 0.06` — under
+2px at a 32px tile, where three cannot be told from two. They got away with it only because their
+colour *also* encoded the tier (green → amber → red), so nobody was counting; they were reading "red".
+Once the count carries a fact of its own it has to survive being read.
+
+Alongside, the HUD **names the fight in words** — `"Dire Wolf  -  Tier 2  -  A step above you"` — for
+the marker under the pointer, or, with a keyboard or pad (which have no pointer), one on an adjacent
+tile: the fight one step away, which is where a pad player actually decides. The marker is the
+at-a-glance read across the whole board; the line is the exact one. It is docked under the quest name
+with the keys count, not floated at the cursor, so it is always found in the same place.
+
 ### Combat subsystems
 
 `models/combat.lua` owns the rules; seven sibling modules layer on top of it. Each is required by

@@ -36,6 +36,7 @@ local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local Status = require("models.status")
 local EncounterModel = require("models.encounter")
+local EncounterBattle = require("models.encounter_battle") -- the spec + the payout, shared with the walk-off path
 local Tutorial = require("models.tutorial")
 local Intent = require("models.intent")
 local Sound = require("models.sound")
@@ -44,7 +45,6 @@ local TutorialPrompt = require("ui.tutorial_prompt")
 local CoachBubble = require("ui.coach_bubble")
 local Glyphs = require("ui.glyphs")
 local Theme = require("ui.theme")
-local Spoils = require("models.spoils")
 local BattleSummary = require("ui.panels.battle_summary")
 local WindupChooser = require("ui.panels.windup_chooser")
 local SpendChooser = require("ui.panels.spend_chooser")
@@ -383,48 +383,10 @@ end
 
 -- Resolve the encounter's composition spec + objective. Placed encounters read their
 -- blueprint; the objective tile reads the quest's `map.objective`.
-local function specFor(opts, partyIds, seed)
-    local spec = { biome = opts.biome, party = partyIds, seed = seed }
-    -- A marching formation, as a list of {col,row} slots parallel to partyIds, so Arena.build's bindUnits
-    -- seats each member on their chosen tile. DRAFT MODE only: it keeps a 4x2 grid in its shop UI
-    -- (models/draft_run.lua) and hands it over pre-resolved, because its un-merged duplicate ids would
-    -- collide in an id-keyed map. The campaign brings none -- it chooses placement per battle in the
-    -- deployment phase (docs/deployment.md) -- and neither does a scripted fight, which keeps its
-    -- authored spawns.
-    if opts.formationSlots then
-        spec.formation = opts.formationSlots
-        spec.formationCols = opts.formationCols
-        spec.formationRows = opts.formationRows
-    end
-    -- A quest may name the exact board to fight on instead of rolling one (the prologue's tutorial,
-    -- whose lesson is authored against specific tiles). Nil everywhere else, so ordinary fights keep
-    -- their random pick. See Arena.pickLayout.
-    spec.layout = opts.quest and opts.quest.map and opts.quest.map.layout
-    local enc = opts.encounter or {}
-    if enc.kind == "objective" then
-        local obj = (opts.quest and opts.quest.map and opts.quest.map.objective) or {}
-        spec.layout = obj.layout or spec.layout -- a boss may name its own board; else keep quest.map.layout
-        spec.composition = obj.composition
-        spec.allies = obj.allies -- AI-run escorts fighting on the party's side
-        spec.objective = obj.win -- { type, target, protect } win condition; nil -> killAll
-    else
-        local def = enc.id and EncounterModel.get(enc.id)
-        spec.composition = def and def.composition
-        spec.allies = def and def.allies
-        spec.objective = def and def.objective
-    end
-    -- A fight against somebody's team rather than a roll of the encounter table: a stored build, or
-    -- another player. The far side arrives as live character instances, so THEIR ids are the
-    -- composition -- the arena seats exactly those bodies, in that order, and battle.enter binds the
-    -- instances it was handed onto those spawns. Overrides whatever the quest or encounter asked
-    -- for, because the opponent is no longer this game's to choose.
-    if opts.enemyChars then
-        local ids = {}
-        for i, char in ipairs(opts.enemyChars) do ids[i] = char.id end
-        spec.composition = ids
-    end
-    return spec
-end
+-- The arena spec -- composition, escorts, win condition, board -- moved down to
+-- models/encounter_battle.lua, because a fight the company has outgrown is now resolved without this
+-- state ever loading (models/autobattle.lua) and has to face the same enemy this would have built.
+local specFor = EncounterBattle.spec
 
 -- ---------------------------------------------------------------------------
 -- Combat controller (all module-level locals so they close over `battle`; declared
@@ -478,52 +440,19 @@ local function finishBattle(result)
         return
     end
 
+    -- What the win pays: rolled by models/encounter_battle.lua, so a fight walked off without the
+    -- board loading pays exactly what fighting it would have. Only on a win -- which is also the whole
+    -- economy of a bounty (the promise is banked on the combat, and a battle that is lost pays
+    -- nothing, however many marks were collected on the way down).
     local spoils
     if result == "win" then
-        local kind = battle.encounter and battle.encounter.kind
-        if kind == "combat" or kind == "elite" then
-            -- Difficulty tier (1..3, stamped on the encounter by models/overworld.lua) scales the
-            -- payout: a tougher side-fight is worth more, the risk/reward for spending HP before the
-            -- boss. Tier 1 (or an unstamped fight) pays exactly as before.
-            local TIER_GOLD = { [1] = 1.0, [2] = 1.6, [3] = 2.4 }
-            spoils = Spoils.roll({
-                enemyUnits = battle.enemyUnits,
-                prestige = battle.prestige,
-                kind = kind,
-                rewardGold = battle.encounter.rewardGold,
-                loot = battle.encounter.loot,
-                rewardScale = TIER_GOLD[battle.encounter.tier or 1] or 1.0,
-                tier = battle.encounter.tier,
-                houseMaterial = battle.houseMaterial,
-            })
-        elseif kind == "objective" then
-            -- The general pays through Quest.complete, not through spoils -- but the SALVAGE floor is
-            -- owed by every won fight, and the last fight of a run is not the one to make an exception
-            -- of. Materials only: no gold and no loot roll here, so the quest stays the single payout
-            -- seam for both (states/game.lua's objective branch).
-            spoils = { gold = 0, loot = {}, materials = Spoils.materials({
-                kind = kind, tier = battle.encounter.tier, houseMaterial = battle.houseMaterial,
-            }) }
-        end
-        -- Gold picked off the enemy DURING the fight (Combat.skimGold, the Skimmer's Cut) rides out on
-        -- the spoils rather than through a purse-path of its own. Folded in after the roll so it is
-        -- added to the takings rather than replacing them, and a table is minted when the fight rolled
-        -- no spoils of its own -- a skim earned in a quest battle is still earned.
-        local skimmed = battle.combat and battle.combat.skimmed or 0
-        if skimmed > 0 then
-            spoils = spoils or { gold = 0, loot = {} }
-            spoils.gold = (spoils.gold or 0) + skimmed
-        end
-        -- Bounties settled during the fight (Combat.bounty -- a Struck Ledger paid out when its mark
-        -- fell, a body spent to the Ledger's Due) ride out on exactly the same path and for exactly the
-        -- same reason. Note where this sits: INSIDE the `result == "win"` branch, which is the whole
-        -- economy of a bounty -- the promise is banked on the combat, and a battle that is lost pays
-        -- nothing, however many marks were collected on the way down.
-        local bounty = battle.combat and battle.combat.bounty or 0
-        if bounty > 0 then
-            spoils = spoils or { gold = 0, loot = {} }
-            spoils.gold = (spoils.gold or 0) + bounty
-        end
+        spoils = EncounterBattle.spoils({
+            encounter = battle.encounter,
+            enemyUnits = battle.enemyUnits,
+            prestige = battle.prestige,
+            houseMaterial = battle.houseMaterial,
+            combat = battle.combat,
+        })
     end
 
     -- Wrap each state callback so pressing its button clears the overlay before handing control on.

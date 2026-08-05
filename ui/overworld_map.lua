@@ -16,8 +16,10 @@
 --   map:keypressed(key); map:gamepadpressed(joystick, button)
 
 local Scale = require("scale")
+local InputMode = require("input_mode") -- which device is live, for the hovered-fight readout
 local Sprite = require("models.sprite")
 local Tileset = require("models.tileset")
+local Muster = require("models.muster") -- for BAND -> pip count; the comparison itself is the caller's
 local Theme = require("ui.theme")
 
 local OverworldMap = {}
@@ -50,7 +52,12 @@ function OverworldMap.new(grid, opts)
     -- "key". These are the only two markers that give something WITHOUT opening a panel, so without
     -- this the board takes them in silence and the mark on the trail never explains itself. See :arrive.
     self.onPickup = opts.onPickup
+    -- How a fight stands against the company that would field against it: musterBand(cell) -> a
+    -- models/muster.lua band name, or nil for a cell with no reading. The widget stays dumb about the
+    -- comparison itself (it owns no roster); it only colours what it is told. See the pips in :draw.
+    self.musterBand = opts.musterBand
     self.font = opts.font or Theme.body(16)
+    self.hoverCell = nil -- the cell under the mouse, for the HUD's fight readout (see hoveredFight)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.heldDir = nil   -- { dx, dy } of the direction currently held (any input)
     self.moveTimer = 0   -- seconds until the next auto-repeat step
@@ -329,13 +336,28 @@ function OverworldMap:tokenRect()
     return { x = wx - math.floor(self.camX or 0), y = wy - math.floor(self.camY or 0), w = s, h = s }
 end
 
--- Difficulty-tier pip colour: green (1) -> amber (2) -> red (3). The tell the fog reveals, so a
--- combat/elite's danger can be read before the player commits to its tile (reveal-then-choose).
-local function tierColor(tier)
-    if tier >= 3 then return 0.95, 0.35, 0.32 end
-    if tier == 2 then return 0.90, 0.75, 0.30 end
-    return 0.35, 0.85, 0.40
-end
+-- A combat/elite marker says how the fight stands AGAINST THE COMPANY, in two marks that answer two
+-- different questions (models/muster.lua):
+--
+--   * the BOX COLOUR answers "is this a fight at all?" -- the hostile red/orange it has always worn,
+--     or, once the company has plainly outgrown it, a calm slate that reads as spent ground. That is
+--     also the tile that will offer to be walked off when you step on it (Muster.WALK_OVER), so the
+--     colour going calm IS the offer, seen from across the board;
+--   * the PIPS answer "and by how much is it above me?" -- one per step, none at all for a fight that
+--     is even or beneath you.
+--
+-- The pips used to count the authored TIER, which is a fact about the encounter table rather than
+-- about this run: the same three dots whether the company walked in naked or fully forged. Counting
+-- steps above you instead means the mark moves as the company does, which is the only version of it
+-- worth reading.
+--
+-- An even fight draws NO pips and stays red. That pairing is deliberate: "no pips" must not read as
+-- "safe", so the thing that says safe is the colour, and the pips only ever count danger past even.
+-- Outgrown: a cool slate, and deliberately NOT a green. Green on a map reads as "something good here,
+-- go and get it", and this is still a fight -- what it is is beneath notice. Kept light enough that it
+-- cannot be mistaken for a CLEARED marker, which is the ordinary hostile colour at 0.3 alpha.
+local CALM_MARKER = { 0.46, 0.56, 0.55 }
+local PIP_COLOR = { 1.0, 0.86, 0.55 }    -- warning bone-gold, legible on the hostile box beneath it
 
 local function markerColor(kind)
     if kind == "objective" then return 0.95, 0.75, 0.20 end
@@ -617,6 +639,12 @@ function OverworldMap:drawMarkers()
             if c.encounter then
                 local kind = c.encounter.kind
                 local r, g, b = markerColor(kind)
+                -- How this fight stands against the company, asked once and spent twice below: on the
+                -- box colour and on the pips. Nil for a stop there is no comparison to make about --
+                -- a treasure, a rest, an escort fight the muster cannot price -- which keeps its
+                -- ordinary hostile colour and draws no pips, exactly as before any of this existed.
+                local band = self.musterBand and self.musterBand(c) or nil
+                if band == "beneath" then r, g, b = CALM_MARKER[1], CALM_MARKER[2], CALM_MARKER[3] end
                 local a = c.cleared and 0.3 or 1
                 love.graphics.setColor(r, g, b, a)
                 love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
@@ -628,19 +656,31 @@ function OverworldMap:drawMarkers()
                 local pad = s * 0.28
                 icon(wx + pad, wy + pad, s - pad * 2, s - pad * 2, 1, 1, 1, a)
 
-                -- Difficulty tell: 1-3 pips along the bottom of the cell for a combat/elite. Read from
-                -- a seen tile (the fog only dims it), this is what lets the player weigh a fight's danger
-                -- against their attrition BEFORE stepping on it.
-                local tier = c.encounter.tier
-                if tier and (kind == "combat" or kind == "elite") then
-                    local pr, pg, pb = tierColor(tier)
-                    local pipR = math.max(1.5, s * 0.06)
+                -- How far above the company this fight stands: one pip per step, along the marker's
+                -- bottom edge. None at all when it is even or beneath them -- the box colour above has
+                -- already said which of those two it is.
+                --
+                -- Sized to be COUNTED, which the old tier pips were not: they were `s * 0.06`, under 2px
+                -- across at a 32px tile, and three of them could not be told from two. They got away
+                -- with it only because their colour ALSO encoded the tier (green -> amber -> red), so
+                -- nobody was counting -- they were reading "red". Now that the count carries a fact of
+                -- its own, it has to survive being read.
+                local steps = band and Muster.PIPS[band] or 0
+                if steps > 0 and (kind == "combat" or kind == "elite") then
+                    local pipR = math.max(2.5, s * 0.09)
                     local gap = pipR * 2 + 2
-                    local startX = wx + s / 2 - (tier * gap - 2) / 2 + pipR
-                    local py = wy + s - pipR - 3
-                    for i = 1, tier do
-                        love.graphics.setColor(pr, pg, pb, a)
-                        love.graphics.circle("fill", startX + (i - 1) * gap, py, pipR)
+                    local w = steps * gap - 2
+                    local cy = wy + s - pipR - 2
+
+                    -- A dark seat behind the row, because the pips land on the marker's own hostile red
+                    -- and a warning mark that needs good luck with the background is not a warning.
+                    love.graphics.setColor(0.05, 0.05, 0.07, a * 0.85)
+                    love.graphics.rectangle("fill", wx + s / 2 - w / 2 - 3, cy - pipR - 1.5,
+                        w + 6, pipR * 2 + 3, pipR + 1.5, pipR + 1.5)
+
+                    love.graphics.setColor(PIP_COLOR[1], PIP_COLOR[2], PIP_COLOR[3], a)
+                    for i = 1, steps do
+                        love.graphics.circle("fill", wx + s / 2 - w / 2 + pipR + (i - 1) * gap, cy, pipR)
                     end
                 end
                 love.graphics.setColor(1, 1, 1)
@@ -724,6 +764,34 @@ function OverworldMap:pathTo(tx, ty)
     return steps[1] and steps or nil
 end
 
-function OverworldMap:mousemoved(_, _) end
+-- Track the tile under the pointer, so the HUD can name the fight the player is weighing up
+-- (states/game.lua's drawHud). Only a SEEN tile counts -- naming a marker still under fog would hand
+-- over the very thing the fog is keeping back.
+function OverworldMap:mousemoved(x, y)
+    local cx, cy = self.grid:pixelToCell(x + self.camX, y + self.camY)
+    local c = self.grid:get(cx, cy)
+    self.hoverCell = (c and c.seen) and c or nil
+end
+
+-- The encounter the player is weighing up, or nil. Two answers, because there are two ways to be
+-- weighing one up and the overworld has no cursor of its own:
+--   * with a mouse, whatever marker the pointer is over -- reading ahead, planning a route;
+--   * otherwise (keyboard, gamepad), a marker on an ADJACENT tile -- the fight one step away, which
+--     is the beat where a pad player actually decides.
+-- A cleared stop answers nothing: there is no fight left on it to weigh.
+function OverworldMap:hoveredFight()
+    local function fightAt(c)
+        if not (c and c.seen and c.encounter and not c.cleared) then return nil end
+        local kind = c.encounter.kind
+        return (kind == "combat" or kind == "elite") and c or nil
+    end
+
+    if InputMode.isMouse() then return fightAt(self.hoverCell) end
+    for _, d in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
+        local c = fightAt(self.grid:get(self.px + d[1], self.py + d[2]))
+        if c then return c end
+    end
+    return nil
+end
 
 return OverworldMap
