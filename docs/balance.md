@@ -138,22 +138,37 @@ stops mattering. The audit measured that directly: damage was **~0.45 of the wie
 opening shelf and ~0.20 on the last one**, so a 400-gold late weapon was a smaller step than a
 60-gold early one.
 
-Held **per family**, never across them. `docs/weapons.md` gives each archetype its own level, paid
-for in tempo and hands — a greatsword "winds up a turn, then lands the heaviest hit in the game" and
-`weapon_iron_greatsword` really does carry four times a dagger's power. Measured levels, from each
-family's early exemplars: greatsword 0.93, longbow 0.83, mace 0.53, sword 0.50, hammer 0.50, spear
-0.42, ability 0.40, dagger 0.40, censer/staff/axe 0.33, bow 0.27, wand 0.25. One share across all
-weapons proposed cutting the iron greatsword 24 → 5.
+Held **per family**, never across them, and each family's level is read off **its base weapon** —
+`docs/weapons.md`'s own S1 rows, the iron kit plus the three caster bases that carry no metal in their
+names (`Balance.FAMILY_BASE`). A base is a deliberate authored statement of what an archetype costs
+and returns:
 
-A family with fewer than `Balance.FAMILY_MIN_SAMPLE` early exemplars is **not judged** — eight of
-thirteen are in that position, and a level read off two items is one of the two items.
+| | | | | |
+|---|---|---|---|---|
+| greatsword **2.00** | hammer **1.00** | longbow **0.83** | mace **0.67** | spear **0.50** |
+| sword **0.50** | wand **0.42** | dagger **0.42** | axe **0.42** | bow **0.42** |
+| ability **0.40** | censer **0.33** | staff **0.33** | | |
 
-**Riders are detected, not listed.** An item is *plain* only if its effect does exactly one
-unqualified `fx.damage(fx.target)` and nothing else; anything else is selling an effect and is
-allowed to sit low. That test is structural because four attempts at a keyword list each
-under-reached — `knockback` passed inside a closure, a chi multiplier, an AoE loop, a top-level
-`waitBehavior` — and each miss proposed buffing a weapon whose own header explains why its number is
-small.
+One share across all weapons proposed cutting the iron greatsword 24 → 5. A **median** over early
+exemplars was tried next and is also wrong: eight of thirteen families have one or two priced early
+members, and with an even count the median takes the lower — so a family's level became its weaker
+member, and the solver proposed halving the greatsword again. The base is the level; a median is an
+accident of how many of an archetype happen to be cheap.
+
+Abilities keep a median: "the ability shelf" is not one thing the way "the axe" is, and it has 32
+early exemplars to afford one.
+
+**Riders are detected, not listed.** An item is *plain* only if it declares no rider field, does not
+out-reach its family's base, and its effect does exactly one unqualified `fx.damage(fx.target)` and
+nothing else. Anything else is selling something and is allowed to sit low.
+
+That test is structural because every attempt at a keyword list under-reached, six times over —
+`knockback` passed inside a closure, a chi multiplier whose stated damage is only a floor, an AoE loop
+over everything standing in a hazard, a top-level `waitBehavior` read only on `activeAbility`, the
+censer family's `incense` block, and finally `weapon_harriers_bow`, whose rider is not an effect at
+all but **+1 range over the iron bow** ("under the iron bow: the freedom is the price"). Each miss
+proposed buffing a weapon whose own header explains why its number is small. Enumerating what a rider
+can be is a losing game; recognising what *plain* looks like is a short list of structural facts.
 
 **The audit's result: zero items needed changing.** The declining raw share is real, but it is not a
 defect — the catalogue was already selling effects rather than numbers at late gates. `weapon_quietus`

@@ -202,19 +202,37 @@ Balance.ARMOR_SHARE = 0.40
 -- mistake Vendor.tier was: a knob nothing reads is a knob that drifts.)
 Balance.ITEM_SHARE_BAND = { min = 0.55, max = 1.8 } -- as a RATIO to the family's own target
 
--- Gates counted as "early" when reading a family's own power level: the end of the campaign that was
--- verified by hand and plays correctly, and therefore the end the rest is brought into line with.
+-- Gates counted as "early" when reading the ABILITY group's level, which has no single base weapon to
+-- read from and 32 exemplars to take a median over.
 Balance.EARLY_GATES = 4
 
--- How many early exemplars a family needs before its measured level is trusted enough to retune the
--- rest of it automatically.
+-- THE BASE WEAPON OF EACH FAMILY -- the item whose power level the rest of that family is held to.
 --
--- Eight of the thirteen families have one or two, and a level read off two items is not a level -- it
--- is one of the two items. It read weapon_iron_greatsword, the family's own base weapon and the
--- heaviest hit in the game by documented design, as 2.18x "its family" and proposed halving it. A
--- family under this bar is REPORTED and left alone; retuning it is an authoring decision about what
--- that archetype is for, which is docs/weapons.md's business and not a solver's.
-Balance.FAMILY_MIN_SAMPLE = 3
+-- These are docs/weapons.md's own S1 rows, the entries that document calls "the base": the iron kit,
+-- plus the three caster families whose base carries no metal in its name. Reading the level off the
+-- BASE rather than off a median is the correction that made this rule usable at all. A median needs a
+-- sample, eight of the thirteen families have one or two priced early exemplars, and a level read off
+-- two items is simply one of the two items -- with an even count it took the lower, so a family's
+-- level became its weaker member and the solver proposed halving weapon_iron_greatsword, the heaviest
+-- hit in the game by that same document's design.
+--
+-- A base is a deliberate authored statement of what an archetype costs and returns; a median is an
+-- accident of how many of them happen to be cheap. tests/balance_spec.lua checks each one still
+-- exists, is priced, and really belongs to the family it is named for.
+Balance.FAMILY_BASE = {
+    sword = "weapon_iron_sword",
+    greatsword = "weapon_iron_greatsword",
+    axe = "weapon_iron_axe",
+    spear = "weapon_iron_spear",
+    mace = "weapon_iron_mace",
+    hammer = "weapon_iron_hammer",
+    dagger = "weapon_iron_dagger",
+    bow = "weapon_iron_bow",
+    longbow = "weapon_iron_longbow",
+    wand = "weapon_wand",
+    staff = "weapon_staff",
+    censer = "weapon_censer",
+}
 
 -- ---------------------------------------------------------------------------
 -- Derived: the player's side
@@ -968,60 +986,38 @@ function Balance.familyOf(idOrDef)
     return Item.archetype(def) or def.type
 end
 
--- family -> the share its EARLY exemplars sit at. This is the level each family is held to across
--- every gate, so a greatsword stays a greatsword and a dagger stays a dagger while both stop drifting
--- as the campaign goes on. Memoized; derived, never authored.
+-- family -> the share it is held to across every gate, so a greatsword stays a greatsword and a dagger
+-- stays a dagger while both stop drifting as the campaign goes on.
+--
+-- A weapon family reads its BASE (Balance.FAMILY_BASE). Abilities have no archetype and no single
+-- base -- "the ability shelf" is not one thing the way "the axe" is -- so that group keeps a median,
+-- which it can afford at 32 early exemplars. Memoized.
 local familyCache
 function Balance.familyShares()
     if familyCache then return familyCache end
-    local acc = {}
-    for id, def in pairs(Item.defs) do
-        if def.price and (def.type == "weapon" or def.type == "ability")
-            and (def.unlockQuests or 0) <= Balance.EARLY_GATES then
-            local share = Balance.itemShare(id)
-            local fam = Balance.familyOf(def)
-            if share and fam then
-                acc[fam] = acc[fam] or {}
-                acc[fam][#acc[fam] + 1] = share
-            end
-        end
-    end
     familyCache = {}
-    for fam, list in pairs(acc) do
-        if #list >= Balance.FAMILY_MIN_SAMPLE then
-            table.sort(list)
-            -- Median, so one outlier exemplar cannot set a whole family's level. On an even count
-            -- take the MEAN of the two middles rather than an arbitrary side: `list[#list/2]` picks
-            -- the lower, which on a two-item family means the family's level is simply its weaker
-            -- member -- and that is what proposed cutting the iron greatsword in half.
-            local n = #list
-            if n % 2 == 1 then
-                familyCache[fam] = list[(n + 1) / 2]
-            else
-                familyCache[fam] = (list[n / 2] + list[n / 2 + 1]) / 2
-            end
-        end
-    end
-    return familyCache
-end
 
--- Families with too few early exemplars to read a level from, and how many each has. Reported so the
--- gap is visible rather than silently skipped.
-function Balance.thinFamilies()
-    local counts = {}
+    for fam, baseId in pairs(Balance.FAMILY_BASE) do
+        local share = Balance.itemShare(baseId)
+        if share then familyCache[fam] = share end
+    end
+
+    local abilities = {}
     for id, def in pairs(Item.defs) do
-        if def.price and (def.type == "weapon" or def.type == "ability")
-            and (def.unlockQuests or 0) <= Balance.EARLY_GATES then
-            local fam = Balance.familyOf(def)
-            if fam and Balance.itemShare(id) then counts[fam] = (counts[fam] or 0) + 1 end
+        if def.price and def.type == "ability" and (def.unlockQuests or 0) <= Balance.EARLY_GATES
+            and Balance.familyOf(def) == "ability" then
+            local share = Balance.itemShare(id)
+            if share then abilities[#abilities + 1] = share end
         end
     end
-    local out = {}
-    for fam, n in pairs(counts) do
-        if n < Balance.FAMILY_MIN_SAMPLE then out[#out + 1] = { family = fam, n = n } end
+    if #abilities > 0 then
+        table.sort(abilities)
+        local n = #abilities
+        familyCache.ability = (n % 2 == 1) and abilities[(n + 1) / 2]
+            or (abilities[n / 2] + abilities[n / 2 + 1]) / 2
     end
-    table.sort(out, function(a, b) return a.family < b.family end)
-    return out
+
+    return familyCache
 end
 
 -- The level-0 magnitude an item SHOULD carry for its gate, and what it currently does carry.
@@ -1052,6 +1048,20 @@ end
 local RIDER_FIELDS = {
     "inflicts", "hits", "stun", "healing", "restore", "summon",
     "waitBehavior", "requiresAdjacent", "raw", "reviveHealth",
+    -- The censer family's whole mechanic: ground that walks with the bearer (Combat.layIncense). Every
+    -- censer carries one and its strike is feeble by the family contract, so without this the two
+    -- late censers read as plain 4-power sticks.
+    "incense",
+}
+
+-- Ways an item can beat its family's BASE on reach or handling. Buying one of these is buying
+-- something, and an item that has paid for it may sit low on damage -- weapon_harriers_bow is the
+-- case that found this: range 4 against the iron bow's 3, its own header saying "under the iron bow:
+-- the freedom is the price", and slower speed on top. A rider is not always an effect; sometimes it
+-- is a restriction the base has and this one does not.
+local REACH_AXES = {
+    { key = "range", better = function(a, b) return a > b end },
+    { key = "minRange", better = function(a, b) return a < b end },
 }
 -- Rather than a keyword list, the source test is STRUCTURAL: an item is plain only if its effect does
 -- exactly one thing -- a single unqualified `fx.damage(fx.target)` and no other fx call. Anything
@@ -1093,6 +1103,22 @@ function Balance.hasRider(idOrDef)
     local ab = def.activeAbility
     for _, key in ipairs(RIDER_FIELDS) do
         if def[key] ~= nil or (ab and ab[key] ~= nil) then return true end
+    end
+
+    -- Does it out-reach or out-handle its own family's base?
+    local fam = Balance.familyOf(def)
+    local baseId = fam and Balance.FAMILY_BASE[fam]
+    if baseId and baseId ~= id then
+        local base = Item.defs[baseId]
+        local bab = base and base.activeAbility
+        if ab and bab then
+            for _, axis in ipairs(REACH_AXES) do
+                local mine, theirs = ab[axis.key], bab[axis.key]
+                if mine and theirs and axis.better(mine, theirs) then return true end
+            end
+            if bab.requiresSight and not ab.requiresSight then return true end
+        end
+        if base and base.hands and def.hands and def.hands < base.hands then return true end
     end
 
     local text = id and itemSource(id)

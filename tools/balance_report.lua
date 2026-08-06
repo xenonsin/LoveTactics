@@ -665,25 +665,14 @@ function M.run(args)
         end
     end
     print("")
-    print("  Family power levels -- the share each archetype is held to, from its EARLY exemplars")
-    print("  (docs/weapons.md gives each family its own level; this is measuring that, not setting it)")
+    print("  Family power levels -- the share each archetype is held to, read off its BASE weapon")
+    print("  (docs/weapons.md's S1 rows: the iron kit, plus the caster bases that carry no metal)")
     for _, f in ipairs(fams) do
+        local base = Balance.FAMILY_BASE[f.fam]
         local n = counts[f.fam] or 0
-        print(string.format("    %-12s %.2f   from %d early exemplar%s",
-            f.fam, f.share, n, n == 1 and "" or "s"))
-    end
-    local thin = Balance.thinFamilies()
-    if #thin > 0 then
-        print("")
-        print(string.format("    NOT JUDGED -- fewer than %d early exemplars, so there is no level to read (%d):",
-            Balance.FAMILY_MIN_SAMPLE, #thin))
-        local bits = {}
-        for _, t in ipairs(thin) do bits[#bits + 1] = string.format("%s (%d)", t.family, t.n) end
-        print("      " .. table.concat(bits, ", "))
-        print("      These are left alone on purpose: a level read off one or two items is one of the")
-        print("      two items, and it read the iron greatsword -- the heaviest hit in the game by")
-        print("      design -- as twice 'its family'. Deciding what an archetype is worth is")
-        print("      docs/weapons.md's business, not a solver's.")
+        print(string.format("    %-12s %.2f   %s",
+            f.fam, f.share,
+            base and ("base " .. base) or string.format("median of %d early exemplars", n)))
     end
 
     print("")

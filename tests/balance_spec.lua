@@ -345,6 +345,44 @@ return {
         -- being what it is. Four hand-written waivers were tried first and every one of them turned
         -- out to be a rider the detector should have caught -- knockback inside a closure, a chi
         -- multiplier, an AoE loop, a top-level waitBehavior.
+        -- The base table is the whole rule's foundation, so it is checked before the rule is: each
+        -- entry must still exist, still be priced, and still belong to the family it is named for.
+        -- It mirrors docs/weapons.md's S1 rows, and a mirror is a thing that drifts.
+        name = "every weapon family names a base weapon that is real, priced, and of that family",
+        fn = function()
+            local bad = {}
+            for fam, id in pairs(Balance.FAMILY_BASE) do
+                local def = Item.defs[id]
+                if not def then
+                    bad[#bad + 1] = fam .. ": names " .. id .. ", which does not exist"
+                elseif not def.price then
+                    bad[#bad + 1] = fam .. ": " .. id .. " is not priced, so no shelf ever sells it"
+                elseif Item.archetype(def) ~= fam then
+                    bad[#bad + 1] = string.format("%s: %s is a %s, not a %s",
+                        fam, id, tostring(Item.archetype(def)), fam)
+                elseif not Balance.itemShare(id) then
+                    bad[#bad + 1] = fam .. ": " .. id .. " has no damage magnitude to read a level from"
+                end
+            end
+            -- And every family that has priced members must name one, or its members go unjudged.
+            local seen = {}
+            for id, def in pairs(Item.defs) do
+                if def.price and def.type == "weapon" then
+                    local fam = Item.archetype(def)
+                    if fam and Balance.itemShare(id) then seen[fam] = true end
+                end
+            end
+            for fam in pairs(seen) do
+                if not Balance.FAMILY_BASE[fam] then
+                    bad[#bad + 1] = fam .. ": has priced weapons but names no base (docs/weapons.md S1)"
+                end
+            end
+            table.sort(bad)
+            assert(#bad == 0, "Balance.FAMILY_BASE mirrors docs/weapons.md's S1 rows and has drifted from it:\n  "
+                .. table.concat(bad, "\n  "))
+        end,
+    },
+    {
         name = "an item's magnitude scales with the gate that opens it, within its family",
         fn = function()
             local band = Balance.ITEM_SHARE_BAND
