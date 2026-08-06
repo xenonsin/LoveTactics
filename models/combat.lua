@@ -3798,7 +3798,14 @@ end
 -- Slide `unit` one tile by (dx, dy), triggering whatever it lands on. Returns false on a blocked
 -- tile without moving it. A wide body moves as one -- every cell it would enter must be clear
 -- (footprintCanShift) or the whole slide is refused.
+--
+-- An ANCHORED body (Root) refuses every step here, which is the one place that has to be true: this is
+-- the single primitive a unit's forced travel goes through -- knockback, Heave, pull, a charge shoving
+-- a bystander aside -- so a status that says "you may not be moved" is enforced once rather than at
+-- four call sites that could each forget. The louder entry points check it themselves as well, so they
+-- can say so in the log and skip the work; this is the floor under them.
 local function shoveStep(combat, unit, dx, dy)
+    if Status.blocksForcedMove(unit) then return false end
     if not footprintCanShift(combat, unit, dx, dy) then return false end
     local fromX, fromY = unit.x, unit.y -- as Combat.stepMove: the vacated tile a trail lays behind on
     local nx, ny = unit.x + dx, unit.y + dy
@@ -3818,6 +3825,10 @@ end
 -- counter more likely, never less.
 function Combat.knockbackTile(combat, source, target, distance, opts)
     if not (source and target) then return target and target.x, target and target.y end
+    -- An anchored body (Root) comes to rest exactly where it stands, because the live shove below
+    -- never moves it. The preview has to agree or a counter would be promised from a tile the target
+    -- is never going to be on.
+    if Status.blocksForcedMove(target) then return target.x, target.y end
     -- Mirror Combat.knockback's aim: a thrown body (opts.dest set) walks the lane toward its chosen
     -- landing, so the ghost rests where the live throw will; a plain shove keeps away-from-source.
     -- (Explicit if/else so signDominant's two return values both survive.)
@@ -3871,6 +3882,18 @@ end
 function Combat.knockback(combat, source, target, distance, opts)
     opts = opts or {}
     if not (target and target.alive) then return 0, false end
+
+    -- ANCHORED (Root): the shove finds nothing to move. Not a collision -- a collision is momentum
+    -- meeting a wall, and there was never any momentum here -- so no impact damage lands on anybody,
+    -- and Combat.shoveRiders is skipped too: nothing was shoved, so nothing rides a shove. The blow
+    -- that carried this is entirely unaffected; it has already been dealt by the time we get here.
+    -- Said in the log, because "the mace hit and the body did not move" needs a reason on screen.
+    if Status.blocksForcedMove(target) then
+        Combat.logEvent(combat, "status",
+            string.format("%s is rooted and holds its ground.", unitName(target)), target)
+        return 0, false
+    end
+
     local amount = opts.amount or Combat.COLLISION_DAMAGE
     -- A THROWN body (Heave) picks its own lane: aimed toward opts.dest rather than straight away
     -- from the source, and travelling only as far as that tile (Chebyshev), so the collision rule
@@ -4251,6 +4274,16 @@ function Combat.pull(combat, source, target)
     if not Combat.hasLineOfSight(combat, source.x, source.y, target.x, target.y) then
         return false, "no line of sight"
     end
+    -- ANCHORED (Root): the hook catches, and the body does not come. Reported as a drag of zero tiles
+    -- rather than as a refusal, deliberately -- a refusal (the "no line of sight" branch above) hands
+    -- the turn back, and a rooted target is not an illegal aim, it is a bad one. Kept after the sight
+    -- check so an aim that was never legal in the first place still costs nothing. shoveStep would
+    -- stop the haul on its own; this is here for the log line.
+    if Status.blocksForcedMove(target) then
+        Combat.logEvent(combat, "status",
+            string.format("%s is rooted and cannot be dragged.", unitName(target)), { target, source })
+        return true, 0
+    end
     -- Where the drag starts, so the view can glide the target across the lane rather than snapping it
     -- to your feet (the model resolves the whole haul in this one atomic pass, springing every trap and
     -- hazard it crosses as it goes -- see shoveStep -> enterTile).
@@ -4332,6 +4365,17 @@ function Combat.charge(combat, user, target, distance)
     -- OR target can't perform the drive -- the pin fizzles rather than resolving into a broken slide.
     -- (A wide BYSTANDER in the lane is still handled below: it is shoved aside as a whole body.)
     if (user.w or 1) > 1 or (user.h or 1) > 1 or (target.w or 1) > 1 or (target.h or 1) > 1 then
+        return 0
+    end
+    -- An ANCHORED body (Root) cannot be driven, and a charge is nothing but driving one: the lockstep
+    -- below moves the target first and follows it, so with the target planted there is no run to make.
+    -- The pin fizzles exactly as it does against a wide body -- checked here rather than left to the
+    -- loop because the target's stride sets its own x,y and never asks shoveStep. A charging body that
+    -- is ITSELF rooted is stopped by the same status one gate earlier (it cannot take its move at all).
+    local planted = (Status.blocksForcedMove(target) and target) or (Status.blocksForcedMove(user) and user)
+    if planted then
+        Combat.logEvent(combat, "status",
+            string.format("%s is rooted, and the charge goes nowhere.", unitName(planted)), { planted, user })
         return 0
     end
     local dx, dy = signDominant(target.x - user.x, target.y - user.y)

@@ -188,6 +188,130 @@ return {
         end,
     },
     {
+        name = "a rooted body is not shoved at all, and takes nothing for standing still",
+        fn = function()
+            -- Root plants the feet against everyone, not only against the bearer's own turn
+            -- (data/status/status_root.lua). Over OPEN ground, so the only thing that could have
+            -- stopped the shove is the status itself -- and refusing it is not a collision, so no
+            -- impact damage lands and nothing is reported as having slammed into anything.
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 4) }, { unit("character_bandit", 4, 4) })
+            local knight, bandit = c.units[1], c.units[2]
+            Status.apply(c, bandit, "status_root")
+            local before = hp(bandit)
+
+            local moved, collided = Combat.knockback(c, knight, bandit, 2, { amount = 10 })
+            assert(moved == 0, "it travels nowhere")
+            assert(not collided, "and it is NOT a collision -- there was never any momentum")
+            assert(bandit.x == 4 and bandit.y == 4, "the body is exactly where it was")
+            assert(hp(bandit) == before, "and it takes no impact for having been anchored")
+        end,
+    },
+    {
+        name = "the Mace still hits a rooted target for full, it just cannot move it",
+        fn = function()
+            -- The displacement is what Root refuses, never the blow that carried it.
+            local Status = require("models.status")
+            local function swing(rooted)
+                local knight = Character.instantiate("character_rowan")
+                knight.inventory = {}
+                Character.addItem(knight, Item.instantiate("weapon_iron_mace"))
+                local c = Combat.new(arena(8, 8), { unit(knight, 3, 4) }, { unit("character_bandit", 4, 4) })
+                local ku, bandit = c.units[1], c.units[2]
+                if rooted then Status.apply(c, bandit, "status_root") end
+                local before = hp(bandit)
+                c.turn = { unit = ku, moved = false, moveCost = 0 }
+                assert(Combat.useItem(c, ku, knight.inventory[1], 4, 4), "the blow lands either way")
+                return before - hp(bandit), bandit.x
+            end
+
+            local plainDmg, plainX = swing(false)
+            local rootedDmg, rootedX = swing(true)
+            assert(plainX == 6, "the ordinary swing drives the bandit two tiles back")
+            assert(rootedX == 4, "the rooted one is left standing on its tile")
+            assert(rootedDmg == plainDmg,
+                "and it took the mace in full (" .. rootedDmg .. " vs " .. plainDmg .. ")")
+        end,
+    },
+    {
+        name = "the shove preview rests a rooted body on its own tile",
+        fn = function()
+            -- knockbackTile is what an answer's reach is weighed against (Combat.previewCounters), so
+            -- a preview that walked the lane would promise a counter from a tile nobody ends up on.
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 4) }, { unit("character_bandit", 4, 4) })
+            local knight, bandit = c.units[1], c.units[2]
+            local rx, ry = Combat.knockbackTile(c, knight, bandit, 2)
+            assert(rx == 6 and ry == 4, "unrooted, the ghost walks the full two tiles")
+
+            Status.apply(c, bandit, "status_root")
+            rx, ry = Combat.knockbackTile(c, knight, bandit, 2)
+            assert(rx == 4 and ry == 4, "rooted, it rests where it stands (got " .. rx .. ", " .. ry .. ")")
+        end,
+    },
+    {
+        name = "a rooted body cannot be dragged either, and the hook is not refused for trying",
+        fn = function()
+            -- Planted is planted whichever direction the force comes from. But unlike a target you
+            -- cannot SEE, a rooted one is a legal aim -- just a poor one -- so the pull reports a haul
+            -- of zero rather than handing the turn back the way "no line of sight" does.
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 4) }, { unit("character_bandit", 6, 4) })
+            local knight, bandit = c.units[1], c.units[2]
+            Status.apply(c, bandit, "status_root")
+
+            local ok, moved = Combat.pull(c, knight, bandit)
+            assert(ok, "the aim is legal -- the line is clear and the body is there")
+            assert(moved == 0, "but nothing came, got " .. tostring(moved))
+            assert(bandit.x == 6 and bandit.y == 4, "it never left its tile")
+        end,
+    },
+    {
+        name = "a charge cannot drive a rooted body, and a rooted charger cannot run",
+        fn = function()
+            -- A charge is a lockstep: the target leads and the charger follows into the tile it
+            -- vacates. Anchor either end and there is no run to make.
+            local Status = require("models.status")
+            local function run(root)
+                local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 4) }, { unit("character_bandit", 4, 4) })
+                local knight, bandit = c.units[1], c.units[2]
+                if root then Status.apply(c, bandit, "status_root") end
+                if root == "charger" then Status.apply(c, knight, "status_root") end
+                return Combat.charge(c, knight, bandit, 2), bandit.x, knight.x
+            end
+
+            local moved, tx, ux = run(false)
+            assert(moved == 2 and tx == 6 and ux == 5, "the ordinary charge drives the pair two tiles")
+            moved, tx, ux = run(true)
+            assert(moved == 0 and tx == 4 and ux == 3, "a rooted target is not driven, and nobody advances")
+
+            -- A charger who is himself rooted: same fizzle, one gate earlier.
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 4) }, { unit("character_bandit", 4, 4) })
+            Status.apply(c, c.units[1], "status_root")
+            assert(Combat.charge(c, c.units[1], c.units[2], 2) == 0, "planted feet do not charge")
+            assert(c.units[1].x == 3 and c.units[2].x == 4, "and neither body moved")
+        end,
+    },
+    {
+        name = "the Slipchain's Root immunity is also its answer to being shoved",
+        fn = function()
+            -- The one thing that turns the anchoring back off: a body that never becomes Rooted is
+            -- moveable as it always was. Guards the seam between the immunity item and the new flag.
+            local Status = require("models.status")
+            local bandit = Character.instantiate("character_bandit")
+            bandit.inventory = {}
+            Character.addItem(bandit, Item.instantiate("utility_slipchain_charm"))
+
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 4) }, { unit(bandit, 4, 4) })
+            local knight, bu = c.units[1], c.units[2]
+            Status.apply(c, bu, "status_root")
+            assert(not Status.has(bu, "status_root"), "the charm refuses the snare outright")
+
+            local moved = Combat.knockback(c, knight, bu, 2)
+            assert(moved == 2 and bu.x == 6, "so the shove still throws it the full two tiles")
+        end,
+    },
+    {
         name = "pull drags a unit to an adjacent tile, re-aiming each step",
         fn = function()
             -- A diagonal target: a fixed direction would march it past the puller along one axis.

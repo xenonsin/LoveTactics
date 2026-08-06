@@ -2,5 +2,5 @@
 -- the target two tiles straight back. The distance is per-item; this defines only what the word means.
 return {
     name = "Knockback",
-    description = "Drives the target straight back N tiles. A wall or another body stops it short, and the collision hurts both.",
+    description = "Drives the target straight back N tiles. A wall or another body stops it short, and the collision hurts both. A Rooted target is not moved at all.",
 }

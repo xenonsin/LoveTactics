@@ -29,6 +29,10 @@
 --   * onEnterTile(ctx)    -- the unit arrived on a tile by ground movement -- walked, shoved, or
 --                            dragged, but never blinked or swapped (e.g. bleed damage)
 --   * blocksMove = true   -- the unit cannot move on its turn (root)
+--   * blocksForcedMove    -- the unit cannot be moved by ANYONE either: a shove, a throw, a drag or a
+--                            charge leaves it exactly where it stands (root). The sibling of
+--                            blocksMove, and the pair says one thing between them -- feet that are
+--                            planted are planted against your own turn and against the enemy's alike
 --   * stopsMovement = true-- a walk that GAINS this status mid-route stops on the tile that landed it
 --                            (Mired: you step into the sand and you are going no further this turn).
 --                            Only the gain halts -- a unit that already had it walks normally
@@ -1069,6 +1073,22 @@ end
 function Status.blocksMove(unit)
     for _, s in ipairs(unit.statuses or {}) do
         if s.def.blocksMove then return true end
+    end
+    return false
+end
+
+-- Does any active status anchor this unit against FORCED movement (root)? blocksMove above refuses
+-- the walk a unit takes itself; this refuses the one somebody else takes for it -- a knockback, a
+-- Heave, a pull, a charge. Kept a separate flag rather than read off blocksMove, because the two are
+-- genuinely different claims: Halted takes your turn's walk without meaning a mace can no longer
+-- throw you, and a future stance could anchor a body that is still free to walk out of it.
+--
+-- The displacement is what is refused, never the action that carried it. A mace still swings and
+-- still hurts; it simply finds nothing to move. That is also why an anchored body takes no impact
+-- damage: it was not driven into a wall, it was not driven at all (see Combat.knockback).
+function Status.blocksForcedMove(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.blocksForcedMove then return true end
     end
     return false
 end

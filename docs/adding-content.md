@@ -1241,6 +1241,12 @@ to the dominant axis (ties break toward x), matching the 4-directional grid.
 A knockback stopped by a **wall or a prop** hurts that object in its own currency, which is how
 shoving a foe into a powder keg sets the keg off with nothing written to say so.
 
+A body wearing a status with `blocksForcedMove` (**Root** — `Status.blocksForcedMove`) is not moved by
+any of this: no shove, throw, drag or charge budges it. It is *not* a collision, so nothing takes
+impact damage and no shove rider fires — the blow that carried the knockback still lands in full, and
+only the displacement is refused. `Combat.knockbackTile`, the resting-tile preview, agrees, so a
+counter is never promised from a tile the target will not be standing on.
+
 `fx.pull(fx.target)` is the inverse: it drags a unit toward the caster until adjacent, re-aiming
 each step, and needs a clear line of sight. See `data/items/weapon/mace.lua`,
 `data/items/ability/ability_push.lua`, and `ability_pull.lua`.
