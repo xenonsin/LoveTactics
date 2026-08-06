@@ -45,11 +45,11 @@ return {
             end,
             -- The discards in the shelter. Losing them all loses the quest: the raid is only a raid if
             -- there is someone in the building, and the player is the only one who thinks so.
-            allies = { "character_homunculus", "character_homunculus" },
+            allies = { "character_homunculus_discard", "character_homunculus_discard" },
             win = {
                 type = "assassinate",
                 target = "character_mage",
-                protect = "character_homunculus",
+                protect = "character_homunculus_discard",
             },
         },
         keyCount = 2,

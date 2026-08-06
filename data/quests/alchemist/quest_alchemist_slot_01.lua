@@ -20,10 +20,15 @@
 -- Ren is not in the party yet (she joins at slot 2) and no companion should explain this. Do not close
 -- the gap early.
 --
+-- The thing in the crate is `character_homunculus_discard`, NOT the `character_homunculus` the
+-- Alchemist summons and the Crucible fields as stock. Same creature, opposite unit: the summon's
+-- worth is the Poison its fists leave behind, so it charges, and a charge posture on the body the
+-- quest is lost on kills the quest by turn two. The discard is rooted (`holdGround`) and built to
+-- take blows rather than land them -- see its blueprint.
+--
 -- FIRST PASS. Scenes (`intro` / `outro` / the objective's `opening`) are not authored, so none is named
 -- (Conversation.play asserts on an unknown id), and the slot's own
--- unbuyable is still unwritten. `character_homunculus`
--- ships and is the right body; the sewn eyes want art, not a new blueprint.
+-- unbuyable is still unwritten. The sewn eyes still want art.
 --
 -- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
 -- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
@@ -48,11 +53,11 @@ return {
             end,
             -- The reagent. It stands where it is put and does not fight, and the quest is lost if it
             -- dies -- which is the only place in this file the truth is stated.
-            allies = { "character_homunculus" },
+            allies = { "character_homunculus_discard" },
             win = {
                 type = "assassinate",
                 target = "character_bandit_chief",
-                protect = "character_homunculus",
+                protect = "character_homunculus_discard",
             },
         },
         keyCount = 0,

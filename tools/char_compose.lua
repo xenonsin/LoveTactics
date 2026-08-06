@@ -216,8 +216,11 @@ local CHARACTER_SILHOUETTE = {
     general_lust = "lorc/pentagram-rose",           -- the pacted Saint
     general_sloth = "delapouite/broken-wall",       -- the Bastion's own wall, given way
 
-    -- Off the rock golem, which the Crucible Golem keeps.
+    -- Off the rock golem, which the Crucible Golem keeps. The discard is the same made thing as the
+    -- homunculus above and must not read as it: what the Crucible's cargo IS on the board is the one
+    -- detail the quest gives it, and the detail is the eyes.
     ordnance_sentry = "sbed/turret",
+    homunculus_discard = "delapouite/blindfold",
 
     -- Off the fighter's raised blade, which character_fighter (the generic) keeps.
     saber = "lorc/saber-slash",
