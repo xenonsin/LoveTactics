@@ -770,6 +770,12 @@ function BattleMap:drawOverlays()
     -- and threatened air is not ground -- a foe could strike here, but there is nothing underfoot to
     -- step in. Borrowing the hazard shader for it made a whole half-board of empty tiles look salted.
     paint(self.overlays.enemyRanges, Colors.DANGER)
+    -- WATCHED GROUND (self.overlays.watched): the ring beside an enemy holding Overwatch -- dear to
+    -- enter and shot at on arrival. Same danger purple as the survey above, because it is the same
+    -- kind of claim and a colour of its own would imply a third category. Painted here, beneath the
+    -- actor's own bands, so the blue move wash still reads on top: the player must be able to see
+    -- both that a tile is reachable and that it is being watched, which is the entire decision.
+    paint(self.overlays.watched, Colors.DANGER)
     -- Default-attack (threat) reach in red, under the blue move band. Its cells are the tiles
     -- beyond movement the unit could still strike, so it never overlaps the move set.
     paint(self.overlays.threat, Colors.RANGE)

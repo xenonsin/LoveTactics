@@ -157,9 +157,17 @@ local function appendTerrain(blocks, info, asHead)
         blocks[#blocks + 1] = { kind = "stat", label = "Movement", value = "Impassable",
             valueColor = ENEMY_COLOR }
     else
+        -- The tile's own price, and then what somebody watching it adds. Two lines rather than one
+        -- summed figure: the ground charges what it charges whoever walks on it, while the tax is a
+        -- fact about an enemy currently standing beside this square and will lift when they stop --
+        -- folding them together would say the mud got deeper.
         local mc = cell.moveCost or 1
         blocks[#blocks + 1] = { kind = "stat", label = "Move cost", value = tostring(mc),
             valueColor = mc > 1 and { 0.92, 0.72, 0.42 } or VALUE }
+        if info.watched then
+            blocks[#blocks + 1] = { kind = "stat", label = "Watched", value = "+" .. tostring(info.watched),
+                valueColor = ENEMY_COLOR }
+        end
     end
     blocks[#blocks + 1] = { kind = "stat", label = "Line of sight", value = coverText(cell.sightCost) }
 

@@ -606,9 +606,14 @@ end
 -- Effective flat stat for a unit: the character's base plus aggregated item bonuses
 -- (armor) plus any active status modifier (e.g. Defending's temporary +defense). Resource
 -- stats ({max,current}) are never read through here.
+-- base + what the grid grants + what a status lends + what the BOARD is worth right now. The fourth
+-- term is the live-passive read (Trait.liveBonus): a standing rule whose value is a claim about the
+-- field as it currently stands -- "1 defense per adjacent enemy" -- rather than a number banked when
+-- something happened. Pure, and 0 for any body carrying no such trait, which is nearly all of them.
 local function flatStat(unit, name)
     local base = unit.char.stats[name] or 0
     return base + ((unit.bonus and unit.bonus[name]) or 0) + Status.statBonus(unit, name)
+        + Trait.liveBonus(unit, name)
 end
 
 -- The per-item breakdown of the equipment bonus to `name`: one { label, value } per grid item that
@@ -994,7 +999,7 @@ function Combat.addUnit(combat, char, side, x, y, opts)
     applyUnitPassives(unit)
     -- Traits are attached but their opener is NOT fired: a summon arriving mid-battle did not start
     -- the battle. Its reactive hooks (onDamaged / onCast / onDeath) are live from this moment.
-    Trait.attach(unit)
+    Trait.attach(unit, combat)
     return unit
 end
 
@@ -2383,6 +2388,10 @@ function Combat.startTurn(combat)
     if unit then
         unit.priorX, unit.priorY = unit.turnStartX, unit.turnStartY
         unit.turnStartX, unit.turnStartY = unit.x, unit.y
+        -- The once-per-turn stamps (Combat.firstThisTurn), cleared here and ONLY here -- which is what
+        -- makes an extra action part of the same turn rather than a new one, since a surge re-opens
+        -- combat.turn straight from endTurn and never comes back through this function.
+        unit.turnFlags = nil
     end
     if unit then Status.onTurnStart(combat, unit) end
     -- The idle veil, granted past the expiry sweep above (see where `veil` is decided): a ninja who
@@ -2553,6 +2562,27 @@ function Combat.grantExtraAction(unit, n)
     if not (unit and unit.alive) then return 0 end
     unit.extraActions = (unit.extraActions or 0) + (n or 1)
     return unit.extraActions
+end
+
+-- ONCE THIS TURN. True the first time it is asked for `key` in the current turn, false every time
+-- after -- and it STAMPS as it answers, so a caller asks exactly once and branches on the answer.
+--
+-- What it is for: every "act again" reflex fires on a kill, and a kill made with the granted action
+-- can fire it again. Ungated, a body standing in a broken line refreshes forever. The resource cost on
+-- an ability bounds how often you can AFFORD to press it, which is why the free-action limit
+-- (Combat.FREE_ACTIONS_PER_TURN) exists beside it -- but a reflex is not pressed at all, so nothing
+-- bounds it except this.
+--
+-- Cleared in Combat.startTurn, which is what makes an extra action still count as the SAME turn: a
+-- surge re-opens `combat.turn` directly from endTurn without passing through startTurn (see the note
+-- there on why it must not fire per-turn machinery twice), so the stamp survives into the granted
+-- action. One refresh per real turn, which is the promise the items make.
+function Combat.firstThisTurn(unit, key)
+    if not (unit and key) then return false end
+    unit.turnFlags = unit.turnFlags or {}
+    if unit.turnFlags[key] then return false end
+    unit.turnFlags[key] = true
+    return true
 end
 
 -- A body that leaves the field mid-turn takes the turn record with it. `combat.turn` is the record of
@@ -2744,10 +2774,16 @@ end
 -- stance costs behavior.speed (deliberately steep -- a whole turn spent watching, no move-and-shoot).
 -- The stance lapses when the bearer's own next turn opens (Combat.startTurn). The wait swap granted by
 -- a sentry item (data/items/utility/utility_overwatch_scope.lua).
+--
+-- The stance also makes the ground beside it DEAR -- `zone`, the tax an enemy pays to enter a tile
+-- orthogonally adjacent to the watcher (Combat.watchTax, spent by stepTerrainCost). It rides here
+-- beside staminaPerShot because it is the same kind of number: a property of the stance this bearer
+-- takes, tuned by the item that grants it. A `waitBehavior` naming no zone taxes nothing, so the two
+-- pre-existing sentry items opted in explicitly rather than being changed underneath.
 function Combat.overwatch(combat, unit)
     if not unit.alive then return false, "dead" end
     local behavior = Combat.waitBehavior(unit)
-    unit.overwatch = { staminaPerShot = behavior.stamina or 0 }
+    unit.overwatch = { staminaPerShot = behavior.stamina or 0, zone = behavior.zone or 0 }
     Combat.logEvent(combat, "action", string.format("%s takes overwatch.", unitName(unit)), unit)
     endTurn(combat, unit, behavior.speed or Combat.FOCUS_SPEED)
     return true
@@ -2872,6 +2908,123 @@ end
 
 local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
 
+-- WATCHED GROUND. A unit holding the Overwatch stance does not merely shoot whoever walks into range
+-- (Combat.triggerOverwatch) -- the tiles orthogonally beside it are DEAR to enter, by the `zone` its
+-- stance declares. That is this game's reading of a zone of control, and it is deliberately a COST
+-- rather than the hard stop Fire Emblem and Those Who Rule use:
+--
+--   * a cost degrades. A fast body can still shove through a watched lane by spending its whole move
+--     on it, which is a decision; a hard stop is just a "no".
+--   * a cost needs no new concept. `moveCost` is a number the Dijkstra already weights, and rough
+--     ground has always meant exactly this -- so every existing exemption applies for free (a flier
+--     never reads the ground at all, and Status.costMultiplier already discounts a whole move, which
+--     makes Hasted the counter without a line of code).
+--   * a cost is the right SIZE for this board. An 8x8 field with four bodies a side and movement 3-4
+--     cannot carry a global hard stop: four bodies would control half the board and the fight would
+--     lock on turn two. See docs/classes.md.
+--
+-- It is ALSO the half of Overwatch that was missing. The stance costs a whole turn to enter and bought
+-- only a conditional shot, which an enemy answered by walking around the firing line. Now the two
+-- halves compound without being wired to each other: dear ground means more steps spent in range,
+-- and more steps in range means more shots.
+--
+-- Returns 0 when nobody opposing `unit` holds the stance, which is nearly every tile of nearly every
+-- fight -- one cheap pass over a roster that is never longer than a dozen bodies, so it wants no cache.
+function Combat.watchTax(combat, unit, x, y)
+    if not (combat and unit and combat.units) then return 0 end
+    local tax = 0
+    for _, watcher in ipairs(combat.units) do
+        local zone = watcher.alive and watcher.overwatch and watcher.overwatch.zone
+        if zone and zone > 0 and watcher.side ~= unit.side then
+            -- Orthogonal only, matching DIRS and the shape of every other adjacency in this file.
+            if math.abs(watcher.x - x) + math.abs(watcher.y - y) == 1 and zone > tax then tax = zone end
+        end
+    end
+    return tax
+end
+
+-- EASY GOING. The most the GROUND may charge this body to stand on (x, y), or nil when nothing eases
+-- it -- which is the overwhelming common case, and why this returns nil rather than a large number.
+--
+-- Two sources, both of which cap rather than discount, so neither can make a tile cheaper than open
+-- field:
+--
+--   * the body's own gear (`terrainEase` on a grid item -- the Trackless Boots). Read off the grid
+--     rather than off a status, the way Combat.isFlying and Combat.isPhasing are, because it is a
+--     permanent property of what you are wearing.
+--   * an ALLY standing beside the tile who carries `escortsMovement` (the Surveyor's Chain). This is
+--     the support half and the genuinely new verb: a body that makes the ground cheap for the column
+--     walking past it, rather than for itself.
+--
+-- Deliberately does NOT touch the watch tax. Good boots are an answer to bad ground, not to a spear
+-- pointed at you: stepTerrainCost caps the terrain with this and then adds the tax on top.
+-- The two easing fields a body's GRID declares, read once per character and cached on the unit.
+--
+-- The cache is not an optimisation to be traded away later, it is the difference between this feature
+-- working and the game hanging. stepTerrainCost runs per tile inside a Dijkstra, that Dijkstra runs per
+-- candidate move inside the enemy AI's search, and Character.eachItem ALLOCATES a fresh table on every
+-- call -- so scanning the grid per tile per adjacent ally turned a twenty-second test suite into one
+-- that does not finish. Everything here is a plain field read now.
+--
+-- Keyed on `unit.char` rather than stamped once, so a shapeshift invalidates it for free: transform.lua
+-- swaps the character wholesale (a bear wears no boots), and a cache pinned to the unit alone would
+-- have kept the wearer's footing inside the animal.
+local function gridEase(unit, field)
+    if not (unit and unit.char) then return nil end
+    local cache = unit._easeCache
+    if not (cache and cache.char == unit.char) then
+        cache = { char = unit.char }
+        for _, item in ipairs(Character.eachItem(unit.char)) do
+            local t, e = item.terrainEase, item.escortsMovement
+            if t and (not cache.terrainEase or t < cache.terrainEase) then cache.terrainEase = t end
+            if e and (not cache.escort or e < cache.escort) then cache.escort = e end
+        end
+        unit._easeCache = cache
+    end
+    return cache[field]
+end
+
+function Combat.terrainEase(combat, unit, x, y)
+    local ease = gridEase(unit, "terrainEase")
+    if not (combat and combat.units and unit) then return ease end
+    for _, ally in ipairs(combat.units) do
+        -- Cheapest tests first: the distance check is arithmetic on fields, the grid read is a table
+        -- lookup, and neither happens for a body on the wrong side or off the field.
+        if ally.alive and ally ~= unit and ally.side == unit.side
+            and math.abs(ally.x - x) + math.abs(ally.y - y) <= 1 then
+            local e = gridEase(ally, "escort")
+            if e and (not ease or e < ease) then ease = e end
+        end
+    end
+    return ease
+end
+
+-- The cost of putting this body's footprint on (x, y): the roughest cell under it, capped by whatever
+-- eases the going, plus whatever is watching the tile. A flier pays a flat 1 and reads none of it --
+-- it is off the ground entirely, so neither the terrain nor the boots that answer terrain apply, and
+-- neither does a spear planted in it.
+--
+-- THE ONE PLACE A TILE IS PRICED. moveGraph (the Dijkstra), Combat.planMoveVia (a hand-steered route)
+-- and Combat.walkStop (a walk cut short) all call this. They used to derive it three times over --
+-- the two route-finders fuse cost into a legality loop, and each had its own copy of the arithmetic --
+-- which was survivable while the only term was terrain and became a real hazard the moment a tile's
+-- price could depend on the board: three readers that disagree mean the move overlay offers a tile the
+-- route preview will not walk to. Add a term here and all three learn it at once.
+local function stepTerrainCost(combat, unit, x, y, flying)
+    if flying then return 1 end
+    local tiles = combat.arena and combat.arena.tiles
+    local worst = 0
+    for _, c in ipairs(Combat.cellsAt(unit.w or 1, unit.h or 1, x, y)) do
+        local row = tiles and tiles[c.y]
+        local cell = row and row[c.x]
+        local mc = (cell and cell.moveCost) or 1
+        if mc > worst then worst = mc end
+    end
+    local ease = Combat.terrainEase(combat, unit, x, y)
+    if ease and worst > ease then worst = ease end
+    return worst + Combat.watchTax(combat, unit, x, y)
+end
+
 -- The full movement graph for a unit this turn: a Dijkstra over the arena weighted by tile
 -- `moveCost`, budget = the unit's `movement`. Impassable terrain, walls, and ENEMY-occupied cells
 -- bar the way outright; a FRIENDLY unit's cell may be walked THROUGH but not stopped on -- it is
@@ -2952,7 +3105,7 @@ local function moveGraph(combat, unit)
                 -- non-flier, impassable terrain always bar the way. Terrain cost is the roughest cell
                 -- the body crosses (flying pays a flat 1 per step), so a wide body is slowed by the
                 -- worst ground under it -- matching how a single tile was costed before.
-                local ok, enemy, otherUnit, stepCost = true, false, false, 0
+                local ok, enemy, otherUnit = true, false, false
                 for _, c in ipairs(Combat.cellsAt(w, h, nx, ny)) do
                     if c.x < 1 or c.x > arena.cols or c.y < 1 or c.y > arena.rows then ok = false; break end
                     local cell = arena.tiles[c.y][c.x]
@@ -2963,11 +3116,12 @@ local function moveGraph(combat, unit)
                         if occ.side ~= unit.side and not phasing then enemy = true; ok = false; break end
                         otherUnit = true
                     end
-                    local mc = flying and 1 or cell.moveCost
-                    if mc > stepCost then stepCost = mc end
                 end
                 if ok and not enemy then
-                    local ncost = cur.cost + stepCost
+                    -- Priced by the shared reader rather than in the loop above: the legality question
+                    -- (may this body stand here) and the cost question (what does standing here cost)
+                    -- are different, and only the second one grows terms. See stepTerrainCost.
+                    local ncost = cur.cost + stepTerrainCost(combat, unit, nx, ny, flying)
                     if ncost <= budget then
                         local nk = key(nx, ny)
                         local existing = best[nk]
@@ -3354,8 +3508,6 @@ function Combat.planMoveVia(combat, unit, cells)
         -- be on the board and walkable (a flier excepted), clear of objects, and clear of any OTHER
         -- unit -- an enemy bars the way, a friendly is transit only (never a stop), and the body's own
         -- current cells (occ == unit; this is a pure check, the unit hasn't moved) never block it.
-        -- Terrain cost is the roughest cell under the body, matching the derived path in moveGraph.
-        local stepCost = 0
         for _, fc in ipairs(Combat.cellsAt(w, h, c.x, c.y)) do
             if fc.x < 1 or fc.x > arena.cols or fc.y < 1 or fc.y > arena.rows then return nil, "off grid" end
             local tile = arena.tiles[fc.y][fc.x]
@@ -3367,10 +3519,12 @@ function Combat.planMoveVia(combat, unit, cells)
                 -- the last cell); an enemy bars the way outright, transit or not.
                 if i == #cells or occ.side ~= unit.side then return nil, "occupied" end
             end
-            if tile.moveCost > stepCost then stepCost = tile.moveCost end
         end
         seen[k] = true
-        cost = cost + (flying and 1 or stepCost)
+        -- Priced by the same reader the derived path uses, so a hand-steered detour costs exactly what
+        -- walking it costs -- including the ground watched by an enemy's Overwatch. This used to
+        -- re-derive the terrain arithmetic locally; see stepTerrainCost on why it no longer may.
+        cost = cost + stepTerrainCost(combat, unit, c.x, c.y, flying)
         if cost > budget then return nil, "too far" end
     end
 
@@ -3399,22 +3553,9 @@ function Combat.beginMove(combat, plan)
              flying = Combat.isFlying(unit), mult = Status.costMultiplier(unit) }
 end
 
--- The terrain cost of putting this body's footprint on (x, y): the roughest cell under it, or a flat 1
--- for a flier. The same arithmetic moveGraph prices a step with and planMoveVia re-derives -- stated a
--- third time here because both of those fuse it into a legality loop, and a walk cut short needs the
--- number alone, for ground it has already been ruled allowed to cross.
-local function stepTerrainCost(combat, unit, x, y, flying)
-    if flying then return 1 end
-    local tiles = combat.arena and combat.arena.tiles
-    local worst = 0
-    for _, c in ipairs(Combat.cellsAt(unit.w or 1, unit.h or 1, x, y)) do
-        local row = tiles and tiles[c.y]
-        local cell = row and row[c.x]
-        local mc = (cell and cell.moveCost) or 1
-        if mc > worst then worst = mc end
-    end
-    return worst
-end
+-- (stepTerrainCost now lives beside moveGraph, at the head of the Movement section: it is the one
+-- place a tile is priced, and all three route-finders call it. It was defined here, third and last,
+-- back when the other two carried their own copies of the arithmetic.)
 
 -- Cut a walk off where it stands: the tiles still ahead of it are never entered, and the move is
 -- re-priced down to the ground actually crossed (at the multiplier the unit set off under -- see
@@ -6489,6 +6630,8 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             return { damageDealt = d }
         end,
         setSpeed = function() touchesBoard() end,
+        -- Takes (n, target) like its live twin -- an effect that aims one at an ally must take the same
+        -- path here, or the preview branches differently from the cast.
         grantExtraAction = function() touchesBoard() return 0 end,
         log = function() end, -- flavour, not an effect: never counts as touching the board
         -- Board-mutating, so inert here -- but each still answers with the SHAPE its live twin does, or
@@ -6797,6 +6940,9 @@ function Combat.abilityOutput(unit, item)
         bankItem = function() end,
         -- Inert here: the dry run reports what an ability WOULD do, and "acts again" is not a thing
         -- the inventory tooltip can render. It is recorded so a describer could name it if one ever wants to.
+        -- Recorded on `out` whoever it is aimed at: this table summarises what the ability DOES for the
+        -- inventory tooltip, and "hands out an extra action" is the same claim whether the action goes
+        -- to the caster or to the ally it is pointed at. There is no board here to tell them apart.
         grantExtraAction = function(n) out.extraActions = (out.extraActions or 0) + (n or 1); return 0 end,
         log = function() end,
         -- There is no board and no clock here, so these report nothing and change nothing -- but they
@@ -8821,11 +8967,17 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- Override the initiative this action bills at end of turn (Dual Wield: the summed speed of the
         -- weapons it swung). Defaults to ab.speed.
         setSpeed = function(n) ctl.speed = n end,
-        -- Hand the caster `n` more actions this turn (default 1): the turn re-opens instead of ending,
-        -- and the tempo is banked and settled when it finally does (Combat.grantExtraAction). Granted
-        -- to the CASTER rather than to a target, which is the only shape the timeline can honour -- a
-        -- unit whose turn is not open has no turn to re-open.
-        grantExtraAction = function(n) return Combat.grantExtraAction(unit, n) end,
+        -- Hand `target` (the caster by default) `n` more actions, default 1: the turn re-opens instead
+        -- of ending, and the tempo is banked and settled when it finally does (Combat.grantExtraAction).
+        --
+        -- IT MAY BE AIMED AT SOMEBODY ELSE, and what that means is worth stating, because this used to
+        -- be caster-only on the grounds that "a unit whose turn is not open has no turn to re-open".
+        -- That was half right. The grant sits on the body (`unit.extraActions`) and is spent by endTurn,
+        -- so aiming it at an ally who is not acting does not re-open a closed turn -- it PROMISES their
+        -- next one two actions instead of one. That is a real thing to hand somebody on a timeline
+        -- where initiative is the only currency, and it is the shape "let another body act again" has
+        -- to take here; an ability that wants it to arrive sooner as well pairs it with fx.hasten.
+        grantExtraAction = function(n, target) return Combat.grantExtraAction(target or unit, n) end,
         -- Stash a battle-scoped fact ON THE CASTER (a wand's fire/frost half, the Unspent Blow's banked
         -- count, a planted standard). Effects must write such state THROUGH this helper rather than
         -- assigning `fx.user.<field>` directly: the two damage previews replay the very same effect and

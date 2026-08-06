@@ -39,6 +39,14 @@ local AURA_FIELDS = {
     { field = "preserve", id = "keyword_preserve" },
 }
 
+-- `waitBehavior` field -> keyword id. Only one so far: a stance that changes what the BOARD costs
+-- rather than what the stance itself does needs explaining, because nothing about the word "Overwatch"
+-- suggests it. The other wait fields (speed, stamina, power, status) are numbers or effects the
+-- tooltip already prints in full beside the stance's own row.
+local WAIT_FIELDS = {
+    { field = "zone", id = "keyword_watched_ground" },
+}
+
 -- Is `value` a real declaration of `field`, or the inert shape of one? A keyword is usually a flag or a
 -- table and simply being present says it, but the numeric ones have a threshold below which the field
 -- is declared and means nothing: `minRange = 1` is every melee weapon in the game and no dead zone at
@@ -47,12 +55,12 @@ local AURA_FIELDS = {
 local function declared(field, value)
     if value == nil or value == false then return false end
     if field == "minRange" then return value > 1 end
-    if field == "frenzy" or field == "lifesteal" then return value > 0 end
+    if field == "frenzy" or field == "lifesteal" or field == "zone" then return value > 0 end
     return true
 end
 
--- The keyword ids `item` declares, ability keywords first and aura keywords after. Empty for an item
--- that declares none, which is most of them.
+-- The keyword ids `item` declares: ability keywords first, then aura, then the wait stance. Empty for
+-- an item that declares none, which is most of them.
 function Keyword.forItem(item)
     local ids = {}
     if not item then return ids end
@@ -65,6 +73,11 @@ function Keyword.forItem(item)
     if item.aura then
         for _, entry in ipairs(AURA_FIELDS) do
             if declared(entry.field, item.aura[entry.field]) then ids[#ids + 1] = entry.id end
+        end
+    end
+    if item.waitBehavior then
+        for _, entry in ipairs(WAIT_FIELDS) do
+            if declared(entry.field, item.waitBehavior[entry.field]) then ids[#ids + 1] = entry.id end
         end
     end
     return ids

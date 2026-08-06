@@ -632,6 +632,8 @@ function Item.instantiate(id, quantity, level)
         healthReserve = deepCopy(def.healthReserve), -- guard charm: { percent } of max health locked away at setup for the armor its `bonus` buys (Combat.applyReservations)
         waitBehavior = deepCopy(def.waitBehavior), -- swaps this holder's Wait -> Focus / Defend
         moveBehavior = deepCopy(def.moveBehavior), -- swaps this holder's walk -> teleport (Blink)
+        terrainEase = def.terrainEase,         -- the most the GROUND may charge its wearer per tile (Trackless Boots)
+        escortsMovement = def.escortsMovement, -- ...the same cap, granted to ALLIES stepping past the bearer (Surveyor's Chain)
         charge = deepCopy(def.charge),         -- { key, from, max, resetOn }: a named pool this item banks (Combat.chargeDef)
         ephemeral = def.ephemeral,             -- field-brewed: real for this fight, gone at the gate (Combat.releaseClaims)
         trail = deepCopy(def.trail),           -- { hazard, duration } | { trap }: ground left behind every tile walked

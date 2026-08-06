@@ -37,7 +37,7 @@ One class per deadly sin: each vendor's quest line ends facing its own (see [sto
 | Class | Sin | Resource | Identity | Owns |
 |---|---|---|---|---|
 | `fighter` | wrath | stamina | Trades its own health and tempo for damage. Wrath is what happens directly in front of you. Also `Growth.NEUTRAL_CLASS` — every class-less creature grows as one. | `front` aoe, `stun`, `raw`, self-cost (Fury, Desperate Strike, Reckless), `frenzy`, banners, the extra action |
-| `knight` | sloth | stamina + mana | The wall. It does not kill you, it decides where you stand — or whether you act at all. | `taunt`, `halted`, `knockback`, guard redirect (`oathward`/`martyr`/`sharesDamage`), `defending` wait-swap, armor |
+| `knight` | sloth | stamina + mana | The wall. It does not kill you, it decides where you stand — or whether you act at all. | `taunt`, `halted`, `knockback`, guard redirect (`oathward`/`martyr`/`sharesDamage`), `defending` wait-swap, **watched ground** (see below), armor |
 | `rogue` | greed | stamina | Guile. Conditional multipliers, return-to-origin blinks, and taking what is not yours. | `guile`, `blink`, execute, `steal`, `bleed`, debuff-count scaling |
 | `hunter` | gluttony | stamina | Setup, then payoff — and most of it gated on a bow beside it in the grid. | `mark`, `requiresAdjacent`, traps, animal summons, shapeshifting, `cripple`/`root` |
 | `mage` | pride | mana | Elements, wind-ups, and remaking the ground itself. | `channel`, hazard creation, element tags, `reserve` summons, the **sigils** (`careful`/`twin`/`speedBonus`/`rangeBonus`) |
@@ -419,6 +419,108 @@ it at its own vendor, and you can buy it anyway. The existing discipline consuma
 avoided this (Berserker's Brew and the Wildcraft Poultice are `restorative`); it is written down now
 because three new ones tripped it, and `tests/progression_spec.lua` is what caught them. Use `elixir`,
 `draught`, `coating`, `restorative` — anything but the one word the grocer is watching for.
+
+### Watched ground: a zone of control, sold rather than granted
+
+The knight's row above promises a shelf that *"does not kill you, it decides where you stand"*, and for
+a long time every tool it had for that cost an action. A knight who spent its turn *being a wall* spent
+it on nothing: a body bars its own tile and not one square more.
+
+**Watched ground** is the answer, and it is a borrowing from Fire Emblem and *Those Who Rule* with two
+things about it changed. A unit holding the **Overwatch** stance taxes every tile orthogonally beside
+it — enemies pay `zone` extra to enter (`Combat.watchTax`, spent by `Combat.stepTerrainCost`).
+
+**It is a cost, not a wall.** A watched tile is dear, never forbidden. A fast body can still shove
+through by spending its whole move on it, which is a decision; a hard stop is only ever a "no". And
+because the tax is just `moveCost`, every counter already existed: a flier never reads the ground at
+all, and `Status.costMultiplier` discounts a whole walk, so Hasted answers it without a line of code.
+No immunity status was authored, and none should be.
+
+**It is bought, not universal, and the board size is why.** The field is 8×8 (`Arena.COLS`) with four
+bodies a side (`Combat.MAX_FIELD`) and movement 3–4 after armour. Four bodies at x = 2, 4, 6, 8 already
+leave no gap wider than a tile — so the flanking problem a universal zone *solves* barely exists here,
+while the harm is exact: four projectors a side would control half the board and lock the fight on turn
+two. FE and TWR run 15×10+ maps with 8–12 units, where a line genuinely cannot cover its own flanks.
+Ours can. **Do not make this global.** One or two watchers on a field is a shape; sixteen is a stalemate.
+
+Three items declare it, and the numbers say what each one is:
+
+| Item | `zone` | Reads as |
+|---|---|---|
+| `utility_held_ground` (knight · Bulwark) | 2 | one square of road, made a bog |
+| `utility_overwatch_scope` (hunter) | 1 | a wide band, watched lightly |
+| `weapon_stillhunter` (hunter) | 1 | the same |
+
+The two sentries gained theirs after the fact, deliberately: Overwatch cost a whole turn for a
+*conditional* shot, and the enemy answered by walking around the firing line for free. Giving the
+stance ground closes that, and the two halves feed each other without being wired together — dear
+ground means more steps spent in the band, and more steps means more shots.
+
+**Because the tax is `moveCost`, it is also initiative** (a move bills its path cost as time), so wading
+past a watcher puts the walker further down the order. That is the mechanic's real teeth and the reason
+the magnitudes are small.
+
+**Measured in the window, not chosen on paper.** One `zone = 2` watcher against a 4-movement body on an
+open 8×8 board removes **one or two tiles** from a 26-tile reachable set, and turns any tile that cost
+exactly the full budget into one the walker cannot afford. So on open ground it is a nudge, and the
+lock-down failure this section was scoped against does not happen at 2 — a body ringed by four watchers
+still walks (`tests/twr_import_spec.lua` pins that). Where it bites is the doorway, which is the whole
+point of a zone of control: it is supposed to be nearly invisible in a field and decisive in a gap. If
+a future pass finds it too quiet, **raise the item's `zone`, never make the rule global** — the board
+arithmetic above does not change.
+
+### A live passive reads the board, not the past
+
+Every trait hook is an *event* — struck, cast, killed — and banks its result through `ctx.addBonus`,
+which writes `unit.bonus` for the rest of the battle. That is right for *"sharpens with every blow it
+takes"* and wrong for *"stands stronger the more allies flank it"*: the second is a claim about the
+board, and a board changes twice a turn.
+
+So a trait may instead declare **`live`**, a pure function returning stat deltas, summed by
+`Trait.liveBonus` and folded into `Combat.flatStat` beside the equipment and status terms:
+
+```lua
+live = function(ctx) return { defense = 2 * ctx.count(1, "enemy") } end
+```
+
+`ctx` offers reads only — `count(radius, "ally"|"enemy")`, `countWounded(...)`, `missing()`. **`live`
+must be pure**, the same contract `adjacencyAura` carries and for the same reason: both damage previews
+and the inventory tooltip call `flatStat` on every hover frame, so a passive that banked or logged
+anything under the cursor would be a bug that reads as one. In particular a `live` trait must never
+call `ctx.addBonus` — `flatStat` already sums that bucket, so it would count every neighbour twice.
+
+`trait_formation_fighter` was the trait that named this gap (its header used to apologise for having no
+per-turn hook) and is the one it was closed for; it now rises as a rank forms and falls as it breaks.
+`trait_against_the_odds` and `trait_saviors_watch` were authored `live` from the start.
+`trait_wrath_rising` was deliberately **left** as a ratchet — it is priced as one.
+
+### Two items may change what the ground costs
+
+`models/arena.lua` has priced forest at 2 and mountain at 3 since the first arena, and for most of the
+project nothing in the catalog cared. Two fields now do, both read by `Combat.terrainEase` and both
+**caps** rather than discounts, so neither can make a tile cheaper than open field:
+
+- **`terrainEase`** — the most the ground may charge its *wearer* (`utility_trackless_boots`).
+- **`escortsMovement`** — the same cap, granted to *allies* stepping through a tile beside the bearer
+  (`utility_surveyors_chain`). It deliberately does **not** help its own carrier: being the bridge means
+  being the one already standing in the bog.
+
+Neither eases the watch tax, which is added *after* the cap. Good boots answer bad footing; they do not
+answer a spear pointed at you.
+
+### One place prices a tile
+
+`Combat.stepTerrainCost` is the single reader, and this matters more than it looks. There used to be
+three derivations — `moveGraph` (the Dijkstra behind the move overlay) and `Combat.planMoveVia` (a
+hand-steered route) each fused their own copy of the arithmetic into a legality loop, and
+`stepTerrainCost` stated it a third time for a walk cut short. That was survivable while the only term
+was the tile. The moment a tile's price could depend on the board it became a promise the overlay makes
+and the route breaks. **Add a term there and all three learn it at once; add it anywhere else and they
+disagree.** `tests/twr_import_spec.lua` pins that the two route-finders price a watched tile identically.
+
+One consequence to respect: the grid-derived halves are **cached per unit** (keyed on `unit.char`, so a
+shapeshift invalidates it). That is not a nicety — `stepTerrainCost` runs per tile inside a Dijkstra
+that runs per candidate move inside the AI's search, and `Character.eachItem` allocates.
 
 ### A charge is a named pool with a public price
 

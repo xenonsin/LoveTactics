@@ -882,6 +882,36 @@ end
 -- local is assigned before either ever runs -- both fire at runtime, well after the file has loaded.
 local computeIntents
 
+-- WATCHED GROUND: the tiles beside an enemy holding the Overwatch stance -- dear to enter
+-- (Combat.watchTax) and shot at on arrival (Combat.triggerOverwatch). One ring for both, because it
+-- is one fact: this is the ground that body is holding.
+--
+-- Drawn at all only while somebody is actually watching, which is rare -- it takes an item that swaps
+-- Wait into the stance, and a turn spent taking it. That rarity is exactly why it has to be drawn: a
+-- player meets this rule for the first time somewhere in the middle of some fight, and without a ring
+-- the only evidence is a move band that quietly reaches less far than it did a moment ago.
+--
+-- Sits with the danger family rather than getting a colour of its own -- it IS danger, of a kind the
+-- board already speaks about in purple.
+local function watchedRing()
+    local out = {}
+    local seen = {}
+    for _, watcher in ipairs(battle.combat.units) do
+        local zone = watcher.alive and watcher.overwatch and watcher.overwatch.zone
+        if zone and zone > 0 and watcher.side ~= "party" then
+            for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+                local x, y = watcher.x + d[1], watcher.y + d[2]
+                local k = x .. "," .. y
+                if not seen[k] and battle.arena.tiles[y] and battle.arena.tiles[y][x] then
+                    seen[k] = true
+                    out[#out + 1] = { x = x, y = y }
+                end
+            end
+        end
+    end
+    return out
+end
+
 local function computeDanger()
     -- A lesson step may ask for a clean board (Tutorial.hidesDanger). Emptying the sets here rather
     -- than at each draw site is what makes that one decision instead of four: the purple move-band
@@ -889,12 +919,14 @@ local function computeDanger()
     -- together and none of them can be forgotten.
     if battle.tutorial and Tutorial.hidesDanger(battle.tutorial) then
         battle.dangerCells, battle.dangerSources = {}, {}
+        battle.watchedCells = {}
         battle.inspectFor = nil
         battle.enemyIntents = {}
         battle.retargetKey = nil
         return
     end
     battle.dangerCells, battle.dangerSources = Combat.threatMap(battle.combat, "party")
+    battle.watchedCells = watchedRing()
     battle.inspectFor = nil -- board changed: a lingering hover preview is rebuilt on the next frame
     -- Predictions ride the exact same cadence as the danger map, and for the same reason: the moment
     -- the board changes an old prediction is a lie, and the move-preview cache below is keyed on a
@@ -3662,6 +3694,12 @@ refreshView = function()
         hoverIntentFoe = intentHover
     end
 
+    -- The ground an enemy's Overwatch stance is holding -- slow to enter and shot at on arrival.
+    -- Handed over whole rather than filtered against the move band: the point of the ring is that it
+    -- is ground you can still walk into, so hiding the part you can reach would erase exactly the
+    -- tiles the warning is about.
+    overlays.watched = battle.watchedCells
+
     -- Traps the party can currently see (its own + detected enemy traps): a per-frame lookup for
     -- click-to-damage (revealedEnemyTrapAt) and the list the renderer draws.
     battle.revealedTraps = Trap.revealedTo(battle.combat, "party")
@@ -5109,8 +5147,16 @@ function battle.drawTileTooltip(mx, my)
     -- Marked objective ground (the amber/green wash) rides on the TERRAIN info rather than in the
     -- occupant box, for two reasons: the terrain box never yields to a crowded column, and the read
     -- matters most on a tile that already has a body on it -- standing on the node is not holding it.
+    -- WATCHED GROUND: what an enemy's Overwatch stance adds to the cost of entering this tile, for the
+    -- unit whose turn it is (Combat.watchTax -- it is 0 for everybody when nobody holds the stance,
+    -- which is nearly always). It rides on the terrain box because that is where a tile's price is
+    -- already read, and because the tax IS terrain as far as the Dijkstra is concerned. Without this
+    -- the only sign of the mechanic is a move overlay that quietly reaches less far than expected.
+    local actor = battle.current
+    local watched = actor and Combat.watchTax(battle.combat, actor, cx, cy) or 0
     local terrainInfo = { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
                           hazards = Hazard.allAt(battle.combat, cx, cy),
+                          watched = watched > 0 and watched or nil,
                           objective = Combat.objectiveTileInfo(battle.combat, cx, cy) }
     local objInfo
     -- Same precedence actionPreviewFor picks a strike target with (trap, then wall, then prop), so the

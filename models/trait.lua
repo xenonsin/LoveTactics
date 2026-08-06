@@ -960,7 +960,14 @@ end
 -- Collect `unit.traits` from the character blueprint and from every item in its 3x3 grid. Idempotent
 -- and hook-free: call it the moment a unit joins the field, and fire onCombatStart separately (a
 -- summon arriving mid-battle did not start the battle).
-function Trait.attach(unit)
+function Trait.attach(unit, combat)
+    -- The board this body stands on, for the LIVE passives below -- they are read from
+    -- Combat.flatStat, which is handed a unit and nothing else, so the unit has to know its own
+    -- field. Only ever set, never cleared: a re-attach (models/transform.lua, a druid shifting shape)
+    -- passes no combat and must not orphan the body it is already standing on. Deliberately absent
+    -- from StateHash.of, which whitelists the fields the rules read rather than walking the table --
+    -- a back-reference is plumbing, not state.
+    if combat then unit.combat = combat end
     local list = {}
     for _, id in ipairs((unit.char and unit.char.traits) or {}) do
         list[#list + 1] = Trait.instantiate(id, nil)
@@ -988,6 +995,94 @@ function Trait.has(unit, id)
         if t.id == id then return true end
     end
     return false
+end
+
+-- LIVE PASSIVES: a standing rule whose value is read off the board RIGHT NOW rather than banked when
+-- it fired. A trait declares one as a pure function returning a table of stat deltas:
+--
+--   live = function(ctx) return { defense = 2 * ctx.count(1, "ally") } end
+--
+-- and Combat.flatStat folds the sum in beside the equipment bonus and the status bonus.
+--
+-- WHY THIS EXISTS. Every other hook in this file is an EVENT -- something happened, bank a result --
+-- and the result is banked through ctx.addBonus, which writes `unit.bonus` for the rest of the battle.
+-- That is right for "sharpens with every blow it takes" and wrong for "stands stronger the more allies
+-- flank it": the second is a claim about the board as it is, and a board changes. trait_formation_fighter
+-- carried the apology in its own header for a long time -- *"Measured once, when the line is set (there
+-- is no per-turn hook)"* -- so a line-soldier kept a full formation's defense while standing over its
+-- dead. A live read simply falls back down.
+--
+-- `live` MUST BE PURE. Both damage previews and the inventory tooltip replay the board on every hover
+-- frame, and this is read from flatStat, which they all call -- a passive that banked, spent or logged
+-- anything under the cursor would be a bug that reads as one. It is the same contract adjacencyAura
+-- carries, for the same reason (docs/classes.md). ctx therefore offers READS only: no damage, no
+-- applyStatus, no addBonus, no log.
+--
+-- NOT MEMOIZED, deliberately. The fast path is a loop over a trait list that is almost never longer
+-- than three and almost never contains a `live` at all -- a handful of field reads. Only a body
+-- actually carrying one pays for a board scan, and that scan is bounded by a roster that never
+-- exceeds a dozen. A cache here would need a board-version stamp bumped at every move, death and
+-- heal, and a missed bump is a stale passive: the exact failure this mechanism exists to end. If a
+-- profile ever demands one, it can be added behind this function without touching a single data file.
+local function liveCtx(unit, combat)
+    local ctx = { unit = unit, combat = combat }
+    -- Living bodies within `radius` (Combat.unitsNear's own measure), counted by side relative to the
+    -- bearer, never counting the bearer itself. `which` is "ally", "enemy" or nil for everyone.
+    ctx.count = function(radius, which)
+        if not combat then return 0 end
+        local Combat = require("models.combat")
+        local n = 0
+        for _, other in ipairs(Combat.unitsNear(combat, unit.x, unit.y, radius or 1)) do
+            if other ~= unit and other.alive then
+                local ally = other.side == unit.side
+                if which == nil or (which == "ally") == ally then n = n + 1 end
+            end
+        end
+        return n
+    end
+    -- The same count, kept to bodies below full health -- the "rescue" shape ("per wounded ally").
+    ctx.countWounded = function(radius, which)
+        if not combat then return 0 end
+        local Combat = require("models.combat")
+        local n = 0
+        for _, other in ipairs(Combat.unitsNear(combat, unit.x, unit.y, radius or 1)) do
+            if other ~= unit and other.alive then
+                local ally = other.side == unit.side
+                local hp = other.char and other.char.stats and other.char.stats.health
+                local hurt = hp and hp.max and hp.current and hp.current < hp.max
+                if hurt and (which == nil or (which == "ally") == ally) then n = n + 1 end
+            end
+        end
+        return n
+    end
+    -- How much of the bearer's own health is gone, 0 at full and approaching 1 at death's door.
+    ctx.missing = function()
+        local hp = unit.char and unit.char.stats and unit.char.stats.health
+        if not (hp and hp.max and hp.max > 0) then return 0 end
+        return 1 - ((hp.current or 0) / hp.max)
+    end
+    return ctx
+end
+
+-- The summed live contribution to one stat. 0 for the overwhelming majority of bodies, which carry no
+-- live trait at all -- and 0 with no board, since a live passive is a claim about a field and the
+-- inventory screen has none.
+function Trait.liveBonus(unit, stat)
+    if not (unit and unit.traits and stat) then return 0 end
+    local total, ctx = 0, nil
+    for _, t in ipairs(unit.traits) do
+        local live = t.def and t.def.live
+        if live then
+            ctx = ctx or liveCtx(unit, unit.combat)
+            ctx.trait, ctx.def = t, t.def
+            local ok, out = pcall(live, ctx)
+            -- Swallowed rather than propagated: this runs inside every stat read on every hover frame,
+            -- so a bad data file would not fail once and loudly, it would make the whole UI blink out.
+            -- Same reasoning the tooltip's inert fx table is built on.
+            if ok and type(out) == "table" and out[stat] then total = total + out[stat] end
+        end
+    end
+    return total
 end
 
 -- The first trait on `unit` declaring the boolean/valued flag `name`, or nil. For the standing rules
@@ -1118,7 +1213,7 @@ end
 -- Attach every unit's traits and fire onCombatStart. Called once, at the end of Combat.new, after
 -- passives, traps and hazards are in place -- a trait that reads the field must find it finished.
 function Trait.setup(combat)
-    for _, unit in ipairs(combat.units) do Trait.attach(unit) end
+    for _, unit in ipairs(combat.units) do Trait.attach(unit, combat) end
     -- A separate pass, so an opener that spawns or copies sees every OTHER unit already attached.
     for _, unit in ipairs(combat.units) do
         if unit.alive then dispatch(combat, unit, "onCombatStart", {}) end

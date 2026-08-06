@@ -23,7 +23,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Stillhunter",
-    description = "Replaces Wait with Overwatch: shoots anything that walks into range, for stamina.",
+    description = "Replaces Wait with Overwatch: shoots anything that walks into range, for stamina. Ground beside you costs 1 more.",
     flavor = "You do not go to the animal. You become part of the place it is already walking through.",
     sprite = "assets/items/stillhunter.png",
     type = "weapon",
@@ -32,12 +32,18 @@ return {
     class = "hunter",
     price = 300,
     unlockQuests = 8,
-    -- The extra, whole. Neither number moves with the forge: `speed` is the steep tempo the stance costs
-    -- (models/item.lua -- an upgrade never buys back the turn), and `stamina` is what each held shot
-    -- spends, which used to fall from 6 to 3 across the levels. Three points of discount cannot pay out
-    -- once per level (models/curve.lua), so the stance costs what it costs and the forge buys the bow's
-    -- damage instead: an upgrade makes the shots harder, not cheaper.
-    waitBehavior = { kind = "overwatch", speed = 12, stamina = 6 },
+    -- The extra, whole. None of the three moves with the forge: `speed` is the steep tempo the stance
+    -- costs (models/item.lua -- an upgrade never buys back the turn), `stamina` is what each held shot
+    -- spends, which used to fall from 6 to 3 across the levels, and `zone` is a fact about how the
+    -- ground beside a watching body walks rather than a quality of the bow. Three points of discount
+    -- cannot pay out once per level (models/curve.lua), so the stance costs what it costs and the forge
+    -- buys the bow's damage instead: an upgrade makes the shots harder, not cheaper.
+    --
+    -- `zone` (Combat.watchTax) taxes every tile beside the watcher for its enemies -- the same 1 the
+    -- Overwatch Scope carries, since both are a sentry's wide light watch rather than the knight's one
+    -- heavy square (utility_held_ground, at 2). Held ground is what the stance was missing: an enemy
+    -- used to answer a whole turn spent watching by walking round the band for free.
+    waitBehavior = { kind = "overwatch", speed = 12, stamina = 6, zone = 1 },
     activeAbility = {
         target = "enemy",
         range = 3,
