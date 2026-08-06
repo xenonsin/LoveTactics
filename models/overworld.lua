@@ -632,6 +632,12 @@ function Overworld:placeObjectiveAndGates(params)
         cur = parent[cellKey(cur)]
     end
 
+    -- The same path as an ORDERED walk, start -> objective: `spineKeys` answers "is this tile on the
+    -- road", which is all the skippable-combat rule needs, but an ascent has to answer "how far ALONG
+    -- the road is this" to space a climb out over its length (see placeEncounters' ascent branch).
+    self.spineCells = {}
+    for i = #spine, 1, -1 do self.spineCells[#self.spineCells + 1] = spine[i] end
+
     local K = params.keyCount or 0
     if K <= 0 then return end
 
@@ -1056,13 +1062,24 @@ function Overworld:placeEncounters(params)
     local placed = {}
     local next_ = 1
 
-    -- ASCENT maps (`params.ascent`): the guaranteed encounters are a ROUTE, not a set. Laid out in
-    -- authored order by distance from the start, so `always = { pickets, pickets, line, line, breach }`
-    -- is met bottom-to-top -- the outer ring first, the thing leaning on the gate last, and the
-    -- objective beyond all of them at the farthest point (see placeObjectiveAndGates).
+    -- ASCENT maps (`params.ascent`): the guaranteed encounters are a ROUTE, not a set. Seated ALONG THE
+    -- ROAD in authored order, so `always = { pickets, pickets, line, line, breach }` is met
+    -- bottom-to-top -- the outer ring first, the thing leaning on the gate last, and the objective
+    -- beyond all of them at the end of the climb (see placeObjectiveAndGates).
     --
     -- Off by default: ordinary maps want their guaranteed encounters scattered, and a fixed running
     -- order would make every quest that uses `always` read as a corridor.
+    --
+    -- Spacing is a FRACTION OF THE ROAD, not a fixed gap: marker k of n sits at k/(n+1) of the way up
+    -- the spine, so a five-stop climb is met at roughly a sixth, a third, half, two thirds, five
+    -- sixths. The previous rule -- walk every tile outward from the start and take the first one at
+    -- least 3 tiles from the last marker -- measured the gap between MARKERS while walking by distance
+    -- from the START, and those are not the same axis on a braided maze: tiles one and two steps out
+    -- sit on different branches of the same fork, so they clear a 3-tile gap trivially and the whole
+    -- climb was satisfied within six steps of the doorstep while forty tiles of road ran empty.
+    --
+    -- Seating on the spine also puts the fights where an ascent says they are -- across the road, not
+    -- down a side spur the climb never passes.
     if params.ascent and #always > 0 then
         local dist = self:bfsDistances(self.start)
         local byDist = {}
@@ -1077,23 +1094,48 @@ function Overworld:placeEncounters(params)
             return a.x < b.x
         end)
 
-        -- Walk outward, taking the first tile far enough from the last marker. Spacing is a
-        -- preference, not a requirement: a short trail that cannot honour it still gets every
-        -- authored encounter rather than silently dropping the top of the climb.
-        local i = 1
-        for _, e in ipairs(always) do
+        -- Which spine tiles this pass may actually use: everything placeEncounters already vetted
+        -- (walkable, no gate/key/cache/encounter, not the start), keyed for lookup by position.
+        local open = {}
+        for _, c in ipairs(byDist) do open[cellKey(c)] = c end
+
+        -- spineCells runs start -> objective along a BFS shortest path, so index j is exactly j-1 steps
+        -- from the start. That makes "how far up the road" and "how far from the start" the same
+        -- number here, which is what keeps the climb monotonic without a separate check.
+        local spine = self.spineCells or {}
+        local n, L = #always, #spine
+        local lastIdx, lastDist = 1, -1
+
+        for k, e in ipairs(always) do
             local chosen
-            for j = i, #byDist do
-                local c = byDist[j]
-                local last = placed[#placed]
-                if not last or (math.abs(last.x - c.x) + math.abs(last.y - c.y)) >= 3 then
-                    chosen, i = c, j + 1
-                    break
+            if L > 2 then
+                local ideal = math.max(lastIdx + 1, math.floor(k / (n + 1) * (L - 1) + 0.5) + 1)
+                -- Forward first (the climb should keep climbing), then back toward the last marker if
+                -- the stretch above the ideal point is all gate or already spoken for.
+                for j = ideal, L - 1 do
+                    local c = open[cellKey(spine[j])]
+                    if c and not c.encounter then chosen, lastIdx = c, j; break end
+                end
+                if not chosen then
+                    for j = math.min(ideal - 1, L - 1), lastIdx + 1, -1 do
+                        local c = open[cellKey(spine[j])]
+                        if c and not c.encounter then chosen, lastIdx = c, j; break end
+                    end
+                end
+                if chosen then lastDist = lastIdx - 1 end
+            end
+            -- Off-spine fallback: a short or heavily gated road still gets every authored encounter
+            -- rather than silently dropping the top of the climb -- placed on the nearest tile that is
+            -- no closer than the marker before it, so the order survives even here.
+            if not chosen then
+                for _, c in ipairs(byDist) do
+                    if not c.encounter and (dist[cellKey(c)] or 0) >= lastDist then
+                        chosen, lastDist = c, dist[cellKey(c)] or 0
+                        break
+                    end
                 end
             end
-            chosen = chosen or byDist[i]
             if chosen then
-                i = i + 1
                 chosen.encounter = { kind = e.kind, id = e.id, name = e.name,
                                      loot = e.loot, conversation = e.conversation }
                 placed[#placed + 1] = chosen

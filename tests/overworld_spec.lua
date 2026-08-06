@@ -289,11 +289,14 @@ return {
                 -- Same key the generator uses internally (models/overworld.lua's cellKey).
                 local function key(x, y) return y * 100000 + x end
                 local dist = grid:bfsDistances(grid.start)
-                local at = {}
+                local at, onSpine = {}, {}
                 for y = 1, grid.rows do
                     for x = 1, grid.cols do
                         local c = grid:get(x, y)
-                        if c.encounter and c.encounter.id then at[c.encounter.id] = dist[key(x, y)] end
+                        if c.encounter and c.encounter.id then
+                            at[c.encounter.id] = dist[key(x, y)]
+                            onSpine[c.encounter.id] = grid.spineKeys[key(x, y)] or false
+                        end
                     end
                 end
 
@@ -308,6 +311,23 @@ return {
                 local objd = dist[key(grid.objective.x, grid.objective.y)]
                 assert(objd and objd > at[ids[3]],
                     "seed " .. seed .. ": the objective must sit past the last encounter on the road")
+
+                -- ORDER IS NOT SPACING. The three assertions above all held while every marker sat
+                -- within six steps of the start and forty tiles of road ran empty behind them -- an
+                -- ordered pile on the doorstep is still a pile. A climb has to be spread over the
+                -- climb, so check the fractions: marker k of n belongs near k/(n+1) of the way up.
+                for i, id in ipairs(ids) do
+                    local want = i / (#ids + 1)
+                    local got = at[id] / objd
+                    assert(math.abs(got - want) <= 0.15, "seed " .. seed .. ": " .. id
+                        .. " should sit near " .. want .. " of the way up the road, sits at " .. got)
+                end
+
+                -- And on the road, not down a side spur the climb never passes: on an ascent the
+                -- fight IS the route, which only means anything if the route is where it stands.
+                for _, id in ipairs(ids) do
+                    assert(onSpine[id], "seed " .. seed .. ": " .. id .. " sits off the spine")
+                end
             end
         end,
     },
