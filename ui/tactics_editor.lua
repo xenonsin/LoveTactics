@@ -276,6 +276,13 @@ function TacticsEditor:fieldBar(i)
     return { x = r.x, y = r.y + 13, w = r.w, h = 24 }
 end
 
+-- The archetype control in the footer strip. Computed rather than left behind by `drawFooter` for the
+-- same reason the field rects are: it is what the archetype list anchors to, and a list measured off
+-- last frame's rectangle lands in the wrong place the first time it is opened.
+function TacticsEditor:archetypeRect()
+    return { x = self.x, y = self.footY + 14, w = 180, h = 24 }
+end
+
 -- Where a carried row would be INSERTED if it were let go at `y` -- a position BETWEEN rows, not the
 -- row underneath. That distinction is the whole difference between a drag that swaps and a drag that
 -- lands somewhere: the boundary is the row's midpoint (hence the half-step), so pulling a row down
@@ -374,6 +381,7 @@ function TacticsEditor:setChar(char)
     self.resetArmed = false -- an armed reset must never survive onto the next character
     self.grabbed = nil
     self.drag = nil
+    self.open = nil -- nor may an open list: it was opened against the last character's value
     self.scroll = 0
 end
 
@@ -479,16 +487,40 @@ function TacticsEditor:toggleEnabled(index)
     return true
 end
 
+-- The postures on offer, in the order they are shown. `false` ("default") leads, because it is a real,
+-- reachable option and not an absence -- a player who tried an archetype and wants out again has to be
+-- able to get back to it. The list and the stepper below read the SAME order, so opening the list
+-- never reshuffles the thing left/right was walking.
+function TacticsEditor.archetypeOptions()
+    local out = { false }
+    for _, name in ipairs(AI.POSTURE_ORDER) do out[#out + 1] = name end
+    return out
+end
+
 function TacticsEditor:cycleArchetype(dir)
     local char = self.char
     if not char then return end
-    -- nil ("Default") is a real, reachable option, not an absence -- a player who tried an archetype
-    -- and wants out again has to be able to get back to it.
-    local names = { false }
-    for name in pairs(AI.POSTURES) do names[#names + 1] = name end
-    table.sort(names, function(a, b) return tostring(a) < tostring(b) end)
-    local current = char.archetype or false
-    char.archetype = TacticsEditor.cycle(names, current, dir) or nil
+    char.archetype = TacticsEditor.cycle(TacticsEditor.archetypeOptions(), char.archetype or false, dir)
+        or nil
+end
+
+-- The posture explained, as the tooltip beside the open list wants it: a title and paragraphs.
+--
+-- "default" is not a posture and has no `desc` of its own, so it borrows the one it falls back to --
+-- said in two paragraphs rather than one, because "you have not chosen" and "so this is what happens"
+-- are two different facts and a player reading the first still needs the second.
+function TacticsEditor.archetypeHelp(value)
+    if not value then
+        local fallback = AI.POSTURES[AI.DEFAULT_POSTURE]
+        return AI.postureLabel(false), {
+            "No posture of its own, so it stands on the one every body falls back to -- "
+                .. AI.postureLabel(AI.DEFAULT_POSTURE) .. ".",
+            fallback and fallback.desc or "",
+        }
+    end
+    local posture = AI.POSTURES[value]
+    if not (posture and posture.desc) then return nil end
+    return AI.postureLabel(value), { posture.desc }
 end
 
 function TacticsEditor:toggleAuto()
@@ -576,6 +608,16 @@ function TacticsEditor:footControl()
     return self:footControls()[self.footCursor]
 end
 
+-- Put the footer cursor on a named control. By NAME rather than by number, because the strip is two
+-- controls long in the character editor and three in game, and a click that focused "the third one"
+-- would point at nothing on one of them.
+function TacticsEditor:focusFooter(control)
+    self.region = "footer"
+    for i, name in ipairs(self:footControls()) do
+        if name == control then self.footCursor = i return end
+    end
+end
+
 -- Left/right on the focused footer control: the same "step the value in place" the field column
 -- gives, for the two controls that have a value to step.
 function TacticsEditor:adjustFooter(dir)
@@ -656,9 +698,24 @@ end
 -- Left/right still cycles in place and is deliberately kept: it is the fast path on a pad, it is what
 -- the reorder prompts already teach, and a player nudging a percentage two steps should not have to
 -- open a list to do it. The dropdown is the addition, not the replacement.
+--
+-- The same list serves the footer's ARCHETYPE, which is why `open` carries a `source` instead of just
+-- a field index. A posture list has the field lists' problem twice over: eight names, none of which
+-- says what it does, so stepping it blind means trying all eight to find out what they were.
 
--- Open the list for visible field `index`, with the cursor on whatever the rule currently holds --
--- so the list opens showing where you are, and closing it without choosing changes nothing.
+-- Which option a list should open ON: where the value already is, so it opens showing where you are
+-- and closing it without choosing changes nothing.
+local function indexOf(options, current)
+    for i, opt in ipairs(options) do
+        if opt == current
+            or (type(opt) == "number" and type(current) == "number" and math.abs(opt - current) < 1e-6) then
+            return i
+        end
+    end
+    return 1
+end
+
+-- Open the list for visible field `index`.
 function TacticsEditor:openDropdown(index)
     local rule = self:selectedRule()
     if not rule then return false end
@@ -667,21 +724,34 @@ function TacticsEditor:openDropdown(index)
 
     local options = field.options(rule, self.char)
     if #options == 0 then return false end
-    local current = field.get(rule, self.char)
-    local at = 1
-    for i, opt in ipairs(options) do
-        if opt == current
-            or (type(opt) == "number" and type(current) == "number" and math.abs(opt - current) < 1e-6) then
-            at = i
-            break
-        end
-    end
+    local at = indexOf(options, field.get(rule, self.char))
 
     self.region = "fields"
     self.fieldCursor = index
-    self.open = { field = index, options = options, cursor = at,
+    self.open = { source = "field", field = index, options = options, cursor = at,
                   scroll = math.max(0, math.min(at - 1, at - DD_MAX_ROWS + 1)) }
     return true
+end
+
+-- Open the archetype list off the footer control. Shown WHOLE (`maxRows` is the whole vocabulary, not
+-- DD_MAX_ROWS): the postures are nine including "default" and they fit, and a list that scrolls one
+-- row hides an option the player is choosing between while telling them nothing about the cap.
+function TacticsEditor:openArchetype()
+    if not self.char then return false end
+    local options = TacticsEditor.archetypeOptions()
+    self:focusFooter("archetype")
+    self.open = { source = "archetype", options = options, maxRows = #options,
+                  cursor = indexOf(options, self.char.archetype or false), scroll = 0 }
+    self:scrollDropdownToCursor()
+    return true
+end
+
+-- Which visible field the open list belongs to, or nil when it is the footer's. Everything that draws
+-- a field asks this rather than reading `open.field`, so the archetype list cannot light up a field
+-- bar that has nothing to do with it.
+function TacticsEditor:openFieldIndex()
+    local open = self.open
+    return open and open.source ~= "archetype" and open.field or nil
 end
 
 function TacticsEditor:closeDropdown()
@@ -695,6 +765,14 @@ end
 function TacticsEditor:chooseOption(pick)
     local open = self.open
     if not open then return false end
+    if open.source == "archetype" then
+        local value = open.options[pick or open.cursor]
+        self.open = nil
+        -- `false` is the option, nil is the storage: an archetype that matches the default is an
+        -- absence in the character, which is what makes `canReset` and the save file agree.
+        if self.char and value ~= nil then self.char.archetype = value or nil end
+        return true
+    end
     local rule = self:ownedRules()[self.cursor]
     if rule then
         local field = TacticsEditor.visibleFields(rule, self.char)[open.field]
@@ -716,11 +794,20 @@ end
 -- fit there, scrolling for the rest. It must never simply be clamped into place: that slides it back
 -- over the bar it belongs to, hiding the current value at the exact moment the player is choosing
 -- against it.
+-- The control the open list hangs off: a field's value bar, or the archetype box down in the footer.
+-- Both are computed, not remembered from the last draw, for the reason `fieldRect` gives.
+function TacticsEditor:dropdownAnchor()
+    local open = self.open
+    if not open then return nil end
+    if open.source == "archetype" then return self:archetypeRect() end
+    return self:fieldBar(open.field)
+end
+
 function TacticsEditor:dropdownRect()
     local open = self.open
     if not open then return nil end
-    local bar = self:fieldBar(open.field)
-    local wanted = math.min(#open.options, DD_MAX_ROWS)
+    local bar = self:dropdownAnchor()
+    local wanted = math.min(#open.options, open.maxRows or DD_MAX_ROWS)
     local below = (self.y + self.h) - (bar.y + bar.h + 2)
     local above = (bar.y - 2) - self.y
     local function fits(space) return math.floor((space - 6) / DD_ROW_H) end
@@ -744,7 +831,8 @@ end
 -- panel, and the scroll clamps have to agree with what is drawn or the cursor walks off the list.
 function TacticsEditor:dropdownRows()
     local r = self:dropdownRect()
-    return r and r.rows or DD_MAX_ROWS
+    if r then return r.rows end
+    return (self.open and self.open.maxRows) or DD_MAX_ROWS
 end
 
 -- Which option row a pointer is over, or nil when it is off the list.
@@ -793,7 +881,10 @@ function TacticsEditor:confirm()
         -- other input would.
         if control == "reset" then self:pressReset() return end
         self:disarmReset()
-        if control == "auto" then self:toggleAuto() else self:cycleArchetype(1) end
+        -- Confirm OPENS the archetype list, exactly as it opens a field's -- the footer is the same
+        -- kind of choice as the column next door, and the eight postures are the list this tab most
+        -- needs to show whole. Left/right still steps it in place.
+        if control == "auto" then self:toggleAuto() else self:openArchetype() end
         return
     end
     self:disarmReset()
@@ -842,6 +933,9 @@ local REGION_ORDER = { "rules", "fields", "footer" }
 -- without the host learning its name.
 function TacticsEditor:cycleRegion()
     self:disarmReset()
+    -- An open list belongs to the control it was opened from; leaving that control closes it, rather
+    -- than leaving a list hanging over a region that no longer has the focus.
+    self:closeDropdown()
     local at = 1
     for i, r in ipairs(REGION_ORDER) do if r == self.region then at = i end end
     repeat
@@ -919,6 +1013,9 @@ function TacticsEditor:draw()
 
     self:drawFooter()
     self:drawFields()
+    -- Last of everything, because it now opens off either column and has to cover both -- and because
+    -- the footer's list has to be drawn even on the frames where `drawFields` returns early.
+    self:drawDropdown()
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -1047,15 +1144,22 @@ function TacticsEditor:drawFooter()
     love.graphics.print("Archetype", self.x, self.footY - 3)
     love.graphics.print("Auto-battle", self.x + 200, self.footY - 3)
 
+    -- The archetype control is a dropdown, drawn as the field bars next door are drawn: a plate, the
+    -- value, and one caret saying there is a list under it. It used to wear "< name >", which was a
+    -- stepper -- and a stepper through eight postures whose names do not say what they do means
+    -- visiting all eight to find out what the first one was.
+    local r = self:archetypeRect()
+    self.archRect = r
+    local opened = self.open and self.open.source == "archetype"
+    setColor((focused == "archetype" or opened) and C_ROW_SEL or C_ROW)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 4, 4)
+
     love.graphics.setFont(f.small)
+    setColor((opened or self.hoverArch) and C_ACCENT or C_DIM)
+    love.graphics.printf(opened and "^" or "v", r.x + r.w - ARROW_W - 4, r.y + 4, ARROW_W, "center")
     setColor(C_TEXT)
-    local name = (char.archetype or "default"):gsub("_", " ")
-    self.archRect = { x = self.x, y = self.footY + 14, w = 180, h = 24 }
-    setColor(C_ROW)
-    love.graphics.rectangle("fill", self.archRect.x, self.archRect.y, self.archRect.w, self.archRect.h, 4, 4)
-    setColor(C_TEXT)
-    love.graphics.printf("< " .. name .. " >", self.archRect.x, self.archRect.y + 4, self.archRect.w, "center")
-    ring(self.archRect, focused == "archetype")
+    love.graphics.printf(AI.postureLabel(char.archetype), r.x + 8, r.y + 4, r.w - ARROW_W - 16, "center")
+    ring(r, focused == "archetype")
 
     self.autoRect = { x = self.x + 200, y = self.footY + 14, w = 90, h = 24 }
     setColor(char.autoBattle and { 0.35, 0.55, 0.38 } or C_ROW)
@@ -1147,7 +1251,7 @@ function TacticsEditor:drawFields()
     local y = self.y + 26
     for i, field in ipairs(fields) do
         local selected = (self.region == "fields" and self.fieldCursor == i)
-        local opened = self.open and self.open.field == i
+        local opened = self:openFieldIndex() == i
         local r = self:fieldRect(i)
         self.fieldRects[i] = r
         y = r.y
@@ -1187,16 +1291,33 @@ function TacticsEditor:drawFields()
     love.graphics.setFont(f.tiny)
     setColor(C_DIM)
     love.graphics.printf(AI.describeRule(rule), self.editX, y + 6, self.editW, "left")
-
-    -- Last, so it covers the fields it overlaps rather than being covered by them.
-    self:drawDropdown(rule, fields)
 end
 
-function TacticsEditor:drawDropdown(rule, fields)
+-- What the open list is choosing AGAINST: the value the control behind it currently holds, and the
+-- words for any option in it. Both go through the `source`, so the list widget below never learns
+-- which control opened it.
+function TacticsEditor:openCurrent()
+    local open = self.open
+    if not open then return nil end
+    if open.source == "archetype" then return (self.char and self.char.archetype) or false end
+    local rule = self:selectedRule()
+    local field = rule and TacticsEditor.visibleFields(rule, self.char)[open.field]
+    return field and field.get(rule, self.char)
+end
+
+function TacticsEditor:openLabel(value)
+    local open = self.open
+    if not open or open.source == "archetype" then return AI.postureLabel(value) end
+    local rule = self:selectedRule()
+    local field = rule and TacticsEditor.visibleFields(rule, self.char)[open.field]
+    if not field then return tostring(value) end
+    return optionLabel(field, rule, value, self.char)
+end
+
+function TacticsEditor:drawDropdown()
     local open, r = self.open, self:dropdownRect()
     if not (open and r) then return end
-    local field = fields[open.field]
-    if not field then return end
+    if open.source ~= "archetype" and not self:selectedRule() then return end
     local f = self.fonts
 
     -- An opaque plate with a border: the list sits ON the panel, and a translucent one over a row of
@@ -1207,7 +1328,7 @@ function TacticsEditor:drawDropdown(rule, fields)
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
 
     love.graphics.setFont(f.small)
-    local current = field.get(rule, self.char)
+    local current = self:openCurrent()
     for slot = 1, r.rows do
         local index = slot + open.scroll
         local value = open.options[index]
@@ -1228,7 +1349,7 @@ function TacticsEditor:drawDropdown(rule, fields)
                 love.graphics.print("*", r.x + 6, ry + 3)
             end
             setColor(onCursor and C_ACCENT or C_TEXT)
-            love.graphics.print(optionLabel(field, rule, value, self.char), r.x + 18, ry + 3)
+            love.graphics.print(self:openLabel(value), r.x + 18, ry + 3)
         end
     end
 
@@ -1241,23 +1362,42 @@ function TacticsEditor:drawDropdown(rule, fields)
             r.x, r.y + r.h - 12, r.w - 6, "right")
     end
 
-    self:drawOptionTooltip(field, rule, r)
+    self:drawOptionTooltip(r)
 end
 
--- Two of the vocabularies are lists of IDS whose names are not self-explaining: the kit ("Using") and
--- the status list. "Wildcraft Poultice" and "Cowering" are names, not answers -- picking against them
--- means knowing what they do, and a player who has to leave the screen to find out will pick wrong.
+-- Three of the vocabularies are lists of IDS whose names are not self-explaining: the kit ("Using"),
+-- the status list, and the postures. "Wildcraft Poultice", "Cowering" and "skirmish" are names, not
+-- answers -- picking against them means knowing what they do, and a player who has to leave the screen
+-- to find out will pick wrong.
 --
 -- So the option under the cursor explains itself, through the SAME tooltips the rest of the game
 -- draws for an item and for a status. Reusing them is the point: a Healing Potion must not acquire a
--- second, thinner description that lives only here and drifts from the real one.
+-- second, thinner description that lives only here and drifts from the real one. A posture has no
+-- tooltip of its own anywhere else in the game, so it borrows the plain titled-prose one -- with the
+-- words themselves kept next to the behavior, in AI.POSTURES.
 --
--- Required lazily, inside a draw path, because both tooltip modules reach for love.graphics and this
+-- Required lazily, inside a draw path, because the tooltip modules reach for love.graphics and this
 -- widget's logic is loaded by the headless tests.
-function TacticsEditor:drawOptionTooltip(field, rule, r)
+function TacticsEditor:drawOptionTooltip(r)
     local open = self.open
     local value = open.options[open.cursor]
+
+    if open.source == "archetype" then
+        local title, paragraphs = TacticsEditor.archetypeHelp(value)
+        if not title then return end
+        -- Beside the list rather than over it, and to the RIGHT: this list sits against the panel's
+        -- left edge, so the room is all on the other side. Held at the cursor's ROW, not at the
+        -- pointer, so mouse and pad read the same and the option being explained is the one the
+        -- explanation is level with.
+        local ay = r.y + 3 + (open.cursor - open.scroll - 1) * DD_ROW_H
+        require("ui.note_tooltip").draw(title, paragraphs, r.x + r.w - 4, ay - 16, self.x + self.w)
+        return
+    end
+
     if value == nil or value == false then return end -- "any" describes itself
+    local rule = self:selectedRule()
+    local field = rule and TacticsEditor.visibleFields(rule, self.char)[open.field]
+    if not (rule and field) then return end
 
     -- Anchored to the pointer when it is genuinely over the list; otherwise beside the highlighted
     -- row, so a keyboard or pad gets the same explanation without a mouse to hang it on.
@@ -1335,6 +1475,7 @@ function TacticsEditor:mousemoved(x, y)
 
     self.hoverRow, self.hoverDelete, self.hoverField, self.hoverArrow = nil, nil, nil, nil
     self.hoverReset = hit(self.resetRect, x, y) and self:canReset() or nil
+    self.hoverArch = hit(self.archRect, x, y) or nil
     for i, r in pairs(self.rowRects) do
         if hit(r, x, y) then
             self.hoverRow = i
@@ -1368,24 +1509,20 @@ function TacticsEditor:mousepressed(x, y)
     -- The reset is checked first and keeps its armed state, because it is the one control whose second
     -- click means something different from its first. Every other branch below drops the arming.
     if hit(self.resetRect, x, y) then
-        self.region = "footer"
-        self.footCursor = #self:footControls()
+        self:focusFooter("reset")
         self:pressReset()
         return true
     end
     self:disarmReset()
 
     if hit(self.archRect, x, y) then
-        -- Left half steps back, right half forward -- the "< name >" affordance means what it looks
-        -- like rather than only cycling one way.
-        self.region = "footer"
-        self.footCursor = 1
-        self:cycleArchetype(x < self.archRect.x + self.archRect.w / 2 and -1 or 1)
+        -- The whole box is the control, as a field bar is: one click shows every posture with its
+        -- description, rather than advancing to the next name and leaving the player to guess it.
+        self:openArchetype()
         return true
     end
     if hit(self.autoRect, x, y) then
-        self.region = "footer"
-        self.footCursor = 2
+        self:focusFooter("auto")
         self:toggleAuto()
         return true
     end
@@ -1485,6 +1622,9 @@ function TacticsEditor:prompts()
                 add(pad and "A" or "Enter", self.resetArmed and "Confirm reset" or "Reset")
                 if self.resetArmed then add(pad and "B" or "Esc", "Keep them") end
             end
+        elseif self:footControl() == "archetype" then
+            add(pad and "A" or "Enter", "Open list")
+            add(pad and "D-pad" or "Left/Right", "Step")
         else
             add(pad and "D-pad" or "Left/Right", "Change")
             add(pad and "A" or "Enter", "Change")

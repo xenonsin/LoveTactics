@@ -670,6 +670,109 @@ return {
     },
 
     -- ---------------------------------------------------------------------
+    -- The archetype list
+    -- ---------------------------------------------------------------------
+    {
+        name = "every posture is offered, described, and named in words",
+        fn = function()
+            -- A posture missing from POSTURE_ORDER is one no player can pick, and one without a `desc`
+            -- is a name in a list with nothing behind it -- both are invisible from inside the game,
+            -- so the only place they can be caught is here.
+            local offered = {}
+            for _, name in ipairs(AI.POSTURE_ORDER) do
+                assert(AI.POSTURES[name], name .. " is offered but is not a posture")
+                assert(not offered[name], name .. " is offered twice")
+                offered[name] = true
+                local title, paragraphs = Editor.archetypeHelp(name)
+                assert(title and paragraphs and #paragraphs > 0, name .. " has nothing to say for itself")
+            end
+            for name in pairs(AI.POSTURES) do
+                assert(offered[name], name .. " exists but cannot be chosen")
+            end
+
+            assert(AI.postureLabel("holdGround") == "hold ground", "a camelCase id reads as two words")
+            assert(AI.postureLabel(false) == "default", "and the absence of one has a name of its own")
+            assert(Editor.archetypeHelp(false), "which is described too, by what it falls back to")
+        end,
+    },
+    {
+        name = "the archetype control opens a list on the posture the character already has",
+        fn = function()
+            local char = Character.instantiate("character_archer")
+            assert(char.archetype == "skirmish", "the archer ships with one")
+            local ed = Editor.new({ x = 0, y = 0, w = 800, h = 600, char = char, fonts = {} })
+
+            ed.region, ed.footCursor = "footer", 1
+            assert(ed:footControl() == "archetype", "the strip starts on it")
+            ed:confirm()
+            assert(ed.open and ed.open.source == "archetype", "confirm opens the list, not the next name")
+            assert(ed.open.options[ed.open.cursor] == "skirmish",
+                "pointing at what the character already is")
+
+            -- The whole vocabulary at once: a posture list that scrolls hides one of the options the
+            -- player is choosing between.
+            local r = ed:dropdownRect()
+            assert(r.rows == #ed.open.options, "the list shows every posture without scrolling")
+            local box = ed:archetypeRect()
+            assert(r.y + r.h <= box.y, "and sits above the box, which is at the panel's bottom edge")
+
+            assert(ed:cancel(), "Esc closes it")
+            assert(char.archetype == "skirmish", "and browsing away from a posture did not set it")
+        end,
+    },
+    {
+        name = "choosing a posture writes it, and choosing 'default' clears it",
+        fn = function()
+            local char = Character.instantiate("character_archer")
+            local ed = Editor.new({ x = 0, y = 0, w = 800, h = 600, char = char, fonts = {} })
+
+            ed:openArchetype()
+            local at
+            for i, opt in ipairs(ed.open.options) do if opt == "guard" then at = i end end
+            assert(ed:chooseOption(at), "picking a posture reports the write")
+            assert(char.archetype == "guard", "the character holds what was picked")
+            assert(ed.open == nil, "the list closes behind the choice")
+
+            ed:openArchetype()
+            assert(ed:chooseOption(1), "the first option is 'default'")
+            assert(char.archetype == nil,
+                "stored as an absence, not as `false` -- the save and canReset both read it that way")
+        end,
+    },
+    {
+        name = "the list and the stepper walk the postures in the same order",
+        fn = function()
+            -- Left/right and the open list are two hands on one control; an option that moves when the
+            -- list opens is a control that answers differently depending on how it was reached.
+            local char = Character.instantiate("character_archer")
+            local ed = Editor.new({ x = 0, y = 0, w = 800, h = 600, char = char, fonts = {} })
+            local options = Editor.archetypeOptions()
+
+            char.archetype = nil
+            for i = 2, #options do
+                ed:cycleArchetype(1)
+                assert((char.archetype or false) == options[i], "step " .. i .. " follows the list")
+            end
+            ed:cycleArchetype(1)
+            assert(char.archetype == nil, "and wraps back to default")
+        end,
+    },
+    {
+        name = "leaving the archetype control closes its list",
+        fn = function()
+            local char = Character.instantiate("character_archer")
+            local ed = Editor.new({ x = 0, y = 0, w = 800, h = 600, char = char, fonts = {} })
+            ed:openArchetype()
+            ed:cycleRegion()
+            assert(ed.open == nil, "Tab does not leave a list hanging over the region it came from")
+
+            ed:openArchetype()
+            ed:setChar(Character.instantiate("character_mage"))
+            assert(ed.open == nil, "nor does a change of character")
+        end,
+    },
+
+    -- ---------------------------------------------------------------------
     -- Persistence
     -- ---------------------------------------------------------------------
     {

@@ -347,10 +347,17 @@ local ATTACK_RULE  = { act = "attack",  when = { subject = "any_foe",  test = "e
 local SUPPORT_RULE = { act = "support", when = { subject = "any_ally", test = "hp_pct_below", value = 0.6 },
                        targetPref = "lowest_hp" }
 
+-- `desc` is the posture in the PLAYER's words, shown beside the name wherever a posture is offered
+-- as a choice (ui/tactics_editor.lua's archetype list). It lives here, next to the behavior it
+-- describes, because a description kept in the widget drifts from the code the first time somebody
+-- changes an engage rule -- and this is the one field on the table that has to keep agreeing with the
+-- other five.
 AI.POSTURES = {
     -- Walks at the enemy and hits the best thing it can reach. The historical behavior, now with
     -- judgement about which thing that is.
     aggressive = {
+        desc = "Goes looking for the fight. Closes on the enemy and hits the best thing it can reach,"
+            .. " without waiting to be provoked.",
         rules = { SUPPORT_RULE, ATTACK_RULE },
         move = "approach",
         engage = function() return true end,
@@ -360,6 +367,8 @@ AI.POSTURES = {
     -- is what lets a map be authored with quiet corners: a room full of `defensive` guards is a room
     -- the player can choose when to open, rather than a timer.
     defensive = {
+        desc = "Waits. It holds where it stands until the fight comes to it -- struck, or with someone"
+            .. " on the ground it was posted to hold -- and then commits without abandoning that post.",
         rules = { SUPPORT_RULE, ATTACK_RULE },
         -- `defend`, not `approach`: a defender walks to its POST and stops there. The old `approach`
         -- was written for a posture that had nothing to defend -- once provoked it committed like an
@@ -394,6 +403,8 @@ AI.POSTURES = {
 
     -- Never leaves the tile it was put on. A sentry, a turret, a boss that owns a throne room.
     holdGround = {
+        desc = "Never leaves the tile it starts on. It strikes whatever comes into reach and lets"
+            .. " everything else walk past: a sentry, a turret, a boss on its throne.",
         rules = { ATTACK_RULE },
         move = "hold",
         rooted = true,
@@ -403,6 +414,8 @@ AI.POSTURES = {
     -- Leashed: pursues within `leash` tiles of where it started and goes home once past it. The
     -- posture that makes a patrol readable -- the player can bait it out and see it disengage.
     guard = {
+        desc = "Chases, but only so far. It pursues within four tiles of where it started and walks"
+            .. " home once past that, so it can be baited off its ground and seen to give up.",
         rules = { SUPPORT_RULE, ATTACK_RULE },
         move = "leash",
         leash = 4,
@@ -417,6 +430,9 @@ AI.POSTURES = {
     -- and stops arguing for range at all. STANDOFF is the slope underneath it, and it is what keeps
     -- this archer shooting from four tiles instead of closing to punch when it cannot get clear.
     skirmish = {
+        desc = "Wants the distance its weapon has. It shoots from as far out as it can and gives"
+            .. " ground rather than closing: an archer who can hit from six tiles will not stroll to"
+            .. " three.",
         rules = { SUPPORT_RULE, ATTACK_RULE },
         move = "kite",
         weights = { EXPOSURE = 5, STEPS = 0.1, COUNTER = 2.5, STANDOFF = 6 },
@@ -426,6 +442,8 @@ AI.POSTURES = {
     -- Reads its allies before its enemies. Nothing in the old planner ever pointed a heal at
     -- anything, so an enemy healer's kit was decoration; this is the posture that makes it a threat.
     support = {
+        desc = "Reads its allies before its enemies. It mends whoever is worst off first, and only"
+            .. " turns on the enemy when nobody needs it.",
         rules = {
             { act = "support", when = { subject = "any_ally", test = "hp_pct_below", value = 0.9 },
               targetPref = "lowest_hp" },
@@ -446,6 +464,8 @@ AI.POSTURES = {
     -- charge is a thing you stand around, an advancing one is a clock you cannot pause. Slot 1 of the
     -- Bastion's line uses both -- the column presses on up the mountain, and digs in at the gate.
     escort = {
+        desc = "Walks for the objective and nothing else. It never starts a fight and never stops to"
+            .. " trade a blow, which makes it a clock rather than a combatant.",
         rules = {},
         move = "advance",
         engage = function() return true end,
@@ -454,6 +474,9 @@ AI.POSTURES = {
     -- Plays the map rather than the bodies: goes for whoever the objective names, and falls back to
     -- ordinary aggression on a map whose objective has no unit to point at (a plain killAll).
     objective = {
+        desc = "Plays the map rather than the bodies. It goes for whoever the objective names and"
+            .. " walks past easier targets to get there; on a map that names nobody, it fights like an"
+            .. " aggressor.",
         rules = {
             { act = "attack", when = { subject = "objective_unit", test = "exists" },
               targetPref = "objective" },
@@ -465,6 +488,22 @@ AI.POSTURES = {
 }
 
 AI.DEFAULT_POSTURE = "aggressive"
+
+-- The order the postures are OFFERED in. Not the declaration order and deliberately not alphabetical:
+-- it runs from the posture that goes looking for the fight to the one that will not have it at all, so
+-- the list reads as a scale and a player scanning it can stop where their answer is. Every posture
+-- belongs here -- one missing from this list is one the player cannot choose (tactics_editor_spec
+-- checks the two agree).
+AI.POSTURE_ORDER = {
+    "aggressive", "objective", "skirmish", "support", "guard", "defensive", "holdGround", "escort",
+}
+
+-- A posture's name as the UI says it: `holdGround` is one word to Lua and two to a reader, and the
+-- absence of a posture is a name of its own rather than a blank.
+function AI.postureLabel(name)
+    if not name then return "default" end
+    return (tostring(name):gsub("(%l)(%u)", "%1 %2"):gsub("_", " "):lower())
+end
 
 function AI.posture(unit)
     local name = unit and unit.char and unit.char.archetype
