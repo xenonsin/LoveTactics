@@ -14,7 +14,7 @@ return {
     class = "fighter",
     price = 340,
     unlockQuests = 6,
-    bonus = { defense = Curve.ramp(7, 17) },
+    bonus = { defense = Curve.ramp(7, 17), movement = -1 },
     resist = { physical = 2 },
     traits = { "trait_thorns" },
 }

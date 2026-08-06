@@ -25,7 +25,9 @@ return {
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_wrath_rising" },
-    -- Light for a chestpiece. She never needed the steel, and neither will you if you win fast.
-    bonus = { defense = Curve.ramp(4, 14), movement = 0 },
+    -- Light for a chestpiece. She never needed the steel, and neither will you if you win fast --
+    -- but it is still mail, and mail costs a square like every other coat on the rack. There is no
+    -- free tier to put a relic in (docs/classes.md).
+    bonus = { defense = Curve.ramp(4, 14), movement = -1 },
     resist = { slash = 2 },
 }

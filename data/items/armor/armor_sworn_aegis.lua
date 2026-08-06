@@ -30,7 +30,7 @@ return {
     class = "knight",
     bound = true,
     traits = { "trait_oathward" },
-    bonus = { defense = Curve.ramp(3, 13) },
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 1 },
     -- Defend brace: the knight's core stance, its +defense climbing as the shield is forged.
     waitBehavior = { kind = "defend", speed = 3, defense = Curve.ramp(6, 16) },

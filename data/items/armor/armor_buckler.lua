@@ -13,7 +13,7 @@ return {
     class = "knight",
     price = 220,
     unlockQuests = 1, -- a family's base weapon is always rank 1 (docs/weapons.md); the buckler is the shield's
-    bonus = { defense = Curve.ramp(3, 13) },
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 1 },
     -- Defend brace: the temporary +defense while braced, tuned here and climbing with the forge.
     waitBehavior = { kind = "defend", speed = 3, defense = Curve.ramp(6, 16) },

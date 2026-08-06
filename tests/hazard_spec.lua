@@ -9,6 +9,11 @@ local Item = require("models.item")
 local Combat = require("models.combat")
 local Hazard = require("models.hazard")
 local Status = require("models.status")
+local Fixture = require("tests.support.fixture")
+
+-- "A light body with a movement budget of 3" -- the two walk-through-fire cases below need a stated
+-- pace, not whatever the archer happens to be wearing. See Fixture.walker.
+local walker = Fixture.walker
 
 -- A flat, all-walkable ground arena (mirrors tests/trap_spec.lua's fixture).
 local function arena(cols, rows)
@@ -66,8 +71,8 @@ return {
     {
         name = "walking onto a fire hazard applies Burn, which then sears as the clock runs",
         fn = function()
-            -- Archer (movement 4, less 1 for leather = 3) walks (1,1)->(1,4) across fire at (1,3).
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
+            -- Walker (movement 4, less 1 for leather = 3) walks (1,1)->(1,4) across fire at (1,3).
+            local c = Combat.new(arena(8, 8), { walker(1, 1) }, {})
             Hazard.place(c, 1, 3, "hazard_fire")
             local archer = c.units[1]
             local hp0 = archer.char.stats.health.current
@@ -86,7 +91,7 @@ return {
     {
         name = "crossing several fire tiles refreshes Burn rather than stacking a second instance",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { walker(1, 1) }, {})
             Hazard.place(c, 1, 2, "hazard_fire")
             Hazard.place(c, 1, 3, "hazard_fire")
             local archer = c.units[1]

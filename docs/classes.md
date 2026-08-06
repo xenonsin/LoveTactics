@@ -165,7 +165,7 @@ Two notes on how this shook out:
   this game those overwhelmingly arrive from a bomb, a stone or a spilled reagent. The house that sells
   the burning sells the coat, which is envy's voice and not a general good.
 
-### Cloth costs a square, and penalties stack
+### Armor costs a square, and penalties stack
 
 `Combat.applyUnitPassives` sums `bonus.movement` across the **whole 3×3 grid**, so a body wearing three
 coats pays for three coats. That was always true and nothing asserted it, which is how the light tier
@@ -175,17 +175,31 @@ So the rule is now stated and enforced (`tests/armor_spec.lua`):
 
 | Tier | Movement |
 |---|---|
-| cloth (robes, wraps, habits, stoles, shrouds, mantles) | **−1**, always |
-| leather / hide cut for movement | 0 |
+| cloth (robes, wraps, habits, stoles, shrouds, mantles) | −1 |
+| leather / hide | −1 |
+| shield (buckler through tower) | −1 |
 | medium (leather armor, chainmail, most plate) | −1 |
 | heavy | −2 |
 
-**And no armor ever grants movement.** The tiers above are a *cost table*; a piece that hands a square
-back does not bend it, it cancels it — and once one does, the honest reading of the table becomes "wear
-the right four coats." The floor is 0 (`leather / hide cut for movement`), never a positive. A discipline
-that wants to sell pace sells it as a charm, an ability, or a weapon that does not close your move.
-`tests/armor_spec.lua` pins it, and the rule is why the Skirmisher's `armor_outriders_harness` buys an
-unanswerable opening strike rather than the +1 it was first drafted with.
+**Every piece is felt, and no armor ever grants movement.** There is no free rung. The table once had a
+0 tier — *leather / hide cut for movement* — and shields sat off the table entirely at 0, which meant the
+honest way to read the spread was "find the pieces that cost nothing and wear those", and because
+penalties stack, four of them was a real build. What distinguishes a tier is **how much it protects**,
+not whether you notice the weight.
+
+A piece that hands a square *back* does not bend the cost table, it cancels it. The floor is −1, never a
+positive. A discipline that wants to sell pace sells it as a charm, an ability, or a weapon that does not
+close your move — which is why the Skirmisher's `armor_outriders_harness` buys an unanswerable opening
+strike rather than the +1 it was first drafted with.
+
+Two consequences worth naming, because they are the price of having no exceptions. Shields are inside the
+rule, so a knight in chainmail and a buckler walks at 2 — on-theme for the wall, but it is a real cut to
+the class that stacks the most armor. And `armor_hollow_crown` is `type = "armor"`, so the Demon Lord pays
+a square for its crown and fights the last battle at 3.
+
+**And every piece must buy that square back.** An armor grants `defense`, `magicDefense`, or a positive
+`resist`; one that costs pace and returns nothing is not a trade-off, it is a trap. Pinned in the same
+spec.
 
 Base movement was raised to **4** on every character blueprint that had 3, to pay for it — deliberate
 outliers (a planted banner's 0, the dire bear's ponderous 2) were left alone. The player's avatar

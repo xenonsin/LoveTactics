@@ -26,6 +26,6 @@ return {
     price = 260,
     unlockQuests = 5,
     traits = { "trait_dodge" },
-    bonus = { defense = Curve.ramp(3, 13) },
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 1 },
 }

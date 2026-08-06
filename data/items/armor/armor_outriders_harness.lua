@@ -11,7 +11,9 @@
 -- pitch is that you go in and come out. Unanswerable strikes make the going-in free; Harrying Strike
 -- and the Harrier's Bow are what make the coming-out possible.
 --
--- Leather cut for movement, so it pays no square either (the 0 tier) -- and grants none.
+-- It pays its square like everything else on the rack. The 0 tier this was once filed under is gone:
+-- every coat costs pace now, and a skirmisher's answer to that is the same as its answer to
+-- everything, which is to be somewhere else by the time it matters.
 local Curve = require("models.curve")
 
 return {
@@ -25,6 +27,6 @@ return {
     discipline = "skirmisher",
     price = 400,
     unlockQuests = 8,
-    bonus = { defense = Curve.ramp(3, 13) },
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     traits = { "trait_outriders_harness" },
 }

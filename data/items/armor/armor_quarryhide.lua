@@ -23,6 +23,6 @@ return {
     tags = { "hide" },
     class = "hunter",
     traits = { "trait_executioners_eye" },
-    bonus = { defense = Curve.ramp(3, 13) },
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 1 },
 }

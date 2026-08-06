@@ -22,5 +22,5 @@ return {
     -- has no price, so it is not part of what the shelf unlock delivers (tests/discipline_spec.lua).
     discipline = "mammonite",
     traits = { "trait_skimmers_cut" },
-    bonus = { defense = Curve.ramp(3, 13) },
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
 }

@@ -23,5 +23,5 @@ return {
     tags = { "hide" },
     class = "hunter",
     traits = { "trait_wolf_companion" },
-    bonus = { defense = Curve.ramp(2, 12) },
+    bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

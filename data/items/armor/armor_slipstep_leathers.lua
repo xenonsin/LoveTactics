@@ -24,6 +24,6 @@ return {
     tags = { "leather" },
     class = "rogue",
     traits = { "trait_slipstep" },
-    bonus = { defense = Curve.ramp(3, 13) },
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 1 },
 }

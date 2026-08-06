@@ -24,7 +24,7 @@ return {
     class = "knight",
     price = 300,
     unlockQuests = 3,
-    bonus = { defense = Curve.ramp(4, 14) },
+    bonus = { defense = Curve.ramp(4, 14), movement = -1 },
     resist = { physical = 2 },
     -- Well above a buckler's 6-11, which is what the root buys. `status` is applied to the holder on
     -- every Defend (Combat.defend).

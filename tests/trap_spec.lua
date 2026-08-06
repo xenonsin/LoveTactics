@@ -8,6 +8,11 @@ local Item = require("models.item")
 local Combat = require("models.combat")
 local Trap = require("models.trap")
 local Status = require("models.status")
+local Fixture = require("tests.support.fixture")
+
+-- "A light body with a movement budget of 3" -- every walk-over-a-trap case below needs a stated
+-- pace, since the whole point is that the unit crosses tiles it does not stop on. See Fixture.walker.
+local walker = Fixture.walker
 
 local function arena(cols, rows, traps)
     local tiles = {}
@@ -38,9 +43,9 @@ return {
     {
         name = "a unit pathing OVER an enemy trap triggers it (not just the landing tile)",
         fn = function()
-            -- Archer (movement 4, less 1 for its leather armor = 3) walks (1,1)->(1,4),
+            -- Walker (movement 4, less 1 for its leather armor = 3) walks (1,1)->(1,4),
             -- crossing a spike trap parked at (1,3).
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { walker(1, 1) }, {})
             Trap.place(c, 1, 3, "spike_trap", "enemy")
             local archer = c.units[1]
             local hp0 = archer.char.stats.health.current
@@ -56,7 +61,7 @@ return {
         name = "a unit killed by a trap en route stops on the tile it fell on",
         fn = function()
             -- One hit point left: the spike trap at (1,3) finishes the archer halfway to (1,4).
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { walker(1, 1) }, {})
             Trap.place(c, 1, 3, "spike_trap", "enemy")
             local archer = c.units[1]
             archer.char.stats.health.current = 1
@@ -71,7 +76,7 @@ return {
     {
         name = "a unit does not trigger its own side's trap",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { walker(1, 1) }, {})
             Trap.place(c, 1, 3, "spike_trap", "party") -- friendly trap
             local archer = c.units[1]
             local hp0 = archer.char.stats.health.current
@@ -85,7 +90,7 @@ return {
     {
         name = "a snare trap applies root to the victim instead of dealing damage",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { walker(1, 1) }, {})
             Trap.place(c, 1, 3, "snare_trap", "enemy")
             local archer = c.units[1]
             local hp0 = archer.char.stats.health.current
@@ -275,7 +280,7 @@ return {
         fn = function()
             -- The one trap that is a setup rather than an attack (data/traps/bear_trap.lua): the
             -- spike trap only wounds, the snare only holds, and this does the pair.
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
+            local c = Combat.new(arena(8, 8), { walker(1, 1) }, {})
             Trap.place(c, 1, 3, "bear_trap", "enemy")
             local archer = c.units[1]
             local hp0 = archer.char.stats.health.current
@@ -292,7 +297,7 @@ return {
             -- The only trap with an area, and the reason to bury one in a doorway: the tile it is
             -- under matters less than the shape of the room around it.
             local c = Combat.new(arena(8, 8),
-                { unit("character_archer", 1, 1), unit("character_rowan", 2, 3) }, {})
+                { walker(1, 1), unit("character_rowan", 2, 3) }, {})
             Trap.place(c, 1, 3, "blast_charge", "enemy")
             local walker, bystander = c.units[1], c.units[2]
             local walked, beside = walker.char.stats.health.current, bystander.char.stats.health.current

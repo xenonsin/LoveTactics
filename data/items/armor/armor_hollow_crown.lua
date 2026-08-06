@@ -20,5 +20,8 @@ return {
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_hollow_crown" },
-    bonus = { defense = Curve.ramp(6, 16) }, -- levels 0..10 (only base is ever used)
+    -- levels 0..10 (only base is ever used). The square is the armour cost table applying to a crown
+    -- because a crown is `type = "armor"` -- see the note on the type above. The Demon Lord is the
+    -- one body in the game that pays it for headgear, and it walks the last fight at 3.
+    bonus = { defense = Curve.ramp(6, 16), movement = -1 },
 }

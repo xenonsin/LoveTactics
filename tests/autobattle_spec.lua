@@ -45,8 +45,18 @@ return {
             -- Joined at the start line on purpose: a knight is the `defensive` archetype and so is a
             -- champion, and two lines that both hold their ground never meet (see the standoff case
             -- below). Put them in reach and the fight is a fight.
+            --
+            -- WOUNDED means current below max, not a small max. `stats = { health = 6 }` would set
+            -- both (Fixture.unit's documented "at full on 6"), and a knight at full health is a
+            -- `defensive` unit that has NOT been provoked -- hpFraction is 1, so it never engages and
+            -- three equally defensive champions have nothing to answer. That fixture only ever
+            -- resolved because the champions' pace happened to reach far enough to force the issue,
+            -- and when every armor started costing a square (docs/classes.md) it stopped reaching and
+            -- the case ran to the 500-turn guard. The knight is actually hurt now, which is what the
+            -- name says and what makes the fight start.
             local map = Fixture.new(10, 10)
-            local party = { Fixture.unit("character_knight", 5, 5, { stats = { health = 6 } }) }
+            local party = { Fixture.unit("character_knight", 5, 5) }
+            party[1].char.stats.health.current = 6
             local foes = {
                 Fixture.unit("character_champion", 4, 4), Fixture.unit("character_champion", 5, 4),
                 Fixture.unit("character_champion", 6, 4),

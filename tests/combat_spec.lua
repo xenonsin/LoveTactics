@@ -42,6 +42,10 @@ end
 -- moveUnit/endTurn on the unit it cares about (mirrors what Combat.startTurn sets up).
 local openTurn = Fixture.openTurn
 
+-- "A light body with a movement budget of 3" -- what the pathing cases below measure reach and clock
+-- against. Stated rather than inherited, for the reason written on Fixture.walker.
+local walker = Fixture.walker
+
 -- Current value of a unit's resource pool, whether the stat is a {current,max} table or a plain
 -- number (Combat.resourceValue's rule, mirrored here so the channel tests can read mana either way).
 local function poolOf(u, stat)
@@ -115,7 +119,7 @@ return {
     {
         name = "planMove lays out an origin-first path that stepMove walks one tile per call",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, {})
+            local c = Combat.new(arena(8, 8), { walker(2, 2) }, {})
             local u = c.units[1]
             Combat.startTurn(c)
 
@@ -652,7 +656,7 @@ return {
     {
         name = "terrain enter-cost limits reach and raises move time",
         fn = function()
-            -- 5x1 corridor: ground, forest(2), ground, ground, ground; archer has movement 4,
+            -- 5x1 corridor: ground, forest(2), ground, ground, ground; the walker has movement 4,
             -- less 1 for its leather armor = an effective budget of 3.
             local row = {
                 { type = "ground",   moveCost = 1, walkable = true },
@@ -662,7 +666,7 @@ return {
                 { type = "ground",   moveCost = 1, walkable = true },
             }
             local a = { cols = 5, rows = 1, tiles = { row }, objective = { type = "killAll" } }
-            local c = Combat.new(a, { unit("character_archer", 1, 1) }, {})
+            local c = Combat.new(a, { walker(1, 1) }, {})
             local u = c.units[1]
             Combat.startTurn(c)
 
@@ -678,8 +682,8 @@ return {
     {
         name = "a unit walks THROUGH an ally but not onto it; an enemy still blocks the corridor",
         fn = function()
-            -- 6x1 corridor, archer (movement budget 3) at x=1 with a friendly at x=2 boxing it in.
-            local c = Combat.new(arena(6, 1), { unit("character_archer", 1, 1), unit(swordsman(), 2, 1) }, {})
+            -- 6x1 corridor, walker (movement budget 3) at x=1 with a friendly at x=2 boxing it in.
+            local c = Combat.new(arena(6, 1), { walker(1, 1), unit(swordsman(), 2, 1) }, {})
             local archer = c.units[1]
             openTurn(c, archer)
 
@@ -698,7 +702,7 @@ return {
             assert(nope == nil and why == "occupied", "can't end the move on the ally, got " .. tostring(why))
 
             -- An ENEMY in the same spot bars the corridor outright.
-            local c2 = Combat.new(arena(6, 1), { unit("character_archer", 1, 1) }, { unit("character_bandit", 2, 1) })
+            local c2 = Combat.new(arena(6, 1), { walker(1, 1) }, { unit("character_bandit", 2, 1) })
             Combat.startTurn(c2)
             local r2 = Combat.reachable(c2, c2.units[1])
             assert(r2["3,1"] == nil and r2["4,1"] == nil, "an enemy blocks passage down the corridor")
@@ -731,7 +735,7 @@ return {
         name = "moving then waiting still pays the move cost (delay floors at the move cost)",
         fn = function()
             -- Move cost decides: the next unit is close, so the move cost (3) sets the landing.
-            local c = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, { unit(swordsman(), 6, 6) })
+            local c = Combat.new(arena(8, 8), { walker(2, 2) }, { unit(swordsman(), 6, 6) })
             local archer, other = c.units[1], c.units[2]
             archer.initiative, other.initiative = 0, 1
             openTurn(c, archer)
@@ -744,7 +748,7 @@ return {
             assert(archer.initiative == 2, "the move cost dominates (3), landing archer at 3 - 1")
 
             -- Delay decides: a 1-tile move can't push past a far-ahead next unit.
-            local c2 = Combat.new(arena(8, 8), { unit("character_archer", 2, 2) }, { unit(swordsman(), 6, 6) })
+            local c2 = Combat.new(arena(8, 8), { walker(2, 2) }, { unit(swordsman(), 6, 6) })
             local a2, k2 = c2.units[1], c2.units[2]
             a2.initiative, k2.initiative = 0, 10
             openTurn(c2, a2)

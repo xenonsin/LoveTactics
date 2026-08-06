@@ -34,5 +34,5 @@ return {
     price = 420,
     unlockQuests = 9,
     traits = { "trait_whirl_answer" },
-    bonus = { defense = Curve.ramp(3, 13) },
+    bonus = { defense = Curve.ramp(3, 13), movement = -2 },
 }

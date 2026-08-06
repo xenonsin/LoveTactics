@@ -127,6 +127,24 @@ function Fixture.unit(charOrId, x, y, opts)
     return { char = char, x = x, y = y }
 end
 
+--- A LIGHT WALKER WITH A MOVEMENT BUDGET OF 3 -- the pace that pathing, terrain, hazard, root and
+--- trap cases measure their reach and their clock against.
+---
+--- It used to be spelled `unit("character_archer", ...)`, which WAS one by coincidence: base 4 less
+--- the single square its leather armor cost. When every armor started costing a square rather than
+--- just cloth (docs/classes.md), the buckler sitting in the same grid took a second one, and fifteen
+--- cases across four specs changed their answers overnight -- none of which have anything to do with
+--- what an archer straps on. So the budget is stated here ON PURPOSE now, the same way
+--- combat_spec.lua's swordsman() states a sword: one coat, one square, a reach of 3.
+function Fixture.walker(x, y)
+    local spawn = Fixture.unit("character_archer", x, y, { isolate = "mechanics" })
+    for i = 1, Character.MAX_INVENTORY do
+        local item = spawn.char.inventory[i]
+        if item and item.id == "armor_buckler" then spawn.char.inventory[i] = nil end
+    end
+    return spawn
+end
+
 --- Combat.new, spelled the way the fixtures read. Accepts a bare spawn entry for the common
 --- one-a-side case, so a test need not wrap a lone unit in a table.
 function Fixture.combat(map, party, enemies)

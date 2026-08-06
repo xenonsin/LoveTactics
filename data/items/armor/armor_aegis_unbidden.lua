@@ -26,7 +26,7 @@ return {
     type = "armor",
     tags = { "shield", "holy" },
     class = "knight",
-    bonus = { defense = Curve.ramp(3, 13) },
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     -- The only shield carrying a magical resist, which is half of what makes it worth the slot before it
     -- is ever planted.
     resist = { magical = 2 },

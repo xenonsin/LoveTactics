@@ -29,5 +29,5 @@ return {
     tags = { "leather" },
     class = "alchemist",
     traits = { "trait_survivors_reflex" },
-    bonus = { defense = Curve.ramp(3, 13) },
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
 }

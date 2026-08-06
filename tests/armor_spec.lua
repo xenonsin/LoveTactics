@@ -7,10 +7,12 @@
 --      buyable has nothing to hand out for finishing its line; one that is entirely quest-locked cannot
 --      be shopped at.
 --
---   2. ARMOR MOVEMENT PENALTIES STACK, and cloth costs a square. Combat.applyUnitPassives sums
+--   2. ARMOR MOVEMENT PENALTIES STACK, and every coat costs a square. Combat.applyUnitPassives sums
 --      `bonus.movement` across the whole 3x3 grid, so a body wearing three coats pays for three coats.
 --      That was always true and nothing asserted it, which is why the light tier could advertise "at no
---      cost to your pace" and quietly mean "wear four".
+--      cost to your pace" and quietly mean "wear four". Cloth was pinned to -1 first; the free rung the
+--      leather, hide and shield pieces were sitting on is gone now too, and the floor is -1 for
+--      everything, -2 for heavy. What a tier buys is protection, never a pace you don't feel.
 --
 -- Pure logic, headless. Sweep style mirrors tests/class_spec.lua's weaponsOf().
 
@@ -93,14 +95,46 @@ return {
         end,
     },
     {
-        name = "cloth costs a square of pace, every time it is woven",
+        name = "every armor costs a square of pace, and heavy costs two",
         fn = function()
+            -- THERE IS NO FREE TIER. The cost table used to have a 0 rung ("leather / hide cut for
+            -- movement") and a floor of 0, which meant the honest way to read the whole spread was
+            -- "find the pieces that are free and wear those" -- and because penalties stack, four
+            -- free pieces was a real build. Every coat is felt now; what separates the tiers is how
+            -- much it protects, not whether you notice it (docs/classes.md, armor_padded_vest).
+            --
+            -- Shields and relics are inside this rule, not beside it. A shield is worn, and a rule
+            -- with a carve-out for the one item class that wanted one is not a cost table.
             for id, def in pairs(Item.defs) do
-                if def.type == "armor" and hasTag(def, "cloth") then
+                if def.type == "armor" then
                     local m = def.bonus and def.bonus.movement
-                    assert(m == -1,
-                        id .. " is cloth and its movement penalty is " .. tostring(m)
-                            .. " -- cloth costs exactly one square (see armor_padded_vest)")
+                    assert(type(m) == "number" and m <= -1,
+                        id .. "'s movement penalty is " .. tostring(m)
+                            .. " -- every armor costs at least one square (docs/classes.md)")
+                    if hasTag(def, "heavy") then
+                        assert(m <= -2,
+                            id .. " is heavy and costs " .. m .. " -- the heavy tier costs two squares")
+                    end
+                end
+            end
+        end,
+    },
+    {
+        name = "every armor buys that square with defense or with a resist",
+        fn = function()
+            -- The other half of the trade. A piece that slows you and protects nothing is not a
+            -- choice with a downside, it is a trap -- and the movement floor above is exactly the
+            -- kind of change that could leave one behind.
+            for id, def in pairs(Item.defs) do
+                if def.type == "armor" then
+                    local b = def.bonus or {}
+                    local guards = (b.defense or b.magicDefense) ~= nil
+                    for _, v in pairs(def.resist or {}) do
+                        local first = type(v) == "table" and v[1] or v
+                        if type(first) == "number" and first > 0 then guards = true end
+                    end
+                    assert(guards,
+                        id .. " costs pace and returns neither defense, magicDefense, nor a positive resist")
                 end
             end
         end,

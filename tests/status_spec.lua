@@ -6,6 +6,7 @@ local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
 local Status = require("models.status")
+local Fixture = require("tests.support.fixture")
 
 -- A flat, all-walkable arena (mirrors tests/combat_spec.lua's fixture).
 local function arena(cols, rows, objective)
@@ -28,9 +29,17 @@ end
 -- weapon speed they can state. `character_rowan` used to be that by accident -- Rowan carried a
 -- sword (speed 3) -- until the prologue gave her an iron mace (speed 4), which silently changed the
 -- arithmetic of tests that were never about her. The sword goes in explicitly now.
+--
+-- The bound signature relic comes off for the same reason (as tests/combat_spec.lua's unit() has
+-- always done): Rowan's Sworn Aegis is a shield, every armor costs a square now (docs/classes.md),
+-- and Root bills the walk this unit never took -- so an uninvited shield would quietly change what
+-- a rooted turn costs.
 local function swordsman(x, y)
     local char = Character.instantiate("character_rowan")
     char.inventory[1] = Item.instantiate("weapon_iron_sword")
+    for i = 1, Character.MAX_INVENTORY do
+        if char.inventory[i] and char.inventory[i].bound then char.inventory[i] = nil end
+    end
     return { char = char, x = x, y = y }
 end
 
@@ -295,10 +304,10 @@ return {
     {
         name = "Haste halves the initiative a walk charges, but not how far the walk can go",
         fn = function()
-            -- Archer (movement 4, less 1 for its leather armor = 3) walks three tiles of open
+            -- Walker (movement 4, less 1 for its leather armor = 3) walks three tiles of open
             -- ground: a raw path cost of 3, which endTurn folds in as elapsed clock.
             local function walkCost(hasted)
-                local c = Combat.new(arena(8, 8), { unit("character_archer", 1, 1) }, {})
+                local c = Combat.new(arena(8, 8), { Fixture.walker(1, 1) }, {})
                 local archer = c.units[1]
                 if hasted then Status.apply(c, archer, "status_hasted") end
                 openTurn(c, archer)

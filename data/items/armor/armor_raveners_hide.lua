@@ -25,5 +25,5 @@ return {
     tags = { "hide" },
     class = "hunter",
     traits = { "trait_ravenous" },
-    bonus = { defense = Curve.ramp(2, 12) },
+    bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

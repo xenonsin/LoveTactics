@@ -36,5 +36,6 @@ return {
     bonus = {
         health = Curve.ramp(10, 30),
         defense = Curve.ramp(2, 12),
+        movement = -2, -- heavy: the salvage is a lump of someone else's chest, and it weighs like one
     },
 }

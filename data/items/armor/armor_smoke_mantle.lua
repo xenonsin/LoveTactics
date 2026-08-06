@@ -5,8 +5,8 @@
 -- one costs a turn of damage instead, which makes it the piece that still works in the third hour of a
 -- fight when the mage half of the build has nothing left. A ninja out of mana is still a ninja.
 --
--- Light leather cut for movement, so it pays no square (docs/classes.md's tier table) -- and grants
--- none either, because no armour in this game does.
+-- Light leather, and it still pays its square (docs/classes.md's tier table) -- and grants none back
+-- either, because no armour in this game does. The mantle sells a turn of the fight, not a step of it.
 --
 -- One interaction worth knowing before you buy it: a Marked ninja cannot vanish at all. status_mark
 -- `forbids` status_invisible, so a hunter who paints you shuts the mantle off until somebody cleanses
@@ -24,6 +24,6 @@ return {
     discipline = "ninja",
     price = 420,
     unlockQuests = 10,
-    bonus = { defense = Curve.ramp(3, 13) },
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     traits = { "trait_smoke_mantle" },
 }
