@@ -13,7 +13,7 @@ return {
     -- steps up; the resists and the movement penalty are flat single numbers, which never scale -- what
     -- boiled hide turns aside is what it is, and the forge sells the bulk (models/curve.lua).
     bonus = {
-        defense = Curve.ramp(4, 14),
+        defense = Curve.ramp(3, 13),
         movement = -1,
     },
     resist = {

@@ -15,9 +15,9 @@ return {
     sprite = "assets/chars/demon_lord.png",
     revivable = false, -- a demon does not come back: no downed window, and no revive takes it
     stats = {
-        health = 420, mana = 0, stamina = 25,
+        health = 462, mana = 0, stamina = 25,
         damage = 20, magicDamage = 20,
-        defense = 14, magicDefense = 14,
+        defense = 5, magicDefense = 14,
         movement = 4,
         speed = 3,
     },

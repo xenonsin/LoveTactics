@@ -8,8 +8,9 @@
 -- (models/forge.lua), which is also the only bench that spends materials. This module used to carry a
 -- second door onto the same `item.level` -- abilities honed at their class vendor, consumables refined
 -- per-type -- and having two doors onto one ladder meant two bills, two ceilings, and no single place
--- to look. What the Forge still borrows from here is Vendor.tier: standing with a house is the ceiling
--- on how far its gear forges.
+-- to look. Standing with a house is still the ceiling on how far its gear forges, but the Forge now
+-- counts that itself (Forge.ceilingFor, off Quest.sponsorProgress) rather than borrowing a ladder
+-- from here.
 --
 -- A shelf opens as you run the vendor's OWN quest line: each priced item names how many of
 -- that sponsor's quests you must have finished before it is on sale (`unlockQuests`, default
@@ -73,23 +74,11 @@ function Vendor.list()
     return list
 end
 
--- The quest-count thresholds a house's standing climbs through. Items no longer author their gate as
--- one of these -- `unlockQuests` is a per-quest number now, so a shelf moves every quest rather than
--- in four clumps. What survives is the STANDING ladder: Forge.ceilingFor reads it to decide how far up
--- a class item may be forged, so the house you keep running is the house whose gear goes deepest.
-Vendor.TIERS = { 0, 3, 6, 10 }
-
--- Which wave (1..#TIERS) `questsDone` completed quests has reached: the number of thresholds it
--- has crossed. Used only for the Forge's class-item ceiling; item stock gates on its own
--- `unlockQuests` directly, not on this.
-function Vendor.tier(questsDone)
-    questsDone = questsDone or 0
-    local tier = 1
-    for i, threshold in ipairs(Vendor.TIERS) do
-        if questsDone >= threshold then tier = i end
-    end
-    return tier
-end
+-- (Vendor.TIERS / Vendor.tier -- the four-value wave enum { 0, 3, 6, 10 } -- used to live here. Item
+-- gates left it when tools/unlock_rescale.lua rewrote all 339 onto per-quest `unlockQuests`, and the
+-- Forge's class-item ceiling left it when that moved to Forge.CEILING_BASE + quests done. Nothing read
+-- it after that, and a dead enum with no callers is exactly how the two halves of a house's offer
+-- drifted onto different granularities in the first place, so it is deleted rather than kept around.)
 
 -- The shelf price of a base item scaled to `level`: +50% of the base per tier, rounded. A consumable
 -- refined to a higher recipe tier (Player.recipeLevel) is stocked and sold at this raised price. A nil

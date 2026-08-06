@@ -4551,10 +4551,35 @@ end
 -- magicDamage/magicDefense (else damage/defense); armor `resist` for each matching tag is
 -- subtracted. Damage floors at 1. Drops the target to `alive = false` at 0 HP. Returns
 -- the amount dealt. Reached through `fx.damage` inside an ability effect.
+-- The share of a blow that gets through however heavy the armour -- the floor under every hit.
+--
+-- A hit has always floored above zero, and the reason is unchanged (docs/vulnerability.md): a scratch
+-- is still a hit, so it still triggers counters, feeds Rimebitten, wakes a sleeper and advances a boss
+-- phase. What changed is that the floor now SCALES WITH THE BLOW instead of being a flat 1. A
+-- greatsword that loses the arithmetic against heavy plate should still land harder than a dagger
+-- that loses it by the same margin, and a flat floor said they were identical.
+--
+-- The old behaviour is this rule at a share of 0, so nothing about the ">0 always" contract moves.
+-- Status.immuneToDamage still short-circuits to a true 0 first, which is what keeps Immune and
+-- Resistant different things.
+--
+-- Deliberately a NET, not a mechanism the game leans on. If real fights are routinely landing here the
+-- arithmetic is wrong somewhere upstream, and tests/balance_spec.lua asserts nothing reference-grade
+-- needs it -- no body in the campaign floors against a melee company. It exists for the long tail: an
+-- odd build, a heavily warded boss, a weapon swung at the one thing in the game that hard-counters it.
+Combat.MIN_DAMAGE_SHARE = 0.15
+
+-- The least `base` may be reduced to. One owner, so mitigatedDamage, the trap preview and the
+-- breakdown receipt cannot disagree about where the floor is.
+local function damageFloor(base)
+    return math.max(1, math.floor((base or 0) * Combat.MIN_DAMAGE_SHARE))
+end
+
 -- Apply `base` pre-mitigation damage to `target`: subtract the matching defense stat (magical
--- tags route to magicDefense) and any tag `resist`, floor at 1, and drop the target to dead at
--- 0 HP. Returns the amount dealt. The shared core for stat-scaled item damage
--- (Combat.dealDamage) AND flat sources with no attacker (traps, status effects).
+-- tags route to magicDefense) and any tag `resist`, floor at a share of the blow
+-- (Combat.MIN_DAMAGE_SHARE), and drop the target to dead at 0 HP. Returns the amount dealt. The
+-- shared core for stat-scaled item damage (Combat.dealDamage) AND flat sources with no attacker
+-- (traps, status effects).
 -- `source` is an optional display label for the log (e.g. a trap or status name); when nil the
 -- damage line stands alone (an item attack, where the preceding "attacks with" line already
 -- names the attacker). A lethal hit appends a "defeated" line so the log reads the kill.
@@ -4578,7 +4603,7 @@ function Combat.mitigatedDamage(target, base, tags, opts)
     -- not armor). Floors at 1 like any hit.
     if opts and opts.raw then
         local vuln = Status.vulnerability(target, tags)
-        return math.max(1, math.floor(base + vuln + 0.5))
+        return math.max(damageFloor(base), math.floor(base + vuln + 0.5))
     end
     local defStat = magical and "magicDefense" or "defense"
     local defense = flatStat(target, defStat)
@@ -4589,7 +4614,7 @@ function Combat.mitigatedDamage(target, base, tags, opts)
     -- Status-driven vulnerabilities ADD damage for matching tags (e.g. Wet -> +lightning). Folded in
     -- here, the shared damage core, so both real hits and the damage preview see the amplification.
     local vuln = Status.vulnerability(target, tags)
-    return math.max(1, math.floor(base - defense - resist + vuln + 0.5))
+    return math.max(damageFloor(base), math.floor(base - defense - resist + vuln + 0.5))
 end
 
 -- A structured, render-agnostic breakdown of the very arithmetic Combat.mitigatedDamage just
@@ -4675,7 +4700,11 @@ function Combat.damageBreakdown(target, base, tags, opts, baseParts, dmg)
     add("Damage", dmg, true)
     -- Say so when mitigation would have driven the blow below the floor -- otherwise the rows sum to
     -- less than the number they add up to, and the tooltip looks like it can't do arithmetic.
-    if math.floor(mitigated + 0.5) < 1 then rows.note = "Floored to the minimum of 1." end
+    local floor = damageFloor(base)
+    if math.floor(mitigated + 0.5) < floor then
+        rows.note = string.format("Floored to the minimum of %d (%d%% of the blow).",
+            floor, math.floor(Combat.MIN_DAMAGE_SHARE * 100 + 0.5))
+    end
     return rows
 end
 

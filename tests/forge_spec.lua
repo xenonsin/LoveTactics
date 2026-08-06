@@ -154,18 +154,20 @@ return {
             local p = richPlayer()
             local sword = Item.instantiate("weapon_iron_sword") -- knight -> the Bastion
             assert(Forge.houseVendorFor("knight") == "bastion", "the knight's house is the Bastion")
-            assert(Forge.ceilingFor(p, sword) == Vendor.tier(0) + 1, "no quests done -> the opening ceiling")
+            assert(Forge.ceilingFor(p, sword) == Forge.CEILING_BASE, "no quests done -> the opening ceiling")
 
-            -- Run that house's line and the ceiling climbs with it. Only the SPONSORING house counts.
+            -- One rung per quest at the sponsoring house, matching the granularity its SHELF opens on.
+            -- Only the sponsoring house counts.
             local done = 0
             for questId, qdef in pairs(Quest.defs) do
-                if qdef.sponsor == "bastion" and done < Vendor.TIERS[#Vendor.TIERS] then
+                if qdef.sponsor == "bastion" and done < 4 then
                     p.completedQuests[questId] = true
                     done = done + 1
                 end
             end
             assert(Quest.sponsorProgress(p, "bastion") == done, "the standing counts this house's quests")
-            assert(Forge.ceilingFor(p, sword) > Vendor.tier(0) + 1, "and the ceiling rose with it")
+            assert(Forge.ceilingFor(p, sword) == Forge.CEILING_BASE + done,
+                "and the ceiling rose one rung per quest, not one per wave")
         end,
     },
     {

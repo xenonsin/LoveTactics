@@ -206,11 +206,14 @@ return {
             assert(cost1.techniqueId == "mage", "a fireball is honed by having cast as a mage")
             assert(Character.techniqueAvailable(char, "mage") == 0, "and the technique was spent")
 
-            -- Past the ceiling the bill is still quoted, but the bench will not take it.
-            local hi = Item.instantiate("ability_fireball", 1, 3) -- already +3, next is +4
+            -- Past the ceiling the bill is still quoted, but the bench will not take it. The opening
+            -- ceiling is Forge.CEILING_BASE, read rather than typed -- it used to be Vendor.tier(0)+1
+            -- and moved when the bench started following the shelf one quest at a time.
+            local hi = Item.instantiate("ability_fireball", 1, Forge.CEILING_BASE)
             local cost4 = Forge.upgradeCost(player, hi)
-            assert(cost4 and cost4.locked, "+4 is past the ceiling with no quests done")
-            assert(cost4.ceiling == 2, "which stands at +2, got " .. tostring(cost4.ceiling))
+            assert(cost4 and cost4.locked, "one rung past the ceiling is refused with no quests done")
+            assert(cost4.ceiling == Forge.CEILING_BASE,
+                "which stands at +" .. Forge.CEILING_BASE .. ", got " .. tostring(cost4.ceiling))
             local up4, reason = Forge.upgrade(player, hi)
             assert(up4 == nil and reason == "locked", "and the forge refuses it, got " .. tostring(reason))
         end,

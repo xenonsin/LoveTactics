@@ -41,7 +41,7 @@ return {
     -- trade. `statusResist` is the headline the wearer actually bought -- see Status.resistRating.
     bonus = {
         defense = Curve.ramp(6, 16),
-        magicDefense = Curve.ramp(12, 22),
+        magicDefense = Curve.ramp(6, 16),
         statusResist = Curve.ramp(8, 18),
         movement = -2,
     },

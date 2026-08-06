@@ -102,8 +102,14 @@ return {
             end
             assert(detail, "the damage line carries its breakdown")
 
+            -- Read the expected figure off the blueprint rather than typing it: what this case is
+            -- really about is that the row is NAMED and SIGNED, and a hard-coded -4 made it a second
+            -- place leather armor's defense had to be maintained (the balance rescale moved it).
+            local leather = Item.instantiate("armor_leather_armor")
+            local expected = -leather.bonus.defense
             local armor = rowFor(detail, "Leather Armor")
-            assert(armor and armor.value == -4 and armor.signed, "the armor is named and worth -4 defense, got "
+            assert(armor and armor.value == expected and armor.signed,
+                "the armor is named and worth " .. expected .. " defense, got "
                 .. tostring(armor and armor.value))
             assert(not rowFor(detail, "Equipment"), "no generic 'Equipment' row when the gear is attributed")
 

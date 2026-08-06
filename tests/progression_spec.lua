@@ -8,6 +8,7 @@ local Player = require("models.player")
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
 local Item = require("models.item")
+local Forge = require("models.forge")
 local Discipline = require("models.discipline")
 local Save = require("models.save")
 local Character = require("models.character")
@@ -80,16 +81,32 @@ return {
         end,
     },
     {
-        name = "Vendor.tier climbs one wave per TIERS threshold crossed, and caps at the top",
+        -- Replaces a case that pinned Vendor.tier's four-value wave enum. That enum is gone: item gates
+        -- moved to per-quest `unlockQuests` and the forge ceiling to Forge.CEILING_BASE + quests done,
+        -- which left it with no callers. What the case was really protecting -- "standing with a house
+        -- turns into a deeper ladder, one house at a time" -- is what is checked here instead.
+        name = "a house's forge ceiling climbs one rung per quest and tops out at the ladder's end",
         fn = function()
-            local T = Vendor.TIERS -- { 0, 3, 6, 10 }
-            for i = 2, #T do
-                assert(Vendor.tier(T[i] - 1) == i - 1,
-                    "one short of threshold " .. i .. " should stay a wave lower")
-                assert(Vendor.tier(T[i]) == i,
-                    "hitting threshold " .. i .. " should open wave " .. i)
+            local p = Player.new()
+            p.completedQuests = {}
+            local sword = Item.instantiate("weapon_iron_sword") -- knight -> the Bastion
+
+            assert(Forge.ceilingFor(p, sword) == Forge.CEILING_BASE,
+                "a fresh save opens at the base ceiling")
+
+            local done, seen = 0, {}
+            for questId, qdef in pairs(Quest.defs) do
+                if qdef.sponsor == "bastion" then seen[#seen + 1] = questId end
             end
-            assert(Vendor.tier(99999) == #T, "tier should cap at the top wave")
+            table.sort(seen)
+            for _, questId in ipairs(seen) do
+                p.completedQuests[questId] = true
+                done = done + 1
+                assert(Forge.ceilingFor(p, sword) == math.min(Item.MAX_LEVEL, Forge.CEILING_BASE + done),
+                    "quest " .. done .. " at the Bastion should buy exactly one more rung")
+            end
+            assert(Forge.ceilingFor(p, sword) == Item.MAX_LEVEL,
+                "a finished line reaches the top of the curve")
         end,
     },
     {

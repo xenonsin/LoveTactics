@@ -24,19 +24,27 @@ return {
     class = "knight",
     discipline = "sentinel",
     stats = {
-        health = 98, mana = 0, stamina = 15,
+        health = 81, mana = 0, stamina = 15,
         staminaRegen = 2,
         damage = 17, magicDamage = 0,
-        defense = 20, magicDefense = 10,
+        defense = 0, magicDefense = 10,
         movement = 2,
         speed = 2,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. Mace and shield are the doctrine she
     -- deserted with; the Oath and the Aegis are what she does with it that the Bastion no longer can.
+    --
+    -- The shield is a TOWER shield, not the Oathkeeper it used to be. Standard-issue Bastion kit reads
+    -- the line better than an 800-gold relic anyway -- what she deserted with is the doctrine, not a
+    -- treasury -- and the Oathkeeper was doing real damage to the fight: it is gated at the eleventh
+    -- quest of a house and she is met around the eighth, so she walked in wearing endgame plate over a
+    -- second armour and took 11 swings to fell against a band of 4-8. Her armour stack was the whole
+    -- of that; `balance-rescale` flagged her over-armoured twice and refused to fix it by cutting her
+    -- health through the floor of the tier-3 rung she declares (docs/bestiary.md).
     startingItems = {
-        "weapon_iron_mace",   "armor_oathkeeper_shield", false,
-        "armor_wardens_oath", "utility_lent_aegis",      false,
-        false,                false,                     false,
+        "weapon_iron_mace",   "armor_tower_shield", false,
+        "armor_wardens_oath", "utility_lent_aegis", false,
+        false,                false,                false,
     },
     defaultAction = "weapon_iron_mace",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

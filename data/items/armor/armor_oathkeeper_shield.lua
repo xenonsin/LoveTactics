@@ -17,7 +17,7 @@ return {
     class = "knight",
     price = 800,
     unlockQuests = 11,
-    bonus = { defense = Curve.ramp(9, 19), movement = -1 },
+    bonus = { defense = Curve.ramp(7, 17), movement = -1 },
     resist = { physical = 4, slash = 3, pierce = 3, impact = 3 },
     -- A tower shield braces hardest of all -- a large, forge-scaling +defense while it holds the line.
     -- `covers` is its EXTRA over the plain buckler (data/items/armor/armor_buckler.lua), fixed rather than

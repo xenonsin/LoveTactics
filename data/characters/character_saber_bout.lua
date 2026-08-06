@@ -31,7 +31,7 @@ bout.boss = true
 -- ceiling moves.
 bout.stats = {}
 for k, v in pairs(base.stats) do bout.stats[k] = v end
-bout.stats.health = 110
+bout.stats.health = 96
 
 -- The base kit (potion, bolas, bound First Motion in the centre) plus the bout relic in the
 -- bottom-centre cell. Two bound items in two cells is fine -- the lock lives on the item, not on a

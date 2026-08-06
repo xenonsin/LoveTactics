@@ -13,9 +13,9 @@ return {
     -- Holds the middle, provokes the crowd, and punishes each attacker (models/ai.lua `defensive`).
     archetype = "defensive",
     stats = {
-        health = 130, mana = 20, stamina = 20,
+        health = 96, mana = 20, stamina = 20,
         damage = 20, magicDamage = 6,
-        defense = 14, magicDefense = 8,
+        defense = 0, magicDefense = 8,
         movement = 4,
         speed = 3,
     },

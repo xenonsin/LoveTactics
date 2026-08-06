@@ -39,12 +39,12 @@ local KINDS = {
 -- DECLARED rather than absent so that "this body does not fight" and "nobody has labelled this body"
 -- stay different states -- a new blueprint that forgets the field fails, a plank that will never fight
 -- says so in one line.
-local BANDS = {
-    [1] = { 1, 30 },    -- chaff: one verb, dies to one blow
-    [2] = { 31, 80 },   -- line: a real weapon and one ability; the body a fight is made of
-    [3] = { 81, 154 },  -- elite: a signature relic and a rule list that reads
-    [4] = { 155, math.huge }, -- boss: a quest's ending
-}
+-- MOVED to models/balance.lua as Balance.HEALTH_BANDS, and read from there. The rescale pass
+-- (tools/balance_rescale.lua) moves health to land a body inside its time-to-kill band, and a tool
+-- that could not see this contract would break it -- as it did, cutting a tier-3 captain to 58 health
+-- and clean through the 81 floor, turning this suite red while the balance suite went green. One
+-- owner, so the two cannot disagree. The contract is still stated here, in the assertion below.
+local BANDS = require("models.balance").HEALTH_BANDS
 
 -- Every item id in a blueprint's starting grid. Entries may be an id, a { id, count } stack, or
 -- false/nil for an empty cell.

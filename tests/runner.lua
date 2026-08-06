@@ -20,24 +20,48 @@ local function discoverSpecs()
     return specs
 end
 
-function Runner.run()
-    local passed, failed = 0, 0
+-- `pattern` (optional) narrows the run to specs whose module name CONTAINS it:
+-- `test balance` runs tests.balance_spec, `test combat` runs tests.combat_spec and
+-- tests.combat_fx_spec. A plain substring find, not a Lua pattern -- a spec name is full of
+-- `_` and `-`, which a pattern would quietly reinterpret, and nobody writing `test item-`
+-- means a character class.
+--
+-- It exists because the suite is 170-odd files and several are 80KB+; a data pass that has to
+-- fix up fixtures re-runs the whole thing for every edit otherwise. The summary always names
+-- the filter, so a green run over three specs can never be misread as a green run over all of
+-- them.
+function Runner.run(pattern)
+    local passed, failed, ran = 0, 0, 0
 
     for _, specName in ipairs(discoverSpecs()) do
-        for _, case in ipairs(require(specName)) do
-            local ok, err = pcall(case.fn)
-            if ok then
-                passed = passed + 1
-                print("  ok   - " .. case.name)
-            else
-                failed = failed + 1
-                print("  FAIL - " .. case.name)
-                print("         " .. tostring(err))
+        if not pattern or specName:find(pattern, 1, true) then
+            ran = ran + 1
+            for _, case in ipairs(require(specName)) do
+                local ok, err = pcall(case.fn)
+                if ok then
+                    passed = passed + 1
+                    print("  ok   - " .. case.name)
+                else
+                    failed = failed + 1
+                    print("  FAIL - " .. case.name)
+                    print("         " .. tostring(err))
+                end
             end
         end
     end
 
-    print(string.format("\n%d passed, %d failed", passed, failed))
+    if pattern then
+        print(string.format("\n%d passed, %d failed  (%d spec%s matching '%s')",
+            passed, failed, ran, ran == 1 and "" or "s", pattern))
+        -- A filter that matched nothing is not a pass. Say so and fail, or a typo in the
+        -- pattern reads as a clean suite.
+        if ran == 0 then
+            print("  no spec matched -- nothing ran")
+            return false
+        end
+    else
+        print(string.format("\n%d passed, %d failed", passed, failed))
+    end
     return failed == 0
 end
 

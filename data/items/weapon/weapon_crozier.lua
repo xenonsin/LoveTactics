@@ -21,7 +21,7 @@ return {
     tags = { "staff", "magical", "melee" }, -- magical: routes through magicDamage / magicDefense
     class = "priest",
     price = 180,
-    unlockQuests = 5,
+    unlockQuests = 3,
     -- The `mana` climbs with the forge; `speed` deliberately does not (an upgrade never buys back tempo
     -- -- see models/item.lua's WAIT_BEHAVIOR_MAGNITUDES), and neither does `covers`, which counts a
     -- SHARE rather than a size: what the neighbour draws is always less than what the bearer keeps, and

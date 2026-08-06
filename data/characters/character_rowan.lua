@@ -54,7 +54,7 @@ return {
         health = 70, mana = 15, stamina = 15, -- resource stats
         staminaRegen = 2, -- stamina recovered per elapsed tick (a flat stat, not a resource)
         damage = 14, magicDamage = 4,          -- flat stats
-        defense = 10, magicDefense = 6,
+        defense = 3, magicDefense = 6,
         movement = 4, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
     },

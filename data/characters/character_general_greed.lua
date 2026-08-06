@@ -35,7 +35,7 @@ return {
     sprite = "assets/chars/general_greed.png",
     portrait = "assets/portraits/general_greed.png", -- large VN portrait for conversations (falls back if missing)
     stats = {
-        health = 200, mana = 40, stamina = 15,
+        health = 256, mana = 40, stamina = 15,
         staminaRegen = 2,
         damage = 14, magicDamage = 0, -- she does not duel; she takes, and she buys blades (deferred)
         defense = 13, magicDefense = 11,

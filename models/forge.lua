@@ -49,6 +49,26 @@ local Forge = {}
 -- the ladder kept its shape when the currency moved.
 Forge.GOLD_PER_LEVEL = 40
 
+-- Rungs a class item may climb before its house has been run at all, with one more per quest after
+-- (see Forge.ceilingFor).
+--
+-- This used to read Vendor.tier -- the four-value wave enum { 0, 3, 6, 10 } -- and by the end the
+-- FORGE was its last consumer anywhere in the game: tools/unlock_rescale.lua moved all 339 item gates
+-- onto per-quest `unlockQuests` and left the bench behind. So the shelf moved every quest while the
+-- bench moved four times a line, which put the ceiling at +2 for a house's first three quests. Against
+-- a common weapon curve of +1 power per rung, that is two points of answer at exactly the moment the
+-- player has the least of everything else -- the bench was at its least useful where it was most
+-- needed, and a lever nobody can pull is not a lever.
+--
+-- 3, and per quest thereafter, so the ladder tops out about two thirds of the way down a line (a house
+-- runs 12-14 quests) rather than never. Standing still gates it; the granularity now matches the
+-- shelf's, so one quest at a house moves both halves of that house's offer.
+--
+-- Note the ceiling was never the binding constraint at gate 0 -- the BILL is (a new save holds 6 iron
+-- scrap, 2 steel ingot, 250 gold and no technique). This makes the early rungs reachable; it does not
+-- make them free.
+Forge.CEILING_BASE = 3
+
 -- Is this item worked at the bench per INSTANCE? Weapons, armor, utility gear and abilities all are.
 -- Consumables are not: they refine per-type through Forge.recipeCost/refineRecipe instead, because a
 -- stack of five potions is not five things to hammer. A bound signature relic IS one of these ordinary
@@ -71,8 +91,8 @@ end
 --                     it, and keeping both would be charging twice for the same permission -- you
 --                     cannot buy a rung you have not played for, because the currency IS the playing.
 --                     A brake the player watches fill beats a lock that silently opens.
---   class item        the standing of the house that sells it -- Quest.sponsorProgress through
---                     Vendor.tier, the same ladder its shelf opens on. This SURVIVED the move to a
+--   class item        the standing of the house that sells it -- Quest.sponsorProgress, ONE RUNG PER
+--                     QUEST, the same granularity its shelf opens on. This SURVIVED the move to a
 --                     technique price, and is not the double-charge the discipline ceiling was: that
 --                     one measured play, which is exactly what the price now measures, while this one
 --                     measures campaign standing. Two different axes, one of each.
@@ -80,7 +100,7 @@ end
 --
 -- The discipline branch is FIRST and explicit, not a fall-through: discipline stock carries a `class`
 -- too (a Ninja blade is rogue stock), so letting it drop into the branch below would quietly reinstate
--- a vendor-tier ceiling on top of the price.
+-- a ceiling on top of the price.
 --
 -- Returns Item.MAX_LEVEL at most, always.
 function Forge.ceilingFor(player, item)
@@ -92,7 +112,7 @@ function Forge.ceilingFor(player, item)
     if class then
         local vendorId = Forge.houseVendorFor(class)
         local done = vendorId and Quest.sponsorProgress(player, vendorId) or 0
-        return math.min(Item.MAX_LEVEL, Vendor.tier(done) + 1)
+        return math.min(Item.MAX_LEVEL, Forge.CEILING_BASE + done)
     end
     return Item.MAX_LEVEL
 end

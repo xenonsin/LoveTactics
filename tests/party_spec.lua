@@ -218,9 +218,13 @@ return {
     {
         name = "equipDelta previews a flat bonus and a resource ceiling, off the right field for each",
         fn = function()
-            -- iron_plate: bonus = { defense = 13, movement = -2 }, plus a resist bag.
-            local delta = Party.equipDelta(Item.instantiate("armor_iron_plate"))
-            assert(delta.defense == 13, "defense bonus surfaced")
+            -- iron_plate: bonus = { defense = <a curve>, movement = -2 }, plus a resist bag. The
+            -- defense figure is read off the item rather than typed -- what this case is about is
+            -- WHICH FIELDS surface, and a hard-coded 13 made it a second place the plate's armour
+            -- value had to be maintained (the balance rescale moved it).
+            local plate = Item.instantiate("armor_iron_plate")
+            local delta = Party.equipDelta(plate)
+            assert(delta.defense == plate.bonus.defense and delta.defense > 0, "defense bonus surfaced")
             assert(delta.movement == -2, "negative movement bonus surfaced")
             -- Resistances aren't stat rows, so they never leak into the delta.
             assert(delta.physical == nil and delta.slash == nil, "resist keys excluded")

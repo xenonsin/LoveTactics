@@ -6,14 +6,16 @@ local Conversation = require("models.conversation")
 local ScreenFx = require("ui.screen_fx")
 
 function love.load(args)
-    -- Headless test entry: `& "E:\LOVE\lovec.exe" . test`
+    -- Headless test entry: `& "E:\LOVE\lovec.exe" . test [pattern]`
+    -- The optional pattern narrows the run to specs whose name contains it (`test balance`),
+    -- which is what makes a data pass that has to fix up fixtures survivable. See tests/runner.
     if args and args[1] == "test" then
         -- Silence playback for the run. Real audio now exists and love.audio is live under the headless
         -- runner (t.window = false drops the window, not the audio device), so any cue a test fires would
         -- play OUT LOUD. Muting the device master keeps every guard and Source path exercised -- the
         -- sources still load and play, at zero gain -- while emitting nothing. See tests/sound_spec.lua.
         if love.audio and love.audio.setVolume then love.audio.setVolume(0) end
-        local ok = require("tests.runner").run()
+        local ok = require("tests.runner").run(args[2])
         love.event.quit(ok and 0 or 1)
         return
     end
@@ -40,6 +42,26 @@ function love.load(args)
     -- guessed. The step-7 measurement in docs/progression.md. See tools/progression_report.
     if args and args[1] == "progression-report" then
         require("tools.progression_report").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
+    -- Balance ledger: `& "E:\LOVE\lovec.exe" . balance-report [full | sim [n]]`
+    -- Measures the game's two number scales against each other: what the reference loadout throws at
+    -- each prestige, what every body subtracts from it, and how many hits that is in both directions.
+    -- Reports what floors, what dominates the player outright, and what cannot hurt them back. The
+    -- instrument behind docs/balance.md. See tools/balance_report.
+    if args and args[1] == "balance-report" then
+        require("tools.balance_report").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
+    -- Balance rescale: `& "E:\LOVE\lovec.exe" . balance-rescale [N] [apply]`
+    -- Brings blueprint magnitudes into the band tests/balance_spec.lua enforces, in four passes
+    -- (armour, defense, attack, mirror). Dry run by default. See tools/balance_rescale.
+    if args and args[1] == "balance-rescale" then
+        require("tools.balance_rescale").run({ select(2, unpack(args)) })
         love.event.quit(0)
         return
     end

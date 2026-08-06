@@ -10,7 +10,7 @@ return {
     sprite = "assets/chars/ogre.png",
     footprint = { w = 2, h = 2 },
     stats = {
-        health = 90, mana = 0, stamina = 16,
+        health = 136, mana = 0, stamina = 16,
         staminaRegen = 2,
         damage = 18, magicDamage = 0,
         defense = 9, magicDefense = 3,

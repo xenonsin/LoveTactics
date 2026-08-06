@@ -481,8 +481,9 @@ return {
 
             assert(#c.units == 2, "no shades before the first threshold")
 
-            -- 420 health; 120 lands after its 20 defense (14 of its own plus what it wears), leaving
-            -- it at 71%: one threshold crossed.
+            -- 462 health, and the blow lands after its defense (5 of its own plus what it wears),
+            -- leaving it just under 75%: one threshold crossed. The margin is comfortable, so this
+            -- reads the CROSSING rather than an exact arithmetic the balance pass would keep moving.
             Combat.dealFlatDamage(c, boss, 140, nil, "test")
             assert(boss.alive, "it should still be standing")
             assert(#c.units == 3, "crossing 75% should call up exactly one shade")

@@ -265,21 +265,32 @@ return {
         end,
     },
     {
-        name = "dealDamage floors at 1 and applyHeal caps at max",
+        name = "dealDamage floors at a share of the blow, and applyHeal caps at max",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_warlord", 1, 2) })
             local mage, warlord = c.units[1], c.units[2]
             local sword = Item.instantiate("weapon_iron_sword")
             -- A soft caster swinging steel at a heavily armoured target: power + Damage does not
-            -- cover the warlord's Defense, so the blow floors at 1 rather than going negative. The
-            -- premise is checked rather than assumed, so a rebalance that made the mage genuinely
-            -- able to hurt him reports THAT instead of a bare "expected 1".
+            -- cover the warlord's Defense, so the blow floors rather than going negative. The premise
+            -- is checked rather than assumed, so a rebalance that made the mage genuinely able to hurt
+            -- him reports THAT instead of a bare "expected the floor".
             local raw = Combat.abilityMagnitude(sword.activeAbility) + mage.char.stats.damage
             assert(raw < warlord.char.stats.defense,
                 "this case needs a strike the target's armor outweighs (" .. raw .. " vs "
                     .. warlord.char.stats.defense .. ")")
             local d = Combat.dealDamage(c, mage, warlord, sword, {})
-            assert(d == 1, "damage floors at 1, got " .. d)
+            local expected = math.max(1, math.floor(raw * Combat.MIN_DAMAGE_SHARE))
+            assert(d == expected, "damage floors at " .. expected .. ", got " .. d)
+            assert(d > 0, "a hit always lands SOMETHING -- counters, Rimebitten, sleepers and boss "
+                .. "phases all read a landed blow (docs/vulnerability.md)")
+
+            -- The floor SCALES with the blow behind it. A heavier weapon losing the same arithmetic
+            -- gets more through than a lighter one -- which a flat floor of 1 could not express, and
+            -- is the whole reason Combat.MIN_DAMAGE_SHARE exists.
+            local heavy = Combat.mitigatedDamage(warlord, 200, { "slash", "physical" })
+            local light = Combat.mitigatedDamage(warlord, 20, { "slash", "physical" })
+            assert(heavy > light,
+                "a 200-power blow must floor higher than a 20-power one, got " .. heavy .. " vs " .. light)
 
             -- A heal that overshoots is billed only for the gap it actually closed.
             local knight = swordsman()

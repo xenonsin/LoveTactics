@@ -27,6 +27,7 @@ local Combat = require("models.combat")
 local Status = require("models.status")
 local Character = require("models.character")
 local Item = require("models.item")
+local Growth = require("models.growth")
 local Trait = require("models.trait")
 local Hazard = require("models.hazard")
 local Trap = require("models.trap")
@@ -202,12 +203,93 @@ function DebugMenu.new(opts)
         return listPage("Remove item", rows)
     end
 
+    -- Walk one item up or down the forge ladder in place. The one lever the panel was missing for
+    -- TUNING rather than for reaching content: a magnitude is a per-level curve (models/curve.lua) and
+    -- the only way to see what a rung actually buys was to leave the battle, pay a bench and come
+    -- back. Re-instantiates from the blueprint at the new level -- the same thing Forge.upgrade does,
+    -- so nothing compounds -- then re-folds the bearer's passives, since armour rungs move unit.bonus.
+    local function forgeItemsPage()
+        local rows = {}
+        for cell, item in pairs(u.char.inventory) do
+            if Item.isUpgradable(item) then
+                rows[#rows + 1] = { label = string.format("%s  (+%d)", item.name or item.id, item.level or 0),
+                    kind = "action", item = item,
+                    act = function()
+                        local next = math.min(Item.MAX_LEVEL, (item.level or 0) + 1)
+                        u.char.inventory[cell] = Item.instantiate(item.id, item.quantity, next)
+                        Combat.refreshPassives(u)
+                        Trait.attach(u)
+                    end }
+            end
+        end
+        table.sort(rows, function(a, b) return a.label < b.label end)
+        if #rows == 0 then rows[1] = { label = "(nothing forgeable)", kind = "info" } end
+        return listPage("Forge +1", rows)
+    end
+
     local function itemsPage()
         return listPage("Items", {
             { label = "Inspect", kind = "submenu", build = inspectItemsPage },
+            { label = "Forge +1", kind = "submenu", build = forgeItemsPage },
             { label = "Give item", kind = "submenu", build = giveItemPage },
             { label = "Remove item", kind = "submenu", build = removeItemPage },
         })
+    end
+
+    -- "Level up TO", not "set level": Growth.resolve only ever climbs (models/growth.lua) because
+    -- gains are baked into char.stats and history is never re-apportioned. A row promising to set a
+    -- level would silently do nothing on the way down, so it says what it does.
+    local function levelPage()
+        return stepperPage("Level up to", {
+            value = math.floor(u.char.level or 1), min = 1, max = Growth.LEVEL_CAP, step = 1,
+            presets = { 5, 10, 20, Growth.LEVEL_CAP },
+            apply = function(v)
+                Growth.resolve(u.char, v)
+                Combat.refreshPassives(u)
+            end,
+        })
+    end
+
+    -- Every damaging thing this unit holds against every foe on the board, in one grid.
+    --
+    -- The per-hit receipt already exists (Combat.damageBreakdown, hovered in the combat log) and
+    -- answers "why was that number what it was". This answers the question a TUNER has instead --
+    -- "which of my tools works on which of them" -- which no amount of hovering one line at a time
+    -- gives you. A floored cell is marked, because that is the failure this whole system exists to
+    -- catch. Read-only: it computes through Combat.computeDamage and mutates nothing.
+    local function damageTablePage()
+        local rows = {}
+        local foes = {}
+        for _, other in ipairs(combat.units) do
+            if other.alive and other.side ~= u.side then foes[#foes + 1] = other end
+        end
+
+        -- One row per (weapon, foe) rather than a wide grid line: a menu row is clipped to the panel
+        -- width, and three foes across turned the second one into "Kni...". Vertical cannot truncate,
+        -- and the page already scrolls.
+        for _, item in ipairs(Character.eachItem(u.char)) do
+            local ab = item.activeAbility
+            if ab and ab.damage then
+                rows[#rows + 1] = { kind = "info", label = item.name or item.id }
+                if #foes == 0 then
+                    rows[#rows + 1] = { kind = "info", label = "   (no foes on the board)" }
+                end
+                for _, foe in ipairs(foes) do
+                    local d = Combat.computeDamage(combat, u, foe, item)
+                    -- Floored = mitigation ate the blow and only the minimum share got through.
+                    local floored = d <= math.max(1, math.floor(
+                        Combat.abilityMagnitude(ab) * (Combat.MIN_DAMAGE_SHARE or 0)))
+                    local hp = foe.char.stats.health
+                    local cur = (type(hp) == "table") and hp.current or hp or 0
+                    rows[#rows + 1] = { kind = "info", label = string.format("   %-20s %3d%s  (%d hits)",
+                        (foe.char.name or foe.char.id):sub(1, 20), d, floored and " !" or "  ",
+                        d > 0 and math.ceil(cur / d) or 0) }
+                end
+            end
+        end
+        if #rows == 0 then rows[1] = { label = "(nothing that deals damage)", kind = "info" } end
+        rows[#rows + 1] = { label = "! = floored by armour", kind = "info" }
+        return listPage("Damage table", rows)
     end
 
     local function initiativePage()
@@ -257,6 +339,8 @@ function DebugMenu.new(opts)
             { label = "Apply status", kind = "submenu", build = applyStatusPage },
             { label = "Remove status", kind = "submenu", build = removeStatusPage },
             { label = "Items", kind = "submenu", build = itemsPage },
+            { label = "Damage table", kind = "submenu", build = damageTablePage },
+            { label = "Level up to...", kind = "submenu", build = levelPage },
             { label = "Set initiative", kind = "submenu", build = initiativePage },
             { label = "Control", kind = "submenu", build = controlPage },
             { label = "Grant extra action", kind = "action", act = function() Combat.grantExtraAction(u, 1) end },
