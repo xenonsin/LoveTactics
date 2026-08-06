@@ -262,7 +262,7 @@ one exception: it *pairs* the two tiles, so it needs both.
 | Q | `weapon_corvids_bow` | **Blinds**: the target's own abilities stop reaching. The only counter in the game to range as such. |
 | Q | `weapon_struck_ledger` | **Prices** the target — lit up, and worth coin when it falls. Its output is measured in the campaign layer. |
 | Q | `weapon_windward` | Hardest at the **edge of its dead zone**, falling off with distance ⚠️. The exact inverse of the Hornbow. |
-| Q | `weapon_unravelling_shaft` | Leaves `hazard_unravelling` under the target — the mage's setup, laid from the back line several turns early. |
+| Q | `weapon_unravelling_shaft` | Leaves `hazard_unravelling` **on the aimed tile**, occupied or empty — the mage's setup, laid from the back line several turns early. |
 
 ### `longbow` — hunter
 | | Weapon | Its extra over the base |

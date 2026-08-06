@@ -16,11 +16,19 @@
 --
 -- Unsided, and this one bites: your own line standing in it takes the extra magical damage too, which
 -- against an enemy caster is a real way to lose people. It is a zone for the enemy's half of the board.
+--
+-- It aims a TILE (`target = "tile"`, `allowOccupied`) and not a body, for the reason
+-- data/items/weapon/weapon_deadfall_bow.lua does: a weapon whose sale is the square it leaves behind
+-- cannot be restricted to squares somebody is already standing on. The whole use -- lighting the doorway
+-- the enemy has to come through, several turns before the mage arrives -- is a shot at empty ground, and
+-- as an `enemy`-target ability it was the one shot this bow could not take. Occupied cells stay legal
+-- because the arrow is still an arrow: loose it at a body and the shaft goes through them and the ground
+-- under them is picked loose all the same.
 local Curve = require("models.curve")
 
 return {
     name = "The Unravelling Shaft",
-    description = "Inflicts Unravelled in area.",
+    description = "Leaves Unravelling ground where it lands.",
     flavor = "The fletching is somebody's unpicked stole. The Cathedral has asked about this twice.",
     sprite = "assets/items/unravelling_shaft.png",
     type = "weapon",
@@ -28,7 +36,8 @@ return {
     hands = 2,
     class = "hunter",
     activeAbility = {
-        target = "enemy",
+        target = "tile",       -- the square, not the body: the ground is what is being bought
+        allowOccupied = true,  -- and a square somebody is standing on is still a square (see above)
         range = 3,
         minRange = 2,
         requiresSight = true,
@@ -37,6 +46,8 @@ return {
         -- Under an iron bow's: this weapon's output is measured on the mage's turn, not on the archer's.
         damage = Curve.ramp(3, 13),
         effect = function(fx)
+            -- Nobody there on an empty-ground shot, and that is the intended shot: fx.damage takes the
+            -- nil and reports nothing rather than throwing, so the hazard below is the whole cast.
             fx.damage(fx.target)
             -- On the aimed cell rather than the body, for the reason weapon_witchlight_bow gives: the
             -- ground is the weapon, and it has to outlast whoever was standing on it.
