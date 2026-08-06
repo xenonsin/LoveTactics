@@ -21,7 +21,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Blood-Fever Mail",
-    description = "Every body that falls, on either side, permanently raises your Damage this battle.",
+    description = "Increase damage by 2 per death on the field, either side, up to 5 deaths this battle.",
     flavor = "The Colosseum counts the house by the mail's own reckoning and has never found it generous.",
     sprite = "assets/items/armor_blood_fever_mail.png",
     type = "armor",

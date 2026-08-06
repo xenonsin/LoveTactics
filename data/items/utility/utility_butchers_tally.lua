@@ -11,9 +11,14 @@
 -- Best carried by whoever is still standing at the end: a slow, armoured fighter that outlives the
 -- exchange collects the whole tally, while a duelist that opens the battle with its best swing gets
 -- nothing for it. The charm is worthless in the fight you win in two turns.
+--
+-- The description states the arithmetic (2 a body, five bodies) because the count and the rate are
+-- read in different places. In battle the notches show as a badge and a tooltip row off the trait's
+-- own stacks (Trait.stackReadout) -- but on a shop shelf nobody is wearing it, so there is no tally to
+-- read, and "raises your Damage" alone asks a buyer to price +10 Damage against 380 gold blind.
 return {
     name = "Butcher's Tally",
-    description = "Every death on the field, either side, raises your Damage this battle.",
+    description = "Increase damage by 2 per death on the field, either side, up to 5 deaths this battle.",
     flavor = "The stable hands cut a notch per body. They have never once asked whose.",
     sprite = "assets/items/butchers_tally.png",
     type = "utility",
