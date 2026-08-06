@@ -47,7 +47,7 @@ return {
         -- `windup = { min = 0, max = 4 }` before the two fields folded into one -- same tell, said once.)
         windup = { min = 2, max = 6 },
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(10),
+        damage = Curve.ramp(15, 25),
         aoe = { radius = 1, shape = "square" },
         adjacencyScaling = { type = "consumable" },
         effect = function(fx)

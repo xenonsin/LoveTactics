@@ -20,7 +20,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "mana", amount = 10 },
-        damage = Curve.ramp(8, 18), -- carries `holy` via the item tags
+        damage = Curve.ramp(12, 22), -- carries `holy` via the item tags
         effect = function(fx)
             fx.damage(fx.target)
             fx.placeHazard(fx.target.x, fx.target.y, "hazard_heal", { amount = 6 + fx.level, duration = 12 + fx.level })

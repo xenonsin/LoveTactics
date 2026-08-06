@@ -36,7 +36,7 @@ return {
         speed = 7,
         windup = 2,
         cost = { stat = "stamina", amount = 16 },
-        damage = Curve.ramp(24, 50), -- an iron greatsword's: the seal is the extra
+        damage = Curve.ramp(46, 72), -- an iron greatsword's: the seal is the extra
         effect = function(fx)
             local t = fx.target
             if not t then return end

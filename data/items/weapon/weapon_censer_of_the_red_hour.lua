@@ -36,7 +36,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(14, 24),
         effect = function(fx)
             fx.damage(fx.target)
         end,

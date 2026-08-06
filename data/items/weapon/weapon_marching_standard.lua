@@ -55,7 +55,7 @@ return {
         minRange = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 11 },
-        damage = Curve.ramp(5, 15), -- under an iron spear's: the standard is the rest
+        damage = Curve.ramp(14, 24), -- under an iron spear's: the standard is the rest
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The thrust always happens, whatever state the colours are in: this is a spear first, and

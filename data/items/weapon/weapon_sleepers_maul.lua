@@ -30,7 +30,7 @@ return {
         cost = { stat = "stamina", amount = 12 },
         -- Under an iron hammer's, and deliberately so: this weapon wants its own damage to be small,
         -- because its damage is the thing most likely to wake what it just put down.
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(21, 31),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_sleep" })
         end,

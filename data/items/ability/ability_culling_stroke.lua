@@ -37,7 +37,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(10),
+        damage = Curve.ramp(14, 24),
         adjacencyScaling = { type = "weapon" },
         effect = function(fx)
             local hp = fx.target.char and fx.target.char.stats and fx.target.char.stats.health

@@ -37,7 +37,7 @@ return {
         range = 1, -- adjacent only: a staff is not a wand
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(4, 14), -- feeble, as every staff's strike is
+        damage = Curve.ramp(12, 22), -- feeble, as every staff's strike is
         effect = function(fx)
             fx.damage(fx.target)
         end,

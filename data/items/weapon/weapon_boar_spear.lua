@@ -30,7 +30,7 @@ return {
         minRange = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(5, 15), -- a shade under an iron spear's: the bar is the rest
+        damage = Curve.ramp(7, 17), -- a shade under an iron spear's: the bar is the rest
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The spear convention (docs/weapons.md): a status lands on the FAR tile, the point

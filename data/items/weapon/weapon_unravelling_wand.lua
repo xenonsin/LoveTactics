@@ -39,7 +39,7 @@ return {
         cost = { stat = "mana", amount = 6 },
         -- Poor, and it must be: it is measured against Defense, which is the stat a mage's target usually
         -- has plenty of, and a caster with a good physical attack would not need the rest of its shelf.
-        damage = Curve.ramp(3, 13),
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             -- tags default to the item's, so the bolt is physical; the unravelling rides it, landing on
             -- whoever the bolt hits and only if they survive (the .alive guard, enforced by the carried path).

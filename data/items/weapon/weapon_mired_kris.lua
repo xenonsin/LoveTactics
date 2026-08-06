@@ -31,7 +31,7 @@ return {
         speed = 2,
         cost = { stat = "stamina", amount = 5 },
         -- Under an iron dagger's, which is already the modest end of the game. Two debuffs is the sale.
-        damage = Curve.ramp(3, 13),
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             -- Both debuffs ride the blow, so a guardian who takes the hit is the one cut and mired.
             fx.damage(fx.target, { inflicts = { "status_bleed", "status_mired" } })

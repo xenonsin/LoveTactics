@@ -44,7 +44,7 @@ return {
         speed = 3,
         cost = { stat = "stamina", amount = 7 },
         -- Under an iron bow's: this weapon's output is measured on the mage's turn, not on the archer's.
-        damage = Curve.ramp(3, 13),
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             -- Nobody there on an empty-ground shot, and that is the intended shot: fx.damage takes the
             -- nil and reports nothing rather than throwing, so the hazard below is the whole cast.

@@ -33,7 +33,7 @@ return {
         cost = { stat = "stamina", amount = 14 },
         -- Above an iron hammer's, because it has to be: a swing that costs this much of the timeline and
         -- did not also land heavily would never be worth taking off the rack.
-        damage = Curve.ramp(15),
+        damage = Curve.ramp(22, 37),
         effect = function(fx)
             -- Double the stun's declared magnitude, which is what a Stun's initiative shove reads
             -- (data/status/status_stun.lua). The status rides IN the blow for the family's usual reason

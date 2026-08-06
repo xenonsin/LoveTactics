@@ -21,7 +21,7 @@ return {
         speed = 4,
         windup = 6, -- the pillar gathers before it falls; enemies can scatter from the light
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(7, 17), -- per-enemy damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = Curve.ramp(13, 23), -- per-enemy damage = power + the caster's MagicDamage, minus MagicDefense
         aoe = { radius = 1, shape = "square" }, -- 3x3 pillar
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

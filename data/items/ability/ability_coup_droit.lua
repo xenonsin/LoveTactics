@@ -36,7 +36,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(11, 21),
         -- A pure `when` read of the shared pool, exactly as Flurry does it: a counted `unlock.event`
         -- keeps a per-ITEM baseline, which would give this and Reading the Blade two different numbers
         -- both called Tempo.

@@ -22,7 +22,7 @@ return {
         speed = 4, -- powerful but slow
         windup = 4, -- winds up before it lands: foes get several turns to leave the blast
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(8, 18), -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = Curve.ramp(11, 21), -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
         -- Bursts on impact: a 1-tile radius around the aimed cell, corners included (a 3x3 square).
         -- The targeting UI reads this to paint the affected tiles red before you commit.
         aoe = { radius = 1, shape = "square" },

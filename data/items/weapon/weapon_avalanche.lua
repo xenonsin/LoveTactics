@@ -39,7 +39,7 @@ return {
         cost = { stat = "stamina", amount = 17 },
         -- A shade under the iron greatsword's: what the extra ticks buy is width, and it must not also
         -- quietly buy weight, or holding would never be wrong.
-        damage = Curve.ramp(22, 48),
+        damage = Curve.ramp(48, 74),
         -- The declared footprint is the WIDE one, so the aim preview and fx.aoeUnits agree on the shape
         -- the swing can reach. The effect below narrows it back to the single aimed body when the bearer
         -- chose not to hold -- narrowing in the effect is safe (the preview over-promises reach, never

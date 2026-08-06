@@ -37,7 +37,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(4, 14), -- as feeble as its counterpart: the smoke is the weapon
+        damage = Curve.ramp(9, 19), -- as feeble as its counterpart: the smoke is the weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

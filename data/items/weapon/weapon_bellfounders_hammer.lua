@@ -33,7 +33,7 @@ return {
         speed = 8, -- slower even than an iron hammer: the ring is paid for in tempo, as everything here is
         cost = { stat = "stamina", amount = 14 },
         -- Under an iron hammer's, per body. The breadth is the extra and it must not also be depth.
-        damage = Curve.ramp(9, 20),
+        damage = Curve.ramp(12, 23),
         effect = function(fx)
             local t = fx.target
             if not t then return end

@@ -32,7 +32,7 @@ return {
         requiresSight = true,
         speed = 2,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(4, 14), -- a shade under an iron bow's: the light is the rest
+        damage = Curve.ramp(8, 18), -- a shade under an iron bow's: the light is the rest
         effect = function(fx)
             -- The light rides the shaft: it marks whoever the arrow hits, and only a survivor -- the
             -- .alive guard the carried path enforces for free.

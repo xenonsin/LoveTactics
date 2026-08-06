@@ -42,7 +42,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 11 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(8, 18),
         requiresAdjacent = { tag = "staff" },
         effect = function(fx)
             local body = fx.unitAt(fx.tx, fx.ty)

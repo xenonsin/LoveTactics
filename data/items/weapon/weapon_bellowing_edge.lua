@@ -31,7 +31,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 15 },
         -- Under the iron greatsword's: the roar is the rest of the price.
-        damage = Curve.ramp(20, 42),
+        damage = Curve.ramp(44, 66),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             -- The roar goes out whether or not the blow found a body -- a greatsword falling on empty

@@ -47,7 +47,7 @@ return {
         cost = { stat = "stamina", amount = 5 },
         -- Under a plain Iron Dagger's, deliberately: what this blade sells is the second body, and a
         -- knife that spilled AND hit hardest would simply retire the rest of the rack.
-        damage = Curve.ramp(7, 17),
+        damage = Curve.ramp(5, 15),
         -- What the spill scales off, declared so the loadout draws its connector lines to exactly the
         -- knives it will actually count (Combat.adjacencyLinks reads this).
         adjacencyScaling = { tag = "dagger" },

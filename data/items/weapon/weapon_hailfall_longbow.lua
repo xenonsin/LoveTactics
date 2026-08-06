@@ -44,7 +44,7 @@ return {
         cost = { stat = "stamina", amount = 10 },
         -- Per ARROW, and well under the iron longbow's single heavy shaft: five of these landing is a
         -- rout, one of them landing is a waste of a turn. That spread is the weapon.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(21, 31),
         aoe = { shape = "diamond", radius = 2 }, -- paints where the volley MAY fall (see the note above)
         effect = function(fx)
             -- The thirteen tiles of the radius-2 diamond around the aim point: the spread the archer

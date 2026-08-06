@@ -33,7 +33,7 @@ return {
         speed = 7,
         cost = { stat = "stamina", amount = 12 },
         -- A shade under the iron hammer's: the second swing is where the number actually lives.
-        damage = Curve.ramp(10, 22),
+        damage = Curve.ramp(19, 31),
         effect = function(fx)
             -- The freeze rides the blow (`inflicts`) rather than following it, for the reason the iron
             -- hammer's header gives: hard control applied on the NEXT line arrives after the counter has

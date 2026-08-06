@@ -23,7 +23,7 @@ return {
         speed = 6,             -- heavy, and slow to come around again
         windup = 2,           -- the two-tick tell: brace, step, or break it
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(12, 22), -- a real hit -- the reason to brace it
+        damage = Curve.ramp(6, 16), -- a real hit -- the reason to brace it
         aoe = { shape = "front", width = 3 }, -- a 3-wide arc in front, like an axe cleave
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

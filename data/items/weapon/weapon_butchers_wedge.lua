@@ -35,7 +35,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 13 },
         -- Deliberately poor for its rank against a lone target: the crowd is the damage stat.
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(12, 22),
         aoe = { shape = "front", width = 3 }, -- axes cleave innately: a 3-wide arc in front
         frenzy = 0.33, -- each EXTRA body in the arc adds a third of the swing to all of them (a keyword)
         effect = function(fx)

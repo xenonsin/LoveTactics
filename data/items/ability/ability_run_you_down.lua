@@ -24,7 +24,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(10),
+        damage = Curve.ramp(6, 16),
         effect = function(fx)
             fx.damage(fx.target)
             if not fx.target.alive then return end

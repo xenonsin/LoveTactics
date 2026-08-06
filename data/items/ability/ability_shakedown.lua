@@ -41,7 +41,7 @@ return {
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(10, 22), -- the floor: what it lands for against a foe with nothing left
+        damage = Curve.ramp(14, 26), -- the floor: what it lands for against a foe with nothing left
         description = "Puts up to its own damage through a second time, in proportion to the target's remaining health.",
         effect = function(fx)
             local t = fx.target

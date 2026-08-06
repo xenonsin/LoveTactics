@@ -33,7 +33,7 @@ return {
         cost = { stat = "stamina", amount = 12 },
         -- The lowest damage of any mace but the Long Fall. It has to be: this is hard control, and hard
         -- control that also hit properly would be the only knight weapon anyone carried.
-        damage = Curve.ramp(3, 13),
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             -- Strike FIRST, suspend second, and the order is load-bearing: a suspended body cannot be
             -- acted on, so a mace that lifted before it hit would never land its own blow. Riding the

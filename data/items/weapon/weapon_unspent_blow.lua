@@ -35,7 +35,7 @@ return {
         cost = { stat = "stamina", amount = 12 },
         -- Read this as the BANKING number: it is what the first two swings land. The third is worth three
         -- of them and ignores armour, which is where the weapon's actual output lives.
-        damage = Curve.ramp(7, 17),
+        damage = Curve.ramp(12, 22),
         -- How many blows are being held, on the slot badge and in the tooltip. It used to say so only in
         -- the combat log, which meant the one number this weapon is entirely about scrolled away: a
         -- player looking at the hammer could not tell a first swing from the one that lands triple and

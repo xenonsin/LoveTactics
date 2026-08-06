@@ -1,50 +1,57 @@
--- A wand, so it reaches at range and needs only a direction (docs/weapons.md) -- and it is the only wand
--- that is aimed at a FRIEND. It deals nothing to anybody; it lays a Sealed Ward (status_sealed_ward) on
--- an ally, which refuses the next single-target spell aimed at them outright.
+-- A wand, so it strikes at range and needs only a direction (docs/weapons.md). Its extra is that the shot
+-- WARDS THE ONE WHO FIRED IT: the bolt lands, and the mage is left holding a Sealed Ward
+-- (data/status/status_sealed_ward.lua) -- the next single-target spell aimed at them is refused outright.
 --
 -- Quest-only: `class` with no `price`.
 --
--- A DELIBERATE DEVIATION and named as one: the family contract says a wand is ranged magical damage, and
--- this keeps the range, the school and the "needs only a direction" freedom while dropping the damage
--- entirely. What it keeps is what actually distinguishes a wand from a staff -- reach, and the fact that
--- the reach costs nothing to set up.
+-- ONE OF THREE, and they are meant to be read together. This wand, data/items/weapon/
+-- weapon_reflecting_wand.lua and data/items/weapon/weapon_second_utterance_wand.lua are the Arcanum's
+-- quest wands, and all three do the same structural thing: a bolt at a foe that pays its own caster.
+-- That shape is deliberate and it is the family's answer to a real problem -- every protective working in
+-- this game costs a whole turn, and a mage who spends the turn is a mage who did not cast. These buy the
+-- ward as a RIDER, and the price is that you have to be attacking to get one.
 --
--- Why the shelf needed one: the Arcanum's whole answer to an enemy caster has been to out-damage them,
--- and there has been no way at all to protect a specific body from a specific spell. A Sealed Ward is
--- exactly that -- it does not reduce anything, it REFUSES one working, so the enemy's biggest single-
--- target cast simply does not happen. Against a boss whose one dangerous spell you can see coming on the
--- timeline, one turn of this is worth more than any bolt in the game.
+-- It used to be aimed at an ALLY and dealt nothing to anybody, which docs/weapons.md carried a ⚠️ against.
+-- A weapon pointed at your own side is not a weapon and cannot be graded either -- "what should this deal
+-- at its slot" has no honest answer when the answer would wound the friend it is aimed at
+-- (Balance.gradesOnMagnitude). The protective cast belongs on the ability shelf, where it already lives.
 --
--- It answers single-target only. A blast, a hazard, an aura or a melee blow all go straight through it,
--- which is what keeps it a read on the enemy's kit rather than a general-purpose shield.
+-- WHY IT DOES NOT UNDERCUT WHAT ALREADY GRANTS THIS. armor_sealed_coat and utility_sealed_reliquary both
+-- hold up a Sealed Ward, and the status's own header explains that its forty ticks are long "on purpose:
+-- it is granted by a relic that is holding it up". Nothing is holding this one up. The wand's ward runs
+-- TEN ticks -- about two turns, which covers the reply to the shot you just took and nothing else. That is
+-- the whole difference between a relic that wears a slot to keep a ward standing all fight and a shot that
+-- happens to leave you covered while the enemy answers it.
+--
+-- The read it is for: fire it at the enemy caster. You have spent no turn on defence, they are hurt, and
+-- the working they were going to throw back at you does not happen. Against a line of melee it wards
+-- nothing at all -- a Sealed Ward answers single-target SPELLS and a sword goes straight through it -- so
+-- knowing whether their kit even contains the thing this stops is the mage's problem, and it is a read
+-- rather than a stat.
+local Curve = require("models.curve")
 
 return {
     name = "Wand of the Sealed Ward",
-    description = "Grants Sealed Ward.",
+    description = "The bolt leaves its caster holding a Sealed Ward.",
     flavor = "The Arcanum is very clear that it is not a shield. A shield would have to be hit.",
     sprite = "assets/items/sealed_ward_wand.png",
     type = "weapon",
     tags = { "wand", "magical", "arcane", "ranged" },
     class = "mage",
-    -- This wand's forge path is the ward's DURATION, computed in the effect off fx.level rather than
-    -- authored as a per-level magnitude, so Item.isUpgradable has no row to find. It says so here.
-    scalesWithLevel = true,
     activeAbility = {
-        target = "ally",
+        target = "enemy",
         range = 3,
         requiresSight = true,
         speed = 3,
-        cost = { stat = "mana", amount = 8 },
-        damage = 0, -- it is not a bolt; see the header
+        cost = { stat = "mana", amount = 10 }, -- dearer than a plain wand's: the ward is not free
+        -- Its slot's number, which at slot 0 is the plain wand's exactly (Balance.slotTarget): same
+        -- family, same slot, same magnitude, and the ward is the whole of what tells them apart.
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
-            local t = fx.target
-            if not t or not t.alive then return end
-            -- Longer with the forge, as every warding cast in the catalog is: an upgrade buys the ward
-            -- more time to be needed, never a second refusal.
-            fx.applyStatus(t, "status_sealed_ward", { duration = 12 + 2 * fx.level })
-            fx.log("action", string.format("%s seals %s.",
-                (fx.user.char and fx.user.char.name) or "Unit",
-                (t.char and t.char.name) or "an ally"))
+            fx.damage(fx.target)
+            -- On the CASTER, and short. Ten ticks against the status's own default of forty -- see the
+            -- header: forty is a relic's number, and no relic is holding this one up.
+            fx.applyStatus(fx.user, "status_sealed_ward", { duration = 10 })
         end,
     },
 }

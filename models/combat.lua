@@ -6246,19 +6246,33 @@ end
 -- Gathered before any of it is removed, because walking a status list while removing from it is how you
 -- take half of what you meant to. Returns the ids rather than a count so a caller can scale off WHAT it
 -- took as well as how much.
-function Combat.dispelUnit(combat, unit, n)
+-- WHICH blessings a dispel would take off `unit`, up to `n` of them, as a list of status ids. Reads
+-- nothing and removes nothing.
+--
+-- Extracted so the DRY RUNS can answer this question honestly. fx.dispelUnit returns the ids it took and
+-- effects read that return -- ability_sentence scales off the count, the Wand of the Borrowed Word wears
+-- what it takes -- so a preview stub answering `{}` would report those abilities as doing nothing. The
+-- filter lives here once rather than being restated in each fx table, because a second copy of "what
+-- counts as a blessing" is a second thing to drift.
+function Combat.dispellableOn(unit, n)
     if not (unit and unit.alive) then return {} end
-    local taken = {}
+    local out = {}
     for _, st in ipairs(unit.statuses or {}) do
         local def = Status.defs[st.id]
         -- A blessing is a status that is not a debuff and not one of the engine's own bookkeeping
         -- markers (`hideLog` covers Channeling, which is a pending spell rather than a boon -- stripping
         -- it here would make this a silent counterspell, which is exactly the power S5 gave up).
         if def and not def.debuff and not def.hideLog then
-            taken[#taken + 1] = st.id
-            if n and #taken >= n then break end
+            out[#out + 1] = st.id
+            if n and #out >= n then break end
         end
     end
+    return out
+end
+
+function Combat.dispelUnit(combat, unit, n)
+    if not (unit and unit.alive) then return {} end
+    local taken = Combat.dispellableOn(unit, n)
     for _, id in ipairs(taken) do Status.remove(combat, unit, id) end
     if #taken > 0 then
         Combat.logEvent(combat, "status",
@@ -6683,6 +6697,10 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         -- and, being a picture, it does not count as touching the board either.
         burst = function() end,
         dispel = function() touchesBoard() return { revealed = 0, wallsDestroyed = 0 } end,
+        -- Strips nothing, but REPORTS what it would strip, because effects read the return: without this
+        -- entry the helper was absent from this table altogether, so ability_sentence and
+        -- ability_the_question faulted while building their arguments and previewed as nothing at all.
+        dispelUnit = function(tgt, n) touchesBoard() return Combat.dispellableOn(tgt, n) end,
         summon = function() touchesBoard() return previewStandIn() end,
         copy = function() touchesBoard() return previewStandIn() end,
         copyOf = function() touchesBoard() return previewStandIn() end,
@@ -7006,6 +7024,10 @@ function Combat.abilityOutput(unit, item)
         -- for the explosion it draws, so this reports and changes nothing.
         burst = function() end,
         dispel = function() return { revealed = 0, wallsDestroyed = 0 } end,
+        -- Same reasoning as the preview table's copy. There is no board here (this is the shop/inventory
+        -- tooltip), so the stand-in dummy carries no blessings and this answers an honest empty list --
+        -- but it must EXIST, or an effect reaching for it faults before the tooltip renders a word.
+        dispelUnit = function(tgt, n) return Combat.dispellableOn(tgt, n) end,
         -- Record WHAT the ability summons -- and for how long -- so the inventory tooltip can name it
         -- and quote its duration, without building anything; the stand-in keeps a chained effect from
         -- faulting out of the pcall.
@@ -8586,6 +8608,25 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             -- The turn still ends and still bills its initiative, on the same reasoning: the casting
             -- happened. Returning resolveCast's own (true, result) shape so every caller -- the battle
             -- state, the AI, the channel resolver -- reads a spent action exactly as it always does.
+            endTurn(combat, unit, Combat.actionSpeed(unit, ab, item))
+            return true, { damageDealt = 0, healed = 0, warded = true }
+        end
+    end
+
+    -- AN AID WARD on the aimed body swallows a FRIENDLY working the same way (Status.aidWardOn -- the
+    -- Sealed Hand). The mirror of the block above, side test inverted, and every clause of its fairness
+    -- carries over unchanged: single-target only, one charge spent here, and the caster still paid.
+    --
+    -- Written as its own block rather than by loosening the test above, because the two are opposite
+    -- purchases and must stay legible as such. The note above says a ward that ate its own side's heals
+    -- "would be a curse" -- and that is exactly right: this one IS a curse, put on an enemy on purpose,
+    -- so it is spelled out separately instead of making one gate ambiguous about whose side it serves.
+    if target and target.alive and target.side == unit.side and Combat.isSingleTarget(ab) then
+        local ward = Status.aidWardOn(target)
+        if ward then
+            Status.consumeBarrier(combat, target, ward)
+            Combat.logEvent(combat, "status", string.format("%s's %s refuses %s.",
+                unitName(target), ward.name or ward.id, item.name or "the working"), { target, unit })
             endTurn(combat, unit, Combat.actionSpeed(unit, ab, item))
             return true, { damageDealt = 0, healed = 0, warded = true }
         end

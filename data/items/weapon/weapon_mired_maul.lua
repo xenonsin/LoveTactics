@@ -32,7 +32,7 @@ return {
         speed = 7,
         cost = { stat = "stamina", amount = 12 },
         -- Under an iron hammer's: the ground is the rest of the price.
-        damage = Curve.ramp(9, 20),
+        damage = Curve.ramp(12, 23),
         effect = function(fx)
             local t = fx.target
             if not t then return end

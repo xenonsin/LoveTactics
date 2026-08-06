@@ -33,7 +33,7 @@ return {
         range = 1,
         speed = 7, -- the slowest thing on the shelf: a blow this size is telegraphed
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(6, 16), -- fx.amount: the floor, before the chi
+        damage = Curve.ramp(15, 25), -- fx.amount: the floor, before the chi
         -- The pool this reads, quoted on the slot and in the tooltip (see Flurry for why chi is named
         -- here rather than declared with `charge`). It matters more on this one than anywhere: the blow
         -- is +6 per chi, so the count IS the damage, and a monk deciding whether to throw it now or

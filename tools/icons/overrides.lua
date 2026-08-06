@@ -110,6 +110,12 @@ return {
     ["items/struck_name.png"] = "tied-scroll",
     ["items/relief_order.png"] = "tied-scroll",
     ["items/second_utterance.png"] = "shouting",
+    -- The ABILITY of the same name (the charm above banks the free cast for its bearer; this one hands it
+    -- to an ally). Matched to the charm on purpose: one word, one picture, wherever it is granted from.
+    ["items/ability_second_utterance.png"] = "shouting",
+    -- The hand that would have reached to help, refused. The matcher guesses "hand", which reads as a
+    -- grab; what this ability does is REFUSE one working, so the interdiction sign is the closer idea.
+    ["items/ability_sealed_hand.png"] = "interdiction",
     ["items/slow_verdict.png"] = "gavel",
     ["items/reapers_due.png"] = "reaper-scythe",
     ["items/tempo_debt.png"] = "hourglass",

@@ -34,7 +34,7 @@ return {
         range = 1,
         speed = 2, -- quick, as every dagger is
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(3, 13), -- the lightest blade in the game: it is not the point
+        damage = Curve.ramp(5, 15), -- the lightest blade in the game: it is not the point
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_poison" })
         end,

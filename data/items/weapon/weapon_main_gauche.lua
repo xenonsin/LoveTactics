@@ -37,7 +37,7 @@ return {
         range = 1,
         speed = 2, -- the family's own tempo: quick back around, which is what makes the parry affordable
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(11, 21),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_bleed" })
         end,

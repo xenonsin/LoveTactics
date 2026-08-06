@@ -33,7 +33,7 @@ return {
         minRange = 1,          -- must pick a neighbor (a facing); never the wielder's own tile
         speed = 6, -- ponderous: you pay for the damage in turn order
         cost = { stat = "stamina", amount = 16 },
-        damage = Curve.ramp(18),
+        damage = Curve.ramp(13, 31),
         aoe = { shape = "front", width = 3 }, -- axes cleave innately: a 3-wide arc in front
         lifesteal = 0.33, -- the wielder drinks a third of everything the arc opens (a keyword)
         effect = function(fx)

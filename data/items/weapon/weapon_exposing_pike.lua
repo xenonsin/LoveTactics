@@ -32,7 +32,7 @@ return {
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
         -- Under an iron spear's: this weapon's output is measured across the party, not on its own line.
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(10, 20),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The spear convention (docs/weapons.md): the point opens only the FAR rank.

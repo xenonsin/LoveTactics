@@ -27,7 +27,7 @@ return {
         range = 1,
         speed = 2, -- quick: she acts again almost at once, and each strike feeds her
         cost = { stat = "stamina", amount = 4 },
-        damage = Curve.ramp(10),
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             fx.damage(fx.target)
             fx.heal(fx.user, 8) -- she eats what she cuts, the same shape parasitic_staff refills mana on hit

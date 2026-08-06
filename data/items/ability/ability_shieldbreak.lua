@@ -20,7 +20,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             -- The Sunder rides the blow, so it lands on whoever the strike hits -- a guardian who steps
             -- in front of it is the one broken open.

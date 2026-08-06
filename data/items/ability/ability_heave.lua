@@ -62,7 +62,7 @@ return {
         minRange = 1,          -- must pick a neighbor holding something, never the thrower's own tile
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(6, 16), -- the collision's bite (only a blocked throw lands it)
+        damage = Curve.ramp(8, 18), -- the collision's bite (only a blocked throw lands it)
         effect = function(fx)
             -- A body first: it is the thing standing ON the tile, and a unit and an object can never
             -- share one, so the order is a preference in name only.

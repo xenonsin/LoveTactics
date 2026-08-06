@@ -41,7 +41,7 @@ return {
         cost = { stat = "stamina", amount = 6 }, -- stamina, so a cornered priest can always swing it
         -- The shelf's heaviest focus damage, because here the damage IS the healing: a curve tuned as
         -- feebly as the Crozier's would make the intercession itself worthless.
-        damage = Curve.ramp(7, 17),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             local dealt = fx.damage(fx.target)
             -- The redirect. `intercession` is set once, at combat start, by the trait above; it is nil

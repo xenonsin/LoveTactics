@@ -37,7 +37,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 11 },
         -- Well ABOVE the iron axe's -- this is the lone-target number, and it is what the weapon is for.
-        damage = Curve.ramp(11, 24),
+        damage = Curve.ramp(5, 18),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             local caught = fx.aoeUnits()

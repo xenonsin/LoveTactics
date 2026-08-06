@@ -42,7 +42,7 @@ return {
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(12, 22),
         unlock = {
             when = function(unit) return require("models.combat").chargePool(unit, "zeal") >= 1 end,
             text = "Bank Zeal by felling and healing",

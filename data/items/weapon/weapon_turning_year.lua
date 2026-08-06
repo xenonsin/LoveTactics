@@ -51,7 +51,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 6 }, -- dearer than a plain wand's 4: the rhythm is not free
-        damage = Curve.ramp(3, 13), -- the feeblest wand per cast; the pairing is the weapon
+        damage = Curve.ramp(12, 22), -- the feeblest wand per cast; the pairing is the weapon
         effect = function(fx)
             -- Which half of the year this bolt is, flipped before it is thrown so the NEXT cast is
             -- already committed to the other one. A battle always opens on fire (nil is falsy), which

@@ -39,7 +39,7 @@ return {
         speed = 5,
         windup = 3, -- the breath is drawn in before it is taken: a turn's warning, for both sides
         cost = { stat = "mana", amount = 20 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(14, 24),
         aoe = { radius = 2, shape = "square" },
         -- Only worth the mana against a spread the party can then punish. `count_at_least 2` is the
         -- floor rather than the ideal -- the scorer already sums the blast over everyone it catches and

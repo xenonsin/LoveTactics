@@ -28,7 +28,7 @@ return {
         range = 1,
         speed = 2, -- quick, as every dagger is
         cost = { stat = "stamina", amount = 4 }, -- cheap, and it usually pays for itself back
-        damage = Curve.ramp(4, 14), -- under an iron dagger's: what it takes is the point
+        damage = Curve.ramp(11, 21), -- under an iron dagger's: what it takes is the point
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_bleed" }) -- the wound rides the blow
             -- Take, then keep: drain reports what was actually there to take (a foe already exhausted

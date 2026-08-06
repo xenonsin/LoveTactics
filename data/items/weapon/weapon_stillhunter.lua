@@ -51,7 +51,7 @@ return {
         requiresSight = true,
         speed = 2,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(4, 14), -- under an iron bow at every level: see above
+        damage = Curve.ramp(12, 22), -- under an iron bow at every level: see above
         effect = function(fx)
             fx.damage(fx.target)
         end,

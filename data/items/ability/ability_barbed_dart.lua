@@ -25,7 +25,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(3, 13), -- light: the mark is the payload, not the dart
+        damage = Curve.ramp(7, 17), -- light: the mark is the payload, not the dart
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_vulnerable_pierce" })
         end,

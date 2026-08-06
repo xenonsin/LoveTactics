@@ -488,6 +488,25 @@ function Status.castWardOn(unit)
     return nil
 end
 
+-- The AID WARD on `unit` -- a status declaring `negates = "aid"` -- or nil. The exact mirror of the cast
+-- ward above with the sides swapped: it swallows one FRIENDLY single-target working aimed at its bearer,
+-- whole, and an area effect that catches them among others goes straight past it (data/status/
+-- status_sealed_hand.lua).
+--
+-- Kept as its own reader rather than as an argument to castWardOn, because the two are asked at two
+-- different points of resolveCast and a single function taking a side would read as though one status
+-- could do both jobs. It cannot -- a def names one `negates` value.
+--
+-- Not the same thing as Status.blocksHealing below: that forbids MENDING for as long as it holds, which
+-- is attrition. This refuses one working of any friendly kind -- a cure, a buff, a revive, a mend -- and
+-- is then spent, which is tempo aimed at the enemy's support turn.
+function Status.aidWardOn(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.negates == "aid" then return s end
+    end
+    return nil
+end
+
 -- Is `unit` forbidden from being mended? True while any active status sets `blocksHealing` (the
 -- Unclosing Wound). Read by Combat.applyHeal, the single funnel every mend in the game runs through --
 -- a spell, a potion, a regeneration tick, a lifesteal drink -- so one flag closes all of them at once.

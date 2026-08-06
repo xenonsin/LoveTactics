@@ -32,7 +32,7 @@ return {
         speed = 7,
         cost = { stat = "stamina", amount = 13 },
         -- Above an iron hammer's, which is the compensation for the self-inflicted half below.
-        damage = Curve.ramp(16, 31),
+        damage = Curve.ramp(12, 27),
         effect = function(fx)
             -- Longer than an ordinary stun, and it rides the blow for the family's usual reason.
             fx.damage(fx.target, { inflicts = { id = "status_stun", magnitude = 9 } })

@@ -30,7 +30,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Under an iron mace's: the splash is the rest of it.
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             local t = fx.target
             fx.damage(t, { knockback = { distance = 2, amount = fx.amount } })

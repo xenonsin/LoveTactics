@@ -915,6 +915,17 @@ return {
             local trap = Trap.at(c, 5, 2)
             assert(trap and trap.id == "bear_trap", "a bear trap is armed on the aimed cell")
             assert(trap.side == "party", "and it belongs to the hunter's side")
+            -- The trap carries the ARCHER'S OWN DRAW, not an authored constant. A trap's payload runs
+            -- through Combat.dealFlatDamage, which adds no attack stat -- so a flat figure is the whole
+            -- blow forever while the arrow beside it grows every level. Authored flat at 6, this landed
+            -- ONE point on the boar of the very quest that grants the bow. Asserted as a comparison
+            -- against the wielder's stat rather than a literal, so the ladder may move the bow's power
+            -- without this needing an edit.
+            local drew = shooter.char.stats.damage or 0
+            assert(drew > 0, "the archer swings for something, or this comparison proves nothing")
+            assert((trap.amount or 0) > drew,
+                string.format("the trap is armed with the shot's weight plus the draw (%d), not a flat"
+                    .. " constant -- got %s", drew, tostring(trap.amount)))
             assert(hp(bandit) == bandit.char.stats.health.max, "the foe two tiles off is untouched")
 
             -- OCCUPIED: the same aim, now with the foe standing on it. The hold is delivered at once
@@ -926,6 +937,136 @@ return {
             assert(hp(bandit) < before, "the shaft goes through the body")
             assert(Status.has(bandit, "status_root"), "and holds it where it stands")
             assert(Trap.at(c, 6, 2) == nil, "no trap is left under the one it already caught")
+        end,
+    },
+    {
+        name = "the Shepherd's Crook drives a foe two tiles and advances with it",
+        fn = function()
+            -- The one mace that moves its own wielder. Every other one in the family shoves a body away
+            -- and stays exactly where it stood, so what is checked is that BOTH bodies travelled the two
+            -- tiles and that the knight is still at the point of the hook -- Combat.charge moves the pair
+            -- in LOCKSTEP for the whole drive, so the knight ends up directly behind the foe's landing
+            -- tile rather than stopping on the square it first vacated.
+            local knight = plainChar("character_knight")
+            local crook = give(knight, "weapon_shepherds_crook")
+            local c = Combat.new(arena(10, 10),
+                { unit(knight, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
+            local k, foe = c.units[1], c.units[2]
+            k.char.stats.stamina.max, k.char.stats.stamina.current = 999, 999
+            foe.char.stats.health.max, foe.char.stats.health.current = 400, 400 -- it has to survive the hook
+
+            local before = hp(foe)
+            openTurn(c, k)
+            assert(Combat.useItem(c, k, crook, 3, 4), "the hook catches")
+            assert(hp(foe) < before, "it is a mace, so the blow lands too")
+            -- Driven straight along the lane away from the knight: (3,4) -> (3,6).
+            assert(foe.x == 3 and foe.y == 6,
+                string.format("the foe is driven two tiles, not to (%d, %d)", foe.x, foe.y))
+            assert(k.x == 3 and k.y == 5,
+                string.format("and the knight comes with it, still at the point of the hook,"
+                    .. " not to (%d, %d)", k.x, k.y))
+        end,
+    },
+    {
+        name = "the Arcanum's three quest wands each strike a foe and pay their own caster",
+        fn = function()
+            -- One case for the trio, because the SHAPE is the thing: all three are a bolt at an enemy that
+            -- leaves its own caster holding the status the wand is named for. Written as a table so a
+            -- fourth of them cannot be added without either fitting the shape or being noticed.
+            local wands = {
+                { id = "weapon_sealed_ward_wand", status = "status_sealed_ward" },
+                { id = "weapon_reflecting_wand", status = "status_reflect_magic" },
+                { id = "weapon_second_utterance_wand", status = "status_second_utterance" },
+            }
+            for _, w in ipairs(wands) do
+                local mage = plainChar("character_mage")
+                local wand = give(mage, w.id)
+                local c = Combat.new(arena(8, 8),
+                    { unit(mage, 3, 3) }, { unit(plainChar("character_bandit"), 3, 5) })
+                local m, foe = c.units[1], c.units[2]
+                m.char.stats.mana.max, m.char.stats.mana.current = 999, 999
+                foe.char.stats.health.max, foe.char.stats.health.current = 400, 400
+
+                local before = hp(foe)
+                openTurn(c, m)
+                assert(Combat.useItem(c, m, wand, 3, 5),
+                    w.id .. " is thrown at a foe, not handed to a friend")
+                assert(hp(foe) < before, w.id .. " is a bolt: the blow lands")
+                assert(Status.has(m, w.status),
+                    w.id .. " leaves its CASTER holding " .. w.status)
+                assert(not Status.has(foe, w.status),
+                    w.id .. " does not put it on the target -- the rider is the caster's")
+            end
+        end,
+    },
+    {
+        name = "Sealed Hand is an ability now, and it cuts a foe off rather than warding a friend",
+        fn = function()
+            -- The anti-support curse left the wand trio (a curse laid on somebody else does not fit three
+            -- wands named for what they leave on their own caster) and became a grid cell. Its two
+            -- directions -- refuses help, ignores harm -- are pinned in tests/imported_kit_spec.lua.
+            local mage = plainChar("character_mage")
+            local curse = give(mage, "ability_sealed_hand")
+            local c = Combat.new(arena(8, 8),
+                { unit(mage, 3, 3) }, { unit(plainChar("character_bandit"), 3, 5) })
+            local m, foe = c.units[1], c.units[2]
+            m.char.stats.mana.max, m.char.stats.mana.current = 999, 999
+
+            openTurn(c, m)
+            assert(Combat.useItem(c, m, curse, 3, 5), "the seal is laid on the foe")
+            assert(Status.has(foe, "status_sealed_hand"), "and it is the FOE that is cut off from help")
+            assert(not Status.has(m, "status_sealed_hand"), "never the caster")
+        end,
+    },
+    {
+        name = "Second Utterance can be handed to somebody else, which the charm cannot do",
+        fn = function()
+            -- The ability half of what the old ally-targeted wand used to sell. The charm
+            -- (utility_second_utterance) banks the free cast for its own bearer after a channel of theirs
+            -- lands; this gives it to a different body, on demand, having asked nothing first.
+            local mage = plainChar("character_mage")
+            local gift = give(mage, "ability_second_utterance")
+            local c = Combat.new(arena(8, 8),
+                { unit(mage, 3, 3), unit(plainChar("character_knight"), 3, 4) },
+                { unit(plainChar("character_bandit"), 7, 7) })
+            local m, ally = c.units[1], c.units[2]
+            m.char.stats.mana.max, m.char.stats.mana.current = 999, 999
+
+            openTurn(c, m)
+            assert(Combat.useItem(c, m, gift, 3, 4), "the mage speaks for the knight")
+            assert(Status.has(ally, "status_second_utterance"),
+                "and the knight's next channelled working will resolve at once")
+        end,
+    },
+    {
+        name = "a wand's ward is shorter than the ability that grants the same thing standing",
+        fn = function()
+            -- The reason the wands do not retire ability_reflect_magic. The ability spends a whole slow
+            -- turn and can be pointed at anybody; the wand takes the same status as a rider on a bolt and
+            -- must therefore hold it for less time -- long enough to cover the reply to the shot, not the
+            -- fight. Compared against the status's OWN default rather than a literal, so tuning the
+            -- status does not silently invert the relationship this is here to protect.
+            local Status_defs = require("models.status").defs
+            local mage = plainChar("character_mage")
+            local wand = give(mage, "weapon_reflecting_wand")
+            local c = Combat.new(arena(8, 8),
+                { unit(mage, 3, 3) }, { unit(plainChar("character_bandit"), 3, 5) })
+            local m = c.units[1]
+            m.char.stats.mana.max, m.char.stats.mana.current = 999, 999
+            m.char.stats.health.max, m.char.stats.health.current = 400, 400
+
+            openTurn(c, m)
+            assert(Combat.useItem(c, m, wand, 3, 5), "the bolt lands")
+            local mirrored
+            for _, s in ipairs(m.statuses or {}) do
+                if s.id == "status_reflect_magic" then mirrored = s end
+            end
+            assert(mirrored, "the mage is Mirrored")
+            -- `remaining` is where Status.instantiate puts the ticks; `duration` lives on the DEF.
+            local standing = Status_defs.status_reflect_magic.duration
+            assert((mirrored.remaining or standing) < standing,
+                string.format("a rider's ward runs shorter than a cast one (%s against %d)",
+                    tostring(mirrored.remaining), standing))
         end,
     },
     {
@@ -1038,6 +1179,12 @@ return {
             local c = Combat.new(arena(8, 8), { unit(mage, 2, 2) }, { unit(plainChar("character_bandit"), 2, 5) })
             local m, target = c.units[1], c.units[2]
             m.char.stats.mana.max, m.char.stats.mana.current = 999, 999
+            -- Room to take both halves of the year. This spec is about the RHYTHM, not about lethality,
+            -- and the wand's power is a slot-graded number that moves (Balance.slotTarget) -- when it
+            -- rose the bandit started dying to the second bolt and the frost had nobody to land on, so
+            -- the test failed on a fact about hit points rather than about the alternation.
+            target.char.stats.health.max = 400
+            target.char.stats.health.current = 400
 
             openTurn(c, m)
             assert(Combat.useItem(c, m, wand, 2, 5), "the first bolt lands")

@@ -183,6 +183,47 @@ return {
         end,
     },
 
+    -- --------------------------------------------- the Sealed Hand (the mirror: the AID block)
+    {
+        name = "a Sealed Hand refuses a single-target heal aimed at the body wearing it",
+        fn = function()
+            -- Two bodies on the SAME side: a priest and the wounded ally they are trying to mend. The
+            -- Sealed Hand is a curse put on an enemy, so from the enemy's own point of view this is what
+            -- it costs them -- their healer's whole turn, and the patient stays hurt.
+            local priest = equip(bare("character_priest"), { "ability_renewal" })
+            local hurt = bare("character_rowan")
+            local c = Combat.new(arena(8, 8), { unit(priest, 3, 3), unit(hurt, 3, 4) },
+                { unit(bare("character_bandit"), 7, 7) })
+            local healer, patient = c.units[1], c.units[2]
+            patient.char.stats.health.current = 20
+            Status.apply(c, patient, "status_sealed_hand")
+            local before = hp(patient)
+            openTurn(c, healer)
+
+            assert(Combat.useItem(c, healer, itemNamed(priest, "ability_renewal"), 3, 4), "the mend resolves")
+            assert(hp(patient) == before, "the Sealed Hand refused the working entirely")
+            assert(not Status.aidWardOn(patient), "and spent itself doing so")
+        end,
+    },
+    {
+        name = "a Sealed Hand lets a HOSTILE cast through -- it only ever refuses help",
+        fn = function()
+            -- The half that keeps the two wards from collapsing into one another. A cast ward answers a
+            -- spell from the other side of the field; this one answers a spell from its own, and pointing
+            -- an attack at a sealed body has to land normally or the curse would be a gift.
+            local caster = equip(bare("character_mage"), { "ability_fire_bolt" })
+            local c = Combat.new(arena(8, 8), { unit(caster, 3, 3) }, { unit(bare("character_bandit"), 3, 5) })
+            local mage, foe = c.units[1], c.units[2]
+            Status.apply(c, foe, "status_sealed_hand")
+            local before = hp(foe)
+            openTurn(c, mage)
+
+            assert(Combat.useItem(c, mage, itemNamed(caster, "ability_fire_bolt"), 3, 5), "the bolt resolves")
+            assert(hp(foe) < before, "a hostile working is no business of the Sealed Hand")
+            assert(Status.aidWardOn(foe), "and it is still standing, unspent, waiting for their priest")
+        end,
+    },
+
     -- ---------------------------------------------------------------- Witchlight (true sight)
     {
         name = "Witchlight makes a hidden body targetable without taking its concealment away",

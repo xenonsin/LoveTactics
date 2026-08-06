@@ -42,7 +42,7 @@ return {
         cost = { stat = "stamina", amount = 7 },
         -- Roughly double the family's usual afterthought. It has to be a real club, or the deviation buys
         -- nothing: a physical strike for four damage is as useless against a warded foe as a magical one.
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(4, 14),
         effect = function(fx)
             fx.damage(fx.target) -- tags default to the item's, so the blow is physical
         end,

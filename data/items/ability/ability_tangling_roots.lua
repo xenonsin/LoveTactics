@@ -20,7 +20,7 @@ return {
         requiresSight = true, -- the roots have to reach a foe you can see
         speed = 4,
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(5, 15), -- light: the root is the payload, not the hit
+        damage = Curve.ramp(8, 18), -- light: the root is the payload, not the hit
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_root" })
         end,

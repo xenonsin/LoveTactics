@@ -39,7 +39,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(14, 24),
         requiresAdjacent = { type = "weapon" },
         effect = function(fx)
             -- Bite first, haul second. The order matters for a reason the pure Pull never has to think

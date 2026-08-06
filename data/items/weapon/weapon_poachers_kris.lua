@@ -23,7 +23,7 @@ return {
         range = 1,
         speed = 2, -- quick, like every dagger
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             -- A Rooted foe cannot flinch away from the point: half the swing again goes straight in.
             -- Read on the target as it stands, so it rewards a snare already set (by the Bolas, a trap,

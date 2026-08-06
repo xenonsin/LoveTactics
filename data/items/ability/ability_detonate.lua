@@ -20,7 +20,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(8, 18),
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)
             local t = fx.target

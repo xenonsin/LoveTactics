@@ -316,20 +316,24 @@ return {
             local map = Fixture.new(10, 10)
             local hero = Fixture.unit("character_clem", 3, 3,
                 { isolate = "bare", items = { "ability_throatcut" } })
+            -- 300, not 100, so "under a third" leaves room for the cut to land and be SURVIVED. The
+            -- ability's power is a slot-graded number that moves (Balance.slotTarget); when it rose, an
+            -- ordinary blow started killing a 30-health body outright and this spec failed on lethality
+            -- rather than on the thing it is named for -- that the threshold alone is not the licence.
             local foe = Fixture.unit("character_bandit", 3, 4,
-                { isolate = "bare", stats = { defense = 0, health = 100 } })
+                { isolate = "bare", stats = { defense = 0, health = 300 } })
             local combat = Fixture.combat(map, hero, foe)
             local h, f = combat.units[1], combat.units[2]
             h.char.stats.stamina.max, h.char.stats.stamina.current = 99, 99
 
             -- Under a third, but NOT held: the cut lands as an ordinary blow.
-            f.char.stats.health.current = 30
+            f.char.stats.health.current = 90
             assert(Fixture.strike(combat, h, f, "ability_throatcut"), "the cut is thrown at a loose foe")
             assert(f.alive, "which survives it -- the threshold alone is not the licence")
 
             -- Held: the same body, the same health, and now it is over.
             h.char.stats.stamina.current = 99
-            f.char.stats.health.current = 30
+            f.char.stats.health.current = 90
             Status.apply(combat, f, "status_root")
             assert(Fixture.strike(combat, h, f, "ability_throatcut"), "the cut is thrown at a held one")
             assert(not f.alive, "and opens its throat")

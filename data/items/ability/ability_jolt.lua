@@ -24,7 +24,7 @@ return {
         -- data/tutorials/village.lua.)
         speed = 4,
         cost = { stat = "mana", amount = 5 },
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(6, 16),
         -- The delay, tuned on its own axis and upgraded on its own curve. It used to be read off the
         -- damage roll, which quietly welded the spell's two halves together: a Jolt is DESIGNED to
         -- barely hurt, so pinning the tempo it sells to how little it hurts capped the one thing it

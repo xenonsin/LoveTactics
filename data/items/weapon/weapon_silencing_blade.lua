@@ -31,7 +31,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(14, 24),
         effect = function(fx)
             -- A tenth of what is left in the pool, so the blade is at its best against a caster who has
             -- been saving up -- and unremarkable against one already spent, which is Empty Vessel's job.

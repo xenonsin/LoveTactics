@@ -35,7 +35,7 @@ return {
         speed = 2,
         cost = { stat = "stamina", amount = 7 },
         -- Under an iron bow's: taking an enemy archer's reach away is worth more than the arrow.
-        damage = Curve.ramp(3, 13),
+        damage = Curve.ramp(5, 15),
         effect = function(fx)
             -- Blind rides the shaft: it lands on whoever the arrow hits (a guardian who steps in), and
             -- only if it connects with a survivor -- the .alive guard the carried path enforces for free.

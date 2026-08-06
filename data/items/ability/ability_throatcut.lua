@@ -33,7 +33,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
-        damage = Curve.ramp(7, 17),
+        damage = Curve.ramp(14, 24),
         description = "Kills a held foe under a third; a kill hands the turn back.",
         effect = function(fx)
             local t = fx.target

@@ -28,7 +28,7 @@ return {
         speed = 7, -- the family's ponderous tempo: the stun is still bought with your own turn
         cost = { stat = "stamina", amount = 10 },
         -- Half an iron hammer's. What it removes is worth more than what it deals.
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(13, 23),
         effect = function(fx)
             local t = fx.target
             if not t then return end

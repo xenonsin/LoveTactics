@@ -32,7 +32,7 @@ return {
         range = 2, -- a hook has reach the family does not: it has to be able to fetch something
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(7, 17),
+        damage = Curve.ramp(16, 26),
         effect = function(fx)
             fx.damage(fx.target)
             -- Pulled AFTER the blow rather than folded into it, unlike every shove on the shelf. A shove

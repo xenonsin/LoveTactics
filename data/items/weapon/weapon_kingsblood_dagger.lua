@@ -42,7 +42,7 @@ return {
         range = 1,
         speed = 1, -- the fastest strike in the game: you act again almost at once
         cost = { stat = "stamina", amount = 4 },
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(13, 23),
         effect = function(fx)
             -- A wound already open is a door: half the swing's power again goes straight through it.
             -- Read BEFORE the strike, so it answers "was this foe already bleeding when I found it?"

@@ -37,7 +37,7 @@ return {
         requiresSight = true, -- a wand needs only a direction (no minRange), but it must SEE down the line
         speed = 5,
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(9, 19), -- power + the wielder's Magic Damage, minus Magic Defense
+        damage = Curve.ramp(13, 23), -- power + the wielder's Magic Damage, minus Magic Defense
         effect = function(fx)
             -- denyRevival rides on the bolt and is honoured only on the fatal path (Combat.dealFlatDamage):
             -- a kill severs the revive window, a mere wound does nothing.

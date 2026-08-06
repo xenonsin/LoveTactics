@@ -38,7 +38,7 @@ return {
         aoe = { radius = 1, shape = "square" },
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(4, 14), -- the floor; Defiance is what makes it a blow
+        damage = Curve.ramp(11, 21), -- the floor; Defiance is what makes it a blow
         unlock = {
             when = function(unit) return require("models.combat").chargePool(unit, "defiance") >= 1 end,
             text = "Bank Defiance by weathering blows",

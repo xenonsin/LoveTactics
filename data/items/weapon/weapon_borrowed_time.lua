@@ -61,7 +61,7 @@ return {
         range = 1,
         speed = 2,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(7, 18),
+        damage = Curve.ramp(5, 16),
         -- The count made visible, exactly as weapon_reapers_due wears its kill tally: the same number
         -- the effect below reads, drawn on the slot and quoted in the tooltip, so the player can see the
         -- jubilee coming instead of holding the total in their head.

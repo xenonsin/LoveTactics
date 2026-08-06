@@ -31,7 +31,7 @@ return {
         cost = { stat = "stamina", amount = 8 },
         -- Under the iron sword's curve on purpose: an answer that removes a foe's whole retreat plan is
         -- worth more than the two points of Power it gives up for it.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(15, 25),
         effect = function(fx)
             fx.damage(fx.target)
         end,

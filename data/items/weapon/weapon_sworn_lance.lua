@@ -36,7 +36,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Under an iron spear's: the oath outlasts the wound by the whole battle.
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(6, 16),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             local caught = fx.aoeUnits()

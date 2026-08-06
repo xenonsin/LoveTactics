@@ -28,7 +28,7 @@ return {
         range = 1,
         speed = 2, -- quick, as every dagger is
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(4, 14), -- under an iron dagger's: two afflictions is the trade
+        damage = Curve.ramp(14, 24), -- under an iron dagger's: two afflictions is the trade
         effect = function(fx)
             -- Both afflictions ride the blow, so a guardian who takes the hit takes the wound and the venom.
             fx.damage(fx.target, { inflicts = { "status_bleed", "status_poison" } })

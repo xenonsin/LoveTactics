@@ -37,7 +37,7 @@ return {
         minRange = 1,          -- must pick a neighbor (a facing); never the wielder's own tile
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(6, 16),
         aoe = { shape = "line", length = 2 }, -- the spear's two tiles: the family contract, kept
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

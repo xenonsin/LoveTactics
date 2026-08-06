@@ -36,7 +36,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 11 },
         -- Under the iron longbow's: the halo is the weapon, and the arrow is the delivery.
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(10, 20),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             -- On the aimed cell and the ring around it: a halo is a ring, and one tile of white fire

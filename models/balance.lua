@@ -170,41 +170,104 @@ end
 -- may not exceed this share. An author can still layer resists; they just cannot add up to a wall.
 Balance.ARMOR_SHARE = 0.40
 
--- What a WEAPON or damaging ABILITY contributes, as a share of the attack stat of the body swinging
--- it, at the gate that opens it.
+-- THE SLOT IS THE GRADE. What a WEAPON or damaging ABILITY contributes is decided by ONE thing: the
+-- slot it unlocks from (`unlockQuests`, the count of its house's quests you have finished). Later slot,
+-- bigger number. Nothing else earns a discount.
 --
--- The rule this exists to hold: **an item's magnitude scales with its gate, because the body does.**
--- A character's attack stat grows every level, so a magnitude authored flat across the campaign is a
--- magnitude that quietly stops mattering -- and the audit found exactly that. Damage contributed
--- ~0.45 of the wielder's stat at gate 0 and ~0.20 by gate 11, so the four-hundred-gold weapon on the
--- last shelf was a smaller step than the sixty-gold one on the first. That is the shop ceasing to be
--- a reward, which is the whole thing docs/progression.md is trying to fix.
+-- WHY THE SHARE-BASED RULE WAS REPLACED. The old target was a constant share of the wielder's attack
+-- stat, held per family. Two properties made it unable to hold a ladder:
 --
--- 0.45 is where gates 0-4 already sit, chosen so the EARLY game does not move: that end was verified
--- by hand and plays correctly, and a target drawn from the late end would have dragged it with it.
--- The late shelf comes up to meet it.
+--   it could not climb far enough   the attack stat only grows 12 -> 27 across the campaign, so a
+--                                   constant share could only ever grow 2.25x. Six families' entire
+--                                   slot-0-to-slot-12 range came out NARROWER than one forge ladder
+--                                   (staff spanned 4 -> 8 against a forge climb of 10), so a fully
+--                                   forged starter cleared the whole family by construction.
+--   riders exempted themselves      the floor was waived for any item selling an effect, and an item
+--                                   is "plain" only if its effect is one bare fx.damage. Exactly FOUR
+--                                   items in the game qualify, all at slot 0. So the floor applied to
+--                                   four items and the other 279 were bounded only from above.
 --
--- BAND, not a point, because riders are real: weapon_quietus is a gate-6 dagger at 330 gold whose
--- number is deliberately small because what it sells is a kill that cannot be revived. An item paying
--- for an effect is allowed to sit low; tests/balance_spec.lua names those.
+-- Measured together: 439 of 472 same-family slot pairs had the earlier item, fully forged, beating the
+-- later item unforged. Every shelf was a downgrade wearing an effect.
 --
--- PER FAMILY, NOT ACROSS THEM. This is the correction that matters: docs/weapons.md gives each
--- archetype its own power level, paid for with tempo and hands -- a greatsword "winds up a turn, then
--- lands the heaviest hit in the game" and weapon_iron_greatsword really does carry four times a
--- dagger's power. A single share across all weapons proposed cutting it 24 -> 5 and would have
--- deleted the entire archetype system tests/weapon_spec.lua exists to defend. So the share is
--- measured against the family's OWN early exemplars, and what is held constant is each family's
--- level across the gates -- not one level for every weapon in the game.
+-- THE LADDER. A family's target ramps from its base weapon's UNFORGED power at slot 0 to that same
+-- base weapon's FULLY FORGED power at the last slot. Two consequences worth stating, because both are
+-- deliberate:
 --
--- There is deliberately no global fallback share. A family with too few early exemplars to read a
--- level from gets NO judgement rather than an invented one -- see Balance.FAMILY_MIN_SAMPLE. (A
--- `Balance.ITEM_SHARE = 0.45` constant lived here briefly and was deleted unused, which is the same
--- mistake Vendor.tier was: a knob nothing reads is a knob that drifts.)
-Balance.ITEM_SHARE_BAND = { min = 0.55, max = 1.8 } -- as a RATIO to the family's own target
+--   the last slot unforged equals the first slot fully forged. Forging a starter buys you a late-slot
+--   NUMBER and never a late-slot EFFECT, which is what keeps the shelf worth walking to.
+--   two items at the same slot in the same family get the SAME number. That is the point -- the slot
+--   sets the magnitude and the effect is the whole of what distinguishes them.
+--
+-- Read off the base's own ramp rather than authored fresh, so a family that declares itself heavy
+-- stays heavy: weapon_iron_greatsword ramps 24 -> 50 and its ladder inherits that, where the staff's
+-- 4 -> 14 inherits the staff's. docs/weapons.md gives each archetype its own power level and this
+-- reads that statement rather than overruling it -- a single ladder across all families proposed
+-- cutting the greatsword to a dagger's weight and would have deleted the archetype system
+-- tests/weapon_spec.lua exists to defend.
+--
+-- Abilities have no base to read (there is no "iron ability"), so that group keeps a median over its
+-- early exemplars for slot 0 and doubles it at the top -- Curve.ramp's own one-argument meaning,
+-- "twice as good, fully forged".
 
--- Gates counted as "early" when reading the ABILITY group's level, which has no single base weapon to
--- read from and 32 exemplars to take a median over.
-Balance.EARLY_GATES = 4
+-- How far off its slot's target a magnitude may sit. Tight on purpose: with no rider discount there is
+-- nothing left for a band to absorb except authoring slack and rounding, and a wide one would let the
+-- ladder sag by a whole slot at every rung. The floor is the point -- the ceiling exists so an item
+-- cannot leapfrog its own shelf either.
+--
+-- Stated as a share of the target with a one-point minimum, because the narrow families deal in single
+-- digits: 10% of a censer's 4 is nothing at all, and a rule that rounds to zero tolerance would fail an
+-- item for being one point off a number it can only hit exactly.
+Balance.SLOT_TOLERANCE = { share = 0.15, floor = 1 }
+
+-- Magnitudes that stay small against the ladder, each with the reason. WAIVED, NOT EXEMPT -- the entry
+-- is the argument, and an item with no entry is judged.
+--
+-- The bar is that the item's own blueprint makes the case in prose, and that raising the number would
+-- delete what the item IS rather than merely strengthen it. Three qualify. Everything else that reads
+-- low reads low because nobody ever checked it, which is exactly what the ladder is for.
+--
+-- Distinct from the ALLY-TARGETED exclusion below, which is not a waiver at all: those items are not
+-- being let off a damage rule, they have no damage to rule on.
+Balance.MAGNITUDE_WAIVERS = {
+    weapon_long_fall = "docs/weapons.md's mace S4: four tiles of shove and almost no damage. Its own"
+        .. " header argues that mace damage on top of the shove 'would simply be the best knight"
+        .. " weapon in the game', and the party has to be built to collect -- the number is the price"
+        .. " of the displacement, not an oversight.",
+    ability_gilded_wound = "the coin IS the blow: it deals no authored damage and bills fx.flatDamage"
+        .. " against gold spent at cast time (see the purse kit). Its damage field is 0 because the"
+        .. " magnitude lives in the spend, so a ladder target has nothing to attach to.",
+    weapon_swineherds_wand = "polymorph removes the body from the fight outright (status_polymorph:"
+        .. " it can move and do nothing else). Its header says the damage is 'nearly nothing on"
+        .. " purpose' -- a weapon that both removed a body AND hurt it would be two purchases.",
+    ability_self_destruct = "the same 12 trait_bomblet throws, and it has to stay the same 12: the"
+        .. " Bomblet promises the damage only ever comes from the burst however the burst is triggered,"
+        .. " so a player who learned the number off one they shot is not surprised by one that jumped"
+        .. " them. tests/demon_champion_spec.lua pins the two together -- this figure is a cross-item"
+        .. " promise rather than a rung on a shelf.",
+}
+
+-- (Balance.EARLY_GATES -- "how many gates count as the opening shelf" -- lived here to bound the median
+-- the ability group's target used to be read from. Balance.ABILITY_BASE replaced that median and nothing
+-- read the constant afterwards, so it is deleted rather than kept: a knob with no callers is exactly how
+-- Vendor.tier drifted, and the note on slotAnchors records why the median had to go.)
+--
+-- (Balance.hasRider went the same way, and it is worth a sentence because it was 100 lines. It answered
+-- "does this item sell something other than its number" -- declared rider fields, a reach comparison
+-- against the family base, and a structural scan of the blueprint's own source for anything that was not
+-- a single bare fx.damage. Its only purpose was to WAIVE the magnitude floor for such items, and under
+-- the slot ladder nothing is waived for having an effect: the slot sets the number and the effect is what
+-- distinguishes two items that share one. Deliberate outliers are named in Balance.MAGNITUDE_WAIVERS with
+-- their reasons instead, which is three entries rather than a heuristic that exempted 279 of 283 items.)
+
+-- THE BASE ABILITY: what the ability group's ladder is read off, exactly as each weapon family reads
+-- Balance.FAMILY_BASE. There is no "iron ability", so one has to be named, and the same three things
+-- qualify it that qualify a family base: it sits at slot 0, it is on a shelf for real money, and its
+-- damage is the whole of what it does -- a Fire Bolt is the plainest damaging spell the Arcanum sells.
+--
+-- Named rather than derived because a level read off the group is a level that moves when the group
+-- does; Balance.slotAnchors carries the full account of the run where that failed.
+Balance.ABILITY_BASE = "ability_fire_bolt"
 
 -- THE BASE WEAPON OF EACH FAMILY -- the item whose power level the rest of that family is held to.
 --
@@ -334,6 +397,59 @@ function Balance.attackBudget(prestige, opts)
         { label = magical and "Magic damage" or "Damage", value = stat },
     }
     return stat + power, parts
+end
+
+-- The deepest weapon of `family` a player at prestige P could actually have bought, or nil if that
+-- family sells nothing they can reach yet.
+--
+-- WHY THIS EXISTS, and it is the gap the slot ladder opened. Every number on the player's side of this
+-- module is priced through Balance.REFERENCE -- the avatar with an iron sword -- and that is the right
+-- yardstick for grading BODIES, because a fixed yardstick is the only kind that can catch a body drifting.
+-- But it is a slot-0 weapon, and the ladder just raised 141 magnitudes above it. So `Balance.TTK` passing
+-- means "a body is fair against the opening shelf" and says NOTHING about a player carrying the shelf they
+-- have actually earned -- which, at the deep end, now hits several times harder than the reference does.
+--
+-- That is a real question and it needed a real instrument rather than an assumption in either direction.
+-- Read the deepest reachable weapon rather than a hand-named "late reference" for the usual reason: a
+-- second authored loadout would be one more thing to drift, and this one moves the day the shelf does.
+--
+-- `unlockQuests <= prestige` is the gate, since prestige is a flat count of quests finished
+-- (Quest.PRESTIGE_PER_QUEST) and a shelf gate counts the sponsoring house's. That conflates "eleven quests
+-- anywhere" with "eleven of this house's", which is generous -- it assumes a player who committed to one
+-- line. Generous is the correct direction here: this is measuring the CEILING of what a player could be
+-- swinging, and a floor would answer a question nobody asked.
+function Balance.progressedWeapon(prestige, family)
+    local best, bestSlot = nil, -1
+    for id, def in pairs(Item.defs) do
+        if def.price and def.type == "weapon" and Balance.familyOf(def) == family then
+            local slot = def.unlockQuests or 0
+            if slot <= (prestige or 1) and slot > bestSlot and Balance.gradesOnMagnitude(def) then
+                best, bestSlot = id, slot
+            end
+        end
+    end
+    return best, bestSlot
+end
+
+-- The exchange as a player who has KEPT UP would really fight it: the same body, measured against the
+-- deepest weapon of the probe's family they could be holding at that standing.
+--
+-- Returns nil when the family sells nothing deeper than the probe's own base, in which case the ordinary
+-- Balance.exchange already answered the question and a second identical row would just be noise.
+function Balance.progressedExchange(prestige, charOrId, probeName, opts)
+    local probe = Balance.probe(probeName or "slash")
+    local weaponId = Balance.progressedWeapon(prestige, Balance.familyOf(probe.weapon))
+    if not weaponId or weaponId == probe.weapon then return nil end
+
+    -- The probe's TAGS, not the progressed weapon's: what is being varied is the weapon's POWER, and
+    -- swapping the tag list too would change which resists apply and make the two rows incomparable.
+    local o = {}
+    for k, v in pairs(opts or {}) do o[k] = v end
+    o.budget = (Balance.attackBudget(prestige, { probe = probe, weapon = weaponId,
+        sponsorDone = o.sponsorDone, forgeLevel = o.forgeLevel }))
+    local ex = Balance.exchange(prestige, charOrId, probe, o)
+    ex.weapon = weaponId
+    return ex
 end
 
 -- ---------------------------------------------------------------------------
@@ -671,12 +787,11 @@ function Balance.growthClassFor(probe)
     return (probe and probe.magical) and "mage" or nil
 end
 
--- Drop the memos. Only a tool that rewrites blueprints between walks needs this.
-function Balance.reset()
-    refCache = {}
-    facedCache = nil
-    familyCache = nil
-end
+-- (Balance.reset lives at the FOOT of this file, not here. Every cache it drops is declared further
+-- down, and a function written above those declarations closes over the GLOBALS of the same name
+-- instead -- so the version that used to sit here silently cleared nothing but refCache. The one
+-- caller is tools/balance_rescale.lua, which rewrites blueprints between walks and would otherwise
+-- solve pass 2 against pass 1's stale numbers.)
 
 -- ---------------------------------------------------------------------------
 -- Roles and verdicts
@@ -986,155 +1101,144 @@ function Balance.familyOf(idOrDef)
     return Item.archetype(def) or def.type
 end
 
--- family -> the share it is held to across every gate, so a greatsword stays a greatsword and a dagger
--- stays a dagger while both stop drifting as the campaign goes on.
+-- The top rung of the shelf ladder: the deepest slot any priced item actually unlocks from.
 --
--- A weapon family reads its BASE (Balance.FAMILY_BASE). Abilities have no archetype and no single
--- base -- "the ability shelf" is not one thing the way "the axe" is -- so that group keeps a median,
--- which it can afford at 32 early exemplars. Memoized.
-local familyCache
-function Balance.familyShares()
-    if familyCache then return familyCache end
-    familyCache = {}
+-- DERIVED, not typed. A house's slot count is not the answer -- each line is ten numbered slots but
+-- Quest.sponsorProgress counts every quest naming that sponsor, side quests included, so the reachable
+-- ceiling runs 12 to 14 and differs per house (arcanum and undercroft stop at 12, the cathedral and the
+-- Lodge reach 14). Reading the data's own deepest gate keeps the ladder as long as the shelf really is,
+-- and moves it the day a slot is added. Memoized.
+local maxSlotCache
+function Balance.maxSlot()
+    if maxSlotCache then return maxSlotCache end
+    local m = 0
+    for _, def in pairs(Item.defs) do
+        if def.price and (def.unlockQuests or 0) > m then m = def.unlockQuests end
+    end
+    maxSlotCache = m
+    return m
+end
+
+-- family -> { base, top }: the two ends of that family's ladder, read off its base weapon's own forge
+-- ramp. `base` is the base weapon unforged, `top` is the same weapon at Item.MAX_LEVEL.
+--
+-- This is where "the last slot unforged equals the first slot fully forged" comes from -- it is not an
+-- extra rule, it is what reading these two numbers MEANS. Memoized.
+local anchorCache
+function Balance.slotAnchors()
+    if anchorCache then return anchorCache end
+    anchorCache = {}
+
+    local function powerOf(id, level)
+        local item = Item.instantiate(id, 1, level)
+        local ab = item and item.activeAbility
+        return (ab and type(ab.damage) == "number") and ab.damage or nil
+    end
 
     for fam, baseId in pairs(Balance.FAMILY_BASE) do
-        local share = Balance.itemShare(baseId)
-        if share then familyCache[fam] = share end
+        local base, top = powerOf(baseId, 0), powerOf(baseId, Item.MAX_LEVEL)
+        if base and top and top > base then anchorCache[fam] = { base = base, top = top } end
     end
 
-    local abilities = {}
-    for id, def in pairs(Item.defs) do
-        if def.price and def.type == "ability" and (def.unlockQuests or 0) <= Balance.EARLY_GATES
-            and Balance.familyOf(def) == "ability" then
-            local share = Balance.itemShare(id)
-            if share then abilities[#abilities + 1] = share end
-        end
-    end
-    if #abilities > 0 then
-        table.sort(abilities)
-        local n = #abilities
-        familyCache.ability = (n % 2 == 1) and abilities[(n + 1) / 2]
-            or (abilities[n / 2] + abilities[n / 2 + 1]) / 2
-    end
+    -- The ability group reads a NAMED BASE too (Balance.ABILITY_BASE), for the same reason the weapon
+    -- families do -- and this one was learned the hard way.
+    --
+    -- It first took a MEDIAN of the early ability shelf, on the reasoning that 32 exemplars is a sample
+    -- no single weapon family has. That is a target derived from the data being audited, which is the
+    -- exact tautology the header of this file warns about, and it does not merely fail to catch things:
+    -- it CANNOT CONVERGE. tools/balance_rescale.lua raised 70 abilities to the median, which raised the
+    -- median, which raised the target above every one of them again -- the pass ran, wrote 141 files,
+    -- and the spec came back with the same 70 abilities still under a target that had moved up to meet
+    -- them. A ladder has to be anchored to something that does not move when the rungs do.
+    local base, top = powerOf(Balance.ABILITY_BASE, 0), powerOf(Balance.ABILITY_BASE, Item.MAX_LEVEL)
+    if base and top and top > base then anchorCache.ability = { base = base, top = top } end
 
-    return familyCache
+    return anchorCache
 end
 
--- The level-0 magnitude an item SHOULD carry for its gate, and what it currently does carry.
--- Returns `want, have, ratio` -- `ratio` being how far off its family's level it sits, so 1.0 is
--- exactly right whatever family it belongs to. Nil when there is no magnitude to judge.
-function Balance.itemMagnitude(id)
-    local share, have, stat = Balance.itemShare(id)
-    if not share then return nil end
-    local fam = Balance.familyOf(id)
-    -- No trusted level for this family -> no judgement. Returning the global fallback here would be
-    -- inventing a target for exactly the families whose levels are least understood.
-    local target = fam and Balance.familyShares()[fam]
-    if not target then return nil end
-    local want = math.max(1, math.floor(stat * target + 0.5))
-    return want, have, have / math.max(1, want), target
+-- The magnitude a `fam` item unlocking at `slot` should carry, unforged. A straight line between the
+-- family's two anchors -- the same shape Curve.ramp lays over the forge levels, laid over the slots.
+-- Nil for a family with no readable anchors, which gets no judgement rather than an invented one.
+function Balance.slotTarget(fam, slot)
+    local a = fam and Balance.slotAnchors()[fam]
+    if not a then return nil end
+    local span = Balance.maxSlot()
+    local f = span > 0 and math.min(1, math.max(0, (slot or 0) / span)) or 0
+    return math.max(1, math.floor(a.base + f * (a.top - a.base) + 0.5))
 end
 
--- Markers that say "this item sells something other than its number". Matched against the
--- blueprint's declared fields AND its source text.
+-- The same target expressed as a SHARE of the attack stat of the body that would swing it at that slot.
+-- Only tools/balance_report.lua wants this -- its pace table is authored in share space -- and it is
+-- derived from Balance.slotTarget rather than kept beside it, so the report and the rule cannot
+-- disagree. (A second constant here is exactly how the two halves of a house's offer drifted onto
+-- different granularities the last time.)
+function Balance.familyShareAt(fam, slot)
+    local want = Balance.slotTarget(fam, slot)
+    if not want then return nil end
+    local baseId = Balance.FAMILY_BASE[fam]
+    local def = baseId and Item.defs[baseId]
+    local stat = Balance.wielderStatFor({ tags = (def and def.tags) or {}, unlockQuests = slot or 0 })
+    if stat <= 0 then return nil end
+    return want / stat
+end
+
+-- Is this item's damage a thing the ladder has any business grading?
 --
--- The source scan is not laziness -- it is the only thing that works. Most riders are arguments to
--- `fx.damage` INSIDE the effect closure (`fx.damage(fx.target, { knockback = { distance = 4 } })`),
--- and a closure can only be inspected by calling it, which needs a live board. Reading the blueprint
--- fields alone reported weapon_long_fall as a plain 2-power mace and proposed a sevenfold buff -- a
--- weapon whose own header says "a damage curve so low that the shove is not merely the point, it is
--- the entire weapon", and that hitting for a mace's damage as well "would simply be the best knight
--- weapon in the game". The prose was right and the field list could not see it.
-local RIDER_FIELDS = {
-    "inflicts", "hits", "stun", "healing", "restore", "summon",
-    "waitBehavior", "requiresAdjacent", "raw", "reviveHealth",
-    -- The censer family's whole mechanic: ground that walks with the bearer (Combat.layIncense). Every
-    -- censer carries one and its strike is feeble by the family contract, so without this the two
-    -- late censers read as plain 4-power sticks.
-    "incense",
-}
-
--- Ways an item can beat its family's BASE on reach or handling. Buying one of these is buying
--- something, and an item that has paid for it may sit low on damage -- weapon_harriers_bow is the
--- case that found this: range 4 against the iron bow's 3, its own header saying "under the iron bow:
--- the freedom is the price", and slower speed on top. A rider is not always an effect; sometimes it
--- is a restriction the base has and this one does not.
-local REACH_AXES = {
-    { key = "range", better = function(a, b) return a > b end },
-    { key = "minRange", better = function(a, b) return a < b end },
-}
--- Rather than a keyword list, the source test is STRUCTURAL: an item is plain only if its effect does
--- exactly one thing -- a single unqualified `fx.damage(fx.target)` and no other fx call. Anything
--- else is selling something.
---
--- A keyword list was tried and kept under-reaching, three times over: it missed `knockback` (an
--- argument inside the closure), then `fx.spendChi` (ability_asura_strike's 6 is a FLOOR, the real
--- damage is +6 per chi), then a loop applying `fx.damage` to every enemy in a hazard. Each miss
--- proposed buffing a weapon whose own header explains why the number is small. Enumerating what a
--- rider can be is a losing game; recognising what PLAIN looks like is one line.
-local PLAIN_EFFECT = "fx%.damage%(%s*fx%.target%s*%)"
-
-local sourceCache = {}
-local function itemSource(id)
-    if sourceCache[id] ~= nil then return sourceCache[id] end
-    local text = false
-    for _, dir in ipairs({ "weapon", "armor", "utility", "consumable", "ability" }) do
-        local path = "data/items/" .. dir .. "/" .. id .. ".lua"
-        if love and love.filesystem and love.filesystem.getInfo(path) then
-            text = love.filesystem.read(path) or false
-            break
-        end
-    end
-    sourceCache[id] = text
-    return text
-end
-
--- Does this item sell something other than its number? Items that carry a rider are allowed to sit
--- low in the share band, because the number is not what the player is buying.
-function Balance.hasRider(idOrDef)
-    local def, id = idOrDef, nil
-    if type(idOrDef) == "string" then id, def = idOrDef, Item.defs[idOrDef] end
+-- Three self-declaring exclusions, no list:
+--   no numeric damage        nothing to compare. A curve is resolved by then, so this really means
+--                            "this item does not deal authored damage".
+--   a consumable             priced on being one-shot; a potion legitimately outdoes a blow.
+--   target = "ally"          THE ONE THAT MATTERS. Four weapons are aimed at a friend and deal zero on
+--                            purpose -- weapon_shepherds_crook hooks an ally two tiles,
+--                            weapon_sealed_ward_wand and weapon_reflecting_wand lay a ward on one,
+--                            weapon_second_utterance_wand pays somebody else's wind-up. Raising those
+--                            to a slot target would not strengthen them, it would make each one WOUND
+--                            THE ALLY IT IS POINTED AT. They are not low; they have no damage to rule
+--                            on, and a waiver would have implied otherwise.
+function Balance.gradesOnMagnitude(idOrDef)
+    local def = idOrDef
+    if type(idOrDef) == "string" then def = Item.defs[idOrDef] end
     if not def then return false end
-    if def.traits and #def.traits > 0 then return true end
-
-    -- Checked on the ITEM as well as on its ability: `waitBehavior` (a staff's Focus swap, and where
-    -- the Warding Staff's whole ward lives) is a top-level field, and looking only inside
-    -- activeAbility reported a 560-gold relic as a plain 4-power stick.
+    if def.type ~= "weapon" and def.type ~= "ability" then return false end
     local ab = def.activeAbility
-    for _, key in ipairs(RIDER_FIELDS) do
-        if def[key] ~= nil or (ab and ab[key] ~= nil) then return true end
-    end
+    if not ab then return false end
+    if ab.target == "ally" or ab.support then return false end
+    local d = ab.damage
+    if type(d) ~= "number" and type(d) ~= "table" then return false end
+    return true
+end
 
-    -- Does it out-reach or out-handle its own family's base?
+-- The unforged magnitude an item SHOULD carry for the slot it unlocks from, and what it does carry.
+-- Returns `want, have, ratio, target` -- `ratio` being how far off its slot it sits, so 1.0 is exactly
+-- right whatever family it belongs to. Nil when there is nothing to judge.
+--
+-- No `def.price` condition, deliberately. The quest-reward shelf is 70 items the player is HANDED for
+-- finishing a line, and gating the rule on a price left every one of them unmeasured in both directions
+-- -- which is how weapon_deadfall_bow shipped at a fifth of its slot's number.
+function Balance.itemMagnitude(id)
+    local def = Item.defs[id]
+    if not Balance.gradesOnMagnitude(def) then return nil end
+    local item = Item.instantiate(id, 1, 0)
+    local ab = item and item.activeAbility
+    local have = ab and ab.damage
+    if type(have) ~= "number" then return nil end
+
     local fam = Balance.familyOf(def)
-    local baseId = fam and Balance.FAMILY_BASE[fam]
-    if baseId and baseId ~= id then
-        local base = Item.defs[baseId]
-        local bab = base and base.activeAbility
-        if ab and bab then
-            for _, axis in ipairs(REACH_AXES) do
-                local mine, theirs = ab[axis.key], bab[axis.key]
-                if mine and theirs and axis.better(mine, theirs) then return true end
-            end
-            if bab.requiresSight and not ab.requiresSight then return true end
-        end
-        if base and base.hands and def.hands and def.hands < base.hands then return true end
-    end
+    local want = Balance.slotTarget(fam, def.unlockQuests or 0)
+    if not want then return nil end
+    return want, have, have / math.max(1, want), fam
+end
 
-    local text = id and itemSource(id)
-    if not text then return false end
-
-    -- Strip comments AND string literals first: these blueprints are two-thirds prose, and a header
-    -- explaining what the weapon does not do -- or a `description` reading "Inflicts Root" -- would
-    -- otherwise register as the mechanic it is describing.
-    local code = text:gsub("%-%-%[%[.-%]%]", " "):gsub("%-%-[^\n]*", " ")
-    code = code:gsub('"[^"]*"', '""'):gsub("%[%[.-%]%]", '""')
-
-    -- Count fx calls. Exactly one, and it a plain strike at the target, is a plain weapon.
-    local fxCalls, plain = 0, 0
-    for _ in code:gmatch("fx%.%a+%s*%(") do fxCalls = fxCalls + 1 end
-    for _ in code:gmatch(PLAIN_EFFECT) do plain = plain + 1 end
-    return not (fxCalls == 1 and plain == 1)
+-- How far off its slot an item sits, as a verdict: "ok", "low" or "high". Honors the waivers, so a
+-- caller does not have to remember to.
+function Balance.magnitudeVerdict(id)
+    local want, have = Balance.itemMagnitude(id)
+    if not want then return nil end
+    if Balance.MAGNITUDE_WAIVERS[id] then return "ok", want, have end
+    local tol = math.max(Balance.SLOT_TOLERANCE.floor, want * Balance.SLOT_TOLERANCE.share)
+    if have < want - tol then return "low", want, have end
+    if have > want + tol then return "high", want, have end
+    return "ok", want, have
 end
 
 -- Every quest, ordered the way a player meets them -- by the prestige they require, then by name so
@@ -1149,6 +1253,15 @@ function Balance.questOrder()
         return a < b
     end)
     return ids
+end
+
+-- Drop the memos. Only a tool that rewrites blueprints between walks needs this. Placed here, below
+-- every cache it names, so the assignments reach the locals rather than inventing globals.
+function Balance.reset()
+    refCache = {}
+    facedCache = nil
+    anchorCache = nil
+    maxSlotCache = nil
 end
 
 return Balance

@@ -21,7 +21,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 4 },
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(10, 20),
         effect = function(fx)
             fx.damage(fx.target)
             -- Snap back to the turn's origin tile, if we moved off it. That tile is empty -- no one

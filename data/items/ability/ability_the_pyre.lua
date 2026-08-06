@@ -31,7 +31,7 @@ return {
         range = 0,
         speed = 6,
         cost = { stat = "mana", amount = 18 },
-        damage = Curve.ramp(7, 17),
+        damage = Curve.ramp(16, 26),
         description = "Burns every Marked enemy, wherever it stands.",
         effect = function(fx)
             local burned = 0

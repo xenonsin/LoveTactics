@@ -28,7 +28,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(5, 15), -- the strike itself, attack-stat scaled like any blow
+        damage = Curve.ramp(8, 18), -- the strike itself, attack-stat scaled like any blow
         effect = function(fx)
             fx.damage(fx.target)
             local want = 8 + fx.level -- the theft: a flat bite of stamina, sharpened by the forge

@@ -25,7 +25,7 @@ return {
         speed = 6,             -- heavy, and slow to come around again
         windup = 2,            -- the two-tick tell: brace, burst, or break it
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(16, 36), -- the base, at full health; scaled up below
+        damage = Curve.ramp(6, 26), -- the base, at full health; scaled up below
         effect = function(fx)
             local hp = fx.user.char.stats.health
             local ratio = (hp.max and hp.max > 0) and (hp.current / hp.max) or 1

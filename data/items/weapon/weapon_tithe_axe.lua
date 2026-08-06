@@ -28,7 +28,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Under the iron axe's, which is already under a sword's. The tithe is the rest of the weapon.
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(6, 16),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

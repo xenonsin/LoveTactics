@@ -335,6 +335,12 @@ return {
         fn = function()
             local c = Combat.new(arena(12, 12), { unit("character_mage", 6, 6) }, { unit("character_rowan", 4, 4) })
             local mage, knight = c.units[1], c.units[2]
+            -- Room to stand under the whole storm. Meteor Storm's power is a slot-graded number that
+            -- moves (Balance.slotTarget), and at its raised value the bursts killed Rowan's 70 health
+            -- partway through resolution -- so the later strikes never fell and the spec failed on the
+            -- FIRE it was checking for, which made a lethality change look like a placement bug.
+            knight.char.stats.health.max = 600
+            knight.char.stats.health.current = 600
             -- Aim at (6,6): with random stubbed to 1, the first strike lands on (tx-2, ty-2) = (4,4).
             local meteor = Item.instantiate("ability_meteor_storm")
             local hp0 = knight.char.stats.health.current

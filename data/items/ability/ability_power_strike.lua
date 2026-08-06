@@ -19,7 +19,7 @@ return {
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(11, 21),
         requiresAdjacent = { type = "weapon", tag = "melee" }, -- a melee weapon must sit adjacent in the grid
         effect = function(fx)
             -- The stun rides the blow, so the reeling target does not answer it (see the War Hammer).

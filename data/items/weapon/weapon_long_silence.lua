@@ -36,7 +36,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 10 },
         -- Under the iron longbow's: taking a caster's whole kit away is worth more than the arrow.
-        damage = Curve.ramp(7, 17),
+        damage = Curve.ramp(21, 31),
         effect = function(fx)
             local t = fx.target
             if not t then return end

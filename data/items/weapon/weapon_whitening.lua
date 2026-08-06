@@ -39,7 +39,7 @@ return {
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's, because it is measured against Magic Defense, which almost nobody
         -- in plate has bought any of. The number is smaller and the number that ARRIVES is larger.
-        damage = Curve.ramp(20, 42),
+        damage = Curve.ramp(24, 46),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end -- tags default to the item's, so the hit is magical
         end,

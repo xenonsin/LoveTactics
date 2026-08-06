@@ -31,7 +31,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(12, 22),
         description = "Increase damage by 3 per tile covered before the shot.",
         effect = function(fx)
             local moved = require("models.combat").tilesMovedThisTurn(fx.user)

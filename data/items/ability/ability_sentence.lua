@@ -30,7 +30,7 @@ return {
         range = 2,
         speed = 5,
         cost = { stat = "mana", amount = 14 },
-        damage = Curve.ramp(9, 21),
+        damage = Curve.ramp(15, 27),
         description = "Dispels a Marked foe's blessings, then burns it; executes it under a third.",
         effect = function(fx)
             local t = fx.target

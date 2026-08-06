@@ -24,7 +24,7 @@ return {
         windup = 4, -- winds up before it fires (Combat reads `windup`; see ability_meteor_storm)
         cost = { stat = "mana", amount = 14 },
         aoe = { radius = 1, shape = "diamond" },
-        damage = Curve.ramp(10), -- carries `holy` + `magical` via tags
+        damage = Curve.ramp(8, 18), -- carries `holy` + `magical` via tags
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 if u.side ~= fx.user.side then fx.damage(u) end

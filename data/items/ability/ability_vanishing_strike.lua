@@ -19,7 +19,7 @@ return {
         range = 1,
         speed = 2,
         cost = { stat = "stamina", amount = 7 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(9, 19),
         effect = function(fx)
             fx.damage(fx.target)
             fx.retreat(fx.user, 1) -- slip back out of reach

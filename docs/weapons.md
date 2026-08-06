@@ -216,7 +216,7 @@ one exception: it *pairs* the two tiles, so it needs both.
 | S3 | `weapon_wetstone_mace` | Lands `lightning` and leaves the target **Wet** — so its own second swing is worth six more. Self-comboing. |
 | S4 | `weapon_gathering_bell` | **Drags them toward you** instead of away. Everything the party prices around adjacency wants the enemy gathered. |
 | S4 | `weapon_long_fall` | **Four tiles** of shove and almost no damage. Pure board control; the party has to be built to collect. |
-| Q | `weapon_shepherds_crook` | Shoves an **ally** two tiles and deals nothing to anyone ⚠️. Movement is the scarcest thing in this game and nothing else gives it back. |
+| Q | `weapon_shepherds_crook` | Hooks a foe **two tiles and comes with it** (`Combat.charge`, in lockstep). The only mace that moves its own wielder — every other one shoves a body away and stands still. |
 | Q | `weapon_debt_bell` | The collision hits **everything adjacent to where they land**. The body is the ordnance; the aim decides who pays. |
 | Q | `weapon_rimebell` | The tiles they are **dragged across** freeze over. The only zone painted with somebody else's body. |
 | Q | `weapon_answering_bell` | Carries `trait_shield_shove`: **shoves whoever strikes it**. A body nobody can stay next to. |
@@ -288,9 +288,9 @@ one exception: it *pairs* the two tiles, so it needs both.
 | S4 | `weapon_conductor` | **Arcs to every soaked body on the field.** Soaks nobody itself — it collects on the knight's Wetstone Mace and Tidesbreak. |
 | Q | `weapon_unravelling_wand` | The bolt is **`physical`** — no ward turns it — and leaves `status_unravelled` for every spell that follows. |
 | Q | `weapon_swineherds_wand` | **Polymorph**: it can walk, and it can do nothing else. The hardest single piece of control in the game. |
-| Q | `weapon_sealed_ward_wand` | Aimed at an **ally** ⚠️, deals nothing: seals them so the next single-target spell at them is refused outright. |
-| Q | `weapon_reflecting_wand` | Aimed at an **ally**: the next single-target spell at them **rebounds onto its caster**. The greedy read where the Sealed Ward is the safe one. |
-| Q | `weapon_second_utterance_wand` | Lets one ally's next **channelled** working resolve instantly. Deletes the telegraph a greatsword or longbow pays. |
+| Q | `weapon_sealed_ward_wand` | The bolt leaves **its own caster** holding a Sealed Ward — refusal bought as a rider instead of a turn. Ten ticks against the relic's forty: it covers the reply to the shot, not the fight. |
+| Q | `weapon_reflecting_wand` | The bolt leaves **its own caster** Mirrored. The greedy twin of the Sealed Ward wand: refusal costs the enemy a turn, reflection costs them the turn *and* their own best cast. |
+| Q | `weapon_second_utterance_wand` | The bolt leaves **its own caster** holding Second Utterance. The only one of three granters that arms the free channel on a turn the mage also spent hurting somebody. |
 
 ### `staff` — mage / priest
 | | Weapon | Its extra over the base |

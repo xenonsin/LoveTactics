@@ -327,24 +327,25 @@ return {
         end,
     },
     {
-        -- An item's magnitude must scale with the gate that opens it, because the BODY does. A
-        -- character's attack stat grows every level, so a magnitude authored flat across the campaign
-        -- quietly stops mattering -- and the audit measured exactly that: damage was ~0.45 of the
-        -- wielder's stat on the opening shelf and ~0.20 on the last one, so a 400-gold late weapon was
-        -- a smaller step than a 60-gold early one.
+        -- THE SLOT IS THE GRADE: an item's unforged magnitude is decided by the slot it unlocks from,
+        -- and nothing else earns a discount (Balance.slotTarget). The ladder runs from a family's base
+        -- weapon unforged to that same weapon fully forged, so the last slot unforged equals the first
+        -- slot fully forged, and two items sharing a slot share a number -- what separates them is the
+        -- effect, which is the whole point of a shelf.
         --
-        -- Held PER FAMILY. docs/weapons.md gives each archetype its own level, paid for in tempo and
-        -- hands -- a greatsword "winds up a turn, then lands the heaviest hit in the game" and really
-        -- does carry four times a dagger's power. One share across all weapons proposed cutting the
-        -- iron greatsword 24 -> 5 and would have deleted the archetype system tests/weapon_spec.lua
-        -- exists to defend.
+        -- WHAT THIS REPLACED, because both holes are worth remembering. The rule used to be a constant
+        -- share of the wielder's stat, and it was enforced (a) only on priced items, so all 70 quest
+        -- rewards went unmeasured in both directions, and (b) only on items with no rider -- which is
+        -- FOUR items in the game, all at slot 0, because a base weapon is precisely the one that just
+        -- deals damage. So the floor applied to four items and the roster drifted under it: 439 of 472
+        -- same-family slot pairs had the earlier item, fully forged, beating the later one unforged.
         --
-        -- NO WAIVER LIST, and that is a result rather than an omission. Riders are detected
-        -- structurally (Balance.hasRider: an item is plain only if its effect does exactly one
-        -- unqualified fx.damage and nothing else), so an item that sells an effect exempts itself by
-        -- being what it is. Four hand-written waivers were tried first and every one of them turned
-        -- out to be a rider the detector should have caught -- knockback inside a closure, a chi
-        -- multiplier, an AoE loop, a top-level waitBehavior.
+        -- Held PER FAMILY still. docs/weapons.md gives each archetype its own level, paid for in tempo
+        -- and hands -- a greatsword "winds up a turn, then lands the heaviest hit in the game" and
+        -- really does carry four times a dagger's power. One ladder across all weapons proposed cutting
+        -- the iron greatsword to a dagger's weight and would have deleted the archetype system
+        -- tests/weapon_spec.lua exists to defend.
+        --
         -- The base table is the whole rule's foundation, so it is checked before the rule is: each
         -- entry must still exist, still be priced, and still belong to the family it is named for.
         -- It mirrors docs/weapons.md's S1 rows, and a mirror is a thing that drifts.
@@ -383,35 +384,28 @@ return {
         end,
     },
     {
-        name = "an item's magnitude scales with the gate that opens it, within its family",
+        name = "an item's magnitude is the one its unlock slot names, within its family",
         fn = function()
-            local band = Balance.ITEM_SHARE_BAND
             local bad = {}
-            for id, def in pairs(Item.defs) do
-                if def.price and (def.type == "weapon" or def.type == "ability") then
-                    local want, have, ratio = Balance.itemMagnitude(id)
-                    -- nil = a family with too few early exemplars to read a level from; those are
-                    -- reported by `balance-report` and retuning them is an authoring decision.
-                    if want and have then
-                        local rider = Balance.hasRider(id)
-                        if ratio > band.max then
-                            bad[#bad + 1] = string.format(
-                                "%s (gate %d, %s): %d power is %.2fx its family's level -- want ~%d",
-                                id, def.unlockQuests or 0, tostring(Balance.familyOf(id)),
-                                have, ratio, want)
-                        elseif ratio < band.min and not rider then
-                            bad[#bad + 1] = string.format(
-                                "%s (gate %d, %s): %d power is only %.2fx its family's level and sells"
-                                .. " no effect to pay for it -- want ~%d",
-                                id, def.unlockQuests or 0, tostring(Balance.familyOf(id)),
-                                have, ratio, want)
-                        end
-                    end
+            for id in pairs(Item.defs) do
+                -- No price condition: a quest reward is gear the player is HANDED for finishing a
+                -- line, and leaving it unjudged is how weapon_deadfall_bow shipped at a fifth of its
+                -- slot's number. Items with nothing to grade (ally-targeted, no authored damage, a
+                -- family with no readable anchors) return nil and are skipped by the verdict itself.
+                local verdict, want, have = Balance.magnitudeVerdict(id)
+                if verdict and verdict ~= "ok" then
+                    local def = Item.defs[id]
+                    bad[#bad + 1] = string.format(
+                        "%s (slot %d, %s%s): %d power against slot target %d -- %s",
+                        id, def.unlockQuests or 0, tostring(Balance.familyOf(id)),
+                        def.price and "" or ", quest-only", have, want,
+                        verdict == "low" and "raise it" or "it outreaches its own slot")
                 end
             end
             table.sort(bad)
-            assert(#bad == 0, "a gate that opens a weaker item than the one before it is a purchase that is a\n"
-                .. "downgrade; a plain-damage item may not drift from its own archetype's level:\n  "
+            assert(#bad == 0, "the slot an item unlocks from IS its power level: a later slot that opens a\n"
+                .. "weaker item than an earlier one is a purchase that is a downgrade. Waive a\n"
+                .. "deliberate outlier in Balance.MAGNITUDE_WAIVERS, with the reason:\n  "
                 .. table.concat(bad, "\n  "))
         end,
     },

@@ -41,7 +41,7 @@ return {
         requiresSight = true,
         speed = 2,
         cost = { stat = "stamina", amount = 7 }, -- an answer is a swing, so this is also what a reply costs
-        damage = Curve.ramp(5, 15), -- barely over an iron bow's: the reflex is the price
+        damage = Curve.ramp(13, 23), -- barely over an iron bow's: the reflex is the price
         effect = function(fx)
             fx.damage(fx.target)
         end,

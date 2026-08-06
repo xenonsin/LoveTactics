@@ -340,11 +340,14 @@ function M.walkPace()
                 local entry = byGate[g]
                 local nextGate = gates[i + 1]
                 local fam = Balance.familyOf(entry.id)
-                local level = fam and Balance.familyShares()[fam]
 
                 -- How the weapon reads at the gate AFTER it -- the far end of the stretch it has to
                 -- cover. Unforged, and taken to the ceiling a player of that standing could reach.
                 local until_ = nextGate or 12
+                -- The family's level is read AT THE SLOT this stretch ends on, not once for the whole
+                -- family: the ladder climbs per slot now (Balance.slotTarget), so a single figure would
+                -- price the last shelf against the first one's target.
+                local level = fam and Balance.familyShareAt(fam, until_)
                 local stat = Balance.wielderStatFor({ tags = entry.def.tags,
                     unlockQuests = until_ })
                 local ceiling = Balance.forgeCeiling(entry.id, math.max(1, until_), until_)
@@ -728,27 +731,26 @@ function M.run(args)
         local rb = b.share / (b.med > 0 and b.med or 1)
         return ra > rb
     end)
-    -- The per-family levels the rescale holds items to, and how many early exemplars set each. A
-    -- level read off one or two items is a level to distrust.
+    -- The LADDER each family is held to, slot by slot. Printed in full rather than as one figure
+    -- because the target climbs per slot now: the interesting property is that the last rung equals the
+    -- base weapon fully forged, and that is only visible with both ends on screen.
+    local anchors = Balance.slotAnchors()
     local fams = {}
-    for fam, share in pairs(Balance.familyShares()) do fams[#fams + 1] = { fam = fam, share = share } end
-    table.sort(fams, function(a, b) return a.share > b.share end)
-    local counts = {}
-    for _, r in ipairs(items) do
-        if r.gate <= Balance.EARLY_GATES then
-            local f = Balance.familyOf(r.id)
-            if f then counts[f] = (counts[f] or 0) + 1 end
-        end
-    end
+    for fam in pairs(anchors) do fams[#fams + 1] = fam end
+    table.sort(fams, function(a, b) return anchors[a].base > anchors[b].base end)
+    local maxSlot = Balance.maxSlot()
     print("")
-    print("  Family power levels -- the share each archetype is held to, read off its BASE weapon")
-    print("  (docs/weapons.md's S1 rows: the iron kit, plus the caster bases that carry no metal)")
-    for _, f in ipairs(fams) do
-        local base = Balance.FAMILY_BASE[f.fam]
-        local n = counts[f.fam] or 0
-        print(string.format("    %-12s %.2f   %s",
-            f.fam, f.share,
-            base and ("base " .. base) or string.format("median of %d early exemplars", n)))
+    print("  Family ladders -- the unforged power each slot names, from the family's BASE weapon")
+    print("  unforged (slot 0) to that same weapon FULLY FORGED (the last slot). docs/weapons.md's S1")
+    print("  rows set the low end, so a greatsword stays a greatsword and a dagger stays a dagger.")
+    local hdr = "    family       "
+    for s = 0, maxSlot do hdr = hdr .. string.format("%4d", s) end
+    print(hdr .. "   read off")
+    for _, fam in ipairs(fams) do
+        local row = string.format("    %-12s ", fam)
+        for s = 0, maxSlot do row = row .. string.format("%4d", Balance.slotTarget(fam, s) or 0) end
+        local base = Balance.FAMILY_BASE[fam]
+        print(row .. "   " .. (base and ("base " .. base) or "median of the early ability shelf"))
     end
 
     print("")
@@ -776,17 +778,64 @@ function M.run(args)
         if r.gap <= 0 then verdict = "-"
         elseif r.forgedEnd >= lvl * 0.85 and r.plainEnd >= lvl * 0.85 then verdict = "holds unforged"
         elseif r.forgedEnd >= lvl * 0.85 then verdict = "forge covers it"
-        elseif Balance.hasRider(r.id) then
-            -- A rider weapon trades raw damage for an effect, so a low share is what it IS, not a
-            -- shortfall. Calling that "falls behind" is the same mistake the magnitude rule made
-            -- before riders were detected -- the number is not what the player is carrying it for.
-            verdict = "trades damage for its rider"
+        elseif Balance.MAGNITUDE_WAIVERS[r.id] then
+            -- A waived outlier: its blueprint argues the small number in prose and raising it would
+            -- delete what the item is. Three items qualify; the reason is in Balance.MAGNITUDE_WAIVERS.
+            verdict = "waived: the number is the price"
         else verdict = "FALLS BEHIND"
         end
         print(string.format("  %-10s %-5d %-29s %-5s %-4d %-6.2f %-6.2f %-7.2f %s",
             r.class, r.gate, r.id:gsub("^weapon_", ""),
             r.nextGate and tostring(r.nextGate) or "(last)", r.gap,
             lvl, r.plainEnd, r.forgedEnd, verdict))
+    end
+
+    print("")
+    print("Kept-up gear -- what the bands DO NOT measure")
+    print("  Balance.TTK grades every body against Balance.REFERENCE: the avatar with an iron sword, a")
+    print("  slot-0 weapon. That is the right fixed yardstick for catching a body that drifts, but the")
+    print("  slot ladder raised the late shelf well above it -- so a green band means 'fair against the")
+    print("  OPENING shelf' and says nothing about a player carrying what they have earned. This is that")
+    print("  second question: the same bodies, measured with the deepest weapon of the probe's family a")
+    print("  player at that standing could have bought (Balance.progressedWeapon).")
+    print("  quest                              body                  role   ref  kept  band     verdict")
+    local overshoot, rows2 = 0, 0
+    for _, questId in ipairs(Balance.questOrder()) do
+        local prestige = Balance.prestigeFor(questId)
+        local sponsorDone = Balance.sponsorDoneFor(questId)
+        for _, body in ipairs(Balance.bodiesFor(questId)) do
+            if body.role and not Balance.isPlaceholder(body.id) then
+                local m = Balance.measure(prestige, body.id, body.role, { sponsorDone = sponsorDone })
+                local kept = Balance.progressedExchange(prestige, body.id, m.physical,
+                    { sponsorDone = sponsorDone })
+                if kept then
+                    local band = Balance.TTK[body.role] or Balance.TTK.line
+                    local refHits, keptHits = m.ex.out.hits, kept.out.hits
+                    -- Only the rows where the kept-up loadout leaves the band the reference sat inside.
+                    -- Everything else is the system working and does not need a line.
+                    if refHits >= band.min and keptHits < band.min then
+                        rows2 = rows2 + 1
+                        overshoot = overshoot + 1
+                        if rows2 <= 25 then
+                            print(string.format("  %-34s %-21s %-6s %3d  %4d  %d-%-4d %s",
+                                questId:gsub("^quest_", ""), body.id:gsub("^character_", ""),
+                                body.role, refHits, keptHits, band.min, band.max,
+                                "falls faster than its rung"))
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if overshoot == 0 then
+        print("    none -- every body still lands inside its band with a kept-up weapon.")
+    else
+        print(string.format("    %d body/quest pairs fall BELOW their band once the player is carrying the",
+            overshoot))
+        print("    shelf they earned. Not automatically a defect -- being ahead of the curve is what a")
+        print("    purchase is FOR (Balance.FORGE_BASELINE says the same about the forge) -- but it is the")
+        print("    number to argue about if the late campaign starts feeling weightless.")
+        if rows2 > 25 then print(string.format("    (%d more not shown)", rows2 - 25)) end
     end
 
     print("")

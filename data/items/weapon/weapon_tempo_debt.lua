@@ -36,7 +36,7 @@ return {
         -- timeline has stopped being one. Two swings is 28 stamina out of a scarce bar.
         cost = { stat = "stamina", amount = 14 },
         -- Under an iron hammer's per swing, because the weapon lands two of them.
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             fx.damage(fx.target)
             -- Granted unconditionally rather than on a kill or a hit: this weapon's whole identity is

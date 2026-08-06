@@ -41,7 +41,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 5 }, -- the swing still tires you; the purse is the OTHER cost
-        damage = Curve.ramp(5, 15), -- fx.amount: the floor, before a single coin is spent
+        damage = Curve.ramp(14, 24), -- fx.amount: the floor, before a single coin is spent
         description = "Spends up to your affordable pour of gold; each 5 gold adds 1 damage on top of the swing.",
         effect = function(fx)
             local t = fx.target

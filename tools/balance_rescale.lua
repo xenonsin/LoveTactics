@@ -275,52 +275,52 @@ end
 -- Pass 5 -- item magnitude vs its gate
 -- ---------------------------------------------------------------------------
 
--- Bring each damaging item's LEVEL-0 magnitude to Balance.ITEM_SHARE of the attack stat of the body
--- that would swing it at its own gate.
+-- Bring each damaging item's LEVEL-0 magnitude to the one its unlock SLOT names
+-- (Balance.slotTarget): a family's ladder runs from its base weapon unforged to that same weapon
+-- fully forged, so a later slot always opens a bigger number than an earlier one.
 --
--- The defect: magnitudes were authored roughly flat across the campaign (4-8 power everywhere) while
--- a character's attack stat grows every level. Damage was ~0.45 of the wielder's stat on the opening
--- shelf and ~0.20 on the last one, so a 400-gold late weapon was a smaller step than a 60-gold early
--- one and the shop stopped being a reward.
+-- The defect this now catches, and could not before. This pass carried the same two holes the spec
+-- did: it skipped anything without a `price` (all 70 quest rewards) and it waived the floor for any
+-- item with a rider -- which is every item in the game bar four, because a base weapon is precisely
+-- the one that only deals damage. So it could raise four items and lower overshooters, and the roster
+-- drifted straight under it: 439 of 472 same-family slot pairs ended up with the earlier item, fully
+-- forged, beating the later one unforged. Both conditions are gone.
 --
 -- Only CURVED magnitudes are rewritten, and the span is preserved. A plain number is an author saying
 -- "this does not grow with forging" (models/curve.lua's span rule), and turning it into a curve here
--- would silently overrule that on an axis this pass has no opinion about.
+-- would silently overrule that on an axis this pass has no opinion about. Those are reported instead.
 --
--- Riders are left alone below the band, never above it: an item may be quiet because it sells an
--- effect, but nothing justifies a plain-damage weapon overshooting its gate.
+-- Waivers (Balance.MAGNITUDE_WAIVERS) and the ally-targeted exclusion are honored through
+-- Balance.magnitudeVerdict, so this pass and tests/balance_spec.lua cannot disagree about which items
+-- are in scope -- the drift that let the old rule pass green while the shelf was a downgrade.
 function M.walkItemMagnitudes()
     local edits = {}
     local ids = {}
-    for id, def in pairs(Item.defs) do
-        if def.price and (def.type == "weapon" or def.type == "ability") then ids[#ids + 1] = id end
-    end
+    for id in pairs(Item.defs) do ids[#ids + 1] = id end
     table.sort(ids)
 
     for _, id in ipairs(ids) do
-        local want, have, ratio = Balance.itemMagnitude(id)
-        if want and have then
-            local band = Balance.ITEM_SHARE_BAND
-            local low, high = ratio < band.min, ratio > band.max
-            -- A rider earns the bottom of the band, never the top.
-            if low and Balance.hasRider(id) then low = false end
-
-            if low or high then
-                local def = Item.defs[id]
-                local raw = def.activeAbility and def.activeAbility.damage
-                if type(raw) == "table" then
-                    local base, top = raw[1], raw[#raw]
-                    local span = top - base
-                    local newBase = math.max(1, want)
-                    if newBase ~= base then
-                        edits[#edits + 1] = {
-                            id = id, path = itemPath(id), gate = def.unlockQuests or 0,
-                            ramp = { field = "damage", base = newBase, top = newBase + span },
-                            from = base, ratio = ratio, want = want,
-                            family = Balance.familyOf(id),
-                        }
-                    end
+        local verdict, want, have = Balance.magnitudeVerdict(id)
+        if verdict and verdict ~= "ok" then
+            local def = Item.defs[id]
+            local raw = def.activeAbility and def.activeAbility.damage
+            -- A flat magnitude is an authored "this does not grow"; rewriting it into a curve is a
+            -- decision this pass has no standing to make, so it is reported and left alone.
+            if type(raw) == "table" then
+                local base, top = raw[1], raw[#raw]
+                local span = top - base
+                local newBase = math.max(1, want)
+                if newBase ~= base then
+                    edits[#edits + 1] = {
+                        id = id, path = itemPath(id), gate = def.unlockQuests or 0,
+                        ramp = { field = "damage", base = newBase, top = newBase + span },
+                        from = base, ratio = have / math.max(1, want), want = want,
+                        family = Balance.familyOf(id),
+                    }
                 end
+            else
+                edits[#edits + 1] = { id = id, skipFlat = true, gate = def.unlockQuests or 0,
+                    from = have, want = want, family = Balance.familyOf(id) }
             end
         end
     end
@@ -330,16 +330,24 @@ end
 local function applyItemMagnitudes(edits, apply)
     local done, failed = 0, {}
     for _, e in ipairs(edits) do
-        local text = e.path and readFile(e.path)
-        if not text then
-            failed[#failed + 1] = e.id .. " (no source file)"
+        if e.skipFlat then
+            -- Reported, never rewritten: turning an authored plain number into a curve would overrule
+            -- the author on the one axis models/curve.lua reserves for them.
+            failed[#failed + 1] = e.id .. string.format(
+                " (flat magnitude %d, slot target %d -- authored as not growing, so decide it by hand)",
+                e.from or 0, e.want or 0)
         else
-            local out = rewriteRamp(text, e.ramp.field, e.ramp.base, e.ramp.top)
-            if out then
-                if apply then writeFile(e.path, out) end
-                done = done + 1
+            local text = e.path and readFile(e.path)
+            if not text then
+                failed[#failed + 1] = e.id .. " (no source file)"
             else
-                failed[#failed + 1] = e.id .. " (damage ramp pattern did not match)"
+                local out = rewriteRamp(text, e.ramp.field, e.ramp.base, e.ramp.top)
+                if out then
+                    if apply then writeFile(e.path, out) end
+                    done = done + 1
+                else
+                    failed[#failed + 1] = e.id .. " (damage ramp pattern did not match)"
+                end
             end
         end
     end

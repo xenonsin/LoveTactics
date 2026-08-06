@@ -40,7 +40,7 @@ return {
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's: an ally's whole action is worth more than the six points of Power
         -- it gives up, and it should be, or nobody would ever swing the plain one.
-        damage = Curve.ramp(18, 39),
+        damage = Curve.ramp(24, 45),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             local Combat = require("models.combat")

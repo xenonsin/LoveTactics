@@ -34,7 +34,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's: the ground is the rest of the price, and it is worth a lot.
-        damage = Curve.ramp(18, 38),
+        damage = Curve.ramp(24, 44),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             -- Laid on the aimed CELL rather than on whoever was standing in it, which is the whole

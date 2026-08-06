@@ -24,7 +24,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 4 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             local t = fx.target
             if not t then return end

@@ -36,7 +36,7 @@ return {
         cost = { stat = "stamina", amount = 16 },
         -- Well under an iron greatsword's, and that is the floor rather than the number: this is what it
         -- lands on turn one, before the count has anything in it.
-        damage = Curve.ramp(12, 28),
+        damage = Curve.ramp(24, 40),
         -- The count made visible: the running tally of turns this bearer has taken, drawn as a badge on
         -- the slot and quoted in the tooltip so the player can watch the blow grow rather than doing the
         -- 12%-a-turn arithmetic in their head. It is the same `turnTaken` tally the effect below reads,

@@ -23,7 +23,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(11, 21),
         effect = function(fx)
             fx.damage(fx.target, { knockback = { distance = 2, amount = fx.amount } })
             -- Contagion: the rot spreads to the struck body and everyone packed in around it.

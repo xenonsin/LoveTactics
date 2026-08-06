@@ -36,7 +36,7 @@ return {
         range = 1,
         speed = 2, -- quick, as every dagger is (docs/weapons.md)
         cost = { stat = "stamina", amount = 7 },
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(10, 20),
         effect = function(fx)
             -- Bleed lands on a survivor (opts.inflicts, the family's wound); denyRevival lands only on
             -- the KILL (opts.denyRevival -> Combat.dealFlatDamage's fatal branch). One stab, both.

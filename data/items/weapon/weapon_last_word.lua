@@ -38,7 +38,7 @@ return {
         cost = { stat = "stamina", amount = 10 },
         -- Well under the iron longbow's, and that is the FLOOR: this is what it lands while the party is
         -- intact, which should feel like carrying the wrong bow.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(10, 20),
         -- The count made visible. It reads the very tally the Reliquary of Tallies already puts on
         -- screen (`allyDown`), and there is no defending the two quoting the same number in different
         -- ways: at +60% a body this is the steepest scaling on the shelf, so the figure the shot is

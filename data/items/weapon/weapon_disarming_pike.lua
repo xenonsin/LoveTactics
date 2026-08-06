@@ -34,7 +34,7 @@ return {
         speed = 4, -- slower than an iron spear: the motion is a hook and a twist, not a thrust
         cost = { stat = "stamina", amount = 10 },
         -- Under an iron spear's, and it should be -- the point of this swing is not the wound.
-        damage = Curve.ramp(3, 13),
+        damage = Curve.ramp(6, 16),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The spear convention (docs/weapons.md): Disarm lands on the FAR tile only.

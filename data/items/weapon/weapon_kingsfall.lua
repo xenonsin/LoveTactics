@@ -39,7 +39,7 @@ return {
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's. Certainty is what it sells, and certainty is worth more than the
         -- four points of Power it gives up for it.
-        damage = Curve.ramp(20, 43),
+        damage = Curve.ramp(24, 47),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
         end,

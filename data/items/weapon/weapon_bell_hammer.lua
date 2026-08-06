@@ -27,7 +27,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
         -- Under an iron mace's: the collision is where this weapon keeps its damage.
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(10, 20),
         effect = function(fx)
             -- One tile of travel, and the collision priced at double the swing. The shove rides IN the
             -- blow so a killing hit still throws the body first (the rule the Iron Mace's header sets

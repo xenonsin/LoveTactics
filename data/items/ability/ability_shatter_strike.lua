@@ -20,7 +20,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
         requiresAdjacent = { type = "weapon", tag = "melee" },
-        damage = Curve.ramp(7, 18),
+        damage = Curve.ramp(9, 20),
         effect = function(fx)
             local t = fx.target
             if not t then return end
